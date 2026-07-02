@@ -4,8 +4,13 @@ export const primitiveCategoryEnum = pgEnum("primitive_category", [
   "VERB_TIER",
   "DOMAIN",
   "SIZING",
+  "TARGETING",
   "RANGE",
   "DURATION",
+  "OUTPUT",
+  "CONDITION",
+  "DEFENSE",
+  "STRUCTURAL",
   "SHEET_AUGMENT",
 ]);
 

@@ -26,7 +26,12 @@ export const primitives = pgTable(
     id: serial("id").primaryKey(),
     name: text("name").notNull(),
     category: primitiveCategoryEnum("category").notNull(),
+    costTier: text("cost_tier").notNull().default("Tier 1: Minor (1-2 BU)"),
     buCost: integer("bu_cost").notNull().default(0),
+    mechanicalOutputText: text("mechanical_output_text")
+      .notNull()
+      .default(""),
+    narrativeRule: text("narrative_rule").notNull().default(""),
     hardModifiers: jsonb("hard_modifiers")
       .$type<readonly HardModifier[]>()
       .notNull()
