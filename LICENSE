@@ -1,4 +1,8 @@
-MIT License
+# Repository Licensing Notice
+
+This repository utilizes a dual-license architecture to clearly separate the programmatic software engine from the conceptual game design rules.
+
+## 1. Software Engine & Source Code (MIT License)
 
 Copyright (c) 2026 Marius Ion
 
@@ -19,3 +23,21 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## 2. Game Rules, Primitives, & Canonical Mechanics (CC-BY-4.0)
+
+The tabletop gaming mechanics, the BU Economy framework, System Lexicons, Verbs, Domains, Primitives, Capabilities, and descriptive lore text associated with the SwordWeave game design are licensed under the **Creative Commons Attribution 4.0 International License (CC-BY-4.0)**.
+
+### Legal Notice
+SwordWeave System Reference Document (SRD) > Copyright © 2026 by Marius Ion.
+
+### What this means for you:
+You are free to share, copy, redistribute, remix, transform, and build upon this material for any purpose, even commercially. The licensor cannot revoke these freedoms as long as you follow the license terms.
+
+### Under the following terms:
+* **Attribution:** You must give appropriate credit to the creator, provide a link to the license, and indicate if changes were made. You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.
+
+### How to Attribute This Work:
+If you create a third-party product using this engine, you must include the following statement in your legal/credits section:
+
+"This work is based on the SwordWeave SRD, a product of Marius Ion, licensed under the Creative Commons Attribution 4.0 International License."
