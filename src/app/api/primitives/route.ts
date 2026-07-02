@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { asc, eq } from "drizzle-orm";
+import { asc } from "drizzle-orm";
 import { db } from "@/db/client";
 import { primitives } from "@/db/schema";
 import type { HardModifier } from "@/types/swordweave";
@@ -19,6 +19,10 @@ const primitiveCategories = [
 ] as const;
 
 function parseHardModifiers(value: unknown): readonly HardModifier[] {
+  if (Array.isArray(value)) {
+    return value as readonly HardModifier[];
+  }
+
   if (typeof value !== "string" || value.trim() === "") {
     return [];
   }
