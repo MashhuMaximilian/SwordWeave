@@ -1,0 +1,122 @@
+import { sql } from "drizzle-orm";
+import {
+  boolean,
+  index,
+  integer,
+  pgTable,
+  primaryKey,
+  text,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
+import { timestamps } from "./common";
+import { itemRarityEnum, itemTypeEnum } from "./enums";
+import { entities } from "./entities";
+import { capabilities, effects } from "./engine";
+
+export const items = pgTable(
+  "items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    itemType: itemTypeEnum("item_type").notNull(),
+    rarity: itemRarityEnum("rarity").notNull().default("COMMON"),
+    buCost: integer("bu_cost").notNull().default(0),
+    description: text("description").notNull().default(""),
+    slotCost: integer("slot_cost").notNull().default(1),
+    isTwoHanded: boolean("is_two_handed").notNull().default(false),
+    isConsumable: boolean("is_consumable").notNull().default(false),
+    actsAsFocus: boolean("acts_as_focus").notNull().default(true),
+    isPublic: boolean("is_public").notNull().default(false),
+    sourceOrigin: text("source_origin"),
+    tags: text("tags")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    ...timestamps,
+  },
+  (table) => [
+    index("items_item_type_idx").on(table.itemType),
+    index("items_rarity_idx").on(table.rarity),
+    index("items_is_public_idx").on(table.isPublic),
+    index("items_tags_idx").using("gin", table.tags),
+    uniqueIndex("items_name_source_origin_unique_idx").on(
+      table.name,
+      table.sourceOrigin,
+    ),
+  ],
+);
+
+export const itemCapabilities = pgTable(
+  "item_capabilities",
+  {
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    capabilityId: uuid("capability_id")
+      .notNull()
+      .references(() => capabilities.id, { onDelete: "cascade" }),
+    sortOrder: integer("sort_order").notNull().default(0),
+    slotLabel: text("slot_label"),
+    notes: text("notes"),
+    ...timestamps,
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.itemId, table.capabilityId],
+      name: "item_capabilities_pk",
+    }),
+    index("item_capabilities_item_id_idx").on(table.itemId),
+    index("item_capabilities_capability_id_idx").on(table.capabilityId),
+  ],
+);
+
+export const itemEffects = pgTable(
+  "item_effects",
+  {
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    effectId: uuid("effect_id")
+      .notNull()
+      .references(() => effects.id, { onDelete: "cascade" }),
+    sortOrder: integer("sort_order").notNull().default(0),
+    slotLabel: text("slot_label"),
+    notes: text("notes"),
+    ...timestamps,
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.itemId, table.effectId],
+      name: "item_effects_pk",
+    }),
+    index("item_effects_item_id_idx").on(table.itemId),
+    index("item_effects_effect_id_idx").on(table.effectId),
+  ],
+);
+
+export const entityInventory = pgTable(
+  "entity_inventory",
+  {
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    quantity: integer("quantity").notNull().default(1),
+    isEquipped: boolean("is_equipped").notNull().default(false),
+    equippedSlot: text("equipped_slot"),
+    notes: text("notes"),
+    ...timestamps,
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.entityId, table.itemId],
+      name: "entity_inventory_pk",
+    }),
+    index("entity_inventory_entity_id_idx").on(table.entityId),
+    index("entity_inventory_item_id_idx").on(table.itemId),
+    index("entity_inventory_equipped_idx").on(table.isEquipped),
+  ],
+);
