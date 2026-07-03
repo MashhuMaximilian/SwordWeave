@@ -17,6 +17,10 @@ type PrimitiveRow = {
   buCost: number;
   mechanicalOutputText: string;
   narrativeRule: string;
+  isMirrorable: boolean;
+  mirrorVector: string;
+  mirrorBuCredit: number;
+  mirrorEligibilityNotes: string;
   hardModifiers: unknown;
 };
 
@@ -120,6 +124,25 @@ const stackingOptions: ModifierStackingMode[] = [
   "unique-by-target",
 ];
 
+const mirrorVectors = [
+  {
+    label: "Standard Only - cannot be mirrored",
+    value: "STANDARD_ONLY",
+  },
+  {
+    label: "Variable Vector - numeric or metric downside",
+    value: "VARIABLE_VECTOR",
+  },
+  {
+    label: "Structural Fault - vulnerability or exposed weakness",
+    value: "STRUCTURAL_FAULT",
+  },
+  {
+    label: "Cost Instability - extra strain or vitality costs",
+    value: "COST_INSTABILITY",
+  },
+] as const;
+
 const blankModifier: ModifierDraft = {
   id: "modifier-1",
   target: "action.roll",
@@ -140,6 +163,10 @@ const blankForm = {
   buCost: "1",
   mechanicalOutputText: "",
   narrativeRule: "",
+  isMirrorable: false,
+  mirrorVector: "STANDARD_ONLY",
+  mirrorBuCredit: "0",
+  mirrorEligibilityNotes: "",
 };
 
 function categoryLabel(category: string) {
@@ -222,7 +249,10 @@ export function PrimitiveRegistry({
     return primitives.filter((primitive) => primitive.category === selectedCategory);
   }, [primitives, selectedCategory]);
 
-  function updateForm(field: keyof typeof blankForm, value: string) {
+  function updateForm(
+    field: keyof typeof blankForm,
+    value: string | boolean,
+  ) {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
@@ -263,7 +293,14 @@ export function PrimitiveRegistry({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ ...form, hardModifiers }),
+        body: JSON.stringify({
+          ...form,
+          mirrorVector: form.isMirrorable
+            ? form.mirrorVector
+            : "STANDARD_ONLY",
+          mirrorBuCredit: form.isMirrorable ? form.mirrorBuCredit : "0",
+          hardModifiers,
+        }),
       });
       const payload: unknown = await response.json();
 
@@ -353,6 +390,11 @@ export function PrimitiveRegistry({
                 <p className="text-xs font-medium text-muted-foreground">
                   {categoryLabel(primitive.category)}
                 </p>
+                {primitive.isMirrorable ? (
+                  <p className="mt-2 rounded-sm border border-border px-2 py-1 text-xs text-muted-foreground">
+                    Mirror: -{primitive.mirrorBuCredit} BU
+                  </p>
+                ) : null}
                 <p className="mt-2 line-clamp-2 text-sm">
                   {primitive.mechanicalOutputText || "No mechanical output yet."}
                 </p>
@@ -452,6 +494,80 @@ export function PrimitiveRegistry({
                 placeholder="Roots an entity to its current spatial coordinate..."
               />
             </label>
+
+            <fieldset className="grid gap-3 rounded-md border border-border bg-background p-4 md:col-span-2 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <legend className="text-sm font-semibold">Mirror Vector</legend>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Mark whether this primitive can be inverted into a real
+                  drawback for BU credit.
+                </p>
+              </div>
+
+              <label className="flex items-start gap-3 rounded-md border border-border bg-card p-3 text-sm font-medium md:col-span-2">
+                <input
+                  checked={form.isMirrorable}
+                  className="mt-1 size-4"
+                  onChange={(event) =>
+                    updateForm("isMirrorable", event.target.checked)
+                  }
+                  type="checkbox"
+                />
+                <span>
+                  Mirrorable
+                  <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                    Valid only when the inverted primitive creates real campaign
+                    friction the DM can expose.
+                  </span>
+                </span>
+              </label>
+
+              <label className="block text-sm font-medium">
+                Mirror Vector Type
+                <select
+                  className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2 disabled:opacity-60"
+                  disabled={!form.isMirrorable}
+                  value={form.mirrorVector}
+                  onChange={(event) =>
+                    updateForm("mirrorVector", event.target.value)
+                  }
+                >
+                  {mirrorVectors.map((vector) => (
+                    <option key={vector.value} value={vector.value}>
+                      {vector.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block text-sm font-medium">
+                Mirror BU Credit
+                <input
+                  className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2 disabled:opacity-60"
+                  disabled={!form.isMirrorable}
+                  min={0}
+                  onChange={(event) =>
+                    updateForm("mirrorBuCredit", event.target.value)
+                  }
+                  step={1}
+                  type="number"
+                  value={form.mirrorBuCredit}
+                />
+              </label>
+
+              <label className="block text-sm font-medium md:col-span-2">
+                Mirror Exposure Notes
+                <textarea
+                  className="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2 disabled:opacity-60"
+                  disabled={!form.isMirrorable}
+                  onChange={(event) =>
+                    updateForm("mirrorEligibilityNotes", event.target.value)
+                  }
+                  placeholder="Explain the downside and how a DM can expose it in play."
+                  value={form.mirrorEligibilityNotes}
+                />
+              </label>
+            </fieldset>
 
             <fieldset className="space-y-3 rounded-md border border-border bg-background p-4 md:col-span-2">
               <div className="flex flex-wrap items-center justify-between gap-3">

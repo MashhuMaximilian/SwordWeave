@@ -15,6 +15,13 @@
       "when": 1783005559549,
       "tag": "0001_lowly_blue_blade",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783073330846,
+      "tag": "0002_clear_gladiator",
+      "breakpoints": true
     }
   ]
 }

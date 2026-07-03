@@ -32,6 +32,12 @@ export const primitives = pgTable(
       .notNull()
       .default(""),
     narrativeRule: text("narrative_rule").notNull().default(""),
+    isMirrorable: boolean("is_mirrorable").notNull().default(false),
+    mirrorVector: text("mirror_vector").notNull().default("STANDARD_ONLY"),
+    mirrorBuCredit: integer("mirror_bu_credit").notNull().default(0),
+    mirrorEligibilityNotes: text("mirror_eligibility_notes")
+      .notNull()
+      .default(""),
     hardModifiers: jsonb("hard_modifiers")
       .$type<readonly HardModifier[]>()
       .notNull()

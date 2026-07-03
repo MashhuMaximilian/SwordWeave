@@ -61,6 +61,12 @@ export async function POST(request: Request) {
       values["mechanicalOutputText"] ?? "",
     ).trim();
     const narrativeRule = String(values["narrativeRule"] ?? "").trim();
+    const isMirrorable = Boolean(values["isMirrorable"]);
+    const mirrorVector = String(values["mirrorVector"] ?? "STANDARD_ONLY").trim();
+    const mirrorBuCredit = Number(values["mirrorBuCredit"] ?? 0);
+    const mirrorEligibilityNotes = String(
+      values["mirrorEligibilityNotes"] ?? "",
+    ).trim();
     const hardModifiers = parseHardModifiers(values["hardModifiers"]);
 
     if (!name) {
@@ -78,6 +84,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!Number.isInteger(mirrorBuCredit) || mirrorBuCredit < 0) {
+      return NextResponse.json(
+        { error: "Mirror BU credit must be a non-negative integer." },
+        { status: 400 },
+      );
+    }
+
     const [created] = await db
       .insert(primitives)
       .values({
@@ -87,6 +100,10 @@ export async function POST(request: Request) {
         buCost,
         mechanicalOutputText,
         narrativeRule,
+        isMirrorable,
+        mirrorVector: isMirrorable ? mirrorVector || "VARIABLE_VECTOR" : "STANDARD_ONLY",
+        mirrorBuCredit: isMirrorable ? mirrorBuCredit : 0,
+        mirrorEligibilityNotes,
         hardModifiers,
       })
       .onConflictDoUpdate({
@@ -96,6 +113,12 @@ export async function POST(request: Request) {
           buCost,
           mechanicalOutputText,
           narrativeRule,
+          isMirrorable,
+          mirrorVector: isMirrorable
+            ? mirrorVector || "VARIABLE_VECTOR"
+            : "STANDARD_ONLY",
+          mirrorBuCredit: isMirrorable ? mirrorBuCredit : 0,
+          mirrorEligibilityNotes,
           hardModifiers,
           updatedAt: new Date(),
         },

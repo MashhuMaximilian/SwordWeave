@@ -52,3 +52,13 @@ Future schema/UI implication:
 - Character creation at level X should allow normal level-derived BU budget.
 - Character creation at level X should also allow explicit custom BU budget as a proxy for level.
 - The max penalty tier / volatility ceiling for characters taking negative primitives must be editable by the DM.
+
+## Import, Export, and AI Pack Notes
+
+- Users should eventually be able to export and import primitives, effects, capabilities, characters, items, monsters, background templates, class/build templates, and whole builds.
+- JSON is the likely interchange format because it can preserve nested primitive/effect/capability graphs and hard modifier directives.
+- Imports should support both personal/account-owned records and public library records.
+- Imported records need attribution/source metadata and conflict handling for duplicate names, IDs, or incompatible schema versions.
+- Library content should remain editable after import, including BU cost overrides.
+- The app should eventually provide AI-facing JSON instructions/prompts so a model can generate SwordWeave-compatible content from scratch.
+- AI import prompts must be treated as assisted drafting, not trusted execution. The app should validate categories, hard modifier targets, BU costs, mirror eligibility, and required fields before saving.
