@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Magra, Teko } from "next/font/google";
 import { AppShell } from "@/components/layout/app-shell";
 import "./globals.css";
@@ -26,8 +27,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${teko.variable} ${magra.variable}`}>
+        <Script id="swordweave-theme" strategy="beforeInteractive">
+          {`
+try {
+  const storedTheme = window.localStorage.getItem("swordweave-theme");
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  if (storedTheme === "dark" || (!storedTheme && prefersDark)) {
+    document.documentElement.classList.add("dark");
+  }
+} catch {}
+          `}
+        </Script>
         <AppShell>{children}</AppShell>
       </body>
     </html>

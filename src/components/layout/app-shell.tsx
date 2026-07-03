@@ -14,6 +14,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "./theme-toggle";
 
 const primaryNav = [
   { href: "/sandbox", label: "Sandbox", icon: FlaskConical },
@@ -57,8 +58,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-30 border-b border-border bg-shell/95 backdrop-blur lg:hidden">
-        <div className="px-4 py-3">
+        <div className="flex items-center justify-between gap-3 px-4 py-3">
           <BrandMark />
+          <ThemeToggle />
         </div>
         <nav
           aria-label="Primary"
@@ -90,7 +92,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="lg:grid lg:min-h-screen lg:grid-cols-[248px_1fr]">
         <aside className="hidden border-r border-border bg-shell lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">
           <div className="border-b border-border px-5 py-5">
-            <BrandMark />
+            <div className="flex items-center justify-between gap-3">
+              <BrandMark />
+              <ThemeToggle />
+            </div>
           </div>
 
           <nav className="grid gap-1 px-3 py-4" aria-label="Primary">

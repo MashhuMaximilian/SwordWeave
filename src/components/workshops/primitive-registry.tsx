@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import type {
   HardModifier,
   JsonValue,
@@ -229,12 +229,14 @@ export function PrimitiveRegistry({
 }) {
   const [primitives, setPrimitives] = useState(initialPrimitives);
   const [selectedCategory, setSelectedCategory] = useState("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
   const [form, setForm] = useState(blankForm);
   const [modifierCounter, setModifierCounter] = useState(1);
   const [modifiers, setModifiers] = useState<ModifierDraft[]>([blankModifier]);
   const [showJsonPreview, setShowJsonPreview] = useState(false);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const hardModifiers = useMemo(
     () => modifiers.map((modifier) => toHardModifier(modifier)),
@@ -246,8 +248,28 @@ export function PrimitiveRegistry({
       return primitives;
     }
 
-    return primitives.filter((primitive) => primitive.category === selectedCategory);
-  }, [primitives, selectedCategory]);
+    const categoryFiltered =
+      selectedCategory === "ALL"
+        ? primitives
+        : primitives.filter((primitive) => primitive.category === selectedCategory);
+    const query = searchQuery.trim().toLowerCase();
+
+    if (!query) {
+      return categoryFiltered;
+    }
+
+    return categoryFiltered.filter((primitive) =>
+      [
+        primitive.name,
+        primitive.category,
+        primitive.mechanicalOutputText,
+        primitive.narrativeRule,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(query),
+    );
+  }, [primitives, searchQuery, selectedCategory]);
 
   function updateForm(
     field: keyof typeof blankForm,
@@ -342,19 +364,131 @@ export function PrimitiveRegistry({
     });
   }
 
+  async function exportPrimitives() {
+    setMessage("");
+    const response = await fetch("/api/primitives/export");
+
+    if (!response.ok) {
+      setMessage("Unable to export primitives.");
+      return;
+    }
+
+    const packageJson = await response.json();
+    const blob = new Blob([JSON.stringify(packageJson, null, 2)], {
+      type: "application/json",
+    });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    anchor.href = url;
+    anchor.download = "swordweave-primitives.package.json";
+    anchor.click();
+    window.URL.revokeObjectURL(url);
+    setMessage("Primitive package exported.");
+  }
+
+  async function importPrimitives(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    setMessage("");
+
+    try {
+      const packageJson = JSON.parse(await file.text()) as unknown;
+      const response = await fetch("/api/primitives/import", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(packageJson),
+      });
+      const payload: unknown = await response.json();
+
+      if (!response.ok) {
+        const error =
+          payload && typeof payload === "object" && "error" in payload
+            ? String(payload.error)
+            : "Unable to import primitives.";
+        setMessage(error);
+        return;
+      }
+
+      const imported =
+        payload && typeof payload === "object" && "imported" in payload
+          ? (payload.imported as PrimitiveRow[])
+          : [];
+
+      setPrimitives((current) => {
+        const merged = [...current];
+
+        for (const primitive of imported) {
+          const existingIndex = merged.findIndex(
+            (item) =>
+              item.name === primitive.name && item.category === primitive.category,
+          );
+
+          if (existingIndex >= 0) {
+            merged[existingIndex] = primitive;
+          } else {
+            merged.push(primitive);
+          }
+        }
+
+        return merged.sort((a, b) =>
+          `${a.category}:${a.name}`.localeCompare(`${b.category}:${b.name}`),
+        );
+      });
+      setMessage(`Imported ${imported.length} primitive records.`);
+    } catch (error) {
+      const importError = error instanceof Error ? error.message : "Unknown error.";
+      setMessage(`Import failed: ${importError}`);
+    } finally {
+      event.target.value = "";
+    }
+  }
+
   return (
-    <div className="mx-auto grid min-h-screen max-w-7xl grid-cols-1 gap-0 lg:grid-cols-[360px_1fr]">
-        <aside className="border-b border-border bg-card px-5 py-5 lg:border-b-0 lg:border-r">
+    <div className="mx-auto grid min-h-screen max-w-7xl grid-cols-1 gap-0 xl:grid-cols-[340px_1fr]">
+        <aside className="border-b border-border bg-card px-4 py-5 sm:px-5 xl:border-b-0 xl:border-r">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase text-muted-foreground">
                 Master Sandbox
               </p>
-              <h1 className="text-xl font-semibold">Primitive Registry</h1>
+              <h1 className="font-display text-3xl font-semibold uppercase leading-none">
+                Primitive Registry
+              </h1>
             </div>
             <span className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
               {primitives.length}
             </span>
+          </div>
+
+          <div className="mb-4 grid grid-cols-2 gap-2">
+            <button
+              className="h-9 rounded-md border border-border bg-background px-3 text-sm font-bold text-foreground"
+              onClick={exportPrimitives}
+              type="button"
+            >
+              Export JSON
+            </button>
+            <button
+              className="h-9 rounded-md border border-border bg-background px-3 text-sm font-bold text-foreground"
+              onClick={() => importInputRef.current?.click()}
+              type="button"
+            >
+              Import JSON
+            </button>
+            <input
+              accept="application/json"
+              className="hidden"
+              onChange={importPrimitives}
+              ref={importInputRef}
+              type="file"
+            />
           </div>
 
           <label className="mb-3 block text-sm font-medium" htmlFor="category-filter">
@@ -373,6 +507,17 @@ export function PrimitiveRegistry({
               </option>
             ))}
           </select>
+
+          <label className="mb-3 block text-sm font-medium" htmlFor="primitive-search">
+            Search
+          </label>
+          <input
+            className="mb-5 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+            id="primitive-search"
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Name, rule, category..."
+            value={searchQuery}
+          />
 
           <div className="space-y-2">
             {filteredPrimitives.map((primitive) => (
@@ -402,20 +547,23 @@ export function PrimitiveRegistry({
           </div>
         </aside>
 
-        <section className="px-5 py-6">
-          <div className="mb-6 max-w-3xl">
+        <section className="px-4 py-6 sm:px-5">
+          <div className="mb-6 max-w-4xl">
             <p className="text-xs font-semibold uppercase text-muted-foreground">
               Atomic Engine Input
             </p>
-            <h2 className="text-2xl font-semibold">Add New Primitive</h2>
+            <h2 className="font-display text-4xl font-semibold uppercase leading-none">
+              Add New Primitive
+            </h2>
             <p className="mt-2 text-sm text-muted-foreground">
               Store the cost, category, and mechanical teeth for a reusable
               SwordWeave building block.
             </p>
           </div>
 
+          <div className="grid max-w-6xl gap-4 2xl:grid-cols-[1fr_320px]">
           <form
-            className="grid max-w-3xl grid-cols-1 gap-4 rounded-md border border-border bg-card p-5 md:grid-cols-2"
+            className="grid grid-cols-1 gap-4 rounded-md border border-border bg-card p-4 md:grid-cols-2 sm:p-5"
             onSubmit={submitPrimitive}
           >
             <label className="block text-sm font-medium md:col-span-2">
@@ -800,6 +948,40 @@ export function PrimitiveRegistry({
               ) : null}
             </div>
           </form>
+          <aside className="rounded-md border border-border bg-card p-4 2xl:sticky 2xl:top-6 2xl:self-start">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">
+              Live Preview
+            </p>
+            <div className="mt-3 rounded-md border border-border bg-background p-4">
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="font-display text-3xl font-semibold uppercase leading-none">
+                  {form.name || "Unnamed Primitive"}
+                </h3>
+                <span className="shrink-0 rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
+                  {form.buCost || 0} BU
+                </span>
+              </div>
+              <p className="mt-3 text-xs font-bold uppercase text-muted-foreground">
+                {categoryLabel(form.category)}
+              </p>
+              <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                {form.mechanicalOutputText ||
+                  "Mechanical output will appear here as you write it."}
+              </p>
+              {form.isMirrorable ? (
+                <div className="mt-4 rounded-md border border-border bg-card p-3">
+                  <p className="text-xs font-bold uppercase text-warning">
+                    Mirror Credit
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Grants up to {form.mirrorBuCredit || 0} BU as a drawback via{" "}
+                    {form.mirrorVector}.
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          </aside>
+          </div>
         </section>
     </div>
   );

@@ -2,39 +2,11 @@ import { NextResponse } from "next/server";
 import { asc } from "drizzle-orm";
 import { db } from "@/db/client";
 import { primitives } from "@/db/schema";
-import type { HardModifier } from "@/types/swordweave";
-
-const primitiveCategories = [
-  "VERB_TIER",
-  "DOMAIN",
-  "SIZING",
-  "TARGETING",
-  "RANGE",
-  "DURATION",
-  "OUTPUT",
-  "CONDITION",
-  "DEFENSE",
-  "STRUCTURAL",
-  "SHEET_AUGMENT",
-] as const;
-
-function parseHardModifiers(value: unknown): readonly HardModifier[] {
-  if (Array.isArray(value)) {
-    return value as readonly HardModifier[];
-  }
-
-  if (typeof value !== "string" || value.trim() === "") {
-    return [];
-  }
-
-  const parsed: unknown = JSON.parse(value);
-
-  if (!Array.isArray(parsed)) {
-    throw new Error("Hard modifiers must be a JSON array.");
-  }
-
-  return parsed as readonly HardModifier[];
-}
+import {
+  isPrimitiveCategory,
+  parseHardModifiers,
+  type PrimitiveCategoryValue,
+} from "@/lib/packages/primitive-package";
 
 export async function GET() {
   const rows = await db.query.primitives.findMany({
@@ -73,7 +45,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Name is required." }, { status: 400 });
     }
 
-    if (!primitiveCategories.includes(category as (typeof primitiveCategories)[number])) {
+    if (!isPrimitiveCategory(category)) {
       return NextResponse.json({ error: "Invalid category." }, { status: 400 });
     }
 
@@ -95,7 +67,7 @@ export async function POST(request: Request) {
       .insert(primitives)
       .values({
         name,
-        category: category as (typeof primitiveCategories)[number],
+        category: category as PrimitiveCategoryValue,
         costTier: costTier || "Tier 1: Minor (1-2 BU)",
         buCost,
         mechanicalOutputText,
