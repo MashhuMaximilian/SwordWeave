@@ -25,6 +25,7 @@ export const primitives = pgTable(
   {
     id: serial("id").primaryKey(),
     name: text("name").notNull(),
+    userId: text("user_id"),
     category: primitiveCategoryEnum("category").notNull(),
     costTier: text("cost_tier").notNull().default("Tier 1: Minor (1-2 BU)"),
     buCost: integer("bu_cost").notNull().default(0),
@@ -46,6 +47,7 @@ export const primitives = pgTable(
   },
   (table) => [
     index("primitives_category_idx").on(table.category),
+    index("primitives_user_id_idx").on(table.userId),
     uniqueIndex("primitives_name_category_unique_idx").on(
       table.name,
       table.category,
@@ -93,6 +95,7 @@ export const effects = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     name: text("name").notNull(),
+    userId: text("user_id"),
     narrativeDescription: text("narrative_description").notNull().default(""),
     isPublic: boolean("is_public").notNull().default(false),
     sourceOrigin: text("source_origin"),
@@ -104,6 +107,7 @@ export const effects = pgTable(
   },
   (table) => [
     index("effects_is_public_idx").on(table.isPublic),
+    index("effects_user_id_idx").on(table.userId),
     index("effects_tags_idx").using("gin", table.tags),
     uniqueIndex("effects_name_source_origin_unique_idx").on(
       table.name,

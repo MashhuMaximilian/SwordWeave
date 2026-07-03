@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { asc, desc } from "drizzle-orm";
 import { db } from "@/db/client";
 import { effectPrimitives, effects } from "@/db/schema";
@@ -89,6 +90,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const { userId } = await auth.protect();
     const body: unknown = await request.json();
 
     if (!body || typeof body !== "object") {
@@ -120,6 +122,7 @@ export async function POST(request: Request) {
       .insert(effects)
       .values({
         name,
+        userId,
         narrativeDescription,
         sourceOrigin,
         tags,

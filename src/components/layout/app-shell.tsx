@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 import {
   Boxes,
   FlaskConical,
@@ -52,6 +53,37 @@ function BrandMark() {
   );
 }
 
+function AccountControls() {
+  const { isSignedIn } = useUser();
+
+  return (
+    <div className="flex items-center gap-2">
+      {isSignedIn ? (
+        <UserButton />
+      ) : (
+        <>
+        <SignInButton mode="modal">
+          <button
+            className="h-9 rounded-md border border-border bg-background px-3 text-sm font-bold text-foreground"
+            type="button"
+          >
+            Sign In
+          </button>
+        </SignInButton>
+        <SignUpButton mode="modal">
+          <button
+            className="hidden h-9 rounded-md bg-primary px-3 text-sm font-bold text-primary-foreground sm:inline-flex sm:items-center"
+            type="button"
+          >
+            Sign Up
+          </button>
+        </SignUpButton>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
@@ -60,7 +92,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-30 border-b border-border bg-shell/95 backdrop-blur lg:hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <BrandMark />
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <AccountControls />
+            <ThemeToggle />
+          </div>
         </div>
         <nav
           aria-label="Primary"
@@ -94,7 +129,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="border-b border-border px-5 py-5">
             <div className="flex items-center justify-between gap-3">
               <BrandMark />
-              <ThemeToggle />
+              <div className="flex items-center gap-2">
+                <AccountControls />
+                <ThemeToggle />
+              </div>
             </div>
           </div>
 

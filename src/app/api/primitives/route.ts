@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { asc } from "drizzle-orm";
 import { db } from "@/db/client";
 import { primitives } from "@/db/schema";
@@ -18,6 +19,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const { userId } = await auth.protect();
     const body: unknown = await request.json();
 
     if (!body || typeof body !== "object") {
@@ -67,6 +69,7 @@ export async function POST(request: Request) {
       .insert(primitives)
       .values({
         name,
+        userId,
         category: category as PrimitiveCategoryValue,
         costTier: costTier || "Tier 1: Minor (1-2 BU)",
         buCost,
@@ -82,6 +85,7 @@ export async function POST(request: Request) {
         target: [primitives.name, primitives.category],
         set: {
           costTier: costTier || "Tier 1: Minor (1-2 BU)",
+          userId,
           buCost,
           mechanicalOutputText,
           narrativeRule,

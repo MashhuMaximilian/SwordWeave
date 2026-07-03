@@ -16,6 +16,7 @@
     "db:seed": "tsx src/db/seed/primitives.ts"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.5.12",
     "@neondatabase/serverless": "^1.1.0",
     "@tailwindcss/postcss": "^4.3.2",
     "class-variance-authority": "^0.7.1",

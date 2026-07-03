@@ -11,6 +11,26 @@ npm run lint
 npm run dev
 ```
 
+Copy `.env.example` to `.env.local` and fill in the generated Neon and Clerk
+values before using protected routes or account-owned writes.
+
+## Auth
+
+SwordWeave uses Clerk for authentication. The public sandbox can still be
+browsed while signed out, but saving primitives, importing primitive packages,
+creating effects, and account ledger routes require sign-in.
+
+Required environment variables:
+
+```text
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+CLERK_SECRET_KEY
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/
+```
+
 ## Project Structure
 
 ```text
