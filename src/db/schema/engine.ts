@@ -26,6 +26,7 @@ export const primitives = pgTable(
     id: serial("id").primaryKey(),
     name: text("name").notNull(),
     userId: text("user_id"),
+    isPublic: boolean("is_public").notNull().default(false),
     category: primitiveCategoryEnum("category").notNull(),
     costTier: text("cost_tier").notNull().default("Tier 1: Minor (1-2 BU)"),
     buCost: integer("bu_cost").notNull().default(0),
@@ -48,9 +49,11 @@ export const primitives = pgTable(
   (table) => [
     index("primitives_category_idx").on(table.category),
     index("primitives_user_id_idx").on(table.userId),
-    uniqueIndex("primitives_name_category_unique_idx").on(
+    index("primitives_is_public_idx").on(table.isPublic),
+    uniqueIndex("primitives_name_category_user_unique_idx").on(
       table.name,
       table.category,
+      table.userId,
     ),
   ],
 );

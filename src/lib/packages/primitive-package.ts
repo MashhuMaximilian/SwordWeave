@@ -26,6 +26,7 @@ export type PrimitivePackageRecord = {
   buCost: number;
   mechanicalOutputText: string;
   narrativeRule: string;
+  isPublic: boolean;
   isMirrorable: boolean;
   mirrorVector: string;
   mirrorBuCredit: number;
@@ -103,6 +104,7 @@ export function parsePrimitiveRecord(value: unknown): PrimitivePackageRecord {
     buCost,
     mechanicalOutputText: String(record["mechanicalOutputText"] ?? "").trim(),
     narrativeRule: String(record["narrativeRule"] ?? "").trim(),
+    isPublic: Boolean(record["isPublic"]),
     isMirrorable,
     mirrorVector: isMirrorable
       ? String(record["mirrorVector"] ?? "VARIABLE_VECTOR").trim()

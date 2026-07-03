@@ -57,7 +57,7 @@ function AccountControls() {
   const { isSignedIn } = useUser();
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex min-w-0 items-center gap-2">
       {isSignedIn ? (
         <UserButton />
       ) : (
@@ -72,7 +72,7 @@ function AccountControls() {
         </SignInButton>
         <SignUpButton mode="modal">
           <button
-            className="hidden h-9 rounded-md bg-primary px-3 text-sm font-bold text-primary-foreground sm:inline-flex sm:items-center"
+            className="h-9 rounded-md bg-primary px-3 text-sm font-bold text-primary-foreground"
             type="button"
           >
             Sign Up
@@ -127,12 +127,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="lg:grid lg:min-h-screen lg:grid-cols-[248px_1fr]">
         <aside className="hidden border-r border-border bg-shell lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">
           <div className="border-b border-border px-5 py-5">
-            <div className="flex items-center justify-between gap-3">
-              <BrandMark />
-              <div className="flex items-center gap-2">
-                <AccountControls />
+            <div className="grid gap-4">
+              <div className="flex items-center justify-between gap-3">
+                <BrandMark />
                 <ThemeToggle />
               </div>
+              <AccountControls />
             </div>
           </div>
 

@@ -21,6 +21,7 @@ export async function GET() {
     buCost: primitive.buCost,
     mechanicalOutputText: primitive.mechanicalOutputText,
     narrativeRule: primitive.narrativeRule,
+    isPublic: primitive.isPublic,
     isMirrorable: primitive.isMirrorable,
     mirrorVector: primitive.mirrorVector,
     mirrorBuCredit: primitive.mirrorBuCredit,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { asc } from "drizzle-orm";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { asc, or, eq, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import { primitives } from "@/db/schema";
 import {
@@ -10,7 +10,15 @@ import {
 } from "@/lib/packages/primitive-package";
 
 export async function GET() {
+  const user = await currentUser();
   const rows = await db.query.primitives.findMany({
+    where: user
+      ? or(
+          eq(primitives.isPublic, true),
+          isNull(primitives.userId),
+          eq(primitives.userId, user.id),
+        )
+      : or(eq(primitives.isPublic, true), isNull(primitives.userId)),
     orderBy: [asc(primitives.category), asc(primitives.name)],
   });
 
@@ -28,6 +36,7 @@ export async function POST(request: Request) {
 
     const values = body as Record<string, unknown>;
     const name = String(values["name"] ?? "").trim();
+    const isPublic = Boolean(values["isPublic"]);
     const category = String(values["category"] ?? "");
     const costTier = String(values["costTier"] ?? "").trim();
     const buCost = Number(values["buCost"]);
@@ -70,6 +79,7 @@ export async function POST(request: Request) {
       .values({
         name,
         userId,
+        isPublic,
         category: category as PrimitiveCategoryValue,
         costTier: costTier || "Tier 1: Minor (1-2 BU)",
         buCost,
@@ -82,10 +92,11 @@ export async function POST(request: Request) {
         hardModifiers,
       })
       .onConflictDoUpdate({
-        target: [primitives.name, primitives.category],
+        target: [primitives.name, primitives.category, primitives.userId],
         set: {
           costTier: costTier || "Tier 1: Minor (1-2 BU)",
           userId,
+          isPublic,
           buCost,
           mechanicalOutputText,
           narrativeRule,

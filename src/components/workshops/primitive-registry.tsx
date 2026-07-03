@@ -11,8 +11,10 @@ import type {
 
 type PrimitiveRow = {
   id: number;
+  userId?: string | null;
   name: string;
   category: string;
+  isPublic: boolean;
   costTier: string;
   buCost: number;
   mechanicalOutputText: string;
@@ -159,6 +161,7 @@ const blankModifier: ModifierDraft = {
 const blankForm = {
   name: "",
   category: "VERB_TIER",
+  isPublic: false,
   costTier: "Tier 1: Minor (1-2 BU)",
   buCost: "1",
   mechanicalOutputText: "",
@@ -222,12 +225,64 @@ function createModifier(id: number): ModifierDraft {
   };
 }
 
+function stringifyModifierValue(value: JsonValue | undefined) {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  return "";
+}
+
+function valueKindFromValue(value: JsonValue | undefined): ModifierDraft["valueKind"] {
+  if (typeof value === "boolean") {
+    return "boolean";
+  }
+
+  if (typeof value === "number") {
+    return "number";
+  }
+
+  return "text";
+}
+
+function isHardModifier(value: unknown): value is HardModifier {
+  return (
+    Boolean(value) &&
+    typeof value === "object" &&
+    (value as Record<string, unknown>)["kind"] === "modify"
+  );
+}
+
+function fromHardModifier(modifier: HardModifier, index: number): ModifierDraft {
+  const valueKind = valueKindFromValue(modifier.value);
+
+  return {
+    id: `modifier-${index + 1}`,
+    target: modifier.target,
+    operation: modifier.operation,
+    value: stringifyModifierValue(modifier.value),
+    valueKind,
+    conditionMode: modifier.condition ? "custom" : "always",
+    conditionKey: modifier.condition?.key ?? "",
+    conditionOperator: modifier.condition?.operator ?? "equals",
+    conditionValue: stringifyModifierValue(modifier.condition?.value),
+    stacking: modifier.stacking ?? "stack",
+  };
+}
+
 export function PrimitiveRegistry({
   initialPrimitives,
 }: {
   initialPrimitives: PrimitiveRow[];
 }) {
   const [primitives, setPrimitives] = useState(initialPrimitives);
+  const [selectedPrimitive, setSelectedPrimitive] = useState<PrimitiveRow | null>(
+    null,
+  );
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [form, setForm] = useState(blankForm);
@@ -243,11 +298,31 @@ export function PrimitiveRegistry({
     [modifiers],
   );
 
-  const filteredPrimitives = useMemo(() => {
-    if (selectedCategory === "ALL") {
-      return primitives;
-    }
+  const primitiveJsonPreview = useMemo(
+    () => ({
+      schemaVersion: "swordweave.package.v1",
+      kind: "primitive",
+      records: [
+        {
+          name: form.name || "Unnamed Primitive",
+          category: form.category,
+          isPublic: form.isPublic,
+          costTier: form.costTier,
+          buCost: Number(form.buCost) || 0,
+          mechanicalOutputText: form.mechanicalOutputText,
+          narrativeRule: form.narrativeRule,
+          isMirrorable: form.isMirrorable,
+          mirrorVector: form.isMirrorable ? form.mirrorVector : "STANDARD_ONLY",
+          mirrorBuCredit: form.isMirrorable ? Number(form.mirrorBuCredit) || 0 : 0,
+          mirrorEligibilityNotes: form.mirrorEligibilityNotes,
+          hardModifiers,
+        },
+      ],
+    }),
+    [form, hardModifiers],
+  );
 
+  const filteredPrimitives = useMemo(() => {
     const categoryFiltered =
       selectedCategory === "ALL"
         ? primitives
@@ -305,6 +380,47 @@ export function PrimitiveRegistry({
     });
   }
 
+  function resetEditor() {
+    setSelectedPrimitive(null);
+    setForm(blankForm);
+    setModifierCounter(1);
+    setModifiers([blankModifier]);
+    setShowJsonPreview(false);
+  }
+
+  function selectPrimitive(primitive: PrimitiveRow) {
+    const storedModifiers = Array.isArray(primitive.hardModifiers)
+      ? primitive.hardModifiers.filter(isHardModifier)
+      : [];
+    const modifierDrafts =
+      storedModifiers.length > 0
+        ? storedModifiers.map(fromHardModifier)
+        : [blankModifier];
+
+    setSelectedPrimitive(primitive);
+    setForm({
+      name: primitive.name,
+      category: primitive.category,
+      isPublic: primitive.isPublic,
+      costTier: primitive.costTier,
+      buCost: String(primitive.buCost),
+      mechanicalOutputText: primitive.mechanicalOutputText,
+      narrativeRule: primitive.narrativeRule,
+      isMirrorable: primitive.isMirrorable,
+      mirrorVector: primitive.mirrorVector,
+      mirrorBuCredit: String(primitive.mirrorBuCredit),
+      mirrorEligibilityNotes: primitive.mirrorEligibilityNotes,
+    });
+    setModifiers(modifierDrafts);
+    setModifierCounter(modifierDrafts.length);
+    setShowJsonPreview(false);
+    setMessage(
+      primitive.userId
+        ? "Loaded your primitive for editing."
+        : "Loaded library primitive. Saving creates your private copy.",
+    );
+  }
+
   function submitPrimitive(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
@@ -346,7 +462,8 @@ export function PrimitiveRegistry({
             (item) =>
               !(
                 item.name === primitive.name &&
-                item.category === primitive.category
+                item.category === primitive.category &&
+                item.userId === primitive.userId
               ),
           );
 
@@ -356,11 +473,8 @@ export function PrimitiveRegistry({
         });
       }
 
-      setForm(blankForm);
-      setModifierCounter(1);
-      setModifiers([blankModifier]);
-      setShowJsonPreview(false);
-      setMessage("Primitive saved.");
+      resetEditor();
+      setMessage("Primitive saved to your account.");
     });
   }
 
@@ -521,9 +635,15 @@ export function PrimitiveRegistry({
 
           <div className="space-y-2">
             {filteredPrimitives.map((primitive) => (
-              <article
+              <button
                 key={primitive.id}
-                className="rounded-md border border-border bg-background p-3"
+                className={`w-full rounded-md border bg-background p-3 text-left transition-colors hover:border-primary ${
+                  selectedPrimitive?.id === primitive.id
+                    ? "border-primary"
+                    : "border-border"
+                }`}
+                onClick={() => selectPrimitive(primitive)}
+                type="button"
               >
                 <div className="mb-2 flex items-start justify-between gap-3">
                   <h2 className="text-sm font-semibold">{primitive.name}</h2>
@@ -534,6 +654,13 @@ export function PrimitiveRegistry({
                 <p className="text-xs font-medium text-muted-foreground">
                   {categoryLabel(primitive.category)}
                 </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {primitive.userId
+                    ? primitive.isPublic
+                      ? "Your public library record"
+                      : "Private copy"
+                    : "Core library record"}
+                </p>
                 {primitive.isMirrorable ? (
                   <p className="mt-2 rounded-sm border border-border px-2 py-1 text-xs text-muted-foreground">
                     Mirror: -{primitive.mirrorBuCredit} BU
@@ -542,7 +669,7 @@ export function PrimitiveRegistry({
                 <p className="mt-2 line-clamp-2 text-sm">
                   {primitive.mechanicalOutputText || "No mechanical output yet."}
                 </p>
-              </article>
+              </button>
             ))}
           </div>
         </aside>
@@ -553,12 +680,24 @@ export function PrimitiveRegistry({
               Atomic Engine Input
             </p>
             <h2 className="font-display text-4xl font-semibold uppercase leading-none">
-              Add New Primitive
+              {selectedPrimitive ? "Inspect Primitive" : "Add New Primitive"}
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Store the cost, category, and mechanical teeth for a reusable
-              SwordWeave building block.
+              {selectedPrimitive?.userId
+                ? "Edit your private primitive record."
+                : selectedPrimitive
+                  ? "Review a library primitive. Saving creates a private copy on your account."
+                  : "Store the cost, category, and mechanical teeth for a reusable SwordWeave building block."}
             </p>
+            {selectedPrimitive ? (
+              <button
+                className="mt-3 h-9 rounded-md border border-border bg-card px-3 text-sm font-bold text-foreground"
+                onClick={resetEditor}
+                type="button"
+              >
+                New Primitive
+              </button>
+            ) : null}
           </div>
 
           <div className="grid max-w-6xl gap-4 2xl:grid-cols-[1fr_320px]">
@@ -618,6 +757,22 @@ export function PrimitiveRegistry({
                 type="number"
                 required
               />
+            </label>
+
+            <label className="flex items-start gap-3 rounded-md border border-border bg-background p-3 text-sm font-medium md:col-span-2">
+              <input
+                checked={form.isPublic}
+                className="mt-1 size-4"
+                onChange={(event) => updateForm("isPublic", event.target.checked)}
+                type="checkbox"
+              />
+              <span>
+                Publish to Library
+                <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                  Leave unchecked to keep this primitive private to your account.
+                  Imported packages always start private.
+                </span>
+              </span>
             </label>
 
             <label className="block text-sm font-medium md:col-span-2">
@@ -928,10 +1083,10 @@ export function PrimitiveRegistry({
               }
             >
               <summary className="cursor-pointer text-sm font-semibold">
-                Advanced JSON Preview
+                Full Primitive JSON Preview
               </summary>
               <pre className="mt-3 overflow-x-auto rounded-md bg-card p-3 text-xs">
-                {JSON.stringify(hardModifiers, null, 2)}
+                {JSON.stringify(primitiveJsonPreview, null, 2)}
               </pre>
             </details>
 
@@ -964,10 +1119,27 @@ export function PrimitiveRegistry({
               <p className="mt-3 text-xs font-bold uppercase text-muted-foreground">
                 {categoryLabel(form.category)}
               </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="rounded-sm border border-border px-2 py-1 text-xs text-muted-foreground">
+                  {form.isPublic ? "Public Library" : "Private Draft"}
+                </span>
+                {selectedPrimitive ? (
+                  <span className="rounded-sm border border-border px-2 py-1 text-xs text-muted-foreground">
+                    {selectedPrimitive.userId
+                      ? "Account-owned"
+                      : "Core Library Source"}
+                  </span>
+                ) : null}
+              </div>
               <p className="mt-4 text-sm leading-6 text-muted-foreground">
                 {form.mechanicalOutputText ||
                   "Mechanical output will appear here as you write it."}
               </p>
+              {form.narrativeRule ? (
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  {form.narrativeRule}
+                </p>
+              ) : null}
               {form.isMirrorable ? (
                 <div className="mt-4 rounded-md border border-border bg-card p-3">
                   <p className="text-xs font-bold uppercase text-warning">
@@ -977,8 +1149,21 @@ export function PrimitiveRegistry({
                     Grants up to {form.mirrorBuCredit || 0} BU as a drawback via{" "}
                     {form.mirrorVector}.
                   </p>
+                  {form.mirrorEligibilityNotes ? (
+                    <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                      {form.mirrorEligibilityNotes}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
+              <details className="mt-4 rounded-md border border-border bg-card p-3">
+                <summary className="cursor-pointer text-xs font-bold uppercase text-muted-foreground">
+                  Modifier Details
+                </summary>
+                <pre className="mt-3 max-h-60 overflow-auto rounded-md bg-background p-3 text-xs">
+                  {JSON.stringify(hardModifiers, null, 2)}
+                </pre>
+              </details>
             </div>
           </aside>
           </div>

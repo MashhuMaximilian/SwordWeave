@@ -20,12 +20,13 @@ export async function POST(request: Request) {
 
     const imported = await db
       .insert(primitives)
-      .values(records.map((record) => ({ ...record, userId })))
+      .values(records.map((record) => ({ ...record, userId, isPublic: false })))
       .onConflictDoUpdate({
-        target: [primitives.name, primitives.category],
+        target: [primitives.name, primitives.category, primitives.userId],
         set: {
           costTier: sql`excluded.cost_tier`,
           userId: sql`excluded.user_id`,
+          isPublic: false,
           buCost: sql`excluded.bu_cost`,
           mechanicalOutputText: sql`excluded.mechanical_output_text`,
           narrativeRule: sql`excluded.narrative_rule`,
