@@ -12,103 +12,142 @@ const workspaces = [
   {
     href: "/sandbox/primitives",
     title: "Primitive Sandbox",
-    label: "Live",
-    description:
-      "Create atomic BU blocks with human-readable outputs, mirror vectors, and generated modifier JSON.",
+    status: "Live",
+    description: "Atomic BU records, mirror vectors, and generated modifiers.",
     icon: Boxes,
   },
   {
     href: "/sandbox/effects",
     title: "Effect Builder",
-    label: "Next",
-    description:
-      "Stack primitives into reusable conditions and named state packages.",
+    status: "Next",
+    description: "Reusable states assembled from primitive groups.",
     icon: FlaskConical,
   },
   {
     href: "/sandbox/capabilities",
     title: "Capability Compiler",
-    label: "Planned",
-    description:
-      "Assemble verbs, domains, ranges, and effects into playable action cards.",
+    status: "Queued",
+    description: "Action cards compiled from verbs, domains, and effects.",
     icon: ArrowRight,
   },
   {
     href: "/library",
     title: "Library Exchange",
-    label: "Planned",
-    description:
-      "Browse, clone, import, and export SwordWeave packages across object types.",
+    status: "Queued",
+    description: "Imports, exports, saved records, and shared packages.",
     icon: Library,
   },
 ] as const;
 
 export default function HomePage() {
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-5 py-8">
-      <section className="grid gap-6 border-b border-border pb-8 lg:grid-cols-[1fr_340px]">
-        <div>
-          <p className="text-xs font-semibold uppercase text-muted-foreground">
-            Engine Workspace
-          </p>
-          <h1 className="mt-3 max-w-3xl text-4xl font-semibold md:text-5xl">
-            Build SwordWeave from atomic rules to playable cards.
+    <div className="mx-auto min-h-screen w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+      <section className="grid gap-5 border-b border-border pb-6 xl:grid-cols-[1fr_360px]">
+        <div className="rounded-md border border-border bg-card p-5 sm:p-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-sm bg-secondary px-2 py-1 text-xs font-bold uppercase text-secondary-foreground">
+              Engine Workspace
+            </span>
+            <span className="rounded-sm border border-border px-2 py-1 text-xs text-muted-foreground">
+              Primitive-first build
+            </span>
+          </div>
+
+          <h1 className="font-display mt-5 max-w-3xl text-5xl font-semibold uppercase leading-none sm:text-6xl lg:text-7xl">
+            SwordWeave Command Deck
           </h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
-            The current foundation starts with primitives, then grows into
-            effects, capabilities, ledgers, and shared JSON packages without
-            splitting the rule engine into separate systems.
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
+            Build the shared engine from atomic primitives upward, then reuse
+            the same records across effects, capabilities, sheets, monsters,
+            items, templates, and JSON packages.
           </p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground"
+              href="/sandbox/primitives"
+            >
+              Open Primitive Sandbox
+              <ArrowRight className="size-4" />
+            </Link>
+            <Link
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-background px-4 text-sm font-bold text-foreground"
+              href="/library"
+            >
+              Review Package Format
+            </Link>
+          </div>
         </div>
 
-        <div className="grid content-start gap-3 rounded-md border border-border bg-card p-4">
+        <aside className="rounded-md border border-border bg-card p-5">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold">Exchange Format</p>
-            <div className="flex gap-2 text-muted-foreground">
+            <div>
+              <p className="font-display text-2xl font-semibold uppercase">
+                Exchange V1
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Import/export foundation
+              </p>
+            </div>
+            <div className="flex gap-2 text-primary">
               <Upload className="size-4" />
               <Download className="size-4" />
             </div>
           </div>
-          <p className="text-sm leading-6 text-muted-foreground">
-            Import/export should be versioned JSON packages. We will start with
-            primitives, then reuse the same envelope for effects, capabilities,
-            characters, items, monsters, and templates.
+          <p className="mt-4 text-sm leading-6 text-muted-foreground">
+            Start with primitive packages, then apply the same versioned envelope
+            to every SwordWeave object.
           </p>
-          <code className="rounded-md border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+          <code className="mt-4 block rounded-md border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
             swordweave.package.v1
           </code>
-        </div>
+        </aside>
       </section>
 
-      <section className="grid gap-4 py-8 md:grid-cols-2 xl:grid-cols-4">
-        {workspaces.map((workspace) => {
-          const Icon = workspace.icon;
+      <section className="py-6">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="font-display text-3xl font-semibold uppercase">
+            Workbench
+          </h2>
+          <span className="text-xs text-muted-foreground">
+            Build order follows engine dependencies
+          </span>
+        </div>
 
-          return (
-            <Link
-              className="group flex min-h-56 flex-col rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
-              href={workspace.href}
-              key={workspace.href}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex size-10 items-center justify-center rounded-md border border-border bg-background">
-                  <Icon className="size-5 text-primary" />
+        <div className="grid gap-3">
+          {workspaces.map((workspace) => {
+            const Icon = workspace.icon;
+
+            return (
+              <Link
+                className="group grid gap-3 rounded-md border border-border bg-card p-4 transition-colors hover:border-primary sm:grid-cols-[40px_1fr_auto] sm:items-center"
+                href={workspace.href}
+                key={workspace.href}
+              >
+                <div className="flex size-10 items-center justify-center rounded-md border border-border bg-background text-primary">
+                  <Icon className="size-5" />
                 </div>
-                <span className="rounded-sm bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground">
-                  {workspace.label}
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-display text-2xl font-semibold uppercase leading-none">
+                      {workspace.title}
+                    </h3>
+                    <span className="rounded-sm bg-secondary px-2 py-1 text-xs font-bold text-secondary-foreground">
+                      {workspace.status}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    {workspace.description}
+                  </p>
+                </div>
+                <span className="inline-flex items-center gap-2 text-sm font-bold text-primary sm:justify-self-end">
+                  Open
+                  <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
                 </span>
-              </div>
-              <h2 className="mt-5 text-lg font-semibold">{workspace.title}</h2>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                {workspace.description}
-              </p>
-              <span className="mt-auto flex items-center gap-2 pt-5 text-sm font-medium text-primary">
-                Open
-                <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-              </span>
-            </Link>
-          );
-        })}
+              </Link>
+            );
+          })}
+        </div>
       </section>
     </div>
   );
