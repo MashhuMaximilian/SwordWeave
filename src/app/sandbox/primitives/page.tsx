@@ -5,7 +5,7 @@ import { primitives } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPrimitivesPage() {
+export default async function PrimitiveSandboxPage() {
   const rows = await db.query.primitives.findMany({
     orderBy: [asc(primitives.category), asc(primitives.name)],
   });

@@ -343,12 +343,11 @@ export function PrimitiveRegistry({
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto grid min-h-screen max-w-7xl grid-cols-1 gap-0 lg:grid-cols-[360px_1fr]">
+    <div className="mx-auto grid min-h-screen max-w-7xl grid-cols-1 gap-0 lg:grid-cols-[360px_1fr]">
         <aside className="border-b border-border bg-card px-5 py-5 lg:border-b-0 lg:border-r">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs font-semibold uppercase text-muted-foreground">
                 Master Sandbox
               </p>
               <h1 className="text-xl font-semibold">Primitive Registry</h1>
@@ -405,7 +404,7 @@ export function PrimitiveRegistry({
 
         <section className="px-5 py-6">
           <div className="mb-6 max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">
               Atomic Engine Input
             </p>
             <h2 className="text-2xl font-semibold">Add New Primitive</h2>
@@ -802,7 +801,6 @@ export function PrimitiveRegistry({
             </div>
           </form>
         </section>
-      </div>
-    </main>
+    </div>
   );
 }
