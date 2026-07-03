@@ -28,11 +28,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
-      <html lang="en" suppressHydrationWarning>
-        <body className={`${teko.variable} ${magra.variable}`}>
-          <Script id="swordweave-theme" strategy="beforeInteractive">
-            {`
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${teko.variable} ${magra.variable}`}>
+        <Script id="swordweave-theme" strategy="beforeInteractive">
+          {`
 try {
   const storedTheme = window.localStorage.getItem("swordweave-theme");
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -41,10 +40,11 @@ try {
   }
 } catch {}
           `}
-          </Script>
+        </Script>
+        <ClerkProvider>
           <AppShell>{children}</AppShell>
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }
