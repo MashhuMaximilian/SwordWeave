@@ -2,7 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Copy, Search } from "lucide-react";
+import { Copy, Search, Eye } from "lucide-react";
+import { DetailModal } from "./detail-modal";
+import { ToastViewport, useToasts } from "@/components/ui/toast";
 
 type PrimitiveRow = {
   id: number;
@@ -28,8 +30,10 @@ export function LibraryPrimitivesView({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [message, setMessage] = useState("");
   const [searchInput, setSearchInput] = useState(currentFilters.q);
+  const { toasts, showToast, dismissToast } = useToasts();
+
+  const [detailPrim, setDetailPrim] = useState<PrimitiveRow | null>(null);
 
   function updateFilter(key: keyof Filters, value: string) {
     const params = new URLSearchParams();
@@ -46,22 +50,25 @@ export function LibraryPrimitivesView({
   }
 
   async function handleClone(primitiveId: number, primitiveName: string) {
-    setMessage("");
-    startTransition(async () => {
-      try {
-        const res = await fetch(`/api/primitives/${primitiveId}/clone`, {
-          method: "POST",
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setMessage(data.error ?? "Clone failed.");
-          return;
-        }
-        setMessage(`Cloned "${primitiveName}" -> "${data.primitive.name}"`);
-      } catch (err) {
-        setMessage(err instanceof Error ? err.message : "Unknown error.");
+    try {
+      const res = await fetch(`/api/primitives/${primitiveId}/clone`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error ?? "Clone failed.", "error");
+        return;
       }
-    });
+      showToast(
+        `Cloned "${primitiveName}" → "${data.primitive?.name ?? "(copy)"}"`,
+        "success",
+      );
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "Clone failed.",
+        "error",
+      );
+    }
   }
 
   function categoryLabel(c: string) {
@@ -158,8 +165,6 @@ export function LibraryPrimitivesView({
             ))}
           </div>
         </div>
-
-        {message && <p className="mt-3 text-sm text-muted-foreground">{message}</p>}
       </div>
 
       {/* Grouped grid */}
@@ -181,7 +186,7 @@ export function LibraryPrimitivesView({
                 {items.map((p) => (
                   <article
                     key={p.id}
-                    className="rounded-md border border-border bg-card p-3"
+                    className="group rounded-md border border-border bg-card p-3 transition-colors hover:border-primary/40"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="text-sm font-medium">{p.name}</h3>
@@ -202,15 +207,26 @@ export function LibraryPrimitivesView({
                         Mirrorable ({p.mirrorBuCredit} BU credit)
                       </span>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => handleClone(p.id, p.name)}
-                      disabled={isPending}
-                      className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2 py-1.5 text-xs font-medium hover:border-primary disabled:opacity-50"
-                    >
-                      <Copy className="size-3.5" />
-                      Clone
-                    </button>
+                    <div className="mt-3 flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setDetailPrim(p)}
+                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2 py-1.5 text-xs font-medium hover:border-primary"
+                        aria-label={`View details for ${p.name}`}
+                      >
+                        <Eye className="size-3.5" />
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleClone(p.id, p.name)}
+                        disabled={isPending}
+                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2 py-1.5 text-xs font-medium hover:border-primary disabled:opacity-50"
+                      >
+                        <Copy className="size-3.5" />
+                        Clone
+                      </button>
+                    </div>
                   </article>
                 ))}
               </div>
@@ -218,6 +234,58 @@ export function LibraryPrimitivesView({
           ))
         )}
       </div>
+
+      {/* Detail modal */}
+      <DetailModal
+        isOpen={detailPrim !== null}
+        onClose={() => setDetailPrim(null)}
+        title={detailPrim?.name ?? ""}
+        subtitle={detailPrim ? categoryLabel(detailPrim.category) : null}
+        size="md"
+      >
+        {detailPrim && (
+          <div className="space-y-5">
+            <div className="flex flex-wrap gap-2 text-xs">
+              <span className="rounded-full bg-primary/10 px-3 py-1 font-mono font-semibold text-primary">
+                {detailPrim.buCost} BU
+              </span>
+              <span className="rounded-full bg-secondary px-3 py-1">
+                {detailPrim.costTier}
+              </span>
+              {detailPrim.isMirrorable && (
+                <span className="rounded-full bg-secondary px-3 py-1">
+                  Mirrorable ({detailPrim.mirrorBuCredit} BU credit)
+                </span>
+              )}
+            </div>
+
+            <div>
+              <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+                Narrative Rule
+              </h3>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                {detailPrim.narrativeRule || "(no narrative rule)"}
+              </p>
+            </div>
+
+            <div className="flex gap-2 border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  handleClone(detailPrim.id, detailPrim.name);
+                  setDetailPrim(null);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:border-primary"
+              >
+                <Copy className="size-4" />
+                Clone
+              </button>
+            </div>
+          </div>
+        )}
+      </DetailModal>
+
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
     </>
   );
 }

@@ -2,7 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Copy, Search } from "lucide-react";
+import { Copy, Search, Eye } from "lucide-react";
+import { DetailModal } from "./detail-modal";
+import { ToastViewport, useToasts } from "@/components/ui/toast";
 
 type EffectRow = {
   id: string;
@@ -25,8 +27,10 @@ export function LibraryEffectsView({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [message, setMessage] = useState("");
   const [searchInput, setSearchInput] = useState(currentFilters.q);
+  const { toasts, showToast, dismissToast } = useToasts();
+
+  const [detailEffect, setDetailEffect] = useState<EffectRow | null>(null);
 
   function updateFilter(key: keyof Filters, value: string) {
     const params = new URLSearchParams();
@@ -42,22 +46,25 @@ export function LibraryEffectsView({
   }
 
   async function handleClone(effectId: string, effectName: string) {
-    setMessage("");
-    startTransition(async () => {
-      try {
-        const res = await fetch(`/api/effects/${effectId}/clone`, {
-          method: "POST",
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setMessage(data.error ?? "Clone failed.");
-          return;
-        }
-        setMessage(`Cloned "${effectName}" -> "${data.effect.name}"`);
-      } catch (err) {
-        setMessage(err instanceof Error ? err.message : "Unknown error.");
+    try {
+      const res = await fetch(`/api/effects/${effectId}/clone`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error ?? "Clone failed.", "error");
+        return;
       }
-    });
+      showToast(
+        `Cloned "${effectName}" → "${data.effect?.name ?? "(copy)"}"`,
+        "success",
+      );
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "Clone failed.",
+        "error",
+      );
+    }
   }
 
   return (
@@ -115,8 +122,6 @@ export function LibraryEffectsView({
             ))}
           </div>
         )}
-
-        {message && <p className="mt-3 text-sm text-muted-foreground">{message}</p>}
       </div>
 
       {/* Effect grid */}
@@ -129,7 +134,7 @@ export function LibraryEffectsView({
           effects.map((effect) => (
             <article
               key={effect.id}
-              className="rounded-md border border-border bg-card p-4"
+              className="group rounded-md border border-border bg-card p-4 transition-colors hover:border-primary/40"
             >
               <h3 className="font-semibold">{effect.name}</h3>
               {effect.sourceOrigin && (
@@ -154,19 +159,81 @@ export function LibraryEffectsView({
                   ))}
                 </div>
               )}
-              <button
-                type="button"
-                onClick={() => handleClone(effect.id, effect.name)}
-                disabled={isPending}
-                className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:border-primary disabled:opacity-50"
-              >
-                <Copy className="size-3.5" />
-                Clone
-              </button>
+              <div className="mt-4 flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setDetailEffect(effect)}
+                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2 py-1.5 text-xs font-medium hover:border-primary"
+                  aria-label={`View details for ${effect.name}`}
+                >
+                  <Eye className="size-3.5" />
+                  View
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleClone(effect.id, effect.name)}
+                  disabled={isPending}
+                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2 py-1.5 text-xs font-medium hover:border-primary disabled:opacity-50"
+                >
+                  <Copy className="size-3.5" />
+                  Clone
+                </button>
+              </div>
             </article>
           ))
         )}
       </div>
+
+      {/* Detail modal */}
+      <DetailModal
+        isOpen={detailEffect !== null}
+        onClose={() => setDetailEffect(null)}
+        title={detailEffect?.name ?? ""}
+        subtitle={detailEffect?.sourceOrigin ?? null}
+        size="md"
+      >
+        {detailEffect && (
+          <div className="space-y-5">
+            {detailEffect.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 text-xs">
+                {detailEffect.tags.map((t) => (
+                  <span
+                    key={t}
+                    className="rounded-full bg-secondary px-3 py-1"
+                  >
+                    #{t}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div>
+              <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+                Description
+              </h3>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                {detailEffect.narrativeDescription || "(no description)"}
+              </p>
+            </div>
+
+            <div className="flex gap-2 border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  handleClone(detailEffect.id, detailEffect.name);
+                  setDetailEffect(null);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:border-primary"
+              >
+                <Copy className="size-4" />
+                Clone
+              </button>
+            </div>
+          </div>
+        )}
+      </DetailModal>
+
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
     </>
   );
 }

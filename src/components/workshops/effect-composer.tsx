@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { ToastViewport, useToasts } from "@/components/ui/toast";
 
 type PrimitiveRow = {
   id: number;
@@ -69,6 +70,7 @@ export function EffectComposer({
   });
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
+  const { toasts, showToast, dismissToast } = useToasts();
 
   const categories = useMemo(
     () => ["ALL", ...new Set(primitives.map((primitive) => primitive.category))],
@@ -166,6 +168,7 @@ export function EffectComposer({
             ? String(payload.error)
             : "Unable to save effect.";
         setMessage(error);
+        showToast(error, "error");
         return;
       }
 
@@ -186,7 +189,9 @@ export function EffectComposer({
         isPublic: false,
       });
       setSelectedPrimitives([]);
-      setMessage("Effect saved.");
+      const successMsg = `Effect "${effect?.name ?? "(unnamed)"}" saved.`;
+      setMessage(successMsg);
+      showToast(successMsg, "success");
     });
   }
 
@@ -488,6 +493,8 @@ export function EffectComposer({
           </div>
         </section>
       </section>
+
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

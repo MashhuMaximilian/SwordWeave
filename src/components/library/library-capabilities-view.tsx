@@ -3,7 +3,9 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Copy, Pencil, Search } from "lucide-react";
+import { Copy, Pencil, Search, Eye } from "lucide-react";
+import { DetailModal } from "./detail-modal";
+import { ToastViewport, useToasts, type ToastVariant } from "@/components/ui/toast";
 
 type SerializedCapability = {
   id: string;
@@ -26,6 +28,26 @@ type PrimitiveRef = {
   buCost: number;
 };
 
+type PrimitiveLink = {
+  primitiveId: number;
+  role: string;
+  quantity: number;
+  primitive: PrimitiveRef | null;
+};
+
+type CapabilityDetail = {
+  id: string;
+  name: string;
+  type: string;
+  sourceType: string;
+  verboseDescription: string;
+  sourceOrigin: string | null;
+  tags: string[];
+  metadata: { totalBu?: number } | null;
+  primitiveLinks: PrimitiveLink[];
+  effectLinks: Array<{ effect: { id: string; name: string } | null }>;
+};
+
 type Filters = {
   q: string;
   type: string;
@@ -46,8 +68,13 @@ export function LibraryCapabilitiesView({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [message, setMessage] = useState("");
   const [searchInput, setSearchInput] = useState(currentFilters.q);
+  const { toasts, showToast, dismissToast } = useToasts();
+
+  // Detail modal state
+  const [detailCap, setDetailCap] = useState<CapabilityDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   function updateFilter(key: keyof Filters, value: string) {
     const params = new URLSearchParams();
@@ -64,23 +91,49 @@ export function LibraryCapabilitiesView({
     updateFilter("q", searchInput);
   }
 
-  async function handleClone(capabilityId: string, capabilityName: string) {
-    setMessage("");
-    startTransition(async () => {
-      try {
-        const res = await fetch(`/api/capabilities/${capabilityId}/clone`, {
-          method: "POST",
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setMessage(data.error ?? "Clone failed.");
-          return;
-        }
-        setMessage(`Cloned "${capabilityName}" -> "${data.capability.name}"`);
-      } catch (err) {
-        setMessage(err instanceof Error ? err.message : "Unknown error.");
+  async function handleClone(
+    capabilityId: string,
+    capabilityName: string,
+  ) {
+    try {
+      const res = await fetch(`/api/capabilities/${capabilityId}/clone`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error ?? "Clone failed.", "error");
+        return;
       }
-    });
+      const variant: ToastVariant = "success";
+      showToast(
+        `Cloned "${capabilityName}" → "${data.capability?.name ?? "(copy)"}"`,
+        variant,
+      );
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "Clone failed.",
+        "error",
+      );
+    }
+  }
+
+  async function handleViewDetail(capabilityId: string) {
+    setDetailLoading(true);
+    setDetailError(null);
+    setDetailCap(null);
+    try {
+      const res = await fetch(`/api/capabilities/${capabilityId}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setDetailError(data.error ?? "Failed to load capability.");
+        return;
+      }
+      setDetailCap(data.capability as CapabilityDetail);
+    } catch (err) {
+      setDetailError(err instanceof Error ? err.message : "Failed to load.");
+    } finally {
+      setDetailLoading(false);
+    }
   }
 
   return (
@@ -171,10 +224,6 @@ export function LibraryCapabilitiesView({
             ))}
           </div>
         </div>
-
-        {message && (
-          <p className="mt-3 text-sm text-muted-foreground">{message}</p>
-        )}
       </div>
 
       {/* Capability grid */}
@@ -187,7 +236,7 @@ export function LibraryCapabilitiesView({
           capabilities.map((cap) => (
             <article
               key={cap.id}
-              className="rounded-md border border-border bg-card p-4"
+              className="group rounded-md border border-border bg-card p-4 transition-colors hover:border-primary/40"
             >
               <header className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
@@ -203,7 +252,7 @@ export function LibraryCapabilitiesView({
               </header>
 
               <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">
-                {cap.verboseDescription}
+                {cap.verboseDescription || "(no description)"}
               </p>
 
               {cap.primitiveNames.length > 0 && (
@@ -231,6 +280,15 @@ export function LibraryCapabilitiesView({
                 <div className="flex gap-2">
                   <button
                     type="button"
+                    onClick={() => handleViewDetail(cap.id)}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:border-primary"
+                    aria-label={`View details for ${cap.name}`}
+                  >
+                    <Eye className="size-3.5" />
+                    View
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => handleClone(cap.id, cap.name)}
                     disabled={isPending}
                     className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:border-primary disabled:opacity-50"
@@ -252,12 +310,158 @@ export function LibraryCapabilitiesView({
         )}
       </div>
 
-      {/* Tier 3 feature placeholder */}
       {capabilities.length > 0 && (
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          {capabilities.length} capability{capabilities.length === 1 ? "" : "s"} shown. Edit opens Composer in pre-filled mode; Clone creates your editable copy.
+          {capabilities.length} capability{capabilities.length === 1 ? "" : "s"}{" "}
+          shown. View for full detail; Clone creates your editable copy; Edit
+          opens Composer.
         </p>
       )}
+
+      {/* Detail modal */}
+      <DetailModal
+        isOpen={detailLoading || detailCap !== null || detailError !== null}
+        onClose={() => {
+          setDetailCap(null);
+          setDetailError(null);
+          setDetailLoading(false);
+        }}
+        title={detailCap?.name ?? "Loading..."}
+        subtitle={
+          detailCap
+            ? `${detailCap.type} - ${detailCap.sourceType}${
+                detailCap.sourceOrigin ? ` - ${detailCap.sourceOrigin}` : ""
+              }`
+            : null
+        }
+        size="lg"
+      >
+        {detailLoading && (
+          <p className="text-sm text-muted-foreground">Loading capability...</p>
+        )}
+        {detailError && (
+          <p className="text-sm text-red-600">Error: {detailError}</p>
+        )}
+        {detailCap && (
+          <div className="space-y-5">
+            {/* Stats row */}
+            <div className="flex flex-wrap gap-2 text-xs">
+              <span className="rounded-full bg-primary/10 px-3 py-1 font-mono font-semibold text-primary">
+                {detailCap.metadata?.totalBu ?? detailCap.primitiveLinks.reduce(
+                  (t, l) => t + (l.primitive?.buCost ?? 0) * l.quantity,
+                  0,
+                )} BU
+              </span>
+              <span className="rounded-full bg-secondary px-3 py-1">
+                {detailCap.primitiveLinks.length} primitives
+              </span>
+              {detailCap.effectLinks.length > 0 && (
+                <span className="rounded-full bg-secondary px-3 py-1">
+                  {detailCap.effectLinks.length} effects
+                </span>
+              )}
+              {detailCap.tags.map((t) => (
+                <span
+                  key={t}
+                  className="rounded-full bg-secondary px-3 py-1"
+                >
+                  #{t}
+                </span>
+              ))}
+            </div>
+
+            {/* Description */}
+            <div>
+              <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+                Description
+              </h3>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                {detailCap.verboseDescription || "(no description)"}
+              </p>
+            </div>
+
+            {/* Primitive composition */}
+            <div>
+              <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+                Primitive Composition
+              </h3>
+              {detailCap.primitiveLinks.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No primitives linked.
+                </p>
+              ) : (
+                <ul className="divide-y divide-border rounded-md border border-border">
+                  {detailCap.primitiveLinks.map((link) => (
+                    <li
+                      key={link.primitiveId}
+                      className="flex items-center justify-between gap-3 px-3 py-2"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">
+                          {link.primitive?.name ?? `Primitive #${link.primitiveId}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {link.role}
+                          {link.quantity > 1 ? ` × ${link.quantity}` : ""}
+                          {link.primitive
+                            ? ` - ${link.primitive.category}`
+                            : ""}
+                        </p>
+                      </div>
+                      <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                        {link.primitive
+                          ? `${link.primitive.buCost * link.quantity} BU`
+                          : "?"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Effects */}
+            {detailCap.effectLinks.length > 0 && (
+              <div>
+                <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+                  Effects
+                </h3>
+                <ul className="space-y-1 text-sm">
+                  {detailCap.effectLinks.map((el, i) => (
+                    <li key={el.effect?.id ?? i}>
+                      - {el.effect?.name ?? "(unnamed effect)"}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex flex-wrap gap-2 border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  handleClone(detailCap.id, detailCap.name);
+                  setDetailCap(null);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:border-primary"
+              >
+                <Copy className="size-4" />
+                Clone
+              </button>
+              <Link
+                href={`/sandbox/capabilities?edit=${detailCap.id}`}
+                onClick={() => setDetailCap(null)}
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                <Pencil className="size-4" />
+                Edit in Composer
+              </Link>
+            </div>
+          </div>
+        )}
+      </DetailModal>
+
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
     </>
   );
 }

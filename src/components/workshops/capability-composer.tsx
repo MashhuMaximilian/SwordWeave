@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { ToastViewport, useToasts } from "@/components/ui/toast";
 
 /**
  * Capability Composer
@@ -175,6 +176,7 @@ export function CapabilityComposer({
   const [form, setForm] = useState(initialForm);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
+  const { toasts, showToast, dismissToast } = useToasts();
 
   const categories = useMemo(
     () => ["ALL", ...new Set(primitives.map((p) => p.category))],
@@ -325,7 +327,9 @@ export function CapabilityComposer({
 
           const patchData = await patchRes.json();
           if (!patchRes.ok) {
-            setMessage(patchData.error ?? "Failed to update capability.");
+            const errMsg = patchData.error ?? "Failed to update capability.";
+            setMessage(errMsg);
+            showToast(errMsg, "error");
             return;
           }
 
@@ -334,11 +338,13 @@ export function CapabilityComposer({
               c.id === patchData.capability.id ? patchData.capability : c,
             ),
           );
-          setMessage(`Updated "${form.name}" (${previewBu} BU).`);
+          const successMsg = `Updated "${form.name}" (${previewBu} BU).`;
+          setMessage(successMsg);
+          showToast(successMsg, "success");
           return;
         }
 
-        // CREATE new capability (POST then PATCH for links)
+        // CREATE new capability atomically (server computes BU)
         const res = await fetch("/api/capabilities", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -353,43 +359,36 @@ export function CapabilityComposer({
               .map((t) => t.trim())
               .filter(Boolean),
             isPublic: form.isPublic,
-            metadata: {
-              previewBu,
-              compiledAt: new Date().toISOString(),
-            },
+            primitiveSlots: selectedSlots,
           }),
         });
 
         const data = await res.json();
 
         if (!res.ok) {
-          setMessage(data.error ?? "Failed to create capability.");
+          const errMsg = data.error ?? "Failed to create capability.";
+          setMessage(errMsg);
+          showToast(errMsg, "error");
           return;
         }
 
-        const createdCap = data.capability as { id: string };
+        const createdCap = data.capability as {
+          id: string;
+          metadata?: { totalBu?: number };
+        };
 
-        // Link primitives via PATCH
-        const linkRes = await fetch(`/api/capabilities/${createdCap.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            primitiveSlots: selectedSlots,
-          }),
-        });
+        // Server tells us the canonical BU (in metadata.totalBu)
+        const serverBu = createdCap.metadata?.totalBu ?? previewBu;
 
-        const linkData = await linkRes.json();
-
-        if (!linkRes.ok) {
-          setMessage(linkData.error ?? "Failed to link primitives.");
-          return;
-        }
-
-        setCapabilities((prev) => [...prev, linkData.capability]);
+        setCapabilities((prev) => [...prev, data.capability]);
         resetForm();
-        setMessage(`Created "${form.name}" (${previewBu} BU).`);
+        const successMsg = `Created "${form.name}" (${serverBu} BU).`;
+        setMessage(successMsg);
+        showToast(successMsg, "success");
       } catch (err) {
-        setMessage(err instanceof Error ? err.message : "Unknown error.");
+        const errMsg = err instanceof Error ? err.message : "Unknown error.";
+        setMessage(errMsg);
+        showToast(errMsg, "error");
       }
     });
   }
@@ -407,6 +406,77 @@ export function CapabilityComposer({
           Pick primitives by category, slot them into roles, and compile a
           SwordWeave capability with live BU total.
         </p>
+      </div>
+
+      {/* Sticky preview bar — always visible while scrolling */}
+      <div className="sticky top-0 z-30 mt-6 -mx-5 border-y border-border bg-background/80 px-5 py-3 backdrop-blur-md">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase text-muted-foreground">
+                Total
+              </span>
+              <span className="rounded-full bg-primary/10 px-3 py-1 font-mono text-base font-bold text-primary">
+                {previewBu} BU
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase text-muted-foreground">
+                Slots
+              </span>
+              <span className="rounded-full bg-secondary px-3 py-1 text-sm font-medium">
+                {selectedSlots.length}
+              </span>
+            </div>
+            <div className="hidden items-center gap-2 sm:flex">
+              <span className="text-xs font-semibold uppercase text-muted-foreground">
+                Status
+              </span>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  isEditMode
+                    ? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                    : "bg-green-500/10 text-green-700 dark:text-green-300"
+                }`}
+              >
+                {isEditMode ? "Editing" : "New"}
+              </span>
+            </div>
+            {form.name && (
+              <div className="hidden items-center gap-2 lg:flex">
+                <span className="text-xs font-semibold uppercase text-muted-foreground">
+                  Name
+                </span>
+                <span className="truncate text-sm font-medium">
+                  {form.name}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={resetForm}
+              className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-card"
+            >
+              Reset
+            </button>
+            <button
+              type="submit"
+              form="capability-form"
+              disabled={isPending}
+              className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {isPending
+                ? isEditMode
+                  ? "Saving..."
+                  : "Compiling..."
+                : isEditMode
+                  ? "Save Changes"
+                  : "Compile"}
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="mt-8 grid gap-4 lg:grid-cols-[360px_1fr]">
@@ -472,7 +542,7 @@ export function CapabilityComposer({
 
         {/* RIGHT: Compiler form + preview */}
         <section className="rounded-md border border-border bg-card p-5">
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} id="capability-form">
             <h2 className="text-lg font-semibold">
               {isEditMode ? "Edit Capability" : "Compiler Inputs"}
             </h2>
@@ -715,6 +785,8 @@ export function CapabilityComposer({
           <span aria-hidden="true">→</span>
         </a>
       </section>
+
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

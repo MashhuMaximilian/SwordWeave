@@ -1,81 +1,16 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
-import { capabilities, capabilityPrimitives } from "@/db/schema";
-
-type CapabilityPrimitiveRole =
-  | "VERB"
-  | "DOMAIN"
-  | "SIZING"
-  | "RANGE"
-  | "DURATION"
-  | "OUTPUT"
-  | "AUGMENT"
-  | "OTHER";
-
-function parseRole(value: unknown): CapabilityPrimitiveRole | null {
-  if (typeof value !== "string") return null;
-  const upper = value.toUpperCase();
-  const valid: CapabilityPrimitiveRole[] = [
-    "VERB",
-    "DOMAIN",
-    "SIZING",
-    "RANGE",
-    "DURATION",
-    "OUTPUT",
-    "AUGMENT",
-    "OTHER",
-  ];
-  if ((valid as string[]).includes(upper)) {
-    return upper as CapabilityPrimitiveRole;
-  }
-  return null;
-}
-
-function parsePrimitiveSlots(value: unknown): Array<{
-  primitiveId: number;
-  role: CapabilityPrimitiveRole;
-  quantity: number;
-  sortOrder: number;
-  slotLabel: string | null;
-  notes: string | null;
-}> {
-  if (!Array.isArray(value)) {
-    throw new Error("primitiveSlots must be an array.");
-  }
-
-  return value.map((slotValue, index) => {
-    if (!slotValue || typeof slotValue !== "object") {
-      throw new Error("Each primitive slot must be an object.");
-    }
-    const slot = slotValue as Record<string, unknown>;
-    const primitiveId = Number(slot["primitiveId"]);
-    const role = parseRole(slot["role"]);
-    const quantity = Number(slot["quantity"] ?? 1);
-
-    if (!Number.isInteger(primitiveId) || primitiveId <= 0) {
-      throw new Error("primitiveId must be a positive integer.");
-    }
-    if (!role) {
-      throw new Error(
-        "role must be one of: VERB, DOMAIN, SIZING, RANGE, DURATION, OUTPUT, AUGMENT, OTHER.",
-      );
-    }
-    if (!Number.isInteger(quantity) || quantity <= 0) {
-      throw new Error("quantity must be a positive integer.");
-    }
-
-    return {
-      primitiveId,
-      role,
-      quantity,
-      sortOrder: Number(slot["sortOrder"] ?? index),
-      slotLabel: slot["slotLabel"] ? String(slot["slotLabel"]) : null,
-      notes: slot["notes"] ? String(slot["notes"]) : null,
-    };
-  });
-}
+import { capabilities, capabilityPrimitives, primitives } from "@/db/schema";
+import {
+  buildAssemblyAndComputeBU,
+  parsePrimitiveSlots,
+  parseTags,
+  safeMetadata,
+  type PrimitiveLike,
+} from "@/lib/api/capability-helpers";
+import type { JsonValue } from "@/types/swordweave";
 
 /**
  * GET /api/capabilities/[id]
@@ -112,11 +47,14 @@ export async function GET(
 
 /**
  * PATCH /api/capabilities/[id]
- * Update capability metadata or primitive slots.
+ * Update capability metadata and/or primitive slots atomically.
  *
  * Body:
- *   - name, type, sourceType, verboseDescription, isPublic, tags, metadata: any field to update
- *   - primitiveSlots: full replacement of all primitive links (clean slate)
+ *   - name, type, sourceType, verboseDescription, isPublic, tags, metadata
+ *   - primitiveSlots: full replacement of all primitive links
+ *
+ * Server-authoritative: totalBu is recomputed from primitives whenever
+ * slots change; client `previewBu` is always ignored.
  */
 export async function PATCH(
   request: Request,
@@ -132,8 +70,6 @@ export async function PATCH(
     }
 
     const values = body as Record<string, unknown>;
-
-    // Build update payload
     const updatePayload: Record<string, unknown> = {};
 
     if ("name" in values) updatePayload["name"] = String(values["name"]).trim();
@@ -163,66 +99,141 @@ export async function PATCH(
     if ("sourceOrigin" in values)
       updatePayload["sourceOrigin"] = String(values["sourceOrigin"]).trim() || null;
 
-    if ("tags" in values) {
-      const tags = Array.isArray(values["tags"])
-        ? (values["tags"] as unknown[]).map(String)
-        : String(values["tags"])
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean);
-      updatePayload["tags"] = tags;
-    }
+    if ("tags" in values) updatePayload["tags"] = parseTags(values["tags"]);
 
+    // Server-authoritative metadata: if slots change, totalBu is recomputed.
+    // Otherwise just preserve client metadata (but strip previewBu).
+    let needsMetadataRewrite = false;
     if ("metadata" in values) {
-      const metadata =
-        values["metadata"] && typeof values["metadata"] === "object"
-          ? values["metadata"]
-          : {};
-      updatePayload["metadata"] = metadata;
+      const md = safeMetadata(values["metadata"]);
+      if ("previewBu" in md) delete (md as Record<string, unknown>)["previewBu"];
+      updatePayload["metadata"] = md;
+      needsMetadataRewrite = true;
     }
 
     updatePayload["updatedAt"] = new Date();
 
-    const [updated] = await db
-      .update(capabilities)
-      .set(updatePayload)
-      .where(eq(capabilities.id, id))
-      .returning();
-
-    if (!updated) {
-      return NextResponse.json({ error: "Capability not found." }, { status: 404 });
+    // If primitiveSlots provided, replace all existing links (atomic)
+    let slotsChanged = false;
+    let slots: ReturnType<typeof parsePrimitiveSlots> = [];
+    if ("primitiveSlots" in values && values["primitiveSlots"] != null) {
+      slots = parsePrimitiveSlots(values["primitiveSlots"]);
+      slotsChanged = true;
     }
 
-    // If primitiveSlots provided, replace all existing links
-    if ("primitiveSlots" in values) {
-      await db.delete(capabilityPrimitives).where(eq(capabilityPrimitives.capabilityId, id));
+    const result = await db.transaction(async (tx) => {
+      if (Object.keys(updatePayload).length > 0) {
+        const [updated] = await tx
+          .update(capabilities)
+          .set(updatePayload)
+          .where(eq(capabilities.id, id))
+          .returning();
 
-      const slots = parsePrimitiveSlots(values["primitiveSlots"]);
-      if (slots.length > 0) {
-        await db.insert(capabilityPrimitives).values(
-          slots.map((slot) => ({
-            capabilityId: id,
-            primitiveId: slot.primitiveId,
-            role: slot.role,
-            quantity: slot.quantity,
-            sortOrder: slot.sortOrder,
-            slotLabel: slot.slotLabel,
-            notes: slot.notes,
-          })),
-        );
+        if (!updated) {
+          throw new Error("Capability not found.");
+        }
       }
-    }
 
-    // Fetch the full updated capability
-    const result = await db.query.capabilities.findFirst({
-      where: eq(capabilities.id, id),
-      with: {
-        primitiveLinks: {
-          with: {
-            primitive: true,
+      if (slotsChanged) {
+        // Server-compute BU
+        let totalBu = 0;
+        if (slots.length > 0) {
+          const primitiveIds = slots.map((s) => s.primitiveId);
+          const primitiveRows = await tx
+            .select()
+            .from(primitives)
+            .where(inArray(primitives.id, primitiveIds));
+
+          if (primitiveRows.length !== new Set(primitiveIds).size) {
+            const foundIds = new Set(primitiveRows.map((p) => p.id));
+            const missing = primitiveIds.filter((pid) => !foundIds.has(pid));
+            throw new Error(`Unknown primitiveIds: ${missing.join(", ")}`);
+          }
+
+          const primitivesById: ReadonlyMap<string, PrimitiveLike> = new Map(
+            primitiveRows.map((p) => [
+              String(p.id),
+              {
+                id: String(p.id),
+                name: p.name,
+                category: p.category,
+                buCost: p.buCost,
+              },
+            ]),
+          );
+
+          // Need name/type/sourceType for assembly — pull from current row
+          const current = await tx.query.capabilities.findFirst({
+            where: eq(capabilities.id, id),
+          });
+          if (!current) throw new Error("Capability not found.");
+
+          const { totalBu: computed } = buildAssemblyAndComputeBU(
+            slots,
+            primitivesById,
+            {
+              id,
+              name: current.name,
+              type: current.type,
+              sourceType: current.sourceType,
+              description: current.verboseDescription || undefined,
+            },
+          );
+          totalBu = computed;
+        }
+
+        // Wipe + rewrite primitive links
+        await tx.delete(capabilityPrimitives).where(eq(capabilityPrimitives.capabilityId, id));
+        if (slots.length > 0) {
+          await tx.insert(capabilityPrimitives).values(
+            slots.map((slot) => ({
+              capabilityId: id,
+              primitiveId: slot.primitiveId,
+              role: slot.role,
+              quantity: slot.quantity,
+              sortOrder: slot.sortOrder,
+              slotLabel: slot.slotLabel,
+              notes: slot.notes,
+            })),
+          );
+        }
+
+        // Update metadata.totalBu
+        const current = await tx.query.capabilities.findFirst({
+          where: eq(capabilities.id, id),
+        });
+        if (current) {
+          const existingMd = safeMetadata(current.metadata);
+          const newMd: Record<string, JsonValue> = {
+            ...existingMd,
+            totalBu,
+            compiledAt: new Date().toISOString(),
+          };
+          if ("previewBu" in newMd) delete (newMd as Record<string, unknown>)["previewBu"];
+
+          await tx
+            .update(capabilities)
+            .set({ metadata: newMd, updatedAt: new Date() })
+            .where(eq(capabilities.id, id));
+        }
+      }
+
+      // Return full capability with links
+      return tx.query.capabilities.findFirst({
+        where: eq(capabilities.id, id),
+        with: {
+          primitiveLinks: {
+            with: {
+              primitive: true,
+            },
+          },
+          effectLinks: {
+            with: {
+              effect: true,
+            },
           },
         },
-      },
+      });
     });
 
     return NextResponse.json({ capability: result });

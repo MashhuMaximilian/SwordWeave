@@ -1,44 +1,17 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
-import { capabilities, capabilityPrimitives } from "@/db/schema";
-import type { JsonValue } from "@/types/swordweave";
-
-function parseTags(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value.map(String).map((tag) => tag.trim()).filter(Boolean);
-  }
-  if (typeof value === "string") {
-    return value
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean);
-  }
-  return [];
-}
-
-function parseCapabilityType(
-  value: unknown,
-): "ACTIVE" | "PASSIVE" | "AUGMENT" | null {
-  if (typeof value !== "string") return null;
-  const upper = value.toUpperCase();
-  if (upper === "ACTIVE" || upper === "PASSIVE" || upper === "AUGMENT") {
-    return upper;
-  }
-  return null;
-}
-
-function parseSourceType(
-  value: unknown,
-): "PHYSICAL" | "MAGICAL" | "PSYCHIC" | null {
-  if (typeof value !== "string") return null;
-  const upper = value.toUpperCase();
-  if (upper === "PHYSICAL" || upper === "MAGICAL" || upper === "PSYCHIC") {
-    return upper;
-  }
-  return null;
-}
+import { capabilities, capabilityPrimitives, primitives } from "@/db/schema";
+import {
+  buildAssemblyAndComputeBU,
+  parseCapabilityType,
+  parsePrimitiveSlots,
+  parseSourceType,
+  parseTags,
+  safeMetadata,
+  type PrimitiveLike,
+} from "@/lib/api/capability-helpers";
 
 /**
  * GET /api/capabilities
@@ -71,7 +44,9 @@ export async function GET() {
 /**
  * POST /api/capabilities
  *
- * Create a new capability. Requires authentication.
+ * Atomically create a capability with its primitive slots.
+ * The server computes totalBu from the provided primitives — clients
+ * cannot lie about cost.
  *
  * Body:
  *   - name (required)
@@ -79,10 +54,10 @@ export async function GET() {
  *   - sourceType: PHYSICAL | MAGICAL | PSYCHIC (required)
  *   - verboseDescription (optional)
  *   - isPublic (default false)
- *   - sourceOrigin (optional, defaults to user identifier)
+ *   - sourceOrigin (optional)
  *   - tags (string[] or comma-separated)
- *   - metadata (object, optional - typically {totalBu, tier})
- *   - primitiveSlots (array of {primitiveId, role, quantity?, sortOrder?, slotLabel?})
+ *   - metadata (object, optional — `previewBu` from client is IGNORED)
+ *   - primitiveSlots (array of {primitiveId, role, quantity?, sortOrder?, slotLabel?, notes?})
  */
 export async function POST(request: Request) {
   try {
@@ -101,10 +76,7 @@ export async function POST(request: Request) {
     const isPublic = Boolean(values["isPublic"]);
     const sourceOrigin = String(values["sourceOrigin"] ?? "").trim() || null;
     const tags = parseTags(values["tags"]);
-    const metadata: Record<string, JsonValue> =
-      values["metadata"] && typeof values["metadata"] === "object"
-        ? (values["metadata"] as Record<string, JsonValue>)
-        : {};
+    const clientMetadata = safeMetadata(values["metadata"]);
 
     if (!name) {
       return NextResponse.json({ error: "Capability name is required." }, { status: 400 });
@@ -122,26 +94,121 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create the capability
-    const [created] = await db
-      .insert(capabilities)
-      .values({
-        name,
-        type,
-        sourceType,
-        verboseDescription,
-        isPublic,
-        sourceOrigin,
-        tags,
-        metadata,
-      })
-      .returning();
-
-    if (!created) {
-      throw new Error("Unable to create capability.");
+    // Parse primitive slots first (may throw on bad input)
+    let slots: ReturnType<typeof parsePrimitiveSlots> = [];
+    if ("primitiveSlots" in values && values["primitiveSlots"] != null) {
+      slots = parsePrimitiveSlots(values["primitiveSlots"]);
     }
 
-    return NextResponse.json({ capability: created }, { status: 201 });
+    // Server-authoritative BU computation
+    let totalBu = 0;
+    let primitivesById: ReadonlyMap<string, PrimitiveLike> = new Map();
+    if (slots.length > 0) {
+      const primitiveIds = slots.map((s) => s.primitiveId);
+      const primitiveRows = await db
+        .select()
+        .from(primitives)
+        .where(inArray(primitives.id, primitiveIds));
+
+      if (primitiveRows.length !== new Set(primitiveIds).size) {
+        const foundIds = new Set(primitiveRows.map((p) => p.id));
+        const missing = primitiveIds.filter((id) => !foundIds.has(id));
+        return NextResponse.json(
+          { error: `Unknown primitiveIds: ${missing.join(", ")}` },
+          { status: 400 },
+        );
+      }
+
+      primitivesById = new Map(
+        primitiveRows.map((p) => [
+          String(p.id),
+          {
+            id: String(p.id),
+            name: p.name,
+            category: p.category,
+            buCost: p.buCost,
+          },
+        ]),
+      );
+
+      const result = buildAssemblyAndComputeBU(
+        slots,
+        primitivesById,
+        {
+          id: "temp", // server overwrites after insert
+          name,
+          type,
+          sourceType,
+          description: verboseDescription || undefined,
+        },
+      );
+      totalBu = result.totalBu;
+    }
+
+    // Authoritative metadata: drop client's previewBu, inject server BU
+    const metadata = {
+      ...clientMetadata,
+      totalBu,
+      compiledAt: new Date().toISOString(),
+    };
+    // Strip the client-lied previewBu (if any) from the metadata
+    if ("previewBu" in metadata) {
+      delete (metadata as Record<string, unknown>)["previewBu"];
+    }
+
+    // Atomic insert: capability + primitive links in a transaction
+    const result = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(capabilities)
+        .values({
+          name,
+          type,
+          sourceType,
+          verboseDescription,
+          isPublic,
+          sourceOrigin,
+          tags,
+          metadata,
+        })
+        .returning();
+
+      if (!created) {
+        throw new Error("Unable to create capability.");
+      }
+
+      if (slots.length > 0) {
+        await tx.insert(capabilityPrimitives).values(
+          slots.map((slot) => ({
+            capabilityId: created.id,
+            primitiveId: slot.primitiveId,
+            role: slot.role,
+            quantity: slot.quantity,
+            sortOrder: slot.sortOrder,
+            slotLabel: slot.slotLabel,
+            notes: slot.notes,
+          })),
+        );
+      }
+
+      // Return full capability with links
+      return tx.query.capabilities.findFirst({
+        where: eq(capabilities.id, created.id),
+        with: {
+          primitiveLinks: {
+            with: {
+              primitive: true,
+            },
+          },
+          effectLinks: {
+            with: {
+              effect: true,
+            },
+          },
+        },
+      });
+    });
+
+    return NextResponse.json({ capability: result }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";
     return NextResponse.json({ error: message }, { status: 400 });
