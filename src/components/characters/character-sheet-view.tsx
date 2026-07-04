@@ -136,6 +136,23 @@ export type CharacterSheetProps = {
     overBudget: boolean;
     warning?: string;
   };
+  /**
+   * Mirror-vector (negative BU) accounting. See BU Market canon,
+   * Tier-Matched Volatility Ceiling table.
+   */
+  volatility: {
+    rating: number;
+    ceiling: number;
+    levelBracket: "1-4" | "5-10" | "11-15" | "16+";
+    remaining: number;
+    exceeded: boolean;
+    mirroredPrimitives: ReadonlyArray<{
+      id: number;
+      name: string;
+      mirrorBuCredit: number;
+      acquiredAtLevel: number;
+    }>;
+  };
   primitiveLinks: SheetPrimitiveLink[];
   capabilityLinks: SheetCapabilityLink[];
   itemLinks: SheetItemLink[];
@@ -276,6 +293,16 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         {...(props.buBalance.warning !== undefined
           ? { warning: props.buBalance.warning }
           : {})}
+      />
+
+      {/* Volatility panel — mirror-vector accounting (always visible) */}
+      <VolatilityPanel
+        rating={props.volatility.rating}
+        ceiling={props.volatility.ceiling}
+        levelBracket={props.volatility.levelBracket}
+        remaining={props.volatility.remaining}
+        exceeded={props.volatility.exceeded}
+        mirroredPrimitives={props.volatility.mirroredPrimitives}
       />
 
       {/* Tabs — desktop: top, mobile: bottom sticky */}
@@ -509,6 +536,117 @@ function BuBar({
       </div>
       {warning && (
         <p className="mt-1.5 text-xs text-destructive">{warning}</p>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// Volatility Panel — mirror-vector accounting (BU Market canon)
+// =============================================================================
+// Shows the character's current volatility rating against the level-based
+// ceiling. Surfaces the list of mirrored primitives so players know exactly
+// where their negative BU comes from. Exceeded ceiling highlights red.
+function VolatilityPanel({
+  rating,
+  ceiling,
+  levelBracket,
+  remaining,
+  exceeded,
+  mirroredPrimitives,
+}: {
+  rating: number;
+  ceiling: number;
+  levelBracket: "1-4" | "5-10" | "11-15" | "16+";
+  remaining: number;
+  exceeded: boolean;
+  mirroredPrimitives: ReadonlyArray<{
+    id: number;
+    name: string;
+    mirrorBuCredit: number;
+    acquiredAtLevel: number;
+  }>;
+}) {
+  const percent = ceiling > 0 ? Math.min(100, (rating / ceiling) * 100) : 0;
+  const barColor = exceeded
+    ? "bg-destructive"
+    : percent > 80
+      ? "bg-amber-500"
+      : "bg-primary";
+
+  return (
+    <div className="mt-3 rounded-lg border border-border bg-card p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold uppercase text-muted-foreground">
+              Volatility
+            </span>
+            <span
+              className={`rounded-full px-3 py-1 font-mono text-sm font-bold ${
+                exceeded
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-primary/10 text-primary"
+              }`}
+              title="Mirror-vector BU credits accumulated"
+            >
+              -{rating}
+              <span className="text-muted-foreground"> / -{ceiling}</span>
+            </span>
+          </div>
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+              exceeded
+                ? "bg-destructive/15 text-destructive"
+                : "bg-secondary text-secondary-foreground"
+            }`}
+            title="Level bracket — determines max negative BU"
+          >
+            L-bracket {levelBracket}
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold uppercase text-muted-foreground">
+              Remaining
+            </span>
+            <span className="rounded-full bg-secondary px-3 py-1 text-sm font-medium">
+              -{remaining} BU
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
+        <div
+          className={`h-full rounded-full transition-all ${barColor}`}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+      {exceeded && (
+        <p className="mt-2 text-xs font-medium text-destructive">
+          ⚠ Volatility ceiling exceeded. The DM must remove mirror primitives
+          or grant a respec before this character can be played.
+        </p>
+      )}
+      {mirroredPrimitives.length > 0 && (
+        <details className="mt-3">
+          <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">
+            {mirroredPrimitives.length} mirrored primitive
+            {mirroredPrimitives.length === 1 ? "" : "s"} (click to expand)
+          </summary>
+          <ul className="mt-2 space-y-1 text-xs">
+            {mirroredPrimitives.map((p) => (
+              <li
+                key={p.id}
+                className="flex items-center justify-between rounded border border-border bg-background/40 px-2 py-1"
+              >
+                <span className="font-medium">{p.name}</span>
+                <span className="flex items-center gap-2 font-mono text-muted-foreground">
+                  <span>-{p.mirrorBuCredit} BU</span>
+                  <span className="text-[10px]">@L{p.acquiredAtLevel}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
     </div>
   );

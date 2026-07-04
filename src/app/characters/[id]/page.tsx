@@ -115,6 +115,7 @@ export default async function CharacterSheetPage({
       dmBonusBu={row.dmBonusBu}
       currentVitality={row.currentVitality}
       enforceTemplateCaps={row.enforceTemplateCaps}
+      volatility={sheet.volatility}
       practices={sheet.practices.map((p) => {
         const attr = sheet.practiceAttributeMap.PHYSICAL.includes(p.practice as never)
           ? "PHYSICAL"
