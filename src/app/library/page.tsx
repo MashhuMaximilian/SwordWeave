@@ -1,37 +1,52 @@
-import { asc, desc } from "drizzle-orm";
+import { asc, desc, eq, isNull, or } from "drizzle-orm";
 import Link from "next/link";
-import { ArrowRight, CircuitBoard, Library, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  CircuitBoard,
+  Crown,
+  Library,
+  ScrollText,
+  Shield,
+  Sparkles,
+  Wand2,
+} from "lucide-react";
 import { db } from "@/db/client";
 import {
   capabilities,
   capabilityPrimitives,
   effects,
   primitives,
+  templates,
 } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
 
 export default async function LibraryHubPage() {
-  const [primitiveRows, capabilityRows, effectRows] = await Promise.all([
-    db.query.primitives.findMany({
-      where: (table, { eq, isNull, or }) =>
-        or(eq(table.isPublic, true), isNull(table.userId)),
-      orderBy: [asc(primitives.category), asc(primitives.name)],
-    }),
-    db.query.capabilities.findMany({
-      where: (table, { eq }) => eq(table.isPublic, true),
-      orderBy: [desc(capabilities.createdAt), asc(capabilities.name)],
-      with: {
-        primitiveLinks: {
-          orderBy: [asc(capabilityPrimitives.sortOrder)],
+  const [primitiveRows, capabilityRows, effectRows, templateRows] =
+    await Promise.all([
+      db.query.primitives.findMany({
+        where: (table, { eq, isNull, or }) =>
+          or(eq(table.isPublic, true), isNull(table.userId)),
+        orderBy: [asc(primitives.category), asc(primitives.name)],
+      }),
+      db.query.capabilities.findMany({
+        where: (table, { eq }) => eq(table.isPublic, true),
+        orderBy: [desc(capabilities.createdAt), asc(capabilities.name)],
+        with: {
+          primitiveLinks: {
+            orderBy: [asc(capabilityPrimitives.sortOrder)],
+          },
         },
-      },
-    }),
-    db.query.effects.findMany({
-      where: (table, { eq }) => eq(table.isPublic, true),
-      orderBy: [desc(effects.createdAt), asc(effects.name)],
-    }),
-  ]);
+      }),
+      db.query.effects.findMany({
+        where: (table, { eq }) => eq(table.isPublic, true),
+        orderBy: [desc(effects.createdAt), asc(effects.name)],
+      }),
+      db.query.templates.findMany({
+        where: (table, { eq }) => eq(table.isPublic, true),
+        orderBy: [asc(templates.kind), asc(templates.name)],
+      }),
+    ]);
 
   // BU total helper for capabilities
   const capabilityBuMap = new Map<string, number>();
@@ -52,6 +67,12 @@ export default async function LibraryHubPage() {
     categoryCount.set(p.category, (categoryCount.get(p.category) ?? 0) + 1);
   }
 
+  // Template kind breakdown
+  const templateCount = new Map<string, number>();
+  for (const t of templateRows) {
+    templateCount.set(t.kind, (templateCount.get(t.kind) ?? 0) + 1);
+  }
+
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-8">
       <div className="max-w-3xl">
@@ -60,12 +81,13 @@ export default async function LibraryHubPage() {
         </p>
         <h1 className="mt-3 text-4xl font-semibold">Public records.</h1>
         <p className="mt-4 text-base leading-7 text-muted-foreground">
-          Browse, filter, and clone public primitives, effects, and
-          capabilities contributed by the SwordWeave community.
+          Browse, filter, and clone public primitives, effects, capabilities,
+          races, backgrounds, and archetypes contributed by the SwordWeave
+          community.
         </p>
       </div>
 
-      <div className="mt-8 grid gap-4 md:grid-cols-3">
+      <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Link
           className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
           href="/library/primitives"
@@ -124,14 +146,63 @@ export default async function LibraryHubPage() {
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
           </span>
         </Link>
+
+        <Link
+          className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
+          href="/library/browse?type=RACE_TEMPLATE"
+        >
+          <Shield className="size-5 text-primary" />
+          <h2 className="mt-5 text-lg font-semibold">Races</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {templateCount.get("RACE") ?? 0} public races
+          </p>
+          <span className="mt-4 flex items-center gap-2 pt-3 text-sm font-medium text-primary">
+            Browse races
+            <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+          </span>
+        </Link>
+
+        <Link
+          className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
+          href="/library/browse?type=BACKGROUND_TEMPLATE"
+        >
+          <ScrollText className="size-5 text-primary" />
+          <h2 className="mt-5 text-lg font-semibold">Backgrounds</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {templateCount.get("BACKGROUND") ?? 0} public backgrounds
+          </p>
+          <span className="mt-4 flex items-center gap-2 pt-3 text-sm font-medium text-primary">
+            Browse backgrounds
+            <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+          </span>
+        </Link>
+
+        <Link
+          className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
+          href="/library/browse?type=ARCHETYPE_TEMPLATE"
+        >
+          <Wand2 className="size-5 text-primary" />
+          <h2 className="mt-5 text-lg font-semibold">Archetypes</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {templateCount.get("ARCHETYPE") ?? 0} public archetypes
+          </p>
+          <span className="mt-4 flex items-center gap-2 pt-3 text-sm font-medium text-primary">
+            Browse archetypes
+            <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+          </span>
+        </Link>
       </div>
 
       <div className="mt-8 rounded-md border border-primary/20 bg-primary/5 p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold">Browse the corpus.</h2>
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <Crown className="size-5 text-primary" />
+              Browse the corpus.
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Full sort + filter view across all published entries.
+              Full sort + filter view across all public entries. Find by name,
+              category, or engagement.
             </p>
           </div>
           <Link
@@ -182,19 +253,6 @@ export default async function LibraryHubPage() {
             );
           })}
         </div>
-      </section>
-
-      <section className="mt-10 rounded-md border border-dashed border-border bg-card/50 p-6">
-        <h3 className="text-base font-semibold">Library Workflow</h3>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Tier 3 ships full browse + filter + clone + edit workflow:
-        </p>
-        <ul className="mt-3 ml-5 list-disc text-sm text-muted-foreground">
-          <li>Filter by category, tag, name search, sort by name/date/BU</li>
-          <li>"Clone to my account" button on each public record</li>
-          <li>Library click opens sandbox in edit mode</li>
-          <li>Sandbox stays "create only"; Library becomes "browse + edit"</li>
-        </ul>
       </section>
     </div>
   );

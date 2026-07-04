@@ -32,9 +32,8 @@ export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const targetType = sp.get("targetType") ?? undefined;
   const category = sp.get("category") ?? undefined;
+  const search = sp.get("q") ?? sp.get("search") ?? undefined;
   const authorUsername = sp.get("authorUsername") ?? undefined;
-  const visibility =
-    (sp.get("visibility") as "PUBLIC" | "FOLLOWERS_ONLY" | null) ?? "PUBLIC";
   const minLikesRaw = sp.get("minLikes");
   const minLikes = minLikesRaw ? parseInt(minLikesRaw, 10) : undefined;
   const hasForks = sp.get("hasForks") === "1";
@@ -51,14 +50,13 @@ export async function GET(req: NextRequest) {
     const result = await queryLibrary({
       ...(targetType ? { targetType: targetType as never } : {}),
       ...(category ? { category } : {}),
+      ...(search ? { search } : {}),
       ...(authorUsername ? { authorUsername } : {}),
-      visibility: visibility ?? "PUBLIC",
       ...(minLikes !== undefined ? { minLikes } : {}),
       hasForks,
       sort,
       limit,
       offset,
-      ...(viewerId ? { viewerId } : {}),
     });
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
