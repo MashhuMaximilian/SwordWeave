@@ -29,6 +29,14 @@ const sandboxNav = [
   { href: "/sandbox/primitives", label: "Primitives", icon: Boxes },
   { href: "/sandbox/effects", label: "Effects", icon: Sparkles },
   { href: "/sandbox/capabilities", label: "Capabilities", icon: Swords },
+  { href: "/sandbox/items", label: "Items", icon: Package },
+  {
+    href: "/sandbox/templates/new?kind=race",
+    label: "Templates",
+    icon: ScrollText,
+  },
+  { href: "/sandbox/builds", label: "Builds", icon: Swords },
+  { href: "/sandbox/characters", label: "Character Wizard", icon: UserRound },
 ] as const;
 
 function isActive(pathname: string, href: string) {

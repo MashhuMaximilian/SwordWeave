@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { ArrowRight, Boxes, FlaskConical, Swords } from "lucide-react";
+import {
+  ArrowRight,
+  Boxes,
+  FlaskConical,
+  Package,
+  ScrollText,
+  Swords,
+  UserRound,
+} from "lucide-react";
 
 const workshops = [
   {
@@ -13,7 +21,7 @@ const workshops = [
   {
     href: "/sandbox/effects",
     title: "Effects",
-    status: "Next",
+    status: "Live",
     description:
       "Group primitives into reusable named states, conditions, and rule packages.",
     icon: FlaskConical,
@@ -21,10 +29,42 @@ const workshops = [
   {
     href: "/sandbox/capabilities",
     title: "Capabilities",
-    status: "Planned",
+    status: "Live",
     description:
       "Compile verbs, domains, ranges, and effects into tactical action cards.",
     icon: Swords,
+  },
+  {
+    href: "/sandbox/items",
+    title: "Items",
+    status: "Live",
+    description:
+      "Forge weapons, armor, trinkets, and artifacts from item-augment primitives.",
+    icon: Package,
+  },
+  {
+    href: "/sandbox/templates/new?kind=race",
+    title: "Templates",
+    status: "Live",
+    description:
+      "Author races, backgrounds, and archetype templates. Kind-switched.",
+    icon: ScrollText,
+  },
+  {
+    href: "/sandbox/builds",
+    title: "Builds",
+    status: "Live",
+    description:
+      "Capture character snapshots or forge archetype templates others can use.",
+    icon: Swords,
+  },
+  {
+    href: "/sandbox/characters",
+    title: "Character Wizard",
+    status: "Live",
+    description:
+      "Stepped creation flow: identity → attributes → race/bg → capabilities → review.",
+    icon: UserRound,
   },
 ] as const;
 
@@ -39,8 +79,8 @@ export default function SandboxPage() {
           Build the grammar before the sheet.
         </h1>
         <p className="mt-4 text-base leading-7 text-muted-foreground">
-          The sandbox is the accounts-free design bench where SwordWeave objects
-          are assembled from primitives upward.
+          The sandbox is the design bench where SwordWeave objects are assembled
+          from primitives upward.
         </p>
       </div>
 
