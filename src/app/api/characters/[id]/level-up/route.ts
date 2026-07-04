@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { characters } from "@/db/schema";
+import { getVolatilityCeiling } from "@/lib/engine/bu";
 
 /**
  * POST /api/characters/[id]/level-up
@@ -13,6 +14,8 @@ import { characters } from "@/db/schema";
  *   - level += 1
  *   - dm_bonus_bu resets to 0 (per Mashu: DM bonus rolls into next-level progression)
  *   - The progression pool expands by 5 BU automatically (per BU_PER_LEVEL)
+ *   - Volatility ceiling expands (level-up only ever grows or holds ceiling,
+ *     so existing mirrors can never become invalid — see getVolatilityCeiling)
  *
  * Body (optional):
  *   - newVitality: number — update currentVitality (e.g. on long rest)
@@ -70,10 +73,14 @@ export async function POST(
       .where(eq(characters.id, id))
       .returning();
 
+    const newCeiling = getVolatilityCeiling(updated?.level ?? 1);
+
     return NextResponse.json({
       character: updated,
       message: `Leveled up to ${updated?.level}. DM bonus BU consumed into progression pool.`,
       progressionGained: 5,
+      volatilityCeiling: newCeiling.maxNegativeBu,
+      volatilityBracket: newCeiling.levelBracket,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";

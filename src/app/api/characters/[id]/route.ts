@@ -9,6 +9,7 @@ import {
   characters,
 } from "@/db/schema";
 import { validateAttributes, type Attribute } from "@/lib/engine/practices";
+import { validateMirrorSet } from "@/lib/api/volatility";
 
 const VALID_SIZES = [
   "TINY",
@@ -233,6 +234,36 @@ export async function PATCH(
 
     updatePayload["updatedAt"] = new Date();
 
+    // Volatility ceiling enforcement: if primitiveIds is being replaced AND
+    // any of them are mirrors, validate against level-based ceiling BEFORE write.
+    if ("primitiveIds" in values) {
+      const newPrimitives = parseStringArray(values["primitiveIds"]);
+      const newMirrors = parseStringArray(values["mirroredPrimitiveIds"] ?? []).filter(
+        (id) => newPrimitives.includes(id),
+      );
+      // PATCH replaces the full primitive set, so the "current mirror set" is empty
+      // for the ceiling check (everything in the request is the new state).
+      const volCheck = await validateMirrorSet(
+        mergedLevel,
+        newMirrors,
+        newPrimitives,
+      );
+      if (!volCheck.ok) {
+        return NextResponse.json(
+          {
+            error: volCheck.error,
+            ceiling: volCheck.ceiling,
+            rating: volCheck.rating,
+            bracket: volCheck.bracket,
+            offendingPrimitiveId: volCheck.offendingPrimitiveId,
+          },
+          { status: volCheck.status },
+        );
+      }
+      // Stash for use inside the transaction.
+      (values as Record<string, unknown>)["__resolvedMirrors"] = newMirrors;
+    }
+
     const result = await db.transaction(async (tx) => {
       if (Object.keys(updatePayload).length > 0) {
         await tx.update(characters).set(updatePayload).where(eq(characters.id, id));
@@ -240,14 +271,19 @@ export async function PATCH(
 
       if ("primitiveIds" in values) {
         const primitiveIds = parseStringArray(values["primitiveIds"]);
+        const resolvedMirrors = parseStringArray(
+          (values as Record<string, unknown>)["__resolvedMirrors"] ?? [],
+        );
         await tx.delete(characterPrimitives).where(eq(characterPrimitives.characterId, id));
         if (primitiveIds.length > 0) {
+          const mirrorSet = new Set(resolvedMirrors);
           await tx.insert(characterPrimitives).values(
             primitiveIds.map((pid) => ({
               characterId: id,
               primitiveId: pid,
               source: "PERSONAL" as const,
               acquiredAtLevel: mergedLevel,
+              isMirrored: mirrorSet.has(pid),
             })),
           );
         }

@@ -38,18 +38,26 @@ import {
   computeEncumbrance,
   type CharacterSize,
 } from "./encumbrance";
+import {
+  evaluateBuLedger,
+  getVolatilityCeiling,
+  type BuLedger,
+  type PrimitiveInput,
+} from "./bu";
 
 export type PrimitiveLinkSnapshot = {
   primitiveId: number;
   source: string;
   acquiredAtLevel: number;
+  /** True if this primitive was acquired as a mirror (negative). Counts toward volatility. */
+  isMirrored: boolean;
   primitive: {
     id: number;
     name: string;
     category: string;
     buCost: number;
-    /** raw hardModifiers — each contains bonus info, simplified for sheet */
-    hardModifiers?: ReadonlyArray<{ bonus?: number; target?: string }>;
+    isMirrorable: boolean;
+    mirrorBuCredit: number;
   };
 };
 
@@ -97,6 +105,21 @@ export type CharacterSheetInput = {
 
 export type CharacterSheet = {
   readonly buBalance: BUBalance;
+  readonly volatility: {
+    readonly rating: number;
+    readonly ceiling: number;
+    readonly levelBracket: "1-4" | "5-10" | "11-15" | "16+";
+    readonly remaining: number;
+    readonly exceeded: boolean;
+    /** Mirror primitives grouped for display: each entry contributes its credit to rating */
+    readonly mirroredPrimitives: ReadonlyArray<{
+      readonly id: number;
+      readonly name: string;
+      readonly mirrorBuCredit: number;
+      readonly acquiredAtLevel: number;
+    }>;
+  };
+  readonly buLedger: BuLedger;
   readonly practices: ReadonlyArray<PracticeModifierBreakdown>;
   readonly practiceAttributeMap: PracticeAttributeMap;
   readonly vitality: {
@@ -215,8 +238,43 @@ export function aggregateCharacterSheet(
     encumbranceItems,
   );
 
+  // Volatility (mirror-vector) — per BU Market canon, each character has a
+  // level-based ceiling on how much negative BU they can take. We compute the
+  // full BU ledger using the engine helpers and project volatility from it.
+  const ledgerInputs: PrimitiveInput[] = input.primitiveLinks.map((link) => ({
+    id: link.primitive.id,
+    name: link.primitive.name,
+    category: link.primitive.category,
+    buCost: link.primitive.buCost,
+    isMirrorable: link.primitive.isMirrorable,
+    mirrorBuCredit: link.primitive.mirrorBuCredit,
+    hardModifiers: [],
+  }));
+  const mirroredIds = new Set(
+    input.primitiveLinks.filter((l) => l.isMirrored).map((l) => l.primitive.id),
+  );
+  const buLedger = evaluateBuLedger(input.level, ledgerInputs, mirroredIds);
+  const ceilingInfo = getVolatilityCeiling(input.level);
+  const mirroredPrimitives = input.primitiveLinks
+    .filter((l) => l.isMirrored)
+    .map((l) => ({
+      id: l.primitive.id,
+      name: l.primitive.name,
+      mirrorBuCredit: l.primitive.mirrorBuCredit,
+      acquiredAtLevel: l.acquiredAtLevel,
+    }));
+
   return {
     buBalance,
+    volatility: {
+      rating: buLedger.volatilityRating,
+      ceiling: buLedger.volatilityCeiling,
+      levelBracket: ceilingInfo.levelBracket,
+      remaining: Math.max(0, buLedger.volatilityCeiling - buLedger.volatilityRating),
+      exceeded: buLedger.ceilingExceeded,
+      mirroredPrimitives,
+    },
+    buLedger,
     practices,
     practiceAttributeMap: PRACTICE_ATTRIBUTE_MAP,
     vitality: {

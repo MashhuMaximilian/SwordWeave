@@ -153,6 +153,13 @@ export const characterPrimitives = pgTable(
       .references(() => primitives.id, { onDelete: "restrict" }),
     source: characterPrimitiveSourceEnum("source").notNull().default("PERSONAL"),
     acquiredAtLevel: integer("acquired_at_level").notNull().default(1),
+    /**
+     * True if this primitive was acquired as a mirror vector (negative BU).
+     * Mirrored primitives contribute mirrorBuCredit to the character's
+     * volatility rating (bounded by getVolatilityCeiling(level)).
+     * See src/lib/engine/bu.ts for full mirror-vector accounting.
+     */
+    isMirrored: boolean("is_mirrored").notNull().default(false),
     notes: text("notes"),
     ...timestamps,
   },

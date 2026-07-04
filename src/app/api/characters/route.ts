@@ -9,6 +9,7 @@ import {
   characters,
 } from "@/db/schema";
 import { validateAttributes, type Attribute } from "@/lib/engine/practices";
+import { validateMirrorSet } from "@/lib/api/volatility";
 
 const VALID_SIZES = [
   "TINY",
@@ -195,6 +196,33 @@ export async function POST(request: Request) {
     const capabilityIds = parseUuidArray(values["capabilityIds"]);
     const itemIds = parseUuidArray(values["itemIds"]);
 
+    // Mirrored primitive IDs (subset of primitiveIds) — acquires each as a
+    // mirror vector (negative BU). Subject to level-based volatility ceiling
+    // enforced by validateMirrorSet() below. See BU Market canon, Section
+    // "Tier-Matched Volatility Ceiling".
+    const mirroredPrimitiveIds = parseStringArray(
+      values["mirroredPrimitiveIds"],
+    ).filter((id) => primitiveIds.includes(id)); // sanity: mirrors must be in the primitive set
+
+    // Validate volatility ceiling BEFORE writing (fail fast).
+    const volCheck = await validateMirrorSet(
+      level,
+      mirroredPrimitiveIds,
+      primitiveIds,
+    );
+    if (!volCheck.ok) {
+      return NextResponse.json(
+        {
+          error: volCheck.error,
+          ceiling: volCheck.ceiling,
+          rating: volCheck.rating,
+          bracket: volCheck.bracket,
+          offendingPrimitiveId: volCheck.offendingPrimitiveId,
+        },
+        { status: volCheck.status },
+      );
+    }
+
     const result = await db.transaction(async (tx) => {
       const [created] = await tx
         .insert(characters)
@@ -230,12 +258,14 @@ export async function POST(request: Request) {
       if (!created) throw new Error("Unable to create character.");
 
       if (primitiveIds.length > 0) {
+        const mirrorSet = new Set(mirroredPrimitiveIds);
         await tx.insert(characterPrimitives).values(
           primitiveIds.map((pid) => ({
             characterId: created.id,
             primitiveId: pid,
             source: "PERSONAL" as const,
             acquiredAtLevel: level,
+            isMirrored: mirrorSet.has(pid),
           })),
         );
       }

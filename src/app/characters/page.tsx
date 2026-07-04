@@ -87,7 +87,15 @@ async function CharacterCard({
 }: {
   character: typeof characters.$inferSelect & {
     primitiveLinks: Array<{
-      primitive: { id: number; name: string; category: string; buCost: number };
+      isMirrored: boolean | null;
+      primitive: {
+        id: number;
+        name: string;
+        category: string;
+        buCost: number;
+        isMirrorable: boolean;
+        mirrorBuCredit: number;
+      };
     }>;
     capabilityLinks: Array<{ capabilityId: string }>;
     itemLinks: Array<{ itemId: string; equipped: boolean }>;
@@ -110,6 +118,7 @@ async function CharacterCard({
       primitiveId: l.primitive.id,
       source: "PERSONAL" as const,
       acquiredAtLevel: 1,
+      isMirrored: l.isMirrored ?? false,
       primitive: l.primitive,
     })),
     capabilityLinks: [],
