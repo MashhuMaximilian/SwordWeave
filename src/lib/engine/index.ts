@@ -7,6 +7,7 @@ export * from "./capabilities";
 export * from "./vitality";
 export * from "./bu-balance";
 export * from "./encumbrance";
+export * from "./sheet";
 
 // Practices — explicit imports to avoid clashes with stats.
 // We choose the PRACTICES versions for these (newer, more complete):
