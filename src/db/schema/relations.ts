@@ -29,6 +29,23 @@ import {
   templatePrimitives,
   templates,
 } from "./characters";
+import {
+  capabilityVersions,
+  characterVersions,
+  primitiveAdoptions,
+  primitiveVersions,
+  templateVersions,
+} from "./versions";
+import {
+  flags,
+  forks,
+  forkAggregates,
+  publications,
+  reactions,
+  reactionAggregates,
+  flagAggregates,
+} from "./engagement";
+import { follows, userStats, usernameHistory, users } from "./profiles";
 
 // =============================================================================
 // Engine relations
@@ -42,6 +59,7 @@ export const primitivesRelations = relations(primitives, ({ many }) => ({
   characterLinks: many(characterPrimitives),
   templateLinks: many(templatePrimitives),
   itemLinks: many(itemPrimitives),
+  versions: many(primitiveVersions),
 }));
 
 export const conditionsRelations = relations(conditions, ({ many }) => ({
@@ -106,6 +124,7 @@ export const capabilitiesRelations = relations(capabilities, ({ many }) => ({
   characterLinks: many(characterCapabilities),
   templateLinks: many(templateCapabilities),
   buildLinks: many(buildCapabilities),
+  versions: many(capabilityVersions),
 }));
 
 export const capabilityPrimitivesRelations = relations(
@@ -247,6 +266,7 @@ export const charactersRelations = relations(characters, ({ many }) => ({
   primitiveLinks: many(characterPrimitives),
   capabilityLinks: many(characterCapabilities),
   itemLinks: many(characterItems),
+  versions: many(characterVersions),
 }));
 
 export const characterPrimitivesRelations = relations(
@@ -297,6 +317,7 @@ export const templatesRelations = relations(templates, ({ many }) => ({
   capabilityLinks: many(templateCapabilities),
   raceBuilds: many(builds, { relationName: "build_race" }),
   backgroundBuilds: many(builds, { relationName: "build_background" }),
+  versions: many(templateVersions),
 }));
 
 export const templatePrimitivesRelations = relations(
@@ -358,16 +379,85 @@ export const buildCapabilitiesRelations = relations(
     }),
   }),
 );
+
+// Version relations (Phase 5 Commit B)
+export const capabilityVersionsRelations = relations(
+  capabilityVersions,
+  ({ one, many }) => ({
+    capability: one(capabilities, {
+      fields: [capabilityVersions.capabilityId],
+      references: [capabilities.id],
+    }),
+    primitiveAdoptions: many(primitiveAdoptions),
+  }),
+);
+
+export const characterVersionsRelations = relations(
+  characterVersions,
+  ({ one }) => ({
+    character: one(characters, {
+      fields: [characterVersions.characterId],
+      references: [characters.id],
+    }),
+  }),
+);
+
+export const templateVersionsRelations = relations(templateVersions, ({ one }) => ({
+  template: one(templates, {
+    fields: [templateVersions.templateId],
+    references: [templates.id],
+  }),
+}));
+
+export const primitiveAdoptionsRelations = relations(
+  primitiveAdoptions,
+  ({ one }) => ({
+    capabilityVersion: one(capabilityVersions, {
+      fields: [primitiveAdoptions.capabilityVersionId],
+      references: [capabilityVersions.id],
+    }),
+    primitiveVersion: one(primitiveVersions, {
+      fields: [primitiveAdoptions.primitiveVersionId],
+      references: [primitiveVersions.id],
+    }),
+  }),
+);
+
+// Engagement relations (Phase 5 Commit B)
+export const publicationsRelations = relations(publications, ({ one }) => ({
+  author: one(users, {
+    fields: [publications.authorId],
+    references: [users.id],
+  }),
+}));
+
+export const reactionsRelations = relations(reactions, ({ one }) => ({
+  user: one(users, {
+    fields: [reactions.userId],
+    references: [users.id],
+  }),
+}));
+
+export const flagsRelations = relations(flags, ({ one }) => ({
+  user: one(users, {
+    fields: [flags.userId],
+    references: [users.id],
+  }),
+}));
+
+export const forksRelations = relations(forks, ({ one }) => ({
+  forkedBy: one(users, {
+    fields: [forks.forkedByUserId],
+    references: [users.id],
+  }),
+  sourceAuthor: one(users, {
+    fields: [forks.sourceAuthorId],
+    references: [users.id],
+  }),
+}));
 // =============================================================================
 // Profile relations (Phase 5)
 // =============================================================================
-
-import {
-  follows,
-  userStats,
-  usernameHistory,
-  users,
-} from "./profiles";
 
 export const usersRelations = relations(users, ({ many, one }) => ({
   stats: one(userStats, {

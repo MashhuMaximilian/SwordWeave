@@ -126,6 +126,24 @@ export default async function LibraryHubPage() {
         </Link>
       </div>
 
+      <div className="mt-8 rounded-md border border-primary/20 bg-primary/5 p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">Browse the corpus.</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Full sort + filter view across all published entries.
+            </p>
+          </div>
+          <Link
+            href="/library/browse"
+            className="shrink-0 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Open browser
+            <ArrowRight className="ml-2 inline size-4" />
+          </Link>
+        </div>
+      </div>
+
       {/* Recent capabilities preview */}
       <section className="mt-10">
         <div className="flex items-center justify-between">
