@@ -1,39 +1,37 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
+// Routes that require authentication
 const isProtectedRoute = createRouteMatcher([
+  "/sandbox(.*)",
   "/characters(.*)",
-  "/monsters(.*)",
+  "/settings(.*)",
+  "/builds(.*)",
   "/items(.*)",
-  "/admin(.*)",
-  "/sandbox/builds(.*)",
-  "/sandbox/items(.*)",
-  "/sandbox/characters(.*)",
+  "/monsters(.*)",
 ]);
 
-const isProtectedWriteApi = createRouteMatcher([
-  "/api/effects(.*)",
-  "/api/primitives/import(.*)",
-  "/api/items(.*)",
-  "/api/characters(.*)",
-  "/api/builds(.*)",
-  "/api/templates(.*)",
+// Routes that are explicitly public
+const isPublicRoute = createRouteMatcher([
+  "/",
+  "/u/(.*)",
+  "/library(.*)",
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/api/webhooks/(.*)",
+  "/api/users/check-username",
 ]);
 
-export default clerkMiddleware(async (auth, request) => {
-  const isWriteRequest = !["GET", "HEAD", "OPTIONS"].includes(request.method);
-
-  if (
-    isProtectedRoute(request) ||
-    (isWriteRequest && isProtectedWriteApi(request))
-  ) {
+export default clerkMiddleware(async (auth, req) => {
+  if (isProtectedRoute(req)) {
     await auth.protect();
   }
 });
 
 export const config = {
   matcher: [
+    // Skip Next.js internals and all static files
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    // Always run for API routes
     "/(api|trpc)(.*)",
-    "/__clerk/:path*",
   ],
 };

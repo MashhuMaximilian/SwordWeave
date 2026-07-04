@@ -3,4 +3,7 @@ export * from "./engine";
 export * from "./entities";
 export * from "./items";
 export * from "./characters";
+export * from "./profiles";
+export * from "./versions";
+export * from "./engagement";
 export * from "./relations";

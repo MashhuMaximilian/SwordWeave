@@ -358,3 +358,53 @@ export const buildCapabilitiesRelations = relations(
     }),
   }),
 );
+// =============================================================================
+// Profile relations (Phase 5)
+// =============================================================================
+
+import {
+  follows,
+  userStats,
+  usernameHistory,
+  users,
+} from "./profiles";
+
+export const usersRelations = relations(users, ({ many, one }) => ({
+  stats: one(userStats, {
+    fields: [users.id],
+    references: [userStats.userId],
+  }),
+  usernameHistory: many(usernameHistory),
+  followers: many(follows, { relationName: "follows_following" }),
+  following: many(follows, { relationName: "follows_follower" }),
+}));
+
+export const userStatsRelations = relations(userStats, ({ one }) => ({
+  user: one(users, {
+    fields: [userStats.userId],
+    references: [users.id],
+  }),
+}));
+
+export const usernameHistoryRelations = relations(
+  usernameHistory,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [usernameHistory.userId],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const followsRelations = relations(follows, ({ one }) => ({
+  follower: one(users, {
+    fields: [follows.followerId],
+    references: [users.id],
+    relationName: "follows_follower",
+  }),
+  following: one(users, {
+    fields: [follows.followingId],
+    references: [users.id],
+    relationName: "follows_following",
+  }),
+}));

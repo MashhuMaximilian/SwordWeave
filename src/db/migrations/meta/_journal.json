@@ -71,6 +71,13 @@
       "when": 1783170000000,
       "tag": "0009_phase4_5_bu_market_categories_and_volatility",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1783182798395,
+      "tag": "0010_phase5_profiles",
+      "breakpoints": true
     }
   ]
 }

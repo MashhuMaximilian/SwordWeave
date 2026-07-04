@@ -1,0 +1,213 @@
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
+import {
+  ArrowLeft,
+  Edit3,
+  Globe,
+  Link as LinkIcon,
+  Settings,
+  Users,
+} from "lucide-react";
+import { db } from "@/db/client";
+import { users } from "@/db/schema/profiles";
+import { eq } from "drizzle-orm";
+import { loadProfileByUsername } from "@/lib/profiles/profile-loader";
+
+export const dynamic = "force-dynamic";
+
+export default async function ProfilePage({
+  params,
+}: {
+  params: Promise<{ username: string }>;
+}) {
+  const { username } = await params;
+  const { userId: viewerClerkId } = await auth();
+
+  const profile = await loadProfileByUsername(username, viewerClerkId);
+
+  // Username was renamed → redirect to the new canonical URL.
+  if (
+    profile &&
+    profile.username.toLowerCase() !== username.toLowerCase()
+  ) {
+    redirect(`/u/${profile.username}`);
+  }
+
+  if (!profile) {
+    notFound();
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-4xl px-5 py-8">
+      <Link
+        href="/"
+        className="mb-4 inline-flex items-center gap-1 text-sm text-sword-muted hover:text-sword-fg"
+      >
+        <ArrowLeft className="h-4 w-4" /> Home
+      </Link>
+
+      <div className="rounded-2xl border border-sword-border bg-sword-surface p-6">
+        <div className="flex flex-col gap-6 md:flex-row md:items-start">
+          <Avatar
+            src={profile.avatarUrl}
+            alt={profile.displayName ?? profile.username}
+            fallback={profile.username}
+          />
+
+          <div className="flex-1">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h1 className="text-3xl font-semibold tracking-tight text-sword-fg">
+                  {profile.displayName ?? `@${profile.username}`}
+                </h1>
+                <p className="text-sm text-sword-muted">@{profile.username}</p>
+              </div>
+
+              {profile.isOwner && (
+                <Link
+                  href="/settings/profile"
+                  className="inline-flex items-center gap-1 rounded-md border border-sword-border bg-sword-bg px-3 py-1.5 text-sm text-sword-fg hover:bg-sword-surface"
+                >
+                  <Settings className="h-4 w-4" /> Edit profile
+                </Link>
+              )}
+            </div>
+
+            {profile.bio && (
+              <p className="mt-3 text-sword-fg">{profile.bio}</p>
+            )}
+
+            <SocialLinks links={profile.socialLinks} />
+
+            <div className="mt-5 flex flex-wrap gap-4 text-sm text-sword-muted">
+              <Stat label="Followers" value={profile.stats.followersCount} />
+              <Stat label="Following" value={profile.stats.followingCount} />
+              <Stat
+                label="Public entries"
+                value={
+                  profile.stats.publicPrimitives +
+                  profile.stats.publicCapabilities +
+                  profile.stats.publicCharacters +
+                  profile.stats.publicItems +
+                  profile.stats.publicRaces +
+                  profile.stats.publicBackgrounds +
+                  profile.stats.publicArchetypes
+                }
+              />
+              <Stat
+                label="Forks received"
+                value={profile.stats.totalForksReceived}
+              />
+              <Stat
+                label="Net likes"
+                value={
+                  profile.stats.totalLikesReceived -
+                  profile.stats.totalDislikesReceived
+                }
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <PublicEntriesSection userId={profile.id} />
+    </div>
+  );
+}
+
+function Avatar({
+  src,
+  alt,
+  fallback,
+}: {
+  src: string | null;
+  alt: string;
+  fallback: string;
+}) {
+  if (src) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return (
+      <img
+        src={src}
+        alt={alt}
+        className="h-24 w-24 shrink-0 rounded-full border border-sword-border object-cover"
+      />
+    );
+  }
+  const letter = fallback[0]?.toUpperCase() ?? "?";
+  return (
+    <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full border border-sword-border bg-sword-bg text-3xl font-bold text-sword-accent">
+      {letter}
+    </div>
+  );
+}
+
+function SocialLinks({
+  links,
+}: {
+  links: {
+    twitter?: string;
+    mastodon?: string;
+    bluesky?: string;
+    discord?: string;
+    website?: string;
+    itch?: string;
+  };
+}) {
+  const entries = Object.entries(links).filter(([, v]) => !!v);
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {entries.map(([k, v]) => (
+        <a
+          key={k}
+          href={v as string}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 rounded-full border border-sword-border bg-sword-bg px-3 py-1 text-xs text-sword-fg hover:bg-sword-surface"
+        >
+          <LinkIcon className="h-3 w-3" />
+          {k}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex items-baseline gap-1">
+      <span className="font-mono text-base text-sword-fg">{value}</span>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+async function PublicEntriesSection({ userId }: { userId: string }) {
+  // Look up the user to see if they have any public entries yet.
+  // For Commit A, just show "Coming soon" — actual entry lists wire in Commit B
+  // when publishing ships.
+  const userRow = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { username: true },
+  });
+  if (!userRow) return null;
+
+  return (
+    <section className="mt-8 rounded-2xl border border-sword-border bg-sword-surface p-6">
+      <h2 className="flex items-center gap-2 text-lg font-semibold text-sword-fg">
+        <Globe className="h-5 w-5 text-sword-accent" />
+        Public entries
+      </h2>
+      <p className="mt-2 text-sm text-sword-muted">
+        Primitives, capabilities, characters, items, and templates by{" "}
+        @{userRow.username} will appear here once they publish to the Library.
+      </p>
+      <p className="mt-1 text-xs text-sword-muted">
+        Publishing ships in Phase 5 Commit B.
+      </p>
+    </section>
+  );
+}
