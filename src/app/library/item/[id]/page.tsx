@@ -160,6 +160,15 @@ export default async function LibraryItemPage({ params }: PageProps) {
       />
     );
   }
+  if (type === "EFFECT") {
+    return (
+      <EffectDetail
+        id={id}
+        currentUserId={currentUserInternalId}
+        viewerClerkId={clerkUserId}
+      />
+    );
+  }
   notFound();
 }
 
@@ -565,6 +574,173 @@ async function TemplateDetail({
                   </span>
                 </Link>
                 <ChevronRight className="size-4 text-muted-foreground" />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </DetailShell>
+  );
+}
+
+async function EffectDetail({
+  id,
+  currentUserId,
+  viewerClerkId,
+}: DetailProps & { id: string }) {
+  const row = await db.query.effects.findFirst({
+    where: (table, { eq }) => eq(table.id, id),
+    with: {
+      primitiveLinks: { with: { primitive: true } },
+      // Nested effects — children of this effect (recursive, 1 level)
+      nestedAsParent: {
+        with: {
+          childEffect: {
+            with: {
+              primitiveLinks: { with: { primitive: true } },
+              nestedAsParent: {
+                with: {
+                  childEffect: {
+                    with: {
+                      primitiveLinks: { with: { primitive: true } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      // Effects that nest this one (parent chain, 1 level up)
+      nestedAsChild: {
+        with: {
+          parentEffect: true,
+        },
+      },
+    },
+  });
+  if (!row) notFound();
+
+  // Compute BU total
+  let buTotal = 0;
+  for (const link of row.primitiveLinks) {
+    buTotal += link.primitive.buCost * link.quantity;
+  }
+
+  const author = await resolveAuthorByClerkId(row.userId);
+  const engagement = await loadEngagement("EFFECT", id, currentUserId);
+
+  // Build nested effect chain (for the "nested under" + "nests" sections)
+  const parentEffects = row.nestedAsChild.map((edge) => edge.parentEffect);
+  const childEffects = row.nestedAsParent.map((edge) => edge.childEffect);
+
+  return (
+    <DetailShell
+      backHref="/library/browse?type=EFFECT"
+      typeLabel="EFFECT"
+      name={row.name}
+      buCost={buTotal > 0 ? buTotal : null}
+      category="condition"
+      description={row.narrativeDescription || null}
+      author={author}
+      targetType="EFFECT"
+      targetId={id}
+      engagement={engagement}
+      currentUserId={currentUserId}
+    >
+      {row.tags.length > 0 && (
+        <section className="mb-5">
+          <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+            Tags
+          </h2>
+          <div className="flex flex-wrap gap-1">
+            {row.tags.map((t) => (
+              <span
+                key={t}
+                className="rounded-full bg-secondary px-2 py-0.5 text-xs"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {row.primitiveLinks.length > 0 && (
+        <section className="mb-5">
+          <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+            Composed primitives ({row.primitiveLinks.length})
+          </h2>
+          <ul className="divide-y divide-border rounded-md border border-border">
+            {row.primitiveLinks.map((link) => (
+              <li
+                key={`${link.effectId}-${link.primitiveId}`}
+                className="flex items-center justify-between gap-2 p-3 text-sm"
+              >
+                <Link
+                  href={`/library/item/PRIMITIVE:${link.primitiveId}`}
+                  className="min-w-0 flex-1 truncate hover:underline"
+                >
+                  <span className="font-semibold">{link.primitive.name}</span>
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {link.primitive.category.replace(/_/g, " ")}
+                  </span>
+                </Link>
+                <span className="shrink-0 font-mono text-xs">
+                  {link.quantity}× · {link.primitive.buCost * link.quantity} BU
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {parentEffects.length > 0 && (
+        <section className="mb-5">
+          <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+            Nested under
+          </h2>
+          <ul className="divide-y divide-border rounded-md border border-border">
+            {parentEffects.map((parent) => (
+              <li key={parent.id} className="p-3 text-sm">
+                <Link
+                  href={`/library/item/EFFECT:${parent.id}`}
+                  className="font-semibold hover:underline"
+                >
+                  {parent.name}
+                </Link>
+                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                  {parent.narrativeDescription?.slice(0, 200)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {childEffects.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+            Nests ({childEffects.length})
+          </h2>
+          <ul className="divide-y divide-border rounded-md border border-border">
+            {childEffects.map((child) => (
+              <li key={child.id} className="p-3 text-sm">
+                <Link
+                  href={`/library/item/EFFECT:${child.id}`}
+                  className="font-semibold hover:underline"
+                >
+                  {child.name}
+                </Link>
+                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                  {child.narrativeDescription?.slice(0, 200)}
+                </p>
+                {child.nestedAsParent.length > 0 && (
+                  <p className="mt-1 text-xs italic text-muted-foreground">
+                    which itself nests {child.nestedAsParent.length} effect
+                    {child.nestedAsParent.length === 1 ? "" : "s"}
+                  </p>
+                )}
               </li>
             ))}
           </ul>

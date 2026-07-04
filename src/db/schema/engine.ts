@@ -248,3 +248,34 @@ export const capabilityEffects = pgTable(
     index("capability_effects_effect_id_idx").on(table.effectId),
   ],
 );
+
+// =============================================================================
+// Nested effects — an Effect can contain other Effects (per Notion schema):
+//   Effect Template (v1) §2.Construction → "Effects (1–n)"
+// This table enables recursive effect composition: e.g. "Abyssal Despair"
+// → nests "Shattered Composure" which itself nests "Vertigo Spasms".
+// =============================================================================
+
+export const effectEffects = pgTable(
+  "effect_effects",
+  {
+    parentEffectId: uuid("parent_effect_id")
+      .notNull()
+      .references(() => effects.id, { onDelete: "cascade" }),
+    childEffectId: uuid("child_effect_id")
+      .notNull()
+      .references(() => effects.id, { onDelete: "cascade" }),
+    sortOrder: integer("sort_order").notNull().default(0),
+    slotLabel: text("slot_label"),
+    notes: text("notes"),
+    ...timestamps,
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.parentEffectId, table.childEffectId],
+      name: "effect_effects_pk",
+    }),
+    index("effect_effects_parent_idx").on(table.parentEffectId),
+    index("effect_effects_child_idx").on(table.childEffectId),
+  ],
+);

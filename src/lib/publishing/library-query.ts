@@ -37,6 +37,8 @@ import {
   capabilities,
   capabilityPrimitives,
   characters,
+  effectPrimitives,
+  effects,
   forkAggregates,
   primitives,
   reactionAggregates,
@@ -47,6 +49,7 @@ export type LibrarySort = "LIKES" | "RECENT" | "FORKS" | "ALPHABETICAL";
 export type LibraryTargetType =
   | "PRIMITIVE"
   | "CAPABILITY"
+  | "EFFECT"
   | "CHARACTER"
   | "ITEM"
   | "RACE_TEMPLATE"
@@ -114,6 +117,9 @@ export async function queryLibrary(q: LibraryQuery): Promise<LibraryResult> {
   }
   if (wantAll || q.targetType === "CAPABILITY") {
     items.push(...(await fetchCapabilities(q)));
+  }
+  if (wantAll || q.targetType === "EFFECT") {
+    items.push(...(await fetchEffects(q)));
   }
   if (
     wantAll ||
@@ -308,6 +314,91 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
       tags: r.tags,
+    };
+  });
+}
+
+async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
+  const conditions = [eq(effects.isPublic, true)];
+
+  if (q.search) {
+    conditions.push(
+      or(
+        ilike(effects.name, `%${q.search}%`),
+        ilike(effects.narrativeDescription, `%${q.search}%`),
+      )!,
+    );
+  }
+  if (q.authorUsername) {
+    // Effects use text userId (Clerk ID format); we can't easily filter by
+    // username at the SQL level without a join. Skip for now.
+  }
+
+  const rows = await db
+    .select({
+      id: effects.id,
+      name: effects.name,
+      narrativeDescription: effects.narrativeDescription,
+      tags: effects.tags,
+      userId: effects.userId,
+      createdAt: effects.createdAt,
+    })
+    .from(effects)
+    .where(and(...conditions))
+    .limit(500);
+
+  const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
+  const engagementMap = await resolveEngagementMap(
+    rows.map((r) => `EFFECT:${r.id}`),
+  );
+
+  // Compute BU total via primitive_links (uses buCost × quantity)
+  const effectIds = rows.map((r) => r.id);
+  let buMap = new Map<string, number>();
+  if (effectIds.length > 0) {
+    const links = await db
+      .select({
+        effectId: effectPrimitives.effectId,
+        primitiveId: effectPrimitives.primitiveId,
+        quantity: effectPrimitives.quantity,
+        buCost: primitives.buCost,
+      })
+      .from(effectPrimitives)
+      .innerJoin(primitives, eq(effectPrimitives.primitiveId, primitives.id))
+      .where(inArray(effectPrimitives.effectId, effectIds));
+    for (const link of links) {
+      buMap.set(
+        link.effectId,
+        (buMap.get(link.effectId) ?? 0) + link.buCost * link.quantity,
+      );
+    }
+  }
+
+  return rows.map((r) => {
+    const author = r.userId ? authorMap.get(r.userId) : null;
+    const eng = engagementMap.get(`EFFECT:${r.id}`) ?? {
+      likes: 0,
+      dislikes: 0,
+      forks: 0,
+    };
+    return {
+      id: `EFFECT:${r.id}`,
+      targetType: "EFFECT" as const,
+      targetId: r.id,
+      name: r.name,
+      description: r.narrativeDescription || null,
+      category: null,
+      buCost: buMap.get(r.id) ?? 0,
+      authorId: r.userId ?? null,
+      authorUsername: author?.username ?? null,
+      authorDisplayName: author?.displayName ?? null,
+      authorAvatarUrl: author?.avatarUrl ?? null,
+      publishedAt: r.createdAt,
+      likesCount: eng.likes,
+      dislikesCount: eng.dislikes,
+      forkCount: eng.forks,
+      netReactions: eng.likes - eng.dislikes,
+      tags: r.tags ?? [],
     };
   });
 }

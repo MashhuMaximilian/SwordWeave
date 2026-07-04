@@ -6,6 +6,7 @@ import {
   conditionPrimitives,
   conditions,
   effectConditions,
+  effectEffects,
   effectPrimitives,
   effects,
   primitives,
@@ -86,6 +87,9 @@ export const effectsRelations = relations(effects, ({ many }) => ({
   conditionLinks: many(effectConditions),
   capabilityLinks: many(capabilityEffects),
   itemLinks: many(itemEffects),
+  // Nested effects — effects that nest this effect as a parent or child
+  nestedAsParent: many(effectEffects, { relationName: "effect_parent" }),
+  nestedAsChild: many(effectEffects, { relationName: "effect_child" }),
 }));
 
 export const effectPrimitivesRelations = relations(
@@ -151,6 +155,22 @@ export const capabilityEffectsRelations = relations(
     effect: one(effects, {
       fields: [capabilityEffects.effectId],
       references: [effects.id],
+    }),
+  }),
+);
+
+export const effectEffectsRelations = relations(
+  effectEffects,
+  ({ one }) => ({
+    parentEffect: one(effects, {
+      fields: [effectEffects.parentEffectId],
+      references: [effects.id],
+      relationName: "effect_parent",
+    }),
+    childEffect: one(effects, {
+      fields: [effectEffects.childEffectId],
+      references: [effects.id],
+      relationName: "effect_child",
     }),
   }),
 );

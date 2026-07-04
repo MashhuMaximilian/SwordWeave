@@ -153,6 +153,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
             ["ALL", "All"],
             ["PRIMITIVE", "Primitives"],
             ["CAPABILITY", "Capabilities"],
+            ["EFFECT", "Effects"],
             ["RACE_TEMPLATE", "Races"],
             ["BACKGROUND_TEMPLATE", "Backgrounds"],
             ["ARCHETYPE_TEMPLATE", "Archetypes"],
