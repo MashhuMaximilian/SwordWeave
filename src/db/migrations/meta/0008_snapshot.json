@@ -1,6 +1,6 @@
 {
-  "id": "3e9a4dff-3b39-4ffc-bce7-e1a1d376da69",
-  "prevId": "f3169a0f-73d6-4d28-ad41-a316c6a2659c",
+  "id": "11c3e65e-3de0-406c-a676-7a2c3de02c70",
+  "prevId": "3e9a4dff-3b39-4ffc-bce7-e1a1d376da69",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -3763,7 +3763,12 @@
         "CONDITION",
         "DEFENSE",
         "STRUCTURAL",
-        "SHEET_AUGMENT"
+        "SHEET_AUGMENT",
+        "HERITAGE_AUGMENT",
+        "BACKGROUND_AUGMENT",
+        "CHARACTER_SHEET_AUGMENT",
+        "PRACTICE_PROGRESSION_AUGMENT",
+        "ITEM_AUGMENT"
       ]
     },
     "public.source_type": {

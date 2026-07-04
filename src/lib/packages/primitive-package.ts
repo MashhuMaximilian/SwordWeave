@@ -15,6 +15,11 @@ export const primitiveCategories = [
   "DEFENSE",
   "STRUCTURAL",
   "SHEET_AUGMENT",
+  "HERITAGE_AUGMENT",
+  "BACKGROUND_AUGMENT",
+  "CHARACTER_SHEET_AUGMENT",
+  "PRACTICE_PROGRESSION_AUGMENT",
+  "ITEM_AUGMENT",
 ] as const;
 
 export type PrimitiveCategoryValue = (typeof primitiveCategories)[number];

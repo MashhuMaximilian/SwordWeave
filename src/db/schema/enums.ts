@@ -12,6 +12,11 @@ export const primitiveCategoryEnum = pgEnum("primitive_category", [
   "DEFENSE",
   "STRUCTURAL",
   "SHEET_AUGMENT",
+  "HERITAGE_AUGMENT",
+  "BACKGROUND_AUGMENT",
+  "CHARACTER_SHEET_AUGMENT",
+  "PRACTICE_PROGRESSION_AUGMENT",
+  "ITEM_AUGMENT",
 ]);
 
 export const capabilityPrimitiveRoleEnum = pgEnum("capability_primitive_role", [

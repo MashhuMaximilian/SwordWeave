@@ -12,7 +12,7 @@ import {
 import { timestamps } from "./common";
 import { itemRarityEnum, itemTypeEnum } from "./enums";
 import { entities } from "./entities";
-import { capabilities, effects } from "./engine";
+import { capabilities, effects, primitives } from "./engine";
 
 export const items = pgTable(
   "items",
@@ -118,5 +118,31 @@ export const entityInventory = pgTable(
     index("entity_inventory_entity_id_idx").on(table.entityId),
     index("entity_inventory_item_id_idx").on(table.itemId),
     index("entity_inventory_equipped_idx").on(table.isEquipped),
+  ],
+);
+
+// =============================================================================
+// Phase 4: item_primitives junction (item -> primitives linkage)
+// =============================================================================
+
+export const itemPrimitives = pgTable(
+  "item_primitives",
+  {
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    primitiveId: integer("primitive_id")
+      .notNull()
+      .references(() => primitives.id, { onDelete: "restrict" }),
+    sortOrder: integer("sort_order").notNull().default(0),
+    ...timestamps,
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.itemId, table.primitiveId],
+      name: "item_primitives_pk",
+    }),
+    index("item_primitives_item_id_idx").on(table.itemId),
+    index("item_primitives_primitive_id_idx").on(table.primitiveId),
   ],
 );

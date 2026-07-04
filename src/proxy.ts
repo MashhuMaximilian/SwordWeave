@@ -5,11 +5,18 @@ const isProtectedRoute = createRouteMatcher([
   "/monsters(.*)",
   "/items(.*)",
   "/admin(.*)",
+  "/sandbox/builds(.*)",
+  "/sandbox/items(.*)",
+  "/sandbox/characters(.*)",
 ]);
 
 const isProtectedWriteApi = createRouteMatcher([
   "/api/effects(.*)",
   "/api/primitives/import(.*)",
+  "/api/items(.*)",
+  "/api/characters(.*)",
+  "/api/builds(.*)",
+  "/api/templates(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, request) => {

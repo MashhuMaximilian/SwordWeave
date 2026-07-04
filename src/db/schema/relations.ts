@@ -15,14 +15,33 @@ import {
   entityInventory,
   itemCapabilities,
   itemEffects,
+  itemPrimitives,
   items,
 } from "./items";
+import {
+  buildCapabilities,
+  builds,
+  characterCapabilities,
+  characterItems,
+  characterPrimitives,
+  characters,
+  templateCapabilities,
+  templatePrimitives,
+  templates,
+} from "./characters";
+
+// =============================================================================
+// Engine relations
+// =============================================================================
 
 export const primitivesRelations = relations(primitives, ({ many }) => ({
   conditionLinks: many(conditionPrimitives),
   effectLinks: many(effectPrimitives),
   capabilityLinks: many(capabilityPrimitives),
   entityLinks: many(entityPrimitives),
+  characterLinks: many(characterPrimitives),
+  templateLinks: many(templatePrimitives),
+  itemLinks: many(itemPrimitives),
 }));
 
 export const conditionsRelations = relations(conditions, ({ many }) => ({
@@ -84,6 +103,9 @@ export const capabilitiesRelations = relations(capabilities, ({ many }) => ({
   effectLinks: many(capabilityEffects),
   entityLinks: many(entityCapabilities),
   itemLinks: many(itemCapabilities),
+  characterLinks: many(characterCapabilities),
+  templateLinks: many(templateCapabilities),
+  buildLinks: many(buildCapabilities),
 }));
 
 export const capabilityPrimitivesRelations = relations(
@@ -113,6 +135,10 @@ export const capabilityEffectsRelations = relations(
     }),
   }),
 );
+
+// =============================================================================
+// Entity relations (legacy)
+// =============================================================================
 
 export const entitiesRelations = relations(entities, ({ many }) => ({
   primitiveLinks: many(entityPrimitives),
@@ -148,11 +174,31 @@ export const entityCapabilitiesRelations = relations(
   }),
 );
 
+// =============================================================================
+// Item relations
+// =============================================================================
+
 export const itemsRelations = relations(items, ({ many }) => ({
   capabilityLinks: many(itemCapabilities),
   effectLinks: many(itemEffects),
+  primitiveLinks: many(itemPrimitives),
   inventoryLinks: many(entityInventory),
+  characterLinks: many(characterItems),
 }));
+
+export const itemPrimitivesRelations = relations(
+  itemPrimitives,
+  ({ one }) => ({
+    item: one(items, {
+      fields: [itemPrimitives.itemId],
+      references: [items.id],
+    }),
+    primitive: one(primitives, {
+      fields: [itemPrimitives.primitiveId],
+      references: [primitives.id],
+    }),
+  }),
+);
 
 export const itemCapabilitiesRelations = relations(
   itemCapabilities,
@@ -189,6 +235,126 @@ export const entityInventoryRelations = relations(
     item: one(items, {
       fields: [entityInventory.itemId],
       references: [items.id],
+    }),
+  }),
+);
+
+// =============================================================================
+// Character relations (Phase 4)
+// =============================================================================
+
+export const charactersRelations = relations(characters, ({ many }) => ({
+  primitiveLinks: many(characterPrimitives),
+  capabilityLinks: many(characterCapabilities),
+  itemLinks: many(characterItems),
+}));
+
+export const characterPrimitivesRelations = relations(
+  characterPrimitives,
+  ({ one }) => ({
+    character: one(characters, {
+      fields: [characterPrimitives.characterId],
+      references: [characters.id],
+    }),
+    primitive: one(primitives, {
+      fields: [characterPrimitives.primitiveId],
+      references: [primitives.id],
+    }),
+  }),
+);
+
+export const characterCapabilitiesRelations = relations(
+  characterCapabilities,
+  ({ one }) => ({
+    character: one(characters, {
+      fields: [characterCapabilities.characterId],
+      references: [characters.id],
+    }),
+    capability: one(capabilities, {
+      fields: [characterCapabilities.capabilityId],
+      references: [capabilities.id],
+    }),
+  }),
+);
+
+export const characterItemsRelations = relations(characterItems, ({ one }) => ({
+  character: one(characters, {
+    fields: [characterItems.characterId],
+    references: [characters.id],
+  }),
+  item: one(items, {
+    fields: [characterItems.itemId],
+    references: [items.id],
+  }),
+}));
+
+// =============================================================================
+// Template relations (Phase 4)
+// =============================================================================
+
+export const templatesRelations = relations(templates, ({ many }) => ({
+  primitiveLinks: many(templatePrimitives),
+  capabilityLinks: many(templateCapabilities),
+  raceBuilds: many(builds, { relationName: "build_race" }),
+  backgroundBuilds: many(builds, { relationName: "build_background" }),
+}));
+
+export const templatePrimitivesRelations = relations(
+  templatePrimitives,
+  ({ one }) => ({
+    template: one(templates, {
+      fields: [templatePrimitives.templateId],
+      references: [templates.id],
+    }),
+    primitive: one(primitives, {
+      fields: [templatePrimitives.primitiveId],
+      references: [primitives.id],
+    }),
+  }),
+);
+
+export const templateCapabilitiesRelations = relations(
+  templateCapabilities,
+  ({ one }) => ({
+    template: one(templates, {
+      fields: [templateCapabilities.templateId],
+      references: [templates.id],
+    }),
+    capability: one(capabilities, {
+      fields: [templateCapabilities.capabilityId],
+      references: [capabilities.id],
+    }),
+  }),
+);
+
+// =============================================================================
+// Build relations (Phase 4)
+// =============================================================================
+
+export const buildsRelations = relations(builds, ({ many, one }) => ({
+  capabilityLinks: many(buildCapabilities),
+  race: one(templates, {
+    fields: [builds.raceId],
+    references: [templates.id],
+    relationName: "build_race",
+  }),
+  background: one(templates, {
+    fields: [builds.backgroundId],
+    references: [templates.id],
+    relationName: "build_background",
+  }),
+}));
+
+export const buildCapabilitiesRelations = relations(
+  buildCapabilities,
+  ({ one }) => ({
+    build: one(builds, {
+      fields: [buildCapabilities.buildId],
+      references: [builds.id],
+    }),
+    capability: one(capabilities, {
+      fields: [buildCapabilities.capabilityId],
+      references: [capabilities.id],
     }),
   }),
 );
