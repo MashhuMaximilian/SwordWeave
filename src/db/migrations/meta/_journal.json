@@ -85,6 +85,13 @@
       "when": 1783196871168,
       "tag": "0011_phase5_nested_effects",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1783198329585,
+      "tag": "0012_rich_crystal",
+      "breakpoints": true
     }
   ]
 }

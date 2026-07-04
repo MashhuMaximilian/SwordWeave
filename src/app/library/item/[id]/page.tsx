@@ -588,14 +588,22 @@ async function EffectDetail({
   currentUserId,
   viewerClerkId,
 }: DetailProps & { id: string }) {
-  // Step 1: load the effect + its primitive links (one shallow query)
-  const row = await db.query.effects.findFirst({
+  // Step 1: load the effect + its primitive links.
+  // Use raw select() instead of db.query.effects.findFirst({ with: ... }) —
+  // Drizzle's relational query API auto-includes ALL relations defined on
+  // `effects` (including nestedAsParent/nestedAsChild self-relations),
+  // which makes it recurse into a deeply-nested LATERAL chain that Postgres
+  // rejects with "column ... does not exist" because non-LATERAL subqueries
+  // can't reference outer columns.
+  const effectRow = await db.query.effects.findFirst({
     where: (table, { eq }) => eq(table.id, id),
-    with: {
-      primitiveLinks: { with: { primitive: true } },
-    },
   });
-  if (!row) notFound();
+  if (!effectRow) notFound();
+
+  const primitiveLinks = await db.query.effectPrimitives.findMany({
+    where: (table, { eq }) => eq(table.effectId, id),
+    with: { primitive: true },
+  });
 
   // Step 2: separately load children (this effect as parent) — 1 level
   const childEdges = await db.query.effectEffects.findMany({
@@ -619,11 +627,11 @@ async function EffectDetail({
 
   // Compute BU total
   let buTotal = 0;
-  for (const link of row.primitiveLinks) {
+  for (const link of primitiveLinks) {
     buTotal += link.primitive.buCost * link.quantity;
   }
 
-  const author = await resolveAuthorByClerkId(row.userId);
+  const author = await resolveAuthorByClerkId(effectRow.userId);
   const engagement = await loadEngagement("EFFECT", id, currentUserId);
 
   const parentEffects = parentEdges.map((edge) => edge.parentEffect);
@@ -633,23 +641,23 @@ async function EffectDetail({
     <DetailShell
       backHref="/library/browse?type=EFFECT"
       typeLabel="EFFECT"
-      name={row.name}
+      name={effectRow.name}
       buCost={buTotal > 0 ? buTotal : null}
       category="condition"
-      description={row.narrativeDescription || null}
+      description={effectRow.narrativeDescription || null}
       author={author}
       targetType="EFFECT"
       targetId={id}
       engagement={engagement}
       currentUserId={currentUserId}
     >
-      {row.tags.length > 0 && (
+      {effectRow.tags.length > 0 && (
         <section className="mb-5">
           <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
             Tags
           </h2>
           <div className="flex flex-wrap gap-1">
-            {row.tags.map((t) => (
+            {effectRow.tags.map((t) => (
               <span
                 key={t}
                 className="rounded-full bg-secondary px-2 py-0.5 text-xs"
@@ -661,13 +669,13 @@ async function EffectDetail({
         </section>
       )}
 
-      {row.primitiveLinks.length > 0 && (
+      {primitiveLinks.length > 0 && (
         <section className="mb-5">
           <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
-            Composed primitives ({row.primitiveLinks.length})
+            Composed primitives ({primitiveLinks.length})
           </h2>
           <ul className="divide-y divide-border rounded-md border border-border">
-            {row.primitiveLinks.map((link) => (
+            {primitiveLinks.map((link) => (
               <li
                 key={`${link.effectId}-${link.primitiveId}`}
                 className="flex items-center justify-between gap-2 p-3 text-sm"

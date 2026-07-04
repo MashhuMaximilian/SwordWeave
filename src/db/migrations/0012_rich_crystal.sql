@@ -1,0 +1,1 @@
+ALTER TYPE "public"."publish_target_type" ADD VALUE 'EFFECT' BEFORE 'RACE_TEMPLATE';
