@@ -24,6 +24,18 @@ import { users } from "@/db/schema/profiles";
 export const runtime = "nodejs"; // need Node crypto, not Edge
 export const dynamic = "force-dynamic";
 
+// Clerk's @clerk/nextjs/webhooks reads CLERK_WEBHOOK_SIGNING_SECRET specifically.
+// We also accept CLERK_WEBHOOK_SECRET as a friendlier alias so users can paste
+// either name on Vercel without this breaking silently.
+if (!process.env["CLERK_WEBHOOK_SIGNING_SECRET"] && process.env["CLERK_WEBHOOK_SECRET"]) {
+  process.env["CLERK_WEBHOOK_SIGNING_SECRET"] = process.env["CLERK_WEBHOOK_SECRET"];
+}
+
+if (!process.env["CLERK_SECRET_KEY"] && process.env["CLERK_SECRET_KEY"]) {
+  // already set, but ensures @clerk/nextjs sees it for any JWT verification
+  process.env["CLERK_SECRET_KEY"] = process.env["CLERK_SECRET_KEY"];
+}
+
 interface ClerkUsernameJSON {
   username: string | null;
 }
