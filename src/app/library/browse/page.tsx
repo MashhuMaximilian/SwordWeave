@@ -14,6 +14,7 @@ import {
   type LibraryTargetType,
 } from "@/lib/publishing/library-query";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
+import { Markdown } from "@/components/ui/markdown";
 import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 
@@ -331,9 +332,9 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
                 </header>
 
                 {item.description && (
-                  <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">
-                    {item.description}
-                  </p>
+                  <div className="mt-3 line-clamp-3 text-sm text-muted-foreground [&_p]:m-0 [&_strong]:font-semibold [&_strong]:text-foreground/80 [&_em]:italic [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_a]:underline [&_a]:text-primary">
+                    <Markdown>{item.description}</Markdown>
+                  </div>
                 )}
 
                 {item.tags.length > 0 && (
