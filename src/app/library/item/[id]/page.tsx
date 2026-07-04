@@ -2,27 +2,30 @@
 // /library/item/[id] — public detail view for a library item
 // id format: `<type>:<id>` e.g. "PRIMITIVE:42", "CAPABILITY:abc-uuid",
 //            "RACE_TEMPLATE:def-uuid"
+//
+// Phase 5: wires up engagement data (likes/dislikes/forks), the current
+// user's reaction state, and the author → follow relationship. Markdown is
+// rendered for description fields via react-markdown.
 // =============================================================================
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  ArrowLeft,
-  ChevronRight,
-  GitFork,
-  Heart,
-  Sparkles,
-  User as UserIcon,
-} from "lucide-react";
+import { auth } from "@clerk/nextjs/server";
+import { ArrowLeft, ChevronRight, User as UserIcon } from "lucide-react";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
-  capabilities,
-  capabilityPrimitives,
-  characters,
-  primitives,
-  templates,
+  forkAggregates,
+  reactionAggregates,
+  reactions,
 } from "@/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { LikeForkBar } from "@/components/engagement/like-fork-bar";
+import { Markdown } from "@/components/ui/markdown";
+import {
+  resolveAuthorByClerkId,
+  resolveUserIdByClerkId,
+} from "@/lib/auth/author-resolver";
+import { resolveVirtualVersionId } from "@/lib/engagement/version-helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +42,78 @@ function parseCompositeId(raw: string): {
   return { type: raw.slice(0, idx), id: raw.slice(idx + 1) };
 }
 
+interface EngagementData {
+  likes: number;
+  dislikes: number;
+  forks: number;
+  net: number;
+  userReaction: "LIKE" | "DISLIKE" | null;
+}
+
+async function loadEngagement(
+  targetType: string,
+  targetId: string,
+  currentUserInternalId: string | null,
+): Promise<EngagementData> {
+  const versionId = resolveVirtualVersionId(
+    targetType as never,
+    targetId,
+  );
+
+  const [rxAgg, fkAgg, userRx] = await Promise.all([
+    db
+      .select({
+        likes: sql<number>`SUM(${reactionAggregates.likesCount})::int`,
+        dislikes: sql<number>`SUM(${reactionAggregates.dislikesCount})::int`,
+      })
+      .from(reactionAggregates)
+      .where(
+        and(
+          eq(reactionAggregates.targetType, targetType as never),
+          eq(reactionAggregates.targetId, targetId),
+        ),
+      )
+      .then((r) => ({
+        likes: Number(r[0]?.likes ?? 0),
+        dislikes: Number(r[0]?.dislikes ?? 0),
+      })),
+    db
+      .select({
+        count: sql<number>`SUM(${forkAggregates.forkCount})::int`,
+      })
+      .from(forkAggregates)
+      .where(
+        and(
+          eq(forkAggregates.sourceTargetType, targetType as never),
+          eq(forkAggregates.sourceTargetId, targetId),
+        ),
+      )
+      .then((r) => Number(r[0]?.count ?? 0)),
+    currentUserInternalId
+      ? db
+          .select({ kind: reactions.kind })
+          .from(reactions)
+          .where(
+            and(
+              eq(reactions.userId, currentUserInternalId),
+              eq(reactions.targetType, targetType as never),
+              eq(reactions.targetId, targetId),
+              eq(reactions.versionId, versionId),
+            ),
+          )
+          .then((r) => r[0]?.kind ?? null)
+      : Promise.resolve(null),
+  ]);
+
+  return {
+    likes: rxAgg.likes,
+    dislikes: rxAgg.dislikes,
+    forks: fkAgg,
+    net: rxAgg.likes - rxAgg.dislikes,
+    userReaction: userRx as "LIKE" | "DISLIKE" | null,
+  };
+}
+
 export default async function LibraryItemPage({ params }: PageProps) {
   const { id: rawId } = await params;
   const parsed = parseCompositeId(decodeURIComponent(rawId));
@@ -46,25 +121,51 @@ export default async function LibraryItemPage({ params }: PageProps) {
 
   const { type, id } = parsed;
 
+  // Resolve current user (Clerk auth) once
+  const { userId: clerkUserId } = await auth();
+  const currentUserInternalId = clerkUserId
+    ? await resolveUserIdByClerkId(clerkUserId)
+    : null;
+
   if (type === "PRIMITIVE") {
     const numericId = Number(id);
     if (!Number.isFinite(numericId)) notFound();
-    return <PrimitiveDetail id={numericId} />;
+    return (
+      <PrimitiveDetail
+        id={numericId}
+        currentUserId={currentUserInternalId}
+        viewerClerkId={clerkUserId}
+      />
+    );
   }
   if (type === "CAPABILITY") {
-    return <CapabilityDetail id={id} />;
+    return (
+      <CapabilityDetail
+        id={id}
+        currentUserId={currentUserInternalId}
+        viewerClerkId={clerkUserId}
+      />
+    );
   }
   if (
     type === "RACE_TEMPLATE" ||
     type === "BACKGROUND_TEMPLATE" ||
     type === "ARCHETYPE_TEMPLATE"
   ) {
-    return <TemplateDetail id={id} />;
-  }
-  if (type === "CHARACTER") {
-    return <CharacterDetail id={id} />;
+    return (
+      <TemplateDetail
+        id={id}
+        currentUserId={currentUserInternalId}
+        viewerClerkId={clerkUserId}
+      />
+    );
   }
   notFound();
+}
+
+interface DetailProps {
+  currentUserId: string | null;
+  viewerClerkId: string | null;
 }
 
 function DetailShell({
@@ -76,7 +177,10 @@ function DetailShell({
   category,
   description,
   author,
+  targetType,
+  targetId,
   engagement,
+  currentUserId,
 }: {
   children: React.ReactNode;
   backHref: string;
@@ -85,19 +189,16 @@ function DetailShell({
   buCost: number | null;
   category: string | null;
   description: string | null;
-  author:
-    | {
-        username: string;
-        displayName: string | null;
-        avatarUrl: string | null;
-      }
-    | null
-    | undefined;
-  engagement: {
-    likes: number;
-    forks: number;
-    net: number;
-  };
+  author: {
+    id: string;
+    username: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  } | null;
+  targetType: string;
+  targetId: string;
+  engagement: EngagementData;
+  currentUserId: string | null;
 }) {
   return (
     <div className="mx-auto w-full max-w-4xl px-5 py-8">
@@ -115,14 +216,14 @@ function DetailShell({
             {category ? ` · ${category.replace(/_/g, " ")}` : ""}
           </p>
           <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
-            <h1 className="text-3xl font-semibold">{name}</h1>
+            <h1 className="break-words text-3xl font-semibold">{name}</h1>
             {buCost !== null && (
               <span className="rounded-full bg-primary/10 px-3 py-1 font-mono text-sm font-semibold text-primary">
                 {buCost} BU
               </span>
             )}
           </div>
-          {author?.username && (
+          {author && (
             <Link
               href={`/u/${author.username}`}
               className="mt-3 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
@@ -149,49 +250,53 @@ function DetailShell({
             <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
               Description
             </h2>
-            <p className="whitespace-pre-wrap text-sm leading-7">
-              {description}
-            </p>
+            <div className="prose prose-invert prose-sm max-w-none break-words text-sm leading-7">
+              <Markdown>{description}</Markdown>
+            </div>
           </section>
         )}
 
         <div className="mt-5">{children}</div>
 
-        <footer className="mt-6 flex flex-wrap items-center gap-4 border-t border-border pt-4 text-sm text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <Heart className="size-4" />
-            <span className="font-mono">{engagement.likes}</span> likes
-          </span>
-          <span className="flex items-center gap-1.5">
-            <GitFork className="size-4" />
-            <span className="font-mono">{engagement.forks}</span> forks
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Sparkles className="size-4" />
-            <span className="font-mono">
-              {engagement.net >= 0 ? "+" : ""}
-              {engagement.net}
-            </span>{" "}
-            net
-          </span>
+        <footer className="mt-6 border-t border-border pt-4">
+          <LikeForkBar
+            targetType={
+              targetType as
+                | "PRIMITIVE"
+                | "CAPABILITY"
+                | "CHARACTER"
+                | "ITEM"
+                | "RACE_TEMPLATE"
+                | "BACKGROUND_TEMPLATE"
+                | "ARCHETYPE_TEMPLATE"
+            }
+            targetId={targetId}
+            initialLikes={engagement.likes}
+            initialDislikes={engagement.dislikes}
+            initialForks={engagement.forks}
+            initialUserReaction={engagement.userReaction}
+            authorId={author?.id ?? null}
+            authorUsername={author?.username ?? null}
+            currentUserId={currentUserId}
+          />
         </footer>
       </article>
     </div>
   );
 }
 
-async function PrimitiveDetail({ id }: { id: number }) {
+async function PrimitiveDetail({
+  id,
+  currentUserId,
+  viewerClerkId,
+}: DetailProps & { id: number }) {
   const row = await db.query.primitives.findFirst({
     where: (table, { eq }) => eq(table.id, id),
   });
   if (!row) notFound();
 
-  const author = row.userId
-    ? await db.query.users.findFirst({
-        where: (table, { eq }) => eq(table.id, row.userId!),
-        columns: { username: true, displayName: true, avatarUrl: true },
-      })
-    : null;
+  const author = await resolveAuthorByClerkId(row.userId);
+  const engagement = await loadEngagement("PRIMITIVE", String(id), currentUserId);
 
   return (
     <DetailShell
@@ -201,16 +306,11 @@ async function PrimitiveDetail({ id }: { id: number }) {
       buCost={row.buCost}
       category={row.category}
       description={row.narrativeRule || row.mechanicalOutputText || null}
-      author={
-        author
-          ? {
-              username: author.username,
-              displayName: author.displayName,
-              avatarUrl: author.avatarUrl,
-            }
-          : null
-      }
-      engagement={{ likes: 0, forks: 0, net: 0 }}
+      author={author}
+      targetType="PRIMITIVE"
+      targetId={String(id)}
+      engagement={engagement}
+      currentUserId={currentUserId}
     >
       <section>
         <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
@@ -257,7 +357,11 @@ async function PrimitiveDetail({ id }: { id: number }) {
   );
 }
 
-async function CapabilityDetail({ id }: { id: string }) {
+async function CapabilityDetail({
+  id,
+  currentUserId,
+  viewerClerkId,
+}: DetailProps & { id: string }) {
   const row = await db.query.capabilities.findFirst({
     where: (table, { eq }) => eq(table.id, id),
     with: {
@@ -268,11 +372,12 @@ async function CapabilityDetail({ id }: { id: string }) {
   });
   if (!row) notFound();
 
-  // Compute BU total
   let buTotal = 0;
   for (const link of row.primitiveLinks) {
     buTotal += link.primitive.buCost * link.quantity;
   }
+
+  const engagement = await loadEngagement("CAPABILITY", id, currentUserId);
 
   return (
     <DetailShell
@@ -283,7 +388,10 @@ async function CapabilityDetail({ id }: { id: string }) {
       category={row.type}
       description={row.verboseDescription || null}
       author={null}
-      engagement={{ likes: 0, forks: 0, net: 0 }}
+      targetType="CAPABILITY"
+      targetId={id}
+      engagement={engagement}
+      currentUserId={currentUserId}
     >
       <section className="grid gap-3 sm:grid-cols-2">
         <DataField label="Type" value={row.type} />
@@ -342,7 +450,11 @@ async function CapabilityDetail({ id }: { id: string }) {
   );
 }
 
-async function TemplateDetail({ id }: { id: string }) {
+async function TemplateDetail({
+  id,
+  currentUserId,
+  viewerClerkId,
+}: DetailProps & { id: string }) {
   const row = await db.query.templates.findFirst({
     where: (table, { eq }) => eq(table.id, id),
     with: {
@@ -359,12 +471,20 @@ async function TemplateDetail({ id }: { id: string }) {
         ? "BACKGROUND"
         : "ARCHETYPE";
 
-  const author = row.userId
-    ? await db.query.users.findFirst({
-        where: (table, { eq }) => eq(table.id, row.userId!),
-        columns: { username: true, displayName: true, avatarUrl: true },
-      })
-    : null;
+  const author = await resolveAuthorByClerkId(row.userId);
+
+  const targetTypeForEngagement =
+    row.kind === "RACE"
+      ? "RACE_TEMPLATE"
+      : row.kind === "BACKGROUND"
+        ? "BACKGROUND_TEMPLATE"
+        : "ARCHETYPE_TEMPLATE";
+
+  const engagement = await loadEngagement(
+    targetTypeForEngagement,
+    id,
+    currentUserId,
+  );
 
   return (
     <DetailShell
@@ -374,16 +494,11 @@ async function TemplateDetail({ id }: { id: string }) {
       buCost={null}
       category={row.kind}
       description={row.description || null}
-      author={
-        author
-          ? {
-              username: author.username,
-              displayName: author.displayName,
-              avatarUrl: author.avatarUrl,
-            }
-          : null
-      }
-      engagement={{ likes: 0, forks: 0, net: 0 }}
+      author={author}
+      targetType={targetTypeForEngagement}
+      targetId={id}
+      engagement={engagement}
+      currentUserId={currentUserId}
     >
       {row.imageUrl && (
         <img
@@ -398,7 +513,9 @@ async function TemplateDetail({ id }: { id: string }) {
           <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
             Suggested traits
           </h2>
-          <p className="whitespace-pre-wrap text-sm">{row.suggestedTraits}</p>
+          <div className="prose prose-invert prose-sm max-w-none break-words text-sm leading-7">
+            <Markdown>{row.suggestedTraits}</Markdown>
+          </div>
         </section>
       )}
 
@@ -439,43 +556,20 @@ async function TemplateDetail({ id }: { id: string }) {
                 key={`${link.templateId}-${link.capabilityId}`}
                 className="flex items-center justify-between gap-2 p-3 text-sm"
               >
-                <span className="truncate font-semibold">
-                  capability {link.capabilityId.slice(0, 8)}
-                </span>
+                <Link
+                  href={`/library/item/CAPABILITY:${link.capabilityId}`}
+                  className="min-w-0 flex-1 truncate hover:underline"
+                >
+                  <span className="font-semibold">
+                    capability {link.capabilityId.slice(0, 8)}
+                  </span>
+                </Link>
                 <ChevronRight className="size-4 text-muted-foreground" />
               </li>
             ))}
           </ul>
         </section>
       )}
-    </DetailShell>
-  );
-}
-
-async function CharacterDetail({ id }: { id: string }) {
-  const row = await db.query.characters.findFirst({
-    where: (table, { eq }) => eq(table.id, id),
-  });
-  if (!row) notFound();
-  return (
-    <DetailShell
-      backHref="/library/browse?type=CHARACTER"
-      typeLabel="CHARACTER"
-      name={row.name}
-      buCost={null}
-      category={row.size}
-      description={row.notes || null}
-      author={null}
-      engagement={{ likes: 0, forks: 0, net: 0 }}
-    >
-      <section className="grid gap-3 sm:grid-cols-3">
-        <DataField label="Level" value={String(row.level)} />
-        <DataField label="Size" value={row.size} />
-        <DataField
-          label="Attributes"
-          value={`P${row.attrPhysical} M${row.attrMental} C${row.attrMagical}`}
-        />
-      </section>
     </DetailShell>
   );
 }

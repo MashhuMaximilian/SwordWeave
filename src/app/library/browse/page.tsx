@@ -4,16 +4,7 @@
 // =============================================================================
 
 import Link from "next/link";
-import {
-  ArrowRight,
-  ChevronDown,
-  ChevronUp,
-  GitFork,
-  Heart,
-  Search,
-  Sparkles,
-  User as UserIcon,
-} from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp, Search, User as UserIcon } from "lucide-react";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db/client";
 import {
@@ -22,6 +13,9 @@ import {
   type LibrarySort,
   type LibraryTargetType,
 } from "@/lib/publishing/library-query";
+import { LikeForkBar } from "@/components/engagement/like-fork-bar";
+import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
+import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +57,21 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
     limit: PAGE_SIZE,
     offset,
   });
+
+  // Resolve current user (Clerk auth) and per-item engagement state
+  const { userId: clerkUserId } = await auth();
+  const currentUserInternalId = clerkUserId
+    ? await resolveUserIdByClerkId(clerkUserId)
+    : null;
+  const engagement = await loadLibraryEngagement(
+    currentUserInternalId,
+    result.items.map((it) => ({
+      id: it.id,
+      targetType: it.targetType,
+      targetId: it.targetId,
+      authorId: it.authorId,
+    })),
+  );
 
   const totalPages = Math.ceil(result.total / PAGE_SIZE);
 
@@ -362,31 +371,36 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
                   </Link>
                 )}
 
-                <footer className="mt-auto flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
-                  <Link
-                    href={`/library/item/${item.id}`}
-                    className="font-medium text-primary hover:underline"
-                  >
-                    View details
-                    <ArrowRight className="ml-1 inline size-3" />
-                  </Link>
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1" title="Likes">
-                      <Heart className="size-3.5" />
-                      <span className="font-mono">{item.likesCount}</span>
-                    </span>
-                    <span className="flex items-center gap-1" title="Forks">
-                      <GitFork className="size-3.5" />
-                      <span className="font-mono">{item.forkCount}</span>
-                    </span>
-                    <span
-                      className="flex items-center gap-1"
-                      title="Net reactions"
+                <footer className="mt-auto border-t border-border pt-3">
+                  <LikeForkBar
+                    targetType={
+                      item.targetType as
+                        | "PRIMITIVE"
+                        | "CAPABILITY"
+                        | "CHARACTER"
+                        | "ITEM"
+                        | "RACE_TEMPLATE"
+                        | "BACKGROUND_TEMPLATE"
+                        | "ARCHETYPE_TEMPLATE"
+                    }
+                    targetId={item.targetId}
+                    initialLikes={item.likesCount}
+                    initialDislikes={item.dislikesCount}
+                    initialForks={item.forkCount}
+                    initialUserReaction={engagement.reactions[item.id] ?? null}
+                    authorId={item.authorId}
+                    authorUsername={item.authorUsername}
+                    currentUserId={currentUserInternalId}
+                    compact
+                  />
+                  <div className="mt-2 flex items-center justify-end">
+                    <Link
+                      href={`/library/item/${item.id}`}
+                      className="text-xs font-medium text-primary hover:underline"
                     >
-                      <Sparkles className="size-3.5" />
-                      {item.netReactions >= 0 ? "+" : ""}
-                      {item.netReactions}
-                    </span>
+                      View details
+                      <ArrowRight className="ml-1 inline size-3" />
+                    </Link>
                   </div>
                 </footer>
               </article>

@@ -10,7 +10,8 @@
 // - CHARACTER: characters (user-owned or public)
 //
 // Engagement metrics are joined from reaction_aggregates / fork_aggregates
-// where available; defaults to 0 for items not yet published via Phase 5.
+// using a synthetic target_id = "<type>:<id>" key (matches the composite
+// LibraryItem.id format).
 //
 // Sort modes:
 // - LIKES (default): by likes_count - dislikes_count
@@ -74,6 +75,7 @@ export interface LibraryItem {
   category: string | null;
   /** BU cost (for primitives), or computed total (for capabilities) */
   buCost: number | null;
+  authorId: string | null;
   authorUsername: string | null;
   authorDisplayName: string | null;
   authorAvatarUrl: string | null;
@@ -108,10 +110,10 @@ export async function queryLibrary(q: LibraryQuery): Promise<LibraryResult> {
   // info (e.g., description, tags) for each item.
   const wantAll = !q.targetType;
   if (wantAll || q.targetType === "PRIMITIVE") {
-    items.push(...(await fetchPrimitives(q, sort)));
+    items.push(...(await fetchPrimitives(q)));
   }
   if (wantAll || q.targetType === "CAPABILITY") {
-    items.push(...(await fetchCapabilities(q, sort)));
+    items.push(...(await fetchCapabilities(q)));
   }
   if (
     wantAll ||
@@ -119,14 +121,21 @@ export async function queryLibrary(q: LibraryQuery): Promise<LibraryResult> {
     q.targetType === "BACKGROUND_TEMPLATE" ||
     q.targetType === "ARCHETYPE_TEMPLATE"
   ) {
-    items.push(...(await fetchTemplates(q, sort)));
+    items.push(...(await fetchTemplates(q)));
   }
 
   // Sort the merged list (since each fetch already applies some ordering)
   sortItems(items, sort);
 
-  const total = items.length;
-  const paged = items.slice(offset, offset + limit);
+  // Apply post-fetch engagement filters (uses joined aggregates)
+  const filtered = items.filter((it) => {
+    if (q.minLikes !== undefined && it.likesCount < q.minLikes) return false;
+    if (q.hasForks && it.forkCount === 0) return false;
+    return true;
+  });
+
+  const total = filtered.length;
+  const paged = filtered.slice(offset, offset + limit);
 
   return { items: paged, total, limit, offset };
 }
@@ -160,10 +169,7 @@ function sortItems(items: LibraryItem[], sort: LibrarySort) {
   }
 }
 
-async function fetchPrimitives(
-  q: LibraryQuery,
-  _sort: LibrarySort,
-): Promise<LibraryItem[]> {
+async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
   const conditions = [
     or(eq(primitives.isPublic, true), isNull(primitives.userId))!,
   ];
@@ -189,13 +195,18 @@ async function fetchPrimitives(
     .where(and(...conditions))
     .limit(500); // hard cap before in-memory filter
 
-  // Filter min-likes/hasForks in memory (engagement metrics aren't keyed
-  // for raw primitives yet — would need a join via target_id="<type>:<id>"
-  // synthetic key once Phase 5 publishes them)
   const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
+  const engagementMap = await resolveEngagementMap(
+    rows.map((r) => `PRIMITIVE:${r.id}`),
+  );
 
   return rows.map((r) => {
     const author = r.userId ? authorMap.get(r.userId) : null;
+    const eng = engagementMap.get(`PRIMITIVE:${r.id}`) ?? {
+      likes: 0,
+      dislikes: 0,
+      forks: 0,
+    };
     return {
       id: `PRIMITIVE:${r.id}`,
       targetType: "PRIMITIVE" as const,
@@ -204,23 +215,21 @@ async function fetchPrimitives(
       description: r.narrativeRule || null,
       category: r.category,
       buCost: r.buCost,
+      authorId: r.userId ?? null,
       authorUsername: author?.username ?? null,
       authorDisplayName: author?.displayName ?? null,
       authorAvatarUrl: author?.avatarUrl ?? null,
       publishedAt: r.createdAt,
-      likesCount: 0,
-      dislikesCount: 0,
-      forkCount: 0,
-      netReactions: 0,
+      likesCount: eng.likes,
+      dislikesCount: eng.dislikes,
+      forkCount: eng.forks,
+      netReactions: eng.likes - eng.dislikes,
       tags: [],
     };
   });
 }
 
-async function fetchCapabilities(
-  q: LibraryQuery,
-  _sort: LibrarySort,
-): Promise<LibraryItem[]> {
+async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
   const conditions = [eq(capabilities.isPublic, true)];
 
   if (q.search) {
@@ -271,30 +280,39 @@ async function fetchCapabilities(
     }
   }
 
-  return rows.map((r) => ({
-    id: `CAPABILITY:${r.id}`,
-    targetType: "CAPABILITY" as const,
-    targetId: r.id,
-    name: r.name,
-    description: r.verboseDescription || null,
-    category: r.type,
-    buCost: buMap.get(r.id) ?? 0,
-    authorUsername: null,
-    authorDisplayName: null,
-    authorAvatarUrl: null,
-    publishedAt: r.createdAt,
-    likesCount: 0,
-    dislikesCount: 0,
-    forkCount: 0,
-    netReactions: 0,
-    tags: r.tags,
-  }));
+  const engagementMap = await resolveEngagementMap(
+    rows.map((r) => `CAPABILITY:${r.id}`),
+  );
+
+  return rows.map((r) => {
+    const eng = engagementMap.get(`CAPABILITY:${r.id}`) ?? {
+      likes: 0,
+      dislikes: 0,
+      forks: 0,
+    };
+    return {
+      id: `CAPABILITY:${r.id}`,
+      targetType: "CAPABILITY" as const,
+      targetId: r.id,
+      name: r.name,
+      description: r.verboseDescription || null,
+      category: r.type,
+      buCost: buMap.get(r.id) ?? 0,
+      authorId: null,
+      authorUsername: null,
+      authorDisplayName: null,
+      authorAvatarUrl: null,
+      publishedAt: r.createdAt,
+      likesCount: eng.likes,
+      dislikesCount: eng.dislikes,
+      forkCount: eng.forks,
+      netReactions: eng.likes - eng.dislikes,
+      tags: r.tags,
+    };
+  });
 }
 
-async function fetchTemplates(
-  q: LibraryQuery,
-  _sort: LibrarySort,
-): Promise<LibraryItem[]> {
+async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
   const conditions = [eq(templates.isPublic, true)];
 
   if (q.targetType === "RACE_TEMPLATE") {
@@ -339,6 +357,16 @@ async function fetchTemplates(
 
   const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
 
+  // Map template kinds → composite IDs for engagement lookup
+  const targetTypeByKind: Record<string, LibraryTargetType> = {
+    RACE: "RACE_TEMPLATE",
+    BACKGROUND: "BACKGROUND_TEMPLATE",
+    ARCHETYPE: "ARCHETYPE_TEMPLATE",
+  };
+  const engagementMap = await resolveEngagementMap(
+    rows.map((r) => `${targetTypeByKind[r.kind] ?? "RACE_TEMPLATE"}:${r.id}`),
+  );
+
   return rows.map((r) => {
     const author = r.userId ? authorMap.get(r.userId) : null;
     const targetType = (() => {
@@ -353,22 +381,29 @@ async function fetchTemplates(
           return "RACE_TEMPLATE" as const;
       }
     })();
+    const compositeId = `${targetType}:${r.id}`;
+    const eng = engagementMap.get(compositeId) ?? {
+      likes: 0,
+      dislikes: 0,
+      forks: 0,
+    };
     return {
-      id: `${targetType}:${r.id}`,
+      id: compositeId,
       targetType,
       targetId: r.id,
       name: r.name,
       description: r.description,
       category: r.kind,
       buCost: null,
+      authorId: r.userId ?? null,
       authorUsername: author?.username ?? null,
       authorDisplayName: author?.displayName ?? null,
       authorAvatarUrl: author?.avatarUrl ?? null,
       publishedAt: r.createdAt,
-      likesCount: 0,
-      dislikesCount: 0,
-      forkCount: 0,
-      netReactions: 0,
+      likesCount: eng.likes,
+      dislikesCount: eng.dislikes,
+      forkCount: eng.forks,
+      netReactions: eng.likes - eng.dislikes,
       tags: [],
     };
   });
@@ -401,6 +436,96 @@ async function resolveAuthorMap(
       avatarUrl: r.avatarUrl,
     });
   }
+  return map;
+}
+
+/**
+ * Resolve engagement metrics for a list of items.
+ *
+ * Returns a Map keyed by the composite ID (`<TYPE>:<id>`).
+ * Joins reaction_aggregates + fork_aggregates across all versions of an item,
+ * grouping by the composite ID and summing across versions.
+ */
+async function resolveEngagementMap(
+  compositeIds: string[],
+): Promise<
+  Map<string, { likes: number; dislikes: number; forks: number }>
+> {
+  const map = new Map<string, { likes: number; dislikes: number; forks: number }>();
+  if (compositeIds.length === 0) return map;
+
+  // Parse composite IDs into (type, id) tuples for type-aware joins
+  const parsed = compositeIds
+    .map((cid) => {
+      const idx = cid.indexOf(":");
+      if (idx === -1) return null;
+      const type = cid.slice(0, idx);
+      const id = cid.slice(idx + 1);
+      return { cid, type, id };
+    })
+    .filter((p): p is { cid: string; type: string; id: string } => p !== null);
+
+  const uniqueIds = Array.from(new Set(parsed.map((p) => p.id)));
+  const typesByCid = new Map(parsed.map((p) => [p.cid, p.type] as const));
+
+  // Reactions: one row per (target_type, target_id, version_id). We sum across
+  // all versions to get the lifetime engagement for the de-duplicated item.
+  const reactionRows = await db
+    .select({
+      targetType: reactionAggregates.targetType,
+      targetId: reactionAggregates.targetId,
+      likesCount: sql<number>`SUM(${reactionAggregates.likesCount})::int`,
+      dislikesCount: sql<number>`SUM(${reactionAggregates.dislikesCount})::int`,
+    })
+    .from(reactionAggregates)
+    .where(inArray(reactionAggregates.targetId, uniqueIds))
+    .groupBy(reactionAggregates.targetType, reactionAggregates.targetId);
+
+  // Forks: keyed by (source_target_type, source_target_id, source_version_id).
+  const forkRows = await db
+    .select({
+      sourceTargetType: forkAggregates.sourceTargetType,
+      sourceTargetId: forkAggregates.sourceTargetId,
+      count: sql<number>`SUM(${forkAggregates.forkCount})::int`,
+    })
+    .from(forkAggregates)
+    .where(inArray(forkAggregates.sourceTargetId, uniqueIds))
+    .groupBy(forkAggregates.sourceTargetType, forkAggregates.sourceTargetId);
+
+  // Build per-(type,id) intermediate maps
+  const reactionByTypeId = new Map<
+    string,
+    { likes: number; dislikes: number }
+  >();
+  for (const r of reactionRows) {
+    reactionByTypeId.set(`${r.targetType}:${r.targetId}`, {
+      likes: Number(r.likesCount),
+      dislikes: Number(r.dislikesCount),
+    });
+  }
+  const forkByTypeId = new Map<string, number>();
+  for (const f of forkRows) {
+    forkByTypeId.set(`${f.sourceTargetType}:${f.sourceTargetId}`, Number(f.count));
+  }
+
+  // Map each composite ID → its (type, id) → look up aggregates
+  for (const cid of new Set(compositeIds)) {
+    const idx = cid.indexOf(":");
+    if (idx === -1) continue;
+    const type = cid.slice(0, idx);
+    const id = cid.slice(idx + 1);
+    const key = `${type}:${id}`;
+    const react = reactionByTypeId.get(key);
+    const forks = forkByTypeId.get(key) ?? 0;
+    if (react || forks > 0) {
+      map.set(cid, {
+        likes: react?.likes ?? 0,
+        dislikes: react?.dislikes ?? 0,
+        forks,
+      });
+    }
+  }
+
   return map;
 }
 
