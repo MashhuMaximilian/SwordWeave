@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
+import { SignInButton, SignUpButton, useUser } from "@clerk/nextjs";
 import {
   Boxes,
   FlaskConical,
@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
+import { UserMenu } from "./user-menu";
 
 const primaryNav = [
   { href: "/sandbox", label: "Sandbox", icon: FlaskConical },
@@ -67,7 +68,7 @@ function AccountControls() {
   return (
     <div className="flex min-w-0 items-center gap-2">
       {isSignedIn ? (
-        <UserButton />
+        <UserMenu />
       ) : (
         <>
         <SignInButton mode="modal">

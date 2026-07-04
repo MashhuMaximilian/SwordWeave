@@ -20,6 +20,11 @@ export interface PublicProfile {
     discord?: string;
     website?: string;
     itch?: string;
+    instagram?: string;
+    youtube?: string;
+    drivethrurpg?: string;
+    patreon?: string;
+    buymeacoffee?: string;
   };
   isAnonymized: boolean;
   createdAt: Date;

@@ -153,11 +153,15 @@ function SocialLinks({
     discord?: string;
     website?: string;
     itch?: string;
+    instagram?: string;
+    youtube?: string;
+    drivethrurpg?: string;
+    patreon?: string;
+    buymeacoffee?: string;
   };
 }) {
   const entries = Object.entries(links).filter(([, v]) => !!v);
   if (entries.length === 0) return null;
-
   return (
     <div className="mt-4 flex flex-wrap gap-2">
       {entries.map(([k, v]) => (

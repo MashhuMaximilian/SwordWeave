@@ -56,6 +56,11 @@ export const users = pgTable(
         discord?: string;
         website?: string;
         itch?: string;
+        instagram?: string;
+        youtube?: string;
+        drivethrurpg?: string;
+        patreon?: string;
+        buymeacoffee?: string;
       }>()
       .notNull()
       .default({}),

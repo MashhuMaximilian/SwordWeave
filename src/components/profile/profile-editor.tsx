@@ -14,6 +14,11 @@ interface SocialLinks {
   discord?: string;
   website?: string;
   itch?: string;
+  instagram?: string;
+  youtube?: string;
+  drivethrurpg?: string;
+  patreon?: string;
+  buymeacoffee?: string;
 }
 
 interface ProfileData {
@@ -144,6 +149,11 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
               ["mastodon", "Mastodon"],
               ["bluesky", "Bluesky"],
               ["discord", "Discord"],
+              ["instagram", "Instagram"],
+              ["youtube", "YouTube"],
+              ["drivethrurpg", "DriveThruRPG"],
+              ["patreon", "Patreon"],
+              ["buymeacoffee", "Buy Me a Coffee"],
               ["website", "Personal website"],
               ["itch", "itch.io"],
             ] as const

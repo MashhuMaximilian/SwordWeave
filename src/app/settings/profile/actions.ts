@@ -29,6 +29,11 @@ interface SocialLinksInput {
   discord?: string;
   website?: string;
   itch?: string;
+  instagram?: string;
+  youtube?: string;
+  drivethrurpg?: string;
+  patreon?: string;
+  buymeacoffee?: string;
 }
 
 const BIO_MAX = 500;
@@ -74,6 +79,27 @@ export async function updateProfile(input: {
       new URL(input.avatarUrl);
     } catch {
       return { ok: false, field: "avatarUrl", error: "Invalid avatar URL" };
+    }
+  }
+  if (input.socialLinks) {
+    for (const [platform, url] of Object.entries(input.socialLinks)) {
+      if (!url) continue;
+      try {
+        const parsed = new URL(url);
+        if (!["http:", "https:"].includes(parsed.protocol)) {
+          return {
+            ok: false,
+            field: "socialLinks",
+            error: `${platform} URL must use http or https`,
+          };
+        }
+      } catch {
+        return {
+          ok: false,
+          field: "socialLinks",
+          error: `Invalid URL for ${platform}`,
+        };
+      }
     }
   }
 
