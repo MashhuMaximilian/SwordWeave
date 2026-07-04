@@ -62,11 +62,11 @@ const categories = [
 ] as const;
 
 const costTiers = [
-  "Tier 1: Minor (1-2 BU)",
-  "Tier 2: Standard (3-5 BU)",
-  "Tier 3: Major (6-10 BU)",
-  "Tier 4: Core Axis (11-20 BU)",
-  "Tier 5: Narrative Layer (21-64+ BU)",
+  "Tier 1: Minor (4 BU anchor)",
+  "Tier 2: Standard (8 BU anchor)",
+  "Tier 3: Major (12 BU anchor)",
+  "Tier 4: Core Axis (16 BU anchor)",
+  "Tier 5: Narrative Layer (32+ BU anchor)",
 ] as const;
 
 const targetOptions: Array<{ label: string; value: ModifierTarget | string }> = [
@@ -162,7 +162,7 @@ const blankForm = {
   name: "",
   category: "VERB_TIER",
   isPublic: false,
-  costTier: "Tier 1: Minor (1-2 BU)",
+  costTier: "Tier 1: Minor (4 BU anchor)",
   buCost: "1",
   mechanicalOutputText: "",
   narrativeRule: "",

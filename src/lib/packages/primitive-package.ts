@@ -100,7 +100,7 @@ export function parsePrimitiveRecord(value: unknown): PrimitivePackageRecord {
   return {
     name,
     category,
-    costTier: String(record["costTier"] ?? "Tier 1: Minor (1-2 BU)").trim(),
+    costTier: String(record["costTier"] ?? "Tier 1: Minor (4 BU anchor)").trim(),
     buCost,
     mechanicalOutputText: String(record["mechanicalOutputText"] ?? "").trim(),
     narrativeRule: String(record["narrativeRule"] ?? "").trim(),

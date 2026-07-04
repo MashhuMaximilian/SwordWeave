@@ -28,7 +28,7 @@ export const primitives = pgTable(
     userId: text("user_id"),
     isPublic: boolean("is_public").notNull().default(false),
     category: primitiveCategoryEnum("category").notNull(),
-    costTier: text("cost_tier").notNull().default("Tier 1: Minor (1-2 BU)"),
+    costTier: text("cost_tier").notNull().default("Tier 1: Minor (4 BU anchor)"),
     buCost: integer("bu_cost").notNull().default(0),
     mechanicalOutputText: text("mechanical_output_text")
       .notNull()

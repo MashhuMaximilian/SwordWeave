@@ -16,7 +16,6 @@ export const entities = pgTable(
     physical: integer("physical").notNull().default(0),
     mental: integer("mental").notNull().default(0),
     magical: integer("magical").notNull().default(0),
-    presence: integer("presence").notNull().default(0),
     ...timestamps,
   },
   (table) => [

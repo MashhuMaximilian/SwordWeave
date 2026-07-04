@@ -43,6 +43,13 @@
       "when": 1783081781497,
       "tag": "0005_medical_zombie",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783146000000,
+      "tag": "0006_drop_presence_and_update_default",
+      "breakpoints": true
     }
   ]
 }

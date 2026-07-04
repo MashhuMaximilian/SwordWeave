@@ -11,7 +11,7 @@ const seeds: PrimitiveSeed[] = [
   {
     name: "Strike",
     category: "VERB_TIER",
-    costTier: "Tier 2: Standard (3-5 BU)",
+    costTier: "Tier 2: Standard (8 BU anchor)",
     buCost: 4,
     mechanicalOutputText:
       "Grants access to direct offensive action language for physical or capability-based attacks.",
@@ -22,7 +22,7 @@ const seeds: PrimitiveSeed[] = [
   {
     name: "Fire",
     category: "DOMAIN",
-    costTier: "Tier 2: Standard (3-5 BU)",
+    costTier: "Tier 2: Standard (8 BU anchor)",
     buCost: 4,
     mechanicalOutputText:
       "Licenses fire, heat, ignition, burning pressure, and fire-inherited damage typing.",
@@ -33,7 +33,7 @@ const seeds: PrimitiveSeed[] = [
   {
     name: "Close Range Gate",
     category: "RANGE",
-    costTier: "Tier 1: Minor (1-2 BU)",
+    costTier: "Tier 1: Minor (4 BU anchor)",
     buCost: 2,
     mechanicalOutputText:
       "Allows capability projection into close 5-10 ft same-zone proximity.",
@@ -51,7 +51,7 @@ const seeds: PrimitiveSeed[] = [
   {
     name: "Near Range Gate",
     category: "RANGE",
-    costTier: "Tier 2: Standard (3-5 BU)",
+    costTier: "Tier 2: Standard (8 BU anchor)",
     buCost: 4,
     mechanicalOutputText:
       "Allows standard combat projection to roughly 30 ft.",
@@ -69,7 +69,7 @@ const seeds: PrimitiveSeed[] = [
   {
     name: "Velocity Arrest",
     category: "CONDITION",
-    costTier: "Tier 3: Major (6-10 BU)",
+    costTier: "Tier 3: Major (12 BU anchor)",
     buCost: 8,
     mechanicalOutputText:
       "Imposes a movement lock by setting target movement speed to 0, or anchors a displacement vector.",
@@ -92,7 +92,7 @@ const seeds: PrimitiveSeed[] = [
   {
     name: "Vector Split",
     category: "TARGETING",
-    costTier: "Tier 2: Standard (3-5 BU)",
+    costTier: "Tier 2: Standard (8 BU anchor)",
     buCost: 4,
     mechanicalOutputText:
       "Adds one additional independent target profile within range. Stacks.",
@@ -111,7 +111,7 @@ const seeds: PrimitiveSeed[] = [
   {
     name: "Minor Die Block",
     category: "OUTPUT",
-    costTier: "Tier 1: Minor (1-2 BU)",
+    costTier: "Tier 1: Minor (4 BU anchor)",
     buCost: 1,
     mechanicalOutputText:
       "Adds one 1d4 damage or healing unit that inherits source type and domain.",
@@ -137,7 +137,7 @@ async function seedPrimitives() {
       .insert(primitives)
       .values(seed)
       .onConflictDoUpdate({
-        target: [primitives.name, primitives.category],
+        target: [primitives.name, primitives.category, primitives.userId],
         set: {
           costTier: seed.costTier,
           buCost: seed.buCost,

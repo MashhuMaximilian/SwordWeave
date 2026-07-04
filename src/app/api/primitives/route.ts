@@ -81,7 +81,7 @@ export async function POST(request: Request) {
         userId,
         isPublic,
         category: category as PrimitiveCategoryValue,
-        costTier: costTier || "Tier 1: Minor (1-2 BU)",
+        costTier: costTier || "Tier 1: Minor (4 BU anchor)",
         buCost,
         mechanicalOutputText,
         narrativeRule,
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
       .onConflictDoUpdate({
         target: [primitives.name, primitives.category, primitives.userId],
         set: {
-          costTier: costTier || "Tier 1: Minor (1-2 BU)",
+          costTier: costTier || "Tier 1: Minor (4 BU anchor)",
           userId,
           isPublic,
           buCost,
