@@ -56,6 +56,12 @@ type CapabilityRow = {
   primitiveLinks: CapabilityPrimitiveLink[];
 };
 
+/**
+ * Optional edit-mode payload — when present, the Composer is in edit mode
+ * and will PATCH the existing capability instead of POSTing a new one.
+ */
+type EditingCapability = CapabilityRow;
+
 type PrimitiveSlot = {
   primitiveId: number;
   role: "VERB" | "DOMAIN" | "SIZING" | "RANGE" | "DURATION" | "OUTPUT" | "AUGMENT" | "OTHER";
@@ -123,23 +129,50 @@ function capabilityBuTotal(capability: CapabilityRow): number {
 export function CapabilityComposer({
   initialCapabilities,
   primitives,
+  editingCapability,
 }: {
   initialCapabilities: CapabilityRow[];
   primitives: PrimitiveRow[];
+  editingCapability?: EditingCapability | null;
 }) {
+  const isEditMode = Boolean(editingCapability);
+
+  // Initialize form state from edit mode if present
+  const initialSlots: PrimitiveSlot[] = editingCapability
+    ? editingCapability.primitiveLinks.map((link) => ({
+        primitiveId: link.primitiveId,
+        role: (link.role as PrimitiveSlot["role"]) ?? "OTHER",
+        quantity: link.quantity,
+        sortOrder: link.sortOrder,
+        slotLabel: link.slotLabel ?? link.primitive.name,
+      }))
+    : [];
+
+  const initialForm = editingCapability
+    ? {
+        name: editingCapability.name,
+        type: editingCapability.type,
+        sourceType: editingCapability.sourceType,
+        verboseDescription: editingCapability.verboseDescription,
+        sourceOrigin: editingCapability.sourceOrigin ?? "",
+        tags: editingCapability.tags.join(", "),
+        isPublic: editingCapability.isPublic,
+      }
+    : {
+        name: "",
+        type: "ACTIVE",
+        sourceType: "PHYSICAL",
+        verboseDescription: "",
+        sourceOrigin: "",
+        tags: "",
+        isPublic: false,
+      };
+
   const [capabilities, setCapabilities] = useState(initialCapabilities);
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [query, setQuery] = useState("");
-  const [selectedSlots, setSelectedSlots] = useState<PrimitiveSlot[]>([]);
-  const [form, setForm] = useState({
-    name: "",
-    type: "ACTIVE",
-    sourceType: "PHYSICAL",
-    verboseDescription: "",
-    sourceOrigin: "",
-    tags: "",
-    isPublic: false,
-  });
+  const [selectedSlots, setSelectedSlots] = useState<PrimitiveSlot[]>(initialSlots);
+  const [form, setForm] = useState(initialForm);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -216,16 +249,39 @@ export function CapabilityComposer({
   }
 
   function resetForm() {
-    setSelectedSlots([]);
-    setForm({
-      name: "",
-      type: "ACTIVE",
-      sourceType: "PHYSICAL",
-      verboseDescription: "",
-      sourceOrigin: "",
-      tags: "",
-      isPublic: false,
-    });
+    if (isEditMode && editingCapability) {
+      // Reset to the original edit-mode state
+      const resetSlots: PrimitiveSlot[] = editingCapability.primitiveLinks.map(
+        (link) => ({
+          primitiveId: link.primitiveId,
+          role: (link.role as PrimitiveSlot["role"]) ?? "OTHER",
+          quantity: link.quantity,
+          sortOrder: link.sortOrder,
+          slotLabel: link.slotLabel ?? link.primitive.name,
+        }),
+      );
+      setSelectedSlots(resetSlots);
+      setForm({
+        name: editingCapability.name,
+        type: editingCapability.type,
+        sourceType: editingCapability.sourceType,
+        verboseDescription: editingCapability.verboseDescription,
+        sourceOrigin: editingCapability.sourceOrigin ?? "",
+        tags: editingCapability.tags.join(", "),
+        isPublic: editingCapability.isPublic,
+      });
+    } else {
+      setSelectedSlots([]);
+      setForm({
+        name: "",
+        type: "ACTIVE",
+        sourceType: "PHYSICAL",
+        verboseDescription: "",
+        sourceOrigin: "",
+        tags: "",
+        isPublic: false,
+      });
+    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -244,6 +300,45 @@ export function CapabilityComposer({
 
     startTransition(async () => {
       try {
+        if (isEditMode && editingCapability) {
+          // PATCH existing capability
+          const patchRes = await fetch(
+            `/api/capabilities/${editingCapability.id}`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                name: form.name.trim(),
+                type: form.type,
+                sourceType: form.sourceType,
+                verboseDescription: form.verboseDescription.trim(),
+                sourceOrigin: form.sourceOrigin.trim() || null,
+                tags: form.tags
+                  .split(",")
+                  .map((t) => t.trim())
+                  .filter(Boolean),
+                isPublic: form.isPublic,
+                primitiveSlots: selectedSlots,
+              }),
+            },
+          );
+
+          const patchData = await patchRes.json();
+          if (!patchRes.ok) {
+            setMessage(patchData.error ?? "Failed to update capability.");
+            return;
+          }
+
+          setCapabilities((prev) =>
+            prev.map((c) =>
+              c.id === patchData.capability.id ? patchData.capability : c,
+            ),
+          );
+          setMessage(`Updated "${form.name}" (${previewBu} BU).`);
+          return;
+        }
+
+        // CREATE new capability (POST then PATCH for links)
         const res = await fetch("/api/capabilities", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -378,7 +473,14 @@ export function CapabilityComposer({
         {/* RIGHT: Compiler form + preview */}
         <section className="rounded-md border border-border bg-card p-5">
           <form onSubmit={handleSubmit}>
-            <h2 className="text-lg font-semibold">Compiler Inputs</h2>
+            <h2 className="text-lg font-semibold">
+              {isEditMode ? "Edit Capability" : "Compiler Inputs"}
+            </h2>
+            {isEditMode && editingCapability && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Editing "{editingCapability.name}" ({editingCapability.sourceOrigin || "original"})
+              </p>
+            )}
 
             <div className="mt-4 grid gap-4">
               <div>
@@ -584,7 +686,13 @@ export function CapabilityComposer({
                   disabled={isPending}
                   className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
-                  {isPending ? "Compiling..." : "Compile Capability"}
+                  {isPending
+                    ? isEditMode
+                      ? "Saving..."
+                      : "Compiling..."
+                    : isEditMode
+                      ? "Save Changes"
+                      : "Compile Capability"}
                 </button>
               </div>
             </div>
@@ -592,51 +700,20 @@ export function CapabilityComposer({
         </section>
       </div>
 
-      {/* Existing capabilities list */}
-      <section className="mt-10">
-        <h2 className="text-xl font-semibold">
-          Library ({capabilities.length} capabilities)
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Existing capabilities, ordered alphabetically. BU total is computed
-          client-side from primitive links.
+      {/* Link to library for browsing */}
+      <section className="mt-10 rounded-md border border-dashed border-border bg-card/50 p-6">
+        <h2 className="text-base font-semibold">Browse the Library</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          The Sandbox is for creating and editing. To browse, filter, search,
+          and clone public capabilities, head to the Library.
         </p>
-
-        <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {capabilities.slice(0, 24).map((cap) => {
-            const bu = capabilityBuTotal(cap);
-            return (
-              <article
-                key={cap.id}
-                className="rounded-md border border-border bg-card p-4"
-              >
-                <header className="flex items-start justify-between gap-2">
-                  <h3 className="font-semibold">{cap.name}</h3>
-                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-1 font-mono text-xs font-semibold text-primary">
-                    {bu} BU
-                  </span>
-                </header>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {cap.type} - {cap.sourceType}
-                  {cap.sourceOrigin ? ` - ${cap.sourceOrigin}` : ""}
-                </p>
-                <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">
-                  {cap.verboseDescription}
-                </p>
-                <p className="mt-3 text-xs text-muted-foreground">
-                  {cap.primitiveLinks.length} primitives
-                </p>
-              </article>
-            );
-          })}
-        </div>
-
-        {capabilities.length > 24 && (
-          <p className="mt-4 text-sm text-muted-foreground">
-            Showing 24 of {capabilities.length}. Browse full library coming in
-            Tier 3.
-          </p>
-        )}
+        <a
+          href="/library/capabilities"
+          className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+        >
+          Open Library
+          <span aria-hidden="true">→</span>
+        </a>
       </section>
     </div>
   );

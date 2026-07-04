@@ -1,16 +1,46 @@
-import { asc, desc } from "drizzle-orm";
+import { asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { db } from "@/db/client";
 import { effects } from "@/db/schema";
+import { LibraryEffectsView } from "@/components/library/library-effects-view";
 
 export const dynamic = "force-dynamic";
 
-export default async function LibraryEffectsPage() {
+export default async function LibraryEffectsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; tag?: string }>;
+}) {
+  const params = await searchParams;
+  const query = (params.q ?? "").trim();
+  const tagFilter = params.tag ?? "ALL";
+
+  const conditions = [eq(effects.isPublic, true)];
+
+  if (query) {
+    conditions.push(
+      or(
+        ilike(effects.name, `%${query}%`),
+        ilike(effects.narrativeDescription, `%${query}%`),
+      )!,
+    );
+  }
+
   const rows = await db.query.effects.findMany({
-    where: (table, { eq }) => eq(table.isPublic, true),
+    where: sql.join(conditions, sql` AND `),
     orderBy: [desc(effects.createdAt), asc(effects.name)],
   });
+
+  // Get all tags for filter
+  const allTags = Array.from(
+    new Set(rows.flatMap((e) => e.tags).filter(Boolean)),
+  ).sort();
+
+  // Apply tag filter (client-side since tags are array)
+  const filtered = tagFilter === "ALL"
+    ? rows
+    : rows.filter((e) => e.tags.includes(tagFilter));
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-8">
@@ -24,41 +54,20 @@ export default async function LibraryEffectsPage() {
 
       <h1 className="mt-4 text-4xl font-semibold">Effects</h1>
       <p className="mt-2 text-base text-muted-foreground">
-        {rows.length} public effects.
+        {filtered.length} of {rows.length} public effects
       </p>
 
-      <div className="mt-8 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {rows.map((effect) => (
-          <article
-            key={effect.id}
-            className="rounded-md border border-border bg-card p-4"
-          >
-            <h3 className="font-semibold">{effect.name}</h3>
-            {effect.sourceOrigin && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Source: {effect.sourceOrigin}
-              </p>
-            )}
-            {effect.narrativeDescription && (
-              <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">
-                {effect.narrativeDescription}
-              </p>
-            )}
-            {effect.tags.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1">
-                {effect.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full bg-secondary px-2 py-0.5 text-xs"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </article>
-        ))}
-      </div>
+      <LibraryEffectsView
+        effects={filtered.map((e) => ({
+          id: e.id,
+          name: e.name,
+          sourceOrigin: e.sourceOrigin,
+          narrativeDescription: e.narrativeDescription,
+          tags: e.tags,
+        }))}
+        currentFilters={{ q: query, tag: tagFilter }}
+        allTags={allTags}
+      />
     </div>
   );
 }

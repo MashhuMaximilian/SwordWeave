@@ -1,4 +1,5 @@
-import { asc, desc } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
+import { notFound } from "next/navigation";
 import { CapabilityComposer } from "@/components/workshops/capability-composer";
 import { db } from "@/db/client";
 import {
@@ -9,28 +10,56 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function CapabilitiesSandboxPage() {
-  const [primitiveRows, capabilityRows] = await Promise.all([
-    db.query.primitives.findMany({
-      orderBy: [asc(primitives.category), asc(primitives.name)],
-    }),
-    db.query.capabilities.findMany({
-      orderBy: [desc(capabilities.createdAt), asc(capabilities.name)],
+export default async function CapabilitiesSandboxPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ edit?: string }>;
+}) {
+  const params = await searchParams;
+  const editId = params.edit;
+
+  // Always load all primitives for the picker
+  const primitiveRows = await db.query.primitives.findMany({
+    orderBy: [asc(primitives.category), asc(primitives.name)],
+  });
+
+  // Load all capabilities for the library section
+  const capabilityRows = await db.query.capabilities.findMany({
+    orderBy: [desc(capabilities.createdAt), asc(capabilities.name)],
+    with: {
+      primitiveLinks: {
+        orderBy: [asc(capabilityPrimitives.sortOrder)],
+        with: {
+          primitive: true,
+        },
+      },
+    },
+  });
+
+  // Edit mode: load the target capability
+  let editingCapability = null;
+  if (editId) {
+    const target = await db.query.capabilities.findFirst({
+      where: eq(capabilities.id, editId),
       with: {
         primitiveLinks: {
-          orderBy: [asc(capabilityPrimitives.sortOrder)],
           with: {
             primitive: true,
           },
         },
       },
-    }),
-  ]);
+    });
+    if (!target) {
+      notFound();
+    }
+    editingCapability = target;
+  }
 
   return (
     <CapabilityComposer
       initialCapabilities={capabilityRows}
       primitives={primitiveRows}
+      editingCapability={editingCapability}
     />
   );
 }

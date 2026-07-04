@@ -1,4 +1,4 @@
-import { asc, desc } from "drizzle-orm";
+import { asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { db } from "@/db/client";
@@ -7,27 +7,111 @@ import {
   capabilityPrimitives,
   primitives,
 } from "@/db/schema";
+import { LibraryCapabilitiesView } from "@/components/library/library-capabilities-view";
 
 export const dynamic = "force-dynamic";
 
-export default async function LibraryCapabilitiesPage() {
-  const [capRows, primRows] = await Promise.all([
-    db.query.capabilities.findMany({
-      where: (table, { eq }) => eq(table.isPublic, true),
-      orderBy: [desc(capabilities.createdAt), asc(capabilities.name)],
-      with: {
-        primitiveLinks: {
-          orderBy: [asc(capabilityPrimitives.sortOrder)],
-          with: {
-            primitive: true,
-          },
+export default async function LibraryCapabilitiesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    q?: string;
+    type?: string;
+    source?: string;
+    sort?: string;
+  }>;
+}) {
+  const params = await searchParams;
+  const query = (params.q ?? "").trim();
+  const typeFilter = params.type ?? "ALL";
+  const sourceFilter = params.source ?? "ALL";
+  const sortBy = params.sort ?? "name";
+
+  // Build where conditions
+  const conditions = [eq(capabilities.isPublic, true)];
+
+  if (query) {
+    conditions.push(
+      or(
+        ilike(capabilities.name, `%${query}%`),
+        ilike(capabilities.verboseDescription, `%${query}%`),
+      )!,
+    );
+  }
+
+  if (typeFilter !== "ALL") {
+    conditions.push(
+      eq(capabilities.type, typeFilter as "ACTIVE" | "PASSIVE" | "AUGMENT"),
+    );
+  }
+
+  const orderBy =
+    sortBy === "date"
+      ? [desc(capabilities.createdAt), asc(capabilities.name)]
+      : sortBy === "bu"
+        ? [asc(capabilities.name)] // we'll sort by BU client-side after computing
+        : [asc(capabilities.name)];
+
+  const capRows = await db.query.capabilities.findMany({
+    where: conditions.length > 0 ? sql.join(conditions, sql` AND `) : undefined,
+    orderBy,
+    with: {
+      primitiveLinks: {
+        orderBy: [asc(capabilityPrimitives.sortOrder)],
+        with: {
+          primitive: true,
         },
       },
-    }),
-    db.query.primitives.findMany({
-      orderBy: [asc(primitives.name)],
-    }),
-  ]);
+    },
+  });
+
+  // Load all primitives once for source-filter and BU computation
+  const allPrimitives = await db.query.primitives.findMany({
+    orderBy: [asc(primitives.name)],
+  });
+
+  // Compute BU total for each capability
+  const capabilitiesWithBu = capRows.map((cap) => {
+    const bu = cap.primitiveLinks.reduce(
+      (total, link) =>
+        total + (link.primitive?.buCost ?? 0) * link.quantity,
+      0,
+    );
+    return { ...cap, computedBu: bu };
+  });
+
+  // Apply source filter
+  let filtered = capabilitiesWithBu;
+  if (sourceFilter !== "ALL") {
+    filtered = filtered.filter((c) => c.sourceType === sourceFilter);
+  }
+
+  // Apply BU sort
+  if (sortBy === "bu") {
+    filtered.sort((a, b) => b.computedBu - a.computedBu);
+  }
+
+  // Serialize for client component
+  const serialized = filtered.map((cap) => ({
+    id: cap.id,
+    name: cap.name,
+    type: cap.type,
+    sourceType: cap.sourceType,
+    verboseDescription: cap.verboseDescription,
+    sourceOrigin: cap.sourceOrigin,
+    tags: cap.tags,
+    isPublic: cap.isPublic,
+    computedBu: cap.computedBu,
+    primitiveCount: cap.primitiveLinks.length,
+    primitiveNames: cap.primitiveLinks
+      .map((link) => link.primitive?.name ?? null)
+      .filter((n): n is string => n !== null),
+  }));
+
+  // Get unique source origins for the filter
+  const allOrigins = Array.from(
+    new Set(capRows.map((c) => c.sourceOrigin).filter(Boolean)),
+  ) as string[];
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-8">
@@ -41,51 +125,25 @@ export default async function LibraryCapabilitiesPage() {
 
       <h1 className="mt-4 text-4xl font-semibold">Capabilities</h1>
       <p className="mt-2 text-base text-muted-foreground">
-        {capRows.length} public capabilities compiled from primitives.
+        {serialized.length} of {capRows.length} public capabilities
       </p>
 
-      <div className="mt-8 grid gap-3 md:grid-cols-2">
-        {capRows.map((cap) => {
-          const bu = cap.primitiveLinks.reduce(
-            (total, link) =>
-              total + (link.primitive?.buCost ?? 0) * link.quantity,
-            0,
-          );
-          return (
-            <article
-              key={cap.id}
-              className="rounded-md border border-border bg-card p-4"
-            >
-              <header className="flex items-start justify-between gap-2">
-                <h3 className="font-semibold">{cap.name}</h3>
-                <span className="shrink-0 rounded-full bg-primary/10 px-2 py-1 font-mono text-xs font-semibold text-primary">
-                  {bu} BU
-                </span>
-              </header>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {cap.type} - {cap.sourceType}
-                {cap.sourceOrigin ? ` - ${cap.sourceOrigin}` : ""}
-              </p>
-              <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">
-                {cap.verboseDescription}
-              </p>
-
-              {cap.primitiveLinks.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-1">
-                  {cap.primitiveLinks.map((link, i) => (
-                    <span
-                      key={`${link.primitiveId}-${i}`}
-                      className="rounded-full bg-secondary px-2 py-0.5 text-xs"
-                    >
-                      {link.primitive?.name ?? `prim#${link.primitiveId}`} ({link.role})
-                    </span>
-                  ))}
-                </div>
-              )}
-            </article>
-          );
-        })}
-      </div>
+      <LibraryCapabilitiesView
+        capabilities={serialized}
+        allPrimitives={allPrimitives.map((p) => ({
+          id: p.id,
+          name: p.name,
+          category: p.category,
+          buCost: p.buCost,
+        }))}
+        currentFilters={{
+          q: query,
+          type: typeFilter,
+          source: sourceFilter,
+          sort: sortBy,
+        }}
+        allOrigins={allOrigins}
+      />
     </div>
   );
 }

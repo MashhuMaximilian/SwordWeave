@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { asc, desc } from "drizzle-orm";
+import Link from "next/link";
 import { ArrowRight, CircuitBoard, Library, Sparkles } from "lucide-react";
 import { db } from "@/db/client";
 import {
@@ -128,7 +128,15 @@ export default async function LibraryHubPage() {
 
       {/* Recent capabilities preview */}
       <section className="mt-10">
-        <h2 className="text-xl font-semibold">Recent Capabilities</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Recent Capabilities</h2>
+          <Link
+            href="/library/capabilities"
+            className="text-sm text-primary hover:underline"
+          >
+            View all
+          </Link>
+        </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           {capabilityRows.slice(0, 12).map((cap) => {
             const bu = capabilityBuMap.get(cap.id) ?? 0;
@@ -159,15 +167,14 @@ export default async function LibraryHubPage() {
       </section>
 
       <section className="mt-10 rounded-md border border-dashed border-border bg-card/50 p-6">
-        <h3 className="text-base font-semibold">Library Workflow (Tier 3)</h3>
+        <h3 className="text-base font-semibold">Library Workflow</h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          Full browse + filter + clone workflow ships in Tier 3. This hub page
-          is the entry point. Per UX-WORKFLOW-SPEC.md:
+          Tier 3 ships full browse + filter + clone + edit workflow:
         </p>
         <ul className="mt-3 ml-5 list-disc text-sm text-muted-foreground">
-          <li>Category filter, tag filter, name search, sort by name/date/BU</li>
+          <li>Filter by category, tag, name search, sort by name/date/BU</li>
           <li>"Clone to my account" button on each public record</li>
-          <li>Library click opens sandbox in edit mode (reuses Composer)</li>
+          <li>Library click opens sandbox in edit mode</li>
           <li>Sandbox stays "create only"; Library becomes "browse + edit"</li>
         </ul>
       </section>
