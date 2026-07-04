@@ -588,38 +588,34 @@ async function EffectDetail({
   currentUserId,
   viewerClerkId,
 }: DetailProps & { id: string }) {
+  // Step 1: load the effect + its primitive links (one shallow query)
   const row = await db.query.effects.findFirst({
     where: (table, { eq }) => eq(table.id, id),
     with: {
       primitiveLinks: { with: { primitive: true } },
-      // Nested effects — children of this effect (recursive, 1 level)
-      nestedAsParent: {
+    },
+  });
+  if (!row) notFound();
+
+  // Step 2: separately load children (this effect as parent) — 1 level
+  const childEdges = await db.query.effectEffects.findMany({
+    where: (table, { eq }) => eq(table.parentEffectId, id),
+    with: {
+      childEffect: {
         with: {
-          childEffect: {
-            with: {
-              primitiveLinks: { with: { primitive: true } },
-              nestedAsParent: {
-                with: {
-                  childEffect: {
-                    with: {
-                      primitiveLinks: { with: { primitive: true } },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      // Effects that nest this one (parent chain, 1 level up)
-      nestedAsChild: {
-        with: {
-          parentEffect: true,
+          primitiveLinks: { with: { primitive: true } },
         },
       },
     },
   });
-  if (!row) notFound();
+
+  // Step 3: separately load parents (effects that nest this one)
+  const parentEdges = await db.query.effectEffects.findMany({
+    where: (table, { eq }) => eq(table.childEffectId, id),
+    with: {
+      parentEffect: true,
+    },
+  });
 
   // Compute BU total
   let buTotal = 0;
@@ -630,9 +626,8 @@ async function EffectDetail({
   const author = await resolveAuthorByClerkId(row.userId);
   const engagement = await loadEngagement("EFFECT", id, currentUserId);
 
-  // Build nested effect chain (for the "nested under" + "nests" sections)
-  const parentEffects = row.nestedAsChild.map((edge) => edge.parentEffect);
-  const childEffects = row.nestedAsParent.map((edge) => edge.childEffect);
+  const parentEffects = parentEdges.map((edge) => edge.parentEffect);
+  const childEffects = childEdges.map((edge) => edge.childEffect);
 
   return (
     <DetailShell
@@ -735,12 +730,6 @@ async function EffectDetail({
                 <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                   {child.narrativeDescription?.slice(0, 200)}
                 </p>
-                {child.nestedAsParent.length > 0 && (
-                  <p className="mt-1 text-xs italic text-muted-foreground">
-                    which itself nests {child.nestedAsParent.length} effect
-                    {child.nestedAsParent.length === 1 ? "" : "s"}
-                  </p>
-                )}
               </li>
             ))}
           </ul>
