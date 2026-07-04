@@ -30,7 +30,7 @@
 // Pagination: limit (default 24, max 100), offset
 // =============================================================================
 
-import { and, asc, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   capabilities,
@@ -262,9 +262,7 @@ async function fetchCapabilities(
         primitives,
         eq(capabilityPrimitives.primitiveId, primitives.id),
       )
-      .where(
-        sql`${capabilityPrimitives.capabilityId} = ANY(${capabilityIds})`,
-      );
+      .where(inArray(capabilityPrimitives.capabilityId, capabilityIds));
     for (const link of links) {
       buMap.set(
         link.capabilityId,
