@@ -238,19 +238,25 @@ async function enrichEntries(
   // Batch-fetch names per type
   const nameMap = await resolveTargetNames(idsByType);
 
+  // Batch-fetch source author Clerk IDs (the userId text field on each
+  // source content row). Indexed by "<TYPE>:<id>" for the SOURCE side only.
+  const sourceIdsByType = new Map<string, Set<string>>();
+  for (const r of rows) {
+    const sKey = r.sourceTargetType;
+    if (!sourceIdsByType.has(sKey)) sourceIdsByType.set(sKey, new Set());
+    sourceIdsByType.get(sKey)!.add(r.sourceTargetId);
+  }
+  const sourceAuthorMap = await resolveSourceAuthors(sourceIdsByType);
+
   return rows.map((r) => {
     // Skip anonymized/deleted forker's username — fall back to null
     const forkerVisible =
       !r.forkerIsAnonymized && !r.forkerDeletedAt && Boolean(r.forkerClerkId);
 
-    // Source author username: the source content row may have its own userId
-    // text. We resolve author for the source TARGET (not the fork) so profile
-    // page shows "X forked Y builds from Z" with Z being the source author.
-    // The source author is *not* the same as `users` joined above (that was
-    // the forker). Source author is read from the target table's userId col.
-    // We surface that as the SOURCE's author; for now we leave username null
-    // unless the UI wants to fetch it — <ForksList> can render with just the
-    // forker's username, which is the primary social signal.
+    const sourceAuthor = sourceAuthorMap.get(
+      `${r.sourceTargetType}:${r.sourceTargetId}`,
+    );
+
     return {
       id: r.id,
       forkerUserId: r.forkedByUserId,
@@ -264,13 +270,178 @@ async function enrichEntries(
       sourceTargetId: r.sourceTargetId,
       sourceTargetName: nameMap.get(`${r.sourceTargetType}:${r.sourceTargetId}`) ?? null,
       sourceVersionId: r.sourceVersionId,
-      // Source author: left null for now; the source TARGET row's userId text
-      // would need an additional join to surface. Phase 6.5 candidate.
-      sourceAuthorUsername: null,
-      sourceAuthorDisplayName: null,
+      sourceAuthorUsername: sourceAuthor?.username ?? null,
+      sourceAuthorDisplayName: sourceAuthor?.displayName ?? null,
       forkedAt: r.createdAt,
     };
   });
+}
+
+/**
+ * Fetch source author metadata for each (sourceType, sourceId) pair.
+ *
+ * Returns Map<"<TYPE>:<id>", { username, displayName }>. Resolves the
+ * source content row's userId (text Clerk ID) → users.clerkUserId lookup.
+ *
+ * For system-authored content (userId IS NULL), the entry is omitted.
+ * For anonymized/deleted authors, the entry is also omitted so we don't
+ * leak the deterministic hash handle to the UI.
+ */
+async function resolveSourceAuthors(
+  idsByType: Map<string, Set<string>>,
+): Promise<
+  Map<string, { username: string; displayName: string | null }>
+> {
+  const out = new Map<string, { username: string; displayName: string | null }>();
+  const authorClerkIds = new Set<string>();
+
+  // First pass: read userId from each target table for the source rows.
+  const sourceUserIdsByType = new Map<string, Map<string, string>>(); // "<TYPE>:<id>" → userId
+
+  const {
+    primitives,
+    capabilities,
+    effects,
+    items,
+    characters,
+    templates,
+  } = await import("@/db/schema");
+
+  const get = (type: string) => Array.from(idsByType.get(type) ?? []);
+
+  const primIds = get("PRIMITIVE").map(Number).filter(Number.isFinite);
+  if (primIds.length > 0) {
+    const rows = await db
+      .select({ id: primitives.id, userId: primitives.userId })
+      .from(primitives)
+      .where(
+        sql`${primitives.id} IN (${sql.join(primIds.map((i) => sql`${i}`), sql`, `)})`,
+      );
+    for (const r of rows) {
+      if (r.userId) {
+        sourceUserIdsByType.set(`PRIMITIVE:${r.id}`, new Map([["id", r.userId]]));
+        authorClerkIds.add(r.userId);
+      }
+    }
+  }
+
+  const capIds = get("CAPABILITY");
+  if (capIds.length > 0) {
+    const rows = await db
+      .select({ id: capabilities.id, userId: capabilities.userId })
+      .from(capabilities)
+      .where(
+        sql`${capabilities.id} IN (${sql.join(capIds.map((i) => sql`${i}`), sql`, `)})`,
+      );
+    for (const r of rows) {
+      if (r.userId) {
+        sourceUserIdsByType.set(`CAPABILITY:${r.id}`, new Map([["id", r.userId]]));
+        authorClerkIds.add(r.userId);
+      }
+    }
+  }
+
+  const effIds = get("EFFECT");
+  if (effIds.length > 0) {
+    const rows = await db
+      .select({ id: effects.id, userId: effects.userId })
+      .from(effects)
+      .where(
+        sql`${effects.id} IN (${sql.join(effIds.map((i) => sql`${i}`), sql`, `)})`,
+      );
+    for (const r of rows) {
+      if (r.userId) {
+        sourceUserIdsByType.set(`EFFECT:${r.id}`, new Map([["id", r.userId]]));
+        authorClerkIds.add(r.userId);
+      }
+    }
+  }
+
+  const itemIds = get("ITEM");
+  if (itemIds.length > 0) {
+    const rows = await db
+      .select({ id: items.id, userId: items.userId })
+      .from(items)
+      .where(
+        sql`${items.id} IN (${sql.join(itemIds.map((i) => sql`${i}`), sql`, `)})`,
+      );
+    for (const r of rows) {
+      if (r.userId) {
+        sourceUserIdsByType.set(`ITEM:${r.id}`, new Map([["id", r.userId]]));
+        authorClerkIds.add(r.userId);
+      }
+    }
+  }
+
+  const charIds = get("CHARACTER");
+  if (charIds.length > 0) {
+    const rows = await db
+      .select({ id: characters.id, userId: characters.userId })
+      .from(characters)
+      .where(
+        sql`${characters.id} IN (${sql.join(charIds.map((i) => sql`${i}`), sql`, `)})`,
+      );
+    for (const r of rows) {
+      if (r.userId) {
+        sourceUserIdsByType.set(`CHARACTER:${r.id}`, new Map([["id", r.userId]]));
+        authorClerkIds.add(r.userId);
+      }
+    }
+  }
+
+  const tplKinds = ["RACE_TEMPLATE", "BACKGROUND_TEMPLATE", "ARCHETYPE_TEMPLATE"] as const;
+  for (const kind of tplKinds) {
+    const ids = get(kind);
+    if (ids.length === 0) continue;
+    const rows = await db
+      .select({ id: templates.id, userId: templates.userId })
+      .from(templates)
+      .where(
+        sql`${templates.kind} = ${kind} AND ${templates.id} IN (${sql.join(
+          ids.map((i) => sql`${i}`),
+          sql`, `,
+        )})`,
+      );
+    for (const r of rows) {
+      if (r.userId) {
+        sourceUserIdsByType.set(`${kind}:${r.id}`, new Map([["id", r.userId]]));
+        authorClerkIds.add(r.userId);
+      }
+    }
+  }
+
+  if (authorClerkIds.size === 0) return out;
+
+  // Second pass: resolve Clerk IDs → usernames
+  const usersRows = await db.query.users.findMany({
+    where: (table, { inArray }) => inArray(table.clerkUserId, Array.from(authorClerkIds)),
+    columns: {
+      clerkUserId: true,
+      username: true,
+      displayName: true,
+      isAnonymized: true,
+      deletedAt: true,
+    },
+  });
+
+  const clerkToUsername = new Map<string, { username: string; displayName: string | null }>();
+  for (const u of usersRows) {
+    if (u.isAnonymized || u.deletedAt || !u.clerkUserId) continue;
+    clerkToUsername.set(u.clerkUserId, {
+      username: u.username,
+      displayName: u.displayName,
+    });
+  }
+
+  // Final: zip back through the source row → userId → username
+  for (const [key, userIdMap] of sourceUserIdsByType.entries()) {
+    const userId = userIdMap.get("id");
+    if (!userId) continue;
+    const author = clerkToUsername.get(userId);
+    if (author) out.set(key, author);
+  }
+
+  return out;
 }
 
 /**

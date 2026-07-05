@@ -101,8 +101,19 @@ export function ForksListClient({
               ) : (
                 <span className="text-muted-foreground">deleted user</span>
               )}
+              {f.sourceAuthorUsername && (
+                <>
+                  <span className="mx-1 text-muted-foreground">from</span>
+                  <Link
+                    href={`/u/${encodeURIComponent(f.sourceAuthorUsername)}`}
+                    className="text-muted-foreground hover:text-foreground hover:underline"
+                  >
+                    @{f.sourceAuthorUsername}
+                  </Link>
+                </>
+              )}
               <span className="ml-2 text-xs text-muted-foreground">
-                forked {timeAgo(f.forkedAt)}
+                · {timeAgo(f.forkedAt)}
               </span>
             </div>
           </li>
