@@ -1,12 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 
-import { SandboxLayout } from "@/components/sandbox/sandbox-layout";
-import {
-  PrimitivePreview,
-  PrimitivePreviewEmpty,
-} from "@/components/sandbox/primitive-preview";
 import { PrimitivesLibrary } from "@/components/sandbox/primitives-library";
-import { PrimitiveRegistry } from "@/components/workshops/primitive-registry";
+import { PrimitiveSandboxClient } from "@/components/sandbox/primitive-sandbox-client";
 import { db } from "@/db/client";
 import { primitives } from "@/db/schema";
 
@@ -19,7 +14,25 @@ export default async function PrimitiveSandboxPage({
 }) {
   const params = await searchParams;
 
-  let editingPrimitive: typeof primitives.$inferSelect | undefined = undefined;
+  let editingPrimitive:
+    | {
+        id: number;
+        userId: string | null;
+        name: string;
+        category: string;
+        isPublic: boolean;
+        costTier: string;
+        buCost: number;
+        mechanicalOutputText: string;
+        narrativeRule: string;
+        isMirrorable: boolean;
+        mirrorVector: string;
+        mirrorBuCredit: number;
+        mirrorEligibilityNotes: string;
+        hardModifiers: unknown;
+      }
+    | null
+    | undefined = null;
 
   if (params.edit) {
     const numId = Number(params.edit);
@@ -35,41 +48,13 @@ export default async function PrimitiveSandboxPage({
   });
 
   return (
-    <SandboxLayout
-      storageKey="primitives"
+    <PrimitiveSandboxClient
+      editingPrimitive={editingPrimitive ?? null}
       library={
         <PrimitivesLibrary
           primitives={rows}
           editingPrimitiveId={editingPrimitive?.id ?? null}
         />
-      }
-      builder={
-        <PrimitiveRegistry
-          initialPrimitives={rows}
-          editingPrimitive={editingPrimitive ?? undefined}
-        />
-      }
-      preview={
-        editingPrimitive ? (
-          <PrimitivePreview
-            row={{
-              id: editingPrimitive.id,
-              name: editingPrimitive.name,
-              category: editingPrimitive.category,
-              costTier: editingPrimitive.costTier,
-              buCost: editingPrimitive.buCost,
-              isPublic: editingPrimitive.isPublic,
-              isMirrorable: editingPrimitive.isMirrorable,
-              mirrorVector: editingPrimitive.mirrorVector,
-              mirrorBuCredit: editingPrimitive.mirrorBuCredit,
-              mirrorEligibilityNotes: editingPrimitive.mirrorEligibilityNotes,
-              mechanicalOutputText: editingPrimitive.mechanicalOutputText,
-              narrativeRule: editingPrimitive.narrativeRule,
-            }}
-          />
-        ) : (
-          <PrimitivePreviewEmpty />
-        )
       }
     />
   );
