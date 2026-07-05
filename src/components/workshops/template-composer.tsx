@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
 
 /**
@@ -119,6 +120,7 @@ export function TemplateComposer({
   );
   const [query, setQuery] = useState("");
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
   const { toasts, showToast, dismissToast } = useToasts();
 
   const filteredPrimitives = useMemo(
@@ -210,6 +212,9 @@ export function TemplateComposer({
           : `Created ${kindSingular(kind).toLowerCase()} "${form.name}" (${computedBu} BU).`;
         showToast(successMsg, "success");
         if (!isEditMode) resetForm();
+        // Refresh server components so the Preview column (which reads from
+        // the DB via the same route) reflects the saved state.
+        router.refresh();
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : "Unknown error.";
         showToast(errMsg, "error");

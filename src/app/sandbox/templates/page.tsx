@@ -1,67 +1,62 @@
 import { asc } from "drizzle-orm";
-import { notFound, redirect } from "next/navigation";
+
+import { SandboxLayout } from "@/components/sandbox/sandbox-layout";
+import {
+  TemplatePreview,
+  TemplatePreviewEmpty,
+} from "@/components/sandbox/template-preview";
+import { TemplatesLibrary } from "@/components/sandbox/templates-library";
 import { TemplateComposer } from "@/components/workshops/template-composer";
 import { db } from "@/db/client";
-import { capabilities, primitives } from "@/db/schema";
+import { capabilities, primitives, templates } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
 
-type Kind = "RACE" | "BACKGROUND" | "ARCHETYPE";
-
-function isValidKind(value: string | null | undefined): value is Kind {
-  return value === "RACE" || value === "BACKGROUND" || value === "ARCHETYPE";
-}
-
-export default async function TemplateSandboxPage({
+export default async function TemplatesSandboxPage({
   searchParams,
 }: {
-  searchParams: Promise<{ kind?: string; edit?: string }>;
+  searchParams: Promise<{ edit?: string; kind?: string }>;
 }) {
   const params = await searchParams;
-  const editId = params.edit;
 
-  // Edit mode: load existing template, derive kind from it
-  if (editId) {
+  const initialKind =
+    params.kind === "RACE" || params.kind === "BACKGROUND" || params.kind === "ARCHETYPE"
+      ? params.kind
+      : "RACE";
+
+  let editingTemplate:
+    | (typeof templates.$inferSelect & {
+        primitiveLinks: Array<{
+          primitiveId: number;
+          primitive: typeof primitives.$inferSelect;
+        }>;
+        capabilityLinks: Array<{
+          capabilityId: string;
+          capability: typeof capabilities.$inferSelect;
+        }>;
+      })
+    | null = null;
+
+  if (params.edit) {
     const target = await db.query.templates.findFirst({
-      where: (t, { eq }) => eq(t.id, editId),
+      where: (t, { eq }) => eq(t.id, params.edit!),
+      with: {
+        primitiveLinks: { with: { primitive: true } },
+        capabilityLinks: { with: { capability: true } },
+      },
+    });
+    editingTemplate = target ?? null;
+  }
+
+  const [allTemplates, primitiveRows, capabilityRows] = await Promise.all([
+    db.query.templates.findMany({
       with: {
         primitiveLinks: { with: { primitive: true } },
       },
-    });
-    if (!target || !isValidKind(target.kind)) notFound();
-
-    const [allPrimitives, allCapabilities] = await Promise.all([
-      db.query.primitives.findMany({
-        orderBy: [asc(primitives.category), asc(primitives.name)],
-      }),
-      db.query.capabilities.findMany({
-        orderBy: [asc(capabilities.name)],
-      }),
-    ]);
-
-    return (
-      <TemplateComposer
-        initialKind={target.kind}
-        primitives={allPrimitives}
-        capabilities={allCapabilities}
-        editingTemplate={target}
-      />
-    );
-  }
-
-  // New mode: require kind param, redirect to default if missing
-  const kindParam = params.kind;
-  if (!kindParam) {
-    redirect("/sandbox/templates/new?kind=race");
-  }
-  const kind = kindParam.toUpperCase();
-  if (!isValidKind(kind)) {
-    redirect("/sandbox/templates/new?kind=race");
-  }
-
-  const [allPrimitives, allCapabilities] = await Promise.all([
+      orderBy: [asc(templates.kind), asc(templates.name)],
+    }),
     db.query.primitives.findMany({
-      orderBy: [asc(primitives.category), asc(primitives.name)],
+      orderBy: [asc(primitives.name)],
     }),
     db.query.capabilities.findMany({
       orderBy: [asc(capabilities.name)],
@@ -69,10 +64,56 @@ export default async function TemplateSandboxPage({
   ]);
 
   return (
-    <TemplateComposer
-      initialKind={kind}
-      primitives={allPrimitives}
-      capabilities={allCapabilities}
+    <SandboxLayout
+      storageKey="templates"
+      library={
+        <TemplatesLibrary
+          templates={allTemplates}
+          editingTemplateId={editingTemplate?.id ?? null}
+        />
+      }
+      builder={
+        <TemplateComposer
+          initialKind={initialKind}
+          primitives={primitiveRows}
+          capabilities={capabilityRows}
+          editingTemplate={editingTemplate}
+        />
+      }
+      preview={
+        editingTemplate ? (
+          <TemplatePreview
+            row={{
+              id: editingTemplate.id,
+              kind: editingTemplate.kind,
+              name: editingTemplate.name,
+              imageUrl: editingTemplate.imageUrl ?? null,
+              description: editingTemplate.description ?? null,
+              suggestedTraits: editingTemplate.suggestedTraits ?? null,
+              isPublic: editingTemplate.isPublic,
+              primitiveLinks: editingTemplate.primitiveLinks.map((link) => ({
+                primitiveId: link.primitiveId,
+                primitive: {
+                  id: link.primitive.id,
+                  name: link.primitive.name,
+                  category: link.primitive.category,
+                  buCost: link.primitive.buCost,
+                },
+              })),
+              capabilityLinks: editingTemplate.capabilityLinks?.map((link) => ({
+                capabilityId: link.capabilityId,
+                capability: {
+                  id: link.capability.id,
+                  name: link.capability.name,
+                  type: link.capability.type,
+                },
+              })) ?? [],
+            }}
+          />
+        ) : (
+          <TemplatePreviewEmpty />
+        )
+      }
     />
   );
 }
