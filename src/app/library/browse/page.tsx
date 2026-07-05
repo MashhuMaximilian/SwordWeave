@@ -527,9 +527,9 @@ function ListItem({ item, engagement, currentUserInternalId }: ListItemProps) {
           )}
         </div>
         {item.description && (
-          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-            {item.description}
-          </p>
+          <div className="mt-1 line-clamp-2 text-xs text-muted-foreground [&_p]:m-0 [&_strong]:font-semibold [&_em]:italic">
+            <Markdown>{item.description}</Markdown>
+          </div>
         )}
         <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
           <span>♥ {item.likesCount}</span>

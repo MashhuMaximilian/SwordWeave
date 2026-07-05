@@ -90,7 +90,7 @@ export default async function LibraryHubPage() {
       <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Link
           className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
-          href="/library/primitives"
+          href="/library/browse?type=PRIMITIVE"
         >
           <CircuitBoard className="size-5 text-primary" />
           <h2 className="mt-5 text-lg font-semibold">Primitives</h2>
@@ -119,7 +119,7 @@ export default async function LibraryHubPage() {
 
         <Link
           className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
-          href="/library/effects"
+          href="/library/browse?type=EFFECT"
         >
           <Sparkles className="size-5 text-primary" />
           <h2 className="mt-5 text-lg font-semibold">Effects</h2>
@@ -134,7 +134,7 @@ export default async function LibraryHubPage() {
 
         <Link
           className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
-          href="/library/capabilities"
+          href="/library/browse?type=CAPABILITY"
         >
           <Library className="size-5 text-primary" />
           <h2 className="mt-5 text-lg font-semibold">Capabilities</h2>
@@ -220,7 +220,7 @@ export default async function LibraryHubPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Recent Capabilities</h2>
           <Link
-            href="/library/capabilities"
+            href="/library/browse?type=CAPABILITY"
             className="text-sm text-primary hover:underline"
           >
             View all

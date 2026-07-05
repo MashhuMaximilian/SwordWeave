@@ -104,7 +104,9 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode {
       );
     } else if (match[3] != null) {
       pushNode(
-        <strong className="font-semibold text-foreground">{match[3]}</strong>,
+        <strong className="font-bold text-foreground underline decoration-primary/30 decoration-1 underline-offset-2">
+          {match[3]}
+        </strong>,
       );
     } else if (match[4] != null) {
       pushNode(<em className="italic">{match[4]}</em>);
