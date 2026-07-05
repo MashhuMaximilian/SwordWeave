@@ -54,6 +54,7 @@ export function EffectForm({
   availablePrimitives,
   onStateChange,
   onSaved,
+  onReset,
 }: {
   initialEffect?: EffectRow | null;
   /**
@@ -75,6 +76,7 @@ export function EffectForm({
     isDirty: boolean;
   }) => void;
   onSaved?: (effect: EffectRow) => void;
+  onReset?: () => void;
 }) {
   const [form, setForm] = useState<EffectFormState>(blankForm);
   const [slots, setSlots] = useState<EffectFormSlot[]>([]);
@@ -165,6 +167,7 @@ export function EffectForm({
     setIsDirty(false); // pristine after reset
     setMessage("Started a fresh effect.");
     bootstrappedRef.current = true;
+    onReset?.();
   }
 
   function submitEffect(event: React.FormEvent<HTMLFormElement>) {

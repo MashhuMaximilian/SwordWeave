@@ -20,7 +20,7 @@
 // =============================================================================
 
 import Link from "next/link";
-import { ArrowRight, SearchX, User as UserIcon } from "lucide-react";
+import { ArrowRight, ExternalLink, SearchX, User as UserIcon } from "lucide-react";
 import { Markdown } from "@/components/ui/markdown";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
@@ -320,25 +320,26 @@ function GridCard({
           currentUserId={currentUserInternalId}
           compact
         />
-        <div className="mt-2 flex items-center justify-end">
+        <div className="mt-2 flex items-center justify-between gap-2">
+          {/* Always-available: link to the full canonical detail page. */}
+          <Link
+            href={`/library/item/${item.id}`}
+            className="text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
+          >
+            View
+            <ExternalLink className="ml-1 inline size-3" />
+          </Link>
+          {/* Optional: load the entity into the matching sandbox composer. */}
           {onSelect ? (
             <button
               type="button"
               onClick={() => onSelect(item)}
               className="text-xs font-medium text-primary hover:underline"
             >
-              Load into Build
+              Add to Build
               <ArrowRight className="ml-1 inline size-3" />
             </button>
-          ) : (
-            <Link
-              href={`/library/item/${item.id}`}
-              className="text-xs font-medium text-primary hover:underline"
-            >
-              View details
-              <ArrowRight className="ml-1 inline size-3" />
-            </Link>
-          )}
+          ) : null}
         </div>
       </footer>
     </article>

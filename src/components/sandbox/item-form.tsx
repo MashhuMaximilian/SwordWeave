@@ -69,6 +69,7 @@ export function ItemForm({
   availableEffects,
   onStateChange,
   onSaved,
+  onReset,
 }: {
   initialItem?: ItemRow | null;
   availablePrimitives: Array<{
@@ -98,6 +99,7 @@ export function ItemForm({
     isDirty: boolean;
   }) => void;
   onSaved?: (item: ItemRow) => void;
+  onReset?: () => void;
 }) {
   const [form, setForm] = useState<ItemFormState>(blankForm);
   const [primitiveIds, setPrimitiveIds] = useState<number[]>([]);
@@ -196,6 +198,7 @@ export function ItemForm({
     setIsDirty(false); // pristine after reset
     setMessage("Started a fresh item.");
     bootstrappedRef.current = true;
+    onReset?.();
   }
 
   function submitItem(event: React.FormEvent<HTMLFormElement>) {

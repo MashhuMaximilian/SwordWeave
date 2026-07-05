@@ -179,6 +179,7 @@ export function BlueprintSandboxClient({
           availableCapabilities={capabilities}
           onStateChange={(state) => setFormIsDirty(state.isDirty)}
           onSaved={() => {}}
+          onReset={() => setEditing(null)}
         />
       );
     }
@@ -191,6 +192,7 @@ export function BlueprintSandboxClient({
           availableEffects={effects}
           onStateChange={(state) => setFormIsDirty(state.isDirty)}
           onSaved={() => {}}
+          onReset={() => setEditing(null)}
         />
       );
     }

@@ -113,8 +113,8 @@ function writeStorage(key: string, layout: StoredLayout) {
 }
 
 const DEFAULT_WIDTHS: Record<ColumnKey, number> = {
-  library: 24,
-  builder: 52,
+  library: 32,
+  builder: 44,
   preview: 24,
 };
 
@@ -363,7 +363,7 @@ function DesktopSandboxLayout({
           panelRef={panelRefs.library}
           collapsible
           collapsedSize={COLLAPSED_STRIP_PX}
-          minSize={15}
+          minSize={22}
           defaultSize={storedWidths.library ?? DEFAULT_WIDTHS.library}
           className="flex h-full min-h-0 flex-col"
         >

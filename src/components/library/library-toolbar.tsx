@@ -153,8 +153,11 @@ export function LibraryToolbar({
 
   return (
     <div className="space-y-3">
-      {showSearch ? (
-        <div className="flex items-center gap-2">
+      {/* Search bar (when enabled) + mobile filter toggle. The toggle lives
+          alongside the search bar but is independently rendered — when search
+          is hidden (e.g. sandbox Library column) we still need the toggle. */}
+      <div className="flex items-center gap-2">
+        {showSearch ? (
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -165,35 +168,39 @@ export function LibraryToolbar({
               className="w-full rounded-md border border-input bg-background py-2 pl-9 pr-3 text-sm outline-none focus:border-primary"
             />
           </div>
-          {/* Mobile-only filter toggle — opens the filter panel below. */}
-          <button
-            type="button"
-            onClick={() => setMobileFiltersOpen((v) => !v)}
-            aria-expanded={mobileFiltersOpen}
-            aria-controls="library-toolbar-filters"
-            className={cn(
-              "relative inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition-colors md:hidden",
-              mobileFiltersOpen || hasActiveFilters
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-card text-foreground hover:border-primary",
-            )}
-            title={mobileFiltersOpen ? "Hide filters" : "Show filters"}
-          >
-            <SlidersHorizontal className="size-3.5" />
-            Filters
-            {hasActiveFilters && !mobileFiltersOpen ? (
-              <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-foreground px-1 text-[10px] font-bold text-primary">
-                •
-              </span>
-            ) : null}
-            {mobileFiltersOpen ? (
-              <ChevronUp className="size-3.5" />
-            ) : (
-              <ChevronDown className="size-3.5" />
-            )}
-          </button>
-        </div>
-      ) : null}
+        ) : (
+          <div className="flex-1 md:hidden" aria-hidden="true" />
+        )}
+        {/* Mobile-only filter toggle — opens the filter panel below. Shown
+            even when the search bar is hidden so the sandbox can still
+            collapse its filters on mobile. Desktop ignores this entirely. */}
+        <button
+          type="button"
+          onClick={() => setMobileFiltersOpen((v) => !v)}
+          aria-expanded={mobileFiltersOpen}
+          aria-controls="library-toolbar-filters"
+          className={cn(
+            "relative inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition-colors md:hidden",
+            mobileFiltersOpen || hasActiveFilters
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-card text-foreground hover:border-primary",
+          )}
+          title={mobileFiltersOpen ? "Hide filters" : "Show filters"}
+        >
+          <SlidersHorizontal className="size-3.5" />
+          Filters
+          {hasActiveFilters && !mobileFiltersOpen ? (
+            <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-foreground px-1 text-[10px] font-bold text-primary">
+              •
+            </span>
+          ) : null}
+          {mobileFiltersOpen ? (
+            <ChevronUp className="size-3.5" />
+          ) : (
+            <ChevronDown className="size-3.5" />
+          )}
+        </button>
+      </div>
 
       {/* Filter panel — always visible on desktop, collapsible on mobile. */}
       <div

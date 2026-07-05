@@ -15,8 +15,8 @@
 //
 // All filtering, sorting, and view-mode is owned by the LibraryToolbar.
 
-import { useMemo, useState } from "react";
-import { LibraryToolbar } from "@/components/library/library-toolbar";
+import { useEffect, useMemo, useState } from "react";
+import { LibraryToolbar, type LibraryToolbarState } from "@/components/library/library-toolbar";
 import { LibraryTable } from "@/components/library/library-table";
 import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-query";
 import {
@@ -84,6 +84,30 @@ export function BlueprintLibrary({
 
   const availableTypes = AVAILABLE_TYPES_BY_BUILD[build];
 
+  // Toolbar state — owned here, filtered list is derived.
+  const [toolbarState, setToolbarState] = useState<LibraryToolbarState>(() => ({
+    search: "",
+    sort: "ENGAGEMENT",
+    view: "GRID",
+    typeFilter: defaultTypeFilter,
+    category: "",
+    author: "",
+    minLikes: "",
+    hasForks: false,
+  }));
+
+  // When the build mode changes, reset the type filter to the new default
+  // and clear the sub-kind selection so the user sees the right subset
+  // immediately. (Fix for "filters don't auto-apply when switching tabs".)
+  useEffect(() => {
+    setToolbarState((prev) => ({
+      ...prev,
+      typeFilter: defaultTypeFilter,
+      category: "",
+    }));
+    setActiveSubKinds(["RACE", "BACKGROUND", "ARCHETYPE"]);
+  }, [build, defaultTypeFilter]);
+
   // Find the full typed row for a LibraryItem (used by the modal).
   const lookupRow = useMemo(() => {
     return (item: LibraryItem): SandboxPreviewItem | null => {
@@ -103,22 +127,46 @@ export function BlueprintLibrary({
     };
   }, [templates, items]);
 
-  // Filter items by active sub-kinds when in template mode.
+  // Filter items by toolbar search/typeFilter + active sub-kinds when in
+  // template mode. The toolbar's own filters run in addition to the
+  // build-mode gate so the user can narrow the visible subset further.
   const filteredItems = useMemo(() => {
-    if (build !== "template") return libraryItems;
-    if (activeSubKinds.length === 0) return [];
-    return libraryItems.filter((item) => {
-      if (
-        item.targetType === "RACE_TEMPLATE" ||
-        item.targetType === "BACKGROUND_TEMPLATE" ||
-        item.targetType === "ARCHETYPE_TEMPLATE"
-      ) {
-        const kind = item.category; // category is set to the template kind
-        return kind !== null && activeSubKinds.includes(kind);
-      }
-      return false; // Only show templates in template mode
-    });
-  }, [build, libraryItems, activeSubKinds]);
+    let items = libraryItems;
+
+    // Build-mode gate: in template mode, only templates pass.
+    if (build === "template") {
+      if (activeSubKinds.length === 0) return [];
+      items = items.filter((item) => {
+        if (
+          item.targetType === "RACE_TEMPLATE" ||
+          item.targetType === "BACKGROUND_TEMPLATE" ||
+          item.targetType === "ARCHETYPE_TEMPLATE"
+        ) {
+          const kind = item.category;
+          return kind !== null && activeSubKinds.includes(kind);
+        }
+        return false;
+      });
+    } else if (build === "item") {
+      items = items.filter((item) => item.targetType === "ITEM");
+    }
+
+    // Toolbar text search.
+    if (toolbarState.search) {
+      const q = toolbarState.search.toLowerCase();
+      items = items.filter((item) => item.name.toLowerCase().includes(q));
+    }
+
+    // Toolbar type filter.
+    if (
+      toolbarState.typeFilter !== "ALL" &&
+      items.length > 0
+    ) {
+      items = items.filter((item) => item.targetType === toolbarState.typeFilter);
+    }
+
+    return items;
+  }, [build, libraryItems, activeSubKinds, toolbarState]);
 
   function handleRowSelect(item: LibraryItem) {
     const full = lookupRow(item);
@@ -174,27 +222,16 @@ export function BlueprintLibrary({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-border p-3">
+      <div className="shrink-0 border-b border-border p-3">
         <LibraryToolbar
-          state={{
-            search: "",
-            sort: "ENGAGEMENT",
-            view: "GRID",
-            typeFilter: defaultTypeFilter,
-            category: "",
-            author: "",
-            minLikes: "",
-            hasForks: false,
-          }}
-          onStateChange={() => {
-            // Visual-only in the sandbox left column.
-          }}
+          state={toolbarState}
+          onStateChange={setToolbarState}
           availableTypes={availableTypes}
           subKindParent="RACE_TEMPLATE"
           subKinds={SUB_KIND_CHIPS}
           activeSubKinds={activeSubKinds}
           onSubKindsChange={setActiveSubKinds}
-          showSearch={false}
+          showSearch={true}
           showAdvancedFilters={false}
         />
       </div>

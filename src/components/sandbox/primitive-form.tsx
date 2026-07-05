@@ -283,6 +283,7 @@ export function PrimitiveForm({
   initialPrimitive,
   onStateChange,
   onSaved,
+  onReset,
 }: {
   /**
    * If provided, the form opens pre-loaded with this primitive for editing.
@@ -303,6 +304,12 @@ export function PrimitiveForm({
      */
     isDirty: boolean;
   }) => void;
+  /**
+   * Fires when the user clicks the Reset button. The parent uses this to
+   * clear the Preview pane (set editing = null) so Reset returns the user
+   * to the empty-form / empty-preview state.
+   */
+  onReset?: () => void;
   /**
    * Fires after a successful save. Used by the page to refresh the Library
    * table without re-mounting the form.
@@ -414,6 +421,7 @@ export function PrimitiveForm({
     setIsDirty(false); // pristine after reset
     setMessage("Started a fresh primitive.");
     bootstrappedRef.current = true; // prevent re-bootstrapping
+    onReset?.(); // tell parent so Preview pane can clear too
   }
 
   function submitPrimitive(event: React.FormEvent<HTMLFormElement>) {

@@ -196,6 +196,7 @@ export function GrammarSandboxClient({
           onSaved={() => {
             /* router.refresh inside PrimitiveForm */
           }}
+          onReset={() => setEditing(null)}
         />
       );
     }
@@ -214,6 +215,7 @@ export function GrammarSandboxClient({
           }))}
           onStateChange={(state) => setFormIsDirty(state.isDirty)}
           onSaved={() => {}}
+          onReset={() => setEditing(null)}
         />
       );
     }
@@ -230,6 +232,7 @@ export function GrammarSandboxClient({
         }))}
         onStateChange={(state) => setFormIsDirty(state.isDirty)}
         onSaved={() => {}}
+        onReset={() => setEditing(null)}
       />
     );
   }, [build, editing, primitives]);

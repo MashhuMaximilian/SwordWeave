@@ -92,6 +92,7 @@ export function CapabilityForm({
   availablePrimitives,
   onStateChange,
   onSaved,
+  onReset,
 }: {
   initialCapability?: CapabilityRow | null;
   availablePrimitives: Array<{
@@ -109,6 +110,7 @@ export function CapabilityForm({
     isDirty: boolean;
   }) => void;
   onSaved?: (capability: CapabilityRow) => void;
+  onReset?: () => void;
 }) {
   const [form, setForm] = useState<CapabilityFormState>(blankForm);
   const [slots, setSlots] = useState<CapabilitySlot[]>([]);
@@ -205,6 +207,7 @@ export function CapabilityForm({
     setIsDirty(false); // pristine after reset
     setMessage("Started a fresh capability.");
     bootstrappedRef.current = true;
+    onReset?.();
   }
 
   function submitCapability(event: React.FormEvent<HTMLFormElement>) {

@@ -62,6 +62,7 @@ export function TemplateForm({
   availableCapabilities,
   onStateChange,
   onSaved,
+  onReset,
 }: {
   initialTemplate?: TemplateRow | null;
   initialKind?: "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined;
@@ -87,6 +88,7 @@ export function TemplateForm({
     isDirty: boolean;
   }) => void;
   onSaved?: (template: TemplateRow) => void;
+  onReset?: () => void;
 }) {
   const [form, setForm] = useState<TemplateFormState>({
     ...blankForm,
@@ -177,6 +179,7 @@ export function TemplateForm({
     setIsDirty(false); // pristine after reset
     setMessage("Started a fresh template.");
     bootstrappedRef.current = true;
+    onReset?.();
   }
 
   function submitTemplate(event: React.FormEvent<HTMLFormElement>) {

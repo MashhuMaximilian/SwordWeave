@@ -14,8 +14,8 @@
 // Pristine mode: clicks swap silently via the parent's onSelect.
 // Dirty mode: parent's guardedLibrarySelect opens the unsaved modal.
 
-import { useMemo, useState } from "react";
-import { LibraryToolbar } from "@/components/library/library-toolbar";
+import { useEffect, useMemo, useState } from "react";
+import { LibraryToolbar, type LibraryToolbarState } from "@/components/library/library-toolbar";
 import { LibraryTable } from "@/components/library/library-table";
 import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-query";
 import {
@@ -91,6 +91,30 @@ export function GrammarLibrary({
 
   const availableTypes = AVAILABLE_TYPES_BY_BUILD[build];
 
+  // Toolbar state — owned here, filtered list is derived.
+  const [toolbarState, setToolbarState] = useState<LibraryToolbarState>(() => ({
+    search: "",
+    sort: "ENGAGEMENT",
+    view: "GRID",
+    typeFilter: defaultTypeFilter,
+    category: "",
+    author: "",
+    minLikes: "",
+    hasForks: false,
+  }));
+
+  // When the build mode changes, reset the type filter to the new default
+  // and clear other filters so the user sees the right subset immediately.
+  // (Fix for "filters don't auto-apply when switching tabs".)
+  useEffect(() => {
+    setToolbarState((prev) => ({
+      ...prev,
+      typeFilter: defaultTypeFilter,
+      category: "",
+      subKinds: [],
+    }));
+  }, [build, defaultTypeFilter]);
+
   // Find the full typed row for a LibraryItem (used by the modal).
   const lookupRow = useMemo(() => {
     return (item: LibraryItem): SandboxPreviewItem | null => {
@@ -128,40 +152,47 @@ export function GrammarLibrary({
     setSelectedItem(null);
   }
 
+  // Apply toolbar filters to libraryItems. Sandbox Library is gated by
+  // build-mode (only the typeFilter values listed in `availableTypes`
+  // survive), but within that subset the user can still search, sort, etc.
+  const filteredItems = useMemo(() => {
+    return libraryItems.filter((item) => {
+      // Only show items of the types available in this build mode.
+      const allowedKeys = availableTypes.map((t) => t.key);
+      if (!allowedKeys.includes(item.targetType) && !allowedKeys.includes("ALL")) {
+        return false;
+      }
+      // Apply toolbar text search.
+      if (toolbarState.search) {
+        const q = toolbarState.search.toLowerCase();
+        if (!item.name.toLowerCase().includes(q)) return false;
+      }
+      // Apply type filter (ALL = all available).
+      if (
+        toolbarState.typeFilter !== "ALL" &&
+        item.targetType !== toolbarState.typeFilter
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [libraryItems, availableTypes, toolbarState]);
+
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-border p-3">
+      <div className="shrink-0 border-b border-border p-3">
         <LibraryToolbar
-          state={{
-            search: "",
-            sort: "ENGAGEMENT",
-            view: "GRID",
-            typeFilter: defaultTypeFilter,
-            category: "",
-            author: "",
-            minLikes: "",
-            hasForks: false,
-          }}
-          onStateChange={() => {
-            // LibraryToolbar is currently URL-driven only on /library/browse.
-            // For the sandbox left column, the toolbar is visual-only; all
-            // filtering happens via build-mode gating. (Future: wire up the
-            // toolbar's URL/search pipeline to filter libraryItems here.)
-          }}
+          state={toolbarState}
+          onStateChange={setToolbarState}
           availableTypes={availableTypes}
-          showSearch={false}
+          showSearch={true}
           showAdvancedFilters={false}
         />
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-3">
         <LibraryTable
-          items={libraryItems.filter(
-            (item) =>
-              item.targetType === "PRIMITIVE" ||
-              item.targetType === "EFFECT" ||
-              item.targetType === "CAPABILITY",
-          )}
+          items={filteredItems}
           view="GRID"
           engagement={{ reactions: {}, following: {} }}
           currentUserInternalId={null}
