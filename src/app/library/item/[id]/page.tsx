@@ -20,6 +20,8 @@ import {
   reactions,
 } from "@/db/schema";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
+import { ForksList } from "@/components/engagement/forks-list";
+import type { ForkTargetType } from "@/lib/publishing/forks-query";
 import { Markdown } from "@/components/ui/markdown";
 import {
   resolveAuthorByClerkId,
@@ -287,6 +289,10 @@ function DetailShell({
             authorId={author?.id ?? null}
             authorUsername={author?.username ?? null}
             currentUserId={currentUserId}
+          />
+          <ForksList
+            targetType={targetType as ForkTargetType}
+            targetId={targetId}
           />
         </footer>
       </article>
