@@ -21,12 +21,12 @@ import {
 } from "@/lib/preferences/library-prefs";
 import {
   LibraryBrowseClient,
-  parseSort,
-  parseView,
-  parseType,
-  EMPTY_LIBRARY_TOOLBAR_STATE,
 } from "@/components/library/library-browse-client";
-import type { LibraryToolbarState } from "@/components/library/library-toolbar";
+import { parseSort, parseView, parseType } from "@/lib/library-url-params";
+import {
+  EMPTY_LIBRARY_TOOLBAR_STATE,
+  type LibraryToolbarState,
+} from "@/components/library/library-toolbar";
 
 export const dynamic = "force-dynamic";
 

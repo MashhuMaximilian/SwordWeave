@@ -14,15 +14,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import {
   LibraryToolbar,
-  type LibraryToolbarState,
   EMPTY_LIBRARY_TOOLBAR_STATE,
 } from "@/components/library/library-toolbar";
 import { LibraryTable } from "@/components/library/library-table";
 import { LibrarySplitView } from "@/components/library/library-split-view";
-import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-query";
-import type { LibrarySort } from "@/lib/publishing/library-query";
-import type { LibraryView } from "@/lib/preferences/library-prefs";
+import type { LibraryItem } from "@/lib/publishing/library-query";
 import type { LibraryEngagement } from "@/components/library/library-table";
+import type { LibraryToolbarState } from "@/components/library/library-toolbar";
 
 interface Props {
   initialItems: LibraryItem[];
@@ -33,39 +31,6 @@ interface Props {
   primitiveCategories: Array<{ value: string; label: string; count: number }>;
   engagement: LibraryEngagement;
   currentUserInternalId: string | null;
-}
-
-function parseSort(value: string | null): LibrarySort {
-  if (
-    value === "LIKES" ||
-    value === "RECENT" ||
-    value === "FORKS" ||
-    value === "ALPHABETICAL" ||
-    value === "ENGAGEMENT"
-  ) {
-    return value;
-  }
-  return "ENGAGEMENT";
-}
-
-function parseView(value: string | null): LibraryView {
-  return value === "LIST" ? "LIST" : "GRID";
-}
-
-function parseType(value: string | null): LibraryTargetType | "ALL" {
-  if (
-    value === "PRIMITIVE" ||
-    value === "CAPABILITY" ||
-    value === "EFFECT" ||
-    value === "CHARACTER" ||
-    value === "ITEM" ||
-    value === "RACE_TEMPLATE" ||
-    value === "BACKGROUND_TEMPLATE" ||
-    value === "ARCHETYPE_TEMPLATE"
-  ) {
-    return value;
-  }
-  return "ALL";
 }
 
 export function LibraryBrowseClient({
@@ -209,7 +174,3 @@ function Pagination({
     </div>
   );
 }
-
-// Re-export parse helpers so the server page can use them without
-// duplicating logic.
-export { parseSort, parseView, parseType, EMPTY_LIBRARY_TOOLBAR_STATE };
