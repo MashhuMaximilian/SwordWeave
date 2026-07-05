@@ -1,0 +1,357 @@
+"use client";
+
+// =============================================================================
+// LibraryTable — the canonical library listing.
+//
+// Renders the result set from `queryLibrary()` as either a grid or a list,
+// preserving the visual output that /library/browse shipped with.
+//
+// Two rendering modes:
+// - Link mode (default): each row is an <a href="/library/item/..."> for
+//   navigation in the standalone /library/browse page.
+// - Select mode (when `onSelect` is provided): rows are <button> elements that
+//   fire `onSelect(item)` so the sandbox left column can route clicks into
+//   its build form + dirty-modal gate.
+//
+// Empty state, pagination, engagement bar, and per-row metadata all match
+// the original /library/browse page byte-for-byte. This file replaces the
+// inline rendering in page.tsx so the same table can be reused in the
+// sandbox left column.
+// =============================================================================
+
+import Link from "next/link";
+import { ArrowRight, SearchX, User as UserIcon } from "lucide-react";
+import { Markdown } from "@/components/ui/markdown";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LikeForkBar } from "@/components/engagement/like-fork-bar";
+import { cn } from "@/lib/utils";
+import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-query";
+import type { LibraryView } from "@/lib/preferences/library-prefs";
+
+type LibraryEngagement = {
+  reactions: Record<string, "LIKE" | "DISLIKE" | null>;
+  following: Record<string, boolean>;
+};
+
+export type { LibraryEngagement };
+
+interface LibraryTableProps {
+  items: LibraryItem[];
+  view: LibraryView;
+  engagement: LibraryEngagement;
+  currentUserInternalId: string | null;
+  /**
+   * If provided, rows render as buttons and clicking one fires this callback
+   * instead of navigating. Used by the sandbox left column.
+   * If omitted, rows render as links to `/library/item/<id>`.
+   */
+  onSelect?: ((item: LibraryItem) => void) | undefined;
+  /**
+   * Stable key for the currently-edited row. Highlighted in the list/grid.
+   */
+  selectedKey?: string | null | undefined;
+  /**
+   * If true, render empty-state copy + a "clear filters" affordance when the
+   * result set is empty. Defaults to true (matches /library/browse).
+   * Set false when the sandbox is pre-filtered by build mode (the empty state
+   * there is "no entries match" with different messaging).
+   */
+  showClearFilters?: boolean;
+  /**
+   * Optional pagination footer. Pass `null` to disable.
+   */
+  pagination?: React.ReactNode;
+  /**
+   * Override copy for the empty state title when the result set is empty.
+   */
+  emptyTitle?: string;
+  /**
+   * Override copy for the empty state description when the result set is empty.
+   */
+  emptyDescription?: string;
+}
+
+export function LibraryTable({
+  items,
+  view,
+  engagement,
+  currentUserInternalId,
+  onSelect,
+  selectedKey,
+  showClearFilters = true,
+  pagination,
+  emptyTitle,
+  emptyDescription,
+}: LibraryTableProps) {
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        icon={SearchX}
+        title={emptyTitle ?? "No matches for these filters"}
+        description={
+          emptyDescription ??
+          "Try removing a filter, broadening the search, or changing the sort."
+        }
+        primaryAction={
+          showClearFilters
+            ? { label: "Clear filters", href: "/library/browse" }
+            : { label: "Browse BU Market", href: "/bu-market" }
+        }
+        {...(showClearFilters
+          ? {}
+          : {
+              secondaryAction: {
+                label: "Open sandbox",
+                href: "/sandbox",
+              },
+            })}
+      />
+    );
+  }
+
+  if (view === "LIST") {
+    return (
+      <div className="space-y-2">
+        {items.map((item) => (
+          <ListItem
+            key={item.id}
+            item={item}
+            engagement={engagement}
+            currentUserInternalId={currentUserInternalId}
+            onSelect={onSelect}
+            selected={selectedKey === item.id}
+          />
+        ))}
+        {pagination}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {items.map((item) => (
+          <GridCard
+            key={item.id}
+            item={item}
+            engagement={engagement}
+            currentUserInternalId={currentUserInternalId}
+            onSelect={onSelect}
+            selected={selectedKey === item.id}
+          />
+        ))}
+      </div>
+      {pagination}
+    </div>
+  );
+}
+
+// =============================================================================
+// ListItem — compact horizontal card for list view.
+// =============================================================================
+
+interface ListItemProps {
+  item: LibraryItem;
+  engagement: LibraryEngagement;
+  currentUserInternalId: string | null;
+  onSelect?: ((item: LibraryItem) => void) | undefined;
+  selected?: boolean | undefined;
+}
+
+function ListItem({
+  item,
+  engagement,
+  currentUserInternalId,
+  onSelect,
+  selected,
+}: ListItemProps) {
+  const inner = (
+    <>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline gap-2">
+          <h3 className="truncate font-semibold">{item.name}</h3>
+          <span className="text-xs text-muted-foreground">
+            {item.targetType.replace(/_/g, " ").toLowerCase()}
+            {item.category ? ` · ${item.category.replace(/_/g, " ")}` : ""}
+          </span>
+          {item.buCost !== null && (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
+              {item.buCost} BU
+            </span>
+          )}
+        </div>
+        {item.description && (
+          <div className="mt-1 line-clamp-2 text-xs text-muted-foreground [&_p]:m-0 [&_strong]:font-semibold [&_em]:italic">
+            <Markdown>{item.description}</Markdown>
+          </div>
+        )}
+        <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+          <span>♥ {item.likesCount}</span>
+          <span>★ {item.forkCount}</span>
+          {item.authorUsername && (
+            <span>by {item.authorDisplayName ?? item.authorUsername}</span>
+          )}
+        </div>
+      </div>
+      <ArrowRight className="mt-1 size-4 shrink-0 text-muted-foreground" />
+    </>
+  );
+
+  const baseClass = cn(
+    "flex items-start gap-3 rounded-md border bg-card p-3 transition-colors",
+    selected
+      ? "border-primary bg-primary/5"
+      : "border-border hover:border-primary",
+  );
+
+  if (onSelect) {
+    return (
+      <button
+        type="button"
+        onClick={() => onSelect(item)}
+        className={cn(baseClass, "w-full text-left")}
+      >
+        {inner}
+      </button>
+    );
+  }
+  return (
+    <Link href={`/library/item/${item.id}`} className={baseClass}>
+      {inner}
+    </Link>
+  );
+}
+
+// =============================================================================
+// GridCard — full card for grid view.
+// =============================================================================
+
+interface GridCardProps {
+  item: LibraryItem;
+  engagement: LibraryEngagement;
+  currentUserInternalId: string | null;
+  onSelect?: ((item: LibraryItem) => void) | undefined;
+  selected?: boolean | undefined;
+}
+
+function GridCard({
+  item,
+  engagement,
+  currentUserInternalId,
+  onSelect,
+  selected,
+}: GridCardProps) {
+  return (
+    <article
+      className={cn(
+        "flex flex-col rounded-md border bg-card p-4 transition-colors",
+        selected
+          ? "border-primary bg-primary/5"
+          : "border-border hover:border-primary",
+      )}
+    >
+      <header className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate font-semibold">{item.name}</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {item.targetType.replace(/_/g, " ").toLowerCase()}
+            {item.category ? ` · ${item.category.replace(/_/g, " ")}` : ""}
+          </p>
+        </div>
+        {item.buCost !== null && (
+          <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
+            {item.buCost} BU
+          </span>
+        )}
+      </header>
+
+      {item.description && (
+        <div className="mt-3 line-clamp-3 text-sm text-muted-foreground [&_p]:m-0 [&_strong]:font-semibold [&_strong]:text-foreground/80 [&_em]:italic [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_a]:underline [&_a]:text-primary">
+          <Markdown>{item.description}</Markdown>
+        </div>
+      )}
+
+      {item.tags.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1">
+          {item.tags.slice(0, 4).map((tag) => (
+            <span
+              key={tag}
+              className="rounded-full bg-secondary px-2 py-0.5 text-xs"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {item.authorUsername && (
+        <Link
+          href={`/u/${item.authorUsername}`}
+          className="mt-3 flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
+        >
+          {item.authorAvatarUrl ? (
+            <img
+              src={item.authorAvatarUrl}
+              alt=""
+              className="size-4 rounded-full"
+            />
+          ) : (
+            <UserIcon className="size-3.5" />
+          )}
+          <span>
+            by{" "}
+            <span className="font-semibold">
+              {item.authorDisplayName ?? item.authorUsername}
+            </span>
+          </span>
+        </Link>
+      )}
+
+      <footer className="mt-auto border-t border-border pt-3">
+        <LikeForkBar
+          targetType={item.targetType as GridLikeForkTargetType}
+          targetId={item.targetId}
+          initialLikes={item.likesCount}
+          initialDislikes={item.dislikesCount}
+          initialForks={item.forkCount}
+          initialUserReaction={engagement.reactions[item.id] ?? null}
+          authorId={item.authorId}
+          authorUsername={item.authorUsername}
+          currentUserId={currentUserInternalId}
+          compact
+        />
+        <div className="mt-2 flex items-center justify-end">
+          {onSelect ? (
+            <button
+              type="button"
+              onClick={() => onSelect(item)}
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              Load into Build
+              <ArrowRight className="ml-1 inline size-3" />
+            </button>
+          ) : (
+            <Link
+              href={`/library/item/${item.id}`}
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              View details
+              <ArrowRight className="ml-1 inline size-3" />
+            </Link>
+          )}
+        </div>
+      </footer>
+    </article>
+  );
+}
+
+// LikeForkBar accepts a narrower union than LibraryTargetType (no EFFECT yet
+// in some places). Cast here so the table can render any LibraryItem.
+type GridLikeForkTargetType =
+  | "PRIMITIVE"
+  | "CAPABILITY"
+  | "CHARACTER"
+  | "ITEM"
+  | "RACE_TEMPLATE"
+  | "BACKGROUND_TEMPLATE"
+  | "ARCHETYPE_TEMPLATE";
