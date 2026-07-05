@@ -40,6 +40,7 @@ import {
   effectPrimitives,
   effects,
   forkAggregates,
+  items,
   primitives,
   reactionAggregates,
   templates,
@@ -125,6 +126,9 @@ export async function queryLibrary(q: LibraryQuery): Promise<LibraryResult> {
   }
   if (wantAll || q.targetType === "EFFECT") {
     items.push(...(await fetchEffects(q)));
+  }
+  if (wantAll || q.targetType === "ITEM") {
+    items.push(...(await fetchItems(q)));
   }
   if (
     wantAll ||
@@ -419,6 +423,72 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
       description: r.narrativeDescription || null,
       category: null,
       buCost: buMap.get(r.id) ?? 0,
+      authorId: r.userId ?? null,
+      authorUsername: author?.username ?? null,
+      authorDisplayName: author?.displayName ?? null,
+      authorAvatarUrl: author?.avatarUrl ?? null,
+      publishedAt: r.createdAt,
+      likesCount: eng.likes,
+      dislikesCount: eng.dislikes,
+      forkCount: eng.forks,
+      netReactions: eng.likes - eng.dislikes,
+      tags: r.tags ?? [],
+    };
+  });
+}
+
+async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
+  const conditions = [eq(items.isPublic, true)];
+
+  if (q.search) {
+    conditions.push(
+      or(
+        ilike(items.name, `%${q.search}%`),
+        ilike(items.description, `%${q.search}%`),
+      )!,
+    );
+  }
+  if (q.authorUsername) {
+    // Items store Clerk ID in user_id; SQL-level username filter needs a
+    // join. Skip — filter in caller.
+  }
+
+  const rows = await db
+    .select({
+      id: items.id,
+      name: items.name,
+      itemType: items.itemType,
+      rarity: items.rarity,
+      buCost: items.buCost,
+      description: items.description,
+      tags: items.tags,
+      userId: items.userId,
+      createdAt: items.createdAt,
+    })
+    .from(items)
+    .where(and(...conditions))
+    .limit(500);
+
+  const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
+  const engagementMap = await resolveEngagementMap(
+    rows.map((r) => `ITEM:${r.id}`),
+  );
+
+  return rows.map((r) => {
+    const author = r.userId ? authorMap.get(r.userId) : null;
+    const eng = engagementMap.get(`ITEM:${r.id}`) ?? {
+      likes: 0,
+      dislikes: 0,
+      forks: 0,
+    };
+    return {
+      id: `ITEM:${r.id}`,
+      targetType: "ITEM" as const,
+      targetId: r.id,
+      name: r.name,
+      description: r.description || null,
+      category: r.itemType,
+      buCost: r.buCost,
       authorId: r.userId ?? null,
       authorUsername: author?.username ?? null,
       authorDisplayName: author?.displayName ?? null,
