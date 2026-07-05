@@ -29,7 +29,7 @@ export default function MonstersPage() {
 
         <Link
           className="group flex flex-col rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
-          href="/sandbox/capabilities"
+          href="/sandbox/grammar?build=capability"
         >
           <Swords className="size-5 text-primary" />
           <h2 className="mt-5 text-lg font-semibold">Action Deck Dependency</h2>

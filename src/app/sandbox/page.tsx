@@ -4,14 +4,13 @@ import {
   Boxes,
   FlaskConical,
   Package,
-  ScrollText,
   Swords,
   UserRound,
 } from "lucide-react";
 
 const workshops = [
   {
-    href: "/sandbox/primitives",
+    href: "/sandbox/grammar?build=primitive",
     title: "Primitives",
     status: "Live",
     description:
@@ -19,7 +18,7 @@ const workshops = [
     icon: Boxes,
   },
   {
-    href: "/sandbox/effects",
+    href: "/sandbox/grammar?build=effect",
     title: "Effects",
     status: "Live",
     description:
@@ -27,7 +26,7 @@ const workshops = [
     icon: FlaskConical,
   },
   {
-    href: "/sandbox/capabilities",
+    href: "/sandbox/grammar?build=capability",
     title: "Capabilities",
     status: "Live",
     description:
@@ -35,7 +34,7 @@ const workshops = [
     icon: Swords,
   },
   {
-    href: "/sandbox/items",
+    href: "/sandbox/blueprint?build=item",
     title: "Items",
     status: "Live",
     description:
@@ -43,12 +42,12 @@ const workshops = [
     icon: Package,
   },
   {
-    href: "/sandbox/templates/new?kind=race",
+    href: "/sandbox/blueprint?build=template&kind=race",
     title: "Templates",
     status: "Live",
     description:
       "Author races, backgrounds, and archetype templates. Kind-switched.",
-    icon: ScrollText,
+    icon: Swords,
   },
   {
     href: "/sandbox/builds",

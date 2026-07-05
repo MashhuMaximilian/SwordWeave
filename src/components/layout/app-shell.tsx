@@ -29,12 +29,20 @@ const primaryNav = [
 ] as const;
 
 const sandboxNav = [
-  { href: "/sandbox/primitives", label: "Primitives", icon: Boxes },
-  { href: "/sandbox/effects", label: "Effects", icon: Sparkles },
-  { href: "/sandbox/capabilities", label: "Capabilities", icon: Swords },
-  { href: "/sandbox/items", label: "Items", icon: Package },
   {
-    href: "/sandbox/templates/new?kind=race",
+    href: "/sandbox/grammar?build=primitive",
+    label: "Primitives",
+    icon: Boxes,
+  },
+  { href: "/sandbox/grammar?build=effect", label: "Effects", icon: Sparkles },
+  {
+    href: "/sandbox/grammar?build=capability",
+    label: "Capabilities",
+    icon: Swords,
+  },
+  { href: "/sandbox/blueprint?build=item", label: "Items", icon: Package },
+  {
+    href: "/sandbox/blueprint?build=template&kind=race",
     label: "Templates",
     icon: ScrollText,
   },

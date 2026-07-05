@@ -10,21 +10,21 @@ import {
 
 const workspaces = [
   {
-    href: "/sandbox/primitives",
+    href: "/sandbox/grammar?build=primitive",
     title: "Primitive Sandbox",
     status: "Live",
     description: "Atomic BU records, mirror vectors, and generated modifiers.",
     icon: Boxes,
   },
   {
-    href: "/sandbox/effects",
+    href: "/sandbox/grammar?build=effect",
     title: "Effect Builder",
     status: "Next",
     description: "Reusable states assembled from primitive groups.",
     icon: FlaskConical,
   },
   {
-    href: "/sandbox/capabilities",
+    href: "/sandbox/grammar?build=capability",
     title: "Capability Compiler",
     status: "Queued",
     description: "Action cards compiled from verbs, domains, and effects.",
@@ -65,7 +65,7 @@ export default function HomePage() {
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground"
-              href="/sandbox/primitives"
+              href="/sandbox/grammar?build=primitive"
             >
               Open Primitive Sandbox
               <ArrowRight className="size-4" />
