@@ -7,11 +7,13 @@ import {
   Boxes,
   FlaskConical,
   Library,
+  LogIn,
   Package,
   ScrollText,
   Shield,
   Sparkles,
   Swords,
+  UserPlus,
   UserRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -46,16 +48,21 @@ function isActive(pathname: string, href: string) {
 
 function BrandMark() {
   return (
-    <Link className="group flex items-center gap-3" href="/">
-      <div className="flex size-10 items-center justify-center rounded-md border border-border bg-background text-primary transition-colors group-hover:border-primary">
+    <Link className="group flex min-w-0 items-center gap-3" href="/">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-background text-primary transition-colors group-hover:border-primary">
         <ScrollText className="size-5" />
       </div>
-      <div className="min-w-0">
-        <p className="font-display text-2xl font-semibold uppercase leading-none">
+      <div className="hidden min-w-0 sm:block">
+        <p className="truncate font-display text-2xl font-semibold uppercase leading-none">
           SwordWeave
         </p>
         <p className="mt-0.5 truncate text-xs text-muted-foreground">
           Digital Workspace
+        </p>
+      </div>
+      <div className="block sm:hidden">
+        <p className="font-display text-lg font-semibold uppercase leading-none">
+          SW
         </p>
       </div>
     </Link>
@@ -65,30 +72,52 @@ function BrandMark() {
 function AccountControls() {
   const { isSignedIn } = useUser();
 
+  if (isSignedIn) {
+    return (
+      <div className="flex min-w-0 items-center gap-2">
+        <UserMenu />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-w-0 items-center gap-2">
-      {isSignedIn ? (
-        <UserMenu />
-      ) : (
-        <>
-        <SignInButton mode="modal">
-          <button
-            className="h-9 rounded-md border border-border bg-background px-3 text-sm font-bold text-foreground"
-            type="button"
-          >
-            Sign In
-          </button>
-        </SignInButton>
-        <SignUpButton mode="modal">
-          <button
-            className="h-9 rounded-md bg-primary px-3 text-sm font-bold text-primary-foreground"
-            type="button"
-          >
-            Sign Up
-          </button>
-        </SignUpButton>
-        </>
-      )}
+      {/* Desktop: full label buttons */}
+      <SignInButton mode="modal">
+        <button
+          className="hidden h-9 shrink-0 whitespace-nowrap rounded-md border border-border bg-background px-3 text-sm font-bold text-foreground sm:inline-flex sm:items-center sm:justify-center"
+          type="button"
+        >
+          Sign In
+        </button>
+      </SignInButton>
+      <SignUpButton mode="modal">
+        <button
+          className="hidden h-9 shrink-0 whitespace-nowrap rounded-md bg-primary px-3 text-sm font-bold text-primary-foreground sm:inline-flex sm:items-center sm:justify-center"
+          type="button"
+        >
+          Sign Up
+        </button>
+      </SignUpButton>
+      {/* Mobile (<640px): icon-only buttons */}
+      <SignInButton mode="modal">
+        <button
+          aria-label="Sign in"
+          className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-background text-foreground sm:hidden"
+          type="button"
+        >
+          <LogIn className="size-4" />
+        </button>
+      </SignInButton>
+      <SignUpButton mode="modal">
+        <button
+          aria-label="Sign up"
+          className="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground sm:hidden"
+          type="button"
+        >
+          <UserPlus className="size-4" />
+        </button>
+      </SignUpButton>
     </div>
   );
 }
@@ -99,38 +128,49 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-30 border-b border-border bg-shell/95 backdrop-blur lg:hidden">
-        <div className="flex items-center justify-between gap-3 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 pr-2">
           <BrandMark />
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <AccountControls />
             <ThemeToggle />
           </div>
         </div>
-        <nav
-          aria-label="Primary"
-          className="flex gap-2 overflow-x-auto px-4 pb-3"
-        >
-          {primaryNav.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(pathname, item.href);
+        {/* Primary nav: scrollable with fade-edge to indicate overflow */}
+        <div className="relative">
+          <nav
+            aria-label="Primary"
+            className="scrollbar-none flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-3"
+            style={{
+              scrollbarWidth: "none",
+              WebkitOverflowScrolling: "touch",
+              maskImage:
+                "linear-gradient(to right, black 0, black calc(100% - 24px), transparent 100%)",
+              WebkitMaskImage:
+                "linear-gradient(to right, black 0, black calc(100% - 24px), transparent 100%)",
+            }}
+          >
+            {primaryNav.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(pathname, item.href);
 
-            return (
-              <Link
-                className={cn(
-                  "flex shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium",
-                  active
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card text-muted-foreground",
-                )}
-                href={item.href}
-                key={item.href}
-              >
-                <Icon className="size-4" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
+              return (
+                <Link
+                  className={cn(
+                    "flex shrink-0 snap-start items-center gap-2 whitespace-nowrap rounded-md border px-3 py-2 text-sm font-medium",
+                    active
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-muted-foreground",
+                  )}
+                  href={item.href}
+                  key={item.href}
+                >
+                  <Icon className="size-4" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
       </header>
 
       <div className="lg:grid lg:min-h-screen lg:grid-cols-[248px_1fr]">
