@@ -175,6 +175,7 @@ export const capabilities = pgTable(
     sourceType: sourceTypeEnum("source_type").notNull(),
     verboseDescription: text("verbose_description").notNull().default(""),
     isPublic: boolean("is_public").notNull().default(false),
+    userId: text("user_id"),
     sourceOrigin: text("source_origin"),
     tags: text("tags")
       .array()
@@ -190,6 +191,7 @@ export const capabilities = pgTable(
     index("capabilities_type_idx").on(table.type),
     index("capabilities_source_type_idx").on(table.sourceType),
     index("capabilities_is_public_idx").on(table.isPublic),
+    index("capabilities_user_id_idx").on(table.userId),
     index("capabilities_tags_idx").using("gin", table.tags),
     uniqueIndex("capabilities_name_source_origin_unique_idx").on(
       table.name,

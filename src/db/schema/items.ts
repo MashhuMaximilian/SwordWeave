@@ -28,6 +28,7 @@ export const items = pgTable(
     isConsumable: boolean("is_consumable").notNull().default(false),
     actsAsFocus: boolean("acts_as_focus").notNull().default(true),
     isPublic: boolean("is_public").notNull().default(false),
+    userId: text("user_id"),
     sourceOrigin: text("source_origin"),
     tags: text("tags")
       .array()
@@ -39,6 +40,7 @@ export const items = pgTable(
     index("items_item_type_idx").on(table.itemType),
     index("items_rarity_idx").on(table.rarity),
     index("items_is_public_idx").on(table.isPublic),
+    index("items_user_id_idx").on(table.userId),
     index("items_tags_idx").using("gin", table.tags),
     uniqueIndex("items_name_source_origin_unique_idx").on(
       table.name,

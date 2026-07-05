@@ -282,6 +282,7 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
       sourceType: capabilities.sourceType,
       verboseDescription: capabilities.verboseDescription,
       tags: capabilities.tags,
+      userId: capabilities.userId,
       createdAt: capabilities.createdAt,
     })
     .from(capabilities)
@@ -313,11 +314,13 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
     }
   }
 
+  const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
   const engagementMap = await resolveEngagementMap(
     rows.map((r) => `CAPABILITY:${r.id}`),
   );
 
   return rows.map((r) => {
+    const author = r.userId ? authorMap.get(r.userId) : null;
     const eng = engagementMap.get(`CAPABILITY:${r.id}`) ?? {
       likes: 0,
       dislikes: 0,
@@ -331,10 +334,10 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
       description: r.verboseDescription || null,
       category: r.type,
       buCost: buMap.get(r.id) ?? 0,
-      authorId: null,
-      authorUsername: null,
-      authorDisplayName: null,
-      authorAvatarUrl: null,
+      authorId: r.userId ?? null,
+      authorUsername: author?.username ?? null,
+      authorDisplayName: author?.displayName ?? null,
+      authorAvatarUrl: author?.avatarUrl ?? null,
       publishedAt: r.createdAt,
       likesCount: eng.likes,
       dislikesCount: eng.dislikes,
@@ -528,7 +531,7 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
 }
 
 async function resolveAuthorMap(
-  userIds: (string | null)[],
+  clerkUserIds: (string | null)[],
 ): Promise<
   Map<
     string,
@@ -540,15 +543,29 @@ async function resolveAuthorMap(
     { username: string; displayName: string | null; avatarUrl: string | null }
   >();
   const unique = Array.from(
-    new Set(userIds.filter((id): id is string => Boolean(id))),
+    new Set(clerkUserIds.filter((id): id is string => Boolean(id))),
   );
   if (unique.length === 0) return map;
+  // Content tables store the Clerk user ID (text), not the internal UUID.
+  // Users table exposes it as `clerkUserId` — match on that.
   const rows = await db.query.users.findMany({
-    where: (table, { inArray }) => inArray(table.id, unique),
-    columns: { id: true, username: true, displayName: true, avatarUrl: true },
+    where: (table, { inArray }) => inArray(table.clerkUserId, unique),
+    columns: {
+      clerkUserId: true,
+      username: true,
+      displayName: true,
+      avatarUrl: true,
+      isAnonymized: true,
+      deletedAt: true,
+    },
   });
   for (const r of rows) {
-    map.set(r.id, {
+    // Don't surface anonymized/deleted users — their content remains in the
+    // library (so ownership lineage is preserved) but the UI should not
+    // show the deterministic hash handle or display name.
+    if (r.isAnonymized || r.deletedAt) continue;
+    if (!r.clerkUserId) continue;
+    map.set(r.clerkUserId, {
       username: r.username,
       displayName: r.displayName,
       avatarUrl: r.avatarUrl,

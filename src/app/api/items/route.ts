@@ -185,6 +185,7 @@ export async function POST(request: Request) {
           isConsumable,
           actsAsFocus,
           isPublic,
+          userId,
           sourceOrigin: sourceOrigin ?? `manual:item`,
           tags,
         })
@@ -234,6 +235,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
-
-// Suppress unused userId warning — we capture for ownership tracking later
-void ({} as { userId: string });

@@ -166,6 +166,7 @@ export async function POST(request: Request) {
           sourceType,
           verboseDescription,
           isPublic,
+          userId,
           sourceOrigin,
           tags,
           metadata,

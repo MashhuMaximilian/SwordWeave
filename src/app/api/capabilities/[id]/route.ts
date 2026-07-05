@@ -61,7 +61,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await auth.protect();
+    const { userId } = await auth.protect();
     const { id } = await params;
     const body: unknown = await request.json();
 
@@ -71,6 +71,22 @@ export async function PATCH(
 
     const values = body as Record<string, unknown>;
     const updatePayload: Record<string, unknown> = {};
+
+    // Ownership gate: load current row to verify caller is the owner.
+    // System content (user_id IS NULL) is immutable via this endpoint.
+    const existing = await db.query.capabilities.findFirst({
+      where: eq(capabilities.id, id),
+      columns: { id: true, userId: true },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Capability not found." }, { status: 404 });
+    }
+    if (existing.userId !== userId) {
+      return NextResponse.json(
+        { error: "You can only edit capabilities you own." },
+        { status: 403 },
+      );
+    }
 
     if ("name" in values) updatePayload["name"] = String(values["name"]).trim();
     if ("type" in values) {
@@ -252,8 +268,23 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await auth.protect();
+    const { userId } = await auth.protect();
     const { id } = await params;
+
+    // Ownership gate: system content (user_id IS NULL) cannot be deleted via API.
+    const existing = await db.query.capabilities.findFirst({
+      where: eq(capabilities.id, id),
+      columns: { id: true, userId: true },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Capability not found." }, { status: 404 });
+    }
+    if (existing.userId !== userId) {
+      return NextResponse.json(
+        { error: "You can only delete capabilities you own." },
+        { status: 403 },
+      );
+    }
 
     const [deleted] = await db
       .delete(capabilities)

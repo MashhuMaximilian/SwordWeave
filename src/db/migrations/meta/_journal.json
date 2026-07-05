@@ -92,6 +92,13 @@
       "when": 1783198329585,
       "tag": "0012_rich_crystal",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1783231225288,
+      "tag": "0013_phase5_capability_item_user_id",
+      "breakpoints": true
     }
   ]
 }
