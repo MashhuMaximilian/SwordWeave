@@ -25,8 +25,8 @@ import {
   parseView,
   parseType,
   EMPTY_LIBRARY_TOOLBAR_STATE,
-  type LibraryToolbarState,
 } from "@/components/library/library-browse-client";
+import type { LibraryToolbarState } from "@/components/library/library-toolbar";
 
 export const dynamic = "force-dynamic";
 
@@ -129,7 +129,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
         </Link>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-8 flex h-[calc(100vh-12rem)] min-h-[600px] flex-col">
         <LibraryBrowseClient
           initialItems={result.items}
           total={result.total}

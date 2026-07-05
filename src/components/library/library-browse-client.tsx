@@ -2,19 +2,23 @@
 
 // =============================================================================
 // LibraryBrowseClient — client wrapper that owns the toolbar state and pushes
-// URL changes via Next router. Replaces the inline URL-driven <form> + filter
-// chips that /library/browse shipped with so the same LibraryToolbar is
-// reusable across the sandbox left column.
+// URL changes via Next router. Now hosts the two-pane LibrarySplitView.
+//
+// Layout: <LibraryToolbar /> + <LibrarySplitView>
+// The split view renders the table on one side and the preview pane on
+// the other (desktop horizontal, mobile vertical). Selecting a row in the
+// table updates `selectedItem`, which renders the full preview.
 // =============================================================================
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   LibraryToolbar,
   type LibraryToolbarState,
   EMPTY_LIBRARY_TOOLBAR_STATE,
 } from "@/components/library/library-toolbar";
 import { LibraryTable } from "@/components/library/library-table";
+import { LibrarySplitView } from "@/components/library/library-split-view";
 import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-query";
 import type { LibrarySort } from "@/lib/publishing/library-query";
 import type { LibraryView } from "@/lib/preferences/library-prefs";
@@ -30,9 +34,6 @@ interface Props {
   engagement: LibraryEngagement;
   currentUserInternalId: string | null;
 }
-
-export type { LibraryToolbarState } from "@/components/library/library-toolbar";
-export type { LibraryEngagement } from "@/components/library/library-table";
 
 function parseSort(value: string | null): LibrarySort {
   if (
@@ -79,6 +80,7 @@ export function LibraryBrowseClient({
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [selectedItem, setSelectedItem] = useState<LibraryItem | null>(null);
 
   const state = useMemo<LibraryToolbarState>(() => initialState, [initialState]);
 
@@ -103,7 +105,6 @@ export function LibraryBrowseClient({
 
   const onStateChange = useCallback(
     (next: LibraryToolbarState) => {
-      // Any filter/sort/view change resets pagination to 0.
       pushUrl(next, 0);
     },
     [pushUrl],
@@ -116,19 +117,41 @@ export function LibraryBrowseClient({
     [pushUrl, state],
   );
 
+  // When the user clicks a row, capture the full LibraryItem so the
+  // preview pane can render all available fields.
+  const onRowSelect = useCallback((item: LibraryItem) => {
+    setSelectedItem(item);
+  }, []);
+
   return (
-    <div className="space-y-6">
-      <LibraryToolbar
-        state={state}
-        onStateChange={onStateChange}
-        primitiveCategories={primitiveCategories}
-      />
-      <section>
-        <LibraryTable
-          items={initialItems}
-          view={state.view}
+    <div className="flex h-full flex-col">
+      <div className="border-b border-border bg-card px-4 py-3">
+        <LibraryToolbar
+          state={state}
+          onStateChange={onStateChange}
+          primitiveCategories={primitiveCategories}
+        />
+      </div>
+      <div className="min-h-0 flex-1">
+        <LibrarySplitView
+          selectedItem={selectedItem}
+          onSelectItem={(item) => setSelectedItem(item)}
           engagement={engagement}
           currentUserInternalId={currentUserInternalId}
+          tableContent={
+            <LibraryTable
+              items={initialItems}
+              view={state.view}
+              engagement={engagement}
+              currentUserInternalId={currentUserInternalId}
+              onSelect={onRowSelect}
+              selectedKey={selectedItem?.id ?? null}
+              pagination={null}
+              showClearFilters={false}
+              emptyTitle="No entries match"
+              emptyDescription="Try a different filter, broader search, or another sort."
+            />
+          }
           pagination={
             totalPages > 1 ? (
               <Pagination
@@ -140,7 +163,7 @@ export function LibraryBrowseClient({
             ) : null
           }
         />
-      </section>
+      </div>
     </div>
   );
 }
@@ -157,7 +180,7 @@ function Pagination({
   onPageChange: (page: number) => void;
 }) {
   return (
-    <div className="mt-6 flex items-center justify-between gap-2 text-sm">
+    <div className="flex items-center justify-between gap-2 text-sm">
       {page > 0 ? (
         <button
           type="button"

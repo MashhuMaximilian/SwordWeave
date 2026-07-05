@@ -48,8 +48,6 @@ const TABLET_BREAKPOINT_PX = 1024; // 768-1023 = tablet (2 cols + toggle preview
 type ColumnKey = "library" | "builder" | "preview";
 
 type SandboxLayoutContextValue = {
-  mobileTab: ColumnKey;
-  setMobileTab: (tab: ColumnKey) => void;
   hiddenColumns: Set<ColumnKey>;
   toggleHidden: (column: ColumnKey) => void;
   toggleCollapsed: (column: ColumnKey) => void;
@@ -132,7 +130,6 @@ export function SandboxLayout({
 }: SandboxLayoutProps) {
   const groupId = useId();
   const [viewport, setViewport] = useState<"mobile" | "tablet" | "desktop">("desktop");
-  const [mobileTab, setMobileTab] = useState<ColumnKey>("builder");
   const [hiddenColumns, setHiddenColumns] = useState<Set<ColumnKey>>(new Set());
   const [previewVisible, setPreviewVisible] = useState(true);
   const [hydrated, setHydrated] = useState(false);
@@ -238,25 +235,21 @@ export function SandboxLayout({
   );
 
   const ctx = useMemo<SandboxLayoutContextValue>(
-    () => ({
-      mobileTab,
-      setMobileTab,
-      hiddenColumns,
-      toggleHidden,
-      toggleCollapsed,
-      previewVisible,
-      togglePreview,
-    }),
-    [
-      mobileTab,
-      hiddenColumns,
-      toggleHidden,
-      toggleCollapsed,
-      previewVisible,
-      togglePreview,
-    ],
-  );
-
+      () => ({
+        hiddenColumns,
+        toggleHidden,
+        toggleCollapsed,
+        previewVisible,
+        togglePreview,
+      }),
+      [
+        hiddenColumns,
+        toggleHidden,
+        toggleCollapsed,
+        previewVisible,
+        togglePreview,
+      ],
+    );
   return (
     <SandboxLayoutContext.Provider value={ctx}>
       <div
@@ -503,8 +496,20 @@ function TabletColumnChrome({
 }
 
 // ----------------------------------------------------------------------------
-// Mobile layout (tabs)
+// Mobile layout (vertical drag-resizable split)
 // ----------------------------------------------------------------------------
+//
+// Per the user's spec, on mobile the sandbox uses a vertical drag-resizable
+// split:
+//   - Top panel: Library
+//   - Bottom panel: Build + Preview, split internally (Build on top, Preview
+//     on bottom, also drag-resizable)
+//
+// Sizes persist to localStorage per storageKey + orientation so the user
+// keeps their layout when rotating or revisiting the page.
+// ----------------------------------------------------------------------------
+
+import { useDefaultLayout as useMobileDefaultLayout } from "react-resizable-panels";
 
 type MobileProps = {
   library: ReactNode;
@@ -512,61 +517,135 @@ type MobileProps = {
   preview: ReactNode;
 };
 
-function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
-  const { mobileTab } = useSandboxLayout();
+const mobileStorage: Pick<Storage, "getItem" | "setItem"> =
+  typeof window === "undefined"
+    ? { getItem: () => null, setItem: () => undefined }
+    : {
+        getItem: (key: string) => window.localStorage.getItem(key),
+        setItem: (key: string, value: string) =>
+          window.localStorage.setItem(key, value),
+      };
 
+function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex-1 min-h-0 overflow-hidden">
-        <div className={cn("h-full overflow-auto", mobileTab === "library" ? "block" : "hidden")}>
-          {library}
-        </div>
-        <div className={cn("h-full overflow-auto", mobileTab === "builder" ? "block" : "hidden")}>
-          {builder}
-        </div>
-        <div className={cn("h-full overflow-auto", mobileTab === "preview" ? "block" : "hidden")}>
-          {preview}
-        </div>
-      </div>
-      <MobileTabBar />
+      <MobileSandboxVerticalSplit
+        library={library}
+        builder={builder}
+        preview={preview}
+      />
     </div>
   );
 }
 
-function MobileTabBar() {
-  const { mobileTab, setMobileTab } = useSandboxLayout();
-  const tabs: Array<{ key: ColumnKey; label: string; icon: ReactNode }> = [
-    { key: "library", label: "Library", icon: <LibraryIcon className="size-4" /> },
-    { key: "builder", label: "Build", icon: <Wrench className="size-4" /> },
-    { key: "preview", label: "Preview", icon: <Eye className="size-4" /> },
-  ];
+function MobileSandboxVerticalSplit({
+  library,
+  builder,
+  preview,
+}: MobileProps) {
+  // Vertical split: top = Library, bottom = Build+Preview nested split.
+  const outerLayout = useMobileDefaultLayout({
+    id: "sw_sandbox_mobile_outer",
+    storage: mobileStorage,
+    panelIds: ["library", "work"],
+  });
+
   return (
-    <div
-      role="tablist"
-      aria-label="Sandbox mode"
-      className="grid shrink-0 grid-cols-3 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+    <Group
+      id="sw_sandbox_mobile_outer"
+      orientation="vertical"
+      defaultLayout={outerLayout.defaultLayout}
+      onLayoutChange={outerLayout.onLayoutChange}
+      onLayoutChanged={outerLayout.onLayoutChanged}
+      className="flex h-full min-h-0"
     >
-      {tabs.map((tab) => {
-        const active = mobileTab === tab.key;
-        return (
-          <button
-            key={tab.key}
-            role="tab"
-            type="button"
-            aria-selected={active}
-            onClick={() => setMobileTab(tab.key)}
-            className={cn(
-              "flex min-h-[44px] flex-col items-center justify-center gap-0.5 px-2 py-2 text-xs font-medium transition-colors",
-              active
-                ? "text-primary"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {tab.icon}
-            <span>{tab.label}</span>
-          </button>
-        );
-      })}
+      {/* TOP PANEL — Library */}
+      <Panel
+        id="library"
+        defaultSize={40}
+        minSize={15}
+        maxSize={75}
+        className="flex h-full min-h-0 flex-col"
+      >
+        <MobileColumnChrome title="Library" icon={<LibraryIcon className="size-4" />} />
+        <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
+      </Panel>
+
+      <Separator className="h-1.5 shrink-0 bg-border transition-colors hover:bg-primary data-[separator=active]:bg-primary" />
+
+      {/* BOTTOM PANEL — Build + Preview nested split */}
+      <Panel
+        id="work"
+        defaultSize={60}
+        minSize={25}
+        maxSize={85}
+        className="flex h-full min-h-0 flex-col"
+      >
+        <MobileBottomSplit builder={builder} preview={preview} />
+      </Panel>
+    </Group>
+  );
+}
+
+function MobileBottomSplit({
+  builder,
+  preview,
+}: {
+  builder: ReactNode;
+  preview: ReactNode;
+}) {
+  // Internal split: Build on top, Preview on bottom.
+  const innerLayout = useMobileDefaultLayout({
+    id: "sw_sandbox_mobile_inner",
+    storage: mobileStorage,
+    panelIds: ["builder", "preview"],
+  });
+
+  return (
+    <Group
+      id="sw_sandbox_mobile_inner"
+      orientation="vertical"
+      defaultLayout={innerLayout.defaultLayout}
+      onLayoutChange={innerLayout.onLayoutChange}
+      onLayoutChanged={innerLayout.onLayoutChanged}
+      className="flex h-full min-h-0"
+    >
+      <Panel
+        id="builder"
+        defaultSize={60}
+        minSize={25}
+        maxSize={85}
+        className="flex h-full min-h-0 flex-col"
+      >
+        <MobileColumnChrome title="Build" icon={<Wrench className="size-4" />} />
+        <div className="flex-1 min-h-0 overflow-auto">{builder}</div>
+      </Panel>
+      <Separator className="h-1 shrink-0 bg-border transition-colors hover:bg-primary data-[separator=active]:bg-primary" />
+      <Panel
+        id="preview"
+        defaultSize={40}
+        minSize={15}
+        maxSize={75}
+        className="flex h-full min-h-0 flex-col"
+      >
+        <MobileColumnChrome title="Preview" icon={<Eye className="size-4" />} />
+        <div className="flex-1 min-h-0 overflow-auto">{preview}</div>
+      </Panel>
+    </Group>
+  );
+}
+
+function MobileColumnChrome({
+  title,
+  icon,
+}: {
+  title: string;
+  icon: ReactNode;
+}) {
+  return (
+    <div className="flex h-9 shrink-0 items-center gap-2 border-b bg-muted/30 px-3 text-sm font-medium">
+      <span className="text-muted-foreground">{icon}</span>
+      <span className="truncate">{title}</span>
     </div>
   );
 }
