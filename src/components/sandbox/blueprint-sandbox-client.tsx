@@ -4,14 +4,18 @@
 // Hosts three Build modes: Template | Item | Monster.
 // Library column shows templates + items with collapsible filter chips.
 // Monster form is a "coming soon" placeholder until the MonsterForm is built.
+//
+// Dirty-change guard mirrors grammar route: switching modes or loading
+// a different library row triggers a modal if the current form is dirty.
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { SandboxLayout } from "./sandbox-layout";
 import { TemplateForm } from "./template-form";
 import { TemplateFormPreview } from "./template-form-preview";
 import { ItemForm } from "./item-form";
 import { ItemFormPreview } from "./item-form-preview";
 import { BlueprintLibrary } from "./blueprint-library";
+import { UnsavedChangesModal } from "./unsaved-changes-modal";
 
 type TemplateRow = {
   id: string;
@@ -69,6 +73,15 @@ type ItemRow = {
 
 export type BlueprintBuildMode = "template" | "item" | "monster";
 
+type EditingState =
+  | { kind: "template"; row: TemplateRow }
+  | { kind: "item"; row: ItemRow }
+  | null;
+
+type PendingAction =
+  | { kind: "switchBuild"; mode: BlueprintBuildMode }
+  | { kind: "loadFromLibrary"; entityType: "template" | "item"; id: string };
+
 export function BlueprintSandboxClient({
   initialBuild,
   initialKind,
@@ -81,10 +94,7 @@ export function BlueprintSandboxClient({
 }: {
   initialBuild: BlueprintBuildMode;
   initialKind?: "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined;
-  initialEditing:
-    | { kind: "template"; row: TemplateRow }
-    | { kind: "item"; row: ItemRow }
-    | null;
+  initialEditing: EditingState;
   templates: TemplateRow[];
   items: ItemRow[];
   primitives: Array<{
@@ -102,12 +112,20 @@ export function BlueprintSandboxClient({
   effects: Array<{ id: string; name: string }>;
 }) {
   const [build, setBuild] = useState<BlueprintBuildMode>(initialBuild);
-  const [editing, setEditing] = useState<typeof initialEditing>(
-    initialEditing,
-  );
+  const [editing, setEditing] = useState<EditingState>(initialEditing);
+  const [formIsDirty, setFormIsDirty] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const modalDescRef = useRef<string | undefined>(undefined);
 
-  function onLibrarySelect(kind: "template" | "item", id: string) {
-    if (kind === "template") {
+  const applyPendingAction = useCallback((action: PendingAction) => {
+    if (action.kind === "switchBuild") {
+      setBuild(action.mode);
+      setEditing(null);
+      setFormIsDirty(false); // new mode = fresh form
+      return;
+    }
+    const { entityType, id } = action;
+    if (entityType === "template") {
       const row = templates.find((t) => t.id === id);
       if (!row) return;
       setBuild("template");
@@ -118,12 +136,30 @@ export function BlueprintSandboxClient({
       setBuild("item");
       setEditing({ kind: "item", row });
     }
+    setFormIsDirty(false); // loaded entity starts pristine
+  }, [templates, items]);
+
+  function guardedSwitchBuild(newMode: BlueprintBuildMode) {
+    if (newMode === build) return;
+    if (!formIsDirty) {
+      applyPendingAction({ kind: "switchBuild", mode: newMode });
+      return;
+    }
+    modalDescRef.current = `You have unsaved changes in the ${buildLabel(build)} form. Switching to ${buildLabel(newMode)} will lose them.`;
+    setPendingAction({ kind: "switchBuild", mode: newMode });
   }
 
-  function onSwitchBuild(newMode: BlueprintBuildMode) {
-    if (newMode === build) return;
-    setBuild(newMode);
-    setEditing(null);
+  function guardedLibrarySelect(entityType: "template" | "item", id: string) {
+    // Same-mode same-id click is a no-op.
+    if (build === entityType && editing?.kind === entityType) {
+      if (editing.row.id === id) return;
+    }
+    if (!formIsDirty) {
+      applyPendingAction({ kind: "loadFromLibrary", entityType, id });
+      return;
+    }
+    modalDescRef.current = `You have unsaved changes in the ${buildLabel(build)} form. Loading another row will discard them.`;
+    setPendingAction({ kind: "loadFromLibrary", entityType, id });
   }
 
   const builderNode = useMemo(() => {
@@ -134,7 +170,7 @@ export function BlueprintSandboxClient({
           initialKind={initialKind ?? undefined}
           availablePrimitives={primitives}
           availableCapabilities={capabilities}
-          onStateChange={() => {}}
+          onStateChange={(state) => setFormIsDirty(state.isDirty)}
           onSaved={() => {}}
         />
       );
@@ -146,7 +182,7 @@ export function BlueprintSandboxClient({
           availablePrimitives={primitives}
           availableCapabilities={capabilities}
           availableEffects={effects}
-          onStateChange={() => {}}
+          onStateChange={(state) => setFormIsDirty(state.isDirty)}
           onSaved={() => {}}
         />
       );
@@ -277,7 +313,7 @@ export function BlueprintSandboxClient({
             <button
               key={tab.key}
               type="button"
-              onClick={() => onSwitchBuild(tab.key)}
+              onClick={() => guardedSwitchBuild(tab.key)}
               className={
                 "flex-1 border-b-2 px-4 py-3 text-sm font-medium transition-colors " +
                 (active
@@ -294,24 +330,43 @@ export function BlueprintSandboxClient({
   }
 
   return (
-    <SandboxLayout
-      storageKey="blueprint"
-      library={
-        <BlueprintLibrary
-          build={build}
-          templates={templates}
-          items={items}
-          editingKey={
-            editing
-              ? `${editing.kind}:${editing.row.id}`
-              : null
-          }
-          onSelect={onLibrarySelect}
-        />
-      }
-      topBar={buildTabs()}
-      builder={builderNode}
-      preview={previewNode}
-    />
+    <>
+      <SandboxLayout
+        storageKey="blueprint"
+        library={
+          <BlueprintLibrary
+            build={build}
+            templates={templates}
+            items={items}
+            editingKey={
+              editing
+                ? `${editing.kind}:${editing.row.id}`
+                : null
+            }
+            onSelect={guardedLibrarySelect}
+          />
+        }
+        topBar={buildTabs()}
+        builder={builderNode}
+        preview={previewNode}
+      />
+      <UnsavedChangesModal
+        isOpen={pendingAction !== null}
+        onCancel={() => setPendingAction(null)}
+        onConfirm={() => {
+          if (pendingAction) applyPendingAction(pendingAction);
+          setPendingAction(null);
+        }}
+        {...(modalDescRef.current !== undefined && {
+          description: modalDescRef.current,
+        })}
+      />
+    </>
   );
+}
+
+function buildLabel(mode: BlueprintBuildMode): string {
+  if (mode === "template") return "Template";
+  if (mode === "item") return "Item";
+  return "Monster";
 }

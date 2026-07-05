@@ -4,8 +4,12 @@
 // One page hosts three Build modes (Primitive | Effect | Capability).
 // Library column shows the relevant subset depending on current mode.
 // Switching Build mode resets the form (user must click Reset to save draft).
+//
+// Dirty-change guard: if the active form has unsaved edits, switching modes
+// or loading a different library row opens a confirmation modal. Pristine
+// switches happen silently.
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { SandboxLayout } from "@/components/sandbox/sandbox-layout";
 import { PrimitiveForm } from "@/components/sandbox/primitive-form";
 import { PrimitiveFormPreview } from "@/components/sandbox/primitive-form-preview";
@@ -14,6 +18,7 @@ import { EffectFormPreview } from "@/components/sandbox/effect-form-preview";
 import { CapabilityForm } from "@/components/sandbox/capability-form";
 import { CapabilityFormPreview } from "@/components/sandbox/capability-form-preview";
 import { GrammarLibrary } from "@/components/sandbox/grammar-library";
+import { UnsavedChangesModal } from "@/components/sandbox/unsaved-changes-modal";
 
 type PrimitiveRow = {
   id: number;
@@ -79,6 +84,17 @@ type CapabilityRow = {
 
 export type GrammarBuildMode = "primitive" | "effect" | "capability";
 
+type EditingState =
+  | { kind: "primitive"; row: PrimitiveRow }
+  | { kind: "effect"; row: EffectRow }
+  | { kind: "capability"; row: CapabilityRow }
+  | null;
+
+// Pending action: what to run when the user confirms the unsaved-changes modal.
+type PendingAction =
+  | { kind: "switchBuild"; mode: GrammarBuildMode }
+  | { kind: "loadFromLibrary"; entityType: GrammarBuildMode; id: string | number };
+
 export function GrammarSandboxClient({
   initialBuild,
   initialEditing,
@@ -87,25 +103,31 @@ export function GrammarSandboxClient({
   capabilities,
 }: {
   initialBuild: GrammarBuildMode;
-  initialEditing:
-    | { kind: "primitive"; row: PrimitiveRow }
-    | { kind: "effect"; row: EffectRow }
-    | { kind: "capability"; row: CapabilityRow }
-    | null;
+  initialEditing: EditingState;
   primitives: PrimitiveRow[];
   effects: EffectRow[];
   capabilities: CapabilityRow[];
 }) {
   const [build, setBuild] = useState<GrammarBuildMode>(initialBuild);
-  const [editing, setEditing] = useState<typeof initialEditing>(
-    initialEditing,
-  );
+  const [editing, setEditing] = useState<EditingState>(initialEditing);
+  // Mirrored from the form's onStateChange. Drives the dirty-check gate.
+  const [formIsDirty, setFormIsDirty] = useState(false);
+  // Pending action waits for the user to confirm/cancel in the modal.
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  // Tracks the most recent description so the modal copy can adapt.
+  const modalDescRef = useRef<string | undefined>(undefined);
 
-  // Library row click → load into Build form (syncs build mode too).
-  function onLibrarySelect(
-    entityType: "primitive" | "effect" | "capability",
-    id: string | number,
-  ) {
+  // ---- Apply pending action (called on modal confirm) ---------------------
+
+  const applyPendingAction = useCallback((action: PendingAction) => {
+    if (action.kind === "switchBuild") {
+      setBuild(action.mode);
+      setEditing(null);
+      setFormIsDirty(false); // new mode = fresh form, force pristine
+      return;
+    }
+    // loadFromLibrary
+    const { entityType, id } = action;
     if (entityType === "primitive") {
       const row = primitives.find((p) => p.id === id);
       if (!row) return;
@@ -122,13 +144,39 @@ export function GrammarSandboxClient({
       setBuild("capability");
       setEditing({ kind: "capability", row });
     }
+    setFormIsDirty(false); // loaded entity starts pristine
+  }, [primitives, effects, capabilities]);
+
+  // ---- Dirty-check interceptors ------------------------------------------
+
+  function guardedSwitchBuild(newMode: GrammarBuildMode) {
+    if (newMode === build) return;
+    if (!formIsDirty) {
+      applyPendingAction({ kind: "switchBuild", mode: newMode });
+      return;
+    }
+    modalDescRef.current = `You have unsaved changes in the ${buildLabel(build)} form. Switching to ${buildLabel(newMode)} will lose them.`;
+    setPendingAction({ kind: "switchBuild", mode: newMode });
   }
 
-  // Reset to fresh form (no edit target).
-  function onSwitchBuild(newMode: GrammarBuildMode) {
-    if (newMode === build) return;
-    setBuild(newMode);
-    setEditing(null);
+  function guardedLibrarySelect(
+    entityType: GrammarBuildMode,
+    id: string | number,
+  ) {
+    // If the user clicks a row in the SAME build mode + SAME id, no-op.
+    if (build === entityType && editing?.kind === entityType) {
+      const editingId =
+        entityType === "primitive"
+          ? (editing as { row: { id: string | number } }).row.id
+          : (editing as { row: { id: string | number } }).row.id;
+      if (editingId === id) return;
+    }
+    if (!formIsDirty) {
+      applyPendingAction({ kind: "loadFromLibrary", entityType, id });
+      return;
+    }
+    modalDescRef.current = `You have unsaved changes in the ${buildLabel(build)} form. Loading another row will discard them.`;
+    setPendingAction({ kind: "loadFromLibrary", entityType, id });
   }
 
   const builderNode = useMemo(() => {
@@ -136,9 +184,7 @@ export function GrammarSandboxClient({
       return (
         <PrimitiveForm
           initialPrimitive={editing?.kind === "primitive" ? editing.row : null}
-          onStateChange={() => {
-            /* preview is sourced from editing row directly */
-          }}
+          onStateChange={(state) => setFormIsDirty(state.isDirty)}
           onSaved={() => {
             /* router.refresh inside PrimitiveForm */
           }}
@@ -158,7 +204,7 @@ export function GrammarSandboxClient({
             category: p.category,
             buCost: p.buCost,
           }))}
-          onStateChange={() => {}}
+          onStateChange={(state) => setFormIsDirty(state.isDirty)}
           onSaved={() => {}}
         />
       );
@@ -174,7 +220,7 @@ export function GrammarSandboxClient({
           category: p.category,
           buCost: p.buCost,
         }))}
-        onStateChange={() => {}}
+        onStateChange={(state) => setFormIsDirty(state.isDirty)}
         onSaved={() => {}}
       />
     );
@@ -305,7 +351,7 @@ export function GrammarSandboxClient({
             <button
               key={tab.key}
               type="button"
-              onClick={() => onSwitchBuild(tab.key)}
+              onClick={() => guardedSwitchBuild(tab.key)}
               className={
                 "flex-1 border-b-2 px-4 py-3 text-sm font-medium transition-colors " +
                 (active
@@ -322,29 +368,46 @@ export function GrammarSandboxClient({
   }
 
   return (
-    <SandboxLayout
-      storageKey="grammar"
-      library={
-        <GrammarLibrary
-          build={build}
-          primitives={primitives}
-          effects={effects}
-          capabilities={capabilities}
-          editingKey={
-            editing
-              ? `${editing.kind}:${
-                  editing.kind === "primitive"
-                    ? editing.row.id
-                    : editing.row.id
-                }`
-              : null
-          }
-          onSelect={onLibrarySelect}
-        />
-      }
-      topBar={buildTabs()}
-      builder={builderNode}
-      preview={previewNode}
-    />
+    <>
+      <SandboxLayout
+        storageKey="grammar"
+        library={
+          <GrammarLibrary
+            build={build}
+            primitives={primitives}
+            effects={effects}
+            capabilities={capabilities}
+            editingKey={
+              editing
+                ? `${editing.kind}:${
+                    editing.kind === "primitive"
+                      ? editing.row.id
+                      : editing.row.id
+                  }`
+                : null
+            }
+            onSelect={guardedLibrarySelect}
+          />
+        }
+        topBar={buildTabs()}
+        builder={builderNode}
+        preview={previewNode}
+      />
+      <UnsavedChangesModal
+        isOpen={pendingAction !== null}
+        onCancel={() => setPendingAction(null)}
+        onConfirm={() => {
+          if (pendingAction) applyPendingAction(pendingAction);
+          setPendingAction(null);
+        }}
+        {...(modalDescRef.current !== undefined && {
+          description: modalDescRef.current,
+        })}
+      />
+    </>
   );
+}
+
+function buildLabel(mode: GrammarBuildMode): string {
+  return mode.charAt(0).toUpperCase() + mode.slice(1);
 }

@@ -92,6 +92,10 @@ export function ItemForm({
     primitiveSlots: ItemPrimitiveSlot[];
     capabilityIds: string[];
     effectIds: string[];
+    /**
+     * True once the user has touched the form since the last reset/save/load.
+     */
+    isDirty: boolean;
   }) => void;
   onSaved?: (item: ItemRow) => void;
 }) {
@@ -105,6 +109,7 @@ export function ItemForm({
   >("primitive");
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
 
   const itemAugmentPrimitives = availablePrimitives.filter(
@@ -131,6 +136,7 @@ export function ItemForm({
       tags: (initialItem.tags ?? []).join(", "),
     });
     setPrimitiveIds(initialItem.primitiveLinks.map((l) => l.primitiveId));
+    setIsDirty(false); // pristine after load
     setMessage(
       initialItem.userId
         ? "Loaded your item for editing."
@@ -151,26 +157,31 @@ export function ItemForm({
       })),
       capabilityIds,
       effectIds,
+      isDirty,
     });
-  }, [form, slottedPrimitives, capabilityIds, effectIds, onStateChange]);
+  }, [form, slottedPrimitives, capabilityIds, effectIds, onStateChange, isDirty]);
 
   function updateForm(field: keyof ItemFormState, value: string | boolean) {
+    setIsDirty(true);
     setForm((current) => ({ ...current, [field]: value }));
   }
 
   function togglePrimitive(id: number) {
+    setIsDirty(true);
     setPrimitiveIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
 
   function toggleCapability(id: string) {
+    setIsDirty(true);
     setCapabilityIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
 
   function toggleEffect(id: string) {
+    setIsDirty(true);
     setEffectIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
@@ -182,6 +193,7 @@ export function ItemForm({
     setCapabilityIds([]);
     setEffectIds([]);
     setPickerOpen(false);
+    setIsDirty(false); // pristine after reset
     setMessage("Started a fresh item.");
     bootstrappedRef.current = true;
   }

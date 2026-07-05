@@ -103,6 +103,10 @@ export function CapabilityForm({
   onStateChange?: (state: {
     form: CapabilityFormState;
     slots: CapabilitySlot[];
+    /**
+     * True once the user has touched the form since the last reset/save/load.
+     */
+    isDirty: boolean;
   }) => void;
   onSaved?: (capability: CapabilityRow) => void;
 }) {
@@ -111,6 +115,7 @@ export function CapabilityForm({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
 
   const bootstrappedRef = useRef(false);
@@ -137,6 +142,7 @@ export function CapabilityForm({
         primitive: link.primitive,
       })),
     );
+    setIsDirty(false); // pristine after load
     setMessage(
       initialCapability.userId
         ? "Loaded your capability for editing."
@@ -145,10 +151,11 @@ export function CapabilityForm({
   }, [initialCapability]);
 
   useEffect(() => {
-    onStateChange?.({ form, slots });
-  }, [form, slots, onStateChange]);
+    onStateChange?.({ form, slots, isDirty });
+  }, [form, slots, onStateChange, isDirty]);
 
   function updateForm(field: keyof CapabilityFormState, value: string | boolean) {
+    setIsDirty(true);
     setForm((current) => ({ ...current, [field]: value }));
   }
 
@@ -156,6 +163,7 @@ export function CapabilityForm({
     const primitive = availablePrimitives.find((p) => p.id === primitiveId);
     if (!primitive) return;
     const role = defaultRoleForCategory(primitive.category);
+    setIsDirty(true);
     setSlots((prev) => [
       ...prev,
       {
@@ -170,16 +178,19 @@ export function CapabilityForm({
   }
 
   function removeSlot(index: number) {
+    setIsDirty(true);
     setSlots((prev) => prev.filter((_, i) => i !== index));
   }
 
   function updateSlotRole(index: number, role: string) {
+    setIsDirty(true);
     setSlots((prev) =>
       prev.map((slot, i) => (i === index ? { ...slot, role } : slot)),
     );
   }
 
   function updateSlotQuantity(index: number, quantity: number) {
+    setIsDirty(true);
     setSlots((prev) =>
       prev.map((slot, i) =>
         i === index ? { ...slot, quantity: Math.max(1, quantity) } : slot,
@@ -191,6 +202,7 @@ export function CapabilityForm({
     setForm(blankForm);
     setSlots([]);
     setPickerOpen(false);
+    setIsDirty(false); // pristine after reset
     setMessage("Started a fresh capability.");
     bootstrappedRef.current = true;
   }

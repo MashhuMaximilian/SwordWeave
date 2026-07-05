@@ -296,6 +296,12 @@ export function PrimitiveForm({
     form: PrimitiveFormState;
     modifiers: ModifierDraft[];
     hardModifiers: unknown[];
+    /**
+     * True once the user has touched the form since the last reset/save/load.
+     * Page uses this to decide whether to show the unsaved-changes modal on
+     * build-mode or library-row switches.
+     */
+    isDirty: boolean;
   }) => void;
   /**
    * Fires after a successful save. Used by the page to refresh the Library
@@ -309,6 +315,10 @@ export function PrimitiveForm({
   const [showJsonPreview, setShowJsonPreview] = useState(false);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
+  // Tracks unsaved edits. Flipped to true on the first user mutation after a
+  // load/reset/save; flipped back to false by resetEditor() and after a
+  // successful save (resetEditor runs there too).
+  const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
 
   // Pre-load from initialPrimitive once.
@@ -343,6 +353,7 @@ export function PrimitiveForm({
     });
     setModifiers(drafts);
     setModifierCounter(drafts.length);
+    setIsDirty(false); // pristine after load
     setMessage(
       initialPrimitive.userId
         ? "Loaded your primitive for editing."
@@ -356,10 +367,12 @@ export function PrimitiveForm({
       form,
       modifiers,
       hardModifiers: modifiers.map(toHardModifier),
+      isDirty,
     });
-  }, [form, modifiers, onStateChange]);
+  }, [form, modifiers, onStateChange, isDirty]);
 
   function updateForm(field: keyof PrimitiveFormState, value: string | boolean) {
+    setIsDirty(true);
     setForm((current) => ({ ...current, [field]: value }));
   }
 
@@ -368,6 +381,7 @@ export function PrimitiveForm({
     field: keyof ModifierDraft,
     value: string,
   ) {
+    setIsDirty(true);
     setModifiers((current) =>
       current.map((modifier) =>
         modifier.id === id ? { ...modifier, [field]: value } : modifier,
@@ -376,6 +390,7 @@ export function PrimitiveForm({
   }
 
   function addModifier() {
+    setIsDirty(true);
     setModifierCounter((current) => current + 1);
     setModifiers((current) => [
       ...current,
@@ -384,6 +399,7 @@ export function PrimitiveForm({
   }
 
   function removeModifier(id: string) {
+    setIsDirty(true);
     setModifiers((current) => {
       if (current.length === 1) return current;
       return current.filter((modifier) => modifier.id !== id);
@@ -395,6 +411,7 @@ export function PrimitiveForm({
     setModifierCounter(1);
     setModifiers([blankModifier]);
     setShowJsonPreview(false);
+    setIsDirty(false); // pristine after reset
     setMessage("Started a fresh primitive.");
     bootstrappedRef.current = true; // prevent re-bootstrapping
   }

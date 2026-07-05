@@ -81,6 +81,10 @@ export function TemplateForm({
     form: TemplateFormState;
     primitives: TemplateSlot[];
     capabilities: TemplateSlot[];
+    /**
+     * True once the user has touched the form since the last reset/save/load.
+     */
+    isDirty: boolean;
   }) => void;
   onSaved?: (template: TemplateRow) => void;
 }) {
@@ -96,6 +100,7 @@ export function TemplateForm({
   );
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
 
   const bootstrappedRef = useRef(false);
@@ -112,6 +117,7 @@ export function TemplateForm({
       isPublic: initialTemplate.isPublic,
     });
     setPrimitiveIds(initialTemplate.primitiveLinks.map((l) => l.primitiveId));
+    setIsDirty(false); // pristine after load
     setMessage(
       initialTemplate.userId
         ? "Loaded your template for editing."
@@ -140,20 +146,24 @@ export function TemplateForm({
         category: c.type,
         buCost: 0,
       })),
+      isDirty,
     });
-  }, [form, slottedPrimitives, slottedCapabilities, onStateChange]);
+  }, [form, slottedPrimitives, slottedCapabilities, onStateChange, isDirty]);
 
   function updateForm(field: keyof TemplateFormState, value: string | boolean) {
+    setIsDirty(true);
     setForm((current) => ({ ...current, [field]: value }));
   }
 
   function togglePrimitive(id: number) {
+    setIsDirty(true);
     setPrimitiveIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
 
   function toggleCapability(id: string) {
+    setIsDirty(true);
     setCapabilityIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
@@ -164,6 +174,7 @@ export function TemplateForm({
     setPrimitiveIds([]);
     setCapabilityIds([]);
     setPickerOpen(false);
+    setIsDirty(false); // pristine after reset
     setMessage("Started a fresh template.");
     bootstrappedRef.current = true;
   }

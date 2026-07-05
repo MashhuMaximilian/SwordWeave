@@ -69,6 +69,10 @@ export function EffectForm({
   onStateChange?: (state: {
     form: EffectFormState;
     slots: EffectFormSlot[];
+    /**
+     * True once the user has touched the form since the last reset/save/load.
+     */
+    isDirty: boolean;
   }) => void;
   onSaved?: (effect: EffectRow) => void;
 }) {
@@ -77,6 +81,7 @@ export function EffectForm({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
 
   // Pre-load from initialEffect once.
@@ -99,6 +104,7 @@ export function EffectForm({
         primitive: link.primitive,
       })),
     );
+    setIsDirty(false); // pristine after load
     setMessage(
       initialEffect.userId
         ? "Loaded your effect for editing."
@@ -108,14 +114,16 @@ export function EffectForm({
 
   // Fire onStateChange.
   useEffect(() => {
-    onStateChange?.({ form, slots });
-  }, [form, slots, onStateChange]);
+    onStateChange?.({ form, slots, isDirty });
+  }, [form, slots, onStateChange, isDirty]);
 
   function updateForm(field: keyof EffectFormState, value: string | boolean) {
+    setIsDirty(true);
     setForm((current) => ({ ...current, [field]: value }));
   }
 
   function addSlot(primitiveId: number) {
+    setIsDirty(true);
     setSlots((current) => {
       const existing = current.find((s) => s.primitiveId === primitiveId);
       if (existing) {
@@ -135,6 +143,7 @@ export function EffectForm({
   }
 
   function updateQuantity(primitiveId: number, quantity: number) {
+    setIsDirty(true);
     setSlots((current) =>
       current.map((s) =>
         s.primitiveId === primitiveId
@@ -145,6 +154,7 @@ export function EffectForm({
   }
 
   function removeSlot(primitiveId: number) {
+    setIsDirty(true);
     setSlots((current) => current.filter((s) => s.primitiveId !== primitiveId));
   }
 
@@ -152,6 +162,7 @@ export function EffectForm({
     setForm(blankForm);
     setSlots([]);
     setPickerOpen(false);
+    setIsDirty(false); // pristine after reset
     setMessage("Started a fresh effect.");
     bootstrappedRef.current = true;
   }
