@@ -381,7 +381,11 @@ function DesktopSandboxLayout({
 
       {/* Separator between library and builder — only renders when both panels exist. */}
       {libraryHidden ? null : (
-        <Separator className="w-1 shrink-0 bg-border transition-colors hover:bg-primary/40 data-[separator=drag]:bg-primary/60" />
+        <Separator className="group relative w-2 shrink-0 bg-border transition-colors hover:bg-primary/60 data-[separator=drag]:bg-primary">
+          <span className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 flex w-0.5 items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+            <span className="h-8 w-0.5 rounded-full bg-primary-foreground/60" />
+          </span>
+        </Separator>
       )}
 
       {/* BUILDER PANEL — always present (the editor must always be visible). */}
@@ -406,7 +410,11 @@ function DesktopSandboxLayout({
 
       {/* Separator between builder and preview. */}
       {previewHidden ? null : (
-        <Separator className="w-1 shrink-0 bg-border transition-colors hover:bg-primary/40 data-[separator=drag]:bg-primary/60" />
+        <Separator className="group relative w-2 shrink-0 bg-border transition-colors hover:bg-primary/60 data-[separator=drag]:bg-primary">
+          <span className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 flex w-0.5 items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+            <span className="h-8 w-0.5 rounded-full bg-primary-foreground/60" />
+          </span>
+        </Separator>
       )}
 
       {/* PREVIEW PANEL — fully unmounted when hidden. */}

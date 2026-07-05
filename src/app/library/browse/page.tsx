@@ -129,7 +129,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
         </Link>
       </div>
 
-      <div className="mt-8 flex h-[calc(100vh-12rem)] min-h-[600px] flex-col">
+      <div className="mt-8 flex min-h-[calc(100dvh-12rem)] flex-col md:h-[calc(100vh-12rem)] md:min-h-0">
         <LibraryBrowseClient
           initialItems={result.items}
           total={result.total}

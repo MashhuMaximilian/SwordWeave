@@ -17,7 +17,8 @@
 // same controls can be reused in the sandbox left column.
 // =============================================================================
 
-import { ChevronDown, ChevronUp, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, SlidersHorizontal } from "lucide-react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import type { LibraryTargetType } from "@/lib/publishing/library-query";
 import type { LibrarySort } from "@/lib/publishing/library-query";
@@ -114,6 +115,20 @@ export function LibraryToolbar({
   showSearch = true,
   searchPlaceholder = "Search by name…",
 }: LibraryToolbarProps) {
+  // Mobile-only: filters panel collapsed by default to give the result set
+  // more vertical real-estate on a 393×852 viewport. Desktop ignores this.
+  // The search bar is intentionally kept outside the collapse so the user
+  // can always search without first opening the filter panel.
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const hasActiveFilters =
+    state.typeFilter !== "ALL" ||
+    state.category !== "" ||
+    state.author !== "" ||
+    state.minLikes !== "" ||
+    state.hasForks ||
+    state.sort !== "ENGAGEMENT" ||
+    activeSubKinds.length > 0;
+
   function update<K extends keyof LibraryToolbarState>(
     key: K,
     value: LibraryToolbarState[K],
@@ -150,112 +165,122 @@ export function LibraryToolbar({
               className="w-full rounded-md border border-input bg-background py-2 pl-9 pr-3 text-sm outline-none focus:border-primary"
             />
           </div>
+          {/* Mobile-only filter toggle — opens the filter panel below. */}
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen((v) => !v)}
+            aria-expanded={mobileFiltersOpen}
+            aria-controls="library-toolbar-filters"
+            className={cn(
+              "relative inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition-colors md:hidden",
+              mobileFiltersOpen || hasActiveFilters
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card text-foreground hover:border-primary",
+            )}
+            title={mobileFiltersOpen ? "Hide filters" : "Show filters"}
+          >
+            <SlidersHorizontal className="size-3.5" />
+            Filters
+            {hasActiveFilters && !mobileFiltersOpen ? (
+              <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-foreground px-1 text-[10px] font-bold text-primary">
+                •
+              </span>
+            ) : null}
+            {mobileFiltersOpen ? (
+              <ChevronUp className="size-3.5" />
+            ) : (
+              <ChevronDown className="size-3.5" />
+            )}
+          </button>
         </div>
       ) : null}
 
-      {/* Sort + view toggle */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold uppercase text-muted-foreground">
-          Sort
-        </span>
-        <div className="flex flex-wrap gap-1">
-          {(
-            [
-              ["ENGAGEMENT", "Engagement"],
-              ["LIKES", "Most liked"],
-              ["FORKS", "Most forked"],
-              ["RECENT", "Recent"],
-              ["ALPHABETICAL", "A → Z"],
-            ] as const
-          ).map(([key, label]) => {
-            const active = state.sort === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => update("sort", key)}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-xs transition-colors",
-                  active
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary hover:bg-secondary/70",
-                )}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-        <div className="ml-auto flex items-center gap-1 rounded-md border border-border bg-card p-0.5">
-          <button
-            type="button"
-            onClick={() => update("view", "GRID")}
-            title="Grid view"
-            className={cn(
-              "flex items-center gap-1 rounded px-2 py-1 text-xs",
-              state.view === "GRID"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            Grid
-          </button>
-          <button
-            type="button"
-            onClick={() => update("view", "LIST")}
-            title="List view"
-            className={cn(
-              "flex items-center gap-1 rounded px-2 py-1 text-xs",
-              state.view === "LIST"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            List
-          </button>
-        </div>
-      </div>
-
-      {/* Type chips */}
-      <div className="flex flex-wrap gap-2">
-        {availableTypes.map((chip) => {
-          const active = state.typeFilter === chip.key;
-          return (
+      {/* Filter panel — always visible on desktop, collapsible on mobile. */}
+      <div
+        id="library-toolbar-filters"
+        className={cn(
+          "space-y-3",
+          // Hide on mobile unless the user has expanded it.
+          mobileFiltersOpen ? "block" : "hidden md:block",
+        )}
+      >
+        {/* Sort + view toggle */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase text-muted-foreground">
+            Sort
+          </span>
+          <div className="flex flex-wrap gap-1">
+            {(
+              [
+                ["ENGAGEMENT", "Engagement"],
+                ["LIKES", "Most liked"],
+                ["FORKS", "Most forked"],
+                ["RECENT", "Recent"],
+                ["ALPHABETICAL", "A → Z"],
+              ] as const
+            ).map(([key, label]) => {
+              const active = state.sort === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => update("sort", key)}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-xs transition-colors",
+                    active
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary hover:bg-secondary/70",
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="ml-auto flex items-center gap-1 rounded-md border border-border bg-card p-0.5">
             <button
-              key={chip.key}
               type="button"
-              onClick={() => update("typeFilter", chip.key)}
+              onClick={() => update("view", "GRID")}
+              title="Grid view"
               className={cn(
-                "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                active
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card hover:border-primary",
+                "flex items-center gap-1 rounded px-2 py-1 text-xs",
+                state.view === "GRID"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {chip.label}
+              Grid
             </button>
-          );
-        })}
-      </div>
+            <button
+              type="button"
+              onClick={() => update("view", "LIST")}
+              title="List view"
+              className={cn(
+                "flex items-center gap-1 rounded px-2 py-1 text-xs",
+                state.view === "LIST"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              List
+            </button>
+          </div>
+        </div>
 
-      {/* Sub-kind chips (visible only when active type matches the parent) */}
-      {showSubKinds ? (
-        <div className="flex flex-wrap gap-1.5 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Sub-kind
-          </span>
-          {subKinds!.map((chip) => {
-            const active = activeSubKinds.includes(chip.key);
+        {/* Type chips */}
+        <div className="flex flex-wrap gap-2">
+          {availableTypes.map((chip) => {
+            const active = state.typeFilter === chip.key;
             return (
               <button
                 key={chip.key}
                 type="button"
-                onClick={() => toggleSubKind(chip.key)}
+                onClick={() => update("typeFilter", chip.key)}
                 className={cn(
-                  "rounded-md px-2 py-1 text-xs transition-colors",
+                  "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
                   active
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary hover:bg-secondary/70",
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card hover:border-primary",
                 )}
               >
                 {chip.label}
@@ -263,83 +288,110 @@ export function LibraryToolbar({
             );
           })}
         </div>
-      ) : null}
 
-      {/* Advanced filters */}
-      {showAdvancedFilters ? (
-        <details className="rounded-md border border-border bg-card/50">
-          <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-medium">
-            <span>Advanced filters</span>
-            <ChevronDown className="size-4 md:hidden" />
-            <ChevronUp className="hidden size-4 md:block" />
-          </summary>
-          <div className="grid gap-4 border-t border-border p-4 md:grid-cols-2">
-            {primitiveCategories.length > 0 &&
-            (state.typeFilter === "PRIMITIVE" || state.typeFilter === "ALL") ? (
-              <div>
-                <label className="mb-2 block text-xs font-semibold uppercase text-muted-foreground">
-                  Category
-                </label>
-                <div className="flex flex-wrap gap-1">
-                  <button
-                    type="button"
-                    onClick={() => update("category", "")}
-                    className={cn(
-                      "rounded-md px-2 py-1 text-xs transition-colors",
-                      !state.category
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary hover:bg-secondary/70",
-                    )}
-                  >
-                    All
-                  </button>
-                  {primitiveCategories.map((c) => (
+        {/* Sub-kind chips (visible only when active type matches the parent) */}
+        {showSubKinds ? (
+          <div className="flex flex-wrap gap-1.5 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Sub-kind
+            </span>
+            {subKinds!.map((chip) => {
+              const active = activeSubKinds.includes(chip.key);
+              return (
+                <button
+                  key={chip.key}
+                  type="button"
+                  onClick={() => toggleSubKind(chip.key)}
+                  className={cn(
+                    "rounded-md px-2 py-1 text-xs transition-colors",
+                    active
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary hover:bg-secondary/70",
+                  )}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {/* Advanced filters */}
+        {showAdvancedFilters ? (
+          <details className="rounded-md border border-border bg-card/50">
+            <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-medium">
+              <span>Advanced filters</span>
+              <ChevronDown className="size-4 md:hidden" />
+              <ChevronUp className="hidden size-4 md:block" />
+            </summary>
+            <div className="grid gap-4 border-t border-border p-4 md:grid-cols-2">
+              {primitiveCategories.length > 0 &&
+              (state.typeFilter === "PRIMITIVE" || state.typeFilter === "ALL") ? (
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase text-muted-foreground">
+                    Category
+                  </label>
+                  <div className="flex flex-wrap gap-1">
                     <button
-                      key={c.value}
                       type="button"
-                      onClick={() => update("category", c.value)}
+                      onClick={() => update("category", "")}
                       className={cn(
                         "rounded-md px-2 py-1 text-xs transition-colors",
-                        state.category === c.value
+                        !state.category
                           ? "bg-primary text-primary-foreground"
                           : "bg-secondary hover:bg-secondary/70",
                       )}
                     >
-                      {c.label} ({c.count})
+                      All
                     </button>
-                  ))}
+                    {primitiveCategories.map((c) => (
+                      <button
+                        key={c.value}
+                        type="button"
+                        onClick={() => update("category", c.value)}
+                        className={cn(
+                          "rounded-md px-2 py-1 text-xs transition-colors",
+                          state.category === c.value
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary hover:bg-secondary/70",
+                        )}
+                      >
+                        {c.label} ({c.count})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => update("hasForks", !state.hasForks)}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-md px-3 py-1.5 text-xs transition-colors",
+                    state.hasForks
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary hover:bg-secondary/70",
+                  )}
+                >
+                  <span>Only forked</span>
+                  {state.hasForks ? "✓" : ""}
+                </button>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-muted-foreground">Min likes:</span>
+                  <input
+                    type="number"
+                    value={state.minLikes}
+                    min={0}
+                    onChange={(e) => update("minLikes", e.target.value)}
+                    className="w-16 rounded border border-input bg-background px-2 py-1 text-xs"
+                  />
                 </div>
               </div>
-            ) : null}
-
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => update("hasForks", !state.hasForks)}
-                className={cn(
-                  "flex w-full items-center justify-between rounded-md px-3 py-1.5 text-xs transition-colors",
-                  state.hasForks
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary hover:bg-secondary/70",
-                )}
-              >
-                <span>Only forked</span>
-                {state.hasForks ? "✓" : ""}
-              </button>
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-muted-foreground">Min likes:</span>
-                <input
-                  type="number"
-                  value={state.minLikes}
-                  min={0}
-                  onChange={(e) => update("minLikes", e.target.value)}
-                  className="w-16 rounded border border-input bg-background px-2 py-1 text-xs"
-                />
-              </div>
             </div>
-          </div>
-        </details>
-      ) : null}
+          </details>
+        ) : null}
+      </div>
     </div>
   );
 }

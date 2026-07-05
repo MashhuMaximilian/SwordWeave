@@ -90,7 +90,7 @@ export function LibraryBrowseClient({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-border bg-card px-4 py-3">
+      <div className="shrink-0 border-b border-border bg-card px-4 py-3">
         <LibraryToolbar
           state={state}
           onStateChange={onStateChange}

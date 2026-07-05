@@ -5,9 +5,10 @@
 //
 // Layout:
 // - Desktop (≥md): horizontal split. Library table on the LEFT, preview pane
-//   on the RIGHT.
-// - Mobile (<md): vertical split. Library table on TOP, preview pane on
-//   BOTTOM. Both panes are drag-resizable.
+//   on the RIGHT. Drag-resize divider in between.
+// - Mobile (<md): single scrollable table. Preview pane opens as a bottom-sheet
+//   modal (DetailModal) when a row is tapped. The "Preview" column header in
+//   the toolbar also exposes an explicit open button.
 //
 // Split sizes are persisted to localStorage per orientation (separate keys
 // for mobile vs desktop) so the user doesn't lose their preferred layout
@@ -24,6 +25,7 @@ import {
   useDefaultLayout,
 } from "react-resizable-panels";
 import { LibraryPreviewPane } from "@/components/library/library-preview-pane";
+import { DetailModal } from "@/components/ui/detail-modal";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import type { LibraryEngagement } from "@/components/library/library-table";
 
@@ -70,34 +72,58 @@ export function LibrarySplitView({
     return () => mql.removeEventListener("change", onChange);
   }, []);
 
-  // Separate default-layout hooks per orientation. Storage keys differ so
-  // desktop and mobile layouts don't collide.
+  // Separate default-layout hooks per orientation. Mobile no longer uses
+  // resizable panels (preview is a modal), but we keep the desktop hook for
+  // the horizontal split.
   const desktopLayout = useDefaultLayout({
     id: "sw_lib_split_desktop",
     storage: safeStorage,
     panelIds: ["table", "preview"],
   });
-  const mobileLayout = useDefaultLayout({
-    id: "sw_lib_split_mobile",
-    storage: safeStorage,
-    panelIds: ["table", "preview"],
-  });
 
+  // ---- Mobile: table only + preview as bottom-sheet modal -------------------
+  if (isMobile) {
+    return (
+      <>
+        <div className="flex h-full min-h-0 flex-col">
+          <div className="min-h-0 flex-1 overflow-auto">{tableContent}</div>
+          {pagination ? (
+            <div className="shrink-0 border-t border-border bg-card p-3">
+              {pagination}
+            </div>
+          ) : null}
+        </div>
+
+        <DetailModal
+          isOpen={selectedItem !== null}
+          onClose={() => onSelectItem(null)}
+          title={selectedItem?.name ?? "Preview"}
+          {...(selectedItem
+            ? {
+                subtitle: `${selectedItem.targetType.toLowerCase()} · ${formatKind(selectedItem.category)}`,
+              }
+            : {})}
+          size="lg"
+        >
+          <LibraryPreviewPane
+            item={selectedItem}
+            engagement={engagement}
+            currentUserInternalId={currentUserInternalId}
+            onClose={() => onSelectItem(null)}
+          />
+        </DetailModal>
+      </>
+    );
+  }
+
+  // ---- Desktop: side-by-side resizable split -------------------------------
   return (
     <Group
-      orientation={isMobile ? "vertical" : "horizontal"}
+      orientation="horizontal"
       className="h-full"
-      {...(isMobile
-        ? {
-            defaultLayout: mobileLayout.defaultLayout,
-            onLayoutChange: mobileLayout.onLayoutChange,
-            onLayoutChanged: mobileLayout.onLayoutChanged,
-          }
-        : {
-            defaultLayout: desktopLayout.defaultLayout,
-            onLayoutChange: desktopLayout.onLayoutChange,
-            onLayoutChanged: desktopLayout.onLayoutChanged,
-          })}
+      defaultLayout={desktopLayout.defaultLayout}
+      onLayoutChange={desktopLayout.onLayoutChange}
+      onLayoutChanged={desktopLayout.onLayoutChanged}
     >
       <Panel
         id="table"
@@ -112,13 +138,12 @@ export function LibrarySplitView({
         ) : null}
       </Panel>
 
-      <Separator
-        className={
-          isMobile
-            ? "h-1.5 w-full shrink-0 bg-border transition-colors hover:bg-primary data-[separator=active]:bg-primary"
-            : "w-1.5 shrink-0 bg-border transition-colors hover:bg-primary data-[separator=active]:bg-primary"
-        }
-      />
+      <Separator className="group relative w-2 shrink-0 bg-border transition-colors hover:bg-primary data-[separator=active]:bg-primary">
+        {/* Wider hit area with a visible "grip" indicator that shows on hover. */}
+        <span className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 flex w-0.5 items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+          <span className="h-8 w-0.5 rounded-full bg-primary-foreground/40" />
+        </span>
+      </Separator>
 
       <Panel
         id="preview"
@@ -138,4 +163,13 @@ export function LibrarySplitView({
       </Panel>
     </Group>
   );
+}
+
+// Helper to format the LibraryItem.kind for the modal subtitle.
+// Library kinds are usually "primitive", "capability", "race", etc.
+function formatKind(kind: string | null | undefined): string {
+  if (!kind) return "";
+  return kind
+    .replace(/[_-]/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
