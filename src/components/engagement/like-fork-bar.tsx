@@ -294,7 +294,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
           aria-hidden="true"
         />
         <span className="tabular-nums" aria-hidden="true">{likes}</span>
-        {!props.compact && <span className="hidden sm:inline">like{likes === 1 ? "" : "s"}</span>}
+        {!props.compact && <span>like{likes === 1 ? "" : "s"}</span>}
       </button>
 
       <button
@@ -313,7 +313,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
         />
         <span className="tabular-nums" aria-hidden="true">{dislikes}</span>
         {!props.compact && (
-          <span className="hidden sm:inline">dislike{dislikes === 1 ? "" : "s"}</span>
+          <span>dislike{dislikes === 1 ? "" : "s"}</span>
         )}
       </button>
 
@@ -327,7 +327,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
       >
         <GitFork className="h-4 w-4" aria-hidden="true" />
         <span className="tabular-nums" aria-hidden="true">{forks}</span>
-        {!props.compact && <span className="hidden sm:inline">fork{forks === 1 ? "" : "s"}</span>}
+        {!props.compact && <span>fork{forks === 1 ? "" : "s"}</span>}
       </button>
 
       <span
@@ -341,7 +341,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
           {netRating > 0 ? "+" : ""}
           {netRating}
         </span>
-        {!props.compact && <span className="hidden sm:inline">rating</span>}
+        {!props.compact && <span>rating</span>}
       </span>
 
       {showFollow && props.authorUsername && (
@@ -360,7 +360,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
             <UserPlus className="h-4 w-4" aria-hidden="true" />
           )}
           {!props.compact && (
-            <span className="hidden sm:inline">
+            <span>
               {following ? "Following" : "Follow"}
             </span>
           )}
@@ -382,7 +382,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
           className={`${buttonBase} ${buttonGhost}`}
         >
           <Flag className="h-4 w-4" aria-hidden="true" />
-          {!props.compact && <span className="hidden sm:inline">Flag</span>}
+          {!props.compact && <span>Flag</span>}
         </button>
         {flagOpen && (
           <div
