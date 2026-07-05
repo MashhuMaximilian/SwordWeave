@@ -1,12 +1,7 @@
 import { asc } from "drizzle-orm";
 
-import { SandboxLayout } from "@/components/sandbox/sandbox-layout";
-import {
-  CapabilityPreview,
-  CapabilityPreviewEmpty,
-} from "@/components/sandbox/capability-preview";
 import { CapabilitiesLibrary } from "@/components/sandbox/capabilities-library";
-import { CapabilityComposer } from "@/components/workshops/capability-composer";
+import { CapabilitySandboxClient } from "@/components/sandbox/capability-sandbox-client";
 import { db } from "@/db/client";
 import { capabilities, primitives } from "@/db/schema";
 
@@ -20,26 +15,40 @@ export default async function CapabilitySandboxPage({
   const params = await searchParams;
 
   let editingCapability:
-    | (typeof capabilities.$inferSelect & {
+    | {
+        id: string;
+        userId: string | null;
+        name: string;
+        type: string;
+        sourceType: string;
+        verboseDescription: string;
+        isPublic: boolean;
+        sourceOrigin: string | null;
+        tags: string[];
         primitiveLinks: Array<{
           primitiveId: number;
           role: string;
           quantity: number;
           sortOrder: number;
           slotLabel: string | null;
-          primitive: typeof primitives.$inferSelect;
+          primitive: {
+            id: number;
+            name: string;
+            category: string;
+            buCost: number;
+          };
         }>;
-      })
-    | undefined = undefined;
+      }
+    | null
+    | undefined = null;
 
   if (params.edit) {
-    const target = await db.query.capabilities.findFirst({
+    editingCapability = await db.query.capabilities.findFirst({
       where: (t, { eq }) => eq(t.id, params.edit!),
       with: {
         primitiveLinks: { with: { primitive: true } },
       },
     });
-    editingCapability = target;
   }
 
   const [primitiveRows, allCapabilities] = await Promise.all([
@@ -55,51 +64,19 @@ export default async function CapabilitySandboxPage({
   ]);
 
   return (
-    <SandboxLayout
-      storageKey="capabilities"
+    <CapabilitySandboxClient
+      editingCapability={editingCapability ?? null}
+      availablePrimitives={primitiveRows.map((p) => ({
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        buCost: p.buCost,
+      }))}
       library={
         <CapabilitiesLibrary
           capabilities={allCapabilities}
           editingCapabilityId={editingCapability?.id ?? null}
         />
-      }
-      builder={
-        <CapabilityComposer
-          primitives={primitiveRows}
-          initialCapabilities={allCapabilities}
-          editingCapability={editingCapability ?? null}
-        />
-      }
-      preview={
-        editingCapability ? (
-          <CapabilityPreview
-            row={{
-              id: editingCapability.id,
-              name: editingCapability.name,
-              type: editingCapability.type,
-              sourceType: editingCapability.sourceType,
-              verboseDescription: editingCapability.verboseDescription,
-              sourceOrigin: editingCapability.sourceOrigin,
-              tags: editingCapability.tags,
-              isPublic: editingCapability.isPublic,
-              primitiveLinks: editingCapability.primitiveLinks.map((link) => ({
-                primitiveId: link.primitiveId,
-                role: link.role,
-                quantity: link.quantity,
-                sortOrder: link.sortOrder,
-                slotLabel: link.slotLabel,
-                primitive: {
-                  id: link.primitive.id,
-                  name: link.primitive.name,
-                  category: link.primitive.category,
-                  buCost: link.primitive.buCost,
-                },
-              })),
-            }}
-          />
-        ) : (
-          <CapabilityPreviewEmpty />
-        )
       }
     />
   );
