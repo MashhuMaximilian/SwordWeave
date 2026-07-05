@@ -1,8 +1,9 @@
 // =============================================================================
-// Publishing service — Phase 5 Commit B
+// Publishing service — Phase 5 Commit B + Phase 6 backend
 //
-// Creates a version snapshot of a target (capability/primitive/character/etc.)
-// and registers it as a Publication with a visibility tier.
+// Creates a version snapshot of a target (primitive/capability/effect/item/
+// character/template) and registers it as a Publication with a visibility
+// tier.
 //
 // Invariants:
 // - First publish for a target → FULL snapshot (v1)
@@ -15,8 +16,14 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   capabilityVersions,
+  characterVersions,
+  effectVersions,
+  forks,
+  itemVersions,
+  primitiveVersions,
   publications,
   publishTargetTypeEnum,
+  templateVersions,
 } from "@/db/schema";
 import {
   compactSnapshot,
@@ -34,7 +41,7 @@ export type PublishVisibility = "PUBLIC" | "FOLLOWERS_ONLY" | "PRIVATE";
 export interface PublishInput {
   targetType: PublishTargetType;
   targetId: string;
-  authorId: string;
+  authorId: string; // internal user UUID (NOT Clerk ID)
   visibility: PublishVisibility;
   /** Snapshot data for the target — caller is responsible for loading. */
   snapshot: Record<string, unknown>;
@@ -46,6 +53,184 @@ export interface PublishResult {
   versionNumber: number;
   isLatest: boolean;
   deltaKind: "FULL" | "DELTA";
+}
+
+/**
+ * Find the latest version row for a target, dispatching by targetType to
+ * the correct version table. Returns null if no prior version exists.
+ */
+async function findLatestVersion(
+  targetType: PublishTargetType,
+  targetId: string,
+): Promise<{
+  id: string;
+  versionNumber: number;
+  snapshot: Record<string, unknown> | null;
+  deltaKind: "FULL" | "DELTA";
+} | null> {
+  // Convert targetId: PRIMITIVE stores integer IDs, others store UUIDs.
+  // The version table stores the raw value as text on its respective column.
+  const versionTable = versionTableFor(targetType);
+  if (!versionTable) return null;
+
+  const rows = (await db
+    .select({
+      id: versionTable.id,
+      versionNumber: versionTable.versionNumber,
+      snapshot: versionTable.snapshot,
+      deltaKind: versionTable.deltaKind,
+    } as never)
+    .from(versionTable.table)
+    .where(
+      eq(
+        versionTable.foreignKey,
+        targetType === "PRIMITIVE" ? Number(targetId) : targetId,
+      ),
+    )
+    .orderBy(desc(versionTable.versionNumber))
+    .limit(1)) as Array<{
+    id: string;
+    versionNumber: number;
+    snapshot: Record<string, unknown> | null;
+    deltaKind: "FULL" | "DELTA";
+  }>;
+
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    versionNumber: row.versionNumber,
+    snapshot: row.snapshot,
+    deltaKind: row.deltaKind,
+  };
+}
+
+/**
+ * Mark the previous latest version as no-longer-latest.
+ */
+async function supersedePreviousLatest(
+  targetType: PublishTargetType,
+  previousVersionId: string,
+): Promise<void> {
+  const versionTable = versionTableFor(targetType);
+  if (!versionTable) return;
+  await db
+    .update(versionTable.table)
+    .set({ isLatest: false })
+    .where(eq(versionTable.id, previousVersionId));
+}
+
+/**
+ * Insert a new version row into the correct version table.
+ */
+async function insertVersionRow(
+  targetType: PublishTargetType,
+  targetId: string,
+  versionNumber: number,
+  deltaKind: "FULL" | "DELTA",
+  snapshotJson: Record<string, unknown>,
+  authorUuid: string,
+): Promise<string> {
+  const versionTable = versionTableFor(targetType);
+  if (!versionTable) {
+    throw new Error(`No version table mapping for targetType ${targetType}`);
+  }
+
+  // All version tables share the same column shape — see src/db/schema/versions.ts
+  // We use type assertion because Drizzle's typed table refs differ per table.
+  const rows = (await db
+    .insert(versionTable.table)
+    .values({
+      [versionTable.foreignKey.name]:
+        targetType === "PRIMITIVE" ? Number(targetId) : targetId,
+      versionNumber,
+      isLatest: true,
+      deltaKind,
+      snapshot: snapshotJson,
+      publishedByUserId: authorUuid,
+    } as never)
+    .returning({ id: versionTable.id })) as Array<{ id: string }>;
+  const row = rows[0];
+  if (!row) {
+    throw new Error(`Failed to insert version row for ${targetType}`);
+  }
+  return row.id;
+}
+
+/**
+ * Returns the version table dispatch metadata for a given targetType.
+ *
+ * IMPORTANT: keep this in sync with src/db/schema/versions.ts.
+ *
+ * - primitiveVersions.primitiveId (integer)  → PRIMITIVE
+ * - capabilityVersions.capabilityId (uuid)   → CAPABILITY
+ * - characterVersions.characterId (uuid)     → CHARACTER
+ * - templateVersions.templateId (uuid)       → RACE/BACKGROUND/ARCHETYPE_TEMPLATE
+ * - effectVersions.effectId (uuid)           → EFFECT
+ * - itemVersions.itemId (uuid)               → ITEM
+ */
+function versionTableFor(targetType: PublishTargetType) {
+  switch (targetType) {
+    case "PRIMITIVE":
+      return {
+        table: primitiveVersions,
+        id: primitiveVersions.id,
+        versionNumber: primitiveVersions.versionNumber,
+        snapshot: primitiveVersions.snapshot,
+        deltaKind: primitiveVersions.deltaKind,
+        foreignKey: primitiveVersions.primitiveId,
+      };
+    case "CAPABILITY":
+      return {
+        table: capabilityVersions,
+        id: capabilityVersions.id,
+        versionNumber: capabilityVersions.versionNumber,
+        snapshot: capabilityVersions.snapshot,
+        deltaKind: capabilityVersions.deltaKind,
+        foreignKey: capabilityVersions.capabilityId,
+      };
+    case "EFFECT":
+      return {
+        table: effectVersions,
+        id: effectVersions.id,
+        versionNumber: effectVersions.versionNumber,
+        snapshot: effectVersions.snapshot,
+        deltaKind: effectVersions.deltaKind,
+        foreignKey: effectVersions.effectId,
+      };
+    case "ITEM":
+      return {
+        table: itemVersions,
+        id: itemVersions.id,
+        versionNumber: itemVersions.versionNumber,
+        snapshot: itemVersions.snapshot,
+        deltaKind: itemVersions.deltaKind,
+        foreignKey: itemVersions.itemId,
+      };
+    case "CHARACTER":
+      return {
+        table: characterVersions,
+        id: characterVersions.id,
+        versionNumber: characterVersions.versionNumber,
+        snapshot: characterVersions.snapshot,
+        deltaKind: characterVersions.deltaKind,
+        foreignKey: characterVersions.characterId,
+      };
+    case "RACE_TEMPLATE":
+    case "BACKGROUND_TEMPLATE":
+    case "ARCHETYPE_TEMPLATE":
+    case "BUILD_TEMPLATE":
+      return {
+        table: templateVersions,
+        id: templateVersions.id,
+        versionNumber: templateVersions.versionNumber,
+        snapshot: templateVersions.snapshot,
+        deltaKind: templateVersions.deltaKind,
+        foreignKey: templateVersions.templateId,
+      };
+    default:
+      return null;
+  }
 }
 
 /**
@@ -61,13 +246,8 @@ export async function publishTarget(
 
   const cleanSnapshot = compactSnapshot(snapshot);
 
-  // Find latest version (for delta computation)
-  const [latest] = await db
-    .select()
-    .from(capabilityVersions)
-    .where(eq(capabilityVersions.capabilityId, targetId))
-    .orderBy(desc(capabilityVersions.versionNumber))
-    .limit(1);
+  // Find latest version (for delta computation) — dispatches by targetType
+  const latest = await findLatestVersion(targetType, targetId);
 
   let nextVersionNumber: number;
   let deltaKind: "FULL" | "DELTA";
@@ -82,31 +262,20 @@ export async function publishTarget(
   } else {
     nextVersionNumber = latest.versionNumber + 1;
     deltaKind = "DELTA";
-    const prevSnapshot =
-      latest.deltaKind === "FULL"
-        ? (latest.snapshot as Record<string, unknown>)
-        : // Older version is DELTA — reconstruct from latest snapshot
-          // via the chain. For simplicity we assume the latest FULL row
-          // was created at version N; if N != latest.versionNumber we'd
-          // need to walk deltas. For Phase 5 Commit B we store FULL at
-          // v1 and DELTAs thereafter, so the simple case applies.
-          (latest.snapshot as Record<string, unknown>);
-    const delta = computeSelfDescribingDelta(
-      prevSnapshot,
-      cleanSnapshot,
-    );
+    // For simplicity we assume the latest FULL row was created at the
+    // most recent version (storage convention: latest version is always
+    // FULL for fast reads). Older versions reconstruct via delta chain.
+    const prevSnapshot = latest.snapshot ?? {};
+    const delta = computeSelfDescribingDelta(prevSnapshot, cleanSnapshot);
     payload = { delta };
   }
 
   // Mark old latest as no-longer-latest
   if (latest) {
-    await db
-      .update(capabilityVersions)
-      .set({ isLatest: false })
-      .where(eq(capabilityVersions.id, latest.id));
+    await supersedePreviousLatest(targetType, latest.id);
   }
 
-  // Insert new version row
+  // Insert new version row (in the correct table for this targetType)
   const snapshotJson: Record<string, unknown> =
     deltaKind === "FULL"
       ? "snapshot" in payload
@@ -116,21 +285,14 @@ export async function publishTarget(
         ? (payload.delta as Record<string, unknown>)
         : {};
 
-  const [versionRow] = await db
-    .insert(capabilityVersions)
-    .values({
-      capabilityId: targetId,
-      versionNumber: nextVersionNumber,
-      isLatest: true,
-      deltaKind,
-      snapshot: snapshotJson,
-      publishedByUserId: authorId,
-    })
-    .returning({ id: capabilityVersions.id });
-
-  if (!versionRow) {
-    throw new Error("Failed to insert version row");
-  }
+  const versionId = await insertVersionRow(
+    targetType,
+    targetId,
+    nextVersionNumber,
+    deltaKind,
+    snapshotJson,
+    authorId,
+  );
 
   // Insert publication row
   const [pubRow] = await db
@@ -138,7 +300,7 @@ export async function publishTarget(
     .values({
       targetType,
       targetId,
-      versionId: versionRow.id,
+      versionId,
       versionNumber: nextVersionNumber,
       authorId,
       visibility,
@@ -149,9 +311,24 @@ export async function publishTarget(
     throw new Error("Failed to insert publication row");
   }
 
+  // Update fork lineage: if this published target is itself a fork of
+  // something else, point forks.forkedVersionId at the new version row.
+  // Without this, "show forks of source v_n" can be wrong because the
+  // forked copies' lineage still references the source's version, not
+  // the fork's own current version.
+  await db
+    .update(forks)
+    .set({ forkedVersionId: versionId })
+    .where(
+      and(
+        eq(forks.forkedTargetType, targetType),
+        eq(forks.forkedTargetId, targetId),
+      ),
+    );
+
   return {
     publicationId: pubRow.id,
-    versionId: versionRow.id,
+    versionId,
     versionNumber: nextVersionNumber,
     isLatest: true,
     deltaKind,
@@ -192,13 +369,27 @@ export async function getPublicationsByAuthor(authorId: string) {
 
 /**
  * Get all versions for a target, newest first.
+ *
+ * Dispatches by targetType to the correct version table.
  */
-export async function getVersionChain(targetId: string) {
+export async function getVersionChain(
+  targetType: PublishTargetType,
+  targetId: string,
+) {
+  const versionTable = versionTableFor(targetType);
+  if (!versionTable) {
+    throw new Error(`No version table mapping for targetType ${targetType}`);
+  }
   return db
     .select()
-    .from(capabilityVersions)
-    .where(eq(capabilityVersions.capabilityId, targetId))
-    .orderBy(desc(capabilityVersions.versionNumber));
+    .from(versionTable.table)
+    .where(
+      eq(
+        versionTable.foreignKey,
+        targetType === "PRIMITIVE" ? Number(targetId) : targetId,
+      ),
+    )
+    .orderBy(desc(versionTable.versionNumber));
 }
 
 // Re-export for convenience

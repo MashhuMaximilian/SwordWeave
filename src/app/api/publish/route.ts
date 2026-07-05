@@ -29,17 +29,24 @@ const UnpublishSchema = z.object({
 
 /**
  * Load the entity + key relations into a snapshot object.
- * Returns null if entity not found or user doesn't own it.
+ * Returns null if entity not found OR if the caller doesn't own it.
+ *
+ * Ownership rule: every publish is "the author re-publishing their own
+ * content." A user cannot publish someone else's row, even if it's
+ * already marked isPublic (that row's publication already exists).
  */
 async function loadSnapshot(
   targetType: string,
   targetId: string,
-  authorId: string,
+  authorClerkUserId: string,
 ): Promise<Record<string, unknown> | null> {
   if (targetType === "CAPABILITY") {
     const row = await db.query.capabilities.findFirst({
       where: (table, { eq, and }) =>
-        and(eq(table.id, targetId), eq(table.isPublic, true)),
+        and(
+          eq(table.id, targetId),
+          eq(table.userId, authorClerkUserId),
+        ),
       with: {
         primitiveLinks: {
           with: { primitive: true },
@@ -65,7 +72,10 @@ async function loadSnapshot(
   if (targetType === "PRIMITIVE") {
     const row = await db.query.primitives.findFirst({
       where: (table, { eq, and }) =>
-        and(eq(table.id, Number(targetId)), eq(table.isPublic, true)),
+        and(
+          eq(table.id, Number(targetId)),
+          eq(table.userId, authorClerkUserId),
+        ),
     });
     if (!row) return null;
     return {
@@ -81,13 +91,60 @@ async function loadSnapshot(
       hardModifiers: row.hardModifiers,
     };
   }
-  if (targetType === "CHARACTER") {
-    const row = await db.query.characters.findFirst({
+  if (targetType === "EFFECT") {
+    const row = await db.query.effects.findFirst({
       where: (table, { eq, and }) =>
         and(
           eq(table.id, targetId),
-          eq(table.userId, authorId),
+          eq(table.userId, authorClerkUserId),
         ),
+      with: {
+        primitiveLinks: { with: { primitive: true } },
+      },
+    });
+    if (!row) return null;
+    return {
+      id: row.id,
+      name: row.name,
+      narrativeDescription: row.narrativeDescription,
+      tags: row.tags,
+      primitiveLinks: row.primitiveLinks.map((l) => ({
+        primitiveId: l.primitiveId,
+        quantity: l.quantity,
+        sortOrder: l.sortOrder,
+      })),
+    };
+  }
+  if (targetType === "ITEM") {
+    const row = await db.query.items.findFirst({
+      where: (table, { eq, and }) =>
+        and(
+          eq(table.id, targetId),
+          eq(table.userId, authorClerkUserId),
+        ),
+    });
+    if (!row) return null;
+    return {
+      id: row.id,
+      name: row.name,
+      itemType: row.itemType,
+      rarity: row.rarity,
+      buCost: row.buCost,
+      description: row.description,
+      slotCost: row.slotCost,
+      isTwoHanded: row.isTwoHanded,
+      isConsumable: row.isConsumable,
+      actsAsFocus: row.actsAsFocus,
+      tags: row.tags,
+    };
+  }
+  if (targetType === "CHARACTER") {
+    // characters.userId is text (Clerk ID format) — same shape as
+    // primitives/capabilities/templates/effects/items. The call below
+    // passes the Clerk ID via the authorClerkUserId parameter.
+    const row = await db.query.characters.findFirst({
+      where: (table, { eq, and }) =>
+        and(eq(table.id, targetId), eq(table.userId, authorClerkUserId)),
     });
     if (!row) return null;
     return {
@@ -108,7 +165,7 @@ async function loadSnapshot(
       where: (table, { eq, and }) =>
         and(
           eq(table.id, targetId),
-          eq(table.userId, authorId),
+          eq(table.userId, authorClerkUserId),
         ),
     });
     if (!row) return null;
@@ -154,7 +211,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "User profile not found" }, { status: 404 });
   }
 
-  const snapshot = await loadSnapshot(targetType, targetId, user.id);
+  const snapshot = await loadSnapshot(targetType, targetId, userId); // userId is the Clerk user ID from auth()
   if (!snapshot) {
     return NextResponse.json(
       { error: "Target not found or you don't have permission" },

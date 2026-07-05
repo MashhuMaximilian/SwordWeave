@@ -182,3 +182,63 @@ export const templateVersions = pgTable(
     index("template_versions_is_latest_idx").on(table.isLatest),
   ],
 );
+
+// =============================================================================
+// Effect versions — Phase 6 backend
+// =============================================================================
+
+export const effectVersions = pgTable(
+  "effect_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    effectId: uuid("effect_id").notNull(),
+    versionNumber: integer("version_number").notNull(),
+    isLatest: boolean("is_latest").notNull().default(false),
+    deltaKind: versionDeltaKindEnum("delta_kind").notNull(),
+    snapshot: jsonb("snapshot").$type<Record<string, unknown>>().notNull(),
+    publishedByUserId: uuid("published_by_user_id"),
+    publishedAt: timestamp("published_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    supersededAt: timestamp("superseded_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("effect_versions_id_version_unique_idx").on(
+      table.effectId,
+      table.versionNumber,
+    ),
+    index("effect_versions_effect_id_idx").on(table.effectId),
+    index("effect_versions_is_latest_idx").on(table.isLatest),
+  ],
+);
+
+// =============================================================================
+// Item versions — Phase 6 backend
+// =============================================================================
+
+export const itemVersions = pgTable(
+  "item_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    itemId: uuid("item_id").notNull(),
+    versionNumber: integer("version_number").notNull(),
+    isLatest: boolean("is_latest").notNull().default(false),
+    deltaKind: versionDeltaKindEnum("delta_kind").notNull(),
+    snapshot: jsonb("snapshot").$type<Record<string, unknown>>().notNull(),
+    publishedByUserId: uuid("published_by_user_id"),
+    publishedAt: timestamp("published_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    supersededAt: timestamp("superseded_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("item_versions_id_version_unique_idx").on(
+      table.itemId,
+      table.versionNumber,
+    ),
+    index("item_versions_item_id_idx").on(table.itemId),
+    index("item_versions_is_latest_idx").on(table.isLatest),
+  ],
+);

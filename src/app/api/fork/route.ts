@@ -18,6 +18,7 @@
 // synthesize a stable virtual versionId using resolveVirtualVersionId().
 // =============================================================================
 
+import { randomUUID } from "node:crypto";
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
@@ -32,6 +33,7 @@ import {
   templates,
   templatePrimitives,
 } from "@/db/schema";
+import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import { resolveVirtualVersionId } from "@/lib/engagement/version-helpers";
 
 const ForkSchema = z.object({
@@ -91,12 +93,20 @@ export async function POST(req: NextRequest) {
       case "PRIMITIVE":
         return NextResponse.json({
           ok: true,
-          ...(await forkPrimitive({ targetId, forkerClerkUserId: userId })),
+          ...(await forkPrimitive({
+            targetId,
+            forkerClerkUserId: userId,
+            forkerInternalId: user.id,
+          })),
         });
       case "CAPABILITY":
         return NextResponse.json({
           ok: true,
-          ...(await forkCapability({ targetId, forkerUserId: user.id })),
+          ...(await forkCapability({
+            targetId,
+            forkerClerkUserId: userId,
+            forkerInternalId: user.id,
+          })),
         });
       case "RACE_TEMPLATE":
       case "BACKGROUND_TEMPLATE":
@@ -104,7 +114,11 @@ export async function POST(req: NextRequest) {
       case "BUILD_TEMPLATE":
         return NextResponse.json({
           ok: true,
-          ...(await forkTemplate({ targetId, forkerUserId: user.id })),
+          ...(await forkTemplate({
+            targetId,
+            forkerClerkUserId: userId,
+            forkerInternalId: user.id,
+          })),
         });
       default:
         return NextResponse.json(
@@ -121,13 +135,17 @@ export async function POST(req: NextRequest) {
 
 // ---------------------------------------------------------------------------
 // Fork a primitive (id is serial integer)
+//
+// Phase 6 backend: forked row gets userId = forker; sourceAuthorId resolved
+// via Clerk ID → internal user UUID (null when source is system content).
 // ---------------------------------------------------------------------------
 
 async function forkPrimitive(input: {
   targetId: string;
   forkerClerkUserId: string;
+  forkerInternalId: string;
 }) {
-  const { targetId, forkerClerkUserId } = input;
+  const { targetId, forkerClerkUserId, forkerInternalId } = input;
 
   // primitives.id is serial — parse targetId as integer
   const numericId = Number(targetId);
@@ -168,14 +186,25 @@ async function forkPrimitive(input: {
 
   // Attribution. versionId is synthesized from targetId (which is integer).
   const versionId = resolveVirtualVersionId("PRIMITIVE", String(source.id));
+  // Resolve source author — source.userId is Clerk ID text; forking wants
+  // internal UUID. Null when source is system content (no user).
+  const sourceAuthorId = source.userId
+    ? await resolveUserIdByClerkId(source.userId)
+    : null;
   await db.insert(forks).values({
-    forkedByUserId: forkerClerkUserId,
+    // forks.forkedByUserId is uuid → use internal user.id
+    forkedByUserId: forkerInternalId,
     sourceTargetType: "PRIMITIVE",
     sourceTargetId: String(source.id),
     sourceVersionId: versionId,
-    sourceAuthorId: null, // primitives.userId is text (Clerk ID), not internal UUID
+    sourceAuthorId,
     forkedTargetType: "PRIMITIVE",
     forkedTargetId: String(forked.id),
+    // forkedVersionId: tracks "the fork's own current published version."
+    // At fork time the fork IS a copy of the source version, so we point
+    // it at the source's virtual version id. When the forker re-publishes
+    // their own version, publish-service updates this to the real version
+    // row id (see publish-service.ts post-publish hook).
     forkedVersionId: versionId,
     metadata: { name: source.name, category: source.category },
   });
@@ -211,13 +240,17 @@ async function forkPrimitive(input: {
 
 // ---------------------------------------------------------------------------
 // Fork a capability (id is uuid, includes primitive_links)
+//
+// Phase 6 backend: forked row gets userId = forker (was previously NULL —
+// bug fixed in commit 8837ed4). sourceAuthorId resolved from source.userId.
 // ---------------------------------------------------------------------------
 
 async function forkCapability(input: {
   targetId: string;
-  forkerUserId: string;
+  forkerClerkUserId: string;
+  forkerInternalId: string;
 }) {
-  const { targetId, forkerUserId } = input;
+  const { targetId, forkerClerkUserId, forkerInternalId } = input;
 
   const source = await db.query.capabilities.findFirst({
     where: (table, { eq }) => eq(table.id, targetId),
@@ -235,6 +268,10 @@ async function forkCapability(input: {
       sourceType: source.sourceType,
       verboseDescription: source.verboseDescription,
       isPublic: false,
+      // Phase 6 fix: capabilities.userId is text (Clerk ID). Without this
+      // line the fork becomes "system content" and can't be edited/deleted
+      // by the forker.
+      userId: forkerClerkUserId,
       sourceOrigin: `fork:${source.id}`,
       tags: source.tags,
       metadata: {
@@ -262,12 +299,15 @@ async function forkCapability(input: {
   }
 
   const versionId = resolveVirtualVersionId("CAPABILITY", targetId);
+  const sourceAuthorId = source.userId
+    ? await resolveUserIdByClerkId(source.userId)
+    : null;
   await db.insert(forks).values({
-    forkedByUserId: forkerUserId,
+    forkedByUserId: forkerInternalId,
     sourceTargetType: "CAPABILITY",
     sourceTargetId: source.id,
     sourceVersionId: versionId,
-    sourceAuthorId: null,
+    sourceAuthorId,
     forkedTargetType: "CAPABILITY",
     forkedTargetId: forked.id,
     forkedVersionId: versionId,
@@ -311,9 +351,10 @@ async function forkCapability(input: {
 
 async function forkTemplate(input: {
   targetId: string;
-  forkerUserId: string;
+  forkerClerkUserId: string;
+  forkerInternalId: string;
 }) {
-  const { targetId, forkerUserId } = input;
+  const { targetId, forkerClerkUserId, forkerInternalId } = input;
 
   const source = await db.query.templates.findFirst({
     where: (table, { eq }) => eq(table.id, targetId),
@@ -337,7 +378,7 @@ async function forkTemplate(input: {
       suggestedTraits: newSuggestedTraits,
       isPublic: false,
       sourceOrigin: `fork:${source.id}`,
-      userId: forkerUserId,
+      userId: forkerClerkUserId,
     })
     .returning({ id: templates.id });
   if (!forked) {
@@ -372,12 +413,15 @@ async function forkTemplate(input: {
   })();
 
   const versionId = resolveVirtualVersionId(targetType, targetId);
+  const sourceAuthorId = source.userId
+    ? await resolveUserIdByClerkId(source.userId)
+    : null;
   await db.insert(forks).values({
-    forkedByUserId: forkerUserId,
+    forkedByUserId: forkerInternalId,
     sourceTargetType: targetType,
     sourceTargetId: source.id,
     sourceVersionId: versionId,
-    sourceAuthorId: null,
+    sourceAuthorId,
     forkedTargetType: targetType,
     forkedTargetId: forked.id,
     forkedVersionId: versionId,
@@ -411,3 +455,8 @@ async function forkTemplate(input: {
     forkCount: Number(agg?.forkCount ?? 1),
   };
 }
+
+// `randomUUID` is imported to allow future hooks (e.g. synthesizing a
+// placeholder forkedVersionId until the fork re-publishes). Keeping it
+// referenced so tree-shakers don't drop the import if we wire it later.
+void randomUUID;

@@ -99,6 +99,13 @@
       "when": 1783231225288,
       "tag": "0013_phase5_capability_item_user_id",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1783232306077,
+      "tag": "0014_phase6_effect_item_versions",
+      "breakpoints": true
     }
   ]
 }
