@@ -348,6 +348,8 @@ export function GrammarSandboxClient({
   }, [build, editing]);
 
   // Tab strip across the top of the Build column.
+  // On mobile (<md) this is hidden — the bottom HUD's segmented tab group
+  // provides the same navigation. Desktop shows it above the Build column.
   function buildTabs() {
     const tabs: { key: GrammarBuildMode; label: string }[] = [
       { key: "primitive", label: "Primitive" },
@@ -355,7 +357,7 @@ export function GrammarSandboxClient({
       { key: "capability", label: "Capability" },
     ];
     return (
-      <div className="flex border-b border-border bg-card">
+      <div className="hidden border-b border-border bg-card md:flex">
         {tabs.map((tab) => {
           const active = build === tab.key;
           return (
