@@ -11,7 +11,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { ArrowLeft, ChevronRight, User as UserIcon } from "lucide-react";
+import { ArrowLeft, ChevronRight, Pencil, User as UserIcon } from "lucide-react";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
@@ -188,6 +188,8 @@ function DetailShell({
   category,
   description,
   author,
+  ownerId,
+  editHref,
   targetType,
   targetId,
   engagement,
@@ -206,11 +208,28 @@ function DetailShell({
     displayName: string | null;
     avatarUrl: string | null;
   } | null;
+  /**
+   * Clerk userId of the row's creator. Use this (not `author.id`) for
+   * ownership checks because `author` may resolve to null when the row has
+   * no public profile (e.g. system-published items with no User row).
+   */
+  ownerId: string | null;
+  /**
+   * URL to the sandbox editor for this row. Only rendered when the viewer
+   * is the owner (ownerId === currentUserId). Pass null for read-only
+   * entity types (e.g. builds that are loaded through library as a view).
+   */
+  editHref: string | null;
   targetType: string;
   targetId: string;
   engagement: EngagementData;
   currentUserId: string | null;
 }) {
+  const canEdit =
+    editHref !== null &&
+    ownerId !== null &&
+    currentUserId !== null &&
+    ownerId === currentUserId;
   return (
     <div className="mx-auto w-full max-w-4xl px-5 py-8">
       <Link
@@ -228,11 +247,23 @@ function DetailShell({
           </p>
           <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
             <h1 className="font-display break-words text-3xl font-semibold uppercase tracking-wide">{name}</h1>
-            {buCost !== null && (
-              <span className="rounded-full bg-primary/10 px-3 py-1 font-mono text-sm font-semibold text-primary">
-                {buCost} BU
-              </span>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {buCost !== null && (
+                <span className="rounded-full bg-primary/10 px-3 py-1 font-mono text-sm font-semibold text-primary">
+                  {buCost} BU
+                </span>
+              )}
+              {canEdit && (
+                <Link
+                  href={editHref!}
+                  className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                  title="You own this — edit in your sandbox"
+                >
+                  <Pencil className="size-3.5" />
+                  Edit in sandbox
+                </Link>
+              )}
+            </div>
           </div>
           {author && (
             <Link
@@ -330,6 +361,8 @@ async function PrimitiveDetail({
       category={row.category}
       description={row.narrativeRule || row.mechanicalOutputText || null}
       author={author}
+      ownerId={row.userId}
+      editHref={`/sandbox/primitives?edit=${row.id}`}
       targetType="PRIMITIVE"
       targetId={String(id)}
       engagement={engagement}
@@ -411,6 +444,8 @@ async function CapabilityDetail({
       category={row.type}
       description={row.verboseDescription || null}
       author={null}
+      ownerId={row.userId}
+      editHref={`/sandbox/capabilities?edit=${row.id}`}
       targetType="CAPABILITY"
       targetId={id}
       engagement={engagement}
@@ -518,6 +553,8 @@ async function TemplateDetail({
       category={row.kind}
       description={row.description || null}
       author={author}
+      ownerId={row.userId}
+      editHref={`/sandbox/templates?edit=${row.id}`}
       targetType={targetTypeForEngagement}
       targetId={id}
       engagement={engagement}
@@ -660,6 +697,8 @@ async function EffectDetail({
       category="condition"
       description={effectRow.narrativeDescription || null}
       author={author}
+      ownerId={effectRow.userId}
+      editHref={null}
       targetType="EFFECT"
       targetId={id}
       engagement={engagement}

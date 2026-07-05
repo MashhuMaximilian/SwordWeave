@@ -80,10 +80,14 @@ export async function getVersionHistory(
   targetType: VersionTargetType,
   targetId: string,
 ): Promise<VersionHistoryResult | null> {
-  const rows = await fetchVersionRows(targetType, targetId);
-  if (rows.length === 0) return null;
-
   const targetName = await resolveTargetName(targetType, targetId);
+  // Target must exist. If resolveTargetName returned null, the target is
+  // either deleted, never existed, or the id is wrong — surface a 404.
+  if (targetName === null) return null;
+
+  const rows = await fetchVersionRows(targetType, targetId);
+  // Target exists but has zero published versions — return an empty list.
+  // The page renders an "empty state" instead of 404.
 
   // Build a reconstructable chain. reconstructVersion() wants
   // [{ versionNumber, payload: { kind: 'FULL', data } | { kind: 'DELTA', patch } }, ...]

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type {
   HardModifier,
   JsonValue,
@@ -276,13 +276,34 @@ function fromHardModifier(modifier: HardModifier, index: number): ModifierDraft 
 
 export function PrimitiveRegistry({
   initialPrimitives,
+  editingPrimitive,
 }: {
   initialPrimitives: PrimitiveRow[];
+  /**
+   * If set, the registry opens pre-loaded with this primitive in the editor.
+   * Use `?edit=<id>` on the sandbox route to deep-link directly into editing.
+   */
+  editingPrimitive?: PrimitiveRow | null | undefined;
 }) {
   const [primitives, setPrimitives] = useState(initialPrimitives);
   const [selectedPrimitive, setSelectedPrimitive] = useState<PrimitiveRow | null>(
     null,
   );
+  const [bootstrappedEdit, setBootstrappedEdit] = useState(false);
+
+  // Pre-select the editing primitive once on mount. We do this in an effect
+  // rather than during initial state so the form initialization runs through
+  // the same code path as a normal user click (selectPrimitive).
+  useEffect(() => {
+    if (bootstrappedEdit) return;
+    if (!editingPrimitive) {
+      setBootstrappedEdit(true);
+      return;
+    }
+    selectPrimitive(editingPrimitive);
+    setBootstrappedEdit(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingPrimitive]);
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [form, setForm] = useState(blankForm);

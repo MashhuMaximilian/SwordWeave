@@ -74,6 +74,28 @@ export default async function VersionHistoryPage({ params }: PageProps) {
         </p>
       </header>
 
+      {result.versions.length === 0 ? (
+        <div className="mt-10 flex flex-col items-center justify-center rounded-md border border-dashed border-border bg-card/40 px-6 py-12 text-center">
+          <History className="size-10 text-muted-foreground" />
+          <h2 className="mt-4 text-lg font-semibold">No versions published yet</h2>
+          <p className="mt-2 max-w-md text-sm text-muted-foreground">
+            {parsed.type === "PRIMITIVE" ||
+            parsed.type === "CAPABILITY" ||
+            parsed.type === "CHARACTER" ||
+            parsed.type === "RACE_TEMPLATE" ||
+            parsed.type === "BACKGROUND_TEMPLATE" ||
+            parsed.type === "ARCHETYPE_TEMPLATE"
+              ? "This entry has never been published to the Library. Edits stay in your sandbox until you publish the first version."
+              : "No published versions for this entry."}
+          </p>
+          <Link
+            href={`/library/item/${parsed.type}:${parsed.id}`}
+            className="mt-5 inline-flex items-center gap-1 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium hover:border-primary hover:text-primary"
+          >
+            Back to the entry
+          </Link>
+        </div>
+      ) : (
       <ol className="mt-6 space-y-3" data-testid="version-history">
         {result.versions.map((v, i) => {
           const previous = i > 0 ? result.versions[i - 1] : null;
@@ -89,6 +111,7 @@ export default async function VersionHistoryPage({ params }: PageProps) {
           );
         })}
       </ol>
+      )}
     </div>
   );
 }
