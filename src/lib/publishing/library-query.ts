@@ -45,7 +45,12 @@ import {
   templates,
 } from "@/db/schema";
 
-export type LibrarySort = "LIKES" | "RECENT" | "FORKS" | "ALPHABETICAL";
+export type LibrarySort =
+  | "LIKES"
+  | "ENGAGEMENT"
+  | "RECENT"
+  | "FORKS"
+  | "ALPHABETICAL";
 export type LibraryTargetType =
   | "PRIMITIVE"
   | "CAPABILITY"
@@ -156,10 +161,32 @@ function sortItems(items: LibraryItem[], sort: LibrarySort) {
       });
       break;
     case "FORKS":
-      items.sort((a, b) => b.forkCount - a.forkCount);
+      items.sort((a, b) => {
+        if (b.forkCount !== a.forkCount) return b.forkCount - a.forkCount;
+        return b.netReactions - a.netReactions;
+      });
       break;
     case "ALPHABETICAL":
       items.sort((a, b) => a.name.localeCompare(b.name));
+      break;
+    case "ENGAGEMENT":
+      // Composite engagement: likes * 2 + forks * 3 - dislikes
+      // Weights forks highest (strongest signal of value), then likes,
+      // penalties for dislikes. Items with no engagement sink to bottom.
+      items.sort((a, b) => {
+        const aScore =
+          a.likesCount * 2 + a.forkCount * 3 - a.dislikesCount;
+        const bScore =
+          b.likesCount * 2 + b.forkCount * 3 - b.dislikesCount;
+        if (bScore !== aScore) return bScore - aScore;
+        // Tiebreaker: net reactions
+        if (b.netReactions !== a.netReactions)
+          return b.netReactions - a.netReactions;
+        // Final tiebreaker: most recent
+        const aT = a.publishedAt?.getTime() ?? 0;
+        const bT = b.publishedAt?.getTime() ?? 0;
+        return bT - aT;
+      });
       break;
     case "LIKES":
     default:

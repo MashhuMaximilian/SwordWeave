@@ -15,8 +15,13 @@ import {
 } from "@/lib/publishing/library-query";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 import { Markdown } from "@/components/ui/markdown";
+import { LibrarySortControl } from "@/components/library/sort-control";
 import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
+import {
+  readLibraryPreferences,
+  type LibraryView,
+} from "@/lib/preferences/library-prefs";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +29,7 @@ interface PageProps {
   searchParams: Promise<{
     type?: string;
     sort?: string;
+    view?: string;
     category?: string;
     q?: string;
     author?: string;
@@ -37,7 +43,11 @@ const PAGE_SIZE = 24;
 
 export default async function LibraryBrowsePage({ searchParams }: PageProps) {
   const params = await searchParams;
-  const sort = (params.sort ?? "LIKES") as LibrarySort;
+
+  // Load user prefs from cookie, then override with URL params (URL wins).
+  const prefs = await readLibraryPreferences();
+  const sort = (params.sort ?? prefs.sort) as LibrarySort;
+  const view = (params.view ?? prefs.view) as LibraryView;
   const targetType = (params.type ?? "ALL") as LibraryTargetType | "ALL";
   const page = Math.max(0, parseInt(params.page ?? "0", 10) || 0);
   const offset = page * PAGE_SIZE;
@@ -81,6 +91,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
     const merged = {
       type: targetType,
       sort,
+      view,
       category,
       q: search,
       author: params.author,
@@ -90,7 +101,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
       ...overrides,
     };
     for (const [k, v] of Object.entries(merged)) {
-      if (v && v !== "ALL" && v !== "0" && v !== "") next.set(k, v);
+      if (v && v !== "ALL" && v !== "0" && v !== "" && v !== "GRID") next.set(k, v);
     }
     const qs = next.toString();
     return qs ? `/library/browse?${qs}` : "/library/browse";
@@ -138,7 +149,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
           <input type="hidden" name="type" value={targetType} />
         )}
         {category && <input type="hidden" name="category" value={category} />}
-        {sort !== "LIKES" && <input type="hidden" name="sort" value={sort} />}
+        {sort !== "ENGAGEMENT" && <input type="hidden" name="sort" value={sort} />}
         <button
           type="submit"
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
@@ -146,6 +157,25 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
           Search
         </button>
       </form>
+
+      {/* Sort + view mode toggle (always visible on desktop) */}
+      <div className="mt-4">
+        <LibrarySortControl
+          currentSort={sort}
+          currentView={view}
+          sortUrls={{
+            ENGAGEMENT: buildUrl({ sort: "ENGAGEMENT", page: "0" }),
+            LIKES: buildUrl({ sort: "LIKES", page: "0" }),
+            FORKS: buildUrl({ sort: "FORKS", page: "0" }),
+            RECENT: buildUrl({ sort: "RECENT", page: "0" }),
+            ALPHABETICAL: buildUrl({ sort: "ALPHABETICAL", page: "0" }),
+          }}
+          viewUrls={{
+            GRID: buildUrl({ view: "GRID", page: "0" }),
+            LIST: buildUrl({ view: "LIST", page: "0" }),
+          }}
+        />
+      </div>
 
       {/* Filter chips row (mobile-friendly, always visible) */}
       <div className="mt-4 flex flex-wrap gap-2">
@@ -177,42 +207,14 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
         })}
       </div>
 
-      {/* Sort + advanced filter row */}
+      {/* Advanced filters only (sort moved up to top) */}
       <details className="mt-4 rounded-md border border-border bg-card/50">
         <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-medium">
-          <span>Sort & advanced filters</span>
+          <span>Advanced filters</span>
           <ChevronDown className="size-4 md:hidden" />
           <ChevronUp className="hidden size-4 md:block" />
         </summary>
-        <div className="grid gap-4 border-t border-border p-4 md:grid-cols-3">
-          <div>
-            <label className="mb-2 block text-xs font-semibold uppercase text-muted-foreground">
-              Sort by
-            </label>
-            <div className="flex flex-wrap gap-1">
-              {(
-                [
-                  ["LIKES", "Most liked"],
-                  ["RECENT", "Recent"],
-                  ["FORKS", "Most forked"],
-                  ["ALPHABETICAL", "A → Z"],
-                ] as const
-              ).map(([key, label]) => (
-                <Link
-                  key={key}
-                  href={buildUrl({ sort: key, page: "0" })}
-                  className={`rounded-md px-3 py-1.5 text-xs transition-colors ${
-                    sort === key
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary hover:bg-secondary/70"
-                  }`}
-                >
-                  {label}
-                </Link>
-              ))}
-            </div>
-          </div>
-
+        <div className="grid gap-4 border-t border-border p-4 md:grid-cols-2">
           {targetType === "PRIMITIVE" || targetType === "ALL" ? (
             <div>
               <label className="mb-2 block text-xs font-semibold uppercase text-muted-foreground">
@@ -247,9 +249,6 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
           ) : null}
 
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase text-muted-foreground">
-              Engagement
-            </label>
             <div className="space-y-2">
               <Link
                 href={buildUrl({
@@ -277,7 +276,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
                 {category && (
                   <input type="hidden" name="category" value={category} />
                 )}
-                {sort !== "LIKES" && (
+                {sort !== "ENGAGEMENT" && (
                   <input type="hidden" name="sort" value={sort} />
                 )}
                 {search && <input type="hidden" name="q" value={search} />}
@@ -310,10 +309,17 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
             </p>
           </div>
         ) : (
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {result.items.map((item) => (
-              <article
-                key={item.id}
+          view === "LIST" ? (
+            <div className="space-y-2">
+              {result.items.map((item) => (
+                <ListItem key={item.id} item={item} engagement={engagement} currentUserInternalId={currentUserInternalId} />
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {result.items.map((item) => (
+                <article
+                  key={item.id}
                 className="flex flex-col rounded-md border border-border bg-card p-4 transition-colors hover:border-primary"
               >
                 <header className="flex items-start justify-between gap-2">
@@ -408,6 +414,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
               </article>
             ))}
           </div>
+          )
         )}
 
         {/* Pagination */}
@@ -440,5 +447,71 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
         )}
       </section>
     </div>
+  );
+}
+
+// =============================================================================
+// ListItem — compact horizontal card for list view
+// =============================================================================
+
+interface ListItemProps {
+  item: {
+    id: string;
+    targetType: LibraryTargetType;
+    targetId: string;
+    name: string;
+    description: string | null;
+    category: string | null;
+    buCost: number | null;
+    authorId: string | null;
+    authorUsername: string | null;
+    authorDisplayName: string | null;
+    authorAvatarUrl: string | null;
+    likesCount: number;
+    dislikesCount: number;
+    forkCount: number;
+    tags: string[];
+  };
+  engagement: {
+    reactions: Record<string, "LIKE" | "DISLIKE" | null>;
+    following: Record<string, boolean>;
+  };
+  currentUserInternalId: string | null;
+}
+
+function ListItem({ item, engagement, currentUserInternalId }: ListItemProps) {
+  return (
+    <Link
+      href={`/library/item/${item.id}`}
+      className="flex items-start gap-3 rounded-md border border-border bg-card p-3 transition-colors hover:border-primary"
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline gap-2">
+          <h3 className="truncate font-semibold">{item.name}</h3>
+          <span className="text-xs text-muted-foreground">
+            {item.targetType.replace(/_/g, " ").toLowerCase()}
+            {item.category ? ` · ${item.category.replace(/_/g, " ")}` : ""}
+          </span>
+          {item.buCost !== null && (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
+              {item.buCost} BU
+            </span>
+          )}
+        </div>
+        {item.description && (
+          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+            {item.description}
+          </p>
+        )}
+        <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+          <span>♥ {item.likesCount}</span>
+          <span>★ {item.forkCount}</span>
+          {item.authorUsername && (
+            <span>by {item.authorDisplayName ?? item.authorUsername}</span>
+          )}
+        </div>
+      </div>
+      <ArrowRight className="mt-1 size-4 shrink-0 text-muted-foreground" />
+    </Link>
   );
 }
