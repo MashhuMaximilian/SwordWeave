@@ -19,6 +19,7 @@ import { CapabilityForm } from "@/components/sandbox/capability-form";
 import { CapabilityFormPreview } from "@/components/sandbox/capability-form-preview";
 import { GrammarLibrary } from "@/components/sandbox/grammar-library";
 import { UnsavedChangesModal } from "@/components/sandbox/unsaved-changes-modal";
+import type { LibraryItem } from "@/lib/publishing/library-query";
 
 type PrimitiveRow = {
   id: number;
@@ -101,12 +102,19 @@ export function GrammarSandboxClient({
   primitives,
   effects,
   capabilities,
+  libraryItems,
 }: {
   initialBuild: GrammarBuildMode;
   initialEditing: EditingState;
   primitives: PrimitiveRow[];
   effects: EffectRow[];
   capabilities: CapabilityRow[];
+  /**
+   * Unified LibraryItem[] for the left column. Produced server-side from
+   * the typed rows. The sandbox does NOT show engagement metrics in its
+   * library column (those live on /library/browse).
+   */
+  libraryItems: LibraryItem[];
 }) {
   const [build, setBuild] = useState<GrammarBuildMode>(initialBuild);
   const [editing, setEditing] = useState<EditingState>(initialEditing);
@@ -374,6 +382,7 @@ export function GrammarSandboxClient({
         library={
           <GrammarLibrary
             build={build}
+            libraryItems={libraryItems}
             primitives={primitives}
             effects={effects}
             capabilities={capabilities}

@@ -3,7 +3,7 @@
 // ?build=<mode> selects the active mode (defaults to "primitive").
 // ?edit=<id> pre-fills the form with the matching entity.
 
-import { asc, eq } from "drizzle-orm";
+import { asc } from "drizzle-orm";
 
 import {
   GrammarSandboxClient,
@@ -11,6 +11,12 @@ import {
 } from "@/components/sandbox/grammar-sandbox-client";
 import { db } from "@/db/client";
 import { capabilities, effects, primitives } from "@/db/schema";
+import {
+  capabilityToLibraryItem,
+  effectToLibraryItem,
+  primitiveToLibraryItem,
+} from "@/components/sandbox/sandbox-row-mapper";
+import type { LibraryItem } from "@/lib/publishing/library-query";
 
 export const dynamic = "force-dynamic";
 
@@ -81,6 +87,14 @@ export default async function GrammarSandboxPage({
     }
   }
 
+  // Build unified LibraryItem array for the left column. Sorted by name
+  // so the LibraryTable sort UI has a stable baseline.
+  const libraryItems: LibraryItem[] = [
+    ...primitiveRows.map(primitiveToLibraryItem),
+    ...effectRows.map(effectToLibraryItem),
+    ...capabilityRows.map(capabilityToLibraryItem),
+  ];
+
   return (
     <GrammarSandboxClient
       initialBuild={build}
@@ -88,6 +102,7 @@ export default async function GrammarSandboxPage({
       primitives={primitiveRows}
       effects={effectRows}
       capabilities={capabilityRows}
+      libraryItems={libraryItems}
     />
   );
 }

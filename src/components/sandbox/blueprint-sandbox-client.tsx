@@ -16,6 +16,7 @@ import { ItemForm } from "./item-form";
 import { ItemFormPreview } from "./item-form-preview";
 import { BlueprintLibrary } from "./blueprint-library";
 import { UnsavedChangesModal } from "./unsaved-changes-modal";
+import type { LibraryItem } from "@/lib/publishing/library-query";
 
 type TemplateRow = {
   id: string;
@@ -91,6 +92,7 @@ export function BlueprintSandboxClient({
   primitives,
   capabilities,
   effects,
+  libraryItems,
 }: {
   initialBuild: BlueprintBuildMode;
   initialKind?: "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined;
@@ -110,6 +112,11 @@ export function BlueprintSandboxClient({
     sourceType: string;
   }>;
   effects: Array<{ id: string; name: string }>;
+  /**
+   * Unified LibraryItem[] for the left column. Produced server-side from
+   * the typed rows.
+   */
+  libraryItems: LibraryItem[];
 }) {
   const [build, setBuild] = useState<BlueprintBuildMode>(initialBuild);
   const [editing, setEditing] = useState<EditingState>(initialEditing);
@@ -336,6 +343,7 @@ export function BlueprintSandboxClient({
         library={
           <BlueprintLibrary
             build={build}
+            libraryItems={libraryItems}
             templates={templates}
             items={items}
             editingKey={

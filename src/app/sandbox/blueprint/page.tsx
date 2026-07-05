@@ -4,7 +4,7 @@
 // ?kind=<RACE|BACKGROUND|ARCHETYPE> only relevant when build=template.
 // ?edit=<id> pre-fills the form with the matching entity.
 
-import { asc, eq } from "drizzle-orm";
+import { asc } from "drizzle-orm";
 
 import {
   BlueprintSandboxClient,
@@ -12,6 +12,12 @@ import {
 } from "@/components/sandbox/blueprint-sandbox-client";
 import { db } from "@/db/client";
 import { capabilities, effects, items, primitives, templates } from "@/db/schema";
+import {
+  itemToLibraryItem,
+  primitiveToLibraryItem,
+  templateToLibraryItem,
+} from "@/components/sandbox/sandbox-row-mapper";
+import type { LibraryItem } from "@/lib/publishing/library-query";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +82,16 @@ export default async function BlueprintSandboxPage({
     }
   }
 
+  // Build unified LibraryItem array for the left column.
+  // Templates + Items are the primary entities. Primitives get included too
+  // because Templates need to slot primitives during editing, and the user
+  // can browse primitives while building an Item.
+  const libraryItems: LibraryItem[] = [
+    ...templateRows.map(templateToLibraryItem),
+    ...itemRows.map(itemToLibraryItem),
+    ...primitiveRows.map(primitiveToLibraryItem),
+  ];
+
   return (
     <BlueprintSandboxClient
       initialBuild={build}
@@ -96,6 +112,7 @@ export default async function BlueprintSandboxPage({
         sourceType: c.sourceType,
       }))}
       effects={effectRows.map((e) => ({ id: e.id, name: e.name }))}
+      libraryItems={libraryItems}
     />
   );
 }
