@@ -29,9 +29,16 @@ export async function resolveAuthorByClerkId(
       username: true,
       displayName: true,
       avatarUrl: true,
+      isAnonymized: true,
+      deletedAt: true,
     },
   });
   if (!row) return null;
+  // Don't surface anonymized/deleted users — their content remains in the
+  // library (attributed to the original author id) but the UI should not
+  // show the deterministic hash handle or display name. Return null and
+  // let the caller render as system content.
+  if (row.isAnonymized || row.deletedAt) return null;
   return {
     id: row.id,
     username: row.username,
