@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { SignInButton, SignUpButton, useUser } from "@clerk/nextjs";
 import {
   Boxes,
@@ -19,6 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
+import { HamburgerButton, MobileNavDrawer } from "./mobile-nav-drawer";
 
 const primaryNav = [
   { href: "/sandbox", label: "Sandbox", icon: FlaskConical },
@@ -132,54 +134,24 @@ function AccountControls() {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [navOpen, setNavOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-30 border-b border-border bg-shell/95 backdrop-blur lg:hidden">
-        <div className="flex items-center justify-between gap-3 px-4 py-3 pr-2">
-          <BrandMark />
+        <div className="flex items-center justify-between gap-3 px-3 py-3">
+          <div className="flex items-center gap-2">
+            <HamburgerButton onClick={() => setNavOpen(true)} />
+            <BrandMark />
+          </div>
           <div className="flex min-w-0 items-center gap-2">
             <AccountControls />
             <ThemeToggle />
           </div>
         </div>
-        {/* Primary nav: scrollable with fade-edge to indicate overflow */}
-        <div className="relative">
-          <nav
-            aria-label="Primary"
-            className="scrollbar-none flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-3"
-            style={{
-              scrollbarWidth: "none",
-              WebkitOverflowScrolling: "touch",
-              maskImage:
-                "linear-gradient(to right, black 0, black calc(100% - 24px), transparent 100%)",
-              WebkitMaskImage:
-                "linear-gradient(to right, black 0, black calc(100% - 24px), transparent 100%)",
-            }}
-          >
-            {primaryNav.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(pathname, item.href);
-
-              return (
-                <Link
-                  className={cn(
-                    "flex shrink-0 snap-start items-center gap-2 whitespace-nowrap rounded-md border px-3 py-2 text-sm font-medium",
-                    active
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card text-muted-foreground",
-                  )}
-                  href={item.href}
-                  key={item.href}
-                >
-                  <Icon className="size-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
       </header>
+
+      <MobileNavDrawer isOpen={navOpen} onClose={() => setNavOpen(false)} />
 
       <div className="lg:grid lg:min-h-screen lg:grid-cols-[248px_1fr]">
         <aside className="hidden border-r border-border bg-shell lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">

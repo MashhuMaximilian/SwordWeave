@@ -54,6 +54,9 @@ type SandboxLayoutContextValue = {
   /** Tablet only: whether the preview column is shown (false = library + builder only). */
   previewVisible: boolean;
   togglePreview: () => void;
+  /** Mobile only: whether the preview overlay modal is open. */
+  previewOverlayOpen: boolean;
+  setPreviewOverlayOpen: (open: boolean) => void;
 };
 
 const SandboxLayoutContext = createContext<SandboxLayoutContextValue | null>(null);
@@ -132,6 +135,7 @@ export function SandboxLayout({
   const [viewport, setViewport] = useState<"mobile" | "tablet" | "desktop">("desktop");
   const [hiddenColumns, setHiddenColumns] = useState<Set<ColumnKey>>(new Set());
   const [previewVisible, setPreviewVisible] = useState(true);
+  const [previewOverlayOpen, setPreviewOverlayOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [storedWidths, setStoredWidths] = useState<Partial<Record<ColumnKey, number>>>({});
 
@@ -144,6 +148,14 @@ export function SandboxLayout({
         setPreviewVisible(stored.previewVisible);
       }
       if (stored.widths) setStoredWidths(stored.widths);
+    }
+    // Cleanup: drop the orphaned "sw_sandbox_mobile_inner" layout that the
+    // 3-panel mobile layout (Library | Build | Preview) used to persist.
+    // The new 2-panel layout (Library | Build) doesn't need this key.
+    try {
+      window.localStorage.removeItem("sw_sandbox_mobile_inner");
+    } catch {
+      // ignore
     }
     setHydrated(true);
   }, [storageKey]);
@@ -241,6 +253,8 @@ export function SandboxLayout({
         toggleCollapsed,
         previewVisible,
         togglePreview,
+        previewOverlayOpen,
+        setPreviewOverlayOpen,
       }),
       [
         hiddenColumns,
@@ -248,6 +262,7 @@ export function SandboxLayout({
         toggleCollapsed,
         previewVisible,
         togglePreview,
+        previewOverlayOpen,
       ],
     );
   return (
@@ -496,20 +511,21 @@ function TabletColumnChrome({
 }
 
 // ----------------------------------------------------------------------------
-// Mobile layout (vertical drag-resizable split)
-// ----------------------------------------------------------------------------
+// Mobile layout (2-panel vertical split + Preview overlay modal)
 //
-// Per the user's spec, on mobile the sandbox uses a vertical drag-resizable
-// split:
+// Per the user's spec, on mobile the sandbox uses a 2-panel vertical split:
 //   - Top panel: Library
-//   - Bottom panel: Build + Preview, split internally (Build on top, Preview
-//     on bottom, also drag-resizable)
+//   - Bottom panel: Build
+// Preview is rendered as an OVERLAY (DetailModal) opened by a floating
+// "Preview" button inside the Build column, since a permanent third panel
+// is too cramped on a 393px viewport.
 //
 // Sizes persist to localStorage per storageKey + orientation so the user
 // keeps their layout when rotating or revisiting the page.
 // ----------------------------------------------------------------------------
 
 import { useDefaultLayout as useMobileDefaultLayout } from "react-resizable-panels";
+import { DetailModal } from "@/components/ui/detail-modal";
 
 type MobileProps = {
   library: ReactNode;
@@ -543,109 +559,94 @@ function MobileSandboxVerticalSplit({
   builder,
   preview,
 }: MobileProps) {
-  // Vertical split: top = Library, bottom = Build+Preview nested split.
+  const { previewOverlayOpen, setPreviewOverlayOpen } = useSandboxLayout();
+
+  // Vertical split: top = Library, bottom = Build.
+  // Preview lives in a modal overlay (opened via the floating button below).
   const outerLayout = useMobileDefaultLayout({
     id: "sw_sandbox_mobile_outer",
     storage: mobileStorage,
-    panelIds: ["library", "work"],
+    panelIds: ["library", "builder"],
   });
 
   return (
-    <Group
-      id="sw_sandbox_mobile_outer"
-      orientation="vertical"
-      defaultLayout={outerLayout.defaultLayout}
-      onLayoutChange={outerLayout.onLayoutChange}
-      onLayoutChanged={outerLayout.onLayoutChanged}
-      className="flex h-full min-h-0"
-    >
-      {/* TOP PANEL — Library */}
-      <Panel
-        id="library"
-        defaultSize={40}
-        minSize={15}
-        maxSize={75}
-        className="flex h-full min-h-0 flex-col"
+    <>
+      <Group
+        id="sw_sandbox_mobile_outer"
+        orientation="vertical"
+        defaultLayout={outerLayout.defaultLayout}
+        onLayoutChange={outerLayout.onLayoutChange}
+        onLayoutChanged={outerLayout.onLayoutChanged}
+        className="flex h-full min-h-0"
       >
-        <MobileColumnChrome title="Library" icon={<LibraryIcon className="size-4" />} />
-        <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
-      </Panel>
+        {/* TOP PANEL — Library */}
+        <Panel
+          id="library"
+          defaultSize={40}
+          minSize={15}
+          maxSize={75}
+          className="flex h-full min-h-0 flex-col"
+        >
+          <MobileColumnChrome title="Library" icon={<LibraryIcon className="size-4" />} />
+          <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
+        </Panel>
 
-      <Separator className="h-1.5 shrink-0 bg-border transition-colors hover:bg-primary data-[separator=active]:bg-primary" />
+        <Separator className="h-1.5 shrink-0 bg-border transition-colors hover:bg-primary data-[separator=active]:bg-primary" />
 
-      {/* BOTTOM PANEL — Build + Preview nested split */}
-      <Panel
-        id="work"
-        defaultSize={60}
-        minSize={25}
-        maxSize={85}
-        className="flex h-full min-h-0 flex-col"
+        {/* BOTTOM PANEL — Build (with floating Preview button) */}
+        <Panel
+          id="builder"
+          defaultSize={60}
+          minSize={25}
+          maxSize={85}
+          className="flex h-full min-h-0 flex-col"
+        >
+          <MobileColumnChrome
+            title="Build"
+            icon={<Wrench className="size-4" />}
+            action={
+              <button
+                type="button"
+                onClick={() => setPreviewOverlayOpen(true)}
+                className="ml-auto flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+                aria-label="Preview compiled result"
+              >
+                <Eye className="size-3.5" />
+                Preview
+              </button>
+            }
+          />
+          <div className="flex-1 min-h-0 overflow-auto">{builder}</div>
+        </Panel>
+      </Group>
+
+      <DetailModal
+        isOpen={previewOverlayOpen}
+        onClose={() => setPreviewOverlayOpen(false)}
+        title="Preview"
+        subtitle="Live render of your current draft"
+        size="lg"
       >
-        <MobileBottomSplit builder={builder} preview={preview} />
-      </Panel>
-    </Group>
-  );
-}
-
-function MobileBottomSplit({
-  builder,
-  preview,
-}: {
-  builder: ReactNode;
-  preview: ReactNode;
-}) {
-  // Internal split: Build on top, Preview on bottom.
-  const innerLayout = useMobileDefaultLayout({
-    id: "sw_sandbox_mobile_inner",
-    storage: mobileStorage,
-    panelIds: ["builder", "preview"],
-  });
-
-  return (
-    <Group
-      id="sw_sandbox_mobile_inner"
-      orientation="vertical"
-      defaultLayout={innerLayout.defaultLayout}
-      onLayoutChange={innerLayout.onLayoutChange}
-      onLayoutChanged={innerLayout.onLayoutChanged}
-      className="flex h-full min-h-0"
-    >
-      <Panel
-        id="builder"
-        defaultSize={60}
-        minSize={25}
-        maxSize={85}
-        className="flex h-full min-h-0 flex-col"
-      >
-        <MobileColumnChrome title="Build" icon={<Wrench className="size-4" />} />
-        <div className="flex-1 min-h-0 overflow-auto">{builder}</div>
-      </Panel>
-      <Separator className="h-1 shrink-0 bg-border transition-colors hover:bg-primary data-[separator=active]:bg-primary" />
-      <Panel
-        id="preview"
-        defaultSize={40}
-        minSize={15}
-        maxSize={75}
-        className="flex h-full min-h-0 flex-col"
-      >
-        <MobileColumnChrome title="Preview" icon={<Eye className="size-4" />} />
-        <div className="flex-1 min-h-0 overflow-auto">{preview}</div>
-      </Panel>
-    </Group>
+        {preview}
+      </DetailModal>
+    </>
   );
 }
 
 function MobileColumnChrome({
   title,
   icon,
+  action,
 }: {
   title: string;
   icon: ReactNode;
+  action?: ReactNode;
 }) {
   return (
     <div className="flex h-9 shrink-0 items-center gap-2 border-b bg-muted/30 px-3 text-sm font-medium">
       <span className="text-muted-foreground">{icon}</span>
       <span className="truncate">{title}</span>
+      {action}
     </div>
   );
 }
