@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import type {
   HardModifier,
   JsonValue,
@@ -312,6 +313,7 @@ export function PrimitiveRegistry({
   const [showJsonPreview, setShowJsonPreview] = useState(false);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const hardModifiers = useMemo(
@@ -496,6 +498,7 @@ export function PrimitiveRegistry({
 
       resetEditor();
       setMessage("Primitive saved to your account.");
+      router.refresh();
     });
   }
 
