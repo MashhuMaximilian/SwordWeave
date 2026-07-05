@@ -1214,7 +1214,7 @@ function PracticesTab({
       </div>
 
       <DetailModal
-        open={expandedPractice !== null}
+        isOpen={expandedPractice !== null}
         onClose={() => setExpandedPractice(null)}
         title={
           expandedPractice

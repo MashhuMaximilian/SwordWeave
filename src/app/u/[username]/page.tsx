@@ -6,6 +6,7 @@ import {
   Edit3,
   GitFork,
   Globe,
+  Library,
   Link as LinkIcon,
   Settings,
   Users,
@@ -61,9 +62,7 @@ export default async function ProfilePage({
           <div className="flex-1">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h1 className="text-3xl font-semibold tracking-tight text-sword-fg">
-                  {profile.displayName ?? `@${profile.username}`}
-                </h1>
+                <h1 className="font-display mt-3 text-4xl font-semibold uppercase leading-tight tracking-wide">{profile.displayName ?? `@${profile.username}`}</h1>
                 <p className="text-sm text-sword-muted">@{profile.username}</p>
               </div>
 
@@ -237,6 +236,22 @@ async function PublicEntriesSection({
               <RecentForkRow key={fork.id} fork={fork} />
             ))}
           </ul>
+        </div>
+      )}
+
+      {recentForks.length === 0 && (
+        <div className="mt-6 flex flex-col items-center gap-3 rounded-md border border-dashed border-sword-border/60 bg-sword-bg/40 px-4 py-8 text-center">
+          <Library className="h-6 w-6 text-sword-muted" aria-hidden="true" />
+          <p className="text-sm text-sword-muted">
+            @{userRow.username} hasn&apos;t published anything yet — and has no
+            forks to show.
+          </p>
+          <Link
+            href="/library/browse"
+            className="text-xs font-medium text-sword-accent hover:underline"
+          >
+            Browse the library →
+          </Link>
         </div>
       )}
     </section>

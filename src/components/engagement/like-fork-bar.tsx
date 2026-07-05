@@ -274,20 +274,26 @@ export function LikeForkBar(props: LikeForkBarProps) {
   const buttonFilled = "border-rose-500 bg-rose-500/10 text-rose-300";
 
   return (
-    <div className={`flex flex-wrap items-center gap-2 ${props.className ?? ""}`}>
+    <div
+      className={`flex flex-wrap items-center gap-2 ${props.className ?? ""}`}
+      role="group"
+      aria-label="Engagement"
+    >
       <button
         type="button"
         onClick={handleLike}
         disabled={pending}
         title={userReaction === "LIKE" ? "Unlike" : "Like"}
-        aria-label="Like"
+        aria-label={`Like (${likes} ${likes === 1 ? "like" : "likes"})`}
+        aria-pressed={userReaction === "LIKE"}
         className={`${buttonBase} ${userReaction === "LIKE" ? buttonFilled : buttonGhost}`}
       >
         <Heart
           className="h-4 w-4"
           fill={userReaction === "LIKE" ? "currentColor" : "none"}
+          aria-hidden="true"
         />
-        <span className="tabular-nums">{likes}</span>
+        <span className="tabular-nums" aria-hidden="true">{likes}</span>
         {!props.compact && <span className="hidden sm:inline">like{likes === 1 ? "" : "s"}</span>}
       </button>
 
@@ -296,14 +302,16 @@ export function LikeForkBar(props: LikeForkBarProps) {
         onClick={handleDislike}
         disabled={pending}
         title={userReaction === "DISLIKE" ? "Remove dislike" : "Dislike"}
-        aria-label="Dislike"
+        aria-label={`Dislike (${dislikes} ${dislikes === 1 ? "dislike" : "dislikes"})`}
+        aria-pressed={userReaction === "DISLIKE"}
         className={`${buttonBase} ${userReaction === "DISLIKE" ? buttonFilled : buttonGhost}`}
       >
         <ThumbsDown
           className="h-4 w-4"
           fill={userReaction === "DISLIKE" ? "currentColor" : "none"}
+          aria-hidden="true"
         />
-        <span className="tabular-nums">{dislikes}</span>
+        <span className="tabular-nums" aria-hidden="true">{dislikes}</span>
         {!props.compact && (
           <span className="hidden sm:inline">dislike{dislikes === 1 ? "" : "s"}</span>
         )}
@@ -314,20 +322,22 @@ export function LikeForkBar(props: LikeForkBarProps) {
         onClick={handleFork}
         disabled={pending}
         title="Fork to your sandbox"
-        aria-label="Fork"
+        aria-label={`Fork (${forks} ${forks === 1 ? "fork" : "forks"})`}
         className={`${buttonBase} ${buttonGhost}`}
       >
-        <GitFork className="h-4 w-4" />
-        <span className="tabular-nums">{forks}</span>
+        <GitFork className="h-4 w-4" aria-hidden="true" />
+        <span className="tabular-nums" aria-hidden="true">{forks}</span>
         {!props.compact && <span className="hidden sm:inline">fork{forks === 1 ? "" : "s"}</span>}
       </button>
 
       <span
         className={`${buttonBase} border-slate-700 bg-slate-900/70 text-slate-300`}
         title="Net rating (likes − dislikes)"
+        role="status"
+        aria-label={`Net rating ${netRating > 0 ? "plus " : ""}${netRating}`}
       >
-        <Star className="h-4 w-4" />
-        <span className="tabular-nums">
+        <Star className="h-4 w-4" aria-hidden="true" />
+        <span className="tabular-nums" aria-hidden="true">
           {netRating > 0 ? "+" : ""}
           {netRating}
         </span>
@@ -340,13 +350,14 @@ export function LikeForkBar(props: LikeForkBarProps) {
           onClick={handleFollow}
           disabled={pending}
           title={following ? `Unfollow @${props.authorUsername}` : `Follow @${props.authorUsername}`}
-          aria-label={following ? "Unfollow" : "Follow"}
+          aria-label={following ? `Unfollow @${props.authorUsername}` : `Follow @${props.authorUsername}`}
+          aria-pressed={following}
           className={`${buttonBase} ${following ? buttonActive : buttonGhost}`}
         >
           {following ? (
-            <UserMinus className="h-4 w-4" />
+            <UserMinus className="h-4 w-4" aria-hidden="true" />
           ) : (
-            <UserPlus className="h-4 w-4" />
+            <UserPlus className="h-4 w-4" aria-hidden="true" />
           )}
           {!props.compact && (
             <span className="hidden sm:inline">
@@ -365,14 +376,20 @@ export function LikeForkBar(props: LikeForkBarProps) {
           }}
           disabled={pending}
           title="Flag this content"
-          aria-label="Flag"
+          aria-label="Flag this content"
+          aria-haspopup="dialog"
+          aria-expanded={flagOpen}
           className={`${buttonBase} ${buttonGhost}`}
         >
-          <Flag className="h-4 w-4" />
+          <Flag className="h-4 w-4" aria-hidden="true" />
           {!props.compact && <span className="hidden sm:inline">Flag</span>}
         </button>
         {flagOpen && (
-          <div className="absolute right-0 z-20 mt-2 w-64 rounded-md border border-slate-700 bg-slate-900 p-3 shadow-lg">
+          <div
+            role="dialog"
+            aria-label="Flag content"
+            className="absolute right-0 z-20 mt-2 w-64 rounded-md border border-slate-700 bg-slate-900 p-3 shadow-lg"
+          >
             <p className="mb-2 text-xs text-slate-400">Why are you flagging this?</p>
             <div className="space-y-1">
               {FLAG_REASONS.map((opt) => (

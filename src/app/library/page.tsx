@@ -79,7 +79,7 @@ export default async function LibraryHubPage() {
         <p className="text-xs font-semibold uppercase text-muted-foreground">
           Library Hub
         </p>
-        <h1 className="mt-3 text-4xl font-semibold">Public records.</h1>
+        <h1 className="font-display mt-3 text-4xl font-semibold uppercase leading-tight tracking-wide">Public records.</h1>
         <p className="mt-4 text-base leading-7 text-muted-foreground">
           Browse, filter, and clone public primitives, effects, capabilities,
           races, backgrounds, and archetypes contributed by the SwordWeave

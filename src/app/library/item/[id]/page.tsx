@@ -227,7 +227,7 @@ function DetailShell({
             {category ? ` · ${category.replace(/_/g, " ")}` : ""}
           </p>
           <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
-            <h1 className="break-words text-3xl font-semibold">{name}</h1>
+            <h1 className="font-display break-words text-3xl font-semibold uppercase tracking-wide">{name}</h1>
             {buCost !== null && (
               <span className="rounded-full bg-primary/10 px-3 py-1 font-mono text-sm font-semibold text-primary">
                 {buCost} BU
@@ -294,6 +294,14 @@ function DetailShell({
             targetType={targetType as ForkTargetType}
             targetId={targetId}
           />
+          <div className="mt-3 flex justify-end">
+            <Link
+              href={`/library/item/${targetType}:${targetId}/versions`}
+              className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Version history →
+            </Link>
+          </div>
         </footer>
       </article>
     </div>

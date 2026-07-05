@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Copy, Pencil, Search, Eye } from "lucide-react";
-import { DetailModal } from "./detail-modal";
+import { DetailModal } from "@/components/ui/detail-modal";
 import { ToastViewport, useToasts, type ToastVariant } from "@/components/ui/toast";
 
 type SerializedCapability = {

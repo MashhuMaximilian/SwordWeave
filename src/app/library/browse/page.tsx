@@ -4,7 +4,7 @@
 // =============================================================================
 
 import Link from "next/link";
-import { ArrowRight, ChevronDown, ChevronUp, Search, User as UserIcon } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp, Search, SearchX, User as UserIcon } from "lucide-react";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db/client";
 import {
@@ -14,6 +14,7 @@ import {
   type LibraryTargetType,
 } from "@/lib/publishing/library-query";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Markdown } from "@/components/ui/markdown";
 import { LibrarySortControl } from "@/components/library/sort-control";
 import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
@@ -53,6 +54,17 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
   const offset = page * PAGE_SIZE;
   const search = params.q ?? "";
   const category = params.category ?? "";
+  const authorFilter = params.author ?? "";
+  const minLikesFilter = params.minLikes ?? "";
+  const hasForksFilter = params.hasForks === "1";
+
+  const hasActiveFilters =
+    Boolean(search) ||
+    Boolean(category) ||
+    Boolean(authorFilter) ||
+    Boolean(minLikesFilter) ||
+    hasForksFilter ||
+    targetType !== "ALL";
 
   // Load categories dynamically for the filter chips
   const categories = await listPrimitiveCategories();
@@ -114,7 +126,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
           <p className="text-xs font-semibold uppercase text-muted-foreground">
             Library
           </p>
-          <h1 className="mt-3 text-4xl font-semibold">Browse the corpus.</h1>
+          <h1 className="font-display mt-3 text-4xl font-semibold uppercase leading-tight tracking-wide">Browse the corpus.</h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
             {result.total.toLocaleString()} public entries from the SwordWeave
             corpus. Sort, filter, fork what you like.
@@ -303,11 +315,27 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
       {/* Results */}
       <section className="mt-6">
         {result.items.length === 0 ? (
-          <div className="rounded-md border border-dashed border-border bg-card/50 p-12 text-center">
-            <p className="text-sm text-muted-foreground">
-              No matches. Try changing the filter or sort.
-            </p>
-          </div>
+          <EmptyState
+            icon={SearchX}
+            title={
+              hasActiveFilters
+                ? "No matches for these filters"
+                : "The library is empty"
+            }
+            description={
+              hasActiveFilters
+                ? "Try removing a filter, broadening the search, or changing the sort."
+                : "Published primitives, capabilities, and templates will appear here."
+            }
+            primaryAction={
+              hasActiveFilters
+                ? { label: "Clear filters", href: "/library/browse" }
+                : { label: "Browse BU Market", href: "/bu-market" }
+            }
+            {...(!hasActiveFilters
+              ? { secondaryAction: { label: "Open sandbox", href: "/sandbox" } }
+              : {})}
+          />
         ) : (
           view === "LIST" ? (
             <div className="space-y-2">

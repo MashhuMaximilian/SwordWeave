@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Copy, Search, Eye } from "lucide-react";
-import { DetailModal } from "./detail-modal";
+import { DetailModal } from "@/components/ui/detail-modal";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
 
 type EffectRow = {

@@ -1,65 +1,102 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { X } from "lucide-react";
 
 /**
- * Reusable modal for library preview + sheet breakdowns.
- * Used for capability/primitive/item detail views, and the practice
- * roll-up breakdown in the character sheet.
+ * Canonical modal component for library preview, sheet breakdowns,
+ * and any other detail-on-demand UI.
+ *
+ * Features:
+ * - Three size variants (sm/md/lg)
+ * - Mobile-first bottom sheet styling (rounded-t-2xl on small screens)
+ * - Body scroll lock while open
+ * - Escape key + backdrop click to close
+ * - Sticky header with optional subtitle
+ * - Accessible: role=dialog, aria-modal, aria-labelledby
  */
 
-export function DetailModal({
-  open,
-  onClose,
-  title,
-  children,
-}: {
-  open: boolean;
+interface DetailModalProps {
+  isOpen: boolean;
   onClose: () => void;
   title: string;
+  subtitle?: string | null;
   children: React.ReactNode;
-}) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  size?: "sm" | "md" | "lg";
+}
 
+export function DetailModal({
+  isOpen,
+  onClose,
+  title,
+  subtitle,
+  children,
+  size = "md",
+}: DetailModalProps) {
+  // Lock body scroll when open
   useEffect(() => {
-    if (!open) return;
-    function onEsc(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+    if (isOpen) {
+      const original = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = original;
+      };
     }
-    window.addEventListener("keydown", onEsc);
-    return () => window.removeEventListener("keydown", onEsc);
-  }, [open, onClose]);
+    return undefined;
+  }, [isOpen]);
 
-  if (!mounted || !open) return null;
+  // Escape to close
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  const sizeClass =
+    size === "sm" ? "max-w-md" : size === "lg" ? "max-w-4xl" : "max-w-2xl";
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
+      onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label={title}
-      onClick={onClose}
+      aria-labelledby="detail-modal-title"
     >
       <div
-        className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-md border border-border bg-card p-6 shadow-2xl"
+        className={`relative w-full overflow-hidden rounded-t-2xl bg-card shadow-2xl sm:rounded-2xl ${sizeClass} max-h-[95vh] flex flex-col`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-3">
-          <h2 className="text-lg font-semibold">{title}</h2>
+        <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border bg-card px-6 py-4">
+          <div className="min-w-0 flex-1">
+            <h2
+              id="detail-modal-title"
+              className="truncate text-xl font-semibold"
+            >
+              {title}
+            </h2>
+            {subtitle && (
+              <p className="mt-1 truncate text-sm text-muted-foreground">
+                {subtitle}
+              </p>
+            )}
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
-            aria-label="Close"
+            className="shrink-0 rounded-md p-2 hover:bg-accent"
+            aria-label="Close detail view"
           >
             <X className="size-5" />
           </button>
-        </div>
-        <div className="mt-4">{children}</div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
       </div>
     </div>
   );
