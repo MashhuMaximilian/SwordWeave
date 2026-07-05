@@ -390,9 +390,11 @@ async function resolveSourceAuthors(
   }
 
   const tplKinds = ["RACE_TEMPLATE", "BACKGROUND_TEMPLATE", "ARCHETYPE_TEMPLATE"] as const;
-  for (const kind of tplKinds) {
-    const ids = get(kind);
+  for (const engagementType of tplKinds) {
+    const ids = get(engagementType);
     if (ids.length === 0) continue;
+    // DB enum is RACE / BACKGROUND / ARCHETYPE (no _TEMPLATE suffix).
+    const kind = engagementType.replace(/_TEMPLATE$/, "");
     const rows = await db
       .select({ id: templates.id, userId: templates.userId })
       .from(templates)
@@ -404,7 +406,7 @@ async function resolveSourceAuthors(
       );
     for (const r of rows) {
       if (r.userId) {
-        sourceUserIdsByType.set(`${kind}:${r.id}`, new Map([["id", r.userId]]));
+        sourceUserIdsByType.set(`${engagementType}:${r.id}`, new Map([["id", r.userId]]));
         authorClerkIds.add(r.userId);
       }
     }
@@ -523,14 +525,17 @@ async function resolveTargetNames(
   }
 
   // RACE_TEMPLATE / BACKGROUND_TEMPLATE / ARCHETYPE_TEMPLATE all share the
-  // `templates` table with a `kind` discriminator.
+  // `templates` table with a `kind` discriminator. The DB enum values are
+  // `RACE` / `BACKGROUND` / `ARCHETYPE` — we strip the `_TEMPLATE` suffix
+  // before querying.
   const tplIdsByKind = {
     RACE_TEMPLATE: get("RACE_TEMPLATE"),
     BACKGROUND_TEMPLATE: get("BACKGROUND_TEMPLATE"),
     ARCHETYPE_TEMPLATE: get("ARCHETYPE_TEMPLATE"),
   };
-  for (const [kind, ids] of Object.entries(tplIdsByKind)) {
+  for (const [engagementType, ids] of Object.entries(tplIdsByKind)) {
     if (ids.length === 0) continue;
+    const kind = engagementType.replace(/_TEMPLATE$/, "");
     const rows = await db
       .select({ id: templates.id, name: templates.name })
       .from(templates)
@@ -540,7 +545,7 @@ async function resolveTargetNames(
           sql`, `,
         )})`,
       );
-    for (const r of rows) out.set(`${kind}:${r.id}`, r.name);
+    for (const r of rows) out.set(`${engagementType}:${r.id}`, r.name);
   }
 
   return out;
