@@ -198,7 +198,7 @@ function ListItem({
   );
 
   const baseClass = cn(
-    "flex items-start gap-3 rounded-md border bg-card p-3 transition-colors",
+    "flex items-start gap-2 rounded-md border bg-card p-2 transition-colors md:gap-3 md:p-3",
     selected
       ? "border-primary bg-primary/5"
       : "border-border hover:border-primary",
@@ -244,7 +244,7 @@ function GridCard({
   return (
     <article
       className={cn(
-        "flex flex-col rounded-md border bg-card p-4 transition-colors",
+        "flex flex-col rounded-md border bg-card p-2.5 transition-colors md:p-3",
         selected
           ? "border-primary bg-primary/5"
           : "border-border hover:border-primary",

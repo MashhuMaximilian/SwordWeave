@@ -506,7 +506,7 @@ export function PrimitiveForm({
       <label className="block text-sm font-medium md:col-span-2">
         Name
         <input
-          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+          className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
           value={form.name}
           onChange={(event) => updateForm("name", event.target.value)}
           placeholder="Kinetic Velocity Arrest"
@@ -517,7 +517,7 @@ export function PrimitiveForm({
       <label className="block text-sm font-medium">
         Lexicon Category
         <select
-          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+          className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
           value={form.category}
           onChange={(event) => updateForm("category", event.target.value)}
         >
@@ -532,7 +532,7 @@ export function PrimitiveForm({
       <label className="block text-sm font-medium">
         Cost Tier Bracket
         <select
-          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+          className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
           value={form.costTier}
           onChange={(event) => updateForm("costTier", event.target.value)}
         >
@@ -547,7 +547,7 @@ export function PrimitiveForm({
       <label className="block text-sm font-medium">
         Exact BU
         <input
-          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+          className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
           value={form.buCost}
           onChange={(event) => updateForm("buCost", event.target.value)}
           min={0}
@@ -699,7 +699,7 @@ export function PrimitiveForm({
             <label className="block text-sm font-medium">
               What changes?
               <select
-                className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+                className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
                 value={modifier.target}
                 onChange={(event) =>
                   updateModifier(modifier.id, "target", event.target.value)
@@ -716,7 +716,7 @@ export function PrimitiveForm({
             <label className="block text-sm font-medium">
               Operation
               <select
-                className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+                className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
                 value={modifier.operation}
                 onChange={(event) =>
                   updateModifier(modifier.id, "operation", event.target.value)
@@ -733,7 +733,7 @@ export function PrimitiveForm({
             <label className="block text-sm font-medium">
               Value Type
               <select
-                className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+                className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
                 value={modifier.valueKind}
                 onChange={(event) =>
                   updateModifier(modifier.id, "valueKind", event.target.value)
@@ -749,7 +749,7 @@ export function PrimitiveForm({
               Value
               {modifier.valueKind === "boolean" ? (
                 <select
-                  className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+                  className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
                   value={modifier.value}
                   onChange={(event) =>
                     updateModifier(modifier.id, "value", event.target.value)
@@ -760,7 +760,7 @@ export function PrimitiveForm({
                 </select>
               ) : (
                 <input
-                  className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+                  className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
                   value={modifier.value}
                   onChange={(event) =>
                     updateModifier(modifier.id, "value", event.target.value)
@@ -773,7 +773,7 @@ export function PrimitiveForm({
             <label className="block text-sm font-medium">
               Applies When
               <select
-                className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+                className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
                 value={modifier.conditionMode}
                 onChange={(event) =>
                   updateModifier(
@@ -791,7 +791,7 @@ export function PrimitiveForm({
             <label className="block text-sm font-medium">
               Stacking Rule
               <select
-                className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+                className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
                 value={modifier.stacking}
                 onChange={(event) =>
                   updateModifier(modifier.id, "stacking", event.target.value)
@@ -810,7 +810,7 @@ export function PrimitiveForm({
                 <label className="block text-sm font-medium">
                   Condition Key
                   <input
-                    className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+                    className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
                     value={modifier.conditionKey}
                     onChange={(event) =>
                       updateModifier(
@@ -826,7 +826,7 @@ export function PrimitiveForm({
                 <label className="block text-sm font-medium">
                   Condition Rule
                   <select
-                    className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+                    className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
                     value={modifier.conditionOperator}
                     onChange={(event) =>
                       updateModifier(
@@ -847,7 +847,7 @@ export function PrimitiveForm({
                 <label className="block text-sm font-medium">
                   Condition Value
                   <input
-                    className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+                    className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
                     disabled={modifier.conditionOperator === "exists"}
                     value={modifier.conditionValue}
                     onChange={(event) =>

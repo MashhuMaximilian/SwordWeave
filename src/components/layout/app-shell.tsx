@@ -20,7 +20,8 @@ import {
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
-import { HamburgerButton, MobileNavDrawer } from "./mobile-nav-drawer";
+import { MobileNavDrawer } from "./mobile-nav-drawer";
+import { MobileBottomHud } from "./mobile-bottom-hud";
 
 const primaryNav = [
   { href: "/sandbox", label: "Sandbox", icon: FlaskConical },
@@ -138,18 +139,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-30 border-b border-border bg-shell/95 backdrop-blur lg:hidden">
-        <div className="flex items-center justify-between gap-3 px-3 py-3">
-          <div className="flex items-center gap-2">
-            <HamburgerButton onClick={() => setNavOpen(true)} />
-            <BrandMark />
-          </div>
-          <div className="flex min-w-0 items-center gap-2">
-            <AccountControls />
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
+      {/* Mobile: no top header. Content flows from the absolute top.
+          The bottom HUD handles all navigation. */}
+      <MobileBottomHud onOpenNav={() => setNavOpen(true)} />
 
       <MobileNavDrawer isOpen={navOpen} onClose={() => setNavOpen(false)} />
 
@@ -229,7 +221,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </aside>
 
-        <main className="min-w-0">{children}</main>
+        <main className="min-w-0 pb-14 lg:pb-0" style={{ paddingBottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))" }}>{children}</main>
       </div>
     </div>
   );

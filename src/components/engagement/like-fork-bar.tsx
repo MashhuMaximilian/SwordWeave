@@ -266,8 +266,9 @@ export function LikeForkBar(props: LikeForkBarProps) {
 
   // ---------- render ----------
 
-  const buttonBase =
-    "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition disabled:opacity-50";
+  const buttonBase = props.compact
+    ? "inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-xs transition disabled:opacity-50"
+    : "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition disabled:opacity-50";
   const buttonGhost =
     "border-slate-700 bg-slate-900/50 text-slate-300 hover:border-slate-500 hover:bg-slate-800";
   const buttonActive = "border-cyan-500 bg-cyan-500/10 text-cyan-300";
@@ -275,7 +276,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
 
   return (
     <div
-      className={`flex flex-wrap items-center gap-2 ${props.className ?? ""}`}
+      className={`flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${props.className ?? ""}`}
       role="group"
       aria-label="Engagement"
     >

@@ -519,20 +519,13 @@ function TabletColumnChrome({
 }
 
 // ----------------------------------------------------------------------------
-// Mobile layout (2-panel vertical split + Preview overlay modal)
-//
-// Per the user's spec, on mobile the sandbox uses a 2-panel vertical split:
-//   - Top panel: Library
-//   - Bottom panel: Build
-// Preview is rendered as an OVERLAY (DetailModal) opened by a floating
-// "Preview" button inside the Build column, since a permanent third panel
-// is too cramped on a 393px viewport.
-//
+// Mobile layout — Library-only with a FAB that opens a slide-up drawer
+// containing Build + Preview as tabs. The Build form is hidden by default
+// (per UX spec) so the user sees more of the Library on a 393×852 viewport.
 // Sizes persist to localStorage per storageKey + orientation so the user
 // keeps their layout when rotating or revisiting the page.
 // ----------------------------------------------------------------------------
 
-import { useDefaultLayout as useMobileDefaultLayout } from "react-resizable-panels";
 import { DetailModal } from "@/components/ui/detail-modal";
 
 type MobileProps = {
@@ -541,93 +534,103 @@ type MobileProps = {
   preview: ReactNode;
 };
 
-const mobileStorage: Pick<Storage, "getItem" | "setItem"> =
-  typeof window === "undefined"
-    ? { getItem: () => null, setItem: () => undefined }
-    : {
-        getItem: (key: string) => window.localStorage.getItem(key),
-        setItem: (key: string, value: string) =>
-          window.localStorage.setItem(key, value),
-      };
-
 function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      <MobileSandboxVerticalSplit
-        library={library}
-        builder={builder}
-        preview={preview}
-      />
-    </div>
-  );
-}
-
-function MobileSandboxVerticalSplit({
-  library,
-  builder,
-  preview,
-}: MobileProps) {
   const { previewOverlayOpen, setPreviewOverlayOpen } = useSandboxLayout();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerTab, setDrawerTab] = useState<"build" | "preview">("build");
 
-  // Vertical split: top = Library, bottom = Build.
-  // Preview lives in a modal overlay (opened via the floating button below).
-  const outerLayout = useMobileDefaultLayout({
-    id: "sw_sandbox_mobile_outer",
-    storage: mobileStorage,
-    panelIds: ["library", "builder"],
-  });
+  // FAB → opens the drawer on Build tab. The Preview button inside the
+  // Build column header also opens it on the Preview tab.
+  function openDrawer(tab: "build" | "preview" = "build") {
+    setDrawerTab(tab);
+    setDrawerOpen(true);
+  }
 
   return (
     <>
-      <Group
-        id="sw_sandbox_mobile_outer"
-        orientation="vertical"
-        defaultLayout={outerLayout.defaultLayout}
-        onLayoutChange={outerLayout.onLayoutChange}
-        onLayoutChanged={outerLayout.onLayoutChanged}
-        className="flex h-full min-h-0"
-      >
-        {/* TOP PANEL — Library */}
-        <Panel
-          id="library"
-          defaultSize={40}
-          minSize={15}
-          maxSize={75}
-          className="flex h-full min-h-0 flex-col"
-        >
+      <div className="relative flex h-full min-h-0 flex-col">
+        {/* Library fills the full viewport. No split — overlay drawer only. */}
+        <div className="flex h-full min-h-0 flex-col">
           <MobileColumnChrome title="Library" icon={<LibraryIcon className="size-4" />} />
           <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
-        </Panel>
+        </div>
 
-        <Separator className="h-1.5 shrink-0 bg-border transition-colors hover:bg-primary data-[separator=active]:bg-primary" />
-
-        {/* BOTTOM PANEL — Build (with floating Preview button) */}
-        <Panel
-          id="builder"
-          defaultSize={60}
-          minSize={25}
-          maxSize={85}
-          className="flex h-full min-h-0 flex-col"
+        {/* Floating Action Button (FAB) — opens the Build/Preview drawer. */}
+        <button
+          type="button"
+          onClick={() => openDrawer("build")}
+          className="absolute bottom-4 right-4 z-20 flex items-center gap-1.5 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
+          aria-label="Open build / preview drawer"
+          style={{ marginBottom: "env(safe-area-inset-bottom, 0px)" }}
         >
-          <MobileColumnChrome
-            title="Build"
-            icon={<Wrench className="size-4" />}
-            action={
-              <button
-                type="button"
-                onClick={() => setPreviewOverlayOpen(true)}
-                className="ml-auto flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
-                aria-label="Preview compiled result"
-              >
-                <Eye className="size-3.5" />
-                Preview
-              </button>
-            }
-          />
-          <div className="flex-1 min-h-0 overflow-auto">{builder}</div>
-        </Panel>
-      </Group>
+          <Wrench className="size-4" />
+          Build
+        </button>
+      </div>
 
+      {/* Slide-up overlay drawer containing Build + Preview. */}
+      <DetailModal
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        title="Build & Preview"
+        subtitle="Compose your entity and watch the preview update live"
+        size="lg"
+      >
+        <div className="flex flex-col gap-3">
+          {/* Drawer internal tab strip: Build | Preview */}
+          <div
+            role="tablist"
+            className="flex shrink-0 rounded-md border border-border bg-card p-0.5"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={drawerTab === "build"}
+              onClick={() => setDrawerTab("build")}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors",
+                drawerTab === "build"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Wrench className="size-3.5" />
+              Build
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={drawerTab === "preview"}
+              onClick={() => setDrawerTab("preview")}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors",
+                drawerTab === "preview"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Eye className="size-3.5" />
+              Preview
+            </button>
+          </div>
+
+          {/* Drawer body — shows only the active tab content. The Preview
+              tab gets an external trigger (this component's
+              previewOverlayOpen is no longer wired since the Preview is
+              in-drawer). */}
+          <div className="min-h-0">
+            {drawerTab === "build" ? (
+              <div className="max-h-[70vh] overflow-auto">{builder}</div>
+            ) : (
+              <div className="max-h-[70vh] overflow-auto">{preview}</div>
+            )}
+          </div>
+        </div>
+      </DetailModal>
+
+      {/* Legacy standalone Preview modal kept so any caller that opened it
+          via setPreviewOverlayOpen still gets something. With the FAB
+          pattern this path is rarely hit, but kept for safety. */}
       <DetailModal
         isOpen={previewOverlayOpen}
         onClose={() => setPreviewOverlayOpen(false)}
