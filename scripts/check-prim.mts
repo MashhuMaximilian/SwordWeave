@@ -1,0 +1,11 @@
+import { config } from "dotenv";
+config({ path: ".env.local" });
+import { Pool } from "@neondatabase/serverless";
+const pool = new Pool({ connectionString: process.env.DATABASE_URL! });
+const r = await pool.query<{id: number; name: string}>(`SELECT id, name FROM primitives WHERE name ILIKE '%traveler%' OR name ILIKE '%cloak%' ORDER BY id`);
+console.log("Matches:");
+for (const x of r.rows) console.log(" ", x.id, x.name);
+const all = await pool.query<{id: number; name: string; user_id: string | null}>(`SELECT id, name, user_id FROM primitives WHERE user_id IS NULL ORDER BY id LIMIT 5`);
+console.log("First system prims:");
+for (const x of all.rows) console.log(" ", x.id, x.name, x.user_id);
+process.exit(0);
