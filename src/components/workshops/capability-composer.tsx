@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
 
 /**
@@ -176,6 +177,7 @@ export function CapabilityComposer({
   const [form, setForm] = useState(initialForm);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
   const { toasts, showToast, dismissToast } = useToasts();
 
   const categories = useMemo(
@@ -341,6 +343,7 @@ export function CapabilityComposer({
           const successMsg = `Updated "${form.name}" (${previewBu} BU).`;
           setMessage(successMsg);
           showToast(successMsg, "success");
+          router.refresh();
           return;
         }
 
@@ -385,6 +388,7 @@ export function CapabilityComposer({
         const successMsg = `Created "${form.name}" (${serverBu} BU).`;
         setMessage(successMsg);
         showToast(successMsg, "success");
+        router.refresh();
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : "Unknown error.";
         setMessage(errMsg);
