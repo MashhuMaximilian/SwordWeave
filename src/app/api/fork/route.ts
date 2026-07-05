@@ -32,9 +32,36 @@ import {
   primitives,
   templates,
   templatePrimitives,
+  userStats,
 } from "@/db/schema";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import { resolveVirtualVersionId } from "@/lib/engagement/version-helpers";
+
+/**
+ * Increment user_stats.totalForksCreated for the forker.
+ *
+ * Uses an UPSERT so the first fork by a user without a stats row yet still
+ * counts (creates a stats row with totalForksCreated=1 and zeros elsewhere).
+ *
+ * @returns New totalForksCreated value
+ */
+async function incrementForksCreated(forkerInternalId: string): Promise<number> {
+  const result = await db
+    .insert(userStats)
+    .values({
+      userId: forkerInternalId,
+      totalForksCreated: 1,
+    })
+    .onConflictDoUpdate({
+      target: userStats.userId,
+      set: {
+        totalForksCreated: sql`${userStats.totalForksCreated} + 1`,
+        updatedAt: sql`NOW()`,
+      },
+    })
+    .returning({ total: userStats.totalForksCreated });
+  return Number(result[0]?.total ?? 1);
+}
 
 const ForkSchema = z.object({
   targetType: z.enum([
@@ -231,10 +258,12 @@ async function forkPrimitive(input: {
     })
     .returning({ forkCount: forkAggregates.forkCount });
 
+  const forkCount = await incrementForksCreated(forkerInternalId);
+
   return {
     forkedTargetId: String(forked.id),
     sourceTargetId: String(source.id),
-    forkCount: Number(agg?.forkCount ?? 1),
+    forkCount,
   };
 }
 
@@ -335,10 +364,12 @@ async function forkCapability(input: {
     })
     .returning({ forkCount: forkAggregates.forkCount });
 
+  const forkCount = await incrementForksCreated(forkerInternalId);
+
   return {
     forkedTargetId: forked.id,
     sourceTargetId: source.id,
-    forkCount: Number(agg?.forkCount ?? 1),
+    forkCount,
   };
 }
 
@@ -449,10 +480,12 @@ async function forkTemplate(input: {
     })
     .returning({ forkCount: forkAggregates.forkCount });
 
+  const forkCount = await incrementForksCreated(forkerInternalId);
+
   return {
     forkedTargetId: forked.id,
     sourceTargetId: source.id,
-    forkCount: Number(agg?.forkCount ?? 1),
+    forkCount,
   };
 }
 

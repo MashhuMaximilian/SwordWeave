@@ -27,6 +27,9 @@ export interface PublicProfile {
     buymeacoffee?: string;
   };
   isAnonymized: boolean;
+  /** Internal Clerk ID — included so the profile page can fetch the user's
+   *  own fork history (forked_by_user_id → users.clerkUserId lookup). */
+  clerkUserId: string | null;
   createdAt: Date;
   stats: {
     publicPrimitives: number;
@@ -37,6 +40,7 @@ export interface PublicProfile {
     publicBackgrounds: number;
     publicArchetypes: number;
     totalForksReceived: number;
+    totalForksCreated: number;
     totalLikesReceived: number;
     totalDislikesReceived: number;
     followersCount: number;
@@ -118,6 +122,7 @@ export async function loadProfileByUsername(
     avatarUrl: profile.avatarUrl,
     socialLinks: (profile.socialLinks as PublicProfile["socialLinks"]) ?? {},
     isAnonymized: profile.isAnonymized,
+    clerkUserId: profile.clerkUserId,
     createdAt: profile.createdAt,
     stats: {
       publicPrimitives: profile.stats?.publicPrimitives ?? 0,
@@ -128,6 +133,7 @@ export async function loadProfileByUsername(
       publicBackgrounds: profile.stats?.publicBackgrounds ?? 0,
       publicArchetypes: profile.stats?.publicArchetypes ?? 0,
       totalForksReceived: profile.stats?.totalForksReceived ?? 0,
+      totalForksCreated: profile.stats?.totalForksCreated ?? 0,
       totalLikesReceived: profile.stats?.totalLikesReceived ?? 0,
       totalDislikesReceived: profile.stats?.totalDislikesReceived ?? 0,
       followersCount: profile.stats?.followersCount ?? 0,

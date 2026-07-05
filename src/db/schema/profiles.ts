@@ -144,6 +144,7 @@ export const userStats = pgTable("user_stats", {
   publicBackgrounds: integer("public_backgrounds").notNull().default(0),
   publicArchetypes: integer("public_archetypes").notNull().default(0),
   totalForksReceived: integer("total_forks_received").notNull().default(0),
+  totalForksCreated: integer("total_forks_created").notNull().default(0),
   totalLikesReceived: integer("total_likes_received").notNull().default(0),
   totalDislikesReceived: integer("total_dislikes_received").notNull().default(0),
   followersCount: integer("followers_count").notNull().default(0),

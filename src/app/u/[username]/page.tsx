@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import {
   ArrowLeft,
   Edit3,
+  GitFork,
   Globe,
   Link as LinkIcon,
   Settings,
@@ -13,6 +14,8 @@ import { db } from "@/db/client";
 import { users } from "@/db/schema/profiles";
 import { eq } from "drizzle-orm";
 import { loadProfileByUsername } from "@/lib/profiles/profile-loader";
+import { listByForker } from "@/lib/publishing/forks-query";
+import { ForkEntry } from "@/lib/publishing/forks-query";
 
 export const dynamic = "force-dynamic";
 
@@ -100,6 +103,10 @@ export default async function ProfilePage({
                 value={profile.stats.totalForksReceived}
               />
               <Stat
+                label="Forks created"
+                value={profile.stats.totalForksCreated}
+              />
+              <Stat
                 label="Net likes"
                 value={
                   profile.stats.totalLikesReceived -
@@ -111,7 +118,10 @@ export default async function ProfilePage({
         </div>
       </div>
 
-      <PublicEntriesSection userId={profile.id} />
+      <PublicEntriesSection
+        userId={profile.id}
+        clerkUserId={profile.clerkUserId ?? null}
+      />
     </div>
   );
 }
@@ -189,29 +199,88 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-async function PublicEntriesSection({ userId }: { userId: string }) {
+async function PublicEntriesSection({
+  userId,
+  clerkUserId,
+}: {
+  userId: string;
+  clerkUserId: string | null;
+}) {
   // Look up the user to see if they have any public entries yet.
-  // For Commit A, just show "Coming soon" — actual entry lists wire in Commit B
-  // when publishing ships.
   const userRow = await db.query.users.findFirst({
     where: eq(users.id, userId),
     columns: { username: true },
   });
   if (!userRow) return null;
 
+  // Fetch recent forks this user created
+  const recentForks = clerkUserId ? await listByForker(clerkUserId, 10) : [];
+
   return (
     <section className="mt-8 rounded-2xl border border-sword-border bg-sword-surface p-6">
       <h2 className="flex items-center gap-2 text-lg font-semibold text-sword-fg">
-        <Globe className="h-5 w-5 text-sword-accent" />
-        Public entries
+        <Globe className="h-5 w-5 text-sword-accent" /> Public entries
       </h2>
       <p className="mt-2 text-sm text-sword-muted">
         Primitives, capabilities, characters, items, and templates by{" "}
         @{userRow.username} will appear here once they publish to the Library.
       </p>
-      <p className="mt-1 text-xs text-sword-muted">
-        Publishing ships in Phase 5 Commit B.
-      </p>
+
+      {recentForks.length > 0 && (
+        <div className="mt-6 border-t border-sword-border pt-6">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-sword-fg">
+            <GitFork className="h-4 w-4 text-sword-accent" />
+            Recent forks ({recentForks.length})
+          </h3>
+          <ul className="mt-3 divide-y divide-sword-border/60 text-sm">
+            {recentForks.map((fork) => (
+              <RecentForkRow key={fork.id} fork={fork} />
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   );
+}
+
+function RecentForkRow({ fork }: { fork: ForkEntry }) {
+  const targetLabel =
+    fork.forkedTargetName ?? `(${fork.forkedTargetType.toLowerCase()})`;
+  const sourceLabel =
+    fork.sourceTargetName ?? `(${fork.sourceTargetType.toLowerCase()})`;
+  const linkPath = `/library/item/${fork.forkedTargetType}:${fork.forkedTargetId}`;
+
+  return (
+    <li className="flex flex-wrap items-center gap-x-2 gap-y-1 py-2">
+      <Link
+        href={linkPath}
+        className="font-medium text-sword-fg hover:text-sword-accent"
+      >
+        {targetLabel}
+      </Link>
+      <span className="text-sword-muted">forked from</span>
+      <Link
+        href={`/library/item/${fork.sourceTargetType}:${fork.sourceTargetId}`}
+        className="text-sword-muted hover:text-sword-fg"
+      >
+        {sourceLabel}
+      </Link>
+      <span className="ml-auto text-xs text-sword-muted">
+        {timeAgo(fork.forkedAt)}
+      </span>
+    </li>
+  );
+}
+
+function timeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  return `${months}mo ago`;
 }

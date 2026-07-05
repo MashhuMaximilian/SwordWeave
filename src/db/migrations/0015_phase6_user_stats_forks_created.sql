@@ -1,0 +1,1 @@
+ALTER TABLE "user_stats" ADD COLUMN "total_forks_created" integer DEFAULT 0 NOT NULL;
