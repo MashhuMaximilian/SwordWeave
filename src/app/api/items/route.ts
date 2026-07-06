@@ -123,6 +123,9 @@ export async function POST(request: Request) {
     const buCost = parseIntInRange(values["buCost"], 0, 1000);
     const description = String(values["description"] ?? "").trim();
     const slotCost = parseIntInRange(values["slotCost"], 1, 100);
+    // Quantity: any positive integer, no upper cap (per the user's spec —
+    // consumables and other types can stack freely).
+    const quantity = Math.max(1, Number(values["quantity"]) || 1);
     const isTwoHanded = Boolean(values["isTwoHanded"]);
     const isConsumable = Boolean(values["isConsumable"]);
     const actsAsFocus = Boolean(values["actsAsFocus"]);
@@ -181,6 +184,7 @@ export async function POST(request: Request) {
           buCost,
           description,
           slotCost,
+          quantity,
           isTwoHanded,
           isConsumable,
           actsAsFocus,

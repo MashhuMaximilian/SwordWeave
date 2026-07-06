@@ -137,6 +137,11 @@ export async function PATCH(
       updatePayload["description"] = String(values["description"]).trim();
     if ("slotCost" in values)
       updatePayload["slotCost"] = parseIntInRange(values["slotCost"], 1, 100);
+    if ("quantity" in values) {
+      // Any positive integer, no upper cap (per the user's spec).
+      const n = Number(values["quantity"]);
+      updatePayload["quantity"] = Math.max(1, Number.isFinite(n) && n > 0 ? Math.floor(n) : 1);
+    }
     if ("isTwoHanded" in values)
       updatePayload["isTwoHanded"] = Boolean(values["isTwoHanded"]);
     if ("isConsumable" in values)

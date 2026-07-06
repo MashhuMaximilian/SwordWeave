@@ -121,6 +121,16 @@ export function GrammarSandboxClient({
   const [editing, setEditing] = useState<EditingState>(initialEditing);
   // Mirrored from the form's onStateChange. Drives the dirty-check gate.
   const [formIsDirty, setFormIsDirty] = useState(false);
+  // Live form snapshot — drives the preview column/drawer so it updates
+  // as the user types, not just when they load a row. The previous
+  // implementation sourced the preview from `editing` (the loaded row
+  // from the library), which meant the preview never reflected in-progress
+  // edits — a bug the user reported in the 7th round.
+  const [formSnapshot, setFormSnapshot] = useState<{
+    form: Record<string, unknown>;
+    slots: unknown[];
+    effectIds: string[];
+  } | null>(null);
   // Pending action waits for the user to confirm/cancel in the modal.
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   // Tracks the most recent description so the modal copy can adapt.
@@ -206,7 +216,10 @@ export function GrammarSandboxClient({
       return (
         <PrimitiveForm
           initialPrimitive={editing?.kind === "primitive" ? editing.row : null}
-          onStateChange={(state) => setFormIsDirty(state.isDirty)}
+          onStateChange={(state) => {
+            setFormIsDirty(state.isDirty);
+            setFormSnapshot({ form: state.form as unknown as Record<string, unknown>, slots: [], effectIds: [] });
+          }}
           onSaved={() => {
             /* router.refresh inside PrimitiveForm */
           }}
@@ -227,7 +240,10 @@ export function GrammarSandboxClient({
             category: p.category,
             buCost: p.buCost,
           }))}
-          onStateChange={(state) => setFormIsDirty(state.isDirty)}
+          onStateChange={(state) => {
+            setFormIsDirty(state.isDirty);
+            setFormSnapshot({ form: state.form as unknown as Record<string, unknown>, slots: state.slots, effectIds: [] });
+          }}
           onSaved={() => {}}
           onReset={() => setEditing(null)}
         />
@@ -248,18 +264,40 @@ export function GrammarSandboxClient({
           id: e.id,
           name: e.name,
         }))}
-        onStateChange={(state) => setFormIsDirty(state.isDirty)}
+        onStateChange={(state) => {
+          setFormIsDirty(state.isDirty);
+          setFormSnapshot({ form: state.form as unknown as Record<string, unknown>, slots: state.slots, effectIds: state.effectIds });
+        }}
         onSaved={() => {}}
         onReset={() => setEditing(null)}
       />
     );
   }, [build, editing, primitives, effects]);
 
-  // Preview is sourced directly from the editing row (read-only canonical render).
+  // Preview is sourced from the live form snapshot when available, so it
+  // updates as the user types. Falls back to the loaded `editing` row for
+  // the initial render (before the first onStateChange fires). This fixes
+  // the "preview doesn't update" bug — the previous implementation only
+  // re-rendered the preview when `editing` changed (i.e. when loading a
+  // row), so typing in the form had no effect on the preview.
   const previewNode = useMemo(() => {
     if (build === "primitive") {
-      const row = editing?.kind === "primitive" ? editing.row : null;
-      if (!row) {
+      const snapForm = formSnapshot?.form as
+        | {
+            name: string;
+            category: string;
+            costTier: string;
+            buCost: string;
+            mechanicalOutputText: string;
+            narrativeRule: string;
+            isMirrorable: boolean;
+            mirrorVector: string;
+            mirrorBuCredit: string;
+            mirrorEligibilityNotes: string;
+            isPublic: boolean;
+          }
+        | undefined;
+      if (!snapForm && !editing) {
         return (
           <div className="flex h-full items-center justify-center p-6 text-center">
             <div className="max-w-xs space-y-2">
@@ -273,28 +311,46 @@ export function GrammarSandboxClient({
           </div>
         );
       }
+      const row = editing?.kind === "primitive" ? editing.row : null;
+      const form = snapForm ?? (row ? {
+        name: row.name,
+        category: row.category,
+        isPublic: row.isPublic,
+        costTier: row.costTier,
+        buCost: String(row.buCost),
+        mechanicalOutputText: row.mechanicalOutputText,
+        narrativeRule: row.narrativeRule,
+        isMirrorable: row.isMirrorable,
+        mirrorVector: row.mirrorVector,
+        mirrorBuCredit: String(row.mirrorBuCredit),
+        mirrorEligibilityNotes: row.mirrorEligibilityNotes,
+      } : null);
+      if (!form) return null;
       return (
         <PrimitiveFormPreview
-          form={{
-            name: row.name,
-            category: row.category,
-            isPublic: row.isPublic,
-            costTier: row.costTier,
-            buCost: String(row.buCost),
-            mechanicalOutputText: row.mechanicalOutputText,
-            narrativeRule: row.narrativeRule,
-            isMirrorable: row.isMirrorable,
-            mirrorVector: row.mirrorVector,
-            mirrorBuCredit: String(row.mirrorBuCredit),
-            mirrorEligibilityNotes: row.mirrorEligibilityNotes,
-          }}
+          form={form}
           modifiers={[]}
         />
       );
     }
     if (build === "effect") {
-      const row = editing?.kind === "effect" ? editing.row : null;
-      if (!row) {
+      const snapForm = formSnapshot?.form as
+        | {
+            name: string;
+            narrativeDescription: string;
+            sourceOrigin: string;
+            tags: string;
+            isPublic: boolean;
+          }
+        | undefined;
+      const snapSlots = formSnapshot?.slots as
+        | Array<{
+            primitiveId: number;
+            quantity: number;
+            primitive: { id: number; name: string; category: string; buCost: number };
+          }>
+        | undefined;
+      if (!snapForm && !editing) {
         return (
           <div className="flex h-full items-center justify-center p-6 text-center">
             <div className="max-w-xs space-y-2">
@@ -309,25 +365,49 @@ export function GrammarSandboxClient({
           </div>
         );
       }
+      const row = editing?.kind === "effect" ? editing.row : null;
+      const form = snapForm ?? (row ? {
+        name: row.name,
+        narrativeDescription: row.narrativeDescription,
+        sourceOrigin: row.sourceOrigin ?? "",
+        tags: row.tags.join(", "),
+        isPublic: row.isPublic,
+      } : null);
+      const slots = snapSlots ?? (row ? row.primitiveLinks.map((link) => ({
+        primitiveId: link.primitiveId,
+        quantity: link.quantity,
+        primitive: link.primitive,
+      })) : []);
+      if (!form) return null;
       return (
         <EffectFormPreview
-          form={{
-            name: row.name,
-            narrativeDescription: row.narrativeDescription,
-            sourceOrigin: row.sourceOrigin ?? "",
-            tags: row.tags.join(", "),
-            isPublic: row.isPublic,
-          }}
-          slots={row.primitiveLinks.map((link) => ({
-            primitiveId: link.primitiveId,
-            quantity: link.quantity,
-            primitive: link.primitive,
-          }))}
+          form={form}
+          slots={slots}
         />
       );
     }
-    const row = editing?.kind === "capability" ? editing.row : null;
-    if (!row) {
+    const snapForm = formSnapshot?.form as
+      | {
+          name: string;
+          type: string;
+          sourceType: string;
+          verboseDescription: string;
+          sourceOrigin: string;
+          tags: string;
+          isPublic: boolean;
+        }
+      | undefined;
+    const snapSlots = formSnapshot?.slots as
+      | Array<{
+          primitiveId: number;
+          role: string;
+          quantity: number;
+          sortOrder: number;
+          slotLabel: string | null;
+          primitive: { id: number; name: string; category: string; buCost: number };
+        }>
+      | undefined;
+    if (!snapForm && !editing) {
       return (
         <div className="flex h-full items-center justify-center p-6 text-center">
           <div className="max-w-xs space-y-2">
@@ -342,28 +422,32 @@ export function GrammarSandboxClient({
         </div>
       );
     }
+    const row = editing?.kind === "capability" ? editing.row : null;
+    const form = snapForm ?? (row ? {
+      name: row.name,
+      type: row.type,
+      sourceType: row.sourceType,
+      verboseDescription: row.verboseDescription,
+      sourceOrigin: row.sourceOrigin ?? "",
+      tags: row.tags.join(", "),
+      isPublic: row.isPublic,
+    } : null);
+    const slots = snapSlots ?? (row ? row.primitiveLinks.map((link) => ({
+      primitiveId: link.primitiveId,
+      role: link.role ?? "OTHER",
+      quantity: link.quantity,
+      sortOrder: link.sortOrder,
+      slotLabel: link.slotLabel ?? link.primitive.name,
+      primitive: link.primitive,
+    })) : []);
+    if (!form) return null;
     return (
       <CapabilityFormPreview
-        form={{
-          name: row.name,
-          type: row.type,
-          sourceType: row.sourceType,
-          verboseDescription: row.verboseDescription,
-          sourceOrigin: row.sourceOrigin ?? "",
-          tags: row.tags.join(", "),
-          isPublic: row.isPublic,
-        }}
-        slots={row.primitiveLinks.map((link) => ({
-          primitiveId: link.primitiveId,
-          role: link.role ?? "OTHER",
-          quantity: link.quantity,
-          sortOrder: link.sortOrder,
-          slotLabel: link.slotLabel ?? link.primitive.name,
-          primitive: link.primitive,
-        }))}
+        form={form}
+        slots={slots}
       />
     );
-  }, [build, editing]);
+  }, [build, editing, formSnapshot]);
 
   // Tab strip across the BOTTOM of the page. Acts as the in-page type
   // selector — the user moved it from the top to free vertical space

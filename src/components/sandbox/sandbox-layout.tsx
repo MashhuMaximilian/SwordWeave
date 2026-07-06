@@ -679,10 +679,15 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
       Math.min(75, (offsetFromTop / available) * 100),
     );
     const newBuilderPct = 100 - newLibraryPct;
-    groupRef.current?.setLayout({
-      library: newLibraryPct,
-      builder: newBuilderPct,
-    });
+    // Drive each Panel directly via its imperative handle. Bypasses the
+    // Group's setLayout() — which silently no-ops if the groupRef ref
+    // wasn't wired up correctly by the react-resizable-panels Group
+    // component (the previous attempt to call groupRef.setLayout() did
+    // nothing on the user's phone, which is the "dragging does nothing"
+    // bug reported in the 6th round). Panel.resize() is a direct path
+    // to the panel's internal state and is guaranteed to resize.
+    libraryPanelRef.current?.resize(newLibraryPct);
+    builderPanelRef.current?.resize(newBuilderPct);
   }, []);
 
   const onPointerUp = useCallback((e: PointerEvent) => {

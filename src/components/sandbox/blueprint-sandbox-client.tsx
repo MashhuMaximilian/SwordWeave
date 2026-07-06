@@ -56,6 +56,7 @@ type ItemRow = {
   buCost: number;
   description: string;
   slotCost: number;
+  quantity: number;
   isTwoHanded: boolean;
   isConsumable: boolean;
   actsAsFocus: boolean;
@@ -128,6 +129,14 @@ export function BlueprintSandboxClient({
   const [build, setBuild] = useState<BlueprintBuildMode>(initialBuild);
   const [editing, setEditing] = useState<EditingState>(initialEditing);
   const [formIsDirty, setFormIsDirty] = useState(false);
+  // Live form snapshot — drives the preview column/drawer so it updates
+  // as the user types, not just when they load a row.
+  const [formSnapshot, setFormSnapshot] = useState<{
+    form: Record<string, unknown>;
+    primitiveIds: string[];
+    capabilityIds: string[];
+    effectIds: string[];
+  } | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const modalDescRef = useRef<string | undefined>(undefined);
 
@@ -197,7 +206,15 @@ export function BlueprintSandboxClient({
           initialKind={initialKind ?? undefined}
           availablePrimitives={primitives}
           availableCapabilities={capabilities}
-          onStateChange={(state) => setFormIsDirty(state.isDirty)}
+          onStateChange={(state) => {
+            setFormIsDirty(state.isDirty);
+            setFormSnapshot({
+              form: state.form as unknown as Record<string, unknown>,
+              primitiveIds: state.primitives.map((p) => String(p.id)),
+              capabilityIds: state.capabilities.map((c) => String(c.id)),
+              effectIds: [],
+            });
+          }}
           onSaved={() => {}}
           onReset={() => setEditing(null)}
         />
@@ -210,7 +227,15 @@ export function BlueprintSandboxClient({
           availablePrimitives={primitives}
           availableCapabilities={capabilities}
           availableEffects={effects}
-          onStateChange={(state) => setFormIsDirty(state.isDirty)}
+          onStateChange={(state) => {
+            setFormIsDirty(state.isDirty);
+            setFormSnapshot({
+              form: state.form as unknown as Record<string, unknown>,
+              primitiveIds: state.primitiveSlots.map((p) => String(p.primitiveId)),
+              capabilityIds: state.capabilityIds,
+              effectIds: state.effectIds,
+            });
+          }}
           onSaved={() => {}}
           onReset={() => setEditing(null)}
         />
@@ -303,6 +328,7 @@ export function BlueprintSandboxClient({
             buCost: String(row.buCost),
             description: row.description,
             slotCost: String(row.slotCost),
+            quantity: String(row.quantity ?? 1),
             isTwoHanded: row.isTwoHanded,
             isConsumable: row.isConsumable,
             actsAsFocus: row.actsAsFocus,

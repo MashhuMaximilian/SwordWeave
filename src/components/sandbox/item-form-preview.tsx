@@ -11,6 +11,12 @@ export type ItemFormState = {
   buCost: string;
   description: string;
   slotCost: string;
+  /**
+   * How many of this item a character holds. Default 1; consumables and
+   * stackable types use higher values. The form doesn't restrict this
+   * (per the user's spec) so any positive integer is valid.
+   */
+  quantity: string;
   isTwoHanded: boolean;
   isConsumable: boolean;
   actsAsFocus: boolean;
@@ -114,6 +120,11 @@ export function ItemFormPreview({
           <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
             Slot cost {form.slotCost || 1}
           </span>
+          {Number(form.quantity) > 1 ? (
+            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
+              ×{form.quantity}
+            </span>
+          ) : null}
           {form.isTwoHanded ? (
             <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
               Two-handed

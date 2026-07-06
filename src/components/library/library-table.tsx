@@ -133,7 +133,14 @@ export function LibraryTable({
         <div
           className="grid h-full grid-cols-1 gap-3 p-3 md:grid-cols-2 lg:grid-cols-3"
           style={{
-            gridTemplateRows: "repeat(auto-fill, minmax(7rem, 1fr))",
+            // auto-rows-fr (NOT repeat(auto-fill, ...)) so the grid creates
+            // rows ONLY for the actual cards. The previous auto-fill
+            // pattern created phantom rows to fill the available height,
+            // which is what produced the "empty strip below the cards" bug
+            // the user reported across multiple rounds. With auto-rows-fr
+            // the existing cards stretch to fill the column (each card
+            // gets an equal share, min 7rem from the GridCard min-h).
+            gridAutoRows: "minmax(7rem, 1fr)",
           }}
         >
           {items.map((item) => (

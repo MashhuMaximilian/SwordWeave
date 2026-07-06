@@ -28,6 +28,7 @@ import {
 export interface LikeForkBarProps {
   targetType:
     | "PRIMITIVE"
+    | "EFFECT"
     | "CAPABILITY"
     | "CHARACTER"
     | "ITEM"

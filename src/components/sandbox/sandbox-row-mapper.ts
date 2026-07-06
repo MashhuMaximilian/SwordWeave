@@ -65,6 +65,7 @@ type SandboxItem = {
   isPublic: boolean | null;
   tags: string[] | null;
   slotCost: number;
+  quantity: number;
 };
 
 type SandboxCharacter = {

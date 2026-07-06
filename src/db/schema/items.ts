@@ -24,6 +24,13 @@ export const items = pgTable(
     buCost: integer("bu_cost").notNull().default(0),
     description: text("description").notNull().default(""),
     slotCost: integer("slot_cost").notNull().default(1),
+    // How many of this item a character holds. Default 1 (most items —
+    // weapons, armor, accessories — are unique). Consumables and
+    // stackable types use > 1. The form lets the author set this freely;
+    // we don't restrict it because the user explicitly asked for it to
+    // be flexible ("consumables usually could be more. Also other types
+    // could be more that's why I don't wanna restrict this").
+    quantity: integer("quantity").notNull().default(1),
     isTwoHanded: boolean("is_two_handed").notNull().default(false),
     isConsumable: boolean("is_consumable").notNull().default(false),
     actsAsFocus: boolean("acts_as_focus").notNull().default(true),

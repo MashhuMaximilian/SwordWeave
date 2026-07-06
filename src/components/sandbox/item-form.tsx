@@ -27,6 +27,7 @@ type ItemRow = {
   buCost: number;
   description: string;
   slotCost: number;
+  quantity: number;
   isTwoHanded: boolean;
   isConsumable: boolean;
   actsAsFocus: boolean;
@@ -61,6 +62,7 @@ const blankForm: ItemFormState = {
   buCost: "0",
   description: "",
   slotCost: "1",
+  quantity: "1",
   isTwoHanded: false,
   isConsumable: false,
   actsAsFocus: true,
@@ -138,6 +140,11 @@ export function ItemForm({
       buCost: String(initialItem.buCost),
       description: initialItem.description,
       slotCost: String(initialItem.slotCost),
+      // quantity defaults to 1 for legacy rows that pre-date the field
+      // (Drizzle's NOT NULL DEFAULT 1 only applies at the DB level; the
+      // old row objects we receive from queryLibrary() / sandbox pages
+      // may still be missing the property).
+      quantity: String(initialItem.quantity ?? 1),
       isTwoHanded: initialItem.isTwoHanded,
       isConsumable: initialItem.isConsumable,
       actsAsFocus: initialItem.actsAsFocus,
@@ -312,6 +319,10 @@ export function ItemForm({
       buCost: Math.max(0, Number(form.buCost) || 0),
       description: form.description,
       slotCost: Math.max(1, Number(form.slotCost) || 1),
+      // Quantity: any positive integer, no upper cap (per the user's spec
+      // — consumables and other types can stack freely). Empty / 0 / NaN
+      // falls back to 1 so the DB NOT NULL constraint never trips.
+      quantity: Math.max(1, Number(form.quantity) || 1),
       isTwoHanded: form.isTwoHanded,
       isConsumable: form.isConsumable,
       actsAsFocus: form.actsAsFocus,
@@ -425,7 +436,7 @@ export function ItemForm({
         </label>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <label className="block text-sm font-medium">
           Slot Cost
           <input
@@ -445,6 +456,17 @@ export function ItemForm({
             className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
             value={form.buCost}
             onChange={(e) => updateForm("buCost", e.target.value)}
+          />
+        </label>
+        <label className="block text-sm font-medium">
+          Quantity
+          <input
+            type="number"
+            min={1}
+            placeholder="1"
+            className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+            value={form.quantity}
+            onChange={(e) => updateForm("quantity", e.target.value)}
           />
         </label>
       </div>

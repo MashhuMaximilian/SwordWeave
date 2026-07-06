@@ -310,6 +310,7 @@ function PreviewFooter({
   callbacks: PreviewCallbacks;
   targetType:
     | "PRIMITIVE"
+    | "EFFECT"
     | "CAPABILITY"
     | "CHARACTER"
     | "ITEM"
@@ -432,11 +433,11 @@ export function LibraryItemPreview({
   return (
     <div className="space-y-4">
       {body}
-      {callbacks?.engagement && item.kind !== "effect" ? (
+      {callbacks?.engagement ? (
         <PreviewFooter
           item={item}
           callbacks={callbacks}
-          targetType={targetType as Exclude<typeof targetType, "EFFECT">}
+          targetType={targetType}
           targetId={targetId}
         />
       ) : null}
