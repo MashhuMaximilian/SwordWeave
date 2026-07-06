@@ -105,6 +105,7 @@ export function GrammarSandboxClient({
   effects,
   capabilities,
   libraryItems,
+  primitiveCategories,
 }: {
   initialBuild: GrammarBuildMode;
   initialEditing: EditingState;
@@ -124,6 +125,11 @@ export function GrammarSandboxClient({
    * library column (those live on /library/browse).
    */
   libraryItems: LibraryItem[];
+  /**
+   * Primitive category chips for the "Category" filter row in the
+   * sandbox's filter panel. Forwarded to GrammarLibrary.
+   */
+  primitiveCategories: Array<{ value: string; label: string; count: number }>;
 }) {
   const [build, setBuild] = useState<GrammarBuildMode>(initialBuild);
   const [editing, setEditing] = useState<EditingState>(initialEditing);
@@ -526,6 +532,7 @@ export function GrammarSandboxClient({
             primitives={primitives}
             effects={effects}
             capabilities={capabilities}
+            primitiveCategories={primitiveCategories}
             editingKey={
               editing
                 ? `${editing.kind}:${

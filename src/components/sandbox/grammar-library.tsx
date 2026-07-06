@@ -48,6 +48,12 @@ interface GrammarLibraryProps {
   primitives: SandboxPrimitiveRow[];
   effects: SandboxEffectRow[];
   capabilities: SandboxCapabilityRow[];
+  /**
+   * Primitive category chips for the "Category" filter row. Only shown
+   * when the typeFilter is PRIMITIVE or ALL (handled inside
+   * LibraryToolbar). Pass [] to hide the row entirely.
+   */
+  primitiveCategories: Array<{ value: string; label: string; count: number }>;
   editingKey: string | null;
   onSelect: (
     kind: "primitive" | "effect" | "capability",
@@ -84,17 +90,21 @@ export function GrammarLibrary({
   primitives,
   effects,
   capabilities,
+  primitiveCategories,
   editingKey,
   onSelect,
 }: GrammarLibraryProps) {
   // Default type filter per build mode. The kind filter is exposed in
-  // the toolbar; the default is "ALL" so the user always sees every
-  // entry in the corpus, regardless of the current build mode. The
-  // previous per-build default (PRIMITIVE / EFFECT / CAPABILITY)
-  // triggered a confusing "No entries match" empty state when the
-  // user was building a capability but the corpus only had primitives
-  // — or no entries at all yet. "ALL" puts the user in control.
-  const defaultTypeFilter: LibraryTargetType | "ALL" = "ALL";
+  // the toolbar. We pick the kind that matches the active build so the
+  // user sees the relevant entries by default when switching tabs
+  // (Primitive tab → primitives, Effect tab → effects, etc.). The user
+  // can broaden to "ALL" via the chip filter when they want everything.
+  const defaultTypeFilter: LibraryTargetType =
+    build === "primitive"
+      ? "PRIMITIVE"
+      : build === "effect"
+        ? "EFFECT"
+        : "CAPABILITY";
 
   const availableTypes = AVAILABLE_TYPES_BY_BUILD[build];
 
@@ -239,13 +249,14 @@ export function GrammarLibrary({
           state={toolbarState}
           onStateChange={setToolbarState}
           availableTypes={availableTypes}
+          primitiveCategories={primitiveCategories}
           showSearch={true}
           showAdvancedFilters={true}
           forceExpandFilters
         />
       </div>
     ),
-    [toolbarState, setToolbarState, availableTypes],
+    [toolbarState, setToolbarState, availableTypes, primitiveCategories],
   );
   useFilterSlot(filterPanelContent);
 

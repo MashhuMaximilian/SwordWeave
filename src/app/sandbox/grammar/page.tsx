@@ -16,7 +16,10 @@ import {
   effectToLibraryItem,
   primitiveToLibraryItem,
 } from "@/components/sandbox/sandbox-row-mapper";
-import type { LibraryItem } from "@/lib/publishing/library-query";
+import {
+  listPrimitiveCategories,
+  type LibraryItem,
+} from "@/lib/publishing/library-query";
 
 export const dynamic = "force-dynamic";
 
@@ -118,6 +121,22 @@ export default async function GrammarSandboxPage({
     ...(capabilityRows as never[]).map((r) => capabilityToLibraryItem(r)),
   ];
 
+  // Load primitive category chips for the filter panel. Wrapped in
+  // try/catch so a category query failure doesn't 500 the page —
+  // categories are non-critical; an empty list just hides the row.
+  let primitiveCategories: Awaited<
+    ReturnType<typeof listPrimitiveCategories>
+  > = [];
+  try {
+    primitiveCategories = await listPrimitiveCategories();
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      "[grammar sandbox] listPrimitiveCategories failed:",
+      err,
+    );
+  }
+
   return (
     <GrammarSandboxClient
       initialBuild={build}
@@ -218,6 +237,7 @@ export default async function GrammarSandboxPage({
         };
       })}
       libraryItems={libraryItems}
+      primitiveCategories={primitiveCategories}
       dataLoadFailed={dataLoadFailed}
     />
   );

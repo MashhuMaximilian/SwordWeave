@@ -20,7 +20,10 @@ import {
   primitiveToLibraryItem,
   templateToLibraryItem,
 } from "@/components/sandbox/sandbox-row-mapper";
-import type { LibraryItem } from "@/lib/publishing/library-query";
+import {
+  listPrimitiveCategories,
+  type LibraryItem,
+} from "@/lib/publishing/library-query";
 
 export const dynamic = "force-dynamic";
 
@@ -146,6 +149,22 @@ export default async function BlueprintSandboxPage({
     ...(capabilityRows as never[]).map((r) => capabilityToLibraryItem(r)),
   ];
 
+  // Load primitive category chips for the filter panel. Wrapped in
+  // try/catch so a category query failure doesn't 500 the page —
+  // categories are non-critical; an empty list just hides the row.
+  let primitiveCategories: Awaited<
+    ReturnType<typeof listPrimitiveCategories>
+  > = [];
+  try {
+    primitiveCategories = await listPrimitiveCategories();
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      "[blueprint sandbox] listPrimitiveCategories failed:",
+      err,
+    );
+  }
+
   return (
     <BlueprintSandboxClient
       initialBuild={build}
@@ -215,6 +234,7 @@ export default async function BlueprintSandboxPage({
         };
       })}
       libraryItems={libraryItems}
+      primitiveCategories={primitiveCategories}
       sandboxPrimitives={(primitiveRows as never[]).map((p) => {
         const row = p as {
           id: number;

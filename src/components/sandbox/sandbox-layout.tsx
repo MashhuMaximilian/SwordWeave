@@ -781,19 +781,19 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
             onPointerCancel={onSplitPointerUp}
             className={cn(
               "relative z-10 -my-2 flex h-3 shrink-0 cursor-row-resize select-none items-center justify-center",
-              "transition-colors hover:bg-zinc-800/40",
+              "transition-colors hover:bg-primary/10",
             )}
             style={{ touchAction: "none" }}
           >
-            {/* thin gray line across the full width */}
+            {/* thin teal line across the full width (with opacity) */}
             <span
               aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-zinc-700"
+              className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-primary/40"
             />
             {/* middle pill — only visible affordance */}
             <span
               aria-hidden
-              className="pointer-events-none relative h-1.5 w-8 rounded-full bg-zinc-600 ring-1 ring-zinc-700"
+              className="pointer-events-none relative h-1.5 w-8 rounded-full bg-primary/60 ring-1 ring-primary/30"
             />
           </div>
           <div

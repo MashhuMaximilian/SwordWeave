@@ -98,6 +98,7 @@ export function BlueprintSandboxClient({
   libraryItems,
   sandboxPrimitives,
   sandboxCapabilities,
+  primitiveCategories,
 }: {
   initialBuild: BlueprintBuildMode;
   initialKind?: "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined;
@@ -133,6 +134,11 @@ export function BlueprintSandboxClient({
   sandboxPrimitives: import("@/components/library/library-item-preview").SandboxPrimitiveRow[];
   /** Full capability rows used to resolve sub-entity previews. */
   sandboxCapabilities: import("@/components/library/library-item-preview").SandboxCapabilityRow[];
+  /**
+   * Primitive category chips for the "Category" filter row in the
+   * sandbox's filter panel. Forwarded to BlueprintLibrary.
+   */
+  primitiveCategories: Array<{ value: string; label: string; count: number }>;
 }) {
   const [build, setBuild] = useState<BlueprintBuildMode>(initialBuild);
   const [editing, setEditing] = useState<EditingState>(initialEditing);
@@ -516,6 +522,7 @@ export function BlueprintSandboxClient({
             primitives={sandboxPrimitives}
             capabilities={sandboxCapabilities}
             effects={effects}
+            primitiveCategories={primitiveCategories}
             editingKey={
               editing
                 ? `${editing.kind}:${editing.row.id}`

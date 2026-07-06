@@ -55,6 +55,12 @@ interface BlueprintLibraryProps {
   capabilities?: SandboxCapabilityRow[];
   /** Effects rows for previewing effect-kind LibraryItems in the library. */
   effects?: SandboxEffectRow[];
+  /**
+   * Primitive category chips for the "Category" filter row. Only shown
+   * when the typeFilter is PRIMITIVE or ALL (handled inside
+   * LibraryToolbar). Pass [] to hide the row entirely.
+   */
+  primitiveCategories: Array<{ value: string; label: string; count: number }>;
   editingKey: string | null;
   onSelect: (kind: "template" | "item", id: string) => void;
 }
@@ -86,18 +92,26 @@ export function BlueprintLibrary({
   primitives = [],
   capabilities = [],
   effects = [],
+  primitiveCategories,
   editingKey,
   onSelect,
 }: BlueprintLibraryProps) {
   // Default type filter per build mode. The kind filter is exposed in
-  // the toolbar; the default is "ALL" so the user always sees every
-  // entry in the corpus, regardless of the current build sub-kind.
-  // The previous per-sub-kind default (RACE_TEMPLATE for template
-  // mode) triggered a confusing "No entries match" empty state when
-  // the user was creating a Race but the corpus only had Background
-  // or Archetype templates — or no templates at all yet. "ALL" puts
-  // the user in control of narrowing via the chip filter.
-  const defaultTypeFilter: LibraryTargetType | "ALL" = "ALL";
+  // the toolbar. We pick a sensible default that matches the active
+  // build's primary entity type:
+  //   - template → "ALL" (shows all template sub-kinds: RACE,
+  //     BACKGROUND, ARCHETYPE) so the user sees the full template
+  //     corpus and narrows via the chip filter.
+  //   - item → "ITEM" (items are the only thing being built here).
+  //   - monster → "ALL" (no dedicated MONSTER target type in the
+  //     type union yet, so default to all).
+  // The user can broaden or narrow via the chip filter.
+  const defaultTypeFilter: LibraryTargetType | "ALL" =
+    build === "template"
+      ? "ALL"
+      : build === "item"
+        ? "ITEM"
+        : "ALL"; // Monster — fallback
 
   const availableTypes = ALL_AVAILABLE_TYPES;
 
@@ -330,13 +344,14 @@ export function BlueprintLibrary({
           state={toolbarState}
           onStateChange={setToolbarState}
           availableTypes={availableTypes}
+          primitiveCategories={primitiveCategories}
           showSearch={true}
           showAdvancedFilters={true}
           forceExpandFilters
         />
       </div>
     ),
-    [toolbarState, setToolbarState, availableTypes],
+    [toolbarState, setToolbarState, availableTypes, primitiveCategories],
   );
   useFilterSlot(filterPanelContent);
 
@@ -397,7 +412,7 @@ export function BlueprintLibrary({
           {...(editingKey !== null ? { selectedKey: editingKey } : {})}
           showClearFilters={false}
           emptyTitle="No entries match"
-          emptyDescription="Adjust your sub-kind selection or switch to another build mode."
+          emptyDescription="The corpus doesn't have anything for this combination. Try a different kind, or check Filters to widen the search."
         />
       </div>
     </div>
