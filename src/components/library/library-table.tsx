@@ -92,17 +92,25 @@ export function LibraryTable({
           emptyDescription ??
           "Try removing a filter, broadening the search, or changing the sort."
         }
+        // When invoked from the sandbox (showClearFilters=false), the
+        // empty state previously pointed at /bu-market — a route that
+        // does not exist. The user said "Browse BU Market should
+        // get me either to library pre-filtered on primitives or in
+        // sandbox/grammar pre filtered on primitives in primitives
+        // tab." We pick the latter: the sandbox's grammar page
+        // already pre-filters via the build sub-mode. The secondary
+        // action jumps to the public library, filtered on primitives.
         primaryAction={
           showClearFilters
             ? { label: "Clear filters", href: "/library/browse" }
-            : { label: "Browse BU Market", href: "/bu-market" }
+            : { label: "Build a primitive", href: "/sandbox/grammar?build=primitive" }
         }
         {...(showClearFilters
           ? {}
           : {
               secondaryAction: {
-                label: "Open sandbox",
-                href: "/sandbox",
+                label: "Browse primitives",
+                href: "/library/browse?type=PRIMITIVE",
               },
             })}
       />
@@ -131,7 +139,7 @@ export function LibraryTable({
     <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 overflow-auto">
         <div
-          className="grid auto-rows-fr grid-cols-1 gap-3 p-3 md:grid-cols-2 lg:grid-cols-3"
+          className="grid auto-rows-fr grid-cols-2 gap-3 p-3 md:grid-cols-2 lg:grid-cols-3"
           style={{
             // The grid is sized to its CONTENT (no h-full). With
             // auto-rows-fr each row takes an equal share of whatever
@@ -146,6 +154,11 @@ export function LibraryTable({
             // what was creating the "empty space" — the scroll
             // container had leftover height that the grid then
             // distributed as stretched rows.
+            //
+            // Mobile gets 2 columns (was 1) so the grid view is
+            // visually distinct from the list view at 393px wide.
+            // Without this, the view toggle appeared to do nothing on
+            // mobile (both views were 1-column stacks).
             gridAutoRows: "minmax(7rem, auto)",
           }}
         >

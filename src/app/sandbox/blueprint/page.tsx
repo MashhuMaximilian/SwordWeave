@@ -61,6 +61,16 @@ export default async function BlueprintSandboxPage({
   // `never[][]` because TypeScript can't unify the rich Drizzle row types
   // with the empty default — but the `dataLoadFailed` flag tells the rest
   // of the function to treat the rows as empty.
+  // Each query is wrapped in its own try/catch so a failure in one
+  // table (e.g. items breaking on a schema drift) doesn't empty the
+  // whole library. Previous behaviour: a single failure in
+  // Promise.all → all 5 row arrays empty → user sees "No entries
+  // match" in the library column. The user reported this after the
+  // quantity migration: the items query started returning rows but
+  // something downstream caused Promise.all to reject, taking
+  // templates down with it. Per-query isolation keeps the rest of
+  // the corpus visible. We log the per-table failure and surface a
+  // banner via dataLoadFailed (any failure → true).
   let dataLoadFailed = false;
   let templateRows: unknown[] = [];
   let itemRows: unknown[] = [];
@@ -68,52 +78,74 @@ export default async function BlueprintSandboxPage({
   let capabilityRows: unknown[] = [];
   let effectRows: unknown[] = [];
 
+  // TEMPLATES
   try {
-    const [
-      tRows,
-      iRows,
-      pRows,
-      cRows,
-      eRows,
-    ] = await Promise.all([
-      db.query.templates.findMany({
-        orderBy: [asc(templates.kind), asc(templates.name)],
-        with: {
-          primitiveLinks: { with: { primitive: true } },
-          capabilityLinks: { with: { capability: true } },
-        },
-      }),
-      db.query.items.findMany({
-        orderBy: [asc(items.name)],
-        with: {
-          primitiveLinks: { with: { primitive: true } },
-        },
-      }),
-      db.query.primitives.findMany({
-        orderBy: [asc(primitives.name)],
-      }),
-      db.query.capabilities.findMany({
-        orderBy: [asc(capabilities.name)],
-      }),
-      db.query.effects.findMany({
-        orderBy: [asc(effects.name)],
-        with: {
-          primitiveLinks: { with: { primitive: true } },
-        },
-      }),
-    ]);
-    templateRows = tRows as unknown[];
-    itemRows = iRows as unknown[];
-    primitiveRows = pRows as unknown[];
-    capabilityRows = cRows as unknown[];
-    effectRows = eRows as unknown[];
+    const rows = await db.query.templates.findMany({
+      orderBy: [asc(templates.kind), asc(templates.name)],
+      with: {
+        primitiveLinks: { with: { primitive: true } },
+        capabilityLinks: { with: { capability: true } },
+      },
+    });
+    templateRows = rows as unknown[];
   } catch (err) {
     dataLoadFailed = true;
     // eslint-disable-next-line no-console
-    console.error(
-      "[blueprint sandbox] DB query batch failed, rendering empty library:",
-      err,
-    );
+    console.error("[blueprint sandbox] templates query failed:", err);
+  }
+
+  // ITEMS
+  try {
+    const rows = await db.query.items.findMany({
+      orderBy: [asc(items.name)],
+      with: {
+        primitiveLinks: { with: { primitive: true } },
+      },
+    });
+    itemRows = rows as unknown[];
+  } catch (err) {
+    dataLoadFailed = true;
+    // eslint-disable-next-line no-console
+    console.error("[blueprint sandbox] items query failed:", err);
+  }
+
+  // PRIMITIVES
+  try {
+    const rows = await db.query.primitives.findMany({
+      orderBy: [asc(primitives.name)],
+    });
+    primitiveRows = rows as unknown[];
+  } catch (err) {
+    dataLoadFailed = true;
+    // eslint-disable-next-line no-console
+    console.error("[blueprint sandbox] primitives query failed:", err);
+  }
+
+  // CAPABILITIES
+  try {
+    const rows = await db.query.capabilities.findMany({
+      orderBy: [asc(capabilities.name)],
+    });
+    capabilityRows = rows as unknown[];
+  } catch (err) {
+    dataLoadFailed = true;
+    // eslint-disable-next-line no-console
+    console.error("[blueprint sandbox] capabilities query failed:", err);
+  }
+
+  // EFFECTS
+  try {
+    const rows = await db.query.effects.findMany({
+      orderBy: [asc(effects.name)],
+      with: {
+        primitiveLinks: { with: { primitive: true } },
+      },
+    });
+    effectRows = rows as unknown[];
+  } catch (err) {
+    dataLoadFailed = true;
+    // eslint-disable-next-line no-console
+    console.error("[blueprint sandbox] effects query failed:", err);
   }
 
   let initialEditing:

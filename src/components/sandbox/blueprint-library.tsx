@@ -445,6 +445,10 @@ function BlueprintPreviewBody({
     label: string;
   }) => void;
 }) {
+  // Pull openDrawer so slot/load actions can pop the build preview
+  // drawer after they fire — the user wants to see the result of
+  // the action, not have to manually tap the build/preview tab.
+  const { openDrawer } = useGlobalControls();
   // Per the user's slot spec, every template (template / item / monster)
   // accepts primitives + effects + capabilities. Only kind==="primitive"
   // gets the "Slot into build" affordance in the BlueprintPreviewBody
@@ -473,7 +477,17 @@ function BlueprintPreviewBody({
         new CustomEvent<SlotEvent>(SLOT_EVENT_NAME, { detail: event }),
       );
       window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
+      // Open the build preview so the user can see the slot land.
+      openDrawer("preview");
     }
+  }
+
+  function loadAndPreview() {
+    // Wrap the parent's load handler so we can also pop the preview
+    // drawer afterwards. The parent closes the modal-stack and
+    // dispatches the load; we open the preview drawer.
+    onLoadIntoBuild();
+    openDrawer("preview");
   }
 
   return (
@@ -502,7 +516,7 @@ function BlueprintPreviewBody({
       <div className="sticky bottom-0 z-10 flex shrink-0 flex-wrap items-center gap-2 border-t border-border bg-card px-3 py-3 shadow-[0_-2px_6px_rgba(0,0,0,0.06)]">
         <button
           type="button"
-          onClick={onLoadIntoBuild}
+          onClick={loadAndPreview}
           className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           title="Create a fork-draft of this entry in your sandbox"
         >

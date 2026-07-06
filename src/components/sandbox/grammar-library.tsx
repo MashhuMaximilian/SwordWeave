@@ -391,6 +391,12 @@ function SandboxPreviewBody({
     label: string;
   }) => void;
 }) {
+  // Pull openDrawer from the global controls so we can pop the build
+  // preview after a slot/load — the user wants to see the build
+  // column/drawer open so they can see the slot land or the loaded
+  // entity's preview update. (Previously the modal closed and the
+  // user had to manually tap the build/preview tab.)
+  const { openDrawer } = useGlobalControls();
   // "Slot into build" is only valid for kinds the current build mode
   // can accept. Per the user's spec:
   //   - Primitive mode:  nothing can be slotted (you're authoring a new
@@ -431,6 +437,11 @@ function SandboxPreviewBody({
       // already triggered the active form's listener, so the slot
       // exists by the time the modal closes.
       window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
+      // Open the preview drawer so the user can see the slot's
+      // effect on the entity. (User feedback: "When I slot something
+      // in build or load into build it should also open the build
+      // preview too.")
+      openDrawer("preview");
     }
   }
 
@@ -460,7 +471,10 @@ function SandboxPreviewBody({
       <div className="sticky bottom-0 z-10 flex shrink-0 flex-wrap items-center gap-2 border-t border-border bg-card px-3 py-3 shadow-[0_-2px_6px_rgba(0,0,0,0.06)]">
         <button
           type="button"
-          onClick={onLoadIntoBuild}
+          onClick={() => {
+            onLoadIntoBuild();
+            openDrawer("preview");
+          }}
           className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           title="Create a fork-draft of this entry in your sandbox"
         >

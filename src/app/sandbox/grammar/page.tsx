@@ -51,34 +51,44 @@ export default async function GrammarSandboxPage({
   let effectRows: unknown[] = [];
   let capabilityRows: unknown[] = [];
 
+  // Each query isolated in its own try/catch so one failure doesn't
+  // empty the whole library. See blueprint/page.tsx for the same
+  // pattern + the rationale.
   try {
-    const [pRows, eRows, cRows] = await Promise.all([
-      db.query.primitives.findMany({
-        orderBy: [asc(primitives.category), asc(primitives.name)],
-      }),
-      db.query.effects.findMany({
-        orderBy: [asc(effects.name)],
-        with: {
-          primitiveLinks: { with: { primitive: true } },
-        },
-      }),
-      db.query.capabilities.findMany({
-        orderBy: [asc(capabilities.name)],
-        with: {
-          primitiveLinks: { with: { primitive: true } },
-        },
-      }),
-    ]);
-    primitiveRows = pRows as unknown[];
-    effectRows = eRows as unknown[];
-    capabilityRows = cRows as unknown[];
+    const rows = await db.query.primitives.findMany({
+      orderBy: [asc(primitives.category), asc(primitives.name)],
+    });
+    primitiveRows = rows as unknown[];
   } catch (err) {
     dataLoadFailed = true;
     // eslint-disable-next-line no-console
-    console.error(
-      "[grammar sandbox] DB query batch failed, rendering empty library:",
-      err,
-    );
+    console.error("[grammar sandbox] primitives query failed:", err);
+  }
+  try {
+    const rows = await db.query.effects.findMany({
+      orderBy: [asc(effects.name)],
+      with: {
+        primitiveLinks: { with: { primitive: true } },
+      },
+    });
+    effectRows = rows as unknown[];
+  } catch (err) {
+    dataLoadFailed = true;
+    // eslint-disable-next-line no-console
+    console.error("[grammar sandbox] effects query failed:", err);
+  }
+  try {
+    const rows = await db.query.capabilities.findMany({
+      orderBy: [asc(capabilities.name)],
+      with: {
+        primitiveLinks: { with: { primitive: true } },
+      },
+    });
+    capabilityRows = rows as unknown[];
+  } catch (err) {
+    dataLoadFailed = true;
+    // eslint-disable-next-line no-console
+    console.error("[grammar sandbox] capabilities query failed:", err);
   }
 
   // Resolve ?edit=<id> into a typed initial editing row.
