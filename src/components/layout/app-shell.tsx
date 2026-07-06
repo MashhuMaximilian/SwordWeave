@@ -16,10 +16,10 @@ import { ModalStackHost } from "@/components/ui/modal-stack";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <GlobalControls>
-      <ModalStackHost>
-        <main className="min-w-0 pb-20 lg:pb-0">{children}</main>
-      </ModalStackHost>
-    </GlobalControls>
+    <ModalStackHost>
+      <GlobalControls>
+        <main className="min-w-0 pb-20 lg:pb-16">{children}</main>
+      </GlobalControls>
+    </ModalStackHost>
   );
 }

@@ -30,7 +30,12 @@ import {
   type SandboxEffectRow,
   type SandboxCapabilityRow,
 } from "@/components/library/library-item-preview";
+import { useSandboxEngagement } from "@/components/library/use-sandbox-engagement";
 import type { GrammarBuildMode } from "./grammar-sandbox-client";
+import {
+  SLOT_EVENT_NAME,
+  type SlotEvent,
+} from "@/lib/sandbox/slot-events";
 
 interface GrammarLibraryProps {
   build: GrammarBuildMode;
@@ -257,8 +262,27 @@ export function GrammarLibrary({
   // stays inside the open modal (no full page navigation, no broken
   // breadcrumb state).
   const stack = useModalStack();
+  // Close-on-slot: when the user clicks "Slot into build" in the preview
+  // body, the preview fires `sw-sandbox-close-preview` so the modal stack
+  // pops and the slot is visible in the build column.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = () => {
+      if (stack.depth > 0) stack.pop();
+    };
+    window.addEventListener("sw-sandbox-close-preview", handler);
+    return () => window.removeEventListener("sw-sandbox-close-preview", handler);
+  }, [stack]);
+
   function pushPreview(item: SandboxPreviewItem) {
     if (!stack.canPush) return;
+    // Resolve to the LibraryItem so the modal can show engagement counts
+    // and the user's existing reaction (engagement snapshot). The full
+    // SandboxPreviewItem (with primitive slot data, etc.) is also kept
+    // for the body content.
+    const libraryItem = libraryItems.find(
+      (li) => li.targetId === String(item.row.id),
+    );
     stack.push({
       key: `${item.kind}:${item.row.id}`,
       label: item.row.name,
@@ -266,6 +290,8 @@ export function GrammarLibrary({
       content: (
         <SandboxPreviewBody
           item={item}
+          libraryItem={libraryItem ?? null}
+          build={build}
           onLoadIntoBuild={() => {
             if (item.kind === "primitive") {
               onSelect("primitive", item.row.id);
@@ -338,10 +364,14 @@ export function GrammarLibrary({
 
 function SandboxPreviewBody({
   item,
+  libraryItem,
+  build,
   onLoadIntoBuild,
   onSubLinkClick,
 }: {
   item: SandboxPreviewItem;
+  libraryItem: LibraryItem | null;
+  build: GrammarBuildMode;
   onLoadIntoBuild: () => void;
   onSubLinkClick?: (link: {
     targetType: "PRIMITIVE" | "CAPABILITY";
@@ -349,20 +379,77 @@ function SandboxPreviewBody({
     label: string;
   }) => void;
 }) {
-  // The build mode we're previewing from is reflected by item.kind. Slot
-  // is only relevant for primitives that can be nested into an effect /
-  // capability / template. The grammar sandbox supports primitive +
-  // effect + capability, so a primitive preview in this view can always
-  // be loaded into a future effect/capability form (slot).
-  const showSlotIntoBuild = item.kind === "primitive";
+  // "Slot into build" is only valid for kinds the current build mode
+  // can accept. Per the user's spec:
+  //   - Primitive mode:  nothing can be slotted (you're authoring a new
+  //     primitive from scratch).
+  //   - Effect mode:     accepts primitives only.
+  //   - Capability mode: accepts primitives + effects.
+  const slottableKinds: Array<"primitive" | "effect"> =
+    build === "capability"
+      ? ["primitive", "effect"]
+      : build === "effect"
+        ? ["primitive"]
+        : [];
+
+  const canSlot =
+    slottableKinds.length > 0 &&
+    ((item.kind === "primitive" && slottableKinds.includes("primitive")) ||
+      (item.kind === "effect" && slottableKinds.includes("effect")));
+
+  // Engagement snapshot for the LikeForkBar + version-history link. The
+  // hook fetches the user's existing reaction (so the bar shows the right
+  // active state) on first open. Counts + author info come from the
+  // LibraryItem we passed in.
+  const { engagement } = useSandboxEngagement(libraryItem);
+
+  function slotIntoBuild() {
+    if (item.kind !== "primitive" && item.kind !== "effect") return;
+    const event: SlotEvent = {
+      kind: item.kind,
+      id: item.row.id,
+      label: item.row.name,
+    };
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent<SlotEvent>(SLOT_EVENT_NAME, { detail: event }),
+      );
+      // Notify the parent to close the preview modal-stack so the user
+      // sees the slot land in the build column. The event dispatch
+      // already triggered the active form's listener, so the slot
+      // exists by the time the modal closes.
+      window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
+    }
+  }
 
   return (
-    <div className="space-y-4">
-      <LibraryItemPreview
-        item={item}
-        {...(onSubLinkClick ? { callbacks: { onSubLinkClick } } : {})}
-      />
-      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+        <LibraryItemPreview
+          item={item}
+          {...(onSubLinkClick || engagement
+            ? {
+                callbacks: {
+                  ...(onSubLinkClick ? { onSubLinkClick } : {}),
+                  ...(engagement ? { engagement } : {}),
+                },
+              }
+            : {})}
+        />
+        {/* The preview's internal footer already shows version history
+            (via callbacks.engagement). The "Open source page" link sits
+            next to it inside the scrollable area per the user's spec —
+            only Load/Slot into build belong in the pinned footer below. */}
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+          <a
+            href={`/library/item/${item.kind.toUpperCase()}:${item.row.id}`}
+            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+          >
+            Open source page →
+          </a>
+        </div>
+      </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-border bg-card pt-3">
         <button
           type="button"
           onClick={onLoadIntoBuild}
@@ -371,22 +458,16 @@ function SandboxPreviewBody({
         >
           Load into build
         </button>
-        {showSlotIntoBuild ? (
+        {canSlot ? (
           <button
             type="button"
-            onClick={onLoadIntoBuild}
+            onClick={slotIntoBuild}
             className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:border-primary"
-            title="Drop this primitive into the build you're currently composing"
+            title={`Drop this ${item.kind} into the ${build} you're currently composing`}
           >
             Slot into build
           </button>
         ) : null}
-        <a
-          href={`/library/item/${item.kind.toUpperCase()}:${item.row.id}`}
-          className="text-xs text-primary hover:underline"
-        >
-          Open source page →
-        </a>
       </div>
     </div>
   );

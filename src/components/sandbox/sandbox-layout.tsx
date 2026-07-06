@@ -299,12 +299,6 @@ export function SandboxLayout({
       >
         {topBar ? <div className="shrink-0 border-b">{topBar}</div> : null}
 
-        {/* Bottom bar — sits inside the sandbox container, above the FAB
-            safe area. Currently used for the build-mode type tabs. */}
-        {bottomBar ? (
-          <div className="shrink-0 border-t bg-background">{bottomBar}</div>
-        ) : null}
-
         {/* Floating restore buttons — desktop only, and only after viewport is ready. */}
         {viewportReady && viewport === "desktop" && hiddenColumns.has("library") ? (
           <RestoreColumnButton columnKey="library" />
@@ -320,31 +314,46 @@ export function SandboxLayout({
             Tablet/Desktop only mount after `viewportReady` is true so we never
             have SSR emit a desktop tree and then unmount it on the client. */}
         {!viewportReady || viewport === "mobile" ? (
-          <MobileSandboxLayout
-            library={library}
-            builder={builder}
-            preview={preview}
-          />
+          <div className="flex min-h-0 flex-1 flex-col">
+            <MobileSandboxLayout
+              library={library}
+              builder={builder}
+              preview={preview}
+            />
+            {bottomBar ? (
+              <div className="shrink-0 border-t bg-background">{bottomBar}</div>
+            ) : null}
+          </div>
         ) : viewport === "tablet" ? (
-          <TabletSandboxLayout
-            library={library}
-            builder={builder}
-            preview={preview}
-            previewVisible={previewVisible}
-            onPreviewToggle={togglePreview}
-          />
+          <div className="flex min-h-0 flex-1 flex-col">
+            <TabletSandboxLayout
+              library={library}
+              builder={builder}
+              preview={preview}
+              previewVisible={previewVisible}
+              onPreviewToggle={togglePreview}
+            />
+            {bottomBar ? (
+              <div className="shrink-0 border-t bg-background">{bottomBar}</div>
+            ) : null}
+          </div>
         ) : (
-          <DesktopSandboxLayout
-            groupId={groupId}
-            library={library}
-            builder={builder}
-            preview={preview}
-            hiddenColumns={hiddenColumns}
-            onLayoutChanged={onLayoutChanged}
-            panelRefs={refMap}
-            storedWidths={storedWidths}
-            hydrated={hydrated}
-          />
+          <div className="flex min-h-0 flex-1 flex-col">
+            <DesktopSandboxLayout
+              groupId={groupId}
+              library={library}
+              builder={builder}
+              preview={preview}
+              hiddenColumns={hiddenColumns}
+              onLayoutChanged={onLayoutChanged}
+              panelRefs={refMap}
+              storedWidths={storedWidths}
+              hydrated={hydrated}
+            />
+            {bottomBar ? (
+              <div className="shrink-0 border-t bg-background">{bottomBar}</div>
+            ) : null}
+          </div>
         )}
       </div>
     </SandboxLayoutContext.Provider>
@@ -638,13 +647,15 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
             <MobileColumnChrome title="Library" icon={<LibraryIcon className="size-4" />} />
             <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
           </Panel>
-          {/* Drag handle: 12px tall (h-3) with a 32px visible grab bar
-              so it's easy to grab on touch devices. Previous handle was
-              only 6px which couldn't reliably catch taps. */}
-          <Separator className="group relative h-3 shrink-0 cursor-row-resize bg-border/80 transition-colors hover:bg-primary/60 data-[separator=drag]:bg-primary">
-            <span className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 flex h-2 items-center justify-center">
-              <span className="h-1 w-12 rounded-full bg-foreground/40 group-hover:bg-primary-foreground" />
+          {/* Drag handle: 20px tall (h-5) with a 48px visible grab bar
+              + explicit touch-action:none so the browser doesn't try
+              to scroll the page mid-drag. Previous handle was 6px which
+              couldn't reliably catch taps. */}
+          <Separator className="group relative h-5 shrink-0 cursor-row-resize touch-none select-none bg-border/80 transition-colors hover:bg-primary/60 data-[separator=drag]:bg-primary">
+            <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <span className="h-1.5 w-14 rounded-full bg-foreground/40 group-hover:bg-primary-foreground" />
             </span>
+            <span className="sr-only">Drag to resize</span>
           </Separator>
           <Panel
             id="builder"

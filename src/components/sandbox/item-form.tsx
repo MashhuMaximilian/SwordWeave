@@ -10,6 +10,7 @@ import type {
   ItemFormState,
   ItemPrimitiveSlot,
 } from "./item-form-preview";
+import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
 
 type ItemRow = {
   id: string;
@@ -170,6 +171,48 @@ export function ItemForm({
     return () => window.removeEventListener("sw-sandbox-reset", handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onReset]);
+
+  // External slot trigger: items accept primitives + effects + capabilities
+  // (items are templates in the user's spec). The form already has state
+  // for all three (primitiveIds, effectIds, capabilityIds), so this just
+  // wires the events into the existing state.
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const e = event as CustomEvent<{
+        kind: "primitive" | "effect" | "capability";
+        id: number | string;
+        label: string;
+      }>;
+      if (e.detail.kind === "primitive") {
+        const id =
+          typeof e.detail.id === "string" ? Number(e.detail.id) : e.detail.id;
+        if (!Number.isFinite(id)) return;
+        setPrimitiveIds((prev) =>
+          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+        );
+        setIsDirty(true);
+        return;
+      }
+      if (e.detail.kind === "effect") {
+        const id = String(e.detail.id);
+        setEffectIds((prev) =>
+          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+        );
+        setIsDirty(true);
+        return;
+      }
+      if (e.detail.kind === "capability") {
+        const id = String(e.detail.id);
+        setCapabilityIds((prev) =>
+          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+        );
+        setIsDirty(true);
+        return;
+      }
+    };
+    window.addEventListener("sw-sandbox-slot", handler);
+    return () => window.removeEventListener("sw-sandbox-slot", handler);
+  }, []);
 
   function updateForm(field: keyof ItemFormState, value: string | boolean) {
     setIsDirty(true);
@@ -399,11 +442,20 @@ export function ItemForm({
           checked={form.actsAsFocus}
           onChange={(v) => updateForm("actsAsFocus", v)}
         />
-        <Checkbox
-          label="Public"
-          checked={form.isPublic}
-          onChange={(v) => updateForm("isPublic", v)}
+      </div>
+      <div className="rounded-md border border-border bg-background p-3 text-sm font-medium">
+        <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+          Visibility
+        </p>
+        <VisibilitySelect
+          compact
+          value={form.isPublic ? "PUBLIC" : "PRIVATE"}
+          onChange={(next) => updateForm("isPublic", next === "PUBLIC")}
         />
+        <p className="mt-2 text-[10px] font-normal text-muted-foreground">
+          Public entries appear in the Library. Private and Followers-only
+          entries can be promoted to Public from the My Creations page.
+        </p>
       </div>
 
       <section className="rounded-md border border-border bg-background p-4">

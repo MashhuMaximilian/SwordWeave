@@ -16,6 +16,7 @@ import type {
   ModifierTarget,
 } from "@/types/swordweave";
 import type { PrimitiveFormState } from "./primitive-form-preview";
+import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
 
 type PrimitiveRow = {
   id: number;
@@ -565,18 +566,18 @@ export function PrimitiveForm({
         />
       </label>
 
-      <label className="flex items-start gap-3 rounded-md border border-border bg-background p-3 text-sm font-medium md:col-span-2">
-        <input
-          checked={form.isPublic}
-          className="mt-1 size-4"
-          onChange={(event) => updateForm("isPublic", event.target.checked)}
-          type="checkbox"
+      <label className="flex flex-col gap-2 rounded-md border border-border bg-background p-3 text-sm font-medium md:col-span-2">
+        <span className="text-xs font-semibold uppercase text-muted-foreground">
+          Visibility
+        </span>
+        <VisibilitySelect
+          compact
+          value={form.isPublic ? "PUBLIC" : "PRIVATE"}
+          onChange={(next) => updateForm("isPublic", next === "PUBLIC")}
         />
-        <span>
-          Publish to Library
-          <span className="mt-1 block text-xs font-normal text-muted-foreground">
-            Leave unchecked to keep this primitive private to your account.
-          </span>
+        <span className="text-[10px] font-normal text-muted-foreground">
+          Public entries appear in the Library. Private and Followers-only
+          entries can be promoted to Public from the My Creations page.
         </span>
       </label>
 

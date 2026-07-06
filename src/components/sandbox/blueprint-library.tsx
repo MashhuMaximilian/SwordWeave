@@ -30,7 +30,12 @@ import {
   type SandboxPreviewItem,
   type SandboxTemplateRow,
 } from "@/components/library/library-item-preview";
+import { useSandboxEngagement } from "@/components/library/use-sandbox-engagement";
 import type { BlueprintBuildMode } from "./blueprint-sandbox-client";
+import {
+  SLOT_EVENT_NAME,
+  type SlotEvent,
+} from "@/lib/sandbox/slot-events";
 
 interface BlueprintLibraryProps {
   build: BlueprintBuildMode;
@@ -238,8 +243,21 @@ export function BlueprintLibrary({
   // clicks inside the preview push a nested entry so navigation stays
   // inside the open modal.
   const stack = useModalStack();
+  // Close-on-slot: dispatch fires `sw-sandbox-close-preview` after the
+  // slot event so we pop the stack and the user sees the slot land.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = () => {
+      if (stack.depth > 0) stack.pop();
+    };
+    window.addEventListener("sw-sandbox-close-preview", handler);
+    return () => window.removeEventListener("sw-sandbox-close-preview", handler);
+  }, [stack]);
   function pushPreview(item: SandboxPreviewItem) {
     if (!stack.canPush) return;
+    const libraryItem = libraryItems.find(
+      (li) => li.targetId === String(item.row.id),
+    );
     stack.push({
       key: `${item.kind}:${item.row.id}`,
       label: item.row.name,
@@ -247,6 +265,8 @@ export function BlueprintLibrary({
       content: (
         <BlueprintPreviewBody
           item={item}
+          libraryItem={libraryItem ?? null}
+          build={build}
           onLoadIntoBuild={() => {
             if (item.kind === "template") {
               onSelect("template", item.row.id);
@@ -259,12 +279,6 @@ export function BlueprintLibrary({
             // For now, we only resolve primitives — capability sub-entities
             // aren't in scope from the blueprint sandbox.
             if (link.targetType !== "PRIMITIVE") return;
-            const sub = items.find((i) => {
-              // Item primitive links are not in scope here; we resolve from
-              // the templates collection instead. Items reference primitives
-              // too, but the blueprint sandbox has its own primitive registry.
-              return false;
-            });
             // Fallback: open a link to the canonical page.
             const url = `/library/item/${link.targetType}:${link.targetId}`;
             stack.push({
@@ -400,10 +414,14 @@ export function BlueprintLibrary({
 
 function BlueprintPreviewBody({
   item,
+  libraryItem,
+  build,
   onLoadIntoBuild,
   onSubLinkClick,
 }: {
   item: SandboxPreviewItem;
+  libraryItem: LibraryItem | null;
+  build: BlueprintBuildMode;
   onLoadIntoBuild: () => void;
   onSubLinkClick?: (link: {
     targetType: "PRIMITIVE" | "CAPABILITY";
@@ -411,15 +429,61 @@ function BlueprintPreviewBody({
     label: string;
   }) => void;
 }) {
-  const showSlotIntoBuild = item.kind === "primitive";
+  // Per the user's slot spec, every template (template / item / monster)
+  // accepts primitives + effects + capabilities. Only kind==="primitive"
+  // gets the "Slot into build" affordance in the BlueprintPreviewBody
+  // because the Blueprint Library only shows items + templates (effects
+  // + capabilities are surfaced from the Grammar Library).
+  const slottableKinds: Array<"primitive" | "effect" | "capability"> = [
+    "primitive",
+    "effect",
+    "capability",
+  ];
+  const canSlot =
+    slottableKinds.length > 0 &&
+    (slottableKinds as string[]).includes(item.kind);
+
+  const { engagement } = useSandboxEngagement(libraryItem);
+
+  function slotIntoBuild() {
+    if (item.kind !== "primitive" && item.kind !== "effect" && item.kind !== "capability") return;
+    const event: SlotEvent = {
+      kind: item.kind,
+      id: item.row.id,
+      label: item.row.name,
+    };
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent<SlotEvent>(SLOT_EVENT_NAME, { detail: event }),
+      );
+      window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
+    }
+  }
 
   return (
-    <div className="space-y-4">
-      <LibraryItemPreview
-        item={item}
-        {...(onSubLinkClick ? { callbacks: { onSubLinkClick } } : {})}
-      />
-      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+        <LibraryItemPreview
+          item={item}
+          {...(onSubLinkClick || engagement
+            ? {
+                callbacks: {
+                  ...(onSubLinkClick ? { onSubLinkClick } : {}),
+                  ...(engagement ? { engagement } : {}),
+                },
+              }
+            : {})}
+        />
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+          <a
+            href={`/library/item/${item.kind.toUpperCase()}:${item.row.id}`}
+            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+          >
+            Open source page →
+          </a>
+        </div>
+      </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-border bg-card pt-3">
         <button
           type="button"
           onClick={onLoadIntoBuild}
@@ -428,22 +492,16 @@ function BlueprintPreviewBody({
         >
           Load into build
         </button>
-        {showSlotIntoBuild ? (
+        {canSlot ? (
           <button
             type="button"
-            onClick={onLoadIntoBuild}
+            onClick={slotIntoBuild}
             className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:border-primary"
-            title="Drop this primitive into the build you're currently composing"
+            title={`Drop this ${item.kind} into the ${build} you're currently composing`}
           >
             Slot into build
           </button>
         ) : null}
-        <a
-          href={`/library/item/${item.kind.toUpperCase()}:${item.row.id}`}
-          className="text-xs text-primary hover:underline"
-        >
-          Open source page →
-        </a>
       </div>
     </div>
   );

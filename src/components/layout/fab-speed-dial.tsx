@@ -158,8 +158,17 @@ export function FabSpeedDial({
               item.kind === "action" &&
               (item.key === "split" ||
                 item.key === "fullscreen" ||
-                item.key === "dark")
+                item.key === "dark" ||
+                item.key === "build" ||
+                item.key === "filters")
             ) {
+              return null;
+            }
+            // The Account row is also rendered in the icon grid below.
+            if (item.kind === "divider" && item.key === "div-account") {
+              return null;
+            }
+            if (item.kind === "userMenu") {
               return null;
             }
             if (item.kind === "divider") {
@@ -172,44 +181,6 @@ export function FabSpeedDial({
                     {item.label}
                   </span>
                 </div>
-              );
-            }
-            if (item.kind === "userMenu") {
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => {
-                    // Defer the open until after the dial closes so the
-                    // modal-stack doesn't see two siblings and de-prioritise
-                    // one. We close first, then push on the next tick.
-                    setOpen(false);
-                    window.setTimeout(() => onUserMenu?.(), 0);
-                  }}
-                  style={{
-                    animation: `sw-fab-item-in 180ms ease-out both`,
-                    animationDelay: `${index * 20}ms`,
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg border border-transparent px-2.5 py-2 text-xs font-medium text-foreground transition-all hover:bg-accent"
-                >
-                  {currentUser?.avatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={currentUser.avatarUrl}
-                      alt={currentUser.displayName ?? currentUser.username}
-                      className="size-6 shrink-0 rounded-full border border-border object-cover"
-                    />
-                  ) : (
-                    <span className="flex size-6 items-center justify-center rounded-full border border-border bg-background text-[10px] font-bold text-primary">
-                      {(currentUser?.displayName ?? currentUser?.username ?? "U")[0]?.toUpperCase()}
-                    </span>
-                  )}
-                  <span className="truncate">
-                    {currentUser?.displayName ??
-                      currentUser?.username ??
-                      "Profile"}
-                  </span>
-                </button>
               );
             }
             if (item.kind === "link") {
@@ -275,48 +246,61 @@ export function FabSpeedDial({
             );
           })}
 
-          {/* Compact icon grid — 3 small toggle buttons in a single row.
-              Sized smaller (size-7) per the user's "too big" feedback. */}
-          {items.some((i) => i.kind === "action" && i.key === "split") ? (
-            <div
-              className="mt-1 flex items-center gap-1 rounded-lg border border-border/60 bg-card/40 p-1"
-              style={{
-                animation: `sw-fab-item-in 180ms ease-out both`,
-                animationDelay: `${items.length * 20}ms`,
-              }}
-            >
-              {items
-                .filter(
-                  (i) =>
+          {/* Compact icon grid — 2x3 of small icon-only buttons, fill width.
+              Row 1: split, dark, fullscreen toggles.
+              Row 2: account (opens user menu), build&preview, show filters. */}
+          <div
+            className="mt-1 grid grid-cols-3 gap-1 rounded-lg border border-border/60 bg-card/40 p-1"
+            style={{
+              animation: `sw-fab-item-in 180ms ease-out both`,
+              animationDelay: `${items.length * 20}ms`,
+            }}
+          >
+            {(
+              [
+                ...items.filter(
+                  (i): i is FabAction =>
                     i.kind === "action" &&
                     (i.key === "split" ||
                       i.key === "fullscreen" ||
                       i.key === "dark"),
-                )
-                .map((i) => {
-                  if (i.kind !== "action") return null;
-                  return (
-                    <button
-                      key={i.key}
-                      type="button"
-                      onClick={() => i.onClick()}
-                      disabled={i.disabled}
-                      aria-pressed={i.active}
-                      aria-label={i.label}
-                      title={i.label}
-                      className={cn(
-                        "flex size-7 items-center justify-center rounded-md border text-[10px] font-medium transition-all active:scale-95",
-                        i.active
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground",
-                      )}
-                    >
-                      {i.icon}
-                    </button>
-                  );
-                })}
-            </div>
-          ) : null}
+                ),
+                {
+                  kind: "action" as const,
+                  key: "account",
+                  label: "Account",
+                  icon: <UserRound className="size-4" />,
+                  onClick: () => {
+                    setOpen(false);
+                    window.setTimeout(() => onUserMenu?.(), 0);
+                  },
+                },
+                ...items.filter(
+                  (i): i is FabAction =>
+                    i.kind === "action" &&
+                    (i.key === "build" || i.key === "filters"),
+                ),
+              ] as FabAction[]
+            ).map((action) => (
+              <button
+                key={action.key}
+                type="button"
+                onClick={() => action.onClick()}
+                disabled={action.disabled}
+                aria-pressed={action.active}
+                aria-label={action.label}
+                title={action.label}
+                className={cn(
+                  "flex h-9 w-full items-center justify-center rounded-md border text-[10px] font-medium transition-all active:scale-95",
+                  action.active
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground",
+                )}
+              >
+                {action.icon}
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
 

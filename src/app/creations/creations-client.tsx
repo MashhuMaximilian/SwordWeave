@@ -15,16 +15,16 @@
 // the per-item version history visible to followers vs everyone.
 // =============================================================================
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { LibraryTable } from "@/components/library/library-table";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
+import { VisibilitySelect, type Visibility, visibilityLabel } from "@/components/library/visibility-select";
 import { cn } from "@/lib/utils";
 import type { LibraryItem } from "@/lib/publishing/library-query";
-import { Eye, Lock, Users } from "lucide-react";
 
 type TypeFilter = "all" | "primitive" | "effect" | "capability" | "template" | "item" | "character";
 type StatusFilter = "all" | "draft";
@@ -60,7 +60,7 @@ const TARGET_TYPE_MAP: Record<string, TypeFilter> = {
 };
 
 export function CreationsClient({
-  items,
+  items: initialItems,
   counts,
   initialType,
   initialStatus,
@@ -72,6 +72,27 @@ export function CreationsClient({
     initialStatus === "draft" ? "draft" : "all",
   );
   const [search, setSearch] = useState("");
+  // Lifted visibility map so optimistic updates from the preview modal
+  // re-render the table without a refresh. Keyed by LibraryItem.id.
+  // The previous implementation mutated `item.visibility` directly,
+  // which didn't trigger a re-render of the table.
+  const [visibilityById, setVisibilityById] = useState<
+    Record<string, "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC">
+  >(() => {
+    const map: Record<string, "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC"> = {};
+    for (const item of initialItems) {
+      map[item.id] = item.visibility ?? "PRIVATE";
+    }
+    return map;
+  });
+  const items = useMemo(
+    () =>
+      initialItems.map((item) => ({
+        ...item,
+        visibility: visibilityById[item.id] ?? item.visibility ?? "PRIVATE",
+      })),
+    [initialItems, visibilityById],
+  );
 
   const router = useRouter();
   const stack = useModalStack();
@@ -235,11 +256,14 @@ export function CreationsClient({
                       stack.clear();
                     }}
                     onVisibilityChange={async (vis) => {
-                      // The page passes the original `item` into the modal;
-                      // we mutate a local copy so the chip reflects the
-                      // new value immediately. router.refresh() would
-                      // re-fetch the server data on next navigation.
-                      item.visibility = vis;
+                      // Optimistic update — the local visibilityById map
+                      // drives the re-render so the chip changes colour
+                      // immediately. The previous version mutated
+                      // `item.visibility` directly which React didn't see.
+                      setVisibilityById((prev) => ({
+                        ...prev,
+                        [item.id]: vis,
+                      }));
                       try {
                         const res = await fetch("/api/creations/visibility", {
                           method: "POST",
@@ -258,12 +282,11 @@ export function CreationsClient({
                         }
                       } catch (e) {
                         // Roll back optimistic update.
-                        item.visibility =
-                          vis === "PRIVATE"
-                            ? "PRIVATE"
-                            : vis === "FOLLOWERS_ONLY"
-                              ? "FOLLOWERS_ONLY"
-                              : "PUBLIC";
+                        setVisibilityById((prev) => ({
+                          ...prev,
+                          [item.id]:
+                            prev[item.id] ?? item.visibility ?? "PRIVATE",
+                        }));
                         throw e;
                       }
                     }}
@@ -329,12 +352,9 @@ function CreationPreview({
         ) : null}
       </dl>
 
-      {/* Visibility selector — controls who can see this entry. The
-          per-tier version history on the canonical library page is what
-          the user sees for each audience (private / followers / everyone). */}
       {onVisibilityChange ? (
         <VisibilitySelect
-          value={item.visibility ?? "PRIVATE"}
+          value={(item.visibility ?? "PRIVATE") as Visibility}
           onChange={onVisibilityChange}
         />
       ) : null}
@@ -360,100 +380,6 @@ function CreationPreview({
           View fork history
         </a>
       </div>
-    </div>
-  );
-}
-
-// -----------------------------------------------------------------------------
-// VisibilitySelect — 3-chip selector for visibility tier. Posts to
-// /api/creations/visibility on change.
-// -----------------------------------------------------------------------------
-
-const VISIBILITY_OPTIONS: Array<{
-  key: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC";
-  label: string;
-  icon: typeof Lock;
-  hint: string;
-}> = [
-  { key: "PRIVATE", label: "Private", icon: Lock, hint: "Only you" },
-  {
-    key: "FOLLOWERS_ONLY",
-    label: "Followers",
-    icon: Users,
-    hint: "You + your followers",
-  },
-  { key: "PUBLIC", label: "Public", icon: Eye, hint: "Everyone" },
-];
-
-function visibilityLabel(vis: LibraryItem["visibility"]): string {
-  if (vis === "FOLLOWERS_ONLY") return "Followers only";
-  if (vis === "PUBLIC") return "Public";
-  return "Private";
-}
-
-function VisibilitySelect({
-  value,
-  onChange,
-}: {
-  value: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC";
-  onChange: (next: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC") => void;
-}) {
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  return (
-    <div className="rounded-md border border-border bg-card/50 p-2.5">
-      <div className="mb-1.5 flex items-center justify-between">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Visibility
-        </p>
-        {pending ? (
-          <span className="text-[10px] text-muted-foreground">saving…</span>
-        ) : null}
-      </div>
-      <div className="grid grid-cols-3 gap-1.5">
-        {VISIBILITY_OPTIONS.map((opt) => {
-          const active = value === opt.key;
-          const Icon = opt.icon;
-          return (
-            <button
-              key={opt.key}
-              type="button"
-              onClick={() => {
-                setError(null);
-                startTransition(async () => {
-                  try {
-                    await onChange(opt.key);
-                  } catch (e) {
-                    setError(
-                      e instanceof Error
-                        ? e.message
-                        : "Failed to update visibility",
-                    );
-                  }
-                });
-              }}
-              disabled={pending}
-              aria-pressed={active}
-              title={opt.hint}
-              className={cn(
-                "flex flex-col items-center gap-1 rounded-md border px-2 py-2 text-[10px] font-medium transition-all",
-                active
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground",
-              )}
-            >
-              <Icon className="size-3.5" />
-              {opt.label}
-            </button>
-          );
-        })}
-      </div>
-      {error ? (
-        <p className="mt-1.5 text-[10px] text-rose-400" role="alert">
-          {error}
-        </p>
-      ) : null}
     </div>
   );
 }

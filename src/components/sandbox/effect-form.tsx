@@ -4,11 +4,11 @@
 // Receives optional initialEffect for ?edit= pre-fill.
 // Fires onStateChange so the page can render a live preview.
 // Save logic lives here. Library + preview + saved-effects are owned by the page.
-
+import { Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
 import type { EffectFormState, SlottedPrimitive } from "./effect-form-preview";
+import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
 
 type EffectRow = {
   id: string;
@@ -126,6 +126,27 @@ export function EffectForm({
     return () => window.removeEventListener("sw-sandbox-reset", handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onReset]);
+
+  // External slot trigger: the user clicks a primitive in the Library
+  // column and taps "Slot into build" in its preview. EffectForm only
+  // accepts primitives, so filter on kind and ignore everything else.
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const e = event as CustomEvent<{
+        kind: "primitive" | "effect" | "capability";
+        id: number | string;
+        label: string;
+      }>;
+      if (e.detail.kind !== "primitive") return;
+      const id =
+        typeof e.detail.id === "string" ? Number(e.detail.id) : e.detail.id;
+      if (!Number.isFinite(id)) return;
+      addSlot(id);
+    };
+    window.addEventListener("sw-sandbox-slot", handler);
+    return () => window.removeEventListener("sw-sandbox-slot", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availablePrimitives]);
 
   function updateForm(field: keyof EffectFormState, value: string | boolean) {
     setIsDirty(true);
@@ -287,19 +308,23 @@ export function EffectForm({
         </label>
       </div>
 
-      <label className="flex items-start gap-3 rounded-md border border-border bg-background p-3 text-sm font-medium">
-        <input
-          checked={form.isPublic}
-          className="mt-1 size-4"
-          onChange={(event) => updateForm("isPublic", event.target.checked)}
-          type="checkbox"
+      <label className="flex flex-col gap-2 rounded-md border border-border bg-background p-3 text-sm font-medium">
+        <span className="text-xs font-semibold uppercase text-muted-foreground">
+          Visibility
+        </span>
+        <VisibilitySelect
+          compact
+          value={form.isPublic ? "PUBLIC" : "PRIVATE"}
+          onChange={(next) => {
+            // Map Visibility → isPublic for the API submit. FOLLOWERS_ONLY
+            // is shown in the UI per the user's spec but full publication
+            // happens via /creations → visibility endpoint after save.
+            updateForm("isPublic", next === "PUBLIC");
+          }}
         />
-        <span>
-          Public Library Candidate
-          <span className="mt-1 block text-xs font-normal text-muted-foreground">
-            Auth and publishing gates will decide who can actually publish this
-            later.
-          </span>
+        <span className="text-[10px] font-normal text-muted-foreground">
+          Public entries appear in the Library. Private and Followers-only
+          entries can be promoted to Public from the My Creations page.
         </span>
       </label>
 

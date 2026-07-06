@@ -11,6 +11,7 @@ import type {
   TemplateFormState,
   TemplateSlot,
 } from "./template-form-preview";
+import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
 
 type TemplateRow = {
   id: string;
@@ -159,6 +160,40 @@ export function TemplateForm({
     return () => window.removeEventListener("sw-sandbox-reset", handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onReset]);
+
+  // External slot trigger: the user can slot primitives AND capabilities
+  // into a template. Effect slots will be added once the schema gains
+  // template↔effect link support.
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const e = event as CustomEvent<{
+        kind: "primitive" | "effect" | "capability";
+        id: number | string;
+        label: string;
+      }>;
+      if (e.detail.kind === "primitive") {
+        const id =
+          typeof e.detail.id === "string" ? Number(e.detail.id) : e.detail.id;
+        if (!Number.isFinite(id)) return;
+        setPrimitiveIds((prev) =>
+          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+        );
+        setIsDirty(true);
+        return;
+      }
+      if (e.detail.kind === "capability") {
+        const id = String(e.detail.id);
+        setCapabilityIds((prev) =>
+          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+        );
+        setIsDirty(true);
+        return;
+      }
+      // effect kind — no-op until template↔effect links ship.
+    };
+    window.addEventListener("sw-sandbox-slot", handler);
+    return () => window.removeEventListener("sw-sandbox-slot", handler);
+  }, []);
 
   function updateForm(field: keyof TemplateFormState, value: string | boolean) {
     setIsDirty(true);
@@ -330,18 +365,18 @@ export function TemplateForm({
         />
       </label>
 
-      <label className="flex items-start gap-3 rounded-md border border-border bg-background p-3 text-sm font-medium">
-        <input
-          checked={form.isPublic}
-          className="mt-1 size-4"
-          onChange={(e) => updateForm("isPublic", e.target.checked)}
-          type="checkbox"
+      <label className="flex flex-col gap-2 rounded-md border border-border bg-background p-3 text-sm font-medium">
+        <span className="text-xs font-semibold uppercase text-muted-foreground">
+          Visibility
+        </span>
+        <VisibilitySelect
+          compact
+          value={form.isPublic ? "PUBLIC" : "PRIVATE"}
+          onChange={(next) => updateForm("isPublic", next === "PUBLIC")}
         />
-        <span>
-          Public (visible to everyone in Library)
-          <span className="mt-1 block text-xs font-normal text-muted-foreground">
-            Leave unchecked to keep this template private to your account.
-          </span>
+        <span className="text-[10px] font-normal text-muted-foreground">
+          Public entries appear in the Library. Private and Followers-only
+          entries can be promoted to Public from the My Creations page.
         </span>
       </label>
 

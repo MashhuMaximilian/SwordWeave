@@ -11,6 +11,7 @@ import type {
   CapabilityFormState,
   CapabilitySlot,
 } from "./capability-form-preview";
+import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
 
 type CapabilityRow = {
   id: string;
@@ -163,6 +164,34 @@ export function CapabilityForm({
     return () => window.removeEventListener("sw-sandbox-reset", handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onReset]);
+
+  // External slot trigger: capabilities accept primitives AND effects
+  // (per the user's spec). The form has primitive-slot state today;
+  // effect-slot state is in flight — we stash incoming effects in the
+  // form's primitive-slot UI as a TODO once the API supports it. For
+  // now the form is a no-op for `kind === "effect"`.
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const e = event as CustomEvent<{
+        kind: "primitive" | "effect" | "capability";
+        id: number | string;
+        label: string;
+      }>;
+      if (e.detail.kind === "primitive") {
+        const id =
+          typeof e.detail.id === "string" ? Number(e.detail.id) : e.detail.id;
+        if (!Number.isFinite(id)) return;
+        addSlot(id);
+        return;
+      }
+      // effect / capability kinds: accepted by capability per user spec,
+      // but full UI support is a follow-up (needs effect-slot state on
+      // the form + capabilityEffects insert in the API).
+    };
+    window.addEventListener("sw-sandbox-slot", handler);
+    return () => window.removeEventListener("sw-sandbox-slot", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availablePrimitives]);
 
   function updateForm(field: keyof CapabilityFormState, value: string | boolean) {
     setIsDirty(true);
@@ -381,18 +410,18 @@ export function CapabilityForm({
         </label>
       </div>
 
-      <label className="flex items-start gap-3 rounded-md border border-border bg-background p-3 text-sm font-medium">
-        <input
-          checked={form.isPublic}
-          className="mt-1 size-4"
-          onChange={(e) => updateForm("isPublic", e.target.checked)}
-          type="checkbox"
+      <label className="flex flex-col gap-2 rounded-md border border-border bg-background p-3 text-sm font-medium">
+        <span className="text-xs font-semibold uppercase text-muted-foreground">
+          Visibility
+        </span>
+        <VisibilitySelect
+          compact
+          value={form.isPublic ? "PUBLIC" : "PRIVATE"}
+          onChange={(next) => updateForm("isPublic", next === "PUBLIC")}
         />
-        <span>
-          Publish to library (visible to everyone)
-          <span className="mt-1 block text-xs font-normal text-muted-foreground">
-            Leave unchecked to keep this capability private to your account.
-          </span>
+        <span className="text-[10px] font-normal text-muted-foreground">
+          Public entries appear in the Library. Private and Followers-only
+          entries can be promoted to Public from the My Creations page.
         </span>
       </label>
 
