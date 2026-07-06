@@ -294,7 +294,13 @@ export function SandboxLayout({
     <SandboxLayoutContext.Provider value={ctx}>
       <div
         className={cn(
-          "relative flex h-[calc(100dvh-4rem)] w-full flex-col bg-background",
+          // Use 100dvh (no -4rem) so the sandbox fills the entire
+          // viewport. The previous calc(100dvh-4rem) was reserving
+          // 64px for a top navbar that doesn't exist anymore
+          // (topbar was removed when the FAB took over navigation),
+          // producing a visible 64px dark void at the top of the
+          // sandbox on every page.
+          "relative flex h-[100dvh] w-full flex-col bg-background",
           className,
         )}
         data-sandbox-layout
@@ -774,7 +780,13 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
           <Panel
             id="library"
             panelRef={libraryPanelRef}
-            defaultSize={50}
+            // Library 35 / Build 65 default — gives the form the
+            // majority of the screen on mobile so most fields are
+            // visible above the fold. The 50/50 default left the
+            // build panel cramped and produced a large empty void
+            // between the visible top of the form and the bottom
+            // tab bar (the rest of the form was below the fold).
+            defaultSize={35}
             minSize={20}
             maxSize={75}
             className="flex h-full min-h-0 flex-col"
@@ -793,22 +805,30 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
             aria-orientation="horizontal"
             onPointerDown={startDrag}
             className={cn(
-              "group relative h-7 shrink-0 cursor-row-resize select-none border-y border-border/40 transition-colors",
-              dragging
-                ? "bg-primary/30"
-                : "bg-border/60 hover:bg-primary/40",
+              // 44px tall handle (44 = Apple HIG / Material minimum
+              // touch target). Wider grab bar (w-32 instead of w-20)
+              // for better discoverability. Primary-tinted background
+              // makes it stand out from the panel chrome above and
+              // below.
+              "group relative z-10 flex shrink-0 cursor-row-resize select-none items-center justify-center border-y border-border/40 bg-primary/10 transition-colors hover:bg-primary/25",
+              "h-11",
+              dragging && "bg-primary/40",
             )}
             data-testid="mobile-split-handle"
+            aria-label="Drag to resize Library and Build panels"
           >
-            <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <span className="h-2 w-20 rounded-full bg-foreground/50 group-hover:bg-primary-foreground" />
+            <span
+              aria-hidden
+              className="pointer-events-none flex h-2 w-32 items-center justify-center gap-1 rounded-full bg-primary/60 group-hover:bg-primary"
+            >
+              <span className="h-0.5 w-8 rounded-full bg-primary-foreground/80" />
+              <span className="h-0.5 w-8 rounded-full bg-primary-foreground/80" />
             </span>
-            <span className="sr-only">Drag to resize Library and Build panels</span>
           </div>
           <Panel
             id="builder"
             panelRef={builderPanelRef}
-            defaultSize={50}
+            defaultSize={65}
             minSize={25}
             maxSize={85}
             className="flex h-full min-h-0 flex-col"

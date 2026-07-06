@@ -349,6 +349,13 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         onUserMenu={openUserMenu}
         currentUser={currentUser}
         buildStashCount={sandboxFormDirty ? 1 : 0}
+        // On sandbox routes a bottom tab bar (~50px tall + safe-area)
+        // is fixed to the viewport bottom. The default FAB bottom
+        // offset (16px) puts the FAB ON TOP of the tab bar's
+        // labels — the "Capability" tab is unreadable. Lift the FAB
+        // above the tab bar so the two don't collide. 64px = 16px
+        // (default gap) + 48px (tab bar visible height).
+        bottomOffset={isSandboxRoute ? 64 : 16}
       />
       <RightFilterPanel />
       <BuildPreviewDrawer />
