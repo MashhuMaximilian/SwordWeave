@@ -315,7 +315,7 @@ export function BlueprintSandboxClient({
       { key: "monster", label: "Monster" },
     ];
     return (
-      <div className="hidden border-b border-border bg-card md:flex">
+      <div className="flex border-b border-border bg-card">
         {tabs.map((tab) => {
           const active = build === tab.key;
           return (

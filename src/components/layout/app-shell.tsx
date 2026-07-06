@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
 import { GlobalControls } from "./global-controls";
+import { ModalStackHost } from "@/components/ui/modal-stack";
 
 const primaryNav = [
   { href: "/sandbox", label: "Sandbox", icon: FlaskConical },
@@ -123,7 +124,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <GlobalControls>
-      <div className="min-h-screen bg-background text-foreground">
+      <ModalStackHost>
+        <div className="min-h-screen bg-background text-foreground">
         <div className="lg:grid lg:min-h-screen lg:grid-cols-[248px_1fr]">
           <aside className="hidden border-r border-border bg-shell lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">
             <div className="border-b border-border px-5 py-5">
@@ -213,6 +215,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <main className="min-w-0 pb-20 lg:pb-0">{children}</main>
         </div>
       </div>
+      </ModalStackHost>
     </GlobalControls>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "@clerk/nextjs";
 import {
   Heart,
   GitFork,
@@ -65,6 +66,22 @@ const FLAG_REASONS: { value: FlagReason; label: string }[] = [
 
 export function LikeForkBar(props: LikeForkBarProps) {
   const router = useRouter();
+  const { session } = useSession();
+
+  // Clerk's session token has a 60s TTL by default. If the user lingers
+  // on a page past that window then clicks Like, the cached JWT is stale
+  // and the API returns 401. `getToken({ skipCache: true })` forces a
+  // refresh before the engagement call goes out.
+  async function withFreshToken<T>(fn: () => Promise<T>): Promise<T> {
+    if (session) {
+      try {
+        await session.getToken({ skipCache: true });
+      } catch {
+        // Ignore — fetch below will surface auth errors with a clearer message.
+      }
+    }
+    return fn();
+  }
   const [pending, startTransition] = useTransition();
 
   const [likes, setLikes] = useState(props.initialLikes);
@@ -111,7 +128,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
     setError(null);
     startTransition(async () => {
       try {
-        const res = await fetch("/api/reactions", {
+        const res = await withFreshToken(() => fetch("/api/reactions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -120,7 +137,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
             ...(props.versionId ? { versionId: props.versionId } : {}),
             kind: "LIKE",
           }),
-        });
+        }));
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           throw new Error(data.error ?? `HTTP ${res.status}`);
@@ -155,7 +172,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
     setError(null);
     startTransition(async () => {
       try {
-        const res = await fetch("/api/reactions", {
+        const res = await withFreshToken(() => fetch("/api/reactions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -164,7 +181,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
             ...(props.versionId ? { versionId: props.versionId } : {}),
             kind: "DISLIKE",
           }),
-        });
+        }));
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           throw new Error(data.error ?? `HTTP ${res.status}`);
@@ -186,14 +203,14 @@ export function LikeForkBar(props: LikeForkBarProps) {
     setError(null);
     startTransition(async () => {
       try {
-        const res = await fetch("/api/fork", {
+        const res = await withFreshToken(() => fetch("/api/fork", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             targetType: props.targetType,
             targetId: props.targetId,
           }),
-        });
+        }));
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           throw new Error(data.error ?? `HTTP ${res.status}`);
@@ -217,11 +234,11 @@ export function LikeForkBar(props: LikeForkBarProps) {
     setError(null);
     startTransition(async () => {
       try {
-        const res = await fetch("/api/follows", {
+        const res = await withFreshToken(() => fetch("/api/follows", {
           method: wasFollowing ? "DELETE" : "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ targetUserId: props.authorId }),
-        });
+        }));
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           throw new Error(data.error ?? `HTTP ${res.status}`);
@@ -240,7 +257,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
     setError(null);
     startTransition(async () => {
       try {
-        const res = await fetch("/api/flags", {
+        const res = await withFreshToken(() => fetch("/api/flags", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -250,7 +267,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
             reason: flagReason,
             ...(flagReason === "OTHER" && flagNote ? { note: flagNote } : {}),
           }),
-        });
+        }));
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           throw new Error(data.error ?? `HTTP ${res.status}`);

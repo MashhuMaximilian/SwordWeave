@@ -1,6 +1,10 @@
 // Temporary test route to validate <SandboxLayout> without rewriting any real sandbox page.
 // Delete this file once all 7 sandbox pages are wrapped.
 
+// Force dynamic rendering — SandboxLayout reads localStorage and viewport
+// measurements at runtime, so it can't be statically rendered.
+export const dynamic = "force-dynamic";
+
 import { SandboxLayout } from "@/components/sandbox/sandbox-layout";
 
 export default function SandboxLayoutTestPage() {

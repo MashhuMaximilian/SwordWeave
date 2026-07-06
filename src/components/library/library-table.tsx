@@ -313,37 +313,14 @@ function GridCard({
           currentUserId={currentUserInternalId}
           compact
         />
-        <div className="mt-1 flex items-center justify-between gap-2">
-          {/* Always-available: link to the full canonical detail page. */}
-          <Link
-            href={`/library/item/${item.id}`}
-            className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground hover:underline"
-          >
-            View
-            <ExternalLink className="ml-0.5 inline size-2.5" />
-          </Link>
-          {/* Optional: load the entity into the matching sandbox composer. */}
-          {onSelect ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelect(item);
-              }}
-              className="text-[10px] font-semibold uppercase tracking-wide text-primary hover:underline"
-            >
-              Add
-              <ArrowRight className="ml-0.5 inline size-2.5" />
-            </button>
-          ) : null}
-        </div>
       </footer>
     </>
   );
 
-  // When onSelect is provided the whole card is a click target. We render as
-  // a <button> so it's keyboard-accessible too. The "View" / "Add" children
-  // use stopPropagation so they don't double-fire the card click.
+  // The whole card is a click target. We render as a <button> when an action
+  // is available (sandbox / library browse) so it's keyboard-accessible. The
+  // card click handles the primary action — there are no inner View/Add
+  // buttons to compete with the gesture.
   if (onSelect) {
     return (
       <button

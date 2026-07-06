@@ -17,13 +17,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { LibraryToolbar, type LibraryToolbarState } from "@/components/library/library-toolbar";
 import { LibraryTable } from "@/components/library/library-table";
+import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-query";
-import {
-  SandboxPreviewModal,
-  type SandboxPreviewItem,
-  type SandboxPrimitiveRow,
-  type SandboxEffectRow,
-  type SandboxCapabilityRow,
+import { useFilterSlot } from "@/components/layout/right-filter-panel";
+import { useGlobalControls } from "@/components/layout/global-controls";
+import { useModalStack } from "@/components/ui/modal-stack";
+import type {
+  SandboxPreviewItem,
+  SandboxPrimitiveRow,
+  SandboxEffectRow,
+  SandboxCapabilityRow,
 } from "@/components/sandbox/sandbox-preview-modal";
 import type { GrammarBuildMode } from "./grammar-sandbox-client";
 
@@ -77,10 +80,6 @@ export function GrammarLibrary({
   editingKey,
   onSelect,
 }: GrammarLibraryProps) {
-  const [selectedItem, setSelectedItem] = useState<SandboxPreviewItem | null>(
-    null,
-  );
-
   // Default type filter per build mode.
   const defaultTypeFilter: LibraryTargetType =
     build === "primitive"
@@ -135,23 +134,6 @@ export function GrammarLibrary({
     };
   }, [primitives, effects, capabilities]);
 
-  function handleRowSelect(item: LibraryItem) {
-    const full = lookupRow(item);
-    if (full) setSelectedItem(full);
-  }
-
-  function handleLoadIntoBuild() {
-    if (!selectedItem) return;
-    if (selectedItem.kind === "primitive") {
-      onSelect("primitive", selectedItem.row.id);
-    } else if (selectedItem.kind === "effect") {
-      onSelect("effect", selectedItem.row.id);
-    } else {
-      onSelect("capability", selectedItem.row.id);
-    }
-    setSelectedItem(null);
-  }
-
   // Apply toolbar filters to libraryItems. Sandbox Library is gated by
   // build-mode (only the typeFilter values listed in `availableTypes`
   // survive), but within that subset the user can still search, sort, etc.
@@ -178,15 +160,67 @@ export function GrammarLibrary({
     });
   }, [libraryItems, availableTypes, toolbarState]);
 
+  // Right-side filter panel slot: render the full toolbar inside it.
+  // The search bar is duplicated in the column header for quick access.
+  const { setFilterPanelOpen } = useGlobalControls();
+  useFilterSlot(
+    <div className="space-y-3">
+      <LibraryToolbar
+        state={toolbarState}
+        onStateChange={setToolbarState}
+        availableTypes={availableTypes}
+        showSearch={true}
+        showAdvancedFilters={true}
+      />
+    </div>,
+  );
+
+  const hasActiveFilters =
+    toolbarState.typeFilter !== "ALL" ||
+    toolbarState.category !== "" ||
+    toolbarState.author !== "" ||
+    toolbarState.minLikes !== "" ||
+    toolbarState.hasForks ||
+    toolbarState.sort !== "ENGAGEMENT";
+
+  // Card click → push to modal stack. The "Load into build" action still
+  // calls the parent's onSelect; we pop the stack afterwards.
+  const stack = useModalStack();
+  function pushPreview(item: SandboxPreviewItem) {
+    if (!stack.canPush) return;
+    const kindLabel = item.kind;
+    stack.push({
+      key: `${item.kind}:${item.kind === "primitive" ? item.row.id : item.row.id}`,
+      label: item.kind === "primitive" ? item.row.name : item.row.name,
+      category: kindLabel,
+      content: (
+        <SandboxPreviewBody
+          item={item}
+          onLoadIntoBuild={() => {
+            if (item.kind === "primitive") {
+              onSelect("primitive", item.row.id);
+            } else if (item.kind === "effect") {
+              onSelect("effect", item.row.id);
+            } else {
+              onSelect("capability", item.row.id);
+            }
+            stack.clear();
+          }}
+        />
+      ),
+    });
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div className="shrink-0 border-b border-border p-3">
-        <LibraryToolbar
-          state={toolbarState}
-          onStateChange={setToolbarState}
-          availableTypes={availableTypes}
-          showSearch={true}
-          showAdvancedFilters={false}
+        <ColumnSearchBar
+          search={toolbarState.search}
+          onSearchChange={(s: string) =>
+            setToolbarState((prev) => ({ ...prev, search: s }))
+          }
+          onOpenFilters={() => setFilterPanelOpen(true)}
+          hasActiveFilters={hasActiveFilters}
         />
       </div>
 
@@ -196,19 +230,214 @@ export function GrammarLibrary({
           view="GRID"
           engagement={{ reactions: {}, following: {} }}
           currentUserInternalId={null}
-          onSelect={handleRowSelect}
+          onSelect={(item) => {
+            const full = lookupRow(item);
+            if (full) pushPreview(full);
+          }}
           {...(editingKey !== null ? { selectedKey: editingKey } : {})}
           showClearFilters={false}
           emptyTitle="No grammar entries yet"
           emptyDescription="Build primitives, effects, and capabilities to see them here."
         />
       </div>
-
-      <SandboxPreviewModal
-        item={selectedItem}
-        onClose={() => setSelectedItem(null)}
-        onPrimaryAction={handleLoadIntoBuild}
-      />
     </div>
   );
+}
+
+// -----------------------------------------------------------------------------
+// SandboxPreviewBody — wrapper around SandboxPreviewModal content that adapts
+// the imperative onClose to the modal stack's pop() and renders inside the
+// stack rather than a standalone modal.
+// -----------------------------------------------------------------------------
+
+function SandboxPreviewBody({
+  item,
+  onLoadIntoBuild,
+}: {
+  item: SandboxPreviewItem;
+  onLoadIntoBuild: () => void;
+}) {
+  // We reuse the visual layout of SandboxPreviewModal but as a body-only
+  // fragment. The modal chrome (header, close, breadcrumbs) is provided by
+  // the ModalStackRenderer.
+  return (
+    <div className="space-y-4">
+      <div className="rounded-md border border-border bg-card p-3">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+          {item.kind}
+        </p>
+        <h3 className="font-display text-xl font-semibold">
+          {item.row.name}
+        </h3>
+      </div>
+      <div className="prose prose-sm dark:prose-invert max-w-none">
+        <PreviewItemFields item={item} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+        <button
+          type="button"
+          onClick={onLoadIntoBuild}
+          className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          Load into build
+        </button>
+        <a
+          href={`/library/${item.kind === "primitive" ? "primitive" : item.kind}/${item.kind === "primitive" ? item.row.id : item.row.id}`}
+          className="text-xs text-primary hover:underline"
+        >
+          Open source page →
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function PreviewItemFields({ item }: { item: SandboxPreviewItem }) {
+  if (item.kind === "template" || item.kind === "item") {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Template / item previews render in the Blueprint library modal.
+      </p>
+    );
+  }
+  if (item.kind === "primitive") {
+    const r = item.row;
+    return (
+      <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+        <div>
+          <dt className="text-xs uppercase text-muted-foreground">Category</dt>
+          <dd>{r.category}</dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase text-muted-foreground">BU Cost</dt>
+          <dd>{r.buCost}</dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase text-muted-foreground">Cost Tier</dt>
+          <dd>{r.costTier}</dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase text-muted-foreground">Public</dt>
+          <dd>{r.isPublic ? "Yes" : "No"}</dd>
+        </div>
+        <div className="sm:col-span-2">
+          <dt className="text-xs uppercase text-muted-foreground">Mechanical Output</dt>
+          <dd className="whitespace-pre-wrap">{r.mechanicalOutputText}</dd>
+        </div>
+        <div className="sm:col-span-2">
+          <dt className="text-xs uppercase text-muted-foreground">Narrative Rule</dt>
+          <dd className="whitespace-pre-wrap">{r.narrativeRule}</dd>
+        </div>
+        {r.isMirrorable ? (
+          <div className="sm:col-span-2">
+            <dt className="text-xs uppercase text-muted-foreground">Mirror</dt>
+            <dd>
+              {r.mirrorVector} ({r.mirrorBuCredit} BU)
+              {r.mirrorEligibilityNotes ? ` — ${r.mirrorEligibilityNotes}` : ""}
+            </dd>
+          </div>
+        ) : null}
+      </dl>
+    );
+  }
+  if (item.kind === "effect") {
+    const r = item.row;
+    return (
+      <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <dt className="text-xs uppercase text-muted-foreground">Narrative</dt>
+          <dd className="whitespace-pre-wrap">{r.narrativeDescription}</dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase text-muted-foreground">Public</dt>
+          <dd>{r.isPublic ? "Yes" : "No"}</dd>
+        </div>
+        {r.sourceOrigin ? (
+          <div>
+            <dt className="text-xs uppercase text-muted-foreground">Source</dt>
+            <dd>{r.sourceOrigin}</dd>
+          </div>
+        ) : null}
+        {r.tags.length > 0 ? (
+          <div className="sm:col-span-2">
+            <dt className="text-xs uppercase text-muted-foreground">Tags</dt>
+            <dd className="flex flex-wrap gap-1">
+              {r.tags.map((t: string) => (
+                <span
+                  key={t}
+                  className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium"
+                >
+                  {t}
+                </span>
+              ))}
+            </dd>
+          </div>
+        ) : null}
+        <div className="sm:col-span-2">
+          <dt className="text-xs uppercase text-muted-foreground">
+            Primitive Links
+          </dt>
+          <dd>
+            <ul className="space-y-1">
+              {r.primitiveLinks.map((pl) => (
+                <li key={pl.primitiveId} className="text-xs">
+                  ×{pl.quantity} {pl.primitive.name} ({pl.primitive.buCost} BU)
+                </li>
+              ))}
+            </ul>
+          </dd>
+        </div>
+      </dl>
+    );
+  }
+  // capability
+  if (item.kind === "capability") {
+    const r = item.row;
+    return (
+      <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+        <div>
+          <dt className="text-xs uppercase text-muted-foreground">Type</dt>
+          <dd>{r.type}</dd>
+        </div>
+        <div>
+          <dt className="text-xs uppercase text-muted-foreground">Public</dt>
+          <dd>{r.isPublic ? "Yes" : "No"}</dd>
+        </div>
+        <div className="sm:col-span-2">
+          <dt className="text-xs uppercase text-muted-foreground">Description</dt>
+          <dd className="whitespace-pre-wrap">{r.verboseDescription}</dd>
+        </div>
+        {r.tags.length > 0 ? (
+          <div className="sm:col-span-2">
+            <dt className="text-xs uppercase text-muted-foreground">Tags</dt>
+            <dd className="flex flex-wrap gap-1">
+              {r.tags.map((t: string) => (
+                <span
+                  key={t}
+                  className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium"
+                >
+                  {t}
+                </span>
+              ))}
+            </dd>
+          </div>
+        ) : null}
+        <div className="sm:col-span-2">
+          <dt className="text-xs uppercase text-muted-foreground">
+            Primitive Links
+          </dt>
+          <dd>
+            <ul className="space-y-1">
+              {r.primitiveLinks.map((pl) => (
+                <li key={pl.primitiveId} className="text-xs">
+                  {pl.role} ×{pl.quantity} {pl.primitive.name} ({pl.primitive.buCost} BU)
+                </li>
+              ))}
+            </ul>
+          </dd>
+        </div>
+      </dl>
+    );
+  }
+  return null;
 }

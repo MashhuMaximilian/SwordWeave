@@ -16,7 +16,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { LibraryToolbar } from "@/components/library/library-toolbar";
 import { LibraryTable } from "@/components/library/library-table";
+import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import { DetailModal } from "@/components/ui/detail-modal";
+import { useFilterSlot } from "@/components/layout/right-filter-panel";
+import { useGlobalControls } from "@/components/layout/global-controls";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import type { LibraryEngagement } from "@/components/library/library-table";
 import type { LibraryToolbarState } from "@/components/library/library-toolbar";
@@ -86,13 +89,39 @@ export function LibraryBrowseClient({
     setSelectedItem(item);
   }, []);
 
+  // Right-side filter panel slot: full toolbar lives inside the panel.
+  // The column header has a search bar + filter-open button.
+  const { setFilterPanelOpen } = useGlobalControls();
+  useFilterSlot(
+    <div className="space-y-3">
+      <LibraryToolbar
+        state={state}
+        onStateChange={onStateChange}
+        primitiveCategories={primitiveCategories}
+        showSearch={true}
+        showAdvancedFilters={true}
+      />
+    </div>,
+  );
+
+  const hasActiveFilters =
+    state.typeFilter !== "ALL" ||
+    state.category !== "" ||
+    state.author !== "" ||
+    state.minLikes !== "" ||
+    state.hasForks ||
+    state.sort !== "ENGAGEMENT";
+
   return (
     <div className="flex h-full flex-col">
       <div className="shrink-0 border-b border-border bg-card px-4 py-3">
-        <LibraryToolbar
-          state={state}
-          onStateChange={onStateChange}
-          primitiveCategories={primitiveCategories}
+        <ColumnSearchBar
+          search={state.search}
+          onSearchChange={(s: string) =>
+            onStateChange({ ...state, search: s })
+          }
+          onOpenFilters={() => setFilterPanelOpen(true)}
+          hasActiveFilters={hasActiveFilters}
         />
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
