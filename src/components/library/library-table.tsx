@@ -131,16 +131,22 @@ export function LibraryTable({
     <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 overflow-auto">
         <div
-          className="grid h-full grid-cols-1 gap-3 p-3 md:grid-cols-2 lg:grid-cols-3"
+          className="grid auto-rows-fr grid-cols-1 gap-3 p-3 md:grid-cols-2 lg:grid-cols-3"
           style={{
-            // auto-rows-fr (NOT repeat(auto-fill, ...)) so the grid creates
-            // rows ONLY for the actual cards. The previous auto-fill
-            // pattern created phantom rows to fill the available height,
-            // which is what produced the "empty strip below the cards" bug
-            // the user reported across multiple rounds. With auto-rows-fr
-            // the existing cards stretch to fill the column (each card
-            // gets an equal share, min 7rem from the GridCard min-h).
-            gridAutoRows: "minmax(7rem, 1fr)",
+            // The grid is sized to its CONTENT (no h-full). With
+            // auto-rows-fr each row takes an equal share of whatever
+            // height the grid naturally has — but since there's no
+            // h-full, the grid stops growing once the cards are laid
+            // out. The cards' own min-h-[7rem] ensures they're never
+            // shorter than 7rem. The previous h-full+minmax(7rem,1fr)
+            // combo forced rows to stretch to fill the entire scroll
+            // container (e.g. a single 1-card row became 600px tall,
+            // producing a tall card with empty space inside it). The
+            // double-wrapper (flex h-full + flex-1 overflow-auto) is
+            // what was creating the "empty space" — the scroll
+            // container had leftover height that the grid then
+            // distributed as stretched rows.
+            gridAutoRows: "minmax(7rem, auto)",
           }}
         >
           {items.map((item) => (

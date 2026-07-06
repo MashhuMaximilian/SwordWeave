@@ -28,14 +28,27 @@ export type CapabilitySlot = {
   };
 };
 
+/** Effect summary used by the preview — name + narrative description. */
+export type CapabilityEffectRef = {
+  id: string;
+  name: string;
+  narrativeDescription: string;
+};
+
 export function CapabilityFormPreview({
   form,
   slots,
+  effects,
 }: {
   form: CapabilityFormState;
   slots: CapabilitySlot[];
+  effects?: CapabilityEffectRef[];
 }) {
-  const isEmpty = !form.name && !form.verboseDescription && slots.length === 0;
+  const isEmpty =
+    !form.name &&
+    !form.verboseDescription &&
+    slots.length === 0 &&
+    (effects?.length ?? 0) === 0;
   const tags = form.tags
     .split(",")
     .map((t) => t.trim())
@@ -77,6 +90,11 @@ export function CapabilityFormPreview({
           <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
             {slots.length} slots
           </span>
+          {(effects?.length ?? 0) > 0 ? (
+            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
+              {effects!.length} effects
+            </span>
+          ) : null}
           {form.sourceOrigin ? (
             <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
               {form.sourceOrigin}
@@ -147,6 +165,29 @@ export function CapabilityFormPreview({
                 <span className="shrink-0 font-mono text-xs">
                   {slot.primitive.buCost * slot.quantity} BU
                 </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {(effects?.length ?? 0) > 0 ? (
+        <section>
+          <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+            Effects ({effects!.length})
+          </h3>
+          <ul className="space-y-2">
+            {effects!.map((effect) => (
+              <li
+                key={effect.id}
+                className="rounded-md border border-border bg-background p-2 text-sm"
+              >
+                <p className="font-semibold">{effect.name}</p>
+                {effect.narrativeDescription ? (
+                  <p className="mt-1 text-xs leading-snug text-muted-foreground">
+                    {effect.narrativeDescription}
+                  </p>
+                ) : null}
               </li>
             ))}
           </ul>

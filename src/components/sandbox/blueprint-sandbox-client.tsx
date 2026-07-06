@@ -261,8 +261,27 @@ export function BlueprintSandboxClient({
 
   const previewNode = useMemo(() => {
     if (build === "template") {
+      // Live form snapshot is preferred so the preview updates as the
+      // user types. Fall back to the loaded `editing` row for the
+      // initial paint. Empty state when both are absent.
+      const snapForm = formSnapshot?.form as
+        | {
+            kind: "RACE" | "BACKGROUND" | "ARCHETYPE";
+            name: string;
+            imageUrl: string;
+            description: string;
+            suggestedTraits: string;
+            isPublic: boolean;
+          }
+        | undefined;
+      const snapPrimitiveIds = formSnapshot?.primitiveIds as
+        | string[]
+        | undefined;
+      const snapCapabilityIds = formSnapshot?.capabilityIds as
+        | string[]
+        | undefined;
       const row = editing?.kind === "template" ? editing.row : null;
-      if (!row) {
+      if (!snapForm && !row) {
         return (
           <div className="flex h-full items-center justify-center p-6 text-center">
             <div className="max-w-xs space-y-2">
@@ -277,34 +296,89 @@ export function BlueprintSandboxClient({
           </div>
         );
       }
-      return (
-        <TemplateFormPreview
-          form={{
-            kind: row.kind,
-            name: row.name,
-            imageUrl: row.imageUrl ?? "",
-            description: row.description ?? "",
-            suggestedTraits: row.suggestedTraits ?? "",
-            isPublic: row.isPublic,
-          }}
-          primitives={row.primitiveLinks.map((link) => ({
+      const form = snapForm ?? (row ? {
+        kind: row.kind,
+        name: row.name,
+        imageUrl: row.imageUrl ?? "",
+        description: row.description ?? "",
+        suggestedTraits: row.suggestedTraits ?? "",
+        isPublic: row.isPublic,
+      } : null);
+      // Map primitive IDs → primitive rows for the preview. We have
+      // `primitives` (sandbox-supplied list of all primitives) so we
+      // can resolve IDs into the full row shape the preview expects.
+      const primitiveSlots = snapPrimitiveIds
+        ? snapPrimitiveIds
+            .map((id) =>
+              primitives.find((p) => String(p.id) === id),
+            )
+            .filter((p): p is (typeof primitives)[number] => Boolean(p))
+            .map((p) => ({
+              id: p.id,
+              name: p.name,
+              category: p.category,
+              buCost: p.buCost,
+            }))
+        : (row ? row.primitiveLinks.map((link) => ({
             id: link.primitiveId,
             name: link.primitive.name,
             category: link.primitive.category,
             buCost: link.primitive.buCost,
-          }))}
-          capabilities={row.capabilityLinks.map((link) => ({
+          })) : []);
+      const capabilitySlots = snapCapabilityIds
+        ? snapCapabilityIds
+            .map((id) =>
+              capabilities.find((c) => String(c.id) === id),
+            )
+            .filter((c): c is (typeof capabilities)[number] => Boolean(c))
+            .map((c) => ({
+              id: c.id,
+              name: c.name,
+              category: c.type,
+              buCost: 0,
+            }))
+        : (row ? row.capabilityLinks.map((link) => ({
             id: link.capabilityId,
             name: link.capability.name,
             category: link.capability.type,
             buCost: 0,
-          }))}
+          })) : []);
+      if (!form) return null;
+      return (
+        <TemplateFormPreview
+          form={form}
+          primitives={primitiveSlots}
+          capabilities={capabilitySlots}
         />
       );
     }
     if (build === "item") {
+      const snapForm = formSnapshot?.form as
+        | {
+            name: string;
+            itemType: string;
+            rarity: string;
+            buCost: string;
+            description: string;
+            slotCost: string;
+            quantity: string;
+            isTwoHanded: boolean;
+            isConsumable: boolean;
+            actsAsFocus: boolean;
+            isPublic: boolean;
+            sourceOrigin: string;
+            tags: string;
+          }
+        | undefined;
+      const snapPrimitiveIds = formSnapshot?.primitiveIds as
+        | string[]
+        | undefined;
+      const snapCapabilityIds = formSnapshot?.capabilityIds as
+        | string[]
+        | undefined;
+      const snapEffectIds = formSnapshot?.effectIds as string[] | undefined;
       const row = editing?.kind === "item" ? editing.row : null;
-      if (!row) {
+      if (!snapForm && !row) {
         return (
           <div className="flex h-full items-center justify-center p-6 text-center">
             <div className="max-w-xs space-y-2">
@@ -319,29 +393,64 @@ export function BlueprintSandboxClient({
           </div>
         );
       }
-      return (
-        <ItemFormPreview
-          form={{
-            name: row.name,
-            itemType: row.itemType,
-            rarity: row.rarity,
-            buCost: String(row.buCost),
-            description: row.description,
-            slotCost: String(row.slotCost),
-            quantity: String(row.quantity ?? 1),
-            isTwoHanded: row.isTwoHanded,
-            isConsumable: row.isConsumable,
-            actsAsFocus: row.actsAsFocus,
-            isPublic: row.isPublic,
-            sourceOrigin: row.sourceOrigin ?? "",
-            tags: row.tags.join(", "),
-          }}
-          primitiveSlots={row.primitiveLinks.map((link) => ({
+      const form = snapForm ?? (row ? {
+        name: row.name,
+        itemType: row.itemType,
+        rarity: row.rarity,
+        buCost: String(row.buCost),
+        description: row.description,
+        slotCost: String(row.slotCost),
+        quantity: String(row.quantity ?? 1),
+        isTwoHanded: row.isTwoHanded,
+        isConsumable: row.isConsumable,
+        actsAsFocus: row.actsAsFocus,
+        isPublic: row.isPublic,
+        sourceOrigin: row.sourceOrigin ?? "",
+        tags: row.tags.join(", "),
+      } : null);
+      const primitiveSlots = snapPrimitiveIds
+        ? snapPrimitiveIds
+            .map((id) =>
+              primitives.find((p) => String(p.id) === id),
+            )
+            .filter((p): p is (typeof primitives)[number] => Boolean(p))
+            .map((p) => ({
+              primitiveId: p.id,
+              primitive: p,
+            }))
+        : (row ? row.primitiveLinks.map((link) => ({
             primitiveId: link.primitiveId,
             primitive: link.primitive,
-          }))}
-          capabilitySlots={[]}
-          effectSlots={[]}
+          })) : []);
+      const capabilitySlots = snapCapabilityIds
+        ? snapCapabilityIds
+            .map((id) =>
+              capabilities.find((c) => String(c.id) === id),
+            )
+            .filter((c): c is (typeof capabilities)[number] => Boolean(c))
+            .map((c) => ({
+              id: c.id,
+              name: c.name,
+              type: c.type,
+              sourceType: c.sourceType,
+            }))
+        : [];
+      const effectSlots = snapEffectIds
+        ? snapEffectIds
+            .map((id) => effects.find((e) => e.id === id))
+            .filter((e): e is (typeof effects)[number] => Boolean(e))
+            .map((e) => ({
+              id: e.id,
+              name: e.name,
+            }))
+        : [];
+      if (!form) return null;
+      return (
+        <ItemFormPreview
+          form={form}
+          primitiveSlots={primitiveSlots}
+          capabilitySlots={capabilitySlots}
+          effectSlots={effectSlots}
         />
       );
     }
@@ -352,7 +461,7 @@ export function BlueprintSandboxClient({
         </p>
       </div>
     );
-  }, [build, editing]);
+  }, [build, editing, formSnapshot, primitives, capabilities, effects]);
 
   function buildTabs() {
     const tabs: { key: BlueprintBuildMode; label: string }[] = [

@@ -407,6 +407,7 @@ export function GrammarSandboxClient({
           primitive: { id: number; name: string; category: string; buCost: number };
         }>
       | undefined;
+    const snapEffectIds = formSnapshot?.effectIds as string[] | undefined;
     if (!snapForm && !editing) {
       return (
         <div className="flex h-full items-center justify-center p-6 text-center">
@@ -440,14 +441,30 @@ export function GrammarSandboxClient({
       slotLabel: link.slotLabel ?? link.primitive.name,
       primitive: link.primitive,
     })) : []);
+    // Resolve effect references: prefer the live form snapshot
+    // (state.effectIds from the capability form), fall back to whatever
+    // the loaded row carries. The capability form lets the user add
+    // effects via the EffectPicker; those need to show in the preview
+    // so the user can see their composition take shape.
+    const effectRefs = snapEffectIds
+      ? snapEffectIds
+          .map((id) => effects.find((e) => e.id === id))
+          .filter((e): e is (typeof effects)[number] => Boolean(e))
+          .map((e) => ({
+            id: e.id,
+            name: e.name,
+            narrativeDescription: e.narrativeDescription,
+          }))
+      : [];
     if (!form) return null;
     return (
       <CapabilityFormPreview
         form={form}
         slots={slots}
+        effects={effectRefs}
       />
     );
-  }, [build, editing, formSnapshot]);
+  }, [build, editing, formSnapshot, effects]);
 
   // Tab strip across the BOTTOM of the page. Acts as the in-page type
   // selector — the user moved it from the top to free vertical space

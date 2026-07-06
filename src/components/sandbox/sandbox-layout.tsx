@@ -4,9 +4,11 @@ import {
   Group,
   Panel,
   Separator,
+  type GroupImperativeHandle,
   type PanelImperativeHandle,
   type Layout,
   useDefaultLayout as useMobileDefaultLayout,
+  useGroupRef,
 } from "react-resizable-panels";
 import {
   ChevronLeft,
@@ -590,23 +592,27 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
     setHydrated(true);
   }, []);
 
-  // Imperative refs for the two panels + group. The custom drag handle
-  // (see below) uses these to call setSize/setLayout directly with pointer
-  // events, bypassing react-resizable-panels' built-in Separator which
-  // proved unreliable on touch devices in earlier iterations.
+  // Imperative refs for the two panels. The custom drag handle (see
+  // below) calls Group.setLayout() with percentages to resize — this is
+  // the only API on react-resizable-panels that takes raw percentages.
+  // Panel.resize(size) treats numeric values as PIXELS (per the
+  // PanelImperativeHandle docs), so passing a percent number there
+  // produced 50-pixel panels and the user couldn't see any change. The
+  // proper path is Group.setLayout({ library: 50, builder: 50 }).
   const libraryPanelRef = useRef<PanelImperativeHandle>(null);
   const builderPanelRef = useRef<PanelImperativeHandle>(null);
-  const groupRef = useRef<{ getLayout: () => Record<string, number>; setLayout: (l: Record<string, number>) => void } | null>(null);
+  // useGroupRef() returns a properly-typed RefObject<GroupImperativeHandle>
+  // that React will actually attach. The previous hand-rolled
+  // `useRef<{ getLayout, setLayout }>(null)` plus `groupRef={groupRef as never}`
+  // cast broke the ref attachment, so all drag calls were no-ops.
+  const groupRef = useGroupRef();
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Refs (not state) for drag bookkeeping — pointermove fires at 60Hz and
   // the first move can arrive before a setState update propagates. Using
   // refs avoids the "first move is dropped" bug that plagued the earlier
   // state-based approach. Window-level pointermove/pointerup listeners
   // (added in startDrag, removed in endDrag) ensure the drag continues
-  // even when the pointer leaves the handle — a problem with the previous
-  // inline onPointerMove/onPointerUp that only fired while over the
-  // handle div, and one explanation for why the drag "still doesn't
-  // resize" on some devices.
+  // even when the pointer leaves the handle.
   const draggingRef = useRef(false);
   const startYRef = useRef(0);
   const startPctRef = useRef(0);
@@ -679,16 +685,21 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
       Math.min(75, (offsetFromTop / available) * 100),
     );
     const newBuilderPct = 100 - newLibraryPct;
-    // Drive each Panel directly via its imperative handle. Bypasses the
-    // Group's setLayout() — which silently no-ops if the groupRef ref
-    // wasn't wired up correctly by the react-resizable-panels Group
-    // component (the previous attempt to call groupRef.setLayout() did
-    // nothing on the user's phone, which is the "dragging does nothing"
-    // bug reported in the 6th round). Panel.resize() is a direct path
-    // to the panel's internal state and is guaranteed to resize.
-    libraryPanelRef.current?.resize(newLibraryPct);
-    builderPanelRef.current?.resize(newBuilderPct);
-  }, []);
+    // Drive the Group via its imperative handle with PERCENTAGES.
+    // Group.setLayout takes a map of panelId → percentage (0..100).
+    // NOTE: Panel.resize() with a number is interpreted as PIXELS, not
+    // percent (per the PanelImperativeHandle docs: "Numeric values are
+    // assumed to be pixels."). The previous attempt called
+    // libraryPanelRef.current?.resize(50) which set the panel to 50
+    // PIXELS — visually invisible, hence "dragging does nothing."
+    // setLayout() with raw percentages is the correct API.
+    if (groupRef.current) {
+      groupRef.current.setLayout({
+        library: newLibraryPct,
+        builder: newBuilderPct,
+      });
+    }
+  }, [groupRef]);
 
   const onPointerUp = useCallback((e: PointerEvent) => {
     draggingRef.current = false;
@@ -756,7 +767,7 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
           defaultLayout={splitLayout.defaultLayout}
           onLayoutChange={splitLayout.onLayoutChange}
           onLayoutChanged={splitLayout.onLayoutChanged}
-          groupRef={groupRef as never}
+          groupRef={groupRef}
           className="flex h-full min-h-0 pb-12"
           style={{ touchAction: "none" }}
         >
