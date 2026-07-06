@@ -15,11 +15,22 @@ import { GlobalControls } from "./global-controls";
 import { ModalStackHost } from "@/components/ui/modal-stack";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  // CRITICAL: GlobalControls must WRAP ModalStackHost, not the other way
+  // around. The ModalStackRenderer (a sibling of {children} inside
+  // ModalStackHost) renders the modals — and modal content like
+  // BlueprintPreviewBody / GrammarPreviewBody call
+  // useGlobalControls() to open the build preview drawer after a slot
+  // or load. If GlobalControls were outside, the modal content would
+  // throw "useGlobalControls must be used inside <GlobalControls>"
+  // when a user clicks a library row, crashing the entire page with
+  // the "SANDBOX FAILED TO LOAD" / "page could not load" error.
+  // Keeping GlobalControls outermost ensures the FAB, the page tree,
+  // and the modal stack renderer are all inside the provider.
   return (
-    <ModalStackHost>
-      <GlobalControls>
+    <GlobalControls>
+      <ModalStackHost>
         <main className="min-w-0 pb-2">{children}</main>
-      </GlobalControls>
-    </ModalStackHost>
+      </ModalStackHost>
+    </GlobalControls>
   );
 }

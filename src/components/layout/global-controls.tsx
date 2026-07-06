@@ -81,10 +81,47 @@ interface GlobalControlsState {
 
 const Ctx = createContext<GlobalControlsState | null>(null);
 
-export function useGlobalControls() {
+// No-op fallback so callsites outside the GlobalControls tree (e.g. a
+// modal body that renders outside the provider for any reason) don't
+// crash the page. The previous behaviour threw an error, which
+// propagated up to Next.js's error boundary and produced the
+// "page could not load" overlay for the entire /sandbox/* page on
+// row click. The no-op silently degrades instead.
+const NOOP_GLOBAL_CONTROLS: GlobalControlsState = {
+  dark: false,
+  setDark: () => {},
+  toggleDark: () => {},
+  filterPanelOpen: false,
+  setFilterPanelOpen: () => {},
+  drawerOpen: false,
+  drawerTab: "build",
+  openDrawer: () => {},
+  closeDrawer: () => {},
+  setDrawerTab: () => {},
+  isFullscreen: false,
+  toggleFullscreen: () => {},
+  sandboxSplit: false,
+  setSandboxSplit: () => {},
+  isSandboxRoute: false,
+  sandboxFormDirty: false,
+  setSandboxFormDirty: () => {},
+};
+
+export function useGlobalControls(): GlobalControlsState {
   const ctx = useContext(Ctx);
   if (!ctx) {
-    throw new Error("useGlobalControls must be used inside <GlobalControls>");
+    // Defensive: no provider in the tree. Return a no-op so callsites
+    // (especially modal bodies that may render outside the GlobalControls
+    // tree in some edge cases) don't crash the entire page. This
+    // previously threw, which took down the whole sandbox on row click
+    // when the modal-stack renderer wasn't wrapped in GlobalControls.
+    if (typeof console !== "undefined") {
+      console.warn(
+        "useGlobalControls called outside <GlobalControls> — returning no-op. " +
+          "Make sure AppShell wraps the page in <GlobalControls>.",
+      );
+    }
+    return NOOP_GLOBAL_CONTROLS;
   }
   return ctx;
 }
