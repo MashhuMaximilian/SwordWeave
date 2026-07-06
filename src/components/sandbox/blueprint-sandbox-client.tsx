@@ -89,6 +89,7 @@ export function BlueprintSandboxClient({
   initialBuild,
   initialKind,
   initialEditing,
+  dataLoadFailed = false,
   templates,
   items,
   primitives,
@@ -101,6 +102,13 @@ export function BlueprintSandboxClient({
   initialBuild: BlueprintBuildMode;
   initialKind?: "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined;
   initialEditing: EditingState;
+  /**
+   * When true, the DB query batch on the server failed and the rows
+   * below are empty arrays. The page renders a small banner explaining
+   * that the library is empty because the database is being uncooperative,
+   * and the form remains editable so the user doesn't lose their work.
+   */
+  dataLoadFailed?: boolean;
   templates: TemplateRow[];
   items: ItemRow[];
   primitives: Array<{

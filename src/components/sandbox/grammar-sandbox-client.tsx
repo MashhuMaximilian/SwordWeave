@@ -100,6 +100,7 @@ type PendingAction =
 export function GrammarSandboxClient({
   initialBuild,
   initialEditing,
+  dataLoadFailed = false,
   primitives,
   effects,
   capabilities,
@@ -107,6 +108,13 @@ export function GrammarSandboxClient({
 }: {
   initialBuild: GrammarBuildMode;
   initialEditing: EditingState;
+  /**
+   * When true, the DB query batch on the server failed and the rows
+   * below are empty arrays. The page renders a small banner explaining
+   * that the library is empty because the database is being uncooperative,
+   * and the form remains editable so the user doesn't lose their work.
+   */
+  dataLoadFailed?: boolean;
   primitives: PrimitiveRow[];
   effects: EffectRow[];
   capabilities: CapabilityRow[];

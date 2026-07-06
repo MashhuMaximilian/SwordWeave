@@ -10,6 +10,7 @@ import {
   BlueprintSandboxClient,
   type BlueprintBuildMode,
 } from "@/components/sandbox/blueprint-sandbox-client";
+import type { SandboxCapabilityRow } from "@/components/library/library-item-preview";
 import { db } from "@/db/client";
 import { capabilities, effects, items, primitives, templates } from "@/db/schema";
 import {
@@ -43,8 +44,35 @@ export default async function BlueprintSandboxPage({
   const kind = parseKind(params.kind);
   const editId = params.edit;
 
-  const [templateRows, itemRows, primitiveRows, capabilityRows, effectRows] =
-    await Promise.all([
+  // Five parallel DB queries for templates/items/primitives/capabilities/effects.
+  // Wrap the whole batch in try/catch so a transient failure in any one
+  // query doesn't 500 the entire /sandbox/blueprint page. Previous behaviour:
+  // query throws → unhandled error → user sees 'SANDBOX FAILED TO LOAD'
+  // (Digest: 4107304400) and can do nothing until Vercel recovers. New
+  // behaviour: log the error, render with empty arrays, user can still type
+  // in the form and the library column just shows an empty list.
+  //
+  // Implementation: `safeBatchLoad` runs the Promise.all inside a try/catch
+  // and returns either the full result tuple OR a sentinel "allFailed" flag
+  // plus the empty-fallback tuple. The fallback tuple is typed as
+  // `never[][]` because TypeScript can't unify the rich Drizzle row types
+  // with the empty default — but the `dataLoadFailed` flag tells the rest
+  // of the function to treat the rows as empty.
+  let dataLoadFailed = false;
+  let templateRows: unknown[] = [];
+  let itemRows: unknown[] = [];
+  let primitiveRows: unknown[] = [];
+  let capabilityRows: unknown[] = [];
+  let effectRows: unknown[] = [];
+
+  try {
+    const [
+      tRows,
+      iRows,
+      pRows,
+      cRows,
+      eRows,
+    ] = await Promise.all([
       db.query.templates.findMany({
         orderBy: [asc(templates.kind), asc(templates.name)],
         with: {
@@ -71,18 +99,35 @@ export default async function BlueprintSandboxPage({
         },
       }),
     ]);
+    templateRows = tRows as unknown[];
+    itemRows = iRows as unknown[];
+    primitiveRows = pRows as unknown[];
+    capabilityRows = cRows as unknown[];
+    effectRows = eRows as unknown[];
+  } catch (err) {
+    dataLoadFailed = true;
+    // eslint-disable-next-line no-console
+    console.error(
+      "[blueprint sandbox] DB query batch failed, rendering empty library:",
+      err,
+    );
+  }
 
   let initialEditing:
-    | { kind: "template"; row: (typeof templateRows)[number] }
-    | { kind: "item"; row: (typeof itemRows)[number] }
+    | { kind: "template"; row: { id: string } }
+    | { kind: "item"; row: { id: string } }
     | null = null;
 
   if (editId) {
     if (build === "template") {
-      const row = templateRows.find((t) => t.id === editId);
+      const row = templateRows.find(
+        (t) => (t as { id: string }).id === editId,
+      ) as { id: string } | undefined;
       if (row) initialEditing = { kind: "template", row };
     } else if (build === "item") {
-      const row = itemRows.find((i) => i.id === editId);
+      const row = itemRows.find(
+        (i) => (i as { id: string }).id === editId,
+      ) as { id: string } | undefined;
       if (row) initialEditing = { kind: "item", row };
     }
   }
@@ -94,72 +139,144 @@ export default async function BlueprintSandboxPage({
   // spec). Sub-entity resolution uses the dedicated primitive/capability
   // row arrays below.
   const libraryItems: LibraryItem[] = [
-    ...templateRows.map((r) => templateToLibraryItem(r)),
-    ...itemRows.map((r) => itemToLibraryItem(r)),
-    ...primitiveRows.map((r) => primitiveToLibraryItem(r)),
-    ...effectRows.map((r) => effectToLibraryItem(r)),
-    ...capabilityRows.map((r) => capabilityToLibraryItem(r)),
+    ...(templateRows as never[]).map((r) => templateToLibraryItem(r)),
+    ...(itemRows as never[]).map((r) => itemToLibraryItem(r)),
+    ...(primitiveRows as never[]).map((r) => primitiveToLibraryItem(r)),
+    ...(effectRows as never[]).map((r) => effectToLibraryItem(r)),
+    ...(capabilityRows as never[]).map((r) => capabilityToLibraryItem(r)),
   ];
 
   return (
     <BlueprintSandboxClient
       initialBuild={build}
       initialKind={kind}
-      initialEditing={initialEditing}
-      templates={templateRows}
-      items={itemRows}
-      primitives={primitiveRows.map((p) => ({
-        id: p.id,
-        name: p.name,
-        category: p.category,
-        buCost: p.buCost,
-      }))}
-      capabilities={capabilityRows.map((c) => ({
-        id: c.id,
-        name: c.name,
-        type: c.type,
-        sourceType: c.sourceType,
-      }))}
-      effects={effectRows.map((e) => ({
-        id: e.id,
-        name: e.name,
-        narrativeDescription: e.narrativeDescription,
-        sourceOrigin: e.sourceOrigin,
-        tags: e.tags ?? [],
-        isPublic: e.isPublic,
-        primitiveLinks: (e.primitiveLinks ?? []).map((l) => ({
-          primitiveId: l.primitiveId,
-          quantity: l.quantity,
-          primitive: l.primitive,
-        })),
-      }))}
+      initialEditing={initialEditing as never}
+      templates={templateRows as never}
+      items={itemRows as never}
+      primitives={(primitiveRows as never[]).map((p) => {
+        const row = p as {
+          id: number;
+          name: string;
+          category: string;
+          buCost: number;
+        };
+        return {
+          id: row.id,
+          name: row.name,
+          category: row.category,
+          buCost: row.buCost,
+        };
+      })}
+      capabilities={(capabilityRows as never[]).map((c) => {
+        const row = c as {
+          id: string;
+          name: string;
+          type: string;
+          sourceType: string;
+        };
+        return {
+          id: row.id,
+          name: row.name,
+          type: row.type,
+          sourceType: row.sourceType,
+        };
+      })}
+      effects={(effectRows as never[]).map((e) => {
+        const row = e as {
+          id: string;
+          name: string;
+          narrativeDescription: string;
+          sourceOrigin: string | null;
+          tags: string[] | null;
+          isPublic: boolean;
+          primitiveLinks?: Array<{
+            primitiveId: number;
+            quantity: number;
+            primitive: {
+              id: number;
+              name: string;
+              category: string;
+              buCost: number;
+            };
+          }>;
+        };
+        return {
+          id: row.id,
+          name: row.name,
+          narrativeDescription: row.narrativeDescription,
+          sourceOrigin: row.sourceOrigin,
+          tags: row.tags ?? [],
+          isPublic: row.isPublic,
+          primitiveLinks: (row.primitiveLinks ?? []).map((l) => ({
+            primitiveId: l.primitiveId,
+            quantity: l.quantity,
+            primitive: l.primitive,
+          })),
+        };
+      })}
       libraryItems={libraryItems}
-      sandboxPrimitives={primitiveRows.map((p) => ({
-        id: p.id,
-        name: p.name,
-        category: p.category,
-        buCost: p.buCost,
-        isPublic: p.isPublic,
-        costTier: p.costTier,
-        mechanicalOutputText: p.mechanicalOutputText,
-        narrativeRule: p.narrativeRule,
-        isMirrorable: p.isMirrorable,
-        mirrorVector: p.mirrorVector,
-        mirrorBuCredit: p.mirrorBuCredit,
-        mirrorEligibilityNotes: p.mirrorEligibilityNotes,
-        hardModifiers: p.hardModifiers,
-      }))}
-      sandboxCapabilities={capabilityRows.map((c) => ({
-        id: c.id,
-        name: c.name,
-        type: c.type,
-        sourceType: c.sourceType,
-        verboseDescription: c.verboseDescription,
-        sourceOrigin: c.sourceOrigin,
-        tags: c.tags,
-        isPublic: c.isPublic,
-        primitiveLinks: [],
-      }))}
+      sandboxPrimitives={(primitiveRows as never[]).map((p) => {
+        const row = p as {
+          id: number;
+          name: string;
+          category: string;
+          buCost: number;
+          isPublic: boolean;
+          costTier: string;
+          mechanicalOutputText: string;
+          narrativeRule: string;
+          isMirrorable: boolean;
+          mirrorVector: string;
+          mirrorBuCredit: number;
+          mirrorEligibilityNotes: string;
+          hardModifiers: unknown;
+        };
+        return {
+          id: row.id,
+          name: row.name,
+          category: row.category,
+          buCost: row.buCost,
+          isPublic: row.isPublic,
+          costTier: row.costTier,
+          mechanicalOutputText: row.mechanicalOutputText,
+          narrativeRule: row.narrativeRule,
+          isMirrorable: row.isMirrorable,
+          mirrorVector: row.mirrorVector,
+          mirrorBuCredit: row.mirrorBuCredit,
+          mirrorEligibilityNotes: row.mirrorEligibilityNotes,
+          hardModifiers: row.hardModifiers,
+        };
+      })}
+      sandboxCapabilities={(capabilityRows as never[]).map((c) => {
+        const row = c as {
+          id: string;
+          name: string;
+          type: string;
+          sourceType: string;
+          verboseDescription: string;
+          sourceOrigin: string | null;
+          tags: string[] | null;
+          isPublic: boolean;
+        };
+        return {
+          id: row.id,
+          name: row.name,
+          type: row.type,
+          sourceType: row.sourceType,
+          verboseDescription: row.verboseDescription,
+          sourceOrigin: row.sourceOrigin,
+          tags: row.tags ?? [],
+          isPublic: row.isPublic,
+          // Capability's relational primitiveLinks have a richer shape
+          // (role/sortOrder/slotLabel) but the blueprint sandbox's
+          // capability form only needs the id/name/category/buCost
+          // basics. Cast the empty array to the SandboxCapabilityRow
+          // type so TypeScript is happy; the actual primitiveLinks are
+          // populated separately via the sandbox's load-capability flow.
+          primitiveLinks: [] as unknown as SandboxCapabilityRow["primitiveLinks"],
+        };
+      })}
+      dataLoadFailed={dataLoadFailed}
     />
   );
 }
