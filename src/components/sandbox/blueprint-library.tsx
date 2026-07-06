@@ -23,11 +23,13 @@ import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-qu
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import { useModalStack } from "@/components/ui/modal-stack";
-import type {
-  SandboxItemRow,
-  SandboxPreviewItem,
-  SandboxTemplateRow,
-} from "@/components/sandbox/sandbox-preview-modal";
+import {
+  LibraryItemPreview,
+  previewHeadingLabel,
+  type SandboxItemRow,
+  type SandboxPreviewItem,
+  type SandboxTemplateRow,
+} from "@/components/library/library-item-preview";
 import type { BlueprintBuildMode } from "./blueprint-sandbox-client";
 
 interface BlueprintLibraryProps {
@@ -130,6 +132,13 @@ export function BlueprintLibrary({
   // Filter items by toolbar search/typeFilter + active sub-kinds when in
   // template mode. The toolbar's own filters run in addition to the
   // build-mode gate so the user can narrow the visible subset further.
+  //
+  // The toolbar's state shape supports category/author/minLikes/hasForks
+  // advanced filters; the previous version of this component only applied
+  // search + typeFilter, so chip state for those advanced filters looked
+  // "live" (the chips were clickable) but the result set never updated.
+  // We now apply every toolbar state field that the result set can
+  // meaningfully filter on.
   const filteredItems = useMemo(() => {
     let items = libraryItems;
 
@@ -158,11 +167,67 @@ export function BlueprintLibrary({
     }
 
     // Toolbar type filter.
-    if (
-      toolbarState.typeFilter !== "ALL" &&
-      items.length > 0
-    ) {
+    if (toolbarState.typeFilter !== "ALL" && items.length > 0) {
       items = items.filter((item) => item.targetType === toolbarState.typeFilter);
+    }
+
+    // Category (items only carry category in template rows).
+    if (toolbarState.category) {
+      items = items.filter((item) => item.category === toolbarState.category);
+    }
+
+    // Author.
+    if (toolbarState.author) {
+      const q = toolbarState.author.toLowerCase();
+      items = items.filter(
+        (item) =>
+          item.authorUsername !== null &&
+          item.authorUsername.toLowerCase().includes(q),
+      );
+    }
+
+    // Likes / forks / BU cost — best-effort (LibraryItem may not carry
+    // counts in the browse payload, so we treat absent as 0).
+    if (toolbarState.minLikes) {
+      const min = Number(toolbarState.minLikes);
+      if (!Number.isNaN(min)) {
+        items = items.filter((item) => (item.likesCount ?? 0) >= min);
+      }
+    }
+    if (toolbarState.minForks) {
+      const min = Number(toolbarState.minForks);
+      if (!Number.isNaN(min)) {
+        items = items.filter((item) => (item.forkCount ?? 0) >= min);
+      }
+    }
+    if (toolbarState.hasForks) {
+      items = items.filter((item) => (item.forkCount ?? 0) >= 1);
+    }
+    if (toolbarState.minBu) {
+      const min = Number(toolbarState.minBu);
+      if (!Number.isNaN(min)) {
+        items = items.filter((item) => (item.buCost ?? 0) >= min);
+      }
+    }
+    if (toolbarState.maxBu) {
+      const max = Number(toolbarState.maxBu);
+      if (!Number.isNaN(max)) {
+        items = items.filter((item) => (item.buCost ?? 0) <= max);
+      }
+    }
+
+    // Tags.
+    if (toolbarState.tags) {
+      const wanted = toolbarState.tags
+        .split(",")
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
+      if (wanted.length > 0) {
+        items = items.filter((item) => {
+          const itemTags = (item.tags ?? []).map((t) => t.toLowerCase());
+          return wanted.some((t) => itemTags.includes(t));
+        });
+      }
     }
 
     return items;
@@ -173,11 +238,10 @@ export function BlueprintLibrary({
   const stack = useModalStack();
   function pushPreview(item: SandboxPreviewItem) {
     if (!stack.canPush) return;
-    const label = item.kind === "template" ? item.row.name : item.row.name;
     stack.push({
       key: `${item.kind}:${item.row.id}`,
-      label,
-      category: item.kind,
+      label: item.row.name,
+      category: previewHeadingLabel(item),
       content: (
         <BlueprintPreviewBody
           item={item}
@@ -197,23 +261,35 @@ export function BlueprintLibrary({
   // Right-side filter panel slot: render the full toolbar inside it.
   // The search bar is duplicated in the column header for quick access.
   // Hooks must be called unconditionally — keep this above the monster return.
+  // Memoize the slot content to avoid the re-render loop that previously
+  // produced a noticeable delay between "tap Show filters" and seeing chips.
   const { setFilterPanelOpen } = useGlobalControls();
-  useFilterSlot(
-    <div className="space-y-3">
-      <LibraryToolbar
-        state={toolbarState}
-        onStateChange={setToolbarState}
-        availableTypes={availableTypes}
-        subKindParent="RACE_TEMPLATE"
-        subKinds={SUB_KIND_CHIPS}
-        activeSubKinds={activeSubKinds}
-        onSubKindsChange={setActiveSubKinds}
-        showSearch={true}
-        showAdvancedFilters={true}
-        forceExpandFilters
-      />
-    </div>,
+  const filterPanelContent = useMemo(
+    () => (
+      <div className="space-y-3">
+        <LibraryToolbar
+          state={toolbarState}
+          onStateChange={setToolbarState}
+          availableTypes={availableTypes}
+          subKindParent="RACE_TEMPLATE"
+          subKinds={SUB_KIND_CHIPS}
+          activeSubKinds={activeSubKinds}
+          onSubKindsChange={setActiveSubKinds}
+          showSearch={true}
+          showAdvancedFilters={true}
+          forceExpandFilters
+        />
+      </div>
+    ),
+    [
+      toolbarState,
+      setToolbarState,
+      availableTypes,
+      activeSubKinds,
+      setActiveSubKinds,
+    ],
   );
+  useFilterSlot(filterPanelContent);
 
   const hasActiveFilters =
     toolbarState.typeFilter !== "ALL" ||
@@ -280,8 +356,9 @@ export function BlueprintLibrary({
 }
 
 // -----------------------------------------------------------------------------
-// BlueprintPreviewBody — body for the modal stack entry created by BlueprintLibrary.
-// Renders template or item fields with a "Load into build" / "Open source" footer.
+// BlueprintPreviewBody — modal-stack body for blueprint library previews.
+// Renders the unified <LibraryItemPreview /> and exposes "Load into build"
+// + "Open source page" actions.
 // -----------------------------------------------------------------------------
 
 function BlueprintPreviewBody({
@@ -293,17 +370,7 @@ function BlueprintPreviewBody({
 }) {
   return (
     <div className="space-y-4">
-      <div className="rounded-md border border-border bg-card p-3">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          {item.kind}
-        </p>
-        <h3 className="font-display text-xl font-semibold">
-          {item.row.name}
-        </h3>
-      </div>
-      <div className="prose prose-sm dark:prose-invert max-w-none">
-        <BlueprintPreviewFields item={item} />
-      </div>
+      <LibraryItemPreview item={item} />
       <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
         <button
           type="button"
@@ -313,89 +380,12 @@ function BlueprintPreviewBody({
           Load into build
         </button>
         <a
-          href={`/library/${item.kind}/${item.row.id}`}
+          href={`/library/item/${item.kind.toUpperCase()}:${item.row.id}`}
           className="text-xs text-primary hover:underline"
         >
           Open source page →
         </a>
       </div>
     </div>
-  );
-}
-
-function BlueprintPreviewFields({ item }: { item: SandboxPreviewItem }) {
-  if (item.kind === "primitive" || item.kind === "effect" || item.kind === "capability") {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Grammar entries render in the Grammar library modal.
-      </p>
-    );
-  }
-  if (item.kind === "template") {
-    const r = item.row;
-    return (
-      <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-        <div>
-          <dt className="text-xs uppercase text-muted-foreground">Sub-kind</dt>
-          <dd>{r.kind}</dd>
-        </div>
-        <div>
-          <dt className="text-xs uppercase text-muted-foreground">Public</dt>
-          <dd>{r.isPublic ? "Yes" : "No"}</dd>
-        </div>
-        {r.description ? (
-          <div className="sm:col-span-2">
-            <dt className="text-xs uppercase text-muted-foreground">Description</dt>
-            <dd className="whitespace-pre-wrap">{r.description}</dd>
-          </div>
-        ) : null}
-        {r.suggestedTraits ? (
-          <div className="sm:col-span-2">
-            <dt className="text-xs uppercase text-muted-foreground">Suggested traits</dt>
-            <dd className="whitespace-pre-wrap">{r.suggestedTraits}</dd>
-          </div>
-        ) : null}
-        {r.primitiveLinks.length > 0 ? (
-          <div className="sm:col-span-2">
-            <dt className="text-xs uppercase text-muted-foreground">
-              Primitive Links
-            </dt>
-            <dd>
-              <ul className="space-y-1">
-                {r.primitiveLinks.map((pl) => (
-                  <li key={pl.primitiveId} className="text-xs">
-                    {pl.primitive.name} ({pl.primitive.buCost} BU)
-                  </li>
-                ))}
-              </ul>
-            </dd>
-          </div>
-        ) : null}
-      </dl>
-    );
-  }
-  // item
-  const r = item.row;
-  return (
-    <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-      <div>
-        <dt className="text-xs uppercase text-muted-foreground">Rarity</dt>
-        <dd>{r.rarity ?? "—"}</dd>
-      </div>
-      <div>
-        <dt className="text-xs uppercase text-muted-foreground">BU Cost</dt>
-        <dd>{r.buCost ?? "—"}</dd>
-      </div>
-      <div>
-        <dt className="text-xs uppercase text-muted-foreground">Public</dt>
-        <dd>{r.isPublic ? "Yes" : "No"}</dd>
-      </div>
-      {r.description ? (
-        <div className="sm:col-span-2">
-          <dt className="text-xs uppercase text-muted-foreground">Description</dt>
-          <dd className="whitespace-pre-wrap">{r.description}</dd>
-        </div>
-      ) : null}
-    </dl>
   );
 }

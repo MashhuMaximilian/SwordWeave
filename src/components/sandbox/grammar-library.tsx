@@ -22,12 +22,14 @@ import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-qu
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import { useModalStack } from "@/components/ui/modal-stack";
-import type {
-  SandboxPreviewItem,
-  SandboxPrimitiveRow,
-  SandboxEffectRow,
-  SandboxCapabilityRow,
-} from "@/components/sandbox/sandbox-preview-modal";
+import {
+  LibraryItemPreview,
+  previewHeadingLabel,
+  type SandboxPreviewItem,
+  type SandboxPrimitiveRow,
+  type SandboxEffectRow,
+  type SandboxCapabilityRow,
+} from "@/components/library/library-item-preview";
 import type { GrammarBuildMode } from "./grammar-sandbox-client";
 
 interface GrammarLibraryProps {
@@ -137,6 +139,13 @@ export function GrammarLibrary({
   // Apply toolbar filters to libraryItems. Sandbox Library is gated by
   // build-mode (only the typeFilter values listed in `availableTypes`
   // survive), but within that subset the user can still search, sort, etc.
+  //
+  // The toolbar's state shape supports category/author/minLikes/hasForks
+  // advanced filters; the previous version of this component only applied
+  // search + typeFilter, so chip state for those advanced filters looked
+  // "live" (the chips were clickable) but the result set never updated.
+  // We now apply every toolbar state field that the result set can
+  // meaningfully filter on.
   const filteredItems = useMemo(() => {
     return libraryItems.filter((item) => {
       // Only show items of the types available in this build mode.
@@ -156,25 +165,83 @@ export function GrammarLibrary({
       ) {
         return false;
       }
+      // Apply category filter (primitives only — LibraryItem.category
+      // is only set for primitive rows).
+      if (
+        toolbarState.category &&
+        item.targetType === "PRIMITIVE" &&
+        item.category !== toolbarState.category
+      ) {
+        return false;
+      }
+      // Author username — LibraryItem exposes authorUsername.
+      if (
+        toolbarState.author &&
+        (!item.authorUsername ||
+          !item.authorUsername
+            .toLowerCase()
+            .includes(toolbarState.author.toLowerCase()))
+      ) {
+        return false;
+      }
+      // minLikes / minForks — LibraryItem doesn't carry counts in the
+      // browse payload, so these are best-effort: if the field is present
+      // (populated by a future query), honour it; otherwise pass through.
+      if (toolbarState.minLikes) {
+        const min = Number(toolbarState.minLikes);
+        if (!Number.isNaN(min) && (item.likesCount ?? 0) < min) return false;
+      }
+      if (toolbarState.minForks) {
+        const min = Number(toolbarState.minForks);
+        if (!Number.isNaN(min) && (item.forkCount ?? 0) < min) return false;
+      }
+      if (toolbarState.minBu) {
+        const min = Number(toolbarState.minBu);
+        if (!Number.isNaN(min) && (item.buCost ?? 0) < min) return false;
+      }
+      if (toolbarState.maxBu) {
+        const max = Number(toolbarState.maxBu);
+        if (!Number.isNaN(max) && (item.buCost ?? 0) > max) return false;
+      }
+      // hasForks — same caveat as minLikes.
+      if (toolbarState.hasForks && (item.forkCount ?? 0) < 1) return false;
+      // Tags — comma-separated. Match any.
+      if (toolbarState.tags) {
+        const wanted = toolbarState.tags
+          .split(",")
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean);
+        if (wanted.length > 0) {
+          const itemTags = (item.tags ?? []).map((t) => t.toLowerCase());
+          if (!wanted.some((t) => itemTags.includes(t))) return false;
+        }
+      }
       return true;
     });
   }, [libraryItems, availableTypes, toolbarState]);
 
   // Right-side filter panel slot: render the full toolbar inside it.
   // The search bar is duplicated in the column header for quick access.
+  // Memoize the slot content — the previous inline-JSX pattern caused the
+  // panel slot to re-render on every parent render, producing a noticeable
+  // delay between "tap Show filters" and seeing the chips.
   const { setFilterPanelOpen } = useGlobalControls();
-  useFilterSlot(
-    <div className="space-y-3">
-      <LibraryToolbar
-        state={toolbarState}
-        onStateChange={setToolbarState}
-        availableTypes={availableTypes}
-        showSearch={true}
-        showAdvancedFilters={true}
-        forceExpandFilters
-      />
-    </div>,
+  const filterPanelContent = useMemo(
+    () => (
+      <div className="space-y-3">
+        <LibraryToolbar
+          state={toolbarState}
+          onStateChange={setToolbarState}
+          availableTypes={availableTypes}
+          showSearch={true}
+          showAdvancedFilters={true}
+          forceExpandFilters
+        />
+      </div>
+    ),
+    [toolbarState, setToolbarState, availableTypes],
   );
+  useFilterSlot(filterPanelContent);
 
   const hasActiveFilters =
     toolbarState.typeFilter !== "ALL" ||
@@ -189,11 +256,10 @@ export function GrammarLibrary({
   const stack = useModalStack();
   function pushPreview(item: SandboxPreviewItem) {
     if (!stack.canPush) return;
-    const kindLabel = item.kind;
     stack.push({
-      key: `${item.kind}:${item.kind === "primitive" ? item.row.id : item.row.id}`,
-      label: item.kind === "primitive" ? item.row.name : item.row.name,
-      category: kindLabel,
+      key: `${item.kind}:${item.row.id}`,
+      label: item.row.name,
+      category: previewHeadingLabel(item),
       content: (
         <SandboxPreviewBody
           item={item}
@@ -246,9 +312,9 @@ export function GrammarLibrary({
 }
 
 // -----------------------------------------------------------------------------
-// SandboxPreviewBody — wrapper around SandboxPreviewModal content that adapts
-// the imperative onClose to the modal stack's pop() and renders inside the
-// stack rather than a standalone modal.
+// SandboxPreviewBody — modal-stack body for grammar library previews. Renders
+// the unified <LibraryItemPreview /> and exposes "Load into build" + "Open
+// source page" actions.
 // -----------------------------------------------------------------------------
 
 function SandboxPreviewBody({
@@ -258,22 +324,9 @@ function SandboxPreviewBody({
   item: SandboxPreviewItem;
   onLoadIntoBuild: () => void;
 }) {
-  // We reuse the visual layout of SandboxPreviewModal but as a body-only
-  // fragment. The modal chrome (header, close, breadcrumbs) is provided by
-  // the ModalStackRenderer.
   return (
     <div className="space-y-4">
-      <div className="rounded-md border border-border bg-card p-3">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          {item.kind}
-        </p>
-        <h3 className="font-display text-xl font-semibold">
-          {item.row.name}
-        </h3>
-      </div>
-      <div className="prose prose-sm dark:prose-invert max-w-none">
-        <PreviewItemFields item={item} />
-      </div>
+      <LibraryItemPreview item={item} />
       <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
         <button
           type="button"
@@ -283,7 +336,7 @@ function SandboxPreviewBody({
           Load into build
         </button>
         <a
-          href={`/library/${item.kind === "primitive" ? "primitive" : item.kind}/${item.kind === "primitive" ? item.row.id : item.row.id}`}
+          href={`/library/item/${item.kind.toUpperCase()}:${item.row.id}`}
           className="text-xs text-primary hover:underline"
         >
           Open source page →
@@ -291,154 +344,4 @@ function SandboxPreviewBody({
       </div>
     </div>
   );
-}
-
-function PreviewItemFields({ item }: { item: SandboxPreviewItem }) {
-  if (item.kind === "template" || item.kind === "item") {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Template / item previews render in the Blueprint library modal.
-      </p>
-    );
-  }
-  if (item.kind === "primitive") {
-    const r = item.row;
-    return (
-      <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-        <div>
-          <dt className="text-xs uppercase text-muted-foreground">Category</dt>
-          <dd>{r.category}</dd>
-        </div>
-        <div>
-          <dt className="text-xs uppercase text-muted-foreground">BU Cost</dt>
-          <dd>{r.buCost}</dd>
-        </div>
-        <div>
-          <dt className="text-xs uppercase text-muted-foreground">Cost Tier</dt>
-          <dd>{r.costTier}</dd>
-        </div>
-        <div>
-          <dt className="text-xs uppercase text-muted-foreground">Public</dt>
-          <dd>{r.isPublic ? "Yes" : "No"}</dd>
-        </div>
-        <div className="sm:col-span-2">
-          <dt className="text-xs uppercase text-muted-foreground">Mechanical Output</dt>
-          <dd className="whitespace-pre-wrap">{r.mechanicalOutputText}</dd>
-        </div>
-        <div className="sm:col-span-2">
-          <dt className="text-xs uppercase text-muted-foreground">Narrative Rule</dt>
-          <dd className="whitespace-pre-wrap">{r.narrativeRule}</dd>
-        </div>
-        {r.isMirrorable ? (
-          <div className="sm:col-span-2">
-            <dt className="text-xs uppercase text-muted-foreground">Mirror</dt>
-            <dd>
-              {r.mirrorVector} ({r.mirrorBuCredit} BU)
-              {r.mirrorEligibilityNotes ? ` — ${r.mirrorEligibilityNotes}` : ""}
-            </dd>
-          </div>
-        ) : null}
-      </dl>
-    );
-  }
-  if (item.kind === "effect") {
-    const r = item.row;
-    return (
-      <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <dt className="text-xs uppercase text-muted-foreground">Narrative</dt>
-          <dd className="whitespace-pre-wrap">{r.narrativeDescription}</dd>
-        </div>
-        <div>
-          <dt className="text-xs uppercase text-muted-foreground">Public</dt>
-          <dd>{r.isPublic ? "Yes" : "No"}</dd>
-        </div>
-        {r.sourceOrigin ? (
-          <div>
-            <dt className="text-xs uppercase text-muted-foreground">Source</dt>
-            <dd>{r.sourceOrigin}</dd>
-          </div>
-        ) : null}
-        {r.tags.length > 0 ? (
-          <div className="sm:col-span-2">
-            <dt className="text-xs uppercase text-muted-foreground">Tags</dt>
-            <dd className="flex flex-wrap gap-1">
-              {r.tags.map((t: string) => (
-                <span
-                  key={t}
-                  className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium"
-                >
-                  {t}
-                </span>
-              ))}
-            </dd>
-          </div>
-        ) : null}
-        <div className="sm:col-span-2">
-          <dt className="text-xs uppercase text-muted-foreground">
-            Primitive Links
-          </dt>
-          <dd>
-            <ul className="space-y-1">
-              {r.primitiveLinks.map((pl) => (
-                <li key={pl.primitiveId} className="text-xs">
-                  ×{pl.quantity} {pl.primitive.name} ({pl.primitive.buCost} BU)
-                </li>
-              ))}
-            </ul>
-          </dd>
-        </div>
-      </dl>
-    );
-  }
-  // capability
-  if (item.kind === "capability") {
-    const r = item.row;
-    return (
-      <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-        <div>
-          <dt className="text-xs uppercase text-muted-foreground">Type</dt>
-          <dd>{r.type}</dd>
-        </div>
-        <div>
-          <dt className="text-xs uppercase text-muted-foreground">Public</dt>
-          <dd>{r.isPublic ? "Yes" : "No"}</dd>
-        </div>
-        <div className="sm:col-span-2">
-          <dt className="text-xs uppercase text-muted-foreground">Description</dt>
-          <dd className="whitespace-pre-wrap">{r.verboseDescription}</dd>
-        </div>
-        {r.tags.length > 0 ? (
-          <div className="sm:col-span-2">
-            <dt className="text-xs uppercase text-muted-foreground">Tags</dt>
-            <dd className="flex flex-wrap gap-1">
-              {r.tags.map((t: string) => (
-                <span
-                  key={t}
-                  className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium"
-                >
-                  {t}
-                </span>
-              ))}
-            </dd>
-          </div>
-        ) : null}
-        <div className="sm:col-span-2">
-          <dt className="text-xs uppercase text-muted-foreground">
-            Primitive Links
-          </dt>
-          <dd>
-            <ul className="space-y-1">
-              {r.primitiveLinks.map((pl) => (
-                <li key={pl.primitiveId} className="text-xs">
-                  {pl.role} ×{pl.quantity} {pl.primitive.name} ({pl.primitive.buCost} BU)
-                </li>
-              ))}
-            </ul>
-          </dd>
-        </div>
-      </dl>
-    );
-  }
-  return null;
 }

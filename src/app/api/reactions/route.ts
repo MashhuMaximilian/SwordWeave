@@ -79,11 +79,14 @@ export async function POST(req: NextRequest) {
 
   const { targetType, targetId, versionId, kind } = parsed.data;
 
-  // Validate targetId is UUID-shaped (required for our reactions.aggregate PK
-  // synthetic row key). Versioned targets pass an explicit UUID.
-  if (!isUuid(targetId)) {
+  // targetId is allowed to be ANY non-empty string — the canonical store
+  // key is (targetType, versionId) where versionId is synthesized via
+  // resolveVirtualVersionId() for unversioned items. (Real versioned
+  // targets pass their actual version_id, which IS a UUID — and we still
+  // validate that one below.)
+  if (!targetId) {
     return NextResponse.json(
-      { error: "targetId must be a UUID" },
+      { error: "targetId is required" },
       { status: 400 },
     );
   }
@@ -138,9 +141,10 @@ export async function DELETE(req: NextRequest) {
   if (!typeCheck.success) {
     return NextResponse.json({ error: "Invalid targetType" }, { status: 400 });
   }
-  if (!isUuid(targetId)) {
+  // targetId can be any non-empty string (see POST comment for rationale).
+  if (!targetId) {
     return NextResponse.json(
-      { error: "targetId must be a UUID" },
+      { error: "targetId is required" },
       { status: 400 },
     );
   }

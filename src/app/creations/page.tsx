@@ -100,12 +100,24 @@ export default async function CreationsPage({
             canonical detail page to view forks and likes.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <Link
             href="/sandbox/grammar?build=primitive"
             className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            <Plus className="size-4" /> New
+            <Plus className="size-4" /> New Grammar
+          </Link>
+          <Link
+            href="/sandbox/blueprint?build=template"
+            className="flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:border-primary"
+          >
+            <Plus className="size-4" /> New Template
+          </Link>
+          <Link
+            href="/sandbox/characters"
+            className="flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:border-primary"
+          >
+            <Plus className="size-4" /> New Character
           </Link>
         </div>
       </div>

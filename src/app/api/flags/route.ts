@@ -80,9 +80,11 @@ export async function POST(req: NextRequest) {
 
   const { targetType, targetId, versionId, reason, note } = parsed.data;
 
-  if (!isUuid(targetId)) {
+  // targetId is allowed to be any non-empty string (see /api/reactions POST
+  // for rationale). Only versionId needs to be a UUID when provided.
+  if (!targetId) {
     return NextResponse.json(
-      { error: "targetId must be a UUID" },
+      { error: "targetId is required" },
       { status: 400 },
     );
   }
@@ -144,9 +146,10 @@ export async function DELETE(req: NextRequest) {
       { status: 400 },
     );
   }
-  if (!isUuid(targetId)) {
+  // targetId can be any non-empty string (see POST for rationale).
+  if (!targetId) {
     return NextResponse.json(
-      { error: "targetId must be a UUID" },
+      { error: "targetId is required" },
       { status: 400 },
     );
   }

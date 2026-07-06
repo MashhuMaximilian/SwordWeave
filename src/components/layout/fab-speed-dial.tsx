@@ -6,24 +6,25 @@
 // The primary FAB sits at the bottom-right of the screen on ALL viewports
 // (mobile + desktop) so navigation is consistent.
 //
-// Tapping the FAB rotates the icon 45° and reveals a vertical stack:
-//   - Section: "Navigate" — links to pages (closes dial + navigates)
-//   - Divider
-//   - Section: "Functions" — toggles (Split View, Fullscreen, Dark Mode)
-//              and actions (Build & Preview, Filters)
+// Tapping the FAB rotates the icon 45° and reveals a stack of:
+//   1. Section: "Navigate" — links to pages
+//   2. Section: "Functions" — top row: 3 icon-only toggles
+//                          (Split / Fullscreen / Dark mode)
+//                          bottom row: 2 icon-only actions
+//                          (Build & Preview / Filters)
+//   3. Section: "Account"  — Profile button that opens the user menu
+//                          (avatar + view profile / edit / sign out)
 //
-// On mobile the 3 toggle buttons render as a compact horizontal row inside
-// the dial. On desktop the toggles stay full-width pills (more room).
-//
-// All actions are reachable with one tap from anywhere on the page.
+// On mobile, the toggle row is rendered as 3 icon-only buttons in a single
+// row; the action row is 2 icon-only buttons. On desktop the same layout
+// is used — the user asked for no labels regardless of viewport, just
+// tight icon grids that fit in a small FAB card.
 // =============================================================================
 
 import {
   BookOpen,
-  Building2,
   Columns2,
   Filter,
-  FlaskConical,
   Hammer,
   Library as LibraryIcon,
   Maximize2,
@@ -31,16 +32,14 @@ import {
   Moon,
   Package,
   Plus,
-  ScrollText,
-  Shield,
-  Sparkles,
   Sun,
+  Swords,
   User,
   UserRound,
   Wrench,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -49,7 +48,7 @@ export type FabAction = {
   kind?: "action";
   key: string;
   label: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   onClick: () => void;
   active?: boolean;
   disabled?: boolean;
@@ -60,7 +59,7 @@ export type FabLink = {
   kind: "link";
   key: string;
   label: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   href: string;
   external?: boolean;
 };
@@ -72,7 +71,13 @@ export type FabDivider = {
   label: string;
 };
 
-export type FabItem = FabAction | FabLink | FabDivider;
+/** User-menu opener: when tapped, opens the user menu modal. */
+export type FabUserMenu = {
+  kind: "userMenu";
+  key: string;
+};
+
+export type FabItem = FabAction | FabLink | FabDivider | FabUserMenu;
 
 interface FabSpeedDialProps {
   items: FabItem[];
@@ -82,6 +87,14 @@ interface FabSpeedDialProps {
   bottomOffset?: number;
   /** Whether to render the primary FAB itself (false hides the entire FAB). */
   visible?: boolean;
+  /** Render the user menu (only the FAB itself knows about the user's profile). */
+  onUserMenu?: () => void;
+  /** Currently signed-in user (for the user menu button in the FAB). */
+  currentUser?: {
+    username: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  } | null;
 }
 
 export function FabSpeedDial({
@@ -89,6 +102,8 @@ export function FabSpeedDial({
   primaryLabel = "Open menu",
   bottomOffset = 16,
   visible = true,
+  onUserMenu,
+  currentUser,
 }: FabSpeedDialProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -123,21 +138,70 @@ export function FabSpeedDial({
         bottom: `calc(${bottomOffset}px + env(safe-area-inset-bottom, 0px))`,
       }}
     >
-      {/* Secondary items — render in reverse order so the first item in the
-          list sits closest to the primary button. */}
       {open ? (
-        <div className="flex max-h-[80vh] flex-col-reverse items-end gap-1.5 overflow-y-auto rounded-2xl border border-border bg-background/95 p-1.5 shadow-2xl backdrop-blur-md">
+        <div className="flex max-h-[80vh] flex-col items-stretch gap-1.5 overflow-y-auto rounded-2xl border border-border bg-background/95 p-2 shadow-2xl backdrop-blur-md">
           {items.map((item, index) => {
+            // The "Functions" section in the dial is replaced by a
+            // compact icon-grid card (rendered below). Hide the inline
+            // divider and the per-action entries that the card duplicates.
+            if (item.kind === "divider" && item.key === "div-functions") {
+              return null;
+            }
+            if (
+              item.kind === "action" &&
+              (item.key === "split" ||
+                item.key === "fullscreen" ||
+                item.key === "dark" ||
+                item.key === "build" ||
+                item.key === "filters")
+            ) {
+              return null;
+            }
             if (item.kind === "divider") {
               return (
                 <div
                   key={item.key}
-                  className="my-1 w-full border-t border-border/60 px-2 pt-1.5 pb-0.5"
+                  className="mt-1 border-t border-border/60 px-2 pt-1.5"
                 >
                   <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                     {item.label}
                   </span>
                 </div>
+              );
+            }
+            if (item.kind === "userMenu") {
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => {
+                    onUserMenu?.();
+                    setOpen(false);
+                  }}
+                  style={{
+                    animation: `sw-fab-item-in 180ms ease-out both`,
+                    animationDelay: `${index * 25}ms`,
+                  }}
+                  className="flex w-full items-center gap-2 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-foreground transition-all hover:scale-[1.02] active:scale-[0.98] hover:border-border hover:bg-accent"
+                >
+                  {currentUser?.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={currentUser.avatarUrl}
+                      alt={currentUser.displayName ?? currentUser.username}
+                      className="size-6 shrink-0 rounded-full border border-border object-cover"
+                    />
+                  ) : (
+                    <span className="flex size-6 items-center justify-center rounded-full border border-border bg-background text-[10px] font-bold text-primary">
+                      {(currentUser?.displayName ?? currentUser?.username ?? "U")[0]?.toUpperCase()}
+                    </span>
+                  )}
+                  <span className="truncate">
+                    {currentUser?.displayName ??
+                      currentUser?.username ??
+                      "Profile"}
+                  </span>
+                </button>
               );
             }
             if (item.kind === "link") {
@@ -166,13 +230,14 @@ export function FabSpeedDial({
                 type="button"
                 onClick={() => {
                   item.onClick();
-                  // Keep dial open for toggles; close for one-shot actions.
-                  // Heuristic: if the item has an `active` flag, leave the
-                  // dial open so the user can verify the toggle state.
+                  // Heuristic: toggles (with `active` flag) keep the dial
+                  // open so the user can verify the state.
                   if (item.active === undefined) setOpen(false);
                 }}
                 disabled={item.disabled}
                 aria-pressed={item.active}
+                aria-label={item.label}
+                title={item.label}
                 style={{
                   animation: `sw-fab-item-in 180ms ease-out both`,
                   animationDelay: `${index * 25}ms`,
@@ -202,6 +267,102 @@ export function FabSpeedDial({
               </button>
             );
           })}
+
+          {/* The "icon grid" card for the Functions section. We detect it
+              by the divider that immediately precedes it; simpler: just
+              render an extra card when the items list has both 3 toggles
+              and 2 actions. We piggyback on the divider key. */}
+          {items.some((i) => i.kind === "divider" && i.key === "div-functions") ? (
+            <div
+              className="mt-1 rounded-xl border border-border bg-card/60 p-1.5"
+              style={{
+                animation: `sw-fab-item-in 180ms ease-out both`,
+                animationDelay: `${items.length * 25}ms`,
+              }}
+            >
+              <p className="mb-1 px-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                Quick toggles
+              </p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {items
+                  .filter(
+                    (i) =>
+                      i.kind !== "divider" &&
+                      i.kind !== "link" &&
+                      i.kind !== "userMenu" &&
+                      (i.key === "split" ||
+                        i.key === "fullscreen" ||
+                        i.key === "dark"),
+                  )
+                  .map((i) => {
+                    if (i.kind === "divider" || i.kind === "link" || i.kind === "userMenu")
+                      return null;
+                    return (
+                      <button
+                        key={i.key}
+                        type="button"
+                        onClick={() => {
+                          i.onClick();
+                        }}
+                        disabled={i.disabled}
+                        aria-pressed={i.active}
+                        aria-label={i.label}
+                        title={i.label}
+                        className={cn(
+                          "flex aspect-square flex-col items-center justify-center gap-0.5 rounded-lg border text-[9px] font-medium transition-all active:scale-95",
+                          i.active
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground",
+                        )}
+                      >
+                        <span className="flex size-5 items-center justify-center">
+                          {i.icon}
+                        </span>
+                      </button>
+                    );
+                  })}
+              </div>
+              <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                {items
+                  .filter(
+                    (i) =>
+                      i.kind !== "divider" &&
+                      i.kind !== "link" &&
+                      i.kind !== "userMenu" &&
+                      (i.key === "build" || i.key === "filters"),
+                  )
+                  .map((i) => {
+                    if (i.kind === "divider" || i.kind === "link" || i.kind === "userMenu")
+                      return null;
+                    return (
+                      <button
+                        key={i.key}
+                        type="button"
+                        onClick={() => {
+                          i.onClick();
+                          if (i.active === undefined) setOpen(false);
+                        }}
+                        disabled={i.disabled}
+                        aria-pressed={i.active}
+                        aria-label={i.label}
+                        title={i.label}
+                        className={cn(
+                          "flex items-center justify-center gap-1 rounded-lg border px-2 py-2 text-[10px] font-medium transition-all active:scale-95",
+                          i.active
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground",
+                        )}
+                      >
+                        <span className="flex size-4 items-center justify-center">
+                          {i.icon}
+                        </span>
+                        <span className="truncate">{i.label}</span>
+                      </button>
+                    );
+                  })}
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -243,7 +404,10 @@ export function FabSpeedDial({
 // pass their own.
 // -----------------------------------------------------------------------------
 
-/** Top-level navigation — single-tap destinations. Used on most pages. */
+/**
+ * Top-level navigation — slim 5-item set per the user's spec.
+ * Library / My Creations / Grammar / Templates / Builds.
+ */
 export const NAV_LINKS: FabItem[] = [
   {
     kind: "divider",
@@ -259,13 +423,6 @@ export const NAV_LINKS: FabItem[] = [
   },
   {
     kind: "link",
-    key: "sandbox",
-    label: "Sandbox",
-    icon: <FlaskConical className="size-4" />,
-    href: "/sandbox",
-  },
-  {
-    kind: "link",
     key: "creations",
     label: "My Creations",
     icon: <Hammer className="size-4" />,
@@ -273,28 +430,28 @@ export const NAV_LINKS: FabItem[] = [
   },
   {
     kind: "link",
-    key: "characters",
-    label: "Characters",
+    key: "sandbox-grammar",
+    label: "Grammar",
+    icon: <LibraryIcon className="size-4" />,
+    href: "/sandbox/grammar?build=primitive",
+  },
+  {
+    kind: "link",
+    key: "sandbox-templates",
+    label: "Templates",
     icon: <UserRound className="size-4" />,
-    href: "/characters",
+    href: "/sandbox/blueprint?build=template",
   },
   {
     kind: "link",
-    key: "monsters",
-    label: "Monsters",
-    icon: <Shield className="size-4" />,
-    href: "/monsters",
-  },
-  {
-    kind: "link",
-    key: "items",
-    label: "Items",
-    icon: <Package className="size-4" />,
-    href: "/items",
+    key: "sandbox-builds",
+    label: "Builds",
+    icon: <Swords className="size-4" />,
+    href: "/sandbox/characters",
   },
 ];
 
-/** Account/theme footer — always at the bottom. */
+/** Profile row at the bottom — opens the user menu modal, not a settings link. */
 export const ACCOUNT_LINKS: FabItem[] = [
   {
     kind: "divider",
@@ -302,21 +459,16 @@ export const ACCOUNT_LINKS: FabItem[] = [
     label: "Account",
   },
   {
-    kind: "link",
-    key: "account",
-    label: "Profile & Settings",
-    icon: <User className="size-4" />,
-    href: "/settings/profile",
+    kind: "userMenu",
+    key: "user-menu",
   },
 ];
 
 // Re-export icons for convenience.
 export const FabIcons = {
   BookOpen,
-  Building2,
   Columns2,
   Filter,
-  FlaskConical,
   Hammer,
   LibraryIcon,
   Maximize2,
@@ -324,10 +476,8 @@ export const FabIcons = {
   Moon,
   Package,
   Plus,
-  ScrollText,
-  Shield,
-  Sparkles,
   Sun,
+  Swords,
   User,
   UserRound,
   Wrench,

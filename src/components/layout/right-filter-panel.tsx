@@ -8,50 +8,75 @@
 // it's a 380px-wide side sheet.
 //
 // The panel renders whatever the active page's filter content is. Pages push
-// their filter content into a portal slot via `useFilterSlot`. If no page has
+// their filter content into a slot via `useFilterSlot`. If no page has
 // registered content, the panel shows a friendly empty state.
+//
+// Implementation note: the previous version used a module-level pub-sub that
+// suffered from a re-render loop (call-site JSX is a new reference every
+// render, so the effect always refired, and the panel read-then-render
+// sequence caused a noticeable delay between "tap Show filters" and seeing
+// chips). Switching to React state + a setter ref fixes both.
 // =============================================================================
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Filter as FilterIcon, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGlobalControls } from "./global-controls";
 
-const FilterSlotCtx = (() => {
-  // Use a module-level pub-sub for the slot so any page can register/unregister
-  // its filter content without prop-drilling.
-  let content: ReactNode = null;
-  const listeners = new Set<() => void>();
-  return {
-    set: (next: ReactNode) => {
-      content = next;
-      listeners.forEach((l) => l());
-    },
-    get: () => content,
-    subscribe: (l: () => void) => {
-      listeners.add(l);
-      return () => {
-        listeners.delete(l);
-      };
-    },
-  };
-})();
+// -----------------------------------------------------------------------------
+// Slot — one global slot, set by useFilterSlot, read by RightFilterPanel.
+// A ref holds the "last-set" reference so the effect can detect "did I set
+// this value or did someone else?" without re-firing on every parent render.
+// -----------------------------------------------------------------------------
 
+type Setter = (next: ReactNode) => void;
+
+let _setter: Setter | null = null;
+
+export function _registerSlotSetter(s: Setter) {
+  _setter = s;
+}
+export function _unregisterSlotSetter() {
+  _setter = null;
+}
+
+/**
+ * Push filter content into the right-side filter panel slot.
+ *
+ * Pass a memoized element (e.g. `useMemo(() => <Toolbar .../>, [deps])`) so
+ * the effect doesn't refire on every parent render — that's exactly what
+ * caused the "tap Show filters, wait a beat, chips appear" jank in the
+ * previous module-pub-sub implementation.
+ */
 export function useFilterSlot(content: ReactNode) {
+  // Re-render on every push so RightFilterPanel can read the latest value
+  // (it's a sibling component, not the same render tree).
+  const [, setTick] = useState(0);
+  const lastContentRef = useRef<ReactNode>(null);
   useEffect(() => {
-    FilterSlotCtx.set(content);
+    _setter?.(content);
+    lastContentRef.current = content;
+    setTick((t) => t + 1);
     return () => {
       // Only clear if WE set the value (avoid clearing another page's slot).
-      if (FilterSlotCtx.get() === content) FilterSlotCtx.set(null);
+      if (lastContentRef.current !== null) {
+        _setter?.(null);
+        lastContentRef.current = null;
+      }
     };
   }, [content]);
 }
 
 export function RightFilterPanel() {
   const { filterPanelOpen, setFilterPanelOpen } = useGlobalControls();
-  const [, setTick] = useState(0);
-  useEffect(() => FilterSlotCtx.subscribe(() => setTick((t) => t + 1)), []);
-  const content = FilterSlotCtx.get();
+  const [content, setContent] = useState<ReactNode>(null);
+
+  // Wire the slot setter once. Pages call _setter(content) via useFilterSlot
+  // and we re-render with the new content.
+  useEffect(() => {
+    _registerSlotSetter(setContent);
+    return _unregisterSlotSetter;
+  }, []);
 
   // Lock body scroll while open.
   useEffect(() => {

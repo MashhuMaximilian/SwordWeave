@@ -73,73 +73,78 @@ export function CreationsClient({
 
   // The right-side filter panel shows advanced filter chips (type + status).
   // Search is in the column header for quick access.
-  useFilterSlot(
-    <div className="space-y-3">
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-          Type
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          {TYPE_CHIPS.map((c) => {
-            const active = type === c.key;
-            const count = c.key === "all" ? items.length : counts[c.key] ?? 0;
-            return (
-              <button
-                key={c.key}
-                type="button"
-                onClick={() => setType(c.key)}
-                className={cn(
-                  "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
-                  active
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card hover:border-primary",
-                )}
-              >
-                {c.label}
-                {count > 0 ? (
-                  <span className="ml-1 opacity-70">({count})</span>
-                ) : null}
-              </button>
-            );
-          })}
+  // Memoize the slot content so the panel doesn't see a new ref every render.
+  const filterSlot = useMemo(
+    () => (
+      <div className="space-y-3">
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+            Type
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {TYPE_CHIPS.map((c) => {
+              const active = type === c.key;
+              const count = c.key === "all" ? items.length : counts[c.key] ?? 0;
+              return (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => setType(c.key)}
+                  className={cn(
+                    "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                    active
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card hover:border-primary",
+                  )}
+                >
+                  {c.label}
+                  {count > 0 ? (
+                    <span className="ml-1 opacity-70">({count})</span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-          Status
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          {(
-            [
-              { key: "all", label: "All" },
-              { key: "draft", label: "Drafts only" },
-            ] as const
-          ).map((c) => {
-            const active = status === c.key;
-            return (
-              <button
-                key={c.key}
-                type="button"
-                onClick={() => setStatus(c.key)}
-                className={cn(
-                  "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
-                  active
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card hover:border-primary",
-                )}
-              >
-                {c.label}
-              </button>
-            );
-          })}
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+            Status
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {(
+              [
+                { key: "all", label: "All" },
+                { key: "draft", label: "Drafts only" },
+              ] as const
+            ).map((c) => {
+              const active = status === c.key;
+              return (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => setStatus(c.key)}
+                  className={cn(
+                    "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                    active
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card hover:border-primary",
+                  )}
+                >
+                  {c.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
+        <p className="text-[10px] text-muted-foreground/80">
+          Tip: cards open a preview modal. Click "Open source page" inside to
+          visit the full canonical detail page.
+        </p>
       </div>
-      <p className="text-[10px] text-muted-foreground/80">
-        Tip: cards open a preview modal. Click "Open source page" inside to
-        visit the full canonical detail page.
-      </p>
-    </div>,
+    ),
+    [type, status, items.length, counts],
   );
+  useFilterSlot(filterSlot);
 
   const filteredItems = useMemo(() => {
     const q = search.toLowerCase().trim();

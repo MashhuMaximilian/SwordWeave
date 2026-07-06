@@ -9,6 +9,10 @@
 // The FAB speed-dial is rendered here, so every page gets consistent nav +
 // functions. Pages can also wire their own behaviour via the `useGlobalControls`
 // hook (e.g. the sandbox's "Split View" toggle binds to the layout's mode).
+//
+// The FAB exposes 5 nav destinations (Library, My Creations, Grammar,
+// Templates, Builds) + a Functions card (3 icon-only toggles + 2 icon-only
+// actions) + a Profile row that opens the user menu modal.
 // =============================================================================
 
 import {
@@ -27,8 +31,22 @@ import {
 } from "./fab-speed-dial";
 import { RightFilterPanel } from "./right-filter-panel";
 import { BuildPreviewDrawer } from "./build-preview-drawer";
-import { usePathname } from "next/navigation";
-import { Columns2, Filter, Maximize2, Minimize2, Moon, Sun, Wrench } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useClerk, useUser } from "@clerk/nextjs";
+import {
+  Columns2,
+  Filter,
+  LogOut,
+  Maximize2,
+  Minimize2,
+  Moon,
+  Settings,
+  Sun,
+  User as UserIcon,
+  Wrench,
+} from "lucide-react";
+import { useModalStack } from "@/components/ui/modal-stack";
+import { cn } from "@/lib/utils";
 
 type DrawerTab = "build" | "preview" | null;
 
@@ -71,7 +89,60 @@ const STORAGE_KEY_SPLIT = "sw-sandbox-mobile-split";
 
 export function GlobalControls({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const isSandboxRoute = pathname?.startsWith("/sandbox") ?? false;
+  const { user, isSignedIn, isLoaded } = useUser();
+  const { signOut, openUserProfile } = useClerk();
+  const stack = useModalStack();
+
+  // Profile data from Clerk — used by the FAB's user-menu button to show
+  // the avatar + display name. The full user menu body is rendered as a
+  // ModalStack entry when the user taps the profile row in the FAB.
+  const currentUser = useMemo(() => {
+    if (!isLoaded || !isSignedIn || !user) return null;
+    const username =
+      user.username ??
+      user.primaryEmailAddress?.emailAddress?.split("@")[0] ??
+      "user";
+    const displayName =
+      [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+      user.username ||
+      username;
+    return {
+      username,
+      displayName,
+      avatarUrl: user.imageUrl,
+    };
+  }, [isLoaded, isSignedIn, user]);
+
+  function openUserMenu() {
+    if (!stack.canPush) return;
+    stack.push({
+      key: "user-menu",
+      label: currentUser?.displayName ?? currentUser?.username ?? "Profile",
+      category: "Account",
+      content: (
+        <UserMenuBody
+          currentUser={currentUser}
+          onViewProfile={() => {
+            if (currentUser) router.push(`/u/${currentUser.username}`);
+            stack.clear();
+          }}
+          onEditProfile={() => {
+            router.push("/settings/profile");
+            stack.clear();
+          }}
+          onManageAccount={() => {
+            openUserProfile();
+            stack.clear();
+          }}
+          onSignOut={() => {
+            signOut(() => router.push("/"));
+          }}
+        />
+      ),
+    });
+  }
 
   // Dark mode: start as null to avoid hydration mismatch; read from
   // localStorage in an effect.
@@ -155,6 +226,11 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ---------------------- FAB items ----------------------
+  // Note: per the user's spec, the in-list "Functions" row is hidden in
+  // the dial — the 3 toggles + 2 actions are instead rendered as a compact
+  // icon grid card at the bottom of the dial. The dial still passes the
+  // items so they're available, but we filter out the ones that duplicate
+  // the icon grid (split/fullscreen/dark/build/filters) from the list view.
   const items = useMemo<FabItem[]>(() => {
     const list: FabItem[] = [
       ...NAV_LINKS,
@@ -163,15 +239,10 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         key: "div-functions",
         label: "Functions",
       },
-      {
-        key: "build",
-        label: "Build & Preview",
-        icon: <Wrench className="size-4" />,
-        onClick: () => openDrawer("build"),
-      },
     ];
     if (isSandboxRoute) {
       list.push({
+        kind: "action",
         key: "split",
         label: sandboxSplit ? "Exit Split" : "Split View",
         icon: <Columns2 className="size-4" />,
@@ -181,6 +252,14 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
     }
     list.push(
       {
+        kind: "action",
+        key: "build",
+        label: "Build & Preview",
+        icon: <Wrench className="size-4" />,
+        onClick: () => openDrawer("build"),
+      },
+      {
+        kind: "action",
         key: "filters",
         label: filterPanelOpen ? "Hide Filters" : "Show Filters",
         icon: <Filter className="size-4" />,
@@ -188,6 +267,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         active: filterPanelOpen,
       },
       {
+        kind: "action",
         key: "fullscreen",
         label: isFullscreen ? "Exit Fullscreen" : "Fullscreen",
         icon: isFullscreen ? (
@@ -199,6 +279,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         active: isFullscreen,
       },
       {
+        kind: "action",
         key: "dark",
         label: (dark ?? false) ? "Light Mode" : "Dark Mode",
         icon: (dark ?? false) ? (
@@ -245,9 +326,104 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
   return (
     <Ctx.Provider value={ctxValue}>
       {children}
-      <FabSpeedDial items={items} />
+      <FabSpeedDial
+        items={items}
+        onUserMenu={openUserMenu}
+        currentUser={currentUser}
+      />
       <RightFilterPanel />
       <BuildPreviewDrawer />
     </Ctx.Provider>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// UserMenuBody — body for the user menu modal. Renders the same profile
+// block + action list as the existing UserMenu component, but as a modal
+// stack entry so it can be opened from the FAB on mobile.
+// -----------------------------------------------------------------------------
+
+function UserMenuBody({
+  currentUser,
+  onViewProfile,
+  onEditProfile,
+  onManageAccount,
+  onSignOut,
+}: {
+  currentUser: {
+    username: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  } | null;
+  onViewProfile: () => void;
+  onEditProfile: () => void;
+  onManageAccount: () => void;
+  onSignOut: () => void;
+}) {
+  if (!currentUser) {
+    return (
+      <div className="rounded-md border border-dashed border-border bg-card/30 p-6 text-center text-sm text-muted-foreground">
+        Sign in to manage your profile.
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-3 rounded-md border border-border bg-card p-3">
+        {currentUser.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={currentUser.avatarUrl}
+            alt={currentUser.displayName ?? currentUser.username}
+            className="size-10 shrink-0 rounded-full border border-border object-cover"
+          />
+        ) : (
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-background text-sm font-bold text-primary">
+            {(currentUser.displayName ?? currentUser.username)[0]?.toUpperCase()}
+          </div>
+        )}
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">
+            {currentUser.displayName}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
+            @{currentUser.username}
+          </p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={onViewProfile}
+        className="flex w-full items-center gap-2 rounded-md border border-transparent px-3 py-2 text-sm hover:border-border hover:bg-accent"
+      >
+        <UserIcon className="size-4" /> View profile
+      </button>
+      <button
+        type="button"
+        onClick={onEditProfile}
+        className="flex w-full items-center gap-2 rounded-md border border-transparent px-3 py-2 text-sm hover:border-border hover:bg-accent"
+      >
+        <Settings className="size-4" /> Edit profile
+      </button>
+      <button
+        type="button"
+        onClick={onManageAccount}
+        className="flex w-full items-center gap-2 rounded-md border border-transparent px-3 py-2 text-sm hover:border-border hover:bg-accent"
+      >
+        <Settings className="size-4" /> Manage account
+      </button>
+      <div className="my-1 border-t border-border" />
+      <button
+        type="button"
+        onClick={onSignOut}
+        className={cn(
+          "flex w-full items-center gap-2 rounded-md border border-transparent px-3 py-2 text-sm",
+          "text-destructive hover:bg-destructive/10",
+        )}
+      >
+        <LogOut className="size-4" /> Sign out
+      </button>
+    </div>
   );
 }

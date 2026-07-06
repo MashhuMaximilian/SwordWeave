@@ -91,19 +91,25 @@ export function LibraryBrowseClient({
 
   // Right-side filter panel slot: full toolbar lives inside the panel.
   // The column header has a search bar + filter-open button.
+  // Memoize the slot content to avoid the re-render loop that previously
+  // produced a noticeable delay between "tap Show filters" and seeing chips.
   const { setFilterPanelOpen } = useGlobalControls();
-  useFilterSlot(
-    <div className="space-y-3">
-      <LibraryToolbar
-        state={state}
-        onStateChange={onStateChange}
-        primitiveCategories={primitiveCategories}
-        showSearch={true}
-        showAdvancedFilters={true}
-        forceExpandFilters
-      />
-    </div>,
+  const filterPanelContent = useMemo(
+    () => (
+      <div className="space-y-3">
+        <LibraryToolbar
+          state={state}
+          onStateChange={onStateChange}
+          primitiveCategories={primitiveCategories}
+          showSearch={true}
+          showAdvancedFilters={true}
+          forceExpandFilters
+        />
+      </div>
+    ),
+    [state, onStateChange, primitiveCategories],
   );
+  useFilterSlot(filterPanelContent);
 
   const hasActiveFilters =
     state.typeFilter !== "ALL" ||
