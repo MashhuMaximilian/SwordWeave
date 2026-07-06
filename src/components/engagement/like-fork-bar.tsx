@@ -267,8 +267,8 @@ export function LikeForkBar(props: LikeForkBarProps) {
   // ---------- render ----------
 
   const buttonBase = props.compact
-    ? "inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-xs transition disabled:opacity-50"
-    : "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition disabled:opacity-50";
+    ? "inline-flex shrink-0 items-center gap-0.5 rounded border px-1.5 py-0.5 text-[10px] leading-none transition disabled:opacity-50"
+    : "inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm transition disabled:opacity-50";
   const buttonGhost =
     "border-slate-700 bg-slate-900/50 text-slate-300 hover:border-slate-500 hover:bg-slate-800";
   const buttonActive = "border-cyan-500 bg-cyan-500/10 text-cyan-300";

@@ -168,32 +168,32 @@ function ListItem({
   const inner = (
     <>
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-baseline gap-2">
-          <h3 className="truncate font-semibold">{item.name}</h3>
-          <span className="text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-baseline gap-1.5">
+          <h3 className="truncate text-sm font-semibold leading-tight">{item.name}</h3>
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
             {item.targetType.replace(/_/g, " ").toLowerCase()}
             {item.category ? ` · ${item.category.replace(/_/g, " ")}` : ""}
           </span>
           {item.buCost !== null && (
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
+            <span className="rounded-full bg-primary/10 px-1.5 py-0 font-mono text-[10px] font-semibold text-primary">
               {item.buCost} BU
             </span>
           )}
         </div>
         {item.description && (
-          <div className="mt-1 line-clamp-2 text-xs text-muted-foreground [&_p]:m-0 [&_strong]:font-semibold [&_em]:italic">
+          <div className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-muted-foreground [&_p]:m-0 [&_strong]:font-semibold [&_em]:italic">
             <Markdown>{item.description}</Markdown>
           </div>
         )}
-        <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
           <span>♥ {item.likesCount}</span>
           <span>★ {item.forkCount}</span>
           {item.authorUsername && (
-            <span>by {item.authorDisplayName ?? item.authorUsername}</span>
+            <span className="truncate">by {item.authorDisplayName ?? item.authorUsername}</span>
           )}
         </div>
       </div>
-      <ArrowRight className="mt-1 size-4 shrink-0 text-muted-foreground" />
+      <ArrowRight className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
     </>
   );
 
@@ -244,39 +244,39 @@ function GridCard({
   return (
     <article
       className={cn(
-        "flex flex-col rounded-md border bg-card p-2.5 transition-colors md:p-3",
+        "flex flex-col rounded-md border bg-card p-2 transition-colors md:p-2.5",
         selected
           ? "border-primary bg-primary/5"
           : "border-border hover:border-primary",
       )}
     >
-      <header className="flex items-start justify-between gap-2">
+      <header className="flex items-start justify-between gap-1.5">
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-semibold">{item.name}</h3>
-          <p className="mt-0.5 text-xs text-muted-foreground">
+          <h3 className="truncate text-sm font-semibold leading-tight">{item.name}</h3>
+          <p className="mt-0 text-[10px] uppercase tracking-wide text-muted-foreground">
             {item.targetType.replace(/_/g, " ").toLowerCase()}
             {item.category ? ` · ${item.category.replace(/_/g, " ")}` : ""}
           </p>
         </div>
         {item.buCost !== null && (
-          <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
+          <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0 font-mono text-[10px] font-semibold text-primary">
             {item.buCost} BU
           </span>
         )}
       </header>
 
       {item.description && (
-        <div className="mt-3 line-clamp-3 text-sm text-muted-foreground [&_p]:m-0 [&_strong]:font-semibold [&_strong]:text-foreground/80 [&_em]:italic [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_a]:underline [&_a]:text-primary">
+        <div className="mt-1.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground [&_p]:m-0 [&_strong]:font-semibold [&_em]:italic">
           <Markdown>{item.description}</Markdown>
         </div>
       )}
 
       {item.tags.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1">
+        <div className="mt-1.5 flex flex-wrap gap-1">
           {item.tags.slice(0, 4).map((tag) => (
             <span
               key={tag}
-              className="rounded-full bg-secondary px-2 py-0.5 text-xs"
+              className="rounded-full bg-secondary px-1.5 py-0 text-[10px]"
             >
               {tag}
             </span>
@@ -287,18 +287,18 @@ function GridCard({
       {item.authorUsername && (
         <Link
           href={`/u/${item.authorUsername}`}
-          className="mt-3 flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
+          className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground"
         >
           {item.authorAvatarUrl ? (
             <img
               src={item.authorAvatarUrl}
               alt=""
-              className="size-4 rounded-full"
+              className="size-3.5 rounded-full"
             />
           ) : (
-            <UserIcon className="size-3.5" />
+            <UserIcon className="size-3" />
           )}
-          <span>
+          <span className="truncate">
             by{" "}
             <span className="font-semibold">
               {item.authorDisplayName ?? item.authorUsername}
@@ -307,7 +307,7 @@ function GridCard({
         </Link>
       )}
 
-      <footer className="mt-auto border-t border-border pt-3">
+      <footer className="mt-auto border-t border-border pt-1.5">
         <LikeForkBar
           targetType={item.targetType as GridLikeForkTargetType}
           targetId={item.targetId}
@@ -320,24 +320,24 @@ function GridCard({
           currentUserId={currentUserInternalId}
           compact
         />
-        <div className="mt-2 flex items-center justify-between gap-2">
+        <div className="mt-1 flex items-center justify-between gap-2">
           {/* Always-available: link to the full canonical detail page. */}
           <Link
             href={`/library/item/${item.id}`}
-            className="text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
+            className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground hover:underline"
           >
             View
-            <ExternalLink className="ml-1 inline size-3" />
+            <ExternalLink className="ml-0.5 inline size-2.5" />
           </Link>
           {/* Optional: load the entity into the matching sandbox composer. */}
           {onSelect ? (
             <button
               type="button"
               onClick={() => onSelect(item)}
-              className="text-xs font-medium text-primary hover:underline"
+              className="text-[10px] font-semibold uppercase tracking-wide text-primary hover:underline"
             >
-              Add to Build
-              <ArrowRight className="ml-1 inline size-3" />
+              Add
+              <ArrowRight className="ml-0.5 inline size-2.5" />
             </button>
           ) : null}
         </div>

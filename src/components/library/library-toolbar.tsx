@@ -33,6 +33,17 @@ export interface LibraryToolbarState {
   author: string;
   minLikes: string;
   hasForks: boolean;
+  /** Advanced filters (all optional). */
+  minForks?: string;
+  minBu?: string;
+  maxBu?: string;
+  fromDate?: string;
+  toDate?: string;
+  /** "ANY" (default), "PUBLIC", or "PRIVATE". */
+  visibility?: "ANY" | "PUBLIC" | "PRIVATE";
+  mirrorableOnly?: boolean;
+  /** Comma-separated tag list. */
+  tags?: string;
 }
 
 export const EMPTY_LIBRARY_TOOLBAR_STATE: LibraryToolbarState = {
@@ -44,6 +55,14 @@ export const EMPTY_LIBRARY_TOOLBAR_STATE: LibraryToolbarState = {
   author: "",
   minLikes: "",
   hasForks: false,
+  minForks: "",
+  minBu: "",
+  maxBu: "",
+  fromDate: "",
+  toDate: "",
+  visibility: "ANY",
+  mirrorableOnly: false,
+  tags: "",
 };
 
 export interface LibraryTypeChip {
@@ -101,6 +120,38 @@ const DEFAULT_TYPE_CHIPS: LibraryTypeChip[] = [
   { key: "BACKGROUND_TEMPLATE", label: "Backgrounds" },
   { key: "ARCHETYPE_TEMPLATE", label: "Archetypes" },
 ];
+
+function FilterField({
+  label,
+  children,
+  hint,
+  id,
+  className,
+}: {
+  label: string;
+  children: React.ReactNode;
+  hint?: string;
+  id?: string;
+  className?: string;
+}) {
+  return (
+    <label
+      htmlFor={id}
+      className={cn(
+        "flex flex-col gap-1 rounded-md border border-border/60 bg-card/50 p-2",
+        className,
+      )}
+    >
+      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      {children}
+      {hint ? (
+        <span className="text-[10px] leading-tight text-muted-foreground/70">{hint}</span>
+      ) : null}
+    </label>
+  );
+}
 
 export function LibraryToolbar({
   state,
@@ -233,7 +284,7 @@ export function LibraryToolbar({
                   type="button"
                   onClick={() => update("sort", key)}
                   className={cn(
-                    "rounded-md px-3 py-1.5 text-xs transition-colors",
+                    "rounded-md px-2.5 py-1 text-[11px] transition-colors",
                     active
                       ? "bg-primary text-primary-foreground"
                       : "bg-secondary hover:bg-secondary/70",
@@ -284,7 +335,7 @@ export function LibraryToolbar({
                 type="button"
                 onClick={() => update("typeFilter", chip.key)}
                 className={cn(
-                  "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  "rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors",
                   active
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-card hover:border-primary",
@@ -331,19 +382,17 @@ export function LibraryToolbar({
               <ChevronDown className="size-4 md:hidden" />
               <ChevronUp className="hidden size-4 md:block" />
             </summary>
-            <div className="grid gap-4 border-t border-border p-4 md:grid-cols-2">
+            <div className="grid gap-3 border-t border-border p-3 md:grid-cols-3">
+              {/* Category — only for primitives */}
               {primitiveCategories.length > 0 &&
               (state.typeFilter === "PRIMITIVE" || state.typeFilter === "ALL") ? (
-                <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase text-muted-foreground">
-                    Category
-                  </label>
+                <FilterField label="Category" id="filter-category">
                   <div className="flex flex-wrap gap-1">
                     <button
                       type="button"
                       onClick={() => update("category", "")}
                       className={cn(
-                        "rounded-md px-2 py-1 text-xs transition-colors",
+                        "rounded-md px-2 py-0.5 text-[11px] transition-colors",
                         !state.category
                           ? "bg-primary text-primary-foreground"
                           : "bg-secondary hover:bg-secondary/70",
@@ -357,7 +406,7 @@ export function LibraryToolbar({
                         type="button"
                         onClick={() => update("category", c.value)}
                         className={cn(
-                          "rounded-md px-2 py-1 text-xs transition-colors",
+                          "rounded-md px-2 py-0.5 text-[11px] transition-colors",
                           state.category === c.value
                             ? "bg-primary text-primary-foreground"
                             : "bg-secondary hover:bg-secondary/70",
@@ -367,15 +416,136 @@ export function LibraryToolbar({
                       </button>
                     ))}
                   </div>
-                </div>
+                </FilterField>
               ) : null}
 
-              <div className="space-y-2">
+              {/* Author username */}
+              <FilterField label="Author" id="filter-author">
+                <input
+                  id="filter-author"
+                  type="text"
+                  value={state.author}
+                  onChange={(e) => update("author", e.target.value)}
+                  placeholder="username"
+                  className="h-7 w-full rounded border border-input bg-background px-2 text-[11px] outline-none focus:border-primary"
+                />
+              </FilterField>
+
+              {/* Min likes */}
+              <FilterField label="Min likes" id="filter-min-likes">
+                <input
+                  id="filter-min-likes"
+                  type="number"
+                  value={state.minLikes}
+                  min={0}
+                  onChange={(e) => update("minLikes", e.target.value)}
+                  className="h-7 w-full rounded border border-input bg-background px-2 text-[11px] outline-none focus:border-primary"
+                />
+              </FilterField>
+
+              {/* Min forks */}
+              <FilterField label="Min forks" id="filter-min-forks">
+                <input
+                  id="filter-min-forks"
+                  type="number"
+                  value={state.minForks ?? ""}
+                  min={0}
+                  onChange={(e) => update("minForks", e.target.value)}
+                  className="h-7 w-full rounded border border-input bg-background px-2 text-[11px] outline-none focus:border-primary"
+                />
+              </FilterField>
+
+              {/* Min BU cost */}
+              <FilterField label="Min BU" id="filter-min-bu">
+                <input
+                  id="filter-min-bu"
+                  type="number"
+                  value={state.minBu ?? ""}
+                  min={0}
+                  onChange={(e) => update("minBu", e.target.value)}
+                  className="h-7 w-full rounded border border-input bg-background px-2 text-[11px] outline-none focus:border-primary"
+                />
+              </FilterField>
+
+              {/* Max BU cost */}
+              <FilterField label="Max BU" id="filter-max-bu">
+                <input
+                  id="filter-max-bu"
+                  type="number"
+                  value={state.maxBu ?? ""}
+                  min={0}
+                  onChange={(e) => update("maxBu", e.target.value)}
+                  className="h-7 w-full rounded border border-input bg-background px-2 text-[11px] outline-none focus:border-primary"
+                />
+              </FilterField>
+
+              {/* Date range */}
+              <FilterField label="From" id="filter-from-date">
+                <input
+                  id="filter-from-date"
+                  type="date"
+                  value={state.fromDate ?? ""}
+                  onChange={(e) => update("fromDate", e.target.value)}
+                  className="h-7 w-full rounded border border-input bg-background px-2 text-[11px] outline-none focus:border-primary"
+                />
+              </FilterField>
+              <FilterField label="To" id="filter-to-date">
+                <input
+                  id="filter-to-date"
+                  type="date"
+                  value={state.toDate ?? ""}
+                  onChange={(e) => update("toDate", e.target.value)}
+                  className="h-7 w-full rounded border border-input bg-background px-2 text-[11px] outline-none focus:border-primary"
+                />
+              </FilterField>
+
+              {/* Visibility: Public / Private / Any */}
+              <FilterField label="Visibility" id="filter-visibility">
+                <div className="flex flex-wrap gap-1">
+                  {(["ANY", "PUBLIC", "PRIVATE"] as const).map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => update("visibility", v)}
+                      className={cn(
+                        "rounded-md px-2 py-0.5 text-[11px] transition-colors",
+                        (state.visibility ?? "ANY") === v
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary hover:bg-secondary/70",
+                      )}
+                    >
+                      {v === "ANY" ? "Any" : v === "PUBLIC" ? "Public" : "Private"}
+                    </button>
+                  ))}
+                </div>
+              </FilterField>
+
+              {/* Mirrorable toggle */}
+              <FilterField label="Mirrorable" id="filter-mirrorable">
+                <button
+                  type="button"
+                  onClick={() => update("mirrorableOnly", !state.mirrorableOnly)}
+                  aria-pressed={!!state.mirrorableOnly}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-md px-2 py-1 text-[11px] transition-colors",
+                    state.mirrorableOnly
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary hover:bg-secondary/70",
+                  )}
+                >
+                  <span>Only mirrorable</span>
+                  {state.mirrorableOnly ? "✓" : ""}
+                </button>
+              </FilterField>
+
+              {/* Forked only */}
+              <FilterField label="Forked" id="filter-forked">
                 <button
                   type="button"
                   onClick={() => update("hasForks", !state.hasForks)}
+                  aria-pressed={!!state.hasForks}
                   className={cn(
-                    "flex w-full items-center justify-between rounded-md px-3 py-1.5 text-xs transition-colors",
+                    "flex w-full items-center justify-between rounded-md px-2 py-1 text-[11px] transition-colors",
                     state.hasForks
                       ? "bg-primary text-primary-foreground"
                       : "bg-secondary hover:bg-secondary/70",
@@ -384,17 +554,46 @@ export function LibraryToolbar({
                   <span>Only forked</span>
                   {state.hasForks ? "✓" : ""}
                 </button>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-muted-foreground">Min likes:</span>
-                  <input
-                    type="number"
-                    value={state.minLikes}
-                    min={0}
-                    onChange={(e) => update("minLikes", e.target.value)}
-                    className="w-16 rounded border border-input bg-background px-2 py-1 text-xs"
-                  />
-                </div>
-              </div>
+              </FilterField>
+
+              {/* Tags */}
+              <FilterField label="Tags" id="filter-tags" className="md:col-span-2">
+                <input
+                  id="filter-tags"
+                  type="text"
+                  value={state.tags ?? ""}
+                  onChange={(e) => update("tags", e.target.value)}
+                  placeholder="comma-separated"
+                  className="h-7 w-full rounded border border-input bg-background px-2 text-[11px] outline-none focus:border-primary"
+                />
+              </FilterField>
+
+              {/* Clear all */}
+              <FilterField label=" " id="filter-clear">
+                <button
+                  type="button"
+                  onClick={() =>
+                    onStateChange({
+                      ...state,
+                      category: "",
+                      author: "",
+                      minLikes: "",
+                      minForks: "",
+                      minBu: "",
+                      maxBu: "",
+                      fromDate: "",
+                      toDate: "",
+                      visibility: "ANY",
+                      mirrorableOnly: false,
+                      hasForks: false,
+                      tags: "",
+                    })
+                  }
+                  className="h-7 w-full rounded-md border border-border bg-background text-[11px] font-medium hover:bg-accent"
+                >
+                  Clear filters
+                </button>
+              </FilterField>
             </div>
           </details>
         ) : null}

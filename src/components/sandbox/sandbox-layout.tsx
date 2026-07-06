@@ -6,8 +6,20 @@ import {
   Separator,
   type PanelImperativeHandle,
   type Layout,
+  useDefaultLayout as useMobileDefaultLayout,
 } from "react-resizable-panels";
-import { ChevronLeft, ChevronRight, Eye, Library as LibraryIcon, Wrench } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Columns2,
+  Eye,
+  Filter,
+  Library as LibraryIcon,
+  Maximize2,
+  Minimize2,
+  RotateCcw,
+  Wrench,
+} from "lucide-react";
 import {
   createContext,
   useCallback,
@@ -519,14 +531,11 @@ function TabletColumnChrome({
 }
 
 // ----------------------------------------------------------------------------
-// Mobile layout — Library-only with a FAB that opens a slide-up drawer
-// containing Build + Preview as tabs. The Build form is hidden by default
-// (per UX spec) so the user sees more of the Library on a 393×852 viewport.
-// Sizes persist to localStorage per storageKey + orientation so the user
-// keeps their layout when rotating or revisiting the page.
+// Mobile layout (Library-only with FAB speed-dial OR split via toggle)
 // ----------------------------------------------------------------------------
 
 import { DetailModal } from "@/components/ui/detail-modal";
+import { FabSpeedDial, type FabAction } from "@/components/layout/fab-speed-dial";
 
 type MobileProps = {
   library: ReactNode;
@@ -535,40 +544,204 @@ type MobileProps = {
 };
 
 function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
-  const { previewOverlayOpen, setPreviewOverlayOpen } = useSandboxLayout();
+  // Layout mode: 'library' (default — full viewport, FAB opens drawer) or
+  // 'split' (Library top, Build+Preview stacked bottom — like desktop but
+  // vertical). The user toggles via the FAB speed-dial.
+  const [mode, setMode] = useState<"library" | "split">("library");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState<"build" | "preview">("build");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // FAB → opens the drawer on Build tab. The Preview button inside the
-  // Build column header also opens it on the Preview tab.
+  // Persist mode in localStorage so the user keeps their preferred layout.
+  useEffect(() => {
+    const stored = window.localStorage.getItem("sw-sandbox-mobile-mode");
+    if (stored === "split" || stored === "library") setMode(stored);
+  }, []);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("sw-sandbox-mobile-mode", mode);
+    }
+  }, [mode]);
+
+  // Fullscreen API state tracking.
+  useEffect(() => {
+    const handler = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  function toggleFullscreen() {
+    const el = document.documentElement as HTMLElement & {
+      requestFullscreen?: () => Promise<void>;
+      webkitRequestFullscreen?: () => void;
+    };
+    if (!document.fullscreenElement) {
+      const req = el.requestFullscreen ?? el.webkitRequestFullscreen;
+      if (req) {
+        try {
+          const result = req.call(el);
+          if (result && typeof (result as Promise<void>).catch === "function") {
+            (result as Promise<void>).catch(() => {
+              /* denied */
+            });
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+    } else {
+      if (document.exitFullscreen) document.exitFullscreen();
+    }
+  }
+
   function openDrawer(tab: "build" | "preview" = "build") {
     setDrawerTab(tab);
     setDrawerOpen(true);
   }
 
+  // Split-mode layout: Library | Build (with Preview overlay triggered by
+  // a dedicated button — also accessible via FAB). Vertical drag-resize
+  // between Library and Build.
+  const splitLayout = useMobileDefaultLayout({
+    id: "sw_sandbox_mobile_split",
+    storage: {
+      getItem: (key) => window.localStorage.getItem(key),
+      setItem: (key, value) => window.localStorage.setItem(key, value),
+    },
+    panelIds: ["library", "builder"],
+  });
+
+  // FAB actions — context-aware.
+  const fabActions: FabAction[] = [
+    {
+      key: "build",
+      label: "Build & Preview",
+      icon: <Wrench className="size-4" />,
+      onClick: () => openDrawer("build"),
+    },
+    {
+      key: "split",
+      label: mode === "split" ? "Exit Split" : "Split View",
+      icon: <Columns2 className="size-4" />,
+      onClick: () => setMode(mode === "split" ? "library" : "split"),
+      active: mode === "split",
+    },
+    {
+      key: "filters",
+      label: filterOpen ? "Hide Filters" : "Show Filters",
+      icon: <Filter className="size-4" />,
+      onClick: () => setFilterOpen((v) => !v),
+      active: filterOpen,
+    },
+    {
+      key: "fullscreen",
+      label: isFullscreen ? "Exit Fullscreen" : "Fullscreen",
+      icon: isFullscreen ? (
+        <Minimize2 className="size-4" />
+      ) : (
+        <Maximize2 className="size-4" />
+      ),
+      onClick: toggleFullscreen,
+      active: isFullscreen,
+    },
+  ];
+
+  // In split mode the Build column needs a Reset trigger. Expose via the
+  // sandbox context's onReset callback if available — sandbox-client wires
+  // it. For now we emit a CustomEvent so forms can listen if they want.
+  function dispatchReset() {
+    window.dispatchEvent(new CustomEvent("sw-sandbox-reset"));
+  }
+
   return (
     <>
       <div className="relative flex h-full min-h-0 flex-col">
-        {/* Library fills the full viewport. No split — overlay drawer only. */}
-        <div className="flex h-full min-h-0 flex-col">
-          <MobileColumnChrome title="Library" icon={<LibraryIcon className="size-4" />} />
-          <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
-        </div>
-
-        {/* Floating Action Button (FAB) — opens the Build/Preview drawer. */}
-        <button
-          type="button"
-          onClick={() => openDrawer("build")}
-          className="absolute bottom-4 right-4 z-20 flex items-center gap-1.5 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
-          aria-label="Open build / preview drawer"
-          style={{ marginBottom: "env(safe-area-inset-bottom, 0px)" }}
-        >
-          <Wrench className="size-4" />
-          Build
-        </button>
+        {mode === "library" ? (
+          // Default mode: Library fills the viewport, Build is a drawer.
+          <div className="flex h-full min-h-0 flex-col">
+            <MobileColumnChrome title="Library" icon={<LibraryIcon className="size-4" />} />
+            <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
+          </div>
+        ) : (
+          // Split mode: Library top + Build bottom (vertical drag-resize).
+          <Group
+            id="sw_sandbox_mobile_split"
+            orientation="vertical"
+            defaultLayout={splitLayout.defaultLayout}
+            onLayoutChange={splitLayout.onLayoutChange}
+            onLayoutChanged={splitLayout.onLayoutChanged}
+            className="flex h-full min-h-0"
+          >
+            <Panel
+              id="library"
+              defaultSize={50}
+              minSize={20}
+              maxSize={75}
+              className="flex h-full min-h-0 flex-col"
+            >
+              <MobileColumnChrome title="Library" icon={<LibraryIcon className="size-4" />} />
+              <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
+            </Panel>
+            <Separator className="h-1.5 shrink-0 bg-border" />
+            <Panel
+              id="builder"
+              defaultSize={50}
+              minSize={25}
+              maxSize={85}
+              className="flex h-full min-h-0 flex-col"
+            >
+              <MobileColumnChrome
+                title="Build"
+                icon={<Wrench className="size-4" />}
+                action={
+                  <div className="ml-auto flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => openDrawer("preview")}
+                      className="flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary hover:bg-primary/20"
+                      aria-label="Preview"
+                    >
+                      <Eye className="size-3" />
+                      Preview
+                    </button>
+                    <button
+                      type="button"
+                      onClick={dispatchReset}
+                      className="flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-secondary-foreground hover:bg-secondary/70"
+                      aria-label="Reset"
+                    >
+                      <RotateCcw className="size-3" />
+                      Reset
+                    </button>
+                  </div>
+                }
+              />
+              <div className="flex-1 min-h-0 overflow-auto">{builder}</div>
+            </Panel>
+          </Group>
+        )}
       </div>
 
-      {/* Slide-up overlay drawer containing Build + Preview. */}
+      {/* Filter strip toggle — only meaningful when Library has filter UI. */}
+      {filterOpen ? (
+        <div className="fixed inset-x-0 bottom-20 z-20 mx-2 rounded-md border border-border bg-card/95 p-2 shadow-md backdrop-blur lg:hidden">
+          <div className="flex items-center justify-between gap-2 px-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Filters</span>
+            <button
+              type="button"
+              onClick={() => setFilterOpen(false)}
+              className="rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Slide-up overlay drawer containing Build + Preview + Save/Reset. */}
       <DetailModal
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
@@ -576,11 +749,11 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
         subtitle="Compose your entity and watch the preview update live"
         size="lg"
       >
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col">
           {/* Drawer internal tab strip: Build | Preview */}
           <div
             role="tablist"
-            className="flex shrink-0 rounded-md border border-border bg-card p-0.5"
+            className="sticky top-0 z-10 -mx-1 mb-2 flex shrink-0 rounded-md border border-border bg-card p-0.5"
           >
             <button
               type="button"
@@ -614,32 +787,57 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
             </button>
           </div>
 
-          {/* Drawer body — shows only the active tab content. The Preview
-              tab gets an external trigger (this component's
-              previewOverlayOpen is no longer wired since the Preview is
-              in-drawer). */}
+          {/* Drawer body — Build form on the active tab. The Preview tab
+              shows the live preview. Pinned Save/Reset footer at bottom. */}
           <div className="min-h-0">
-            {drawerTab === "build" ? (
-              <div className="max-h-[70vh] overflow-auto">{builder}</div>
-            ) : (
-              <div className="max-h-[70vh] overflow-auto">{preview}</div>
-            )}
+            <div className={cn("max-h-[60vh] overflow-auto", drawerTab !== "build" && "hidden")}>
+              {builder}
+            </div>
+            <div className={cn("max-h-[60vh] overflow-auto", drawerTab !== "preview" && "hidden")}>
+              {preview}
+            </div>
+          </div>
+
+          {/* Pinned Save / Reset footer — always visible at the bottom of
+              the drawer, above the HUD. The Save / Reset buttons live
+              INSIDE the form itself; this footer is a visual anchor so the
+              user always knows where the action is. */}
+          <div className="sticky bottom-0 -mx-1 mt-2 flex shrink-0 items-center justify-between gap-2 border-t border-border bg-card px-3 py-2">
+            <button
+              type="button"
+              onClick={dispatchReset}
+              className="flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-accent"
+            >
+              <RotateCcw className="size-3.5" />
+              Reset
+            </button>
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {drawerTab === "build" ? "Editing draft" : "Live preview"}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                // The actual Save lives inside the form via a known id. Try
+                // to click it; fall back to a custom event.
+                const submitBtn = document.querySelector<HTMLButtonElement>(
+                  'button[type="submit"][data-sandbox-submit]',
+                );
+                if (submitBtn) {
+                  submitBtn.click();
+                } else {
+                  window.dispatchEvent(new CustomEvent("sw-sandbox-submit"));
+                }
+              }}
+              className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              Save
+            </button>
           </div>
         </div>
       </DetailModal>
 
-      {/* Legacy standalone Preview modal kept so any caller that opened it
-          via setPreviewOverlayOpen still gets something. With the FAB
-          pattern this path is rarely hit, but kept for safety. */}
-      <DetailModal
-        isOpen={previewOverlayOpen}
-        onClose={() => setPreviewOverlayOpen(false)}
-        title="Preview"
-        subtitle="Live render of your current draft"
-        size="lg"
-      >
-        {preview}
-      </DetailModal>
+      {/* Speed-dial FAB. */}
+      <FabSpeedDial actions={fabActions} primaryLabel="Open actions" />
     </>
   );
 }

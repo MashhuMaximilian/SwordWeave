@@ -2,22 +2,21 @@
 
 // =============================================================================
 // LibraryBrowseClient — client wrapper that owns the toolbar state and pushes
-// URL changes via Next router. Now hosts the two-pane LibrarySplitView.
+// URL changes via Next router.
 //
-// Layout: <LibraryToolbar /> + <LibrarySplitView>
-// The split view renders the table on one side and the preview pane on
-// the other (desktop horizontal, mobile vertical). Selecting a row in the
-// table updates `selectedItem`, which renders the full preview.
+// Layout: <LibraryToolbar /> + <LibraryTable /> + an iframe detail modal.
+//
+// When the user taps a row, we open a full-size DetailModal that loads the
+// canonical detail page (/library/item/[id]) in an iframe. The user gets the
+// real source page rendered inline (not a stripped-down card preview) while
+// keeping the browse list visible behind. ESC / backdrop click closes it.
 // =============================================================================
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
-import {
-  LibraryToolbar,
-  EMPTY_LIBRARY_TOOLBAR_STATE,
-} from "@/components/library/library-toolbar";
+import { LibraryToolbar } from "@/components/library/library-toolbar";
 import { LibraryTable } from "@/components/library/library-table";
-import { LibrarySplitView } from "@/components/library/library-split-view";
+import { DetailModal } from "@/components/ui/detail-modal";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import type { LibraryEngagement } from "@/components/library/library-table";
 import type { LibraryToolbarState } from "@/components/library/library-toolbar";
@@ -82,8 +81,7 @@ export function LibraryBrowseClient({
     [pushUrl, state],
   );
 
-  // When the user clicks a row, capture the full LibraryItem so the
-  // preview pane can render all available fields.
+  // When the user clicks a row, open the iframe detail modal.
   const onRowSelect = useCallback((item: LibraryItem) => {
     setSelectedItem(item);
   }, []);
@@ -97,26 +95,14 @@ export function LibraryBrowseClient({
           primitiveCategories={primitiveCategories}
         />
       </div>
-      <div className="min-h-0 flex-1">
-        <LibrarySplitView
-          selectedItem={selectedItem}
-          onSelectItem={(item) => setSelectedItem(item)}
+      <div className="min-h-0 flex-1 overflow-auto">
+        <LibraryTable
+          items={initialItems}
+          view={state.view}
           engagement={engagement}
           currentUserInternalId={currentUserInternalId}
-          tableContent={
-            <LibraryTable
-              items={initialItems}
-              view={state.view}
-              engagement={engagement}
-              currentUserInternalId={currentUserInternalId}
-              onSelect={onRowSelect}
-              selectedKey={selectedItem?.id ?? null}
-              pagination={null}
-              showClearFilters={false}
-              emptyTitle="No entries match"
-              emptyDescription="Try a different filter, broader search, or another sort."
-            />
-          }
+          onSelect={onRowSelect}
+          selectedKey={selectedItem?.id ?? null}
           pagination={
             totalPages > 1 ? (
               <Pagination
@@ -127,8 +113,28 @@ export function LibraryBrowseClient({
               />
             ) : null
           }
+          showClearFilters={false}
+          emptyTitle="No entries match"
+          emptyDescription="Try a different filter, broader search, or another sort."
         />
       </div>
+
+      {/* Iframe detail modal — renders the full canonical detail page when
+          the user taps a row. ESC / backdrop / close button dismiss. */}
+      <DetailModal
+        isOpen={selectedItem !== null}
+        onClose={() => setSelectedItem(null)}
+        title={selectedItem?.name ?? ""}
+        size="lg"
+      >
+        {selectedItem ? (
+          <iframe
+            src={`/library/item/${selectedItem.id}`}
+            title={selectedItem.name}
+            className="h-[70vh] w-full rounded-md border border-border"
+          />
+        ) : null}
+      </DetailModal>
     </div>
   );
 }

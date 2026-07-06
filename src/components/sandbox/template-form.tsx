@@ -152,6 +152,14 @@ export function TemplateForm({
     });
   }, [form, slottedPrimitives, slottedCapabilities, onStateChange, isDirty]);
 
+  // External reset trigger from the speed-dial FAB / pinned Save/Reset footer.
+  useEffect(() => {
+    const handler = () => resetEditor();
+    window.addEventListener("sw-sandbox-reset", handler);
+    return () => window.removeEventListener("sw-sandbox-reset", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onReset]);
+
   function updateForm(field: keyof TemplateFormState, value: string | boolean) {
     setIsDirty(true);
     setForm((current) => ({ ...current, [field]: value }));
@@ -480,6 +488,7 @@ export function TemplateForm({
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"
+          data-sandbox-submit
           disabled={isPending}
           className="h-10 rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-60"
         >
