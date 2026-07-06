@@ -241,15 +241,8 @@ function GridCard({
   onSelect,
   selected,
 }: GridCardProps) {
-  return (
-    <article
-      className={cn(
-        "flex flex-col rounded-md border bg-card p-2 transition-colors md:p-2.5",
-        selected
-          ? "border-primary bg-primary/5"
-          : "border-border hover:border-primary",
-      )}
-    >
+  const inner = (
+    <>
       <header className="flex items-start justify-between gap-1.5">
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-sm font-semibold leading-tight">{item.name}</h3>
@@ -333,7 +326,10 @@ function GridCard({
           {onSelect ? (
             <button
               type="button"
-              onClick={() => onSelect(item)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect(item);
+              }}
               className="text-[10px] font-semibold uppercase tracking-wide text-primary hover:underline"
             >
               Add
@@ -342,6 +338,39 @@ function GridCard({
           ) : null}
         </div>
       </footer>
+    </>
+  );
+
+  // When onSelect is provided the whole card is a click target. We render as
+  // a <button> so it's keyboard-accessible too. The "View" / "Add" children
+  // use stopPropagation so they don't double-fire the card click.
+  if (onSelect) {
+    return (
+      <button
+        type="button"
+        onClick={() => onSelect(item)}
+        className={cn(
+          "flex h-full flex-col rounded-md border bg-card p-2 text-left transition-colors md:p-2.5",
+          selected
+            ? "border-primary bg-primary/5"
+            : "border-border hover:border-primary",
+        )}
+      >
+        {inner}
+      </button>
+    );
+  }
+
+  return (
+    <article
+      className={cn(
+        "flex h-full flex-col rounded-md border bg-card p-2 transition-colors md:p-2.5",
+        selected
+          ? "border-primary bg-primary/5"
+          : "border-border hover:border-primary",
+      )}
+    >
+      {inner}
     </article>
   );
 }

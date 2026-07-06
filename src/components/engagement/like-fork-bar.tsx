@@ -267,12 +267,14 @@ export function LikeForkBar(props: LikeForkBarProps) {
   // ---------- render ----------
 
   const buttonBase = props.compact
-    ? "inline-flex shrink-0 items-center gap-0.5 rounded border px-1.5 py-0.5 text-[10px] leading-none transition disabled:opacity-50"
+    ? "inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded border px-1 py-0 text-[10px] leading-none transition disabled:opacity-50"
     : "inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm transition disabled:opacity-50";
   const buttonGhost =
-    "border-slate-700 bg-slate-900/50 text-slate-300 hover:border-slate-500 hover:bg-slate-800";
-  const buttonActive = "border-cyan-500 bg-cyan-500/10 text-cyan-300";
-  const buttonFilled = "border-rose-500 bg-rose-500/10 text-rose-300";
+    "border-border bg-card/50 text-muted-foreground hover:border-primary hover:text-foreground";
+  const buttonActive = "border-primary bg-primary/10 text-primary";
+  const buttonFilled = "border-rose-500 bg-rose-500/10 text-rose-500";
+
+  const iconClass = props.compact ? "h-3 w-3" : "h-4 w-4";
 
   return (
     <div
@@ -290,12 +292,12 @@ export function LikeForkBar(props: LikeForkBarProps) {
         className={`${buttonBase} ${userReaction === "LIKE" ? buttonFilled : buttonGhost}`}
       >
         <Heart
-          className="h-4 w-4"
+          className={iconClass}
           fill={userReaction === "LIKE" ? "currentColor" : "none"}
           aria-hidden="true"
         />
         <span className="tabular-nums" aria-hidden="true">{likes}</span>
-        <span>like{likes === 1 ? "" : "s"}</span>
+        {!props.compact && <span>like{likes === 1 ? "" : "s"}</span>}
       </button>
 
       <button
@@ -308,12 +310,12 @@ export function LikeForkBar(props: LikeForkBarProps) {
         className={`${buttonBase} ${userReaction === "DISLIKE" ? buttonFilled : buttonGhost}`}
       >
         <ThumbsDown
-          className="h-4 w-4"
+          className={iconClass}
           fill={userReaction === "DISLIKE" ? "currentColor" : "none"}
           aria-hidden="true"
         />
         <span className="tabular-nums" aria-hidden="true">{dislikes}</span>
-        <span>dislike{dislikes === 1 ? "" : "s"}</span>
+        {!props.compact && <span>dislike{dislikes === 1 ? "" : "s"}</span>}
       </button>
 
       <button
@@ -324,23 +326,23 @@ export function LikeForkBar(props: LikeForkBarProps) {
         aria-label={`Fork (${forks} ${forks === 1 ? "fork" : "forks"})`}
         className={`${buttonBase} ${buttonGhost}`}
       >
-        <GitFork className="h-4 w-4" aria-hidden="true" />
+        <GitFork className={iconClass} aria-hidden="true" />
         <span className="tabular-nums" aria-hidden="true">{forks}</span>
-        <span>fork{forks === 1 ? "" : "s"}</span>
+        {!props.compact && <span>fork{forks === 1 ? "" : "s"}</span>}
       </button>
 
       <span
-        className={`${buttonBase} border-slate-700 bg-slate-900/70 text-slate-300`}
+        className={`${buttonBase} border-border bg-card/50 text-muted-foreground`}
         title="Net rating (likes − dislikes)"
         role="status"
         aria-label={`Net rating ${netRating > 0 ? "plus " : ""}${netRating}`}
       >
-        <Star className="h-4 w-4" aria-hidden="true" />
+        <Star className={iconClass} aria-hidden="true" />
         <span className="tabular-nums" aria-hidden="true">
           {netRating > 0 ? "+" : ""}
           {netRating}
         </span>
-        <span>rating</span>
+        {!props.compact && <span>rating</span>}
       </span>
 
       {showFollow && props.authorUsername && (
@@ -354,13 +356,11 @@ export function LikeForkBar(props: LikeForkBarProps) {
           className={`${buttonBase} ${following ? buttonActive : buttonGhost}`}
         >
           {following ? (
-            <UserMinus className="h-4 w-4" aria-hidden="true" />
+            <UserMinus className={iconClass} aria-hidden="true" />
           ) : (
-            <UserPlus className="h-4 w-4" aria-hidden="true" />
+            <UserPlus className={iconClass} aria-hidden="true" />
           )}
-          <span>
-            {following ? "Following" : "Follow"}
-          </span>
+          {!props.compact && <span>{following ? "Following" : "Follow"}</span>}
         </button>
       )}
 
@@ -378,16 +378,16 @@ export function LikeForkBar(props: LikeForkBarProps) {
           aria-expanded={flagOpen}
           className={`${buttonBase} ${buttonGhost}`}
         >
-          <Flag className="h-4 w-4" aria-hidden="true" />
-          <span>Flag</span>
+          <Flag className={iconClass} aria-hidden="true" />
+          {!props.compact && <span>Flag</span>}
         </button>
         {flagOpen && (
           <div
             role="dialog"
             aria-label="Flag content"
-            className="absolute right-0 z-20 mt-2 w-64 rounded-md border border-slate-700 bg-slate-900 p-3 shadow-lg"
+            className="absolute right-0 z-20 mt-2 w-64 rounded-md border border-border bg-card p-3 shadow-lg"
           >
-            <p className="mb-2 text-xs text-slate-400">Why are you flagging this?</p>
+            <p className="mb-2 text-xs text-muted-foreground">Why are you flagging this?</p>
             <div className="space-y-1">
               {FLAG_REASONS.map((opt) => (
                 <button
@@ -396,8 +396,8 @@ export function LikeForkBar(props: LikeForkBarProps) {
                   onClick={() => setFlagReason(opt.value)}
                   className={`w-full rounded px-2 py-1.5 text-left text-sm ${
                     flagReason === opt.value
-                      ? "bg-cyan-500/20 text-cyan-200"
-                      : "text-slate-200 hover:bg-slate-800"
+                      ? "bg-primary/20 text-primary"
+                      : "text-foreground hover:bg-accent"
                   }`}
                 >
                   {opt.label}
@@ -410,7 +410,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
                 onChange={(e) => setFlagNote(e.target.value)}
                 placeholder="Optional note (max 500 chars)"
                 maxLength={500}
-                className="mt-2 w-full rounded border border-slate-700 bg-slate-950 p-2 text-xs text-slate-200"
+                className="mt-2 w-full rounded border border-border bg-background p-2 text-xs text-foreground"
                 rows={2}
               />
             )}
@@ -430,7 +430,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
                   setFlagReason(null);
                   setFlagNote("");
                 }}
-                className="rounded border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
+                className="rounded border border-border px-3 py-1.5 text-xs text-foreground hover:bg-accent"
               >
                 Cancel
               </button>
