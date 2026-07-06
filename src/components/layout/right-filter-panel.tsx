@@ -24,17 +24,23 @@ import { cn } from "@/lib/utils";
 import { useGlobalControls } from "./global-controls";
 
 // -----------------------------------------------------------------------------
-// Slot — one global slot, set by useFilterSlot, read by RightFilterPanel.
-// A ref holds the "last-set" reference so the effect can detect "did I set
-// this value or did someone else?" without re-firing on every parent render.
+// Slot — module-level state with a ref to the latest content. Pages push
+// their filter content via useFilterSlot; the panel reads from the ref and
+// re-renders when notified. Using a ref (not a setter function) avoids
+// the race where the page's useEffect fires before the panel registers
+// its setter — the panel reads the current value on mount.
 // -----------------------------------------------------------------------------
 
 type Setter = (next: ReactNode) => void;
 
+let _latestContent: ReactNode = null;
 let _setter: Setter | null = null;
 
 export function _registerSlotSetter(s: Setter) {
   _setter = s;
+  // Push the current value immediately so the panel doesn't show
+  // "No filters" on first render when a page has already set content.
+  s(_latestContent);
 }
 export function _unregisterSlotSetter() {
   _setter = null;
@@ -54,14 +60,16 @@ export function useFilterSlot(content: ReactNode) {
   const [, setTick] = useState(0);
   const lastContentRef = useRef<ReactNode>(null);
   useEffect(() => {
-    _setter?.(content);
+    _latestContent = content;
     lastContentRef.current = content;
+    _setter?.(content);
     setTick((t) => t + 1);
     return () => {
       // Only clear if WE set the value (avoid clearing another page's slot).
       if (lastContentRef.current !== null) {
-        _setter?.(null);
+        _latestContent = null;
         lastContentRef.current = null;
+        _setter?.(null);
       }
     };
   }, [content]);
@@ -69,7 +77,7 @@ export function useFilterSlot(content: ReactNode) {
 
 export function RightFilterPanel() {
   const { filterPanelOpen, setFilterPanelOpen } = useGlobalControls();
-  const [content, setContent] = useState<ReactNode>(null);
+  const [content, setContent] = useState<ReactNode>(() => _latestContent);
 
   // Wire the slot setter once. Pages call _setter(content) via useFilterSlot
   // and we re-render with the new content.

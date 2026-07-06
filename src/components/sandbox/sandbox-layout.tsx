@@ -601,10 +601,16 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
   // Refs (not state) for drag bookkeeping — pointermove fires at 60Hz and
   // the first move can arrive before a setState update propagates. Using
   // refs avoids the "first move is dropped" bug that plagued the earlier
-  // state-based approach.
+  // state-based approach. Window-level pointermove/pointerup listeners
+  // (added in startDrag, removed in endDrag) ensure the drag continues
+  // even when the pointer leaves the handle — a problem with the previous
+  // inline onPointerMove/onPointerUp that only fired while over the
+  // handle div, and one explanation for why the drag "still doesn't
+  // resize" on some devices.
   const draggingRef = useRef(false);
   const startYRef = useRef(0);
   const startPctRef = useRef(0);
+  const handleRef = useRef<HTMLDivElement | null>(null);
   const [dragging, setDragging] = useState(false);
 
   // The sandbox's Build/Preview content is pushed into the global drawer
@@ -652,16 +658,55 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
   // Group, so the page still tries to scroll).
   //
   // The custom drag handle (rendered between the Panels below) uses
-  // pointer events directly to call Panel.setSize(). This bypasses
+  // pointer events directly to call Group.setLayout(). This bypasses
   // react-resizable-panels' built-in Separator which proved unreliable
   // on some touch devices (the user reported "still can't resize on
-  // mobile" after multiple Separator-based attempts).
+  // mobile" after multiple Separator-based attempts). Window-level
+  // pointermove/pointerup listeners (added in startDrag) ensure the
+  // drag continues even after the pointer leaves the handle area.
+  const onPointerMove = useCallback((e: PointerEvent) => {
+    if (!draggingRef.current) return;
+    if (!containerRef.current) return;
+    e.preventDefault();
+    const rect = containerRef.current.getBoundingClientRect();
+    // Subtract the fixed tab bar height so the % calc reflects the
+    // available split area, not the full viewport.
+    const available = rect.height - 48; // pb-12 = 48px
+    if (available <= 0) return;
+    const offsetFromTop = e.clientY - rect.top;
+    const newLibraryPct = Math.max(
+      20,
+      Math.min(75, (offsetFromTop / available) * 100),
+    );
+    const newBuilderPct = 100 - newLibraryPct;
+    groupRef.current?.setLayout({
+      library: newLibraryPct,
+      builder: newBuilderPct,
+    });
+  }, []);
+
+  const onPointerUp = useCallback((e: PointerEvent) => {
+    draggingRef.current = false;
+    setDragging(false);
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", onPointerUp);
+    window.removeEventListener("pointercancel", onPointerUp);
+    if (handleRef.current) {
+      try {
+        handleRef.current.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [onPointerMove]);
+
   const startDrag = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     // Use currentTarget, not target — the grab-bar <span> is a child and
     // can be the actual click target. We want capture on the handle div.
     const handle = e.currentTarget;
+    handleRef.current = handle;
     try {
       handle.setPointerCapture(e.pointerId);
     } catch {
@@ -675,39 +720,16 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
     } else {
       startPctRef.current = 50;
     }
+    // Attach window-level listeners so the drag continues even when the
+    // pointer leaves the handle area. Inline onPointerMove on the handle
+    // only fires while the pointer is over the handle — that's the bug
+    // the user hit when the handle is small and a finger drag quickly
+    // moves off it.
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
     setDragging(true);
-  }, []);
-
-  const onDrag = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (!draggingRef.current) return;
-    if (!containerRef.current || !groupRef.current) return;
-    e.preventDefault();
-    const rect = containerRef.current.getBoundingClientRect();
-    // Subtract the fixed tab bar height so the % calc reflects the
-    // available split area, not the full viewport.
-    const available = rect.height - 48; // pb-12 = 48px
-    if (available <= 0) return;
-    const offsetFromTop = e.clientY - rect.top;
-    const newLibraryPct = Math.max(
-      20,
-      Math.min(75, (offsetFromTop / available) * 100),
-    );
-    const newBuilderPct = 100 - newLibraryPct;
-    groupRef.current.setLayout({
-      library: newLibraryPct,
-      builder: newBuilderPct,
-    });
-  }, []);
-
-  const endDrag = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    draggingRef.current = false;
-    setDragging(false);
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-  }, []);
+  }, [onPointerMove, onPointerUp]);
 
   return (
     <div
@@ -750,12 +772,10 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
               from react-resizable-panels was unreliable on touch
               (the drag never started on some devices). */}
           <div
+            ref={handleRef}
             role="separator"
             aria-orientation="horizontal"
             onPointerDown={startDrag}
-            onPointerMove={onDrag}
-            onPointerUp={endDrag}
-            onPointerCancel={endDrag}
             className={cn(
               "group relative h-7 shrink-0 cursor-row-resize select-none border-y border-border/40 transition-colors",
               dragging

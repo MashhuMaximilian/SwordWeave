@@ -18,7 +18,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ModalStackHost>
       <GlobalControls>
-        <main className="min-w-0 pb-20 lg:pb-16">{children}</main>
+        <main className="min-w-0 pb-2">{children}</main>
       </GlobalControls>
     </ModalStackHost>
   );

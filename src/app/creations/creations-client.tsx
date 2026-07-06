@@ -252,6 +252,10 @@ export function CreationsClient({
                         router.push(
                           `/sandbox/blueprint?build=template&edit=${item.targetId}`,
                         );
+                      } else if (targetType === "CHARACTER") {
+                        router.push(
+                          `/characters/${item.targetId}`,
+                        );
                       }
                       stack.clear();
                     }}

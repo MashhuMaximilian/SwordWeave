@@ -6,6 +6,7 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db/client";
 import {
   capabilities,
+  characters,
   effects,
   items,
   primitives,
@@ -14,6 +15,7 @@ import {
 } from "@/db/schema";
 import {
   capabilityToLibraryItem,
+  characterToLibraryItem,
   effectToLibraryItem,
   itemToLibraryItem,
   primitiveToLibraryItem,
@@ -40,7 +42,7 @@ export default async function CreationsPage({
   // "My creations" = rows the user authored. We pull all entity types in
   // parallel and let the client filter by type/status. Drafts = private
   // (isPublic=false); Published = public.
-  const [primitiveRows, effectRows, capabilityRows, templateRows, itemRows] =
+  const [primitiveRows, effectRows, capabilityRows, templateRows, itemRows, characterRows] =
     await Promise.all([
       db.query.primitives.findMany({
         where: eq(primitives.userId, userId),
@@ -64,6 +66,10 @@ export default async function CreationsPage({
         where: eq(items.userId, userId),
         orderBy: [asc(items.name)],
       }),
+      db.query.characters.findMany({
+        where: eq(characters.userId, userId),
+        orderBy: [desc(characters.level), asc(characters.name)],
+      }),
     ]);
 
   // Look up publication rows for every (targetType, targetId) the user
@@ -83,6 +89,7 @@ export default async function CreationsPage({
       id: r.id,
     })),
     ...itemRows.map((r) => ({ type: "ITEM" as const, id: r.id })),
+    ...characterRows.map((r) => ({ type: "CHARACTER" as const, id: r.id })),
   ];
   // Bulk fetch the latest publication per (target_type, target_id) using
   // a single IN query, then index by the composite key. Anything missing
@@ -131,6 +138,9 @@ export default async function CreationsPage({
       return templateToLibraryItem(r, visFor(t, r.id));
     }),
     ...itemRows.map((r) => itemToLibraryItem(r, visFor("ITEM", r.id))),
+    ...characterRows.map((r) =>
+      characterToLibraryItem(r, visFor("CHARACTER", r.id)),
+    ),
   ];
 
   const counts = {
@@ -139,7 +149,7 @@ export default async function CreationsPage({
     capability: capabilityRows.length,
     template: templateRows.length,
     item: itemRows.length,
-    character: 0, // characters live in /characters
+    character: characterRows.length,
   };
 
   return (

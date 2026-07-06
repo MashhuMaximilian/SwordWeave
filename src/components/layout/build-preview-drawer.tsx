@@ -17,8 +17,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useGlobalControls } from "./global-controls";
-import { DetailModal } from "@/components/ui/detail-modal";
-import { Wrench, Eye, RotateCcw, Save } from "lucide-react";
+import { Wrench, Eye, RotateCcw, Save, X } from "lucide-react";
 
 type DrawerTab = "build" | "preview";
 
@@ -92,13 +91,7 @@ export function BuildPreviewDrawer() {
   }
 
   return (
-    <DetailModal
-      isOpen={drawerOpen}
-      onClose={closeDrawer}
-      title="Build & Preview"
-      subtitle="Compose your entity and watch the preview update live"
-      size="lg"
-    >
+    <DrawerShell isOpen={drawerOpen} onClose={closeDrawer}>
       <div className="flex max-h-[70vh] flex-col">
         {/* Tab strip — disabled when only one tab has content. */}
         <div
@@ -145,7 +138,9 @@ export function BuildPreviewDrawer() {
         </div>
 
         {/* Body — pages register per-tab content; the drawer shows the
-            active tab's content. */}
+            active tab's content. ALWAYS rendered (even when drawer is
+            closed) so the form's slot listener is always live — otherwise
+            slotting into a closed drawer silently drops the event. */}
         <div className="min-h-0 flex-1 overflow-y-auto">
           {activeContent ?? (
             <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
@@ -181,6 +176,92 @@ export function BuildPreviewDrawer() {
           </div>
         ) : null}
       </div>
-    </DetailModal>
+    </DrawerShell>
+  );
+}
+
+// =============================================================================
+// DrawerShell — modal chrome that always renders its children. The
+// backdrop/panel chrome is hidden via CSS when `isOpen` is false, but the
+// children stay mounted. This keeps form state alive and slot listeners
+// active even when the user hasn't opened the drawer yet (the single-mode
+// sandbox uses the drawer to host the build form).
+// =============================================================================
+
+function DrawerShell({
+  isOpen,
+  onClose,
+  children,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  // Lock body scroll when open.
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpen]);
+
+  // Escape to close.
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isOpen, onClose]);
+
+  return (
+    <>
+      {/* Backdrop — visible only when open. */}
+      <div
+        onClick={onClose}
+        className={cn(
+          "fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-200",
+          isOpen ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+        aria-hidden="true"
+      />
+      {/* Panel — always rendered so children stay mounted. Hidden off-screen
+          with a translate transition when closed. */}
+      <aside
+        role="dialog"
+        aria-modal={isOpen}
+        aria-label="Build & Preview"
+        aria-hidden={!isOpen}
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-50 flex max-h-[90vh] flex-col rounded-t-2xl border-t border-border bg-card shadow-2xl transition-transform duration-300 ease-out sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:max-w-4xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl",
+          isOpen
+            ? "translate-y-0 sm:translate-y-[-50%]"
+            : "translate-y-full sm:translate-y-[-50%] sm:translate-x-[-50%] sm:translate-y-[150%]",
+        )}
+      >
+        <header className="sticky top-0 z-10 flex shrink-0 items-start justify-between gap-2 border-b border-border bg-card px-2 py-2">
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-sm font-semibold">
+              Build & Preview
+            </h2>
+            <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+              Compose your entity and watch the preview update live
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close build and preview"
+            className="shrink-0 rounded-md p-1.5 hover:bg-accent"
+          >
+            <X className="size-4" />
+          </button>
+        </header>
+        <div className="flex-1 overflow-y-auto px-2 py-2">{children}</div>
+      </aside>
+    </>
   );
 }

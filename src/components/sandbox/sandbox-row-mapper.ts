@@ -67,6 +67,18 @@ type SandboxItem = {
   slotCost: number;
 };
 
+type SandboxCharacter = {
+  id: string;
+  name: string;
+  size: string;
+  level: number;
+  attrPhysical: number;
+  attrMental: number;
+  attrMagical: number;
+  attrProficient: string | null;
+  isPublic: boolean | null;
+};
+
 const EMPTY_AUTHORS = {
   authorId: null,
   authorUsername: null,
@@ -180,6 +192,25 @@ export function itemToLibraryItem(
     ...EMPTY_AUTHORS,
     ...EMPTY_ENGAGEMENT,
     tags: row.tags ?? [],
+    visibility,
+  };
+}
+
+export function characterToLibraryItem(
+  row: SandboxCharacter,
+  visibility: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC" = "PRIVATE",
+): LibraryItem {
+  return {
+    id: `CHARACTER:${row.id}`,
+    targetType: "CHARACTER",
+    targetId: row.id,
+    name: row.name,
+    description: `L${row.level} ${row.size} · P${row.attrPhysical} M${row.attrMental} Mg${row.attrMagical}${row.attrProficient ? ` (+${row.attrProficient})` : ""}`,
+    category: row.size,
+    buCost: null,
+    ...EMPTY_AUTHORS,
+    ...EMPTY_ENGAGEMENT,
+    tags: [],
     visibility,
   };
 }
