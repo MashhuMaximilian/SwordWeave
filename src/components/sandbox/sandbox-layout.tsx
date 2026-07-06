@@ -144,7 +144,12 @@ export function SandboxLayout({
   className,
 }: SandboxLayoutProps) {
   const groupId = useId();
-  const [viewport, setViewport] = useState<"mobile" | "tablet" | "desktop">("desktop");
+  // IMPORTANT: default to "mobile" so SSR + first client render emit the same
+  // tree. The desktop/tablet layouts mount `<Panel>` from react-resizable-panels
+  // which would otherwise leave orphaned data-panel divs at body level when the
+  // viewport transitions. We only switch to desktop/tablet after `viewportReady`.
+  const [viewport, setViewport] = useState<"mobile" | "tablet" | "desktop">("mobile");
+  const [viewportReady, setViewportReady] = useState(false);
   const [hiddenColumns, setHiddenColumns] = useState<Set<ColumnKey>>(new Set());
   const [previewVisible, setPreviewVisible] = useState(true);
   const [previewOverlayOpen, setPreviewOverlayOpen] = useState(false);
@@ -197,6 +202,7 @@ export function SandboxLayout({
       else setViewport("desktop");
     };
     computeViewport();
+    setViewportReady(true);
     window.addEventListener("resize", computeViewport);
     return () => window.removeEventListener("resize", computeViewport);
   }, []);
@@ -288,18 +294,21 @@ export function SandboxLayout({
       >
         {topBar ? <div className="shrink-0 border-b">{topBar}</div> : null}
 
-        {/* Floating restore buttons — desktop only. */}
-        {viewport === "desktop" && hiddenColumns.has("library") ? (
+        {/* Floating restore buttons — desktop only, and only after viewport is ready. */}
+        {viewportReady && viewport === "desktop" && hiddenColumns.has("library") ? (
           <RestoreColumnButton columnKey="library" />
         ) : null}
-        {viewport === "desktop" && hiddenColumns.has("builder") ? (
+        {viewportReady && viewport === "desktop" && hiddenColumns.has("builder") ? (
           <RestoreColumnButton columnKey="builder" />
         ) : null}
-        {viewport === "desktop" && hiddenColumns.has("preview") ? (
+        {viewportReady && viewport === "desktop" && hiddenColumns.has("preview") ? (
           <RestoreColumnButton columnKey="preview" />
         ) : null}
 
-        {viewport === "mobile" ? (
+        {/* Render order: mobile is the safe default (matches SSR).
+            Tablet/Desktop only mount after `viewportReady` is true so we never
+            have SSR emit a desktop tree and then unmount it on the client. */}
+        {!viewportReady || viewport === "mobile" ? (
           <MobileSandboxLayout
             library={library}
             builder={builder}
