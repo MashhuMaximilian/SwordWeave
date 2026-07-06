@@ -100,6 +100,7 @@ export function LibraryBrowseClient({
         primitiveCategories={primitiveCategories}
         showSearch={true}
         showAdvancedFilters={true}
+        forceExpandFilters
       />
     </div>,
   );

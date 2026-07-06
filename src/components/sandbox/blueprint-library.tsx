@@ -210,6 +210,7 @@ export function BlueprintLibrary({
         onSubKindsChange={setActiveSubKinds}
         showSearch={true}
         showAdvancedFilters={true}
+        forceExpandFilters
       />
     </div>,
   );

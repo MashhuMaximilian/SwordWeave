@@ -171,6 +171,7 @@ export function GrammarLibrary({
         availableTypes={availableTypes}
         showSearch={true}
         showAdvancedFilters={true}
+        forceExpandFilters
       />
     </div>,
   );

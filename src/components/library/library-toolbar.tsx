@@ -109,6 +109,13 @@ interface LibraryToolbarProps {
    * Placeholder for the search input.
    */
   searchPlaceholder?: string;
+  /**
+   * When the toolbar is mounted inside the right-side GlobalControls filter
+   * panel, the user has already explicitly chosen to see filters — there is
+   * no point collapsing the chip rows on mobile. Setting this to true makes
+   * the toolbar always render its filter sections, regardless of viewport.
+   */
+  forceExpandFilters?: boolean;
 }
 
 const DEFAULT_TYPE_CHIPS: LibraryTypeChip[] = [
@@ -165,12 +172,14 @@ export function LibraryToolbar({
   showAdvancedFilters = true,
   showSearch = true,
   searchPlaceholder = "Search by name…",
+  forceExpandFilters = false,
 }: LibraryToolbarProps) {
   // Mobile-only: filters panel collapsed by default to give the result set
   // more vertical real-estate on a 393×852 viewport. Desktop ignores this.
-  // The search bar is intentionally kept outside the collapse so the user
-  // can always search without first opening the filter panel.
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  // When the toolbar is mounted inside the GlobalControls filter panel
+  // (`forceExpandFilters=true`), the user has already explicitly opened
+  // filters — start with the chip rows visible.
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(forceExpandFilters);
   const hasActiveFilters =
     state.typeFilter !== "ALL" ||
     state.category !== "" ||
@@ -224,42 +233,52 @@ export function LibraryToolbar({
         )}
         {/* Mobile-only filter toggle — opens the filter panel below. Shown
             even when the search bar is hidden so the sandbox can still
-            collapse its filters on mobile. Desktop ignores this entirely. */}
-        <button
-          type="button"
-          onClick={() => setMobileFiltersOpen((v) => !v)}
-          aria-expanded={mobileFiltersOpen}
-          aria-controls="library-toolbar-filters"
-          className={cn(
-            "relative inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition-colors md:hidden",
-            mobileFiltersOpen || hasActiveFilters
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border bg-card text-foreground hover:border-primary",
-          )}
-          title={mobileFiltersOpen ? "Hide filters" : "Show filters"}
-        >
-          <SlidersHorizontal className="size-3.5" />
-          Filters
-          {hasActiveFilters && !mobileFiltersOpen ? (
-            <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-foreground px-1 text-[10px] font-bold text-primary">
-              •
-            </span>
-          ) : null}
-          {mobileFiltersOpen ? (
-            <ChevronUp className="size-3.5" />
-          ) : (
-            <ChevronDown className="size-3.5" />
-          )}
-        </button>
+            collapse its filters on mobile. Desktop ignores this entirely.
+            Suppressed when forceExpandFilters is true (the toolbar is already
+            inside the global filter panel — no need for a collapse toggle). */}
+        {forceExpandFilters ? null : (
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen((v) => !v)}
+            aria-expanded={mobileFiltersOpen}
+            aria-controls="library-toolbar-filters"
+            className={cn(
+              "relative inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition-colors md:hidden",
+              mobileFiltersOpen || hasActiveFilters
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card text-foreground hover:border-primary",
+            )}
+            title={mobileFiltersOpen ? "Hide filters" : "Show filters"}
+          >
+            <SlidersHorizontal className="size-3.5" />
+            Filters
+            {hasActiveFilters && !mobileFiltersOpen ? (
+              <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-foreground px-1 text-[10px] font-bold text-primary">
+                •
+              </span>
+            ) : null}
+            {mobileFiltersOpen ? (
+              <ChevronUp className="size-3.5" />
+            ) : (
+              <ChevronDown className="size-3.5" />
+            )}
+          </button>
+        )}
       </div>
 
-      {/* Filter panel — always visible on desktop, collapsible on mobile. */}
+      {/* Filter panel — always visible on desktop, collapsible on mobile.
+          When `forceExpandFilters` is true (toolbar mounted in the global
+          filter panel), the user has already chosen to see filters — keep
+          them open regardless of viewport. */}
       <div
         id="library-toolbar-filters"
         className={cn(
           "space-y-3",
-          // Hide on mobile unless the user has expanded it.
-          mobileFiltersOpen ? "block" : "hidden md:block",
+          forceExpandFilters
+            ? "block"
+            : mobileFiltersOpen
+              ? "block"
+              : "hidden md:block",
         )}
       >
         {/* Sort + view toggle */}
