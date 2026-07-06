@@ -27,6 +27,7 @@ import {
   LibraryItemPreview,
   previewHeadingLabel,
   type SandboxCapabilityRow,
+  type SandboxEffectRow,
   type SandboxItemRow,
   type SandboxPreviewItem,
   type SandboxPrimitiveRow,
@@ -52,6 +53,8 @@ interface BlueprintLibraryProps {
   /** Capabilities the blueprint library can preview for sub-link
    *  resolution inside item bodies. */
   capabilities?: SandboxCapabilityRow[];
+  /** Effects rows for previewing effect-kind LibraryItems in the library. */
+  effects?: SandboxEffectRow[];
   editingKey: string | null;
   onSelect: (kind: "template" | "item", id: string) => void;
 }
@@ -82,6 +85,7 @@ export function BlueprintLibrary({
   items,
   primitives = [],
   capabilities = [],
+  effects = [],
   editingKey,
   onSelect,
 }: BlueprintLibraryProps) {
@@ -134,9 +138,21 @@ export function BlueprintLibrary({
         const row = items.find((i) => i.id === item.targetId);
         return row ? { kind: "item", row } : null;
       }
+      if (item.targetType === "PRIMITIVE") {
+        const row = primitives.find((p) => String(p.id) === item.targetId);
+        return row ? { kind: "primitive", row } : null;
+      }
+      if (item.targetType === "EFFECT") {
+        const row = effects?.find((e) => e.id === item.targetId);
+        return row ? { kind: "effect", row } : null;
+      }
+      if (item.targetType === "CAPABILITY") {
+        const row = capabilities.find((c) => c.id === item.targetId);
+        return row ? { kind: "capability", row } : null;
+      }
       return null;
     };
-  }, [templates, items]);
+  }, [templates, items, primitives, capabilities, effects]);
 
   // Filter items by toolbar search/typeFilter. The build-mode gate is
   // removed — the user can see any kind in the blueprint library per the

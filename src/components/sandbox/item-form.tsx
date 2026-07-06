@@ -6,6 +6,12 @@
 import { Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import {
+  saveDraft,
+  loadDraft,
+  clearDraft,
+  makeDraftKey,
+} from "@/lib/sandbox/form-draft";
 import type {
   ItemFormState,
   ItemPrimitiveSlot,
@@ -139,7 +145,23 @@ export function ItemForm({
       sourceOrigin: initialItem.sourceOrigin ?? "",
       tags: (initialItem.tags ?? []).join(", "),
     });
+    // Check for a saved draft (e.g. when the form unmounted in the panel
+    // and remounted in the drawer). If a draft exists, restore all three
+    // slot arrays from it instead of the initial data.
+    const draftKey = makeDraftKey("item", id);
+    const draft = loadDraft(draftKey);
+    if (draft) {
+      setPrimitiveIds(draft.primitiveIds);
+      setCapabilityIds(draft.capabilityIds);
+      setEffectIds(draft.effectIds);
+      setIsDirty(true);
+      setMessage("Restored your in-progress edits.");
+      clearDraft(draftKey);
+      return;
+    }
     setPrimitiveIds(initialItem.primitiveLinks.map((l) => l.primitiveId));
+    setCapabilityIds([]);
+    setEffectIds([]);
     setIsDirty(false); // pristine after load
     setMessage(
       initialItem.userId
@@ -147,6 +169,27 @@ export function ItemForm({
         : "Loaded library item. Saving creates your private copy.",
     );
   }, [initialItem]);
+
+  // Save draft on unmount — when the form unmounts in the panel (split
+  // mode exit) or in the drawer, save the current primitiveIds/capabilityIds/
+  // effectIds so the other instance can restore them on mount.
+  useEffect(() => {
+    return () => {
+      const id = initialItem?.id ?? null;
+      const draftKey = makeDraftKey("item", id);
+      if (primitiveIds.length > 0 || capabilityIds.length > 0 || effectIds.length > 0) {
+        saveDraft(draftKey, {
+          primitiveIds,
+          capabilityIds,
+          effectIds,
+          notesByIndex: {},
+        });
+      } else {
+        clearDraft(draftKey);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [primitiveIds, capabilityIds, effectIds, initialItem?.id]);
 
   const slottedPrimitives = primitiveIds
     .map((id) => itemAugmentPrimitives.find((p) => p.id === id))

@@ -114,7 +114,7 @@ export function BlueprintSandboxClient({
     type: string;
     sourceType: string;
   }>;
-  effects: Array<{ id: string; name: string }>;
+  effects: import("@/components/library/library-item-preview").SandboxEffectRow[];
   /**
    * Unified LibraryItem[] for the left column. Produced server-side from
    * the typed rows.
@@ -372,6 +372,7 @@ export function BlueprintSandboxClient({
             items={items}
             primitives={sandboxPrimitives}
             capabilities={sandboxCapabilities}
+            effects={effects}
             editingKey={
               editing
                 ? `${editing.kind}:${editing.row.id}`

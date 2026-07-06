@@ -7,6 +7,12 @@
 import { Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import {
+  saveDraft,
+  loadDraft,
+  clearDraft,
+  makeDraftKey,
+} from "@/lib/sandbox/form-draft";
 import type {
   TemplateFormState,
   TemplateSlot,
@@ -120,7 +126,21 @@ export function TemplateForm({
       suggestedTraits: initialTemplate.suggestedTraits ?? "",
       isPublic: initialTemplate.isPublic,
     });
+    // Check for a saved draft (e.g. when the form unmounted in the panel
+    // and remounted in the drawer). If a draft exists, restore primitiveIds
+    // and capabilityIds from it instead of the initial data.
+    const draftKey = makeDraftKey("template", id);
+    const draft = loadDraft(draftKey);
+    if (draft) {
+      setPrimitiveIds(draft.primitiveIds);
+      setCapabilityIds(draft.capabilityIds);
+      setIsDirty(true);
+      setMessage("Restored your in-progress edits.");
+      clearDraft(draftKey);
+      return;
+    }
     setPrimitiveIds(initialTemplate.primitiveLinks.map((l) => l.primitiveId));
+    setCapabilityIds([]);
     setIsDirty(false); // pristine after load
     setMessage(
       initialTemplate.userId
@@ -128,6 +148,27 @@ export function TemplateForm({
         : "Loaded library template. Saving creates your private copy.",
     );
   }, [initialTemplate]);
+
+  // Save draft on unmount — when the form unmounts in the panel (split
+  // mode exit) or in the drawer, save the current primitiveIds/capabilityIds
+  // so the other instance can restore them on mount.
+  useEffect(() => {
+    return () => {
+      const id = initialTemplate?.id ?? null;
+      const draftKey = makeDraftKey("template", id);
+      if (primitiveIds.length > 0 || capabilityIds.length > 0) {
+        saveDraft(draftKey, {
+          primitiveIds,
+          effectIds: [],
+          capabilityIds,
+          notesByIndex: {},
+        });
+      } else {
+        clearDraft(draftKey);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [primitiveIds, capabilityIds, initialTemplate?.id]);
 
   const allowedCategory = expectedCategory(form.kind);
   const allowedPrimitives = availablePrimitives.filter(

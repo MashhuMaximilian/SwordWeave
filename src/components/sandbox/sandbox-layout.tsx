@@ -598,6 +598,13 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
   const builderPanelRef = useRef<PanelImperativeHandle>(null);
   const groupRef = useRef<{ getLayout: () => Record<string, number>; setLayout: (l: Record<string, number>) => void } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  // Refs (not state) for drag bookkeeping — pointermove fires at 60Hz and
+  // the first move can arrive before a setState update propagates. Using
+  // refs avoids the "first move is dropped" bug that plagued the earlier
+  // state-based approach.
+  const draggingRef = useRef(false);
+  const startYRef = useRef(0);
+  const startPctRef = useRef(0);
   const [dragging, setDragging] = useState(false);
 
   // The sandbox's Build/Preview content is pushed into the global drawer
@@ -652,37 +659,51 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
   const startDrag = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    // Use currentTarget, not target — the grab-bar <span> is a child and
+    // can be the actual click target. We want capture on the handle div.
+    const handle = e.currentTarget;
+    try {
+      handle.setPointerCapture(e.pointerId);
+    } catch {
+      /* some browsers throw if capture is already set */
+    }
+    draggingRef.current = true;
+    startYRef.current = e.clientY;
+    if (groupRef.current && containerRef.current) {
+      const layout = groupRef.current.getLayout();
+      startPctRef.current = layout["library"] ?? 50;
+    } else {
+      startPctRef.current = 50;
+    }
     setDragging(true);
   }, []);
 
-  const onDrag = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!dragging) return;
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      // Subtract the fixed tab bar height so the % calc reflects the
-      // available split area, not the full viewport.
-      const available = rect.height - 48; // pb-12 = 48px
-      const offsetFromTop = e.clientY - rect.top;
-      const newLibraryPct = Math.max(
-        20,
-        Math.min(75, (offsetFromTop / available) * 100),
-      );
-      const newBuilderPct = 100 - newLibraryPct;
-      const layout: Record<string, number> = {
-        library: newLibraryPct,
-        builder: newBuilderPct,
-      };
-      groupRef.current?.setLayout(layout);
-    },
-    [dragging],
-  );
+  const onDrag = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) return;
+    if (!containerRef.current || !groupRef.current) return;
+    e.preventDefault();
+    const rect = containerRef.current.getBoundingClientRect();
+    // Subtract the fixed tab bar height so the % calc reflects the
+    // available split area, not the full viewport.
+    const available = rect.height - 48; // pb-12 = 48px
+    if (available <= 0) return;
+    const offsetFromTop = e.clientY - rect.top;
+    const newLibraryPct = Math.max(
+      20,
+      Math.min(75, (offsetFromTop / available) * 100),
+    );
+    const newBuilderPct = 100 - newLibraryPct;
+    groupRef.current.setLayout({
+      library: newLibraryPct,
+      builder: newBuilderPct,
+    });
+  }, []);
 
   const endDrag = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    draggingRef.current = false;
     setDragging(false);
     try {
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      e.currentTarget.releasePointerCapture(e.pointerId);
     } catch {
       /* ignore */
     }
@@ -731,7 +752,6 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
           <div
             role="separator"
             aria-orientation="horizontal"
-            aria-valuenow={dragging ? 50 : 50}
             onPointerDown={startDrag}
             onPointerMove={onDrag}
             onPointerUp={endDrag}

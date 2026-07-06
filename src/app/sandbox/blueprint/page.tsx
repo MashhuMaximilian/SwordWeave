@@ -13,6 +13,8 @@ import {
 import { db } from "@/db/client";
 import { capabilities, effects, items, primitives, templates } from "@/db/schema";
 import {
+  capabilityToLibraryItem,
+  effectToLibraryItem,
   itemToLibraryItem,
   primitiveToLibraryItem,
   templateToLibraryItem,
@@ -64,6 +66,9 @@ export default async function BlueprintSandboxPage({
       }),
       db.query.effects.findMany({
         orderBy: [asc(effects.name)],
+        with: {
+          primitiveLinks: { with: { primitive: true } },
+        },
       }),
     ]);
 
@@ -83,13 +88,17 @@ export default async function BlueprintSandboxPage({
   }
 
   // Build unified LibraryItem array for the left column.
-  // Templates + Items are the primary entities. Primitives get included too
-  // because Templates need to slot primitives during editing, and the user
-  // can browse primitives while building an Item.
+  // Templates + Items are the primary entities. Primitives, effects, and
+  // capabilities are also included so the user can browse/filter them in
+  // the kind filter (the filter chip exposes all types per the user's
+  // spec). Sub-entity resolution uses the dedicated primitive/capability
+  // row arrays below.
   const libraryItems: LibraryItem[] = [
     ...templateRows.map((r) => templateToLibraryItem(r)),
     ...itemRows.map((r) => itemToLibraryItem(r)),
     ...primitiveRows.map((r) => primitiveToLibraryItem(r)),
+    ...effectRows.map((r) => effectToLibraryItem(r)),
+    ...capabilityRows.map((r) => capabilityToLibraryItem(r)),
   ];
 
   return (
@@ -111,7 +120,19 @@ export default async function BlueprintSandboxPage({
         type: c.type,
         sourceType: c.sourceType,
       }))}
-      effects={effectRows.map((e) => ({ id: e.id, name: e.name }))}
+      effects={effectRows.map((e) => ({
+        id: e.id,
+        name: e.name,
+        narrativeDescription: e.narrativeDescription,
+        sourceOrigin: e.sourceOrigin,
+        tags: e.tags ?? [],
+        isPublic: e.isPublic,
+        primitiveLinks: (e.primitiveLinks ?? []).map((l) => ({
+          primitiveId: l.primitiveId,
+          quantity: l.quantity,
+          primitive: l.primitive,
+        })),
+      }))}
       libraryItems={libraryItems}
       sandboxPrimitives={primitiveRows.map((p) => ({
         id: p.id,

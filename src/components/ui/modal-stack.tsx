@@ -10,9 +10,9 @@
 // Pages push/pop modal entries via the imperative handle returned by
 // useModalStack(). The renderer subscribes to the stack and draws each level.
 //
-// A "sub-entity" link inside a modal (e.g. a primitive mentioned in a
-// capability's primitiveLinks) can call useModalStack().push(...) to open the
-// next modal in the stack.
+// On desktop (≥1024px) the modal renders as a left-anchored side panel so
+// the middle/right sandbox columns stay visible and clickable. On mobile it's
+// a full-screen overlay (the other columns aren't visible anyway).
 // =============================================================================
 
 import {
@@ -21,7 +21,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -58,10 +57,9 @@ const StackCtx = createContext<ModalStackState | null>(null);
 export function useModalStack(): ModalStackState {
   const ctx = useContext(StackCtx);
   if (!ctx) {
-    // No provider — return a no-op stack so components can call push/pop
-    // unconditionally without crashing. Pages that actually need stack
-    // behaviour must wrap their tree in <ModalStackHost />.
-    const noop: ModalStackState = {
+    // No provider — return a no-op stack so callsites that fire events from
+    // unmounted components don't crash. Pushes silently fail.
+    return {
       stack: [],
       push: () => false,
       pop: () => {},
@@ -70,7 +68,6 @@ export function useModalStack(): ModalStackState {
       canPush: false,
       depth: 0,
     };
-    return noop;
   }
   return ctx;
 }
@@ -78,47 +75,27 @@ export function useModalStack(): ModalStackState {
 export function ModalStackHost({ children }: { children: ReactNode }) {
   const [stack, setStack] = useState<ModalEntry[]>([]);
 
-  // Lock body scroll when stack is non-empty.
-  useEffect(() => {
-    if (stack.length === 0) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [stack.length > 0]);
-
-  // Esc pops one level (not closes everything).
-  useEffect(() => {
-    if (stack.length === 0) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setStack((s) => (s.length > 0 ? s.slice(0, -1) : s));
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [stack.length > 0]);
-
-  const push = useCallback(<T,>(entry: ModalEntry<T>) => {
-    let ok = false;
-    setStack((s) => {
-      if (s.length >= MAX_DEPTH) return s;
-      ok = true;
-      return [...s, entry as ModalEntry];
+  const push = useCallback(<T,>(entry: ModalEntry<T>): boolean => {
+    let pushed = false;
+    setStack((current) => {
+      if (current.length >= MAX_DEPTH) return current;
+      pushed = true;
+      return [...current, entry as ModalEntry];
     });
-    return ok;
+    return pushed;
   }, []);
 
   const pop = useCallback(() => {
-    setStack((s) => (s.length > 0 ? s.slice(0, -1) : s));
+    setStack((current) => current.slice(0, -1));
   }, []);
 
   const popTo = useCallback((depth: number) => {
-    setStack((s) => s.slice(0, Math.max(0, depth)));
+    setStack((current) => current.slice(0, depth + 1));
   }, []);
 
-  const clear = useCallback(() => setStack([]), []);
+  const clear = useCallback(() => {
+    setStack([]);
+  }, []);
 
   const value = useMemo<ModalStackState>(
     () => ({
@@ -142,99 +119,151 @@ export function ModalStackHost({ children }: { children: ReactNode }) {
 }
 
 function ModalStackRenderer() {
-  const { stack, pop, popTo, clear } = useModalStack();
+  const { stack, pop, popTo } = useModalStack();
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  // On desktop (≥1024px) the modal opens as a left-anchored side panel so
+  // the middle/right sandbox columns stay visible and clickable. On mobile
+  // it's a full-screen overlay (the other columns aren't visible anyway).
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    setIsDesktop(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
   if (stack.length === 0) return null;
 
-  // Each modal is rendered as a separate overlay, with z-index staggered so
-  // deeper modals sit on top. The top modal gets full focus, ancestors get a
-  // compact header with breadcrumb + back button.
   return (
     <>
       {stack.map((entry, idx) => {
         const isTop = idx === stack.length - 1;
         const z = 50 + idx;
+
+        if (isDesktop) {
+          // Desktop: side panel anchored to the left edge. No backdrop, no
+          // click-to-close — the middle/right columns stay fully interactive.
+          return (
+            <div
+              key={entry.key}
+              role="dialog"
+              aria-modal="false"
+              aria-label={entry.label}
+              className="fixed left-0 top-0 flex h-full"
+              style={{ zIndex: z }}
+            >
+              <div
+                className={cn(
+                  "relative flex h-full w-[420px] max-w-[42vw] flex-col overflow-hidden border-r border-border bg-card shadow-2xl",
+                  !isTop && "w-[360px] opacity-95",
+                )}
+              >
+                {renderModalBody(entry, isTop, stack, idx, pop, popTo)}
+              </div>
+            </div>
+          );
+        }
+
+        // Mobile / tablet: full-screen overlay with dimming backdrop and
+        // click-to-close on the top modal.
         return (
           <div
             key={entry.key}
             role="dialog"
             aria-modal="true"
             aria-label={entry.label}
-            className="fixed inset-0 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
             style={{ zIndex: z }}
             onClick={isTop ? (e) => { if (e.target === e.currentTarget) pop(); } : undefined}
           >
             <div
               className={cn(
-                "relative w-full overflow-hidden rounded-t-2xl bg-card shadow-2xl sm:rounded-2xl",
-                "max-w-2xl max-h-[95vh] flex flex-col",
+                "relative flex w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-card shadow-2xl sm:rounded-2xl",
+                "max-h-[95vh]",
                 !isTop && "max-w-md",
               )}
               onClick={(e) => e.stopPropagation()}
             >
-              <header className="sticky top-0 z-10 flex flex-col gap-1 border-b border-border bg-card px-4 py-3">
-                {/* Breadcrumb row */}
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  {stack.slice(0, idx + 1).map((crumb, i) => {
-                    const isLast = i === idx;
-                    return (
-                      <span key={crumb.key} className="flex items-center gap-1">
-                        {i > 0 ? (
-                          <ChevronRight className="size-3 shrink-0" />
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={() => popTo(i)}
-                          className={cn(
-                            "truncate rounded px-1 transition-colors hover:bg-accent",
-                            isLast && "text-foreground",
-                          )}
-                          title={crumb.label}
-                        >
-                          {crumb.label}
-                        </button>
-                      </span>
-                    );
-                  })}
-                </div>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <h2 className="truncate text-lg font-semibold">
-                      {entry.label}
-                    </h2>
-                    {entry.category ? (
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                        {entry.category}
-                      </p>
-                    ) : null}
-                  </div>
-                  {isTop ? (
-                    <button
-                      type="button"
-                      onClick={pop}
-                      aria-label="Close"
-                      className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-                    >
-                      <X className="size-4" />
-                    </button>
-                  ) : null}
-                </div>
-                {!isTop ? (
-                  <button
-                    type="button"
-                    onClick={pop}
-                    className="self-start text-xs text-primary hover:underline"
-                  >
-                    ← Back
-                  </button>
-                ) : null}
-              </header>
-              <div className="min-h-0 flex-1 overflow-y-auto p-4">
-                {entry.content}
-              </div>
+              {renderModalBody(entry, isTop, stack, idx, pop, popTo)}
             </div>
           </div>
         );
       })}
+    </>
+  );
+}
+
+function renderModalBody(
+  entry: ModalEntry,
+  isTop: boolean,
+  stack: ModalEntry[],
+  idx: number,
+  pop: () => void,
+  popTo: (depth: number) => void,
+) {
+  return (
+    <>
+      <header className="sticky top-0 z-10 flex flex-col gap-1 border-b border-border bg-card px-4 py-3">
+        {/* Breadcrumb row */}
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          {stack.slice(0, idx + 1).map((crumb, i) => {
+            const isLast = i === idx;
+            return (
+              <span key={crumb.key} className="flex items-center gap-1">
+                {i > 0 ? (
+                  <ChevronRight className="size-3 shrink-0" />
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => popTo(i)}
+                  className={cn(
+                    "truncate rounded px-1 transition-colors hover:bg-accent",
+                    isLast && "text-foreground",
+                  )}
+                  title={crumb.label}
+                >
+                  {crumb.label}
+                </button>
+              </span>
+            );
+          })}
+        </div>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-lg font-semibold">
+              {entry.label}
+            </h2>
+            {entry.category ? (
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                {entry.category}
+              </p>
+            ) : null}
+          </div>
+          {isTop ? (
+            <button
+              type="button"
+              onClick={pop}
+              aria-label="Close"
+              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          ) : null}
+        </div>
+        {!isTop ? (
+          <button
+            type="button"
+            onClick={pop}
+            className="self-start text-xs text-primary hover:underline"
+          >
+            ← Back
+          </button>
+        ) : null}
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        {entry.content}
+      </div>
     </>
   );
 }

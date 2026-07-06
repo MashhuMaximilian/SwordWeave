@@ -12,6 +12,12 @@ import type {
   CapabilitySlot,
 } from "./capability-form-preview";
 import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
+import {
+  saveDraft,
+  loadDraft,
+  clearDraft,
+  makeDraftKey,
+} from "@/lib/sandbox/form-draft";
 
 type CapabilityRow = {
   id: string;
@@ -137,6 +143,11 @@ export function CapabilityForm({
     if (bootstrappedRef.current === id) return;
     bootstrappedRef.current = id;
     if (!initialCapability) return;
+    // Check for a saved draft (e.g. when the form unmounted in the panel
+    // and remounted in the drawer). If a draft exists for this entity,
+    // restore the slots/effects from it instead of the initial data.
+    const draftKey = makeDraftKey("capability", id);
+    const draft = loadDraft(draftKey);
     setForm({
       name: initialCapability.name,
       type: initialCapability.type,
@@ -146,6 +157,31 @@ export function CapabilityForm({
       tags: (initialCapability.tags ?? []).join(", "),
       isPublic: initialCapability.isPublic,
     });
+    if (draft) {
+      // Restore effectIds from the draft.
+      setEffectIds(draft.effectIds);
+      setIsDirty(true); // draft = user was editing
+      setMessage("Restored your in-progress edits.");
+      clearDraft(draftKey);
+      // Restore primitive slots from the draft, re-deriving the primitive
+      // object from availablePrimitives. Slots in the draft that can't be
+      // matched (e.g. primitive not in the current page) are dropped.
+      const restoredSlots: CapabilitySlot[] = [];
+      for (const sid of draft.primitiveIds) {
+        const prim = availablePrimitives.find((p) => p.id === sid);
+        if (!prim) continue;
+        restoredSlots.push({
+          primitiveId: sid,
+          role: defaultRoleForCategory(prim.category),
+          quantity: 1,
+          sortOrder: restoredSlots.length,
+          slotLabel: prim.name,
+          primitive: prim,
+        });
+      }
+      setSlots(restoredSlots);
+      return;
+    }
     setSlots(
       initialCapability.primitiveLinks.map((link) => ({
         primitiveId: link.primitiveId,
@@ -166,7 +202,28 @@ export function CapabilityForm({
         ? "Loaded your capability for editing."
         : "Loaded library capability. Saving creates your private copy.",
     );
-  }, [initialCapability]);
+  }, [initialCapability, availablePrimitives]);
+
+  // Save draft on unmount — when the form unmounts in the panel (split
+  // mode exit) or in the drawer, save the current slots/effects so the
+  // other instance can restore them on mount.
+  useEffect(() => {
+    return () => {
+      const id = initialCapability?.id ?? null;
+      const draftKey = makeDraftKey("capability", id);
+      if (slots.length > 0 || effectIds.length > 0) {
+        saveDraft(draftKey, {
+          primitiveIds: slots.map((s) => s.primitiveId),
+          effectIds,
+          capabilityIds: [],
+          notesByIndex: {},
+        });
+      } else {
+        clearDraft(draftKey);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slots, effectIds, initialCapability?.id]);
 
   useEffect(() => {
     onStateChange?.({ form, slots, effectIds, isDirty });
