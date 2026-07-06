@@ -15,17 +15,19 @@
 //   - Inline inside a ModalStack (chrome provided by the stack)
 //
 // The body is plain React — no side-effects, no chrome — so it can be reused
-// in either context.
+// in either context. When the caller provides engagement data + onSubLink
+// callbacks, the preview is interactive (likes, forks, clickable primitive
+// links, version history). Without them, the preview is read-only.
 // =============================================================================
 
+import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/ui/markdown";
+import { LikeForkBar } from "@/components/engagement/like-fork-bar";
+import { ChevronRight, History, Link2 } from "lucide-react";
+import { useModalStack } from "@/components/ui/modal-stack";
 
 // ---- Entity types (mirrored from sandbox-preview-modal.tsx) ----------------
-//
-// We re-declare the types here (rather than importing) so the preview is
-// usable from any context without forcing a transitive dep on the modal
-// shell. Keep these in sync with sandbox-preview-modal.tsx.
 
 export type SandboxPrimitiveRow = {
   id: number;
@@ -144,23 +146,44 @@ export type SandboxPreviewItem =
   | { kind: "template"; row: SandboxTemplateRow }
   | { kind: "item"; row: SandboxItemRow };
 
-// ---- Helpers ---------------------------------------------------------------
+// ---- Engagement shape (optional) -------------------------------------------
 
-/**
- * Resolve a clickable URL for an entity reference. The canonical detail
- * page lives at /library/item/[id] and expects a composite
- * `<TYPE>:<id>` string. We link primitives, capabilities, templates,
- * and items through that route; effects currently don't have a
- * per-item detail page so we deep-link into the library browse with a
- * name search instead.
- */
-function primitiveHref(primitiveId: number | string): string {
-  return `/library/item/PRIMITIVE:${primitiveId}`;
+export interface PreviewEngagement {
+  likes: number;
+  dislikes: number;
+  forks: number;
+  userReaction: "LIKE" | "DISLIKE" | null;
+  authorId: string | null;
+  authorUsername: string | null;
+  currentUserInternalId: string | null;
 }
 
-function capabilityHref(capabilityId: string): string {
-  return `/library/item/CAPABILITY:${capabilityId}`;
+// ---- Sub-link callbacks (optional) -----------------------------------------
+
+/** Payload describing a sub-entity (primitive/capability) that was clicked
+ *  inside the preview. The caller decides what to do — typically push a
+ *  modal-stack entry so the navigation stays inside the open modal. */
+export interface PreviewSubLink {
+  targetType: "PRIMITIVE" | "CAPABILITY";
+  targetId: string;
+  label: string;
 }
+
+export interface PreviewCallbacks {
+  /** Called when the user clicks a primitive / capability inside the
+   *  composed-entities list. If unset, links fall back to plain <a> tags
+   *  that navigate to /library/item/<TYPE>:<id>. */
+  onSubLinkClick?: (link: PreviewSubLink) => void;
+  /** Current engagement snapshot — when set, the preview shows like/fork
+   *  controls, follow button, and the version-history link. */
+  engagement?: PreviewEngagement;
+  /** Optional version-history URL (defaults to /library/item/<TYPE>:<id>/versions). */
+  versionHistoryHref?: string;
+}
+
+// -----------------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------------
 
 function sectionLabel(item: SandboxPreviewItem): string {
   switch (item.kind) {
@@ -175,6 +198,10 @@ function sectionLabel(item: SandboxPreviewItem): string {
     case "item":
       return `Item · ${item.row.itemType}`;
   }
+}
+
+export function previewHeadingLabel(item: SandboxPreviewItem): string {
+  return sectionLabel(item);
 }
 
 function rarityClassName(rarity: string): string {
@@ -223,64 +250,197 @@ function Section({
   );
 }
 
-function PrimitiveLinkRow({
-  primitive,
-  quantity = 1,
-  extra,
+// -----------------------------------------------------------------------------
+// Hook: handles sub-link clicks. If the caller registered onSubLinkClick,
+// push a new modal stack entry; otherwise return null and the caller should
+// use a plain <a>.
+// -----------------------------------------------------------------------------
+
+function useSubLinkClick(cb: PreviewCallbacks["onSubLinkClick"]) {
+  const stack = useModalStack();
+  return useMemo(() => {
+    return (link: PreviewSubLink) => {
+      if (cb) {
+        cb(link);
+        return;
+      }
+      if (!stack.canPush) return;
+      // Default: open a breadcrumb modal pointing at the canonical library
+      // page for the sub-entity. We don't have a full preview body here, so
+      // we link out instead — the canonical library page is the only place
+      // with the full engagement UI.
+      const url = `/library/item/${link.targetType}:${link.targetId}`;
+      stack.push({
+        key: `sublink:${link.targetType}:${link.targetId}`,
+        label: link.label,
+        category: link.targetType,
+        content: (
+          <div className="space-y-3 p-1">
+            <p className="text-sm text-muted-foreground">
+              {link.label} — full details open in a new modal. Tap below to
+              navigate to the canonical library page.
+            </p>
+            <a
+              href={url}
+              className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              <Link2 className="size-3.5" />
+              Open in library
+            </a>
+          </div>
+        ),
+      });
+    };
+  }, [cb, stack]);
+}
+
+// -----------------------------------------------------------------------------
+// Footer — engagement + version history. Rendered when callbacks are present.
+// -----------------------------------------------------------------------------
+
+function PreviewFooter({
+  callbacks,
+  targetType,
+  targetId,
 }: {
-  primitive: { id: number; name: string; category: string; buCost: number };
-  quantity?: number;
-  extra?: React.ReactNode;
+  item: SandboxPreviewItem;
+  callbacks: PreviewCallbacks;
+  targetType:
+    | "PRIMITIVE"
+    | "CAPABILITY"
+    | "CHARACTER"
+    | "ITEM"
+    | "RACE_TEMPLATE"
+    | "BACKGROUND_TEMPLATE"
+    | "ARCHETYPE_TEMPLATE";
+  targetId: string;
 }) {
+  const eng = callbacks.engagement;
+  if (!eng) return null;
+
+  const historyHref =
+    callbacks.versionHistoryHref ??
+    `/library/item/${targetType}:${targetId}/versions`;
+
   return (
-    <li className="flex items-start gap-2 p-2 text-sm">
-      <div className="min-w-0 flex-1">
+    <footer className="mt-2 space-y-3 border-t border-border pt-3">
+      <LikeForkBar
+        targetType={targetType}
+        targetId={targetId}
+        initialLikes={eng.likes}
+        initialDislikes={eng.dislikes}
+        initialForks={eng.forks}
+        initialUserReaction={eng.userReaction}
+        authorId={eng.authorId}
+        authorUsername={eng.authorUsername}
+        currentUserId={eng.currentUserInternalId}
+        compact
+      />
+      <div className="flex justify-end">
         <a
-          href={primitiveHref(primitive.id)}
-          className="font-medium text-cyan-400 underline-offset-2 hover:underline"
+          href={historyHref}
+          className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
-          {primitive.name}
+          <History className="size-3.5" />
+          Version history →
         </a>
-        <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-          <span>{primitive.category}</span>
-          {extra}
-        </div>
       </div>
-      <span className="shrink-0 font-mono text-xs text-muted-foreground">
-        {primitive.buCost * quantity} BU
-        {quantity > 1 ? ` × ${quantity}` : ""}
-      </span>
-    </li>
+    </footer>
   );
 }
 
-// ---- Main entry: dispatches to the right body ------------------------------
+// -----------------------------------------------------------------------------
+// Map SandboxPreviewItem -> (engagementTargetType, engagementTargetId, historyKey)
+// -----------------------------------------------------------------------------
 
-export function LibraryItemPreview({ item }: { item: SandboxPreviewItem }) {
+function engagementKeys(item: SandboxPreviewItem): {
+  targetType:
+    | "PRIMITIVE"
+    | "CAPABILITY"
+    | "ITEM"
+    | "RACE_TEMPLATE"
+    | "BACKGROUND_TEMPLATE"
+    | "ARCHETYPE_TEMPLATE"
+    | "EFFECT";
+  targetId: string;
+} {
   switch (item.kind) {
     case "primitive":
-      return <PrimitiveBody row={item.row} />;
-    case "effect":
-      return <EffectBody row={item.row} />;
+      return { targetType: "PRIMITIVE", targetId: String(item.row.id) };
     case "capability":
-      return <CapabilityBody row={item.row} />;
+      return { targetType: "CAPABILITY", targetId: item.row.id };
     case "template":
-      return <TemplateBody row={item.row} />;
+      return {
+        targetType:
+          item.row.kind === "RACE"
+            ? "RACE_TEMPLATE"
+            : item.row.kind === "BACKGROUND"
+              ? "BACKGROUND_TEMPLATE"
+              : "ARCHETYPE_TEMPLATE",
+        targetId: item.row.id,
+      };
     case "item":
-      return <ItemBody row={item.row} />;
+      return { targetType: "ITEM", targetId: item.row.id };
+    case "effect":
+      return { targetType: "EFFECT", targetId: item.row.id };
   }
 }
 
-/** Header label for the preview, exposed for callers that wrap it. */
-export function previewHeadingLabel(item: SandboxPreviewItem): string {
-  return sectionLabel(item);
+// -----------------------------------------------------------------------------
+// Main entry
+// -----------------------------------------------------------------------------
+
+export function LibraryItemPreview({
+  item,
+  callbacks,
+}: {
+  item: SandboxPreviewItem;
+  callbacks?: PreviewCallbacks;
+}) {
+  const onSubLink = useSubLinkClick(callbacks?.onSubLinkClick);
+  const { targetType, targetId } = engagementKeys(item);
+  const body = (() => {
+    switch (item.kind) {
+      case "primitive":
+        return <PrimitiveBody row={item.row} onSubLink={onSubLink} />;
+      case "effect":
+        return <EffectBody row={item.row} onSubLink={onSubLink} />;
+      case "capability":
+        return <CapabilityBody row={item.row} onSubLink={onSubLink} />;
+      case "template":
+        return <TemplateBody row={item.row} onSubLink={onSubLink} />;
+      case "item":
+        return <ItemBody row={item.row} onSubLink={onSubLink} />;
+    }
+  })();
+  return (
+    <div className="space-y-4">
+      {body}
+      {callbacks?.engagement && item.kind !== "effect" ? (
+        <PreviewFooter
+          item={item}
+          callbacks={callbacks}
+          targetType={targetType as Exclude<typeof targetType, "EFFECT">}
+          targetId={targetId}
+        />
+      ) : null}
+    </div>
+  );
 }
 
-// ---- Body renderers --------------------------------------------------------
+// -----------------------------------------------------------------------------
+// Body renderers
+// -----------------------------------------------------------------------------
 
-function PrimitiveBody({ row }: { row: SandboxPrimitiveRow }) {
+function PrimitiveBody({
+  row,
+  onSubLink,
+}: {
+  row: SandboxPrimitiveRow;
+  onSubLink: (link: PreviewSubLink) => void;
+}) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">
           {row.buCost} BU
@@ -337,13 +497,19 @@ function PrimitiveBody({ row }: { row: SandboxPrimitiveRow }) {
   );
 }
 
-function EffectBody({ row }: { row: SandboxEffectRow }) {
+function EffectBody({
+  row,
+  onSubLink,
+}: {
+  row: SandboxEffectRow;
+  onSubLink: (link: PreviewSubLink) => void;
+}) {
   const totalBu = row.primitiveLinks.reduce(
     (sum, link) => sum + link.primitive.buCost * link.quantity,
     0,
   );
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">
           {totalBu} BU
@@ -378,14 +544,37 @@ function EffectBody({ row }: { row: SandboxEffectRow }) {
       ) : null}
 
       {row.primitiveLinks.length > 0 ? (
-        <Section heading={`Slotted primitives (${row.primitiveLinks.length})`}>
+        <Section heading={`Composed primitives (${row.primitiveLinks.length})`}>
           <ul className="divide-y divide-border rounded-md border border-border">
             {row.primitiveLinks.map((link) => (
-              <PrimitiveLinkRow
+              <li
                 key={link.primitiveId}
-                primitive={link.primitive}
-                quantity={link.quantity}
-              />
+                className="flex items-center justify-between gap-2 p-2.5 text-sm hover:bg-accent/40"
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    onSubLink({
+                      targetType: "PRIMITIVE",
+                      targetId: String(link.primitive.id),
+                      label: link.primitive.name,
+                    })
+                  }
+                  className="min-w-0 flex-1 truncate text-left"
+                >
+                  <span className="font-semibold text-cyan-400 hover:underline">
+                    {link.primitive.name}
+                  </span>
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {link.primitive.category}
+                  </span>
+                </button>
+                <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                  {link.primitive.buCost * link.quantity} BU
+                  {link.quantity > 1 ? ` ×${link.quantity}` : ""}
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+              </li>
             ))}
           </ul>
         </Section>
@@ -394,13 +583,19 @@ function EffectBody({ row }: { row: SandboxEffectRow }) {
   );
 }
 
-function CapabilityBody({ row }: { row: SandboxCapabilityRow }) {
+function CapabilityBody({
+  row,
+  onSubLink,
+}: {
+  row: SandboxCapabilityRow;
+  onSubLink: (link: PreviewSubLink) => void;
+}) {
   const totalBu = row.primitiveLinks.reduce(
     (sum, link) => sum + link.primitive.buCost * link.quantity,
     0,
   );
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">
           {totalBu} BU
@@ -441,34 +636,42 @@ function CapabilityBody({ row }: { row: SandboxCapabilityRow }) {
       ) : null}
 
       {row.primitiveLinks.length > 0 ? (
-        <Section heading={`Primitive slots (${row.primitiveLinks.length})`}>
+        <Section heading={`Composed primitives (${row.primitiveLinks.length})`}>
           <ul className="divide-y divide-border rounded-md border border-border">
             {row.primitiveLinks.map((link, i) => (
               <li
                 key={`${link.primitiveId}-${i}`}
-                className="flex items-start gap-2 p-2 text-sm"
+                className="flex items-center justify-between gap-2 p-2.5 text-sm hover:bg-accent/40"
               >
-                <div className="min-w-0 flex-1">
-                  <a
-                    href={primitiveHref(link.primitive.id)}
-                    className="font-medium text-cyan-400 underline-offset-2 hover:underline"
-                  >
+                <button
+                  type="button"
+                  onClick={() =>
+                    onSubLink({
+                      targetType: "PRIMITIVE",
+                      targetId: String(link.primitive.id),
+                      label: link.primitive.name,
+                    })
+                  }
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <span className="font-semibold text-cyan-400 hover:underline">
                     {link.primitive.name}
-                  </a>
+                  </span>
                   <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                     <span>{link.primitive.category}</span>
                     <span className="rounded bg-secondary px-1.5 py-0.5 font-medium">
-                      {link.role}
+                      {link.role.replace(/_/g, " ")}
                     </span>
                     {link.quantity > 1 ? <span>× {link.quantity}</span> : null}
                     {link.slotLabel ? (
                       <span className="italic">"{link.slotLabel}"</span>
                     ) : null}
                   </div>
-                </div>
+                </button>
                 <span className="shrink-0 font-mono text-xs text-muted-foreground">
                   {link.primitive.buCost * link.quantity} BU
                 </span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
               </li>
             ))}
           </ul>
@@ -478,13 +681,19 @@ function CapabilityBody({ row }: { row: SandboxCapabilityRow }) {
   );
 }
 
-function TemplateBody({ row }: { row: SandboxTemplateRow }) {
+function TemplateBody({
+  row,
+  onSubLink,
+}: {
+  row: SandboxTemplateRow;
+  onSubLink: (link: PreviewSubLink) => void;
+}) {
   const primitiveBu = row.primitiveLinks.reduce(
     (sum, link) => sum + link.primitive.buCost,
     0,
   );
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">
           {primitiveBu} BU
@@ -511,32 +720,62 @@ function TemplateBody({ row }: { row: SandboxTemplateRow }) {
         <Section heading={`Bundled primitives (${row.primitiveLinks.length})`}>
           <ul className="divide-y divide-border rounded-md border border-border">
             {row.primitiveLinks.map((link) => (
-              <PrimitiveLinkRow
+              <li
                 key={link.primitiveId}
-                primitive={link.primitive}
-              />
+                className="flex items-center justify-between gap-2 p-2.5 text-sm hover:bg-accent/40"
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    onSubLink({
+                      targetType: "PRIMITIVE",
+                      targetId: String(link.primitive.id),
+                      label: link.primitive.name,
+                    })
+                  }
+                  className="min-w-0 flex-1 truncate text-left"
+                >
+                  <span className="font-semibold text-cyan-400 hover:underline">
+                    {link.primitive.name}
+                  </span>
+                </button>
+                <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                  {link.primitive.buCost} BU
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+              </li>
             ))}
           </ul>
         </Section>
       ) : null}
 
       {row.capabilityLinks.length > 0 ? (
-        <Section heading={`Capabilities (${row.capabilityLinks.length})`}>
+        <Section heading={`Bundled capabilities (${row.capabilityLinks.length})`}>
           <ul className="divide-y divide-border rounded-md border border-border">
             {row.capabilityLinks.map((link) => (
               <li
                 key={link.capabilityId}
-                className="flex items-center justify-between gap-2 p-2 text-sm"
+                className="flex items-center justify-between gap-2 p-2.5 text-sm hover:bg-accent/40"
               >
-                <a
-                  href={capabilityHref(link.capability.id)}
-                  className="min-w-0 flex-1 truncate font-medium text-cyan-400 underline-offset-2 hover:underline"
+                <button
+                  type="button"
+                  onClick={() =>
+                    onSubLink({
+                      targetType: "CAPABILITY",
+                      targetId: link.capability.id,
+                      label: link.capability.name,
+                    })
+                  }
+                  className="min-w-0 flex-1 truncate text-left"
                 >
-                  {link.capability.name}
-                </a>
+                  <span className="font-semibold text-cyan-400 hover:underline">
+                    {link.capability.name}
+                  </span>
+                </button>
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {link.capability.type}
                 </span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
               </li>
             ))}
           </ul>
@@ -546,14 +785,20 @@ function TemplateBody({ row }: { row: SandboxTemplateRow }) {
   );
 }
 
-function ItemBody({ row }: { row: SandboxItemRow }) {
+function ItemBody({
+  row,
+  onSubLink,
+}: {
+  row: SandboxItemRow;
+  onSubLink: (link: PreviewSubLink) => void;
+}) {
   const primitiveBu = row.primitiveLinks.reduce(
     (sum, link) => sum + link.primitive.buCost,
     0,
   );
   const totalBu = row.buCost + primitiveBu;
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">
           {totalBu} BU
@@ -620,10 +865,30 @@ function ItemBody({ row }: { row: SandboxItemRow }) {
         <Section heading={`Item-augment primitives (${row.primitiveLinks.length})`}>
           <ul className="divide-y divide-border rounded-md border border-border">
             {row.primitiveLinks.map((link) => (
-              <PrimitiveLinkRow
+              <li
                 key={link.primitiveId}
-                primitive={link.primitive}
-              />
+                className="flex items-center justify-between gap-2 p-2.5 text-sm hover:bg-accent/40"
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    onSubLink({
+                      targetType: "PRIMITIVE",
+                      targetId: String(link.primitive.id),
+                      label: link.primitive.name,
+                    })
+                  }
+                  className="min-w-0 flex-1 truncate text-left"
+                >
+                  <span className="font-semibold text-cyan-400 hover:underline">
+                    {link.primitive.name}
+                  </span>
+                </button>
+                <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                  {link.primitive.buCost} BU
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+              </li>
             ))}
           </ul>
         </Section>

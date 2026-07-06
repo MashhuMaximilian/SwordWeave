@@ -92,6 +92,10 @@ type SandboxLayoutProps = {
   preview: ReactNode;
   /** Optional: header bar above the columns (shows entity name, save button, etc.). */
   topBar?: ReactNode;
+  /** Optional: bottom bar below the columns. Rendered inside the sandbox
+   *  container, just above the FAB safe area. Use for build-mode tabs,
+   *  action toolbars, etc. */
+  bottomBar?: ReactNode;
   /** Optional: extra Tailwind classes for the outer container. */
   className?: string;
 };
@@ -141,6 +145,7 @@ export function SandboxLayout({
   library,
   preview,
   topBar,
+  bottomBar,
   className,
 }: SandboxLayoutProps) {
   const groupId = useId();
@@ -293,6 +298,12 @@ export function SandboxLayout({
         data-sandbox-layout
       >
         {topBar ? <div className="shrink-0 border-b">{topBar}</div> : null}
+
+        {/* Bottom bar — sits inside the sandbox container, above the FAB
+            safe area. Currently used for the build-mode type tabs. */}
+        {bottomBar ? (
+          <div className="shrink-0 border-t bg-background">{bottomBar}</div>
+        ) : null}
 
         {/* Floating restore buttons — desktop only, and only after viewport is ready. */}
         {viewportReady && viewport === "desktop" && hiddenColumns.has("library") ? (
@@ -568,16 +579,19 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
     setHydrated(true);
   }, []);
 
-  // The sandbox's Build/Preview content is pushed into the global drawer via
-  // the slot system. We render an inert proxy: the drawer pulls this content
-  // when it opens. On the build tab we show the builder; on preview we show
-  // the preview.
-  const [drawerTab, setDrawerTabState] = useState<"build" | "preview">("build");
+  // The sandbox's Build/Preview content is pushed into the global drawer
+  // via the per-tab slot system. We register each tab's content separately
+  // so the drawer's tab toggle works (previously both tabs rendered the
+  // same wrapper which ignored the global drawer state). The drawer's
+  // footer/save-reset chrome only shows on the build tab.
   useDrawerSlot(
-    <div className="min-h-0">
-      <div className={drawerTab !== "build" ? "hidden" : ""}>{builder}</div>
-      <div className={drawerTab !== "preview" ? "hidden" : ""}>{preview}</div>
-    </div>,
+    useMemo(
+      () => ({
+        build: builder,
+        preview: preview,
+      }),
+      [builder, preview],
+    ),
   );
 
   // Split-mode layout: Library | Build (with Preview overlay triggered by
@@ -624,7 +638,14 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
             <MobileColumnChrome title="Library" icon={<LibraryIcon className="size-4" />} />
             <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
           </Panel>
-          <Separator className="h-1.5 shrink-0 bg-border" />
+          {/* Drag handle: 12px tall (h-3) with a 32px visible grab bar
+              so it's easy to grab on touch devices. Previous handle was
+              only 6px which couldn't reliably catch taps. */}
+          <Separator className="group relative h-3 shrink-0 cursor-row-resize bg-border/80 transition-colors hover:bg-primary/60 data-[separator=drag]:bg-primary">
+            <span className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 flex h-2 items-center justify-center">
+              <span className="h-1 w-12 rounded-full bg-foreground/40 group-hover:bg-primary-foreground" />
+            </span>
+          </Separator>
           <Panel
             id="builder"
             defaultSize={50}
@@ -639,10 +660,7 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
                 <div className="ml-auto flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => {
-                      setDrawerTabState("preview");
-                      openDrawer("preview");
-                    }}
+                    onClick={() => openDrawer("preview")}
                     className="flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary hover:bg-primary/20"
                     aria-label="Preview"
                   >

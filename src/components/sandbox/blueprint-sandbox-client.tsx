@@ -315,19 +315,21 @@ export function BlueprintSandboxClient({
       { key: "monster", label: "Monster" },
     ];
     return (
-      <div className="flex border-b border-border bg-card">
+      <div role="tablist" aria-label="Build mode" className="flex bg-card">
         {tabs.map((tab) => {
           const active = build === tab.key;
           return (
             <button
               key={tab.key}
               type="button"
+              role="tab"
+              aria-selected={active}
               onClick={() => guardedSwitchBuild(tab.key)}
               className={
-                "flex-1 border-b-2 px-4 py-3 text-sm font-medium transition-colors " +
+                "flex-1 border-t-2 px-3 py-2.5 text-sm font-medium transition-colors " +
                 (active
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground")
+                  ? "border-primary bg-primary/5 text-primary"
+                  : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground")
               }
             >
               {tab.label}
@@ -356,9 +358,9 @@ export function BlueprintSandboxClient({
             onSelect={guardedLibrarySelect}
           />
         }
-        topBar={buildTabs()}
         builder={builderNode}
         preview={previewNode}
+        bottomBar={buildTabs()}
       />
       <UnsavedChangesModal
         isOpen={pendingAction !== null}

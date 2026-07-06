@@ -87,9 +87,9 @@ export default async function BlueprintSandboxPage({
   // because Templates need to slot primitives during editing, and the user
   // can browse primitives while building an Item.
   const libraryItems: LibraryItem[] = [
-    ...templateRows.map(templateToLibraryItem),
-    ...itemRows.map(itemToLibraryItem),
-    ...primitiveRows.map(primitiveToLibraryItem),
+    ...templateRows.map((r) => templateToLibraryItem(r)),
+    ...itemRows.map((r) => itemToLibraryItem(r)),
+    ...primitiveRows.map((r) => primitiveToLibraryItem(r)),
   ];
 
   return (

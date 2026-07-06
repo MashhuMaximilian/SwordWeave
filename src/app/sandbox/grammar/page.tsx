@@ -90,9 +90,9 @@ export default async function GrammarSandboxPage({
   // Build unified LibraryItem array for the left column. Sorted by name
   // so the LibraryTable sort UI has a stable baseline.
   const libraryItems: LibraryItem[] = [
-    ...primitiveRows.map(primitiveToLibraryItem),
-    ...effectRows.map(effectToLibraryItem),
-    ...capabilityRows.map(capabilityToLibraryItem),
+    ...primitiveRows.map((r) => primitiveToLibraryItem(r)),
+    ...effectRows.map((r) => effectToLibraryItem(r)),
+    ...capabilityRows.map((r) => capabilityToLibraryItem(r)),
   ];
 
   return (

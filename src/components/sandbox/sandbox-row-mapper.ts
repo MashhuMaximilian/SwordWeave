@@ -82,7 +82,10 @@ const EMPTY_ENGAGEMENT = {
   publishedAt: null,
 };
 
-export function primitiveToLibraryItem(row: SandboxPrimitive): LibraryItem {
+export function primitiveToLibraryItem(
+  row: SandboxPrimitive,
+  visibility: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC" = "PRIVATE",
+): LibraryItem {
   return {
     id: `PRIMITIVE:${row.id}`,
     targetType: "PRIMITIVE",
@@ -94,10 +97,14 @@ export function primitiveToLibraryItem(row: SandboxPrimitive): LibraryItem {
     ...EMPTY_AUTHORS,
     ...EMPTY_ENGAGEMENT,
     tags: [],
+    visibility,
   };
 }
 
-export function effectToLibraryItem(row: SandboxEffect): LibraryItem {
+export function effectToLibraryItem(
+  row: SandboxEffect,
+  visibility: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC" = "PRIVATE",
+): LibraryItem {
   return {
     id: `EFFECT:${row.id}`,
     targetType: "EFFECT",
@@ -109,10 +116,14 @@ export function effectToLibraryItem(row: SandboxEffect): LibraryItem {
     ...EMPTY_AUTHORS,
     ...EMPTY_ENGAGEMENT,
     tags: row.tags ?? [],
+    visibility,
   };
 }
 
-export function capabilityToLibraryItem(row: SandboxCapability): LibraryItem {
+export function capabilityToLibraryItem(
+  row: SandboxCapability,
+  visibility: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC" = "PRIVATE",
+): LibraryItem {
   return {
     id: `CAPABILITY:${row.id}`,
     targetType: "CAPABILITY",
@@ -124,10 +135,14 @@ export function capabilityToLibraryItem(row: SandboxCapability): LibraryItem {
     ...EMPTY_AUTHORS,
     ...EMPTY_ENGAGEMENT,
     tags: row.tags ?? [],
+    visibility,
   };
 }
 
-export function templateToLibraryItem(row: SandboxTemplate): LibraryItem {
+export function templateToLibraryItem(
+  row: SandboxTemplate,
+  visibility: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC" = "PRIVATE",
+): LibraryItem {
   // Map kind to one of the three target types so the chip filter can match.
   const targetType =
     row.kind === "RACE"
@@ -146,10 +161,14 @@ export function templateToLibraryItem(row: SandboxTemplate): LibraryItem {
     ...EMPTY_AUTHORS,
     ...EMPTY_ENGAGEMENT,
     tags: [],
+    visibility,
   };
 }
 
-export function itemToLibraryItem(row: SandboxItem): LibraryItem {
+export function itemToLibraryItem(
+  row: SandboxItem,
+  visibility: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC" = "PRIVATE",
+): LibraryItem {
   return {
     id: `ITEM:${row.id}`,
     targetType: "ITEM",
@@ -161,5 +180,6 @@ export function itemToLibraryItem(row: SandboxItem): LibraryItem {
     ...EMPTY_AUTHORS,
     ...EMPTY_ENGAGEMENT,
     tags: row.tags ?? [],
+    visibility,
   };
 }

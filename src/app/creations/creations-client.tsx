@@ -8,9 +8,14 @@
 // Renders as a stack of filter chips on mobile, with the result set as a
 // LibraryTable grid. Card click pushes a ModalStack entry showing a
 // per-entity-type preview body — no separate "View" / "Add" buttons.
+//
+// The preview also includes a visibility selector (PRIVATE / FOLLOWERS_ONLY /
+// PUBLIC). Changing visibility POSTs to /api/creations/visibility which
+// creates / updates a `publications` row, allowing the author to control
+// the per-item version history visible to followers vs everyone.
 // =============================================================================
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { LibraryTable } from "@/components/library/library-table";
@@ -19,6 +24,7 @@ import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import { cn } from "@/lib/utils";
 import type { LibraryItem } from "@/lib/publishing/library-query";
+import { Eye, Lock, Users } from "lucide-react";
 
 type TypeFilter = "all" | "primitive" | "effect" | "capability" | "template" | "item" | "character";
 type StatusFilter = "all" | "draft";
@@ -228,6 +234,39 @@ export function CreationsClient({
                       }
                       stack.clear();
                     }}
+                    onVisibilityChange={async (vis) => {
+                      // The page passes the original `item` into the modal;
+                      // we mutate a local copy so the chip reflects the
+                      // new value immediately. router.refresh() would
+                      // re-fetch the server data on next navigation.
+                      item.visibility = vis;
+                      try {
+                        const res = await fetch("/api/creations/visibility", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            targetType: item.targetType,
+                            targetId: item.targetId,
+                            visibility: vis,
+                          }),
+                        });
+                        if (!res.ok) {
+                          const data = await res.json().catch(() => ({}));
+                          throw new Error(
+                            data.error ?? `HTTP ${res.status}`,
+                          );
+                        }
+                      } catch (e) {
+                        // Roll back optimistic update.
+                        item.visibility =
+                          vis === "PRIVATE"
+                            ? "PRIVATE"
+                            : vis === "FOLLOWERS_ONLY"
+                              ? "FOLLOWERS_ONLY"
+                              : "PUBLIC";
+                        throw e;
+                      }
+                    }}
                   />
                 ),
               });
@@ -250,9 +289,11 @@ export function CreationsClient({
 function CreationPreview({
   item,
   onEdit,
+  onVisibilityChange,
 }: {
   item: LibraryItem;
   onEdit: () => void;
+  onVisibilityChange?: (vis: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC") => void;
 }) {
   return (
     <div className="space-y-4">
@@ -278,7 +319,7 @@ function CreationPreview({
         </div>
         <div>
           <dt className="uppercase text-muted-foreground">Visibility</dt>
-          <dd>{item.publishedAt ? "Public" : "Private"}</dd>
+          <dd>{visibilityLabel(item.visibility)}</dd>
         </div>
         {item.authorUsername ? (
           <div>
@@ -287,6 +328,16 @@ function CreationPreview({
           </div>
         ) : null}
       </dl>
+
+      {/* Visibility selector — controls who can see this entry. The
+          per-tier version history on the canonical library page is what
+          the user sees for each audience (private / followers / everyone). */}
+      {onVisibilityChange ? (
+        <VisibilitySelect
+          value={item.visibility ?? "PRIVATE"}
+          onChange={onVisibilityChange}
+        />
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
         <button
@@ -309,6 +360,100 @@ function CreationPreview({
           View fork history
         </a>
       </div>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// VisibilitySelect — 3-chip selector for visibility tier. Posts to
+// /api/creations/visibility on change.
+// -----------------------------------------------------------------------------
+
+const VISIBILITY_OPTIONS: Array<{
+  key: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC";
+  label: string;
+  icon: typeof Lock;
+  hint: string;
+}> = [
+  { key: "PRIVATE", label: "Private", icon: Lock, hint: "Only you" },
+  {
+    key: "FOLLOWERS_ONLY",
+    label: "Followers",
+    icon: Users,
+    hint: "You + your followers",
+  },
+  { key: "PUBLIC", label: "Public", icon: Eye, hint: "Everyone" },
+];
+
+function visibilityLabel(vis: LibraryItem["visibility"]): string {
+  if (vis === "FOLLOWERS_ONLY") return "Followers only";
+  if (vis === "PUBLIC") return "Public";
+  return "Private";
+}
+
+function VisibilitySelect({
+  value,
+  onChange,
+}: {
+  value: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC";
+  onChange: (next: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC") => void;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <div className="rounded-md border border-border bg-card/50 p-2.5">
+      <div className="mb-1.5 flex items-center justify-between">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Visibility
+        </p>
+        {pending ? (
+          <span className="text-[10px] text-muted-foreground">saving…</span>
+        ) : null}
+      </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        {VISIBILITY_OPTIONS.map((opt) => {
+          const active = value === opt.key;
+          const Icon = opt.icon;
+          return (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => {
+                setError(null);
+                startTransition(async () => {
+                  try {
+                    await onChange(opt.key);
+                  } catch (e) {
+                    setError(
+                      e instanceof Error
+                        ? e.message
+                        : "Failed to update visibility",
+                    );
+                  }
+                });
+              }}
+              disabled={pending}
+              aria-pressed={active}
+              title={opt.hint}
+              className={cn(
+                "flex flex-col items-center gap-1 rounded-md border px-2 py-2 text-[10px] font-medium transition-all",
+                active
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground",
+              )}
+            >
+              <Icon className="size-3.5" />
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+      {error ? (
+        <p className="mt-1.5 text-[10px] text-rose-400" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

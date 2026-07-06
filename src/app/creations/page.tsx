@@ -10,6 +10,7 @@ import {
   items,
   primitives,
   templates,
+  publications,
 } from "@/db/schema";
 import {
   capabilityToLibraryItem,
@@ -65,12 +66,71 @@ export default async function CreationsPage({
       }),
     ]);
 
+  // Look up publication rows for every (targetType, targetId) the user
+  // owns, in one query. Used to show the per-item visibility badge and to
+  // give the client a starting value for the visibility selector.
+  const allTargetKeys = [
+    ...primitiveRows.map((r) => ({ type: "PRIMITIVE" as const, id: String(r.id) })),
+    ...effectRows.map((r) => ({ type: "EFFECT" as const, id: r.id })),
+    ...capabilityRows.map((r) => ({ type: "CAPABILITY" as const, id: r.id })),
+    ...templateRows.map((r) => ({
+      type:
+        r.kind === "RACE"
+          ? ("RACE_TEMPLATE" as const)
+          : r.kind === "BACKGROUND"
+            ? ("BACKGROUND_TEMPLATE" as const)
+            : ("ARCHETYPE_TEMPLATE" as const),
+      id: r.id,
+    })),
+    ...itemRows.map((r) => ({ type: "ITEM" as const, id: r.id })),
+  ];
+  // Bulk fetch the latest publication per (target_type, target_id) using
+  // a single IN query, then index by the composite key. Anything missing
+  // from the result is "PRIVATE" (no publication row).
+  const pubRows = allTargetKeys.length
+    ? await db
+        .select()
+        .from(publications)
+        .where(
+          or(
+            ...allTargetKeys.map((k) =>
+              and(
+                eq(publications.targetType, k.type as never),
+                eq(publications.targetId, k.id),
+              ),
+            ),
+          ),
+        )
+    : [];
+  const visByKey = new Map<string, "PUBLIC" | "FOLLOWERS_ONLY" | "PRIVATE">();
+  for (const r of pubRows) {
+    if (r.unpublishedAt) continue;
+    visByKey.set(`${r.targetType}:${r.targetId}`, r.visibility);
+  }
+
+  const visFor = (type: string, id: string) =>
+    visByKey.get(`${type}:${id}`) ?? "PRIVATE";
+
   const allItems: LibraryItem[] = [
-    ...primitiveRows.map(primitiveToLibraryItem),
-    ...effectRows.map(effectToLibraryItem),
-    ...capabilityRows.map(capabilityToLibraryItem),
-    ...templateRows.map(templateToLibraryItem),
-    ...itemRows.map(itemToLibraryItem),
+    ...primitiveRows.map((r) =>
+      primitiveToLibraryItem(r, visFor("PRIMITIVE", String(r.id))),
+    ),
+    ...effectRows.map((r) =>
+      effectToLibraryItem(r, visFor("EFFECT", r.id)),
+    ),
+    ...capabilityRows.map((r) =>
+      capabilityToLibraryItem(r, visFor("CAPABILITY", r.id)),
+    ),
+    ...templateRows.map((r) => {
+      const t =
+        r.kind === "RACE"
+          ? "RACE_TEMPLATE"
+          : r.kind === "BACKGROUND"
+            ? "BACKGROUND_TEMPLATE"
+            : "ARCHETYPE_TEMPLATE";
+      return templateToLibraryItem(r, visFor(t, r.id));
+    }),
+    ...itemRows.map((r) => itemToLibraryItem(r, visFor("ITEM", r.id))),
   ];
 
   const counts = {

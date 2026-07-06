@@ -4,21 +4,22 @@
 // FabSpeedDial — expandable floating action button menu.
 //
 // The primary FAB sits at the bottom-right of the screen on ALL viewports
-// (mobile + desktop) so navigation is consistent.
+// (mobile + desktop). The FAB replaces the desktop left sidebar entirely
+// (see app-shell.tsx — sidebar removed).
 //
-// Tapping the FAB rotates the icon 45° and reveals a stack of:
-//   1. Section: "Navigate" — links to pages
-//   2. Section: "Functions" — top row: 3 icon-only toggles
-//                          (Split / Fullscreen / Dark mode)
-//                          bottom row: 2 icon-only actions
-//                          (Build & Preview / Filters)
-//   3. Section: "Account"  — Profile button that opens the user menu
-//                          (avatar + view profile / edit / sign out)
+// Tapping the FAB reveals a stack of:
+//   1. Section: "Navigate" — Home + page links (Library, My Creations, Grammar, Templates, Builds)
+//   2. Section: "Quick toggles" — small icon-only grid of state toggles
+//                                (Split / Fullscreen / Dark mode)
+//   3. Section: "Actions" — Build & Preview, Show Filters
+//   4. Section: "Account"  — Profile row that opens the user menu modal
+//                            (avatar + view profile / edit / sign out)
 //
-// On mobile, the toggle row is rendered as 3 icon-only buttons in a single
-// row; the action row is 2 icon-only buttons. On desktop the same layout
-// is used — the user asked for no labels regardless of viewport, just
-// tight icon grids that fit in a small FAB card.
+// The primary button is a hamburger icon (Menu/X), not a +.
+//
+// On the library page, all entries are shown as full text buttons in a
+// compact list (not icon-only) so users can see what they're tapping. The
+// toggle grid is below the nav list.
 // =============================================================================
 
 import {
@@ -26,15 +27,14 @@ import {
   Columns2,
   Filter,
   Hammer,
+  Home,
   Library as LibraryIcon,
   Maximize2,
+  Menu,
   Minimize2,
   Moon,
-  Package,
-  Plus,
-  Sun,
   Swords,
-  User,
+  Sun,
   UserRound,
   Wrench,
   X,
@@ -133,13 +133,20 @@ export function FabSpeedDial({
   return (
     <div
       ref={containerRef}
-      className="fixed right-4 z-40 flex flex-col items-end gap-2"
+      className="fixed right-3 z-40 flex flex-col items-end gap-2 sm:right-4"
       style={{
         bottom: `calc(${bottomOffset}px + env(safe-area-inset-bottom, 0px))`,
       }}
     >
       {open ? (
-        <div className="flex max-h-[80vh] flex-col items-stretch gap-1.5 overflow-y-auto rounded-2xl border border-border bg-background/95 p-2 shadow-2xl backdrop-blur-md">
+        <div
+          className="flex max-h-[80vh] w-[min(280px,calc(100vw-1.5rem))] flex-col items-stretch gap-0.5 overflow-y-auto rounded-xl border border-border bg-background/95 p-1.5 shadow-2xl backdrop-blur-md"
+          // Stop the close-on-outside-pointer from racing the click when the
+          // user taps inside the dial. pointerdown bubbles up; without this
+          // guard the dial closes before the click handler can fire (which
+          // is why the user-menu "Account" row never opened).
+          onPointerDown={(e) => e.stopPropagation()}
+        >
           {items.map((item, index) => {
             // The "Functions" section in the dial is replaced by a
             // compact icon-grid card (rendered below). Hide the inline
@@ -151,9 +158,7 @@ export function FabSpeedDial({
               item.kind === "action" &&
               (item.key === "split" ||
                 item.key === "fullscreen" ||
-                item.key === "dark" ||
-                item.key === "build" ||
-                item.key === "filters")
+                item.key === "dark")
             ) {
               return null;
             }
@@ -161,7 +166,7 @@ export function FabSpeedDial({
               return (
                 <div
                   key={item.key}
-                  className="mt-1 border-t border-border/60 px-2 pt-1.5"
+                  className="mt-1.5 border-t border-border/60 px-1.5 pb-0.5 pt-1.5 first:mt-0 first:border-t-0 first:pt-0"
                 >
                   <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                     {item.label}
@@ -175,14 +180,17 @@ export function FabSpeedDial({
                   key={item.key}
                   type="button"
                   onClick={() => {
-                    onUserMenu?.();
+                    // Defer the open until after the dial closes so the
+                    // modal-stack doesn't see two siblings and de-prioritise
+                    // one. We close first, then push on the next tick.
                     setOpen(false);
+                    window.setTimeout(() => onUserMenu?.(), 0);
                   }}
                   style={{
                     animation: `sw-fab-item-in 180ms ease-out both`,
-                    animationDelay: `${index * 25}ms`,
+                    animationDelay: `${index * 20}ms`,
                   }}
-                  className="flex w-full items-center gap-2 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-foreground transition-all hover:scale-[1.02] active:scale-[0.98] hover:border-border hover:bg-accent"
+                  className="flex w-full items-center gap-2 rounded-lg border border-transparent px-2.5 py-2 text-xs font-medium text-foreground transition-all hover:bg-accent"
                 >
                   {currentUser?.avatarUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -212,9 +220,9 @@ export function FabSpeedDial({
                   onClick={() => setOpen(false)}
                   style={{
                     animation: `sw-fab-item-in 180ms ease-out both`,
-                    animationDelay: `${index * 25}ms`,
+                    animationDelay: `${index * 20}ms`,
                   }}
-                  className="group flex w-full items-center gap-2 rounded-xl border border-transparent px-3 py-2 text-xs font-medium text-foreground transition-all hover:scale-[1.02] active:scale-[0.98] hover:border-border hover:bg-accent"
+                  className="group flex w-full items-center gap-2 rounded-lg border border-transparent px-2.5 py-2 text-xs font-medium text-foreground transition-all hover:bg-accent"
                 >
                   <span className="flex size-6 items-center justify-center text-muted-foreground group-hover:text-primary">
                     {item.icon}
@@ -224,14 +232,13 @@ export function FabSpeedDial({
               );
             }
             // FabAction — action button (with optional active state).
+            // Used for Build & Preview and Show Filters in the action row.
             return (
               <button
                 key={item.key}
                 type="button"
                 onClick={() => {
                   item.onClick();
-                  // Heuristic: toggles (with `active` flag) keep the dial
-                  // open so the user can verify the state.
                   if (item.active === undefined) setOpen(false);
                 }}
                 disabled={item.disabled}
@@ -240,13 +247,13 @@ export function FabSpeedDial({
                 title={item.label}
                 style={{
                   animation: `sw-fab-item-in 180ms ease-out both`,
-                  animationDelay: `${index * 25}ms`,
+                  animationDelay: `${index * 20}ms`,
                 }}
                 className={cn(
-                  "group flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition-all hover:scale-[1.02] active:scale-[0.98]",
+                  "group flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-xs font-medium transition-all",
                   item.active
-                    ? "border-primary bg-primary text-primary-foreground shadow-sm shadow-primary/30"
-                    : "border-transparent text-foreground hover:border-border hover:bg-accent",
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-transparent text-foreground hover:bg-accent",
                   item.disabled && "opacity-40 pointer-events-none",
                 )}
               >
@@ -254,7 +261,7 @@ export function FabSpeedDial({
                   className={cn(
                     "flex size-6 items-center justify-center",
                     item.active
-                      ? "text-primary-foreground"
+                      ? "text-primary"
                       : "text-muted-foreground group-hover:text-primary",
                   )}
                 >
@@ -262,124 +269,71 @@ export function FabSpeedDial({
                 </span>
                 <span className="truncate">{item.label}</span>
                 {item.active ? (
-                  <span className="ml-auto size-1.5 rounded-full bg-primary-foreground" />
+                  <span className="ml-auto size-1.5 rounded-full bg-primary" />
                 ) : null}
               </button>
             );
           })}
 
-          {/* The "icon grid" card for the Functions section. We detect it
-              by the divider that immediately precedes it; simpler: just
-              render an extra card when the items list has both 3 toggles
-              and 2 actions. We piggyback on the divider key. */}
-          {items.some((i) => i.kind === "divider" && i.key === "div-functions") ? (
+          {/* Compact icon grid — 3 small toggle buttons in a single row.
+              Sized smaller (size-7) per the user's "too big" feedback. */}
+          {items.some((i) => i.kind === "action" && i.key === "split") ? (
             <div
-              className="mt-1 rounded-xl border border-border bg-card/60 p-1.5"
+              className="mt-1 flex items-center gap-1 rounded-lg border border-border/60 bg-card/40 p-1"
               style={{
                 animation: `sw-fab-item-in 180ms ease-out both`,
-                animationDelay: `${items.length * 25}ms`,
+                animationDelay: `${items.length * 20}ms`,
               }}
             >
-              <p className="mb-1 px-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                Quick toggles
-              </p>
-              <div className="grid grid-cols-3 gap-1.5">
-                {items
-                  .filter(
-                    (i) =>
-                      i.kind !== "divider" &&
-                      i.kind !== "link" &&
-                      i.kind !== "userMenu" &&
-                      (i.key === "split" ||
-                        i.key === "fullscreen" ||
-                        i.key === "dark"),
-                  )
-                  .map((i) => {
-                    if (i.kind === "divider" || i.kind === "link" || i.kind === "userMenu")
-                      return null;
-                    return (
-                      <button
-                        key={i.key}
-                        type="button"
-                        onClick={() => {
-                          i.onClick();
-                        }}
-                        disabled={i.disabled}
-                        aria-pressed={i.active}
-                        aria-label={i.label}
-                        title={i.label}
-                        className={cn(
-                          "flex aspect-square flex-col items-center justify-center gap-0.5 rounded-lg border text-[9px] font-medium transition-all active:scale-95",
-                          i.active
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground",
-                        )}
-                      >
-                        <span className="flex size-5 items-center justify-center">
-                          {i.icon}
-                        </span>
-                      </button>
-                    );
-                  })}
-              </div>
-              <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-                {items
-                  .filter(
-                    (i) =>
-                      i.kind !== "divider" &&
-                      i.kind !== "link" &&
-                      i.kind !== "userMenu" &&
-                      (i.key === "build" || i.key === "filters"),
-                  )
-                  .map((i) => {
-                    if (i.kind === "divider" || i.kind === "link" || i.kind === "userMenu")
-                      return null;
-                    return (
-                      <button
-                        key={i.key}
-                        type="button"
-                        onClick={() => {
-                          i.onClick();
-                          if (i.active === undefined) setOpen(false);
-                        }}
-                        disabled={i.disabled}
-                        aria-pressed={i.active}
-                        aria-label={i.label}
-                        title={i.label}
-                        className={cn(
-                          "flex items-center justify-center gap-1 rounded-lg border px-2 py-2 text-[10px] font-medium transition-all active:scale-95",
-                          i.active
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground",
-                        )}
-                      >
-                        <span className="flex size-4 items-center justify-center">
-                          {i.icon}
-                        </span>
-                        <span className="truncate">{i.label}</span>
-                      </button>
-                    );
-                  })}
-              </div>
+              {items
+                .filter(
+                  (i) =>
+                    i.kind === "action" &&
+                    (i.key === "split" ||
+                      i.key === "fullscreen" ||
+                      i.key === "dark"),
+                )
+                .map((i) => {
+                  if (i.kind !== "action") return null;
+                  return (
+                    <button
+                      key={i.key}
+                      type="button"
+                      onClick={() => i.onClick()}
+                      disabled={i.disabled}
+                      aria-pressed={i.active}
+                      aria-label={i.label}
+                      title={i.label}
+                      className={cn(
+                        "flex size-7 items-center justify-center rounded-md border text-[10px] font-medium transition-all active:scale-95",
+                        i.active
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground",
+                      )}
+                    >
+                      {i.icon}
+                    </button>
+                  );
+                })}
             </div>
           ) : null}
         </div>
       ) : null}
 
-      {/* Primary FAB */}
+      {/* Primary FAB — hamburger icon (Menu ↔ X) */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? "Close menu" : primaryLabel}
         aria-expanded={open}
         className={cn(
-          "relative flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl ring-4 ring-primary/20 transition-all duration-200 hover:scale-105 active:scale-95",
-          open && "rotate-45 bg-foreground text-background ring-foreground/20",
+          "relative flex size-12 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-xl ring-1 ring-border/30 backdrop-blur-md transition-all duration-200 hover:scale-105 active:scale-95",
+          open && "bg-foreground text-background ring-foreground/30",
         )}
       >
-        {open ? <X className="size-6" /> : <Plus className="size-7" />}
+        {open ? <X className="size-5" /> : <Menu className="size-5" />}
         {!open ? (
-          <span className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-primary/30 [animation-duration:3s]" />
+          <span className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-primary/20 [animation-duration:3s]" />
         ) : null}
       </button>
 
@@ -387,7 +341,7 @@ export function FabSpeedDial({
         @keyframes sw-fab-item-in {
           from {
             opacity: 0;
-            transform: translateY(8px) scale(0.95);
+            transform: translateY(6px) scale(0.95);
           }
           to {
             opacity: 1;
@@ -400,19 +354,25 @@ export function FabSpeedDial({
 }
 
 // -----------------------------------------------------------------------------
-// Pre-built item sets for each route family. Consumers can compose these or
-// pass their own.
+// Pre-built item sets — consumers compose these or pass their own.
 // -----------------------------------------------------------------------------
 
 /**
- * Top-level navigation — slim 5-item set per the user's spec.
- * Library / My Creations / Grammar / Templates / Builds.
+ * Top-level navigation — slim 6-item set per the user's spec.
+ * Home / Library / My Creations / Grammar / Templates / Builds.
  */
 export const NAV_LINKS: FabItem[] = [
   {
     kind: "divider",
     key: "div-nav",
     label: "Navigate",
+  },
+  {
+    kind: "link",
+    key: "home",
+    label: "Home",
+    icon: <Home className="size-4" />,
+    href: "/",
   },
   {
     kind: "link",
@@ -451,7 +411,7 @@ export const NAV_LINKS: FabItem[] = [
   },
 ];
 
-/** Profile row at the bottom — opens the user menu modal, not a settings link. */
+/** Profile row at the bottom — opens the user menu modal. */
 export const ACCOUNT_LINKS: FabItem[] = [
   {
     kind: "divider",
@@ -470,15 +430,14 @@ export const FabIcons = {
   Columns2,
   Filter,
   Hammer,
+  Home,
   LibraryIcon,
   Maximize2,
+  Menu,
   Minimize2,
   Moon,
-  Package,
-  Plus,
   Sun,
   Swords,
-  User,
   UserRound,
   Wrench,
   X,

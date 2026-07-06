@@ -253,6 +253,9 @@ export function GrammarLibrary({
 
   // Card click → push to modal stack. The "Load into build" action still
   // calls the parent's onSelect; we pop the stack afterwards.
+  // Sub-entity clicks inside the preview push a nested entry so navigation
+  // stays inside the open modal (no full page navigation, no broken
+  // breadcrumb state).
   const stack = useModalStack();
   function pushPreview(item: SandboxPreviewItem) {
     if (!stack.canPush) return;
@@ -272,6 +275,15 @@ export function GrammarLibrary({
               onSelect("capability", item.row.id);
             }
             stack.clear();
+          }}
+          onSubLinkClick={(link) => {
+            // Look up the full row and push it onto the stack.
+            const sub =
+              link.targetType === "PRIMITIVE"
+                ? primitives.find((p) => String(p.id) === link.targetId)
+                : null;
+            if (!sub) return;
+            pushPreview({ kind: "primitive", row: sub });
           }}
         />
       ),
@@ -313,28 +325,62 @@ export function GrammarLibrary({
 
 // -----------------------------------------------------------------------------
 // SandboxPreviewBody — modal-stack body for grammar library previews. Renders
-// the unified <LibraryItemPreview /> and exposes "Load into build" + "Open
-// source page" actions.
+// the unified <LibraryItemPreview /> and exposes "Load into build" + "Slot into
+// build" + "Open source page" actions.
+//
+// "Load into build" = create a fork-draft for editing in the current build
+// mode. The user must save + publish to make it visible to others.
+// "Slot into build" = drop the primitive into a template / effect /
+// capability the user is already composing. Only available for primitives
+// when the build mode is effect or capability (where primitives can be
+// nested).
 // -----------------------------------------------------------------------------
 
 function SandboxPreviewBody({
   item,
   onLoadIntoBuild,
+  onSubLinkClick,
 }: {
   item: SandboxPreviewItem;
   onLoadIntoBuild: () => void;
+  onSubLinkClick?: (link: {
+    targetType: "PRIMITIVE" | "CAPABILITY";
+    targetId: string;
+    label: string;
+  }) => void;
 }) {
+  // The build mode we're previewing from is reflected by item.kind. Slot
+  // is only relevant for primitives that can be nested into an effect /
+  // capability / template. The grammar sandbox supports primitive +
+  // effect + capability, so a primitive preview in this view can always
+  // be loaded into a future effect/capability form (slot).
+  const showSlotIntoBuild = item.kind === "primitive";
+
   return (
     <div className="space-y-4">
-      <LibraryItemPreview item={item} />
+      <LibraryItemPreview
+        item={item}
+        {...(onSubLinkClick ? { callbacks: { onSubLinkClick } } : {})}
+      />
       <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
         <button
           type="button"
           onClick={onLoadIntoBuild}
           className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          title="Create a fork-draft of this entry in your sandbox"
         >
           Load into build
         </button>
+        {showSlotIntoBuild ? (
+          <button
+            type="button"
+            onClick={onLoadIntoBuild}
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:border-primary"
+            title="Drop this primitive into the build you're currently composing"
+          >
+            Slot into build
+          </button>
+        ) : null}
         <a
           href={`/library/item/${item.kind.toUpperCase()}:${item.row.id}`}
           className="text-xs text-primary hover:underline"

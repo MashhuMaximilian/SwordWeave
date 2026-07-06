@@ -94,6 +94,15 @@ export interface LibraryItem {
   forkCount: number;
   netReactions: number;
   tags: string[];
+  /**
+   * Visibility tier:
+   *   - "PRIVATE"        — author only, no publication row
+   *   - "FOLLOWERS_ONLY" — author + their followers
+   *   - "PUBLIC"         — everyone
+   * Defaults to "PUBLIC" for rows that came through the public library
+   * query (the WHERE clause already filters by isPublic = true).
+   */
+  visibility?: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC";
 }
 
 export interface LibraryResult {

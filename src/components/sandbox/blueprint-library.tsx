@@ -234,7 +234,9 @@ export function BlueprintLibrary({
   }, [build, libraryItems, activeSubKinds, toolbarState]);
 
   // Card click → push to modal stack. The "Load into build" action still
-  // calls the parent's onSelect; we pop the stack afterwards.
+  // calls the parent's onSelect; we pop the stack afterwards. Sub-entity
+  // clicks inside the preview push a nested entry so navigation stays
+  // inside the open modal.
   const stack = useModalStack();
   function pushPreview(item: SandboxPreviewItem) {
     if (!stack.canPush) return;
@@ -252,6 +254,38 @@ export function BlueprintLibrary({
               onSelect("item", String(item.row.id));
             }
             stack.clear();
+          }}
+          onSubLinkClick={(link) => {
+            // For now, we only resolve primitives — capability sub-entities
+            // aren't in scope from the blueprint sandbox.
+            if (link.targetType !== "PRIMITIVE") return;
+            const sub = items.find((i) => {
+              // Item primitive links are not in scope here; we resolve from
+              // the templates collection instead. Items reference primitives
+              // too, but the blueprint sandbox has its own primitive registry.
+              return false;
+            });
+            // Fallback: open a link to the canonical page.
+            const url = `/library/item/${link.targetType}:${link.targetId}`;
+            stack.push({
+              key: `sublink:${link.targetType}:${link.targetId}`,
+              label: link.label,
+              category: link.targetType,
+              content: (
+                <div className="space-y-3 p-1">
+                  <p className="text-sm text-muted-foreground">
+                    Sub-entity preview not yet supported in the blueprint
+                    sandbox. Tap below to open the canonical library page.
+                  </p>
+                  <a
+                    href={url}
+                    className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                  >
+                    Open in library
+                  </a>
+                </div>
+              ),
+            });
           }}
         />
       ),
@@ -358,27 +392,52 @@ export function BlueprintLibrary({
 // -----------------------------------------------------------------------------
 // BlueprintPreviewBody — modal-stack body for blueprint library previews.
 // Renders the unified <LibraryItemPreview /> and exposes "Load into build"
-// + "Open source page" actions.
+// + "Slot into build" + "Open source page" actions.
+//
+// Slot-into-build is shown for primitives embedded in items (the user can
+// drop a primitive they're previewing into the item they're composing).
 // -----------------------------------------------------------------------------
 
 function BlueprintPreviewBody({
   item,
   onLoadIntoBuild,
+  onSubLinkClick,
 }: {
   item: SandboxPreviewItem;
   onLoadIntoBuild: () => void;
+  onSubLinkClick?: (link: {
+    targetType: "PRIMITIVE" | "CAPABILITY";
+    targetId: string;
+    label: string;
+  }) => void;
 }) {
+  const showSlotIntoBuild = item.kind === "primitive";
+
   return (
     <div className="space-y-4">
-      <LibraryItemPreview item={item} />
+      <LibraryItemPreview
+        item={item}
+        {...(onSubLinkClick ? { callbacks: { onSubLinkClick } } : {})}
+      />
       <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
         <button
           type="button"
           onClick={onLoadIntoBuild}
           className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          title="Create a fork-draft of this entry in your sandbox"
         >
           Load into build
         </button>
+        {showSlotIntoBuild ? (
+          <button
+            type="button"
+            onClick={onLoadIntoBuild}
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:border-primary"
+            title="Drop this primitive into the build you're currently composing"
+          >
+            Slot into build
+          </button>
+        ) : null}
         <a
           href={`/library/item/${item.kind.toUpperCase()}:${item.row.id}`}
           className="text-xs text-primary hover:underline"

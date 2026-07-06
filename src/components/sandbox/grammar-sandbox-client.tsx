@@ -347,10 +347,11 @@ export function GrammarSandboxClient({
     );
   }, [build, editing]);
 
-  // Tab strip across the top of the page. Acts as the in-page type selector
-  // (replaces the bottom HUD's role). On desktop, this is the Build column's
-  // top bar; on mobile, the library column's own segmented tabs duplicate the
-  // same affordance.
+  // Tab strip across the BOTTOM of the page. Acts as the in-page type
+  // selector — the user moved it from the top to free vertical space
+  // for the library column. Rendered as a bottomBar so the FAB can sit
+  // above it without overlap (we leave 4rem of bottom padding on the
+  // AppShell's <main> to keep room for both).
   function buildTabs() {
     const tabs: { key: GrammarBuildMode; label: string }[] = [
       { key: "primitive", label: "Primitive" },
@@ -358,19 +359,25 @@ export function GrammarSandboxClient({
       { key: "capability", label: "Capability" },
     ];
     return (
-      <div className="flex border-b border-border bg-card">
+      <div
+        role="tablist"
+        aria-label="Build mode"
+        className="flex bg-card"
+      >
         {tabs.map((tab) => {
           const active = build === tab.key;
           return (
             <button
               key={tab.key}
               type="button"
+              role="tab"
+              aria-selected={active}
               onClick={() => guardedSwitchBuild(tab.key)}
               className={
-                "flex-1 border-b-2 px-4 py-3 text-sm font-medium transition-colors " +
+                "flex-1 border-t-2 px-3 py-2.5 text-sm font-medium transition-colors " +
                 (active
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground")
+                  ? "border-primary bg-primary/5 text-primary"
+                  : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground")
               }
             >
               {tab.label}
@@ -404,9 +411,9 @@ export function GrammarSandboxClient({
             onSelect={guardedLibrarySelect}
           />
         }
-        topBar={buildTabs()}
         builder={builderNode}
         preview={previewNode}
+        bottomBar={buildTabs()}
       />
       <UnsavedChangesModal
         isOpen={pendingAction !== null}
