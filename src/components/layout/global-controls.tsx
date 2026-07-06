@@ -386,10 +386,39 @@ function UserMenuBody({
   onManageAccount: () => void;
   onSignOut: () => void;
 }) {
+  const router = useRouter();
   if (!currentUser) {
+    // Signed out — previously this just showed a "Sign in to manage your
+    // profile" notice and gave the user no way to actually sign in. The
+    // user reported they had to know the magic URL (/sign-in) to get back
+    // in. Add explicit Sign in / Sign up buttons so the path is obvious.
     return (
-      <div className="rounded-md border border-dashed border-border bg-card/30 p-6 text-center text-sm text-muted-foreground">
-        Sign in to manage your profile.
+      <div className="space-y-3">
+        <div className="rounded-md border border-dashed border-border bg-card/30 p-6 text-center text-sm text-muted-foreground">
+          Sign in to manage your profile, fork library entries to your
+          sandbox, and publish your own creations.
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            router.push("/sign-in");
+            // Don't close the modal — let the page navigation handle
+            // it. Closing here would flash an empty FAB before the
+            // /sign-in page renders.
+          }}
+          className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          Sign in
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            router.push("/sign-up");
+          }}
+          className="flex w-full items-center justify-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-accent"
+        >
+          Create an account
+        </button>
       </div>
     );
   }

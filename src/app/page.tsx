@@ -5,8 +5,11 @@ import {
   Download,
   FlaskConical,
   Library,
+  LogIn,
   Upload,
 } from "lucide-react";
+import { auth } from "@clerk/nextjs/server";
+import { HomepageAuth } from "@/components/layout/homepage-auth";
 
 const workspaces = [
   {
@@ -39,7 +42,8 @@ const workspaces = [
   },
 ] as const;
 
-export default function HomePage() {
+export default async function HomePage() {
+  const { userId } = await auth();
   return (
     <div className="mx-auto min-h-screen w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
       <section className="grid gap-5 border-b border-border pb-6 xl:grid-cols-[1fr_360px]">
@@ -76,6 +80,7 @@ export default function HomePage() {
             >
               Review Package Format
             </Link>
+            <HomepageAuth signedIn={!!userId} />
           </div>
         </div>
 

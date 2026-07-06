@@ -4,11 +4,9 @@ import {
   Group,
   Panel,
   Separator,
-  type GroupImperativeHandle,
   type PanelImperativeHandle,
   type Layout,
   useDefaultLayout as useMobileDefaultLayout,
-  useGroupRef,
 } from "react-resizable-panels";
 import {
   ChevronLeft,
@@ -598,33 +596,6 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
     setHydrated(true);
   }, []);
 
-  // Imperative refs for the two panels. The custom drag handle (see
-  // below) calls Group.setLayout() with percentages to resize — this is
-  // the only API on react-resizable-panels that takes raw percentages.
-  // Panel.resize(size) treats numeric values as PIXELS (per the
-  // PanelImperativeHandle docs), so passing a percent number there
-  // produced 50-pixel panels and the user couldn't see any change. The
-  // proper path is Group.setLayout({ library: 50, builder: 50 }).
-  const libraryPanelRef = useRef<PanelImperativeHandle>(null);
-  const builderPanelRef = useRef<PanelImperativeHandle>(null);
-  // useGroupRef() returns a properly-typed RefObject<GroupImperativeHandle>
-  // that React will actually attach. The previous hand-rolled
-  // `useRef<{ getLayout, setLayout }>(null)` plus `groupRef={groupRef as never}`
-  // cast broke the ref attachment, so all drag calls were no-ops.
-  const groupRef = useGroupRef();
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  // Refs (not state) for drag bookkeeping — pointermove fires at 60Hz and
-  // the first move can arrive before a setState update propagates. Using
-  // refs avoids the "first move is dropped" bug that plagued the earlier
-  // state-based approach. Window-level pointermove/pointerup listeners
-  // (added in startDrag, removed in endDrag) ensure the drag continues
-  // even when the pointer leaves the handle.
-  const draggingRef = useRef(false);
-  const startYRef = useRef(0);
-  const startPctRef = useRef(0);
-  const handleRef = useRef<HTMLDivElement | null>(null);
-  const [dragging, setDragging] = useState(false);
-
   // The sandbox's Build/Preview content is pushed into the global drawer
   // via the per-tab slot system. We register each tab's content separately
   // so the drawer's tab toggle works (previously both tabs rendered the
@@ -648,7 +619,10 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
 
   // Split-mode layout: Library | Build (with Preview overlay triggered by
   // a dedicated button — also accessible via FAB). Vertical drag-resize
-  // between Library and Build.
+  // between Library and Build using the canonical <Separator> from
+  // react-resizable-panels (the library's built-in pointer-event-driven
+  // resize handle, exposed to us via the `data-separator` attribute for
+  // styling).
   const splitLayout = useMobileDefaultLayout({
     id: "sw_sandbox_mobile_split",
     storage: {
@@ -662,103 +636,8 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
     window.dispatchEvent(new CustomEvent("sw-sandbox-reset"));
   }
 
-  // Split mode: Library top + Build bottom (vertical drag-resize).
-  // Add bottom padding to keep content above the fixed bottom tab bar.
-  // Inline touchAction:none stops the browser from hijacking vertical
-  // drags for page scroll (Tailwind's `touch-none` resolves to
-  // touch-action:pan-x pan-y override only on the separator, not the
-  // Group, so the page still tries to scroll).
-  //
-  // The custom drag handle (rendered between the Panels below) uses
-  // pointer events directly to call Group.setLayout(). This bypasses
-  // react-resizable-panels' built-in Separator which proved unreliable
-  // on some touch devices (the user reported "still can't resize on
-  // mobile" after multiple Separator-based attempts). Window-level
-  // pointermove/pointerup listeners (added in startDrag) ensure the
-  // drag continues even after the pointer leaves the handle area.
-  const onPointerMove = useCallback((e: PointerEvent) => {
-    if (!draggingRef.current) return;
-    if (!containerRef.current) return;
-    e.preventDefault();
-    const rect = containerRef.current.getBoundingClientRect();
-    // Subtract the fixed tab bar height so the % calc reflects the
-    // available split area, not the full viewport.
-    const available = rect.height - 48; // pb-12 = 48px
-    if (available <= 0) return;
-    const offsetFromTop = e.clientY - rect.top;
-    const newLibraryPct = Math.max(
-      20,
-      Math.min(75, (offsetFromTop / available) * 100),
-    );
-    const newBuilderPct = 100 - newLibraryPct;
-    // Drive the Group via its imperative handle with PERCENTAGES.
-    // Group.setLayout takes a map of panelId → percentage (0..100).
-    // NOTE: Panel.resize() with a number is interpreted as PIXELS, not
-    // percent (per the PanelImperativeHandle docs: "Numeric values are
-    // assumed to be pixels."). The previous attempt called
-    // libraryPanelRef.current?.resize(50) which set the panel to 50
-    // PIXELS — visually invisible, hence "dragging does nothing."
-    // setLayout() with raw percentages is the correct API.
-    if (groupRef.current) {
-      groupRef.current.setLayout({
-        library: newLibraryPct,
-        builder: newBuilderPct,
-      });
-    }
-  }, [groupRef]);
-
-  const onPointerUp = useCallback((e: PointerEvent) => {
-    draggingRef.current = false;
-    setDragging(false);
-    window.removeEventListener("pointermove", onPointerMove);
-    window.removeEventListener("pointerup", onPointerUp);
-    window.removeEventListener("pointercancel", onPointerUp);
-    if (handleRef.current) {
-      try {
-        handleRef.current.releasePointerCapture(e.pointerId);
-      } catch {
-        /* ignore */
-      }
-    }
-  }, [onPointerMove]);
-
-  const startDrag = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Use currentTarget, not target — the grab-bar <span> is a child and
-    // can be the actual click target. We want capture on the handle div.
-    const handle = e.currentTarget;
-    handleRef.current = handle;
-    try {
-      handle.setPointerCapture(e.pointerId);
-    } catch {
-      /* some browsers throw if capture is already set */
-    }
-    draggingRef.current = true;
-    startYRef.current = e.clientY;
-    if (groupRef.current && containerRef.current) {
-      const layout = groupRef.current.getLayout();
-      startPctRef.current = layout["library"] ?? 50;
-    } else {
-      startPctRef.current = 50;
-    }
-    // Attach window-level listeners so the drag continues even when the
-    // pointer leaves the handle area. Inline onPointerMove on the handle
-    // only fires while the pointer is over the handle — that's the bug
-    // the user hit when the handle is small and a finger drag quickly
-    // moves off it.
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);
-    window.addEventListener("pointercancel", onPointerUp);
-    setDragging(true);
-  }, [onPointerMove, onPointerUp]);
-
   return (
-    <div
-      ref={containerRef}
-      className="relative flex h-full min-h-0 flex-col"
-      style={{ touchAction: "none" }}
-    >
+    <div className="relative flex h-full min-h-0 flex-col">
       {!hydrated || !sandboxSplit ? (
         // Default mode: Library fills the viewport, Build is a drawer.
         // Add bottom padding to keep content above the fixed bottom tab bar.
@@ -767,19 +646,32 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
           <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
         </div>
       ) : (
+        // Split mode: Library top + Build bottom (vertical drag-resize).
+        // The <Separator> is the library's canonical drag handle — it
+        // ships with full touch + keyboard + mouse support out of the box.
+        // We style it as a thin (8px) bar with a primary-tinted hit area
+        // that expands to 32px on touch via the `data-separator=hover|drag`
+        // attribute the library sets. Inline touchAction:none stops the
+        // browser from hijacking vertical drags for page scroll.
+        //
+        // Why we ditched the custom 44px-tall handle:
+        // The user reported the handle was "too big vertically" and wanted
+        // "just a blue divider thingy I could drag." 44px consumed a
+        // full row of precious vertical space. The standard Separator
+        // shrinks to 8px visual, expands to 32px on hover/drag, and
+        // ships with reliable pointer handling — no custom drag code to
+        // break on the next iOS update.
         <Group
           id="sw_sandbox_mobile_split"
           orientation="vertical"
           defaultLayout={splitLayout.defaultLayout}
           onLayoutChange={splitLayout.onLayoutChange}
           onLayoutChanged={splitLayout.onLayoutChanged}
-          groupRef={groupRef}
           className="flex h-full min-h-0 pb-12"
           style={{ touchAction: "none" }}
         >
           <Panel
             id="library"
-            panelRef={libraryPanelRef}
             // Library 35 / Build 65 default — gives the form the
             // majority of the screen on mobile so most fields are
             // visible above the fold. The 50/50 default left the
@@ -794,40 +686,52 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
             <MobileColumnChrome title="Library" icon={<LibraryIcon className="size-4" />} />
             <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
           </Panel>
-          {/* Custom drag handle: 28px tall, 64px grab bar, full-width
-              touch surface. Uses pointer events directly so iOS Safari +
-              Android Chrome both catch the drag. The previous Separator
-              from react-resizable-panels was unreliable on touch
-              (the drag never started on some devices). */}
-          <div
-            ref={handleRef}
-            role="separator"
-            aria-orientation="horizontal"
-            onPointerDown={startDrag}
-            className={cn(
-              // 44px tall handle (44 = Apple HIG / Material minimum
-              // touch target). Wider grab bar (w-32 instead of w-20)
-              // for better discoverability. Primary-tinted background
-              // makes it stand out from the panel chrome above and
-              // below.
-              "group relative z-10 flex shrink-0 cursor-row-resize select-none items-center justify-center border-y border-border/40 bg-primary/10 transition-colors hover:bg-primary/25",
-              "h-11",
-              dragging && "bg-primary/40",
-            )}
-            data-testid="mobile-split-handle"
+          {/*
+            Separator: 8px thin bar by default. Hit area expands to ~32px
+            on hover/drag via the data-separator attribute. The grab
+            indicator is a 40px-wide × 4px-tall pill that lives in the
+            middle of the bar. A 1px-tall primary-tinted line is always
+            visible so the user knows there's a drag handle here.
+          */}
+          <Separator
             aria-label="Drag to resize Library and Build panels"
+            className={cn(
+              // 8px tall thin bar by default; hit area extends via
+              // invisible padding so touch users still have a 32px+
+              // target without the bar visually growing.
+              "group relative flex h-2 shrink-0 items-center justify-center",
+              "bg-primary/30 transition-colors",
+              // Expand the visual hit area on hover/drag (the library
+              // sets data-separator="hover" or "drag" automatically).
+              "hover:bg-primary/60",
+              "data-[separator=drag]:bg-primary",
+            )}
+            style={{
+              // Push the hit area beyond the visual 8px so finger
+              // touches on mobile land on the separator, not the
+              // panels above/below.
+              paddingTop: 12,
+              paddingBottom: 12,
+              marginTop: -12,
+              marginBottom: -12,
+              touchAction: "none",
+            }}
           >
+            {/*
+              Visible grab indicator: 40px × 4px pill with a pair of
+              horizontal lines inside (the standard "grip" affordance).
+              pointer-events-none so it never intercepts the drag.
+            */}
             <span
               aria-hidden
-              className="pointer-events-none flex h-2 w-32 items-center justify-center gap-1 rounded-full bg-primary/60 group-hover:bg-primary"
+              className="pointer-events-none flex h-1 w-10 items-center justify-center gap-0.5 rounded-full bg-primary-foreground/70"
             >
-              <span className="h-0.5 w-8 rounded-full bg-primary-foreground/80" />
-              <span className="h-0.5 w-8 rounded-full bg-primary-foreground/80" />
+              <span className="h-0.5 w-6 rounded-full bg-primary/80" />
+              <span className="h-0.5 w-6 rounded-full bg-primary/80" />
             </span>
-          </div>
+          </Separator>
           <Panel
             id="builder"
-            panelRef={builderPanelRef}
             defaultSize={65}
             minSize={25}
             maxSize={85}
@@ -844,8 +748,7 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
                     className="flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary hover:bg-primary/20"
                     aria-label="Preview"
                   >
-                    <Eye className="size-3" />
-                    Preview
+                    <Eye className="size-3" /> Preview
                   </button>
                   <button
                     type="button"
@@ -853,8 +756,7 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
                     className="flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-secondary-foreground hover:bg-secondary/70"
                     aria-label="Reset"
                   >
-                    <RotateCcw className="size-3" />
-                    Reset
+                    <RotateCcw className="size-3" /> Reset
                   </button>
                 </div>
               }

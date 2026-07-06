@@ -24,7 +24,7 @@ import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/ui/markdown";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
-import { ChevronRight, History, Link2 } from "lucide-react";
+import { ChevronRight, History, Link2, Sparkles } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
 
 // ---- Entity types (mirrored from sandbox-preview-modal.tsx) ----------------
@@ -526,32 +526,60 @@ function EffectBody({
     0,
   );
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">
-          {totalBu} BU
-        </span>
-        {row.sourceOrigin ? (
-          <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-            {row.sourceOrigin}
+    <div className="space-y-5">
+      {/*
+        Header card — gives the effect a clear identity with a
+        distinguishing colour, the canonical "EFFECT" type pill, the BU
+        total, and the source origin. Pulled into its own bordered
+        container so the rest of the body has visual breathing room.
+      */}
+      <div className="rounded-lg border border-border bg-card/50 p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-gradient-to-br from-violet-500/20 to-cyan-500/20">
+            <Sparkles className="size-5 text-primary" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Effect
+            </p>
+            <p className="truncate text-base font-semibold leading-tight">
+              {row.name}
+            </p>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs">
+          <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-mono font-semibold text-primary">
+            {totalBu} BU
           </span>
-        ) : null}
-        <VisibilityPill isPublic={row.isPublic} />
+          {row.sourceOrigin ? (
+            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium uppercase tracking-wide text-secondary-foreground">
+              {row.sourceOrigin}
+            </span>
+          ) : null}
+          <VisibilityPill isPublic={row.isPublic} />
+        </div>
       </div>
 
       {row.narrativeDescription ? (
         <Section heading="Narrative description">
-          <Markdown>{row.narrativeDescription}</Markdown>
+          {/*
+            Markdown prose — the inline [&_strong] / [&_em] selectors
+            force the bold/italic even when the parent container is
+            text-muted-foreground.
+          */}
+          <div className="rounded-md border border-border/60 bg-background/40 p-3 text-sm leading-7 [&_p]:mb-2 [&_p:last-child]:mb-0 [&_strong]:font-bold [&_strong]:text-foreground [&_em]:italic">
+            <Markdown>{row.narrativeDescription}</Markdown>
+          </div>
         </Section>
       ) : null}
 
       {row.tags.length > 0 ? (
         <Section heading="Tags">
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1.5">
             {row.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-secondary px-2 py-0.5 text-xs"
+                className="rounded-full border border-border bg-secondary/60 px-2.5 py-0.5 text-xs font-medium"
               >
                 {tag}
               </span>
