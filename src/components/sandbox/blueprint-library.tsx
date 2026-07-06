@@ -26,8 +26,10 @@ import { useModalStack } from "@/components/ui/modal-stack";
 import {
   LibraryItemPreview,
   previewHeadingLabel,
+  type SandboxCapabilityRow,
   type SandboxItemRow,
   type SandboxPreviewItem,
+  type SandboxPrimitiveRow,
   type SandboxTemplateRow,
 } from "@/components/library/library-item-preview";
 import { useSandboxEngagement } from "@/components/library/use-sandbox-engagement";
@@ -42,6 +44,14 @@ interface BlueprintLibraryProps {
   libraryItems: LibraryItem[];
   templates: SandboxTemplateRow[];
   items: SandboxItemRow[];
+  /** Primitives the blueprint library can preview when a sub-link to a
+   *  primitive is clicked inside a template/item body. The grammar
+   *  library has the same data — passing it here lets the blueprint
+   *  sandbox open the full primitive preview (same modal as grammar). */
+  primitives?: SandboxPrimitiveRow[];
+  /** Capabilities the blueprint library can preview for sub-link
+   *  resolution inside item bodies. */
+  capabilities?: SandboxCapabilityRow[];
   editingKey: string | null;
   onSelect: (kind: "template" | "item", id: string) => void;
 }
@@ -70,6 +80,8 @@ export function BlueprintLibrary({
   libraryItems,
   templates,
   items,
+  primitives = [],
+  capabilities = [],
   editingKey,
   onSelect,
 }: BlueprintLibraryProps) {
@@ -243,10 +255,24 @@ export function BlueprintLibrary({
             stack.clear();
           }}
           onSubLinkClick={(link) => {
-            // For now, we only resolve primitives — capability sub-entities
-            // aren't in scope from the blueprint sandbox.
-            if (link.targetType !== "PRIMITIVE") return;
-            // Fallback: open a link to the canonical page.
+            // Resolve the sub-entity to its full row and push a real
+            // preview onto the modal stack. Same UX as the grammar
+            // sandbox's onSubLinkClick — primitives, effects, and
+            // capabilities are all previewable here.
+            if (link.targetType === "PRIMITIVE") {
+              const id = Number(link.targetId);
+              const row = primitives.find((p) => p.id === id);
+              if (!row) return;
+              pushPreview({ kind: "primitive", row });
+              return;
+            }
+            if (link.targetType === "CAPABILITY") {
+              const row = capabilities.find((c) => c.id === link.targetId);
+              if (!row) return;
+              pushPreview({ kind: "capability", row });
+              return;
+            }
+            // Fallback for unhandled types: open the canonical page.
             const url = `/library/item/${link.targetType}:${link.targetId}`;
             stack.push({
               key: `sublink:${link.targetType}:${link.targetId}`,
@@ -255,8 +281,9 @@ export function BlueprintLibrary({
               content: (
                 <div className="space-y-3 p-1">
                   <p className="text-sm text-muted-foreground">
-                    Sub-entity preview not yet supported in the blueprint
-                    sandbox. Tap below to open the canonical library page.
+                    Sub-entity preview not yet supported for this kind in
+                    the blueprint sandbox. Tap below to open the canonical
+                    library page.
                   </p>
                   <a
                     href={url}

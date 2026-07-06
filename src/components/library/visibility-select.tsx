@@ -76,7 +76,7 @@ export function VisibilitySelect({
   if (compact) {
     return (
       <div
-        className="grid grid-cols-3 gap-1"
+        className="grid w-full grid-cols-3 gap-1"
         title="Who can see this entry"
         data-testid="visibility-select-compact"
       >
@@ -94,15 +94,15 @@ export function VisibilitySelect({
               title={opt.hint}
               data-visibility-key={opt.key}
               className={cn(
-                "flex h-9 items-center justify-center gap-1 rounded-md border text-xs font-medium transition-all",
+                "flex h-8 w-full items-center justify-center gap-1 rounded-md border px-1 text-xs font-medium transition-all",
                 active
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground",
                 (disabled || pending) && "opacity-60",
               )}
             >
-              <Icon className="size-3.5" />
-              <span>{opt.label}</span>
+              <Icon className="size-3.5 shrink-0" />
+              <span className="truncate">{opt.label}</span>
             </button>
           );
         })}

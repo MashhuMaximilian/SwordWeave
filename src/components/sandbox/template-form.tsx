@@ -106,10 +106,11 @@ export function TemplateForm({
   const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
 
-  const bootstrappedRef = useRef(false);
+  const bootstrappedRef = useRef<string | null>(null);
   useEffect(() => {
-    if (bootstrappedRef.current) return;
-    bootstrappedRef.current = true;
+    const id = initialTemplate?.id ?? null;
+    if (bootstrappedRef.current === id) return;
+    bootstrappedRef.current = id;
     if (!initialTemplate) return;
     setForm({
       kind: initialTemplate.kind,
@@ -221,7 +222,7 @@ export function TemplateForm({
     setPickerOpen(false);
     setIsDirty(false); // pristine after reset
     setMessage("Started a fresh template.");
-    bootstrappedRef.current = true;
+    bootstrappedRef.current = null; // allow re-bootstrap on next entity load
     onReset?.();
   }
 

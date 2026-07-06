@@ -590,18 +590,34 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
     setHydrated(true);
   }, []);
 
+  // Imperative refs for the two panels + group. The custom drag handle
+  // (see below) uses these to call setSize/setLayout directly with pointer
+  // events, bypassing react-resizable-panels' built-in Separator which
+  // proved unreliable on touch devices in earlier iterations.
+  const libraryPanelRef = useRef<PanelImperativeHandle>(null);
+  const builderPanelRef = useRef<PanelImperativeHandle>(null);
+  const groupRef = useRef<{ getLayout: () => Record<string, number>; setLayout: (l: Record<string, number>) => void } | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [dragging, setDragging] = useState(false);
+
   // The sandbox's Build/Preview content is pushed into the global drawer
   // via the per-tab slot system. We register each tab's content separately
   // so the drawer's tab toggle works (previously both tabs rendered the
   // same wrapper which ignored the global drawer state). The drawer's
   // footer/save-reset chrome only shows on the build tab.
+  //
+  // IMPORTANT: in split mode the build form is already visible in the
+  // bottom panel. Pushing a SECOND instance to the drawer means the two
+  // have separate state — slots land in the page form, the drawer form
+  // is blank. We only push to the drawer when the form is NOT visible
+  // inline (i.e. default single-panel mode or the preview tab).
   useDrawerSlot(
     useMemo(
       () => ({
-        build: builder,
+        build: sandboxSplit ? null : builder,
         preview: preview,
       }),
-      [builder, preview],
+      [builder, preview, sandboxSplit],
     ),
   );
 
@@ -621,8 +637,63 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
     window.dispatchEvent(new CustomEvent("sw-sandbox-reset"));
   }
 
+  // Split mode: Library top + Build bottom (vertical drag-resize).
+  // Add bottom padding to keep content above the fixed bottom tab bar.
+  // Inline touchAction:none stops the browser from hijacking vertical
+  // drags for page scroll (Tailwind's `touch-none` resolves to
+  // touch-action:pan-x pan-y override only on the separator, not the
+  // Group, so the page still tries to scroll).
+  //
+  // The custom drag handle (rendered between the Panels below) uses
+  // pointer events directly to call Panel.setSize(). This bypasses
+  // react-resizable-panels' built-in Separator which proved unreliable
+  // on some touch devices (the user reported "still can't resize on
+  // mobile" after multiple Separator-based attempts).
+  const startDrag = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    setDragging(true);
+  }, []);
+
+  const onDrag = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!dragging) return;
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      // Subtract the fixed tab bar height so the % calc reflects the
+      // available split area, not the full viewport.
+      const available = rect.height - 48; // pb-12 = 48px
+      const offsetFromTop = e.clientY - rect.top;
+      const newLibraryPct = Math.max(
+        20,
+        Math.min(75, (offsetFromTop / available) * 100),
+      );
+      const newBuilderPct = 100 - newLibraryPct;
+      const layout: Record<string, number> = {
+        library: newLibraryPct,
+        builder: newBuilderPct,
+      };
+      groupRef.current?.setLayout(layout);
+    },
+    [dragging],
+  );
+
+  const endDrag = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    setDragging(false);
+    try {
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   return (
-    <div className="relative flex h-full min-h-0 flex-col">
+    <div
+      ref={containerRef}
+      className="relative flex h-full min-h-0 flex-col"
+      style={{ touchAction: "none" }}
+    >
       {!hydrated || !sandboxSplit ? (
         // Default mode: Library fills the viewport, Build is a drawer.
         // Add bottom padding to keep content above the fixed bottom tab bar.
@@ -631,23 +702,19 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
           <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
         </div>
       ) : (
-        // Split mode: Library top + Build bottom (vertical drag-resize).
-        // Add bottom padding to keep content above the fixed bottom tab bar.
-        // Inline touchAction:none stops the browser from hijacking vertical
-        // drags for page scroll (Tailwind's `touch-none` resolves to
-        // touch-action:pan-x pan-y override only on the separator, not the
-        // Group, so the page still tries to scroll).
         <Group
           id="sw_sandbox_mobile_split"
           orientation="vertical"
           defaultLayout={splitLayout.defaultLayout}
           onLayoutChange={splitLayout.onLayoutChange}
           onLayoutChanged={splitLayout.onLayoutChanged}
+          groupRef={groupRef as never}
           className="flex h-full min-h-0 pb-12"
           style={{ touchAction: "none" }}
         >
           <Panel
             id="library"
+            panelRef={libraryPanelRef}
             defaultSize={50}
             minSize={20}
             maxSize={75}
@@ -656,19 +723,35 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
             <MobileColumnChrome title="Library" icon={<LibraryIcon className="size-4" />} />
             <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
           </Panel>
-          {/* Drag handle: 28px tall (h-7) with a 56px visible grab bar.
-              + explicit touch-action:none on both the Group and the
-              separator so the browser doesn't try to scroll the page
-              mid-drag. Previous handle was 12px and still failed on
-              some devices — 28px gives a comfortable target. */}
-          <Separator className="group relative h-7 shrink-0 cursor-row-resize touch-none select-none bg-border transition-colors hover:bg-primary/40 data-[separator=drag]:bg-primary">
+          {/* Custom drag handle: 28px tall, 64px grab bar, full-width
+              touch surface. Uses pointer events directly so iOS Safari +
+              Android Chrome both catch the drag. The previous Separator
+              from react-resizable-panels was unreliable on touch
+              (the drag never started on some devices). */}
+          <div
+            role="separator"
+            aria-orientation="horizontal"
+            aria-valuenow={dragging ? 50 : 50}
+            onPointerDown={startDrag}
+            onPointerMove={onDrag}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+            className={cn(
+              "group relative h-7 shrink-0 cursor-row-resize select-none border-y border-border/40 transition-colors",
+              dragging
+                ? "bg-primary/30"
+                : "bg-border/60 hover:bg-primary/40",
+            )}
+            data-testid="mobile-split-handle"
+          >
             <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <span className="h-1.5 w-16 rounded-full bg-foreground/40 group-hover:bg-primary-foreground" />
+              <span className="h-2 w-20 rounded-full bg-foreground/50 group-hover:bg-primary-foreground" />
             </span>
             <span className="sr-only">Drag to resize Library and Build panels</span>
-          </Separator>
+          </div>
           <Panel
             id="builder"
+            panelRef={builderPanelRef}
             defaultSize={50}
             minSize={25}
             maxSize={85}

@@ -128,10 +128,14 @@ export function CapabilityForm({
   const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
 
-  const bootstrappedRef = useRef(false);
+  const bootstrappedRef = useRef<string | number | null>(null);
   useEffect(() => {
-    if (bootstrappedRef.current) return;
-    bootstrappedRef.current = true;
+    const id = initialCapability?.id ?? null;
+    // Only bootstrap on first mount OR when the user loads a different
+    // entity (different id). Re-bootstrapping resets the form to the new
+    // entity's data and clears the dirty flag.
+    if (bootstrappedRef.current === id) return;
+    bootstrappedRef.current = id;
     if (!initialCapability) return;
     setForm({
       name: initialCapability.name,
@@ -264,7 +268,7 @@ export function CapabilityForm({
     setPickerOpen(false);
     setIsDirty(false); // pristine after reset
     setMessage("Started a fresh capability.");
-    bootstrappedRef.current = true;
+    bootstrappedRef.current = null; // allow re-bootstrap on next entity load
     onReset?.();
   }
 
@@ -348,7 +352,7 @@ export function CapabilityForm({
 
   return (
     <form
-      className="grid grid-cols-1 gap-4 rounded-md border border-border bg-card p-4 sm:p-5"
+      className="grid grid-cols-1 gap-3 rounded-md border border-border bg-card p-3 sm:p-4"
       onSubmit={submitCapability}
     >
       <div className="flex items-center justify-between gap-3">
@@ -435,7 +439,7 @@ export function CapabilityForm({
         </label>
       </div>
 
-      <label className="flex flex-col gap-2 rounded-md border border-border bg-background p-3 text-sm font-medium">
+      <label className="flex flex-col gap-1.5 rounded-md border border-border bg-background p-2.5 text-sm font-medium">
         <span className="text-xs font-semibold uppercase text-muted-foreground">
           Visibility
         </span>
@@ -450,7 +454,7 @@ export function CapabilityForm({
         </span>
       </label>
 
-      <section className="rounded-md border border-border bg-background p-4">
+      <section className="rounded-md border border-border bg-background p-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-sm font-bold">Primitive Slots</h3>
           <div className="flex items-center gap-2">
@@ -491,7 +495,7 @@ export function CapabilityForm({
             {slots.map((slot, idx) => (
               <li
                 key={`${slot.primitiveId}-${idx}`}
-                className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-2"
+                className="flex flex-col gap-1.5 rounded-md border border-border bg-card p-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2"
               >
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">
                   {slot.primitive.name}
@@ -532,7 +536,7 @@ export function CapabilityForm({
         )}
       </section>
 
-      <section className="rounded-md border border-border bg-background p-4">
+      <section className="rounded-md border border-border bg-background p-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-bold">Bundled Effects</h3>

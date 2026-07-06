@@ -113,6 +113,32 @@ export default async function BlueprintSandboxPage({
       }))}
       effects={effectRows.map((e) => ({ id: e.id, name: e.name }))}
       libraryItems={libraryItems}
+      sandboxPrimitives={primitiveRows.map((p) => ({
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        buCost: p.buCost,
+        isPublic: p.isPublic,
+        costTier: p.costTier,
+        mechanicalOutputText: p.mechanicalOutputText,
+        narrativeRule: p.narrativeRule,
+        isMirrorable: p.isMirrorable,
+        mirrorVector: p.mirrorVector,
+        mirrorBuCredit: p.mirrorBuCredit,
+        mirrorEligibilityNotes: p.mirrorEligibilityNotes,
+        hardModifiers: p.hardModifiers,
+      }))}
+      sandboxCapabilities={capabilityRows.map((c) => ({
+        id: c.id,
+        name: c.name,
+        type: c.type,
+        sourceType: c.sourceType,
+        verboseDescription: c.verboseDescription,
+        sourceOrigin: c.sourceOrigin,
+        tags: c.tags,
+        isPublic: c.isPublic,
+        primitiveLinks: [],
+      }))}
     />
   );
 }

@@ -128,20 +128,22 @@ export function LibraryTable({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {items.map((item) => (
-          <GridCard
-            key={item.id}
-            item={item}
-            engagement={engagement}
-            currentUserInternalId={currentUserInternalId}
-            onSelect={onSelect}
-            selected={selectedKey === item.id}
-          />
-        ))}
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="min-h-0 flex-1 overflow-auto">
+        <div className="grid grid-cols-1 gap-3 p-3 md:grid-cols-2 lg:grid-cols-3">
+          {items.map((item) => (
+            <GridCard
+              key={item.id}
+              item={item}
+              engagement={engagement}
+              currentUserInternalId={currentUserInternalId}
+              onSelect={onSelect}
+              selected={selectedKey === item.id}
+            />
+          ))}
+        </div>
+        {pagination}
       </div>
-      {pagination}
     </div>
   );
 }
@@ -327,7 +329,7 @@ function GridCard({
         type="button"
         onClick={() => onSelect(item)}
         className={cn(
-          "flex h-full flex-col rounded-md border bg-card p-2 text-left transition-colors md:p-2.5",
+          "flex min-h-[7rem] flex-col rounded-md border bg-card p-2 text-left transition-colors md:p-2.5",
           selected
             ? "border-primary bg-primary/5"
             : "border-border hover:border-primary",
@@ -341,7 +343,7 @@ function GridCard({
   return (
     <article
       className={cn(
-        "flex h-full flex-col rounded-md border bg-card p-2 transition-colors md:p-2.5",
+        "flex min-h-[7rem] flex-col rounded-md border bg-card p-2 transition-colors md:p-2.5",
         selected
           ? "border-primary bg-primary/5"
           : "border-border hover:border-primary",

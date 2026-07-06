@@ -86,11 +86,14 @@ export function EffectForm({
   const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
 
-  // Pre-load from initialEffect once.
-  const bootstrappedRef = useRef(false);
+  // Pre-load from initialEffect — only on mount or when the user loads
+  // a different entity (id changes). Without the id check, switching
+  // rows in the library would not refresh the form.
+  const bootstrappedRef = useRef<string | null>(null);
   useEffect(() => {
-    if (bootstrappedRef.current) return;
-    bootstrappedRef.current = true;
+    const id = initialEffect?.id ?? null;
+    if (bootstrappedRef.current === id) return;
+    bootstrappedRef.current = id;
     if (!initialEffect) return;
     setForm({
       name: initialEffect.name,
@@ -195,7 +198,7 @@ export function EffectForm({
     setPickerOpen(false);
     setIsDirty(false); // pristine after reset
     setMessage("Started a fresh effect.");
-    bootstrappedRef.current = true;
+    bootstrappedRef.current = null; // allow re-bootstrap on next entity load
     onReset?.();
   }
 

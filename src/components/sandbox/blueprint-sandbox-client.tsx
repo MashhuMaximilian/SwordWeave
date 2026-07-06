@@ -94,6 +94,8 @@ export function BlueprintSandboxClient({
   capabilities,
   effects,
   libraryItems,
+  sandboxPrimitives,
+  sandboxCapabilities,
 }: {
   initialBuild: BlueprintBuildMode;
   initialKind?: "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined;
@@ -118,6 +120,10 @@ export function BlueprintSandboxClient({
    * the typed rows.
    */
   libraryItems: LibraryItem[];
+  /** Full primitive rows used to resolve sub-entity previews. */
+  sandboxPrimitives: import("@/components/library/library-item-preview").SandboxPrimitiveRow[];
+  /** Full capability rows used to resolve sub-entity previews. */
+  sandboxCapabilities: import("@/components/library/library-item-preview").SandboxCapabilityRow[];
 }) {
   const [build, setBuild] = useState<BlueprintBuildMode>(initialBuild);
   const [editing, setEditing] = useState<EditingState>(initialEditing);
@@ -127,11 +133,13 @@ export function BlueprintSandboxClient({
 
   // Mirror the dirty state into the global controls so the FAB can show
   // a notification dot on the Build & Preview button when the user has
-  // unsaved changes. The global also auto-resets on route change.
+  // anything in their build — either unsaved edits OR a loaded entity
+  // that hasn't been saved yet. The global also auto-resets on route
+  // change.
   const { setSandboxFormDirty } = useGlobalControls();
   useEffect(() => {
-    setSandboxFormDirty(formIsDirty);
-  }, [formIsDirty, setSandboxFormDirty]);
+    setSandboxFormDirty(formIsDirty || editing !== null);
+  }, [formIsDirty, editing, setSandboxFormDirty]);
 
   const applyPendingAction = useCallback((action: PendingAction) => {
     if (action.kind === "switchBuild") {
@@ -157,7 +165,9 @@ export function BlueprintSandboxClient({
 
   function guardedSwitchBuild(newMode: BlueprintBuildMode) {
     if (newMode === build) return;
-    if (!formIsDirty) {
+    // Warn if the form has any state — either unsaved edits OR a loaded
+    // entity that hasn't been saved yet (the user said "build is filled").
+    if (!formIsDirty && editing === null) {
       applyPendingAction({ kind: "switchBuild", mode: newMode });
       return;
     }
@@ -170,7 +180,8 @@ export function BlueprintSandboxClient({
     if (build === entityType && editing?.kind === entityType) {
       if (editing.row.id === id) return;
     }
-    if (!formIsDirty) {
+    // Warn if the form has any state.
+    if (!formIsDirty && editing === null) {
       applyPendingAction({ kind: "loadFromLibrary", entityType, id });
       return;
     }
@@ -359,6 +370,8 @@ export function BlueprintSandboxClient({
             libraryItems={libraryItems}
             templates={templates}
             items={items}
+            primitives={sandboxPrimitives}
+            capabilities={sandboxCapabilities}
             editingKey={
               editing
                 ? `${editing.kind}:${editing.row.id}`
