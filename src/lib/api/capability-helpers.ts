@@ -122,6 +122,40 @@ export function parsePrimitiveSlots(value: unknown): ParsedCapabilityPrimitiveSl
   });
 }
 
+export interface ParsedCapabilityEffectSlot {
+  effectId: string;
+  sortOrder: number;
+  slotLabel: string | null;
+  notes: string | null;
+}
+
+export function parseEffectSlots(value: unknown): ParsedCapabilityEffectSlot[] {
+  if (!Array.isArray(value)) {
+    throw new Error("effectSlots must be an array.");
+  }
+  return value.map((slotValue, index) => {
+    if (!slotValue || typeof slotValue !== "object") {
+      throw new Error("Each effect slot must be an object.");
+    }
+    const slot = slotValue as Record<string, unknown>;
+    const effectId = String(slot["effectId"] ?? "");
+    if (!effectId) {
+      throw new Error("effectId is required.");
+    }
+    const sortOrderRaw = slot["sortOrder"];
+    const sortOrder =
+      typeof sortOrderRaw === "number" && Number.isFinite(sortOrderRaw)
+        ? sortOrderRaw
+        : index;
+    return {
+      effectId,
+      sortOrder,
+      slotLabel: slot["slotLabel"] ? String(slot["slotLabel"]) : null,
+      notes: slot["notes"] ? String(slot["notes"]) : null,
+    };
+  });
+}
+
 /**
  * Minimal primitive shape needed by the engine for BU computation.
  * Maps cleanly to engine's Primitive type (id, name, category, buCost).

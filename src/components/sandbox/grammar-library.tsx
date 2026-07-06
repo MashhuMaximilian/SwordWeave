@@ -432,24 +432,20 @@ function SandboxPreviewBody({
                 callbacks: {
                   ...(onSubLinkClick ? { onSubLinkClick } : {}),
                   ...(engagement ? { engagement } : {}),
+                  openSourceHref: `/library/item/${item.kind.toUpperCase()}:${item.row.id}`,
                 },
               }
-            : {})}
+            : {
+                callbacks: {
+                  openSourceHref: `/library/item/${item.kind.toUpperCase()}:${item.row.id}`,
+                },
+              })}
         />
-        {/* The preview's internal footer already shows version history
-            (via callbacks.engagement). The "Open source page" link sits
-            next to it inside the scrollable area per the user's spec —
-            only Load/Slot into build belong in the pinned footer below. */}
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-          <a
-            href={`/library/item/${item.kind.toUpperCase()}:${item.row.id}`}
-            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-          >
-            Open source page →
-          </a>
-        </div>
+        {/* The LibraryItemPreview's PreviewFooter now renders the
+            "Open source page" + "Version history" links on the same row
+            at the bottom of the scrollable area per the user's spec. */}
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-border bg-card pt-3">
+      <div className="sticky bottom-0 z-10 flex shrink-0 flex-wrap items-center gap-2 border-t border-border bg-card px-3 py-3 shadow-[0_-2px_6px_rgba(0,0,0,0.06)]">
         <button
           type="button"
           onClick={onLoadIntoBuild}

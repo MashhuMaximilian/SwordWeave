@@ -2,10 +2,17 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
-import { capabilities, capabilityPrimitives, primitives } from "@/db/schema";
+import {
+  capabilities,
+  capabilityEffects,
+  capabilityPrimitives,
+  effects,
+  primitives,
+} from "@/db/schema";
 import {
   buildAssemblyAndComputeBU,
   parseCapabilityType,
+  parseEffectSlots,
   parsePrimitiveSlots,
   parseSourceType,
   parseTags,
@@ -100,6 +107,12 @@ export async function POST(request: Request) {
       slots = parsePrimitiveSlots(values["primitiveSlots"]);
     }
 
+    // Parse effect slots (may throw on bad input)
+    let effectSlots: ReturnType<typeof parseEffectSlots> = [];
+    if ("effectSlots" in values && values["effectSlots"] != null) {
+      effectSlots = parseEffectSlots(values["effectSlots"]);
+    }
+
     // Server-authoritative BU computation
     let totalBu = 0;
     let primitivesById: ReadonlyMap<string, PrimitiveLike> = new Map();
@@ -184,6 +197,29 @@ export async function POST(request: Request) {
             primitiveId: slot.primitiveId,
             role: slot.role,
             quantity: slot.quantity,
+            sortOrder: slot.sortOrder,
+            slotLabel: slot.slotLabel,
+            notes: slot.notes,
+          })),
+        );
+      }
+
+      if (effectSlots.length > 0) {
+        // Validate effectIds exist before insert to avoid FK errors.
+        const effectIds = Array.from(new Set(effectSlots.map((s) => s.effectId)));
+        const effectRows = await tx
+          .select({ id: effects.id })
+          .from(effects)
+          .where(inArray(effects.id, effectIds));
+        if (effectRows.length !== new Set(effectIds).size) {
+          const foundIds = new Set(effectRows.map((e) => e.id));
+          const missing = effectIds.filter((id) => !foundIds.has(id));
+          throw new Error(`Unknown effectIds: ${missing.join(", ")}`);
+        }
+        await tx.insert(capabilityEffects).values(
+          effectSlots.map((slot) => ({
+            capabilityId: created.id,
+            effectId: slot.effectId,
             sortOrder: slot.sortOrder,
             slotLabel: slot.slotLabel,
             notes: slot.notes,

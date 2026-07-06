@@ -2,9 +2,16 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
-import { capabilities, capabilityPrimitives, primitives } from "@/db/schema";
+import {
+  capabilities,
+  capabilityEffects,
+  capabilityPrimitives,
+  effects,
+  primitives,
+} from "@/db/schema";
 import {
   buildAssemblyAndComputeBU,
+  parseEffectSlots,
   parsePrimitiveSlots,
   parseTags,
   safeMetadata,
@@ -137,6 +144,14 @@ export async function PATCH(
       slotsChanged = true;
     }
 
+    // If effectSlots provided, replace all existing effect links (atomic)
+    let effectSlotsChanged = false;
+    let effectSlots: ReturnType<typeof parseEffectSlots> = [];
+    if ("effectSlots" in values && values["effectSlots"] != null) {
+      effectSlots = parseEffectSlots(values["effectSlots"]);
+      effectSlotsChanged = true;
+    }
+
     const result = await db.transaction(async (tx) => {
       if (Object.keys(updatePayload).length > 0) {
         const [updated] = await tx
@@ -231,6 +246,35 @@ export async function PATCH(
             .update(capabilities)
             .set({ metadata: newMd, updatedAt: new Date() })
             .where(eq(capabilities.id, id));
+        }
+      }
+
+      if (effectSlotsChanged) {
+        // Validate effectIds exist.
+        if (effectSlots.length > 0) {
+          const effectIds = Array.from(new Set(effectSlots.map((s) => s.effectId)));
+          const effectRows = await tx
+            .select({ id: effects.id })
+            .from(effects)
+            .where(inArray(effects.id, effectIds));
+          if (effectRows.length !== new Set(effectIds).size) {
+            const foundIds = new Set(effectRows.map((e) => e.id));
+            const missing = effectIds.filter((eid) => !foundIds.has(eid));
+            throw new Error(`Unknown effectIds: ${missing.join(", ")}`);
+          }
+        }
+        // Wipe + rewrite effect links.
+        await tx.delete(capabilityEffects).where(eq(capabilityEffects.capabilityId, id));
+        if (effectSlots.length > 0) {
+          await tx.insert(capabilityEffects).values(
+            effectSlots.map((slot) => ({
+              capabilityId: id,
+              effectId: slot.effectId,
+              sortOrder: slot.sortOrder,
+              slotLabel: slot.slotLabel,
+              notes: slot.notes,
+            })),
+          );
         }
       }
 

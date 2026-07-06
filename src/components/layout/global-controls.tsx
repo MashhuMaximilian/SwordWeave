@@ -72,6 +72,11 @@ interface GlobalControlsState {
   setSandboxSplit: (v: boolean) => void;
   /** True when the current route is a sandbox route (enables split toggle). */
   isSandboxRoute: boolean;
+  /** True when the active sandbox form has unsaved changes. The FAB shows a
+   *  notification dot on the Build & Preview button when this is true, and
+   *  tab-switch handlers consult it before letting the user change modes. */
+  sandboxFormDirty: boolean;
+  setSandboxFormDirty: (v: boolean) => void;
 }
 
 const Ctx = createContext<GlobalControlsState | null>(null);
@@ -225,6 +230,17 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem(STORAGE_KEY_SPLIT, v ? "1" : "0");
   }, []);
 
+  // Sandbox form dirty state — lifted here so the FAB can render a
+  // notification dot on the Build & Preview button and the tab-switch
+  // guard can consult it without prop-drilling. Sandbox pages call
+  // setSandboxFormDirty(true/false) from their form onStateChange.
+  const [sandboxFormDirty, setSandboxFormDirty] = useState(false);
+  // Reset to false on route change so a dirty primitive form doesn't bleed
+  // into the build (item) tab.
+  useEffect(() => {
+    setSandboxFormDirty(false);
+  }, [pathname]);
+
   // ---------------------- FAB items ----------------------
   // Note: per the user's spec, the in-list "Functions" row is hidden in
   // the dial — the 3 toggles + 2 actions are instead rendered as a compact
@@ -321,6 +337,8 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
     sandboxSplit,
     setSandboxSplit,
     isSandboxRoute,
+    sandboxFormDirty,
+    setSandboxFormDirty,
   };
 
   return (
@@ -330,6 +348,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         items={items}
         onUserMenu={openUserMenu}
         currentUser={currentUser}
+        buildStashCount={sandboxFormDirty ? 1 : 0}
       />
       <RightFilterPanel />
       <BuildPreviewDrawer />

@@ -46,25 +46,23 @@ interface BlueprintLibraryProps {
   onSelect: (kind: "template" | "item", id: string) => void;
 }
 
-// Chip set per build mode (per the user's gating rules).
-// Templates chip expands into RACE/BACKGROUND/ARCHETYPE sub-chips.
-const AVAILABLE_TYPES_BY_BUILD: Record<
-  BlueprintBuildMode,
-  Array<{ key: LibraryTargetType | "ALL"; label: string }>
-> = {
-  template: [
-    { key: "RACE_TEMPLATE", label: "Races" },
-    { key: "BACKGROUND_TEMPLATE", label: "Backgrounds" },
-    { key: "ARCHETYPE_TEMPLATE", label: "Archetypes" },
-  ],
-  item: [{ key: "ITEM", label: "Items" }],
-  monster: [], // No composer yet — left column renders empty state.
-};
-
-const SUB_KIND_CHIPS: Array<{ key: string; label: string }> = [
-  { key: "RACE", label: "Race" },
-  { key: "BACKGROUND", label: "Background" },
-  { key: "ARCHETYPE", label: "Archetype" },
+// Build mode no longer gates which type chips are visible in the toolbar.
+// The kind filter is a free choice for the user (per the user's spec
+// "we should also be able to view/filter primitives, effects, capabilities
+// in the templates tab"). The sub-kind filter was redundant with the kind
+// filter — it has been removed.
+const ALL_AVAILABLE_TYPES: Array<{
+  key: LibraryTargetType | "ALL";
+  label: string;
+}> = [
+  { key: "ALL", label: "All" },
+  { key: "RACE_TEMPLATE", label: "Races" },
+  { key: "BACKGROUND_TEMPLATE", label: "Backgrounds" },
+  { key: "ARCHETYPE_TEMPLATE", label: "Archetypes" },
+  { key: "ITEM", label: "Items" },
+  { key: "PRIMITIVE", label: "Primitives" },
+  { key: "EFFECT", label: "Effects" },
+  { key: "CAPABILITY", label: "Capabilities" },
 ];
 
 export function BlueprintLibrary({
@@ -75,13 +73,8 @@ export function BlueprintLibrary({
   editingKey,
   onSelect,
 }: BlueprintLibraryProps) {
-  const [activeSubKinds, setActiveSubKinds] = useState<string[]>([
-    "RACE",
-    "BACKGROUND",
-    "ARCHETYPE",
-  ]);
-
-  // Default type filter per build mode.
+  // Default type filter per build mode. The kind filter is exposed in
+  // the toolbar; the default picks the kind matching the active build.
   const defaultTypeFilter: LibraryTargetType | "ALL" =
     build === "template"
       ? "RACE_TEMPLATE"
@@ -89,7 +82,7 @@ export function BlueprintLibrary({
         ? "ITEM"
         : "ALL"; // Monster — fallback
 
-  const availableTypes = AVAILABLE_TYPES_BY_BUILD[build];
+  const availableTypes = ALL_AVAILABLE_TYPES;
 
   // Toolbar state — owned here, filtered list is derived.
   const [toolbarState, setToolbarState] = useState<LibraryToolbarState>(() => ({
@@ -104,15 +97,14 @@ export function BlueprintLibrary({
   }));
 
   // When the build mode changes, reset the type filter to the new default
-  // and clear the sub-kind selection so the user sees the right subset
-  // immediately. (Fix for "filters don't auto-apply when switching tabs".)
+  // so the user sees the right subset immediately. (Fix for "filters
+  // don't auto-apply when switching tabs".)
   useEffect(() => {
     setToolbarState((prev) => ({
       ...prev,
       typeFilter: defaultTypeFilter,
       category: "",
     }));
-    setActiveSubKinds(["RACE", "BACKGROUND", "ARCHETYPE"]);
   }, [build, defaultTypeFilter]);
 
   // Find the full typed row for a LibraryItem (used by the modal).
@@ -134,36 +126,11 @@ export function BlueprintLibrary({
     };
   }, [templates, items]);
 
-  // Filter items by toolbar search/typeFilter + active sub-kinds when in
-  // template mode. The toolbar's own filters run in addition to the
-  // build-mode gate so the user can narrow the visible subset further.
-  //
-  // The toolbar's state shape supports category/author/minLikes/hasForks
-  // advanced filters; the previous version of this component only applied
-  // search + typeFilter, so chip state for those advanced filters looked
-  // "live" (the chips were clickable) but the result set never updated.
-  // We now apply every toolbar state field that the result set can
-  // meaningfully filter on.
+  // Filter items by toolbar search/typeFilter. The build-mode gate is
+  // removed — the user can see any kind in the blueprint library per the
+  // user's spec.
   const filteredItems = useMemo(() => {
     let items = libraryItems;
-
-    // Build-mode gate: in template mode, only templates pass.
-    if (build === "template") {
-      if (activeSubKinds.length === 0) return [];
-      items = items.filter((item) => {
-        if (
-          item.targetType === "RACE_TEMPLATE" ||
-          item.targetType === "BACKGROUND_TEMPLATE" ||
-          item.targetType === "ARCHETYPE_TEMPLATE"
-        ) {
-          const kind = item.category;
-          return kind !== null && activeSubKinds.includes(kind);
-        }
-        return false;
-      });
-    } else if (build === "item") {
-      items = items.filter((item) => item.targetType === "ITEM");
-    }
 
     // Toolbar text search.
     if (toolbarState.search) {
@@ -236,7 +203,7 @@ export function BlueprintLibrary({
     }
 
     return items;
-  }, [build, libraryItems, activeSubKinds, toolbarState]);
+  }, [build, libraryItems, toolbarState]);
 
   // Card click → push to modal stack. The "Load into build" action still
   // calls the parent's onSelect; we pop the stack afterwards. Sub-entity
@@ -319,34 +286,24 @@ export function BlueprintLibrary({
           state={toolbarState}
           onStateChange={setToolbarState}
           availableTypes={availableTypes}
-          subKindParent="RACE_TEMPLATE"
-          subKinds={SUB_KIND_CHIPS}
-          activeSubKinds={activeSubKinds}
-          onSubKindsChange={setActiveSubKinds}
           showSearch={true}
           showAdvancedFilters={true}
           forceExpandFilters
         />
       </div>
     ),
-    [
-      toolbarState,
-      setToolbarState,
-      availableTypes,
-      activeSubKinds,
-      setActiveSubKinds,
-    ],
+    [toolbarState, setToolbarState, availableTypes],
   );
   useFilterSlot(filterPanelContent);
 
   const hasActiveFilters =
     toolbarState.typeFilter !== "ALL" ||
+    toolbarState.typeFilter !== defaultTypeFilter ||
     toolbarState.category !== "" ||
     toolbarState.author !== "" ||
     toolbarState.minLikes !== "" ||
     toolbarState.hasForks ||
-    toolbarState.sort !== "ENGAGEMENT" ||
-    activeSubKinds.length !== SUB_KIND_CHIPS.length;
+    toolbarState.sort !== "ENGAGEMENT";
 
   // Monster mode: render an empty state — no composer yet.
   if (build === "monster") {
@@ -470,20 +427,20 @@ function BlueprintPreviewBody({
                 callbacks: {
                   ...(onSubLinkClick ? { onSubLinkClick } : {}),
                   ...(engagement ? { engagement } : {}),
+                  openSourceHref: `/library/item/${item.kind.toUpperCase()}:${item.row.id}`,
                 },
               }
-            : {})}
+            : {
+                callbacks: {
+                  openSourceHref: `/library/item/${item.kind.toUpperCase()}:${item.row.id}`,
+                },
+              })}
         />
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-          <a
-            href={`/library/item/${item.kind.toUpperCase()}:${item.row.id}`}
-            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-          >
-            Open source page →
-          </a>
-        </div>
+        {/* The LibraryItemPreview's PreviewFooter now renders the
+            "Open source page" + "Version history" links on the same row
+            at the bottom of the scrollable area per the user's spec. */}
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-border bg-card pt-3">
+      <div className="sticky bottom-0 z-10 flex shrink-0 flex-wrap items-center gap-2 border-t border-border bg-card px-3 py-3 shadow-[0_-2px_6px_rgba(0,0,0,0.06)]">
         <button
           type="button"
           onClick={onLoadIntoBuild}

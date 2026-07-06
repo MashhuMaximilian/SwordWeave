@@ -321,7 +321,9 @@ export function SandboxLayout({
               preview={preview}
             />
             {bottomBar ? (
-              <div className="shrink-0 border-t bg-background">{bottomBar}</div>
+              <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background pb-[env(safe-area-inset-bottom)] shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
+                {bottomBar}
+              </div>
             ) : null}
           </div>
         ) : viewport === "tablet" ? (
@@ -623,19 +625,26 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
     <div className="relative flex h-full min-h-0 flex-col">
       {!hydrated || !sandboxSplit ? (
         // Default mode: Library fills the viewport, Build is a drawer.
-        <div className="flex h-full min-h-0 flex-col">
+        // Add bottom padding to keep content above the fixed bottom tab bar.
+        <div className="flex h-full min-h-0 flex-col pb-12">
           <MobileColumnChrome title="Library" icon={<LibraryIcon className="size-4" />} />
           <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
         </div>
       ) : (
         // Split mode: Library top + Build bottom (vertical drag-resize).
+        // Add bottom padding to keep content above the fixed bottom tab bar.
+        // Inline touchAction:none stops the browser from hijacking vertical
+        // drags for page scroll (Tailwind's `touch-none` resolves to
+        // touch-action:pan-x pan-y override only on the separator, not the
+        // Group, so the page still tries to scroll).
         <Group
           id="sw_sandbox_mobile_split"
           orientation="vertical"
           defaultLayout={splitLayout.defaultLayout}
           onLayoutChange={splitLayout.onLayoutChange}
           onLayoutChanged={splitLayout.onLayoutChanged}
-          className="flex h-full min-h-0"
+          className="flex h-full min-h-0 pb-12"
+          style={{ touchAction: "none" }}
         >
           <Panel
             id="library"
@@ -647,15 +656,16 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
             <MobileColumnChrome title="Library" icon={<LibraryIcon className="size-4" />} />
             <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
           </Panel>
-          {/* Drag handle: 20px tall (h-5) with a 48px visible grab bar
-              + explicit touch-action:none so the browser doesn't try
-              to scroll the page mid-drag. Previous handle was 6px which
-              couldn't reliably catch taps. */}
-          <Separator className="group relative h-5 shrink-0 cursor-row-resize touch-none select-none bg-border/80 transition-colors hover:bg-primary/60 data-[separator=drag]:bg-primary">
+          {/* Drag handle: 28px tall (h-7) with a 56px visible grab bar.
+              + explicit touch-action:none on both the Group and the
+              separator so the browser doesn't try to scroll the page
+              mid-drag. Previous handle was 12px and still failed on
+              some devices — 28px gives a comfortable target. */}
+          <Separator className="group relative h-7 shrink-0 cursor-row-resize touch-none select-none bg-border transition-colors hover:bg-primary/40 data-[separator=drag]:bg-primary">
             <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <span className="h-1.5 w-14 rounded-full bg-foreground/40 group-hover:bg-primary-foreground" />
+              <span className="h-1.5 w-16 rounded-full bg-foreground/40 group-hover:bg-primary-foreground" />
             </span>
-            <span className="sr-only">Drag to resize</span>
+            <span className="sr-only">Drag to resize Library and Build panels</span>
           </Separator>
           <Panel
             id="builder"

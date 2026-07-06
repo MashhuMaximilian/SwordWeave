@@ -8,7 +8,7 @@
 // Dirty-change guard mirrors grammar route: switching modes or loading
 // a different library row triggers a modal if the current form is dirty.
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SandboxLayout } from "./sandbox-layout";
 import { TemplateForm } from "./template-form";
 import { TemplateFormPreview } from "./template-form-preview";
@@ -16,6 +16,7 @@ import { ItemForm } from "./item-form";
 import { ItemFormPreview } from "./item-form-preview";
 import { BlueprintLibrary } from "./blueprint-library";
 import { UnsavedChangesModal } from "./unsaved-changes-modal";
+import { useGlobalControls } from "@/components/layout/global-controls";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 
 type TemplateRow = {
@@ -123,6 +124,14 @@ export function BlueprintSandboxClient({
   const [formIsDirty, setFormIsDirty] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const modalDescRef = useRef<string | undefined>(undefined);
+
+  // Mirror the dirty state into the global controls so the FAB can show
+  // a notification dot on the Build & Preview button when the user has
+  // unsaved changes. The global also auto-resets on route change.
+  const { setSandboxFormDirty } = useGlobalControls();
+  useEffect(() => {
+    setSandboxFormDirty(formIsDirty);
+  }, [formIsDirty, setSandboxFormDirty]);
 
   const applyPendingAction = useCallback((action: PendingAction) => {
     if (action.kind === "switchBuild") {

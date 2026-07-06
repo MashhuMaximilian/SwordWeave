@@ -179,6 +179,9 @@ export interface PreviewCallbacks {
   engagement?: PreviewEngagement;
   /** Optional version-history URL (defaults to /library/item/<TYPE>:<id>/versions). */
   versionHistoryHref?: string;
+  /** Optional "Open source page" URL. When set, the preview footer
+   *  shows this link next to the version-history link on the same row. */
+  openSourceHref?: string;
 }
 
 // -----------------------------------------------------------------------------
@@ -336,10 +339,23 @@ function PreviewFooter({
         currentUserId={eng.currentUserInternalId}
         compact
       />
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+        {/* Open source page is opt-in via callbacks. The sandbox preview
+            bodies (grammar-library / blueprint-library) pass it; the
+            /library/browse preview renders its own link elsewhere. */}
+        {callbacks.openSourceHref ? (
+          <a
+            href={callbacks.openSourceHref}
+            className="inline-flex items-center gap-1 text-primary hover:underline"
+          >
+            Open source page →
+          </a>
+        ) : (
+          <span />
+        )}
         <a
           href={historyHref}
-          className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
         >
           <History className="size-3.5" />
           Version history →

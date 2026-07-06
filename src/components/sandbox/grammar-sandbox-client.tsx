@@ -9,7 +9,7 @@
 // or loading a different library row opens a confirmation modal. Pristine
 // switches happen silently.
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SandboxLayout } from "@/components/sandbox/sandbox-layout";
 import { PrimitiveForm } from "@/components/sandbox/primitive-form";
 import { PrimitiveFormPreview } from "@/components/sandbox/primitive-form-preview";
@@ -19,6 +19,7 @@ import { CapabilityForm } from "@/components/sandbox/capability-form";
 import { CapabilityFormPreview } from "@/components/sandbox/capability-form-preview";
 import { GrammarLibrary } from "@/components/sandbox/grammar-library";
 import { UnsavedChangesModal } from "@/components/sandbox/unsaved-changes-modal";
+import { useGlobalControls } from "@/components/layout/global-controls";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 
 type PrimitiveRow = {
@@ -125,6 +126,15 @@ export function GrammarSandboxClient({
   // Tracks the most recent description so the modal copy can adapt.
   const modalDescRef = useRef<string | undefined>(undefined);
 
+  // Mirror the dirty state into the global controls so the FAB can show
+  // a notification dot on the Build & Preview button when the user has
+  // unsaved changes. The global also auto-resets on route change so
+  // we don't need a manual clear here.
+  const { setSandboxFormDirty } = useGlobalControls();
+  useEffect(() => {
+    setSandboxFormDirty(formIsDirty);
+  }, [formIsDirty, setSandboxFormDirty]);
+
   // ---- Apply pending action (called on modal confirm) ---------------------
 
   const applyPendingAction = useCallback((action: PendingAction) => {
@@ -230,12 +240,16 @@ export function GrammarSandboxClient({
           category: p.category,
           buCost: p.buCost,
         }))}
+        availableEffects={effects.map((e) => ({
+          id: e.id,
+          name: e.name,
+        }))}
         onStateChange={(state) => setFormIsDirty(state.isDirty)}
         onSaved={() => {}}
         onReset={() => setEditing(null)}
       />
     );
-  }, [build, editing, primitives]);
+  }, [build, editing, primitives, effects]);
 
   // Preview is sourced directly from the editing row (read-only canonical render).
   const previewNode = useMemo(() => {

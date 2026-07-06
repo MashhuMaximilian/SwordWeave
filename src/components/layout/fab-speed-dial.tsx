@@ -95,6 +95,13 @@ interface FabSpeedDialProps {
     displayName: string | null;
     avatarUrl: string | null;
   } | null;
+  /**
+   * Number to show as a small notification dot on the Build & Preview
+   * button in the bottom 2x3 grid. > 0 = show the dot. The build stash
+   * is the in-progress sandbox form; a dot means "you have unsaved
+   * changes — open the sheet to continue."
+   */
+  buildStashCount?: number;
 }
 
 export function FabSpeedDial({
@@ -104,6 +111,7 @@ export function FabSpeedDial({
   visible = true,
   onUserMenu,
   currentUser,
+  buildStashCount = 0,
 }: FabSpeedDialProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -291,13 +299,21 @@ export function FabSpeedDial({
                 aria-label={action.label}
                 title={action.label}
                 className={cn(
-                  "flex h-9 w-full items-center justify-center rounded-md border text-[10px] font-medium transition-all active:scale-95",
+                  "relative flex h-9 w-full items-center justify-center rounded-md border text-[10px] font-medium transition-all active:scale-95",
                   action.active
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-background text-muted-foreground hover:border-primary hover:text-foreground",
                 )}
               >
                 {action.icon}
+                {action.key === "build" && buildStashCount > 0 ? (
+                  <span
+                    className="pointer-events-none absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground ring-2 ring-background"
+                    aria-label={`${buildStashCount} unsaved build change${buildStashCount === 1 ? "" : "s"}`}
+                  >
+                    {buildStashCount > 9 ? "9+" : buildStashCount}
+                  </span>
+                ) : null}
               </button>
             ))}
           </div>
