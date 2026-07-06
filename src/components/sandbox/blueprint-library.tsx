@@ -90,13 +90,14 @@ export function BlueprintLibrary({
   onSelect,
 }: BlueprintLibraryProps) {
   // Default type filter per build mode. The kind filter is exposed in
-  // the toolbar; the default picks the kind matching the active build.
-  const defaultTypeFilter: LibraryTargetType | "ALL" =
-    build === "template"
-      ? "RACE_TEMPLATE"
-      : build === "item"
-        ? "ITEM"
-        : "ALL"; // Monster — fallback
+  // the toolbar; the default is "ALL" so the user always sees every
+  // entry in the corpus, regardless of the current build sub-kind.
+  // The previous per-sub-kind default (RACE_TEMPLATE for template
+  // mode) triggered a confusing "No entries match" empty state when
+  // the user was creating a Race but the corpus only had Background
+  // or Archetype templates — or no templates at all yet. "ALL" puts
+  // the user in control of narrowing via the chip filter.
+  const defaultTypeFilter: LibraryTargetType | "ALL" = "ALL";
 
   const availableTypes = ALL_AVAILABLE_TYPES;
 

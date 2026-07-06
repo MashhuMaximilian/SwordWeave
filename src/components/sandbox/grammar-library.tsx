@@ -87,13 +87,14 @@ export function GrammarLibrary({
   editingKey,
   onSelect,
 }: GrammarLibraryProps) {
-  // Default type filter per build mode.
-  const defaultTypeFilter: LibraryTargetType =
-    build === "primitive"
-      ? "PRIMITIVE"
-      : build === "effect"
-        ? "EFFECT"
-        : "CAPABILITY";
+  // Default type filter per build mode. The kind filter is exposed in
+  // the toolbar; the default is "ALL" so the user always sees every
+  // entry in the corpus, regardless of the current build mode. The
+  // previous per-build default (PRIMITIVE / EFFECT / CAPABILITY)
+  // triggered a confusing "No entries match" empty state when the
+  // user was building a capability but the corpus only had primitives
+  // — or no entries at all yet. "ALL" puts the user in control.
+  const defaultTypeFilter: LibraryTargetType | "ALL" = "ALL";
 
   const availableTypes = AVAILABLE_TYPES_BY_BUILD[build];
 

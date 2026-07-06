@@ -429,9 +429,9 @@ function DesktopSandboxLayout({
 
       {/* Separator between library and builder — only renders when both panels exist. */}
       {libraryHidden ? null : (
-        <Separator className="group relative w-2 shrink-0 bg-border transition-colors hover:bg-primary/60 data-[separator=drag]:bg-primary">
+        <Separator className="group relative w-2 shrink-0 bg-border transition-colors hover:bg-zinc-500 data-[separator=drag]:bg-zinc-400">
           <span className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 flex w-0.5 items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
-            <span className="h-8 w-0.5 rounded-full bg-primary-foreground/60" />
+            <span className="h-8 w-0.5 rounded-full bg-zinc-300" />
           </span>
         </Separator>
       )}
@@ -458,9 +458,9 @@ function DesktopSandboxLayout({
 
       {/* Separator between builder and preview. */}
       {previewHidden ? null : (
-        <Separator className="group relative w-2 shrink-0 bg-border transition-colors hover:bg-primary/60 data-[separator=drag]:bg-primary">
+        <Separator className="group relative w-2 shrink-0 bg-border transition-colors hover:bg-zinc-500 data-[separator=drag]:bg-zinc-400">
           <span className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 flex w-0.5 items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
-            <span className="h-8 w-0.5 rounded-full bg-primary-foreground/60" />
+            <span className="h-8 w-0.5 rounded-full bg-zinc-300" />
           </span>
         </Separator>
       )}
@@ -781,19 +781,20 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
             onPointerCancel={onSplitPointerUp}
             className={cn(
               "relative z-10 -my-2 flex h-3 shrink-0 cursor-row-resize select-none items-center justify-center",
-              "bg-primary/30 transition-colors",
-              "hover:bg-primary/60",
-              "active:bg-primary",
+              "transition-colors hover:bg-zinc-800/40",
             )}
             style={{ touchAction: "none" }}
           >
+            {/* thin gray line across the full width */}
             <span
               aria-hidden
-              className="pointer-events-none flex h-1 w-9 items-center justify-center gap-0.5 rounded-full bg-primary-foreground/90 shadow-sm"
-            >
-              <span className="h-0.5 w-3.5 rounded-full bg-primary" />
-              <span className="h-0.5 w-3.5 rounded-full bg-primary" />
-            </span>
+              className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-zinc-700"
+            />
+            {/* middle pill — only visible affordance */}
+            <span
+              aria-hidden
+              className="pointer-events-none relative h-1.5 w-8 rounded-full bg-zinc-600 ring-1 ring-zinc-700"
+            />
           </div>
           <div
             className="flex min-h-0 flex-1 flex-col"
