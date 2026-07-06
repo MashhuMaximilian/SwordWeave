@@ -687,47 +687,28 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
             <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
           </Panel>
           {/*
-            Separator: 8px thin bar by default. Hit area expands to ~32px
-            on hover/drag via the data-separator attribute. The grab
-            indicator is a 40px-wide × 4px-tall pill that lives in the
-            middle of the bar. A 1px-tall primary-tinted line is always
-            visible so the user knows there's a drag handle here.
+            Standard <Separator> from react-resizable-panels. The library
+            ships its own pointer-event-driven drag handling — we just
+            style it as a thin primary-tinted bar. 12px is a comfortable
+            touch target without the bar feeling chunky.
           */}
           <Separator
             aria-label="Drag to resize Library and Build panels"
             className={cn(
-              // 8px tall thin bar by default; hit area extends via
-              // invisible padding so touch users still have a 32px+
-              // target without the bar visually growing.
-              "group relative flex h-2 shrink-0 items-center justify-center",
-              "bg-primary/30 transition-colors",
-              // Expand the visual hit area on hover/drag (the library
-              // sets data-separator="hover" or "drag" automatically).
-              "hover:bg-primary/60",
+              "group relative z-10 flex h-3 shrink-0 cursor-row-resize select-none items-center justify-center",
+              "bg-primary/40 transition-colors",
+              "hover:bg-primary/70",
+              "data-[separator=hover]:bg-primary/70",
               "data-[separator=drag]:bg-primary",
             )}
-            style={{
-              // Push the hit area beyond the visual 8px so finger
-              // touches on mobile land on the separator, not the
-              // panels above/below.
-              paddingTop: 12,
-              paddingBottom: 12,
-              marginTop: -12,
-              marginBottom: -12,
-              touchAction: "none",
-            }}
+            style={{ touchAction: "none" }}
           >
-            {/*
-              Visible grab indicator: 40px × 4px pill with a pair of
-              horizontal lines inside (the standard "grip" affordance).
-              pointer-events-none so it never intercepts the drag.
-            */}
             <span
               aria-hidden
-              className="pointer-events-none flex h-1 w-10 items-center justify-center gap-0.5 rounded-full bg-primary-foreground/70"
+              className="pointer-events-none flex h-1.5 w-12 items-center justify-center gap-1 rounded-full bg-primary-foreground/80"
             >
-              <span className="h-0.5 w-6 rounded-full bg-primary/80" />
-              <span className="h-0.5 w-6 rounded-full bg-primary/80" />
+              <span className="h-0.5 w-5 rounded-full bg-primary" />
+              <span className="h-0.5 w-5 rounded-full bg-primary" />
             </span>
           </Separator>
           <Panel

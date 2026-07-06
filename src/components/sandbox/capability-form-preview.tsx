@@ -180,13 +180,15 @@ export function CapabilityFormPreview({
             {effects!.map((effect) => (
               <li
                 key={effect.id}
-                className="rounded-md border border-border bg-background p-2 text-sm"
+                className="rounded-md border border-border bg-card/50 p-3"
               >
-                <p className="font-semibold">{effect.name}</p>
+                <p className="font-semibold text-foreground">
+                  {effect.name}
+                </p>
                 {effect.narrativeDescription ? (
-                  <p className="mt-1 text-xs leading-snug text-muted-foreground">
-                    {effect.narrativeDescription}
-                  </p>
+                  <div className="mt-1.5 rounded border border-border/40 bg-background/40 p-2 text-xs leading-relaxed text-muted-foreground">
+                    <Markdown>{effect.narrativeDescription}</Markdown>
+                  </div>
                 ) : null}
               </li>
             ))}
