@@ -350,24 +350,35 @@ function GridCard({
     </>
   );
 
-  // The whole card is a click target. We render as a <button> when an action
-  // is available (sandbox / library browse) so it's keyboard-accessible. The
-  // card click handles the primary action — there are no inner View/Add
-  // buttons to compete with the gesture.
+  // The whole card is a click target. We render as a div with role="button"
+  // (not a real <button>) when onSelect is set so the LikeForkBar's nested
+  // <button>s work without both click handlers firing. Native HTML
+  // disallows interactive descendants inside <button> anyway, but React's
+  // synthetic event system still bubbles nested button clicks to the
+  // outer <button> in some browsers — which caused "click Like opens the
+  // modal AND increments the count" double-firing. Using a div+role
+  // makes the LikeForkBar's own stopPropagation reliable.
   if (onSelect) {
     return (
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => onSelect(item)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelect(item);
+          }
+        }}
         className={cn(
-          "flex h-full min-h-[7rem] flex-col rounded-md border bg-card p-2 text-left transition-colors md:p-2.5",
+          "flex h-full min-h-[7rem] flex-col rounded-md border bg-card p-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary md:p-2.5",
           selected
             ? "border-primary bg-primary/5"
             : "border-border hover:border-primary",
         )}
       >
         {inner}
-      </button>
+      </div>
     );
   }
 
