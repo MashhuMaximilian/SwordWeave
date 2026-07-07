@@ -319,7 +319,12 @@ export function PrimitiveForm({
 }) {
   const [form, setForm] = useState<PrimitiveFormState>(blankForm);
   const [modifierCounter, setModifierCounter] = useState(1);
-  const [modifiers, setModifiers] = useState<ModifierDraft[]>([blankModifier]);
+  // Modifiers are optional. Many primitives (Domain: Darkvision,
+  // Resistance: Fire, etc.) describe a feature that needs no
+  // numerical mechanical patch — the "narrative rule" alone is the
+  // primitive. We start with an empty list and let the user add
+  // modifiers only when they actually need them.
+  const [modifiers, setModifiers] = useState<ModifierDraft[]>([]);
   const [showJsonPreview, setShowJsonPreview] = useState(false);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -342,12 +347,14 @@ export function PrimitiveForm({
     const stored = Array.isArray(initialPrimitive.hardModifiers)
       ? (initialPrimitive.hardModifiers as unknown[]).filter(isHardModifierLike)
       : [];
+    // Empty stored list = no modifiers. Don't pre-populate a blank one
+    // (the user has actively chosen to have no modifiers).
     const drafts =
       stored.length > 0
         ? stored.map((m, i) =>
             fromHardModifier(m as Record<string, unknown>, i),
           )
-        : [blankModifier];
+        : [];
 
     setForm({
       name: initialPrimitive.name,
@@ -419,16 +426,15 @@ export function PrimitiveForm({
 
   function removeModifier(id: string) {
     setIsDirty(true);
-    setModifiers((current) => {
-      if (current.length === 1) return current;
-      return current.filter((modifier) => modifier.id !== id);
-    });
+    setModifiers((current) =>
+      current.filter((modifier) => modifier.id !== id),
+    );
   }
 
   function resetEditor() {
     setForm(blankForm);
     setModifierCounter(1);
-    setModifiers([blankModifier]);
+    setModifiers([]);
     setShowJsonPreview(false);
     setIsDirty(false); // pristine after reset
     setMessage("Started a fresh primitive.");
@@ -691,6 +697,15 @@ export function PrimitiveForm({
           </button>
         </div>
 
+        {modifiers.length === 0 ? (
+          <div className="rounded-md border border-dashed border-border bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
+            No modifiers yet. Many primitives (Darkvision, Resistance,
+            Domain features) only need a narrative rule above. Add a
+            modifier if this primitive grants a numerical mechanical
+            bonus.
+          </div>
+        ) : null}
+
         {modifiers.map((modifier, index) => (
           <div
             className="grid gap-3 rounded-md border border-border bg-card p-3 md:grid-cols-2"
@@ -700,7 +715,6 @@ export function PrimitiveForm({
               <p className="text-sm font-medium">Modifier {index + 1}</p>
               <button
                 className="h-8 rounded-md border border-border px-2 text-xs text-muted-foreground disabled:opacity-40"
-                disabled={modifiers.length === 1}
                 onClick={() => removeModifier(modifier.id)}
                 type="button"
               >

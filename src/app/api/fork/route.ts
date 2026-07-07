@@ -27,8 +27,16 @@ import { db } from "@/db/client";
 import {
   capabilities,
   capabilityPrimitives,
+  capabilityEffects,
+  effectPrimitives,
+  effects,
+  effectConditions,
   forkAggregates,
   forks,
+  itemCapabilities,
+  itemEffects,
+  itemPrimitives,
+  items,
   primitives,
   templates,
   templatePrimitives,
@@ -67,6 +75,7 @@ const ForkSchema = z.object({
   targetType: z.enum([
     "PRIMITIVE",
     "CAPABILITY",
+    "EFFECT",
     "RACE_TEMPLATE",
     "BACKGROUND_TEMPLATE",
     "ARCHETYPE_TEMPLATE",
@@ -142,6 +151,24 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           ok: true,
           ...(await forkTemplate({
+            targetId,
+            forkerClerkUserId: userId,
+            forkerInternalId: user.id,
+          })),
+        });
+      case "EFFECT":
+        return NextResponse.json({
+          ok: true,
+          ...(await forkEffect({
+            targetId,
+            forkerClerkUserId: userId,
+            forkerInternalId: user.id,
+          })),
+        });
+      case "ITEM":
+        return NextResponse.json({
+          ok: true,
+          ...(await forkItem({
             targetId,
             forkerClerkUserId: userId,
             forkerInternalId: user.id,
@@ -479,6 +506,237 @@ async function forkTemplate(input: {
       },
     })
     .returning({ forkCount: forkAggregates.forkCount });
+
+  const forkCount = await incrementForksCreated(forkerInternalId);
+
+  return {
+    forkedTargetId: forked.id,
+    sourceTargetId: source.id,
+    forkCount,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Fork an effect (id is uuid, includes primitive_links + condition_links)
+// ---------------------------------------------------------------------------
+
+async function forkEffect(input: {
+  targetId: string;
+  forkerClerkUserId: string;
+  forkerInternalId: string;
+}) {
+  const { targetId, forkerClerkUserId, forkerInternalId } = input;
+
+  const source = await db.query.effects.findFirst({
+    where: (table, { eq }) => eq(table.id, targetId),
+    with: {
+      primitiveLinks: true,
+      conditionLinks: true,
+    },
+  });
+  if (!source) {
+    throw new Error("Source effect not found");
+  }
+
+  const [forked] = await db
+    .insert(effects)
+    .values({
+      name: `${source.name} (fork)`,
+      narrativeDescription: source.narrativeDescription,
+      isPublic: false,
+      userId: forkerClerkUserId,
+      sourceOrigin: `fork:${source.id}`,
+      tags: source.tags,
+    })
+    .returning({ id: effects.id });
+  if (!forked) {
+    throw new Error("Failed to insert forked effect");
+  }
+
+  if (source.primitiveLinks.length > 0) {
+    await db.insert(effectPrimitives).values(
+      source.primitiveLinks.map((link) => ({
+        effectId: forked.id,
+        primitiveId: link.primitiveId,
+        quantity: link.quantity,
+        sortOrder: link.sortOrder,
+        notes: link.notes,
+      })),
+    );
+  }
+
+  if (source.conditionLinks.length > 0) {
+    await db.insert(effectConditions).values(
+      source.conditionLinks.map((link) => ({
+        effectId: forked.id,
+        conditionId: link.conditionId,
+        sortOrder: link.sortOrder,
+        notes: link.notes,
+      })),
+    );
+  }
+
+  const versionId = resolveVirtualVersionId("EFFECT", targetId);
+  const sourceAuthorId = source.userId
+    ? await resolveUserIdByClerkId(source.userId)
+    : null;
+  await db.insert(forks).values({
+    forkedByUserId: forkerInternalId,
+    sourceTargetType: "EFFECT",
+    sourceTargetId: source.id,
+    sourceVersionId: versionId,
+    sourceAuthorId,
+    forkedTargetType: "EFFECT",
+    forkedTargetId: forked.id,
+    forkedVersionId: versionId,
+    metadata: { name: source.name },
+  });
+
+  await db
+    .insert(forkAggregates)
+    .values({
+      sourceTargetType: "EFFECT",
+      sourceTargetId: source.id,
+      sourceVersionId: versionId,
+      forkCount: 1,
+    })
+    .onConflictDoUpdate({
+      target: [
+        forkAggregates.sourceTargetType,
+        forkAggregates.sourceTargetId,
+        forkAggregates.sourceVersionId,
+      ],
+      set: {
+        forkCount: sql`${forkAggregates.forkCount} + 1`,
+        updatedAt: sql`NOW()`,
+      },
+    });
+
+  const forkCount = await incrementForksCreated(forkerInternalId);
+
+  return {
+    forkedTargetId: forked.id,
+    sourceTargetId: source.id,
+    forkCount,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Fork an item (id is uuid, includes capability_links + effect_links +
+// primitive_links)
+// ---------------------------------------------------------------------------
+
+async function forkItem(input: {
+  targetId: string;
+  forkerClerkUserId: string;
+  forkerInternalId: string;
+}) {
+  const { targetId, forkerClerkUserId, forkerInternalId } = input;
+
+  const source = await db.query.items.findFirst({
+    where: (table, { eq }) => eq(table.id, targetId),
+    with: {
+      capabilityLinks: true,
+      effectLinks: true,
+      primitiveLinks: true,
+    },
+  });
+  if (!source) {
+    throw new Error("Source item not found");
+  }
+
+  const [forked] = await db
+    .insert(items)
+    .values({
+      name: `${source.name} (fork)`,
+      itemType: source.itemType,
+      rarity: source.rarity,
+      buCost: source.buCost,
+      description: source.description,
+      slotCost: source.slotCost,
+      quantity: source.quantity,
+      isTwoHanded: source.isTwoHanded,
+      isConsumable: source.isConsumable,
+      actsAsFocus: source.actsAsFocus,
+      isPublic: false,
+      userId: forkerClerkUserId,
+      sourceOrigin: `fork:${source.id}`,
+      tags: source.tags,
+    })
+    .returning({ id: items.id });
+  if (!forked) {
+    throw new Error("Failed to insert forked item");
+  }
+
+  if (source.capabilityLinks.length > 0) {
+    await db.insert(itemCapabilities).values(
+      source.capabilityLinks.map((link) => ({
+        itemId: forked.id,
+        capabilityId: link.capabilityId,
+        sortOrder: link.sortOrder,
+        slotLabel: link.slotLabel,
+        notes: link.notes,
+      })),
+    );
+  }
+
+  if (source.effectLinks.length > 0) {
+    await db.insert(itemEffects).values(
+      source.effectLinks.map((link) => ({
+        itemId: forked.id,
+        effectId: link.effectId,
+        sortOrder: link.sortOrder,
+        slotLabel: link.slotLabel,
+        notes: link.notes,
+      })),
+    );
+  }
+
+  if (source.primitiveLinks.length > 0) {
+    await db.insert(itemPrimitives).values(
+      source.primitiveLinks.map((link) => ({
+        itemId: forked.id,
+        primitiveId: link.primitiveId,
+        sortOrder: link.sortOrder,
+      })),
+    );
+  }
+
+  const versionId = resolveVirtualVersionId("ITEM", targetId);
+  const sourceAuthorId = source.userId
+    ? await resolveUserIdByClerkId(source.userId)
+    : null;
+  await db.insert(forks).values({
+    forkedByUserId: forkerInternalId,
+    sourceTargetType: "ITEM",
+    sourceTargetId: source.id,
+    sourceVersionId: versionId,
+    sourceAuthorId,
+    forkedTargetType: "ITEM",
+    forkedTargetId: forked.id,
+    forkedVersionId: versionId,
+    metadata: { name: source.name },
+  });
+
+  await db
+    .insert(forkAggregates)
+    .values({
+      sourceTargetType: "ITEM",
+      sourceTargetId: source.id,
+      sourceVersionId: versionId,
+      forkCount: 1,
+    })
+    .onConflictDoUpdate({
+      target: [
+        forkAggregates.sourceTargetType,
+        forkAggregates.sourceTargetId,
+        forkAggregates.sourceVersionId,
+      ],
+      set: {
+        forkCount: sql`${forkAggregates.forkCount} + 1`,
+        updatedAt: sql`NOW()`,
+      },
+    });
 
   const forkCount = await incrementForksCreated(forkerInternalId);
 
