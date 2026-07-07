@@ -460,7 +460,16 @@ function BlueprintPreviewBody({
   // Pull openDrawer so slot/load actions can pop the build preview
   // drawer after they fire — the user wants to see the result of
   // the action, not have to manually tap the build/preview tab.
-  const { openDrawer } = useGlobalControls();
+  //
+  // Split-mode contract: in split mode the build + preview are already
+  // rendered inline in the bottom panel. We MUST NOT pop the drawer
+  // there (would overlay the inline content). Instead we switch the
+  // bottom tab so the user sees the result of the slot/load inline.
+  const {
+    openDrawer,
+    sandboxSplit,
+    setSandboxBottomTab,
+  } = useGlobalControls();
   // Per the user's slot spec, every template (template / item / monster)
   // accepts primitives + effects + capabilities. Only kind==="primitive"
   // gets the "Slot into build" affordance in the BlueprintPreviewBody
@@ -499,7 +508,23 @@ function BlueprintPreviewBody({
         new CustomEvent<SlotEvent>(SLOT_EVENT_NAME, { detail: event }),
       );
       window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
-      openDrawer("build");
+      // Open the BUILD drawer tab — not preview — so the user can
+      //    watch the slot land in the form they were composing. The
+      //    preview tab is populated by the form as a side-effect of
+      //    the slot, so it'll be live the moment they switch tabs.
+      //    (Previous behaviour opened `preview` — which is the
+      //    entity preview, not the form preview — and the user
+      //    saw an empty panel and assumed nothing happened.)
+      //
+      // Split-mode contract: in split mode the build tab is already
+      // rendered inline in the bottom panel — do NOT pop the drawer
+      // (it would overlay the inline content). Just switch the bottom
+      // tab to "build" so the user sees the slot landing.
+      if (sandboxSplit) {
+        setSandboxBottomTab("build");
+      } else {
+        openDrawer("build");
+      }
     }
   }
 
@@ -514,8 +539,16 @@ function BlueprintPreviewBody({
     // renders empty for one frame. Opening `build` instead lands
     // the user directly on the form they just loaded, which is
     // always populated. The preview tab is still one tap away.
+    //
+    // Split-mode contract: switch the bottom tab to "preview" so
+    // the user immediately sees the loaded entity's live preview
+    // (populated by the form on load). The drawer is NOT opened.
     onLoadIntoBuild();
-    openDrawer("build");
+    if (sandboxSplit) {
+      setSandboxBottomTab("preview");
+    } else {
+      openDrawer("build");
+    }
   }
 
   return (

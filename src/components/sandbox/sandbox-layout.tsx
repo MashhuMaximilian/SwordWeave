@@ -584,7 +584,12 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
   // Layout mode comes from GlobalControls so the FAB (mounted globally) can
   // toggle it. Local state for the drawer/filter/fullscreen is gone — the
   // GlobalControls mounts a single global drawer/filter for every page.
-  const { sandboxSplit, setSandboxSplit, openDrawer } = useGlobalControls();
+  const {
+    sandboxSplit,
+    setSandboxSplit,
+    sandboxBottomTab,
+    setSandboxBottomTab,
+  } = useGlobalControls();
 
   // Hydration guard — wait for first client render so SSR HTML matches the
   // client. While un-hydrated, render the library-only branch (no Group,
@@ -801,18 +806,53 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
             style={{ height: `${100 - splitPct}%` }}
           >
             <MobileColumnChrome
-              title="Build"
-              icon={<Wrench className="size-4" />}
+              title={sandboxBottomTab === "preview" ? "Preview" : "Build"}
+              icon={
+                sandboxBottomTab === "preview" ? (
+                  <Eye className="size-4" />
+                ) : (
+                  <Wrench className="size-4" />
+                )
+              }
               action={
                 <div className="ml-auto flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => openDrawer("preview")}
-                    className="flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary hover:bg-primary/20"
-                    aria-label="Preview"
+                  {/* Tab strip — replaces the drawer's tab strip when
+                      in split mode. Build/Preview content is rendered
+                      inline in the bottom panel, NOT in the drawer. */}
+                  <div
+                    role="tablist"
+                    aria-label="Bottom panel"
+                    className="flex shrink-0 rounded-md border border-border bg-card p-0.5"
                   >
-                    <Eye className="size-3" /> Preview
-                  </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={sandboxBottomTab === "build"}
+                      onClick={() => setSandboxBottomTab("build")}
+                      className={cn(
+                        "flex items-center gap-1 rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors",
+                        sandboxBottomTab === "build"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <Wrench className="size-3" /> Build
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={sandboxBottomTab === "preview"}
+                      onClick={() => setSandboxBottomTab("preview")}
+                      className={cn(
+                        "flex items-center gap-1 rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors",
+                        sandboxBottomTab === "preview"
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <Eye className="size-3" /> Preview
+                    </button>
+                  </div>
                   <button
                     type="button"
                     onClick={dispatchReset}
@@ -824,7 +864,23 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
                 </div>
               }
             />
-            <div className="flex-1 min-h-0 overflow-auto">{builder}</div>
+            {/* Render Build OR Preview based on active tab. Both nodes
+                stay mounted so the slot listener + preview state never
+                unmounts when switching tabs. */}
+            <div className="flex-1 min-h-0 overflow-auto">
+              <div
+                hidden={sandboxBottomTab !== "build"}
+                className="h-full"
+              >
+                {builder}
+              </div>
+              <div
+                hidden={sandboxBottomTab !== "preview"}
+                className="h-full"
+              >
+                {preview}
+              </div>
+            </div>
           </div>
         </div>
       )}

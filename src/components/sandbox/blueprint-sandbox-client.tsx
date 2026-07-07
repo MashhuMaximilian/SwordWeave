@@ -160,7 +160,7 @@ export function BlueprintSandboxClient({
   // anything in their build — either unsaved edits OR a loaded entity
   // that hasn't been saved yet. The global also auto-resets on route
   // change.
-  const { setSandboxFormDirty, openDrawer } = useGlobalControls();
+  const { setSandboxFormDirty } = useGlobalControls();
   // URL sync — when the user switches build mode via the bottom tab
   // bar, push ?build=<mode> so a refresh / deep-link lands on the same
   // mode. Without this the URL stays on whatever was set in the
@@ -190,11 +190,10 @@ export function BlueprintSandboxClient({
           ? `${pathname}?${nextParams.toString()}`
           : pathname,
       );
-      // Auto-open the build drawer so the user sees the new form
-      // mount in non-split mobile mode. In split mode the form is
-      // already visible inline so opening the drawer would be
-      // redundant; the openDrawer call is harmless there.
-      openDrawer("build");
+      // Tab switches must NOT pop the drawer — per the user's spec,
+      // only slot/load actions open the build panel. The form mounts
+      // in the drawer's build tab automatically when the user later
+      // taps "Build & Preview" from the FAB.
       return;
     }
     const { entityType, id } = action;
@@ -216,7 +215,6 @@ export function BlueprintSandboxClient({
     router,
     pathname,
     currentSearchParams,
-    openDrawer,
   ]);
 
   function guardedSwitchBuild(newMode: BlueprintBuildMode) {

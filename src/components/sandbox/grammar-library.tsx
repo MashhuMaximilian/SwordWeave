@@ -410,7 +410,16 @@ function SandboxPreviewBody({
   // column/drawer open so they can see the slot land or the loaded
   // entity's preview update. (Previously the modal closed and the
   // user had to manually tap the build/preview tab.)
-  const { openDrawer } = useGlobalControls();
+  //
+  // Split-mode contract: in split mode the build + preview are already
+  // rendered inline in the bottom panel. We MUST NOT pop the drawer
+  // there (would overlay the inline content). Instead we switch the
+  // bottom tab so the user sees the result of the slot/load inline.
+  const {
+    openDrawer,
+    sandboxSplit,
+    setSandboxBottomTab,
+  } = useGlobalControls();
   // "Slot into build" is only valid for kinds the current build mode
   // can accept. Per the user's spec:
   //   - Primitive mode:  nothing can be slotted (you're authoring a new
@@ -458,7 +467,16 @@ function SandboxPreviewBody({
       // panel and the user thought nothing happened. The preview
       // tab is one tap away and is always populated by the form's
       // live snapshot.
-      openDrawer("build");
+      //
+      // Split-mode contract: in split mode the build tab is already
+      // rendered inline in the bottom panel — do NOT pop the drawer
+      // (it would overlay the inline content). Just switch the bottom
+      // tab to "build" so the user sees the slot landing.
+      if (sandboxSplit) {
+        setSandboxBottomTab("build");
+      } else {
+        openDrawer("build");
+      }
     }
   }
 
@@ -497,7 +515,16 @@ function SandboxPreviewBody({
             // form is in the drawer and the preview reads from the
             // form's state via the parent. Opening the drawer's
             // `build` tab is the always-populated target.
-            openDrawer("build");
+            //
+            // Split-mode contract: the build form is already rendered
+            // inline in the bottom panel — switch the tab to "preview"
+            // so the user immediately sees the loaded entity's live
+            // preview (which is populated by the form on load).
+            if (sandboxSplit) {
+              setSandboxBottomTab("preview");
+            } else {
+              openDrawer("build");
+            }
           }}
           className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           title="Create a fork-draft of this entry in your sandbox"

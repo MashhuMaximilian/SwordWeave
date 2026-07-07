@@ -168,7 +168,7 @@ export function GrammarSandboxClient({
   // anything in their build — either unsaved edits OR a loaded entity
   // that hasn't been saved yet. The global also auto-resets on route
   // change so we don't need a manual clear here.
-  const { setSandboxFormDirty, openDrawer } = useGlobalControls();
+  const { setSandboxFormDirty } = useGlobalControls();
   // URL sync — switchBuild needs to push ?build=<mode> so refresh /
   // deep-link lands on the right mode. Without this the URL stays on
   // whatever was set in the initial request, which is confusing once
@@ -197,11 +197,10 @@ export function GrammarSandboxClient({
           ? `${pathname}?${nextParams.toString()}`
           : pathname,
       );
-      // Auto-open the build drawer so the user sees the new form
-      // mount in non-split mobile mode. In split mode the form is
-      // already visible inline so the drawer call is redundant but
-      // harmless.
-      openDrawer("build");
+      // Tab switches must NOT pop the drawer — per the user's spec,
+      // only slot/load actions open the build panel. The form mounts
+      // in the drawer's build tab automatically when the user later
+      // taps "Build & Preview" from the FAB.
       return;
     }
     // loadFromLibrary
@@ -230,7 +229,6 @@ export function GrammarSandboxClient({
     router,
     pathname,
     currentSearchParams,
-    openDrawer,
   ]);
 
   // ---- Dirty-check interceptors ------------------------------------------

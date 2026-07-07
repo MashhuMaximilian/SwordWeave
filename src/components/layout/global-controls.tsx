@@ -77,6 +77,11 @@ interface GlobalControlsState {
    *  tab-switch handlers consult it before letting the user change modes. */
   sandboxFormDirty: boolean;
   setSandboxFormDirty: (v: boolean) => void;
+  /** Active tab in the bottom-half of the mobile split sandbox. In split
+   *  mode the form & preview are both rendered inline in the bottom panel;
+   *  this controls which one is visible. Persisted across navigations. */
+  sandboxBottomTab: "build" | "preview";
+  setSandboxBottomTab: (tab: "build" | "preview") => void;
 }
 
 const Ctx = createContext<GlobalControlsState | null>(null);
@@ -105,6 +110,8 @@ const NOOP_GLOBAL_CONTROLS: GlobalControlsState = {
   isSandboxRoute: false,
   sandboxFormDirty: false,
   setSandboxFormDirty: () => {},
+  sandboxBottomTab: "build",
+  setSandboxBottomTab: () => {},
 };
 
 export function useGlobalControls(): GlobalControlsState {
@@ -278,6 +285,16 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
     setSandboxFormDirty(false);
   }, [pathname]);
 
+  // Sandbox bottom-half tab (split mode only). Controls which content
+  // (build form vs preview) is rendered in the bottom panel.
+  const [sandboxBottomTab, setSandboxBottomTabState] = useState<"build" | "preview">(
+    "build",
+  );
+
+  const setSandboxBottomTab = useCallback((tab: "build" | "preview") => {
+    setSandboxBottomTabState(tab);
+  }, []);
+
   // ---------------------- FAB items ----------------------
   // Note: per the user's spec, the in-list "Functions" row is hidden in
   // the dial — the 3 toggles + 2 actions are instead rendered as a compact
@@ -307,9 +324,15 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
       {
         kind: "action",
         key: "build",
+        // In split mode the build form is already inline in the bottom
+        // panel and the drawer has no build-tab content (we register
+        // `build: null` to useDrawerSlot when sandboxSplit is true).
+        // The FAB "Build & Preview" button therefore opens the drawer's
+        // PREVIEW tab in split mode — which IS populated — and the
+        // build tab otherwise.
         label: "Build & Preview",
         icon: <Wrench className="size-4" />,
-        onClick: () => openDrawer("build"),
+        onClick: () => openDrawer(sandboxSplit ? "preview" : "build"),
       },
       {
         kind: "action",
@@ -376,6 +399,8 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
     isSandboxRoute,
     sandboxFormDirty,
     setSandboxFormDirty,
+    sandboxBottomTab,
+    setSandboxBottomTab,
   };
 
   return (
