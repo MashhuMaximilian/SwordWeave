@@ -14,30 +14,18 @@ import {
   anonymizeUser,
   findUsersReadyForPurge,
 } from "@/lib/profiles/lookup";
-
-// Vercel cron sends an Authorization header with the cron secret.
-function verifyCronSecret(req: NextRequest): boolean {
-  const expected = process.env["CRON_SECRET"];
-  if (!expected) {
-    // No secret configured → reject. Don't allow open access.
-    return false;
-  }
-  const provided =
-    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? null;
-  return provided === expected;
-}
+import { checkAdminAuth } from "@/lib/admin-auth";
 
 export async function GET(req: NextRequest) {
-  if (!verifyCronSecret(req)) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  const { isAdmin, reason } = checkAdminAuth(req);
+  if (!isAdmin) return NextResponse.json({ error: reason }, { status: 401 });
   return runPurge({ dryRun: false });
 }
 
 export async function POST(req: NextRequest) {
   // Manual invocation: still requires auth, but lets admins pass dryRun=1
   // without setting up cron.
-  const { isAdmin, reason } = await checkAdminAuth(req);
+  const { isAdmin, reason } = checkAdminAuth(req);
   if (!isAdmin) {
     return NextResponse.json({ error: reason }, { status: 401 });
   }
@@ -91,23 +79,4 @@ async function runPurge({ dryRun }: { dryRun: boolean }): Promise<NextResponse> 
     errors,
   };
   return NextResponse.json(result);
-}
-
-/**
- * Lightweight admin check: only allow cron-secret header OR explicit admin
- * environment variable. We don't gate this on Clerk roles yet — this endpoint
- * is intentionally minimal until Phase 6 (admin tools) lands.
- */
-async function checkAdminAuth(
-  req: NextRequest,
-): Promise<{ isAdmin: boolean; reason: string }> {
-  // Method 1: cron secret
-  if (verifyCronSecret(req)) return { isAdmin: true, reason: "" };
-  // Method 2: explicit admin secret header (for manual invocation by Mashu)
-  const adminSecret = process.env["ADMIN_API_SECRET"];
-  const provided = req.headers.get("x-admin-secret");
-  if (adminSecret && provided === adminSecret) {
-    return { isAdmin: true, reason: "" };
-  }
-  return { isAdmin: false, reason: "missing or invalid admin credentials" };
 }

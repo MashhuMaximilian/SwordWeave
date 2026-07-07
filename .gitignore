@@ -37,3 +37,6 @@ pnpm-debug.log*
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# one-time DB migration backups (production data snapshots)
+/.migration-backup/
