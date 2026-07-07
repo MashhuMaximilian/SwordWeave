@@ -100,6 +100,8 @@ export function BlueprintSandboxClient({
   sandboxPrimitives,
   sandboxCapabilities,
   primitiveCategories,
+  engagement,
+  currentUserInternalId,
 }: {
   initialBuild: BlueprintBuildMode;
   initialKind?: "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined;
@@ -128,7 +130,9 @@ export function BlueprintSandboxClient({
   effects: import("@/components/library/library-item-preview").SandboxEffectRow[];
   /**
    * Unified LibraryItem[] for the left column. Produced server-side from
-   * the typed rows.
+   * the typed rows. Engagement is threaded in so the compact
+   * LikeForkBar on each card shows the right active state for the
+   * viewer (filled heart when liked, fork disabled on own content).
    */
   libraryItems: LibraryItem[];
   /** Full primitive rows used to resolve sub-entity previews. */
@@ -140,6 +144,15 @@ export function BlueprintSandboxClient({
    * sandbox's filter panel. Forwarded to BlueprintLibrary.
    */
   primitiveCategories: Array<{ value: string; label: string; count: number }>;
+  /**
+   * Pre-fetched engagement snapshot (same shape as /library/browse).
+   * Keyed by `LibraryItem.id`.
+   */
+  engagement: { reactions: Record<string, "LIKE" | "DISLIKE" | null>; following: Record<string, boolean> };
+  /**
+   * Current viewer's internal ID. `null` when signed out.
+   */
+  currentUserInternalId: string | null;
 }) {
   const [build, setBuild] = useState<BlueprintBuildMode>(initialBuild);
   const [editing, setEditing] = useState<EditingState>(initialEditing);
@@ -554,6 +567,8 @@ export function BlueprintSandboxClient({
             capabilities={sandboxCapabilities}
             effects={effects}
             primitiveCategories={primitiveCategories}
+            engagement={engagement}
+            currentUserInternalId={currentUserInternalId}
             editingKey={
               editing
                 ? `${editing.kind}:${editing.row.id}`

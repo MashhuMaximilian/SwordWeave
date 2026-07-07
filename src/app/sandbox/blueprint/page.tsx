@@ -5,6 +5,7 @@
 // ?edit=<id> pre-fills the form with the matching entity.
 
 import { asc } from "drizzle-orm";
+import { auth } from "@clerk/nextjs/server";
 
 import {
   BlueprintSandboxClient,
@@ -24,6 +25,8 @@ import {
   listPrimitiveCategories,
   type LibraryItem,
 } from "@/lib/publishing/library-query";
+import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
+import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 
 export const dynamic = "force-dynamic";
 
@@ -201,6 +204,34 @@ export default async function BlueprintSandboxPage({
     );
   }
 
+  // Resolve current user + pre-fetch engagement snapshot for the
+  // library items. Same pattern /library/browse uses. Without this,
+  // every card in the sandbox library shows an unfilled heart even
+  // when the viewer has already liked the entry.
+  let currentUserInternalId: string | null = null;
+  let engagement: Awaited<ReturnType<typeof loadLibraryEngagement>> = {
+    reactions: {},
+    following: {},
+  };
+  try {
+    const { userId: clerkUserId } = await auth();
+    if (clerkUserId) {
+      currentUserInternalId = await resolveUserIdByClerkId(clerkUserId);
+    }
+    engagement = await loadLibraryEngagement(
+      currentUserInternalId,
+      libraryItems.map((it) => ({
+        id: it.id,
+        targetType: it.targetType,
+        targetId: it.targetId,
+        authorId: it.authorId,
+      })),
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[blueprint sandbox] engagement prefetch failed:", err);
+  }
+
   return (
     <BlueprintSandboxClient
       initialBuild={build}
@@ -271,6 +302,8 @@ export default async function BlueprintSandboxPage({
       })}
       libraryItems={libraryItems}
       primitiveCategories={primitiveCategories}
+      engagement={engagement}
+      currentUserInternalId={currentUserInternalId}
       sandboxPrimitives={(primitiveRows as never[]).map((p) => {
         const row = p as {
           id: number;

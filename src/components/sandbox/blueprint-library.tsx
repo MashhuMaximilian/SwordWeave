@@ -61,6 +61,16 @@ interface BlueprintLibraryProps {
    * LibraryToolbar). Pass [] to hide the row entirely.
    */
   primitiveCategories: Array<{ value: string; label: string; count: number }>;
+  /**
+   * Pre-fetched engagement snapshot (same shape as /library/browse).
+   * Without it, every card's heart icon starts unfilled and every
+   * fork action looks broken. Keyed by `LibraryItem.id`.
+   */
+  engagement: { reactions: Record<string, "LIKE" | "DISLIKE" | null>; following: Record<string, boolean> };
+  /**
+   * Current viewer's internal ID. `null` when signed out.
+   */
+  currentUserInternalId: string | null;
   editingKey: string | null;
   onSelect: (kind: "template" | "item", id: string) => void;
 }
@@ -93,6 +103,8 @@ export function BlueprintLibrary({
   capabilities = [],
   effects = [],
   primitiveCategories,
+  engagement,
+  currentUserInternalId,
   editingKey,
   onSelect,
 }: BlueprintLibraryProps) {
@@ -415,8 +427,8 @@ export function BlueprintLibrary({
         <LibraryTable
           items={filteredItems}
           view={toolbarState.view}
-          engagement={{ reactions: {}, following: {} }}
-          currentUserInternalId={null}
+          engagement={engagement}
+          currentUserInternalId={currentUserInternalId}
           onSelect={(item) => {
             const full = lookupRow(item);
             if (full) pushPreview(full);

@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "@clerk/nextjs";
+import { useSession, useClerk } from "@clerk/nextjs";
 import { createPortal } from "react-dom";
 import {
   Heart,
@@ -69,6 +69,7 @@ const FLAG_REASONS: { value: FlagReason; label: string }[] = [
 export function LikeForkBar(props: LikeForkBarProps) {
   const router = useRouter();
   const { session } = useSession();
+  const clerk = useClerk();
 
   // Clerk's session token has a 60s TTL by default. If the user lingers
   // on a page past that window then clicks Like, the cached JWT is stale
@@ -108,9 +109,23 @@ export function LikeForkBar(props: LikeForkBarProps) {
 
   const requireAuth = (): boolean => {
     if (isAuthed) return true;
-    // Redirect to Clerk sign-in
-    window.location.href = "/sign-in";
-    return false;
+    // Don't hard-redirect — that's hostile to browsing. Open the
+    // sign-in modal via Clerk (it preserves the current URL as the
+    // post-signin redirect target so the user lands back on this page
+    // and can resume liking). The `useClerk()` hook gives us a stable
+    // reference client-side; the previous global `window.Clerk` lookup
+    // was unreliable on mobile browsers and would fall through to a
+    // full page redirect to /sign-in (which is what the user reported).
+    try {
+      clerk.openSignIn({});
+      return false;
+    } catch {
+      // Clerk not mounted yet (rare). Hard nav as last resort.
+      if (typeof window !== "undefined") {
+        window.location.href = "/sign-in";
+      }
+      return false;
+    }
   };
 
   const handleLike = () => {
@@ -297,6 +312,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
 
   return (
     <div
+      onClick={(e) => e.stopPropagation()}
       className={`flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${props.className ?? ""}`}
       role="group"
       aria-label="Engagement"

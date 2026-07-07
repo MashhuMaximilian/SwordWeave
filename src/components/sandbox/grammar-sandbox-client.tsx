@@ -119,6 +119,8 @@ export function GrammarSandboxClient({
   capabilities,
   libraryItems,
   primitiveCategories,
+  engagement,
+  currentUserInternalId,
 }: {
   initialBuild: GrammarBuildMode;
   initialEditing: EditingState;
@@ -134,8 +136,11 @@ export function GrammarSandboxClient({
   capabilities: CapabilityRow[];
   /**
    * Unified LibraryItem[] for the left column. Produced server-side from
-   * the typed rows. The sandbox does NOT show engagement metrics in its
-   * library column (those live on /library/browse).
+   * the typed rows. Engagement is now threaded in so the compact
+   * LikeForkBar on each card knows whether the viewer already liked
+   * the entry (heart shows as filled) and whether they're following
+   * the author. Without this, every card looks un-engaged even when
+   * the viewer has liked it.
    */
   libraryItems: LibraryItem[];
   /**
@@ -143,6 +148,17 @@ export function GrammarSandboxClient({
    * sandbox's filter panel. Forwarded to GrammarLibrary.
    */
   primitiveCategories: Array<{ value: string; label: string; count: number }>;
+  /**
+   * Pre-fetched engagement snapshot for the library items above.
+   * Same shape as /library/browse uses. Keyed by `LibraryItem.id`.
+   */
+  engagement: { reactions: Record<string, "LIKE" | "DISLIKE" | null>; following: Record<string, boolean> };
+  /**
+   * Current user's internal ID, or null if not signed in. Used so the
+   * LikeForkBar can show the right active state and disable fork on
+   * own content.
+   */
+  currentUserInternalId: string | null;
 }) {
   const [build, setBuild] = useState<GrammarBuildMode>(initialBuild);
   const [editing, setEditing] = useState<EditingState>(initialEditing);
@@ -574,6 +590,8 @@ export function GrammarSandboxClient({
             effects={effects}
             capabilities={capabilities}
             primitiveCategories={primitiveCategories}
+            engagement={engagement}
+            currentUserInternalId={currentUserInternalId}
             editingKey={
               editing
                 ? `${editing.kind}:${

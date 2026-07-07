@@ -4,6 +4,7 @@
 // ?edit=<id> pre-fills the form with the matching entity.
 
 import { asc } from "drizzle-orm";
+import { auth } from "@clerk/nextjs/server";
 
 import {
   GrammarSandboxClient,
@@ -20,6 +21,8 @@ import {
   listPrimitiveCategories,
   type LibraryItem,
 } from "@/lib/publishing/library-query";
+import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
+import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 
 export const dynamic = "force-dynamic";
 
@@ -146,6 +149,38 @@ export default async function GrammarSandboxPage({
       "[grammar sandbox] listPrimitiveCategories failed:",
       err,
     );
+  }
+
+  // Resolve current user + pre-fetch engagement snapshot for the
+  // library items. Same pattern /library/browse uses. Without this,
+  // every card in the sandbox library shows an unfilled heart even
+  // when the viewer has already liked the entry — looks like every
+  // engagement action is broken. Wrapped in try/catch so a failure
+  // here degrades to "empty engagement" instead of a 500 (the
+  // loadLibraryEngagement function already handles this internally,
+  // but we also catch here in case resolveUserIdByClerkId throws).
+  let currentUserInternalId: string | null = null;
+  let engagement: Awaited<ReturnType<typeof loadLibraryEngagement>> = {
+    reactions: {},
+    following: {},
+  };
+  try {
+    const { userId: clerkUserId } = await auth();
+    if (clerkUserId) {
+      currentUserInternalId = await resolveUserIdByClerkId(clerkUserId);
+    }
+    engagement = await loadLibraryEngagement(
+      currentUserInternalId,
+      libraryItems.map((it) => ({
+        id: it.id,
+        targetType: it.targetType,
+        targetId: it.targetId,
+        authorId: it.authorId,
+      })),
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[grammar sandbox] engagement prefetch failed:", err);
   }
 
   return (
@@ -289,6 +324,8 @@ export default async function GrammarSandboxPage({
       libraryItems={libraryItems}
       primitiveCategories={primitiveCategories}
       dataLoadFailed={dataLoadFailed}
+      engagement={engagement}
+      currentUserInternalId={currentUserInternalId}
     />
   );
 }

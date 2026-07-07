@@ -54,6 +54,18 @@ interface GrammarLibraryProps {
    * LibraryToolbar). Pass [] to hide the row entirely.
    */
   primitiveCategories: Array<{ value: string; label: string; count: number }>;
+  /**
+   * Pre-fetched engagement snapshot. Same shape as /library/browse.
+   * Without this, every card's heart icon starts unfilled even when
+   * the viewer has already liked the entry — looks like nothing's
+   * working. Keyed by `LibraryItem.id`.
+   */
+  engagement: { reactions: Record<string, "LIKE" | "DISLIKE" | null>; following: Record<string, boolean> };
+  /**
+   * Current viewer's internal ID. Used by LikeForkBar to gate fork on
+   * own content + show follow buttons. `null` when signed out.
+   */
+  currentUserInternalId: string | null;
   editingKey: string | null;
   onSelect: (
     kind: "primitive" | "effect" | "capability",
@@ -91,6 +103,8 @@ export function GrammarLibrary({
   effects,
   capabilities,
   primitiveCategories,
+  engagement,
+  currentUserInternalId,
   editingKey,
   onSelect,
 }: GrammarLibraryProps) {
@@ -359,8 +373,8 @@ export function GrammarLibrary({
         <LibraryTable
           items={filteredItems}
           view={toolbarState.view}
-          engagement={{ reactions: {}, following: {} }}
-          currentUserInternalId={null}
+          engagement={engagement}
+          currentUserInternalId={currentUserInternalId}
           onSelect={(item) => {
             const full = lookupRow(item);
             if (full) pushPreview(full);
