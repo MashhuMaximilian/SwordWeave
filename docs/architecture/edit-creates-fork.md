@@ -1,8 +1,10 @@
 # Edit-Creates-Fork Architecture
 
-> Status: **DRAFT — awaiting Mashu's review and sign-off before implementation**
-> Last updated: 2026-07-07
-> Scope: 2–3 week sprint. Cross-cutting. Will touch DB schema, all 5 entity APIs, build composition, library queries, sandbox UX.
+> Status: **READY FOR REVIEW — Round 6 final, OQ4/OQ5 closed 2026-07-08**
+> Last updated: 2026-07-08
+> Scope: 4–5 week sprint. Cross-cutting. Will touch DB schema, all 5 entity APIs, build composition, library queries, sandbox UX.
+>
+> **Next:** Mashu's final sign-off on §10 checklist + §11 task list before any code is written. Phased plan — Phase 1 ships standalone (intent plumbing + deferred fork UX, no schema).
 
 ---
 
@@ -20,19 +22,30 @@ UPDATE primitives SET name=..., isPublic=..., buCost=..., ... WHERE id=N AND (us
 - Builds reference `primitive_id` directly (`character_primitives.primitive_id`). If the author edits the primitive, every build that has slotted it silently sees the new version.
 - The "Publish to library" button (round 4) is the only way to create a real `primitive_versions` row. Until you publish, edits stay as an unversioned live row.
 - `resolveVirtualVersionId(type, id)` hashes `(type, id)` — not content. Two primitives with identical content but different IDs get different virtual versions; one primitive with changing content gets the same virtual version forever.
+- `POST /api/fork` creates a fork immediately and surfaces a "forked to sandbox" modal. This is round 4 behaviour; round 6 replaces it with deferred-fork.
 
 ### What Mashu wants
 
 > "I see something, I load into build, I change things and I save → creates fork."
 > "If visibility is private and I edit the fork or my created item to modify something, it updates and past versions pre-edit are reflected in version history but only I can see."
 > "If another user added something I created to their build, and I edit/update that something, the user will not have the updated version, but the version he already used."
+> "I click fork. No fork is created. Instead, it just loads into build and opens build modal. I do my modifications and save. Only then the fork is created and added to my creations."
+> "Same things apply wether I use button load into build or the fork button anywhere they are in library, in sandbox, my creations, source page, modal preview, whatever."
 
 In plain words:
 
-1. **The act of opening the editor produces a working fork of the row.** The original is untouched. Editing only ever touches your fork.
-2. **Every save creates a new content-addressed version snapshot** that lives in the row's version history. Visibility controls who can see which versions.
-3. **Visibility IS the publish state** — no separate publish button. (Already shipped in round 5.)
-4. **Builds pin the version they slotted.** Editing the source after the fact doesn't break anyone else's build.
+1. **Opening the editor does NOT produce a side effect.** No fork is created on click. Cancel/back-out leaves no trace. The sandbox just loads the source entity pre-filled.
+2. **Save is the moment of truth.** Two flags determine the outcome:
+   - `intent` flag (`fork` vs `load`) — set by which button the user clicked to enter the sandbox.
+   - `ownership` — did the caller create this entity?
+   - Dispatch table:
+     - `intent=load` + caller owns → UPDATE entity in place + new content-hash version row.
+     - `intent=load` + caller does NOT own → INSERT new fork row + version #1.
+     - `intent=fork` (any ownership) → INSERT new fork row + version #1.
+   - Special case: if content hash is unchanged, no row is created. UI surfaces "You can't save something you're not the owner of. Try slotting it into another build instead." for non-owner, or "Nothing to save" for owner.
+3. **Every save creates a content-addressed version snapshot** that lives in the row's version history. Visibility controls who can see which versions.
+4. **Visibility IS the publish state** — no separate publish button. (Already shipped in round 5.)
+5. **Builds pin the version they slotted.** Editing the source after the fact doesn't break anyone else's build.
 
 ---
 
@@ -69,31 +82,66 @@ This principle is half-implemented (only `source_origin` exists on capabilities/
 
 ### D1. What "edit" means
 
-**When you click "Edit in sandbox" on a row you don't own (or don't have a working fork of):**
-- The form pre-fills with a **fork** of the row, freshly created. Name = `${source.name} (draft)`. The form's editing target is the **fork**, not the source.
-- Save mutates the fork. Source is untouched.
+**Opening the editor is a navigation gesture, not a write.** No fork is created when you click Fork or Load into build. The sandbox loads the source entity pre-filled into the form; cancel/back-out/close leaves no trace.
 
-**When you click "Edit in sandbox" on a row you DO own:**
-- Same behavior — opens a fork. The original stays untouched. (Per Mashu's answer: "click 'Edit in sandbox' → auto-creates a fork of your row, form pre-fills with the fork. Save mutates the fork. Original is preserved untouched in version history.")
-- This means owning a primitive doesn't let you "edit it directly." You always fork first. The "current" version is just the most recent fork in the lineage.
+There are three navigation behaviours, distinguished by what the user clicked:
 
-**When you click "Edit in sandbox" on an existing fork of yours:**
-- The form opens with that fork. Save mutates it. No new fork is created.
-- "Save = mutate the fork you're editing" — until you explicitly "fork again" or "branch" (future feature).
+1. **Click "Fork"** → URL is `/sandbox/<route>?build=<kind>&edit=<sourceId>&intent=fork`. Form pre-fills with source. `intent=fork` is recorded.
+2. **Click "Load into build"** → URL is `/sandbox/<route>?build=<kind>&edit=<sourceId>&intent=load`. Form pre-fills with source. `intent=load` is recorded.
+3. **Direct deep link** (someone shares `/sandbox/<route>?edit=<id>`) → URL has no `intent`. Form pre-fills. `intent=null` defaults to "load" semantics on save (i.e. owner=UPDATE, non-owner=INSERT new fork).
 
-**Implication:** there are three click → form pre-fill behaviors:
-1. Edit source (or someone else's row) → fresh fork created, form pre-fills with the fork.
-2. Edit your own fork → form pre-fills with that fork.
-3. Edit system content (user_id IS NULL) → fresh fork created, form pre-fills with the fork.
+The build drawer auto-opens whenever `intent` is present (commit `4c7ac18`). Without `intent` (clean sandbox), the drawer stays closed and the user clicks the FAB to open it.
+
+The sandbox form header shows a context chip that reflects the intent:
+- `intent=fork`: blue chip "Forking <source name>".
+- `intent=load`: gray chip "Working on <entity name>".
+- `intent=null`: no chip.
+
+The form has a "Discard" action in the header that clears `?edit=` and `?intent=` and navigates back to the originating surface — no side effects.
 
 ### D2. What "save" means
 
-- The form's save POST goes to a route that accepts a `targetType + targetId`.
-- If `targetId` belongs to a fork of yours → UPDATE the row. Snapshot a new version row.
-- If `targetId` doesn't exist yet (e.g. greenfield new entry from scratch) → INSERT. Snapshot version #1.
-- If `targetId` belongs to someone else → 403.
+The form's save POST sends `targetType + targetId + content + intent` to the existing entity endpoint. The server dispatches based on `intent` + ownership + content hash:
 
-The versionId on each save is computed from the **content hash** of the new state. If two saves produce identical content (no actual change), they're deduped — no new version row.
+```
+function dispatchSave({ targetType, targetId, content, intent, caller }) {
+  const source = loadRow(targetType, targetId);
+  const newHash = resolveContentVersionId(targetType, content);
+  
+  // No-changes shortcut — applies to ALL matrix cells (per OQ5 closed 2026-07-08)
+  if (source && source.contentHash === newHash) {
+    return {
+      kind: "no-op",
+      reason: "content-unchanged",
+      // Surfaced as the user-facing message below.
+      userMessage:
+        source.userId === caller.id
+          ? "Nothing to save."
+          : "You can't save something you're not the owner of. Try slotting it into another build instead.",
+    };
+  }
+  
+  const isOwner = source && source.userId === caller.id;
+  
+  // Dispatch matrix
+  if (intent === "fork") return materializeAsFork({ source, content, caller });
+  // intent === "load" or null
+  if (isOwner) return materializeAsVersionUpdate({ source, content, caller });
+  return materializeAsFork({ source, content, caller }); // non-owner load
+}
+```
+
+Three concrete outcomes:
+
+- **`materializeAsVersionUpdate`** — UPDATE entity row in place + INSERT new content-hash version row. Caller's row gets `version_number + 1`. The original source's `is_latest` flag flips; the new version is `is_latest=true`.
+- **`materializeAsFork`** — INSERT new entity row with `source_origin = 'fork:<source_id>'`, `user_id = caller.id`, content = caller's payload. INSERT version row #1 with content hash. Return `{ entityId: <new fork id>, versionId: <v1 hash>, forkedFromId: <source_id> }`.
+- **`no-op`** — return the appropriate message. Client shows it as a toast or inline error.
+
+The server response includes `kind` so the client knows whether to swap URL params (fork path) or stay put (version-update path) and which post-save modal/toast to show.
+
+**Special cases:**
+- Greenfield save (`targetId` is null, intent=null, e.g. direct create in sandbox) → INSERT new row + version #1. No source to fork from. Caller is treated as owner for future saves.
+- System content (`source.user_id IS NULL`) is treated as non-owner for the load path: save always forks.
 
 ### D3. Version chain
 
@@ -278,16 +326,16 @@ The full universal `source_origin` / `version_id` migration (0018–0020) can be
 
 ### EC1. System content (user_id IS NULL)
 
-Editing a system primitive creates a fork owned by the editor. The system primitive is never mutated. The editor's fork starts PRIVATE. If they flip to PUBLIC, their fork is publicly visible — but the system primitive is still untouched (still showing the original content in the canonical view).
+System content is treated as **non-owner** by the dispatch (§D2): saving after clicking Fork or Load always creates a fork. The system primitive is never mutated. The editor's fork starts PRIVATE. If they flip to PUBLIC, their fork is publicly visible — but the system primitive is still untouched (still showing the original content in the canonical view).
 
 ### EC2. User edits their own published primitive
 
-Per D1 — even though you own it, editing creates a fresh fork. The previous public version stays in history. The "current canonical view" on the library page can either:
-- (a) Continue pointing at the most recent fork (auto-update when you save).
-- (b) Stay pinned at the version that was published; new forks only visible in your Creations.
-- Mashu's description suggests (a) — editing creates a fork, the fork becomes the current state.
+Two paths depending on which button they used to enter the sandbox:
 
-Pick (a). This means: every save of a public row changes what's shown on the public library page. There's no "publish again" step.
+- **intent=fork** → save creates a NEW fork row (the user's "second line" of this primitive). Original row + previous public version stay intact. Library continues to show the published version.
+- **intent=load** (owner) → save updates the row in place + new content-hash version row. The "current canonical view" on the library page updates automatically — no separate publish step (visibility IS the publish state).
+
+The two paths cover Mashu's description ("I created a capability and update it if the source things are updated") cleanly: intent=load is the "I'm iterating on my own published work" gesture; intent=fork is the "I'm starting a new lineage off of my own work" gesture.
 
 ### EC3. Build references version that's since been forked
 
@@ -295,11 +343,15 @@ Build slots Strike v1. Author edits Strike → Strike v2. Build still references
 
 ### EC4. Same content saved twice
 
-If you save with no changes → content hash is identical → no new version row is inserted. The `version_number` does not advance. (Implementation: pre-save, compute the would-be content hash; check if it equals the current row's content hash; if so, return the current versionId and skip the insert.)
+If you save with no changes → content hash is identical → no new version row is inserted. The `version_number` does not advance. Server returns `kind: "no-op"` with the appropriate `userMessage`:
+
+- **Owner + intent=load, no changes** → "Nothing to save." (silent toast)
+- **Non-owner + intent=load, no changes** → "You can't save something you're not the owner of. Try slotting it into another build instead." (inline error)
+- **Any + intent=fork, no changes** → "You can't save something you're not the owner of. Try slotting it into another build instead." (inline error) — saving an unchanged fork would be a useless row. (Closed OQ5, 2026-07-08.)
 
 ### EC5. Two users fork the same source simultaneously
 
-Both POST `/api/fork` with `targetId=13`. Both compute `computeUniqueForkName` independently — they'll likely both pick `Strike (fork)`. One INSERT succeeds; the other hits the unique constraint and retries with `Strike (fork) 2`. This is the existing behavior — works fine.
+Both POST `/api/<entity>` with `intent=fork` and `targetId=13`. Both compute `computeUniqueForkName` independently — they'll likely both pick `Strike (fork)`. One INSERT succeeds; the other hits the unique constraint and retries with `Strike (fork) 2`. This is the existing behavior — works fine.
 
 ### EC6. Fork lineage chain breaks (source deleted, your fork remains)
 
@@ -571,12 +623,12 @@ Plus a new endpoint:
 
 ### Decision/Question summary
 
-This supersedes the Round 5 "Edit = auto-fork" model. Two Open Questions to resolve before code:
+This supersedes the Round 5 "Edit = auto-fork" model. Two Open Questions resolved 2026-07-08:
 
-- **OQ4**. Mashu: "there should be a something that stores this information of wether load into build was triggered by load into build button or fork button (in library and in sandbox) idk how you'd do it."
-  - Proposed answer: URL `?intent=fork|load` query param. Survives sandbox mount. Same param used by both library surfaces and sandbox surfaces. Defaulting to this unless Mashu has a preference.
-- **OQ5**. Does a fork-path save with **zero content changes** still create a fork row? Per Mashu's wording ("only then the fork is created and added to my creations... I do my modifications and save"), the implication is **yes, fork-on-save is unconditional in intent=fork mode**. No-changes fork = a row with `source_origin = 'fork:<source>'`, content identical to source, version 1. Should that be allowed? It's a "I am declaring interest / marking this as part of my collection" signal even if I didn't change anything.
-  - Defaulting to **yes, always fork on intent=fork save**.
+- **OQ4 (closed 2026-07-08)**. Where does the `intent` flag live?
+  - **Answer: URL `?intent=fork|load` query param.** Survives sandbox mount, debuggable in URL bar, matches the existing `?edit=<id>` convention, no cleanup burden. Both library surfaces and sandbox surfaces use the same param. Mashu: "url works fine I guess as you said."
+- **OQ5 (closed 2026-07-08)**. Does a fork-path save with zero content changes still create a fork row?
+  - **Answer: NO.** A no-change save returns `kind: "no-op"` with a user-facing message. Non-owner + intent=load gets "You can't save something you're not the owner of. Try slotting it into another build instead." Any + intent=fork gets the same message (saving an unchanged fork would just bloat the DB — Mashu: "it would not help anybody and bloat the db"). Owner + intent=load gets a softer "Nothing to save." toast.
 
 ---
 
@@ -648,8 +700,8 @@ Build slots Strike v1. Library page shows Strike v3 (latest). Build preview show
 | 2026-07-07 | Transitive dependency update walks capability → primitive_links + effect_links → effect.primitive_links | Mashu's example: "I took from library... updated (directly or children aka effects and primitives and primitives in effects)". |
 | 2026-07-07 | FORKED slots are frozen; no source update | Mashu: "I can fork something and modify it, I shouldn't be able to update bc it's a new thing." |
 | 2026-07-07 | Transitive version bumps (option b in OQ3) | Mashu's mental model is "if dependencies changed, I can update it" — capability version bumps when ANY transitive dep changes. |
-| TBD | OQ4 — Where to store `intent` flag (Mashu round 6) | Defaulting to URL search param `?intent=fork|load`. Survives sandbox mount, debuggable in URL, no cleanup burden. Both library surfaces and sandbox surfaces use the same param. |
-| TBD | OQ5 — Zero-content save in intent=fork mode (Mashu round 6) | Defaulting to YES — fork row is created even if content matches source. Signals "I'm claiming this line." Mashu can override. |
+| 2026-07-08 | **OQ4 closed** — `intent` flag lives in URL `?intent=fork\|load` (Mashu round 6) | "url works fine I guess as you said." Same param used by library + sandbox surfaces. Debug-visible, no cleanup. |
+| 2026-07-08 | **OQ5 closed** — no-changes save returns `kind: "no-op"` with a user-facing message, not a fork (Mashu round 6) | "If I load into build or fork if I make no changes you get the message like you get now: you can't save something you are not the owner of. Try slotting it into another build instead. (Because it would make no sense, why would you do that? It would not help anybody and bloat the db.)" Non-owner + intent=load + any intent=fork + no changes → that error message. Owner + intent=load + no changes → silent "Nothing to save" toast. |
 | TBD | Schema vs app-level enforcement of slot-source rules | DB stores the enum; app does the graph walk. Documented in §6.6. |
 | TBD | Migration ordering (currently 0018–0024 across 7 migrations) | Likely to consolidate to 4–5 migrations after refinement. Phase D-bis separates schema work from UX work. |
 
@@ -691,13 +743,14 @@ Please review and either ✅ or ✏️ each section:
 - [ ] **§6.7 Behaviour matrix** — Load button (owner=version, non-owner=fork) and Fork button (always fork, even owner). Right?
 - [ ] **§6.7 Universal application** — same matrix applies at every entry point: library, /library/item/[id], /sandbox/*, /creations, source page, modal preview, build drawer, sandbox menu, wherever. Confirm?
 - [ ] **§6.7 Cancellation semantics** — clicking Fork then browsing away without saving creates no trace. Confirm this is what you want?
-- [ ] **§6.7 Save with no changes** — intent=fork save with zero content changes still creates a fork row. Intent=load save with zero changes is a no-op. Match?
-- [ ] **§6.7 Intent flag storage** — proposing URL `?intent=fork|load`. URL is debuggable, no cleanup, but visible to users (aesthetically fine?). Alternative: ephemeral component state (lost on refresh). Acceptable?
+- [ ] **§6.7 Save with no changes** — closed 2026-07-08. Server returns `kind: "no-op"` with the appropriate message (non-owner error, owner toast). No fork row created. Match?
+- [x] **§6.7 OQ4 closed** — URL `?intent=fork|load` query param. Mashu: "url works fine I guess as you said." ✅
+- [x] **§6.7 OQ5 closed** — no-op on no-change with user-facing message. Mashu: "you can't save something you are not the owner of. Try slotting it into another build instead." ✅
 - [ ] **§6.7 Sandbox UX chips** — "Forking X" / "Working on X" / "Continue editing" buttons. Phrasing OK?
-- [ ] **§6.7 OQ4** — URL param vs ephemeral state. Pick one.
-- [ ] **§6.7 OQ5** — zero-content fork save. Pick: always fork, or skip if content unchanged.
 - [ ] **§6.7 Server endpoints** — every save endpoint reads `intent` from body. Five endpoints to refactor (`/api/primitives`, `/api/effects`, `/api/capabilities`, `/api/items`, `/api/templates`). OK with the cross-cutting refactor?
 - [ ] **§6.7 Phase D-bis split** — ship UX first (Phase D: intent plumbing + deferred fork), then schema (Phase D-bis: full content hashing + version rows). Acceptable sequencing?
+- [ ] **§D2 Dispatch pseudocode** — `dispatchSave({ intent, ownership, contentHash })` with the no-op shortcut — captures the matrix correctly?
+- [ ] **§1 Problem statement** — opening editor is a navigation gesture, save is the moment of truth. Captures the new mental model?
 
 ### Implementation order adjustments needed?
 
@@ -707,3 +760,107 @@ The original plan (§5) covers primitives + junctions. With universal source_ori
 - **New UI**: slot-source badge in build preview + "Update available →" action.
 
 Estimated timeline: ~25 working days now (was ~17). Want me to revise the phase breakdown before any code starts?
+
+---
+
+## 11. Implementation Task List (Round 6 final)
+
+The plan is split into **5 phases** that can ship semi-independently. Each phase ends with a working slice the user can play with.
+
+### Phase 1 — Intent plumbing + deferred fork UX (Days 1–5)
+
+The minimum-viable deferred-fork model. No new schema. No content hashing. Just URL params + dispatch in the existing routes.
+
+| Task | Files | Days |
+|---|---|---|
+| T1.1 Add `intent` query-param parsing to grammar + blueprint sandbox routes | `src/app/sandbox/grammar/page.tsx`, `src/app/sandbox/blueprint/page.tsx` | 0.5 |
+| T1.2 Add `intent` to `useGlobalControls` so all surfaces can read/write | `src/lib/controls/global-controls.tsx` | 0.5 |
+| T1.3 Add `intent` to `editingTarget` context in grammar-form + blueprint-form | `src/components/sandbox/grammar-form.tsx`, `src/components/sandbox/blueprint-form.tsx` | 1 |
+| T1.4 Update `LikeForkBar` Fork button: replace POST `/api/fork` with `router.push('/sandbox/...?intent=fork&edit=<id>')` | `src/components/engagement/like-fork-bar.tsx` | 0.5 |
+| T1.5 Update `Load into build` button: append `&intent=load` to URL | `src/components/sandbox/grammar-library.tsx`, `src/components/sandbox/blueprint-library.tsx` | 0.5 |
+| T1.6 Add `dispatchSave` helper that runs the no-op check + matrix | `src/lib/publishing/dispatch-save.ts` (NEW) | 1 |
+| T1.7 Wire `dispatchSave` into `/api/primitives` POST handler | `src/app/api/primitives/route.ts` | 1 |
+| T1.8 Update `ForkSuccessModal` — rename to `SaveSuccessModal`, trigger after save (not after fork POST). Show "View source / Continue editing" for fork path, "Saved version N+1" toast for version-update path. | `src/components/engagement/fork-success-modal.tsx`, `src/components/sandbox/grammar-sandbox-client.tsx` | 1 |
+
+**Tests:** dispatch-save.test.ts covering all 5 matrix cells (owner × load/fork + non-owner × load/fork + no-changes × 3 cases).
+
+**End-of-phase ship:** user clicks Fork → sandbox loads → save creates fork with the "you can't save something you are not the owner of" message when content unchanged; save with changes creates a fork.
+
+### Phase 2 — Universal intent support across all entity types (Days 6–10)
+
+Apply Phase 1's deferred-fork model to effects, capabilities, items, templates. Same dispatch logic.
+
+| Task | Files | Days |
+|---|---|---|
+| T2.1 Wire `dispatchSave` into `/api/effects` POST | `src/app/api/effects/route.ts` | 0.5 |
+| T2.2 Wire `dispatchSave` into `/api/capabilities` POST | `src/app/api/capabilities/route.ts` | 1 |
+| T2.3 Wire `dispatchSave` into `/api/items` POST | `src/app/api/items/route.ts` | 1 |
+| T2.4 Wire `dispatchSave` into `/api/templates` POST | `src/app/api/templates/route.ts` | 1 |
+| T2.5 Update `FlagAndForkFooter` Fork button → same intent=fork URL pattern | `src/components/engagement/flag-and-fork-footer.tsx` | 0.5 |
+| T2.6 Update `CreationPreview` Edit-in-sandbox button → append `&intent=load` | `src/components/creations/creations-client.tsx` | 0.5 |
+| T2.7 Update `sandbox/grammar/menu` and `sandbox/blueprint/menu` to thread intent | `src/components/sandbox/*-menu.tsx` | 0.5 |
+
+**End-of-phase ship:** Fork / Load works identically for every entity type.
+
+### Phase 3 — Source origin + universal fork-lineage schema (Days 11–15)
+
+Add `source_origin` to primitives (which lacks it), version_id columns to character junctions, slot-source enum.
+
+| Task | Files | Days |
+|---|---|---|
+| T3.1 Migration 0018 — `ALTER TABLE primitives ADD COLUMN source_origin text` + backfill + drop 3-col unique + add `(name, source_origin)` unique | `scripts/migrations/0018_*.sql` + journal entry | 1 |
+| T3.2 Migration 0019 — `ALTER TABLE character_primitives/capabilities/items/effects ADD COLUMN version_id uuid` | `scripts/migrations/0019_*.sql` + journal | 1 |
+| T3.3 Migration 0020 — `ALTER TABLE character_* ADD COLUMN slot_source text CHECK (slot_source IN ('OWNED','FORKED','PINNED'))` + backfill 'PINNED' for existing rows | `scripts/migrations/0020_*.sql` + journal | 1 |
+| T3.4 DB backup before prod migration apply | `scripts/backup-db.ts` (already exists, run it) | 0.5 |
+| T3.5 Apply migrations to prod via psql + smoke test | — | 1 |
+| T3.6 Update `queryLibrary` to handle `(name, source_origin)` identity | `src/lib/library/query.ts` | 1 |
+
+**End-of-phase ship:** All entities have source_origin; builds know what slot_source each entry is.
+
+### Phase 4 — Content hashing + version snapshots (Days 16–22)
+
+The big one. Auto-snapshot every save to a content-addressed version row.
+
+| Task | Files | Days |
+|---|---|---|
+| T4.1 `resolveContentVersionId(type, content)` — md5(json_canonicalize(content)) → UUID | `src/lib/versions/content-hash.ts` (NEW) | 1 |
+| T4.2 `recordVersion(targetType, row)` helper — inserts version row + flips is_latest | `src/lib/versions/auto-snapshot.ts` (NEW) | 1 |
+| T4.3 Wire `recordVersion` into `dispatchSave` for both fork and version-update paths | `src/lib/publishing/dispatch-save.ts` | 1 |
+| T4.4 Replace `resolveVirtualVersionId` callsites with `resolveContentVersionId` | `src/lib/engagement/version-helpers.ts` + all callers | 1 |
+| T4.5 Build slot-version-capture: `slotIntoBuild` captures `versionId = resolveContentVersionId(...)` | `src/components/sandbox/grammar-library.tsx`, `blueprint-library.tsx` | 1 |
+| T4.6 Build display queries prefer `version_id` lookup; null = fall back to current row | `src/components/build/build-preview*.tsx` | 1 |
+| T4.7 Migration 0021 — backfill version rows for every existing entity | `scripts/migrations/0021_*.sql` + journal | 1 |
+
+**End-of-phase ship:** Every save creates a content-addressed version row; every build slot pins that version.
+
+### Phase 5 — Slot-source UI + transitive update (Days 23–28)
+
+The build-preview badges + the "Update available" UI + transitive dependency walk.
+
+| Task | Files | Days |
+|---|---|---|
+| T5.1 SlotSourceBadge component — green OWNED / yellow FORKED / blue PINNED v3 | `src/components/build/slot-source-badge.tsx` (NEW) | 1 |
+| T5.2 Wire badge into build preview for primitives/effects/capabilities/items | `src/components/build/build-preview*.tsx` | 1 |
+| T5.3 `updateFromSource(targetType, targetId, userId)` — walks dependency graph | `src/lib/versions/update-from-source.ts` (NEW) | 2 |
+| T5.4 `POST /api/entities/update-from-source` endpoint | `src/app/api/entities/update-from-source/route.ts` (NEW) | 0.5 |
+| T5.5 "Update available: v3 → v5" inline button on PINNED slots | `src/components/build/build-preview*.tsx` | 1 |
+| T5.6 Migration 0022 — `*_versions.delta_kind` enum constraint + default 'FULL' | `scripts/migrations/0022_*.sql` + journal | 0.5 |
+| T5.7 E2E test: capability → primitives + effects → primitive-links; pull update; assert new version_id aggregate | `tests/e2e/transitive-update.test.ts` (NEW) | 1 |
+
+**End-of-phase ship:** User sees slot-source badges in their build; PINNED slots offer transitive updates.
+
+### Total
+
+**~28 working days.** That assumes no surprises and a clean schema. Realistic estimate with reviews + bug fixes: **4–5 weeks.**
+
+### What can ship earlier
+
+- **Phase 1** ships standalone — it's the high-priority UX Mashu asked for. Even without versioning, "click Fork, navigate to sandbox, save with intent decides fork-vs-version" is independently valuable. Recommend phasing review after Phase 1.
+- **Phase 3** migrations can run before Phase 4 content-hashing is done — the schema changes are additive and the backfill is idempotent. Means Phase 4 doesn't start with migration stress.
+- **Phase 5** can be cut into MVP (slot-source badges, no transitive walk) + enhancement (full graph walk) and shipped in two slices.
+
+### Cut-list (if 28 days is too long)
+
+- **T4.4** (replace `resolveVirtualVersionId`) — keep using virtual IDs in reaction aggregates for now; switch later. Saves 1 day.
+- **T4.5/T4.6** (build slot-version-capture) — builds don't pin versions; just show latest. Loses the "edit doesn't break others" guarantee. Saves 2 days but defeats §1 problem statement item 5.
+- **T5.3–T5.7** (full transitive update) — ship without transitive walks; user updates one entity at a time manually. Saves 4 days. Most acceptable cut.
