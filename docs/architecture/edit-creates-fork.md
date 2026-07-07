@@ -64,10 +64,10 @@ In plain words:
 
 | Need | Today | What's missing |
 |---|---|---|
-| Edit creates fork | `POST /api/primitives` UPDATEs in place. | Refactor to INSERT a new fork row on edit, keep old row as a version. |
-| Auto-versioning | `/api/publish` is the only entry point to `primitive_versions`. | Add `/api/primitives` → insert into `primitive_versions` automatically. |
+| Deferred fork on save | `POST /api/primitives` UPDATEs in place with no fork logic. `/api/fork` exists but is called eagerly on click (round 4 behaviour). | Wire `intent` flag + ownership check into save handler. Fork is created at save time, not click time. Cancel/back-out leaves no trace. |
+| Auto-versioning | `/api/publish` is the only entry point to `primitive_versions`. | Add `/api/primitives` → insert into `primitive_versions` automatically on every version-update and fork-on-save path. |
 | Build slotting | `slotIntoBuild` just dispatches a `SlotEvent` with `(kind, id, label)`. No version capture. | Capture `(kind, id, versionId, label)` and pass to the build composition handler. |
-| Fork-naming on edit | `computeUniqueForkName(sourceName)` exists for fork-via-button. | Reuse for edit-creates-fork; the fork name should be derived from the original (e.g. `Strike (draft)` → `Strike (draft 2)` on save). |
+| Fork-naming on save | `computeUniqueForkName(sourceName)` exists for fork-via-button. | Reuse for fork-on-save; the fork name derives from the source (e.g. `Strike (fork)` → `Strike (fork) 2` on second save of the same source). |
 
 ### Soft identity principle
 
@@ -198,9 +198,9 @@ With edit-creates-fork, delete semantics change:
 
 ### D7. Fork-of-fork
 
-Click "Fork" on a row that's already someone's fork. Currently: creates another fork of the source. With edit-creates-fork, this stays the same. The fork lineage (`forks.source_*` → `forks.forked_*`) chains.
+Click "Fork" on a row that's already someone's fork → sandbox opens pre-filled with their fork as source, `intent=fork`. Save creates a new fork row with `source_origin = 'fork:<their_fork_id>'`. Fork lineage: source → their fork → your fork-of-fork. All preserved in `forks` table.
 
-Click "Edit in sandbox" on someone else's fork. Creates a fork of their fork. Fork lineage: source → their fork → your fork-of-fork. All preserved in `forks` table.
+"Load into build" on someone else's fork → sandbox opens pre-filled, `intent=load`. Save: you don't own their fork, so it dispatches as `INSERT new fork row` (the non-owner + intent=load path) — same result as clicking Fork on it. The intent flag matters only for the **owner** path.
 
 ---
 
@@ -252,7 +252,7 @@ FROM primitives;
 
 ### Migration journal entry
 
-`scripts/migration-journal/0018_*.md`, `0019_*.md`, `0020_*.md`.
+`src/db/migrations/meta/_journal.json` will get new entries (0018, 0019, 0020, 0021, 0022) automatically when we run `npx drizzle-kit generate`. The SQL files live alongside (`src/db/migrations/0018_*.sql` etc). The existing `scripts/sync-pending-migrations.mts` applies them to prod.
 
 ---
 
@@ -287,12 +287,13 @@ FROM primitives;
 6. Server endpoints: each POST `/api/<entity>` reads `intent` from body:
    - No intent → existing behaviour (INSERT or UPDATE in place if owned).
    - `intent=load` + caller owns → UPDATE + new version row (skip if content hash unchanged).
-   - `intent=load` + caller doesn't own → 403.
-   - `intent=fork` (any ownership) → INSERT new row with `source_origin = 'fork:<source_id>'`, version #1. Return `{ entityId, versionId, sourceId }`.
-7. Sandbox post-save handler:
-   - If response's `entityId !== sourceId`: replace URL `?edit=<source>` with `?edit=<new>` so subsequent operations target the fork. Open `ForkSuccessModal`.
-   - If response's `entityId === sourceId`: it's a version-update. Show a toast `Saved version <N>`.
-8. Sandbox UX: form header chip ("Forking X" vs "Working on X") + "Discard" button in form header that clears `?edit` + `?intent` and navigates back.
+       - `intent=load` + caller doesn't own → INSERT new fork row.
+       - `intent=fork` (any ownership) → INSERT new row with `source_origin = 'fork:<source_id>'`, version #1. Return `{ entityId, versionId, sourceId }`.
+   7. Sandbox post-save handler:
+       - If response's `kind === "no-op"`: surface the server's `userMessage` as an inline error (non-owner) or toast (owner).
+       - If response's `entityId !== sourceId`: replace URL `?edit=<source>` with `?edit=<new>` so subsequent operations target the fork. Open `ForkSuccessModal`.
+       - If response's `entityId === sourceId`: it's a version-update. Show a toast `Saved version <N>`.
+   8. Sandbox UX: form header chip ("Forking X" vs "Working on X") + "Discard" button in form header that clears `?edit` + `?intent` and navigates back.
 9. Tests: each matrix cell × each entity type.
 
 ### Phase D-bis: schema pre-work deferred to D-completion
@@ -609,11 +610,11 @@ Two pre-existing bugs were fixed while prototyping this model — they would blo
 Every entity save endpoint (`POST /api/primitives`, `/api/effects`, `/api/capabilities`, `/api/items`, `/api/templates`) becomes dual-purpose:
 
 - **No `intent` (legacy callers, e.g. /sandbox direct-create)**: behaves as INSERT (new from scratch) or UPDATE in place if `editingId` is owned by caller. Same as today.
-- **`intent=load`**: caller-owns-editingId → UPDATE + new version row. Caller-doesn't-own → 403 unless editingId is null (then INSERT).
+- **`intent=load`**: caller-owns-editingId → UPDATE + new version row. Caller-doesn't-own → INSERT new fork row (same as intent=fork for non-owners — there's no "you tried to update someone else's row" 403 in the load path, since load is by definition an "I want to work with this" gesture).
 - **`intent=fork`**: caller-owns-editingId → INSERT new row (fork with `source_origin = 'fork:<source_id>'`). Caller-doesn't-own → INSERT new row, same `source_origin`.
+- **No-changes shortcut** (any path): if content hash matches source's content hash, return `kind: "no-op"` with the appropriate user-facing message instead of doing the dispatch.
 
-Plus a new endpoint:
-- **`POST /api/fork/from-edit`** (optional): if a sandbox wants to "fork what's loaded" late (e.g. user starts with intent=load and changes mind), this endpoint promotes the in-progress edit to a fork row. Default behavior is just to re-POST the entity with `intent=fork` overwriting any prior save — server knows what to do because the entity row's owner-check determines the path.
+The Phase 1 `dispatchSave` helper (§D2 pseudocode) lives at `src/lib/publishing/dispatch-save.ts` and is the single entry point for all five POST handlers.
 
 ### What stays the same
 
@@ -780,7 +781,7 @@ The minimum-viable deferred-fork model. No new schema. No content hashing. Just 
 | T1.5 Update `Load into build` button: append `&intent=load` to URL | `src/components/sandbox/grammar-library.tsx`, `src/components/sandbox/blueprint-library.tsx` | 0.5 |
 | T1.6 Add `dispatchSave` helper that runs the no-op check + matrix | `src/lib/publishing/dispatch-save.ts` (NEW) | 1 |
 | T1.7 Wire `dispatchSave` into `/api/primitives` POST handler | `src/app/api/primitives/route.ts` | 1 |
-| T1.8 Update `ForkSuccessModal` — rename to `SaveSuccessModal`, trigger after save (not after fork POST). Show "View source / Continue editing" for fork path, "Saved version N+1" toast for version-update path. | `src/components/engagement/fork-success-modal.tsx`, `src/components/sandbox/grammar-sandbox-client.tsx` | 1 |
+| T1.8 Update `ForkSuccessModal` — trigger after save (not after fork POST). Show "View source / Continue editing" for fork path, "Saved version N+1" toast for version-update path. Modal name stays `ForkSuccessModal` since it only ever appears after a fork-creating save. | `src/components/engagement/fork-success-modal.tsx`, `src/components/sandbox/grammar-sandbox-client.tsx` | 1 |
 
 **Tests:** dispatch-save.test.ts covering all 5 matrix cells (owner × load/fork + non-owner × load/fork + no-changes × 3 cases).
 
@@ -808,11 +809,11 @@ Add `source_origin` to primitives (which lacks it), version_id columns to charac
 
 | Task | Files | Days |
 |---|---|---|
-| T3.1 Migration 0018 — `ALTER TABLE primitives ADD COLUMN source_origin text` + backfill + drop 3-col unique + add `(name, source_origin)` unique | `scripts/migrations/0018_*.sql` + journal entry | 1 |
-| T3.2 Migration 0019 — `ALTER TABLE character_primitives/capabilities/items/effects ADD COLUMN version_id uuid` | `scripts/migrations/0019_*.sql` + journal | 1 |
-| T3.3 Migration 0020 — `ALTER TABLE character_* ADD COLUMN slot_source text CHECK (slot_source IN ('OWNED','FORKED','PINNED'))` + backfill 'PINNED' for existing rows | `scripts/migrations/0020_*.sql` + journal | 1 |
+| T3.1 Migration 0018 — `ALTER TABLE primitives ADD COLUMN source_origin text` + backfill + drop 3-col unique + add `(name, source_origin)` unique | `src/db/migrations/0018_*.sql` + journal entry | 1 |
+| T3.2 Migration 0019 — `ALTER TABLE character_primitives/capabilities/items/effects ADD COLUMN version_id uuid` | `src/db/migrations/0019_*.sql` + journal | 1 |
+| T3.3 Migration 0020 — `ALTER TABLE character_* ADD COLUMN slot_source text CHECK (slot_source IN ('OWNED','FORKED','PINNED'))` + backfill 'PINNED' for existing rows | `src/db/migrations/0020_*.sql` + journal | 1 |
 | T3.4 DB backup before prod migration apply | `scripts/backup-db.ts` (already exists, run it) | 0.5 |
-| T3.5 Apply migrations to prod via psql + smoke test | — | 1 |
+| T3.5 Apply migrations to prod via `npx tsx scripts/sync-pending-migrations.mts` + smoke test | — | 1 |
 | T3.6 Update `queryLibrary` to handle `(name, source_origin)` identity | `src/lib/library/query.ts` | 1 |
 
 **End-of-phase ship:** All entities have source_origin; builds know what slot_source each entry is.
@@ -829,7 +830,7 @@ The big one. Auto-snapshot every save to a content-addressed version row.
 | T4.4 Replace `resolveVirtualVersionId` callsites with `resolveContentVersionId` | `src/lib/engagement/version-helpers.ts` + all callers | 1 |
 | T4.5 Build slot-version-capture: `slotIntoBuild` captures `versionId = resolveContentVersionId(...)` | `src/components/sandbox/grammar-library.tsx`, `blueprint-library.tsx` | 1 |
 | T4.6 Build display queries prefer `version_id` lookup; null = fall back to current row | `src/components/build/build-preview*.tsx` | 1 |
-| T4.7 Migration 0021 — backfill version rows for every existing entity | `scripts/migrations/0021_*.sql` + journal | 1 |
+| T4.7 Migration 0021 — backfill version rows for every existing entity | `src/db/migrations/0021_*.sql` + journal | 1 |
 
 **End-of-phase ship:** Every save creates a content-addressed version row; every build slot pins that version.
 
@@ -844,7 +845,7 @@ The build-preview badges + the "Update available" UI + transitive dependency wal
 | T5.3 `updateFromSource(targetType, targetId, userId)` — walks dependency graph | `src/lib/versions/update-from-source.ts` (NEW) | 2 |
 | T5.4 `POST /api/entities/update-from-source` endpoint | `src/app/api/entities/update-from-source/route.ts` (NEW) | 0.5 |
 | T5.5 "Update available: v3 → v5" inline button on PINNED slots | `src/components/build/build-preview*.tsx` | 1 |
-| T5.6 Migration 0022 — `*_versions.delta_kind` enum constraint + default 'FULL' | `scripts/migrations/0022_*.sql` + journal | 0.5 |
+| T5.6 Migration 0022 — `*_versions.delta_kind` enum constraint + default 'FULL' | `src/db/migrations/0022_*.sql` + journal | 0.5 |
 | T5.7 E2E test: capability → primitives + effects → primitive-links; pull update; assert new version_id aggregate | `tests/e2e/transitive-update.test.ts` (NEW) | 1 |
 
 **End-of-phase ship:** User sees slot-source badges in their build; PINNED slots offer transitive updates.
