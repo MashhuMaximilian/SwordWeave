@@ -53,6 +53,24 @@ export async function GET(req: Request) {
     };
   }
 
+  // Probe Drizzle-style query against reaction_aggregates (same path the page uses)
+  try {
+    const { sql: drizzleSql, eq } = await import("drizzle-orm");
+    const { reactionAggregates } = await import("@/db/schema");
+    const r = await db
+      .select({ likes: drizzleSql<number>`SUM(${reactionAggregates.likesCount})::int` })
+      .from(reactionAggregates)
+      .where(eq(reactionAggregates.targetType, "PRIMITIVE" as never))
+      .limit(1);
+    result["drizzleProbe"] = { ok: true, rowCount: r.length, sample: r[0] ?? null };
+  } catch (e: unknown) {
+    result["drizzleProbe"] = {
+      ok: false,
+      error: e instanceof Error ? e.message : String(e),
+      errorName: e instanceof Error ? e.name : null,
+    };
+  }
+
   return NextResponse.json(result, {
     headers: {
       "Cache-Control": "no-store, max-age=0",
