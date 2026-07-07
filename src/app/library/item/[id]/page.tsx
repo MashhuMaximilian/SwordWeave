@@ -518,6 +518,16 @@ function DetailShell({
             flagNotes={flagNotes}
             forkSource={forkSource}
           />
+          {/* ForksList rendered as a sibling (server component) — cannot be
+              a child of <FlagAndForkFooter> because that's a "use client"
+              component and would inline the DB query into the browser
+              bundle, throwing DATABASE_URL at hydration time. */}
+          <div className="mt-5">
+            <ForksList
+              targetType={targetType as ForkTargetType}
+              targetId={targetId}
+            />
+          </div>
         </footer>
       </article>
     </div>

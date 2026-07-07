@@ -20,20 +20,33 @@
 
 import { Pool, neonConfig } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
+import { loadEnvConfig } from "@next/env";
 import * as schema from "@/db/schema";
 
 // =============================================================================
-// IMPORTANT: do NOT use `process.env` directly here.
+// IMPORTANT: do NOT rely on `process.env` directly.
 //
-// Some Next.js / Turbopack builds transform `process.env.X` references into
-// `defaultImport.env.X` (because they're treated as ES module default imports
-// of the `process` module). When that happens, `process.env` becomes
-// `({}).env` and resolves to `undefined`, even though the global `process`
-// object is fully populated at runtime.
+// In some Next.js / Turbopack builds, `process.env.X` references can be
+// transformed into `defaultImport.env.X` (treating `process` as an ES module
+// default import of the `process` module, where the default export is `{}`),
+// making env vars undefined at runtime even when they're correctly configured
+// in Vercel / .env.local. We've seen this happen on the `/library/item/[id]`
+// page in particular (probably because of how Clerk's dev-browser handshake
+// affects the runtime).
 //
-// Use `globalThis.process.env` to bypass the transformation — the bundler
-// can't replace a member access on `globalThis` with a module-import stub.
+// Use `loadEnvConfig` at module load to ensure `.env.local` (and friends)
+// are populated into `process.env` from disk, then read via globalThis.process
+// (which bypasses any bundler-side rewriting of `process`).
 // =============================================================================
+
+// Load env vars from .env files. This is idempotent — already-populated
+// vars are left alone. Safe to call at module load.
+try {
+  loadEnvConfig(process.cwd());
+} catch {
+  // loadEnvConfig can throw on serverless platforms if there's no .env file
+  // (e.g. Vercel reads env vars from the platform directly). That's fine.
+}
 
 // Required for environments where Node's WebSocket constructor isn't
 // available globally (e.g. local dev without `ws` polyfill).

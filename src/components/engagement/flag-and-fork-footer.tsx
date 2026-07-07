@@ -6,8 +6,13 @@
 // Hosts the per-source-page UI in the user's specified order:
 //   Tags row  →  Forked from (collapsible, if applicable)
 //              →  Flags (collapsible)
-//              →  ForksList
 //              →  Version history link
+//
+// ForksList is NOT rendered here — it's a server component (async data
+// fetch against db/client) and client components can't import server
+// components without inlining their DB code into the browser bundle
+// (which throws DATABASE_URL is required at hydration time). The page
+// renders <ForksList /> directly as a sibling instead.
 //
 // The flags section hosts a modal that lists freeform OTHER notes. We
 // keep state here (the modal is local to the section) rather than
@@ -21,7 +26,6 @@
 //     wants the full chain.
 //   • Flags count + distribution — public. Reporter identities NOT
 //     exposed; only the note text is.
-//   • ForksList — public.
 // =============================================================================
 
 import { useState } from "react";
@@ -32,7 +36,6 @@ import {
   type FlagDistribution,
 } from "@/components/engagement/flags-section";
 import type { ForkTargetType } from "@/lib/publishing/forks-query";
-import { ForksList } from "@/components/engagement/forks-list";
 
 export function FlagAndForkFooter(props: {
   /** Item type for the version-history link (e.g. "PRIMITIVE"). */
@@ -150,13 +153,9 @@ export function FlagAndForkFooter(props: {
         );
       })()}
 
-      {/* Existing forks list + version-history link. */}
-      <div className="mt-5">
-        <ForksList
-          targetType={props.forksTargetType}
-          targetId={props.targetId}
-        />
-      </div>
+      {/* Version-history link only — ForksList is rendered as a sibling by
+          the page (server component) to keep DB code out of the client
+          bundle. */}
       <div className="mt-3 flex justify-end">
         <Link
           href={`/library/item/${props.targetType}:${props.targetId}/versions`}
