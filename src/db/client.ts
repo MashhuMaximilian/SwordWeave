@@ -48,13 +48,29 @@ let _db: ReturnType<typeof drizzle<typeof schema>> | null = null;
 function getDatabaseUrl(): string {
   // Use globalThis.process.env instead of process.env so Turbopack doesn't
   // transform this into a broken default-import reference.
-  const proc = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process;
-  const url = proc?.env?.["DATABASE_URL"];
+  const g = globalThis as {
+    process?: { env?: Record<string, string | undefined> };
+  };
+  const proc = g.process;
+  const env = proc?.env;
+  const url = env?.["DATABASE_URL"];
   if (!url) {
+    // Diagnostic: surface what we actually see so we can see whether
+    // process is missing entirely or just has no DATABASE_URL.
+    const diag = {
+      hasProcess: typeof proc !== "undefined",
+      hasEnv: typeof env !== "undefined",
+      envKeys: env ? Object.keys(env).slice(0, 5) : null,
+      procType: typeof proc,
+      envType: typeof env,
+      nodeEnv: env?.["NODE_ENV"] ?? null,
+      vercelEnv: env?.["VERCEL_ENV"] ?? null,
+    };
     throw new Error(
       "DATABASE_URL is required to initialize the database client. " +
         "Set it in Vercel → Project Settings → Environment Variables, " +
-        "or in your local .env.local for development.",
+        "or in your local .env.local for development. DIAG: " +
+        JSON.stringify(diag),
     );
   }
   return url;
