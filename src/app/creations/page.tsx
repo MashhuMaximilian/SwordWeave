@@ -32,8 +32,6 @@ export default async function CreationsPage({
   searchParams: Promise<{ type?: string; status?: string }>;
 }) {
   const { userId } = await auth();
-  // eslint-disable-next-line no-console
-  console.log("[creations] auth userId:", userId);
   if (!userId) {
     redirect("/sign-in?redirect=/creations");
   }
@@ -44,8 +42,6 @@ export default async function CreationsPage({
   // "My creations" = rows the user authored. We pull all entity types in
   // parallel and let the client filter by type/status. Drafts = private
   // (isPublic=false); Published = public.
-  // eslint-disable-next-line no-console
-  console.log("[creations] running queries with userId:", userId);
   const [primitiveRows, effectRows, capabilityRows, templateRows, itemRows, characterRows] =
     await Promise.all([
       db.query.primitives.findMany({
@@ -75,15 +71,6 @@ export default async function CreationsPage({
         orderBy: [desc(characters.level), asc(characters.name)],
       }),
     ]);
-  // eslint-disable-next-line no-console
-  console.log("[creations] query results:", {
-    primitive: primitiveRows.length,
-    effect: effectRows.length,
-    capability: capabilityRows.length,
-    template: templateRows.length,
-    item: itemRows.length,
-    character: characterRows.length,
-  });
 
   // Look up publication rows for every (targetType, targetId) the user
   // owns, in one query. Used to show the per-item visibility badge and to

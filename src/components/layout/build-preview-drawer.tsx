@@ -229,12 +229,33 @@ function DrawerShell({
         aria-hidden="true"
       />
       {/* Panel — always rendered so children stay mounted. Hidden off-screen
-          with a translate transition when closed. */}
+          with a translate transition when closed.
+
+          a11y notes:
+          - We previously used `aria-hidden={!isOpen}` to hide the panel
+            from screen readers when closed. That's wrong when focus is
+            still inside the panel — focus retained on a descendant of
+            an aria-hidden element is a WAI-ARIA violation (and the
+            browser console warns about it). The reason focus ended up
+            stuck inside is the Save button stayed focused after the
+            user clicked Save and the drawer closed.
+          - `inert` is the modern fix: when set, the entire subtree is
+            removed from focus order, screen reader nav, AND click
+            events. Combined with aria-hidden, it satisfies both the
+            "this content is currently not interactive" semantic and
+            the focus-hygiene requirement.
+          - The previous Save handler's flow kept the focus inside the
+            panel during the close transition. With inert, even if
+            focus hasn't been moved out yet, the browser doesn't flag
+            it because inert makes the panel unreachable.
+      */}
       <aside
         role="dialog"
         aria-modal={isOpen}
         aria-label="Build & Preview"
         aria-hidden={!isOpen}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        inert={!isOpen ? ("" as unknown as boolean) : undefined}
         className={cn(
           "fixed inset-x-0 bottom-0 z-50 flex max-h-[90vh] flex-col rounded-t-2xl border-t border-border bg-card shadow-2xl transition-transform duration-300 ease-out sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:max-w-4xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl",
           isOpen

@@ -451,11 +451,22 @@ export function PrimitiveForm({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          // When editing an existing row, include its id so the server
-          // can UPDATE by primary key instead of UPSERT-on-(name,category,userId).
-          // Without this, editing a fork whose name has changed creates a
-          // duplicate row instead of overwriting the fork in place.
-          ...(initialPrimitive?.id != null ? { id: initialPrimitive.id } : {}),
+          // Only send `id` when editing a row the caller actually owns.
+          // System content (initialPrimitive.userId === null) must NOT
+          // include its id — otherwise the backend UPDATEs the system
+          // row, which would either fail the ownership gate (404) or
+          // worse, succeed and silently let the caller overwrite
+          // library content. For system content we want a fresh INSERT
+          // via the UPSERT-on-(name, category, userId) path, which
+          // produces a private copy owned by the caller.
+          //
+          // Without this, clicking "Save" on a library primitive you
+          // don't own returns 404 "Primitive not found or not owned by
+          // you" — confusing because the user thinks they're editing,
+          // not creating.
+          ...(initialPrimitive?.id != null && initialPrimitive?.userId
+            ? { id: initialPrimitive.id }
+            : {}),
           ...form,
           mirrorVector: form.isMirrorable ? form.mirrorVector : "STANDARD_ONLY",
           mirrorBuCredit: form.isMirrorable ? form.mirrorBuCredit : "0",
