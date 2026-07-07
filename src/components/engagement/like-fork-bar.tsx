@@ -13,6 +13,7 @@ import {
   Star,
   type LucideIcon,
 } from "lucide-react";
+import { ForkSuccessModal } from "@/components/engagement/fork-success-modal";
 
 // =============================================================================
 // LikeForkBar — engagement controls for any library item
@@ -98,6 +99,18 @@ export function LikeForkBar(props: LikeForkBarProps) {
   const [flagReason, setFlagReason] = useState<FlagReason | null>(null);
   const [flagNote, setFlagNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  /**
+   * After a successful fork, hold the result here so the
+   * ForkSuccessModal can render with both action buttons ("View
+   * source page" + "Edit in sandbox"). Previously the handleFork
+   * redirected to /sandbox?forkedFrom=… immediately, skipping the
+   * confirmation step the user asked for.
+   */
+  const [forkResult, setForkResult] = useState<{
+    forkedTargetId: string;
+    sourceTargetId: string;
+    forkName?: string;
+  } | null>(null);
 
   const isAuthed = Boolean(props.currentUserId);
   const isOwnContent =
@@ -234,10 +247,20 @@ export function LikeForkBar(props: LikeForkBarProps) {
         }
         const data = await res.json();
         setForks(data.forkCount);
-        // Optionally navigate to the new fork
+        // Surface the success modal so the user can choose:
+        //   1. View the new fork's source page
+        //   2. Edit the fork in their sandbox
+        // Previously we redirected to /sandbox?forkedFrom=…, which
+        // skipped the confirmation the user asked for.
         if (data.forkedTargetId) {
-          router.push(`/sandbox?forkedFrom=${data.forkedTargetId}`);
+          setForkResult({
+            forkedTargetId: data.forkedTargetId,
+            sourceTargetId: data.sourceTargetId ?? props.targetId,
+          });
         }
+        // Refresh engagement data on the page so the new fork count
+        // propagates to parent lists when this bar lives on a card.
+        router.refresh();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to fork");
       }
@@ -311,6 +334,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
   const iconClass = props.compact ? "h-3 w-3" : "h-4 w-4";
 
   return (
+    <>
     <div
       onClick={(e) => e.stopPropagation()}
       className={`flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${props.className ?? ""}`}
@@ -437,6 +461,29 @@ export function LikeForkBar(props: LikeForkBarProps) {
         </p>
       )}
     </div>
+    <ForkSuccessModal
+      isOpen={forkResult !== null}
+      onClose={() => setForkResult(null)}
+      result={
+        forkResult
+          ? {
+              forkedTargetId: forkResult.forkedTargetId,
+              sourceTargetId: forkResult.sourceTargetId,
+              // LikeForkBar's targetType union is narrower than the
+              // modal's (it doesn't include BUILD_TEMPLATE etc), but
+              // every value it accepts IS a valid ForkSuccessModal
+              // target type. Cast widens without runtime impact.
+              targetType: props.targetType as never,
+              // Only include forkName when defined — exactOptionalPropertyTypes
+              // forbids `string | undefined` on an optional property.
+              ...(forkResult.forkName
+                ? { forkName: forkResult.forkName }
+                : {}),
+            }
+          : null
+      }
+    />
+    </>
   );
 }
 
