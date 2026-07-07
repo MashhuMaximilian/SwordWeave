@@ -35,10 +35,14 @@ let _db: ReturnType<typeof drizzle<typeof schema>> | null = null;
 function getDatabaseUrl(): string {
   const url = process.env["DATABASE_URL"];
   if (!url) {
+    // DEBUG: include stack trace so we can see WHO is calling us when
+    // this fires in the browser but not in curl.
+    const stack = new Error().stack ?? "(no stack)";
     throw new Error(
       "DATABASE_URL is required to initialize the database client. " +
         "Set it in Vercel → Project Settings → Environment Variables, " +
-        "or in your local .env.local for development.",
+        "or in your local .env.local for development.\n" +
+        "STACK: " + stack,
     );
   }
   return url;
