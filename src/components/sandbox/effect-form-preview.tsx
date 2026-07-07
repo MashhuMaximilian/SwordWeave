@@ -37,7 +37,7 @@ export function EffectFormPreview({
     !form.narrativeDescription &&
     slots.length === 0;
 
-  const tags = form.tags
+  const tags = (form.tags ?? "")
     .split(",")
     .map((tag) => tag.trim())
     .filter(Boolean);

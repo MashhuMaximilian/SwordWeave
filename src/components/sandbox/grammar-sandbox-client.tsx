@@ -203,6 +203,12 @@ export function GrammarSandboxClient({
       setBuild(action.mode);
       setEditing(null);
       setFormIsDirty(false); // new mode = fresh form, force pristine
+      // Drop the previous form snapshot — its shape (primitive / effect /
+      // capability) is tied to the build mode we're leaving, and the new
+      // preview will crash if it tries to read fields like `tags` that
+      // only exist on the destination form. The new form's onStateChange
+      // will repopulate this within a tick.
+      setFormSnapshot(null);
       // URL sync — preserve all other search params, just update build.
       const nextParams = new URLSearchParams(
         currentSearchParams?.toString() ?? "",

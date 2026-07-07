@@ -78,7 +78,7 @@ export function ItemFormPreview({
     (sum, slot) => sum + slot.primitive.buCost,
     0,
   );
-  const tags = form.tags
+  const tags = (form.tags ?? "")
     .split(",")
     .map((t) => t.trim())
     .filter(Boolean);

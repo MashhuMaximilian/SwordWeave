@@ -191,6 +191,11 @@ export function BlueprintSandboxClient({
       setBuild(action.mode);
       setEditing(null);
       setFormIsDirty(false); // new mode = fresh form
+      // Drop the previous form snapshot — its shape (template vs item) is
+      // tied to the build mode we're leaving, and the new preview can
+      // crash if it reads fields like `tags` that don't exist on the
+      // destination form. The new form's onStateChange repopulates this.
+      setFormSnapshot(null);
       // Sync the URL so refresh / deep-link lands on the right mode.
       // Preserve all other search params (kind, edit, etc.) so the
       // user's previous state isn't lost.
