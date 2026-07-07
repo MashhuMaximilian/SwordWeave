@@ -4,8 +4,10 @@
 // FlagAndForkFooter — Source-page lower section
 //
 // Hosts the per-source-page UI in the user's specified order:
-//   Tags row  →  Flags (collapsible)  →  ForksList
-//   →  Version history link
+//   Tags row  →  Forked from (collapsible, if applicable)
+//              →  Flags (collapsible)
+//              →  ForksList
+//              →  Version history link
 //
 // The flags section hosts a modal that lists freeform OTHER notes. We
 // keep state here (the modal is local to the section) rather than
@@ -14,9 +16,11 @@
 //
 // Visibility / privacy:
 //   • Tag chips — public, no special handling.
-//   • Flags count + distribution — public. Helps the community decide
-//     whether to engage. Reporter identities NOT exposed; only the
-//     note text is (reporters opted into the note by picking OTHER).
+//   • Forked-from breadcrumb — public. Shows only the immediate parent
+//     (no full ancestry) plus a "See forking line" link if the user
+//     wants the full chain.
+//   • Flags count + distribution — public. Reporter identities NOT
+//     exposed; only the note text is.
 //   • ForksList — public.
 // =============================================================================
 
@@ -45,8 +49,19 @@ export function FlagAndForkFooter(props: {
   /** Tag chips to render as small pills above flags. Empty array hides
    *  the row. */
   tags: string[];
+  /**
+   * Immediate parent (if this entity is a fork). Null means it's the
+   * original. Drives the "Forked from" breadcrumb in the footer.
+   */
+  forkSource: {
+    sourceTargetType: string;
+    sourceTargetId: string;
+    sourceAuthorUsername: string | null;
+    forkedAt: Date | string;
+  } | null;
 }) {
   const [notesOpen, setNotesOpen] = useState(false);
+  const [forkedFromOpen, setForkedFromOpen] = useState(false);
 
   return (
     <>
@@ -62,6 +77,58 @@ export function FlagAndForkFooter(props: {
             </span>
           ))}
         </div>
+      ) : null}
+
+      {/* Forked-from breadcrumb — renders only if this entity was forked
+          from another. Collapsed by default; clicking expands to show
+          when it was forked + the immediate parent link. The "See
+          forking line" link opens a dedicated page with the full
+          ancestry chain. */}
+      {props.forkSource ? (
+        <section className="mt-5 rounded-md border border-border bg-card">
+          <button
+            type="button"
+            onClick={() => setForkedFromOpen((v) => !v)}
+            aria-expanded={forkedFromOpen}
+            className="flex w-full items-center justify-between gap-2 p-3 text-left"
+          >
+            <span className="flex items-center gap-2 text-sm">
+              <span aria-hidden="true" className="text-muted-foreground">
+                ⑂
+              </span>
+              <span className="font-semibold">Forked from</span>
+              <Link
+                href={`/library/item/${props.forkSource.sourceTargetType}:${encodeURIComponent(props.forkSource.sourceTargetId)}`}
+                className="text-primary hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {props.forkSource.sourceTargetType}:
+                {props.forkSource.sourceTargetId}
+              </Link>
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {forkedFromOpen ? "Hide" : "Show"}
+            </span>
+          </button>
+          {forkedFromOpen ? (
+            <div className="space-y-1 border-t border-border px-3 py-2 text-xs text-muted-foreground">
+              <p>
+                Forked{" "}
+                {new Date(props.forkSource.forkedAt).toLocaleDateString()}
+                {props.forkSource.sourceAuthorUsername
+                  ? ` from @${props.forkSource.sourceAuthorUsername}'s version`
+                  : ""}
+                .
+              </p>
+              <Link
+                href={`/library/item/${props.targetType}:${encodeURIComponent(props.targetId)}/forks`}
+                className="inline-block font-medium text-primary hover:underline"
+              >
+                See forking line (full ancestry) →
+              </Link>
+            </div>
+          ) : null}
+        </section>
       ) : null}
 
       {/* Flags section — collapsible distribution + counts. */}

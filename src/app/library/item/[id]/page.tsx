@@ -34,6 +34,7 @@ import {
   listFlagNotes,
   type FlagReason,
 } from "@/lib/engagement/flags-service";
+import { getForkSource } from "@/lib/publishing/fork-lineage";
 
 export const dynamic = "force-dynamic";
 
@@ -214,6 +215,44 @@ async function loadFlagsAndTags(
   }
 }
 
+// =============================================================================
+// loadForkSource — single query for the immediate parent of a fork.
+//
+// Fail-soft: returns null on any error so the source page just hides
+// the "Forked from" section rather than 500-ing.
+// =============================================================================
+
+async function loadForkSource(
+  targetType: string,
+  targetId: string,
+): Promise<{
+  sourceTargetType: string;
+  sourceTargetId: string;
+  sourceAuthorUsername: string | null;
+  forkedAt: Date | string;
+} | null> {
+  try {
+    const src = await getForkSource(
+      targetType as never,
+      targetId,
+    );
+    if (!src) return null;
+    return {
+      sourceTargetType: src.sourceTargetType,
+      sourceTargetId: src.sourceTargetId,
+      sourceAuthorUsername: src.sourceAuthorUsername,
+      forkedAt:
+        src.forkedAt instanceof Date
+          ? src.forkedAt.toISOString()
+          : src.forkedAt,
+    };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[library item page] forkSource load failed:", err);
+    return null;
+  }
+}
+
 export default async function LibraryItemPage({ params }: PageProps) {
   const { id: rawId } = await params;
   const parsed = parseCompositeId(decodeURIComponent(rawId));
@@ -304,6 +343,7 @@ function DetailShell({
   tags,
   flagDistribution,
   flagNotes,
+  forkSource,
 }: {
   children: React.ReactNode;
   backHref: string;
@@ -355,6 +395,17 @@ function DetailShell({
    * just shows "No freeform notes yet." inside.
    */
   flagNotes: Array<{ id: string; note: string; reportedAt: Date | string }>;
+  /**
+   * Immediate parent fork (if this entity was forked from another).
+   * Null = this is the original / hasn't been forked from. The footer
+   * collapses the "Forked from" section when null.
+   */
+  forkSource: {
+    sourceTargetType: string;
+    sourceTargetId: string;
+    sourceAuthorUsername: string | null;
+    forkedAt: Date | string;
+  } | null;
 }) {
   const canEdit =
     editHref !== null &&
@@ -459,6 +510,7 @@ function DetailShell({
             tags={tags}
             flagDistribution={flagDistribution}
             flagNotes={flagNotes}
+            forkSource={forkSource}
           />
         </footer>
       </article>
@@ -478,11 +530,10 @@ async function PrimitiveDetail({
 
   const author = await resolveAuthorByClerkId(row.userId);
   const engagement = await loadEngagement("PRIMITIVE", String(id), currentUserId);
-  const { flagDistribution, flagNotes } = await loadFlagsAndTags(
-    "PRIMITIVE",
-    String(id),
-    [],
-  );
+  const [{ flagDistribution, flagNotes }, forkSource] = await Promise.all([
+    loadFlagsAndTags("PRIMITIVE", String(id), []),
+    loadForkSource("PRIMITIVE", String(id)),
+  ]);
 
   return (
     <DetailShell
@@ -502,6 +553,7 @@ async function PrimitiveDetail({
       tags={[]}
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
+      forkSource={forkSource}
     >
       <section>
         <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
@@ -569,11 +621,10 @@ async function CapabilityDetail({
   }
 
   const engagement = await loadEngagement("CAPABILITY", id, currentUserId);
-  const { flagDistribution, flagNotes } = await loadFlagsAndTags(
-    "CAPABILITY",
-    id,
-    row.tags ?? [],
-  );
+  const [{ flagDistribution, flagNotes }, forkSource] = await Promise.all([
+    loadFlagsAndTags("CAPABILITY", id, row.tags ?? []),
+    loadForkSource("CAPABILITY", id),
+  ]);
 
   return (
     <DetailShell
@@ -593,6 +644,7 @@ async function CapabilityDetail({
       tags={row.tags ?? []}
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
+      forkSource={forkSource}
     >
       <section className="grid gap-3 sm:grid-cols-2">
         <DataField label="Type" value={row.type} />
@@ -686,11 +738,14 @@ async function TemplateDetail({
     id,
     currentUserId,
   );
-  const { flagDistribution, flagNotes } = await loadFlagsAndTags(
-    targetTypeForEngagement,
-    id,
-    [], // templates don't have a tags column yet
-  );
+  const [{ flagDistribution, flagNotes }, forkSource] = await Promise.all([
+    loadFlagsAndTags(
+      targetTypeForEngagement,
+      id,
+      [], // templates don't have a tags column yet
+    ),
+    loadForkSource(targetTypeForEngagement, id),
+  ]);
 
   return (
     <DetailShell
@@ -710,6 +765,7 @@ async function TemplateDetail({
       tags={[]}
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
+      forkSource={forkSource}
     >
       {row.imageUrl && (
         <img
@@ -835,11 +891,10 @@ async function EffectDetail({
 
   const author = await resolveAuthorByClerkId(effectRow.userId);
   const engagement = await loadEngagement("EFFECT", id, currentUserId);
-  const { flagDistribution, flagNotes } = await loadFlagsAndTags(
-    "EFFECT",
-    id,
-    effectRow.tags ?? [],
-  );
+  const [{ flagDistribution, flagNotes }, forkSource] = await Promise.all([
+    loadFlagsAndTags("EFFECT", id, effectRow.tags ?? []),
+    loadForkSource("EFFECT", id),
+  ]);
 
   const parentEffects = parentEdges.map((edge) => edge.parentEffect);
   const childEffects = childEdges.map((edge) => edge.childEffect);
@@ -862,6 +917,7 @@ async function EffectDetail({
       tags={effectRow.tags ?? []}
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
+      forkSource={forkSource}
     >
       {effectRow.tags.length > 0 && (
         <section className="mb-5">
@@ -994,11 +1050,10 @@ async function ItemDetail({
 
   const author = await resolveAuthorByClerkId(itemRow.userId);
   const engagement = await loadEngagement("ITEM", id, currentUserId);
-  const { flagDistribution, flagNotes } = await loadFlagsAndTags(
-    "ITEM",
-    id,
-    itemRow.tags ?? [],
-  );
+  const [{ flagDistribution, flagNotes }, forkSource] = await Promise.all([
+    loadFlagsAndTags("ITEM", id, itemRow.tags ?? []),
+    loadForkSource("ITEM", id),
+  ]);
 
   // Rarity class for the chip. itemRarityEnum is the schema enum;
   // we map each value to a tailwind color pair. Cast through string
@@ -1041,6 +1096,7 @@ async function ItemDetail({
       tags={itemRow.tags ?? []}
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
+      forkSource={forkSource}
     >
       <section className="mb-5">
         <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">

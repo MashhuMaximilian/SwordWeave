@@ -80,7 +80,9 @@ export function ForksListClient({
         )}
       </div>
 
-      {/* Compact entry list */}
+      {/* Compact entry list — each row links to the fork's source page
+          so the user can drill into a specific fork. We show the forker
+          + when they forked + which source entity this came from. */}
       <ul className="divide-y divide-border/60 text-sm">
         {visibleForks.map((f) => (
           <li key={f.id} className="flex items-center gap-3 py-2">
@@ -116,6 +118,16 @@ export function ForksListClient({
                 · {timeAgo(f.forkedAt)}
               </span>
             </div>
+            {/* Link to the fork's source page so the user can drill
+                into it. The fork is identified by its (type, id) tuple
+                in the standard library URL format. */}
+            <Link
+              href={`/library/item/${f.forkedTargetType}:${encodeURIComponent(f.forkedTargetId)}`}
+              className="shrink-0 text-xs font-medium text-primary hover:underline"
+              title={`View fork: ${f.forkedTargetName ?? "untitled"}`}
+            >
+              View fork →
+            </Link>
           </li>
         ))}
       </ul>
