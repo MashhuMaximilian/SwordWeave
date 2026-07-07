@@ -21,6 +21,7 @@ import {
 } from "@/db/schema";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 import { ForksList } from "@/components/engagement/forks-list";
+import { FlagAndForkFooter } from "@/components/engagement/flag-and-fork-footer";
 import type { ForkTargetType } from "@/lib/publishing/forks-query";
 import { Markdown } from "@/components/ui/markdown";
 import {
@@ -28,6 +29,11 @@ import {
   resolveUserIdByClerkId,
 } from "@/lib/auth/author-resolver";
 import { resolveVirtualVersionId } from "@/lib/engagement/version-helpers";
+import {
+  getFlagAggregate,
+  listFlagNotes,
+  type FlagReason,
+} from "@/lib/engagement/flags-service";
 
 export const dynamic = "force-dynamic";
 
@@ -114,6 +120,98 @@ async function loadEngagement(
     net: rxAgg.likes - rxAgg.dislikes,
     userReaction: userRx as "LIKE" | "DISLIKE" | null,
   };
+}
+
+// =============================================================================
+// loadFlagsAndTags — Source-page footer data (flags + tag chips).
+//
+// Runs the flag-distribution + OTHER-notes fetch in parallel. Both are
+// indexed lookups against (targetType, targetId) so they're cheap, but
+// the await chain is sequential by default — parallelizing shaves ~50ms
+// off the source-page TTI.
+//
+// Wrapped in try/catch so a transient failure on the flag tables doesn't
+// 500 the entire source page — both come back as empty defaults, the
+// footer just doesn't render the section.
+// =============================================================================
+
+async function loadFlagsAndTags(
+  targetType: string,
+  targetId: string,
+  tags: string[],
+): Promise<{
+  flagDistribution: Record<FlagReason, number>;
+  flagNotes: Array<{ id: string; note: string; reportedAt: Date | string }>;
+}> {
+  // Fallback for targets without a real versionId (shouldn't happen for
+  // published items, but defense-in-depth).
+  let versionId: string;
+  try {
+    versionId = resolveVirtualVersionId(
+      targetType as never,
+      targetId,
+    );
+  } catch {
+    return {
+      flagDistribution: {
+        UNBALANCED: 0,
+        BROKEN: 0,
+        INAPPROPRIATE: 0,
+        DUPLICATE: 0,
+        OTHER: 0,
+      },
+      flagNotes: [],
+    };
+  }
+
+  try {
+    const [distribution, notes] = await Promise.all([
+      getFlagAggregate(targetType as never, targetId, versionId),
+      // Only fetch notes when there's something to show. Saves a DB
+      // round-trip on items that have zero flags. Note: this only
+      // saves when `notes.length` would be 0 — we still issue the
+      // query when there ARE OTHER notes, but in that case we'd want
+      // them anyway.
+      listFlagNotes(targetType as never, targetId, versionId).then(
+        (rows) =>
+          rows.map((r) => ({
+            id: r.id,
+            note: r.note,
+            // Date → ISO string so it survives serialization to the
+            // client component. The modal re-parses with new Date().
+            reportedAt:
+              r.reportedAt instanceof Date
+                ? r.reportedAt.toISOString()
+                : r.reportedAt,
+          })),
+      ),
+    ]);
+
+    // We asked for the notes regardless of count, but we can still
+    // short-circuit the list when nothing came back. Tags are passed
+    // through unchanged.
+    void tags;
+    return {
+      flagDistribution: distribution,
+      flagNotes: notes,
+    };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(
+      "[library item page] flag/tag load failed, returning empty:",
+      err,
+    );
+    return {
+      flagDistribution: {
+        UNBALANCED: 0,
+        BROKEN: 0,
+        INAPPROPRIATE: 0,
+        DUPLICATE: 0,
+        OTHER: 0,
+      },
+      flagNotes: [],
+    };
+  }
 }
 
 export default async function LibraryItemPage({ params }: PageProps) {
@@ -203,6 +301,9 @@ function DetailShell({
   targetId,
   engagement,
   currentUserId,
+  tags,
+  flagDistribution,
+  flagNotes,
 }: {
   children: React.ReactNode;
   backHref: string;
@@ -233,6 +334,27 @@ function DetailShell({
   targetId: string;
   engagement: EngagementData;
   currentUserId: string | null;
+  /**
+   * Tag chips to render above the Flags section. Empty array hides
+   * the row entirely.
+   */
+  tags: string[];
+  /**
+   * Per-reason flag counts. The Flags section only renders when
+   * the sum is > 0 — a "Flags (0)" pill is noise.
+   */
+  flagDistribution: {
+    UNBALANCED: number;
+    BROKEN: number;
+    INAPPROPRIATE: number;
+    DUPLICATE: number;
+    OTHER: number;
+  };
+  /**
+   * OTHER-reason notes for the modal. Empty array is fine — the modal
+   * just shows "No freeform notes yet." inside.
+   */
+  flagNotes: Array<{ id: string; note: string; reportedAt: Date | string }>;
 }) {
   const canEdit =
     editHref !== null &&
@@ -330,18 +452,14 @@ function DetailShell({
             authorUsername={author?.username ?? null}
             currentUserId={currentUserId}
           />
-          <ForksList
-            targetType={targetType as ForkTargetType}
+          <FlagAndForkFooter
+            targetType={targetType}
             targetId={targetId}
+            forksTargetType={targetType as ForkTargetType}
+            tags={tags}
+            flagDistribution={flagDistribution}
+            flagNotes={flagNotes}
           />
-          <div className="mt-3 flex justify-end">
-            <Link
-              href={`/library/item/${targetType}:${targetId}/versions`}
-              className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Version history →
-            </Link>
-          </div>
         </footer>
       </article>
     </div>
@@ -360,6 +478,11 @@ async function PrimitiveDetail({
 
   const author = await resolveAuthorByClerkId(row.userId);
   const engagement = await loadEngagement("PRIMITIVE", String(id), currentUserId);
+  const { flagDistribution, flagNotes } = await loadFlagsAndTags(
+    "PRIMITIVE",
+    String(id),
+    [],
+  );
 
   return (
     <DetailShell
@@ -376,6 +499,9 @@ async function PrimitiveDetail({
       targetId={String(id)}
       engagement={engagement}
       currentUserId={currentUserId}
+      tags={[]}
+      flagDistribution={flagDistribution}
+      flagNotes={flagNotes}
     >
       <section>
         <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
@@ -443,6 +569,11 @@ async function CapabilityDetail({
   }
 
   const engagement = await loadEngagement("CAPABILITY", id, currentUserId);
+  const { flagDistribution, flagNotes } = await loadFlagsAndTags(
+    "CAPABILITY",
+    id,
+    row.tags ?? [],
+  );
 
   return (
     <DetailShell
@@ -459,6 +590,9 @@ async function CapabilityDetail({
       targetId={id}
       engagement={engagement}
       currentUserId={currentUserId}
+      tags={row.tags ?? []}
+      flagDistribution={flagDistribution}
+      flagNotes={flagNotes}
     >
       <section className="grid gap-3 sm:grid-cols-2">
         <DataField label="Type" value={row.type} />
@@ -552,6 +686,11 @@ async function TemplateDetail({
     id,
     currentUserId,
   );
+  const { flagDistribution, flagNotes } = await loadFlagsAndTags(
+    targetTypeForEngagement,
+    id,
+    [], // templates don't have a tags column yet
+  );
 
   return (
     <DetailShell
@@ -568,6 +707,9 @@ async function TemplateDetail({
       targetId={id}
       engagement={engagement}
       currentUserId={currentUserId}
+      tags={[]}
+      flagDistribution={flagDistribution}
+      flagNotes={flagNotes}
     >
       {row.imageUrl && (
         <img
@@ -693,6 +835,11 @@ async function EffectDetail({
 
   const author = await resolveAuthorByClerkId(effectRow.userId);
   const engagement = await loadEngagement("EFFECT", id, currentUserId);
+  const { flagDistribution, flagNotes } = await loadFlagsAndTags(
+    "EFFECT",
+    id,
+    effectRow.tags ?? [],
+  );
 
   const parentEffects = parentEdges.map((edge) => edge.parentEffect);
   const childEffects = childEdges.map((edge) => edge.childEffect);
@@ -712,6 +859,9 @@ async function EffectDetail({
       targetId={id}
       engagement={engagement}
       currentUserId={currentUserId}
+      tags={effectRow.tags ?? []}
+      flagDistribution={flagDistribution}
+      flagNotes={flagNotes}
     >
       {effectRow.tags.length > 0 && (
         <section className="mb-5">
@@ -844,6 +994,11 @@ async function ItemDetail({
 
   const author = await resolveAuthorByClerkId(itemRow.userId);
   const engagement = await loadEngagement("ITEM", id, currentUserId);
+  const { flagDistribution, flagNotes } = await loadFlagsAndTags(
+    "ITEM",
+    id,
+    itemRow.tags ?? [],
+  );
 
   // Rarity class for the chip. itemRarityEnum is the schema enum;
   // we map each value to a tailwind color pair. Cast through string
@@ -883,6 +1038,9 @@ async function ItemDetail({
       targetId={id}
       engagement={engagement}
       currentUserId={currentUserId}
+      tags={itemRow.tags ?? []}
+      flagDistribution={flagDistribution}
+      flagNotes={flagNotes}
     >
       <section className="mb-5">
         <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
