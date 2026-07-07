@@ -343,6 +343,14 @@ function CreationPreview({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // Publish action: turns the current edit into version #1 (or appends a
+  // new version on top of an existing one). Without this, edits stay as
+  // private drafts and the version history page stays empty — which the
+  // user reported as a bug ("I edited a fork, version history shows
+  // nothing"). The button is hidden for already-published items; use the
+  // sandbox editor's publish flow to publish a new version of those.
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
   // The `item` prop is captured at modal-open time, before the user could
   // have changed visibility. We mirror the latest value into local state
   // so the chip + the "Visibility: <label>" line update on click without
@@ -376,6 +384,41 @@ function CreationPreview({
       setDeleteError(e instanceof Error ? e.message : "Failed to delete");
     } finally {
       setDeleting(false);
+    }
+  }
+
+  // Publish creates a version snapshot. Visibility follows the current
+  // VisibilitySelect value (PRIVATE → publishes as PRIVATE so the row
+  // counts as "versioned" without exposing it; PUBLIC → publishes to the
+  // library). Refresh the page on success so the published chip + the
+  // table row reflect the new state.
+  async function handlePublish() {
+    setPublishing(true);
+    setPublishError(null);
+    try {
+      const res = await fetch("/api/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetType: item.targetType,
+          targetId: item.targetId,
+          visibility: liveVisibility,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `HTTP ${res.status}`);
+      }
+      // Don't close — let the user see the success + click "View versions"
+      // if they want. The parent refreshed its server tree on
+      // onVisibilityChange, so re-running it keeps things consistent.
+      onVisibilityChange?.(liveVisibility);
+    } catch (e) {
+      setPublishError(
+        e instanceof Error ? e.message : "Failed to publish version",
+      );
+    } finally {
+      setPublishing(false);
     }
   }
 
@@ -438,11 +481,30 @@ function CreationPreview({
         >
           Edit in sandbox
         </button>
+        <button
+          type="button"
+          onClick={handlePublish}
+          disabled={publishing || deleting}
+          title={
+            item.publishedAt
+              ? "Publish a new version"
+              : "Snapshot this entry into the version history"
+          }
+          className="inline-flex items-center gap-1 rounded-md border border-primary/50 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+        >
+          {publishing ? "Publishing…" : item.publishedAt ? "Publish new version" : "Publish to library"}
+        </button>
         <a
           href={`/library/item/${item.id}`}
           className="text-xs text-primary hover:underline"
         >
           Open source page →
+        </a>
+        <a
+          href={`/library/item/${item.id}/versions`}
+          className="text-xs text-primary hover:underline"
+        >
+          View version history →
         </a>
         <a
           href={`/library/item/${item.id}#forks`}
@@ -472,6 +534,12 @@ function CreationPreview({
           )
         ) : null}
       </div>
+
+      {publishError ? (
+        <p className="text-xs text-rose-400" role="alert">
+          {publishError}
+        </p>
+      ) : null}
 
       {deleteError ? (
         <p className="text-xs text-rose-400" role="alert">
