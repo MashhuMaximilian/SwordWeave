@@ -184,7 +184,8 @@ export function GrammarSandboxClient({
   // anything in their build — either unsaved edits OR a loaded entity
   // that hasn't been saved yet. The global also auto-resets on route
   // change so we don't need a manual clear here.
-  const { setSandboxFormDirty } = useGlobalControls();
+  const { setSandboxFormDirty, openDrawer, sandboxSplit, setSandboxBottomTab } =
+    useGlobalControls();
   // URL sync — switchBuild needs to push ?build=<mode> so refresh /
   // deep-link lands on the right mode. Without this the URL stays on
   // whatever was set in the initial request, which is confusing once
@@ -195,6 +196,29 @@ export function GrammarSandboxClient({
   useEffect(() => {
     setSandboxFormDirty(formIsDirty || editing !== null);
   }, [formIsDirty, editing, setSandboxFormDirty]);
+
+  // Auto-open the build preview when the sandbox loads with ?edit=<id>.
+  // The user expects that clicking "Edit in sandbox" (from the fork modal,
+  // the Creations page, or anywhere else) drops them straight into the
+  // editable state with the build/preview panel visible. We honour the
+  // split-mode contract: in split mode the build + preview are already
+  // rendered inline so we just switch the bottom tab to "build".
+  // Outside split mode we pop the drawer.
+  //
+  // Runs on mount only — subsequent loads via loadFromLibrary already
+  // handle their own drawer opening.
+  useEffect(() => {
+    if (initialEditing !== null) {
+      if (sandboxSplit) {
+        setSandboxBottomTab("build");
+      } else {
+        openDrawer("build");
+      }
+    }
+    // We deliberately only run on mount; the split mode / drawer state is
+    // session-level and shouldn't trigger re-opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ---- Apply pending action (called on modal confirm) ---------------------
 

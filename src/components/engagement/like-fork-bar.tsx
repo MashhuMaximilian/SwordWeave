@@ -277,15 +277,23 @@ export function LikeForkBar(props: LikeForkBarProps) {
 
   /**
    * Called by ForkSuccessModal when the user dismisses it (X / click
-   * backdrop / "View source page" / "Edit in sandbox"). We refresh
-   * the parent server tree here — AFTER the modal has closed — so
-   * any server-rendered fork counts / "forked from" breadcrumbs
-   * elsewhere on the page pick up the new fork. This used to fire
-   * immediately after the API call, which killed the modal's state.
+   * backdrop / "View source page"). We refresh the parent server tree
+   * here — AFTER the modal has closed — so any server-rendered fork
+   * counts / "forked from" breadcrumbs elsewhere on the page pick up
+   * the new fork. This used to fire immediately after the API call,
+   * which killed the modal's state.
+   *
+   * Skip the refresh when we're navigating away via the "Edit in sandbox"
+   * button — that handler already does router.push first; a refresh on
+   * the OLD route would interrupt the navigation. handleEditInSandbox
+   * calls props.onClose() but we detect that via a flag passed to this
+   * function.
    */
-  const handleForkModalClose = () => {
+  const handleForkModalClose = (skipRefresh = false) => {
     setForkResult(null);
-    router.refresh();
+    if (!skipRefresh) {
+      router.refresh();
+    }
   };
 
   const handleFollow = () => {

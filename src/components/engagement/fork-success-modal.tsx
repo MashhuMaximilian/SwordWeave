@@ -49,11 +49,20 @@ export type ForkSuccessModalTargetType =
   | "ARCHETYPE_TEMPLATE"
   | "BUILD_TEMPLATE";
 
-export function ForkSuccessModal(props: {
+export interface ForkSuccessModalProps {
   isOpen: boolean;
-  onClose: () => void;
+  /**
+   * Called when the user dismisses the modal (X / click backdrop /
+   * "View source page" / "Edit in sandbox"). The argument is true when
+   * the dismissal is paired with a navigation away from the current
+   * route — the parent uses it to skip the post-close router.refresh()
+   * (which would otherwise re-fetch the OLD route mid-navigation).
+   */
+  onClose: (skipRefresh?: boolean) => void;
   result: ForkResult | null;
-}) {
+}
+
+export function ForkSuccessModal(props: ForkSuccessModalProps) {
   const router = useRouter();
 
   // Escape closes
@@ -79,11 +88,25 @@ export function ForkSuccessModal(props: {
   const sandboxHref = buildSandboxEditUrl(r);
 
   function handleEditInSandbox() {
-    // Close modal first, then navigate. Next router.push is fine here
-    // since the page is server-rendered.
-    props.onClose();
+    // Navigate FIRST, then close. Previously we called onClose first which
+    // triggered handleForkModalClose → router.refresh() in the parent.
+    // router.refresh() re-fetches the CURRENT route (the library item
+    // detail page) and re-renders the LikeForkBar, which can interrupt
+    // the queued router.push() and leave the user stranded on the
+    // source's preview page. Doing the push first ensures the navigation
+    // lands before any refresh can interfere. We also pass skipRefresh=true
+    // so the parent's onClose doesn't trigger its own refresh on top.
     router.push(sandboxHref);
+    props.onClose(true);
   }
+
+  // Wrappers around props.onClose so the React MouseEventHandler signature
+  // matches. The optional `skipRefresh` argument distinguishes "user just
+  // dismissed the modal" (refresh needed) from "user navigated away"
+  // (refresh would interrupt the navigation).
+  const onBackdropClick = () => props.onClose();
+  const onCloseButtonClick = () => props.onClose();
+  const onViewSourceClick = () => props.onClose();
 
   return createPortal(
     <div
@@ -94,7 +117,7 @@ export function ForkSuccessModal(props: {
     >
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={props.onClose}
+        onClick={onBackdropClick}
         aria-hidden="true"
       />
       <div className="relative z-10 w-full max-w-md overflow-hidden rounded-lg border border-border bg-card shadow-2xl">
@@ -107,7 +130,7 @@ export function ForkSuccessModal(props: {
           </span>
           <button
             type="button"
-            onClick={props.onClose}
+            onClick={onCloseButtonClick}
             className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
             aria-label="Close"
           >
@@ -133,7 +156,7 @@ export function ForkSuccessModal(props: {
           <div className="flex flex-col gap-2 sm:flex-row">
             <Link
               href={sourceLibraryHref}
-              onClick={props.onClose}
+              onClick={onViewSourceClick}
               className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm font-medium transition-colors hover:border-primary hover:text-primary"
             >
               <ExternalLink className="size-3.5" />

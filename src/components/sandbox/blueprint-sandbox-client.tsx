@@ -173,7 +173,8 @@ export function BlueprintSandboxClient({
   // anything in their build — either unsaved edits OR a loaded entity
   // that hasn't been saved yet. The global also auto-resets on route
   // change.
-  const { setSandboxFormDirty } = useGlobalControls();
+  const { setSandboxFormDirty, openDrawer, sandboxSplit, setSandboxBottomTab } =
+    useGlobalControls();
   // URL sync — when the user switches build mode via the bottom tab
   // bar, push ?build=<mode> so a refresh / deep-link lands on the same
   // mode. Without this the URL stays on whatever was set in the
@@ -185,6 +186,22 @@ export function BlueprintSandboxClient({
   useEffect(() => {
     setSandboxFormDirty(formIsDirty || editing !== null);
   }, [formIsDirty, editing, setSandboxFormDirty]);
+
+  // Auto-open the build preview when the sandbox loads with ?edit=<id>.
+  // Same rationale as grammar-sandbox-client — clicking "Edit in sandbox"
+  // from the fork modal, Creations, etc. should land the user with the
+  // build/preview panel already visible. Split mode just switches the
+  // bottom tab.
+  useEffect(() => {
+    if (initialEditing !== null) {
+      if (sandboxSplit) {
+        setSandboxBottomTab("build");
+      } else {
+        openDrawer("build");
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const applyPendingAction = useCallback((action: PendingAction) => {
     if (action.kind === "switchBuild") {
