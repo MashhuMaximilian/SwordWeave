@@ -71,7 +71,11 @@ export function ForkSuccessModal(props: {
   }
 
   const r = props.result;
-  const sourceLibraryHref = `/library/item/${r.targetType}:${encodeURIComponent(r.forkedTargetId)}`;
+  // "View source page" should actually go to the SOURCE's library page, not
+  // the fork's. The variable was previously misnamed/miswired, sending users
+  // to their own new fork page when they expected to see the original they
+  // forked from. (forkedTargetId = NEW fork's id; sourceTargetId = original.)
+  const sourceLibraryHref = `/library/item/${r.targetType}:${encodeURIComponent(r.sourceTargetId)}`;
   const sandboxHref = buildSandboxEditUrl(r);
 
   function handleEditInSandbox() {

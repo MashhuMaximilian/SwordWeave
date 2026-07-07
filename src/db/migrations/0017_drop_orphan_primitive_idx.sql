@@ -1,0 +1,18 @@
+-- =============================================================================
+-- Migration 0017: drop orphan primitives_name_category_unique_idx
+--
+-- Migration 0004 was supposed to drop the 2-column unique index
+-- (name, category) and replace it with the 3-column unique index
+-- (name, category, user_id) so users can fork system primitives and
+-- own their own private copies with the same name.
+--
+-- The DROP statement ran (migrations table marks 0004 applied) but the
+-- 2-column index was still present on production — confirmed via
+-- pg_indexes query on 2026-07-07. Without this fix, fork primitives
+-- (and any other INSERT that conflicts on (name, category)) fails
+-- with "duplicate key value violates unique constraint
+-- primitives_name_category_unique_idx".
+--
+-- This migration makes the fix durable and visible in the journal.
+-- =============================================================================
+DROP INDEX IF EXISTS "primitives_name_category_unique_idx";
