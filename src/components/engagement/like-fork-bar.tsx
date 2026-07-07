@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { ForkSuccessModal } from "@/components/engagement/fork-success-modal";
+import { buildSandboxUrl } from "@/lib/publishing/fork-target";
 
 // =============================================================================
 // LikeForkBar — engagement controls for any library item
@@ -230,49 +231,35 @@ export function LikeForkBar(props: LikeForkBarProps) {
 
   const handleFork = () => {
     if (!requireAuth()) return;
-    setError(null);
-    startTransition(async () => {
-      try {
-        const res = await withFreshToken(() => fetch("/api/fork", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            targetType: props.targetType,
-            targetId: props.targetId,
-          }),
-        }));
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error ?? `HTTP ${res.status}`);
-        }
-        const data = await res.json();
-        setForks(data.forkCount);
-        // Surface the success modal so the user can choose:
-        //   1. View the new fork's source page
-        //   2. Edit the fork in their sandbox
-        // Previously we redirected to /sandbox?forkedFrom=…, which
-        // skipped the confirmation the user asked for.
-        if (data.forkedTargetId) {
-          setForkResult({
-            forkedTargetId: data.forkedTargetId,
-            sourceTargetId: data.sourceTargetId ?? props.targetId,
-            // Server computes the unique fork name (may be suffixed
-            // "(fork) 2", "(fork) 3" etc. on re-fork). Surface it in the
-            // modal so the user knows exactly which row was created.
-            forkName: data.forkName,
-          });
-        }
-        // Intentionally NOT calling router.refresh() here — it would
-        // re-render the page (and unmount the LikeForkBar if the page
-        // refetches and remounts), dropping the modal's `forkResult`
-        // state mid-display. The fork count comes back in the response
-        // and is set via setForks() above, so the bar is already in
-        // sync. router.refresh() runs after the user closes the modal
-        // (see handleForkModalClose).
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to fork");
-      }
-    });
+    // Phase 1 (round 6 revision of edit-creates-fork.md): clicking
+    // Fork no longer creates a fork immediately. Instead it navigates
+    // to the sandbox with ?intent=fork&edit=<sourceId>. The actual
+    // fork row is materialized at save time by dispatch-save.ts.
+    //
+    // Rationale: the old flow created an empty fork on click that
+    // polluted the user's Creations list whenever they clicked Fork
+    // and then backed out. The new flow is "no side effect until save"
+    // — cancel/back-out leaves no trace. Mashu: "I click fork. No fork
+    // is created. Instead, it just loads into build and opens build
+    // modal. I do my modifications and save. Only then the fork is
+    // created and added to my creations."
+    //
+    // ForkSuccessModal is now triggered AFTER save, not on click.
+    // For Phase 1 the post-save modal is wired in PrimitiveForm +
+    // EffectForm + CapabilityForm via the form's onSaved callback.
+    const target = buildSandboxUrl(
+      props.targetType,
+      props.targetId,
+      "fork",
+    );
+    if (!target) {
+      // Target isn't fork-able (e.g. CHARACTER / BUILD). Show a
+      // friendly error so the user knows the button is currently
+      // informational only for those types. Phase 2 may revisit.
+      setError("This content type can't be forked yet.");
+      return;
+    }
+    router.push(`${target.sandboxPath}${target.search}`);
   };
 
   /**

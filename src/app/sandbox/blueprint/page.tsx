@@ -3,6 +3,7 @@
 // ?build=<mode> selects the active mode (defaults to "template").
 // ?kind=<RACE|BACKGROUND|ARCHETYPE> only relevant when build=template.
 // ?edit=<id> pre-fills the form with the matching entity.
+// ?intent=<fork|load> (Phase 1) — see §6.7 of edit-creates-fork.md.
 
 import { asc } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
@@ -28,6 +29,7 @@ import {
 import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import { getVersionPayload } from "@/lib/versions/version-payload";
+import { parseSaveIntent, type SaveIntent } from "@/lib/publishing/save-intent";
 
 export const dynamic = "force-dynamic";
 
@@ -49,12 +51,15 @@ export default async function BlueprintSandboxPage({
     kind?: string;
     edit?: string;
     version?: string;
+    intent?: string;
   }>;
 }) {
   const params = await searchParams;
   const build = parseBuild(params.build);
   const kind = parseKind(params.kind);
   const editId = params.edit;
+  // Phase 1: parse ?intent=fork|load — same as grammar route.
+  const intent: SaveIntent = parseSaveIntent(params.intent);
   // Optional `?version=N` deep-link from the version-history page —
   // when present, the sandbox fetches the reconstructed payload for
   // that exact version and uses it to pre-fill the form. Otherwise
@@ -279,6 +284,11 @@ export default async function BlueprintSandboxPage({
       initialBuild={build}
       initialKind={kind}
       initialEditing={initialEditing as never}
+      // Phase 1: thread intent flag + the entity id being edited
+      // ("sourceId") into the client. See grammar/page.tsx for the
+      // matching pattern + the §6.7 design doc for the matrix.
+      initialIntent={intent}
+      initialSourceId={editId ?? null}
       templates={templateRows as never}
       items={itemRows as never}
       primitives={(primitiveRows as never[]).map((p) => {

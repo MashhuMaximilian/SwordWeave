@@ -22,6 +22,8 @@ import { GrammarLibrary } from "@/components/sandbox/grammar-library";
 import { UnsavedChangesModal } from "@/components/sandbox/unsaved-changes-modal";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import type { LibraryItem } from "@/lib/publishing/library-query";
+import type { SaveIntent } from "@/lib/publishing/save-intent";
+import { saveIntentLabel } from "@/lib/publishing/save-intent";
 
 type PrimitiveRow = {
   id: number;
@@ -113,6 +115,8 @@ type PendingAction =
 export function GrammarSandboxClient({
   initialBuild,
   initialEditing,
+  initialIntent,
+  initialSourceId,
   dataLoadFailed = false,
   primitives,
   effects,
@@ -124,6 +128,20 @@ export function GrammarSandboxClient({
 }: {
   initialBuild: GrammarBuildMode;
   initialEditing: EditingState;
+  /**
+   * Phase 1: the save intent flag from `?intent=fork|load`. Drives
+   * whether the form's save body should request a fork (intent=fork)
+   * or a version-update vs fork-on-ownership (intent=load). null =
+   * greenfield or no intent — defaults to "load" semantics on save.
+   * See §6.7 of edit-creates-fork.md for the full matrix.
+   */
+  initialIntent?: SaveIntent;
+  /**
+   * Phase 1: the source entity's id from `?edit=<id>`. Sent to the
+   * server with the save body so dispatch-save.ts can look up the
+   * source row and decide fork-vs-version-update. null on greenfield.
+   */
+  initialSourceId?: string | null;
   /**
    * When true, the DB query batch on the server failed and the rows
    * below are empty arrays. The page renders a small banner explaining
@@ -251,6 +269,20 @@ export function GrammarSandboxClient({
     }
     // loadFromLibrary
     const { entityType, id } = action;
+    // Phase 1: also update the URL with ?edit=<id>&intent=load so
+    // the intent flag flows into the form via useSearchParams. The
+    // URL is the source of truth for which entity is being edited +
+    // how the user entered the sandbox.
+    const nextParams = new URLSearchParams(
+      currentSearchParams?.toString() ?? "",
+    );
+    nextParams.set("edit", String(id));
+    nextParams.set("intent", "load");
+    router.replace(
+      nextParams.toString()
+        ? `${pathname}?${nextParams.toString()}`
+        : pathname,
+    );
     if (entityType === "primitive") {
       const row = primitives.find((p) => p.id === id);
       if (!row) return;
@@ -313,16 +345,54 @@ export function GrammarSandboxClient({
   }
 
   const builderNode = useMemo(() => {
+    // Phase 1: read intent + sourceId live from the URL via
+    // currentSearchParams (reactive) instead of relying on the
+    // server-captured initialIntent. This way the Load button —
+    // which navigates without a server round-trip — automatically
+    // gets the new intent flag threaded into the form.
+    //
+    // initialIntent/initialSourceId are still accepted as props so
+    // the server-rendered first paint has the correct values before
+    // useSearchParams hydrates.
+    const urlIntent = (currentSearchParams?.get("intent") ?? null) as
+      | "fork"
+      | "load"
+      | null;
+    const urlEdit = currentSearchParams?.get("edit") ?? null;
+    const liveIntent =
+      urlIntent ?? initialIntent ?? null;
+    const liveSourceId =
+      urlEdit ?? initialSourceId ?? null;
+    const formCommon = {
+      intent: liveIntent,
+      sourceId: liveSourceId,
+    };
     if (build === "primitive") {
       return (
         <PrimitiveForm
           initialPrimitive={editing?.kind === "primitive" ? editing.row : null}
+          {...formCommon}
           onStateChange={(state) => {
             setFormIsDirty(state.isDirty);
             setFormSnapshot({ form: state.form as unknown as Record<string, unknown>, slots: [], effectIds: [] });
           }}
-          onSaved={() => {
-            /* router.refresh inside PrimitiveForm */
+          onSaved={(saved) => {
+            // Phase 1: if dispatch saved into a NEW row (fork path),
+            // swap the URL so subsequent saves target the new fork.
+            // dispatchOutcome comes via saved.dispatchOutcome when
+            // the server returns it.
+            const outcome = (saved as { dispatchOutcome?: { swapTarget: boolean; newId: string | number } }).dispatchOutcome;
+            if (outcome?.swapTarget && outcome.newId != null) {
+              const nextParams = new URLSearchParams(
+                currentSearchParams?.toString() ?? "",
+              );
+              nextParams.set("edit", String(outcome.newId));
+              router.replace(
+                nextParams.toString()
+                  ? `${pathname}?${nextParams.toString()}`
+                  : pathname,
+              );
+            }
           }}
           onReset={() => setEditing(null)}
         />
@@ -335,6 +405,7 @@ export function GrammarSandboxClient({
       return (
         <EffectForm
           initialEffect={editing?.kind === "effect" ? editing.row : null}
+          {...formCommon}
           availablePrimitives={editingPrimitives.map((p) => ({
             id: p.id,
             name: p.name,
@@ -355,6 +426,7 @@ export function GrammarSandboxClient({
         initialCapability={
           editing?.kind === "capability" ? editing.row : null
         }
+        {...formCommon}
         availablePrimitives={primitives.map((p) => ({
           id: p.id,
           name: p.name,
@@ -373,7 +445,7 @@ export function GrammarSandboxClient({
         onReset={() => setEditing(null)}
       />
     );
-  }, [build, editing, primitives, effects]);
+  }, [build, editing, primitives, effects, initialIntent, initialSourceId, currentSearchParams, pathname, router]);
 
   // Preview is sourced from the live form snapshot when available, so it
   // updates as the user types. Falls back to the loaded `editing` row for

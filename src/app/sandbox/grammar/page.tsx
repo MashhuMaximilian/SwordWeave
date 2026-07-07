@@ -2,6 +2,10 @@
 // One page hosting three Build modes: Primitive | Effect | Capability.
 // ?build=<mode> selects the active mode (defaults to "primitive").
 // ?edit=<id> pre-fills the form with the matching entity.
+// ?intent=<fork|load> (Phase 1) records HOW the user entered the
+//   sandbox. Clicked "Fork" button → intent=fork (always fork on save).
+//   Clicked "Load into build" → intent=load (owner=version-update,
+//   non-owner=fork). No ?intent= defaults to "load" semantics on save.
 
 import { asc } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
@@ -24,6 +28,7 @@ import {
 import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import { getVersionPayload } from "@/lib/versions/version-payload";
+import { parseSaveIntent, type SaveIntent } from "@/lib/publishing/save-intent";
 
 export const dynamic = "force-dynamic";
 
@@ -35,11 +40,22 @@ function parseBuild(value: string | undefined): GrammarBuildMode {
 export default async function GrammarSandboxPage({
   searchParams,
 }: {
-  searchParams: Promise<{ build?: string; edit?: string; version?: string }>;
+  searchParams: Promise<{
+    build?: string;
+    edit?: string;
+    version?: string;
+    intent?: string;
+  }>;
 }) {
   const params = await searchParams;
   const build = parseBuild(params.build);
   const editId = params.edit;
+  // Phase 1: parse ?intent=fork|load. The form threads this into
+  // the save body so the server knows whether the user came in via
+  // the Fork button (always fork on save) or Load into build button
+  // (owner=version-update, non-owner=fork). See §6.7 of the
+  // edit-creates-fork design doc for the full matrix.
+  const intent: SaveIntent = parseSaveIntent(params.intent);
   // Optional `?version=N` deep-link from the version-history page —
   // when present, the sandbox fetches the reconstructed payload for
   // that exact version and uses it to pre-fill the form. Otherwise
@@ -221,6 +237,12 @@ export default async function GrammarSandboxPage({
     <GrammarSandboxClient
       initialBuild={build}
       initialEditing={initialEditing as never}
+      // Phase 1: thread intent flag + the entity id being edited
+      // ("sourceId") into the client. The form uses both to construct
+      // the save body — see src/lib/publishing/dispatch-save.ts for
+      // the full matrix.
+      initialIntent={intent}
+      initialSourceId={editId ?? null}
       primitives={(primitiveRows as never[]).map((p) => {
         const row = p as {
           id: number;

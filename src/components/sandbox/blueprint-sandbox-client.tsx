@@ -19,6 +19,7 @@ import { BlueprintLibrary } from "./blueprint-library";
 import { UnsavedChangesModal } from "./unsaved-changes-modal";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import type { LibraryItem } from "@/lib/publishing/library-query";
+import type { SaveIntent } from "@/lib/publishing/save-intent";
 
 type TemplateRow = {
   id: string;
@@ -90,6 +91,8 @@ export function BlueprintSandboxClient({
   initialBuild,
   initialKind,
   initialEditing,
+  initialIntent,
+  initialSourceId,
   dataLoadFailed = false,
   templates,
   items,
@@ -106,6 +109,12 @@ export function BlueprintSandboxClient({
   initialBuild: BlueprintBuildMode;
   initialKind?: "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined;
   initialEditing: EditingState;
+  /**
+   * Phase 1: see grammar-sandbox-client.tsx for the matching
+   * documentation. Same intent flag + sourceId contract.
+   */
+  initialIntent?: SaveIntent;
+  initialSourceId?: string | null;
   /**
    * When true, the DB query batch on the server failed and the rows
    * below are empty arrays. The page renders a small banner explaining
@@ -232,6 +241,19 @@ export function BlueprintSandboxClient({
       return;
     }
     const { entityType, id } = action;
+    // Phase 1: also update the URL with ?edit=<id>&intent=load so
+    // the intent flag flows into the form via useSearchParams. See
+    // grammar-sandbox-client.tsx for the matching pattern.
+    const nextParams = new URLSearchParams(
+      currentSearchParams?.toString() ?? "",
+    );
+    nextParams.set("edit", String(id));
+    nextParams.set("intent", "load");
+    router.replace(
+      nextParams.toString()
+        ? `${pathname}?${nextParams.toString()}`
+        : pathname,
+    );
     if (entityType === "template") {
       const row = templates.find((t) => t.id === id);
       if (!row) return;
@@ -279,6 +301,19 @@ export function BlueprintSandboxClient({
   }
 
   const builderNode = useMemo(() => {
+    // Phase 1: read intent + sourceId live from URL — same pattern as
+    // grammar-sandbox-client. See §6.7 of edit-creates-fork.md.
+    const urlIntent = (currentSearchParams?.get("intent") ?? null) as
+      | "fork"
+      | "load"
+      | null;
+    const urlEdit = currentSearchParams?.get("edit") ?? null;
+    const liveIntent = urlIntent ?? initialIntent ?? null;
+    const liveSourceId = urlEdit ?? initialSourceId ?? null;
+    const formCommon = {
+      intent: liveIntent,
+      sourceId: liveSourceId,
+    };
     if (build === "template") {
       return (
         <TemplateForm
@@ -286,6 +321,7 @@ export function BlueprintSandboxClient({
           initialKind={initialKind ?? undefined}
           availablePrimitives={primitives}
           availableCapabilities={capabilities}
+          {...formCommon}
           onStateChange={(state) => {
             setFormIsDirty(state.isDirty);
             setFormSnapshot({
@@ -307,6 +343,7 @@ export function BlueprintSandboxClient({
           availablePrimitives={primitives}
           availableCapabilities={capabilities}
           availableEffects={effects}
+          {...formCommon}
           onStateChange={(state) => {
             setFormIsDirty(state.isDirty);
             setFormSnapshot({
@@ -337,7 +374,7 @@ export function BlueprintSandboxClient({
         </p>
       </div>
     );
-  }, [build, editing, primitives, capabilities, effects, initialKind]);
+  }, [build, editing, primitives, capabilities, effects, initialKind, initialIntent, initialSourceId, currentSearchParams]);
 
   const previewNode = useMemo(() => {
     if (build === "template") {

@@ -8,6 +8,14 @@ import {
   parseHardModifiers,
   type PrimitiveCategoryValue,
 } from "@/lib/packages/primitive-package";
+import type { HardModifier } from "@/types/swordweave";
+import {
+  decideSaveOutcome,
+  loadPrimitiveOwner,
+  type DispatchOutcome,
+} from "@/lib/publishing/dispatch-save";
+import { parseSaveIntent, type SaveIntent } from "@/lib/publishing/save-intent";
+import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
 
 export async function GET() {
   const user = await currentUser();
@@ -25,6 +33,81 @@ export async function GET() {
   return NextResponse.json({ primitives: rows });
 }
 
+/**
+ * Build a sync-existence set of primitive names the caller has
+ * already used for the given category. Used by computeUniqueForkName
+ * to walk "(fork)", "(fork) 2", ... without hitting the DB per
+ * iteration. Best-effort; the DB's unique constraint is the source
+ * of truth and the onConflictDoUpdate below absorbs races.
+ */
+async function buildTakenNamesSet(
+  category: string,
+  userId: string,
+): Promise<(candidate: string) => boolean> {
+  const rows = await db
+    .select({ name: primitives.name })
+    .from(primitives)
+    .where(
+      and(eq(primitives.category, category as PrimitiveCategoryValue), eq(primitives.userId, userId)),
+    );
+  const taken = new Set(rows.map((r) => r.name));
+  return (candidate: string) => taken.has(candidate);
+}
+
+/**
+ * Build the values object shared by every primitive INSERT/UPDATE
+ * path. Phase 1 doesn't yet add `source_origin` (that lands in
+ * Phase 3's migration 0018); the field exists on capabilities/
+ * effects/items/templates but not yet on primitives. The fork
+ * marker is encoded into the name for now (existing pattern).
+ */
+function buildPrimitiveValues(args: {
+  name: string;
+  userId: string;
+  isPublic: boolean;
+  category: string;
+  costTier: string;
+  buCost: number;
+  mechanicalOutputText: string;
+  narrativeRule: string;
+  isMirrorable: boolean;
+  mirrorVector: string;
+  mirrorBuCredit: number;
+  mirrorEligibilityNotes: string;
+  hardModifiers: readonly HardModifier[];
+}) {
+  const {
+    name,
+    userId,
+    isPublic,
+    category,
+    costTier,
+    buCost,
+    mechanicalOutputText,
+    narrativeRule,
+    isMirrorable,
+    mirrorVector,
+    mirrorBuCredit,
+    mirrorEligibilityNotes,
+    hardModifiers,
+  } = args;
+  return {
+    name,
+    userId,
+    isPublic,
+    category: category as PrimitiveCategoryValue,
+    costTier: costTier || "Tier 1: Minor (4 BU anchor)",
+    buCost,
+    mechanicalOutputText,
+    narrativeRule,
+    isMirrorable,
+    mirrorVector: isMirrorable ? mirrorVector || "VARIABLE_VECTOR" : "STANDARD_ONLY",
+    mirrorBuCredit: isMirrorable ? mirrorBuCredit : 0,
+    mirrorEligibilityNotes,
+    hardModifiers,
+  };
+}
+
 export async function POST(request: Request) {
   try {
     const { userId } = await auth.protect();
@@ -35,18 +118,36 @@ export async function POST(request: Request) {
     }
 
     const values = body as Record<string, unknown>;
-    // When editing an existing row, the form sends the row id so we can
-    // UPDATE by primary key. Without this, the (name, category, userId)
-    // UPSERT can collide with a different row owned by the same user, or
-    // — more often — miss the existing row and INSERT a duplicate when
-    // the user has renamed the primitive during the edit.
+    // Phase 1 (round 6 of edit-creates-fork): accept `intent` +
+    // `sourceId` from the body. The form threads these in from
+    // ?intent=fork|load + ?edit=<id> on the sandbox URL. SourceId is
+    // the row the user is editing; intent records whether they
+    // entered via the Fork button or Load into build. See §6.7 of
+    // docs/architecture/edit-creates-fork.md for the matrix.
+    const intent: SaveIntent = parseSaveIntent(
+      typeof values["intent"] === "string" ? (values["intent"] as string) : undefined,
+    );
+    const sourceIdRaw = values["sourceId"];
+    const sourceId =
+      typeof sourceIdRaw === "number" && Number.isInteger(sourceIdRaw) && sourceIdRaw > 0
+        ? sourceIdRaw
+        : typeof sourceIdRaw === "string" && /^\d+$/.test(sourceIdRaw)
+          ? Number(sourceIdRaw)
+          : null;
+
+    // Legacy `id` field — pre-Phase-1 forms still send this when
+    // editing a row the caller owns. Phase 1 prefers sourceId +
+    // intent, but we keep the legacy path working for the brief
+    // window where the form hasn't been migrated. After Phase 2
+    // lands the dispatch path becomes the only one.
     const editingIdRaw = values["id"];
-    const editingId =
+    const legacyEditingId =
       typeof editingIdRaw === "number" && Number.isInteger(editingIdRaw) && editingIdRaw > 0
         ? editingIdRaw
         : typeof editingIdRaw === "string" && /^\d+$/.test(editingIdRaw)
           ? Number(editingIdRaw)
           : null;
+
     const name = String(values["name"] ?? "").trim();
     const isPublic = Boolean(values["isPublic"]);
     const category = String(values["category"] ?? "");
@@ -86,32 +187,52 @@ export async function POST(request: Request) {
       );
     }
 
-    if (editingId !== null) {
-      // Editing an existing row: UPDATE by primary key. Ownership gate:
-      // the row must be owned by the caller (userId === clerkUserId) OR
-      // be system content (userId IS NULL). Without this an attacker could
+    // ---------------------------------------------------------------
+    // Phase 1 dispatch: decide fork vs version-update based on intent
+    // + ownership. See src/lib/publishing/dispatch-save.ts.
+    // ---------------------------------------------------------------
+
+    // Prefer sourceId (Phase 1 contract) over legacy `id` field. If
+    // neither is set, this is a greenfield INSERT — no fork lineage.
+    const effectiveSourceId = sourceId ?? legacyEditingId;
+    const source = effectiveSourceId !== null
+      ? await loadPrimitiveOwner(effectiveSourceId)
+      : null;
+
+    const outcome: DispatchOutcome = decideSaveOutcome({
+      intent,
+      source,
+      callerUserId: userId,
+    });
+
+    if (outcome.kind === "version-update") {
+      // Caller owns the source AND intent=load → update in place.
+      // Same ownership gate as the legacy path: row must be owned by
+      // caller OR be system content. Without this an attacker could
       // rewrite any primitive just by guessing a numeric id.
       const [updated] = await db
         .update(primitives)
         .set({
-          name,
-          userId,
-          isPublic,
-          category: category as PrimitiveCategoryValue,
-          costTier: costTier || "Tier 1: Minor (4 BU anchor)",
-          buCost,
-          mechanicalOutputText,
-          narrativeRule,
-          isMirrorable,
-          mirrorVector: isMirrorable ? mirrorVector || "VARIABLE_VECTOR" : "STANDARD_ONLY",
-          mirrorBuCredit: isMirrorable ? mirrorBuCredit : 0,
-          mirrorEligibilityNotes,
-          hardModifiers,
+          ...buildPrimitiveValues({
+            name,
+            userId,
+            isPublic,
+            category,
+            costTier,
+            buCost,
+            mechanicalOutputText,
+            narrativeRule,
+            isMirrorable,
+            mirrorVector,
+            mirrorBuCredit,
+            mirrorEligibilityNotes,
+            hardModifiers,
+          }),
           updatedAt: new Date(),
         })
         .where(
           and(
-            eq(primitives.id, editingId),
+            eq(primitives.id, effectiveSourceId!),
             or(eq(primitives.userId, userId), isNull(primitives.userId)),
           ),
         )
@@ -127,25 +248,55 @@ export async function POST(request: Request) {
         );
       }
 
-      return NextResponse.json({ primitive: updated }, { status: 200 });
+      return NextResponse.json(
+        {
+          primitive: updated,
+          dispatchOutcome: {
+            kind: "version-update" as const,
+            newId: updated.id,
+            sourceId: outcome.sourceId,
+            swapTarget: false as const,
+          },
+        },
+        { status: 200 },
+      );
     }
+
+    // outcome.kind === "forked"
+    // Compute the unique fork name. Greenfield (source=null) uses
+    // the user's chosen name verbatim. Otherwise we walk "(fork)",
+    // "(fork) 2", "(fork) 3", ... until a unique name is found.
+    //
+    // Build a sync-existence set from a quick DB query, then pass
+    // it to computeUniqueForkName as a sync predicate. (The
+    // helper accepts Promise predicates too, but sync is faster
+    // for the typical case where 0-2 collisions happen.)
+    const baseName =
+      source !== null
+        ? await computeUniqueForkName(name, await buildTakenNamesSet(
+            category as string,
+            userId,
+          ))
+        : name;
 
     const [created] = await db
       .insert(primitives)
       .values({
-        name,
-        userId,
-        isPublic,
-        category: category as PrimitiveCategoryValue,
-        costTier: costTier || "Tier 1: Minor (4 BU anchor)",
-        buCost,
-        mechanicalOutputText,
-        narrativeRule,
-        isMirrorable,
-        mirrorVector: isMirrorable ? mirrorVector || "VARIABLE_VECTOR" : "STANDARD_ONLY",
-        mirrorBuCredit: isMirrorable ? mirrorBuCredit : 0,
-        mirrorEligibilityNotes,
-        hardModifiers,
+        ...buildPrimitiveValues({
+          name: baseName,
+          userId,
+          isPublic,
+          category,
+          costTier,
+          buCost,
+          mechanicalOutputText,
+          narrativeRule,
+          isMirrorable,
+          mirrorVector,
+          mirrorBuCredit,
+          mirrorEligibilityNotes,
+          hardModifiers,
+        }),
       })
       .onConflictDoUpdate({
         target: [primitives.name, primitives.category, primitives.userId],
@@ -168,7 +319,25 @@ export async function POST(request: Request) {
       })
       .returning();
 
-    return NextResponse.json({ primitive: created }, { status: 201 });
+    if (!created) {
+      return NextResponse.json(
+        { error: "Failed to create primitive." },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        primitive: created,
+        dispatchOutcome: {
+          kind: "forked" as const,
+          newId: created.id,
+          sourceId: outcome.sourceId,
+          swapTarget: outcome.swapTarget,
+        },
+      },
+      { status: 201 },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";
 

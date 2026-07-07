@@ -17,6 +17,7 @@ import type {
 } from "@/types/swordweave";
 import type { PrimitiveFormState } from "./primitive-form-preview";
 import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
+import { saveIntentLabel } from "@/lib/publishing/save-intent";
 
 type PrimitiveRow = {
   id: number;
@@ -282,6 +283,8 @@ function toHardModifier(modifier: ModifierDraft) {
 
 export function PrimitiveForm({
   initialPrimitive,
+  intent,
+  sourceId,
   onStateChange,
   onSaved,
   onReset,
@@ -290,6 +293,18 @@ export function PrimitiveForm({
    * If provided, the form opens pre-loaded with this primitive for editing.
    */
   initialPrimitive?: PrimitiveRow | null;
+  /**
+   * Phase 1 (round 6 of edit-creates-fork): the save-intent flag
+   * from ?intent=fork|load. Threads into the save body so the
+   * server can dispatch correctly. See §6.7 of the design doc.
+   */
+  intent?: "fork" | "load" | null;
+  /**
+   * Phase 1: the source entity's id from ?edit=<id>. Sent to the
+   * server with the save body so dispatch-save.ts can look up the
+   * row and decide fork-vs-version-update.
+   */
+  sourceId?: string | number | null;
   /**
    * Fires whenever the form or modifiers change. Used by the page to drive
    * the live Preview column.
@@ -315,7 +330,7 @@ export function PrimitiveForm({
    * Fires after a successful save. Used by the page to refresh the Library
    * table without re-mounting the form.
    */
-  onSaved?: (primitive: PrimitiveRow) => void;
+  onSaved?: (primitive: PrimitiveRow & { dispatchOutcome?: unknown }) => void;
 }) {
   const [form, setForm] = useState<PrimitiveFormState>(blankForm);
   const [modifierCounter, setModifierCounter] = useState(1);
@@ -451,19 +466,14 @@ export function PrimitiveForm({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          // Only send `id` when editing a row the caller actually owns.
-          // System content (initialPrimitive.userId === null) must NOT
-          // include its id — otherwise the backend UPDATEs the system
-          // row, which would either fail the ownership gate (404) or
-          // worse, succeed and silently let the caller overwrite
-          // library content. For system content we want a fresh INSERT
-          // via the UPSERT-on-(name, category, userId) path, which
-          // produces a private copy owned by the caller.
-          //
-          // Without this, clicking "Save" on a library primitive you
-          // don't own returns 404 "Primitive not found or not owned by
-          // you" — confusing because the user thinks they're editing,
-          // not creating.
+          // Phase 1: thread the intent flag + sourceId into the body.
+          // The server's dispatch-save.ts decides fork vs version-
+          // update based on these. See §6.7 of the design doc.
+          // (Legacy `id` field is still honored as a fallback by the
+          // server for the brief window where forms haven't been
+          // migrated; new code prefers intent + sourceId.)
+          ...(intent ? { intent } : {}),
+          ...(sourceId != null ? { sourceId } : {}),
           ...(initialPrimitive?.id != null && initialPrimitive?.userId
             ? { id: initialPrimitive.id }
             : {}),
@@ -488,9 +498,15 @@ export function PrimitiveForm({
         payload && typeof payload === "object" && "primitive" in payload
           ? (payload.primitive as PrimitiveRow)
           : null;
+      const dispatchOutcome =
+        payload && typeof payload === "object" && "dispatchOutcome" in payload
+          ? (payload.dispatchOutcome as unknown)
+          : null;
 
       if (primitive) {
-        onSaved?.(primitive);
+        // Phase 1: pass dispatchOutcome through so the parent can
+        // swap URL params on fork-path saves.
+        onSaved?.({ ...primitive, dispatchOutcome });
       }
       resetEditor();
       router.refresh();
@@ -525,16 +541,84 @@ export function PrimitiveForm({
       onSubmit={submitPrimitive}
     >
       <div className="flex items-center justify-between gap-3 md:col-span-2">
-        <p className="text-xs font-semibold uppercase text-muted-foreground">
-          {initialPrimitive ? "Inspect Primitive" : "Add New Primitive"}
-        </p>
-        <button
-          type="button"
-          onClick={resetEditor}
-          className="h-9 rounded-md border border-border bg-background px-3 text-sm font-bold text-foreground"
-        >
-          Reset
-        </button>
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">
+            {initialPrimitive ? "Inspect Primitive" : "Add New Primitive"}
+          </p>
+          {/*
+            Phase 1 (round 6 of edit-creates-fork): surface the intent
+            flag as a chip so the user knows what save will do.
+              - intent=fork → blue chip "Forking <source>"
+              - intent=load → gray chip "Working on <source>"
+            The chip is purely informational; dispatch-save.ts is the
+            source of truth for what actually happens on save. The
+            name shown comes from initialPrimitive when present,
+            otherwise from the form's current `name` field.
+          */}
+          {(() => {
+            const label = saveIntentLabel(
+              intent ?? null,
+              initialPrimitive?.name ?? null,
+            );
+            if (!label) return null;
+            const isFork = intent === "fork";
+            return (
+              <span
+                data-testid="save-intent-chip"
+                className={
+                  isFork
+                    ? "inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary"
+                    : "inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                }
+                title={
+                  isFork
+                    ? "Save will create a fork owned by you."
+                    : "Save will update in place if you own this; otherwise create a fork."
+                }
+              >
+                {label}
+              </span>
+            );
+          })()}
+        </div>
+        <div className="flex items-center gap-2">
+          {/*
+            Phase 1: Discard button — clears the edit/intent URL
+            params and navigates back to the originating surface
+            (library, sandbox, etc). No side effect; the source
+            row is untouched. Mashu: cancel/back-out should leave
+            no trace.
+          */}
+          {sourceId != null && (
+            <button
+              type="button"
+              data-testid="discard-edit-button"
+              onClick={() => {
+                const params = new URLSearchParams(window.location.search);
+                params.delete("edit");
+                params.delete("intent");
+                params.delete("version");
+                const qs = params.toString();
+                const target = window.location.pathname + (qs ? `?${qs}` : "");
+                // Use replace so the user can't "back" into the
+                // discarded state. router.refresh() then refreshes
+                // server data for the destination.
+                window.location.replace(target);
+              }}
+              className="h-9 rounded-md border border-border bg-background px-3 text-sm font-bold text-foreground hover:border-rose-500 hover:text-rose-500"
+              title="Discard this edit — no fork will be created"
+            >
+              Discard
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={resetEditor}
+            className="h-9 rounded-md border border-border bg-background px-3 text-sm font-bold text-foreground"
+          >
+            Reset
+          </button>
+        </div>
       </div>
 
       <label className="block text-sm font-medium md:col-span-2">
