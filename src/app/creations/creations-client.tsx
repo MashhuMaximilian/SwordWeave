@@ -226,6 +226,12 @@ export function CreationsClient({
                 content: (
                   <CreationPreview
                     item={item}
+                    onDeleted={() => {
+                      // After delete: close the modal stack and refresh
+                      // the parent server tree so the card disappears.
+                      stack.clear();
+                      router.refresh();
+                    }}
                     onEdit={() => {
                       const targetType = item.targetType;
                       if (targetType === "PRIMITIVE")
@@ -317,11 +323,54 @@ function CreationPreview({
   item,
   onEdit,
   onVisibilityChange,
+  onDeleted,
 }: {
   item: LibraryItem;
   onEdit: () => void;
   onVisibilityChange?: (vis: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC") => void;
+  /**
+   * Called after a successful delete so the parent can refresh / close
+   * the modal. Without this, the deleted card would still show until
+   * a manual reload.
+   */
+  onDeleted?: () => void;
 }) {
+  // Delete is only safe when the row is unpublished (no active publication
+  // OR the publication is set to PRIVATE). When published, the API will
+  // refuse with a 409 — we surface that inline instead of letting the user
+  // click and discover it on the server.
+  const canDelete = (item.visibility ?? "PRIVATE") === "PRIVATE";
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch("/api/creations/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetType: item.targetType,
+          targetId: item.targetId,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `HTTP ${res.status}`);
+      }
+      // Close the confirm modal, fire onDeleted so parent refreshes +
+      // closes its own modal, then we're done.
+      setConfirmOpen(false);
+      onDeleted?.();
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="rounded-md border border-border bg-card p-3">
@@ -383,7 +432,82 @@ function CreationPreview({
         >
           View fork history
         </a>
+        {onDeleted ? (
+          canDelete ? (
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteError(null);
+                setConfirmOpen(true);
+              }}
+              className="ml-auto inline-flex items-center gap-1 rounded-md border border-rose-500/50 px-3 py-1.5 text-xs font-medium text-rose-500 transition-colors hover:bg-rose-500/10"
+            >
+              Delete
+            </button>
+          ) : (
+            <span
+              className="ml-auto text-[10px] text-muted-foreground"
+              title="Unpublish first (set visibility to PRIVATE) to enable deletion."
+            >
+              Unpublish to delete
+            </span>
+          )
+        ) : null}
       </div>
+
+      {deleteError ? (
+        <p className="text-xs text-rose-400" role="alert">
+          {deleteError}
+        </p>
+      ) : null}
+
+      {confirmOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm deletion"
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
+        >
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => !deleting && setConfirmOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="relative z-10 w-full max-w-sm overflow-hidden rounded-lg border border-border bg-card shadow-2xl">
+            <header className="border-b border-border px-4 py-3">
+              <h4 className="text-sm font-semibold">Delete this creation?</h4>
+            </header>
+            <div className="space-y-3 p-4 text-sm">
+              <p>
+                <span className="font-semibold">{item.name}</span> will be
+                permanently deleted along with any composition links
+                (capabilities, effects, primitives it slots into).
+              </p>
+              <p className="text-xs text-muted-foreground">
+                This cannot be undone.
+              </p>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmOpen(false)}
+                  disabled={deleting}
+                  className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="inline-flex items-center gap-1 rounded-md bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-600 disabled:opacity-50"
+                >
+                  {deleting ? "Deleting…" : "Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
