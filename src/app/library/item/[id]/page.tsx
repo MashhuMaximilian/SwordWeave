@@ -37,6 +37,7 @@ import {
 import { getForkSource } from "@/lib/publishing/fork-lineage";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 // The page queries Neon Postgres via @neondatabase/serverless, which needs
 // the Node.js runtime (Pool uses ws + crypto). Without this, Vercel may
 // pick the edge runtime for this route, where `process` is not a global
