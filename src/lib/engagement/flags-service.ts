@@ -255,3 +255,49 @@ export async function getFlagAggregate(
     OTHER: Number(row?.otherCount ?? 0),
   };
 }
+
+/**
+ * List the "OTHER" notes for a target+version. Used by the source page's
+ * "View all notes (N)" link to show freeform reporter commentary in a
+ * dedicated modal. Only OTHER rows have a `note` populated — the four
+ * structured reasons don't carry user-written text.
+ *
+ * Returns newest first. No pagination — the typical OTHER bucket is
+ * small (a handful per entity). If it grows we can add LIMIT.
+ */
+export async function listFlagNotes(
+  targetType: FlagTargetType,
+  targetId: string,
+  versionId: string,
+): Promise<
+  Array<{
+    id: string;
+    note: string;
+    reportedAt: Date;
+    reportedByUserId: string;
+  }>
+> {
+  const rows = await db
+    .select({
+      id: flags.id,
+      note: flags.note,
+      reportedAt: flags.createdAt,
+      reportedByUserId: flags.userId,
+    })
+    .from(flags)
+    .where(
+      and(
+        eq(flags.targetType, targetType),
+        eq(flags.targetId, targetId),
+        eq(flags.versionId, versionId),
+        eq(flags.reason, "OTHER"),
+      ),
+    )
+    .orderBy(sql`${flags.createdAt} DESC`);
+  return rows.map((r) => ({
+    id: r.id,
+    note: r.note ?? "",
+    reportedAt: r.reportedAt,
+    reportedByUserId: r.reportedByUserId,
+  }));
+}

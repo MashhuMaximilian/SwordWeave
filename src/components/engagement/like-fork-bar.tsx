@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef, useEffect, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@clerk/nextjs";
+import { createPortal } from "react-dom";
 import {
   Heart,
   GitFork,
@@ -382,87 +383,202 @@ export function LikeForkBar(props: LikeForkBarProps) {
         </button>
       )}
 
-      <div className="relative">
-        <button
-          type="button"
-          onClick={() => {
-            if (!requireAuth()) return;
-            setFlagOpen((v) => !v);
-          }}
-          disabled={pending}
-          title="Flag this content"
-          aria-label="Flag this content"
-          aria-haspopup="dialog"
-          aria-expanded={flagOpen}
-          className={`${buttonBase} ${buttonGhost}`}
-        >
-          <Flag className={iconClass} aria-hidden="true" />
-          {!props.compact && <span>Flag</span>}
-        </button>
-        {flagOpen && (
-          <div
-            role="dialog"
-            aria-label="Flag content"
-            className="absolute right-0 z-20 mt-2 w-64 rounded-md border border-border bg-card p-3 shadow-lg"
-          >
-            <p className="mb-2 text-xs text-muted-foreground">Why are you flagging this?</p>
-            <div className="space-y-1">
-              {FLAG_REASONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setFlagReason(opt.value)}
-                  className={`w-full rounded px-2 py-1.5 text-left text-sm ${
-                    flagReason === opt.value
-                      ? "bg-primary/20 text-primary"
-                      : "text-foreground hover:bg-accent"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            {flagReason === "OTHER" && (
-              <textarea
-                value={flagNote}
-                onChange={(e) => setFlagNote(e.target.value)}
-                placeholder="Optional note (max 500 chars)"
-                maxLength={500}
-                className="mt-2 w-full rounded border border-border bg-background p-2 text-xs text-foreground"
-                rows={2}
-              />
-            )}
-            <div className="mt-2 flex gap-2">
-              <button
-                type="button"
-                onClick={submitFlag}
-                disabled={!flagReason || pending}
-                className="flex-1 rounded bg-rose-500/80 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-500 disabled:opacity-50"
-              >
-                Submit
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setFlagOpen(false);
-                  setFlagReason(null);
-                  setFlagNote("");
-                }}
-                className="rounded border border-border px-3 py-1.5 text-xs text-foreground hover:bg-accent"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
+      <button
+        type="button"
+        onClick={() => {
+          if (!requireAuth()) return;
+          setFlagOpen((v) => !v);
+        }}
+        disabled={pending}
+        title="Flag this content"
+        aria-label="Flag this content"
+        aria-haspopup="dialog"
+        aria-expanded={flagOpen}
+        data-flag-trigger
+        className={`${buttonBase} ${buttonGhost}`}
+      >
+        <Flag className={iconClass} aria-hidden="true" />
+        {!props.compact && <span>Flag</span>}
+      </button>
+      <FlagPopover
+        isOpen={flagOpen}
+        onClose={() => {
+          setFlagOpen(false);
+          setFlagReason(null);
+          setFlagNote("");
+        }}
+        pending={pending}
+        flagReason={flagReason}
+        flagNote={flagNote}
+        onSelectReason={setFlagReason}
+        onChangeNote={setFlagNote}
+        onSubmit={submitFlag}
+        compact={!!props.compact}
+      />
       {error && (
         <p className="w-full text-xs text-rose-400" role="alert">
           {error}
         </p>
       )}
     </div>
+  );
+}
+
+// =============================================================================
+// FlagPopover — portal-rendered to escape overflow containers
+// =============================================================================
+//
+// The previous implementation used `position: absolute` relative to the
+// flag button, which got clipped by any ancestor with `overflow: hidden`
+// or `overflow: auto` (the LikeForkBar's own scroll container on mobile,
+// the modal body on desktop, etc.). The user had to scroll inside the
+// tiny popover to see all reason options — a UX bug.
+//
+// This version:
+//   1. Captures the trigger button's bounding rect via a ref.
+//   2. Positions the popover with `position: fixed` (escapes ALL
+//      overflow ancestors — fixed positions are relative to the
+//      viewport, not the nearest containing block).
+//   3. Renders the popover into `document.body` via createPortal so
+//      it can't be clipped by any container's `overflow: hidden`,
+//      `overflow: auto`, or stacking context.
+//   4. Clamps to the viewport edges (right-side overflow protection
+//      on small screens where the trigger is near the right edge).
+//   5. Adds an invisible full-viewport backdrop that closes the
+//      popover on click-outside (Escape handled below).
+// =============================================================================
+
+const POPOVER_WIDTH = 280; // px
+const POPOVER_OFFSET = 8; // px between trigger and popover
+
+function FlagPopover(props: {
+  isOpen: boolean;
+  onClose: () => void;
+  pending: boolean;
+  flagReason: FlagReason | null;
+  flagNote: string;
+  onSelectReason: (r: FlagReason) => void;
+  onChangeNote: (s: string) => void;
+  onSubmit: () => void;
+  compact: boolean;
+}) {
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  // useLayoutEffect so we paint positioned correctly on the same frame
+  // the popover opens — no flash of "popover in top-left corner".
+  useLayoutEffect(() => {
+    if (!props.isOpen) {
+      setPos(null);
+      return;
+    }
+    const trigger = document.querySelector<HTMLButtonElement>(
+      "[data-flag-trigger]",
+    );
+    triggerRef.current = trigger;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    // Default: position to the LEFT of the trigger (because the flag
+    // button is on the right end of the LikeForkBar). If there isn't
+    // enough room on the left, fall back to below.
+    const viewportWidth = window.innerWidth;
+    const rightAlignedLeft = rect.right - POPOVER_WIDTH;
+    const useRightAligned = rightAlignedLeft >= 8;
+    let left = useRightAligned ? rightAlignedLeft : rect.left;
+    // Clamp so the popover never overflows the viewport horizontally.
+    if (left + POPOVER_WIDTH > viewportWidth - 8) {
+      left = viewportWidth - POPOVER_WIDTH - 8;
+    }
+    if (left < 8) left = 8;
+    // Position above the trigger if there's room, otherwise below.
+    const popoverHeight = 320; // estimate; safe for any content
+    const topAbove = rect.top - popoverHeight - POPOVER_OFFSET;
+    const topBelow = rect.bottom + POPOVER_OFFSET;
+    const top =
+      topAbove >= 8 ? topAbove : Math.min(topBelow, window.innerHeight - popoverHeight - 8);
+    setPos({ top, left });
+  }, [props.isOpen]);
+
+  // Escape closes the popover.
+  useEffect(() => {
+    if (!props.isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") props.onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [props.isOpen, props.onClose]);
+
+  if (!props.isOpen || !pos || typeof document === "undefined") return null;
+
+  return createPortal(
+    <>
+      {/* Invisible full-screen backdrop. Click closes the popover. */}
+      <div
+        aria-hidden="true"
+        onClick={props.onClose}
+        className="fixed inset-0 z-[100]"
+      />
+      <div
+        role="dialog"
+        aria-label="Flag content"
+        aria-modal="true"
+        className="fixed z-[101] w-[280px] rounded-md border border-border bg-card p-3 shadow-xl"
+        style={{ top: pos.top, left: pos.left }}
+        // Stop click propagation so clicks inside don't close us.
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="mb-2 text-xs text-muted-foreground">
+          Why are you flagging this?
+        </p>
+        <div className="space-y-1">
+          {FLAG_REASONS.map((opt) => {
+            const active = props.flagReason === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => props.onSelectReason(opt.value)}
+                className={`w-full rounded px-2 py-1.5 text-left text-sm ${
+                  active
+                    ? "bg-primary/20 text-primary"
+                    : "text-foreground hover:bg-accent"
+                }`}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        {props.flagReason === "OTHER" && (
+          <textarea
+            value={props.flagNote}
+            onChange={(e) => props.onChangeNote(e.target.value)}
+            placeholder="Optional note (max 500 chars)"
+            maxLength={500}
+            className="mt-2 w-full rounded border border-border bg-background p-2 text-xs text-foreground"
+            rows={2}
+          />
+        )}
+        <div className="mt-2 flex gap-2">
+          <button
+            type="button"
+            onClick={props.onSubmit}
+            disabled={!props.flagReason || props.pending}
+            className="flex-1 rounded bg-rose-500/80 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-500 disabled:opacity-50"
+          >
+            Submit
+          </button>
+          <button
+            type="button"
+            onClick={props.onClose}
+            className="rounded border border-border px-3 py-1.5 text-xs text-foreground hover:bg-accent"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </>,
+    document.body,
   );
 }
 
