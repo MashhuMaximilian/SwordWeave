@@ -25,6 +25,7 @@ import { useModalStack } from "@/components/ui/modal-stack";
 import {
   LibraryItemPreview,
   previewHeadingLabel,
+  libraryCompositeId,
   type SandboxPreviewItem,
   type SandboxPrimitiveRow,
   type SandboxEffectRow,
@@ -504,12 +505,15 @@ function SandboxPreviewBody({
                 callbacks: {
                   ...(onSubLinkClick ? { onSubLinkClick } : {}),
                   ...(engagement ? { engagement } : {}),
-                  openSourceHref: `/library/item/${item.kind.toUpperCase()}:${item.row.id}`,
+                  // Bug fix: use the shared helper so template previews
+                  // route to `RACE_TEMPLATE:<id>` etc. — `item.kind.toUpperCase()`
+                  // produced `TEMPLATE:<id>` which 404'd.
+                  openSourceHref: `/library/item/${libraryCompositeId(item)}`,
                 },
               }
             : {
                 callbacks: {
-                  openSourceHref: `/library/item/${item.kind.toUpperCase()}:${item.row.id}`,
+                  openSourceHref: `/library/item/${libraryCompositeId(item)}`,
                 },
               })}
         />

@@ -165,6 +165,31 @@ export type SandboxPreviewItem =
   | { kind: "template"; row: SandboxTemplateRow }
   | { kind: "item"; row: SandboxItemRow };
 
+/**
+ * Build the library route's `<type>:<id>` composite id for a preview item.
+ *
+ * Bug fix: templates have `item.kind = "template"` (the discriminator) but
+ * the row's `kind` is `RACE | BACKGROUND | ARCHETYPE`. The library route
+ * expects the full enum (`RACE_TEMPLATE` etc.), not just `TEMPLATE`. The
+ * other kinds upper-case cleanly. Centralized so the sandbox previews and
+ * any future caller can't drift out of sync.
+ */
+export function libraryCompositeId(item: SandboxPreviewItem): string {
+  switch (item.kind) {
+    case "primitive":
+      return `PRIMITIVE:${item.row.id}`;
+    case "effect":
+      return `EFFECT:${item.row.id}`;
+    case "capability":
+      return `CAPABILITY:${item.row.id}`;
+    case "item":
+      return `ITEM:${item.row.id}`;
+    case "template":
+      // item.row.kind is "RACE" | "BACKGROUND" | "ARCHETYPE"
+      return `${item.row.kind}_TEMPLATE:${item.row.id}`;
+  }
+}
+
 // ---- Engagement shape (optional) -------------------------------------------
 
 export interface PreviewEngagement {

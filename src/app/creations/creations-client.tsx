@@ -343,6 +343,14 @@ function CreationPreview({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // The `item` prop is captured at modal-open time, before the user could
+  // have changed visibility. We mirror the latest value into local state
+  // so the chip + the "Visibility: <label>" line update on click without
+  // waiting for a router refresh. Initialize from the captured value;
+  // the click handler updates this AND propagates up via onVisibilityChange.
+  const [liveVisibility, setLiveVisibility] = useState<Visibility>(
+    (item.visibility ?? "PRIVATE") as Visibility,
+  );
 
   async function handleDelete() {
     setDeleting(true);
@@ -395,7 +403,7 @@ function CreationPreview({
         </div>
         <div>
           <dt className="uppercase text-muted-foreground">Visibility</dt>
-          <dd>{visibilityLabel(item.visibility)}</dd>
+          <dd>{visibilityLabel(liveVisibility)}</dd>
         </div>
         {item.authorUsername ? (
           <div>
@@ -407,8 +415,18 @@ function CreationPreview({
 
       {onVisibilityChange ? (
         <VisibilitySelect
-          value={(item.visibility ?? "PRIVATE") as Visibility}
-          onChange={onVisibilityChange}
+          value={liveVisibility}
+          onChange={(next) => {
+            // Optimistic local update so the chip flips immediately, then
+            // propagate up so the table row + map stay in sync. We can't
+            // await onVisibilityChange here (the select's onChange is sync);
+            // if it rejects, the parent's catch handler rolls the map back
+            // and we mirror by reverting local state too.
+            setLiveVisibility(next);
+            void Promise.resolve(onVisibilityChange(next)).catch(() => {
+              setLiveVisibility((item.visibility ?? "PRIVATE") as Visibility);
+            });
+          }}
         />
       ) : null}
 

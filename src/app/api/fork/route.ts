@@ -44,6 +44,7 @@ import {
 } from "@/db/schema";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import { resolveVirtualVersionId } from "@/lib/engagement/version-helpers";
+import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
 
 /**
  * Increment user_stats.totalForksCreated for the forker.
@@ -216,10 +217,31 @@ async function forkPrimitive(input: {
 
   // Insert cloned primitive (private, owned by forker). userId is text
   // (Clerk ID format) per Phase 4 schema.
+  //
+  // Fork name uniqueness: the `(name, category, user_id)` constraint means
+  // re-forking the same source produces a unique-name collision. We compute
+  // a unique name up front (`X (fork)`, `X (fork) 2`, `X (fork) 3`, …)
+  // so the INSERT succeeds on the first try. The DB constraint is still
+  // the source of truth — see `nameExists` below for the race-condition
+  // backup.
+  const nameExists = async (candidate: string) => {
+    const found = await db.query.primitives.findFirst({
+      where: (t, { and, eq }) =>
+        and(
+          eq(t.name, candidate),
+          eq(t.category, source.category),
+          eq(t.userId, forkerClerkUserId),
+        ),
+      columns: { id: true },
+    });
+    return Boolean(found);
+  };
+  const forkName = await computeUniqueForkName(source.name, nameExists);
+
   const [forked] = await db
     .insert(primitives)
     .values({
-      name: `${source.name} (fork)`,
+      name: forkName,
       category: source.category,
       costTier: source.costTier,
       buCost: source.buCost,
@@ -290,6 +312,7 @@ async function forkPrimitive(input: {
   return {
     forkedTargetId: String(forked.id),
     sourceTargetId: String(source.id),
+    forkName,
     forkCount,
   };
 }
@@ -316,10 +339,24 @@ async function forkCapability(input: {
     throw new Error("Source capability not found");
   }
 
+  // Compute a unique fork name against the `(name, source_origin)` constraint.
+  // Each fork of this source gets the same `sourceOrigin` ("fork:<id>"), so
+  // re-forking the same source collides unless we differentiate by name.
+  const forkSourceOrigin = `fork:${source.id}`;
+  const nameExists = async (candidate: string) => {
+    const found = await db.query.capabilities.findFirst({
+      where: (t, { and, eq }) =>
+        and(eq(t.name, candidate), eq(t.sourceOrigin, forkSourceOrigin)),
+      columns: { id: true },
+    });
+    return Boolean(found);
+  };
+  const forkName = await computeUniqueForkName(source.name, nameExists);
+
   const [forked] = await db
     .insert(capabilities)
     .values({
-      name: `${source.name} (fork)`,
+      name: forkName,
       type: source.type,
       sourceType: source.sourceType,
       verboseDescription: source.verboseDescription,
@@ -328,7 +365,7 @@ async function forkCapability(input: {
       // line the fork becomes "system content" and can't be edited/deleted
       // by the forker.
       userId: forkerClerkUserId,
-      sourceOrigin: `fork:${source.id}`,
+      sourceOrigin: forkSourceOrigin,
       tags: source.tags,
       metadata: {
         ...source.metadata,
@@ -396,6 +433,7 @@ async function forkCapability(input: {
   return {
     forkedTargetId: forked.id,
     sourceTargetId: source.id,
+    forkName,
     forkCount,
   };
 }
@@ -426,10 +464,27 @@ async function forkTemplate(input: {
   const lineageNote = `\n\n---\n_Forked from template ${source.id}_`;
   const newSuggestedTraits = (source.suggestedTraits ?? "") + lineageNote;
 
+  // Unique fork name against the `(name, user_id, kind)` constraint. Same
+  // user re-forking the same source produces a collision on the base name
+  // — append a numeric suffix.
+  const nameExists = async (candidate: string) => {
+    const found = await db.query.templates.findFirst({
+      where: (t, { and, eq }) =>
+        and(
+          eq(t.name, candidate),
+          eq(t.userId, forkerClerkUserId),
+          eq(t.kind, source.kind),
+        ),
+      columns: { id: true },
+    });
+    return Boolean(found);
+  };
+  const forkName = await computeUniqueForkName(source.name, nameExists);
+
   const [forked] = await db
     .insert(templates)
     .values({
-      name: `${source.name} (fork)`,
+      name: forkName,
       kind: source.kind,
       description: source.description,
       imageUrl: source.imageUrl,
@@ -512,6 +567,7 @@ async function forkTemplate(input: {
   return {
     forkedTargetId: forked.id,
     sourceTargetId: source.id,
+    forkName,
     forkCount,
   };
 }
@@ -538,14 +594,27 @@ async function forkEffect(input: {
     throw new Error("Source effect not found");
   }
 
+  // Unique fork name against the `(name, source_origin)` constraint. Same
+  // source re-forked → same sourceOrigin → collision unless name differs.
+  const forkSourceOrigin = `fork:${source.id}`;
+  const nameExists = async (candidate: string) => {
+    const found = await db.query.effects.findFirst({
+      where: (t, { and, eq }) =>
+        and(eq(t.name, candidate), eq(t.sourceOrigin, forkSourceOrigin)),
+      columns: { id: true },
+    });
+    return Boolean(found);
+  };
+  const forkName = await computeUniqueForkName(source.name, nameExists);
+
   const [forked] = await db
     .insert(effects)
     .values({
-      name: `${source.name} (fork)`,
+      name: forkName,
       narrativeDescription: source.narrativeDescription,
       isPublic: false,
       userId: forkerClerkUserId,
-      sourceOrigin: `fork:${source.id}`,
+      sourceOrigin: forkSourceOrigin,
       tags: source.tags,
     })
     .returning({ id: effects.id });
@@ -617,6 +686,7 @@ async function forkEffect(input: {
   return {
     forkedTargetId: forked.id,
     sourceTargetId: source.id,
+    forkName,
     forkCount,
   };
 }
@@ -645,10 +715,22 @@ async function forkItem(input: {
     throw new Error("Source item not found");
   }
 
+  // Unique fork name against the `(name, source_origin)` constraint.
+  const forkSourceOrigin = `fork:${source.id}`;
+  const nameExists = async (candidate: string) => {
+    const found = await db.query.items.findFirst({
+      where: (t, { and, eq }) =>
+        and(eq(t.name, candidate), eq(t.sourceOrigin, forkSourceOrigin)),
+      columns: { id: true },
+    });
+    return Boolean(found);
+  };
+  const forkName = await computeUniqueForkName(source.name, nameExists);
+
   const [forked] = await db
     .insert(items)
     .values({
-      name: `${source.name} (fork)`,
+      name: forkName,
       itemType: source.itemType,
       rarity: source.rarity,
       buCost: source.buCost,
@@ -660,7 +742,7 @@ async function forkItem(input: {
       actsAsFocus: source.actsAsFocus,
       isPublic: false,
       userId: forkerClerkUserId,
-      sourceOrigin: `fork:${source.id}`,
+      sourceOrigin: forkSourceOrigin,
       tags: source.tags,
     })
     .returning({ id: items.id });
@@ -743,6 +825,7 @@ async function forkItem(input: {
   return {
     forkedTargetId: forked.id,
     sourceTargetId: source.id,
+    forkName,
     forkCount,
   };
 }

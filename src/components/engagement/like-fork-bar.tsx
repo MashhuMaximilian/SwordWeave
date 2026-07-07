@@ -256,6 +256,10 @@ export function LikeForkBar(props: LikeForkBarProps) {
           setForkResult({
             forkedTargetId: data.forkedTargetId,
             sourceTargetId: data.sourceTargetId ?? props.targetId,
+            // Server computes the unique fork name (may be suffixed
+            // "(fork) 2", "(fork) 3" etc. on re-fork). Surface it in the
+            // modal so the user knows exactly which row was created.
+            forkName: data.forkName,
           });
         }
         // Intentionally NOT calling router.refresh() here — it would

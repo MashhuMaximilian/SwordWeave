@@ -27,6 +27,7 @@ import {
   LibraryItemPreview,
   previewHeadingLabel,
   type SandboxCapabilityRow,
+  libraryCompositeId,
   type SandboxEffectRow,
   type SandboxItemRow,
   type SandboxPreviewItem,
@@ -573,12 +574,16 @@ function BlueprintPreviewBody({
                 callbacks: {
                   ...(onSubLinkClick ? { onSubLinkClick } : {}),
                   ...(engagement ? { engagement } : {}),
-                  openSourceHref: `/library/item/${item.kind.toUpperCase()}:${item.row.id}`,
+                  // Bug fix: previously `item.kind.toUpperCase()` produced
+                  // `TEMPLATE` for template rows, but the library route
+                  // expects the full enum (`RACE_TEMPLATE` etc.). Use the
+                  // shared helper so this can't drift again.
+                  openSourceHref: `/library/item/${libraryCompositeId(item)}`,
                 },
               }
             : {
                 callbacks: {
-                  openSourceHref: `/library/item/${item.kind.toUpperCase()}:${item.row.id}`,
+                  openSourceHref: `/library/item/${libraryCompositeId(item)}`,
                 },
               })}
         />
