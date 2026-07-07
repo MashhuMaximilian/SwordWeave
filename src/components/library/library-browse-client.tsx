@@ -199,8 +199,15 @@ export function LibraryBrowseClient({
         size="lg"
       >
         {selectedItem ? (
+          // Cache-busting query ensures the iframe never serves a stale
+          // cached error response from a previous broken Vercel deploy.
+          // Without ?_=<ts>, browsers can hold onto a cached 500/error HTML
+          // for the same URL even after the server is healthy. Each modal
+          // open generates a fresh timestamp so the iframe does a full
+          // network fetch.
           <iframe
-            src={`/library/item/${selectedItem.id}`}
+            key={`${selectedItem.id}-${Date.now()}`}
+            src={`/library/item/${selectedItem.id}?_=${Date.now()}`}
             title={selectedItem.name}
             className="h-[70vh] w-full rounded-md border border-border"
           />
