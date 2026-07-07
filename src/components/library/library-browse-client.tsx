@@ -199,18 +199,69 @@ export function LibraryBrowseClient({
         size="lg"
       >
         {selectedItem ? (
-          // Cache-busting query ensures the iframe never serves a stale
-          // cached error response from a previous broken Vercel deploy.
-          // Without ?_=<ts>, browsers can hold onto a cached 500/error HTML
-          // for the same URL even after the server is healthy. Each modal
-          // open generates a fresh timestamp so the iframe does a full
-          // network fetch.
-          <iframe
-            key={`${selectedItem.id}-${Date.now()}`}
-            src={`/library/item/${selectedItem.id}?_=${Date.now()}`}
-            title={selectedItem.name}
-            className="h-[70vh] w-full rounded-md border border-border"
-          />
+          // Inline detail preview (was previously an iframe loading
+          // /library/item/<id>). The iframe was susceptible to a class
+          // of cache/iframe-related rendering issues — and on Vercel
+          // + Clerk + iframes, certain request contexts got stuck on
+          // a stale DATABASE_URL error even after the server was
+          // healthy. Inline rendering eliminates that entire failure
+          // mode.
+          //
+          // The summary shows: name, description, BU, tags, author,
+          // engagement counts, and an "Open full page" link for the
+          // canonical detail view.
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-primary/10 px-3 py-1 font-mono text-sm font-semibold text-primary">
+                {selectedItem.buCost ?? 0} BU
+              </span>
+              <span className="rounded-full bg-secondary px-3 py-1 text-xs uppercase tracking-wide">
+                {selectedItem.targetType.replace(/_/g, " ").toLowerCase()}
+              </span>
+              {selectedItem.category && (
+                <span className="rounded-full bg-secondary px-3 py-1 text-xs uppercase tracking-wide">
+                  {selectedItem.category.replace(/_/g, " ")}
+                </span>
+              )}
+            </div>
+            {selectedItem.description && (
+              <div className="text-sm leading-relaxed text-foreground">
+                {selectedItem.description}
+              </div>
+            )}
+            {selectedItem.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {selectedItem.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full bg-secondary px-2 py-0.5 text-xs"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+            {selectedItem.authorUsername && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span>by</span>
+                <span className="font-semibold">
+                  {selectedItem.authorDisplayName ?? selectedItem.authorUsername}
+                </span>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-3 border-t border-border pt-3 text-xs text-muted-foreground">
+              <span>♥ {selectedItem.likesCount}</span>
+              <span>★ {selectedItem.forkCount} forks</span>
+            </div>
+            <div className="border-t border-border pt-3">
+              <a
+                href={`/library/item/${selectedItem.id}`}
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                Open full source page →
+              </a>
+            </div>
+          </div>
         ) : null}
       </DetailModal>
     </div>
