@@ -11,8 +11,10 @@
 //
 // The preview also includes a visibility selector (PRIVATE / FOLLOWERS_ONLY /
 // PUBLIC). Changing visibility POSTs to /api/creations/visibility which
-// creates / updates a `publications` row, allowing the author to control
-// the per-item version history visible to followers vs everyone.
+// creates / updates a `publications` row. There is no separate publish
+// action — visibility IS the publish state, and version history becomes
+// accessible to the matching audience as soon as the chip flips to
+// PUBLIC or FOLLOWERS_ONLY.
 // =============================================================================
 
 import { useMemo, useState } from "react";
@@ -335,30 +337,29 @@ function CreationPreview({
    */
   onDeleted?: () => void;
 }) {
-  // Delete is only safe when the row is unpublished (no active publication
-  // OR the publication is set to PRIVATE). When published, the API will
-  // refuse with a 409 — we surface that inline instead of letting the user
-  // click and discover it on the server.
-  const canDelete = (item.visibility ?? "PRIVATE") === "PRIVATE";
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  // Publish action: turns the current edit into version #1 (or appends a
-  // new version on top of an existing one). Without this, edits stay as
-  // private drafts and the version history page stays empty — which the
-  // user reported as a bug ("I edited a fork, version history shows
-  // nothing"). The button is hidden for already-published items; use the
-  // sandbox editor's publish flow to publish a new version of those.
-  const [publishing, setPublishing] = useState(false);
-  const [publishError, setPublishError] = useState<string | null>(null);
-  // The `item` prop is captured at modal-open time, before the user could
-  // have changed visibility. We mirror the latest value into local state
-  // so the chip + the "Visibility: <label>" line update on click without
-  // waiting for a router refresh. Initialize from the captured value;
-  // the click handler updates this AND propagates up via onVisibilityChange.
+  // Visibility IS the publish state. PRIVATE = only me. FOLLOWERS_ONLY = me
+  // and my followers (creates a publication row). PUBLIC = everyone (creates
+  // a publication row). There is no separate "publish" action — changing
+  // visibility in the modal is itself the publish. The visibility API
+  // (/api/creations/visibility) creates/updates the publications row
+  // synchronously so the version history page sees a publication as soon
+  // as the chip flips to PUBLIC or FOLLOWERS_ONLY.
+  //
+  // `liveVisibility` mirrors the user's most recent chip click so the
+  // Delete-button gate updates immediately. Without it, `canDelete` would
+  // read the stale `item.visibility` captured when the modal opened and
+  // the "Unpublish to delete" placeholder would stay visible until refresh.
   const [liveVisibility, setLiveVisibility] = useState<Visibility>(
     (item.visibility ?? "PRIVATE") as Visibility,
   );
+  // Delete is only safe when nothing is published. With our model that
+  // means visibility must be PRIVATE — any publication row (PUBLIC or
+  // FOLLOWERS_ONLY) blocks deletion since other people may have slotted
+  // it into their builds and pinned that version.
+  const canDelete = liveVisibility === "PRIVATE";
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function handleDelete() {
     setDeleting(true);
@@ -387,40 +388,11 @@ function CreationPreview({
     }
   }
 
-  // Publish creates a version snapshot. Visibility follows the current
-  // VisibilitySelect value (PRIVATE → publishes as PRIVATE so the row
-  // counts as "versioned" without exposing it; PUBLIC → publishes to the
-  // library). Refresh the page on success so the published chip + the
-  // table row reflect the new state.
-  async function handlePublish() {
-    setPublishing(true);
-    setPublishError(null);
-    try {
-      const res = await fetch("/api/publish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          targetType: item.targetType,
-          targetId: item.targetId,
-          visibility: liveVisibility,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? `HTTP ${res.status}`);
-      }
-      // Don't close — let the user see the success + click "View versions"
-      // if they want. The parent refreshed its server tree on
-      // onVisibilityChange, so re-running it keeps things consistent.
-      onVisibilityChange?.(liveVisibility);
-    } catch (e) {
-      setPublishError(
-        e instanceof Error ? e.message : "Failed to publish version",
-      );
-    } finally {
-      setPublishing(false);
-    }
-  }
+  // Visibility IS the publish action. There is no separate "publish" button
+  // in this modal — the visibility chip on the left is the only thing that
+  // creates / removes a publication row (see /api/creations/visibility).
+  // PRIVATE → no publication row. FOLLOWERS_ONLY / PUBLIC → publication row
+  // visible to the right audience.
 
   return (
     <div className="space-y-4">
@@ -481,19 +453,6 @@ function CreationPreview({
         >
           Edit in sandbox
         </button>
-        <button
-          type="button"
-          onClick={handlePublish}
-          disabled={publishing || deleting}
-          title={
-            item.publishedAt
-              ? "Publish a new version"
-              : "Snapshot this entry into the version history"
-          }
-          className="inline-flex items-center gap-1 rounded-md border border-primary/50 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
-        >
-          {publishing ? "Publishing…" : item.publishedAt ? "Publish new version" : "Publish to library"}
-        </button>
         <a
           href={`/library/item/${item.id}`}
           className="text-xs text-primary hover:underline"
@@ -527,19 +486,13 @@ function CreationPreview({
           ) : (
             <span
               className="ml-auto text-[10px] text-muted-foreground"
-              title="Unpublish first (set visibility to PRIVATE) to enable deletion."
+              title="Set visibility to PRIVATE to enable deletion. This unpublishes the row so version history becomes private-only."
             >
-              Unpublish to delete
+              Set to PRIVATE to delete
             </span>
           )
         ) : null}
       </div>
-
-      {publishError ? (
-        <p className="text-xs text-rose-400" role="alert">
-          {publishError}
-        </p>
-      ) : null}
 
       {deleteError ? (
         <p className="text-xs text-rose-400" role="alert">
