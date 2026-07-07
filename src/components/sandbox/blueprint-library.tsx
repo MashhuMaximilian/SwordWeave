@@ -303,6 +303,18 @@ export function BlueprintLibrary({
               pushPreview({ kind: "capability", row });
               return;
             }
+            if (link.targetType === "EFFECT") {
+              const row = effects.find((e) => e.id === link.targetId);
+              if (!row) return;
+              pushPreview({ kind: "effect", row });
+              return;
+            }
+            if (link.targetType === "ITEM") {
+              const row = items.find((i) => i.id === link.targetId);
+              if (!row) return;
+              pushPreview({ kind: "item", row });
+              return;
+            }
             // Fallback for unhandled types: open the canonical page.
             const url = `/library/item/${link.targetType}:${link.targetId}`;
             stack.push({
@@ -440,7 +452,7 @@ function BlueprintPreviewBody({
   build: BlueprintBuildMode;
   onLoadIntoBuild: () => void;
   onSubLinkClick?: (link: {
-    targetType: "PRIMITIVE" | "CAPABILITY";
+    targetType: "PRIMITIVE" | "CAPABILITY" | "EFFECT" | "ITEM";
     targetId: string;
     label: string;
   }) => void;
@@ -473,21 +485,37 @@ function BlueprintPreviewBody({
       label: item.row.name,
     };
     if (typeof window !== "undefined") {
+      // 1. Dispatch the slot event so the active form picks it up
+      //    (via the `sw-sandbox-slot` window listener).
+      // 2. Close the modal-stack entry that holds the preview.
+      // 3. Open the BUILD drawer tab (not preview) so the user can
+      //    watch the slot land in the form they were composing. The
+      //    preview tab is populated by the form as a side-effect of
+      //    the slot, so it'll be live the moment they switch tabs.
+      //    (Previous behaviour opened `preview` — which is the
+      //    entity preview, not the form preview — and the user
+      //    saw an empty panel and assumed nothing happened.)
       window.dispatchEvent(
         new CustomEvent<SlotEvent>(SLOT_EVENT_NAME, { detail: event }),
       );
       window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
-      // Open the build preview so the user can see the slot land.
-      openDrawer("preview");
+      openDrawer("build");
     }
   }
 
   function loadAndPreview() {
-    // Wrap the parent's load handler so we can also pop the preview
-    // drawer afterwards. The parent closes the modal-stack and
-    // dispatches the load; we open the preview drawer.
+    // The parent's onLoadIntoBuild() (a) closes the modal-stack and
+    // (b) switches the sandbox to the loaded entity's mode via
+    // applyPendingAction. The build form is then mounted in the
+    // drawer's `build` tab. Opening `preview` would show the
+    // entity-preview panel (which is populated by the form's live
+    // snapshot, not by a fresh fetch) — when the form is in the
+    // drawer and the drawer hasn't fully settled, that panel
+    // renders empty for one frame. Opening `build` instead lands
+    // the user directly on the form they just loaded, which is
+    // always populated. The preview tab is still one tap away.
     onLoadIntoBuild();
-    openDrawer("preview");
+    openDrawer("build");
   }
 
   return (

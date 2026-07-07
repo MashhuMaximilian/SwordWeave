@@ -86,6 +86,25 @@ export type SandboxCapabilityRow = {
       buCost: number;
     };
   }>;
+  /**
+   * Effects the capability composes. The schema relation is
+   * `capability_effects` (capability_id, effect_id, sort_order, slot_label,
+   * notes). The effect itself carries narrative + primitiveLinks which the
+   * preview can expand on click (sub-link to /sandbox grammar preview).
+   * Optional because some capabilities don't compose any effects.
+   */
+  effectLinks: Array<{
+    effectId: string;
+    sortOrder: number;
+    slotLabel: string | null;
+    notes: string | null;
+    effect: {
+      id: string;
+      name: string;
+      narrativeDescription: string | null;
+      sourceOrigin: string | null;
+    };
+  }>;
 };
 
 export type SandboxTemplateRow = {
@@ -164,7 +183,7 @@ export interface PreviewEngagement {
  *  inside the preview. The caller decides what to do — typically push a
  *  modal-stack entry so the navigation stays inside the open modal. */
 export interface PreviewSubLink {
-  targetType: "PRIMITIVE" | "CAPABILITY";
+  targetType: "PRIMITIVE" | "CAPABILITY" | "EFFECT" | "ITEM";
   targetId: string;
   label: string;
 }
@@ -717,6 +736,55 @@ function CapabilityBody({
                   {link.primitive.buCost * link.quantity} BU
                 </span>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+              </li>
+            ))}
+          </ul>
+        </Section>
+      ) : null}
+
+      {/*
+        Composed effects — capabilities can include effects (e.g.
+        "Shattered Composure" nested inside "Abyssal Despair"). The
+        effect's narrative description is the natural explanation of what
+        the nested effect does; the sortOrder + slotLabel from the join
+        table preserve the author's composition order. Clicking opens the
+        effect preview so the user can drill into the effect's own
+        primitive composition.
+      */}
+      {row.effectLinks.length > 0 ? (
+        <Section heading={`Composed effects (${row.effectLinks.length})`}>
+          <ul className="divide-y divide-border rounded-md border border-border">
+            {row.effectLinks.map((link) => (
+              <li
+                key={link.effectId}
+                className="flex items-start gap-2 p-2.5 text-sm hover:bg-accent/40"
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    onSubLink({
+                      targetType: "EFFECT",
+                      targetId: link.effectId,
+                      label: link.effect.name,
+                    })
+                  }
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <span className="font-semibold text-violet-400 hover:underline">
+                    {link.effect.name}
+                  </span>
+                  {link.slotLabel ? (
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      <span className="italic">"{link.slotLabel}"</span>
+                    </div>
+                  ) : null}
+                  {link.effect.narrativeDescription ? (
+                    <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                      {link.effect.narrativeDescription}
+                    </div>
+                  ) : null}
+                </button>
+                <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
               </li>
             ))}
           </ul>

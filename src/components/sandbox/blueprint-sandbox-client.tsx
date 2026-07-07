@@ -9,6 +9,7 @@
 // a different library row triggers a modal if the current form is dirty.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { SandboxLayout } from "./sandbox-layout";
 import { TemplateForm } from "./template-form";
 import { TemplateFormPreview } from "./template-form-preview";
@@ -159,7 +160,15 @@ export function BlueprintSandboxClient({
   // anything in their build — either unsaved edits OR a loaded entity
   // that hasn't been saved yet. The global also auto-resets on route
   // change.
-  const { setSandboxFormDirty } = useGlobalControls();
+  const { setSandboxFormDirty, openDrawer } = useGlobalControls();
+  // URL sync — when the user switches build mode via the bottom tab
+  // bar, push ?build=<mode> so a refresh / deep-link lands on the same
+  // mode. Without this the URL stays on whatever was set in the
+  // initial request, which is confusing once the in-memory state
+  // drifts away from the URL.
+  const router = useRouter();
+  const pathname = usePathname();
+  const currentSearchParams = useSearchParams();
   useEffect(() => {
     setSandboxFormDirty(formIsDirty || editing !== null);
   }, [formIsDirty, editing, setSandboxFormDirty]);
@@ -169,6 +178,23 @@ export function BlueprintSandboxClient({
       setBuild(action.mode);
       setEditing(null);
       setFormIsDirty(false); // new mode = fresh form
+      // Sync the URL so refresh / deep-link lands on the right mode.
+      // Preserve all other search params (kind, edit, etc.) so the
+      // user's previous state isn't lost.
+      const nextParams = new URLSearchParams(
+        currentSearchParams?.toString() ?? "",
+      );
+      nextParams.set("build", action.mode);
+      router.replace(
+        nextParams.toString()
+          ? `${pathname}?${nextParams.toString()}`
+          : pathname,
+      );
+      // Auto-open the build drawer so the user sees the new form
+      // mount in non-split mobile mode. In split mode the form is
+      // already visible inline so opening the drawer would be
+      // redundant; the openDrawer call is harmless there.
+      openDrawer("build");
       return;
     }
     const { entityType, id } = action;
@@ -184,7 +210,14 @@ export function BlueprintSandboxClient({
       setEditing({ kind: "item", row });
     }
     setFormIsDirty(false); // loaded entity starts pristine
-  }, [templates, items]);
+  }, [
+    templates,
+    items,
+    router,
+    pathname,
+    currentSearchParams,
+    openDrawer,
+  ]);
 
   function guardedSwitchBuild(newMode: BlueprintBuildMode) {
     if (newMode === build) return;

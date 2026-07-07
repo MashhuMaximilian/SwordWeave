@@ -82,6 +82,7 @@ export default async function GrammarSandboxPage({
       orderBy: [asc(capabilities.name)],
       with: {
         primitiveLinks: { with: { primitive: true } },
+        effectLinks: { with: { effect: true } },
       },
     });
     capabilityRows = rows as unknown[];
@@ -226,7 +227,31 @@ export default async function GrammarSandboxPage({
           tags: string[] | null;
           isPublic: boolean;
           verboseDescription: string;
-          narrativeDescription: string | null;
+          primitiveLinks?: Array<{
+            primitiveId: number;
+            role: string;
+            quantity: number;
+            sortOrder: number;
+            slotLabel: string | null;
+            primitive: {
+              id: number;
+              name: string;
+              category: string;
+              buCost: number;
+            };
+          }>;
+          effectLinks?: Array<{
+            effectId: string;
+            sortOrder: number;
+            slotLabel: string | null;
+            notes: string | null;
+            effect: {
+              id: string;
+              name: string;
+              narrativeDescription: string | null;
+              sourceOrigin: string | null;
+            };
+          }>;
         };
         return {
           id: row.id,
@@ -237,13 +262,28 @@ export default async function GrammarSandboxPage({
           tags: row.tags ?? [],
           isPublic: row.isPublic,
           verboseDescription: row.verboseDescription,
-          // Capability's relational primitiveLinks have a richer shape
-          // (role/sortOrder/slotLabel). The grammar sandbox's
-          // capability form only needs id/name/category/buCost; the
-          // actual primitiveLinks are populated by the load flow.
-          // Cast empty array to never so TypeScript accepts it; the
-          // runtime consumer treats primitiveLinks as optional.
-          primitiveLinks: [] as never,
+          // Pass the real primitiveLinks so the preview shows the
+          // composed primitives. The form also reads from this when
+          // loading a capability into the build.
+          primitiveLinks: (row.primitiveLinks ?? []).map((l) => ({
+            primitiveId: l.primitiveId,
+            role: l.role,
+            quantity: l.quantity,
+            sortOrder: l.sortOrder,
+            slotLabel: l.slotLabel,
+            primitive: l.primitive,
+          })),
+          // Pass the real effectLinks so the preview can render the
+          // "Composed effects" section. Capabilities like "Abyssal
+          // Despair" nest effects (e.g. "Shattered Composure") that
+          // carry their own narrative + primitiveLinks.
+          effectLinks: (row.effectLinks ?? []).map((l) => ({
+            effectId: l.effectId,
+            sortOrder: l.sortOrder,
+            slotLabel: l.slotLabel,
+            notes: l.notes,
+            effect: l.effect,
+          })),
         };
       })}
       libraryItems={libraryItems}

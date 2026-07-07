@@ -31,6 +31,21 @@ interface Props {
   totalPages: number;
   initialState: LibraryToolbarState;
   primitiveCategories: Array<{ value: string; label: string; count: number }>;
+  /**
+   * Distinct item tags (with counts) for the chip-based tag filter
+   * in the toolbar. Server-loaded so the chips render in a single
+   * round-trip; the client just toggles the active set and pushes
+   * the new tag list to the URL.
+   */
+  itemTags?: Array<{ value: string; label: string; count: number }>;
+  /**
+   * Currently-active tag filter values, mirrored from the URL ?tag=
+   * param. Passed so the chips can render their active state on the
+   * initial render (the toolbar derives the active set from
+   * `state.tags`, but we also need it to highlight chips on first
+   * paint before the toolbar mounts its effect).
+   */
+  activeTags?: string[];
   engagement: LibraryEngagement;
   currentUserInternalId: string | null;
 }
@@ -42,6 +57,8 @@ export function LibraryBrowseClient({
   totalPages,
   initialState,
   primitiveCategories,
+  itemTags = [],
+  activeTags = [],
   engagement,
   currentUserInternalId,
 }: Props) {
@@ -62,6 +79,16 @@ export function LibraryBrowseClient({
       if (next.hasForks) params.set("hasForks", "1");
       if (next.sort !== "ENGAGEMENT") params.set("sort", next.sort);
       if (next.view !== "GRID") params.set("view", next.view);
+      // Tag filter — comma-separated. Only emit the param when the
+      // active type is ITEM (other types ignore the tag filter
+      // server-side, and emitting it for those would be confusing).
+      if (
+        next.typeFilter === "ITEM" &&
+        next.tags &&
+        next.tags.trim().length > 0
+      ) {
+        params.set("tag", next.tags);
+      }
       const nextPage = overridePage ?? 0;
       if (nextPage > 0) params.set("page", String(nextPage));
       const qs = params.toString();
@@ -101,13 +128,21 @@ export function LibraryBrowseClient({
           state={state}
           onStateChange={onStateChange}
           primitiveCategories={primitiveCategories}
+          // Tag chips for items — only shown by the toolbar when the
+          // active type filter is ITEM. The activeTags array mirrors
+          // the URL ?tag= param so chips render in their active state
+          // on first paint (the toolbar also derives the active set
+          // from `state.tags`, but `activeTags` is the source of
+          // truth for the initial highlight).
+          itemTags={itemTags}
+          activeTags={activeTags}
           showSearch={true}
           showAdvancedFilters={true}
           forceExpandFilters
         />
       </div>
     ),
-    [state, onStateChange, primitiveCategories],
+    [state, onStateChange, primitiveCategories, itemTags, activeTags],
   );
   useFilterSlot(filterPanelContent);
 

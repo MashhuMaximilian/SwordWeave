@@ -18,7 +18,7 @@
 // =============================================================================
 
 import { ChevronDown, ChevronUp, Search, SlidersHorizontal } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { LibraryTargetType } from "@/lib/publishing/library-query";
 import type { LibrarySort } from "@/lib/publishing/library-query";
@@ -97,6 +97,19 @@ interface LibraryToolbarProps {
    */
   primitiveCategories?: Array<{ value: string; label: string; count: number }>;
   /**
+   * Distinct item tags (with counts) for the chip-based tag filter.
+   * Rendered as a chip row above the type chips when the active type
+   * is ITEM. Clicking a chip toggles it in the active set and pushes
+   * the new tag list to the URL.
+   */
+  itemTags?: Array<{ value: string; label: string; count: number }>;
+  /**
+   * Initial active tag set. Mirrors the URL ?tag= param so chips
+   * render in their active state on first paint. Once mounted, the
+   * toolbar derives the active set from `state.tags` instead.
+   */
+  activeTags?: string[];
+  /**
    * If true, render advanced filters (category, hasForks, minLikes).
    * Defaults to true.
    */
@@ -169,6 +182,8 @@ export function LibraryToolbar({
   activeSubKinds = [],
   onSubKindsChange,
   primitiveCategories = [],
+  itemTags = [],
+  activeTags = [],
   showAdvancedFilters = true,
   showSearch = true,
   searchPlaceholder = "Search by name…",
@@ -180,6 +195,41 @@ export function LibraryToolbar({
   // (`forceExpandFilters=true`), the user has already explicitly opened
   // filters — start with the chip rows visible.
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(forceExpandFilters);
+
+  // Active tag set — derived from `state.tags` (comma-separated) AFTER
+  // the toolbar mounts and re-derives on every state change. The
+  // `activeTags` prop seeds the initial value for the first paint.
+  const [tagState, setTagState] = useState<string[]>(activeTags);
+  // Sync tagState with the URL-mirrored state.tags. We parse the
+  // comma-separated value into a deduped array. Effect runs whenever
+  // state.tags changes (URL change → pushUrl → state.tags).
+  useEffect(() => {
+    const parsed = (state.tags ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    setTagState((prev) => {
+      if (
+        prev.length === parsed.length &&
+        prev.every((p, i) => p === parsed[i])
+      ) {
+        return prev;
+      }
+      return parsed;
+    });
+  }, [state.tags]);
+
+  // Toggle a tag in the active set + push the new value to the parent.
+  // Multiple selected tags are AND-matched by the server. Clicking an
+  // already-active tag removes it.
+  function toggleTag(value: string) {
+    const next = tagState.includes(value)
+      ? tagState.filter((t) => t !== value)
+      : [...tagState, value];
+    setTagState(next);
+    update("tags", next.join(","));
+  }
+
   const hasActiveFilters =
     state.typeFilter !== "ALL" ||
     state.category !== "" ||
@@ -187,7 +237,8 @@ export function LibraryToolbar({
     state.minLikes !== "" ||
     state.hasForks ||
     state.sort !== "ENGAGEMENT" ||
-    activeSubKinds.length > 0;
+    activeSubKinds.length > 0 ||
+    tagState.length > 0;
 
   function update<K extends keyof LibraryToolbarState>(
     key: K,
@@ -343,6 +394,54 @@ export function LibraryToolbar({
             </button>
           </div>
         </div>
+
+        {/* Tag chips (visible only when the active type is ITEM and the
+            parent passed `itemTags`). Server-loaded list of distinct tags
+            across public items. Multiple selected tags are AND-matched
+            server-side (every listed tag must be present on the item). */}
+        {itemTags.length > 0 && state.typeFilter === "ITEM" ? (
+          <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Tags
+            </span>
+            {itemTags.map((chip) => {
+              const active = tagState.includes(chip.value);
+              return (
+                <button
+                  key={chip.value}
+                  type="button"
+                  onClick={() => toggleTag(chip.value)}
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors",
+                    active
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary hover:bg-secondary/70",
+                  )}
+                  title={
+                    active
+                      ? `Click to remove "${chip.value}" from the filter`
+                      : `Click to filter by "${chip.value}"`
+                  }
+                >
+                  {chip.label}{" "}
+                  <span className="ml-0.5 opacity-70">({chip.count})</span>
+                </button>
+              );
+            })}
+            {tagState.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setTagState([]);
+                  update("tags", "");
+                }}
+                className="ml-auto rounded-md border border-border bg-card px-2 py-0.5 text-[10px] font-medium hover:border-primary"
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
+        ) : null}
 
         {/* Type chips */}
         <div className="flex flex-wrap gap-2">

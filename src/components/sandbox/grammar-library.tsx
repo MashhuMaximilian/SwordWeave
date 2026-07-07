@@ -316,12 +316,26 @@ export function GrammarLibrary({
           }}
           onSubLinkClick={(link) => {
             // Look up the full row and push it onto the stack.
-            const sub =
-              link.targetType === "PRIMITIVE"
-                ? primitives.find((p) => String(p.id) === link.targetId)
-                : null;
-            if (!sub) return;
-            pushPreview({ kind: "primitive", row: sub });
+            if (link.targetType === "PRIMITIVE") {
+              const sub = primitives.find(
+                (p) => String(p.id) === link.targetId,
+              );
+              if (!sub) return;
+              pushPreview({ kind: "primitive", row: sub });
+              return;
+            }
+            if (link.targetType === "EFFECT") {
+              const sub = effects.find((e) => e.id === link.targetId);
+              if (!sub) return;
+              pushPreview({ kind: "effect", row: sub });
+              return;
+            }
+            if (link.targetType === "CAPABILITY") {
+              const sub = capabilities.find((c) => c.id === link.targetId);
+              if (!sub) return;
+              pushPreview({ kind: "capability", row: sub });
+              return;
+            }
           }}
         />
       ),
@@ -386,7 +400,7 @@ function SandboxPreviewBody({
   build: GrammarBuildMode;
   onLoadIntoBuild: () => void;
   onSubLinkClick?: (link: {
-    targetType: "PRIMITIVE" | "CAPABILITY";
+    targetType: "PRIMITIVE" | "CAPABILITY" | "EFFECT" | "ITEM";
     targetId: string;
     label: string;
   }) => void;
@@ -437,11 +451,14 @@ function SandboxPreviewBody({
       // already triggered the active form's listener, so the slot
       // exists by the time the modal closes.
       window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
-      // Open the preview drawer so the user can see the slot's
-      // effect on the entity. (User feedback: "When I slot something
-      // in build or load into build it should also open the build
-      // preview too.")
-      openDrawer("preview");
+      // Open the BUILD drawer tab — not preview — so the user sees
+      // the slot land in the form they were composing. The form is
+      // mounted in the drawer's `build` tab (in non-split mobile
+      // mode), so opening `preview` previously showed an empty
+      // panel and the user thought nothing happened. The preview
+      // tab is one tap away and is always populated by the form's
+      // live snapshot.
+      openDrawer("build");
     }
   }
 
@@ -473,7 +490,14 @@ function SandboxPreviewBody({
           type="button"
           onClick={() => {
             onLoadIntoBuild();
-            openDrawer("preview");
+            // Open the BUILD drawer tab — the form is mounted there
+            // and is what the user just loaded. The previous behaviour
+            // opened `preview`, which shows the entity's live snapshot
+            // rendered by the form — but in non-split mobile mode the
+            // form is in the drawer and the preview reads from the
+            // form's state via the parent. Opening the drawer's
+            // `build` tab is the always-populated target.
+            openDrawer("build");
           }}
           className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           title="Create a fork-draft of this entry in your sandbox"

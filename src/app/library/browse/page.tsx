@@ -8,6 +8,7 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db/client";
 import {
+  listItemTags,
   listPrimitiveCategories,
   queryLibrary,
   type LibrarySort,
@@ -41,6 +42,13 @@ interface PageProps {
     minLikes?: string;
     hasForks?: string;
     page?: string;
+    /**
+     * Comma-separated tag list. When the active type is ITEM, the server
+     * filters items whose `tags` array contains ALL of the given values
+     * (AND-match). The public library previously had no tag filter for
+     * items (user-reported regression).
+     */
+    tag?: string;
   }>;
 }
 
@@ -61,9 +69,22 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
   const authorFilter = params.author ?? "";
   const minLikesFilter = params.minLikes ?? "";
   const hasForksFilter = params.hasForks === "1";
+  // Tags filter — comma-separated. The query expects an array. When
+  // the active type is ITEM, this maps to "tags && ARRAY[...ALL]" so
+  // AND-match (every listed tag must be present on the item).
+  const tagFilter = (params.tag ?? "")
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
 
-  // Load categories dynamically for the filter chips
-  const categories = await listPrimitiveCategories();
+  // Load categories + item-tag chips in parallel. Item tags are only
+  // needed when the user is browsing items, but loading them
+  // unconditionally is cheap (single index scan on a small table) and
+  // keeps the toolbar's filter UI consistent.
+  const [categories, itemTags] = await Promise.all([
+    listPrimitiveCategories(),
+    listItemTags(),
+  ]);
 
   const result = await queryLibrary({
     ...(targetType !== "ALL" ? { targetType } : {}),
@@ -72,6 +93,12 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
     ...(params.author ? { authorUsername: params.author } : {}),
     ...(params.minLikes ? { minLikes: parseInt(params.minLikes, 10) } : {}),
     hasForks: params.hasForks === "1",
+    // Tag filter — only honoured for ITEM target type. Other types
+    // (primitive/capability/effect/template) don't have a tag array
+    // column so the query would no-op.
+    ...(targetType === "ITEM" && tagFilter.length > 0
+      ? { tags: tagFilter }
+      : {}),
     sort,
     limit: PAGE_SIZE,
     offset,
@@ -104,6 +131,11 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
     author: authorFilter,
     minLikes: minLikesFilter,
     hasForks: hasForksFilter,
+    // Mirror the URL ?tag= value into the toolbar's `tags` field. The
+    // sandbox uses the text-input `tags` filter; the public library
+    // uses chip-based filter (see LibraryToolbar `itemTags` prop). Both
+    // share the same state field, so the URL stays consistent.
+    tags: tagFilter.join(","),
   };
 
   return (
@@ -137,6 +169,8 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
           totalPages={totalPages}
           initialState={initialState}
           primitiveCategories={categories}
+          itemTags={itemTags}
+          activeTags={tagFilter}
           engagement={engagement}
           currentUserInternalId={currentUserInternalId}
         />

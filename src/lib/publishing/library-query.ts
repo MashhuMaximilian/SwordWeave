@@ -69,6 +69,18 @@ export interface LibraryQuery {
   authorUsername?: string;
   minLikes?: number;
   hasForks?: boolean;
+  /**
+   * Tag filter — only honoured when `targetType === "ITEM"`. Items
+   * store tags as a text[] column. The filter matches items whose
+   * tags array contains ALL the values in this list (AND-match,
+   * "every listed tag must be present"). Empty array = no filter.
+   *
+   * The match uses Postgres's `&&` array-overlap operator — true
+   * when arrays have at least one element in common — combined
+   * with a cardinality check so we get the AND match the user
+   * expects. (Plain `&&` would be OR-overlap.)
+   */
+  tags?: string[];
   sort?: LibrarySort;
   limit?: number;
   offset?: number;
@@ -461,6 +473,17 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
     // Items store Clerk ID in user_id; SQL-level username filter needs a
     // join. Skip — filter in caller.
   }
+  if (q.tags && q.tags.length > 0) {
+    // AND-match across the supplied tag list. Postgres `&&` is array
+    // overlap (true when arrays share any element), but we want every
+    // supplied tag to be present — so we AND together multiple
+    // `tags @> ARRAY[<single>]` checks (the `@>` containment operator
+    // is true when the LEFT array contains every element of the RIGHT
+    // array).
+    for (const tag of q.tags) {
+      conditions.push(sql`${items.tags} @> ARRAY[${tag}]::text[]`);
+    }
+  }
 
   const rows = await db
     .select({
@@ -764,4 +787,39 @@ export async function listPrimitiveCategories(): Promise<
     label: r.category.replace(/_/g, " "),
     count: Number(r.count),
   }));
+}
+
+/**
+ * List all distinct tags across published items. Items store tags as
+ * text[] on the items row. We unnest() the array server-side and group
+ * by tag value. The public library uses this for the tag chip filter
+ * (per the user's "no tag filter for items" report).
+ *
+ * Only public items contribute (matches the library's public-only
+ * scope). Sorted by count desc, then label asc.
+ */
+export async function listItemTags(): Promise<
+  { value: string; label: string; count: number }[]
+> {
+  // Drizzle's sql tag is used to write the unnest() — it's the
+  // standard Postgres way to flatten an array column into rows.
+  const rows = await db.execute<{
+    tag: string;
+    count: number;
+  }>(sql`
+    SELECT tag, COUNT(*)::int AS count
+    FROM items, unnest(items.tags) AS tag
+    WHERE items.is_public = true
+    GROUP BY tag
+    ORDER BY count DESC, tag ASC
+  `);
+  const list = (rows as unknown as { rows: { tag: string; count: number }[] })
+    .rows ?? rows;
+  return list
+    .filter((r) => r.tag && r.tag.trim().length > 0)
+    .map((r) => ({
+      value: r.tag,
+      label: r.tag,
+      count: Number(r.count),
+    }));
 }

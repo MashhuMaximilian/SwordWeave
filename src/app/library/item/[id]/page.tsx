@@ -171,6 +171,15 @@ export default async function LibraryItemPage({ params }: PageProps) {
       />
     );
   }
+  if (type === "ITEM") {
+    return (
+      <ItemDetail
+        id={id}
+        currentUserId={currentUserInternalId}
+        viewerClerkId={clerkUserId}
+      />
+    );
+  }
   notFound();
 }
 
@@ -791,6 +800,242 @@ async function EffectDetail({
                 <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                   {child.narrativeDescription?.slice(0, 200)}
                 </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </DetailShell>
+  );
+}
+
+async function ItemDetail({
+  id,
+  currentUserId,
+  viewerClerkId,
+}: DetailProps & { id: string }) {
+  const itemRow = await db.query.items.findFirst({
+    where: (table, { eq }) => eq(table.id, id),
+  });
+  if (!itemRow) notFound();
+
+  // Items compose primitives + effects + capabilities (the user's spec
+  // for item composition). Load all three in parallel.
+  const [primitiveLinks, effectLinks, capabilityLinks] = await Promise.all([
+    db.query.itemPrimitives.findMany({
+      where: (table, { eq }) => eq(table.itemId, id),
+      with: { primitive: true },
+    }),
+    db.query.itemEffects.findMany({
+      where: (table, { eq }) => eq(table.itemId, id),
+      with: { effect: true },
+    }),
+    db.query.itemCapabilities.findMany({
+      where: (table, { eq }) => eq(table.itemId, id),
+      with: { capability: true },
+    }),
+  ]);
+
+  // Compute BU total from composed primitives (same shape as item form).
+  let buTotal = 0;
+  for (const link of primitiveLinks) {
+    buTotal += link.primitive.buCost;
+  }
+
+  const author = await resolveAuthorByClerkId(itemRow.userId);
+  const engagement = await loadEngagement("ITEM", id, currentUserId);
+
+  // Rarity class for the chip. itemRarityEnum is the schema enum;
+  // we map each value to a tailwind color pair. Cast through string
+  // to defeat Drizzle's literal-type narrowing in the chained
+  // ternary (Drizzle resolves `itemRow.rarity` to a union of literal
+  // strings and TS thinks each branch exhausts one).
+  const rarity = String(itemRow.rarity);
+  const rarityClass =
+    rarity === "COMMON"
+      ? "bg-slate-500/15 text-slate-700 dark:text-slate-300"
+      : rarity === "UNCOMMON"
+        ? "bg-green-500/15 text-green-700 dark:text-green-400"
+        : rarity === "RARE"
+          ? "bg-blue-500/15 text-blue-700 dark:text-blue-400"
+          : rarity === "EPIC"
+            ? "bg-purple-500/15 text-purple-700 dark:text-purple-400"
+            : rarity === "LEGENDARY"
+              ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+              : "bg-secondary";
+
+  return (
+    <DetailShell
+      backHref="/library/browse?type=ITEM"
+      typeLabel="ITEM"
+      name={itemRow.name}
+      buCost={buTotal > 0 || itemRow.buCost > 0 ? (buTotal || itemRow.buCost) : null}
+      category={itemRow.itemType}
+      description={itemRow.description || null}
+      author={author}
+      ownerId={itemRow.userId}
+      editHref={
+        itemRow.userId
+          ? `/sandbox/blueprint?build=item&edit=${id}`
+          : null
+      }
+      targetType="ITEM"
+      targetId={id}
+      engagement={engagement}
+      currentUserId={currentUserId}
+    >
+      <section className="mb-5">
+        <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+          Properties
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <DataField label="Type" value={itemRow.itemType} />
+          <div className="rounded-md border border-border bg-background p-3">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">
+              Rarity
+            </p>
+            <p className="mt-1">
+              <span
+                className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${rarityClass}`}
+              >
+                {itemRow.rarity}
+              </span>
+            </p>
+          </div>
+          <DataField label="Slot cost" value={String(itemRow.slotCost)} />
+          <DataField label="Quantity" value={String(itemRow.quantity)} />
+          {itemRow.isTwoHanded ? (
+            <DataField label="Handedness" value="Two-handed" />
+          ) : null}
+          {itemRow.isConsumable ? (
+            <DataField label="Consumable" value="Yes" />
+          ) : null}
+          {itemRow.actsAsFocus ? (
+            <DataField label="Acts as focus" value="Yes" />
+          ) : null}
+          {itemRow.sourceOrigin ? (
+            <DataField label="Source" value={itemRow.sourceOrigin} />
+          ) : null}
+        </div>
+      </section>
+
+      {itemRow.description ? (
+        <section className="mb-5">
+          <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+            Description
+          </h2>
+          <div className="rounded-md border border-border bg-background p-4 [&_p]:m-0">
+            <Markdown>{itemRow.description}</Markdown>
+          </div>
+        </section>
+      ) : null}
+
+      {itemRow.tags.length > 0 && (
+        <section className="mb-5">
+          <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+            Tags
+          </h2>
+          <div className="flex flex-wrap gap-1.5">
+            {itemRow.tags.map((t) => (
+              <Link
+                key={t}
+                href={`/library/browse?type=ITEM&tag=${encodeURIComponent(t)}`}
+                className="rounded-full border border-border bg-secondary px-2.5 py-0.5 text-xs hover:border-primary"
+              >
+                {t}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {primitiveLinks.length > 0 && (
+        <section className="mb-5">
+          <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+            Composed primitives ({primitiveLinks.length})
+          </h2>
+          <ul className="divide-y divide-border rounded-md border border-border">
+            {primitiveLinks.map((link) => (
+              <li
+                key={`${link.itemId}-${link.primitiveId}`}
+                className="flex items-center justify-between gap-2 p-3 text-sm"
+              >
+                <Link
+                  href={`/library/item/PRIMITIVE:${link.primitiveId}`}
+                  className="min-w-0 flex-1 truncate hover:underline"
+                >
+                  <span className="font-semibold">{link.primitive.name}</span>
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {link.primitive.category.replace(/_/g, " ")}
+                  </span>
+                </Link>
+                <span className="shrink-0 font-mono text-xs">
+                  {link.primitive.buCost} BU
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {effectLinks.length > 0 && (
+        <section className="mb-5">
+          <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+            Composed effects ({effectLinks.length})
+          </h2>
+          <ul className="divide-y divide-border rounded-md border border-border">
+            {effectLinks.map((link) => (
+              <li
+                key={`${link.itemId}-${link.effectId}`}
+                className="p-3 text-sm"
+              >
+                <Link
+                  href={`/library/item/EFFECT:${link.effectId}`}
+                  className="font-semibold hover:underline"
+                >
+                  {link.effect.name}
+                </Link>
+                {link.slotLabel ? (
+                  <p className="mt-0.5 text-xs text-muted-foreground italic">
+                    "{link.slotLabel}"
+                  </p>
+                ) : null}
+                {link.effect.narrativeDescription ? (
+                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                    {link.effect.narrativeDescription.slice(0, 200)}
+                  </p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {capabilityLinks.length > 0 && (
+        <section className="mb-5">
+          <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+            Composed capabilities ({capabilityLinks.length})
+          </h2>
+          <ul className="divide-y divide-border rounded-md border border-border">
+            {capabilityLinks.map((link) => (
+              <li
+                key={`${link.itemId}-${link.capabilityId}`}
+                className="p-3 text-sm"
+              >
+                <Link
+                  href={`/library/item/CAPABILITY:${link.capabilityId}`}
+                  className="font-semibold hover:underline"
+                >
+                  {link.capability.name}
+                </Link>
+                <span className="ml-2 text-xs text-muted-foreground">
+                  {link.capability.type}
+                </span>
+                {link.slotLabel ? (
+                  <p className="mt-0.5 text-xs text-muted-foreground italic">
+                    "{link.slotLabel}"
+                  </p>
+                ) : null}
               </li>
             ))}
           </ul>

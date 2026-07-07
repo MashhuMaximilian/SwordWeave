@@ -125,6 +125,10 @@ export default async function BlueprintSandboxPage({
   try {
     const rows = await db.query.capabilities.findMany({
       orderBy: [asc(capabilities.name)],
+      with: {
+        primitiveLinks: { with: { primitive: true } },
+        effectLinks: { with: { effect: true } },
+      },
     });
     capabilityRows = rows as unknown[];
   } catch (err) {
@@ -309,6 +313,31 @@ export default async function BlueprintSandboxPage({
           sourceOrigin: string | null;
           tags: string[] | null;
           isPublic: boolean;
+          primitiveLinks?: Array<{
+            primitiveId: number;
+            role: string;
+            quantity: number;
+            sortOrder: number;
+            slotLabel: string | null;
+            primitive: {
+              id: number;
+              name: string;
+              category: string;
+              buCost: number;
+            };
+          }>;
+          effectLinks?: Array<{
+            effectId: string;
+            sortOrder: number;
+            slotLabel: string | null;
+            notes: string | null;
+            effect: {
+              id: string;
+              name: string;
+              narrativeDescription: string | null;
+              sourceOrigin: string | null;
+            };
+          }>;
         };
         return {
           id: row.id,
@@ -319,13 +348,24 @@ export default async function BlueprintSandboxPage({
           sourceOrigin: row.sourceOrigin,
           tags: row.tags ?? [],
           isPublic: row.isPublic,
-          // Capability's relational primitiveLinks have a richer shape
-          // (role/sortOrder/slotLabel) but the blueprint sandbox's
-          // capability form only needs the id/name/category/buCost
-          // basics. Cast the empty array to the SandboxCapabilityRow
-          // type so TypeScript is happy; the actual primitiveLinks are
-          // populated separately via the sandbox's load-capability flow.
-          primitiveLinks: [] as unknown as SandboxCapabilityRow["primitiveLinks"],
+          // Pass the real primitiveLinks so previews AND forms see the
+          // composed primitives. The form reads from this when loading
+          // a capability into the build.
+          primitiveLinks: (row.primitiveLinks ?? []).map((l) => ({
+            primitiveId: l.primitiveId,
+            role: l.role,
+            quantity: l.quantity,
+            sortOrder: l.sortOrder,
+            slotLabel: l.slotLabel,
+            primitive: l.primitive,
+          })),
+          effectLinks: (row.effectLinks ?? []).map((l) => ({
+            effectId: l.effectId,
+            sortOrder: l.sortOrder,
+            slotLabel: l.slotLabel,
+            notes: l.notes,
+            effect: l.effect,
+          })),
         };
       })}
       dataLoadFailed={dataLoadFailed}

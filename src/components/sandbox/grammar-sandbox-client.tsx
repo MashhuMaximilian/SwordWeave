@@ -10,6 +10,7 @@
 // switches happen silently.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SandboxLayout } from "@/components/sandbox/sandbox-layout";
 import { PrimitiveForm } from "@/components/sandbox/primitive-form";
 import { PrimitiveFormPreview } from "@/components/sandbox/primitive-form-preview";
@@ -80,6 +81,18 @@ type CapabilityRow = {
       name: string;
       category: string;
       buCost: number;
+    };
+  }>;
+  effectLinks: Array<{
+    effectId: string;
+    sortOrder: number;
+    slotLabel: string | null;
+    notes: string | null;
+    effect: {
+      id: string;
+      name: string;
+      narrativeDescription: string | null;
+      sourceOrigin: string | null;
     };
   }>;
 };
@@ -155,7 +168,14 @@ export function GrammarSandboxClient({
   // anything in their build — either unsaved edits OR a loaded entity
   // that hasn't been saved yet. The global also auto-resets on route
   // change so we don't need a manual clear here.
-  const { setSandboxFormDirty } = useGlobalControls();
+  const { setSandboxFormDirty, openDrawer } = useGlobalControls();
+  // URL sync — switchBuild needs to push ?build=<mode> so refresh /
+  // deep-link lands on the right mode. Without this the URL stays on
+  // whatever was set in the initial request, which is confusing once
+  // the in-memory state drifts away from the URL.
+  const router = useRouter();
+  const pathname = usePathname();
+  const currentSearchParams = useSearchParams();
   useEffect(() => {
     setSandboxFormDirty(formIsDirty || editing !== null);
   }, [formIsDirty, editing, setSandboxFormDirty]);
@@ -167,6 +187,21 @@ export function GrammarSandboxClient({
       setBuild(action.mode);
       setEditing(null);
       setFormIsDirty(false); // new mode = fresh form, force pristine
+      // URL sync — preserve all other search params, just update build.
+      const nextParams = new URLSearchParams(
+        currentSearchParams?.toString() ?? "",
+      );
+      nextParams.set("build", action.mode);
+      router.replace(
+        nextParams.toString()
+          ? `${pathname}?${nextParams.toString()}`
+          : pathname,
+      );
+      // Auto-open the build drawer so the user sees the new form
+      // mount in non-split mobile mode. In split mode the form is
+      // already visible inline so the drawer call is redundant but
+      // harmless.
+      openDrawer("build");
       return;
     }
     // loadFromLibrary
@@ -188,7 +223,15 @@ export function GrammarSandboxClient({
       setEditing({ kind: "capability", row });
     }
     setFormIsDirty(false); // loaded entity starts pristine
-  }, [primitives, effects, capabilities]);
+  }, [
+    primitives,
+    effects,
+    capabilities,
+    router,
+    pathname,
+    currentSearchParams,
+    openDrawer,
+  ]);
 
   // ---- Dirty-check interceptors ------------------------------------------
 
