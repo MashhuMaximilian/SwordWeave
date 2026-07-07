@@ -37,6 +37,11 @@ import {
 import { getForkSource } from "@/lib/publishing/fork-lineage";
 
 export const dynamic = "force-dynamic";
+// The page queries Neon Postgres via @neondatabase/serverless, which needs
+// the Node.js runtime (Pool uses ws + crypto). Without this, Vercel may
+// pick the edge runtime for this route, where `process` is not a global
+// and DATABASE_URL ends up undefined → "DATABASE_URL is required" error.
+export const runtime = "nodejs";
 
 interface PageProps {
   params: Promise<{ id: string }>;
