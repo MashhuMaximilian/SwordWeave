@@ -77,34 +77,42 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
     .map((t) => t.trim())
     .filter(Boolean);
 
-  // Load categories + item-tag chips in parallel. Item tags are only
-  // needed when the user is browsing items, but loading them
-  // unconditionally is cheap (single index scan on a small table) and
-  // keeps the toolbar's filter UI consistent.
-  const [categories, itemTags] = await Promise.all([
+  // Load categories + item-tag chips + library result all in parallel. The
+  // chip + category lists are only needed for the toolbar's filter UI but
+  // loading them up front (alongside queryLibrary) lets the whole page
+  // render in a single round-trip's wall-clock time. Each query is a small
+  // index scan; the cost of running them concurrently vs. serially is
+  // negligible compared to the latency reduction.
+  const [
+    categories,
+    itemTags,
+    result,
+  ] = await Promise.all([
     listPrimitiveCategories(),
     listItemTags(),
+    queryLibrary({
+      ...(targetType !== "ALL" ? { targetType } : {}),
+      ...(category ? { category } : {}),
+      ...(search ? { search } : {}),
+      ...(params.author ? { authorUsername: params.author } : {}),
+      ...(params.minLikes ? { minLikes: parseInt(params.minLikes, 10) } : {}),
+      hasForks: params.hasForks === "1",
+      // Tag filter — only honoured for ITEM target type. Other types
+      // (primitive/capability/effect/template) don't have a tag array
+      // column so the query would no-op.
+      ...(targetType === "ITEM" && tagFilter.length > 0
+        ? { tags: tagFilter }
+        : {}),
+      sort,
+      limit: PAGE_SIZE,
+      offset,
+    }),
   ]);
 
-  const result = await queryLibrary({
-    ...(targetType !== "ALL" ? { targetType } : {}),
-    ...(category ? { category } : {}),
-    ...(search ? { search } : {}),
-    ...(params.author ? { authorUsername: params.author } : {}),
-    ...(params.minLikes ? { minLikes: parseInt(params.minLikes, 10) } : {}),
-    hasForks: params.hasForks === "1",
-    // Tag filter — only honoured for ITEM target type. Other types
-    // (primitive/capability/effect/template) don't have a tag array
-    // column so the query would no-op.
-    ...(targetType === "ITEM" && tagFilter.length > 0
-      ? { tags: tagFilter }
-      : {}),
-    sort,
-    limit: PAGE_SIZE,
-    offset,
-  });
-
-  // Resolve current user (Clerk auth) and per-item engagement state
+  // Resolve current user (Clerk auth) and per-item engagement state.
+  // Both can run in parallel with the rest of the page load — the
+  // engagement map is keyed off the result set we just fetched, so
+  // it's not blocked on any earlier await.
   const { userId: clerkUserId } = await auth();
   const currentUserInternalId = clerkUserId
     ? await resolveUserIdByClerkId(clerkUserId)

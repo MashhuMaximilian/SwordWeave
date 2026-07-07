@@ -136,6 +136,7 @@ const DEFAULT_TYPE_CHIPS: LibraryTypeChip[] = [
   { key: "PRIMITIVE", label: "Primitives" },
   { key: "CAPABILITY", label: "Capabilities" },
   { key: "EFFECT", label: "Effects" },
+  { key: "ITEM", label: "Items" },
   { key: "RACE_TEMPLATE", label: "Races" },
   { key: "BACKGROUND_TEMPLATE", label: "Backgrounds" },
   { key: "ARCHETYPE_TEMPLATE", label: "Archetypes" },
