@@ -23,6 +23,7 @@ import {
 } from "@/lib/publishing/library-query";
 import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
+import { getVersionPayload } from "@/lib/versions/version-payload";
 
 export const dynamic = "force-dynamic";
 
@@ -34,11 +35,18 @@ function parseBuild(value: string | undefined): GrammarBuildMode {
 export default async function GrammarSandboxPage({
   searchParams,
 }: {
-  searchParams: Promise<{ build?: string; edit?: string }>;
+  searchParams: Promise<{ build?: string; edit?: string; version?: string }>;
 }) {
   const params = await searchParams;
   const build = parseBuild(params.build);
   const editId = params.edit;
+  // Optional `?version=N` deep-link from the version-history page —
+  // when present, the sandbox fetches the reconstructed payload for
+  // that exact version and uses it to pre-fill the form. Otherwise
+  // the live row is used.
+  const versionNumber = params.version
+    ? Number(params.version)
+    : Number.NaN;
 
   // Three parallel DB queries for primitives/effects/capabilities.
   // Wrap in try/catch so a transient DB failure doesn't 500 the entire
@@ -95,7 +103,10 @@ export default async function GrammarSandboxPage({
     console.error("[grammar sandbox] capabilities query failed:", err);
   }
 
-  // Resolve ?edit=<id> into a typed initial editing row.
+  // Resolve ?edit=<id> into a typed initial editing row. If `?version=N`
+  // is also present, fetch the reconstructed version payload and use
+  // that as the row data instead of the live row. The form fields
+  // pre-fill from whichever object we hand it — same shape either way.
   let initialEditing:
     | { kind: "primitive"; row: { id: number } }
     | { kind: "effect"; row: { id: string } }
@@ -106,11 +117,34 @@ export default async function GrammarSandboxPage({
     if (build === "primitive") {
       const numId = Number(editId);
       if (Number.isFinite(numId)) {
+        // If a version is requested, fetch the reconstructed payload
+        // and shallow-merge it onto the row so the form pre-fills with
+        // version-N's values (overriding any live-row fields that the
+        // version snapshot contains). If the version fetch fails or
+        // the version number is invalid, fall back to the live row.
+        let baseRow: Record<string, unknown> | null = null;
+        if (Number.isFinite(versionNumber)) {
+          try {
+            const ver = await getVersionPayload(
+              "PRIMITIVE",
+              String(numId),
+              versionNumber,
+            );
+            if (ver) baseRow = ver.payload;
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.error("[grammar sandbox] version load failed:", err);
+          }
+        }
         const row = primitiveRows.find(
           (p) => (p as { id: number }).id === numId,
         );
         if (row) {
-          initialEditing = { kind: "primitive", row: row as { id: number } };
+          const merged: Record<string, unknown> = {
+            ...(row as Record<string, unknown>),
+            ...(baseRow ?? {}),
+          };
+          initialEditing = { kind: "primitive", row: merged as { id: number } };
         }
       }
     } else if (build === "effect") {

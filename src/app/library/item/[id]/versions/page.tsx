@@ -11,7 +11,14 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, GitCommit, GitCompareArrows, GitMerge, History } from "lucide-react";
+import {
+  ArrowLeft,
+  GitCommit,
+  GitCompareArrows,
+  GitMerge,
+  History,
+  Wrench,
+} from "lucide-react";
 import {
   getVersionHistory,
   type VersionEntry,
@@ -116,6 +123,42 @@ export default async function VersionHistoryPage({ params }: PageProps) {
   );
 }
 
+// =============================================================================
+// Helpers — sandbox deep-link
+// =============================================================================
+//
+// "Slot this version into build" sends the user to the sandbox with
+// `?edit=<id>&version=<N>`. The sandbox page (grammar / blueprint) reads
+// that, fetches the reconstructed payload, and pre-fills the form. The
+// user can then edit + save — saving creates a new version row.
+//
+// We only support the targets that have a sandbox editor (primitive /
+// effect / capability / templates / items). Items don't have a version
+// history table yet (deferred to a follow-up sprint).
+
+function buildSandboxSlotUrl(
+  targetType: VersionTargetType,
+  targetId: string,
+  versionNumber: number,
+): string | null {
+  switch (targetType) {
+    case "PRIMITIVE":
+      return `/sandbox/grammar?build=primitive&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
+    case "CAPABILITY":
+      return `/sandbox/grammar?build=capability&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
+    case "CHARACTER":
+      return `/sandbox/builds?edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
+    case "RACE_TEMPLATE":
+      return `/sandbox/blueprint?build=template&kind=RACE&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
+    case "BACKGROUND_TEMPLATE":
+      return `/sandbox/blueprint?build=template&kind=BACKGROUND&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
+    case "ARCHETYPE_TEMPLATE":
+      return `/sandbox/blueprint?build=template&kind=ARCHETYPE&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
+    default:
+      return null;
+  }
+}
+
 function VersionRow({
   version,
   previousVersionNumber,
@@ -152,6 +195,28 @@ function VersionRow({
             latest
           </span>
         )}
+        {/* Slot this version into build — sends the user to the sandbox
+            with this exact version's payload pre-filled. Editing + saving
+            creates a new version (or fork if not owner). The button only
+            shows for entity types that have a sandbox editor. */}
+        {(() => {
+          const slotUrl = buildSandboxSlotUrl(
+            targetType,
+            targetId,
+            version.versionNumber,
+          );
+          if (!slotUrl) return null;
+          return (
+            <Link
+              href={slotUrl}
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+              title={`Slot v${version.versionNumber} into your build sandbox`}
+            >
+              <Wrench className="size-3" />
+              Slot into build
+            </Link>
+          );
+        })()}
         {previousVersionNumber !== null && (
           <Link
             href={`/library/item/${targetType}:${targetId}/versions/compare?from=${previousVersionNumber}&to=${version.versionNumber}`}

@@ -27,6 +27,7 @@ import {
 } from "@/lib/publishing/library-query";
 import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
+import { getVersionPayload } from "@/lib/versions/version-payload";
 
 export const dynamic = "force-dynamic";
 
@@ -43,12 +44,24 @@ function parseKind(value: string | undefined): "RACE" | "BACKGROUND" | "ARCHETYP
 export default async function BlueprintSandboxPage({
   searchParams,
 }: {
-  searchParams: Promise<{ build?: string; kind?: string; edit?: string }>;
+  searchParams: Promise<{
+    build?: string;
+    kind?: string;
+    edit?: string;
+    version?: string;
+  }>;
 }) {
   const params = await searchParams;
   const build = parseBuild(params.build);
   const kind = parseKind(params.kind);
   const editId = params.edit;
+  // Optional `?version=N` deep-link from the version-history page —
+  // when present, the sandbox fetches the reconstructed payload for
+  // that exact version and uses it to pre-fill the form. Otherwise
+  // the live row is used.
+  const versionNumber = params.version
+    ? Number(params.version)
+    : Number.NaN;
 
   // Five parallel DB queries for templates/items/primitives/capabilities/effects.
   // Wrap the whole batch in try/catch so a transient failure in any one
@@ -162,10 +175,39 @@ export default async function BlueprintSandboxPage({
 
   if (editId) {
     if (build === "template") {
+      // If a version is requested, fetch the reconstructed payload and
+      // shallow-merge it onto the row so the form pre-fills with
+      // version-N's values. If the version fetch fails or the version
+      // number is invalid, fall back to the live row.
+      let baseRow: Record<string, unknown> | null = null;
+      if (Number.isFinite(versionNumber)) {
+        // Pick the right targetType string based on `kind`. The kind
+        // param is set when the user clicked "Slot into build" from
+        // the version history page; for legacy links without kind we
+        // fall back to RACE.
+        const targetType =
+          kind === "BACKGROUND"
+            ? "BACKGROUND_TEMPLATE"
+            : kind === "ARCHETYPE"
+              ? "ARCHETYPE_TEMPLATE"
+              : "RACE_TEMPLATE";
+        try {
+          const ver = await getVersionPayload(targetType, editId, versionNumber);
+          if (ver) baseRow = ver.payload;
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.error("[blueprint sandbox] version load failed:", err);
+        }
+      }
       const row = templateRows.find(
         (t) => (t as { id: string }).id === editId,
       ) as { id: string } | undefined;
-      if (row) initialEditing = { kind: "template", row };
+      if (row) {
+        const merged = baseRow
+          ? ({ ...row, ...baseRow } as { id: string })
+          : row;
+        initialEditing = { kind: "template", row: merged };
+      }
     } else if (build === "item") {
       const row = itemRows.find(
         (i) => (i as { id: string }).id === editId,
