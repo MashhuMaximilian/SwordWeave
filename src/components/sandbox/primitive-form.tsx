@@ -451,6 +451,11 @@ export function PrimitiveForm({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          // When editing an existing row, include its id so the server
+          // can UPDATE by primary key instead of UPSERT-on-(name,category,userId).
+          // Without this, editing a fork whose name has changed creates a
+          // duplicate row instead of overwriting the fork in place.
+          ...(initialPrimitive?.id != null ? { id: initialPrimitive.id } : {}),
           ...form,
           mirrorVector: form.isMirrorable ? form.mirrorVector : "STANDARD_ONLY",
           mirrorBuCredit: form.isMirrorable ? form.mirrorBuCredit : "0",

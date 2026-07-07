@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { asc, or, eq, isNull } from "drizzle-orm";
+import { asc, or, eq, isNull, and } from "drizzle-orm";
 import { db } from "@/db/client";
 import { primitives } from "@/db/schema";
 import {
@@ -35,6 +35,18 @@ export async function POST(request: Request) {
     }
 
     const values = body as Record<string, unknown>;
+    // When editing an existing row, the form sends the row id so we can
+    // UPDATE by primary key. Without this, the (name, category, userId)
+    // UPSERT can collide with a different row owned by the same user, or
+    // — more often — miss the existing row and INSERT a duplicate when
+    // the user has renamed the primitive during the edit.
+    const editingIdRaw = values["id"];
+    const editingId =
+      typeof editingIdRaw === "number" && Number.isInteger(editingIdRaw) && editingIdRaw > 0
+        ? editingIdRaw
+        : typeof editingIdRaw === "string" && /^\d+$/.test(editingIdRaw)
+          ? Number(editingIdRaw)
+          : null;
     const name = String(values["name"] ?? "").trim();
     const isPublic = Boolean(values["isPublic"]);
     const category = String(values["category"] ?? "");
@@ -72,6 +84,50 @@ export async function POST(request: Request) {
         { error: "Mirror BU credit must be a non-negative integer." },
         { status: 400 },
       );
+    }
+
+    if (editingId !== null) {
+      // Editing an existing row: UPDATE by primary key. Ownership gate:
+      // the row must be owned by the caller (userId === clerkUserId) OR
+      // be system content (userId IS NULL). Without this an attacker could
+      // rewrite any primitive just by guessing a numeric id.
+      const [updated] = await db
+        .update(primitives)
+        .set({
+          name,
+          userId,
+          isPublic,
+          category: category as PrimitiveCategoryValue,
+          costTier: costTier || "Tier 1: Minor (4 BU anchor)",
+          buCost,
+          mechanicalOutputText,
+          narrativeRule,
+          isMirrorable,
+          mirrorVector: isMirrorable ? mirrorVector || "VARIABLE_VECTOR" : "STANDARD_ONLY",
+          mirrorBuCredit: isMirrorable ? mirrorBuCredit : 0,
+          mirrorEligibilityNotes,
+          hardModifiers,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(primitives.id, editingId),
+            or(eq(primitives.userId, userId), isNull(primitives.userId)),
+          ),
+        )
+        .returning();
+
+      if (!updated) {
+        return NextResponse.json(
+          {
+            error:
+              "Primitive not found or not owned by you. Refresh and try again.",
+          },
+          { status: 404 },
+        );
+      }
+
+      return NextResponse.json({ primitive: updated }, { status: 200 });
     }
 
     const [created] = await db
