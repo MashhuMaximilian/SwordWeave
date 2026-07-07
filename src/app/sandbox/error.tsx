@@ -73,8 +73,16 @@ export default function SandboxError({
         <button
           type="button"
           onClick={() => {
-            router.refresh();
-            reset();
+            // Hard refresh — bypass the Next.js client router cache.
+            // router.refresh() alone can re-serve the same cached error.
+            if (typeof window !== "undefined") {
+              const url = new URL(window.location.href);
+              url.searchParams.set("_", String(Date.now()));
+              window.location.replace(url.toString());
+            } else {
+              router.refresh();
+              reset();
+            }
           }}
           className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
         >

@@ -64,10 +64,21 @@ export default function LibraryError({
         <button
           type="button"
           onClick={() => {
-            // router.refresh() re-fetches the server component on the
-            // current URL, bypassing the static cache where possible.
-            router.refresh();
-            reset();
+            // Hard refresh: bypass the Next.js client router cache by
+            // forcing a full document reload. router.refresh() alone only
+            // re-fetches the RSC payload, but if the cached error response
+            // is still in the router cache, it can re-serve the same error.
+            // A full reload clears the in-memory cache + IndexedDB-backed
+            // prefetch cache.
+            if (typeof window !== "undefined") {
+              const url = new URL(window.location.href);
+              // Cache-bust by adding a query param that the page ignores
+              url.searchParams.set("_", String(Date.now()));
+              window.location.replace(url.toString());
+            } else {
+              router.refresh();
+              reset();
+            }
           }}
           className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
         >
