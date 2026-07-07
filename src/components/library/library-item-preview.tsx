@@ -346,7 +346,7 @@ function PreviewFooter({
     `/library/item/${targetType}:${targetId}/versions`;
 
   return (
-    <footer className="mt-2 space-y-3 border-t border-border pt-3">
+    <footer className="mt-2 space-y-4 border-t border-border px-1 pb-6 pt-4">
       <LikeForkBar
         targetType={targetType}
         targetId={targetId}
@@ -357,9 +357,8 @@ function PreviewFooter({
         authorId={eng.authorId}
         authorUsername={eng.authorUsername}
         currentUserId={eng.currentUserInternalId}
-        compact
       />
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-1 text-xs">
         {/* Open source page is opt-in via callbacks. The sandbox preview
             bodies (grammar-library / blueprint-library) pass it; the
             /library/browse preview renders its own link elsewhere. */}
