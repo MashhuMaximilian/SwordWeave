@@ -22,6 +22,19 @@ import { Pool, neonConfig } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import * as schema from "@/db/schema";
 
+// =============================================================================
+// IMPORTANT: do NOT use `process.env` directly here.
+//
+// Some Next.js / Turbopack builds transform `process.env.X` references into
+// `defaultImport.env.X` (because they're treated as ES module default imports
+// of the `process` module). When that happens, `process.env` becomes
+// `({}).env` and resolves to `undefined`, even though the global `process`
+// object is fully populated at runtime.
+//
+// Use `globalThis.process.env` to bypass the transformation — the bundler
+// can't replace a member access on `globalThis` with a module-import stub.
+// =============================================================================
+
 // Required for environments where Node's WebSocket constructor isn't
 // available globally (e.g. local dev without `ws` polyfill).
 if (typeof WebSocket === "undefined") {
@@ -33,16 +46,15 @@ let _pool: Pool | null = null;
 let _db: ReturnType<typeof drizzle<typeof schema>> | null = null;
 
 function getDatabaseUrl(): string {
-  const url = process.env["DATABASE_URL"];
+  // Use globalThis.process.env instead of process.env so Turbopack doesn't
+  // transform this into a broken default-import reference.
+  const proc = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process;
+  const url = proc?.env?.["DATABASE_URL"];
   if (!url) {
-    // DEBUG: include stack trace so we can see WHO is calling us when
-    // this fires in the browser but not in curl.
-    const stack = new Error().stack ?? "(no stack)";
     throw new Error(
       "DATABASE_URL is required to initialize the database client. " +
         "Set it in Vercel → Project Settings → Environment Variables, " +
-        "or in your local .env.local for development.\n" +
-        "STACK: " + stack,
+        "or in your local .env.local for development.",
     );
   }
   return url;
