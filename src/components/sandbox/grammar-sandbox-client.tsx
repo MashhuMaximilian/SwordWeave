@@ -378,9 +378,16 @@ export function GrammarSandboxClient({
           }}
           onSaved={(saved) => {
             // Phase 1: if dispatch saved into a NEW row (fork path),
-            // swap the URL so subsequent saves target the new fork.
+            // swap the URL so subsequent saves target the new fork,
+            // and load the new row into `editing` so the form stays
+            // populated for further editing instead of resetting to
+            // blank ("Add New Primitive").
+            //
             // dispatchOutcome comes via saved.dispatchOutcome when
-            // the server returns it.
+            // the server returns it. The server includes the new
+            // PrimitiveRow in saved.* — we use it directly rather
+            // than waiting for router.refresh() to repopulate the
+            // `primitives` array.
             const outcome = (saved as { dispatchOutcome?: { swapTarget: boolean; newId: string | number } }).dispatchOutcome;
             if (outcome?.swapTarget && outcome.newId != null) {
               const nextParams = new URLSearchParams(
@@ -392,6 +399,13 @@ export function GrammarSandboxClient({
                   ? `${pathname}?${nextParams.toString()}`
                   : pathname,
               );
+              // Use the row the server returned. Strip the
+              // dispatchOutcome before passing to setEditing —
+              // editing expects a PrimitiveRow shape, not the
+              // dispatch wrapper.
+              const { dispatchOutcome: _omit, ...newRow } = saved as { dispatchOutcome?: unknown } & Record<string, unknown>;
+              setEditing({ kind: "primitive", row: newRow as never });
+              setFormIsDirty(false);
             }
           }}
           onReset={() => setEditing(null)}

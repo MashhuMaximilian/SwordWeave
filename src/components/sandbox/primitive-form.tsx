@@ -508,7 +508,21 @@ export function PrimitiveForm({
         // swap URL params on fork-path saves.
         onSaved?.({ ...primitive, dispatchOutcome });
       }
-      resetEditor();
+      // Phase 1 fork path: if dispatchOutcome.swapTarget is true,
+      // the parent has just set editing = newRow via onSaved. Do
+      // NOT resetEditor() here — that would call onReset which
+      // clears editing back to null. Instead let the new initial
+      // value flow in via the parent's state update.
+      //
+      // For greenfield inserts (no sourceId) and version-updates
+      // (no swap), reset the form to blank.
+      const outcome =
+        payload && typeof payload === "object" && "dispatchOutcome" in payload
+          ? (payload.dispatchOutcome as { swapTarget?: boolean } | null)
+          : null;
+      if (!outcome?.swapTarget) {
+        resetEditor();
+      }
       router.refresh();
       setMessage("Primitive saved to your account.");
     });

@@ -230,11 +230,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
   };
 
   const handleFork = () => {
-    console.log("[debug] handleFork invoked", { targetType: props.targetType, targetId: props.targetId });
-    if (!requireAuth()) {
-      console.log("[debug] requireAuth returned false");
-      return;
-    }
+    if (!requireAuth()) return;
     // Phase 1 (round 6 revision of edit-creates-fork.md): clicking
     // Fork no longer creates a fork immediately. Instead it navigates
     // to the sandbox with ?intent=fork&edit=<sourceId>. The actual
