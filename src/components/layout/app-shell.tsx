@@ -15,22 +15,23 @@ import { GlobalControls } from "./global-controls";
 import { ModalStackHost } from "@/components/ui/modal-stack";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  // CRITICAL: GlobalControls must WRAP ModalStackHost, not the other way
-  // around. The ModalStackRenderer (a sibling of {children} inside
-  // ModalStackHost) renders the modals — and modal content like
-  // BlueprintPreviewBody / GrammarPreviewBody call
-  // useGlobalControls() to open the build preview drawer after a slot
-  // or load. If GlobalControls were outside, the modal content would
-  // throw "useGlobalControls must be used inside <GlobalControls>"
-  // when a user clicks a library row, crashing the entire page with
-  // the "SANDBOX FAILED TO LOAD" / "page could not load" error.
-  // Keeping GlobalControls outermost ensures the FAB, the page tree,
-  // and the modal stack renderer are all inside the provider.
+  // ModalStackHost MUST be the outermost provider so that GlobalControls
+  // (which is rendered inside) can call useModalStack() and get the real
+  // stack — not the no-op default. The previous order (GlobalControls
+  // outermost, ModalStackHost inner) meant useModalStack() inside
+  // GlobalControls ran before the provider existed in the tree, so the
+  // FAB's Account button and any other caller of openUserMenu() was
+  // pushing to a no-op stack. The modal never rendered.
+  //
+  // Modal content rendered by ModalStackRenderer (a sibling of children
+  // inside ModalStackHost) can still call useGlobalControls() because
+  // GlobalControls is rendered as a child of ModalStackHost — the
+  // GlobalControls provider is a parent of the modal renderer.
   return (
-    <GlobalControls>
-      <ModalStackHost>
+    <ModalStackHost>
+      <GlobalControls>
         <main className="min-w-0 pb-2">{children}</main>
-      </ModalStackHost>
-    </GlobalControls>
+      </GlobalControls>
+    </ModalStackHost>
   );
 }

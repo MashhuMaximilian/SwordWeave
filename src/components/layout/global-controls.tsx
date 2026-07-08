@@ -303,6 +303,17 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
     pathname?.startsWith("/sandbox/grammar") ||
     pathname?.startsWith("/sandbox/blueprint");
 
+  // Filters only appear on routes that actually open the filter panel
+  // via setFilterPanelOpen: the library browse view and the grammar
+  // / blueprint sandbox pages (which render an embedded library
+  // table). Item-detail pages (/library/item/[id]), library
+  // redirects, and other /library/* subpages don't have filters
+  // and previously showed a non-functional Filters FAB icon.
+  const isFilterableRoute =
+    pathname === "/library/browse" ||
+    pathname?.startsWith("/sandbox/grammar") ||
+    pathname?.startsWith("/sandbox/blueprint");
+
   // ---------------------- FAB items ----------------------
   // Note: per the user's spec, the in-list "Functions" row is hidden in
   // the dial — the 3 toggles + 2 actions are instead rendered as a compact
@@ -342,10 +353,15 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         icon: <Wrench className="size-4" />,
         onClick: () => openDrawer(sandboxSplit ? "preview" : "build"),
       },
-      // Filters only appear on routes that actually use the filter
-      // panel: the library browse view and the sandbox. Home and
-      // source pages have no filters so the button is hidden there.
-      ...(pathname?.startsWith("/library") || isSandboxRoute
+      // Filters only appear on routes that actually open the filter panel
+      // via setFilterPanelOpen: the library browse view and the grammar
+      // / blueprint sandbox pages (which render an embedded library
+      // table). Item-detail pages (/library/item/[id]), library
+      // redirects, and other /library/* subpages don't have filters
+      // and previously showed a non-functional Filters FAB icon. The
+      // explicit list keeps the button visible only where the panel
+      // is wired up.
+      ...(isFilterableRoute
         ? [
             {
               kind: "action" as const,

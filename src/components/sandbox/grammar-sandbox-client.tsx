@@ -179,7 +179,24 @@ export function GrammarSandboxClient({
   currentUserInternalId: string | null;
 }) {
   const [build, setBuild] = useState<GrammarBuildMode>(initialBuild);
+  // Sync `build` with new `initialBuild` prop on server-routed
+  // navigations (e.g. user navigates to /sandbox/grammar?build=effect
+  // from a different page). Mirrors the editing sync below.
+  useEffect(() => {
+    setBuild(initialBuild);
+  }, [initialBuild]);
   const [editing, setEditing] = useState<EditingState>(initialEditing);
+  // Sync `editing` with new `initialEditing` props on server-routed
+  // navigations (card-Fork, Creations-page Edit-in-sandbox, etc).
+  // `useState` only uses the initial value on mount; without this
+  // effect the client state stays at whatever was set on the FIRST
+  // page load and never reflects the new ?edit= param after a
+  // router.push. The dependency is on the whole object so a fresh
+  // row from the server (with new fields / hash / version) replaces
+  // the stale row; identity-equal objects are deduped by React.
+  useEffect(() => {
+    setEditing(initialEditing);
+  }, [initialEditing]);
   // Mirrored from the form's onStateChange. Drives the dirty-check gate.
   const [formIsDirty, setFormIsDirty] = useState(false);
   // Live form snapshot — drives the preview column/drawer so it updates
@@ -223,20 +240,23 @@ export function GrammarSandboxClient({
   // rendered inline so we just switch the bottom tab to "build".
   // Outside split mode we pop the drawer.
   //
-  // Runs on mount only — subsequent loads via loadFromLibrary already
-  // handle their own drawer opening.
+  // Triggers on the `initialEditing` reference change, not just on mount,
+  // so card-Fork (which uses router.push with ?intent=fork&edit=<id>) and
+  // Creations-page "Edit in sandbox" both drop the user into the open
+  // drawer. Pure in-session loadFromLibrary already calls openDrawer in
+  // its own handler, so this effect is a backstop for the server-routed
+  // paths (which never re-mount the client component).
+  //
+  // Skip when the URL has no edit param — guard against a stray
+  // re-render that would pop the drawer over a different page state.
   useEffect(() => {
-    if (initialEditing !== null) {
-      if (sandboxSplit) {
-        setSandboxBottomTab("build");
-      } else {
-        openDrawer("build");
-      }
+    if (initialEditing === null) return;
+    if (sandboxSplit) {
+      setSandboxBottomTab("build");
+    } else {
+      openDrawer("build");
     }
-    // We deliberately only run on mount; the split mode / drawer state is
-    // session-level and shouldn't trigger re-opens.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialEditing, sandboxSplit, openDrawer, setSandboxBottomTab]);
 
   // ---- Apply pending action (called on modal confirm) ---------------------
 
