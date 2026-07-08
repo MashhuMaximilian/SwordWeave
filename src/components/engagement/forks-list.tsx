@@ -5,9 +5,14 @@
 // <ForksListClient /> for rendering. Server side is responsible for:
 // - I/O and authorship resolution
 // - Empty-state suppression (returns null at totalForks === 0)
-// Client side handles the "show N more" expand toggle.
+// - Visibility filtering (only public forks + current user's private forks)
+//
+// Phase 5 (P5R-3) added: pass the current user's Clerk ID so private
+// forks owned by the viewer are also included. Without it, only public
+// forks are shown.
 // =============================================================================
 
+import { auth } from "@clerk/nextjs/server";
 import { listBySource, type ForkTargetType, type ForkEntry } from "@/lib/publishing/forks-query";
 import { ForksListClient } from "./forks-list-client";
 
@@ -23,8 +28,17 @@ export async function ForksList({
   targetId,
   initialLimit = 5,
 }: ForksListProps) {
+  // Get the current user (if signed in) so we can show their private
+  // forks. auth() returns the session — userId is the Clerk ID.
+  const { userId: currentUserClerkId } = await auth();
+
   // Fetch up to 50 (max allowed by listBySource). Client decides how many to render.
-  const { forks, totalForks } = await listBySource(targetType, targetId, 50);
+  const { forks, totalForks } = await listBySource(
+    targetType,
+    targetId,
+    50,
+    currentUserClerkId,
+  );
 
   if (totalForks === 0) return null;
 

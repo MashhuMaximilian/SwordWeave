@@ -220,6 +220,33 @@ async function alreadyExists(
   return rows.length > 0;
 }
 
+async function ensureForkAggregate(
+  sourceType: string,
+  sourceId: string,
+  sourceVersionId: string,
+): Promise<boolean> {
+  // Try to insert a new aggregate row, or no-op if one already exists
+  // for this (type, id, version) triple. We DO NOT bump the count on
+  // conflict — that would double-count if a fork was recorded both
+  // via the engagement path AND the backfill.
+  const result = await sql`
+    INSERT INTO fork_aggregates (
+      source_target_type, source_target_id, source_version_id,
+      fork_count, updated_at
+    ) VALUES (
+      ${sourceType as never},
+      ${sourceId},
+      ${sourceVersionId},
+      1,
+      NOW()
+    )
+    ON CONFLICT (source_target_type, source_target_id, source_version_id)
+    DO NOTHING
+    RETURNING source_target_id
+  `;
+  return result.length > 0;
+}
+
 async function main() {
   console.log(
     isDryRun
@@ -244,10 +271,27 @@ async function main() {
       continue;
     }
 
+    // Build the synthetic version IDs up front. Used by both the
+    // already-exists branch (aggregate ensure) and the main INSERT.
+    const sourceVersionId = legacyForkId(
+      "source",
+      parsed.sourceType,
+      parsed.sourceId,
+    );
+    const forkedVersionId = legacyForkId(
+      "forked",
+      c.targetType,
+      c.targetId,
+    );
+
     if (await alreadyExists(c.targetType, c.targetId)) {
       console.log(
-        `  SKIP ${c.targetType}:${c.targetId} — already in forks table`,
+        `  SKIP fork ${c.targetType}:${c.targetId} (already in forks) — but ensure aggregate`,
       );
+      // Fork row exists. Just make sure the aggregate is up to date.
+      if (!isDryRun) {
+        await ensureForkAggregate(parsed.sourceType, parsed.sourceId, sourceVersionId);
+      }
       skipped++;
       continue;
     }
@@ -270,21 +314,7 @@ async function main() {
       parsed.sourceId,
     );
 
-    const sourceVersionId = legacyForkId(
-      "source",
-      parsed.sourceType,
-      parsed.sourceId,
-    );
-    const forkedVersionId = legacyForkId(
-      "forked",
-      c.targetType,
-      c.targetId,
-    );
-
     console.log(`  INSERT ${c.targetType}:${c.targetId} <- ${parsed.sourceType}:${parsed.sourceId}`);
-    console.log(`    sourceVersionId:    ${sourceVersionId}`);
-    console.log(`    forkedVersionId:    ${forkedVersionId}`);
-    console.log(`    forkedByUserId:     ${forkerInternalId} (clerk: ${c.userId})`);
     console.log(`    sourceAuthorId:     ${sourceAuthorInternalId ?? "null"}`);
 
     if (!isDryRun) {
@@ -309,6 +339,10 @@ async function main() {
             NOW()
           )
         `;
+
+        // UPSERT the aggregate count (idempotent — ON CONFLICT DO NOTHING).
+        await ensureForkAggregate(parsed.sourceType, parsed.sourceId, sourceVersionId);
+
         inserted++;
       } catch (err) {
         console.log(`    ERROR: ${err instanceof Error ? err.message : String(err)}`);
