@@ -44,6 +44,18 @@ export const primitives = pgTable(
       .$type<readonly HardModifier[]>()
       .notNull()
       .default(sql`'[]'::jsonb`),
+    /**
+     * SHA-256 hex digest of the canonical-JSON content envelope
+     * (sorted keys, versioned `{v:1, primitive:{...}}`). Populated
+     * by the client on save; used by the dispatch matrix to detect
+     * no-op saves (draftHash == sourceHash) and short-circuit before
+     * allocating a new row or version bump. Nullable so legacy rows
+     * can be backfilled lazily; a NULL hash is treated as "always
+     * changed" by decideSaveOutcome, falling back to the legacy
+     * INSERT/UPDATE path. See src/lib/publishing/hash-content.ts and
+     * src/lib/publishing/dispatch-save.ts.
+     */
+    contentHash: text("content_hash"),
     ...timestamps,
   },
   (table) => [
@@ -55,6 +67,7 @@ export const primitives = pgTable(
       table.category,
       table.userId,
     ),
+    index("primitives_content_hash_idx").on(table.contentHash),
   ],
 );
 

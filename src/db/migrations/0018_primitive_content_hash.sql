@@ -1,0 +1,21 @@
+-- =============================================================================
+-- Migration 0018: add primitives.content_hash for no-op detection
+--
+-- Phase 1 of the edit-creates-fork refactor added the dispatch matrix
+-- but every save still re-wrote the row even when nothing changed.
+-- Phase 4 layers content hashing on top so the save matrix can detect
+-- "no changes" and short-circuit before allocating a new row or
+-- bumping a version.
+--
+-- The column is nullable so existing rows can be backfilled in a
+-- second pass (scripts/backfill-primitive-content-hash.mts). Legacy
+-- rows whose hash is NULL fall through to the existing INSERT/UPDATE
+-- path — they're treated as "always changed" until their first save
+-- under the new system computes and persists the hash.
+--
+-- Algorithm: SHA-256 over a canonical-JSON envelope
+--   { "v": 1, "primitive": { ...sorted-key payload... } }
+-- See src/lib/publishing/hash-content.ts for the producer.
+-- =============================================================================
+ALTER TABLE "primitives" ADD COLUMN "content_hash" text;--> statement-breakpoint
+CREATE INDEX "primitives_content_hash_idx" ON "primitives" USING btree ("content_hash");

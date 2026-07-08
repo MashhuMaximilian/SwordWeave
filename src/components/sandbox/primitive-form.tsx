@@ -18,6 +18,7 @@ import type {
 import type { PrimitiveFormState } from "./primitive-form-preview";
 import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
+import { computePrimitiveContentHash } from "@/lib/publishing/hash-content";
 
 type PrimitiveRow = {
   id: number;
@@ -255,25 +256,27 @@ function parseValue(value: string, valueKind: ModifierDraft["valueKind"]): unkno
   return value;
 }
 
-function toHardModifier(modifier: ModifierDraft) {
+function toHardModifier(modifier: ModifierDraft): import("@/types/swordweave").HardModifier {
+  const baseValue = parseValue(modifier.value, modifier.valueKind);
   const hardModifier = {
     kind: "modify" as const,
     target: modifier.target,
     operation: modifier.operation,
-    value: parseValue(modifier.value, modifier.valueKind),
+    value: baseValue as import("@/types/swordweave").JsonValue,
     stacking: modifier.stacking,
   };
 
   if (modifier.conditionMode === "custom" && modifier.conditionKey.trim()) {
+    const condValue =
+      modifier.conditionOperator === "exists"
+        ? true
+        : parseValue(modifier.conditionValue, modifier.valueKind);
     return {
       ...hardModifier,
       condition: {
         key: modifier.conditionKey.trim(),
         operator: modifier.conditionOperator,
-        value:
-          modifier.conditionOperator === "exists"
-            ? true
-            : parseValue(modifier.conditionValue, modifier.valueKind),
+        value: condValue as import("@/types/swordweave").JsonValue,
       },
     };
   }
@@ -462,13 +465,29 @@ export function PrimitiveForm({
     setMessage("");
 
     startTransition(async () => {
+      // Phase 4: compute the content hash so the server can detect no-op saves.
+      const draftHash = await computePrimitiveContentHash({
+        name: form.name,
+        category: form.category,
+        costTier: form.costTier,
+        buCost: form.buCost,
+        mechanicalOutputText: form.mechanicalOutputText,
+        narrativeRule: form.narrativeRule,
+        isPublic: form.isPublic,
+        isMirrorable: form.isMirrorable,
+        mirrorVector: form.mirrorVector,
+        mirrorBuCredit: form.mirrorBuCredit,
+        mirrorEligibilityNotes: form.mirrorEligibilityNotes,
+        hardModifiers: modifiers.map(toHardModifier),
+      });
+
       const response = await fetch("/api/primitives", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           // Phase 1: thread the intent flag + sourceId into the body.
-          // The server's dispatch-save.ts decides fork vs version-
-          // update based on these. See §6.7 of the design doc.
+          // The server's dispatch-save.ts decides fork vs version-update
+          // vs no-op based on these + draftHash. See §6.7 of the design doc.
           // (Legacy `id` field is still honored as a fallback by the
           // server for the brief window where forms haven't been
           // migrated; new code prefers intent + sourceId.)
@@ -477,6 +496,7 @@ export function PrimitiveForm({
           ...(initialPrimitive?.id != null && initialPrimitive?.userId
             ? { id: initialPrimitive.id }
             : {}),
+          draftHash,
           ...form,
           mirrorVector: form.isMirrorable ? form.mirrorVector : "STANDARD_ONLY",
           mirrorBuCredit: form.isMirrorable ? form.mirrorBuCredit : "0",
@@ -494,13 +514,31 @@ export function PrimitiveForm({
         return;
       }
 
-      const primitive =
-        payload && typeof payload === "object" && "primitive" in payload
-          ? (payload.primitive as PrimitiveRow)
-          : null;
       const dispatchOutcome =
         payload && typeof payload === "object" && "dispatchOutcome" in payload
           ? (payload.dispatchOutcome as unknown)
+          : null;
+
+      // Phase 4: handle the no-op short-circuit. The server already
+      // determined nothing changed; surface its message and bail without
+      // touching editing state, the URL, or the form.
+      if (
+        dispatchOutcome &&
+        typeof dispatchOutcome === "object" &&
+        "kind" in dispatchOutcome &&
+        (dispatchOutcome as { kind: string }).kind === "no-op"
+      ) {
+        const msg =
+          "message" in dispatchOutcome
+            ? String((dispatchOutcome as { message?: unknown }).message ?? "")
+            : "Nothing to save.";
+        setMessage(msg);
+        return;
+      }
+
+      const primitive =
+        payload && typeof payload === "object" && "primitive" in payload
+          ? (payload.primitive as PrimitiveRow)
           : null;
 
       if (primitive) {

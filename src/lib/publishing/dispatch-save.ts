@@ -1,24 +1,32 @@
 // =============================================================================
-// dispatch-save — Phase 1 of the edit-creates-fork refactor (§11 of
-// docs/architecture/edit-creates-fork.md).
+// dispatch-save — Phase 1 + Phase 4 content hashing of the edit-creates-fork
+// refactor (§11 of docs/architecture/edit-creates-fork.md).
 //
-// The single entry point for every entity-save endpoint. Reads `intent`
-// + the source row's owner and decides which concrete operation to run:
+// The single entry point for every entity-save endpoint. Reads `intent` +
+// `draftHash` + `sourceHash` + ownership and decides which concrete operation
+// to run.
 //
-//   ┌──────────────────┬─────────────────┬──────────────────┐
-//   │ intent           │ owner           │ outcome          │
-//   ├──────────────────┼─────────────────┼──────────────────┤
-//   │ fork             │ any             │ INSERT new fork  │
-//   │ load             │ caller owns     │ UPDATE in place  │
-//   │ load             │ caller !owns    │ INSERT new fork  │
-//   │ null             │ greenfield      │ INSERT new row   │
-//   └──────────────────┴─────────────────┴──────────────────┘
+//   ┌──────────────────┬────────────┬─────────────────┬──────────────────┐
+//   │ intent           │ owner      │ hashes match    │ outcome          │
+//   ├──────────────────┼────────────┼─────────────────┼──────────────────┤
+//   │ null (greenfield)│ —          │ sourceHash=null │ INSERT new row   │
+//   │ null (greenfield)│ —          │ sourceHash=null │ no-op (empty)    │
+//   │ null             │ caller     │ equal           │ no-op "Nothing…  │
+//   │ null             │ caller     │ different       │ UPDATE in place  │
+//   │ null             │ non-owner  │ equal           │ no-op            │
+//   │ null             │ non-owner  │ different       │ INSERT new fork  │
+//   │ fork             │ any        │ equal           │ no-op "Nothing…  │
+//   │ fork             │ any        │ different       │ INSERT new fork  │
+//   │ load             │ caller     │ equal           │ no-op "Nothing…  │
+//   │ load             │ caller     │ different       │ UPDATE in place  │
+//   │ load             │ non-owner  │ equal           │ no-op "Nothing…  │
+//   │ load             │ non-owner  │ different       │ INSERT new fork  │
+//   └──────────────────┴────────────┴─────────────────┴──────────────────┘
 //
-// Phase 1 deliberately does NOT short-circuit on no-change detection.
-// That lands in Phase 4 alongside content-hashed version snapshots —
-// see the "Cut-list" note in §11 of the design doc. For now every
-// save proceeds regardless of whether the user actually changed
-// anything; OQ5's user-facing messages come online in Phase 4.
+// Phase 4 (now folded into Phase 1 per Mashu after observing accidental
+// forks on no-change saves): content-hash equality short-circuits the
+// matrix. The no-op message is tailored per cell so the user always sees
+// a coherent explanation of why nothing happened.
 //
 // `DispatchSaveParams` is intentionally generic — Phase 2 will pass
 // effects/capabilities/items/templates through the same helper by
@@ -29,36 +37,41 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { primitives } from "@/db/schema";
 import type { SaveIntent } from "./save-intent";
+import { isPrimitiveDraftEmpty } from "./hash-content";
 
 export type DispatchOutcome =
   /**
-   * The save materialized a brand-new fork row (caller-owns-source +
-   * intent=fork, OR caller-doesn't-own-source + any intent, OR
-   * greenfield + intent=fork). The caller updates their URL to
-   * target the new row and shows the post-save modal.
+   * The save was short-circuited because the form content hasn't changed
+   * since the last save (or, for greenfield, the form is empty). The caller
+   * shows `message` to the user and does NOT touch the database.
+   */
+  | {
+      kind: "no-op";
+      message: string;
+      /**
+       * True when the source row exists and the user owns it (or it's
+       * system content). The caller uses this to decide whether to swap
+       * the URL — for a no-op, the URL stays put either way.
+       */
+      swapTarget: false;
+    }
+  /**
+   * The save materialized a brand-new fork row (intent=fork with changes,
+   * OR caller-doesn't-own-source with changes, OR greenfield with content).
+   * The caller updates their URL to target the new row.
    */
   | {
       kind: "forked";
-      /** The new fork row's id (filled in by the caller after INSERT). */
       newId: string | number;
-      /** The source row's id (or null if greenfield). */
       sourceId: string | number | null;
-      /**
-       * If true, the caller should swap their URL from `?edit=<source>`
-       * to `?edit=<new>` so subsequent saves target the fork (not the
-       * source). If false (load + owner, or greenfield), the URL stays
-       * the same.
-       */
       swapTarget: boolean;
     }
   /**
    * The save updated the source row in place (caller-owns-source +
-   * intent=load). The caller's URL stays put. A toast says "Saved
-   * version <N+1>" (Phase 4 wires the version number).
+   * intent=load + changes). The caller's URL stays put.
    */
   | {
       kind: "version-update";
-      /** The same id the caller was editing. */
       newId: string | number;
       sourceId: string | number;
       swapTarget: false;
@@ -66,51 +79,152 @@ export type DispatchOutcome =
 
 /**
  * Minimal source-row shape the dispatcher needs to make its decision.
- * All callers pass a row fetched from Drizzle with at least id + userId.
+ * `contentHash` may be null for legacy rows (treated as "always changed").
  */
 export interface SourceRowIdentity {
   id: string | number;
   userId: string | null;
+  contentHash: string | null;
 }
 
-/**
- * Pure decision function — given the inputs, returns the outcome. The
- * caller (the entity-save POST handler) is responsible for actually
- * executing the resulting INSERT or UPDATE. Keeping the decision
- * separate from execution makes this trivially unit-testable.
- */
-export function decideSaveOutcome(params: {
+export interface DecideSaveOutcomeParams {
   intent: SaveIntent;
   source: SourceRowIdentity | null;
   callerUserId: string;
-}): DispatchOutcome {
-  const { intent, source, callerUserId } = params;
+  /**
+   * SHA-256 hex of the canonical-JSON content envelope, computed by the
+   * caller. Used to detect no-op saves. The dispatcher treats `null` as
+   * "no hash provided" — falling back to the legacy always-change path.
+   */
+  draftHash: string | null;
+  /**
+   * True when the draft form is empty (no name, no content). Used by
+   * the greenfield path to short-circuit "save an empty form" attempts.
+   * When omitted, treated as `false`.
+   */
+  draftIsEmpty?: boolean;
+}
 
-  // Greenfield save: no source row → fresh INSERT, no fork lineage.
+// -----------------------------------------------------------------------------
+// Per-cell messages. Centralized so we can change wording without rewriting
+// the matrix logic.
+// -----------------------------------------------------------------------------
+
+const MSG_FORK_NO_CHANGES =
+  "Nothing to fork — make a change first.";
+const MSG_LOAD_OWN_NO_CHANGES =
+  "Nothing has changed.";
+const MSG_LOAD_NON_OWNER_NO_CHANGES =
+  "Nothing to save.";
+const MSG_GREENFIELD_EMPTY =
+  "Nothing to change — give it a name first.";
+const MSG_NO_HASH_PROVIDED =
+  "Nothing saved — content hash missing. Refresh and try again.";
+
+/**
+ * Pure decision function. Given the inputs, returns the outcome. The caller
+ * (the entity-save POST handler) is responsible for executing the resulting
+ * INSERT or UPDATE. Keeping the decision separate from execution makes this
+ * trivially unit-testable.
+ */
+export function decideSaveOutcome(
+  params: DecideSaveOutcomeParams,
+): DispatchOutcome {
+  const {
+    intent,
+    source,
+    callerUserId,
+    draftHash,
+    draftIsEmpty = false,
+  } = params;
+
+  // Guard: caller must always supply a draftHash. If they didn't, refuse
+  // rather than risk creating an empty fork.
+  if (draftHash === null || draftHash.length === 0) {
+    return {
+      kind: "no-op",
+      message: MSG_NO_HASH_PROVIDED,
+      swapTarget: false,
+    };
+  }
+
+  // Greenfield save: no source row. Empty drafts are no-ops; non-empty
+  // drafts always INSERT a fresh row.
   if (source === null) {
+    if (draftIsEmpty) {
+      return {
+        kind: "no-op",
+        message: MSG_GREENFIELD_EMPTY,
+        swapTarget: false,
+      };
+    }
     return {
       kind: "forked",
       newId: -1, // sentinel — caller INSERTs and overwrites
       sourceId: null,
-      swapTarget: false, // greenfield INSERT returns the new row id
+      swapTarget: false,
     };
   }
 
   const isOwner = source.userId === callerUserId;
 
-  // intent=fork → ALWAYS create a fork (even if caller owns the source).
-  // Per Mashu (round 6 revision): "if I use the fork button, even though
-  // I am the owner, it still creates the fork."
+  // Legacy source rows (contentHash === null) are treated as "always
+  // changed" — fall through to the legacy matrix path. After their first
+  // save under the new system, they'll have a hash and short-circuit
+  // correctly on subsequent saves.
+  const sourceHash = source.contentHash;
+  const hashesMatch = sourceHash !== null && sourceHash === draftHash;
+
+  // No-change short-circuit. Tailored message per cell so the user gets a
+  // coherent explanation.
+  if (hashesMatch) {
+    if (intent === "fork") {
+      return {
+        kind: "no-op",
+        message: MSG_FORK_NO_CHANGES,
+        swapTarget: false,
+      };
+    }
+    if (intent === "load" && isOwner) {
+      return {
+        kind: "no-op",
+        message: MSG_LOAD_OWN_NO_CHANGES,
+        swapTarget: false,
+      };
+    }
+    if (intent === "load" && !isOwner) {
+      return {
+        kind: "no-op",
+        message: MSG_LOAD_NON_OWNER_NO_CHANGES,
+        swapTarget: false,
+      };
+    }
+    if (intent === null && isOwner) {
+      return {
+        kind: "no-op",
+        message: MSG_LOAD_OWN_NO_CHANGES,
+        swapTarget: false,
+      };
+    }
+    if (intent === null && !isOwner) {
+      return {
+        kind: "no-op",
+        message: MSG_LOAD_NON_OWNER_NO_CHANGES,
+        swapTarget: false,
+      };
+    }
+  }
+
+  // Changed (or legacy source with no hash). Apply the original matrix.
   if (intent === "fork") {
     return {
       kind: "forked",
-      newId: -1, // sentinel — caller INSERTs and overwrites
+      newId: -1,
       sourceId: source.id,
       swapTarget: true,
     };
   }
 
-  // intent=load + caller owns source → update in place.
   if (isOwner) {
     return {
       kind: "version-update",
@@ -120,31 +234,39 @@ export function decideSaveOutcome(params: {
     };
   }
 
-  // intent=load + caller does NOT own → fork. Non-owner + any intent
-  // other than "I am deliberately forking this" gets the same outcome.
   return {
     kind: "forked",
-    newId: -1, // sentinel — caller INSERTs and overwrites
+    newId: -1,
     sourceId: source.id,
     swapTarget: true,
   };
 }
 
 /**
- * DB helper — fetches the source row's owner for a primitive entity.
- * Used by /api/primitives POST handler to look up the row before
- * deciding the dispatch outcome. Phase 2 will add parallel helpers
- * for effects/capabilities/items/templates.
+ * Convenience helper for the API route. Loads the source row's identity
+ * AND its current content hash in one query. Phase 2 will add parallel
+ * helpers for effects/capabilities/items/templates.
  */
 export async function loadPrimitiveOwner(
   primitiveId: number,
 ): Promise<SourceRowIdentity | null> {
   const rows = await db
-    .select({ id: primitives.id, userId: primitives.userId })
+    .select({
+      id: primitives.id,
+      userId: primitives.userId,
+      contentHash: primitives.contentHash,
+    })
     .from(primitives)
     .where(eq(primitives.id, primitiveId))
     .limit(1);
   const row = rows[0];
   if (!row) return null;
-  return { id: row.id, userId: row.userId };
+  return {
+    id: row.id,
+    userId: row.userId,
+    contentHash: row.contentHash,
+  };
 }
+
+// Re-export isPrimitiveDraftEmpty so callers don't need a second import.
+export { isPrimitiveDraftEmpty };

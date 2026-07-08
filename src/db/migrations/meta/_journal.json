@@ -127,6 +127,13 @@
       "when": 1783410000000,
       "tag": "0017_drop_orphan_primitive_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1783500000000,
+      "tag": "0018_primitive_content_hash",
+      "breakpoints": true
     }
   ]
 }

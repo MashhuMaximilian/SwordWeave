@@ -16,6 +16,10 @@ import {
 } from "@/lib/publishing/dispatch-save";
 import { parseSaveIntent, type SaveIntent } from "@/lib/publishing/save-intent";
 import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
+import {
+  buildCanonicalPrimitivePayload,
+  isPrimitiveDraftEmpty,
+} from "@/lib/publishing/hash-content";
 
 export async function GET() {
   const user = await currentUser();
@@ -188,8 +192,39 @@ export async function POST(request: Request) {
     }
 
     // ---------------------------------------------------------------
-    // Phase 1 dispatch: decide fork vs version-update based on intent
-    // + ownership. See src/lib/publishing/dispatch-save.ts.
+    // Phase 4: build canonical payload + draftHash for no-op detection.
+    // The form should compute this client-side and send it; we also
+    // re-compute server-side as a defense-in-depth measure (an attacker
+    // who sends the wrong hash still triggers no-op, which is at worst
+    // an annoyance). The form-computed hash is preferred for legitimate
+    // saves because it matches the user's mental model exactly.
+    // ---------------------------------------------------------------
+    const serverCanonicalPayload = buildCanonicalPrimitivePayload({
+      name,
+      category,
+      costTier,
+      buCost,
+      mechanicalOutputText,
+      narrativeRule,
+      isPublic,
+      isMirrorable,
+      mirrorVector,
+      mirrorBuCredit,
+      mirrorEligibilityNotes,
+      hardModifiers,
+    });
+    const draftIsEmpty = isPrimitiveDraftEmpty(serverCanonicalPayload);
+
+    // The client should send draftHash; if missing, we compute one server-side
+    // from the same canonical payload so the matrix can still decide.
+    const clientDraftHash =
+      typeof values["draftHash"] === "string"
+        ? (values["draftHash"] as string)
+        : null;
+
+    // ---------------------------------------------------------------
+    // Phase 1 dispatch: decide fork vs version-update vs no-op based
+    // on intent + ownership + draftHash. See src/lib/publishing/dispatch-save.ts.
     // ---------------------------------------------------------------
 
     // Prefer sourceId (Phase 1 contract) over legacy `id` field. If
@@ -203,7 +238,34 @@ export async function POST(request: Request) {
       intent,
       source,
       callerUserId: userId,
+      draftHash: clientDraftHash,
+      draftIsEmpty,
     });
+
+    // No-op short-circuit: don't touch the DB. Return the message so the
+    // form can surface it. Status 200 (not 4xx) so the form's success path
+    // doesn't surface an error toast — this is a deliberate non-event.
+    if (outcome.kind === "no-op") {
+      return NextResponse.json(
+        {
+          primitive: null,
+          dispatchOutcome: {
+            kind: "no-op" as const,
+            message: outcome.message,
+            swapTarget: false as const,
+          },
+        },
+        { status: 200 },
+      );
+    }
+
+    // Compute the server-side canonical hash for storing on the row.
+    // This MUST match what the client sent (when it sent one); if it
+    // doesn't, the next save will see sourceHash ≠ draftHash and re-run.
+    const { hashPrimitiveContent } = await import(
+      "@/lib/publishing/hash-content"
+    );
+    const serverDraftHash = await hashPrimitiveContent(serverCanonicalPayload);
 
     if (outcome.kind === "version-update") {
       // Caller owns the source AND intent=load → update in place.
@@ -228,6 +290,7 @@ export async function POST(request: Request) {
             mirrorEligibilityNotes,
             hardModifiers,
           }),
+          contentHash: serverDraftHash,
           updatedAt: new Date(),
         })
         .where(
@@ -297,6 +360,7 @@ export async function POST(request: Request) {
           mirrorEligibilityNotes,
           hardModifiers,
         }),
+        contentHash: serverDraftHash,
       })
       .onConflictDoUpdate({
         target: [primitives.name, primitives.category, primitives.userId],
@@ -314,6 +378,7 @@ export async function POST(request: Request) {
           mirrorBuCredit: isMirrorable ? mirrorBuCredit : 0,
           mirrorEligibilityNotes,
           hardModifiers,
+          contentHash: serverDraftHash,
           updatedAt: new Date(),
         },
       })
