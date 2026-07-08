@@ -8,6 +8,11 @@ import {
   templatePrimitives,
   templates,
 } from "@/db/schema";
+import {
+  buildCanonicalTemplatePayload,
+  computeTemplateContentHash,
+} from "@/lib/publishing/hash-content";
+import { recordVersion } from "@/lib/versions/auto-snapshot";
 
 type TemplateKind = "RACE" | "BACKGROUND" | "ARCHETYPE";
 
@@ -95,7 +100,7 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
-    await auth.protect();
+    const { userId } = await auth.protect();
     const body: unknown = await request.json();
 
     if (!body || typeof body !== "object") {
@@ -191,6 +196,41 @@ export async function POST(request: Request) {
           capabilityLinks: { with: { capability: true } },
         },
       });
+    });
+
+    if (!result) {
+      throw new Error("Unable to create template.");
+    }
+
+    // Phase 4: compute content hash + auto-snapshot.
+    const canonicalPayload = buildCanonicalTemplatePayload({
+      kind: result.kind,
+      name: result.name,
+      description: result.description ?? "",
+      suggestedTraits: result.suggestedTraits ?? "",
+      isPublic: result.isPublic,
+      primitiveIds: validPrimitiveIds,
+      capabilityIds,
+    });
+    const contentHash = await computeTemplateContentHash({
+      kind: result.kind,
+      name: result.name,
+      description: result.description ?? "",
+      suggestedTraits: result.suggestedTraits ?? "",
+      isPublic: result.isPublic,
+      primitiveIds: validPrimitiveIds,
+      capabilityIds,
+    });
+    await db
+      .update(templates)
+      .set({ contentHash })
+      .where(eq(templates.id, result.id));
+    await recordVersion({
+      entityKind: "template",
+      entityId: result.id,
+      contentHash,
+      snapshot: canonicalPayload as unknown as Record<string, unknown>,
+      publishedByUserId: userId,
     });
 
     return NextResponse.json({ template: result }, { status: 201 });

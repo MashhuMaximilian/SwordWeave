@@ -20,6 +20,7 @@ import {
   isTemplateDraftEmpty,
   computeTemplateContentHash,
 } from "@/lib/publishing/hash-content";
+import { recordVersion } from "@/lib/versions/auto-snapshot";
 
 const TARGET_TYPE: SaveTargetType = "TEMPLATE";
 
@@ -301,6 +302,17 @@ export async function PATCH(
         });
       });
 
+      // Phase 4: auto-snapshot the updated template.
+      if (result) {
+        await recordVersion({
+          entityKind: "template",
+          entityId: id,
+          contentHash: draftHash,
+          snapshot: canonicalPayload as unknown as Record<string, unknown>,
+          publishedByUserId: userId,
+        });
+      }
+
       if (result) {
         const bu = result.primitiveLinks.reduce(
           (t, l) => t + (l.primitive?.buCost ?? 0),
@@ -398,6 +410,15 @@ export async function PATCH(
     if (!created) {
       throw new Error("Unable to load forked template.");
     }
+
+    // Phase 4: auto-snapshot the new fork.
+    await recordVersion({
+      entityKind: "template",
+      entityId: created.id,
+      contentHash: draftHash,
+      snapshot: canonicalPayload as unknown as Record<string, unknown>,
+      publishedByUserId: userId,
+    });
 
     const bu = created.primitiveLinks.reduce(
       (t, l) => t + (l.primitive?.buCost ?? 0),

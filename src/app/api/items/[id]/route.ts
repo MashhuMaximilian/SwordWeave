@@ -21,6 +21,7 @@ import {
   isItemDraftEmpty,
   computeItemContentHash,
 } from "@/lib/publishing/hash-content";
+import { recordVersion } from "@/lib/versions/auto-snapshot";
 
 const TARGET_TYPE: SaveTargetType = "ITEM";
 
@@ -394,6 +395,15 @@ export async function PATCH(
         });
       });
 
+      // Phase 4: auto-snapshot the updated item.
+      await recordVersion({
+        entityKind: "item",
+        entityId: id,
+        contentHash: draftHash,
+        snapshot: canonicalPayload as unknown as Record<string, unknown>,
+        publishedByUserId: userId,
+      });
+
       return NextResponse.json(
         {
           item: result,
@@ -517,6 +527,15 @@ export async function PATCH(
     if (!created) {
       throw new Error("Unable to load forked item.");
     }
+
+    // Phase 4: auto-snapshot the new fork.
+    await recordVersion({
+      entityKind: "item",
+      entityId: created.id,
+      contentHash: draftHash,
+      snapshot: canonicalPayload as unknown as Record<string, unknown>,
+      publishedByUserId: userId,
+    });
 
     return NextResponse.json(
       {

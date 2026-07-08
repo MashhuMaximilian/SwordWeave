@@ -8,6 +8,7 @@ import {
   isEffectDraftEmpty,
   computeEffectContentHash,
 } from "@/lib/publishing/hash-content";
+import { recordVersion } from "@/lib/versions/auto-snapshot";
 
 type PrimitiveSlotInput = {
   primitiveId: number;
@@ -192,6 +193,17 @@ export async function POST(request: Request) {
         notes: slot.notes,
       })),
     );
+
+    // Phase 4: auto-snapshot the new effect into effect_versions. Same
+    // content_hash re-saved will be a no-op (recordVersion is idempotent
+    // on the content-addressed id).
+    await recordVersion({
+      entityKind: "effect",
+      entityId: created.id,
+      contentHash,
+      snapshot: canonicalPayload as unknown as Record<string, unknown>,
+      publishedByUserId: userId,
+    });
 
     const effect = await db.query.effects.findFirst({
       where: eq(effects.id, created.id),

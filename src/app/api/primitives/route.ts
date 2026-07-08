@@ -19,8 +19,9 @@ import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
 import {
   buildCanonicalPrimitivePayload,
   isPrimitiveDraftEmpty,
+  computePrimitiveContentHash,
 } from "@/lib/publishing/hash-content";
-
+import { recordVersion } from "@/lib/versions/auto-snapshot";
 export async function GET() {
   const user = await currentUser();
   const rows = await db.query.primitives.findMany({
@@ -364,6 +365,28 @@ export async function POST(request: Request) {
         );
       }
 
+      // Phase 4: auto-snapshot the updated primitive.
+      await recordVersion({
+        entityKind: "primitive",
+        entityId: updated.id,
+        contentHash: serverDraftHash,
+        snapshot: buildCanonicalPrimitivePayload({
+          name: updated.name,
+          category: updated.category,
+          costTier: updated.costTier,
+          buCost: updated.buCost,
+          mechanicalOutputText: updated.mechanicalOutputText,
+          narrativeRule: updated.narrativeRule,
+          isPublic: updated.isPublic,
+          isMirrorable: updated.isMirrorable,
+          mirrorVector: updated.mirrorVector,
+          mirrorBuCredit: updated.mirrorBuCredit,
+          mirrorEligibilityNotes: updated.mirrorEligibilityNotes ?? "",
+          hardModifiers: (updated.hardModifiers ?? []) as HardModifier[],
+        }) as unknown as Record<string, unknown>,
+        publishedByUserId: userId,
+      });
+
       return NextResponse.json(
         {
           primitive: updated,
@@ -457,6 +480,28 @@ export async function POST(request: Request) {
         { status: 500 },
       );
     }
+
+    // Phase 4: auto-snapshot the new fork.
+    await recordVersion({
+      entityKind: "primitive",
+      entityId: created.id,
+      contentHash: serverDraftHash,
+      snapshot: buildCanonicalPrimitivePayload({
+        name: created.name,
+        category: created.category,
+        costTier: created.costTier,
+        buCost: created.buCost,
+        mechanicalOutputText: created.mechanicalOutputText,
+        narrativeRule: created.narrativeRule,
+        isPublic: created.isPublic,
+        isMirrorable: created.isMirrorable,
+        mirrorVector: created.mirrorVector,
+        mirrorBuCredit: created.mirrorBuCredit,
+        mirrorEligibilityNotes: created.mirrorEligibilityNotes ?? "",
+        hardModifiers: (created.hardModifiers ?? []) as HardModifier[],
+      }) as unknown as Record<string, unknown>,
+      publishedByUserId: userId,
+    });
 
     return NextResponse.json(
       {

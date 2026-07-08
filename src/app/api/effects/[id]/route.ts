@@ -14,6 +14,7 @@ import {
   isEffectDraftEmpty,
   computeEffectContentHash,
 } from "@/lib/publishing/hash-content";
+import { recordVersion } from "@/lib/versions/auto-snapshot";
 
 const TARGET_TYPE: SaveTargetType = "EFFECT";
 
@@ -239,6 +240,15 @@ export async function PATCH(
         );
       }
 
+      // Phase 4: auto-snapshot the updated effect.
+      await recordVersion({
+        entityKind: "effect",
+        entityId: updated.id,
+        contentHash: draftHash,
+        snapshot: canonicalPayload as unknown as Record<string, unknown>,
+        publishedByUserId: userId,
+      });
+
       const effect = await db.query.effects.findFirst({
         where: eq(effects.id, updated.id),
         with: {
@@ -306,6 +316,15 @@ export async function PATCH(
         })),
       );
     }
+
+    // Phase 4: auto-snapshot the new fork.
+    await recordVersion({
+      entityKind: "effect",
+      entityId: created.id,
+      contentHash: draftHash,
+      snapshot: canonicalPayload as unknown as Record<string, unknown>,
+      publishedByUserId: userId,
+    });
 
     const effect = await db.query.effects.findFirst({
       where: eq(effects.id, created.id),

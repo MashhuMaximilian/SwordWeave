@@ -9,6 +9,11 @@ import {
   items,
   primitives,
 } from "@/db/schema";
+import {
+  buildCanonicalItemPayload,
+  computeItemContentHash,
+} from "@/lib/publishing/hash-content";
+import { recordVersion } from "@/lib/versions/auto-snapshot";
 
 export const ITEM_PRIMITIVE_CATEGORY = "ITEM_AUGMENT";
 
@@ -231,6 +236,54 @@ export async function POST(request: Request) {
           effectLinks: { with: { effect: true } },
         },
       });
+    });
+
+    if (!result) {
+      throw new Error("Unable to create item.");
+    }
+
+    // Phase 4: compute content hash + auto-snapshot.
+    const canonicalPayload = buildCanonicalItemPayload({
+      name: result.name,
+      itemType: result.itemType,
+      rarity: result.rarity,
+      buCost: result.buCost,
+      description: result.description,
+      slotCost: result.slotCost,
+      quantity: result.quantity,
+      isTwoHanded: result.isTwoHanded,
+      isConsumable: result.isConsumable,
+      actsAsFocus: result.actsAsFocus,
+      isPublic: result.isPublic,
+      tags: result.tags,
+      primitiveIds: validPrimitiveIds,
+      capabilityIds,
+      effectIds,
+    });
+    const contentHash = await computeItemContentHash({
+      name: result.name,
+      itemType: result.itemType,
+      rarity: result.rarity,
+      buCost: result.buCost,
+      description: result.description,
+      slotCost: result.slotCost,
+      quantity: result.quantity,
+      isTwoHanded: result.isTwoHanded,
+      isConsumable: result.isConsumable,
+      actsAsFocus: result.actsAsFocus,
+      isPublic: result.isPublic,
+      tags: result.tags,
+      primitiveIds: validPrimitiveIds,
+      capabilityIds,
+      effectIds,
+    });
+    await db.update(items).set({ contentHash }).where(eq(items.id, result.id));
+    await recordVersion({
+      entityKind: "item",
+      entityId: result.id,
+      contentHash,
+      snapshot: canonicalPayload as unknown as Record<string, unknown>,
+      publishedByUserId: userId,
     });
 
     return NextResponse.json({ item: result }, { status: 201 });

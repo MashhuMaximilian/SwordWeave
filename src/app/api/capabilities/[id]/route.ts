@@ -30,6 +30,7 @@ import {
   isCapabilityDraftEmpty,
   computeCapabilityContentHash,
 } from "@/lib/publishing/hash-content";
+import { recordVersion } from "@/lib/versions/auto-snapshot";
 import type { JsonValue } from "@/types/swordweave";
 
 const TARGET_TYPE: SaveTargetType = "CAPABILITY";
@@ -397,6 +398,15 @@ export async function PATCH(
         });
       });
 
+      // Phase 4: auto-snapshot the updated capability.
+      await recordVersion({
+        entityKind: "capability",
+        entityId: id,
+        contentHash: draftHash,
+        snapshot: canonicalPayload as unknown as Record<string, unknown>,
+        publishedByUserId: userId,
+      });
+
       return NextResponse.json(
         {
           capability: result,
@@ -563,6 +573,15 @@ export async function PATCH(
     if (!created) {
       throw new Error("Unable to load forked capability.");
     }
+
+    // Phase 4: auto-snapshot the new fork.
+    await recordVersion({
+      entityKind: "capability",
+      entityId: created.id,
+      contentHash: draftHash,
+      snapshot: canonicalPayload as unknown as Record<string, unknown>,
+      publishedByUserId: userId,
+    });
 
     return NextResponse.json(
       {

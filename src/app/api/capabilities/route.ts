@@ -19,6 +19,11 @@ import {
   safeMetadata,
   type PrimitiveLike,
 } from "@/lib/api/capability-helpers";
+import {
+  buildCanonicalCapabilityPayload,
+  computeCapabilityContentHash,
+} from "@/lib/publishing/hash-content";
+import { recordVersion } from "@/lib/versions/auto-snapshot";
 
 /**
  * GET /api/capabilities
@@ -243,6 +248,55 @@ export async function POST(request: Request) {
           },
         },
       });
+    });
+
+    if (!result) {
+      throw new Error("Unable to create capability.");
+    }
+
+    // Phase 4: compute content hash + auto-snapshot.
+    const contentHash = await computeCapabilityContentHash({
+      name: result.name,
+      type: result.type,
+      sourceType: result.sourceType,
+      verboseDescription: result.verboseDescription,
+      tags: result.tags,
+      isPublic: result.isPublic,
+      primitiveSlots: slots.map((s) => ({
+        primitiveId: s.primitiveId,
+        role: s.role,
+        quantity: s.quantity,
+        slotLabel: s.slotLabel ?? "",
+        notes: s.notes ?? "",
+      })),
+      effectIds: effectSlots.map((s) => s.effectId),
+    });
+    const canonicalPayload = buildCanonicalCapabilityPayload({
+      name: result.name,
+      type: result.type,
+      sourceType: result.sourceType,
+      verboseDescription: result.verboseDescription,
+      tags: result.tags,
+      isPublic: result.isPublic,
+      primitiveSlots: slots.map((s) => ({
+        primitiveId: s.primitiveId,
+        role: s.role,
+        quantity: s.quantity,
+        slotLabel: s.slotLabel ?? "",
+        notes: s.notes ?? "",
+      })),
+      effectIds: effectSlots.map((s) => s.effectId),
+    });
+    await db
+      .update(capabilities)
+      .set({ contentHash })
+      .where(eq(capabilities.id, result.id));
+    await recordVersion({
+      entityKind: "capability",
+      entityId: result.id,
+      contentHash,
+      snapshot: canonicalPayload as unknown as Record<string, unknown>,
+      publishedByUserId: userId,
     });
 
     return NextResponse.json({ capability: result }, { status: 201 });
