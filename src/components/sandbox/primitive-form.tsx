@@ -19,6 +19,7 @@ import type { PrimitiveFormState } from "./primitive-form-preview";
 import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
 import { computePrimitiveContentHash } from "@/lib/publishing/hash-content";
+import { useGlobalControls } from "@/components/layout/global-controls";
 
 type PrimitiveRow = {
   id: number;
@@ -351,6 +352,12 @@ export function PrimitiveForm({
   // successful save (resetEditor runs there too).
   const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
+  // Phase 1 (round 7): open the Build & Preview drawer whenever the
+  // form loads a new entity (cold mount or post-save swap). Without
+  // this the card-fork action changes the URL but the drawer stays
+  // closed — only a manual refresh re-opens it (because the page
+  // re-mounts and the drawer's mount-effect fires once).
+  const { openDrawer: openGlobalDrawer } = useGlobalControls();
 
   // Pre-load from initialPrimitive — only on mount or when the user
   // loads a different primitive (id changes). Without the id check,
@@ -390,12 +397,27 @@ export function PrimitiveForm({
     setModifiers(drafts);
     setModifierCounter(drafts.length);
     setIsDirty(false); // pristine after load
-    setMessage(
-      initialPrimitive.userId
-        ? "Loaded your primitive for editing."
-        : "Loaded library primitive. Saving creates your private copy.",
+    // Phase 1 (round 7): open the Build & Preview drawer so the user
+    // sees their newly-loaded entity reflected in the side panel.
+    // The drawer's slot content is registered by the sandbox page
+    // via useDrawerSlot — opening it surfaces whatever the page put
+    // there (the form, the preview, etc).
+    openGlobalDrawer("build");
+    // Only set the "Loaded…" welcome message on a true cold load. If
+    // the bootstrap is re-running because the parent just swapped in a
+    // new initialPrimitive after a successful fork save (Phase 1 round
+    // 7), the submit handler already set a "Primitive saved to your
+    // account." message — clobbering it with the welcome text was the
+    // root cause of Mashu's "no saved-to-account feedback after fork"
+    // bug. Treat any non-empty existing message as authoritative.
+    setMessage((current) =>
+      current
+        ? current
+        : initialPrimitive.userId
+          ? "Loaded your primitive for editing."
+          : "Loaded library primitive. Saving creates your private copy.",
     );
-  }, [initialPrimitive]);
+  }, [initialPrimitive, openGlobalDrawer]);
 
   // Fire onStateChange on every form/modifier change.
   useEffect(() => {

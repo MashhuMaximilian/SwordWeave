@@ -295,6 +295,14 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
     setSandboxBottomTabState(tab);
   }, []);
 
+  // Split-screen is only meaningful on the grammar and templates
+  // sandbox routes (where the form is the primary surface). The
+  // characters / builds sandbox has its own layout that doesn't
+  // benefit from a split, so the FAB button is hidden there.
+  const isSplitableSandboxRoute =
+    pathname?.startsWith("/sandbox/grammar") ||
+    pathname?.startsWith("/sandbox/blueprint");
+
   // ---------------------- FAB items ----------------------
   // Note: per the user's spec, the in-list "Functions" row is hidden in
   // the dial — the 3 toggles + 2 actions are instead rendered as a compact
@@ -310,7 +318,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         label: "Functions",
       },
     ];
-    if (isSandboxRoute) {
+    if (isSplitableSandboxRoute) {
       list.push({
         kind: "action",
         key: "split",
@@ -334,14 +342,21 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         icon: <Wrench className="size-4" />,
         onClick: () => openDrawer(sandboxSplit ? "preview" : "build"),
       },
-      {
-        kind: "action",
-        key: "filters",
-        label: filterPanelOpen ? "Hide Filters" : "Show Filters",
-        icon: <Filter className="size-4" />,
-        onClick: () => setFilterPanelOpen((v) => !v),
-        active: filterPanelOpen,
-      },
+      // Filters only appear on routes that actually use the filter
+      // panel: the library browse view and the sandbox. Home and
+      // source pages have no filters so the button is hidden there.
+      ...(pathname?.startsWith("/library") || isSandboxRoute
+        ? [
+            {
+              kind: "action" as const,
+              key: "filters",
+              label: filterPanelOpen ? "Hide Filters" : "Show Filters",
+              icon: <Filter className="size-4" />,
+              onClick: () => setFilterPanelOpen((v) => !v),
+              active: filterPanelOpen,
+            },
+          ]
+        : []),
       {
         kind: "action",
         key: "fullscreen",
@@ -371,6 +386,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
     return list;
   }, [
     isSandboxRoute,
+    isSplitableSandboxRoute,
     sandboxSplit,
     setSandboxSplit,
     filterPanelOpen,
@@ -379,6 +395,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
     toggleFullscreen,
     dark,
     toggleDark,
+    pathname,
   ]);
 
   const ctxValue: GlobalControlsState = {

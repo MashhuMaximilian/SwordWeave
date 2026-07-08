@@ -278,9 +278,16 @@ export function FabSpeedDial({
                   key: "account",
                   label: "Account",
                   icon: <UserRound className="size-4" />,
+                  // Push the user-menu modal FIRST, then close the FAB. The
+                  // old `setTimeout(0)` deferred the push to the next tick,
+                  // which raced against React's flush and sometimes dropped
+                  // the push entirely — the user reported "the Account
+                  // button just closes the FAB." Synchronous push + same-
+                  // tick close is React-batched into a single render, so
+                  // the FAB unmounts only after the modal is queued.
                   onClick: () => {
+                    onUserMenu?.();
                     setOpen(false);
-                    window.setTimeout(() => onUserMenu?.(), 0);
                   },
                 },
                 ...items.filter(
