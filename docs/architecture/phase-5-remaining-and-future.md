@@ -311,7 +311,7 @@ The basic total + enforcement is now in Phase 5 (P5R-9). Phase 6 is the **rich d
 |---|---|---|---|
 | 1-4 | ✅ Shipped | — | — |
 | 5 (partial) | 🟡 Mostly shipped | — | — |
-| **5 REMAINDER (P5R-1 to P5R-9)** | ⏳ Not started (P5R-7 done by Mashu) | **~3.5 days Senku** | — |
+| **5 REMAINDER (P5R-1 to P5R-8, P5R-9 cut)** | ⏳ Not started (P5R-7 done by Mashu) | **~3 days Senku** | — |
 | 6 (Build Cost Engine: Display + Preview) | ⏳ Not started | 1-2 days | Phase 5 (P5R-9) |
 | 7 (DB Revise + Content Cleanup) | ⏳ Not started | 3-5 days | — |
 | 8 (Unified Search) | ⏳ Not started | 5-8 days | Phase 7 |
@@ -321,9 +321,9 @@ The basic total + enforcement is now in Phase 5 (P5R-9). Phase 6 is the **rich d
 
 ## What I (Senku) need from Mashu RIGHT NOW to unblock
 
-1. ~~**P5R-7: Re-create the Clerk test account.**~~ ✅ **DONE by Mashu (2026-07-08).** File at `.swordweave-test-account.local` is correct (600 perms, gitignored, all 3 fields present). Clerk account re-created in dashboard with bypass-trust enabled. **Live UI E2E is now unblocked.**
-2. **Approval to start P5R-1 through P5R-6 + P5R-8 + P5R-9** as one batch (~3.5 days of work, with checkpoints after P5R-1+2, P5R-3, P5R-4+5+9, P5R-6+8).
-3. ✅ **Budget enforcement: moved to Phase 5 as P5R-9 (Mashu 2026-07-08).** Schema migration `0027_phase5_character_bu_budget.sql` is now in Phase 5. Phase 6 shrunk to "display + preview" (1-2 days).
+1. ✅ **P5R-7 DONE (Mashu 2026-07-08).** Test account file correct; Clerk re-created with bypass trust. Live UI E2E unblocked.
+2. **Approval to start P5R-1 through P5R-6 + P5R-8** as one batch (~3 days, with checkpoints after P5R-1+2, P5R-3, P5R-4+5, P5R-6+8).
+3. ⛔ **P5R-9 (Budget Enforcement) CUT (Mashu 2026-07-08).** "I don't need it now actually. We won't do it in phase 6 either bc idk if we'll need it." Re-evaluate later if a real use case appears. **Phase 6 also drops budget enforcement** — Phase 6 is just "Build Cost Engine: Display + Preview" as already scoped.
 
 Ten billion percent — once you confirm those, I can start.
 

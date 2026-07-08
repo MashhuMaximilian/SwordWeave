@@ -24,6 +24,7 @@ import {
   type VersionEntry,
   type VersionTargetType,
 } from "@/lib/versions/version-history";
+import { RestoreButton } from "@/components/library/restore-button";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -136,6 +137,28 @@ export default async function VersionHistoryPage({ params }: PageProps) {
 // effect / capability / templates / items). Items don't have a version
 // history table yet (deferred to a follow-up sprint).
 
+/**
+ * Map the version history's VersionTargetType to the API's restore
+ * targetType. The version history splits templates into RACE / BACKGROUND /
+ * ARCHETYPE; the API accepts them all as TEMPLATE.
+ *
+ * CHARACTER restore is not supported yet (deferred) — returns null in
+ * that case so the caller can hide the button.
+ */
+function mapToApiType(
+  t: VersionTargetType,
+): "PRIMITIVE" | "EFFECT" | "CAPABILITY" | "ITEM" | "TEMPLATE" | null {
+  if (
+    t === "RACE_TEMPLATE" ||
+    t === "BACKGROUND_TEMPLATE" ||
+    t === "ARCHETYPE_TEMPLATE"
+  ) {
+    return "TEMPLATE";
+  }
+  if (t === "CHARACTER") return null;
+  return t as "PRIMITIVE" | "CAPABILITY" | "TEMPLATE";
+}
+
 function buildSandboxSlotUrl(
   targetType: VersionTargetType,
   targetId: string,
@@ -220,6 +243,18 @@ function VersionRow({
               <Wrench className="size-3" />
               Slot into build
             </Link>
+          );
+        })()}
+        {(() => {
+          const apiType: "PRIMITIVE" | "EFFECT" | "CAPABILITY" | "ITEM" | "TEMPLATE" | null = mapToApiType(targetType);
+          if (!apiType) return null;
+          return (
+            <RestoreButton
+              targetType={apiType}
+              targetId={targetId}
+              versionNumber={version.versionNumber}
+              isLatest={isLatest}
+            />
           );
         })()}
         {previousVersionNumber !== null && (
