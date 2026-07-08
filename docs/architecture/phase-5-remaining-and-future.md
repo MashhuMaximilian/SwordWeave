@@ -157,42 +157,73 @@ Then add a "Restore" button to the version history page that calls this endpoint
 
 ---
 
-### Phase 5 REMAINDER — Total Effort
+#### P5R-8: Make the diff page discoverable (Mashu 2026-07-08)
 
-**~3 days** of focused work for Senku (items P5R-1 through P5R-6). Plus **10 min** for Mashu to fix P5R-7.
+**Current state:** The diff page **already exists** at `/library/item/<TYPE>:<id>/versions/compare?from=N&to=M` (per `src/app/library/item/[id]/versions/compare/page.tsx`). The only entry point is a small per-row "Compare with v[N-1]" link on the version history page, which is easy to miss (Mashu: "I have diff page? Maybe but I don't have a way to access it.").
 
-**After P5R-1 through P5R-6 ship:** Phase 5 is genuinely done. Versioning + forking works end-to-end for the user.
+**Fix:** Add a "Compare latest two versions →" header link on the version history page that auto-navigates to `?from=<latest-1>&to=<latest>`. Also: highlight the inline compare button so it doesn't get lost in the row.
+
+**Files:**
+- `src/app/library/item/[id]/versions/page.tsx` — add header link + make inline button more prominent
+
+**Effort:** 0.1 day (5 min)
 
 ---
 
-## Phase 6 — Build Cost Calculation Engine (the ONLY candidate per Mashu 2026-07-08)
+### Phase 5 REMAINDER — Total Effort
 
-**Scope (provisional, requires scoping doc before starting):**
+**~3 days** of focused work for Senku (items P5R-1 through P5R-6, plus 5 min for P5R-8). Plus **10 min** for Mashu to fix P5R-7.
+
+**After P5R-1 through P5R-6 + P5R-8 ship:** Phase 5 is genuinely done. Versioning + forking works end-to-end for the user.
+
+---
+
+## Phase 6 — Build Cost Calculation Engine + Budget Enforcement (Mashu 2026-07-08)
+
+**Scope:**
 
 The user (DM or character builder) needs to know the total BU cost of a character build before committing. Today, BU prices are stored per-entity but never summed. We need:
 
-1. **Cost computation service** — given a character, sum the BU costs of all slotted entities based on the pinned version (not the live version).
+1. **Schema: per-character `bu_budget` cap** (nullable, default null = no cap)
+   - New migration `0027_phase6_character_bu_budget.sql`
+   - New column on `characters` table: `bu_budget integer NULL` (NULL = no enforcement)
+   - Add to schema in `src/db/schema/characters.ts`
+
+2. **Cost computation service** — given a character, sum the BU costs of all slotted entities based on the pinned version (not the live version).
    - Slots: primitive + capability + item (and maybe template-derived things for race/background/archetype)
    - Each slot has `version_id` (from Phase 5 wiring) — use that to look up the snapshot's `buyPrice`/`complexityPrice`
    - If `version_id` is null, fall back to the entity's live row
 
-2. **Display on character sheet** — "Total cost: 47 BU" with breakdown tooltip ("Strike v2: 8 BU, Aura Detective: 5 BU, ...")
-
-3. **Budget enforcement at creation** (optional) — refuse to save a character that exceeds a per-character BU cap, or warn
+3. **Display on character sheet** — "Total: 47 BU / cap 60 BU" with breakdown tooltip ("Strike v2: 8 BU, Aura Detective: 5 BU, ...")
+   - If `bu_budget` is set AND total > budget: show RED warning
+   - If no cap: just show total
 
 4. **"What would this cost" preview** in the build form when adding a slot — show "+8 BU" before confirming
 
-**Why this matters:** Without this, the BU system is invisible. A character could be unplayable in a real session because nobody knows the cost.
+5. **Enforcement at character save** (per Mashu 2026-07-08 — IN SCOPE):
+   - On POST `/api/characters` and PATCH `/api/characters/[id]`: if the character has `bu_budget` set, validate that the new total ≤ budget
+   - If over budget: return 422 with `{ code: "OVER_BUDGET", total, budget, breakdown }` so the client can show an error
+   - Allow override: a `?force=true` query param or a "Save anyway" UI button for the rare case where the DM explicitly wants to exceed
+
+6. **"Set budget" UI** on the character sheet — a small input field that saves `bu_budget` to the character
+   - Inline edit, no separate page
 
 **Files (estimated):**
+- New migration: `src/db/migrations/0027_phase6_character_bu_budget.sql`
+- `src/db/migrations/meta/_journal.json` — add idx 27
+- `src/db/schema/characters.ts` — add `buBudget` column
 - `src/lib/build-cost/compute-build-cost.ts` — service
+- `src/lib/build-cost/__tests__/compute-build-cost.test.ts` — unit tests
 - `src/components/characters/build-cost-summary.tsx` — display
-- `src/app/characters/[id]/page.tsx` — add summary section
+- `src/components/characters/set-bu-budget.tsx` — input
+- `src/app/characters/[id]/page.tsx` — add summary section + budget input
 - `src/app/sandbox/builds/page.tsx` — add live preview
+- `src/app/api/characters/route.ts` — add 422 on over-budget
+- `src/app/api/characters/[id]/route.ts` — same on PATCH
 
-**Effort:** 1-2 days (depends on whether budget enforcement is in scope)
+**Effort:** 2-3 days (includes budget enforcement wiring)
 
-**Risk:** If BU prices haven't been set on most entities yet, the calculation will return 0/empty and not be useful. May need a Phase 6 prerequisite: "ensure every primitive/capability/item has a `buyPrice` set, default to 0 for unpriced entities, show 'unpriced' badge."
+**Risk:** If BU prices haven't been set on most entities yet, the calculation will return 0/empty and not be useful. May need a Phase 6 prerequisite: "ensure every primitive/capability/item has a `buyPrice` set, default to 0 for unpriced entities, show 'unpriced' badge." I'll surface this on day 1 and decide with Mashu.
 
 ---
 
@@ -251,8 +282,8 @@ The user (DM or character builder) needs to know the total BU cost of a characte
 |---|---|---|---|
 | 1-4 | ✅ Shipped | — | — |
 | 5 (partial) | 🟡 Mostly shipped | — | — |
-| **5 REMAINDER (P5R-1 to P5R-7)** | ⏳ Not started | **~3 days + 10 min Mashu** | — |
-| 6 (Build Cost Engine) | ⏳ Not started | 1-2 days | — |
+| **5 REMAINDER (P5R-1 to P5R-8)** | ⏳ Not started | **~3 days + 10 min Mashu** | — |
+| 6 (Build Cost Engine + Budget Enforcement) | ⏳ Not started | 2-3 days | — |
 | 7 (DB Revise + Content Cleanup) | ⏳ Not started | 3-5 days | — |
 | 8 (Unified Search) | ⏳ Not started | 5-8 days | Phase 7 |
 | 9 (Character Creation UX) | ⏳ Not started | 5-10 days | Phase 6, 7 |
@@ -262,8 +293,8 @@ The user (DM or character builder) needs to know the total BU cost of a characte
 ## What I (Senku) need from Mashu RIGHT NOW to unblock
 
 1. **P5R-7: Re-create the Clerk test account.** This unblocks live UI E2E verification for everything from this point forward. 10 minutes in the Clerk dashboard.
-2. **Approval to start P5R-1 through P5R-6** as one batch (~3 days of work, with checkpoints after P5R-1+2, P5R-3, P5R-4+5, P5R-6).
-3. **Decision on Phase 6 scope:** is the "budget enforcement at creation" part in scope, or just display + preview?
+2. **Approval to start P5R-1 through P5R-6 + P5R-8** as one batch (~3 days of work, with checkpoints after P5R-1+2, P5R-3, P5R-4+5, P5R-6+8).
+3. ✅ **Phase 6 budget enforcement: APPROVED (Mashu 2026-07-08).** Schema migration `0027_phase6_character_bu_budget.sql` is now in scope. Effort bumped to 2-3 days.
 
 Ten billion percent — once you confirm those, I can start.
 
