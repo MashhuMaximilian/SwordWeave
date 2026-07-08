@@ -43,3 +43,7 @@ pnpm-debug.log*
 .swordweave-test-account.local
 scripts/debug-*.mts
 scripts/cleanup-test-*.mts
+scripts/check-*.mts
+scripts/find-*.mts
+scripts/reset-*.mts
+scripts/create-*.mts
