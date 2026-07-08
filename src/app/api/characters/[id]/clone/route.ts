@@ -83,6 +83,10 @@ export async function POST(
             source: p.source,
             acquiredAtLevel: p.acquiredAtLevel,
             notes: p.notes,
+            // Phase 5: copy the version pin + slot_source from the source
+            // link so the clone tracks the same content the source did.
+            versionId: p.versionId,
+            slotSource: p.slotSource,
           })),
         );
       }
@@ -93,6 +97,9 @@ export async function POST(
             capabilityId: c.capabilityId,
             acquiredAtLevel: c.acquiredAtLevel,
             notes: c.notes,
+            // Phase 5: copy the version pin + slot_source.
+            versionId: c.versionId,
+            slotSource: c.slotSource,
           })),
         );
       }
@@ -103,6 +110,9 @@ export async function POST(
             itemId: i.itemId,
             quantity: i.quantity,
             equipped: i.equipped,
+            // Phase 5: copy the version pin + slot_source.
+            versionId: i.versionId,
+            slotSource: i.slotSource,
           })),
         );
       }

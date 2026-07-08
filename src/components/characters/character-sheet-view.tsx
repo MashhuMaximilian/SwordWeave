@@ -18,6 +18,10 @@ import {
 } from "lucide-react";
 import { DetailModal } from "@/components/ui/detail-modal";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
+import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
+
+// Re-use the same SlotSource type the badge component accepts.
+type SlotSource = "OWNED" | "FORKED" | "PINNED";
 
 /**
  * Character Sheet UI
@@ -35,11 +39,18 @@ type SheetPrimitiveLink = {
   primitiveId: number;
   source: string;
   acquiredAtLevel: number;
+  isMirrored: boolean;
+  // Phase 5 (T5.C.1): surface slot metadata for the badge UI.
+  versionId: string | null;
+  slotSource: SlotSource | null;
+  latestVersionId: string | null;
   primitive: {
     id: number;
     name: string;
     category: string;
     buCost: number;
+    isMirrorable: boolean;
+    mirrorBuCredit: number;
     narrativeRule: string;
   };
 };
@@ -47,6 +58,10 @@ type SheetPrimitiveLink = {
 type SheetCapabilityLink = {
   capabilityId: string;
   acquiredAtLevel: number;
+  // Phase 5 (T5.C.1): surface slot metadata for the badge UI.
+  versionId: string | null;
+  slotSource: SlotSource | null;
+  latestVersionId: string | null;
   capability: {
     id: string;
     name: string;
@@ -60,6 +75,10 @@ type SheetItemLink = {
   itemId: string;
   quantity: number;
   equipped: boolean;
+  // Phase 5 (T5.C.1): surface slot metadata for the badge UI.
+  versionId: string | null;
+  slotSource: SlotSource | null;
+  latestVersionId: string | null;
   item: {
     id: string;
     name: string;
@@ -349,6 +368,10 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             capabilities={props.capabilityLinks.map((l) => ({
               ...l.capability,
               acquiredAtLevel: l.acquiredAtLevel,
+              // Phase 5 (T5.C.3): surface slot metadata to the tab.
+              versionId: l.versionId,
+              slotSource: l.slotSource,
+              latestVersionId: l.latestVersionId,
             }))}
           />
         )}
@@ -358,6 +381,10 @@ export function CharacterSheetView(props: CharacterSheetProps) {
               ...l.item,
               equipped: l.equipped,
               quantity: l.quantity,
+              // Phase 5 (T5.C.3): surface slot metadata to the tab.
+              versionId: l.versionId,
+              slotSource: l.slotSource,
+              latestVersionId: l.latestVersionId,
             }))}
             encumbrance={props.encumbrance}
           />
@@ -1332,6 +1359,10 @@ function CapabilitiesTab({
     sourceType: string;
     verboseDescription: string;
     acquiredAtLevel: number;
+    // Phase 5 (T5.C.3): slot metadata for the badge.
+    versionId: string | null;
+    slotSource: SlotSource | null;
+    latestVersionId: string | null;
   }>;
 }) {
   if (capabilities.length === 0) {
@@ -1362,6 +1393,16 @@ function CapabilitiesTab({
             <span>{c.sourceType}</span>
             <span>·</span>
             <span>Acquired L{c.acquiredAtLevel}</span>
+          </div>
+          {/* Phase 5 (T5.C.3): render the slot-source badge so the user
+              can tell at a glance whether this capability is theirs, a
+              fork, or pinned to someone else's version. */}
+          <div className="mt-2">
+            <SlotSourceBadge
+              slotSource={c.slotSource}
+              versionId={c.versionId}
+              latestVersionId={c.latestVersionId}
+            />
           </div>
           {c.verboseDescription && (
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-3">
@@ -1394,6 +1435,10 @@ function ItemsTab({
     isConsumable: boolean;
     equipped: boolean;
     quantity: number;
+    // Phase 5 (T5.C.3): slot metadata for the badge.
+    versionId: string | null;
+    slotSource: SlotSource | null;
+    latestVersionId: string | null;
   }>;
   encumbrance: CharacterSheetProps["encumbrance"];
 }) {
@@ -1441,6 +1486,14 @@ function ItemsTab({
                   Equipped
                 </span>
               )}
+            </div>
+            {/* Phase 5 (T5.C.3): render the slot-source badge. */}
+            <div className="mt-2">
+              <SlotSourceBadge
+                slotSource={i.slotSource}
+                versionId={i.versionId}
+                latestVersionId={i.latestVersionId}
+              />
             </div>
             {i.description && (
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-3">

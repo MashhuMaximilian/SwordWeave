@@ -165,6 +165,9 @@ export const slotSourceEnum = pgEnum("slot_source", [
   "PINNED",
 ]);
 
+/** The 3 slot_source values. Type alias for use in app code. */
+export type SlotSource = (typeof slotSourceEnum.enumValues)[number];
+
 // Junction: character <-> primitive
 export const characterPrimitives = pgTable(
   "character_primitives",

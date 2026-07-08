@@ -5,6 +5,11 @@ import { CharacterSheetView } from "@/components/characters/character-sheet-view
 import { db } from "@/db/client";
 import { characters } from "@/db/schema";
 import { aggregateCharacterSheet } from "@/lib/engine";
+import {
+  bulkResolveLatestVersions,
+  makeKey,
+  type VersionKey,
+} from "@/lib/versions/bulk-resolve-latest-versions";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +40,16 @@ export default async function CharacterSheetPage({
     redirect("/characters");
   }
 
+  // Phase 5 (T5.C.2): compute the latest version id for every linked
+  // entity so the sheet can render "stale" badges. One bulk query per
+  // entity kind, returns a Map keyed by `${kind}:${id}`.
+  const entityPairs = [
+    ...row.primitiveLinks.map((l) => ({ kind: "primitive" as const, id: l.primitiveId })),
+    ...row.capabilityLinks.map((l) => ({ kind: "capability" as const, id: l.capabilityId })),
+    ...row.itemLinks.map((l) => ({ kind: "item" as const, id: l.itemId })),
+  ];
+  const latestVersions = await bulkResolveLatestVersions(entityPairs);
+
   const sheet = aggregateCharacterSheet({
     level: row.level,
     attrPhysical: row.attrPhysical,
@@ -53,6 +68,10 @@ export default async function CharacterSheetPage({
       source: l.source,
       acquiredAtLevel: l.acquiredAtLevel,
       isMirrored: l.isMirrored ?? false,
+      // Phase 5: surface slot metadata to the view.
+      versionId: l.versionId,
+      slotSource: l.slotSource,
+      latestVersionId: latestVersions.get(makeKey("primitive", l.primitiveId)) ?? null,
       primitive: {
         id: l.primitive.id,
         name: l.primitive.name,
@@ -66,6 +85,10 @@ export default async function CharacterSheetPage({
     capabilityLinks: row.capabilityLinks.map((l) => ({
       capabilityId: l.capabilityId,
       acquiredAtLevel: l.acquiredAtLevel,
+      // Phase 5: surface slot metadata to the view.
+      versionId: l.versionId,
+      slotSource: l.slotSource,
+      latestVersionId: latestVersions.get(makeKey("capability", l.capabilityId)) ?? null,
       capability: {
         id: l.capability.id,
         name: l.capability.name,
@@ -78,6 +101,10 @@ export default async function CharacterSheetPage({
       itemId: l.itemId,
       quantity: l.quantity,
       equipped: l.equipped,
+      // Phase 5: surface slot metadata to the view.
+      versionId: l.versionId,
+      slotSource: l.slotSource,
+      latestVersionId: latestVersions.get(makeKey("item", l.itemId)) ?? null,
       item: {
         id: l.item.id,
         name: l.item.name,
@@ -142,10 +169,32 @@ export default async function CharacterSheetPage({
       vitality={sheet.vitality}
       encumbrance={sheet.encumbrance}
       buBalance={sheet.buBalance}
-      primitiveLinks={[]} // unused on view (kept on input for type compat)
+      primitiveLinks={row.primitiveLinks.map((l) => ({
+        primitiveId: l.primitiveId,
+        source: l.source,
+        acquiredAtLevel: l.acquiredAtLevel,
+        isMirrored: l.isMirrored ?? false,
+        // Phase 5: surface slot metadata to the view.
+        versionId: l.versionId,
+        slotSource: l.slotSource,
+        latestVersionId: latestVersions.get(makeKey("primitive", l.primitiveId)) ?? null,
+        primitive: {
+          id: l.primitive.id,
+          name: l.primitive.name,
+          category: l.primitive.category,
+          buCost: l.primitive.buCost,
+          isMirrorable: l.primitive.isMirrorable,
+          mirrorBuCredit: l.primitive.mirrorBuCredit,
+          narrativeRule: l.primitive.narrativeRule ?? "",
+        },
+      }))}
       capabilityLinks={row.capabilityLinks.map((l) => ({
         capabilityId: l.capabilityId,
         acquiredAtLevel: l.acquiredAtLevel,
+        // Phase 5: surface slot metadata to the view.
+        versionId: l.versionId,
+        slotSource: l.slotSource,
+        latestVersionId: latestVersions.get(makeKey("capability", l.capabilityId)) ?? null,
         capability: {
           id: l.capability.id,
           name: l.capability.name,
@@ -158,6 +207,10 @@ export default async function CharacterSheetPage({
         itemId: l.itemId,
         quantity: l.quantity,
         equipped: l.equipped,
+        // Phase 5: surface slot metadata to the view.
+        versionId: l.versionId,
+        slotSource: l.slotSource,
+        latestVersionId: latestVersions.get(makeKey("item", l.itemId)) ?? null,
         item: {
           id: l.item.id,
           name: l.item.name,

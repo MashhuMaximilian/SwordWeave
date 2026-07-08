@@ -1,15 +1,22 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   characterCapabilities,
   characterItems,
   characterPrimitives,
   characters,
+  primitives,
+  capabilities,
+  items,
 } from "@/db/schema";
 import { validateAttributes, type Attribute } from "@/lib/engine/practices";
 import { validateMirrorSet } from "@/lib/api/volatility";
+import {
+  resolveLatestVersionId,
+  resolveSlotSource,
+} from "@/lib/versions/slot-source";
 
 const VALID_SIZES = [
   "TINY",
@@ -94,7 +101,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await auth.protect();
+    const { userId } = await auth.protect();
     const { id } = await params;
     const body: unknown = await request.json();
 
@@ -277,15 +284,38 @@ export async function PATCH(
         await tx.delete(characterPrimitives).where(eq(characterPrimitives.characterId, id));
         if (primitiveIds.length > 0) {
           const mirrorSet = new Set(resolvedMirrors);
-          await tx.insert(characterPrimitives).values(
-            primitiveIds.map((pid) => ({
-              characterId: id,
-              primitiveId: pid,
-              source: "PERSONAL" as const,
-              acquiredAtLevel: mergedLevel,
-              isMirrored: mirrorSet.has(pid),
-            })),
+          // Phase 5: load entity rows to compute version_id + slot_source.
+          const primRows = await tx
+            .select({
+              id: primitives.id,
+              userId: primitives.userId,
+              sourceOrigin: primitives.sourceOrigin,
+            })
+            .from(primitives)
+            .where(inArray(primitives.id, primitiveIds));
+          const primMap = new Map(primRows.map((r) => [r.id, r]));
+          const slotsWithVersion = await Promise.all(
+            primitiveIds.map(async (pid) => {
+              const prim = primMap.get(pid);
+              const versionId = await resolveLatestVersionId("primitive", pid);
+              const slotSource = prim
+                ? resolveSlotSource({
+                    entity: prim,
+                    callerUserId: userId,
+                  })
+                : "PINNED";
+              return {
+                characterId: id,
+                primitiveId: pid,
+                source: "PERSONAL" as const,
+                acquiredAtLevel: mergedLevel,
+                isMirrored: mirrorSet.has(pid),
+                versionId,
+                slotSource,
+              };
+            }),
           );
+          await tx.insert(characterPrimitives).values(slotsWithVersion);
         }
       }
 
@@ -293,13 +323,36 @@ export async function PATCH(
         const capabilityIds = parseUuidArray(values["capabilityIds"]);
         await tx.delete(characterCapabilities).where(eq(characterCapabilities.characterId, id));
         if (capabilityIds.length > 0) {
-          await tx.insert(characterCapabilities).values(
-            capabilityIds.map((cid) => ({
-              characterId: id,
-              capabilityId: cid,
-              acquiredAtLevel: mergedLevel,
-            })),
+          // Phase 5: same wire-up for capabilities.
+          const capRows = await tx
+            .select({
+              id: capabilities.id,
+              userId: capabilities.userId,
+              sourceOrigin: capabilities.sourceOrigin,
+            })
+            .from(capabilities)
+            .where(inArray(capabilities.id, capabilityIds));
+          const capMap = new Map(capRows.map((r) => [r.id, r]));
+          const slotsWithVersion = await Promise.all(
+            capabilityIds.map(async (cid) => {
+              const cap = capMap.get(cid);
+              const versionId = await resolveLatestVersionId("capability", cid);
+              const slotSource = cap
+                ? resolveSlotSource({
+                    entity: cap,
+                    callerUserId: userId,
+                  })
+                : "PINNED";
+              return {
+                characterId: id,
+                capabilityId: cid,
+                acquiredAtLevel: mergedLevel,
+                versionId,
+                slotSource,
+              };
+            }),
           );
+          await tx.insert(characterCapabilities).values(slotsWithVersion);
         }
       }
 
@@ -307,12 +360,35 @@ export async function PATCH(
         const itemIds = parseUuidArray(values["itemIds"]);
         await tx.delete(characterItems).where(eq(characterItems.characterId, id));
         if (itemIds.length > 0) {
-          await tx.insert(characterItems).values(
-            itemIds.map((iid) => ({
-              characterId: id,
-              itemId: iid,
-            })),
+          // Phase 5: same wire-up for items.
+          const itemRows = await tx
+            .select({
+              id: items.id,
+              userId: items.userId,
+              sourceOrigin: items.sourceOrigin,
+            })
+            .from(items)
+            .where(inArray(items.id, itemIds));
+          const itemMap = new Map(itemRows.map((r) => [r.id, r]));
+          const slotsWithVersion = await Promise.all(
+            itemIds.map(async (iid) => {
+              const item = itemMap.get(iid);
+              const versionId = await resolveLatestVersionId("item", iid);
+              const slotSource = item
+                ? resolveSlotSource({
+                    entity: item,
+                    callerUserId: userId,
+                  })
+                : "PINNED";
+              return {
+                characterId: id,
+                itemId: iid,
+                versionId,
+                slotSource,
+              };
+            }),
           );
+          await tx.insert(characterItems).values(slotsWithVersion);
         }
       }
 
