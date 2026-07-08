@@ -200,3 +200,301 @@ export async function computePrimitiveContentHash(args: {
 export function isPrimitiveDraftEmpty(payload: CanonicalPrimitivePayload): boolean {
   return payload.name.trim().length === 0;
 }
+
+// =============================================================================
+// Phase 2 of the edit-creates-fork refactor (§11 of edit-creates-fork.md):
+// content-hash envelopes for effects, capabilities, items, and templates.
+// Same algorithm as primitives (SHA-256 over a canonical-JSON envelope).
+//
+// Each entity type has a distinct canonical-payload shape that mirrors its
+// form's draft state. The dispatcher is entity-agnostic — it just compares
+// the source row's `contentHash` to the form's `draftHash` — so as long as
+// the producer (this file) and the route's save body agree on the shape,
+// no-op detection works.
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// Effects
+// -----------------------------------------------------------------------------
+
+export interface CanonicalEffectPayload {
+  name: string;
+  narrativeDescription: string;
+  tags: readonly string[];
+  isPublic: boolean;
+  primitiveSlots: readonly { primitiveId: number; quantity: number; notes: string }[];
+}
+
+export function buildCanonicalEffectPayload(args: {
+  name: string;
+  narrativeDescription: string;
+  tags: readonly string[];
+  isPublic: boolean;
+  primitiveSlots: readonly { primitiveId: number; quantity: number; notes: string }[];
+}): CanonicalEffectPayload {
+  // Sort slots by primitiveId so the hash is order-independent. (The original
+  // form preserves user-chosen order via sortOrder in the DB; for the
+  // content-hash envelope we want the content to be canonical regardless of
+  // how the slots were ordered in the form UI.)
+  const sortedSlots = [...args.primitiveSlots]
+    .map((s) => ({
+      primitiveId: s.primitiveId,
+      quantity: s.quantity,
+      notes: s.notes ?? "",
+    }))
+    .sort((a, b) => a.primitiveId - b.primitiveId);
+
+  return {
+    name: args.name.trim(),
+    narrativeDescription: args.narrativeDescription.trim(),
+    tags: [...args.tags].map((t) => t.trim()).filter(Boolean).sort(),
+    isPublic: Boolean(args.isPublic),
+    primitiveSlots: sortedSlots,
+  };
+}
+
+export function isEffectDraftEmpty(payload: CanonicalEffectPayload): boolean {
+  return payload.name.length === 0;
+}
+
+export async function hashEffectContent(
+  payload: CanonicalEffectPayload,
+): Promise<string> {
+  const envelope = JSON.stringify({ v: ENVELOPE_VERSION, effect: payload });
+  return sha256Hex(envelope);
+}
+
+export async function computeEffectContentHash(args: {
+  name: string;
+  narrativeDescription: string;
+  tags: readonly string[];
+  isPublic: boolean;
+  primitiveSlots: readonly { primitiveId: number; quantity: number; notes: string }[];
+}): Promise<string> {
+  return hashEffectContent(buildCanonicalEffectPayload(args));
+}
+
+// -----------------------------------------------------------------------------
+// Capabilities
+// -----------------------------------------------------------------------------
+
+export interface CanonicalCapabilityPayload {
+  name: string;
+  type: string;
+  sourceType: string;
+  verboseDescription: string;
+  tags: readonly string[];
+  isPublic: boolean;
+  primitiveSlots: readonly { primitiveId: number; role: string; quantity: number; slotLabel: string; notes: string }[];
+  effectSlots: readonly { effectId: string; slotLabel: string; notes: string }[];
+}
+
+export function buildCanonicalCapabilityPayload(args: {
+  name: string;
+  type: string;
+  sourceType: string;
+  verboseDescription: string;
+  tags: readonly string[];
+  isPublic: boolean;
+  primitiveSlots: readonly { primitiveId: number; role: string; quantity: number; slotLabel: string; notes: string }[];
+  effectSlots: readonly { effectId: string; slotLabel: string; notes: string }[];
+}): CanonicalCapabilityPayload {
+  const sortedPrimitives = [...args.primitiveSlots]
+    .map((s) => ({
+      primitiveId: s.primitiveId,
+      role: s.role,
+      quantity: s.quantity,
+      slotLabel: s.slotLabel ?? "",
+      notes: s.notes ?? "",
+    }))
+    .sort((a, b) => a.primitiveId - b.primitiveId);
+
+  const sortedEffects = [...args.effectSlots]
+    .map((s) => ({
+      effectId: s.effectId,
+      slotLabel: s.slotLabel ?? "",
+      notes: s.notes ?? "",
+    }))
+    .sort((a, b) => a.effectId.localeCompare(b.effectId));
+
+  return {
+    name: args.name.trim(),
+    type: args.type,
+    sourceType: args.sourceType,
+    verboseDescription: args.verboseDescription.trim(),
+    tags: [...args.tags].map((t) => t.trim()).filter(Boolean).sort(),
+    isPublic: Boolean(args.isPublic),
+    primitiveSlots: sortedPrimitives,
+    effectSlots: sortedEffects,
+  };
+}
+
+export function isCapabilityDraftEmpty(payload: CanonicalCapabilityPayload): boolean {
+  return payload.name.length === 0;
+}
+
+export async function hashCapabilityContent(
+  payload: CanonicalCapabilityPayload,
+): Promise<string> {
+  const envelope = JSON.stringify({ v: ENVELOPE_VERSION, capability: payload });
+  return sha256Hex(envelope);
+}
+
+export async function computeCapabilityContentHash(args: {
+  name: string;
+  type: string;
+  sourceType: string;
+  verboseDescription: string;
+  tags: readonly string[];
+  isPublic: boolean;
+  primitiveSlots: readonly { primitiveId: number; role: string; quantity: number; slotLabel: string; notes: string }[];
+  effectSlots: readonly { effectId: string; slotLabel: string; notes: string }[];
+}): Promise<string> {
+  return hashCapabilityContent(buildCanonicalCapabilityPayload(args));
+}
+
+// -----------------------------------------------------------------------------
+// Items
+// -----------------------------------------------------------------------------
+
+export interface CanonicalItemPayload {
+  name: string;
+  itemType: string;
+  rarity: string;
+  buCost: number;
+  description: string;
+  slotCost: number;
+  quantity: number;
+  isTwoHanded: boolean;
+  isConsumable: boolean;
+  actsAsFocus: boolean;
+  isPublic: boolean;
+  tags: readonly string[];
+  primitiveIds: readonly number[];
+  capabilityIds: readonly string[];
+  effectIds: readonly string[];
+}
+
+export function buildCanonicalItemPayload(args: {
+  name: string;
+  itemType: string;
+  rarity: string;
+  buCost: number;
+  description: string;
+  slotCost: number;
+  quantity: number;
+  isTwoHanded: boolean;
+  isConsumable: boolean;
+  actsAsFocus: boolean;
+  isPublic: boolean;
+  tags: readonly string[];
+  primitiveIds: readonly number[];
+  capabilityIds: readonly string[];
+  effectIds: readonly string[];
+}): CanonicalItemPayload {
+  return {
+    name: args.name.trim(),
+    itemType: args.itemType,
+    rarity: args.rarity,
+    buCost: Math.max(0, Math.floor(args.buCost)),
+    description: args.description.trim(),
+    slotCost: Math.max(0, Math.floor(args.slotCost)),
+    quantity: Math.max(1, Math.floor(args.quantity)),
+    isTwoHanded: Boolean(args.isTwoHanded),
+    isConsumable: Boolean(args.isConsumable),
+    actsAsFocus: Boolean(args.actsAsFocus),
+    isPublic: Boolean(args.isPublic),
+    tags: [...args.tags].map((t) => t.trim()).filter(Boolean).sort(),
+    primitiveIds: [...args.primitiveIds].sort((a, b) => a - b),
+    capabilityIds: [...args.capabilityIds].sort(),
+    effectIds: [...args.effectIds].sort(),
+  };
+}
+
+export function isItemDraftEmpty(payload: CanonicalItemPayload): boolean {
+  return payload.name.length === 0;
+}
+
+export async function hashItemContent(
+  payload: CanonicalItemPayload,
+): Promise<string> {
+  const envelope = JSON.stringify({ v: ENVELOPE_VERSION, item: payload });
+  return sha256Hex(envelope);
+}
+
+export async function computeItemContentHash(args: {
+  name: string;
+  itemType: string;
+  rarity: string;
+  buCost: number;
+  description: string;
+  slotCost: number;
+  quantity: number;
+  isTwoHanded: boolean;
+  isConsumable: boolean;
+  actsAsFocus: boolean;
+  isPublic: boolean;
+  tags: readonly string[];
+  primitiveIds: readonly number[];
+  capabilityIds: readonly string[];
+  effectIds: readonly string[];
+}): Promise<string> {
+  return hashItemContent(buildCanonicalItemPayload(args));
+}
+
+// -----------------------------------------------------------------------------
+// Templates (race / background / archetype)
+// -----------------------------------------------------------------------------
+
+export interface CanonicalTemplatePayload {
+  kind: string;
+  name: string;
+  description: string;
+  suggestedTraits: string;
+  isPublic: boolean;
+  primitiveIds: readonly number[];
+  capabilityIds: readonly string[];
+}
+
+export function buildCanonicalTemplatePayload(args: {
+  kind: string;
+  name: string;
+  description: string;
+  suggestedTraits: string;
+  isPublic: boolean;
+  primitiveIds: readonly number[];
+  capabilityIds: readonly string[];
+}): CanonicalTemplatePayload {
+  return {
+    kind: args.kind,
+    name: args.name.trim(),
+    description: args.description.trim(),
+    suggestedTraits: args.suggestedTraits.trim(),
+    isPublic: Boolean(args.isPublic),
+    primitiveIds: [...args.primitiveIds].sort((a, b) => a - b),
+    capabilityIds: [...args.capabilityIds].sort(),
+  };
+}
+
+export function isTemplateDraftEmpty(payload: CanonicalTemplatePayload): boolean {
+  return payload.name.length === 0;
+}
+
+export async function hashTemplateContent(
+  payload: CanonicalTemplatePayload,
+): Promise<string> {
+  const envelope = JSON.stringify({ v: ENVELOPE_VERSION, template: payload });
+  return sha256Hex(envelope);
+}
+
+export async function computeTemplateContentHash(args: {
+  kind: string;
+  name: string;
+  description: string;
+  suggestedTraits: string;
+  isPublic: boolean;
+  primitiveIds: readonly number[];
+  capabilityIds: readonly string[];
+}): Promise<string> {
+  return hashTemplateContent(buildCanonicalTemplatePayload(args));
+}

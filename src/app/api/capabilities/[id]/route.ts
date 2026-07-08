@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray, and, isNull, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   capabilities,
@@ -11,13 +11,54 @@ import {
 } from "@/db/schema";
 import {
   buildAssemblyAndComputeBU,
+  parseCapabilityType,
   parseEffectSlots,
   parsePrimitiveSlots,
+  parseSourceType,
   parseTags,
   safeMetadata,
   type PrimitiveLike,
 } from "@/lib/api/capability-helpers";
+import {
+  dispatchEntitySave,
+  type SaveTargetType,
+} from "@/lib/publishing/dispatch-save";
+import { parseSaveIntent } from "@/lib/publishing/save-intent";
+import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
+import {
+  buildCanonicalCapabilityPayload,
+  isCapabilityDraftEmpty,
+  computeCapabilityContentHash,
+} from "@/lib/publishing/hash-content";
 import type { JsonValue } from "@/types/swordweave";
+
+const TARGET_TYPE: SaveTargetType = "CAPABILITY";
+
+/**
+ * Phase 2: build a sync-existence predicate for the (name, sourceOrigin)
+ * pair the new fork row will use, so the forked name doesn't collide
+ * with the user's existing rows.
+ */
+async function buildCapabilityTakenNamesSet(
+  name: string,
+  sourceOrigin: string | null,
+  userId: string,
+): Promise<(candidate: string) => boolean> {
+  const rows = await db
+    .select({ name: capabilities.name })
+    .from(capabilities)
+    .where(
+      and(
+        eq(capabilities.name, name),
+        sourceOrigin === null
+          ? isNull(capabilities.sourceOrigin)
+          : eq(capabilities.sourceOrigin, sourceOrigin),
+        eq(capabilities.userId, userId),
+      ),
+    );
+  const taken = new Set(rows.map((r) => r.name));
+  return (candidate: string) => taken.has(candidate);
+}
 
 /**
  * GET /api/capabilities/[id]
@@ -53,15 +94,16 @@ export async function GET(
 }
 
 /**
- * PATCH /api/capabilities/[id]
- * Update capability metadata and/or primitive slots atomically.
+ * PATCH /api/capabilities/[id] — Phase 2 deferred-fork entry point.
  *
- * Body:
- *   - name, type, sourceType, verboseDescription, isPublic, tags, metadata
- *   - primitiveSlots: full replacement of all primitive links
+ * Same shape as /api/effects/[id] PATCH:
+ *   - intent=load + caller owns source → UPDATE in place (version-update)
+ *   - intent=fork (any ownership) → INSERT new fork row
+ *   - load + caller doesn't own → INSERT new fork row
+ *   - no-changes (contentHash matches) → no-op, return user-facing message
  *
- * Server-authoritative: totalBu is recomputed from primitives whenever
- * slots change; client `previewBu` is always ignored.
+ * The response shape mirrors the effects route:
+ *   { capability, dispatchOutcome: { kind, newId, sourceId, swapTarget } | { kind: "no-op", message } }
  */
 export async function PATCH(
   request: Request,
@@ -77,99 +119,177 @@ export async function PATCH(
     }
 
     const values = body as Record<string, unknown>;
-    const updatePayload: Record<string, unknown> = {};
 
-    // Ownership gate: load current row to verify caller is the owner.
-    // System content (user_id IS NULL) is immutable via this endpoint.
-    const existing = await db.query.capabilities.findFirst({
-      where: eq(capabilities.id, id),
-      columns: { id: true, userId: true },
-    });
-    if (!existing) {
-      return NextResponse.json({ error: "Capability not found." }, { status: 404 });
-    }
-    if (existing.userId !== userId) {
+    // Phase 2: parse intent. If absent, default to "load" (legacy in-place
+    // edit behaviour). Forms that fork will send `intent: "fork"`.
+    const intent = parseSaveIntent(
+      typeof values["intent"] === "string" ? (values["intent"] as string) : undefined,
+    );
+    const effectiveIntent = intent ?? "load";
+
+    // -------------------------------------------------------------------
+    // Field parsing — preserve all existing validations from the legacy
+    // PATCH. The form sends a full draft; we hash the full draft to
+    // detect no-op saves.
+    // -------------------------------------------------------------------
+    const name = String(values["name"] ?? "").trim();
+
+    const type = parseCapabilityType(values["type"]);
+    if ("type" in values && !type) {
       return NextResponse.json(
-        { error: "You can only edit capabilities you own." },
-        { status: 403 },
+        { error: "type must be ACTIVE, PASSIVE, or AUGMENT." },
+        { status: 400 },
       );
     }
 
-    if ("name" in values) updatePayload["name"] = String(values["name"]).trim();
-    if ("type" in values) {
-      const type = String(values["type"]).toUpperCase();
-      if (!["ACTIVE", "PASSIVE", "AUGMENT"].includes(type)) {
-        return NextResponse.json(
-          { error: "type must be ACTIVE, PASSIVE, or AUGMENT." },
-          { status: 400 },
-        );
+    const sourceType = parseSourceType(values["sourceType"]);
+    if ("sourceType" in values && !sourceType) {
+      return NextResponse.json(
+        { error: "sourceType must be PHYSICAL, MAGICAL, or PSYCHIC." },
+        { status: 400 },
+      );
+    }
+
+    const verboseDescription = String(values["verboseDescription"] ?? "").trim();
+    const isPublic = Boolean(values["isPublic"]);
+    const userSourceOriginRaw = String(values["sourceOrigin"] ?? "").trim();
+    const tags = parseTags(values["tags"]);
+
+    const primitiveSlots = "primitiveSlots" in values && values["primitiveSlots"] != null
+      ? parsePrimitiveSlots(values["primitiveSlots"])
+      : [];
+
+    const effectSlots = "effectSlots" in values && values["effectSlots"] != null
+      ? parseEffectSlots(values["effectSlots"])
+      : [];
+
+    if (!name) {
+      return NextResponse.json({ error: "Capability name is required." }, { status: 400 });
+    }
+
+    // -------------------------------------------------------------------
+    // Canonical payload + content hash (server is the source of truth).
+    // -------------------------------------------------------------------
+    // `type` and `sourceType` are typed `string | null` by their parsers.
+    // The validation above guarantees they're either valid (e.g.
+    // "ACTIVE") or null. For the canonical hash, the form-supplied value
+    // (or "" as a placeholder) is fine — the no-op detection only needs
+    // a stable value that matches what the form serialized.
+    const canonicalPayload = buildCanonicalCapabilityPayload({
+      name,
+      type: type ?? "",
+      sourceType: sourceType ?? "",
+      verboseDescription,
+      tags,
+      isPublic,
+      primitiveSlots: primitiveSlots.map((s) => ({
+        primitiveId: s.primitiveId,
+        role: s.role,
+        quantity: s.quantity,
+        slotLabel: s.slotLabel ?? "",
+        notes: s.notes ?? "",
+      })),
+      effectSlots: effectSlots.map((s) => ({
+        effectId: s.effectId,
+        slotLabel: s.slotLabel ?? "",
+        notes: s.notes ?? "",
+      })),
+    });
+    const draftIsEmpty = isCapabilityDraftEmpty(canonicalPayload);
+    const draftHash = await computeCapabilityContentHash({
+      name,
+      type: type ?? "",
+      sourceType: sourceType ?? "",
+      verboseDescription,
+      tags,
+      isPublic,
+      primitiveSlots: primitiveSlots.map((s) => ({
+        primitiveId: s.primitiveId,
+        role: s.role,
+        quantity: s.quantity,
+        slotLabel: s.slotLabel ?? "",
+        notes: s.notes ?? "",
+      })),
+      effectSlots: effectSlots.map((s) => ({
+        effectId: s.effectId,
+        slotLabel: s.slotLabel ?? "",
+        notes: s.notes ?? "",
+      })),
+    });
+
+    // -------------------------------------------------------------------
+    // Dispatcher.
+    // -------------------------------------------------------------------
+    const { source, outcome } = await dispatchEntitySave({
+      targetType: TARGET_TYPE,
+      sourceId: id,
+      intent: effectiveIntent,
+      callerUserId: userId,
+      draftHash,
+      draftIsEmpty,
+    });
+
+    // No-op short-circuit.
+    if (outcome.kind === "no-op") {
+      return NextResponse.json(
+        {
+          capability: null,
+          dispatchOutcome: {
+            kind: "no-op" as const,
+            message: outcome.message,
+            swapTarget: false as const,
+          },
+        },
+        { status: 200 },
+      );
+    }
+
+    if (outcome.kind === "version-update") {
+      // Caller owns the source AND intent=load → update in place. Same
+      // ownership gate as before: row must be owned by caller OR be
+      // system content.
+      const sourceCapability = await db.query.capabilities.findFirst({
+        where: eq(capabilities.id, id),
+      });
+      if (!sourceCapability) {
+        return NextResponse.json({ error: "Capability not found." }, { status: 404 });
       }
-      updatePayload["type"] = type;
-    }
-    if ("sourceType" in values) {
-      const sourceType = String(values["sourceType"]).toUpperCase();
-      if (!["PHYSICAL", "MAGICAL", "PSYCHIC"].includes(sourceType)) {
-        return NextResponse.json(
-          { error: "sourceType must be PHYSICAL, MAGICAL, or PSYCHIC." },
-          { status: 400 },
-        );
-      }
-      updatePayload["sourceType"] = sourceType;
-    }
-    if ("verboseDescription" in values)
-      updatePayload["verboseDescription"] = String(values["verboseDescription"]);
-    if ("isPublic" in values) updatePayload["isPublic"] = Boolean(values["isPublic"]);
-    if ("sourceOrigin" in values)
-      updatePayload["sourceOrigin"] = String(values["sourceOrigin"]).trim() || null;
 
-    if ("tags" in values) updatePayload["tags"] = parseTags(values["tags"]);
+      // Server-authoritative metadata: if slots change, totalBu is recomputed.
+      // Otherwise just preserve existing metadata (but strip previewBu).
+      const updatePayload: Record<string, unknown> = {
+        name,
+        type,
+        sourceType,
+        verboseDescription,
+        isPublic,
+        tags,
+        sourceOrigin: sourceCapability.sourceOrigin, // preserve
+        contentHash: draftHash,
+        updatedAt: new Date(),
+      };
 
-    // Server-authoritative metadata: if slots change, totalBu is recomputed.
-    // Otherwise just preserve client metadata (but strip previewBu).
-    let needsMetadataRewrite = false;
-    if ("metadata" in values) {
-      const md = safeMetadata(values["metadata"]);
-      if ("previewBu" in md) delete (md as Record<string, unknown>)["previewBu"];
-      updatePayload["metadata"] = md;
-      needsMetadataRewrite = true;
-    }
-
-    updatePayload["updatedAt"] = new Date();
-
-    // If primitiveSlots provided, replace all existing links (atomic)
-    let slotsChanged = false;
-    let slots: ReturnType<typeof parsePrimitiveSlots> = [];
-    if ("primitiveSlots" in values && values["primitiveSlots"] != null) {
-      slots = parsePrimitiveSlots(values["primitiveSlots"]);
-      slotsChanged = true;
-    }
-
-    // If effectSlots provided, replace all existing effect links (atomic)
-    let effectSlotsChanged = false;
-    let effectSlots: ReturnType<typeof parseEffectSlots> = [];
-    if ("effectSlots" in values && values["effectSlots"] != null) {
-      effectSlots = parseEffectSlots(values["effectSlots"]);
-      effectSlotsChanged = true;
-    }
-
-    const result = await db.transaction(async (tx) => {
-      if (Object.keys(updatePayload).length > 0) {
+      const result = await db.transaction(async (tx) => {
         const [updated] = await tx
           .update(capabilities)
           .set(updatePayload)
-          .where(eq(capabilities.id, id))
+          .where(
+            and(
+              eq(capabilities.id, id),
+              or(eq(capabilities.userId, userId), isNull(capabilities.userId)),
+            ),
+          )
           .returning();
 
         if (!updated) {
           throw new Error("Capability not found.");
         }
-      }
 
-      if (slotsChanged) {
-        // Server-compute BU
+        // Replace primitive slot links so they reflect the new draft.
+        // Server-compute BU from the new slots.
         let totalBu = 0;
-        if (slots.length > 0) {
-          const primitiveIds = slots.map((s) => s.primitiveId);
+        if (primitiveSlots.length > 0) {
+          const primitiveIds = primitiveSlots.map((s) => s.primitiveId);
           const primitiveRows = await tx
             .select()
             .from(primitives)
@@ -193,31 +313,24 @@ export async function PATCH(
             ]),
           );
 
-          // Need name/type/sourceType for assembly — pull from current row
-          const current = await tx.query.capabilities.findFirst({
-            where: eq(capabilities.id, id),
-          });
-          if (!current) throw new Error("Capability not found.");
-
           const { totalBu: computed } = buildAssemblyAndComputeBU(
-            slots,
+            primitiveSlots,
             primitivesById,
             {
               id,
-              name: current.name,
-              type: current.type,
-              sourceType: current.sourceType,
-              description: current.verboseDescription || undefined,
+              name: updated.name,
+              type: updated.type,
+              sourceType: updated.sourceType,
+              description: updated.verboseDescription || undefined,
             },
           );
           totalBu = computed;
         }
 
-        // Wipe + rewrite primitive links
         await tx.delete(capabilityPrimitives).where(eq(capabilityPrimitives.capabilityId, id));
-        if (slots.length > 0) {
+        if (primitiveSlots.length > 0) {
           await tx.insert(capabilityPrimitives).values(
-            slots.map((slot) => ({
+            primitiveSlots.map((slot) => ({
               capabilityId: id,
               primitiveId: slot.primitiveId,
               role: slot.role,
@@ -229,7 +342,7 @@ export async function PATCH(
           );
         }
 
-        // Update metadata.totalBu
+        // Update metadata.totalBu + compiledAt.
         const current = await tx.query.capabilities.findFirst({
           where: eq(capabilities.id, id),
         });
@@ -247,10 +360,8 @@ export async function PATCH(
             .set({ metadata: newMd, updatedAt: new Date() })
             .where(eq(capabilities.id, id));
         }
-      }
 
-      if (effectSlotsChanged) {
-        // Validate effectIds exist.
+        // Replace effect slot links.
         if (effectSlots.length > 0) {
           const effectIds = Array.from(new Set(effectSlots.map((s) => s.effectId)));
           const effectRows = await tx
@@ -263,7 +374,6 @@ export async function PATCH(
             throw new Error(`Unknown effectIds: ${missing.join(", ")}`);
           }
         }
-        // Wipe + rewrite effect links.
         await tx.delete(capabilityEffects).where(eq(capabilityEffects.capabilityId, id));
         if (effectSlots.length > 0) {
           await tx.insert(capabilityEffects).values(
@@ -276,11 +386,173 @@ export async function PATCH(
             })),
           );
         }
+
+        // Return full capability with links.
+        return tx.query.capabilities.findFirst({
+          where: eq(capabilities.id, id),
+          with: {
+            primitiveLinks: {
+              with: {
+                primitive: true,
+              },
+            },
+            effectLinks: {
+              with: {
+                effect: true,
+              },
+            },
+          },
+        });
+      });
+
+      return NextResponse.json(
+        {
+          capability: result,
+          dispatchOutcome: {
+            kind: "version-update" as const,
+            newId: id,
+            sourceId: outcome.sourceId,
+            swapTarget: false as const,
+          },
+        },
+        { status: 200 },
+      );
+    }
+
+    // outcome.kind === "forked" — INSERT a new row.
+    // sourceOrigin for the fork: "fork:<sourceId>" for non-greenfield,
+    // or the user-supplied sourceOrigin for greenfield.
+    const finalSourceOrigin = source !== null
+      ? `fork:${source.id}`
+      : (userSourceOriginRaw || null);
+
+    const baseName = source !== null
+      ? await computeUniqueForkName(
+          name,
+          await buildCapabilityTakenNamesSet(name, finalSourceOrigin, userId),
+        )
+      : name;
+
+    const created = await db.transaction(async (tx) => {
+      const [inserted] = await tx
+        .insert(capabilities)
+        .values({
+          name: baseName,
+          // `type` and `sourceType` are typed `string | null` by their
+          // parsers; the form always sends valid values, so we cast at
+          // the boundary. Drizzle's typed-enum INSERT requires the
+          // exact union. The validation above already rejected invalid
+          // enum strings, so this cast is safe.
+          type: type as "AUGMENT" | "ACTIVE" | "PASSIVE",
+          sourceType: sourceType as "PHYSICAL" | "MAGICAL" | "PSYCHIC",
+          verboseDescription,
+          isPublic,
+          userId,
+          sourceOrigin: finalSourceOrigin,
+          tags,
+          contentHash: draftHash,
+          // metadata is a non-null jsonb column with a default; the
+          // default isn't applied at the TypeScript type level. We
+          // seed an empty object here, then UPDATE it with the
+          // computed totalBu after the slot links are inserted.
+          metadata: {},
+        })
+        .returning();
+
+      if (!inserted) {
+        throw new Error("Unable to create capability.");
       }
 
-      // Return full capability with links
+      // Validate + insert primitive slots.
+      let totalBu = 0;
+      if (primitiveSlots.length > 0) {
+        const primitiveIds = primitiveSlots.map((s) => s.primitiveId);
+        const primitiveRows = await tx
+          .select()
+          .from(primitives)
+          .where(inArray(primitives.id, primitiveIds));
+
+        if (primitiveRows.length !== new Set(primitiveIds).size) {
+          const foundIds = new Set(primitiveRows.map((p) => p.id));
+          const missing = primitiveIds.filter((pid) => !foundIds.has(pid));
+          throw new Error(`Unknown primitiveIds: ${missing.join(", ")}`);
+        }
+
+        const primitivesById: ReadonlyMap<string, PrimitiveLike> = new Map(
+          primitiveRows.map((p) => [
+            String(p.id),
+            {
+              id: String(p.id),
+              name: p.name,
+              category: p.category,
+              buCost: p.buCost,
+            },
+          ]),
+        );
+
+        const { totalBu: computed } = buildAssemblyAndComputeBU(
+          primitiveSlots,
+          primitivesById,
+          {
+            id: inserted.id,
+            name: inserted.name,
+            type: inserted.type,
+            sourceType: inserted.sourceType,
+            description: inserted.verboseDescription || undefined,
+          },
+        );
+        totalBu = computed;
+
+        await tx.insert(capabilityPrimitives).values(
+          primitiveSlots.map((slot) => ({
+            capabilityId: inserted.id,
+            primitiveId: slot.primitiveId,
+            role: slot.role,
+            quantity: slot.quantity,
+            sortOrder: slot.sortOrder,
+            slotLabel: slot.slotLabel,
+            notes: slot.notes,
+          })),
+        );
+
+        // Persist metadata.totalBu + compiledAt on the new row.
+        const newMd: Record<string, JsonValue> = {
+          totalBu,
+          compiledAt: new Date().toISOString(),
+        };
+        await tx
+          .update(capabilities)
+          .set({ metadata: newMd, updatedAt: new Date() })
+          .where(eq(capabilities.id, inserted.id));
+      }
+
+      // Validate + insert effect slots.
+      if (effectSlots.length > 0) {
+        const effectIds = Array.from(new Set(effectSlots.map((s) => s.effectId)));
+        const effectRows = await tx
+          .select({ id: effects.id })
+          .from(effects)
+          .where(inArray(effects.id, effectIds));
+        if (effectRows.length !== new Set(effectIds).size) {
+          const foundIds = new Set(effectRows.map((e) => e.id));
+          const missing = effectIds.filter((eid) => !foundIds.has(eid));
+          throw new Error(`Unknown effectIds: ${missing.join(", ")}`);
+        }
+
+        await tx.insert(capabilityEffects).values(
+          effectSlots.map((slot) => ({
+            capabilityId: inserted.id,
+            effectId: slot.effectId,
+            sortOrder: slot.sortOrder,
+            slotLabel: slot.slotLabel,
+            notes: slot.notes,
+          })),
+        );
+      }
+
+      // Return full capability with links.
       return tx.query.capabilities.findFirst({
-        where: eq(capabilities.id, id),
+        where: eq(capabilities.id, inserted.id),
         with: {
           primitiveLinks: {
             with: {
@@ -296,7 +568,22 @@ export async function PATCH(
       });
     });
 
-    return NextResponse.json({ capability: result });
+    if (!created) {
+      throw new Error("Unable to load forked capability.");
+    }
+
+    return NextResponse.json(
+      {
+        capability: created,
+        dispatchOutcome: {
+          kind: "forked" as const,
+          newId: created.id,
+          sourceId: outcome.sourceId,
+          swapTarget: outcome.swapTarget,
+        },
+      },
+      { status: 201 },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";
     return NextResponse.json({ error: message }, { status: 400 });

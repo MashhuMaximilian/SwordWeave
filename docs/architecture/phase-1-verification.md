@@ -1,8 +1,15 @@
 # Phase 1 Verification Checklist
 
-> **Status**: ready for Mashu's hands-on validation. Commit `c68bafc`.
+> **Status**: ready for Mashu's hands-on validation.
+> **Latest commits**: `48cf451` (Round 8 fixups), `5470958` (Round 7 FAB fixes), `3ef5fd9` (content hashing), `11419e2` (fork save URL swap), `c68bafc` (Phase 1 feature).
 > **Scope**: intent flag + deferred fork UX for **primitives only**.
 > Effects, capabilities, items, templates land in Phase 2.
+
+### What changed in Round 7/8 (worth knowing before testing)
+
+- **Round 6 (`3ef5fd9`)**: content hashing (SHA-256 of canonical JSON) shipped. No-op saves now return `kind: "no-op"` with the right `userMessage`.
+- **Round 7 (`5470958`)**: Build & Preview drawer auto-opens on cold mount + URL swap, message preserved across the swap, FAB account button → user menu modal.
+- **Round 8 (`48cf451`)**: Filters FAB icon hidden on `/library/item/[id]` (it never used the filter panel); modal stack provider ordering fixed in `app-shell.tsx` so user-menu modal actually renders; `editing`/`build` state in `grammar-sandbox-client` now syncs with new `initialEditing`/`initialBuild` props on URL change (card-Fork / preview-Fork now correctly open the Build drawer and show the right entity).
 
 This document is the **single source of truth** for what to check.
 Walk it top to bottom. Each test is one user-observable behaviour;
@@ -298,25 +305,24 @@ A deep link without `?intent=` should behave like a Load (the
 
 ---
 
-## Test 10: Discard from Creations page
+## Test 10: Edit in sandbox from Creations page
 
-Same Discard UX works from the "Edit in sandbox" path.
+The Creations "Edit in sandbox" button is functionally a "Load into
+build" gesture (you own the row, you want to edit it in place). It
+threads `?intent=load` into the URL so the form header shows the
+gray "Working on X" chip.
 
 ### Steps
 
-1. On `/creations` find one of your forks.
-2. Click **Edit in sandbox** (NOT Fork button).
-3. URL is `?build=primitive&edit=<forkId>` (no `intent` because
-   this came from Creations, not a Fork button).
-4. **Verify**: no chip (intent=null).
-5. **Verify**: no Discard button (no sourceId in URL).
-6. (You can skip the Discard check here — it correctly doesn't
-   show because there's no fork to discard.)
-
-### Expected behaviour
-
-> Creations → Edit in sandbox → no intent, no chip. Save uses
-> legacy `id` field via dispatch (still works).
+1. On `/creations` find one of your primitives.
+2. Click **Edit in sandbox**.
+3. **Verify**: URL is `?build=primitive&edit=<id>&intent=load`
+   (note: `intent=load` is now appended).
+4. **Verify**: gray "Working on <name>" chip is visible.
+5. Save with a change.
+6. **Verify**: URL stays on the **same** `?edit=<id>` (no swap).
+7. **Verify**: `/creations` count is **unchanged**.
+8. **Verify**: the original primitive was updated in place.
 
 ---
 
@@ -352,6 +358,23 @@ If you don't want to walk every test, do this:
    X" chip → save → no new row, original updated.
 
 If those five steps behave correctly, Phase 1 is working.
+
+## Round 8 spot-checks (3 bugs from my own re-test)
+
+If you want to verify the Round 8 fixes specifically, these are the
+ones I was fixing — they're small and fast:
+
+- **`/library/item/[id]`** → open FAB. The icon list should **not**
+  include "Show Filters" (Filters only shows on pages that actually
+  use the filter panel).
+- **FAB → Account** (any signed-in page) → a Profile dialog should
+  open with your avatar + View / Edit / Manage / Sign out. The FAB
+  should close; the dialog should appear immediately.
+- **`/sandbox/grammar?build=primitive` (clean sandbox)** → in the
+  embedded library, tap Fork on any card → URL swaps to
+  `?edit=<id>&intent=fork` AND the Build & Preview drawer opens
+  pre-filled with that entity. (Was: URL swapped but drawer stayed
+  closed and showed "No build context".)
 
 ---
 

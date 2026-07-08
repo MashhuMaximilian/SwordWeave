@@ -134,6 +134,13 @@
       "when": 1783500000000,
       "tag": "0018_primitive_content_hash",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1783600000000,
+      "tag": "0019_entity_content_hash",
+      "breakpoints": true
     }
   ]
 }

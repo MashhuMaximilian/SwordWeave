@@ -213,12 +213,14 @@ export const templates = pgTable(
     suggestedTraits: text("suggested_traits"), // markdown
     isPublic: boolean("is_public").notNull().default(false),
     sourceOrigin: text("source_origin"),
+    contentHash: text("content_hash"),
     ...timestamps,
   },
   (table) => [
     index("templates_user_id_idx").on(table.userId),
     index("templates_kind_idx").on(table.kind),
     index("templates_is_public_idx").on(table.isPublic),
+    index("templates_content_hash_idx").on(table.contentHash),
     // (name, user_id) unique, but Postgres treats NULL user_id as distinct
     // so we rely on application-level dedup (like capabilities migration).
     unique("templates_user_name_kind_unique").on(

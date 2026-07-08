@@ -1,47 +1,90 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
+import { asc, eq, and, isNull, or } from "drizzle-orm";
 import { db } from "@/db/client";
-import { effectPrimitives, effects } from "@/db/schema";
+import { effectPrimitives, effects } from "@/db/schema/engine";
+import {
+  dispatchEntitySave,
+  type SaveTargetType,
+} from "@/lib/publishing/dispatch-save";
+import { parseSaveIntent } from "@/lib/publishing/save-intent";
+import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
+import {
+  buildCanonicalEffectPayload,
+  isEffectDraftEmpty,
+  computeEffectContentHash,
+} from "@/lib/publishing/hash-content";
+
+const TARGET_TYPE: SaveTargetType = "EFFECT";
 
 /**
- * GET /api/effects/[id]
- * Get a single effect with all primitive links.
+ * Phase 2: build a sync-existence predicate for the (name, sourceOrigin)
+ * pair the new fork row will use, so the forked name doesn't collide
+ * with the user's existing rows.
  */
+async function buildEffectTakenNamesSet(
+  name: string,
+  sourceOrigin: string | null,
+  userId: string,
+): Promise<(candidate: string) => boolean> {
+  const rows = await db
+    .select({ name: effects.name })
+    .from(effects)
+    .where(
+      and(
+        eq(effects.name, name),
+        sourceOrigin === null
+          ? isNull(effects.sourceOrigin)
+          : eq(effects.sourceOrigin, sourceOrigin),
+        eq(effects.userId, userId),
+      ),
+    );
+  const taken = new Set(rows.map((r) => r.name));
+  return (candidate: string) => taken.has(candidate);
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-
-  const row = await db.query.effects.findFirst({
+  const effect = await db.query.effects.findFirst({
     where: eq(effects.id, id),
     with: {
       primitiveLinks: {
-        with: {
-          primitive: true,
-        },
+        orderBy: [asc(effectPrimitives.sortOrder)],
+        with: { primitive: true },
       },
     },
   });
 
-  if (!row) {
+  if (!effect) {
     return NextResponse.json({ error: "Effect not found." }, { status: 404 });
   }
 
-  return NextResponse.json({ effect: row });
+  return NextResponse.json({ effect });
 }
 
 /**
- * PATCH /api/effects/[id]
- * Update effect metadata or primitive slots.
+ * PATCH /api/effects/[id] — Phase 2 deferred-fork entry point.
+ *
+ * The form's `?intent=fork|load` query param is read by the sandbox
+ * client and threaded into the request body. This route uses it to
+ * decide between:
+ *   - intent=load + caller owns source → UPDATE in place (version-update)
+ *   - intent=load + caller doesn't own → INSERT new fork row
+ *   - intent=fork (any ownership) → INSERT new fork row
+ *   - no-changes (contentHash matches) → no-op, return user-facing message
+ *
+ * The response shape mirrors the primitives route's POST:
+ *   { effect, dispatchOutcome: { kind, newId, sourceId, swapTarget } | { kind: "no-op", message } }
  */
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await auth.protect();
+    const { userId } = await auth.protect();
     const { id } = await params;
     const body: unknown = await request.json();
 
@@ -50,71 +93,242 @@ export async function PATCH(
     }
 
     const values = body as Record<string, unknown>;
-    const updatePayload: Record<string, unknown> = {};
 
-    if ("name" in values) updatePayload["name"] = String(values["name"]).trim();
-    if ("narrativeDescription" in values)
-      updatePayload["narrativeDescription"] = String(values["narrativeDescription"]);
-    if ("isPublic" in values) updatePayload["isPublic"] = Boolean(values["isPublic"]);
-    if ("sourceOrigin" in values)
-      updatePayload["sourceOrigin"] = String(values["sourceOrigin"]).trim() || null;
+    // Phase 2: parse intent from body. If absent, default to "load" — the
+    // semantic for "I want to edit this in place" (the legacy behaviour
+    // of the PATCH route before Phase 2). Forms that explicitly fork will
+    // send `intent: "fork"`.
+    const intent = parseSaveIntent(
+      typeof values["intent"] === "string" ? (values["intent"] as string) : undefined,
+    );
+    const effectiveIntent = intent ?? "load";
 
-    if ("tags" in values) {
-      const tags = Array.isArray(values["tags"])
-        ? (values["tags"] as unknown[]).map(String)
-        : String(values["tags"])
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean);
-      updatePayload["tags"] = tags;
-    }
-
-    updatePayload["updatedAt"] = new Date();
-
-    const [updated] = await db
-      .update(effects)
-      .set(updatePayload)
-      .where(eq(effects.id, id))
-      .returning();
-
-    if (!updated) {
-      return NextResponse.json({ error: "Effect not found." }, { status: 404 });
-    }
-
-    // Replace primitive slots if provided
-    if ("primitiveSlots" in values && Array.isArray(values["primitiveSlots"])) {
-      await db.delete(effectPrimitives).where(eq(effectPrimitives.effectId, id));
-
-      const slots = (values["primitiveSlots"] as unknown[]).map(
-        (slotValue, index) => {
+    const name = String(values["name"] ?? "").trim();
+    const narrativeDescription = String(
+      values["narrativeDescription"] ?? "",
+    ).trim();
+    const userSourceOriginRaw = String(values["sourceOrigin"] ?? "").trim();
+    const tags = Array.isArray(values["tags"])
+      ? (values["tags"] as unknown[]).map(String).map((s) => s.trim()).filter(Boolean)
+      : typeof values["tags"] === "string"
+        ? values["tags"].split(",").map((s) => s.trim()).filter(Boolean)
+        : [];
+    const isPublic = Boolean(values["isPublic"]);
+    const primitiveSlotsRaw = Array.isArray(values["primitiveSlots"])
+      ? (values["primitiveSlots"] as unknown[]).map((slotValue) => {
           const slot = slotValue as Record<string, unknown>;
           return {
-            effectId: id,
             primitiveId: Number(slot["primitiveId"]),
             quantity: Number(slot["quantity"] ?? 1),
-            sortOrder: Number(slot["sortOrder"] ?? index),
-            notes: slot["notes"] ? String(slot["notes"]) : null,
+            notes: String(slot["notes"] ?? "").trim() || undefined,
           };
-        },
-      );
+        })
+      : [];
 
-      if (slots.length > 0) {
-        await db.insert(effectPrimitives).values(slots);
-      }
+    if (!name) {
+      return NextResponse.json({ error: "Effect name is required." }, { status: 400 });
     }
 
-    const result = await db.query.effects.findFirst({
-      where: eq(effects.id, id),
+    if (primitiveSlotsRaw.length === 0) {
+      return NextResponse.json(
+        { error: "Slot at least one primitive into the effect." },
+        { status: 400 },
+      );
+    }
+
+    // Build the canonical payload + draftHash. The server's hash is the
+    // source of truth for the no-op decision.
+    const canonicalPayload = buildCanonicalEffectPayload({
+      name,
+      narrativeDescription,
+      tags,
+      isPublic,
+      primitiveSlots: primitiveSlotsRaw.map((s) => ({
+        primitiveId: s.primitiveId,
+        quantity: s.quantity,
+        notes: s.notes ?? "",
+      })),
+    });
+    const draftIsEmpty = isEffectDraftEmpty(canonicalPayload);
+    const draftHash = await computeEffectContentHash({
+      name,
+      narrativeDescription,
+      tags,
+      isPublic,
+      primitiveSlots: primitiveSlotsRaw.map((s) => ({
+        primitiveId: s.primitiveId,
+        quantity: s.quantity,
+        notes: s.notes ?? "",
+      })),
+    });
+
+    // Dispatcher.
+    const { source, outcome } = await dispatchEntitySave({
+      targetType: TARGET_TYPE,
+      sourceId: id,
+      intent: effectiveIntent,
+      callerUserId: userId,
+      draftHash,
+      draftIsEmpty,
+    });
+
+    // No-op short-circuit.
+    if (outcome.kind === "no-op") {
+      return NextResponse.json(
+        {
+          effect: null,
+          dispatchOutcome: {
+            kind: "no-op" as const,
+            message: outcome.message,
+            swapTarget: false as const,
+          },
+        },
+        { status: 200 },
+      );
+    }
+
+    if (outcome.kind === "version-update") {
+      // Caller owns the source AND intent=load → update in place. Same
+      // ownership gate as before: row must be owned by caller OR be
+      // system content. Without this an attacker could rewrite any
+      // effect just by guessing a UUID.
+      const sourceEffect = await db.query.effects.findFirst({
+        where: eq(effects.id, id),
+      });
+      if (!sourceEffect) {
+        return NextResponse.json({ error: "Effect not found." }, { status: 404 });
+      }
+
+      const [updated] = await db
+        .update(effects)
+        .set({
+          name,
+          narrativeDescription,
+          sourceOrigin: sourceEffect.sourceOrigin, // preserve
+          tags,
+          isPublic,
+          contentHash: draftHash,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(effects.id, id),
+            or(eq(effects.userId, userId), isNull(effects.userId)),
+          ),
+        )
+        .returning();
+
+      if (!updated) {
+        return NextResponse.json(
+          { error: "Effect not found or not owned by you. Refresh and try again." },
+          { status: 404 },
+        );
+      }
+
+      // Replace primitive slot links so they reflect the new draft.
+      await db.delete(effectPrimitives).where(eq(effectPrimitives.effectId, updated.id));
+      if (primitiveSlotsRaw.length > 0) {
+        await db.insert(effectPrimitives).values(
+          primitiveSlotsRaw.map((slot, index) => ({
+            effectId: updated.id,
+            primitiveId: slot.primitiveId,
+            quantity: slot.quantity,
+            sortOrder: index,
+            notes: slot.notes,
+          })),
+        );
+      }
+
+      const effect = await db.query.effects.findFirst({
+        where: eq(effects.id, updated.id),
+        with: {
+          primitiveLinks: {
+            orderBy: [asc(effectPrimitives.sortOrder)],
+            with: { primitive: true },
+          },
+        },
+      });
+
+      return NextResponse.json(
+        {
+          effect,
+          dispatchOutcome: {
+            kind: "version-update" as const,
+            newId: updated.id,
+            sourceId: outcome.sourceId,
+            swapTarget: false as const,
+          },
+        },
+        { status: 200 },
+      );
+    }
+
+    // outcome.kind === "forked" — INSERT a new row.
+    // sourceOrigin for the fork: "fork:<sourceId>" for non-greenfield,
+    // or the user-supplied sourceOrigin for greenfield (rare via PATCH
+    // — PATCH is typically for an existing row).
+    const finalSourceOrigin = source !== null
+      ? `fork:${source.id}`
+      : (userSourceOriginRaw || null);
+
+    const baseName = source !== null
+      ? await computeUniqueForkName(
+          name,
+          await buildEffectTakenNamesSet(name, finalSourceOrigin, userId),
+        )
+      : name;
+
+    const [created] = await db
+      .insert(effects)
+      .values({
+        name: baseName,
+        userId,
+        narrativeDescription,
+        sourceOrigin: finalSourceOrigin,
+        tags,
+        isPublic,
+        contentHash: draftHash,
+      })
+      .returning();
+
+    if (!created) {
+      throw new Error("Unable to create effect.");
+    }
+
+    if (primitiveSlotsRaw.length > 0) {
+      await db.insert(effectPrimitives).values(
+        primitiveSlotsRaw.map((slot, index) => ({
+          effectId: created.id,
+          primitiveId: slot.primitiveId,
+          quantity: slot.quantity,
+          sortOrder: index,
+          notes: slot.notes,
+        })),
+      );
+    }
+
+    const effect = await db.query.effects.findFirst({
+      where: eq(effects.id, created.id),
       with: {
         primitiveLinks: {
-          with: {
-            primitive: true,
-          },
+          orderBy: [asc(effectPrimitives.sortOrder)],
+          with: { primitive: true },
         },
       },
     });
 
-    return NextResponse.json({ effect: result });
+    return NextResponse.json(
+      {
+        effect,
+        dispatchOutcome: {
+          kind: "forked" as const,
+          newId: created.id,
+          sourceId: outcome.sourceId,
+          swapTarget: outcome.swapTarget,
+        },
+      },
+      { status: 201 },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";
     return NextResponse.json({ error: message }, { status: 400 });

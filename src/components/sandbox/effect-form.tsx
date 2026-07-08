@@ -52,6 +52,8 @@ const blankForm: EffectFormState = {
 export function EffectForm({
   initialEffect,
   availablePrimitives,
+  intent,
+  sourceId: _sourceId, // Phase 2: kept for the future when forms use sourceId in the body; the PATCH route reads it from the URL.
   onStateChange,
   onSaved,
   onReset,
@@ -67,6 +69,18 @@ export function EffectForm({
     category: string;
     buCost: number;
   }>;
+  /**
+   * Phase 2: the save intent from `?intent=fork|load`. The PATCH route
+   * reads this from the body to decide between fork-on-save and
+   * version-update. Null = greenfield (POST, not PATCH).
+   */
+  intent?: "fork" | "load" | null;
+  /**
+   * Phase 2: the source row's id. Currently the URL `/api/effects/[id]`
+   * carries this, but forms that need it for client-side logic can read
+   * it from here. The PATCH route uses the URL param.
+   */
+  sourceId?: string | number | null;
   onStateChange?: (state: {
     form: EffectFormState;
     slots: EffectFormSlot[];
@@ -206,7 +220,7 @@ export function EffectForm({
     event.preventDefault();
     setMessage("");
 
-    const body = {
+    const body: Record<string, unknown> = {
       name: form.name,
       narrativeDescription: form.narrativeDescription,
       sourceOrigin: form.sourceOrigin || null,
@@ -220,6 +234,13 @@ export function EffectForm({
         quantity: s.quantity,
       })),
     };
+
+    // Phase 2: thread `intent` into the PATCH body so the server's
+    // dispatch matrix can decide fork vs version-update vs no-op.
+    // POST (greenfield) doesn't need intent — the row is always new.
+    if (intent && initialEffect) {
+      body["intent"] = intent;
+    }
 
     const url = initialEffect ? `/api/effects/${initialEffect.id}` : "/api/effects";
     const method = initialEffect ? "PATCH" : "POST";
@@ -238,6 +259,23 @@ export function EffectForm({
             ? String(payload.error)
             : "Unable to save effect.";
         setMessage(error);
+        return;
+      }
+
+      // Phase 2: handle the dispatchOutcome shape. The server may have
+      // returned a no-op (with a user-facing message) instead of a row.
+      const outcome =
+        payload && typeof payload === "object" && "dispatchOutcome" in payload
+          ? (payload.dispatchOutcome as {
+              kind: "no-op" | "forked" | "version-update";
+              message?: string;
+              newId?: string | number;
+              swapTarget?: boolean;
+            })
+          : null;
+
+      if (outcome?.kind === "no-op") {
+        setMessage(outcome.message ?? "Nothing to save.");
         return;
       }
 

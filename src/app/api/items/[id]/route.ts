@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray, and, isNull, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   itemCapabilities,
@@ -10,6 +10,19 @@ import {
   primitives,
 } from "@/db/schema";
 import { ITEM_PRIMITIVE_CATEGORY } from "../route";
+import {
+  dispatchEntitySave,
+  type SaveTargetType,
+} from "@/lib/publishing/dispatch-save";
+import { parseSaveIntent } from "@/lib/publishing/save-intent";
+import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
+import {
+  buildCanonicalItemPayload,
+  isItemDraftEmpty,
+  computeItemContentHash,
+} from "@/lib/publishing/hash-content";
+
+const TARGET_TYPE: SaveTargetType = "ITEM";
 
 const VALID_TYPES = [
   "WEAPON",
@@ -51,6 +64,32 @@ function parseIntInRange(value: unknown, min: number, max: number): number {
 }
 
 /**
+ * Phase 2: build a sync-existence predicate for the (name, sourceOrigin)
+ * pair the new fork row will use, so the forked name doesn't collide
+ * with the user's existing rows.
+ */
+async function buildItemTakenNamesSet(
+  name: string,
+  sourceOrigin: string | null,
+  userId: string,
+): Promise<(candidate: string) => boolean> {
+  const rows = await db
+    .select({ name: items.name })
+    .from(items)
+    .where(
+      and(
+        eq(items.name, name),
+        sourceOrigin === null
+          ? isNull(items.sourceOrigin)
+          : eq(items.sourceOrigin, sourceOrigin),
+        eq(items.userId, userId),
+      ),
+    );
+  const taken = new Set(rows.map((r) => r.name));
+  return (candidate: string) => taken.has(candidate);
+}
+
+/**
  * GET /api/items/[id]
  */
 export async function GET(
@@ -76,7 +115,16 @@ export async function GET(
 }
 
 /**
- * PATCH /api/items/[id]
+ * PATCH /api/items/[id] — Phase 2 deferred-fork entry point.
+ *
+ * Same shape as /api/effects/[id] PATCH:
+ *   - intent=load + caller owns source → UPDATE in place (version-update)
+ *   - intent=fork (any ownership) → INSERT new fork row
+ *   - load + caller doesn't own → INSERT new fork row
+ *   - no-changes (contentHash matches) → no-op, return user-facing message
+ *
+ * Response shape:
+ *   { item, dispatchOutcome: { kind, newId, sourceId, swapTarget } | { kind: "no-op", message } }
  */
 export async function PATCH(
   request: Request,
@@ -92,80 +140,197 @@ export async function PATCH(
     }
 
     const values = body as Record<string, unknown>;
-    const updatePayload: Record<string, unknown> = {};
 
-    // Ownership gate: load current row to verify caller is the owner.
-    // System content (user_id IS NULL) is immutable via this endpoint.
-    const existing = await db.query.items.findFirst({
-      where: eq(items.id, id),
-      columns: { id: true, userId: true },
-    });
-    if (!existing) {
-      return NextResponse.json({ error: "Item not found." }, { status: 404 });
-    }
-    if (existing.userId !== userId) {
-      return NextResponse.json(
-        { error: "You can only edit items you own." },
-        { status: 403 },
-      );
-    }
+    // Phase 2: parse intent. Default to "load" (legacy in-place edit
+    // behaviour). Forms that fork will send `intent: "fork"`.
+    const intent = parseSaveIntent(
+      typeof values["intent"] === "string" ? (values["intent"] as string) : undefined,
+    );
+    const effectiveIntent = intent ?? "load";
 
-    if ("name" in values) updatePayload["name"] = String(values["name"]).trim();
+    // -------------------------------------------------------------------
+    // Field parsing — preserve all existing validations from the legacy
+    // PATCH. The form sends a full draft.
+    // -------------------------------------------------------------------
+    const name = String(values["name"] ?? "").trim();
+
+    let itemType: string | null = null;
     if ("itemType" in values) {
-      const t = parseType(values["itemType"]);
-      if (!t) {
+      itemType = parseType(values["itemType"]);
+      if (!itemType) {
         return NextResponse.json(
           { error: `itemType must be one of: ${VALID_TYPES.join(", ")}.` },
           { status: 400 },
         );
       }
-      updatePayload["itemType"] = t;
     }
+
+    let rarity: string | null = null;
     if ("rarity" in values) {
-      const r = parseRarity(values["rarity"]);
-      if (!r) {
+      rarity = parseRarity(values["rarity"]);
+      if (!rarity) {
         return NextResponse.json(
           { error: `rarity must be one of: ${VALID_RARITIES.join(", ")}.` },
           { status: 400 },
         );
       }
-      updatePayload["rarity"] = r;
     }
-    if ("buCost" in values)
-      updatePayload["buCost"] = parseIntInRange(values["buCost"], 0, 1000);
-    if ("description" in values)
-      updatePayload["description"] = String(values["description"]).trim();
-    if ("slotCost" in values)
-      updatePayload["slotCost"] = parseIntInRange(values["slotCost"], 1, 100);
+
+    const buCost = "buCost" in values
+      ? parseIntInRange(values["buCost"], 0, 1000)
+      : 0;
+    const description = "description" in values
+      ? String(values["description"]).trim()
+      : "";
+    const slotCost = "slotCost" in values
+      ? parseIntInRange(values["slotCost"], 1, 100)
+      : 1;
+    // Quantity: any positive integer, no upper cap.
+    let quantity = 1;
     if ("quantity" in values) {
-      // Any positive integer, no upper cap (per the user's spec).
       const n = Number(values["quantity"]);
-      updatePayload["quantity"] = Math.max(1, Number.isFinite(n) && n > 0 ? Math.floor(n) : 1);
+      quantity = Math.max(1, Number.isFinite(n) && n > 0 ? Math.floor(n) : 1);
     }
-    if ("isTwoHanded" in values)
-      updatePayload["isTwoHanded"] = Boolean(values["isTwoHanded"]);
-    if ("isConsumable" in values)
-      updatePayload["isConsumable"] = Boolean(values["isConsumable"]);
-    if ("actsAsFocus" in values)
-      updatePayload["actsAsFocus"] = Boolean(values["actsAsFocus"]);
-    if ("isPublic" in values)
-      updatePayload["isPublic"] = Boolean(values["isPublic"]);
-    if ("tags" in values) updatePayload["tags"] = parseTags(values["tags"]);
 
-    updatePayload["updatedAt"] = new Date();
+    const isTwoHanded = "isTwoHanded" in values
+      ? Boolean(values["isTwoHanded"])
+      : false;
+    const isConsumable = "isConsumable" in values
+      ? Boolean(values["isConsumable"])
+      : false;
+    const actsAsFocus = "actsAsFocus" in values
+      ? Boolean(values["actsAsFocus"])
+      : true;
+    const isPublic = "isPublic" in values
+      ? Boolean(values["isPublic"])
+      : false;
+    const userSourceOriginRaw = String(values["sourceOrigin"] ?? "").trim();
+    const tags = "tags" in values ? parseTags(values["tags"]) : [];
 
-    const result = await db.transaction(async (tx) => {
-      if (Object.keys(updatePayload).length > 0) {
-        await tx.update(items).set(updatePayload).where(eq(items.id, id));
+    const primitiveIds = Array.isArray(values["primitiveIds"])
+      ? (values["primitiveIds"] as unknown[])
+          .map(Number)
+          .filter((n) => Number.isInteger(n) && n > 0)
+      : [];
+    const capabilityIds = Array.isArray(values["capabilityIds"])
+      ? (values["capabilityIds"] as unknown[]).filter(
+          (c) => typeof c === "string",
+        )
+      : [];
+    const effectIds = Array.isArray(values["effectIds"])
+      ? (values["effectIds"] as unknown[]).filter(
+          (e) => typeof e === "string",
+        )
+      : [];
+
+    if (!name) {
+      return NextResponse.json({ error: "Item name is required." }, { status: 400 });
+    }
+
+    // -------------------------------------------------------------------
+    // Canonical payload + content hash (server is the source of truth).
+    // -------------------------------------------------------------------
+    const canonicalPayload = buildCanonicalItemPayload({
+      name,
+      itemType: itemType ?? "TRINKET",
+      rarity: rarity ?? "COMMON",
+      buCost,
+      description,
+      slotCost,
+      quantity,
+      isTwoHanded,
+      isConsumable,
+      actsAsFocus,
+      isPublic,
+      tags,
+      primitiveIds,
+      capabilityIds: capabilityIds as string[],
+      effectIds: effectIds as string[],
+    });
+    const draftIsEmpty = isItemDraftEmpty(canonicalPayload);
+    const draftHash = await computeItemContentHash({
+      name,
+      itemType: itemType ?? "TRINKET",
+      rarity: rarity ?? "COMMON",
+      buCost,
+      description,
+      slotCost,
+      quantity,
+      isTwoHanded,
+      isConsumable,
+      actsAsFocus,
+      isPublic,
+      tags,
+      primitiveIds,
+      capabilityIds: capabilityIds as string[],
+      effectIds: effectIds as string[],
+    });
+
+    // -------------------------------------------------------------------
+    // Dispatcher.
+    // -------------------------------------------------------------------
+    const { source, outcome } = await dispatchEntitySave({
+      targetType: TARGET_TYPE,
+      sourceId: id,
+      intent: effectiveIntent,
+      callerUserId: userId,
+      draftHash,
+      draftIsEmpty,
+    });
+
+    // No-op short-circuit.
+    if (outcome.kind === "no-op") {
+      return NextResponse.json(
+        {
+          item: null,
+          dispatchOutcome: {
+            kind: "no-op" as const,
+            message: outcome.message,
+            swapTarget: false as const,
+          },
+        },
+        { status: 200 },
+      );
+    }
+
+    if (outcome.kind === "version-update") {
+      const sourceItem = await db.query.items.findFirst({
+        where: eq(items.id, id),
+      });
+      if (!sourceItem) {
+        return NextResponse.json({ error: "Item not found." }, { status: 404 });
       }
 
-      if ("primitiveIds" in values) {
-        const primitiveIds = Array.isArray(values["primitiveIds"])
-          ? (values["primitiveIds"] as unknown[])
-              .map(Number)
-              .filter((n) => Number.isInteger(n) && n > 0)
-          : [];
+      const updatePayload: Record<string, unknown> = {
+        name,
+        ...(itemType !== null && { itemType }),
+        ...(rarity !== null && { rarity }),
+        buCost,
+        description,
+        slotCost,
+        quantity,
+        isTwoHanded,
+        isConsumable,
+        actsAsFocus,
+        isPublic,
+        tags,
+        sourceOrigin: sourceItem.sourceOrigin, // preserve
+        contentHash: draftHash,
+        updatedAt: new Date(),
+      };
 
+      const result = await db.transaction(async (tx) => {
+        await tx
+          .update(items)
+          .set(updatePayload)
+          .where(
+            and(
+              eq(items.id, id),
+              or(eq(items.userId, userId), isNull(items.userId)),
+            ),
+          );
+
+        // Validate + replace primitive slots.
         if (primitiveIds.length > 0) {
           const prims = await tx
             .select()
@@ -187,49 +352,160 @@ export async function PATCH(
               sortOrder: idx,
             })),
           );
-        } else {
+        } else if ("primitiveIds" in values) {
           await tx.delete(itemPrimitives).where(eq(itemPrimitives.itemId, id));
         }
+
+        // Replace capability slots.
+        if ("capabilityIds" in values) {
+          await tx
+            .delete(itemCapabilities)
+            .where(eq(itemCapabilities.itemId, id));
+          if (capabilityIds.length > 0) {
+            await tx.insert(itemCapabilities).values(
+              capabilityIds.map((cid) => ({
+                itemId: id,
+                capabilityId: cid as string,
+              })),
+            );
+          }
+        }
+
+        // Replace effect slots.
+        if ("effectIds" in values) {
+          await tx.delete(itemEffects).where(eq(itemEffects.itemId, id));
+          if (effectIds.length > 0) {
+            await tx.insert(itemEffects).values(
+              effectIds.map((eid) => ({
+                itemId: id,
+                effectId: eid as string,
+              })),
+            );
+          }
+        }
+
+        return tx.query.items.findFirst({
+          where: eq(items.id, id),
+          with: {
+            primitiveLinks: { with: { primitive: true } },
+            capabilityLinks: { with: { capability: true } },
+            effectLinks: { with: { effect: true } },
+          },
+        });
+      });
+
+      return NextResponse.json(
+        {
+          item: result,
+          dispatchOutcome: {
+            kind: "version-update" as const,
+            newId: id,
+            sourceId: outcome.sourceId,
+            swapTarget: false as const,
+          },
+        },
+        { status: 200 },
+      );
+    }
+
+    // outcome.kind === "forked" — INSERT a new row.
+    // sourceOrigin for the fork: "fork:<sourceId>" for non-greenfield,
+    // or the user-supplied sourceOrigin for greenfield.
+    const finalSourceOrigin = source !== null
+      ? `fork:${source.id}`
+      : (userSourceOriginRaw || null);
+
+    const baseName = source !== null
+      ? await computeUniqueForkName(
+          name,
+          await buildItemTakenNamesSet(name, finalSourceOrigin, userId),
+        )
+      : name;
+
+    const created = await db.transaction(async (tx) => {
+      const [inserted] = await tx
+        .insert(items)
+        .values({
+          name: baseName,
+          // Drizzle's typed-enum INSERT requires the exact union; the
+          // parsed `itemType`/`rarity` are loosely typed (string) so
+          // we cast at the boundary. The validation above already
+          // guarantees these are valid enum values.
+          itemType: (itemType ?? "TRINKET") as
+            | "WEAPON"
+            | "ARMOR"
+            | "TRINKET"
+            | "ARTIFACT"
+            | "CONSUMABLE",
+          rarity: (rarity ?? "COMMON") as
+            | "COMMON"
+            | "RARE"
+            | "EPIC"
+            | "LEGENDARY",
+          buCost,
+          description,
+          slotCost,
+          quantity,
+          isTwoHanded,
+          isConsumable,
+          actsAsFocus,
+          isPublic,
+          userId,
+          sourceOrigin: finalSourceOrigin,
+          tags,
+          contentHash: draftHash,
+        })
+        .returning();
+
+      if (!inserted) {
+        throw new Error("Unable to create item.");
       }
 
-      if ("capabilityIds" in values) {
-        const capabilityIds = Array.isArray(values["capabilityIds"])
-          ? (values["capabilityIds"] as unknown[]).filter(
-              (c) => typeof c === "string",
-            )
-          : [];
-        await tx
-          .delete(itemCapabilities)
-          .where(eq(itemCapabilities.itemId, id));
-        if (capabilityIds.length > 0) {
-          await tx.insert(itemCapabilities).values(
-            capabilityIds.map((cid) => ({
-              itemId: id,
-              capabilityId: cid as string,
-            })),
+      // Validate + insert primitive slots.
+      if (primitiveIds.length > 0) {
+        const prims = await tx
+          .select()
+          .from(primitives)
+          .where(inArray(primitives.id, primitiveIds));
+        const wrong = prims.filter(
+          (p) => p.category !== ITEM_PRIMITIVE_CATEGORY,
+        );
+        if (wrong.length > 0) {
+          throw new Error(
+            `Items can only use ${ITEM_PRIMITIVE_CATEGORY} primitives. Invalid: ${wrong.map((p) => p.name).join(", ")}`,
           );
         }
+        await tx.insert(itemPrimitives).values(
+          prims.map((p, idx) => ({
+            itemId: inserted.id,
+            primitiveId: p.id,
+            sortOrder: idx,
+          })),
+        );
       }
 
-      if ("effectIds" in values) {
-        const effectIds = Array.isArray(values["effectIds"])
-          ? (values["effectIds"] as unknown[]).filter(
-              (e) => typeof e === "string",
-            )
-          : [];
-        await tx.delete(itemEffects).where(eq(itemEffects.itemId, id));
-        if (effectIds.length > 0) {
-          await tx.insert(itemEffects).values(
-            effectIds.map((eid) => ({
-              itemId: id,
-              effectId: eid as string,
-            })),
-          );
-        }
+      // Insert capability slots.
+      if (capabilityIds.length > 0) {
+        await tx.insert(itemCapabilities).values(
+          capabilityIds.map((cid) => ({
+            itemId: inserted.id,
+            capabilityId: cid as string,
+          })),
+        );
+      }
+
+      // Insert effect slots.
+      if (effectIds.length > 0) {
+        await tx.insert(itemEffects).values(
+          effectIds.map((eid) => ({
+            itemId: inserted.id,
+            effectId: eid as string,
+          })),
+        );
       }
 
       return tx.query.items.findFirst({
-        where: eq(items.id, id),
+        where: eq(items.id, inserted.id),
         with: {
           primitiveLinks: { with: { primitive: true } },
           capabilityLinks: { with: { capability: true } },
@@ -238,7 +514,22 @@ export async function PATCH(
       });
     });
 
-    return NextResponse.json({ item: result });
+    if (!created) {
+      throw new Error("Unable to load forked item.");
+    }
+
+    return NextResponse.json(
+      {
+        item: created,
+        dispatchOutcome: {
+          kind: "forked" as const,
+          newId: created.id,
+          sourceId: outcome.sourceId,
+          swapTarget: outcome.swapTarget,
+        },
+      },
+      { status: 201 },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";
     return NextResponse.json({ error: message }, { status: 400 });

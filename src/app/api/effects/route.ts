@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { asc, desc } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { effectPrimitives, effects } from "@/db/schema";
+import { effectPrimitives, effects } from "@/db/schema/engine";
+import {
+  buildCanonicalEffectPayload,
+  isEffectDraftEmpty,
+  computeEffectContentHash,
+} from "@/lib/publishing/hash-content";
 
 type PrimitiveSlotInput = {
   primitiveId: number;
@@ -88,6 +93,17 @@ export async function GET() {
   return NextResponse.json({ effects: rows });
 }
 
+/**
+ * POST /api/effects — creates a brand-new effect.
+ *
+ * Phase 2: this is the GREENFIELD path. No source row exists, so there's
+ * no fork-vs-version-update decision to make. We just INSERT a new row
+ * with the form's draft state and a freshly-computed contentHash.
+ *
+ * For deferred-fork on an existing effect, the form uses PATCH
+ * (/api/effects/[id]) with the `intent` field in the body — see
+ * /api/effects/[id]/route.ts.
+ */
 export async function POST(request: Request) {
   try {
     const { userId } = await auth.protect();
@@ -118,6 +134,38 @@ export async function POST(request: Request) {
       );
     }
 
+    // Build the canonical payload + draftHash so subsequent saves on the
+    // same draft can short-circuit (no-op).
+    const canonicalPayload = buildCanonicalEffectPayload({
+      name,
+      narrativeDescription,
+      tags,
+      isPublic,
+      primitiveSlots: primitiveSlots.map((s) => ({
+        primitiveId: s.primitiveId,
+        quantity: s.quantity,
+        notes: s.notes ?? "",
+      })),
+    });
+    const isEmpty = isEffectDraftEmpty(canonicalPayload);
+    if (isEmpty) {
+      return NextResponse.json(
+        { error: "Effect name is required." },
+        { status: 400 },
+      );
+    }
+    const contentHash = await computeEffectContentHash({
+      name,
+      narrativeDescription,
+      tags,
+      isPublic,
+      primitiveSlots: primitiveSlots.map((s) => ({
+        primitiveId: s.primitiveId,
+        quantity: s.quantity,
+        notes: s.notes ?? "",
+      })),
+    });
+
     const [created] = await db
       .insert(effects)
       .values({
@@ -127,6 +175,7 @@ export async function POST(request: Request) {
         sourceOrigin,
         tags,
         isPublic,
+        contentHash,
       })
       .returning();
 
@@ -145,13 +194,11 @@ export async function POST(request: Request) {
     );
 
     const effect = await db.query.effects.findFirst({
-      where: (table, { eq }) => eq(table.id, created.id),
+      where: eq(effects.id, created.id),
       with: {
         primitiveLinks: {
           orderBy: [asc(effectPrimitives.sortOrder)],
-          with: {
-            primitive: true,
-          },
+          with: { primitive: true },
         },
       },
     });

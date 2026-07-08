@@ -119,12 +119,14 @@ export const effects = pgTable(
       .array()
       .notNull()
       .default(sql`ARRAY[]::text[]`),
+    contentHash: text("content_hash"),
     ...timestamps,
   },
   (table) => [
     index("effects_is_public_idx").on(table.isPublic),
     index("effects_user_id_idx").on(table.userId),
     index("effects_tags_idx").using("gin", table.tags),
+    index("effects_content_hash_idx").on(table.contentHash),
     uniqueIndex("effects_name_source_origin_unique_idx").on(
       table.name,
       table.sourceOrigin,
@@ -198,6 +200,7 @@ export const capabilities = pgTable(
       .$type<Record<string, JsonValue>>()
       .notNull()
       .default(sql`'{}'::jsonb`),
+    contentHash: text("content_hash"),
     ...timestamps,
   },
   (table) => [
@@ -206,6 +209,7 @@ export const capabilities = pgTable(
     index("capabilities_is_public_idx").on(table.isPublic),
     index("capabilities_user_id_idx").on(table.userId),
     index("capabilities_tags_idx").using("gin", table.tags),
+    index("capabilities_content_hash_idx").on(table.contentHash),
     uniqueIndex("capabilities_name_source_origin_unique_idx").on(
       table.name,
       table.sourceOrigin,

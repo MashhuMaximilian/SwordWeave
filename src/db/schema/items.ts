@@ -41,6 +41,7 @@ export const items = pgTable(
       .array()
       .notNull()
       .default(sql`ARRAY[]::text[]`),
+    contentHash: text("content_hash"),
     ...timestamps,
   },
   (table) => [
@@ -49,6 +50,7 @@ export const items = pgTable(
     index("items_is_public_idx").on(table.isPublic),
     index("items_user_id_idx").on(table.userId),
     index("items_tags_idx").using("gin", table.tags),
+    index("items_content_hash_idx").on(table.contentHash),
     uniqueIndex("items_name_source_origin_unique_idx").on(
       table.name,
       table.sourceOrigin,

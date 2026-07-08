@@ -238,19 +238,19 @@ export function CreationsClient({
                       const targetType = item.targetType;
                       if (targetType === "PRIMITIVE")
                         router.push(
-                          `/sandbox/grammar?build=primitive&edit=${item.targetId}`,
+                          `/sandbox/grammar?build=primitive&edit=${item.targetId}&intent=load`,
                         );
                       else if (targetType === "EFFECT")
                         router.push(
-                          `/sandbox/grammar?build=effect&edit=${item.targetId}`,
+                          `/sandbox/grammar?build=effect&edit=${item.targetId}&intent=load`,
                         );
                       else if (targetType === "CAPABILITY")
                         router.push(
-                          `/sandbox/grammar?build=capability&edit=${item.targetId}`,
+                          `/sandbox/grammar?build=capability&edit=${item.targetId}&intent=load`,
                         );
                       else if (targetType === "ITEM")
                         router.push(
-                          `/sandbox/blueprint?build=item&edit=${item.targetId}`,
+                          `/sandbox/blueprint?build=item&edit=${item.targetId}&intent=load`,
                         );
                       else if (
                         targetType === "RACE_TEMPLATE" ||
@@ -258,14 +258,13 @@ export function CreationsClient({
                         targetType === "ARCHETYPE_TEMPLATE"
                       ) {
                         router.push(
-                          `/sandbox/blueprint?build=template&edit=${item.targetId}`,
+                          `/sandbox/blueprint?build=template&edit=${item.targetId}&intent=load`,
                         );
                       } else if (targetType === "CHARACTER") {
                         router.push(
                           `/characters/${item.targetId}`,
                         );
                       }
-                      stack.clear();
                     }}
                     onVisibilityChange={async (vis) => {
                       // Optimistic update — the local visibilityById map

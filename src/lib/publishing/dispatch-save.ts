@@ -268,5 +268,154 @@ export async function loadPrimitiveOwner(
   };
 }
 
+// =============================================================================
+// Phase 2 of the edit-creates-fork refactor (§11 of edit-creates-fork.md):
+// generic `loadEntityOwner` that covers all 5 entity types. The dispatcher
+// is entity-agnostic — it just needs the source row's (id, userId,
+// contentHash) triple. Each route passes its target type in.
+// =============================================================================
+
+/**
+ * The 5 entity types that participate in the deferred-fork dispatch matrix.
+ * Mirrors the form's `build=<type>` URL convention.
+ */
+export type SaveTargetType =
+  | "PRIMITIVE"
+  | "EFFECT"
+  | "CAPABILITY"
+  | "ITEM"
+  | "TEMPLATE";
+
+/**
+ * Loads the source row's identity (id, userId, contentHash) for any of the
+ * 5 entity types. Returns null if the row doesn't exist. Used by the
+ * per-entity POST handlers to populate the dispatcher's SourceRowIdentity.
+ */
+export async function loadEntityOwner(
+  targetType: SaveTargetType,
+  targetId: string | number,
+): Promise<SourceRowIdentity | null> {
+  if (targetType === "PRIMITIVE") {
+    return loadPrimitiveOwner(Number(targetId));
+  }
+
+  if (targetType === "EFFECT") {
+    const { effects } = await import("@/db/schema/engine");
+    const rows = await db
+      .select({
+        id: effects.id,
+        userId: effects.userId,
+        contentHash: effects.contentHash,
+      })
+      .from(effects)
+      .where(eq(effects.id, String(targetId)))
+      .limit(1);
+    const row = rows[0];
+    if (!row) return null;
+    return { id: row.id, userId: row.userId, contentHash: row.contentHash };
+  }
+
+  if (targetType === "CAPABILITY") {
+    const { capabilities } = await import("@/db/schema/engine");
+    const rows = await db
+      .select({
+        id: capabilities.id,
+        userId: capabilities.userId,
+        contentHash: capabilities.contentHash,
+      })
+      .from(capabilities)
+      .where(eq(capabilities.id, String(targetId)))
+      .limit(1);
+    const row = rows[0];
+    if (!row) return null;
+    return { id: row.id, userId: row.userId, contentHash: row.contentHash };
+  }
+
+  if (targetType === "ITEM") {
+    const { items } = await import("@/db/schema/items");
+    const rows = await db
+      .select({
+        id: items.id,
+        userId: items.userId,
+        contentHash: items.contentHash,
+      })
+      .from(items)
+      .where(eq(items.id, String(targetId)))
+      .limit(1);
+    const row = rows[0];
+    if (!row) return null;
+    return { id: row.id, userId: row.userId, contentHash: row.contentHash };
+  }
+
+  if (targetType === "TEMPLATE") {
+    const { templates } = await import("@/db/schema/characters");
+    const rows = await db
+      .select({
+        id: templates.id,
+        userId: templates.userId,
+        contentHash: templates.contentHash,
+      })
+      .from(templates)
+      .where(eq(templates.id, String(targetId)))
+      .limit(1);
+    const row = rows[0];
+    if (!row) return null;
+    return { id: row.id, userId: row.userId, contentHash: row.contentHash };
+  }
+
+  // Exhaustiveness — if a new SaveTargetType is added without a case above,
+  // TypeScript will fail this assignment at compile time.
+  const _exhaustive: never = targetType;
+  throw new Error(`Unknown target type: ${String(_exhaustive)}`);
+}
+
+// =============================================================================
+// Phase 2 dispatch wrapper. Wraps the boilerplate that the per-entity POST
+// and PATCH routes all need: parse intent, load source, compute draft hash,
+// run decideSaveOutcome. Each route does its own per-entity execute (INSERT
+// or UPDATE) after getting the outcome back.
+//
+// The canonical payload + draft-hash is entity-specific (different shape per
+// targetType), so the caller pre-computes them and passes the draftHash in.
+// =============================================================================
+
+export interface DispatchEntitySaveArgs {
+  targetType: SaveTargetType;
+  sourceId: string | number | null;
+  intent: SaveIntent;
+  callerUserId: string;
+  draftHash: string;
+  draftIsEmpty: boolean;
+}
+
+export interface DispatchEntitySaveResult {
+  source: SourceRowIdentity | null;
+  outcome: DispatchOutcome;
+}
+
+/**
+ * Resolve the dispatch matrix for any entity save. Combines the intent
+ * parsing + source load + outcome decision in one call. The caller is
+ * responsible for executing the INSERT or UPDATE that the outcome
+ * prescribes.
+ */
+export async function dispatchEntitySave(
+  args: DispatchEntitySaveArgs,
+): Promise<DispatchEntitySaveResult> {
+  const source = args.sourceId !== null
+    ? await loadEntityOwner(args.targetType, args.sourceId)
+    : null;
+
+  const outcome = decideSaveOutcome({
+    intent: args.intent,
+    source,
+    callerUserId: args.callerUserId,
+    draftHash: args.draftHash,
+    draftIsEmpty: args.draftIsEmpty,
+  });
+
+  return { source, outcome };
+}
+
 // Re-export isPrimitiveDraftEmpty so callers don't need a second import.
 export { isPrimitiveDraftEmpty };

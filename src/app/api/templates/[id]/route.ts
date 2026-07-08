@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and, isNull, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   primitives,
@@ -9,6 +9,57 @@ import {
   templates,
 } from "@/db/schema";
 import { expectedCategoryForKind } from "../route";
+import {
+  dispatchEntitySave,
+  type SaveTargetType,
+} from "@/lib/publishing/dispatch-save";
+import { parseSaveIntent } from "@/lib/publishing/save-intent";
+import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
+import {
+  buildCanonicalTemplatePayload,
+  isTemplateDraftEmpty,
+  computeTemplateContentHash,
+} from "@/lib/publishing/hash-content";
+
+const TARGET_TYPE: SaveTargetType = "TEMPLATE";
+
+type TemplateKind = "RACE" | "BACKGROUND" | "ARCHETYPE";
+
+const VALID_KINDS: TemplateKind[] = ["RACE", "BACKGROUND", "ARCHETYPE"];
+
+function parseKind(value: unknown): TemplateKind | null {
+  if (typeof value !== "string") return null;
+  const upper = value.toUpperCase();
+  if ((VALID_KINDS as string[]).includes(upper)) {
+    return upper as TemplateKind;
+  }
+  return null;
+}
+
+/**
+ * Phase 2: build a sync-existence predicate for the (name, userId, kind)
+ * triple the new fork row will use. Templates have a unique constraint
+ * on (name, user_id, kind) — different shape than effects/capabilities/items
+ * which use (name, source_origin).
+ */
+async function buildTemplateTakenNamesSet(
+  name: string,
+  kind: TemplateKind,
+  userId: string,
+): Promise<(candidate: string) => boolean> {
+  const rows = await db
+    .select({ name: templates.name })
+    .from(templates)
+    .where(
+      and(
+        eq(templates.name, name),
+        eq(templates.kind, kind),
+        eq(templates.userId, userId),
+      ),
+    );
+  const taken = new Set(rows.map((r) => r.name));
+  return (candidate: string) => taken.has(candidate);
+}
 
 /**
  * GET /api/templates/[id]
@@ -40,14 +91,27 @@ export async function GET(
 }
 
 /**
- * PATCH /api/templates/[id]
+ * PATCH /api/templates/[id] — Phase 2 deferred-fork entry point.
+ *
+ * Same shape as /api/effects/[id] PATCH:
+ *   - intent=load + caller owns source → UPDATE in place (version-update)
+ *   - intent=fork (any ownership) → INSERT new fork row
+ *   - load + caller doesn't own → INSERT new fork row
+ *   - no-changes (contentHash matches) → no-op, return user-facing message
+ *
+ * The (name, user_id, kind) unique constraint is what makes fork-naming
+ * tricky for templates. The fork predicate filters by name + kind +
+ * userId (not name + sourceOrigin like the other entities).
+ *
+ * Response shape:
+ *   { template, dispatchOutcome: { kind, newId, sourceId, swapTarget } | { kind: "no-op", message } }
  */
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await auth.protect();
+    const { userId } = await auth.protect();
     const { id } = await params;
     const body: unknown = await request.json();
 
@@ -56,20 +120,18 @@ export async function PATCH(
     }
 
     const values = body as Record<string, unknown>;
-    const updatePayload: Record<string, unknown> = {};
-    if ("name" in values) updatePayload["name"] = String(values["name"]).trim();
-    if ("imageUrl" in values)
-      updatePayload["imageUrl"] = String(values["imageUrl"]).trim() || null;
-    if ("description" in values)
-      updatePayload["description"] = String(values["description"]).trim() || null;
-    if ("suggestedTraits" in values)
-      updatePayload["suggestedTraits"] =
-        String(values["suggestedTraits"]).trim() || null;
-    if ("isPublic" in values) updatePayload["isPublic"] = Boolean(values["isPublic"]);
 
-    updatePayload["updatedAt"] = new Date();
+    // Phase 2: parse intent. Default to "load" (legacy in-place edit
+    // behaviour). Forms that fork will send `intent: "fork"`.
+    const intent = parseSaveIntent(
+      typeof values["intent"] === "string" ? (values["intent"] as string) : undefined,
+    );
+    const effectiveIntent = intent ?? "load";
 
-    // Get current template for category check
+    // Need the current row first so we know the kind (the kind is part of
+    // the canonical hash envelope). The form re-sends kind for safety,
+    // but we treat the existing row's kind as authoritative — the form
+    // can't switch a row between RACE / BACKGROUND / ARCHETYPE via PATCH.
     const current = await db.query.templates.findFirst({
       where: eq(templates.id, id),
     });
@@ -77,32 +139,129 @@ export async function PATCH(
       return NextResponse.json({ error: "Template not found." }, { status: 404 });
     }
 
-    const result = await db.transaction(async (tx) => {
-      if (Object.keys(updatePayload).length > 0) {
+    // -------------------------------------------------------------------
+    // Field parsing — preserve existing behaviour from the legacy PATCH.
+    // -------------------------------------------------------------------
+    const name = String(values["name"] ?? "").trim();
+    const imageUrl =
+      "imageUrl" in values
+        ? String(values["imageUrl"]).trim() || null
+        : current.imageUrl;
+    const description =
+      "description" in values
+        ? String(values["description"]).trim() || null
+        : current.description;
+    const suggestedTraits =
+      "suggestedTraits" in values
+        ? String(values["suggestedTraits"]).trim() || null
+        : current.suggestedTraits;
+    const isPublic = "isPublic" in values
+      ? Boolean(values["isPublic"])
+      : current.isPublic;
+
+    const primitiveIds = Array.isArray(values["primitiveIds"])
+      ? (values["primitiveIds"] as unknown[])
+          .map(Number)
+          .filter((n) => Number.isInteger(n) && n > 0)
+      : [];
+    const capabilityIds = Array.isArray(values["capabilityIds"])
+      ? (values["capabilityIds"] as unknown[]).filter(
+          (c) => typeof c === "string",
+        )
+      : [];
+
+    if (!name) {
+      return NextResponse.json({ error: "Template name is required." }, { status: 400 });
+    }
+
+    // -------------------------------------------------------------------
+    // Canonical payload + content hash (server is the source of truth).
+    // kind comes from the existing row — it's the row's identity, not a
+    // patchable field.
+    // -------------------------------------------------------------------
+    const kind: TemplateKind = current.kind;
+    const canonicalPayload = buildCanonicalTemplatePayload({
+      kind,
+      name,
+      description: description ?? "",
+      suggestedTraits: suggestedTraits ?? "",
+      isPublic,
+      primitiveIds,
+      capabilityIds: capabilityIds as string[],
+    });
+    const draftIsEmpty = isTemplateDraftEmpty(canonicalPayload);
+    const draftHash = await computeTemplateContentHash({
+      kind,
+      name,
+      description: description ?? "",
+      suggestedTraits: suggestedTraits ?? "",
+      isPublic,
+      primitiveIds,
+      capabilityIds: capabilityIds as string[],
+    });
+
+    // -------------------------------------------------------------------
+    // Dispatcher.
+    // -------------------------------------------------------------------
+    const { source, outcome } = await dispatchEntitySave({
+      targetType: TARGET_TYPE,
+      sourceId: id,
+      intent: effectiveIntent,
+      callerUserId: userId,
+      draftHash,
+      draftIsEmpty,
+    });
+
+    // No-op short-circuit.
+    if (outcome.kind === "no-op") {
+      return NextResponse.json(
+        {
+          template: null,
+          dispatchOutcome: {
+            kind: "no-op" as const,
+            message: outcome.message,
+            swapTarget: false as const,
+          },
+        },
+        { status: 200 },
+      );
+    }
+
+    if (outcome.kind === "version-update") {
+      const updatePayload: Record<string, unknown> = {
+        name,
+        imageUrl,
+        description,
+        suggestedTraits,
+        isPublic,
+        sourceOrigin: current.sourceOrigin, // preserve
+        contentHash: draftHash,
+        updatedAt: new Date(),
+      };
+
+      const result = await db.transaction(async (tx) => {
         await tx
           .update(templates)
           .set(updatePayload)
-          .where(eq(templates.id, id));
-      }
+          .where(
+            and(
+              eq(templates.id, id),
+              or(eq(templates.userId, userId), isNull(templates.userId)),
+            ),
+          );
 
-      if ("primitiveIds" in values) {
-        const primitiveIds = Array.isArray(values["primitiveIds"])
-          ? (values["primitiveIds"] as unknown[])
-              .map(Number)
-              .filter((n) => Number.isInteger(n) && n > 0)
-          : [];
-
-        if (primitiveIds.length > 0) {
+        // Replace primitive slot links with the new set.
+        const expected = expectedCategoryForKind(kind);
+        if ("primitiveIds" in values && primitiveIds.length > 0) {
           const prims = await tx
             .select()
             .from(primitives)
             .where(inArray(primitives.id, primitiveIds));
 
-          const expected = expectedCategoryForKind(current.kind);
           const wrong = prims.filter((p) => p.category !== expected);
           if (wrong.length > 0) {
             throw new Error(
-              `${current.kind} templates can only use ${expected} primitives. Invalid: ${wrong.map((p) => p.name).join(", ")}`,
+              `${kind} templates can only use ${expected} primitives. Invalid: ${wrong.map((p) => p.name).join(", ")}`,
             );
           }
 
@@ -117,30 +276,118 @@ export async function PATCH(
             })),
           );
         }
+
+        // Replace capability slot links.
+        if ("capabilityIds" in values) {
+          await tx
+            .delete(templateCapabilities)
+            .where(eq(templateCapabilities.templateId, id));
+          if (capabilityIds.length > 0) {
+            await tx.insert(templateCapabilities).values(
+              capabilityIds.map((cid) => ({
+                templateId: id,
+                capabilityId: cid as string,
+              })),
+            );
+          }
+        }
+
+        return tx.query.templates.findFirst({
+          where: eq(templates.id, id),
+          with: {
+            primitiveLinks: { with: { primitive: true } },
+            capabilityLinks: { with: { capability: true } },
+          },
+        });
+      });
+
+      if (result) {
+        const bu = result.primitiveLinks.reduce(
+          (t, l) => t + (l.primitive?.buCost ?? 0),
+          0,
+        );
+        return NextResponse.json(
+          {
+            template: { ...result, computedBu: bu },
+            dispatchOutcome: {
+              kind: "version-update" as const,
+              newId: id,
+              sourceId: outcome.sourceId,
+              swapTarget: false as const,
+            },
+          },
+          { status: 200 },
+        );
+      }
+      throw new Error("Template not found after update.");
+    }
+
+    // outcome.kind === "forked" — INSERT a new row.
+    // sourceOrigin for the fork: "fork:<sourceId>" for non-greenfield.
+    // (PATCH is always non-greenfield — the route has a URL param.)
+    const finalSourceOrigin = `fork:${source !== null ? source.id : id}`;
+
+    const baseName = await computeUniqueForkName(
+      name,
+      await buildTemplateTakenNamesSet(name, kind, userId),
+    );
+
+    const created = await db.transaction(async (tx) => {
+      const [inserted] = await tx
+        .insert(templates)
+        .values({
+          kind,
+          name: baseName,
+          imageUrl,
+          description,
+          suggestedTraits,
+          isPublic,
+          userId,
+          sourceOrigin: finalSourceOrigin,
+          contentHash: draftHash,
+        })
+        .returning();
+
+      if (!inserted) {
+        throw new Error("Unable to create template.");
       }
 
-      if ("capabilityIds" in values) {
-        const capabilityIds = Array.isArray(values["capabilityIds"])
-          ? (values["capabilityIds"] as unknown[]).filter(
-              (c) => typeof c === "string",
-            )
-          : [];
+      // Validate + insert primitive slots.
+      const expected = expectedCategoryForKind(kind);
+      if (primitiveIds.length > 0) {
+        const prims = await tx
+          .select()
+          .from(primitives)
+          .where(inArray(primitives.id, primitiveIds));
 
-        await tx
-          .delete(templateCapabilities)
-          .where(eq(templateCapabilities.templateId, id));
-        if (capabilityIds.length > 0) {
-          await tx.insert(templateCapabilities).values(
-            capabilityIds.map((cid) => ({
-              templateId: id,
-              capabilityId: cid as string,
-            })),
+        const wrong = prims.filter((p) => p.category !== expected);
+        if (wrong.length > 0) {
+          throw new Error(
+            `${kind} templates can only use ${expected} primitives. Invalid: ${wrong.map((p) => p.name).join(", ")}`,
           );
         }
+
+        await tx.insert(templatePrimitives).values(
+          prims.map((p, idx) => ({
+            templateId: inserted.id,
+            primitiveId: p.id,
+            sortOrder: idx,
+          })),
+        );
+      }
+
+      // Insert capability slots.
+      if (capabilityIds.length > 0) {
+        await tx.insert(templateCapabilities).values(
+          capabilityIds.map((cid) => ({
+            templateId: inserted.id,
+            capabilityId: cid as string,
+          })),
+        );
       }
 
       return tx.query.templates.findFirst({
-        where: eq(templates.id, id),
+        where: eq(templates.id, inserted.id),
         with: {
           primitiveLinks: { with: { primitive: true } },
           capabilityLinks: { with: { capability: true } },
@@ -148,7 +395,27 @@ export async function PATCH(
       });
     });
 
-    return NextResponse.json({ template: result });
+    if (!created) {
+      throw new Error("Unable to load forked template.");
+    }
+
+    const bu = created.primitiveLinks.reduce(
+      (t, l) => t + (l.primitive?.buCost ?? 0),
+      0,
+    );
+
+    return NextResponse.json(
+      {
+        template: { ...created, computedBu: bu },
+        dispatchOutcome: {
+          kind: "forked" as const,
+          newId: created.id,
+          sourceId: outcome.sourceId,
+          swapTarget: outcome.swapTarget,
+        },
+      },
+      { status: 201 },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";
     return NextResponse.json({ error: message }, { status: 400 });
