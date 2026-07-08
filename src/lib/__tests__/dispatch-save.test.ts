@@ -37,21 +37,25 @@ const OWNED_SOURCE: SourceRowIdentity = {
   id: 42,
   userId: CALLER,
   contentHash: "hash_owned",
+  sourceOrigin: `user:${CALLER}`,
 };
 const FOREIGN_SOURCE: SourceRowIdentity = {
   id: 99,
   userId: OTHER_USER,
   contentHash: "hash_foreign",
+  sourceOrigin: `user:${OTHER_USER}`,
 };
 const SYSTEM_SOURCE: SourceRowIdentity = {
   id: 7,
   userId: null,
   contentHash: "hash_system",
+  sourceOrigin: "system:phase5-commit-c-library-seed",
 };
 const LEGACY_OWNED_SOURCE: SourceRowIdentity = {
   id: 43,
   userId: CALLER,
   contentHash: null,
+  sourceOrigin: `user:${CALLER}`,
 };
 
 const DRAFT_DIFFERENT = "hash_different";

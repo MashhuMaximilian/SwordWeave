@@ -141,6 +141,30 @@ export const characters = pgTable(
   ],
 );
 
+// =============================================================================
+// slot_source — Phase 3 of the edit-creates-fork refactor.
+//
+// The three values correspond to the three kinds of slot a build can hold
+// for a primitive / capability / item (per §6.6 of edit-creates-fork.md):
+//
+//   OWNED   — the slotted entity is something the user authored from scratch.
+//             Updateable from source dependencies (transitive walk).
+//   FORKED  — the slotted entity is a fork. Frozen. Cannot be "updated from
+//             source" — that would defeat the fork's whole purpose.
+//   PINNED  — the slotted entity is a library item pinned to a specific
+//             version. Updateable: re-fetch the latest version AND
+//             transitively re-fetch its dependency tree.
+//
+// Decision logic for the value lives in the application layer
+// (depends on the source's source_origin and the caller's relationship
+// to the source). The DB just enforces the enum constraint.
+// =============================================================================
+export const slotSourceEnum = pgEnum("slot_source", [
+  "OWNED",
+  "FORKED",
+  "PINNED",
+]);
+
 // Junction: character <-> primitive
 export const characterPrimitives = pgTable(
   "character_primitives",
@@ -160,6 +184,21 @@ export const characterPrimitives = pgTable(
      * See src/lib/engine/bu.ts for full mirror-vector accounting.
      */
     isMirrored: boolean("is_mirrored").notNull().default(false),
+    /**
+     * Phase 3: which version of the primitive this slot references.
+     * Null on rows created before versioning existed (pre-Phase 3) —
+     * the runtime treats those as "version unknown" and shows a
+     * stale-version indicator until the user re-slots. Phase 4
+     * (content-hash auto-snapshot) populates this on new slots.
+     */
+    versionId: uuid("version_id"),
+    /**
+     * Phase 3: what kind of slot relationship this is. Drives the
+     * "Update available" UI in the build preview (Phase 5) and the
+     * transitive dependency walk. Defaults to PINNED because all
+     * pre-Phase-3 slots are functionally a pin on the live row.
+     */
+    slotSource: slotSourceEnum("slot_source").notNull().default("PINNED"),
     notes: text("notes"),
     ...timestamps,
   },
@@ -170,6 +209,8 @@ export const characterPrimitives = pgTable(
     }),
     index("character_primitives_character_id_idx").on(table.characterId),
     index("character_primitives_primitive_id_idx").on(table.primitiveId),
+    index("character_primitives_version_id_idx").on(table.versionId),
+    index("character_primitives_slot_source_idx").on(table.slotSource),
   ],
 );
 
@@ -184,6 +225,15 @@ export const characterCapabilities = pgTable(
       .notNull()
       .references(() => capabilities.id, { onDelete: "restrict" }),
     acquiredAtLevel: integer("acquired_at_level").notNull().default(1),
+    /**
+     * Phase 3: which version of the capability this slot references.
+     * See character_primitives.versionId for the full rationale.
+     */
+    versionId: uuid("version_id"),
+    /**
+     * Phase 3: slot-source enum. See character_primitives.slotSource.
+     */
+    slotSource: slotSourceEnum("slot_source").notNull().default("PINNED"),
     notes: text("notes"),
     ...timestamps,
   },
@@ -194,6 +244,8 @@ export const characterCapabilities = pgTable(
     }),
     index("character_capabilities_character_id_idx").on(table.characterId),
     index("character_capabilities_capability_id_idx").on(table.capabilityId),
+    index("character_capabilities_version_id_idx").on(table.versionId),
+    index("character_capabilities_slot_source_idx").on(table.slotSource),
   ],
 );
 
@@ -292,6 +344,15 @@ export const characterItems = pgTable(
       .references(() => items.id, { onDelete: "restrict" }),
     quantity: integer("quantity").notNull().default(1),
     equipped: boolean("equipped").notNull().default(false),
+    /**
+     * Phase 3: which version of the item this slot references.
+     * See character_primitives.versionId for the full rationale.
+     */
+    versionId: uuid("version_id"),
+    /**
+     * Phase 3: slot-source enum. See character_primitives.slotSource.
+     */
+    slotSource: slotSourceEnum("slot_source").notNull().default("PINNED"),
     ...timestamps,
   },
   (table) => [
@@ -301,6 +362,8 @@ export const characterItems = pgTable(
     }),
     index("character_items_character_id_idx").on(table.characterId),
     index("character_items_item_id_idx").on(table.itemId),
+    index("character_items_version_id_idx").on(table.versionId),
+    index("character_items_slot_source_idx").on(table.slotSource),
   ],
 );
 

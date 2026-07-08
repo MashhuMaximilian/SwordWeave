@@ -141,6 +141,20 @@
       "when": 1783600000000,
       "tag": "0019_entity_content_hash",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1783700000000,
+      "tag": "0020_primitive_source_origin",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1783800000000,
+      "tag": "0021_junction_version_id_and_slot_source",
+      "breakpoints": true
     }
   ]
 }

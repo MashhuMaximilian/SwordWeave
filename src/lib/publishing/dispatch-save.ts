@@ -87,11 +87,17 @@ export type DispatchOutcome =
 /**
  * Minimal source-row shape the dispatcher needs to make its decision.
  * `contentHash` may be null for legacy rows (treated as "always changed").
+ *
+ * `sourceOrigin` is included so the per-entity route can derive the
+ * new row's source_origin (fork marker, system seed, or user:<id>)
+ * without re-querying. Phase 3 added it when the universal-identity
+ * model was extended to primitives.
  */
 export interface SourceRowIdentity {
   id: string | number;
   userId: string | null;
   contentHash: string | null;
+  sourceOrigin: string | null;
 }
 
 export interface DecideSaveOutcomeParams {
@@ -262,6 +268,7 @@ export async function loadPrimitiveOwner(
       id: primitives.id,
       userId: primitives.userId,
       contentHash: primitives.contentHash,
+      sourceOrigin: primitives.sourceOrigin,
     })
     .from(primitives)
     .where(eq(primitives.id, primitiveId))
@@ -272,6 +279,7 @@ export async function loadPrimitiveOwner(
     id: row.id,
     userId: row.userId,
     contentHash: row.contentHash,
+    sourceOrigin: row.sourceOrigin,
   };
 }
 
@@ -313,13 +321,14 @@ export async function loadEntityOwner(
         id: effects.id,
         userId: effects.userId,
         contentHash: effects.contentHash,
+        sourceOrigin: effects.sourceOrigin,
       })
       .from(effects)
       .where(eq(effects.id, String(targetId)))
       .limit(1);
     const row = rows[0];
     if (!row) return null;
-    return { id: row.id, userId: row.userId, contentHash: row.contentHash };
+    return { id: row.id, userId: row.userId, contentHash: row.contentHash, sourceOrigin: row.sourceOrigin };
   }
 
   if (targetType === "CAPABILITY") {
@@ -329,13 +338,14 @@ export async function loadEntityOwner(
         id: capabilities.id,
         userId: capabilities.userId,
         contentHash: capabilities.contentHash,
+        sourceOrigin: capabilities.sourceOrigin,
       })
       .from(capabilities)
       .where(eq(capabilities.id, String(targetId)))
       .limit(1);
     const row = rows[0];
     if (!row) return null;
-    return { id: row.id, userId: row.userId, contentHash: row.contentHash };
+    return { id: row.id, userId: row.userId, contentHash: row.contentHash, sourceOrigin: row.sourceOrigin };
   }
 
   if (targetType === "ITEM") {
@@ -345,13 +355,14 @@ export async function loadEntityOwner(
         id: items.id,
         userId: items.userId,
         contentHash: items.contentHash,
+        sourceOrigin: items.sourceOrigin,
       })
       .from(items)
       .where(eq(items.id, String(targetId)))
       .limit(1);
     const row = rows[0];
     if (!row) return null;
-    return { id: row.id, userId: row.userId, contentHash: row.contentHash };
+    return { id: row.id, userId: row.userId, contentHash: row.contentHash, sourceOrigin: row.sourceOrigin };
   }
 
   if (targetType === "TEMPLATE") {
@@ -361,13 +372,14 @@ export async function loadEntityOwner(
         id: templates.id,
         userId: templates.userId,
         contentHash: templates.contentHash,
+        sourceOrigin: templates.sourceOrigin,
       })
       .from(templates)
       .where(eq(templates.id, String(targetId)))
       .limit(1);
     const row = rows[0];
     if (!row) return null;
-    return { id: row.id, userId: row.userId, contentHash: row.contentHash };
+    return { id: row.id, userId: row.userId, contentHash: row.contentHash, sourceOrigin: row.sourceOrigin };
   }
 
   // Exhaustiveness — if a new SaveTargetType is added without a case above,

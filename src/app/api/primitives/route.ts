@@ -39,31 +39,75 @@ export async function GET() {
 
 /**
  * Build a sync-existence set of primitive names the caller has
- * already used for the given category. Used by computeUniqueForkName
- * to walk "(fork)", "(fork) 2", ... without hitting the DB per
- * iteration. Best-effort; the DB's unique constraint is the source
- * of truth and the onConflictDoUpdate below absorbs races.
+ * already used. Phase 3: identity is now (name, source_origin) so
+ * the "taken names" set is namespaced by source_origin (which is
+ * "user:<clerkId>" for user-authored rows). We query the user's
+ * entire namespace rather than category-scoped because the unique
+ * constraint no longer includes category — a user can have the
+ * same primitive name in different categories.
+ *
+ * Used by computeUniqueForkName to walk "(fork)", "(fork) 2", ...
+ * without hitting the DB per iteration. Best-effort; the DB's
+ * unique constraint is the source of truth and the onConflictDoUpdate
+ * below absorbs races.
  */
 async function buildTakenNamesSet(
-  category: string,
-  userId: string,
+  sourceOrigin: string,
 ): Promise<(candidate: string) => boolean> {
   const rows = await db
     .select({ name: primitives.name })
     .from(primitives)
-    .where(
-      and(eq(primitives.category, category as PrimitiveCategoryValue), eq(primitives.userId, userId)),
-    );
+    .where(eq(primitives.sourceOrigin, sourceOrigin));
   const taken = new Set(rows.map((r) => r.name));
   return (candidate: string) => taken.has(candidate);
 }
 
 /**
+ * Compute the source_origin for a row we're about to INSERT or UPDATE.
+ *
+ * Phase 3 universal-identity model (migration 0020 / §6.5):
+ *   - greenfield (new row, no source) → "user:<callerId>"
+ *   - user editing their own system/null-user_id row → keep existing
+ *     source_origin if set, else "user:<callerId>"
+ *   - any kind of fork → "fork:<sourceRowId>"
+ *   - system content (user_id is null) → "system:phase5-commit-c-library-seed"
+ *
+ * Centralised so the INSERT path, the UPDATE-in-place path, and the
+ * fork-name walker all use the same rule.
+ */
+function computeSourceOrigin(args: {
+  callerUserId: string;
+  source: { id: string | number; userId: string | null; sourceOrigin: string | null } | null;
+  isGreenfield: boolean;
+}): string {
+  const { callerUserId, source, isGreenfield } = args;
+  if (isGreenfield) return `user:${callerUserId}`;
+  if (source === null) return `user:${callerUserId}`;
+  // Forking or updating an existing row: keep the lineage. The dispatch
+  // matrix already decided fork-vs-version-update; for a fork we want
+  // "fork:<sourceId>" so it has its own identity, and for version-update
+  // we keep the existing source_origin (caller owns it, so it's still
+  // "user:<callerId>" unless they forked it themselves).
+  if (source.userId === null) {
+    // System content being forked → fork marker.
+    return `fork:${source.id}`;
+  }
+  if (source.userId === callerUserId) {
+    // Caller is editing their own row (version-update path) → keep the
+    // original source_origin (typically "user:<callerId>").
+    return source.sourceOrigin ?? `user:${callerUserId}`;
+  }
+  // Caller is forking someone else's row → fork marker.
+  return `fork:${source.id}`;
+}
+
+/**
  * Build the values object shared by every primitive INSERT/UPDATE
- * path. Phase 1 doesn't yet add `source_origin` (that lands in
- * Phase 3's migration 0018); the field exists on capabilities/
- * effects/items/templates but not yet on primitives. The fork
- * marker is encoded into the name for now (existing pattern).
+ * path. Phase 3 added `source_origin` (migration 0020) so the public
+ * identity of every primitive is `(name, source_origin)` — the same
+ * convention as effects/capabilities/items/templates. The runtime
+ * computes source_origin from the dispatch outcome (see computeSourceOrigin
+ * above) and threads it through.
  */
 function buildPrimitiveValues(args: {
   name: string;
@@ -79,6 +123,7 @@ function buildPrimitiveValues(args: {
   mirrorBuCredit: number;
   mirrorEligibilityNotes: string;
   hardModifiers: readonly HardModifier[];
+  sourceOrigin: string;
 }) {
   const {
     name,
@@ -94,6 +139,7 @@ function buildPrimitiveValues(args: {
     mirrorBuCredit,
     mirrorEligibilityNotes,
     hardModifiers,
+    sourceOrigin,
   } = args;
   return {
     name,
@@ -109,6 +155,7 @@ function buildPrimitiveValues(args: {
     mirrorBuCredit: isMirrorable ? mirrorBuCredit : 0,
     mirrorEligibilityNotes,
     hardModifiers,
+    sourceOrigin,
   };
 }
 
@@ -272,6 +319,11 @@ export async function POST(request: Request) {
       // Same ownership gate as the legacy path: row must be owned by
       // caller OR be system content. Without this an attacker could
       // rewrite any primitive just by guessing a numeric id.
+      const versionSourceOrigin = computeSourceOrigin({
+        callerUserId: userId,
+        source,
+        isGreenfield: false,
+      });
       const [updated] = await db
         .update(primitives)
         .set({
@@ -289,6 +341,7 @@ export async function POST(request: Request) {
             mirrorBuCredit,
             mirrorEligibilityNotes,
             hardModifiers,
+            sourceOrigin: versionSourceOrigin,
           }),
           contentHash: serverDraftHash,
           updatedAt: new Date(),
@@ -334,11 +387,19 @@ export async function POST(request: Request) {
     // it to computeUniqueForkName as a sync predicate. (The
     // helper accepts Promise predicates too, but sync is faster
     // for the typical case where 0-2 collisions happen.)
+    //
+    // Phase 3: the namespaced query is by source_origin (not
+    // category+user) because the unique constraint is now
+    // (name, source_origin).
+    const forkSourceOrigin = computeSourceOrigin({
+      callerUserId: userId,
+      source,
+      isGreenfield: source === null,
+    });
     const baseName =
       source !== null
         ? await computeUniqueForkName(name, await buildTakenNamesSet(
-            category as string,
-            userId,
+            forkSourceOrigin,
           ))
         : name;
 
@@ -359,11 +420,17 @@ export async function POST(request: Request) {
           mirrorBuCredit,
           mirrorEligibilityNotes,
           hardModifiers,
+          sourceOrigin: forkSourceOrigin,
         }),
         contentHash: serverDraftHash,
       })
       .onConflictDoUpdate({
-        target: [primitives.name, primitives.category, primitives.userId],
+        // Phase 3: the unique constraint is (name, source_origin), not
+        // (name, category, user_id). The source_origin we're writing is
+        // already the namespaced one (fork:<id> or user:<id>), so this
+        // onConflict path only fires for in-process races (e.g. two
+        // tabs both creating the same fork name at the same instant).
+        target: [primitives.name, primitives.sourceOrigin],
         set: {
           costTier: costTier || "Tier 1: Minor (4 BU anchor)",
           userId,

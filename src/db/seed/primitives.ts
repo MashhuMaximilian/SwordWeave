@@ -1,3 +1,13 @@
+// =============================================================================
+// Seed file for the Phase 5c BU Market library.
+//
+// Phase 3 update: every seed carries a source_origin of
+// "system:phase5-commit-c-library-seed" matching the existing
+// convention on effects/capabilities/items/templates. The unique
+// constraint on primitives is now (name, source_origin) so the
+// onConflictDoUpdate target must use that pair — the previous
+// (name, category, user_id) target would fail post-migration.
+// =============================================================================
 import { config } from "dotenv";
 import { primitives } from "@/db/schema";
 import type { HardModifier } from "@/types/swordweave";
@@ -6,6 +16,8 @@ config({ path: ".env.local" });
 config({ path: ".env" });
 
 type PrimitiveSeed = typeof primitives.$inferInsert;
+
+const SYSTEM_SOURCE_ORIGIN = "system:phase5-commit-c-library-seed" as const;
 
 const seeds: PrimitiveSeed[] = [
   {
@@ -18,6 +30,7 @@ const seeds: PrimitiveSeed[] = [
     narrativeRule:
       "The entity can express intent as a clean impact, blow, slash, shot, or forceful contact.",
     hardModifiers: [] satisfies readonly HardModifier[],
+    sourceOrigin: SYSTEM_SOURCE_ORIGIN,
   },
   {
     name: "Fire",
@@ -29,6 +42,7 @@ const seeds: PrimitiveSeed[] = [
     narrativeRule:
       "The entity can route capability output through thermal force, flame, cinders, or heat distortion.",
     hardModifiers: [] satisfies readonly HardModifier[],
+    sourceOrigin: SYSTEM_SOURCE_ORIGIN,
   },
   {
     name: "Close Range Gate",
@@ -137,7 +151,8 @@ async function seedPrimitives() {
       .insert(primitives)
       .values(seed)
       .onConflictDoUpdate({
-        target: [primitives.name, primitives.category, primitives.userId],
+        // Phase 3: identity is (name, source_origin) per migration 0020.
+        target: [primitives.name, primitives.sourceOrigin],
         set: {
           costTier: seed.costTier,
           buCost: seed.buCost,

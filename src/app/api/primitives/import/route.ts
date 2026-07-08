@@ -20,9 +20,22 @@ export async function POST(request: Request) {
 
     const imported = await db
       .insert(primitives)
-      .values(records.map((record) => ({ ...record, userId, isPublic: false })))
+      .values(
+        records.map((record) => ({
+          ...record,
+          userId,
+          isPublic: false,
+          // Phase 3: imported primitives live in the user's private
+          // namespace under their Clerk id. The unique constraint
+          // is (name, source_origin) so all imported records for a
+          // given caller share the same source_origin and are
+          // namespaced from any system/forked content.
+          sourceOrigin: `user:${userId}`,
+        })),
+      )
       .onConflictDoUpdate({
-        target: [primitives.name, primitives.category, primitives.userId],
+        // Phase 3: identity is (name, source_origin) per migration 0020.
+        target: [primitives.name, primitives.sourceOrigin],
         set: {
           costTier: sql`excluded.cost_tier`,
           userId: sql`excluded.user_id`,

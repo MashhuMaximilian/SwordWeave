@@ -45,6 +45,26 @@ export const primitives = pgTable(
       .notNull()
       .default(sql`'[]'::jsonb`),
     /**
+     * Public-identity column (Phase 3 / migration 0020). The single
+     * piece of metadata that, together with `name`, uniquely identifies
+     * a primitive row in the public library. Same convention as
+     * effects/capabilities/items/templates (see §6.5 of edit-creates-fork.md).
+     *
+     * Values:
+     *   - system content → "system:<seed-name>"
+     *     (e.g. "system:phase5-commit-c-library-seed")
+     *   - user-authored  → "user:<clerk-user-id>"
+     *   - fork           → "fork:<source-row-id>"
+     *
+     * Replaces the old (name, category, user_id) unique constraint with
+     * a (name, source_origin) unique. Two primitives can now share a
+     * name across categories as long as their source_origins differ
+     * (e.g. a user's "Strike" in two categories is fine; two forks of
+     * the same source "Strike" can coexist on (name="Strike", source_origin=
+     * "fork:<id-a>") and (name="Strike", source_origin="fork:<id-b>")).
+     */
+    sourceOrigin: text("source_origin"),
+    /**
      * SHA-256 hex digest of the canonical-JSON content envelope
      * (sorted keys, versioned `{v:1, primitive:{...}}`). Populated
      * by the client on save; used by the dispatch matrix to detect
@@ -62,12 +82,12 @@ export const primitives = pgTable(
     index("primitives_category_idx").on(table.category),
     index("primitives_user_id_idx").on(table.userId),
     index("primitives_is_public_idx").on(table.isPublic),
-    uniqueIndex("primitives_name_category_user_unique_idx").on(
+    uniqueIndex("primitives_name_source_origin_unique_idx").on(
       table.name,
-      table.category,
-      table.userId,
+      table.sourceOrigin,
     ),
     index("primitives_content_hash_idx").on(table.contentHash),
+    index("primitives_source_origin_idx").on(table.sourceOrigin),
   ],
 );
 
