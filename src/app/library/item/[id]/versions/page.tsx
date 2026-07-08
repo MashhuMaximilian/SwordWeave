@@ -190,6 +190,11 @@ function VersionRow({
             DELTA
           </span>
         )}
+        {/* BU cost — read from the reconstructed payload. Only meaningful
+            for entity types that have a buyPrice / buCost in their data
+            (currently primitives + capabilities). For DELTAs where the
+            buCost was changed, the reconstructed value reflects that. */}
+        <BuCostBadge payload={version.payload} />
         {isLatest && (
           <span className="rounded-full bg-green-500/15 px-2 py-0.5 text-xs font-medium text-green-600 dark:text-green-400">
             latest
@@ -264,6 +269,29 @@ function VersionRow({
         </pre>
       </details>
     </li>
+  );
+}
+
+/**
+ * BuCostBadge — small "N BU" pill extracted from the reconstructed
+ * payload. Returns null if the payload has no numeric `buCost` field
+ * (e.g. for entity types that don't model cost: characters, items,
+ * effects, templates).
+ */
+function BuCostBadge({
+  payload,
+}: {
+  payload: Record<string, unknown>;
+}) {
+  const raw = payload["buCost"];
+  if (typeof raw !== "number" || !Number.isFinite(raw)) return null;
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 font-mono text-xs font-medium text-amber-700 dark:text-amber-300"
+      title={`BU cost of this version: ${raw}`}
+    >
+      {raw} BU
+    </span>
   );
 }
 
