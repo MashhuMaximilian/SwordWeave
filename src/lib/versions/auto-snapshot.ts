@@ -20,7 +20,15 @@
  * as max(existing) + 1.
  *
  * If the caller provides publishedByUserId, it's set; otherwise null
- * (system snapshots).
+ * (system snapshots). Note: publishedByUserId accepts a Clerk user ID
+ * (text, e.g. "user_2abc...") and resolves it to the internal users.id
+ * uuid before insert. Pass null explicitly to skip the resolution.
+ *
+ * Migration 0024 (2026-07-08) added the missing unique index on
+ * (entity_id, version_number) for primitive_versions, capability_versions,
+ * and template_versions. Without it, the ON CONFLICT clause in the upsert
+ * below fails with SQLSTATE 42P10. If you see that error in prod logs,
+ * re-run `pnpm exec tsx scripts/sync-pending-migrations.mts`.
  */
 
 import { and, desc, eq, max, ne } from "drizzle-orm";
@@ -34,6 +42,7 @@ import {
   type versionDeltaKindEnum,
 } from "@/db/schema";
 import { resolveContentVersionId } from "./content-hash";
+import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 
 /** The 5 entity kinds that have a _versions table. */
 export type VersionedEntityKind =
@@ -186,6 +195,18 @@ export async function recordVersion(
   const deltaKind: DeltaKind = "FULL";
   const now = new Date();
 
+  // published_by_user_id is `uuid` (internal users.id), not the Clerk text
+  // ID the route has in hand. Resolve the mapping here so the routes can
+  // keep passing the Clerk ID. If the user is not in the users table yet
+  // (e.g. first-ever save before the profile sync has run), this returns
+  // null and we omit the publisher rather than blocking the save.
+  const publishedByUserId =
+    args.publishedByUserId === undefined
+      ? null
+      : args.publishedByUserId === null
+        ? null
+        : (await resolveUserIdByClerkId(args.publishedByUserId)) ?? null;
+
   await db
     .insert(ref.table)
     .values({
@@ -196,7 +217,7 @@ export async function recordVersion(
       isLatest: true,
       deltaKind,
       snapshot,
-      publishedByUserId: args.publishedByUserId ?? null,
+      publishedByUserId,
       publishedAt: now,
     } as never)
     .onConflictDoUpdate({
@@ -205,7 +226,7 @@ export async function recordVersion(
         isLatest: true,
         publishedAt: now,
         snapshot,
-        publishedByUserId: args.publishedByUserId ?? null,
+        publishedByUserId,
       },
     });
 
