@@ -189,11 +189,7 @@ export async function PATCH(
         slotLabel: s.slotLabel ?? "",
         notes: s.notes ?? "",
       })),
-      effectSlots: effectSlots.map((s) => ({
-        effectId: s.effectId,
-        slotLabel: s.slotLabel ?? "",
-        notes: s.notes ?? "",
-      })),
+      effectIds: effectSlots.map((s) => s.effectId),
     });
     const draftIsEmpty = isCapabilityDraftEmpty(canonicalPayload);
     const draftHash = await computeCapabilityContentHash({
@@ -210,11 +206,7 @@ export async function PATCH(
         slotLabel: s.slotLabel ?? "",
         notes: s.notes ?? "",
       })),
-      effectSlots: effectSlots.map((s) => ({
-        effectId: s.effectId,
-        slotLabel: s.slotLabel ?? "",
-        notes: s.notes ?? "",
-      })),
+      effectIds: effectSlots.map((s) => s.effectId),
     });
 
     // -------------------------------------------------------------------

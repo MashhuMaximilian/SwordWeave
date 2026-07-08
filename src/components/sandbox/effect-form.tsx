@@ -22,6 +22,7 @@ type EffectRow = {
   primitiveLinks: Array<{
     primitiveId: number;
     quantity: number;
+    notes?: string | null;
     primitive: {
       id: number;
       name: string;
@@ -34,6 +35,13 @@ type EffectRow = {
 export type EffectFormSlot = {
   primitiveId: number;
   quantity: number;
+  /**
+   * Per-slot notes from the source row. Optional in the UI; the form
+   * silently carries them so a "save with no edits" round-trip computes
+   * the same content hash as the source's stored hash. Without this, the
+   * dispatcher's no-op short-circuit never fires for legacy rows.
+   */
+  notes?: string | undefined;
   primitive: {
     id: number;
     name: string;
@@ -121,6 +129,7 @@ export function EffectForm({
       initialEffect.primitiveLinks.map((link) => ({
         primitiveId: link.primitiveId,
         quantity: link.quantity,
+        notes: link.notes ?? undefined,
         primitive: link.primitive,
       })),
     );
@@ -233,6 +242,7 @@ export function EffectForm({
       primitiveSlots: slots.map((s) => ({
         primitiveId: s.primitiveId,
         quantity: s.quantity,
+        notes: s.notes ?? "",
       })),
     };
 

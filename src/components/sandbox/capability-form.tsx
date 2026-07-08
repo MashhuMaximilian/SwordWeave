@@ -36,6 +36,7 @@ type CapabilityRow = {
     quantity: number;
     sortOrder: number;
     slotLabel: string | null;
+    notes?: string | null;
     primitive: {
       id: number;
       name: string;
@@ -204,6 +205,7 @@ export function CapabilityForm({
         quantity: link.quantity,
         sortOrder: link.sortOrder,
         slotLabel: link.slotLabel ?? link.primitive.name,
+        notes: link.notes ?? undefined,
         primitive: link.primitive,
       })),
     );
@@ -374,6 +376,7 @@ export function CapabilityForm({
         quantity: s.quantity,
         sortOrder: s.sortOrder,
         slotLabel: s.slotLabel,
+        notes: s.notes ?? "",
       })),
       effectSlots: effectIds.map((id, idx) => ({
         effectId: id,

@@ -286,7 +286,15 @@ export interface CanonicalCapabilityPayload {
   tags: readonly string[];
   isPublic: boolean;
   primitiveSlots: readonly { primitiveId: number; role: string; quantity: number; slotLabel: string; notes: string }[];
-  effectSlots: readonly { effectId: string; slotLabel: string; notes: string }[];
+  /**
+   * Effect slots as a flat list of effectIds. Per-effect `slotLabel` and
+   * `notes` are NOT part of the canonical content identity — the
+   * capability form stores effect slots as `string[]` (no per-slot
+   * metadata), and including those fields in the hash would make
+   * "save with no edits" always look like a change. The schema still
+   * stores per-slot metadata; the hash just doesn't read it.
+   */
+  effectIds: readonly string[];
 }
 
 export function buildCanonicalCapabilityPayload(args: {
@@ -297,7 +305,7 @@ export function buildCanonicalCapabilityPayload(args: {
   tags: readonly string[];
   isPublic: boolean;
   primitiveSlots: readonly { primitiveId: number; role: string; quantity: number; slotLabel: string; notes: string }[];
-  effectSlots: readonly { effectId: string; slotLabel: string; notes: string }[];
+  effectIds: readonly string[];
 }): CanonicalCapabilityPayload {
   const sortedPrimitives = [...args.primitiveSlots]
     .map((s) => ({
@@ -309,14 +317,6 @@ export function buildCanonicalCapabilityPayload(args: {
     }))
     .sort((a, b) => a.primitiveId - b.primitiveId);
 
-  const sortedEffects = [...args.effectSlots]
-    .map((s) => ({
-      effectId: s.effectId,
-      slotLabel: s.slotLabel ?? "",
-      notes: s.notes ?? "",
-    }))
-    .sort((a, b) => a.effectId.localeCompare(b.effectId));
-
   return {
     name: args.name.trim(),
     type: args.type,
@@ -325,7 +325,7 @@ export function buildCanonicalCapabilityPayload(args: {
     tags: [...args.tags].map((t) => t.trim()).filter(Boolean).sort(),
     isPublic: Boolean(args.isPublic),
     primitiveSlots: sortedPrimitives,
-    effectSlots: sortedEffects,
+    effectIds: [...args.effectIds].sort(),
   };
 }
 
@@ -348,7 +348,7 @@ export async function computeCapabilityContentHash(args: {
   tags: readonly string[];
   isPublic: boolean;
   primitiveSlots: readonly { primitiveId: number; role: string; quantity: number; slotLabel: string; notes: string }[];
-  effectSlots: readonly { effectId: string; slotLabel: string; notes: string }[];
+  effectIds: readonly string[];
 }): Promise<string> {
   return hashCapabilityContent(buildCanonicalCapabilityPayload(args));
 }

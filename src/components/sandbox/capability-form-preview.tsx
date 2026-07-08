@@ -20,6 +20,12 @@ export type CapabilitySlot = {
   quantity: number;
   sortOrder: number;
   slotLabel: string | null;
+  /**
+   * Per-slot notes from the source row. Optional; the form carries them
+   * so a "save with no edits" round-trip computes the same content hash
+   * as the source's stored hash. Same pattern as EffectFormSlot.
+   */
+  notes?: string | undefined;
   primitive: {
     id: number;
     name: string;

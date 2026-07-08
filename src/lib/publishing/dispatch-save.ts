@@ -504,11 +504,7 @@ async function backfillSourceHash(
         slotLabel: l.slotLabel ?? "",
         notes: l.notes ?? "",
       })),
-      effectSlots: effLinks.map((l) => ({
-        effectId: l.effectId,
-        slotLabel: l.slotLabel ?? "",
-        notes: l.notes ?? "",
-      })),
+      effectIds: effLinks.map((l) => l.effectId),
     });
     await db
       .update(capabilities)
