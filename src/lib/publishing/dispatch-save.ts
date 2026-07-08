@@ -33,11 +33,18 @@
 // binding the row type at each call site.
 // =============================================================================
 
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { primitives } from "@/db/schema";
 import type { SaveIntent } from "./save-intent";
-import { isPrimitiveDraftEmpty } from "./hash-content";
+import {
+  computeCapabilityContentHash,
+  computeEffectContentHash,
+  computeItemContentHash,
+  computePrimitiveContentHash,
+  computeTemplateContentHash,
+  isPrimitiveDraftEmpty,
+} from "./hash-content";
 
 export type DispatchOutcome =
   /**
@@ -370,6 +377,244 @@ export async function loadEntityOwner(
 }
 
 // =============================================================================
+// Legacy-source backfill.
+//
+// `decideSaveOutcome` treats `contentHash === null` on the source row as
+// "always changed" (no hash to compare against, so the no-op short-circuit
+// can't fire). Rows seeded before the content-hash migration have
+// `contentHash: null` and would therefore force a fork on every save —
+// including the "I opened the form, didn't touch anything, hit save" case
+// the user is reporting as a bug.
+//
+// Fix: when we load a source row whose hash is null, we backfill it with
+// the hash of its CURRENT state (the row as it exists in the DB right now).
+// This is a one-time write per legacy row. After backfill, the dispatcher's
+// normal `sourceHash === draftHash` comparison works correctly:
+//   - "open and save with no edits" → hashes match → no-op ✓
+//   - "open, add a primitive, save" → draft hash differs → fork ✓
+//   - second save with no edits → hashes match → no-op ✓
+//
+// Idempotent: if the source row's hash is already non-null, this is a no-op.
+// =============================================================================
+
+async function backfillSourceHash(
+  targetType: SaveTargetType,
+  sourceId: string | number,
+): Promise<void> {
+  if (targetType === "PRIMITIVE") {
+    const source = await db.query.primitives.findFirst({
+      where: eq(primitives.id, Number(sourceId)),
+    });
+    if (!source || source.contentHash !== null) return;
+    const hash = await computePrimitiveContentHash({
+      name: source.name,
+      category: source.category,
+      costTier: source.costTier,
+      buCost: source.buCost,
+      mechanicalOutputText: source.mechanicalOutputText,
+      narrativeRule: source.narrativeRule,
+      isPublic: source.isPublic,
+      isMirrorable: source.isMirrorable,
+      mirrorVector: source.mirrorVector,
+      mirrorBuCredit: source.mirrorBuCredit,
+      mirrorEligibilityNotes: source.mirrorEligibilityNotes ?? "",
+      hardModifiers: source.hardModifiers ?? [],
+    });
+    await db
+      .update(primitives)
+      .set({ contentHash: hash })
+      .where(eq(primitives.id, Number(sourceId)));
+    return;
+  }
+
+  if (targetType === "EFFECT") {
+    const { effects, effectPrimitives } = await import("@/db/schema/engine");
+    const source = await db.query.effects.findFirst({
+      where: eq(effects.id, String(sourceId)),
+    });
+    if (!source || source.contentHash !== null) return;
+    const links = await db
+      .select({
+        primitiveId: effectPrimitives.primitiveId,
+        quantity: effectPrimitives.quantity,
+        notes: effectPrimitives.notes,
+      })
+      .from(effectPrimitives)
+      .where(eq(effectPrimitives.effectId, source.id))
+      .orderBy(asc(effectPrimitives.sortOrder));
+    const hash = await computeEffectContentHash({
+      name: source.name,
+      narrativeDescription: source.narrativeDescription,
+      tags: source.tags,
+      isPublic: source.isPublic,
+      primitiveSlots: links.map((l) => ({
+        primitiveId: l.primitiveId,
+        quantity: l.quantity,
+        notes: l.notes ?? "",
+      })),
+    });
+    await db
+      .update(effects)
+      .set({ contentHash: hash })
+      .where(eq(effects.id, source.id));
+    return;
+  }
+
+  if (targetType === "CAPABILITY") {
+    const {
+      capabilities,
+      capabilityPrimitives,
+      capabilityEffects,
+    } = await import("@/db/schema/engine");
+    const source = await db.query.capabilities.findFirst({
+      where: eq(capabilities.id, String(sourceId)),
+    });
+    if (!source || source.contentHash !== null) return;
+    const primLinks = await db
+      .select({
+        primitiveId: capabilityPrimitives.primitiveId,
+        role: capabilityPrimitives.role,
+        quantity: capabilityPrimitives.quantity,
+        slotLabel: capabilityPrimitives.slotLabel,
+        notes: capabilityPrimitives.notes,
+      })
+      .from(capabilityPrimitives)
+      .where(eq(capabilityPrimitives.capabilityId, source.id))
+      .orderBy(asc(capabilityPrimitives.sortOrder));
+    const effLinks = await db
+      .select({
+        effectId: capabilityEffects.effectId,
+        slotLabel: capabilityEffects.slotLabel,
+        notes: capabilityEffects.notes,
+      })
+      .from(capabilityEffects)
+      .where(eq(capabilityEffects.capabilityId, source.id))
+      .orderBy(asc(capabilityEffects.sortOrder));
+    const hash = await computeCapabilityContentHash({
+      name: source.name,
+      type: source.type,
+      sourceType: source.sourceType,
+      verboseDescription: source.verboseDescription,
+      tags: source.tags,
+      isPublic: source.isPublic,
+      primitiveSlots: primLinks.map((l) => ({
+        primitiveId: l.primitiveId,
+        role: l.role,
+        quantity: l.quantity,
+        slotLabel: l.slotLabel ?? "",
+        notes: l.notes ?? "",
+      })),
+      effectSlots: effLinks.map((l) => ({
+        effectId: l.effectId,
+        slotLabel: l.slotLabel ?? "",
+        notes: l.notes ?? "",
+      })),
+    });
+    await db
+      .update(capabilities)
+      .set({ contentHash: hash })
+      .where(eq(capabilities.id, source.id));
+    return;
+  }
+
+  if (targetType === "ITEM") {
+    const {
+      items,
+      itemPrimitives,
+      itemCapabilities,
+      itemEffects,
+    } = await import("@/db/schema/items");
+    const source = await db.query.items.findFirst({
+      where: eq(items.id, String(sourceId)),
+    });
+    if (!source || source.contentHash !== null) return;
+    // itemPrimitives junction has no `quantity` / `notes` columns — it's
+    // a flat set of (itemId, primitiveId) pairs. The canonical hash
+    // mirrors that: just primitiveIds. Same shape for capabilityIds
+    // and effectIds.
+    const primIds = await db
+      .select({ id: itemPrimitives.primitiveId })
+      .from(itemPrimitives)
+      .where(eq(itemPrimitives.itemId, source.id))
+      .orderBy(asc(itemPrimitives.primitiveId));
+    const capIds = await db
+      .select({ id: itemCapabilities.capabilityId })
+      .from(itemCapabilities)
+      .where(eq(itemCapabilities.itemId, source.id))
+      .orderBy(asc(itemCapabilities.capabilityId));
+    const effIds = await db
+      .select({ id: itemEffects.effectId })
+      .from(itemEffects)
+      .where(eq(itemEffects.itemId, source.id))
+      .orderBy(asc(itemEffects.effectId));
+    const hash = await computeItemContentHash({
+      name: source.name,
+      itemType: source.itemType,
+      rarity: source.rarity,
+      buCost: source.buCost,
+      description: source.description,
+      slotCost: source.slotCost,
+      quantity: source.quantity,
+      isTwoHanded: source.isTwoHanded,
+      isConsumable: source.isConsumable,
+      actsAsFocus: source.actsAsFocus,
+      isPublic: source.isPublic,
+      tags: source.tags,
+      primitiveIds: primIds.map((r) => r.id),
+      capabilityIds: capIds.map((r) => r.id),
+      effectIds: effIds.map((r) => r.id),
+    });
+    await db
+      .update(items)
+      .set({ contentHash: hash })
+      .where(eq(items.id, source.id));
+    return;
+  }
+
+  if (targetType === "TEMPLATE") {
+    const {
+      templates,
+      templatePrimitives,
+      templateCapabilities,
+    } = await import("@/db/schema/characters");
+    const source = await db.query.templates.findFirst({
+      where: eq(templates.id, String(sourceId)),
+    });
+    if (!source || source.contentHash !== null) return;
+    // templatePrimitives has `notes`; templateCapabilities has no
+    // `slotLabel` / `notes` / `sortOrder` — it's a flat set of pairs.
+    // Templates' canonical hash is `primitiveIds` / `capabilityIds` only.
+    const primIds = await db
+      .select({ id: templatePrimitives.primitiveId })
+      .from(templatePrimitives)
+      .where(eq(templatePrimitives.templateId, source.id))
+      .orderBy(asc(templatePrimitives.primitiveId));
+    const capIds = await db
+      .select({ id: templateCapabilities.capabilityId })
+      .from(templateCapabilities)
+      .where(eq(templateCapabilities.templateId, source.id))
+      .orderBy(asc(templateCapabilities.capabilityId));
+    const hash = await computeTemplateContentHash({
+      kind: source.kind,
+      name: source.name,
+      description: source.description ?? "",
+      suggestedTraits: source.suggestedTraits ?? "",
+      isPublic: source.isPublic,
+      primitiveIds: primIds.map((r) => r.id),
+      capabilityIds: capIds.map((r) => r.id),
+    });
+    await db
+      .update(templates)
+      .set({ contentHash: hash })
+      .where(eq(templates.id, source.id));
+    return;
+  }
+
+  const _exhaustive: never = targetType;
+  throw new Error(`Unknown target type: ${String(_exhaustive)}`);
+}
+
+// =============================================================================
 // Phase 2 dispatch wrapper. Wraps the boilerplate that the per-entity POST
 // and PATCH routes all need: parse intent, load source, compute draft hash,
 // run decideSaveOutcome. Each route does its own per-entity execute (INSERT
@@ -402,6 +647,10 @@ export interface DispatchEntitySaveResult {
 export async function dispatchEntitySave(
   args: DispatchEntitySaveArgs,
 ): Promise<DispatchEntitySaveResult> {
+  if (args.sourceId !== null) {
+    await backfillSourceHash(args.targetType, args.sourceId);
+  }
+
   const source = args.sourceId !== null
     ? await loadEntityOwner(args.targetType, args.sourceId)
     : null;

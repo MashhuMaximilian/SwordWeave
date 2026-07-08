@@ -12,6 +12,7 @@ import type {
   CapabilitySlot,
 } from "./capability-form-preview";
 import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
+import { saveIntentLabel } from "@/lib/publishing/save-intent";
 import {
   saveDraft,
   loadDraft,
@@ -451,9 +452,36 @@ export function CapabilityForm({
       onSubmit={submitCapability}
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase text-muted-foreground">
-          {initialCapability ? "Edit Capability" : "Compiler Inputs"}
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">
+            {initialCapability ? "Edit Capability" : "Compiler Inputs"}
+          </p>
+          {(() => {
+            const label = saveIntentLabel(
+              intent ?? null,
+              initialCapability?.name ?? null,
+            );
+            if (!label) return null;
+            const isFork = intent === "fork";
+            return (
+              <span
+                data-testid="save-intent-chip"
+                className={
+                  isFork
+                    ? "inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary"
+                    : "inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                }
+                title={
+                  isFork
+                    ? "Save will create a fork owned by you."
+                    : "Save will update in place if you own this; otherwise create a fork."
+                }
+              >
+                {label}
+              </span>
+            );
+          })()}
+        </div>
         <button
           type="button"
           onClick={resetEditor}

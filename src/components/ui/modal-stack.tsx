@@ -21,10 +21,12 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { ChevronRight, X } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const MAX_DEPTH = 4;
@@ -74,6 +76,25 @@ export function useModalStack(): ModalStackState {
 
 export function ModalStackHost({ children }: { children: ReactNode }) {
   const [stack, setStack] = useState<ModalEntry[]>([]);
+  const pathname = usePathname();
+
+  // Phase 2 fix: clear the stack when the route changes. The Creations
+  // page's "Edit in sandbox" handler calls `router.push(...)` to navigate
+  // to the sandbox, but the stack from the preview modal would otherwise
+  // persist because the ModalStackHost outlives page navigations (it's
+  // mounted at the app-shell level). Without this, opening a preview
+  // modal on /creations, then clicking "Edit in sandbox", would leave
+  // the preview modal overlaid on top of the sandbox.
+  //
+  // We compare to the stack's last-rendered pathname (not the current
+  // pathname at mount) so the first render after navigation is a no-op
+  // rather than clearing whatever the user opened.
+  const lastPathRef = useRef(pathname);
+  useEffect(() => {
+    if (lastPathRef.current === pathname) return;
+    lastPathRef.current = pathname;
+    setStack((current) => (current.length === 0 ? current : []));
+  }, [pathname]);
 
   const push = useCallback(<T,>(entry: ModalEntry<T>): boolean => {
     let pushed = false;
