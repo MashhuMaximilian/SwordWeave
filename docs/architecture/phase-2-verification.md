@@ -388,3 +388,92 @@ When you report back, please distinguish:
 - **Out-of-scope observations**: anything else you noticed (slot
   UX, content hashing, version rows, etc.). I'll log these but not
   act until their phase.
+
+---
+
+## Phase 2 patch — 2026-07-08 (commit 51568b7 + 7bb6e9f)
+
+Three live-UI bugs surfaced after the initial Phase 2 ship:
+
+### Bug A: "Save with no edits" still forked legacy source rows
+
+**Symptom**: Mashu forked Blind Stun (a pre-hash system row, `contentHash=null`),
+hit Save without changing anything, and got a new fork row.
+
+**Two-part root cause**:
+
+1. `decideSaveOutcome` deliberately treats `contentHash === null` on the
+   source row as "always changed" (designed in Phase 1 as a fallback for
+   legacy rows that hadn't been hashed yet). This made the no-op short
+   circuit unreachable for any source row without a hash.
+2. The Phase 2 forms (`effect-form`, `capability-form`) silently dropped
+   fields that go into the canonical hash: per-slot `notes`. The form
+   loaded the source's primitive links WITHOUT notes, then submitted
+   without notes. The route's `s.notes ?? ""` produced empty notes
+   while the source's stored hash had the real notes. Hash mismatch →
+   dispatcher said "forked".
+
+**Fix**:
+
+1. New `backfillSourceHash()` in `src/lib/publishing/dispatch-save.ts`,
+   called inside `dispatchEntitySave` BEFORE `loadEntityOwner`. Reads
+   the source row's current state (with all its slot links per entity
+   type), computes the canonical hash, writes it back. Idempotent.
+   After backfill, the normal `sourceHash === draftHash` comparison
+   works correctly:
+   - "open + save with no edits" → no-op ✓
+   - "open + add a primitive + save" → fork ✓
+   - second save with no edits → no-op ✓
+2. `effect-form.tsx` + `effect-form-preview.tsx` — `EffectFormSlot` and
+   `EffectRow.primitiveLinks[].notes` added. The form loads notes from
+   `initialEffect.primitiveLinks[].notes`, sends them in the body. Same
+   pattern for `capability-form.tsx` + `capability-form-preview.tsx`.
+3. `hash-content.ts` — capability's canonical effectSlots were
+   `{effectId, slotLabel, notes}` but the form's `effectIds` is a flat
+   `string[]` with no per-slot metadata. Same root cause: form can't
+   round-trip the metadata, so the hash always sees a change. Fix:
+   flatten to `effectIds: string[]` in the canonical payload (matching
+   item + template patterns). Per-effect slotLabel/notes are still
+   stored in the DB; the hash just doesn't read them. Comment in the
+   interface declaration notes that future PRs can surface them in the
+   UI and re-introduce them in the hash.
+
+**Verified live** (Mashu's account, on phone + via this assistant's
+headless browser session):
+- `?build=effect&edit=8b27f420-...&intent=fork` + Save (no edits) →
+  "Nothing to fork — make a change first.", URL unchanged.
+- `?build=capability&edit=eb167a4e-...&intent=fork` + Save (no edits) →
+  "Nothing to fork — make a change first.", URL unchanged.
+- `?build=effect&edit=<owned-id>&intent=load` + Save (no edits) →
+  "Nothing to save.", URL unchanged.
+
+### Bug B1: intent chip missing on the 4 Phase 2 forms
+
+**Symptom**: only `primitive-form.tsx` showed the "Forking X" / "Working on X"
+chip (Round 6). The effect, capability, item, template forms had no chip.
+
+**Fix**: copied the same `saveIntentLabel()` + `<span data-testid="save-intent-chip">`
+block from primitive-form into all 4 Phase 2 form headers. Blue chip for
+`intent=fork`, gray for `intent=load`. Title tooltips match primitive-form.
+
+**Verified live**:
+- `?intent=fork` on any entity → "Forking <name>" blue chip.
+- `?intent=load` on any entity → "Working on <name>" gray chip.
+
+### Bug B2: preview modal stays open after /creations → Edit in sandbox
+
+**Symptom**: clicking "Edit in sandbox" from the Creations page preview
+modal called `router.push(...)` to the sandbox, but the preview modal
+stayed overlaid on top of the new sandbox page.
+
+**Root cause**: `ModalStackHost` is mounted at the app-shell level, so
+it outlives page navigations. The stack from the preview modal
+persisted.
+
+**Fix**: `usePathname()` + `useEffect` inside `ModalStackHost` that
+clears the stack when the route changes. Ref-comparison against the
+last-seen pathname so the initial mount doesn't clear a freshly opened
+modal.
+
+**Verified live**: /creations → click Strike (Copy) → modal opens →
+"Edit in sandbox" → sandbox opens, preview modal is gone, no overlay.
