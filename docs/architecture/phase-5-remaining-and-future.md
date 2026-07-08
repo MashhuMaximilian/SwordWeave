@@ -310,9 +310,9 @@ The basic total + enforcement is now in Phase 5 (P5R-9). Phase 6 is the **rich d
 | Phase | Status | Effort | Prerequisites |
 |---|---|---|---|
 | 1-4 | ✅ Shipped | — | — |
-| 5 (partial) | 🟡 Mostly shipped | — | — |
-| **5 REMAINDER (P5R-1 to P5R-8, P5R-9 cut)** | ⏳ Not started (P5R-7 done by Mashu) | **~3 days Senku** | — |
-| 6 (Build Cost Engine: Display + Preview) | ⏳ Not started | 1-2 days | Phase 5 (P5R-9) |
+| 5 (partial) | ✅ **FULLY SHIPPED 2026-07-08** | — | — |
+| **5 REMAINDER (P5R-1 to P5R-8, P5R-9 cut)** | ✅ **SHIPPED 2026-07-08** (P5R-1, 2, 3, 4, 5, 6, 7, 8) | ~3 days Senku | — |
+| 6 (Build Cost Engine: Display + Preview) | ⏳ Not started | 1-2 days | — |
 | 7 (DB Revise + Content Cleanup) | ⏳ Not started | 3-5 days | — |
 | 8 (Unified Search) | ⏳ Not started | 5-8 days | Phase 7 |
 | 9 (Character Creation UX) | ⏳ Not started | 5-10 days | Phase 6, 7 |
