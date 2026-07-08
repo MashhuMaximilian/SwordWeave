@@ -40,3 +40,6 @@ pnpm-debug.log*
 
 # one-time DB migration backups (production data snapshots)
 /.migration-backup/
+.swordweave-test-account.local
+scripts/debug-*.mts
+scripts/cleanup-test-*.mts
