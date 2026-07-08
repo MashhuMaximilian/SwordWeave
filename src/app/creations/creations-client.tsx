@@ -4,9 +4,10 @@
 // CreationsClient — filterable table of the signed-in user's authored entries.
 // Filters: type (all / primitive / effect / capability / template / item / character)
 //          status (all / draft = isPublic=false)
+//          view  (GRID | LIST — P5R-6 added the LIST toggle)
 //
 // Renders as a stack of filter chips on mobile, with the result set as a
-// LibraryTable grid. Card click pushes a ModalStack entry showing a
+// LibraryTable. Card click pushes a ModalStack entry showing a
 // per-entity-type preview body — no separate "View" / "Add" buttons.
 //
 // The preview also includes a visibility selector (PRIVATE / FOLLOWERS_ONLY /
@@ -19,6 +20,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { LayoutGrid, List } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { LibraryTable } from "@/components/library/library-table";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
@@ -27,6 +29,7 @@ import { useGlobalControls } from "@/components/layout/global-controls";
 import { VisibilitySelect, type Visibility, visibilityLabel } from "@/components/library/visibility-select";
 import { cn } from "@/lib/utils";
 import type { LibraryItem } from "@/lib/publishing/library-query";
+import type { LibraryView } from "@/lib/preferences/library-prefs";
 
 type TypeFilter = "all" | "primitive" | "effect" | "capability" | "template" | "item" | "character";
 type StatusFilter = "all" | "draft";
@@ -74,6 +77,11 @@ export function CreationsClient({
     initialStatus === "draft" ? "draft" : "all",
   );
   const [search, setSearch] = useState("");
+  // P5R-6: LIST view toggle. LibraryTable already supports both modes; the
+  // view prop is just plumbed through. Default GRID matches the previous
+  // behavior; persisted in local state for this page (no cookie — Creations
+  // is per-user, not shared with the public library where the cookie matters).
+  const [view, setView] = useState<LibraryView>("GRID");
   // Lifted visibility map so optimistic updates from the preview modal
   // re-render the table without a refresh. Keyed by LibraryItem.id.
   // The previous implementation mutated `item.visibility` directly,
@@ -193,12 +201,53 @@ export function CreationsClient({
   return (
     <div className="mt-8 space-y-4">
       <div className="rounded-md border border-border bg-card p-3">
-        <ColumnSearchBar
-          search={search}
-          onSearchChange={setSearch}
-          onOpenFilters={() => setFilterPanelOpen(true)}
-          hasActiveFilters={hasActiveFilters}
-        />
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <ColumnSearchBar
+              search={search}
+              onSearchChange={setSearch}
+              onOpenFilters={() => setFilterPanelOpen(true)}
+              hasActiveFilters={hasActiveFilters}
+            />
+          </div>
+          {/* P5R-6: GRID / LIST toggle. Local state only; resets when
+              the user navigates away. Two buttons side-by-side; the active
+              one shows the primary colour, the other is muted. */}
+          <div
+            className="inline-flex shrink-0 overflow-hidden rounded-md border border-border"
+            role="group"
+            aria-label="View mode"
+          >
+            <button
+              type="button"
+              onClick={() => setView("GRID")}
+              className={cn(
+                "inline-flex items-center justify-center px-2.5 py-1.5 text-xs font-medium transition-colors",
+                view === "GRID"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card text-muted-foreground hover:text-foreground",
+              )}
+              title="Grid view"
+              aria-pressed={view === "GRID"}
+            >
+              <LayoutGrid className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("LIST")}
+              className={cn(
+                "inline-flex items-center justify-center border-l border-border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                view === "LIST"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card text-muted-foreground hover:text-foreground",
+              )}
+              title="List view"
+              aria-pressed={view === "LIST"}
+            >
+              <List className="size-3.5" />
+            </button>
+          </div>
+        </div>
       </div>
 
       {items.length === 0 ? (
@@ -215,7 +264,7 @@ export function CreationsClient({
         <div className="rounded-md border border-border bg-card/50 p-2">
           <LibraryTable
             items={filteredItems}
-            view="GRID"
+            view={view}
             engagement={{ reactions: {}, following: {} }}
             currentUserInternalId={null}
             onSelect={(item) => {
