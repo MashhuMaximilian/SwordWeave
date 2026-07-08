@@ -80,6 +80,22 @@ export default async function VersionHistoryPage({ params }: PageProps) {
           {result.versions.length}{" "}
           {result.versions.length === 1 ? "version" : "versions"} published
         </p>
+        {/* P5R-8: discoverability for the diff page. The per-row
+            "Compare with v[N-1]" link is small and easy to miss. This
+            header CTA is the obvious entry point — "Compare the latest
+            two versions". Shown only when there are 2+ versions. */}
+        {result.versions.length >= 2 ? (
+          <div className="mt-3">
+            <Link
+              href={`/library/item/${parsed.type}:${parsed.id}/versions/compare?from=${result.versions.length - 1}&to=${result.versions.length}`}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+              title="Open the side-by-side diff view for the latest two versions"
+            >
+              <GitCompareArrows className="size-3.5" />
+              Compare latest two versions →
+            </Link>
+          </div>
+        ) : null}
       </header>
 
       {result.versions.length === 0 ? (
@@ -260,10 +276,11 @@ function VersionRow({
         {previousVersionNumber !== null && (
           <Link
             href={`/library/item/${targetType}:${targetId}/versions/compare?from=${previousVersionNumber}&to=${version.versionNumber}`}
-            className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+            className="ml-auto inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+            title={`Compare v${previousVersionNumber} with v${version.versionNumber}`}
           >
             <GitCompareArrows className="size-3" />
-            Compare with v{previousVersionNumber}
+            Diff v{previousVersionNumber}↔v{version.versionNumber}
           </Link>
         )}
         {!previousVersionNumber && (
