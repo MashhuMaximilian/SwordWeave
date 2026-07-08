@@ -411,10 +411,10 @@ export const NAV_LINKS: FabItem[] = [
   },
   {
     kind: "link",
-    key: "sandbox-builds",
+    key: "builds",
     label: "Builds",
     icon: <Swords className="size-4" />,
-    href: "/sandbox/characters",
+    href: "/characters",
   },
 ];
 
