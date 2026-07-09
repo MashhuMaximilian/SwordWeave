@@ -86,7 +86,7 @@ export function CapabilityFormPreview({
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {form.type} - {form.sourceType}
         </p>
-        <h2 className="text-2xl font-semibold leading-tight">
+        <h2 className="text-lg font-semibold leading-tight text-foreground">
           {form.name || "Unnamed Capability"}
         </h2>
         <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -159,16 +159,16 @@ export function CapabilityFormPreview({
                 key={`${slot.primitiveId}-${i}`}
                 className="flex items-center justify-between gap-2 p-2 text-sm"
               >
-                <span className="min-w-0 flex-1 truncate font-medium">
+                <span className="min-w-0 flex-1 truncate font-medium text-foreground">
                   {slot.primitive.name}
                 </span>
-                <span className="shrink-0 rounded-sm border border-border px-1.5 py-0.5 text-xs text-muted-foreground">
+                <span className="shrink-0 rounded-sm border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
                   {slot.role}
                 </span>
-                <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
                   ×{slot.quantity}
                 </span>
-                <span className="shrink-0 font-mono text-xs">
+                <span className="shrink-0 font-mono text-[10px] text-foreground">
                   {Math.abs(slot.primitive.buCost * slot.quantity)} BU
                 </span>
               </li>
@@ -186,13 +186,13 @@ export function CapabilityFormPreview({
             {effects!.map((effect) => (
               <li
                 key={effect.id}
-                className="rounded-md border border-border bg-card/50 p-3"
+                className="rounded-md border border-border bg-card/50 p-2.5"
               >
-                <p className="font-semibold text-foreground">
+                <p className="text-sm font-semibold text-foreground">
                   {effect.name}
                 </p>
                 {effect.narrativeDescription ? (
-                  <div className="mt-1.5 rounded border border-border/40 bg-background/40 p-2 text-xs leading-relaxed text-muted-foreground">
+                  <div className="mt-1 rounded border border-border/40 bg-background/40 p-2 text-[11px] leading-relaxed text-muted-foreground">
                     <Markdown>{effect.narrativeDescription}</Markdown>
                   </div>
                 ) : null}

@@ -68,7 +68,7 @@ export function TemplateFormPreview({
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {kindLabel(form.kind)} Template
         </p>
-        <h2 className="text-2xl font-semibold leading-tight">
+        <h2 className="text-lg font-semibold leading-tight text-foreground">
           {form.name || "Unnamed Template"}
         </h2>
         <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -138,10 +138,10 @@ export function TemplateFormPreview({
                 key={p.id}
                 className="flex items-center justify-between gap-2 p-2 text-sm"
               >
-                <span className="min-w-0 flex-1 truncate font-medium">
+                <span className="min-w-0 flex-1 truncate font-medium text-foreground">
                   {p.name}
                 </span>
-                <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                <span className="shrink-0 font-mono text-[10px] text-foreground">
                   {p.buCost} BU
                 </span>
               </li>
@@ -161,7 +161,7 @@ export function TemplateFormPreview({
                 key={c.id}
                 className="flex items-center justify-between gap-2 p-2 text-sm"
               >
-                <span className="min-w-0 flex-1 truncate font-medium">
+                <span className="min-w-0 flex-1 truncate font-medium text-foreground">
                   {c.name}
                 </span>
               </li>

@@ -105,7 +105,7 @@ export function ItemFormPreview({
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {form.itemType} Item
         </p>
-        <h2 className="text-2xl font-semibold leading-tight">
+        <h2 className="text-lg font-semibold leading-tight text-foreground">
           {form.name || "Unnamed Item"}
         </h2>
         <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -193,10 +193,10 @@ export function ItemFormPreview({
                 key={slot.primitiveId}
                 className="flex items-center justify-between gap-2 p-2 text-sm"
               >
-                <span className="min-w-0 flex-1 truncate font-medium">
+                <span className="min-w-0 flex-1 truncate font-medium text-foreground">
                   {slot.primitive.name}
                 </span>
-                <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                <span className="shrink-0 font-mono text-[10px] text-foreground">
                   {slot.primitive.buCost} BU
                 </span>
               </li>
@@ -216,10 +216,10 @@ export function ItemFormPreview({
                 key={c.id}
                 className="flex items-center justify-between gap-2 p-2 text-sm"
               >
-                <span className="min-w-0 flex-1 truncate font-medium">
+                <span className="min-w-0 flex-1 truncate font-medium text-foreground">
                   {c.name}
                 </span>
-                <span className="shrink-0 text-xs text-muted-foreground">
+                <span className="shrink-0 text-[10px] text-muted-foreground">
                   {c.type}
                 </span>
               </li>
@@ -239,7 +239,7 @@ export function ItemFormPreview({
                 key={e.id}
                 className="flex items-center justify-between gap-2 p-2 text-sm"
               >
-                <span className="min-w-0 flex-1 truncate font-medium">
+                <span className="min-w-0 flex-1 truncate font-medium text-foreground">
                   {e.name}
                 </span>
               </li>

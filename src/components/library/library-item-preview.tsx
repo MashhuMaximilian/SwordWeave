@@ -701,19 +701,28 @@ function EffectBody({
             {row.primitiveLinks.map((link) => (
               <li
                 key={link.primitiveId}
-                className="flex items-center justify-between gap-2 p-2.5 text-sm hover:bg-accent/40"
-              >
-                <button
-                  type="button"
-                  onClick={() =>
+                role="button"
+                tabIndex={0}
+                onClick={() =>
+                  onSubLink({
+                    targetType: "PRIMITIVE",
+                    targetId: String(link.primitive.id),
+                    label: link.primitive.name,
+                  })
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
                     onSubLink({
                       targetType: "PRIMITIVE",
                       targetId: String(link.primitive.id),
                       label: link.primitive.name,
-                    })
+                    });
                   }
-                  className="min-w-0 flex-1 truncate text-left"
-                >
+                }}
+                className="flex items-center justify-between gap-2 p-2.5 text-sm hover:bg-accent/40 cursor-pointer"
+              >
+                <div className="min-w-0 flex-1 truncate text-left">
                   <VersionChip versionNumber={link.versionNumber} />
                   <span className="font-semibold text-cyan-400 hover:underline">
                     {link.primitive.name}
@@ -721,7 +730,7 @@ function EffectBody({
                   <span className="ml-2 text-xs text-muted-foreground">
                     {link.primitive.category}
                   </span>
-                </button>
+                </div>
                 <span className="shrink-0 font-mono text-xs text-muted-foreground">
                   {Math.abs(link.primitive.buCost * link.quantity)} BU
                   {link.quantity > 1 ? ` ×${link.quantity}` : ""}
@@ -795,19 +804,28 @@ function CapabilityBody({
             {row.primitiveLinks.map((link, i) => (
               <li
                 key={`${link.primitiveId}-${i}`}
-                className="flex items-center justify-between gap-2 p-2.5 text-sm hover:bg-accent/40"
-              >
-                <button
-                  type="button"
-                  onClick={() =>
+                role="button"
+                tabIndex={0}
+                onClick={() =>
+                  onSubLink({
+                    targetType: "PRIMITIVE",
+                    targetId: String(link.primitive.id),
+                    label: link.primitive.name,
+                  })
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
                     onSubLink({
                       targetType: "PRIMITIVE",
                       targetId: String(link.primitive.id),
                       label: link.primitive.name,
-                    })
+                    });
                   }
-                  className="min-w-0 flex-1 text-left"
-                >
+                }}
+                className="flex items-center justify-between gap-2 p-2.5 text-sm hover:bg-accent/40 cursor-pointer"
+              >
+                <div className="min-w-0 flex-1 text-left">
                   <VersionChip versionNumber={link.versionNumber} />
                   <span className="font-semibold text-cyan-400 hover:underline">
                     {link.primitive.name}
@@ -822,7 +840,7 @@ function CapabilityBody({
                       <span className="italic">"{link.slotLabel}"</span>
                     ) : null}
                   </div>
-                </button>
+                </div>
                 <span className="shrink-0 font-mono text-xs text-muted-foreground">
                   {Math.abs(link.primitive.buCost * link.quantity)} BU
                 </span>
@@ -848,19 +866,28 @@ function CapabilityBody({
             {row.effectLinks.map((link) => (
               <li
                 key={link.effectId}
-                className="flex items-start gap-2 p-2.5 text-sm hover:bg-accent/40"
-              >
-                <button
-                  type="button"
-                  onClick={() =>
+                role="button"
+                tabIndex={0}
+                onClick={() =>
+                  onSubLink({
+                    targetType: "EFFECT",
+                    targetId: link.effectId,
+                    label: link.effect.name,
+                  })
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
                     onSubLink({
                       targetType: "EFFECT",
                       targetId: link.effectId,
                       label: link.effect.name,
-                    })
+                    });
                   }
-                  className="min-w-0 flex-1 text-left"
-                >
+                }}
+                className="flex items-start gap-2 p-2.5 text-sm hover:bg-accent/40 cursor-pointer"
+              >
+                <div className="min-w-0 flex-1 text-left">
                   <VersionChip versionNumber={link.versionNumber} />
                   <span className="font-semibold text-violet-400 hover:underline">
                     {link.effect.name}
@@ -875,7 +902,7 @@ function CapabilityBody({
                       {link.effect.narrativeDescription}
                     </div>
                   ) : null}
-                </button>
+                </div>
                 <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
               </li>
             ))}
@@ -927,24 +954,33 @@ function TemplateBody({
             {row.primitiveLinks.map((link) => (
               <li
                 key={link.primitiveId}
-                className="flex items-center justify-between gap-2 p-2.5 text-sm hover:bg-accent/40"
-              >
-                <button
-                  type="button"
-                  onClick={() =>
+                role="button"
+                tabIndex={0}
+                onClick={() =>
+                  onSubLink({
+                    targetType: "PRIMITIVE",
+                    targetId: String(link.primitive.id),
+                    label: link.primitive.name,
+                  })
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
                     onSubLink({
                       targetType: "PRIMITIVE",
                       targetId: String(link.primitive.id),
                       label: link.primitive.name,
-                    })
+                    });
                   }
-                  className="min-w-0 flex-1 truncate text-left"
-                >
+                }}
+                className="flex items-center justify-between gap-2 p-2.5 text-sm hover:bg-accent/40 cursor-pointer"
+              >
+                <div className="min-w-0 flex-1 truncate text-left">
                   <VersionChip versionNumber={link.versionNumber} />
                   <span className="font-semibold text-cyan-400 hover:underline">
                     {link.primitive.name}
                   </span>
-                </button>
+                </div>
                 <span className="shrink-0 font-mono text-xs text-muted-foreground">
                   {link.primitive.buCost} BU
                 </span>
@@ -961,24 +997,33 @@ function TemplateBody({
             {row.capabilityLinks.map((link) => (
               <li
                 key={link.capabilityId}
-                className="flex items-center justify-between gap-2 p-2.5 text-sm hover:bg-accent/40"
-              >
-                <button
-                  type="button"
-                  onClick={() =>
+                role="button"
+                tabIndex={0}
+                onClick={() =>
+                  onSubLink({
+                    targetType: "CAPABILITY",
+                    targetId: link.capability.id,
+                    label: link.capability.name,
+                  })
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
                     onSubLink({
                       targetType: "CAPABILITY",
                       targetId: link.capability.id,
                       label: link.capability.name,
-                    })
+                    });
                   }
-                  className="min-w-0 flex-1 truncate text-left"
-                >
+                }}
+                className="flex items-center justify-between gap-2 p-2.5 text-sm hover:bg-accent/40 cursor-pointer"
+              >
+                <div className="min-w-0 flex-1 truncate text-left">
                   <VersionChip versionNumber={link.versionNumber} />
                   <span className="font-semibold text-cyan-400 hover:underline">
                     {link.capability.name}
                   </span>
-                </button>
+                </div>
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {link.capability.type}
                 </span>
@@ -1074,24 +1119,33 @@ function ItemBody({
             {row.primitiveLinks.map((link) => (
               <li
                 key={link.primitiveId}
-                className="flex items-center justify-between gap-2 p-2.5 text-sm hover:bg-accent/40"
-              >
-                <button
-                  type="button"
-                  onClick={() =>
+                role="button"
+                tabIndex={0}
+                onClick={() =>
+                  onSubLink({
+                    targetType: "PRIMITIVE",
+                    targetId: String(link.primitive.id),
+                    label: link.primitive.name,
+                  })
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
                     onSubLink({
                       targetType: "PRIMITIVE",
                       targetId: String(link.primitive.id),
                       label: link.primitive.name,
-                    })
+                    });
                   }
-                  className="min-w-0 flex-1 truncate text-left"
-                >
+                }}
+                className="flex items-center justify-between gap-2 p-2.5 text-sm hover:bg-accent/40 cursor-pointer"
+              >
+                <div className="min-w-0 flex-1 truncate text-left">
                   <VersionChip versionNumber={link.versionNumber} />
                   <span className="font-semibold text-cyan-400 hover:underline">
                     {link.primitive.name}
                   </span>
-                </button>
+                </div>
                 <span className="shrink-0 font-mono text-xs text-muted-foreground">
                   {link.primitive.buCost} BU
                 </span>

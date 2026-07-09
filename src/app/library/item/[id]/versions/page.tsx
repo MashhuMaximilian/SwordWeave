@@ -25,6 +25,7 @@ import {
   type VersionTargetType,
 } from "@/lib/versions/version-history";
 import { RestoreButton } from "@/components/library/restore-button";
+import { VersionPreviewButton } from "@/components/library/version-preview-button";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -261,6 +262,12 @@ function VersionRow({
             </Link>
           );
         })()}
+        <VersionPreviewButton
+          targetType={targetType}
+          targetId={targetId}
+          versionNumber={version.versionNumber}
+          payload={version.payload}
+        />
         {(() => {
           const apiType: "PRIMITIVE" | "EFFECT" | "CAPABILITY" | "ITEM" | "TEMPLATE" | null = mapToApiType(targetType);
           if (!apiType) return null;
