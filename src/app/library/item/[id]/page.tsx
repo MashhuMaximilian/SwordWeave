@@ -39,6 +39,10 @@ import {
   bulkResolveLatestVersionNumbers,
   type VersionNumberKey,
 } from "@/lib/versions/bulk-resolve-latest-version-numbers";
+import {
+  bulkComputeEffectBuCost,
+  bulkComputeCapabilityBuCost,
+} from "@/lib/versions/bulk-compute-bu-cost";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -653,6 +657,12 @@ async function CapabilityDetail({
       primitiveLinks: {
         with: { primitive: true },
       },
+      // Mashu 2026-07-09: effectLinks now loaded so the source page
+      // can render the "Composed effects" section (the modal preview
+      // body already shows this; the source page previously didn't).
+      effectLinks: {
+        with: { effect: true },
+      },
     },
   });
   if (!row) notFound();
@@ -663,16 +673,20 @@ async function CapabilityDetail({
   }
 
   const engagement = await loadEngagement("CAPABILITY", id, currentUserId);
-  const [{ flagDistribution, flagNotes }, forkSource, versionMap] =
+  const [{ flagDistribution, flagNotes }, forkSource, versionMap, effectBuMap] =
     await Promise.all([
       loadFlagsAndTags("CAPABILITY", id, row.tags ?? []),
       loadForkSource("CAPABILITY", id),
-      bulkResolveLatestVersionNumbers(
-        row.primitiveLinks.map((l) => ({
+      bulkResolveLatestVersionNumbers([
+        ...row.primitiveLinks.map((l) => ({
           kind: "primitive" as const,
           id: l.primitiveId,
         })),
-      ),
+        ...row.effectLinks.map((l) => ({ kind: "effect" as const, id: l.effectId })),
+      ]),
+      // Mashu 2026-07-09: per-effect cost map so each composed-effect
+      // row can show its own BU contribution in the section below.
+      bulkComputeEffectBuCost(row.effectLinks.map((l) => l.effectId)),
     ]);
 
   return (
@@ -738,8 +752,8 @@ async function CapabilityDetail({
                   href={`/library/item/PRIMITIVE:${link.primitiveId}`}
                   className="min-w-0 flex-1 truncate hover:underline"
                 >
-                  <span className="font-semibold">{link.primitive.name}</span>
                   <SourceVersionChip versionNumber={version} />
+                  <span className="font-semibold">{link.primitive.name}</span>
                   <span className="ml-2 text-xs text-muted-foreground">
                     {link.role.replace(/_/g, " ")}
                   </span>
@@ -753,6 +767,50 @@ async function CapabilityDetail({
           })}
         </ul>
       </section>
+
+      {/* Mashu 2026-07-09: Composed effects section. The modal preview
+          already shows this list; the source page was previously
+          missing it. Effects contribute their own narrative + can
+          nest further effects (handled in EffectDetail). */}
+      {row.effectLinks.length > 0 && (
+        <section className="mt-5">
+          <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+            Composed effects ({row.effectLinks.length})
+          </h2>
+          <ul className="divide-y divide-border rounded-md border border-border">
+            {row.effectLinks.map((link) => {
+              const version =
+                versionMap.get(`effect:${link.effectId}` as VersionNumberKey) ?? null;
+              // Mashu 2026-07-09: per-effect BU cost surfaced in the
+              // composed-effects container, alongside the effect name.
+              const bu = effectBuMap.get(link.effectId) ?? 0;
+              return (
+                <li
+                  key={`${link.capabilityId}-${link.effectId}`}
+                  className="flex items-center justify-between gap-2 p-3 text-sm"
+                >
+                  <Link
+                    href={`/library/item/EFFECT:${link.effectId}`}
+                    className="min-w-0 flex-1 truncate hover:underline"
+                  >
+                    <SourceVersionChip versionNumber={version} />
+                    <span className="font-semibold">{link.effect.name}</span>
+                    {link.slotLabel ? (
+                      <span className="ml-2 text-xs italic text-muted-foreground">
+                        "{link.slotLabel}"
+                      </span>
+                    ) : null}
+                  </Link>
+                  <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                    {bu} BU
+                  </span>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
     </DetailShell>
   );
 }
@@ -792,7 +850,7 @@ async function TemplateDetail({
     id,
     currentUserId,
   );
-  const [{ flagDistribution, flagNotes }, forkSource, versionMap] =
+  const [{ flagDistribution, flagNotes }, forkSource, versionMap, capabilityBuMap] =
     await Promise.all([
       loadFlagsAndTags(
         targetTypeForEngagement,
@@ -812,6 +870,13 @@ async function TemplateDetail({
           .filter((l) => l.capability != null)
           .map((l) => ({ kind: "capability" as const, id: l.capabilityId })),
       ]),
+      // Mashu 2026-07-09: per-capability BU cost map for the
+      // "Bundled capabilities" container below.
+      bulkComputeCapabilityBuCost(
+        row.capabilityLinks
+          .filter((l) => l.capability != null)
+          .map((l) => l.capabilityId),
+      ),
     ]);
 
   return (
@@ -871,8 +936,8 @@ async function TemplateDetail({
                     href={`/library/item/PRIMITIVE:${link.primitiveId}`}
                     className="min-w-0 flex-1 truncate hover:underline"
                   >
-                    <span className="font-semibold">{link.primitive.name}</span>
                     <SourceVersionChip versionNumber={version} />
+                    <span className="font-semibold">{link.primitive.name}</span>
                   </Link>
                   <span className="shrink-0 font-mono text-xs">
                     {link.primitive.buCost} BU
@@ -900,6 +965,9 @@ async function TemplateDetail({
               const label = link.capability
                 ? link.capability.name
                 : `capability ${link.capabilityId.slice(0, 8)}`;
+              // Mashu 2026-07-09: per-capability BU cost surfaced in
+              // the bundled-capabilities container.
+              const bu = capabilityBuMap.get(link.capabilityId) ?? 0;
               return (
                 <li
                   key={`${link.templateId}-${link.capabilityId}`}
@@ -909,14 +977,17 @@ async function TemplateDetail({
                     href={`/library/item/CAPABILITY:${link.capabilityId}`}
                     className="min-w-0 flex-1 truncate hover:underline"
                   >
-                    <span className="font-semibold">{label}</span>
                     <SourceVersionChip versionNumber={version} />
+                    <span className="font-semibold">{label}</span>
                   </Link>
                   {link.capability ? (
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {link.capability.type}
                     </span>
                   ) : null}
+                  <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                    {bu} BU
+                  </span>
                   <ChevronRight className="size-4 text-muted-foreground" />
                 </li>
               );
@@ -1054,8 +1125,8 @@ async function EffectDetail({
                     href={`/library/item/PRIMITIVE:${link.primitiveId}`}
                     className="min-w-0 flex-1 truncate hover:underline"
                   >
-                    <span className="font-semibold">{link.primitive.name}</span>
                     <SourceVersionChip versionNumber={version} />
+                    <span className="font-semibold">{link.primitive.name}</span>
                     <span className="ml-2 text-xs text-muted-foreground">
                       {link.primitive.category.replace(/_/g, " ")}
                     </span>
@@ -1081,13 +1152,13 @@ async function EffectDetail({
                 versionMap.get(`effect:${parent.id}` as VersionNumberKey) ?? null;
               return (
                 <li key={parent.id} className="p-3 text-sm">
+                  <SourceVersionChip versionNumber={version} />
                   <Link
                     href={`/library/item/EFFECT:${parent.id}`}
                     className="font-semibold hover:underline"
                   >
                     {parent.name}
                   </Link>
-                  <SourceVersionChip versionNumber={version} />
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                     {parent.narrativeDescription?.slice(0, 200)}
                   </p>
@@ -1109,13 +1180,13 @@ async function EffectDetail({
                 versionMap.get(`effect:${child.id}` as VersionNumberKey) ?? null;
               return (
                 <li key={child.id} className="p-3 text-sm">
+                  <SourceVersionChip versionNumber={version} />
                   <Link
                     href={`/library/item/EFFECT:${child.id}`}
                     className="font-semibold hover:underline"
                   >
                     {child.name}
                   </Link>
-                  <SourceVersionChip versionNumber={version} />
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                     {child.narrativeDescription?.slice(0, 200)}
                   </p>
@@ -1164,22 +1235,32 @@ async function ItemDetail({
 
   const author = await resolveAuthorByClerkId(itemRow.userId);
   const engagement = await loadEngagement("ITEM", id, currentUserId);
-  const [{ flagDistribution, flagNotes }, forkSource, versionMap] =
-    await Promise.all([
-      loadFlagsAndTags("ITEM", id, itemRow.tags ?? []),
-      loadForkSource("ITEM", id),
-      bulkResolveLatestVersionNumbers([
-        ...primitiveLinks.map((l) => ({
-          kind: "primitive" as const,
-          id: l.primitiveId,
-        })),
-        ...effectLinks.map((l) => ({ kind: "effect" as const, id: l.effectId })),
-        ...capabilityLinks.map((l) => ({
-          kind: "capability" as const,
-          id: l.capabilityId,
-        })),
-      ]),
-    ]);
+  const [
+    { flagDistribution, flagNotes },
+    forkSource,
+    versionMap,
+    effectBuMap,
+    capabilityBuMap,
+  ] = await Promise.all([
+    loadFlagsAndTags("ITEM", id, itemRow.tags ?? []),
+    loadForkSource("ITEM", id),
+    bulkResolveLatestVersionNumbers([
+      ...primitiveLinks.map((l) => ({
+        kind: "primitive" as const,
+        id: l.primitiveId,
+      })),
+      ...effectLinks.map((l) => ({ kind: "effect" as const, id: l.effectId })),
+      ...capabilityLinks.map((l) => ({
+        kind: "capability" as const,
+        id: l.capabilityId,
+      })),
+    ]),
+    // Mashu 2026-07-09: per-effect + per-capability BU cost so the
+    // "Composed effects" and "Composed capabilities" containers show
+    // each row's own cost (not just the parent total).
+    bulkComputeEffectBuCost(effectLinks.map((l) => l.effectId)),
+    bulkComputeCapabilityBuCost(capabilityLinks.map((l) => l.capabilityId)),
+  ]);
 
   // Rarity class for the chip. itemRarityEnum is the schema enum;
   // we map each value to a tailwind color pair. Cast through string
@@ -1307,8 +1388,8 @@ async function ItemDetail({
                     href={`/library/item/PRIMITIVE:${link.primitiveId}`}
                     className="min-w-0 flex-1 truncate hover:underline"
                   >
-                    <span className="font-semibold">{link.primitive.name}</span>
                     <SourceVersionChip versionNumber={version} />
+                    <span className="font-semibold">{link.primitive.name}</span>
                     <span className="ml-2 text-xs text-muted-foreground">
                       {link.primitive.category.replace(/_/g, " ")}
                     </span>
@@ -1332,28 +1413,28 @@ async function ItemDetail({
             {effectLinks.map((link) => {
               const version =
                 versionMap.get(`effect:${link.effectId}` as VersionNumberKey) ?? null;
+              // Mashu 2026-07-09: per-effect BU cost in composed list.
+              const bu = effectBuMap.get(link.effectId) ?? 0;
               return (
                 <li
                   key={`${link.itemId}-${link.effectId}`}
-                  className="p-3 text-sm"
+                  className="flex items-center justify-between gap-2 p-3 text-sm"
                 >
                   <Link
                     href={`/library/item/EFFECT:${link.effectId}`}
-                    className="font-semibold hover:underline"
+                    className="min-w-0 flex-1 truncate hover:underline"
                   >
-                    {link.effect.name}
+                    <SourceVersionChip versionNumber={version} />
+                    <span className="font-semibold">{link.effect.name}</span>
                   </Link>
-                  <SourceVersionChip versionNumber={version} />
                   {link.slotLabel ? (
-                    <p className="mt-0.5 text-xs text-muted-foreground italic">
+                    <span className="shrink-0 text-xs italic text-muted-foreground">
                       "{link.slotLabel}"
-                    </p>
+                    </span>
                   ) : null}
-                  {link.effect.narrativeDescription ? (
-                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                      {link.effect.narrativeDescription.slice(0, 200)}
-                    </p>
-                  ) : null}
+                  <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                    {bu} BU
+                  </span>
                 </li>
               );
             })}
@@ -1370,26 +1451,26 @@ async function ItemDetail({
             {capabilityLinks.map((link) => {
               const version =
                 versionMap.get(`capability:${link.capabilityId}` as VersionNumberKey) ?? null;
+              // Mashu 2026-07-09: per-capability BU cost in composed list.
+              const bu = capabilityBuMap.get(link.capabilityId) ?? 0;
               return (
                 <li
                   key={`${link.itemId}-${link.capabilityId}`}
-                  className="p-3 text-sm"
+                  className="flex items-center justify-between gap-2 p-3 text-sm"
                 >
                   <Link
                     href={`/library/item/CAPABILITY:${link.capabilityId}`}
-                    className="font-semibold hover:underline"
+                    className="min-w-0 flex-1 truncate hover:underline"
                   >
-                    {link.capability.name}
+                    <SourceVersionChip versionNumber={version} />
+                    <span className="font-semibold">{link.capability.name}</span>
                   </Link>
-                  <SourceVersionChip versionNumber={version} />
-                  <span className="ml-2 text-xs text-muted-foreground">
+                  <span className="shrink-0 text-xs text-muted-foreground">
                     {link.capability.type}
                   </span>
-                  {link.slotLabel ? (
-                    <p className="mt-0.5 text-xs text-muted-foreground italic">
-                      "{link.slotLabel}"
-                    </p>
-                  ) : null}
+                  <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                    {bu} BU
+                  </span>
                 </li>
               );
             })}
@@ -1424,9 +1505,12 @@ function SourceVersionChip({
   versionNumber: number | null;
 }) {
   if (versionNumber == null) return null;
+  // Mashu 2026-07-09: chip rendered LEFT of the entity name. mr-1.5
+  // creates space between chip and name. Mirrors the modal preview's
+  // VersionChip so the visual identity is identical in both places.
   return (
     <span
-      className="ml-1.5 inline-flex shrink-0 items-center rounded-full border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+      className="mr-1.5 inline-flex shrink-0 items-center rounded-full border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
       title={`Latest published version v${versionNumber}`}
     >
       v{versionNumber}

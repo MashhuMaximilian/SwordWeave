@@ -20,7 +20,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutGrid, List, ExternalLink, History, GitFork, Pencil, Trash2 } from "lucide-react";
+import { LayoutGrid, List, ExternalLink, History, Pencil, Trash2 } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { LibraryTable } from "@/components/library/library-table";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
@@ -493,43 +493,35 @@ function CreationPreview({
         />
       ) : null}
 
-      {/* Action buttons. Mashu 2026-07-09: 2×2 grid of the four primary
-          actions (Edit in sandbox / Source page / Version history /
-          Fork history). Delete stays full-width below the grid since
-          it has its own canDelete gate + confirm dialog. The previous
-          layout had a full-width Edit + a 3-col grid of secondary
-          actions which looked unbalanced. 2×2 = predictable tap
-          targets on mobile, equal visual weight to all four primary
-          actions. */}
-      <div className="grid grid-cols-2 gap-1.5 border-t border-border pt-3">
+      {/* Action buttons. Mashu 2026-07-09: 1×3 grid of the three primary
+          actions (Edit in sandbox / Source page / Version history).
+          Fork history removed — the source page already renders the
+          ForksList at #forks, so a separate button was redundant.
+          Delete stays full-width below the row since it has its own
+          canDelete gate + confirm dialog. 1×3 = equal visual weight,
+          predictable tap targets on mobile. */}
+      <div className="grid grid-cols-3 gap-1.5 border-t border-border pt-3">
         <button
           type="button"
           onClick={onEdit}
-          className="inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          className="inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
           <Pencil className="size-3.5" />
-          Edit in sandbox
+          Edit
         </button>
         <a
           href={`/library/item/${item.id}`}
-          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-2 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
         >
           <ExternalLink className="size-3.5" />
-          <span>Source page</span>
+          <span>Source</span>
         </a>
         <a
           href={`/library/item/${item.id}/versions`}
-          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-2 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
         >
           <History className="size-3.5" />
-          <span>Version history</span>
-        </a>
-        <a
-          href={`/library/item/${item.id}#forks`}
-          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
-        >
-          <GitFork className="size-3.5" />
-          <span>Fork history</span>
+          <span>Versions</span>
         </a>
       </div>
 

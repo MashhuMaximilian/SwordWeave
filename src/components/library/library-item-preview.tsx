@@ -347,9 +347,12 @@ function VersionChip({
   versionNumber?: number | null | undefined;
 }) {
   if (versionNumber == null) return null;
+  // Mashu 2026-07-09: chip rendered LEFT of the entity name (mr-1.5
+  // creates space between chip and name; previously ml-1.5 was for
+  // right-of-name). Updated across all modal bodies + the source page.
   return (
     <span
-      className="ml-1.5 inline-flex shrink-0 items-center rounded-full border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+      className="mr-1.5 inline-flex shrink-0 items-center rounded-full border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
       title={`Latest published version v${versionNumber}`}
     >
       v{versionNumber}
@@ -710,10 +713,10 @@ function EffectBody({
                   }
                   className="min-w-0 flex-1 truncate text-left"
                 >
+                  <VersionChip versionNumber={link.versionNumber} />
                   <span className="font-semibold text-cyan-400 hover:underline">
                     {link.primitive.name}
                   </span>
-                  <VersionChip versionNumber={link.versionNumber} />
                   <span className="ml-2 text-xs text-muted-foreground">
                     {link.primitive.category}
                   </span>
@@ -803,10 +806,10 @@ function CapabilityBody({
                   }
                   className="min-w-0 flex-1 text-left"
                 >
+                  <VersionChip versionNumber={link.versionNumber} />
                   <span className="font-semibold text-cyan-400 hover:underline">
                     {link.primitive.name}
                   </span>
-                  <VersionChip versionNumber={link.versionNumber} />
                   <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                     <span>{link.primitive.category}</span>
                     <span className="rounded bg-secondary px-1.5 py-0.5 font-medium">
@@ -856,10 +859,10 @@ function CapabilityBody({
                   }
                   className="min-w-0 flex-1 text-left"
                 >
+                  <VersionChip versionNumber={link.versionNumber} />
                   <span className="font-semibold text-violet-400 hover:underline">
                     {link.effect.name}
                   </span>
-                  <VersionChip versionNumber={link.versionNumber} />
                   {link.slotLabel ? (
                     <div className="mt-0.5 text-xs text-muted-foreground">
                       <span className="italic">"{link.slotLabel}"</span>
@@ -935,10 +938,10 @@ function TemplateBody({
                   }
                   className="min-w-0 flex-1 truncate text-left"
                 >
+                  <VersionChip versionNumber={link.versionNumber} />
                   <span className="font-semibold text-cyan-400 hover:underline">
                     {link.primitive.name}
                   </span>
-                  <VersionChip versionNumber={link.versionNumber} />
                 </button>
                 <span className="shrink-0 font-mono text-xs text-muted-foreground">
                   {link.primitive.buCost} BU
@@ -969,10 +972,10 @@ function TemplateBody({
                   }
                   className="min-w-0 flex-1 truncate text-left"
                 >
+                  <VersionChip versionNumber={link.versionNumber} />
                   <span className="font-semibold text-cyan-400 hover:underline">
                     {link.capability.name}
                   </span>
-                  <VersionChip versionNumber={link.versionNumber} />
                 </button>
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {link.capability.type}
@@ -1082,10 +1085,10 @@ function ItemBody({
                   }
                   className="min-w-0 flex-1 truncate text-left"
                 >
+                  <VersionChip versionNumber={link.versionNumber} />
                   <span className="font-semibold text-cyan-400 hover:underline">
                     {link.primitive.name}
                   </span>
-                  <VersionChip versionNumber={link.versionNumber} />
                 </button>
                 <span className="shrink-0 font-mono text-xs text-muted-foreground">
                   {link.primitive.buCost} BU

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { eq, inArray, and, isNull, or } from "drizzle-orm";
+import { eq, inArray, and, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   primitives,
@@ -43,20 +43,40 @@ function parseKind(value: unknown): TemplateKind | null {
  * triple the new fork row will use. Templates have a unique constraint
  * on (name, user_id, kind) — different shape than effects/capabilities/items
  * which use (name, source_origin).
+ *
+ * Mashu 2026-07-09: predicate now preloads the FULL set of existing fork
+ * names for this (userId, kind) pair, not just rows matching the form's
+ * `name` field exactly. The previous version queried for `name = $name`
+ * and returned false when checking `nameExists("Star-Touched (fork)")`,
+ * so `computeUniqueForkName` returned a candidate that collided with an
+ * existing fork of the same source — the INSERT then failed with a
+ * unique-constraint violation (no error message bubbled to the user).
+ *
+ * The predicate must return true for ANY candidate that would clash,
+ * including `"X (fork)"`, `"X (fork) 2"`, `"X (fork) 3"`, ... We preload
+ * the prefix-matched set in one query so the predicate is accurate for
+ * every candidate `computeUniqueForkName` will probe.
  */
 async function buildTemplateTakenNamesSet(
   name: string,
   kind: TemplateKind,
   userId: string,
 ): Promise<(candidate: string) => boolean> {
+  const forkPrefix = `${name} (fork)`;
+  // Match `name (fork)`, `name (fork) 2`, `name (fork) 3`, ... The
+  // computeUniqueForkName walker only produces these three shapes, so a
+  // prefix LIKE is sufficient.
   const rows = await db
     .select({ name: templates.name })
     .from(templates)
     .where(
       and(
-        eq(templates.name, name),
         eq(templates.kind, kind),
         eq(templates.userId, userId),
+        // Drizzle doesn't have a `startsWith` helper; use sql template
+        // for the LIKE pattern. Anchor the prefix so "Star" doesn't match
+        // "Stardust (fork)".
+        sql`${templates.name} LIKE ${forkPrefix + "%"}`,
       ),
     );
   const taken = new Set(rows.map((r) => r.name));

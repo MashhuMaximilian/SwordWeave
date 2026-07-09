@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { asc, eq, and, isNull, or } from "drizzle-orm";
+import { asc, eq, and, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { effectPrimitives, effects } from "@/db/schema/engine";
 import {
@@ -22,22 +22,36 @@ const TARGET_TYPE: SaveTargetType = "EFFECT";
  * Phase 2: build a sync-existence predicate for the (name, sourceOrigin)
  * pair the new fork row will use, so the forked name doesn't collide
  * with the user's existing rows.
+ *
+ * Mashu 2026-07-09: predicate now preloads every name in the user's
+ * (sourceOrigin) namespace that matches the `${name} (fork)%` prefix,
+ * not just rows with `name = $name` exactly. The previous version
+ * returned false for `nameExists("Strike (fork)")` when only
+ * "Strike (fork)" existed in the namespace, so the unique-namer
+ * returned a candidate that collided with the prior fork. The DB's
+ * unique `(name, source_origin)` constraint then rejected the INSERT
+ * with no user-visible error message.
+ *
+ * The predicate must return true for ANY existing candidate that would
+ * clash with the suffix-walk — `"X (fork)"`, `"X (fork) 2"`, ... We
+ * preload the prefix-matched set in one query.
  */
 async function buildEffectTakenNamesSet(
   name: string,
   sourceOrigin: string | null,
   userId: string,
 ): Promise<(candidate: string) => boolean> {
+  const forkPrefix = `${name} (fork)`;
   const rows = await db
     .select({ name: effects.name })
     .from(effects)
     .where(
       and(
-        eq(effects.name, name),
         sourceOrigin === null
           ? isNull(effects.sourceOrigin)
           : eq(effects.sourceOrigin, sourceOrigin),
         eq(effects.userId, userId),
+        sql`${effects.name} LIKE ${forkPrefix + "%"}`,
       ),
     );
   const taken = new Set(rows.map((r) => r.name));

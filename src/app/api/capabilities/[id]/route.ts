@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { asc, eq, inArray, and, isNull, or } from "drizzle-orm";
+import { asc, eq, inArray, and, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   capabilities,
@@ -39,22 +39,31 @@ const TARGET_TYPE: SaveTargetType = "CAPABILITY";
  * Phase 2: build a sync-existence predicate for the (name, sourceOrigin)
  * pair the new fork row will use, so the forked name doesn't collide
  * with the user's existing rows.
+ *
+ * Mashu 2026-07-09: predicate now preloads every name in the user's
+ * (sourceOrigin) namespace that matches the `${name} (fork)%` prefix.
+ * See effects/[id]/route.ts for the full rationale — the prior
+ * exact-name match returned false for `nameExists("Strike (fork)")`
+ * when an earlier fork already used that name, and the INSERT then
+ * hit the unique `(name, source_origin)` constraint with no error
+ * surfaced to the user.
  */
 async function buildCapabilityTakenNamesSet(
   name: string,
   sourceOrigin: string | null,
   userId: string,
 ): Promise<(candidate: string) => boolean> {
+  const forkPrefix = `${name} (fork)`;
   const rows = await db
     .select({ name: capabilities.name })
     .from(capabilities)
     .where(
       and(
-        eq(capabilities.name, name),
         sourceOrigin === null
           ? isNull(capabilities.sourceOrigin)
           : eq(capabilities.sourceOrigin, sourceOrigin),
         eq(capabilities.userId, userId),
+        sql`${capabilities.name} LIKE ${forkPrefix + "%"}`,
       ),
     );
   const taken = new Set(rows.map((r) => r.name));

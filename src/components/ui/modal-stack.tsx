@@ -282,7 +282,13 @@ function renderModalBody(
           </button>
         ) : null}
       </header>
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+      {/* Mashu 2026-07-09: modal body baseline font set to text-sm so
+          the inherited text size matches the source-page preview's
+          `prose prose-sm` sizing. Without this, default browser font
+          (16px) inflated Markdown paragraphs + raw `<div>` content
+          compared to the library source page where `prose-sm` wraps
+          everything. */}
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 text-sm">
         {entry.content}
       </div>
     </>
