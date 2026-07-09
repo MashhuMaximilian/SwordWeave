@@ -76,6 +76,9 @@ type ItemRow = {
   }>;
   effectLinks: Array<{
     effectId: string;
+    sortOrder: number;
+    slotLabel: string | null;
+    notes: string | null;
     effect: {
       id: string;
       name: string;
@@ -84,6 +87,9 @@ type ItemRow = {
   }>;
   capabilityLinks: Array<{
     capabilityId: string;
+    sortOrder: number;
+    slotLabel: string | null;
+    notes: string | null;
     capability: {
       id: string;
       name: string;
