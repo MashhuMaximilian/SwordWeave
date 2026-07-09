@@ -96,10 +96,32 @@ export function SandboxPreviewModal({
             </p>
             <h2
               id="sandbox-preview-title"
-              className="mt-1 truncate text-lg font-semibold leading-tight"
+              className="mt-1 truncate text-base font-semibold leading-tight"
             >
               {item.row.name}
             </h2>
+            {/* BU cost summary — computed from composed primitives */}
+            {(() => {
+              const abs = Math.abs;
+              let bu: number | null = null;
+              if (item.kind === "primitive") {
+                bu = item.row.buCost;
+              } else if (item.kind === "effect") {
+                bu = item.row.primitiveLinks.reduce(
+                  (s, l) => s + abs(l.primitive.buCost * l.quantity), 0,
+                );
+              } else if (item.kind === "capability") {
+                bu = item.row.primitiveLinks.reduce(
+                  (s, l) => s + abs(l.primitive.buCost * l.quantity), 0,
+                );
+              }
+              if (bu == null) return null;
+              return (
+                <span className="mt-1 inline-flex w-fit items-center rounded-full bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
+                  {bu} BU
+                </span>
+              );
+            })()}
           </div>
           <button
             type="button"

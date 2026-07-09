@@ -153,21 +153,30 @@ export function reconstructVersion(
   // Each delta at position i (i >= 1) is stored as
   // { key: { value: v_i[key], __prev: v_(i-1)[key], __deleted? } }
   // so applySelfDescribingDelta(v_(i-1), delta_i) = v_i.
+  //
+  // However, recordVersion always stores kind:"FULL" snapshots.
+  // When an entry is FULL (not just the head), treat it as a fresh
+  // self-contained snapshot — overwrite `current` directly.
   let current: Record<string, unknown> = { ...head.payload.data };
   for (let i = 1; i <= targetIndex; i++) {
     const entry = chainOldestFirst[i];
     if (!entry) {
       throw new Error(`Chain integrity broken at index ${i}: missing entry`);
     }
-    if (entry.payload.kind !== "DELTA") {
+    if (entry.payload.kind === "FULL") {
+      // All-FULL chain (the common case from recordVersion).
+      // Each FULL snapshot is self-contained — just use it.
+      current = { ...entry.payload.data };
+    } else if (entry.payload.kind === "DELTA") {
+      const patch = entry.payload.patch as unknown as Parameters<
+        typeof applySelfDescribingDelta
+      >[1];
+      current = applySelfDescribingDelta(current, patch);
+    } else {
       throw new Error(
-        `Chain integrity broken at v${entry.versionNumber}: expected DELTA`,
+        `Chain integrity broken at v${entry.versionNumber}: unexpected kind "${(entry.payload as Record<string, unknown>)["kind"]}"`,
       );
     }
-    const patch = entry.payload.patch as unknown as Parameters<
-      typeof applySelfDescribingDelta
-    >[1];
-    current = applySelfDescribingDelta(current, patch);
   }
 
   return current;
