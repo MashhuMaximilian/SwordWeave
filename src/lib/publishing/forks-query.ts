@@ -78,58 +78,11 @@ export async function listBySource(
 ): Promise<ForkQueryResult> {
   const cappedLimit = Math.min(Math.max(limit, 1), 50);
 
-  // The visibility check: a fork is visible when the FORKED entity
-  // is isPublic=true OR (currentUserClerkId is provided AND the
-  // entity's user_id matches). We use a single CASE expression to
-  // dispatch on forked_target_type and look up is_public + user_id
-  // in the appropriate table. This is one query, no N+1.
-  //
-  // The subquery returns (is_public, user_id::text) for the forked
-  // entity, or (true, NULL) if the entity type isn't recognized
-  // (defensive default: show it).
-  const visibilityClause = sql<boolean>`(
-    CASE ${forks.forkedTargetType}
-      WHEN 'PRIMITIVE' THEN
-        (SELECT is_public FROM primitives WHERE id::text = ${forks.forkedTargetId})
-      WHEN 'EFFECT' THEN
-        (SELECT is_public FROM effects WHERE id::text = ${forks.forkedTargetId})
-      WHEN 'CAPABILITY' THEN
-        (SELECT is_public FROM capabilities WHERE id::text = ${forks.forkedTargetId})
-      WHEN 'ITEM' THEN
-        (SELECT is_public FROM items WHERE id::text = ${forks.forkedTargetId})
-      WHEN 'CHARACTER' THEN
-        (SELECT is_public FROM characters WHERE id::text = ${forks.forkedTargetId})
-      WHEN 'RACE_TEMPLATE' THEN
-        (SELECT is_public FROM templates WHERE id::text = ${forks.forkedTargetId} AND kind = 'RACE')
-      WHEN 'BACKGROUND_TEMPLATE' THEN
-        (SELECT is_public FROM templates WHERE id::text = ${forks.forkedTargetId} AND kind = 'BACKGROUND')
-      WHEN 'ARCHETYPE_TEMPLATE' THEN
-        (SELECT is_public FROM templates WHERE id::text = ${forks.forkedTargetId} AND kind = 'ARCHETYPE')
-      ELSE true
-    END = true
-    OR (
-      ${currentUserClerkId ?? sql`NULL`} IS NOT NULL
-      AND CASE ${forks.forkedTargetType}
-        WHEN 'PRIMITIVE' THEN
-          (SELECT user_id::text FROM primitives WHERE id::text = ${forks.forkedTargetId})
-        WHEN 'EFFECT' THEN
-          (SELECT user_id::text FROM effects WHERE id::text = ${forks.forkedTargetId})
-        WHEN 'CAPABILITY' THEN
-          (SELECT user_id::text FROM capabilities WHERE id::text = ${forks.forkedTargetId})
-        WHEN 'ITEM' THEN
-          (SELECT user_id::text FROM items WHERE id::text = ${forks.forkedTargetId})
-        WHEN 'CHARACTER' THEN
-          (SELECT user_id::text FROM characters WHERE id::text = ${forks.forkedTargetId})
-        WHEN 'RACE_TEMPLATE' THEN
-          (SELECT user_id::text FROM templates WHERE id::text = ${forks.forkedTargetId} AND kind = 'RACE')
-        WHEN 'BACKGROUND_TEMPLATE' THEN
-          (SELECT user_id::text FROM templates WHERE id::text = ${forks.forkedTargetId} AND kind = 'BACKGROUND')
-        WHEN 'ARCHETYPE_TEMPLATE' THEN
-          (SELECT user_id::text FROM templates WHERE id::text = ${forks.forkedTargetId} AND kind = 'ARCHETYPE')
-        ELSE NULL
-      END = ${currentUserClerkId ?? sql`NULL`}
-    )
-  )`;
+  // Show all forks regardless of the forked entity's visibility.
+  // The fork list shows who forked something — this is engagement
+  // metadata, not the forked content itself. Private forks still
+  // show the forker's name; the "View fork" link may 404 if the
+  // fork is private and the viewer doesn't own it, but that's fine.
 
   const rows = await db
     .select({
@@ -155,8 +108,6 @@ export async function listBySource(
       and(
         eq(forks.sourceTargetType, targetType),
         eq(forks.sourceTargetId, targetId),
-        // Visibility filter: only show forks the viewer can see
-        visibilityClause,
       ),
     )
     .orderBy(desc(forks.createdAt))
