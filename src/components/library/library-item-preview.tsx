@@ -724,14 +724,14 @@ function EffectBody({
               >
                 <div className="min-w-0 flex-1 truncate text-left">
                   <VersionChip versionNumber={link.versionNumber} />
-                  <span className="font-semibold text-cyan-400 hover:underline">
+                  <span className="font-semibold text-foreground hover:underline">
                     {link.primitive.name}
                   </span>
                   <span className="ml-2 text-xs text-muted-foreground">
                     {link.primitive.category}
                   </span>
                 </div>
-                <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                <span className="shrink-0 font-mono text-xs text-foreground">
                   {Math.abs(link.primitive.buCost * link.quantity)} BU
                   {link.quantity > 1 ? ` ×${link.quantity}` : ""}
                 </span>
@@ -827,7 +827,7 @@ function CapabilityBody({
               >
                 <div className="min-w-0 flex-1 text-left">
                   <VersionChip versionNumber={link.versionNumber} />
-                  <span className="font-semibold text-cyan-400 hover:underline">
+                  <span className="font-semibold text-foreground hover:underline">
                     {link.primitive.name}
                   </span>
                   <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
@@ -841,7 +841,7 @@ function CapabilityBody({
                     ) : null}
                   </div>
                 </div>
-                <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                <span className="shrink-0 font-mono text-xs text-foreground">
                   {Math.abs(link.primitive.buCost * link.quantity)} BU
                 </span>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
@@ -889,7 +889,7 @@ function CapabilityBody({
               >
                 <div className="min-w-0 flex-1 text-left">
                   <VersionChip versionNumber={link.versionNumber} />
-                  <span className="font-semibold text-violet-400 hover:underline">
+                  <span className="font-semibold text-foreground hover:underline">
                     {link.effect.name}
                   </span>
                   {link.slotLabel ? (
@@ -977,11 +977,11 @@ function TemplateBody({
               >
                 <div className="min-w-0 flex-1 truncate text-left">
                   <VersionChip versionNumber={link.versionNumber} />
-                  <span className="font-semibold text-cyan-400 hover:underline">
+                  <span className="font-semibold text-foreground hover:underline">
                     {link.primitive.name}
                   </span>
                 </div>
-                <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                <span className="shrink-0 font-mono text-xs text-foreground">
                   {link.primitive.buCost} BU
                 </span>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
@@ -1020,7 +1020,7 @@ function TemplateBody({
               >
                 <div className="min-w-0 flex-1 truncate text-left">
                   <VersionChip versionNumber={link.versionNumber} />
-                  <span className="font-semibold text-cyan-400 hover:underline">
+                  <span className="font-semibold text-foreground hover:underline">
                     {link.capability.name}
                   </span>
                 </div>
@@ -1142,11 +1142,11 @@ function ItemBody({
               >
                 <div className="min-w-0 flex-1 truncate text-left">
                   <VersionChip versionNumber={link.versionNumber} />
-                  <span className="font-semibold text-cyan-400 hover:underline">
+                  <span className="font-semibold text-foreground hover:underline">
                     {link.primitive.name}
                   </span>
                 </div>
-                <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                <span className="shrink-0 font-mono text-xs text-foreground">
                   {link.primitive.buCost} BU
                 </span>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground" />

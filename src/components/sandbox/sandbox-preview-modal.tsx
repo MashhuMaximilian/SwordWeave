@@ -91,7 +91,7 @@ export function SandboxPreviewModal({
             </p>
             <h2
               id="sandbox-preview-title"
-              className="mt-1 truncate text-2xl font-semibold leading-tight"
+              className="mt-1 truncate text-lg font-semibold leading-tight"
             >
               {item.row.name}
             </h2>
