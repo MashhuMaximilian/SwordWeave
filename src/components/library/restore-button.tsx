@@ -87,8 +87,8 @@ export function RestoreButton({
         Restore
       </button>
       {error && (
-        <span className="text-xs text-red-500" title={error}>
-          Error
+        <span className="max-w-[120px] truncate text-xs text-red-500" title={error}>
+          {error}
         </span>
       )}
     </span>

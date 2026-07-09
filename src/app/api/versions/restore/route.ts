@@ -717,6 +717,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";
+    console.error("[versions/restore] Error:", message, error instanceof Error ? error.stack : "");
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
