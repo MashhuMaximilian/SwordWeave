@@ -88,6 +88,11 @@ export function SandboxPreviewModal({
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase text-muted-foreground">
               {previewHeadingLabel(item)}
+              {item.latestVersionNumber != null ? (
+                <span className="ml-2 inline-flex items-center rounded-full border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  v{item.latestVersionNumber}
+                </span>
+              ) : null}
             </p>
             <h2
               id="sandbox-preview-title"

@@ -125,6 +125,7 @@ export function GrammarSandboxClient({
   primitiveCategories,
   engagement,
   currentUserInternalId,
+  versionMap,
 }: {
   initialBuild: GrammarBuildMode;
   initialEditing: EditingState;
@@ -177,6 +178,8 @@ export function GrammarSandboxClient({
    * own content.
    */
   currentUserInternalId: string | null;
+  /** Latest published version numbers per entity. Keyed by "primitive:<id>" etc. */
+  versionMap?: Record<string, number>;
 }) {
   const [build, setBuild] = useState<GrammarBuildMode>(initialBuild);
   // Sync `build` with new `initialBuild` prop on server-routed
@@ -728,6 +731,7 @@ export function GrammarSandboxClient({
             primitiveCategories={primitiveCategories}
             engagement={engagement}
             currentUserInternalId={currentUserInternalId}
+            versionMap={versionMap}
             editingKey={
               editing
                 ? `${editing.kind}:${

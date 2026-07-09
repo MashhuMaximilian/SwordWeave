@@ -189,11 +189,11 @@ export type SandboxItemRow = {
 };
 
 export type SandboxPreviewItem =
-  | { kind: "primitive"; row: SandboxPrimitiveRow }
-  | { kind: "effect"; row: SandboxEffectRow }
-  | { kind: "capability"; row: SandboxCapabilityRow }
-  | { kind: "template"; row: SandboxTemplateRow }
-  | { kind: "item"; row: SandboxItemRow };
+  | { kind: "primitive"; row: SandboxPrimitiveRow; latestVersionNumber?: number | null }
+  | { kind: "effect"; row: SandboxEffectRow; latestVersionNumber?: number | null }
+  | { kind: "capability"; row: SandboxCapabilityRow; latestVersionNumber?: number | null }
+  | { kind: "template"; row: SandboxTemplateRow; latestVersionNumber?: number | null }
+  | { kind: "item"; row: SandboxItemRow; latestVersionNumber?: number | null };
 
 /**
  * Build the library route's `<type>:<id>` composite id for a preview item.

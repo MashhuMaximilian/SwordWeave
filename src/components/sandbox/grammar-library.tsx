@@ -68,6 +68,8 @@ interface GrammarLibraryProps {
    */
   currentUserInternalId: string | null;
   editingKey: string | null;
+  /** Latest published version numbers per entity. Keyed by "primitive:<id>" etc. */
+  versionMap: Record<string, number> | undefined;
   onSelect: (
     kind: "primitive" | "effect" | "capability",
     id: string | number,
@@ -107,6 +109,7 @@ export function GrammarLibrary({
   engagement,
   currentUserInternalId,
   editingKey,
+  versionMap,
   onSelect,
 }: GrammarLibraryProps) {
   // Default type filter per build mode. The kind filter is exposed in
@@ -153,19 +156,25 @@ export function GrammarLibrary({
       if (item.targetType === "PRIMITIVE") {
         const id = Number(item.targetId);
         const row = primitives.find((p) => p.id === id);
-        return row ? { kind: "primitive", row } : null;
+        if (!row) return null;
+        const vn = versionMap?.[`primitive:${id}`] ?? null;
+        return { kind: "primitive", row, latestVersionNumber: vn };
       }
       if (item.targetType === "EFFECT") {
         const row = effects.find((e) => e.id === item.targetId);
-        return row ? { kind: "effect", row } : null;
+        if (!row) return null;
+        const vn = versionMap?.[`effect:${item.targetId}`] ?? null;
+        return { kind: "effect", row, latestVersionNumber: vn };
       }
       if (item.targetType === "CAPABILITY") {
         const row = capabilities.find((c) => c.id === item.targetId);
-        return row ? { kind: "capability", row } : null;
+        if (!row) return null;
+        const vn = versionMap?.[`capability:${item.targetId}`] ?? null;
+        return { kind: "capability", row, latestVersionNumber: vn };
       }
       return null;
     };
-  }, [primitives, effects, capabilities]);
+  }, [primitives, effects, capabilities, versionMap]);
 
   // Apply toolbar filters to libraryItems. Sandbox Library is gated by
   // build-mode (only the typeFilter values listed in `availableTypes`

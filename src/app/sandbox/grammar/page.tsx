@@ -29,6 +29,11 @@ import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import { getVersionPayload } from "@/lib/versions/version-payload";
 import { parseSaveIntent, type SaveIntent } from "@/lib/publishing/save-intent";
+import {
+  bulkResolveLatestVersionNumbers,
+  getVersionNumber,
+  type VersionNumberKey,
+} from "@/lib/versions/bulk-resolve-latest-version-numbers";
 
 export const dynamic = "force-dynamic";
 
@@ -233,6 +238,20 @@ export default async function GrammarSandboxPage({
     console.error("[grammar sandbox] engagement prefetch failed:", err);
   }
 
+  // Resolve latest published version numbers for all entities. This
+  // lets the modal preview show "v3" next to the entity name. Wrapped
+  // in try/catch so a failure degrades to "no version" instead of 500.
+  let versionMap: Map<VersionNumberKey, number> = new Map();
+  try {
+    versionMap = await bulkResolveLatestVersionNumbers([
+      ...primitiveRows.map((p) => ({ kind: "primitive" as const, id: (p as { id: number }).id })),
+      ...effectRows.map((e) => ({ kind: "effect" as const, id: (e as { id: string }).id })),
+      ...capabilityRows.map((c) => ({ kind: "capability" as const, id: (c as { id: string }).id })),
+    ]);
+  } catch (err) {
+    console.error("[grammar sandbox] version resolution failed:", err);
+  }
+
   return (
     <GrammarSandboxClient
       initialBuild={build}
@@ -382,6 +401,7 @@ export default async function GrammarSandboxPage({
       dataLoadFailed={dataLoadFailed}
       engagement={engagement}
       currentUserInternalId={currentUserInternalId}
+      versionMap={Object.fromEntries(versionMap)}
     />
   );
 }
