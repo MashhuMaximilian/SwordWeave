@@ -70,11 +70,29 @@ async function loadEngagement(
   targetId: string,
   currentUserInternalId: string | null,
 ): Promise<EngagementData> {
-  const versionId = resolveVirtualVersionId(
-    targetType as never,
-    targetId,
-  );
+  // Default empty state — any failure below returns this so the page
+  // degrades gracefully instead of throwing a 500.
+  const empty: EngagementData = {
+    likes: 0,
+    dislikes: 0,
+    forks: 0,
+    net: 0,
+    userReaction: null,
+  };
 
+  let versionId: string;
+  try {
+    versionId = resolveVirtualVersionId(
+      targetType as never,
+      targetId,
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[library item page] resolveVirtualVersionId failed:", err);
+    return empty;
+  }
+
+  try {
   const [rxAgg, fkAgg, userRx] = await Promise.all([
     db
       .select({
@@ -127,8 +145,12 @@ async function loadEngagement(
     net: rxAgg.likes - rxAgg.dislikes,
     userReaction: userRx as "LIKE" | "DISLIKE" | null,
   };
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[library item page] engagement load failed, returning empty:", err);
+    return empty;
+  }
 }
-
 // =============================================================================
 // loadFlagsAndTags — Source-page footer data (flags + tag chips).
 //

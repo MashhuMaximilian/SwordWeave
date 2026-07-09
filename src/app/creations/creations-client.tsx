@@ -20,7 +20,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutGrid, List } from "lucide-react";
+import { LayoutGrid, List, ExternalLink, History, GitFork, Pencil, Trash2 } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { LibraryTable } from "@/components/library/library-table";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
@@ -493,32 +493,46 @@ function CreationPreview({
         />
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+      {/* Action buttons. Layout: a 2-column grid of secondary actions
+          (Source page, Version history, Fork history) below the primary
+          "Edit in sandbox" button. Mashu 2026-07-08: the previous
+          layout was a flex-wrap row of small text links — too cramped
+          on mobile, hard to tap the right one. Grid = predictable tap
+          targets. Each button is full-width within its grid cell. */}
+      <div className="flex flex-col gap-2 border-t border-border pt-3">
         <button
           type="button"
           onClick={onEdit}
-          className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
+          <Pencil className="size-3.5" />
           Edit in sandbox
         </button>
-        <a
-          href={`/library/item/${item.id}`}
-          className="text-xs text-primary hover:underline"
-        >
-          Open source page →
-        </a>
-        <a
-          href={`/library/item/${item.id}/versions`}
-          className="text-xs text-primary hover:underline"
-        >
-          View version history →
-        </a>
-        <a
-          href={`/library/item/${item.id}#forks`}
-          className="text-xs text-primary hover:underline"
-        >
-          View fork history
-        </a>
+
+        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+          <a
+            href={`/library/item/${item.id}`}
+            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+          >
+            <ExternalLink className="size-3.5" />
+            <span>Source page</span>
+          </a>
+          <a
+            href={`/library/item/${item.id}/versions`}
+            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+          >
+            <History className="size-3.5" />
+            <span>Version history</span>
+          </a>
+          <a
+            href={`/library/item/${item.id}#forks`}
+            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+          >
+            <GitFork className="size-3.5" />
+            <span>Fork history</span>
+          </a>
+        </div>
+
         {onDeleted ? (
           canDelete ? (
             <button
@@ -527,17 +541,18 @@ function CreationPreview({
                 setDeleteError(null);
                 setConfirmOpen(true);
               }}
-              className="ml-auto inline-flex items-center gap-1 rounded-md border border-rose-500/50 px-3 py-1.5 text-xs font-medium text-rose-500 transition-colors hover:bg-rose-500/10"
+              className="mt-1 inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-rose-500/50 px-3 py-2 text-xs font-medium text-rose-500 transition-colors hover:bg-rose-500/10"
             >
+              <Trash2 className="size-3.5" />
               Delete
             </button>
           ) : (
-            <span
-              className="ml-auto text-[10px] text-muted-foreground"
+            <p
+              className="mt-1 rounded-md border border-dashed border-border bg-card/30 px-3 py-2 text-center text-[10px] text-muted-foreground"
               title="Set visibility to PRIVATE to enable deletion. This unpublishes the row so version history becomes private-only."
             >
-              Set to PRIVATE to delete
-            </span>
+              Set visibility to <span className="font-semibold">Private</span> to enable deletion
+            </p>
           )
         ) : null}
       </div>

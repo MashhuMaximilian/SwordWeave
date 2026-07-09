@@ -30,16 +30,26 @@ export async function ForksList({
 }: ForksListProps) {
   // Get the current user (if signed in) so we can show their private
   // forks. auth() returns the session — userId is the Clerk ID.
+  // P5R-3+hotfix: wrap the DB call in try/catch so a transient failure
+  // here doesn't 500 the entire library item page. The ForksList is a
+  // "nice to have" footer element — the page is still useful without it.
   const { userId: currentUserClerkId } = await auth();
 
-  // Fetch up to 50 (max allowed by listBySource). Client decides how many to render.
-  const { forks, totalForks } = await listBySource(
-    targetType,
-    targetId,
-    50,
-    currentUserClerkId,
-  );
+  let result: Awaited<ReturnType<typeof listBySource>> | null = null;
+  try {
+    result = await listBySource(
+      targetType,
+      targetId,
+      50,
+      currentUserClerkId,
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[ForksList] listBySource failed:", err);
+    return null;
+  }
 
+  const { forks, totalForks } = result;
   if (totalForks === 0) return null;
 
   return (
