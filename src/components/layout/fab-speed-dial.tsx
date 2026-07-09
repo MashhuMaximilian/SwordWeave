@@ -414,7 +414,7 @@ export const NAV_LINKS: FabItem[] = [
     key: "builds",
     label: "Builds",
     icon: <Swords className="size-4" />,
-    href: "/sandbox/builds",
+    href: "/characters",
   },
 ];
 

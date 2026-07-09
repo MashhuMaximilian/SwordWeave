@@ -180,12 +180,32 @@ export type SandboxItemRow = {
       };
     } & WithVersion
   >;
-  // Items also compose effects + capabilities (see /library/item/[id]
-  // ItemDetail), but the modal preview body currently only renders
-  // composed primitives. The source page reads those directly from
-  // the DB rather than from this row shape, so we don't expose them
-  // here. If the preview body grows to render composed effects and
-  // capabilities, add the optional arrays then.
+  effectLinks: Array<
+    {
+      effectId: string;
+      sortOrder: number;
+      slotLabel: string | null;
+      notes: string | null;
+      effect: {
+        id: string;
+        name: string;
+        narrativeDescription: string | null;
+      };
+    } & WithVersion
+  >;
+  capabilityLinks: Array<
+    {
+      capabilityId: string;
+      sortOrder: number;
+      slotLabel: string | null;
+      notes: string | null;
+      capability: {
+        id: string;
+        name: string;
+        type: string;
+      };
+    } & WithVersion
+  >;
 };
 
 export type SandboxPreviewItem =
@@ -1148,6 +1168,94 @@ function ItemBody({
                 </div>
                 <span className="shrink-0 font-mono text-xs text-foreground">
                   {link.primitive.buCost} BU
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+              </li>
+            ))}
+          </ul>
+        </Section>
+      ) : null}
+
+      {row.effectLinks.length > 0 ? (
+        <Section heading={`Composed effects (${row.effectLinks.length})`}>
+          <ul className="divide-y divide-border rounded-md border border-border">
+            {row.effectLinks.map((link) => (
+              <li
+                key={link.effectId}
+                role="button"
+                tabIndex={0}
+                onClick={() =>
+                  onSubLink({
+                    targetType: "EFFECT",
+                    targetId: link.effectId,
+                    label: link.effect.name,
+                  })
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSubLink({
+                      targetType: "EFFECT",
+                      targetId: link.effectId,
+                      label: link.effect.name,
+                    });
+                  }
+                }}
+                className="flex items-start gap-2 p-2.5 text-sm hover:bg-accent/40 cursor-pointer"
+              >
+                <div className="min-w-0 flex-1 text-left">
+                  <VersionChip versionNumber={link.versionNumber} />
+                  <span className="font-semibold text-foreground hover:underline">
+                    {link.effect.name}
+                  </span>
+                  {link.effect.narrativeDescription ? (
+                    <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                      {link.effect.narrativeDescription}
+                    </div>
+                  ) : null}
+                </div>
+                <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+              </li>
+            ))}
+          </ul>
+        </Section>
+      ) : null}
+
+      {row.capabilityLinks.length > 0 ? (
+        <Section heading={`Composed capabilities (${row.capabilityLinks.length})`}>
+          <ul className="divide-y divide-border rounded-md border border-border">
+            {row.capabilityLinks.map((link) => (
+              <li
+                key={link.capabilityId}
+                role="button"
+                tabIndex={0}
+                onClick={() =>
+                  onSubLink({
+                    targetType: "CAPABILITY",
+                    targetId: link.capabilityId,
+                    label: link.capability.name,
+                  })
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSubLink({
+                      targetType: "CAPABILITY",
+                      targetId: link.capabilityId,
+                      label: link.capability.name,
+                    });
+                  }
+                }}
+                className="flex items-center justify-between gap-2 p-2.5 text-sm hover:bg-accent/40 cursor-pointer"
+              >
+                <div className="min-w-0 flex-1 truncate text-left">
+                  <VersionChip versionNumber={link.versionNumber} />
+                  <span className="font-semibold text-foreground hover:underline">
+                    {link.capability.name}
+                  </span>
+                </div>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {link.capability.type}
                 </span>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
               </li>

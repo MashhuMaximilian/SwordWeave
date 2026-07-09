@@ -88,17 +88,17 @@ export function SandboxPreviewModal({
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase text-muted-foreground">
               {previewHeadingLabel(item)}
-              {item.latestVersionNumber != null ? (
-                <span className="ml-2 inline-flex items-center rounded-full border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  v{item.latestVersionNumber}
-                </span>
-              ) : null}
             </p>
             <h2
               id="sandbox-preview-title"
-              className="mt-1 truncate text-base font-semibold leading-tight"
+              className="mt-1 flex items-center gap-2 truncate text-base font-semibold leading-tight"
             >
-              {item.row.name}
+              {item.latestVersionNumber != null ? (
+                <span className="inline-flex shrink-0 items-center rounded-full border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  v{item.latestVersionNumber}
+                </span>
+              ) : null}
+              <span className="truncate">{item.row.name}</span>
             </h2>
             {/* BU cost summary — computed from composed primitives */}
             {(() => {

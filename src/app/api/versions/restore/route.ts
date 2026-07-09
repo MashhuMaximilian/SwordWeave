@@ -199,7 +199,13 @@ async function loadRestoredPayload(
       versionNumber: r.versionNumber,
       payload: r.snapshot as unknown as unknown as VersionPayload,
     }));
-    const reconstructed = reconstructVersion(chain, versionNumber);
+    let reconstructed: Record<string, unknown> | null = null;
+    try {
+      reconstructed = reconstructVersion(chain, versionNumber);
+    } catch {
+      // Fallback: use the raw snapshot if reconstruction fails (corrupted chain)
+      reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
+    }
     if (!reconstructed) return null;
     return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };
   }
@@ -219,7 +225,13 @@ async function loadRestoredPayload(
       versionNumber: r.versionNumber,
       payload: r.snapshot as unknown as unknown as VersionPayload,
     }));
-    const reconstructed = reconstructVersion(chain, versionNumber);
+    let reconstructed: Record<string, unknown> | null = null;
+    try {
+      reconstructed = reconstructVersion(chain, versionNumber);
+    } catch {
+      // Fallback: use the raw snapshot if reconstruction fails (corrupted chain)
+      reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
+    }
     if (!reconstructed) return null;
     return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };
   }
@@ -240,7 +252,13 @@ async function loadRestoredPayload(
       versionNumber: r.versionNumber,
       payload: r.snapshot as unknown as unknown as VersionPayload,
     }));
-    const reconstructed = reconstructVersion(chain, versionNumber);
+    let reconstructed: Record<string, unknown> | null = null;
+    try {
+      reconstructed = reconstructVersion(chain, versionNumber);
+    } catch {
+      // Fallback: use the raw snapshot if reconstruction fails (corrupted chain)
+      reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
+    }
     if (!reconstructed) return null;
     return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };
   }
@@ -260,7 +278,13 @@ async function loadRestoredPayload(
       versionNumber: r.versionNumber,
       payload: r.snapshot as unknown as unknown as VersionPayload,
     }));
-    const reconstructed = reconstructVersion(chain, versionNumber);
+    let reconstructed: Record<string, unknown> | null = null;
+    try {
+      reconstructed = reconstructVersion(chain, versionNumber);
+    } catch {
+      // Fallback: use the raw snapshot if reconstruction fails (corrupted chain)
+      reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
+    }
     if (!reconstructed) return null;
     return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };
   }
@@ -280,7 +304,13 @@ async function loadRestoredPayload(
     versionNumber: r.versionNumber,
     payload: r.snapshot as unknown as unknown as VersionPayload,
   }));
-  const reconstructed = reconstructVersion(chain, versionNumber);
+  let reconstructed: Record<string, unknown> | null = null;
+  try {
+    reconstructed = reconstructVersion(chain, versionNumber);
+  } catch {
+    // Fallback: use the raw snapshot if reconstruction fails (corrupted chain)
+    reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
+  }
   if (!reconstructed) return null;
   return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };
 }

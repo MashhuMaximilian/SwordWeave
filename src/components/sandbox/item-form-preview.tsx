@@ -105,7 +105,7 @@ export function ItemFormPreview({
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {form.itemType} Item
         </p>
-        <h2 className="text-lg font-semibold leading-tight text-foreground">
+        <h2 className="text-base font-semibold leading-tight text-foreground">
           {form.name || "Unnamed Item"}
         </h2>
         <div className="flex flex-wrap items-center gap-2 text-xs">

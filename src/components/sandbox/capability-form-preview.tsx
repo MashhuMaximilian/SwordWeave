@@ -86,7 +86,7 @@ export function CapabilityFormPreview({
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {form.type} - {form.sourceType}
         </p>
-        <h2 className="text-lg font-semibold leading-tight text-foreground">
+        <h2 className="text-base font-semibold leading-tight text-foreground">
           {form.name || "Unnamed Capability"}
         </h2>
         <div className="flex flex-wrap items-center gap-2 text-xs">

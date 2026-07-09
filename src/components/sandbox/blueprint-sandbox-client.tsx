@@ -74,6 +74,22 @@ type ItemRow = {
       buCost: number;
     };
   }>;
+  effectLinks: Array<{
+    effectId: string;
+    effect: {
+      id: string;
+      name: string;
+      narrativeDescription: string | null;
+    };
+  }>;
+  capabilityLinks: Array<{
+    capabilityId: string;
+    capability: {
+      id: string;
+      name: string;
+      type: string;
+    };
+  }>;
 };
 
 export type BlueprintBuildMode = "template" | "item" | "monster";

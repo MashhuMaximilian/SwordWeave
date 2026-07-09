@@ -121,6 +121,8 @@ export default async function BlueprintSandboxPage({
       orderBy: [asc(items.name)],
       with: {
         primitiveLinks: { with: { primitive: true } },
+        effectLinks: { with: { effect: true } },
+        capabilityLinks: { with: { capability: true } },
       },
     });
     itemRows = rows as unknown[];
