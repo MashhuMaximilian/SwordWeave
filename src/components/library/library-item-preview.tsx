@@ -627,8 +627,9 @@ function EffectBody({
   row: SandboxEffectRow;
   onSubLink: (link: PreviewSubLink) => void;
 }) {
+  // Mashu 2026-07-09: Math.abs() per the mirror rule. Defensive.
   const totalBu = row.primitiveLinks.reduce(
-    (sum, link) => sum + link.primitive.buCost * link.quantity,
+    (sum, link) => sum + Math.abs(link.primitive.buCost * link.quantity),
     0,
   );
   return (
@@ -722,7 +723,7 @@ function EffectBody({
                   </span>
                 </button>
                 <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                  {link.primitive.buCost * link.quantity} BU
+                  {Math.abs(link.primitive.buCost * link.quantity)} BU
                   {link.quantity > 1 ? ` ×${link.quantity}` : ""}
                 </span>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
@@ -742,8 +743,9 @@ function CapabilityBody({
   row: SandboxCapabilityRow;
   onSubLink: (link: PreviewSubLink) => void;
 }) {
+  // Mashu 2026-07-09: Math.abs() per the mirror rule. Defensive.
   const totalBu = row.primitiveLinks.reduce(
-    (sum, link) => sum + link.primitive.buCost * link.quantity,
+    (sum, link) => sum + Math.abs(link.primitive.buCost * link.quantity),
     0,
   );
   return (
@@ -822,7 +824,7 @@ function CapabilityBody({
                   </div>
                 </button>
                 <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                  {link.primitive.buCost * link.quantity} BU
+                  {Math.abs(link.primitive.buCost * link.quantity)} BU
                 </span>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
               </li>

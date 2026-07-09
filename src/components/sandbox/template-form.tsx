@@ -373,8 +373,9 @@ export function TemplateForm({
     });
   }
 
+  // Mashu 2026-07-09: Math.abs() per the mirror rule. Defensive.
   const computedBu = slottedPrimitives.reduce(
-    (sum, p) => sum + p.buCost,
+    (sum, p) => sum + Math.abs(p.buCost),
     0,
   );
 

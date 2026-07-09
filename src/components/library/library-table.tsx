@@ -405,4 +405,6 @@ type GridLikeForkTargetType =
   | "ITEM"
   | "RACE_TEMPLATE"
   | "BACKGROUND_TEMPLATE"
-  | "ARCHETYPE_TEMPLATE";
+  | "ARCHETYPE_TEMPLATE"
+  // Mashu 2026-07-09: builds now appear in the library grid.
+  | "BUILD_TEMPLATE";

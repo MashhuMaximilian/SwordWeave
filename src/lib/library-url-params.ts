@@ -40,7 +40,11 @@ export function parseType(value: string | undefined | null): LibraryTargetType |
     value === "ITEM" ||
     value === "RACE_TEMPLATE" ||
     value === "BACKGROUND_TEMPLATE" ||
-    value === "ARCHETYPE_TEMPLATE"
+    value === "ARCHETYPE_TEMPLATE" ||
+    // Mashu 2026-07-09: builds now exposed via the library browse URL
+    // `?type=BUILD_TEMPLATE`. The display label is "Builds" — see
+    // library-toolbar.tsx for the chip.
+    value === "BUILD_TEMPLATE"
   ) {
     return value;
   }

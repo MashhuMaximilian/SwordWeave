@@ -191,6 +191,25 @@ export default async function LibraryHubPage() {
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
           </span>
         </Link>
+
+        {/* Mashu 2026-07-09: public builds card. Until today, builds were
+            only visible on the owner's Creations page. This card links
+            to the same /library/browse browser the other entity cards
+            use, filtered by type=BUILD_TEMPLATE. */}
+        <Link
+          className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
+          href="/library/browse?type=BUILD_TEMPLATE"
+        >
+          <Crown className="size-5 text-primary" />
+          <h2 className="mt-5 text-lg font-semibold">Builds</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Public character builds + archetype templates from the community.
+          </p>
+          <span className="mt-4 flex items-center gap-2 pt-3 text-sm font-medium text-primary">
+            Browse builds
+            <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+          </span>
+        </Link>
       </div>
 
       <div className="mt-8 rounded-md border border-primary/20 bg-primary/5 p-5">

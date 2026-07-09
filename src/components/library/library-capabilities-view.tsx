@@ -410,7 +410,7 @@ export function LibraryCapabilitiesView({
                       </div>
                       <span className="shrink-0 font-mono text-xs text-muted-foreground">
                         {link.primitive
-                          ? `${link.primitive.buCost * link.quantity} BU`
+                          ? `${Math.abs(link.primitive.buCost * link.quantity)} BU`
                           : "?"}
                       </span>
                     </li>

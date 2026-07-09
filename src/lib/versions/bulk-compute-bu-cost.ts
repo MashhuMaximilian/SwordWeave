@@ -49,7 +49,7 @@ export async function bulkComputeEffectBuCost(
     .where(inArray(effectPrimitives.effectId, effectIds as string[]));
 
   for (const r of rows) {
-    out.set(r.effectId, (out.get(r.effectId) ?? 0) + r.buCost * r.quantity);
+    out.set(r.effectId, (out.get(r.effectId) ?? 0) + Math.abs(r.buCost * r.quantity));
   }
   return out;
 }
@@ -74,7 +74,7 @@ export async function bulkComputeCapabilityBuCost(
   for (const r of rows) {
     out.set(
       r.capabilityId,
-      (out.get(r.capabilityId) ?? 0) + r.buCost * r.quantity,
+      (out.get(r.capabilityId) ?? 0) + Math.abs(r.buCost * r.quantity),
     );
   }
   return out;

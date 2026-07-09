@@ -34,6 +34,7 @@
 import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
+  builds,
   capabilities,
   capabilityPrimitives,
   characters,
@@ -60,7 +61,12 @@ export type LibraryTargetType =
   | "ITEM"
   | "RACE_TEMPLATE"
   | "BACKGROUND_TEMPLATE"
-  | "ARCHETYPE_TEMPLATE";
+  | "ARCHETYPE_TEMPLATE"
+  // Mashu 2026-07-09: builds now browse-able in the public library.
+  // Matches the engagement enum (`publishTargetTypeEnum.BUILD_TEMPLATE`)
+  // so reactions + forks join cleanly via the standard composite-id
+  // pattern. Display label is normalised to "Build" in the toolbar.
+  | "BUILD_TEMPLATE";
 
 export interface LibraryQuery {
   targetType?: LibraryTargetType;
@@ -163,6 +169,9 @@ export async function queryLibrary(q: LibraryQuery): Promise<LibraryResult> {
     q.targetType === "ARCHETYPE_TEMPLATE"
   ) {
     fetchJobs.push(fetchTemplates(q));
+  }
+  if (wantAll || q.targetType === "BUILD_TEMPLATE") {
+    fetchJobs.push(fetchBuilds(q));
   }
   const branches = await Promise.all(fetchJobs);
   const items: LibraryItem[] = branches.flat();
@@ -341,7 +350,7 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
     for (const link of links) {
       buMap.set(
         link.capabilityId,
-        (buMap.get(link.capabilityId) ?? 0) + link.buCost * link.quantity,
+        (buMap.get(link.capabilityId) ?? 0) + Math.abs(link.buCost * link.quantity),
       );
     }
   }
@@ -431,7 +440,7 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
     for (const link of links) {
       buMap.set(
         link.effectId,
-        (buMap.get(link.effectId) ?? 0) + link.buCost * link.quantity,
+        (buMap.get(link.effectId) ?? 0) + Math.abs(link.buCost * link.quantity),
       );
     }
   }
@@ -625,6 +634,97 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
       description: r.description,
       category: r.kind,
       buCost: null,
+      authorId: r.userId ?? null,
+      authorUsername: author?.username ?? null,
+      authorDisplayName: author?.displayName ?? null,
+      authorAvatarUrl: author?.avatarUrl ?? null,
+      publishedAt: r.createdAt,
+      likesCount: eng.likes,
+      dislikesCount: eng.dislikes,
+      forkCount: eng.forks,
+      netReactions: eng.likes - eng.dislikes,
+      tags: [],
+    };
+  });
+}
+
+// =============================================================================
+// Builds — character snapshots + archetype templates.
+//
+// Mashu 2026-07-09: builds were previously only visible on the owner's
+// Creations page. Surfacing them in the public library gives the corpus
+// a "what people actually made" showcase. Filter: `is_public = true`
+// (matches the visibility convention used by every other entity —
+// private / followers-only builds stay private).
+//
+// Engagement is keyed via the `BUILD_TEMPLATE:<id>` composite id, which
+// matches `publishTargetTypeEnum.BUILD_TEMPLATE` and the existing
+// visibility API + fork-target helpers. The display category is
+// "Archetype" or "Build" depending on `is_archetype_template`, so the
+// card chip tells the user which kind of build they're looking at.
+//
+// BU cost: builds don't have a single canonical buCost — they compose
+// race + background + capabilities + items. We surface `startingBu`
+// (the level-1 budget the build was created with) as the chip value
+// so cards remain comparable in the grid.
+// =============================================================================
+
+async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
+  const conditions = [eq(builds.isPublic, true)];
+
+  if (q.search) {
+    conditions.push(
+      or(
+        ilike(builds.name, `%${q.search}%`),
+        ilike(builds.description, `%${q.search}%`),
+        ilike(builds.raceName, `%${q.search}%`),
+        ilike(builds.backgroundName, `%${q.search}%`),
+      )!,
+    );
+  }
+  if (q.authorUsername) {
+    // Builds store Clerk user id in user_id; SQL-level username filter
+    // needs a join. Skip — filter in caller (handled in queryLibrary).
+  }
+
+  const rows = await db
+    .select({
+      id: builds.id,
+      name: builds.name,
+      description: builds.description,
+      level: builds.level,
+      startingBu: builds.startingBu,
+      isArchetypeTemplate: builds.isArchetypeTemplate,
+      userId: builds.userId,
+      createdAt: builds.createdAt,
+    })
+    .from(builds)
+    .where(and(...conditions))
+    .limit(500);
+
+  const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
+  const engagementMap = await resolveEngagementMap(
+    rows.map((r) => `BUILD_TEMPLATE:${r.id}`),
+  );
+
+  return rows.map((r) => {
+    const author = r.userId ? authorMap.get(r.userId) : null;
+    const eng = engagementMap.get(`BUILD_TEMPLATE:${r.id}`) ?? {
+      likes: 0,
+      dislikes: 0,
+      forks: 0,
+    };
+    return {
+      id: `BUILD_TEMPLATE:${r.id}`,
+      targetType: "BUILD_TEMPLATE" as const,
+      targetId: r.id,
+      name: r.name,
+      // Surface level + archetype as the chip suffix so the card reads
+      // "L1 · Archetype" / "L3 · Build" — distinguishes archetype
+      // templates from character snapshots at a glance.
+      description: r.description || null,
+      category: r.isArchetypeTemplate ? "Archetype" : `Level ${r.level}`,
+      buCost: r.startingBu,
       authorId: r.userId ?? null,
       authorUsername: author?.username ?? null,
       authorDisplayName: author?.displayName ?? null,

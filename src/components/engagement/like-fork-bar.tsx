@@ -37,7 +37,10 @@ export interface LikeForkBarProps {
     | "ITEM"
     | "RACE_TEMPLATE"
     | "BACKGROUND_TEMPLATE"
-    | "ARCHETYPE_TEMPLATE";
+    | "ARCHETYPE_TEMPLATE"
+    // Mashu 2026-07-09: builds can now be liked + forked from the
+    // public library grid.
+    | "BUILD_TEMPLATE";
   targetId: string;
   versionId?: string;
   initialLikes: number;

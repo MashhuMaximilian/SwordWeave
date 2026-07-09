@@ -305,7 +305,7 @@ export function EffectForm({
   }
 
   const totalBu = slots.reduce(
-    (sum, slot) => sum + slot.primitive.buCost * slot.quantity,
+    (sum, slot) => sum + Math.abs(slot.primitive.buCost * slot.quantity),
     0,
   );
 

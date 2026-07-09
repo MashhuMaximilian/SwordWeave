@@ -43,7 +43,7 @@ export function EffectFormPreview({
     .filter(Boolean);
 
   const totalBu = slots.reduce(
-    (sum, slot) => sum + slot.primitive.buCost * slot.quantity,
+    (sum, slot) => sum + Math.abs(slot.primitive.buCost * slot.quantity),
     0,
   );
 
@@ -137,7 +137,7 @@ export function EffectFormPreview({
                   {slot.primitive.name} x{slot.quantity}
                 </span>
                 <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                  {slot.primitive.buCost * slot.quantity} BU
+                  {Math.abs(slot.primitive.buCost * slot.quantity)} BU
                 </span>
               </li>
             ))}

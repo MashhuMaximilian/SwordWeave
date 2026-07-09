@@ -98,68 +98,75 @@ export interface CapabilityCompilation {
  * @returns Total BU cost
  */
 export function compileCapabilityBU(assembly: CapabilityAssembly): number {
+  // Mashu 2026-07-09: Math.abs() per the mirror rule. The engine-level
+  // ledger (evaluateBuLedger) already handles mirrors via
+  // calculatePrimitiveBu returning -Math.abs(mirrorBuCredit). This
+  // display-side total is for the capability-preview badge, where
+  // mirror semantics don't apply (slots don't have isMirrored) — we
+  // still wrap with Math.abs() so any future schema change storing
+  // signed buCost doesn't accidentally cancel.
   let total = 0;
 
   for (const ref of assembly.verbReferences) {
     const prim = assembly.primitivesById.get(ref.primitiveId);
     if (prim) {
-      total += prim.buCost * (ref.quantity ?? 1);
+      total += Math.abs(prim.buCost * (ref.quantity ?? 1));
     }
   }
 
   for (const ref of assembly.domainReferences) {
     const prim = assembly.primitivesById.get(ref.primitiveId);
     if (prim) {
-      total += prim.buCost * (ref.quantity ?? 1);
+      total += Math.abs(prim.buCost * (ref.quantity ?? 1));
     }
   }
 
   if (assembly.rangePrimitive) {
     const prim = assembly.primitivesById.get(assembly.rangePrimitive.primitiveId);
     if (prim) {
-      total += prim.buCost * (assembly.rangePrimitive.quantity ?? 1);
+      total += Math.abs(prim.buCost * (assembly.rangePrimitive.quantity ?? 1));
     }
   }
 
   if (assembly.targetingPrimitive) {
     const prim = assembly.primitivesById.get(assembly.targetingPrimitive.primitiveId);
     if (prim) {
-      total += prim.buCost * (assembly.targetingPrimitive.quantity ?? 1);
+      total += Math.abs(prim.buCost * (assembly.targetingPrimitive.quantity ?? 1));
     }
   }
 
   if (assembly.durationPrimitive) {
     const prim = assembly.primitivesById.get(assembly.durationPrimitive.primitiveId);
     if (prim) {
-      total += prim.buCost * (assembly.durationPrimitive.quantity ?? 1);
+      total += Math.abs(prim.buCost * (assembly.durationPrimitive.quantity ?? 1));
     }
   }
 
   if (assembly.outputPrimitive) {
     const prim = assembly.primitivesById.get(assembly.outputPrimitive.primitiveId);
     if (prim) {
-      total += prim.buCost * (assembly.outputPrimitive.quantity ?? 1);
+      total += Math.abs(prim.buCost * (assembly.outputPrimitive.quantity ?? 1));
     }
   }
 
   if (assembly.sizingPrimitive) {
     const prim = assembly.primitivesById.get(assembly.sizingPrimitive.primitiveId);
     if (prim) {
-      total += prim.buCost * (assembly.sizingPrimitive.quantity ?? 1);
+      total += Math.abs(prim.buCost * (assembly.sizingPrimitive.quantity ?? 1));
     }
   }
 
   for (const ref of assembly.structuralPrimitives) {
     const prim = assembly.primitivesById.get(ref.primitiveId);
     if (prim) {
-      total += prim.buCost * (ref.quantity ?? 1);
+      total += Math.abs(prim.buCost * (ref.quantity ?? 1));
     }
   }
 
   for (const ref of assembly.augmentPrimitives) {
     const prim = assembly.primitivesById.get(ref.primitiveId);
     if (prim) {
-      total += prim.buCost * (ref.quantity ?? 1);
+      total += Math.abs(prim.buCost * (ref.quantity ?? 1));
     }
   }
 
@@ -544,7 +551,10 @@ export function calculateCapabilityMirrorDebt(
       if (!isMirrored) continue;
       const prim = assembly.primitivesById.get(ref.primitiveId);
       if (!prim) continue;
-      debt += prim.buCost * (ref.quantity ?? 1);
+      // Mashu 2026-07-09: Math.abs() per the mirror rule. Defensive —
+      // the engine-level mirror math uses Math.abs() everywhere else;
+      // this display-side total should match.
+      debt += Math.abs(prim.buCost * (ref.quantity ?? 1));
     }
   };
 

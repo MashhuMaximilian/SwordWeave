@@ -123,7 +123,7 @@ function categoryLabel(category: string) {
 
 function capabilityBuTotal(capability: CapabilityRow): number {
   return capability.primitiveLinks.reduce(
-    (total, link) => total + link.primitive.buCost * link.quantity,
+    (total, link) => total + Math.abs(link.primitive.buCost * link.quantity),
     0,
   );
 }
@@ -213,7 +213,7 @@ export function CapabilityComposer({
     () =>
       selectedSlots.reduce((total, slot) => {
         const primitive = primitives.find((p) => p.id === slot.primitiveId);
-        return total + (primitive ? primitive.buCost * slot.quantity : 0);
+        return total + (primitive ? Math.abs(primitive.buCost * slot.quantity) : 0);
       }, 0),
     [selectedSlots, primitives],
   );
@@ -725,7 +725,7 @@ export function CapabilityComposer({
                           className="w-14 rounded-md border border-border bg-card px-2 py-1 text-center text-xs"
                         />
                         <span className="font-mono text-xs text-muted-foreground">
-                          {primitive.buCost * slot.quantity} BU
+                          {Math.abs(primitive.buCost * slot.quantity)} BU
                         </span>
                         <button
                           type="button"

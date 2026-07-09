@@ -43,7 +43,7 @@ function categoryLabel(category: string) {
 
 function effectBuTotal(effect: EffectRow) {
   return effect.primitiveLinks.reduce(
-    (total, link) => total + link.primitive.buCost * link.quantity,
+    (total, link) => total + Math.abs(link.primitive.buCost * link.quantity),
     0,
   );
 }
@@ -109,7 +109,7 @@ export function EffectComposer({
   );
 
   const totalBu = selectedPrimitiveRows.reduce(
-    (total, slot) => total + slot.primitive.buCost * slot.quantity,
+    (total, slot) => total + Math.abs(slot.primitive.buCost * slot.quantity),
     0,
   );
 

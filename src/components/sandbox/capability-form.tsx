@@ -445,7 +445,7 @@ export function CapabilityForm({
   }
 
   const previewBu = slots.reduce(
-    (sum, slot) => sum + slot.primitive.buCost * slot.quantity,
+    (sum, slot) => sum + Math.abs(slot.primitive.buCost * slot.quantity),
     0,
   );
 
@@ -647,7 +647,7 @@ export function CapabilityForm({
                   className="w-14 rounded-md border border-border bg-background px-2 py-1 text-center text-xs"
                 />
                 <span className="font-mono text-xs text-muted-foreground">
-                  {slot.primitive.buCost * slot.quantity} BU
+                  {Math.abs(slot.primitive.buCost * slot.quantity)} BU
                 </span>
                 <button
                   type="button"

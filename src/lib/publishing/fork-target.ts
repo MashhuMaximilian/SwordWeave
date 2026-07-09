@@ -103,6 +103,7 @@ export function buildSandboxUrl(
       };
     case "CHARACTER":
     case "BUILD":
+    case "BUILD_TEMPLATE":
       // Characters + builds are not fork-able in Phase 1. Return null
       // so the Fork button can decide whether to hide itself, disable
       // itself, or show a "coming soon" toast. The original POST

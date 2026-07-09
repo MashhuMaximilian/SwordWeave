@@ -669,7 +669,8 @@ async function CapabilityDetail({
 
   let buTotal = 0;
   for (const link of row.primitiveLinks) {
-    buTotal += link.primitive.buCost * link.quantity;
+    // Mashu 2026-07-09: Math.abs() per the mirror rule. Defensive.
+    buTotal += Math.abs(link.primitive.buCost * link.quantity);
   }
 
   const engagement = await loadEngagement("CAPABILITY", id, currentUserId);
@@ -759,7 +760,7 @@ async function CapabilityDetail({
                   </span>
                 </Link>
                 <span className="shrink-0 font-mono text-xs">
-                  {link.quantity}× · {link.primitive.buCost * link.quantity} BU
+                  {link.quantity}× · {Math.abs(link.primitive.buCost * link.quantity)} BU
                 </span>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
               </li>
@@ -1044,7 +1045,8 @@ async function EffectDetail({
   // Compute BU total
   let buTotal = 0;
   for (const link of primitiveLinks) {
-    buTotal += link.primitive.buCost * link.quantity;
+    // Mashu 2026-07-09: Math.abs() per the mirror rule. Defensive.
+    buTotal += Math.abs(link.primitive.buCost * link.quantity);
   }
 
   const author = await resolveAuthorByClerkId(effectRow.userId);
@@ -1132,7 +1134,7 @@ async function EffectDetail({
                     </span>
                   </Link>
                   <span className="shrink-0 font-mono text-xs">
-                    {link.quantity}× · {link.primitive.buCost * link.quantity} BU
+                    {link.quantity}× · {Math.abs(link.primitive.buCost * link.quantity)} BU
                   </span>
                 </li>
               );
