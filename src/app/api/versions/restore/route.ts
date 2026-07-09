@@ -212,6 +212,10 @@ async function loadRestoredPayload(
       reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
     }
     if (!reconstructed) return null;
+    // Unwrap seed-script snapshot wrapper if present
+    if (typeof reconstructed === "object" && "data" in reconstructed && typeof reconstructed["data"] === "object" && reconstructed["data"] !== null && !Array.isArray(reconstructed["data"]) && "id" in reconstructed) {
+      reconstructed = reconstructed["data"] as Record<string, unknown>;
+    }
     return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };
   }
   if (type === "EFFECT") {
@@ -243,6 +247,10 @@ async function loadRestoredPayload(
       reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
     }
     if (!reconstructed) return null;
+    // Unwrap seed-script snapshot wrapper if present
+    if (typeof reconstructed === "object" && "data" in reconstructed && typeof reconstructed["data"] === "object" && reconstructed["data"] !== null && !Array.isArray(reconstructed["data"]) && "id" in reconstructed) {
+      reconstructed = reconstructed["data"] as Record<string, unknown>;
+    }
     return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };
   }
   if (type === "CAPABILITY") {
@@ -275,6 +283,10 @@ async function loadRestoredPayload(
       reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
     }
     if (!reconstructed) return null;
+    // Unwrap seed-script snapshot wrapper if present
+    if (typeof reconstructed === "object" && "data" in reconstructed && typeof reconstructed["data"] === "object" && reconstructed["data"] !== null && !Array.isArray(reconstructed["data"]) && "id" in reconstructed) {
+      reconstructed = reconstructed["data"] as Record<string, unknown>;
+    }
     return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };
   }
   if (type === "ITEM") {
@@ -306,6 +318,10 @@ async function loadRestoredPayload(
       reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
     }
     if (!reconstructed) return null;
+    // Unwrap seed-script snapshot wrapper if present
+    if (typeof reconstructed === "object" && "data" in reconstructed && typeof reconstructed["data"] === "object" && reconstructed["data"] !== null && !Array.isArray(reconstructed["data"]) && "id" in reconstructed) {
+      reconstructed = reconstructed["data"] as Record<string, unknown>;
+    }
     return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };
   }
   // TEMPLATE
@@ -337,6 +353,10 @@ async function loadRestoredPayload(
     reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
   }
   if (!reconstructed) return null;
+  // Unwrap seed-script snapshot wrapper if present
+  if (typeof reconstructed === "object" && "data" in reconstructed && typeof reconstructed["data"] === "object" && reconstructed["data"] !== null && !Array.isArray(reconstructed["data"]) && "id" in reconstructed) {
+    reconstructed = reconstructed["data"] as Record<string, unknown>;
+  }
   return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };
 }
 

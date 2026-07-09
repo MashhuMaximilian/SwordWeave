@@ -114,6 +114,21 @@ export async function getVersionHistory(
       payload = (r.snapshot ?? {}) as Record<string, unknown>;
     }
 
+    // Some seed-script snapshots store {id, data: {...}, sourceOrigin}.
+    // If the reconstructed payload has a "data" key that's an object
+    // (and not a plain field like "description"), unwrap it.
+    if (
+      payload &&
+      typeof payload === "object" &&
+      "data" in payload &&
+      typeof payload["data"] === "object" &&
+      payload["data"] !== null &&
+      !Array.isArray(payload["data"]) &&
+      "id" in payload
+    ) {
+      payload = payload["data"] as Record<string, unknown>;
+    }
+
     const prev = i > 0 ? versions[i - 1] : null;
     const changeStats =
       r.deltaKind === "DELTA" && prev

@@ -76,8 +76,23 @@ export async function getVersionPayload(
     ) as VersionPayload,
   }));
 
-  const reconstructed = reconstructVersion(chain, versionNumber);
+  let reconstructed = reconstructVersion(chain, versionNumber);
   if (!reconstructed) return null;
+
+  // Some seed-script snapshots store {id, data: {...}, sourceOrigin}.
+  // If the reconstructed payload has a "data" key that's an object
+  // (and not a plain field like "description"), unwrap it.
+  if (
+    reconstructed &&
+    typeof reconstructed === "object" &&
+    "data" in reconstructed &&
+    typeof reconstructed["data"] === "object" &&
+    reconstructed["data"] !== null &&
+    !Array.isArray(reconstructed["data"]) &&
+    "id" in reconstructed
+  ) {
+    reconstructed = reconstructed["data"] as Record<string, unknown>;
+  }
 
   return {
     versionId: target.id,
