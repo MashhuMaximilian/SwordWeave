@@ -15,6 +15,10 @@ import {
   SandboxPreviewModal,
   type SandboxPreviewItem,
   type SandboxPrimitiveRow,
+  type SandboxEffectRow,
+  type SandboxCapabilityRow,
+  type SandboxTemplateRow,
+  type SandboxItemRow,
 } from "@/components/sandbox/sandbox-preview-modal";
 
 interface VersionPreviewButtonProps {
@@ -49,9 +53,184 @@ function mapPayloadToPreviewItem(
     };
     return { kind: "primitive", row };
   }
-  // Effects, capabilities, templates, items — the payload has scalar
-  // fields but not the full composed-entity tree needed for the unified
-  // preview. Return null so the caller can fall back to a simpler view.
+
+  if (targetType === "EFFECT") {
+    const primitiveLinks = Array.isArray(payload["primitiveSlots"])
+      ? (payload["primitiveSlots"] as Array<Record<string, unknown>>).map((s, i) => ({
+          primitiveId: Number(s["primitiveId"]) || 0,
+          quantity: Number(s["quantity"]) || 1,
+          primitive: {
+            id: Number(s["primitiveId"]) || 0,
+            name: String(s["name"] ?? `Primitive ${s["primitiveId"]}`),
+            category: String(s["category"] ?? ""),
+            buCost: Number(s["buCost"]) || 0,
+          },
+          versionNumber: undefined,
+        }))
+      : [];
+    const row: SandboxEffectRow = {
+      id: targetId,
+      name: String(payload["name"] ?? ""),
+      narrativeDescription: String(payload["narrativeDescription"] ?? ""),
+      sourceOrigin: (payload["sourceOrigin"] as string) ?? null,
+      tags: Array.isArray(payload["tags"]) ? (payload["tags"] as string[]) : [],
+      isPublic: Boolean(payload["isPublic"]),
+      primitiveLinks,
+    };
+    return { kind: "effect", row };
+  }
+
+  if (targetType === "CAPABILITY") {
+    const primitiveLinks = Array.isArray(payload["primitiveSlots"])
+      ? (payload["primitiveSlots"] as Array<Record<string, unknown>>).map((s, i) => ({
+          primitiveId: Number(s["primitiveId"]) || 0,
+          role: String(s["role"] ?? "PRIMARY"),
+          quantity: Number(s["quantity"]) || 1,
+          sortOrder: Number(s["sortOrder"]) || i,
+          slotLabel: (s["slotLabel"] as string) ?? null,
+          primitive: {
+            id: Number(s["primitiveId"]) || 0,
+            name: String(s["name"] ?? `Primitive ${s["primitiveId"]}`),
+            category: String(s["category"] ?? ""),
+            buCost: Number(s["buCost"]) || 0,
+          },
+          versionNumber: undefined,
+        }))
+      : [];
+    const effectLinks = Array.isArray(payload["effectIds"])
+      ? (payload["effectIds"] as string[]).map((eid, i) => ({
+          effectId: eid,
+          sortOrder: i,
+          slotLabel: null,
+          notes: null,
+          effect: {
+            id: eid,
+            name: `Effect ${eid.slice(0, 8)}`,
+            narrativeDescription: null,
+            sourceOrigin: null,
+          },
+          versionNumber: undefined,
+        }))
+      : [];
+    const row: SandboxCapabilityRow = {
+      id: targetId,
+      name: String(payload["name"] ?? ""),
+      type: String(payload["type"] ?? "ACTIVE"),
+      sourceType: String(payload["sourceType"] ?? "PHYSICAL"),
+      verboseDescription: String(payload["verboseDescription"] ?? ""),
+      sourceOrigin: (payload["sourceOrigin"] as string) ?? null,
+      tags: Array.isArray(payload["tags"]) ? (payload["tags"] as string[]) : [],
+      isPublic: Boolean(payload["isPublic"]),
+      primitiveLinks,
+      effectLinks,
+    };
+    return { kind: "capability", row };
+  }
+
+  if (
+    targetType === "RACE_TEMPLATE" ||
+    targetType === "BACKGROUND_TEMPLATE" ||
+    targetType === "ARCHETYPE_TEMPLATE"
+  ) {
+    const kind = targetType.replace("_TEMPLATE", "") as "RACE" | "BACKGROUND" | "ARCHETYPE";
+    const primitiveLinks = Array.isArray(payload["primitiveIds"])
+      ? (payload["primitiveIds"] as number[]).map((pid) => ({
+          primitiveId: pid,
+          primitive: {
+            id: pid,
+            name: `Primitive ${pid}`,
+            category: "",
+            buCost: 0,
+          },
+          versionNumber: undefined,
+        }))
+      : [];
+    const capabilityLinks = Array.isArray(payload["capabilityIds"])
+      ? (payload["capabilityIds"] as string[]).map((cid) => ({
+          capabilityId: cid,
+          capability: {
+            id: cid,
+            name: `Capability ${cid.slice(0, 8)}`,
+            type: "",
+          },
+          versionNumber: undefined,
+        }))
+      : [];
+    const row: SandboxTemplateRow = {
+      id: targetId,
+      kind,
+      name: String(payload["name"] ?? ""),
+      description: (payload["description"] as string) ?? null,
+      suggestedTraits: (payload["suggestedTraits"] as string) ?? null,
+      isPublic: Boolean(payload["isPublic"]),
+      primitiveLinks,
+      capabilityLinks,
+    };
+    return { kind: "template", row };
+  }
+
+  if (targetType === "ITEM") {
+    const primitiveLinks = Array.isArray(payload["primitiveIds"])
+      ? (payload["primitiveIds"] as number[]).map((pid) => ({
+          primitiveId: pid,
+          primitive: {
+            id: pid,
+            name: `Primitive ${pid}`,
+            category: "",
+            buCost: 0,
+          },
+          versionNumber: undefined,
+        }))
+      : [];
+    const effectLinks = Array.isArray(payload["effectIds"])
+      ? (payload["effectIds"] as string[]).map((eid) => ({
+          effectId: eid,
+          sortOrder: 0,
+          slotLabel: null,
+          notes: null,
+          effect: {
+            id: eid,
+            name: `Effect ${eid.slice(0, 8)}`,
+            narrativeDescription: null,
+          },
+          versionNumber: undefined,
+        }))
+      : [];
+    const capabilityLinks = Array.isArray(payload["capabilityIds"])
+      ? (payload["capabilityIds"] as string[]).map((cid) => ({
+          capabilityId: cid,
+          sortOrder: 0,
+          slotLabel: null,
+          notes: null,
+          capability: {
+            id: cid,
+            name: `Capability ${cid.slice(0, 8)}`,
+            type: "",
+          },
+          versionNumber: undefined,
+        }))
+      : [];
+    const row: SandboxItemRow = {
+      id: targetId,
+      name: String(payload["name"] ?? ""),
+      itemType: String(payload["itemType"] ?? "TRINKET"),
+      rarity: String(payload["rarity"] ?? "COMMON"),
+      buCost: Number(payload["buCost"]) || 0,
+      description: String(payload["description"] ?? ""),
+      slotCost: Number(payload["slotCost"]) || 1,
+      isTwoHanded: Boolean(payload["isTwoHanded"]),
+      isConsumable: Boolean(payload["isConsumable"]),
+      actsAsFocus: Boolean(payload["actsAsFocus"]),
+      isPublic: Boolean(payload["isPublic"]),
+      sourceOrigin: (payload["sourceOrigin"] as string) ?? null,
+      tags: Array.isArray(payload["tags"]) ? (payload["tags"] as string[]) : [],
+      primitiveLinks,
+      effectLinks,
+      capabilityLinks,
+    };
+    return { kind: "item", row };
+  }
+
   return null;
 }
 

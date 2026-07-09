@@ -204,7 +204,15 @@ async function loadRestoredPayload(
       reconstructed = reconstructVersion(chain, versionNumber);
     } catch {
       // Fallback: use the raw snapshot if reconstruction fails (corrupted chain)
-      reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
+      // The snapshot is a VersionPayload, so we need to extract the data
+      const snapshot = target.snapshot as unknown as VersionPayload;
+      if (snapshot && typeof snapshot === "object" && "kind" in snapshot) {
+        if (snapshot.kind === "FULL") {
+          reconstructed = snapshot.data;
+        } else if (snapshot.kind === "DELTA") {
+          reconstructed = snapshot.patch;
+        }
+      }
     }
     if (!reconstructed) return null;
     return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };
@@ -230,7 +238,14 @@ async function loadRestoredPayload(
       reconstructed = reconstructVersion(chain, versionNumber);
     } catch {
       // Fallback: use the raw snapshot if reconstruction fails (corrupted chain)
-      reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
+      const snapshot = target.snapshot as unknown as VersionPayload;
+      if (snapshot && typeof snapshot === "object" && "kind" in snapshot) {
+        if (snapshot.kind === "FULL") {
+          reconstructed = snapshot.data;
+        } else if (snapshot.kind === "DELTA") {
+          reconstructed = snapshot.patch;
+        }
+      }
     }
     if (!reconstructed) return null;
     return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };
@@ -257,7 +272,14 @@ async function loadRestoredPayload(
       reconstructed = reconstructVersion(chain, versionNumber);
     } catch {
       // Fallback: use the raw snapshot if reconstruction fails (corrupted chain)
-      reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
+      const snapshot = target.snapshot as unknown as VersionPayload;
+      if (snapshot && typeof snapshot === "object" && "kind" in snapshot) {
+        if (snapshot.kind === "FULL") {
+          reconstructed = snapshot.data;
+        } else if (snapshot.kind === "DELTA") {
+          reconstructed = snapshot.patch;
+        }
+      }
     }
     if (!reconstructed) return null;
     return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };
@@ -283,7 +305,14 @@ async function loadRestoredPayload(
       reconstructed = reconstructVersion(chain, versionNumber);
     } catch {
       // Fallback: use the raw snapshot if reconstruction fails (corrupted chain)
-      reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
+      const snapshot = target.snapshot as unknown as VersionPayload;
+      if (snapshot && typeof snapshot === "object" && "kind" in snapshot) {
+        if (snapshot.kind === "FULL") {
+          reconstructed = snapshot.data;
+        } else if (snapshot.kind === "DELTA") {
+          reconstructed = snapshot.patch;
+        }
+      }
     }
     if (!reconstructed) return null;
     return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };
@@ -309,7 +338,14 @@ async function loadRestoredPayload(
     reconstructed = reconstructVersion(chain, versionNumber);
   } catch {
     // Fallback: use the raw snapshot if reconstruction fails (corrupted chain)
-    reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
+    const snapshot = target.snapshot as unknown as VersionPayload;
+    if (snapshot && typeof snapshot === "object" && "kind" in snapshot) {
+      if (snapshot.kind === "FULL") {
+        reconstructed = snapshot.data;
+      } else if (snapshot.kind === "DELTA") {
+        reconstructed = snapshot.patch;
+      }
+    }
   }
   if (!reconstructed) return null;
   return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };

@@ -127,6 +127,7 @@ export function BlueprintSandboxClient({
   primitiveCategories,
   engagement,
   currentUserInternalId,
+  versionMap,
 }: {
   initialBuild: BlueprintBuildMode;
   initialKind?: "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined;
@@ -184,6 +185,9 @@ export function BlueprintSandboxClient({
    * Current viewer's internal ID. `null` when signed out.
    */
   currentUserInternalId: string | null;
+  /** Map of "type:id" → latest published version number. Used to show
+   *  version chips in the preview modal header. */
+  versionMap?: Record<string, number>;
 }) {
   const [build, setBuild] = useState<BlueprintBuildMode>(initialBuild);
   const [editing, setEditing] = useState<EditingState>(initialEditing);
@@ -656,6 +660,7 @@ export function BlueprintSandboxClient({
                 : null
             }
             onSelect={guardedLibrarySelect}
+            versionMap={versionMap}
           />
         }
         builder={builderNode}

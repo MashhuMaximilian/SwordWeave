@@ -50,7 +50,6 @@ export async function ForksList({
   }
 
   const { forks, totalForks } = result;
-  if (totalForks === 0) return null;
 
   return (
     <ForksListClient

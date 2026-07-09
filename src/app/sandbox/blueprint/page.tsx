@@ -281,6 +281,23 @@ export default async function BlueprintSandboxPage({
     console.error("[blueprint sandbox] engagement prefetch failed:", err);
   }
 
+  // Resolve latest published version numbers for all entities. This
+  // lets the modal preview show "v3" next to the entity name. Wrapped
+  // in try/catch so a failure degrades to "no version" instead of 500.
+  let versionMap: Map<string, number> = new Map();
+  try {
+    const { bulkResolveLatestVersionNumbers } = await import("@/lib/versions/bulk-resolve-latest-version-numbers");
+    versionMap = await bulkResolveLatestVersionNumbers([
+      ...templateRows.map((t) => ({ kind: "template" as const, id: (t as { id: string }).id })),
+      ...itemRows.map((i) => ({ kind: "item" as const, id: (i as { id: string }).id })),
+      ...primitiveRows.map((p) => ({ kind: "primitive" as const, id: (p as { id: number }).id })),
+      ...effectRows.map((e) => ({ kind: "effect" as const, id: (e as { id: string }).id })),
+      ...capabilityRows.map((c) => ({ kind: "capability" as const, id: (c as { id: string }).id })),
+    ]);
+  } catch (err) {
+    console.error("[blueprint sandbox] version resolution failed:", err);
+  }
+
   return (
     <BlueprintSandboxClient
       initialBuild={build}
@@ -456,6 +473,7 @@ export default async function BlueprintSandboxPage({
         };
       })}
       dataLoadFailed={dataLoadFailed}
+      versionMap={Object.fromEntries(versionMap)}
     />
   );
 }

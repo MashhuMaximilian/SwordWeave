@@ -74,6 +74,9 @@ interface BlueprintLibraryProps {
   currentUserInternalId: string | null;
   editingKey: string | null;
   onSelect: (kind: "template" | "item", id: string) => void;
+  /** Map of "type:id" → latest published version number. Used to show
+   *  version chips in the preview modal header. */
+  versionMap?: Record<string, number> | undefined;
 }
 
 // Build mode no longer gates which type chips are visible in the toolbar.
@@ -108,6 +111,7 @@ export function BlueprintLibrary({
   currentUserInternalId,
   editingKey,
   onSelect,
+  versionMap,
 }: BlueprintLibraryProps) {
   // Default type filter per build mode. The kind filter is exposed in
   // the toolbar. We pick a sensible default that matches the active
@@ -160,27 +164,37 @@ export function BlueprintLibrary({
         item.targetType === "ARCHETYPE_TEMPLATE"
       ) {
         const row = templates.find((t) => t.id === item.targetId);
-        return row ? { kind: "template", row } : null;
+        if (!row) return null;
+        const vn = versionMap?.[`${item.targetType}:${item.targetId}`] ?? null;
+        return { kind: "template", row, latestVersionNumber: vn };
       }
       if (item.targetType === "ITEM") {
         const row = items.find((i) => i.id === item.targetId);
-        return row ? { kind: "item", row } : null;
+        if (!row) return null;
+        const vn = versionMap?.[`item:${item.targetId}`] ?? null;
+        return { kind: "item", row, latestVersionNumber: vn };
       }
       if (item.targetType === "PRIMITIVE") {
         const row = primitives.find((p) => String(p.id) === item.targetId);
-        return row ? { kind: "primitive", row } : null;
+        if (!row) return null;
+        const vn = versionMap?.[`primitive:${item.targetId}`] ?? null;
+        return { kind: "primitive", row, latestVersionNumber: vn };
       }
       if (item.targetType === "EFFECT") {
         const row = effects?.find((e) => e.id === item.targetId);
-        return row ? { kind: "effect", row } : null;
+        if (!row) return null;
+        const vn = versionMap?.[`effect:${item.targetId}`] ?? null;
+        return { kind: "effect", row, latestVersionNumber: vn };
       }
       if (item.targetType === "CAPABILITY") {
         const row = capabilities.find((c) => c.id === item.targetId);
-        return row ? { kind: "capability", row } : null;
+        if (!row) return null;
+        const vn = versionMap?.[`capability:${item.targetId}`] ?? null;
+        return { kind: "capability", row, latestVersionNumber: vn };
       }
       return null;
     };
-  }, [templates, items, primitives, capabilities, effects]);
+  }, [templates, items, primitives, capabilities, effects, versionMap]);
 
   // Filter items by toolbar search/typeFilter. The build-mode gate is
   // removed — the user can see any kind in the blueprint library per the
