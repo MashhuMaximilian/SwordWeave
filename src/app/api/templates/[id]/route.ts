@@ -8,7 +8,8 @@ import {
   templatePrimitives,
   templates,
 } from "@/db/schema";
-import { expectedCategoryForKind } from "../route";
+// Mashu 2026-07-09: expectedCategoryForKind import removed — the
+// category restriction is gone.
 import {
   dispatchEntitySave,
   type SaveTargetType,
@@ -252,19 +253,15 @@ export async function PATCH(
           );
 
         // Replace primitive slot links with the new set.
-        const expected = expectedCategoryForKind(kind);
+        // Mashu 2026-07-09: category restriction removed — templates
+        // can slot any primitive. The previous HERITAGE_AUGMENT
+        // filter is gone; designers decide what makes sense for the
+        // race/background/archetype they're composing.
         if ("primitiveIds" in values && primitiveIds.length > 0) {
           const prims = await tx
             .select()
             .from(primitives)
             .where(inArray(primitives.id, primitiveIds));
-
-          const wrong = prims.filter((p) => p.category !== expected);
-          if (wrong.length > 0) {
-            throw new Error(
-              `${kind} templates can only use ${expected} primitives. Invalid: ${wrong.map((p) => p.name).join(", ")}`,
-            );
-          }
 
           await tx
             .delete(templatePrimitives)
@@ -365,19 +362,12 @@ export async function PATCH(
       }
 
       // Validate + insert primitive slots.
-      const expected = expectedCategoryForKind(kind);
+      // Mashu 2026-07-09: category restriction removed.
       if (primitiveIds.length > 0) {
         const prims = await tx
           .select()
           .from(primitives)
           .where(inArray(primitives.id, primitiveIds));
-
-        const wrong = prims.filter((p) => p.category !== expected);
-        if (wrong.length > 0) {
-          throw new Error(
-            `${kind} templates can only use ${expected} primitives. Invalid: ${wrong.map((p) => p.name).join(", ")}`,
-          );
-        }
 
         await tx.insert(templatePrimitives).values(
           prims.map((p, idx) => ({

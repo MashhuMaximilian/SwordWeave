@@ -50,9 +50,18 @@ const blankForm: TemplateFormState = {
 };
 
 function expectedCategory(kind: string): string {
-  if (kind === "RACE") return "HERITAGE_AUGMENT";
-  if (kind === "BACKGROUND") return "BACKGROUND_AUGMENT";
-  if (kind === "ARCHETYPE") return "CHARACTER_SHEET_AUGMENT";
+  // Mashu 2026-07-09: category restrictions removed. Templates can
+  // slot any primitive regardless of category — designers decide what
+  // belongs to a race/background/archetype based on intent, not a
+  // hard-coded taxonomy. The picker now shows the full primitive
+  // library so anything can be added; the slot rules in the
+  // relationships schema still enforce primitives + capabilities only
+  // (no effects, no items), which is the actual safety constraint.
+  //
+  // This function is kept (returns empty string) because some callers
+  // still reference the variable. If a future constraint returns,
+  // this is the single hook point.
+  void kind;
   return "";
 }
 
@@ -185,10 +194,12 @@ export function TemplateForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [primitiveIds, capabilityIds, initialTemplate?.id]);
 
-  const allowedCategory = expectedCategory(form.kind);
-  const allowedPrimitives = availablePrimitives.filter(
-    (p) => p.category === allowedCategory,
-  );
+  // Mashu 2026-07-09: removed the category filter. All primitives are
+  // allowed regardless of template kind. Designers slot whatever makes
+  // sense; the schema only enforces that templates contain primitives +
+  // capabilities (no effects, no items), which is checked at save time
+  // by the templates API.
+  const allowedPrimitives = availablePrimitives;
   const slottedPrimitives = primitiveIds
     .map((id) => availablePrimitives.find((p) => p.id === id))
     .filter((p): p is NonNullable<typeof p> => Boolean(p));
@@ -512,8 +523,7 @@ export function TemplateForm({
           </div>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Only {allowedCategory.toLowerCase().replace(/_/g, "-")} primitives
-          can be used in this kind.
+          Pick any primitive — categories aren't restricted for this kind.
         </p>
 
         {pickerOpen && pickerTarget === "primitive" ? (

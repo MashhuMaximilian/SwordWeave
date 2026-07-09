@@ -493,69 +493,68 @@ function CreationPreview({
         />
       ) : null}
 
-      {/* Action buttons. Layout: a 2-column grid of secondary actions
-          (Source page, Version history, Fork history) below the primary
-          "Edit in sandbox" button. Mashu 2026-07-08: the previous
-          layout was a flex-wrap row of small text links — too cramped
-          on mobile, hard to tap the right one. Grid = predictable tap
-          targets. Each button is full-width within its grid cell. */}
-      <div className="flex flex-col gap-2 border-t border-border pt-3">
+      {/* Action buttons. Mashu 2026-07-09: 2×2 grid of the four primary
+          actions (Edit in sandbox / Source page / Version history /
+          Fork history). Delete stays full-width below the grid since
+          it has its own canDelete gate + confirm dialog. The previous
+          layout had a full-width Edit + a 3-col grid of secondary
+          actions which looked unbalanced. 2×2 = predictable tap
+          targets on mobile, equal visual weight to all four primary
+          actions. */}
+      <div className="grid grid-cols-2 gap-1.5 border-t border-border pt-3">
         <button
           type="button"
           onClick={onEdit}
-          className="inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          className="inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
           <Pencil className="size-3.5" />
           Edit in sandbox
         </button>
-
-        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
-          <a
-            href={`/library/item/${item.id}`}
-            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
-          >
-            <ExternalLink className="size-3.5" />
-            <span>Source page</span>
-          </a>
-          <a
-            href={`/library/item/${item.id}/versions`}
-            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
-          >
-            <History className="size-3.5" />
-            <span>Version history</span>
-          </a>
-          <a
-            href={`/library/item/${item.id}#forks`}
-            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
-          >
-            <GitFork className="size-3.5" />
-            <span>Fork history</span>
-          </a>
-        </div>
-
-        {onDeleted ? (
-          canDelete ? (
-            <button
-              type="button"
-              onClick={() => {
-                setDeleteError(null);
-                setConfirmOpen(true);
-              }}
-              className="mt-1 inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-rose-500/50 px-3 py-2 text-xs font-medium text-rose-500 transition-colors hover:bg-rose-500/10"
-            >
-              <Trash2 className="size-3.5" />
-              Delete
-            </button>
-          ) : (
-            <p
-              className="mt-1 rounded-md border border-dashed border-border bg-card/30 px-3 py-2 text-center text-[10px] text-muted-foreground"
-              title="Set visibility to PRIVATE to enable deletion. This unpublishes the row so version history becomes private-only."
-            >
-              Set visibility to <span className="font-semibold">Private</span> to enable deletion
-            </p>
-          )
-        ) : null}
+        <a
+          href={`/library/item/${item.id}`}
+          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+        >
+          <ExternalLink className="size-3.5" />
+          <span>Source page</span>
+        </a>
+        <a
+          href={`/library/item/${item.id}/versions`}
+          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+        >
+          <History className="size-3.5" />
+          <span>Version history</span>
+        </a>
+        <a
+          href={`/library/item/${item.id}#forks`}
+          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+        >
+          <GitFork className="size-3.5" />
+          <span>Fork history</span>
+        </a>
       </div>
+
+      {onDeleted ? (
+        canDelete ? (
+          <button
+            type="button"
+            onClick={() => {
+              setDeleteError(null);
+              setConfirmOpen(true);
+            }}
+            className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-rose-500/50 px-3 py-2 text-xs font-medium text-rose-500 transition-colors hover:bg-rose-500/10"
+          >
+            <Trash2 className="size-3.5" />
+            Delete
+          </button>
+        ) : (
+          <p
+            className="mt-2 rounded-md border border-dashed border-border bg-card/30 px-3 py-2 text-center text-[10px] text-muted-foreground"
+            title="Set visibility to PRIVATE to enable deletion. This unpublishes the row so version history becomes private-only."
+          >
+            Set visibility to <span className="font-semibold">Private</span> to enable deletion
+          </p>
+        )
+      ) : null}
 
       {deleteError ? (
         <p className="text-xs text-rose-400" role="alert">

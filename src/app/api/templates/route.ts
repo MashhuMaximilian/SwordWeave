@@ -131,25 +131,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Name is required." }, { status: 400 });
     }
 
-    // Enforce category restriction based on kind
-    const expectedCategory = expectedCategoryForKind(kind);
-
+    // Mashu 2026-07-09: removed category restriction. Templates can
+    // slot any primitive regardless of kind. The schema-level slot
+    // rules (templates = primitives + capabilities only, no effects)
+    // are the only safety constraints; designers decide what belongs
+    // to a race/background/archetype based on intent. The previous
+    // HERITAGE_AUGMENT / BACKGROUND_AUGMENT / CHARACTER_SHEET_AUGMENT
+    // taxonomy is preserved in the primitive `category` column so
+    // authors can still search/filter, but it's no longer enforced
+    // server-side.
     let validPrimitiveIds: number[] = [];
     if (primitiveIds.length > 0) {
       const prims = await db
         .select()
         .from(primitives)
         .where(inArray(primitives.id, primitiveIds));
-
-      const wrongCategory = prims.filter((p) => p.category !== expectedCategory);
-      if (wrongCategory.length > 0) {
-        return NextResponse.json(
-          {
-            error: `${kind} templates can only use ${expectedCategory} primitives. Invalid: ${wrongCategory.map((p) => p.name).join(", ")}`,
-          },
-          { status: 400 },
-        );
-      }
 
       validPrimitiveIds = prims.map((p) => p.id);
     }
@@ -241,14 +237,10 @@ export async function POST(request: Request) {
 }
 
 export function expectedCategoryForKind(kind: TemplateKind): string {
-  switch (kind) {
-    case "RACE":
-      return "HERITAGE_AUGMENT";
-    case "BACKGROUND":
-      return "BACKGROUND_AUGMENT";
-    case "ARCHETYPE":
-      return "CHARACTER_SHEET_AUGMENT";
-    default:
-      return "CHARACTER_SHEET_AUGMENT";
-  }
+  // Mashu 2026-07-09: deprecated. Category restriction removed across
+  // the system — templates can slot any primitive. Kept exported for
+  // backward compat (other code may still import it), but always
+  // returns an empty string so the previous guard is a no-op.
+  void kind;
+  return "";
 }

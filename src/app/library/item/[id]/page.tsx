@@ -35,6 +35,10 @@ import {
   type FlagReason,
 } from "@/lib/engagement/flags-service";
 import { getForkSource } from "@/lib/publishing/fork-lineage";
+import {
+  bulkResolveLatestVersionNumbers,
+  type VersionNumberKey,
+} from "@/lib/versions/bulk-resolve-latest-version-numbers";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -659,10 +663,17 @@ async function CapabilityDetail({
   }
 
   const engagement = await loadEngagement("CAPABILITY", id, currentUserId);
-  const [{ flagDistribution, flagNotes }, forkSource] = await Promise.all([
-    loadFlagsAndTags("CAPABILITY", id, row.tags ?? []),
-    loadForkSource("CAPABILITY", id),
-  ]);
+  const [{ flagDistribution, flagNotes }, forkSource, versionMap] =
+    await Promise.all([
+      loadFlagsAndTags("CAPABILITY", id, row.tags ?? []),
+      loadForkSource("CAPABILITY", id),
+      bulkResolveLatestVersionNumbers(
+        row.primitiveLinks.map((l) => ({
+          kind: "primitive" as const,
+          id: l.primitiveId,
+        })),
+      ),
+    ]);
 
   return (
     <DetailShell
@@ -715,26 +726,31 @@ async function CapabilityDetail({
           Composed primitives ({row.primitiveLinks.length})
         </h2>
         <ul className="divide-y divide-border rounded-md border border-border">
-          {row.primitiveLinks.map((link) => (
-            <li
-              key={`${link.capabilityId}-${link.primitiveId}-${link.role}`}
-              className="flex items-center justify-between gap-2 p-3 text-sm"
-            >
-              <Link
-                href={`/library/item/PRIMITIVE:${link.primitiveId}`}
-                className="min-w-0 flex-1 truncate hover:underline"
+          {row.primitiveLinks.map((link) => {
+            const version =
+              versionMap.get(`primitive:${link.primitiveId}` as VersionNumberKey) ?? null;
+            return (
+              <li
+                key={`${link.capabilityId}-${link.primitiveId}-${link.role}`}
+                className="flex items-center justify-between gap-2 p-3 text-sm"
               >
-                <span className="font-semibold">{link.primitive.name}</span>
-                <span className="ml-2 text-xs text-muted-foreground">
-                  {link.role.replace(/_/g, " ")}
+                <Link
+                  href={`/library/item/PRIMITIVE:${link.primitiveId}`}
+                  className="min-w-0 flex-1 truncate hover:underline"
+                >
+                  <span className="font-semibold">{link.primitive.name}</span>
+                  <SourceVersionChip versionNumber={version} />
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {link.role.replace(/_/g, " ")}
+                  </span>
+                </Link>
+                <span className="shrink-0 font-mono text-xs">
+                  {link.quantity}× · {link.primitive.buCost * link.quantity} BU
                 </span>
-              </Link>
-              <span className="shrink-0 font-mono text-xs">
-                {link.quantity}× · {link.primitive.buCost * link.quantity} BU
-              </span>
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-            </li>
-          ))}
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+              </li>
+            );
+          })}
         </ul>
       </section>
     </DetailShell>
@@ -750,7 +766,7 @@ async function TemplateDetail({
     where: (table, { eq }) => eq(table.id, id),
     with: {
       primitiveLinks: { with: { primitive: true } },
-      capabilityLinks: true,
+      capabilityLinks: { with: { capability: true } },
     },
   });
   if (!row) notFound();
@@ -776,14 +792,27 @@ async function TemplateDetail({
     id,
     currentUserId,
   );
-  const [{ flagDistribution, flagNotes }, forkSource] = await Promise.all([
-    loadFlagsAndTags(
-      targetTypeForEngagement,
-      id,
-      [], // templates don't have a tags column yet
-    ),
-    loadForkSource(targetTypeForEngagement, id),
-  ]);
+  const [{ flagDistribution, flagNotes }, forkSource, versionMap] =
+    await Promise.all([
+      loadFlagsAndTags(
+        targetTypeForEngagement,
+        id,
+        [], // templates don't have a tags column yet
+      ),
+      loadForkSource(targetTypeForEngagement, id),
+      // Resolve latest published version for every composed primitive and
+      // capability. Templates compose templates (no effect link table for
+      // templates), so we only need primitives + capabilities here.
+      bulkResolveLatestVersionNumbers([
+        ...row.primitiveLinks.map((l) => ({
+          kind: "primitive" as const,
+          id: l.primitiveId,
+        })),
+        ...row.capabilityLinks
+          .filter((l) => l.capability != null)
+          .map((l) => ({ kind: "capability" as const, id: l.capabilityId })),
+      ]),
+    ]);
 
   return (
     <DetailShell
@@ -830,22 +859,27 @@ async function TemplateDetail({
             Bundled primitives ({row.primitiveLinks.length})
           </h2>
           <ul className="divide-y divide-border rounded-md border border-border">
-            {row.primitiveLinks.map((link) => (
-              <li
-                key={`${link.templateId}-${link.primitiveId}`}
-                className="flex items-center justify-between gap-2 p-3 text-sm"
-              >
-                <Link
-                  href={`/library/item/PRIMITIVE:${link.primitiveId}`}
-                  className="min-w-0 flex-1 truncate hover:underline"
+            {row.primitiveLinks.map((link) => {
+              const version =
+                versionMap.get(`primitive:${link.primitiveId}` as VersionNumberKey) ?? null;
+              return (
+                <li
+                  key={`${link.templateId}-${link.primitiveId}`}
+                  className="flex items-center justify-between gap-2 p-3 text-sm"
                 >
-                  <span className="font-semibold">{link.primitive.name}</span>
-                </Link>
-                <span className="shrink-0 font-mono text-xs">
-                  {link.primitive.buCost} BU
-                </span>
-              </li>
-            ))}
+                  <Link
+                    href={`/library/item/PRIMITIVE:${link.primitiveId}`}
+                    className="min-w-0 flex-1 truncate hover:underline"
+                  >
+                    <span className="font-semibold">{link.primitive.name}</span>
+                    <SourceVersionChip versionNumber={version} />
+                  </Link>
+                  <span className="shrink-0 font-mono text-xs">
+                    {link.primitive.buCost} BU
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
@@ -856,22 +890,37 @@ async function TemplateDetail({
             Bundled capabilities ({row.capabilityLinks.length})
           </h2>
           <ul className="divide-y divide-border rounded-md border border-border">
-            {row.capabilityLinks.map((link) => (
-              <li
-                key={`${link.templateId}-${link.capabilityId}`}
-                className="flex items-center justify-between gap-2 p-3 text-sm"
-              >
-                <Link
-                  href={`/library/item/CAPABILITY:${link.capabilityId}`}
-                  className="min-w-0 flex-1 truncate hover:underline"
+            {row.capabilityLinks.map((link) => {
+              const version =
+                versionMap.get(`capability:${link.capabilityId}` as VersionNumberKey) ?? null;
+              // Defensive fallback: if the capability relation didn't
+              // load (e.g. older data), show the uuid prefix instead of
+              // crashing. The fix above ensures capability is loaded —
+              // this only renders when something else has gone wrong.
+              const label = link.capability
+                ? link.capability.name
+                : `capability ${link.capabilityId.slice(0, 8)}`;
+              return (
+                <li
+                  key={`${link.templateId}-${link.capabilityId}`}
+                  className="flex items-center justify-between gap-2 p-3 text-sm"
                 >
-                  <span className="font-semibold">
-                    capability {link.capabilityId.slice(0, 8)}
-                  </span>
-                </Link>
-                <ChevronRight className="size-4 text-muted-foreground" />
-              </li>
-            ))}
+                  <Link
+                    href={`/library/item/CAPABILITY:${link.capabilityId}`}
+                    className="min-w-0 flex-1 truncate hover:underline"
+                  >
+                    <span className="font-semibold">{label}</span>
+                    <SourceVersionChip versionNumber={version} />
+                  </Link>
+                  {link.capability ? (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {link.capability.type}
+                    </span>
+                  ) : null}
+                  <ChevronRight className="size-4 text-muted-foreground" />
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
@@ -929,10 +978,22 @@ async function EffectDetail({
 
   const author = await resolveAuthorByClerkId(effectRow.userId);
   const engagement = await loadEngagement("EFFECT", id, currentUserId);
-  const [{ flagDistribution, flagNotes }, forkSource] = await Promise.all([
-    loadFlagsAndTags("EFFECT", id, effectRow.tags ?? []),
-    loadForkSource("EFFECT", id),
-  ]);
+  const [{ flagDistribution, flagNotes }, forkSource, versionMap] =
+    await Promise.all([
+      loadFlagsAndTags("EFFECT", id, effectRow.tags ?? []),
+      loadForkSource("EFFECT", id),
+      bulkResolveLatestVersionNumbers([
+        ...primitiveLinks.map((l) => ({
+          kind: "primitive" as const,
+          id: l.primitiveId,
+        })),
+        ...childEdges.map((e) => ({ kind: "effect" as const, id: e.childEffectId })),
+        ...parentEdges.map((e) => ({
+          kind: "effect" as const,
+          id: e.parentEffectId,
+        })),
+      ]),
+    ]);
 
   const parentEffects = parentEdges.map((edge) => edge.parentEffect);
   const childEffects = childEdges.map((edge) => edge.childEffect);
@@ -981,25 +1042,30 @@ async function EffectDetail({
             Composed primitives ({primitiveLinks.length})
           </h2>
           <ul className="divide-y divide-border rounded-md border border-border">
-            {primitiveLinks.map((link) => (
-              <li
-                key={`${link.effectId}-${link.primitiveId}`}
-                className="flex items-center justify-between gap-2 p-3 text-sm"
-              >
-                <Link
-                  href={`/library/item/PRIMITIVE:${link.primitiveId}`}
-                  className="min-w-0 flex-1 truncate hover:underline"
+            {primitiveLinks.map((link) => {
+              const version =
+                versionMap.get(`primitive:${link.primitiveId}` as VersionNumberKey) ?? null;
+              return (
+                <li
+                  key={`${link.effectId}-${link.primitiveId}`}
+                  className="flex items-center justify-between gap-2 p-3 text-sm"
                 >
-                  <span className="font-semibold">{link.primitive.name}</span>
-                  <span className="ml-2 text-xs text-muted-foreground">
-                    {link.primitive.category.replace(/_/g, " ")}
+                  <Link
+                    href={`/library/item/PRIMITIVE:${link.primitiveId}`}
+                    className="min-w-0 flex-1 truncate hover:underline"
+                  >
+                    <span className="font-semibold">{link.primitive.name}</span>
+                    <SourceVersionChip versionNumber={version} />
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {link.primitive.category.replace(/_/g, " ")}
+                    </span>
+                  </Link>
+                  <span className="shrink-0 font-mono text-xs">
+                    {link.quantity}× · {link.primitive.buCost * link.quantity} BU
                   </span>
-                </Link>
-                <span className="shrink-0 font-mono text-xs">
-                  {link.quantity}× · {link.primitive.buCost * link.quantity} BU
-                </span>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
@@ -1010,19 +1076,24 @@ async function EffectDetail({
             Nested under
           </h2>
           <ul className="divide-y divide-border rounded-md border border-border">
-            {parentEffects.map((parent) => (
-              <li key={parent.id} className="p-3 text-sm">
-                <Link
-                  href={`/library/item/EFFECT:${parent.id}`}
-                  className="font-semibold hover:underline"
-                >
-                  {parent.name}
-                </Link>
-                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                  {parent.narrativeDescription?.slice(0, 200)}
-                </p>
-              </li>
-            ))}
+            {parentEffects.map((parent) => {
+              const version =
+                versionMap.get(`effect:${parent.id}` as VersionNumberKey) ?? null;
+              return (
+                <li key={parent.id} className="p-3 text-sm">
+                  <Link
+                    href={`/library/item/EFFECT:${parent.id}`}
+                    className="font-semibold hover:underline"
+                  >
+                    {parent.name}
+                  </Link>
+                  <SourceVersionChip versionNumber={version} />
+                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                    {parent.narrativeDescription?.slice(0, 200)}
+                  </p>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
@@ -1033,19 +1104,24 @@ async function EffectDetail({
             Nests ({childEffects.length})
           </h2>
           <ul className="divide-y divide-border rounded-md border border-border">
-            {childEffects.map((child) => (
-              <li key={child.id} className="p-3 text-sm">
-                <Link
-                  href={`/library/item/EFFECT:${child.id}`}
-                  className="font-semibold hover:underline"
-                >
-                  {child.name}
-                </Link>
-                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                  {child.narrativeDescription?.slice(0, 200)}
-                </p>
-              </li>
-            ))}
+            {childEffects.map((child) => {
+              const version =
+                versionMap.get(`effect:${child.id}` as VersionNumberKey) ?? null;
+              return (
+                <li key={child.id} className="p-3 text-sm">
+                  <Link
+                    href={`/library/item/EFFECT:${child.id}`}
+                    className="font-semibold hover:underline"
+                  >
+                    {child.name}
+                  </Link>
+                  <SourceVersionChip versionNumber={version} />
+                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                    {child.narrativeDescription?.slice(0, 200)}
+                  </p>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
@@ -1088,10 +1164,22 @@ async function ItemDetail({
 
   const author = await resolveAuthorByClerkId(itemRow.userId);
   const engagement = await loadEngagement("ITEM", id, currentUserId);
-  const [{ flagDistribution, flagNotes }, forkSource] = await Promise.all([
-    loadFlagsAndTags("ITEM", id, itemRow.tags ?? []),
-    loadForkSource("ITEM", id),
-  ]);
+  const [{ flagDistribution, flagNotes }, forkSource, versionMap] =
+    await Promise.all([
+      loadFlagsAndTags("ITEM", id, itemRow.tags ?? []),
+      loadForkSource("ITEM", id),
+      bulkResolveLatestVersionNumbers([
+        ...primitiveLinks.map((l) => ({
+          kind: "primitive" as const,
+          id: l.primitiveId,
+        })),
+        ...effectLinks.map((l) => ({ kind: "effect" as const, id: l.effectId })),
+        ...capabilityLinks.map((l) => ({
+          kind: "capability" as const,
+          id: l.capabilityId,
+        })),
+      ]),
+    ]);
 
   // Rarity class for the chip. itemRarityEnum is the schema enum;
   // we map each value to a tailwind color pair. Cast through string
@@ -1207,25 +1295,30 @@ async function ItemDetail({
             Composed primitives ({primitiveLinks.length})
           </h2>
           <ul className="divide-y divide-border rounded-md border border-border">
-            {primitiveLinks.map((link) => (
-              <li
-                key={`${link.itemId}-${link.primitiveId}`}
-                className="flex items-center justify-between gap-2 p-3 text-sm"
-              >
-                <Link
-                  href={`/library/item/PRIMITIVE:${link.primitiveId}`}
-                  className="min-w-0 flex-1 truncate hover:underline"
+            {primitiveLinks.map((link) => {
+              const version =
+                versionMap.get(`primitive:${link.primitiveId}` as VersionNumberKey) ?? null;
+              return (
+                <li
+                  key={`${link.itemId}-${link.primitiveId}`}
+                  className="flex items-center justify-between gap-2 p-3 text-sm"
                 >
-                  <span className="font-semibold">{link.primitive.name}</span>
-                  <span className="ml-2 text-xs text-muted-foreground">
-                    {link.primitive.category.replace(/_/g, " ")}
+                  <Link
+                    href={`/library/item/PRIMITIVE:${link.primitiveId}`}
+                    className="min-w-0 flex-1 truncate hover:underline"
+                  >
+                    <span className="font-semibold">{link.primitive.name}</span>
+                    <SourceVersionChip versionNumber={version} />
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {link.primitive.category.replace(/_/g, " ")}
+                    </span>
+                  </Link>
+                  <span className="shrink-0 font-mono text-xs">
+                    {link.primitive.buCost} BU
                   </span>
-                </Link>
-                <span className="shrink-0 font-mono text-xs">
-                  {link.primitive.buCost} BU
-                </span>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
@@ -1236,29 +1329,34 @@ async function ItemDetail({
             Composed effects ({effectLinks.length})
           </h2>
           <ul className="divide-y divide-border rounded-md border border-border">
-            {effectLinks.map((link) => (
-              <li
-                key={`${link.itemId}-${link.effectId}`}
-                className="p-3 text-sm"
-              >
-                <Link
-                  href={`/library/item/EFFECT:${link.effectId}`}
-                  className="font-semibold hover:underline"
+            {effectLinks.map((link) => {
+              const version =
+                versionMap.get(`effect:${link.effectId}` as VersionNumberKey) ?? null;
+              return (
+                <li
+                  key={`${link.itemId}-${link.effectId}`}
+                  className="p-3 text-sm"
                 >
-                  {link.effect.name}
-                </Link>
-                {link.slotLabel ? (
-                  <p className="mt-0.5 text-xs text-muted-foreground italic">
-                    "{link.slotLabel}"
-                  </p>
-                ) : null}
-                {link.effect.narrativeDescription ? (
-                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                    {link.effect.narrativeDescription.slice(0, 200)}
-                  </p>
-                ) : null}
-              </li>
-            ))}
+                  <Link
+                    href={`/library/item/EFFECT:${link.effectId}`}
+                    className="font-semibold hover:underline"
+                  >
+                    {link.effect.name}
+                  </Link>
+                  <SourceVersionChip versionNumber={version} />
+                  {link.slotLabel ? (
+                    <p className="mt-0.5 text-xs text-muted-foreground italic">
+                      "{link.slotLabel}"
+                    </p>
+                  ) : null}
+                  {link.effect.narrativeDescription ? (
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                      {link.effect.narrativeDescription.slice(0, 200)}
+                    </p>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
@@ -1269,27 +1367,32 @@ async function ItemDetail({
             Composed capabilities ({capabilityLinks.length})
           </h2>
           <ul className="divide-y divide-border rounded-md border border-border">
-            {capabilityLinks.map((link) => (
-              <li
-                key={`${link.itemId}-${link.capabilityId}`}
-                className="p-3 text-sm"
-              >
-                <Link
-                  href={`/library/item/CAPABILITY:${link.capabilityId}`}
-                  className="font-semibold hover:underline"
+            {capabilityLinks.map((link) => {
+              const version =
+                versionMap.get(`capability:${link.capabilityId}` as VersionNumberKey) ?? null;
+              return (
+                <li
+                  key={`${link.itemId}-${link.capabilityId}`}
+                  className="p-3 text-sm"
                 >
-                  {link.capability.name}
-                </Link>
-                <span className="ml-2 text-xs text-muted-foreground">
-                  {link.capability.type}
-                </span>
-                {link.slotLabel ? (
-                  <p className="mt-0.5 text-xs text-muted-foreground italic">
-                    "{link.slotLabel}"
-                  </p>
-                ) : null}
-              </li>
-            ))}
+                  <Link
+                    href={`/library/item/CAPABILITY:${link.capabilityId}`}
+                    className="font-semibold hover:underline"
+                  >
+                    {link.capability.name}
+                  </Link>
+                  <SourceVersionChip versionNumber={version} />
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {link.capability.type}
+                  </span>
+                  {link.slotLabel ? (
+                    <p className="mt-0.5 text-xs text-muted-foreground italic">
+                      "{link.slotLabel}"
+                    </p>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
@@ -1305,5 +1408,28 @@ function DataField({ label, value }: { label: string; value: string }) {
       </p>
       <p className="mt-1 text-sm">{value}</p>
     </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// SourceVersionChip — small pill rendering the latest published version of a
+// referenced primitive/effect/capability on a source page. Null = entity has
+// never been published (still draft); renders nothing. Same visual style as
+// the modal preview's VersionChip so users see the same chip in both places.
+// -----------------------------------------------------------------------------
+
+function SourceVersionChip({
+  versionNumber,
+}: {
+  versionNumber: number | null;
+}) {
+  if (versionNumber == null) return null;
+  return (
+    <span
+      className="ml-1.5 inline-flex shrink-0 items-center rounded-full border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+      title={`Latest published version v${versionNumber}`}
+    >
+      v{versionNumber}
+    </span>
   );
 }

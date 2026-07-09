@@ -29,6 +29,18 @@ import { useModalStack } from "@/components/ui/modal-stack";
 
 // ---- Entity types (mirrored from sandbox-preview-modal.tsx) ----------------
 
+// All composed-entity rows below carry an OPTIONAL `versionNumber` on each
+// link object. The upstream server page resolves the latest published
+// version number per ref with `bulkResolveLatestVersionNumbers` and threads
+// it through. If the upstream page didn't fetch versions (older callers),
+// `versionNumber` is `undefined` and the chip renders nothing — the page
+// keeps working.
+//
+// `exactOptionalPropertyTypes` is on in tsconfig — to keep `versionNumber`
+// assignable from `number | null | undefined` at the call sites, the
+// type uses `number | null | undefined` rather than `number | null?`.
+type WithVersion = { versionNumber?: number | null | undefined };
+
 export type SandboxPrimitiveRow = {
   id: number;
   name: string;
@@ -52,16 +64,18 @@ export type SandboxEffectRow = {
   sourceOrigin: string | null;
   tags: string[];
   isPublic: boolean;
-  primitiveLinks: Array<{
-    primitiveId: number;
-    quantity: number;
-    primitive: {
-      id: number;
-      name: string;
-      category: string;
-      buCost: number;
-    };
-  }>;
+  primitiveLinks: Array<
+    {
+      primitiveId: number;
+      quantity: number;
+      primitive: {
+        id: number;
+        name: string;
+        category: string;
+        buCost: number;
+      };
+    } & WithVersion
+  >;
 };
 
 export type SandboxCapabilityRow = {
@@ -73,19 +87,21 @@ export type SandboxCapabilityRow = {
   sourceOrigin: string | null;
   tags: string[];
   isPublic: boolean;
-  primitiveLinks: Array<{
-    primitiveId: number;
-    role: string;
-    quantity: number;
-    sortOrder: number;
-    slotLabel: string | null;
-    primitive: {
-      id: number;
-      name: string;
-      category: string;
-      buCost: number;
-    };
-  }>;
+  primitiveLinks: Array<
+    {
+      primitiveId: number;
+      role: string;
+      quantity: number;
+      sortOrder: number;
+      slotLabel: string | null;
+      primitive: {
+        id: number;
+        name: string;
+        category: string;
+        buCost: number;
+      };
+    } & WithVersion
+  >;
   /**
    * Effects the capability composes. The schema relation is
    * `capability_effects` (capability_id, effect_id, sort_order, slot_label,
@@ -93,18 +109,20 @@ export type SandboxCapabilityRow = {
    * preview can expand on click (sub-link to /sandbox grammar preview).
    * Optional because some capabilities don't compose any effects.
    */
-  effectLinks: Array<{
-    effectId: string;
-    sortOrder: number;
-    slotLabel: string | null;
-    notes: string | null;
-    effect: {
-      id: string;
-      name: string;
-      narrativeDescription: string | null;
-      sourceOrigin: string | null;
-    };
-  }>;
+  effectLinks: Array<
+    {
+      effectId: string;
+      sortOrder: number;
+      slotLabel: string | null;
+      notes: string | null;
+      effect: {
+        id: string;
+        name: string;
+        narrativeDescription: string | null;
+        sourceOrigin: string | null;
+      };
+    } & WithVersion
+  >;
 };
 
 export type SandboxTemplateRow = {
@@ -114,23 +132,27 @@ export type SandboxTemplateRow = {
   description: string | null;
   suggestedTraits: string | null;
   isPublic: boolean;
-  primitiveLinks: Array<{
-    primitiveId: number;
-    primitive: {
-      id: number;
-      name: string;
-      category: string;
-      buCost: number;
-    };
-  }>;
-  capabilityLinks: Array<{
-    capabilityId: string;
-    capability: {
-      id: string;
-      name: string;
-      type: string;
-    };
-  }>;
+  primitiveLinks: Array<
+    {
+      primitiveId: number;
+      primitive: {
+        id: number;
+        name: string;
+        category: string;
+        buCost: number;
+      };
+    } & WithVersion
+  >;
+  capabilityLinks: Array<
+    {
+      capabilityId: string;
+      capability: {
+        id: string;
+        name: string;
+        type: string;
+      };
+    } & WithVersion
+  >;
 };
 
 export type SandboxItemRow = {
@@ -147,15 +169,23 @@ export type SandboxItemRow = {
   isPublic: boolean;
   sourceOrigin: string | null;
   tags: string[];
-  primitiveLinks: Array<{
-    primitiveId: number;
-    primitive: {
-      id: number;
-      name: string;
-      category: string;
-      buCost: number;
-    };
-  }>;
+  primitiveLinks: Array<
+    {
+      primitiveId: number;
+      primitive: {
+        id: number;
+        name: string;
+        category: string;
+        buCost: number;
+      };
+    } & WithVersion
+  >;
+  // Items also compose effects + capabilities (see /library/item/[id]
+  // ItemDetail), but the modal preview body currently only renders
+  // composed primitives. The source page reads those directly from
+  // the DB rather than from this row shape, so we don't expose them
+  // here. If the preview body grows to render composed effects and
+  // capabilities, add the optional arrays then.
 };
 
 export type SandboxPreviewItem =
@@ -294,6 +324,36 @@ function Section({
       </h3>
       {children}
     </section>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// VersionChip — tiny pill showing the latest published version number of a
+// composed primitive/effect/capability. Renders nothing when `versionNumber`
+// is null/undefined (the upstream page didn't pass it, or the entity has
+// never been published).
+//
+// Mashu 2026-07-09: version chips appear in every composed-entity list
+// (capabilities composing primitives, capabilities composing effects,
+// templates composing primitives/capabilities, effects composing primitives,
+// items composing primitives/effects/capabilities) so the user can see at
+// a glance which build of each composed thing they're looking at — useful
+// when comparing drafts vs published revisions.
+// -----------------------------------------------------------------------------
+
+function VersionChip({
+  versionNumber,
+}: {
+  versionNumber?: number | null | undefined;
+}) {
+  if (versionNumber == null) return null;
+  return (
+    <span
+      className="ml-1.5 inline-flex shrink-0 items-center rounded-full border border-border/60 bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+      title={`Latest published version v${versionNumber}`}
+    >
+      v{versionNumber}
+    </span>
   );
 }
 
@@ -653,6 +713,7 @@ function EffectBody({
                   <span className="font-semibold text-cyan-400 hover:underline">
                     {link.primitive.name}
                   </span>
+                  <VersionChip versionNumber={link.versionNumber} />
                   <span className="ml-2 text-xs text-muted-foreground">
                     {link.primitive.category}
                   </span>
@@ -745,6 +806,7 @@ function CapabilityBody({
                   <span className="font-semibold text-cyan-400 hover:underline">
                     {link.primitive.name}
                   </span>
+                  <VersionChip versionNumber={link.versionNumber} />
                   <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                     <span>{link.primitive.category}</span>
                     <span className="rounded bg-secondary px-1.5 py-0.5 font-medium">
@@ -797,6 +859,7 @@ function CapabilityBody({
                   <span className="font-semibold text-violet-400 hover:underline">
                     {link.effect.name}
                   </span>
+                  <VersionChip versionNumber={link.versionNumber} />
                   {link.slotLabel ? (
                     <div className="mt-0.5 text-xs text-muted-foreground">
                       <span className="italic">"{link.slotLabel}"</span>
@@ -875,6 +938,7 @@ function TemplateBody({
                   <span className="font-semibold text-cyan-400 hover:underline">
                     {link.primitive.name}
                   </span>
+                  <VersionChip versionNumber={link.versionNumber} />
                 </button>
                 <span className="shrink-0 font-mono text-xs text-muted-foreground">
                   {link.primitive.buCost} BU
@@ -908,6 +972,7 @@ function TemplateBody({
                   <span className="font-semibold text-cyan-400 hover:underline">
                     {link.capability.name}
                   </span>
+                  <VersionChip versionNumber={link.versionNumber} />
                 </button>
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {link.capability.type}
@@ -1020,6 +1085,7 @@ function ItemBody({
                   <span className="font-semibold text-cyan-400 hover:underline">
                     {link.primitive.name}
                   </span>
+                  <VersionChip versionNumber={link.versionNumber} />
                 </button>
                 <span className="shrink-0 font-mono text-xs text-muted-foreground">
                   {link.primitive.buCost} BU
