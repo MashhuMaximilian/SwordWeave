@@ -188,6 +188,7 @@ async function loadRestoredPayload(
       .select({
         id: primitiveVersions.id,
         versionNumber: primitiveVersions.versionNumber,
+        deltaKind: primitiveVersions.deltaKind,
         snapshot: primitiveVersions.snapshot,
       })
       .from(primitiveVersions)
@@ -195,24 +196,20 @@ async function loadRestoredPayload(
       .orderBy(primitiveVersions.versionNumber);
     const target = rows.find((r) => r.versionNumber === versionNumber);
     if (!target) return null;
+    // Wrap snapshots in VersionPayload format using deltaKind column
     const chain = rows.map((r) => ({
       versionNumber: r.versionNumber,
-      payload: r.snapshot as unknown as unknown as VersionPayload,
+      payload: (r.deltaKind === "FULL"
+        ? { kind: "FULL" as const, data: (r.snapshot ?? {}) as Record<string, unknown> }
+        : { kind: "DELTA" as const, patch: (r.snapshot ?? {}) as Record<string, unknown> }
+      ) as VersionPayload,
     }));
     let reconstructed: Record<string, unknown> | null = null;
     try {
       reconstructed = reconstructVersion(chain, versionNumber);
     } catch {
-      // Fallback: use the raw snapshot if reconstruction fails (corrupted chain)
-      // The snapshot is a VersionPayload, so we need to extract the data
-      const snapshot = target.snapshot as unknown as VersionPayload;
-      if (snapshot && typeof snapshot === "object" && "kind" in snapshot) {
-        if (snapshot.kind === "FULL") {
-          reconstructed = snapshot.data;
-        } else if (snapshot.kind === "DELTA") {
-          reconstructed = snapshot.patch;
-        }
-      }
+      // Fallback: use the raw snapshot if reconstruction fails
+      reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
     }
     if (!reconstructed) return null;
     return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };
@@ -222,6 +219,7 @@ async function loadRestoredPayload(
       .select({
         id: effectVersions.id,
         versionNumber: effectVersions.versionNumber,
+        deltaKind: effectVersions.deltaKind,
         snapshot: effectVersions.snapshot,
       })
       .from(effectVersions)
@@ -229,23 +227,20 @@ async function loadRestoredPayload(
       .orderBy(effectVersions.versionNumber);
     const target = rows.find((r) => r.versionNumber === versionNumber);
     if (!target) return null;
+    // Wrap snapshots in VersionPayload format using deltaKind column
     const chain = rows.map((r) => ({
       versionNumber: r.versionNumber,
-      payload: r.snapshot as unknown as unknown as VersionPayload,
+      payload: (r.deltaKind === "FULL"
+        ? { kind: "FULL" as const, data: (r.snapshot ?? {}) as Record<string, unknown> }
+        : { kind: "DELTA" as const, patch: (r.snapshot ?? {}) as Record<string, unknown> }
+      ) as VersionPayload,
     }));
     let reconstructed: Record<string, unknown> | null = null;
     try {
       reconstructed = reconstructVersion(chain, versionNumber);
     } catch {
-      // Fallback: use the raw snapshot if reconstruction fails (corrupted chain)
-      const snapshot = target.snapshot as unknown as VersionPayload;
-      if (snapshot && typeof snapshot === "object" && "kind" in snapshot) {
-        if (snapshot.kind === "FULL") {
-          reconstructed = snapshot.data;
-        } else if (snapshot.kind === "DELTA") {
-          reconstructed = snapshot.patch;
-        }
-      }
+      // Fallback: use the raw snapshot if reconstruction fails
+      reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
     }
     if (!reconstructed) return null;
     return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };
@@ -256,6 +251,7 @@ async function loadRestoredPayload(
       .select({
         id: capabilityVersions.id,
         versionNumber: capabilityVersions.versionNumber,
+        deltaKind: capabilityVersions.deltaKind,
         snapshot: capabilityVersions.snapshot,
       })
       .from(capabilityVersions)
@@ -263,23 +259,20 @@ async function loadRestoredPayload(
       .orderBy(capabilityVersions.versionNumber);
     const target = rows.find((r) => r.versionNumber === versionNumber);
     if (!target) return null;
+    // Wrap snapshots in VersionPayload format using deltaKind column
     const chain = rows.map((r) => ({
       versionNumber: r.versionNumber,
-      payload: r.snapshot as unknown as unknown as VersionPayload,
+      payload: (r.deltaKind === "FULL"
+        ? { kind: "FULL" as const, data: (r.snapshot ?? {}) as Record<string, unknown> }
+        : { kind: "DELTA" as const, patch: (r.snapshot ?? {}) as Record<string, unknown> }
+      ) as VersionPayload,
     }));
     let reconstructed: Record<string, unknown> | null = null;
     try {
       reconstructed = reconstructVersion(chain, versionNumber);
     } catch {
-      // Fallback: use the raw snapshot if reconstruction fails (corrupted chain)
-      const snapshot = target.snapshot as unknown as VersionPayload;
-      if (snapshot && typeof snapshot === "object" && "kind" in snapshot) {
-        if (snapshot.kind === "FULL") {
-          reconstructed = snapshot.data;
-        } else if (snapshot.kind === "DELTA") {
-          reconstructed = snapshot.patch;
-        }
-      }
+      // Fallback: use the raw snapshot if reconstruction fails
+      reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
     }
     if (!reconstructed) return null;
     return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };
@@ -289,6 +282,7 @@ async function loadRestoredPayload(
       .select({
         id: itemVersions.id,
         versionNumber: itemVersions.versionNumber,
+        deltaKind: itemVersions.deltaKind,
         snapshot: itemVersions.snapshot,
       })
       .from(itemVersions)
@@ -296,23 +290,20 @@ async function loadRestoredPayload(
       .orderBy(itemVersions.versionNumber);
     const target = rows.find((r) => r.versionNumber === versionNumber);
     if (!target) return null;
+    // Wrap snapshots in VersionPayload format using deltaKind column
     const chain = rows.map((r) => ({
       versionNumber: r.versionNumber,
-      payload: r.snapshot as unknown as unknown as VersionPayload,
+      payload: (r.deltaKind === "FULL"
+        ? { kind: "FULL" as const, data: (r.snapshot ?? {}) as Record<string, unknown> }
+        : { kind: "DELTA" as const, patch: (r.snapshot ?? {}) as Record<string, unknown> }
+      ) as VersionPayload,
     }));
     let reconstructed: Record<string, unknown> | null = null;
     try {
       reconstructed = reconstructVersion(chain, versionNumber);
     } catch {
-      // Fallback: use the raw snapshot if reconstruction fails (corrupted chain)
-      const snapshot = target.snapshot as unknown as VersionPayload;
-      if (snapshot && typeof snapshot === "object" && "kind" in snapshot) {
-        if (snapshot.kind === "FULL") {
-          reconstructed = snapshot.data;
-        } else if (snapshot.kind === "DELTA") {
-          reconstructed = snapshot.patch;
-        }
-      }
+      // Fallback: use the raw snapshot if reconstruction fails
+      reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
     }
     if (!reconstructed) return null;
     return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };
@@ -322,6 +313,7 @@ async function loadRestoredPayload(
     .select({
       id: templateVersions.id,
       versionNumber: templateVersions.versionNumber,
+      deltaKind: templateVersions.deltaKind,
       snapshot: templateVersions.snapshot,
     })
     .from(templateVersions)
@@ -329,23 +321,20 @@ async function loadRestoredPayload(
     .orderBy(templateVersions.versionNumber);
   const target = rows.find((r) => r.versionNumber === versionNumber);
   if (!target) return null;
+  // Wrap snapshots in VersionPayload format using deltaKind column
   const chain = rows.map((r) => ({
     versionNumber: r.versionNumber,
-    payload: r.snapshot as unknown as unknown as VersionPayload,
+    payload: (r.deltaKind === "FULL"
+      ? { kind: "FULL" as const, data: (r.snapshot ?? {}) as Record<string, unknown> }
+      : { kind: "DELTA" as const, patch: (r.snapshot ?? {}) as Record<string, unknown> }
+    ) as VersionPayload,
   }));
   let reconstructed: Record<string, unknown> | null = null;
   try {
     reconstructed = reconstructVersion(chain, versionNumber);
   } catch {
-    // Fallback: use the raw snapshot if reconstruction fails (corrupted chain)
-    const snapshot = target.snapshot as unknown as VersionPayload;
-    if (snapshot && typeof snapshot === "object" && "kind" in snapshot) {
-      if (snapshot.kind === "FULL") {
-        reconstructed = snapshot.data;
-      } else if (snapshot.kind === "DELTA") {
-        reconstructed = snapshot.patch;
-      }
-    }
+    // Fallback: use the raw snapshot if reconstruction fails
+    reconstructed = (target.snapshot ?? null) as Record<string, unknown> | null;
   }
   if (!reconstructed) return null;
   return { versionId: target.id, versionNumber: target.versionNumber, payload: reconstructed };

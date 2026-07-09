@@ -91,10 +91,16 @@ export async function getVersionHistory(
 
   // Build a reconstructable chain. reconstructVersion() wants
   // [{ versionNumber, payload: { kind: 'FULL', data } | { kind: 'DELTA', patch } }, ...]
-  // The DB snapshot column already stores VersionPayload objects.
+  //
+  // The DB snapshot column stores plain data (for FULL) or delta patches
+  // (for DELTA), NOT wrapped in VersionPayload. We wrap them here using
+  // the deltaKind column to determine the correct envelope.
   const chain = rows.map((r) => ({
     versionNumber: r.versionNumber,
-    payload: r.snapshot as VersionPayload,
+    payload: (r.deltaKind === "FULL"
+      ? { kind: "FULL" as const, data: (r.snapshot ?? {}) as Record<string, unknown> }
+      : { kind: "DELTA" as const, patch: (r.snapshot ?? {}) as Record<string, unknown> }
+    ) as VersionPayload,
   }));
 
   const versions: VersionEntry[] = [];
