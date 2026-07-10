@@ -114,7 +114,7 @@ export default async function GrammarSandboxPage({
       orderBy: [asc(capabilities.name)],
       with: {
         primitiveLinks: { with: { primitive: true } },
-        effectLinks: { with: { effect: true } },
+        effectLinks: { with: { effect: { with: { primitiveLinks: { with: { primitive: true } } } } } },
       },
     });
     capabilityRows = rows as unknown[];
@@ -392,7 +392,17 @@ export default async function GrammarSandboxPage({
             sortOrder: l.sortOrder,
             slotLabel: l.slotLabel,
             notes: l.notes,
-            effect: l.effect,
+            effect: {
+              id: l.effect.id,
+              name: l.effect.name,
+              narrativeDescription: l.effect.narrativeDescription,
+              sourceOrigin: l.effect.sourceOrigin,
+              primitiveLinks: (l.effect.primitiveLinks ?? []).map((pl) => ({
+                primitiveId: pl.primitiveId,
+                quantity: pl.quantity,
+                primitive: pl.primitive,
+              })),
+            },
           })),
         };
       })}

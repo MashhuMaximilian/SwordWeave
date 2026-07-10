@@ -120,6 +120,11 @@ export type SandboxCapabilityRow = {
         name: string;
         narrativeDescription: string | null;
         sourceOrigin: string | null;
+        primitiveLinks: Array<{
+          primitiveId: number;
+          quantity: number;
+          primitive: { id: number; name: string; category: string; buCost: number };
+        }>;
       };
     } & WithVersion
   >;
@@ -923,6 +928,11 @@ function CapabilityBody({
                     </div>
                   ) : null}
                 </div>
+                <span className="shrink-0 font-mono text-xs text-foreground">
+                  {(link.effect.primitiveLinks ?? []).reduce(
+                    (s, l) => s + Math.abs(l.primitive.buCost * l.quantity), 0,
+                  )} BU
+                </span>
                 <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
               </li>
             ))}

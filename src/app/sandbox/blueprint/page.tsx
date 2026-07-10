@@ -121,7 +121,7 @@ export default async function BlueprintSandboxPage({
       orderBy: [asc(items.name)],
       with: {
         primitiveLinks: { with: { primitive: true } },
-        effectLinks: { with: { effect: true } },
+        effectLinks: { with: { effect: { with: { primitiveLinks: { with: { primitive: true } } } } } },
         capabilityLinks: { with: { capability: true } },
       },
     });
@@ -150,11 +150,10 @@ export default async function BlueprintSandboxPage({
       orderBy: [asc(capabilities.name)],
       with: {
         primitiveLinks: { with: { primitive: true } },
-        effectLinks: { with: { effect: true } },
+        effectLinks: { with: { effect: { with: { primitiveLinks: { with: { primitive: true } } } } } },
       },
     });
     capabilityRows = rows as unknown[];
-  } catch (err) {
     dataLoadFailed = true;
     // eslint-disable-next-line no-console
     console.error("[blueprint sandbox] capabilities query failed:", err);
@@ -468,7 +467,17 @@ export default async function BlueprintSandboxPage({
             sortOrder: l.sortOrder,
             slotLabel: l.slotLabel,
             notes: l.notes,
-            effect: l.effect,
+            effect: {
+              id: l.effect.id,
+              name: l.effect.name,
+              narrativeDescription: l.effect.narrativeDescription,
+              sourceOrigin: l.effect.sourceOrigin,
+              primitiveLinks: (l.effect.primitiveLinks ?? []).map((pl) => ({
+                primitiveId: pl.primitiveId,
+                quantity: pl.quantity,
+                primitive: pl.primitive,
+              })),
+            },
           })),
         };
       })}
