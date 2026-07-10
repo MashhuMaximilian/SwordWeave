@@ -26,6 +26,7 @@ export interface VisibilityCheckResult {
  * - PRIVATE: only the owner can see
  *
  * If no publication row exists, falls back to isPublic boolean.
+ * On any error, falls back to isPublic boolean (fail-open for availability).
  */
 export async function checkVisibility(input: {
   targetType: string;
@@ -46,48 +47,57 @@ export async function checkVisibility(input: {
     return { allowed: true };
   }
 
-  // Check publications table for visibility tier
-  const pub = await db.query.publications.findFirst({
-    where: (table, { and, eq, isNull: isNullFn }) =>
-      and(
-        eq(table.targetType, targetType as typeof publishTargetTypeEnum.enumValues[number]),
-        eq(table.targetId, targetId),
-        isNullFn(table.unpublishedAt),
-      ),
-    columns: { visibility: true },
-  });
+  // Not logged in + not public = not allowed
+  if (!viewerId && !isPublic) {
+    return { allowed: false, reason: "private" };
+  }
 
-  if (pub) {
-    // Publication exists — use its visibility tier
-    switch (pub.visibility) {
-      case "PUBLIC":
-        return { allowed: true };
-      case "PRIVATE":
-        return { allowed: false, reason: "private" };
-      case "FOLLOWERS_ONLY":
-        if (!viewerId) {
-          return { allowed: false, reason: "followers_only" };
-        }
-        // Check if viewer follows the owner
-        const viewerUser = await db.query.users.findFirst({
-          where: (table, { eq }) => eq(table.clerkUserId, viewerId),
-          columns: { id: true },
-        });
-        if (!viewerUser) {
-          return { allowed: false, reason: "followers_only" };
-        }
-        const following = await db.query.follows.findFirst({
-          where: (table, { and: andFn, eq: eqFn }) =>
-            andFn(
-              eqFn(table.followerId, viewerUser.id),
-              eqFn(table.followingId, ownerId),
-            ),
-          columns: { followerId: true },
-        });
-        return following
-          ? { allowed: true }
-          : { allowed: false, reason: "followers_only" };
+  try {
+    // Check publications table for visibility tier
+    const pub = await db.query.publications.findFirst({
+      where: (table, { and: andFn, eq: eqFn, isNull: isNullFn }) =>
+        andFn(
+          eqFn(table.targetType, targetType as (typeof publishTargetTypeEnum.enumValues)[number]),
+          eqFn(table.targetId, targetId),
+          isNullFn(table.unpublishedAt),
+        ),
+      columns: { visibility: true },
+    });
+
+    if (pub) {
+      // Publication exists — use its visibility tier
+      switch (pub.visibility) {
+        case "PUBLIC":
+          return { allowed: true };
+        case "PRIVATE":
+          return { allowed: false, reason: "private" };
+        case "FOLLOWERS_ONLY":
+          if (!viewerId) {
+            return { allowed: false, reason: "followers_only" };
+          }
+          // Check if viewer follows the owner
+          const viewerUser = await db.query.users.findFirst({
+            where: (table, { eq: eqFn }) => eqFn(table.clerkUserId, viewerId),
+            columns: { id: true },
+          });
+          if (!viewerUser) {
+            return { allowed: false, reason: "followers_only" };
+          }
+          const following = await db.query.follows.findFirst({
+            where: (table, { and: andFn, eq: eqFn }) =>
+              andFn(
+                eqFn(table.followerId, viewerUser.id),
+                eqFn(table.followingId, ownerId),
+              ),
+            columns: { followerId: true },
+          });
+          return following
+            ? { allowed: true }
+            : { allowed: false, reason: "followers_only" };
+      }
     }
+  } catch {
+    // Publication query failed — fall through to isPublic fallback
   }
 
   // No publication row — fall back to isPublic boolean

@@ -83,6 +83,15 @@ export default async function GrammarSandboxPage({
   let effectRows: unknown[] = [];
   let capabilityRows: unknown[] = [];
 
+  // Resolve current user early for visibility filtering
+  let sandboxViewerId: string | null = null;
+  try {
+    const { userId } = await auth();
+    if (userId) {
+      sandboxViewerId = await resolveUserIdByClerkId(userId);
+    }
+  } catch { /* not logged in */ }
+
   // Each query isolated in its own try/catch so one failure doesn't
   // empty the whole library. See blueprint/page.tsx for the same
   // pattern + the rationale.
@@ -90,7 +99,10 @@ export default async function GrammarSandboxPage({
     const rows = await db.query.primitives.findMany({
       orderBy: [asc(primitives.category), asc(primitives.name)],
     });
-    primitiveRows = rows as unknown[];
+    // Visibility filter: own items + public items
+    primitiveRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(
+      (r) => r.isPublic || !r.userId || r.userId === sandboxViewerId,
+    ) as unknown[];
   } catch (err) {
     dataLoadFailed = true;
     // eslint-disable-next-line no-console
@@ -103,7 +115,9 @@ export default async function GrammarSandboxPage({
         primitiveLinks: { with: { primitive: true } },
       },
     });
-    effectRows = rows as unknown[];
+    effectRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(
+      (r) => r.isPublic || !r.userId || r.userId === sandboxViewerId,
+    ) as unknown[];
   } catch (err) {
     dataLoadFailed = true;
     // eslint-disable-next-line no-console
@@ -117,7 +131,9 @@ export default async function GrammarSandboxPage({
         effectLinks: { with: { effect: { with: { primitiveLinks: { with: { primitive: true } } } } } },
       },
     });
-    capabilityRows = rows as unknown[];
+    capabilityRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(
+      (r) => r.isPublic || !r.userId || r.userId === sandboxViewerId,
+    ) as unknown[];
   } catch (err) {
     dataLoadFailed = true;
     // eslint-disable-next-line no-console
@@ -214,16 +230,12 @@ export default async function GrammarSandboxPage({
   // here degrades to "empty engagement" instead of a 500 (the
   // loadLibraryEngagement function already handles this internally,
   // but we also catch here in case resolveUserIdByClerkId throws).
-  let currentUserInternalId: string | null = null;
+  let currentUserInternalId: string | null = sandboxViewerId;
   let engagement: Awaited<ReturnType<typeof loadLibraryEngagement>> = {
     reactions: {},
     following: {},
   };
   try {
-    const { userId: clerkUserId } = await auth();
-    if (clerkUserId) {
-      currentUserInternalId = await resolveUserIdByClerkId(clerkUserId);
-    }
     engagement = await loadLibraryEngagement(
       currentUserInternalId,
       libraryItems.map((it) => ({

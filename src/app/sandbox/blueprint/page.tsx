@@ -99,6 +99,19 @@ export default async function BlueprintSandboxPage({
   let capabilityRows: unknown[] = [];
   let effectRows: unknown[] = [];
 
+  // Resolve current user for visibility filtering
+  let sandboxViewerId: string | null = null;
+  try {
+    const { userId } = await auth();
+    if (userId) {
+      sandboxViewerId = await resolveUserIdByClerkId(userId);
+    }
+  } catch { /* not logged in */ }
+
+  // Visibility filter: own items + public items
+  const visFilter = (r: { isPublic: boolean; userId: string | null }) =>
+    r.isPublic || !r.userId || r.userId === sandboxViewerId;
+
   // TEMPLATES
   try {
     const rows = await db.query.templates.findMany({
@@ -108,7 +121,7 @@ export default async function BlueprintSandboxPage({
         capabilityLinks: { with: { capability: { with: { primitiveLinks: { with: { primitive: true } } } } } },
       },
     });
-    templateRows = rows as unknown[];
+    templateRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(visFilter) as unknown[];
   } catch (err) {
     dataLoadFailed = true;
     // eslint-disable-next-line no-console
@@ -125,7 +138,7 @@ export default async function BlueprintSandboxPage({
         capabilityLinks: { with: { capability: { with: { primitiveLinks: { with: { primitive: true } } } } } },
       },
     });
-    itemRows = rows as unknown[];
+    itemRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(visFilter) as unknown[];
   } catch (err) {
     dataLoadFailed = true;
     // eslint-disable-next-line no-console
@@ -137,7 +150,7 @@ export default async function BlueprintSandboxPage({
     const rows = await db.query.primitives.findMany({
       orderBy: [asc(primitives.name)],
     });
-    primitiveRows = rows as unknown[];
+    primitiveRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(visFilter) as unknown[];
   } catch (err) {
     dataLoadFailed = true;
     // eslint-disable-next-line no-console
@@ -153,7 +166,7 @@ export default async function BlueprintSandboxPage({
         effectLinks: { with: { effect: { with: { primitiveLinks: { with: { primitive: true } } } } } },
       },
     });
-    capabilityRows = rows as unknown[];
+    capabilityRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(visFilter) as unknown[];
   } catch (err) {
     dataLoadFailed = true;
     // eslint-disable-next-line no-console
@@ -168,7 +181,7 @@ export default async function BlueprintSandboxPage({
         primitiveLinks: { with: { primitive: true } },
       },
     });
-    effectRows = rows as unknown[];
+    effectRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(visFilter) as unknown[];
   } catch (err) {
     dataLoadFailed = true;
     // eslint-disable-next-line no-console
@@ -257,16 +270,12 @@ export default async function BlueprintSandboxPage({
   // library items. Same pattern /library/browse uses. Without this,
   // every card in the sandbox library shows an unfilled heart even
   // when the viewer has already liked the entry.
-  let currentUserInternalId: string | null = null;
+  let currentUserInternalId: string | null = sandboxViewerId;
   let engagement: Awaited<ReturnType<typeof loadLibraryEngagement>> = {
     reactions: {},
     following: {},
   };
   try {
-    const { userId: clerkUserId } = await auth();
-    if (clerkUserId) {
-      currentUserInternalId = await resolveUserIdByClerkId(clerkUserId);
-    }
     engagement = await loadLibraryEngagement(
       currentUserInternalId,
       libraryItems.map((it) => ({
