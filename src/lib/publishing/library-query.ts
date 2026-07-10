@@ -31,7 +31,7 @@
 // Pagination: limit (default 24, max 100), offset
 // =============================================================================
 
-import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   builds,
