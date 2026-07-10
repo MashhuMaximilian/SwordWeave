@@ -25,8 +25,8 @@ export interface VisibilityCheckResult {
  * - FOLLOWERS_ONLY: only the owner's followers can see
  * - PRIVATE: only the owner can see
  *
- * If no publication row exists, falls back to isPublic boolean.
- * On any error, falls back to isPublic boolean (fail-open for availability).
+ * Checks publications table FIRST (source of truth), then falls back
+ * to isPublic boolean. On any error, falls back to isPublic (fail-open).
  */
 export async function checkVisibility(input: {
   targetType: string;
@@ -53,7 +53,7 @@ export async function checkVisibility(input: {
   }
 
   try {
-    // Check publications table for visibility tier
+    // Check publications table for visibility tier (source of truth)
     const pub = await db.query.publications.findFirst({
       where: (table, { and: andFn, eq: eqFn, isNull: isNullFn }) =>
         andFn(
@@ -96,11 +96,26 @@ export async function checkVisibility(input: {
             : { allowed: false, reason: "followers_only" };
       }
     }
+
+    // No active publication — check if there's an unpublished one
+    // (means the entity was set to PRIVATE)
+    const unpublished = await db.query.publications.findFirst({
+      where: (table, { and: andFn, eq: eqFn }) =>
+        andFn(
+          eqFn(table.targetType, targetType as (typeof publishTargetTypeEnum.enumValues)[number]),
+          eqFn(table.targetId, targetId),
+        ),
+      columns: { unpublishedAt: true },
+    });
+    if (unpublished?.unpublishedAt) {
+      // Entity was explicitly set to PRIVATE
+      return { allowed: false, reason: "private" };
+    }
   } catch {
     // Publication query failed — fall through to isPublic fallback
   }
 
-  // No publication row — fall back to isPublic boolean
+  // No publication row at all — fall back to isPublic boolean
   return isPublic ? { allowed: true } : { allowed: false, reason: "private" };
 }
 

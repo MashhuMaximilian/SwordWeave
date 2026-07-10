@@ -20,6 +20,7 @@ import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { publications } from "@/db/schema/engagement";
+import { primitives, effects, capabilities, items, templates } from "@/db/schema";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import { resolveVirtualVersionId, isUuid } from "@/lib/engagement/version-helpers";
 
@@ -39,6 +40,43 @@ const BodySchema = z.object({
   visibility: z.enum(["PUBLIC", "FOLLOWERS_ONLY", "PRIVATE"]),
   versionId: z.string().uuid().optional(),
 });
+
+/**
+ * Sync the `isPublic` boolean on the entity table to match the visibility tier.
+ * PUBLIC / FOLLOWERS_ONLY → isPublic = true
+ * PRIVATE → isPublic = false
+ */
+async function syncIsPublic(
+  targetType: string,
+  targetId: string,
+  isPublic: boolean,
+) {
+  try {
+    switch (targetType) {
+      case "PRIMITIVE":
+        await db.update(primitives).set({ isPublic }).where(eq(primitives.id, Number(targetId)));
+        break;
+      case "EFFECT":
+        await db.update(effects).set({ isPublic }).where(eq(effects.id, targetId));
+        break;
+      case "CAPABILITY":
+        await db.update(capabilities).set({ isPublic }).where(eq(capabilities.id, targetId));
+        break;
+      case "ITEM":
+        await db.update(items).set({ isPublic }).where(eq(items.id, targetId));
+        break;
+      case "RACE_TEMPLATE":
+      case "BACKGROUND_TEMPLATE":
+      case "ARCHETYPE_TEMPLATE":
+      case "BUILD_TEMPLATE":
+        await db.update(templates).set({ isPublic }).where(eq(templates.id, targetId));
+        break;
+    }
+  } catch (err) {
+    // Log but don't fail the request — publication row is the source of truth
+    console.error("[visibility] syncIsPublic failed:", err);
+  }
+}
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
@@ -99,6 +137,8 @@ export async function POST(req: NextRequest) {
         .set({ unpublishedAt: new Date() })
         .where(eq(publications.id, existing.id));
     }
+    // Sync isPublic = false on the entity table
+    await syncIsPublic(targetType, targetId, false);
     return NextResponse.json({ ok: true, visibility: "PRIVATE" });
   }
 
@@ -117,6 +157,8 @@ export async function POST(req: NextRequest) {
       .update(publications)
       .set({ visibility, unpublishedAt: null })
       .where(eq(publications.id, existing.id));
+    // Sync isPublic = true for PUBLIC/FOLLOWERS_ONLY
+    await syncIsPublic(targetType, targetId, true);
     return NextResponse.json({ ok: true, visibility, publicationId: existing.id });
   }
 
@@ -132,6 +174,8 @@ export async function POST(req: NextRequest) {
       visibility,
     })
     .returning({ id: publications.id });
+  // Sync isPublic = true for PUBLIC/FOLLOWERS_ONLY
+  await syncIsPublic(targetType, targetId, true);
   return NextResponse.json({
     ok: true,
     visibility,

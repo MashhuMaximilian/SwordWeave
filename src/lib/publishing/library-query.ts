@@ -43,6 +43,7 @@ import {
   forkAggregates,
   items,
   primitives,
+  publications,
   reactionAggregates,
   templates,
 } from "@/db/schema";
@@ -243,9 +244,24 @@ function sortItems(items: LibraryItem[], sort: LibrarySort) {
   }
 }
 
+/**
+ * NOT EXISTS condition: exclude entities that have an unpublished publication.
+ * This ensures entities explicitly set to PRIVATE via the visibility API
+ * don't appear in the library, even if their isPublic boolean is stale.
+ */
+function notUnpublished(targetType: string, idExpr: SQL) {
+  return sql`NOT EXISTS (
+    SELECT 1 FROM publications
+    WHERE target_type = ${targetType}
+      AND target_id = CAST(${idExpr} AS text)
+      AND unpublished_at IS NOT NULL
+  )`;
+}
+
 async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
   const conditions = [
     or(eq(primitives.isPublic, true), isNull(primitives.userId))!,
+    notUnpublished("PRIMITIVE", sql`${primitives.id}`),
   ];
 
   if (q.category) {
@@ -304,7 +320,7 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
 }
 
 async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
-  const conditions = [eq(capabilities.isPublic, true)];
+  const conditions = [eq(capabilities.isPublic, true), notUnpublished("CAPABILITY", sql`${capabilities.id}`)];
 
   if (q.search) {
     conditions.push(
@@ -390,7 +406,7 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
 }
 
 async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
-  const conditions = [eq(effects.isPublic, true)];
+  const conditions = [eq(effects.isPublic, true), notUnpublished("EFFECT", sql`${effects.id}`)];
 
   if (q.search) {
     conditions.push(
@@ -475,7 +491,7 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
 }
 
 async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
-  const conditions = [eq(items.isPublic, true)];
+  const conditions = [eq(items.isPublic, true), notUnpublished("ITEM", sql`${items.id}`)];
 
   if (q.search) {
     conditions.push(
@@ -552,7 +568,7 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
 }
 
 async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
-  const conditions = [eq(templates.isPublic, true)];
+  const conditions = [eq(templates.isPublic, true), notUnpublished("RACE_TEMPLATE", sql`${templates.id}`)];
 
   if (q.targetType === "RACE_TEMPLATE") {
     conditions.push(eq(templates.kind, "RACE"));
@@ -670,7 +686,7 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
 // =============================================================================
 
 async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
-  const conditions = [eq(builds.isPublic, true)];
+  const conditions = [eq(builds.isPublic, true), notUnpublished("BUILD_TEMPLATE", sql`${builds.id}`)];
 
   if (q.search) {
     conditions.push(
