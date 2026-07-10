@@ -17,6 +17,7 @@ import { eq } from "drizzle-orm";
 import { loadProfileByUsername } from "@/lib/profiles/profile-loader";
 import { listByForker } from "@/lib/publishing/forks-query";
 import { ForkEntry } from "@/lib/publishing/forks-query";
+import { FollowButton } from "@/components/profile/follow-button";
 
 export const dynamic = "force-dynamic";
 
@@ -66,14 +67,22 @@ export default async function ProfilePage({
                 <p className="text-sm text-sword-muted">@{profile.username}</p>
               </div>
 
-              {profile.isOwner && (
-                <Link
-                  href="/settings/profile"
-                  className="inline-flex items-center gap-1 rounded-md border border-sword-border bg-sword-bg px-3 py-1.5 text-sm text-sword-fg hover:bg-sword-surface"
-                >
-                  <Settings className="h-4 w-4" /> Edit profile
-                </Link>
-              )}
+              <div className="flex items-center gap-2">
+                {!profile.isOwner && viewerClerkId && (
+                  <FollowButton
+                    targetUserId={profile.id}
+                    initialFollowing={profile.viewerIsFollowing}
+                  />
+                )}
+                {profile.isOwner && (
+                  <Link
+                    href="/settings/profile"
+                    className="inline-flex items-center gap-1 rounded-md border border-sword-border bg-sword-bg px-3 py-1.5 text-sm text-sword-fg hover:bg-sword-surface"
+                  >
+                    <Settings className="h-4 w-4" /> Edit profile
+                  </Link>
+                )}
+              </div>
             </div>
 
             {profile.bio && (

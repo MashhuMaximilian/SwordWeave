@@ -35,6 +35,7 @@ import {
   type FlagReason,
 } from "@/lib/engagement/flags-service";
 import { getForkSource } from "@/lib/publishing/fork-lineage";
+import { checkVisibility } from "@/lib/publishing/visibility";
 import {
   bulkResolveLatestVersionNumbers,
   type VersionNumberKey,
@@ -574,6 +575,15 @@ async function PrimitiveDetail({
   });
   if (!row) notFound();
 
+  const vis = await checkVisibility({
+    targetType: "PRIMITIVE",
+    targetId: String(id),
+    ownerId: row.userId ?? null,
+    isPublic: row.isPublic,
+    viewerId: viewerClerkId,
+  });
+  if (!vis.allowed) notFound();
+
   const author = await resolveAuthorByClerkId(row.userId);
   const engagement = await loadEngagement("PRIMITIVE", String(id), currentUserId);
   const [{ flagDistribution, flagNotes }, forkSource] = await Promise.all([
@@ -667,6 +677,17 @@ async function CapabilityDetail({
   });
   if (!row) notFound();
 
+  const vis = await checkVisibility({
+    targetType: "CAPABILITY",
+    targetId: id,
+    ownerId: row.userId ?? null,
+    isPublic: row.isPublic,
+    viewerId: viewerClerkId,
+  });
+  if (!vis.allowed) notFound();
+
+  const author = await resolveAuthorByClerkId(row.userId);
+
   let buTotal = 0;
   for (const link of row.primitiveLinks) {
     // Mashu 2026-07-09: Math.abs() per the mirror rule. Defensive.
@@ -698,7 +719,7 @@ async function CapabilityDetail({
       buCost={buTotal}
       category={row.type}
       description={row.verboseDescription || null}
-      author={null}
+      author={author}
       ownerId={row.userId}
       editHref={`/sandbox/grammar?build=capability&edit=${row.id}`}
       targetType="CAPABILITY"
@@ -829,6 +850,21 @@ async function TemplateDetail({
     },
   });
   if (!row) notFound();
+
+  const targetTypeForVis =
+    row.kind === "RACE"
+      ? "RACE_TEMPLATE"
+      : row.kind === "BACKGROUND"
+        ? "BACKGROUND_TEMPLATE"
+        : "ARCHETYPE_TEMPLATE";
+  const vis = await checkVisibility({
+    targetType: targetTypeForVis,
+    targetId: id,
+    ownerId: row.userId ?? null,
+    isPublic: row.isPublic,
+    viewerId: viewerClerkId,
+  });
+  if (!vis.allowed) notFound();
 
   const typeLabel =
     row.kind === "RACE"
@@ -1016,6 +1052,15 @@ async function EffectDetail({
     where: (table, { eq }) => eq(table.id, id),
   });
   if (!effectRow) notFound();
+
+  const vis = await checkVisibility({
+    targetType: "EFFECT",
+    targetId: id,
+    ownerId: effectRow.userId ?? null,
+    isPublic: effectRow.isPublic,
+    viewerId: viewerClerkId,
+  });
+  if (!vis.allowed) notFound();
 
   const primitiveLinks = await db.query.effectPrimitives.findMany({
     where: (table, { eq }) => eq(table.effectId, id),
@@ -1211,6 +1256,15 @@ async function ItemDetail({
     where: (table, { eq }) => eq(table.id, id),
   });
   if (!itemRow) notFound();
+
+  const vis = await checkVisibility({
+    targetType: "ITEM",
+    targetId: id,
+    ownerId: itemRow.userId ?? null,
+    isPublic: itemRow.isPublic,
+    viewerId: viewerClerkId,
+  });
+  if (!vis.allowed) notFound();
 
   // Items compose primitives + effects + capabilities (the user's spec
   // for item composition). Load all three in parallel.
