@@ -155,6 +155,10 @@ export type SandboxTemplateRow = {
         id: string;
         name: string;
         type: string;
+        primitiveLinks?: Array<{
+          primitiveId: number;
+          primitive: { id: number; name: string; category: string; buCost: number };
+        }>;
       };
     } & WithVersion
   >;
@@ -195,6 +199,11 @@ export type SandboxItemRow = {
         id: string;
         name: string;
         narrativeDescription: string | null;
+        primitiveLinks?: Array<{
+          primitiveId: number;
+          quantity: number;
+          primitive: { id: number; name: string; category: string; buCost: number };
+        }>;
       };
     } & WithVersion
   >;
@@ -208,6 +217,10 @@ export type SandboxItemRow = {
         id: string;
         name: string;
         type: string;
+        primitiveLinks?: Array<{
+          primitiveId: number;
+          primitive: { id: number; name: string; category: string; buCost: number };
+        }>;
       };
     } & WithVersion
   >;
@@ -1054,8 +1067,10 @@ function TemplateBody({
                     {link.capability.name}
                   </span>
                 </div>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {link.capability.type}
+                <span className="shrink-0 font-mono text-xs text-foreground">
+                  {(link.capability.primitiveLinks ?? []).reduce(
+                    (s, l) => s + Math.abs(l.primitive.buCost), 0,
+                  )} BU
                 </span>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
               </li>
@@ -1224,6 +1239,11 @@ function ItemBody({
                     </div>
                   ) : null}
                 </div>
+                <span className="shrink-0 font-mono text-xs text-foreground">
+                  {(link.effect.primitiveLinks ?? []).reduce(
+                    (s, l) => s + Math.abs(l.primitive.buCost * l.quantity), 0,
+                  )} BU
+                </span>
                 <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
               </li>
             ))}
@@ -1264,8 +1284,10 @@ function ItemBody({
                     {link.capability.name}
                   </span>
                 </div>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {link.capability.type}
+                <span className="shrink-0 font-mono text-xs text-foreground">
+                  {(link.capability.primitiveLinks ?? []).reduce(
+                    (s, l) => s + Math.abs(l.primitive.buCost), 0,
+                  )} BU
                 </span>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
               </li>

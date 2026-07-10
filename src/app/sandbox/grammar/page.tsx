@@ -324,6 +324,7 @@ export default async function GrammarSandboxPage({
             primitiveId: l.primitiveId,
             quantity: l.quantity,
             primitive: l.primitive,
+            versionNumber: versionMap.get(`primitive:${l.primitiveId}`) ?? null,
           })),
         };
       })}
@@ -382,6 +383,7 @@ export default async function GrammarSandboxPage({
             sortOrder: l.sortOrder,
             slotLabel: l.slotLabel,
             primitive: l.primitive,
+            versionNumber: versionMap.get(`primitive:${l.primitiveId}`) ?? null,
           })),
           // Pass the real effectLinks so the preview can render the
           // "Composed effects" section. Capabilities like "Abyssal
@@ -400,6 +402,7 @@ export default async function GrammarSandboxPage({
               sortOrder: l.sortOrder,
               slotLabel: l.slotLabel,
               notes: l.notes,
+              versionNumber: versionMap.get(`effect:${l.effectId}`) ?? null,
               effect: {
                 id: effectWithLinks.id,
                 name: effectWithLinks.name,

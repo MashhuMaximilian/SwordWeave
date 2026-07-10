@@ -45,6 +45,10 @@ type TemplateRow = {
       id: string;
       name: string;
       type: string;
+      primitiveLinks?: Array<{
+        primitiveId: number;
+        primitive: { id: number; name: string; category: string; buCost: number };
+      }>;
     };
   }>;
 };
@@ -83,6 +87,11 @@ type ItemRow = {
       id: string;
       name: string;
       narrativeDescription: string | null;
+      primitiveLinks?: Array<{
+        primitiveId: number;
+        quantity: number;
+        primitive: { id: number; name: string; category: string; buCost: number };
+      }>;
     };
   }>;
   capabilityLinks: Array<{
@@ -94,6 +103,10 @@ type ItemRow = {
       id: string;
       name: string;
       type: string;
+      primitiveLinks?: Array<{
+        primitiveId: number;
+        primitive: { id: number; name: string; category: string; buCost: number };
+      }>;
     };
   }>;
 };

@@ -164,13 +164,37 @@ export function GrammarLibrary({
         const row = effects.find((e) => e.id === item.targetId);
         if (!row) return null;
         const vn = versionMap?.[`effect:${item.targetId}`] ?? null;
-        return { kind: "effect", row, latestVersionNumber: vn };
+        return {
+          kind: "effect",
+          row: {
+            ...row,
+            primitiveLinks: row.primitiveLinks.map((l) => ({
+              ...l,
+              versionNumber: versionMap?.[`primitive:${l.primitiveId}`] ?? null,
+            })),
+          },
+          latestVersionNumber: vn,
+        };
       }
       if (item.targetType === "CAPABILITY") {
         const row = capabilities.find((c) => c.id === item.targetId);
         if (!row) return null;
         const vn = versionMap?.[`capability:${item.targetId}`] ?? null;
-        return { kind: "capability", row, latestVersionNumber: vn };
+        return {
+          kind: "capability",
+          row: {
+            ...row,
+            primitiveLinks: row.primitiveLinks.map((l) => ({
+              ...l,
+              versionNumber: versionMap?.[`primitive:${l.primitiveId}`] ?? null,
+            })),
+            effectLinks: row.effectLinks.map((l) => ({
+              ...l,
+              versionNumber: versionMap?.[`effect:${l.effectId}`] ?? null,
+            })),
+          },
+          latestVersionNumber: vn,
+        };
       }
       return null;
     };

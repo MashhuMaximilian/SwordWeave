@@ -105,7 +105,7 @@ export default async function BlueprintSandboxPage({
       orderBy: [asc(templates.kind), asc(templates.name)],
       with: {
         primitiveLinks: { with: { primitive: true } },
-        capabilityLinks: { with: { capability: true } },
+        capabilityLinks: { with: { capability: { with: { primitiveLinks: { with: { primitive: true } } } } } },
       },
     });
     templateRows = rows as unknown[];
@@ -122,7 +122,7 @@ export default async function BlueprintSandboxPage({
       with: {
         primitiveLinks: { with: { primitive: true } },
         effectLinks: { with: { effect: { with: { primitiveLinks: { with: { primitive: true } } } } } },
-        capabilityLinks: { with: { capability: true } },
+        capabilityLinks: { with: { capability: { with: { primitiveLinks: { with: { primitive: true } } } } } },
       },
     });
     itemRows = rows as unknown[];
@@ -368,6 +368,7 @@ export default async function BlueprintSandboxPage({
             primitiveId: l.primitiveId,
             quantity: l.quantity,
             primitive: l.primitive,
+            versionNumber: versionMap.get(`primitive:${l.primitiveId}`) ?? null,
           })),
         };
       })}
@@ -462,6 +463,7 @@ export default async function BlueprintSandboxPage({
             sortOrder: l.sortOrder,
             slotLabel: l.slotLabel,
             primitive: l.primitive,
+            versionNumber: versionMap.get(`primitive:${l.primitiveId}`) ?? null,
           })),
           effectLinks: (row.effectLinks ?? []).map((l) => {
             const effectWithLinks = l.effect as typeof l.effect & {
@@ -476,6 +478,7 @@ export default async function BlueprintSandboxPage({
               sortOrder: l.sortOrder,
               slotLabel: l.slotLabel,
               notes: l.notes,
+              versionNumber: versionMap.get(`effect:${l.effectId}`) ?? null,
               effect: {
                 id: effectWithLinks.id,
                 name: effectWithLinks.name,
