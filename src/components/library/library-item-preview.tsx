@@ -120,7 +120,7 @@ export type SandboxCapabilityRow = {
         name: string;
         narrativeDescription: string | null;
         sourceOrigin: string | null;
-        primitiveLinks: Array<{
+        primitiveLinks?: Array<{
           primitiveId: number;
           quantity: number;
           primitive: { id: number; name: string; category: string; buCost: number };

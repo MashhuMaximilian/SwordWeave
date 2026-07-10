@@ -154,6 +154,7 @@ export default async function BlueprintSandboxPage({
       },
     });
     capabilityRows = rows as unknown[];
+  } catch (err) {
     dataLoadFailed = true;
     // eslint-disable-next-line no-console
     console.error("[blueprint sandbox] capabilities query failed:", err);
@@ -462,23 +463,32 @@ export default async function BlueprintSandboxPage({
             slotLabel: l.slotLabel,
             primitive: l.primitive,
           })),
-          effectLinks: (row.effectLinks ?? []).map((l) => ({
-            effectId: l.effectId,
-            sortOrder: l.sortOrder,
-            slotLabel: l.slotLabel,
-            notes: l.notes,
-            effect: {
-              id: l.effect.id,
-              name: l.effect.name,
-              narrativeDescription: l.effect.narrativeDescription,
-              sourceOrigin: l.effect.sourceOrigin,
-              primitiveLinks: (l.effect.primitiveLinks ?? []).map((pl) => ({
-                primitiveId: pl.primitiveId,
-                quantity: pl.quantity,
-                primitive: pl.primitive,
-              })),
-            },
-          })),
+          effectLinks: (row.effectLinks ?? []).map((l) => {
+            const effectWithLinks = l.effect as typeof l.effect & {
+              primitiveLinks?: Array<{
+                primitiveId: number;
+                quantity: number;
+                primitive: { id: number; name: string; category: string; buCost: number };
+              }>;
+            };
+            return {
+              effectId: l.effectId,
+              sortOrder: l.sortOrder,
+              slotLabel: l.slotLabel,
+              notes: l.notes,
+              effect: {
+                id: effectWithLinks.id,
+                name: effectWithLinks.name,
+                narrativeDescription: effectWithLinks.narrativeDescription,
+                sourceOrigin: effectWithLinks.sourceOrigin,
+                primitiveLinks: (effectWithLinks.primitiveLinks ?? []).map((pl) => ({
+                  primitiveId: pl.primitiveId,
+                  quantity: pl.quantity,
+                  primitive: pl.primitive,
+                })),
+              },
+            };
+          }),
         };
       })}
       dataLoadFailed={dataLoadFailed}
