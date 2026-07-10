@@ -44,8 +44,8 @@ export function FollowButton({
       disabled={loading}
       className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 ${
         following
-          ? "border border-sword-border bg-sword-bg text-sword-fg hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/40"
-          : "bg-sword-accent text-white hover:bg-sword-accent/90"
+          ? "border border-border bg-card text-foreground hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-500"
+          : "bg-primary text-primary-foreground hover:bg-primary/90"
       }`}
     >
       {loading ? (
