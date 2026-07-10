@@ -47,3 +47,6 @@ scripts/check-*.mts
 scripts/find-*.mts
 scripts/reset-*.mts
 scripts/create-*.mts
+test-site.mjs
+test-forks.mjs
+screenshots/
