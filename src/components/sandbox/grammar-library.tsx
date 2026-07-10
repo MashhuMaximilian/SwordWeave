@@ -157,20 +157,20 @@ export function GrammarLibrary({
         const id = Number(item.targetId);
         const row = primitives.find((p) => p.id === id);
         if (!row) return null;
-        const vn = versionMap?.[`primitive:${id}`] ?? null;
+        const vn = versionMap?.[`primitive:${id}`] ?? 1;
         return { kind: "primitive", row, latestVersionNumber: vn };
       }
       if (item.targetType === "EFFECT") {
         const row = effects.find((e) => e.id === item.targetId);
         if (!row) return null;
-        const vn = versionMap?.[`effect:${item.targetId}`] ?? null;
+        const vn = versionMap?.[`effect:${item.targetId}`] ?? 1;
         return {
           kind: "effect",
           row: {
             ...row,
             primitiveLinks: row.primitiveLinks.map((l) => ({
               ...l,
-              versionNumber: versionMap?.[`primitive:${l.primitiveId}`] ?? null,
+              versionNumber: versionMap?.[`primitive:${l.primitiveId}`] ?? 1,
             })),
           },
           latestVersionNumber: vn,
@@ -179,18 +179,18 @@ export function GrammarLibrary({
       if (item.targetType === "CAPABILITY") {
         const row = capabilities.find((c) => c.id === item.targetId);
         if (!row) return null;
-        const vn = versionMap?.[`capability:${item.targetId}`] ?? null;
+        const vn = versionMap?.[`capability:${item.targetId}`] ?? 1;
         return {
           kind: "capability",
           row: {
             ...row,
             primitiveLinks: row.primitiveLinks.map((l) => ({
               ...l,
-              versionNumber: versionMap?.[`primitive:${l.primitiveId}`] ?? null,
+              versionNumber: versionMap?.[`primitive:${l.primitiveId}`] ?? 1,
             })),
             effectLinks: row.effectLinks.map((l) => ({
               ...l,
-              versionNumber: versionMap?.[`effect:${l.effectId}`] ?? null,
+              versionNumber: versionMap?.[`effect:${l.effectId}`] ?? 1,
             })),
           },
           latestVersionNumber: vn,

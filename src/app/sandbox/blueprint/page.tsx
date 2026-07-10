@@ -368,7 +368,7 @@ export default async function BlueprintSandboxPage({
             primitiveId: l.primitiveId,
             quantity: l.quantity,
             primitive: l.primitive,
-            versionNumber: versionMap.get(`primitive:${l.primitiveId}`) ?? null,
+            versionNumber: versionMap.get(`primitive:${l.primitiveId}`) ?? 1,
           })),
         };
       })}
@@ -463,7 +463,7 @@ export default async function BlueprintSandboxPage({
             sortOrder: l.sortOrder,
             slotLabel: l.slotLabel,
             primitive: l.primitive,
-            versionNumber: versionMap.get(`primitive:${l.primitiveId}`) ?? null,
+            versionNumber: versionMap.get(`primitive:${l.primitiveId}`) ?? 1,
           })),
           effectLinks: (row.effectLinks ?? []).map((l) => {
             const effectWithLinks = l.effect as typeof l.effect & {
@@ -478,7 +478,7 @@ export default async function BlueprintSandboxPage({
               sortOrder: l.sortOrder,
               slotLabel: l.slotLabel,
               notes: l.notes,
-              versionNumber: versionMap.get(`effect:${l.effectId}`) ?? null,
+              versionNumber: versionMap.get(`effect:${l.effectId}`) ?? 1,
               effect: {
                 id: effectWithLinks.id,
                 name: effectWithLinks.name,
