@@ -50,3 +50,4 @@ scripts/create-*.mts
 test-site.mjs
 test-forks.mjs
 screenshots/
+scripts/output/
