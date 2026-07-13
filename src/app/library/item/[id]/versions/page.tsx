@@ -26,6 +26,9 @@ import {
 } from "@/lib/versions/version-history";
 import { RestoreButton } from "@/components/library/restore-button";
 import { VersionPreviewButton } from "@/components/library/version-preview-button";
+import { db } from "@/db/client";
+import { primitives, effects, capabilities } from "@/db/schema";
+import { inArray } from "drizzle-orm";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -58,6 +61,63 @@ export default async function VersionHistoryPage({ params }: PageProps) {
 
   const result = await getVersionHistory(parsed.type, parsed.id);
   if (!result) notFound();
+
+  // Collect all referenced entity IDs from all version payloads so we
+  // can bulk-resolve their names for the preview modal.
+  const referencedPrimitiveIds = new Set<number>();
+  const referencedEffectIds = new Set<string>();
+  const referencedCapabilityIds = new Set<string>();
+
+  for (const v of result.versions) {
+    const p = v.payload;
+    // primitiveSlots (effects + capabilities)
+    if (Array.isArray(p["primitiveSlots"])) {
+      for (const s of p["primitiveSlots"] as Array<Record<string, unknown>>) {
+        const pid = Number(s["primitiveId"]);
+        if (Number.isFinite(pid)) referencedPrimitiveIds.add(pid);
+      }
+    }
+    // primitiveIds (templates + items)
+    if (Array.isArray(p["primitiveIds"])) {
+      for (const pid of p["primitiveIds"] as number[]) {
+        if (Number.isFinite(pid)) referencedPrimitiveIds.add(pid);
+      }
+    }
+    // effectIds (capabilities + items)
+    if (Array.isArray(p["effectIds"])) {
+      for (const eid of p["effectIds"] as string[]) {
+        referencedEffectIds.add(eid);
+      }
+    }
+    // capabilityIds (templates + items)
+    if (Array.isArray(p["capabilityIds"])) {
+      for (const cid of p["capabilityIds"] as string[]) {
+        referencedCapabilityIds.add(cid);
+      }
+    }
+  }
+
+  // Bulk-fetch names from DB. Wrapped in try/catch so a failure just
+  // means we fall back to ID-based labels instead of crashing.
+  const nameMap: Record<string, string> = {};
+  try {
+    const [primRows, effRows, capRows] = await Promise.all([
+      referencedPrimitiveIds.size > 0
+        ? db.select({ id: primitives.id, name: primitives.name }).from(primitives).where(inArray(primitives.id, [...referencedPrimitiveIds]))
+        : Promise.resolve([]),
+      referencedEffectIds.size > 0
+        ? db.select({ id: effects.id, name: effects.name }).from(effects).where(inArray(effects.id, [...referencedEffectIds]))
+        : Promise.resolve([]),
+      referencedCapabilityIds.size > 0
+        ? db.select({ id: capabilities.id, name: capabilities.name }).from(capabilities).where(inArray(capabilities.id, [...referencedCapabilityIds]))
+        : Promise.resolve([]),
+    ]);
+    for (const r of primRows) nameMap[`primitive:${r.id}`] = r.name;
+    for (const r of effRows) nameMap[`effect:${r.id}`] = r.name;
+    for (const r of capRows) nameMap[`capability:${r.id}`] = r.name;
+  } catch (err) {
+    console.error("[versions page] name resolution failed:", err);
+  }
 
   return (
     <div className="mx-auto w-full max-w-4xl px-5 py-8">
@@ -132,6 +192,7 @@ export default async function VersionHistoryPage({ params }: PageProps) {
               isLatest={i === result.versions.length - 1}
               targetType={parsed.type}
               targetId={parsed.id}
+              nameMap={nameMap}
             />
           );
         })}
@@ -205,12 +266,14 @@ function VersionRow({
   isLatest,
   targetType,
   targetId,
+  nameMap,
 }: {
   version: VersionEntry;
   previousVersionNumber: number | null;
   isLatest: boolean;
   targetType: VersionTargetType;
   targetId: string;
+  nameMap: Record<string, string>;
 }) {
   const summary = buildSummary(version);
   return (
@@ -267,6 +330,7 @@ function VersionRow({
           targetId={targetId}
           versionNumber={version.versionNumber}
           payload={version.payload}
+          nameMap={nameMap}
         />
         {(() => {
           const apiType: "PRIMITIVE" | "EFFECT" | "CAPABILITY" | "ITEM" | "TEMPLATE" | null = mapToApiType(targetType);

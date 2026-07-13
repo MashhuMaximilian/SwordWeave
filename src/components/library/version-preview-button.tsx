@@ -26,12 +26,15 @@ interface VersionPreviewButtonProps {
   targetId: string;
   versionNumber: number;
   payload: Record<string, unknown>;
+  /** Pre-resolved entity names: "primitive:42" → "Strike", "effect:uuid" → "Shattered Composure" */
+  nameMap?: Record<string, string>;
 }
 
 function mapPayloadToPreviewItem(
   targetType: string,
   targetId: string,
   payload: Record<string, unknown>,
+  nameMap?: Record<string, string>,
 ): SandboxPreviewItem | null {
   if (targetType === "PRIMITIVE") {
     const numId = Number(targetId);
@@ -56,17 +59,21 @@ function mapPayloadToPreviewItem(
 
   if (targetType === "EFFECT") {
     const primitiveLinks = Array.isArray(payload["primitiveSlots"])
-      ? (payload["primitiveSlots"] as Array<Record<string, unknown>>).map((s, i) => ({
-          primitiveId: Number(s["primitiveId"]) || 0,
-          quantity: Number(s["quantity"]) || 1,
-          primitive: {
-            id: Number(s["primitiveId"]) || 0,
-            name: String(s["name"] ?? `Primitive ${s["primitiveId"]}`),
-            category: String(s["category"] ?? ""),
-            buCost: Number(s["buCost"]) || 0,
-          },
-          versionNumber: undefined,
-        }))
+      ? (payload["primitiveSlots"] as Array<Record<string, unknown>>).map((s, i) => {
+          const pid = Number(s["primitiveId"]) || 0;
+          const resolvedName = nameMap?.[`primitive:${pid}`];
+          return {
+            primitiveId: pid,
+            quantity: Number(s["quantity"]) || 1,
+            primitive: {
+              id: pid,
+              name: resolvedName ?? String(s["name"] ?? `Primitive ${pid}`),
+              category: String(s["category"] ?? ""),
+              buCost: Number(s["buCost"]) || 0,
+            },
+            versionNumber: undefined,
+          };
+        })
       : [];
     const row: SandboxEffectRow = {
       id: targetId,
@@ -82,20 +89,24 @@ function mapPayloadToPreviewItem(
 
   if (targetType === "CAPABILITY") {
     const primitiveLinks = Array.isArray(payload["primitiveSlots"])
-      ? (payload["primitiveSlots"] as Array<Record<string, unknown>>).map((s, i) => ({
-          primitiveId: Number(s["primitiveId"]) || 0,
-          role: String(s["role"] ?? "PRIMARY"),
-          quantity: Number(s["quantity"]) || 1,
-          sortOrder: Number(s["sortOrder"]) || i,
-          slotLabel: (s["slotLabel"] as string) ?? null,
-          primitive: {
-            id: Number(s["primitiveId"]) || 0,
-            name: String(s["name"] ?? `Primitive ${s["primitiveId"]}`),
-            category: String(s["category"] ?? ""),
-            buCost: Number(s["buCost"]) || 0,
-          },
-          versionNumber: undefined,
-        }))
+      ? (payload["primitiveSlots"] as Array<Record<string, unknown>>).map((s, i) => {
+          const pid = Number(s["primitiveId"]) || 0;
+          const resolvedName = nameMap?.[`primitive:${pid}`];
+          return {
+            primitiveId: pid,
+            role: String(s["role"] ?? "PRIMARY"),
+            quantity: Number(s["quantity"]) || 1,
+            sortOrder: Number(s["sortOrder"]) || i,
+            slotLabel: (s["slotLabel"] as string) ?? null,
+            primitive: {
+              id: pid,
+              name: resolvedName ?? String(s["name"] ?? `Primitive ${pid}`),
+              category: String(s["category"] ?? ""),
+              buCost: Number(s["buCost"]) || 0,
+            },
+            versionNumber: undefined,
+          };
+        })
       : [];
     const effectLinks = Array.isArray(payload["effectIds"])
       ? (payload["effectIds"] as string[]).map((eid, i) => ({
@@ -105,7 +116,7 @@ function mapPayloadToPreviewItem(
           notes: null,
           effect: {
             id: eid,
-            name: `Effect ${eid.slice(0, 8)}`,
+            name: nameMap?.[`effect:${eid}`] ?? `Effect ${eid.slice(0, 8)}`,
             narrativeDescription: null,
             sourceOrigin: null,
           },
@@ -150,7 +161,7 @@ function mapPayloadToPreviewItem(
           capabilityId: cid,
           capability: {
             id: cid,
-            name: `Capability ${cid.slice(0, 8)}`,
+            name: nameMap?.[`capability:${cid}`] ?? `Capability ${cid.slice(0, 8)}`,
             type: "",
           },
           versionNumber: undefined,
@@ -190,7 +201,7 @@ function mapPayloadToPreviewItem(
           notes: null,
           effect: {
             id: eid,
-            name: `Effect ${eid.slice(0, 8)}`,
+            name: nameMap?.[`effect:${eid}`] ?? `Effect ${eid.slice(0, 8)}`,
             narrativeDescription: null,
           },
           versionNumber: undefined,
@@ -204,7 +215,7 @@ function mapPayloadToPreviewItem(
           notes: null,
           capability: {
             id: cid,
-            name: `Capability ${cid.slice(0, 8)}`,
+            name: nameMap?.[`capability:${cid}`] ?? `Capability ${cid.slice(0, 8)}`,
             type: "",
           },
           versionNumber: undefined,
@@ -272,9 +283,10 @@ export function VersionPreviewButton({
   targetId,
   versionNumber,
   payload,
+  nameMap,
 }: VersionPreviewButtonProps) {
   const [open, setOpen] = useState(false);
-  const previewItem = mapPayloadToPreviewItem(targetType, targetId, payload);
+  const previewItem = mapPayloadToPreviewItem(targetType, targetId, payload, nameMap);
 
   return (
     <>
