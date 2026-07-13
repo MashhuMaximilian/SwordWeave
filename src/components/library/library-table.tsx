@@ -24,6 +24,7 @@ import { ArrowRight, ExternalLink, SearchX, User as UserIcon } from "lucide-reac
 import { Markdown } from "@/components/ui/markdown";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
+import { IconDisplay } from "@/components/icons/icon-display";
 import { cn } from "@/lib/utils";
 import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-query";
 import type { LibraryView } from "@/lib/preferences/library-prefs";
@@ -200,6 +201,29 @@ function ListItem({
 }: ListItemProps) {
   const inner = (
     <>
+      {/* Phase 8: entity icon to the left of the text. Falls back to a
+          muted glyph when no icon is set, so the layout doesn't shift
+          between rows. */}
+      <div className="shrink-0">
+        {item.iconSource ? (
+          <IconDisplay
+            iconSource={item.iconSource}
+            iconKey={item.iconKey}
+            iconUrl={item.iconUrl}
+            iconColor={item.iconColor}
+            size={36}
+            className="rounded-md"
+            alt={item.name}
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            className="flex size-9 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+          >
+            {item.targetType.replace(/_/g, " ").slice(0, 3)}
+          </div>
+        )}
+      </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-1.5">
           <h3 className="truncate text-sm font-semibold leading-tight">{item.name}</h3>
@@ -276,6 +300,27 @@ function GridCard({
 }: GridCardProps) {
   const inner = (
     <>
+      {/* Phase 8: hero icon at the top of the card. Larger than the
+          list-view icon (64px) so the grid feels visually distinct. */}
+      <div className="flex items-center justify-center rounded-md border border-border bg-muted/20 p-2">
+        {item.iconSource ? (
+          <IconDisplay
+            iconSource={item.iconSource}
+            iconKey={item.iconKey}
+            iconUrl={item.iconUrl}
+            iconColor={item.iconColor}
+            size={56}
+            alt={item.name}
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            className="flex size-14 items-center justify-center rounded-md border border-dashed border-border text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+          >
+            {item.targetType.replace(/_/g, " ").slice(0, 3)}
+          </div>
+        )}
+      </div>
       <header className="flex items-start justify-between gap-1.5">
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-sm font-semibold leading-tight">{item.name}</h3>

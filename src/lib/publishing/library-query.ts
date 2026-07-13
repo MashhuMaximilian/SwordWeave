@@ -121,6 +121,12 @@ export interface LibraryItem {
    * query (the WHERE clause already filters by isPublic = true).
    */
   visibility?: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC";
+  // Phase 8: per-entity iconography. All 4 are nullable on the row —
+  // iconSource null = no icon set, iconColor defaults to "#ffffff" in DB.
+  iconSource: "GAME_ICONS" | "UPLOAD" | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 }
 
 export interface LibraryResult {
@@ -279,6 +285,11 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       narrativeRule: primitives.narrativeRule,
       userId: primitives.userId,
       createdAt: primitives.createdAt,
+      // Phase 8: per-entity iconography
+      iconSource: primitives.iconSource,
+      iconKey: primitives.iconKey,
+      iconUrl: primitives.iconUrl,
+      iconColor: primitives.iconColor,
     })
     .from(primitives)
     .where(and(...conditions))
@@ -314,6 +325,11 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
       tags: [],
+      // Phase 8: per-entity iconography
+      iconSource: r.iconSource,
+      iconKey: r.iconKey,
+      iconUrl: r.iconUrl,
+      iconColor: r.iconColor,
     };
   });
 }
@@ -340,6 +356,11 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
       tags: capabilities.tags,
       userId: capabilities.userId,
       createdAt: capabilities.createdAt,
+      // Phase 8: per-entity iconography
+      iconSource: capabilities.iconSource,
+      iconKey: capabilities.iconKey,
+      iconUrl: capabilities.iconUrl,
+      iconColor: capabilities.iconColor,
     })
     .from(capabilities)
     .where(and(...conditions))
@@ -400,6 +421,11 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
       tags: r.tags,
+      // Phase 8: per-entity iconography
+      iconSource: r.iconSource,
+      iconKey: r.iconKey,
+      iconUrl: r.iconUrl,
+      iconColor: r.iconColor,
     };
   });
 }
@@ -428,6 +454,11 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
       tags: effects.tags,
       userId: effects.userId,
       createdAt: effects.createdAt,
+      // Phase 8: per-entity iconography
+      iconSource: effects.iconSource,
+      iconKey: effects.iconKey,
+      iconUrl: effects.iconUrl,
+      iconColor: effects.iconColor,
     })
     .from(effects)
     .where(and(...conditions))
@@ -485,6 +516,11 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
       tags: r.tags ?? [],
+      // Phase 8: per-entity iconography
+      iconSource: r.iconSource,
+      iconKey: r.iconKey,
+      iconUrl: r.iconUrl,
+      iconColor: r.iconColor,
     };
   });
 }
@@ -527,6 +563,11 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
       tags: items.tags,
       userId: items.userId,
       createdAt: items.createdAt,
+      // Phase 8: per-entity iconography
+      iconSource: items.iconSource,
+      iconKey: items.iconKey,
+      iconUrl: items.iconUrl,
+      iconColor: items.iconColor,
     })
     .from(items)
     .where(and(...conditions))
@@ -562,6 +603,11 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
       tags: r.tags ?? [],
+      // Phase 8: per-entity iconography
+      iconSource: r.iconSource,
+      iconKey: r.iconKey,
+      iconUrl: r.iconUrl,
+      iconColor: r.iconColor,
     };
   });
 }
@@ -604,6 +650,11 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
       imageUrl: templates.imageUrl,
       userId: templates.userId,
       createdAt: templates.createdAt,
+      // Phase 8: per-entity iconography
+      iconSource: templates.iconSource,
+      iconKey: templates.iconKey,
+      iconUrl: templates.iconUrl,
+      iconColor: templates.iconColor,
     })
     .from(templates)
     .where(and(...conditions))
@@ -659,6 +710,11 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
       tags: [],
+      // Phase 8: per-entity iconography
+      iconSource: r.iconSource,
+      iconKey: r.iconKey,
+      iconUrl: r.iconUrl,
+      iconColor: r.iconColor,
     };
   });
 }
@@ -750,6 +806,13 @@ async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
       tags: [],
+      // Phase 8: builds don't carry icon columns (they use portraitUrl
+      // instead). Fall back to null + default color so the type
+      // contract holds; card will render with a placeholder glyph.
+      iconSource: null,
+      iconKey: null,
+      iconUrl: null,
+      iconColor: "#ffffff",
     };
   });
 }

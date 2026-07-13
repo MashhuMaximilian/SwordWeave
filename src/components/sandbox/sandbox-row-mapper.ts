@@ -24,6 +24,11 @@ type SandboxPrimitive = {
   isPublic: boolean | null;
   mechanicalOutputText: string | null;
   narrativeRule: string | null;
+  // Phase 8: per-entity iconography (sandbox-side row mirror).
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string | null;
 };
 
 type SandboxEffect = {
@@ -33,6 +38,10 @@ type SandboxEffect = {
   sourceOrigin: string | null;
   tags: string[] | null;
   isPublic: boolean | null;
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string | null;
 };
 
 type SandboxCapability = {
@@ -44,6 +53,10 @@ type SandboxCapability = {
   sourceOrigin: string | null;
   tags: string[] | null;
   isPublic: boolean | null;
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string | null;
 };
 
 type SandboxTemplate = {
@@ -53,6 +66,10 @@ type SandboxTemplate = {
   description: string | null;
   suggestedTraits: string | null;
   isPublic: boolean | null;
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string | null;
 };
 
 type SandboxItem = {
@@ -66,6 +83,10 @@ type SandboxItem = {
   tags: string[] | null;
   slotCost: number;
   quantity: number;
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string | null;
 };
 
 type SandboxCharacter = {
@@ -78,6 +99,8 @@ type SandboxCharacter = {
   attrMagical: number;
   attrProficient: string | null;
   isPublic: boolean | null;
+  // Characters (builds) don't carry icon columns — falls back to null
+  // in characterToLibraryItem.
 };
 
 const EMPTY_AUTHORS = {
@@ -111,6 +134,11 @@ export function primitiveToLibraryItem(
     ...EMPTY_ENGAGEMENT,
     tags: [],
     visibility,
+    // Phase 8: per-entity iconography
+    iconSource: row.iconSource as "GAME_ICONS" | "UPLOAD" | null,
+    iconKey: row.iconKey,
+    iconUrl: row.iconUrl,
+    iconColor: row.iconColor ?? "#ffffff",
   };
 }
 
@@ -130,6 +158,11 @@ export function effectToLibraryItem(
     ...EMPTY_ENGAGEMENT,
     tags: row.tags ?? [],
     visibility,
+    // Phase 8: per-entity iconography
+    iconSource: row.iconSource as "GAME_ICONS" | "UPLOAD" | null,
+    iconKey: row.iconKey,
+    iconUrl: row.iconUrl,
+    iconColor: row.iconColor ?? "#ffffff",
   };
 }
 
@@ -149,6 +182,11 @@ export function capabilityToLibraryItem(
     ...EMPTY_ENGAGEMENT,
     tags: row.tags ?? [],
     visibility,
+    // Phase 8: per-entity iconography
+    iconSource: row.iconSource as "GAME_ICONS" | "UPLOAD" | null,
+    iconKey: row.iconKey,
+    iconUrl: row.iconUrl,
+    iconColor: row.iconColor ?? "#ffffff",
   };
 }
 
@@ -175,6 +213,11 @@ export function templateToLibraryItem(
     ...EMPTY_ENGAGEMENT,
     tags: [],
     visibility,
+    // Phase 8: per-entity iconography
+    iconSource: row.iconSource as "GAME_ICONS" | "UPLOAD" | null,
+    iconKey: row.iconKey,
+    iconUrl: row.iconUrl,
+    iconColor: row.iconColor ?? "#ffffff",
   };
 }
 
@@ -194,6 +237,11 @@ export function itemToLibraryItem(
     ...EMPTY_ENGAGEMENT,
     tags: row.tags ?? [],
     visibility,
+    // Phase 8: per-entity iconography
+    iconSource: row.iconSource as "GAME_ICONS" | "UPLOAD" | null,
+    iconKey: row.iconKey,
+    iconUrl: row.iconUrl,
+    iconColor: row.iconColor ?? "#ffffff",
   };
 }
 
@@ -213,5 +261,11 @@ export function characterToLibraryItem(
     ...EMPTY_ENGAGEMENT,
     tags: [],
     visibility,
+    // Phase 8: characters/builds don't carry icon columns; null fallback
+    // keeps the type contract honest. (Builds use portraitUrl instead.)
+    iconSource: null,
+    iconKey: null,
+    iconUrl: null,
+    iconColor: "#ffffff",
   };
 }

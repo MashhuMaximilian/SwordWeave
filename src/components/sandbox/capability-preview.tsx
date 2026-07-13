@@ -1,6 +1,7 @@
 // Read-only capability card used in the SandboxLayout Preview column.
 
 import { Markdown } from "@/components/ui/markdown";
+import { IconDisplay } from "@/components/icons/icon-display";
 
 type PrimitiveRow = {
   id: number;
@@ -28,6 +29,11 @@ type CapabilityRow = {
   tags: string[] | null;
   isPublic: boolean;
   primitiveLinks: CapabilityPrimitiveLink[];
+  // Phase 8: per-entity iconography
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 };
 
 function totalBu(row: CapabilityRow): number {
@@ -42,6 +48,19 @@ export function CapabilityPreview({ row }: { row: CapabilityRow }) {
   return (
     <div className="space-y-5 p-4">
       <header className="space-y-2">
+        {/* Phase 8: entity icon above the title. Falls back to nothing
+            when no icon is set so the layout doesn't shift. */}
+        {row.iconSource ? (
+          <IconDisplay
+            iconSource={row.iconSource as "GAME_ICONS" | "UPLOAD"}
+            iconKey={row.iconKey}
+            iconUrl={row.iconUrl}
+            iconColor={row.iconColor}
+            size={56}
+            className="rounded-md border border-border"
+            alt={row.name}
+          />
+        ) : null}
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {row.type} Capability
         </p>

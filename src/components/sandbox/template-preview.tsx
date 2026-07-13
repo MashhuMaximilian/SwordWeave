@@ -4,6 +4,7 @@
 // this is a pure preview, not a destination page.
 
 import { Markdown } from "@/components/ui/markdown";
+import { IconDisplay } from "@/components/icons/icon-display";
 
 type PrimitiveRow = {
   id: number;
@@ -28,6 +29,11 @@ type TemplateRow = {
   isPublic: boolean;
   primitiveLinks: Array<{ primitiveId: number; primitive: PrimitiveRow }>;
   capabilityLinks?: Array<{ capabilityId: string; capability: CapabilityRow }>;
+  // Phase 8: per-entity iconography
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 };
 
 function kindLabel(kind: string): string {
@@ -49,6 +55,18 @@ export function TemplatePreview({ row }: { row: TemplateRow }) {
   return (
     <div className="space-y-5 p-4">
       <header className="space-y-2">
+        {/* Phase 8: entity icon above the title. */}
+        {row.iconSource ? (
+          <IconDisplay
+            iconSource={row.iconSource as "GAME_ICONS" | "UPLOAD"}
+            iconKey={row.iconKey}
+            iconUrl={row.iconUrl}
+            iconColor={row.iconColor}
+            size={56}
+            className="rounded-md border border-border"
+            alt={row.name}
+          />
+        ) : null}
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {kindLabel(row.kind)} Template
         </p>
