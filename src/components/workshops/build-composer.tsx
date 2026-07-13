@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
+import { IconSlot } from "@/components/icons/icon-slot";
 
 /**
  * Build Composer
@@ -67,6 +68,13 @@ type BuildRow = {
   attrProficient: string | null;
   practiceSlices: unknown;
   portraitUrl: string | null;
+  // Phase 8: per-entity iconography. The system icon (always present,
+  // tinted by iconColor) is separate from portraitUrl (free-form hero
+  // art the user pastes in). Both can be set independently.
+  iconSource: "GAME_ICONS" | "UPLOAD" | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
   isPublic: boolean;
   sourceOrigin: string | null;
   capabilityLinks: BuildCapabilityLink[];
@@ -112,6 +120,10 @@ export function BuildComposer({
         attrMagical: editingBuild.attrMagical ?? 0,
         attrProficient: (editingBuild.attrProficient as AttrProf | null) ?? null,
         portraitUrl: editingBuild.portraitUrl ?? "",
+        iconSource: editingBuild.iconSource ?? null,
+        iconKey: editingBuild.iconKey ?? null,
+        iconUrl: editingBuild.iconUrl ?? null,
+        iconColor: editingBuild.iconColor ?? "#ffffff",
         isPublic: editingBuild.isPublic,
       }
     : {
@@ -132,6 +144,10 @@ export function BuildComposer({
         attrMagical: 0,
         attrProficient: null,
         portraitUrl: "",
+        iconSource: null,
+        iconKey: null,
+        iconUrl: null,
+        iconColor: "#ffffff",
         isPublic: false,
       };
 
@@ -211,6 +227,10 @@ export function BuildComposer({
       attrMagical: 0,
       attrProficient: null,
       portraitUrl: "",
+      iconSource: null,
+      iconKey: null,
+      iconUrl: null,
+      iconColor: "#ffffff",
       isPublic: false,
     });
     setSelectedCapabilityIds([]);
@@ -260,6 +280,10 @@ export function BuildComposer({
             attrMagical: form.attrMagical,
             attrProficient: form.attrProficient,
             portraitUrl: form.portraitUrl.trim() || null,
+            iconSource: form.iconSource,
+            iconKey: form.iconKey,
+            iconUrl: form.iconUrl,
+            iconColor: form.iconColor,
             isPublic: form.isPublic,
             capabilityIds: selectedCapabilityIds,
           }),
@@ -383,6 +407,30 @@ export function BuildComposer({
           <div className="rounded-md border border-border bg-card p-5">
             <h2 className="text-lg font-semibold">Identity</h2>
             <div className="mt-4 space-y-3">
+              {/* Phase 8: build icon picker. Lives at the top of the
+                  identity section so it's the first thing the user
+                  picks — matches the other entity forms (primitive,
+                  capability, template, item) where the IconSlot is
+                  positioned at the top. portraitUrl is a separate
+                  field below for hero art. */}
+              <IconSlot
+                iconSource={form.iconSource}
+                iconKey={form.iconKey}
+                iconUrl={form.iconUrl}
+                iconColor={form.iconColor}
+                onChange={(next) =>
+                  setForm((f) => ({
+                    ...f,
+                    iconSource: next.iconSource,
+                    iconKey: next.iconKey ?? null,
+                    iconUrl: next.iconUrl ?? null,
+                    iconColor: next.iconColor,
+                  }))
+                }
+                size={72}
+                label="Build icon"
+                helper="Tinted at 72px. Stays separate from the portrait URL below."
+              />
               <Field label="Name">
                 <input
                   type="text"

@@ -87,6 +87,21 @@ export async function PATCH(
     if ("archetypeName" in values) updatePayload["archetypeName"] = emptyToNull(values["archetypeName"]);
     if ("portraitUrl" in values) updatePayload["portraitUrl"] = emptyToNull(values["portraitUrl"]);
 
+    // Phase 8: per-entity iconography — same shape as the POST route.
+    if ("iconSource" in values) {
+      const s = values["iconSource"];
+      updatePayload["iconSource"] =
+        s === "GAME_ICONS" || s === "UPLOAD" ? s : null;
+    }
+    if ("iconKey" in values) updatePayload["iconKey"] = emptyToNull(values["iconKey"]);
+    if ("iconUrl" in values) updatePayload["iconUrl"] = emptyToNull(values["iconUrl"]);
+    if ("iconColor" in values) {
+      const c = String(values["iconColor"] ?? "").trim();
+      // Always set — never accept the empty string. Falls back to the
+      // DB default if the client sent nothing or whitespace.
+      updatePayload["iconColor"] = c || "#ffffff";
+    }
+
     if ("attrPhysical" in values) {
       const v = parseIntInRange(values["attrPhysical"], -1, 5);
       if (v === null) return NextResponse.json({ error: "attrPhysical must be -1 to 5." }, { status: 400 });

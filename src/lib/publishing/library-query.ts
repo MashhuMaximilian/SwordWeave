@@ -856,6 +856,15 @@ async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
       isArchetypeTemplate: builds.isArchetypeTemplate,
       userId: builds.userId,
       createdAt: builds.createdAt,
+      // Phase 8: per-entity iconography (live + proposed for resolveIcon)
+      iconSource: builds.iconSource,
+      iconKey: builds.iconKey,
+      iconUrl: builds.iconUrl,
+      iconColor: builds.iconColor,
+      iconProposedSource: builds.iconProposedSource,
+      iconProposedKey: builds.iconProposedKey,
+      iconProposedUrl: builds.iconProposedUrl,
+      iconProposedColor: builds.iconProposedColor,
     })
     .from(builds)
     .where(and(...conditions))
@@ -873,9 +882,12 @@ async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
       dislikes: 0,
       forks: 0,
     };
-    // Builds use portraitUrl, not the Phase-8 icon_* columns — keep
-    // them null so the card falls back to the type badge. resolveIcon
-    // isn't called here because the builds row has no icon columns.
+    // Phase 8: builds now have the same icon columns as the other
+    // entity tables. resolveIcon picks live (icon_*) if set, otherwise
+    // falls back to the backfill proposal (icon_proposed_*), otherwise
+    // null. portraitUrl is still the free-form hero art field — it
+    // does NOT affect the card's system icon.
+    const icon = resolveIcon(r);
     return {
       id: `BUILD_TEMPLATE:${r.id}`,
       targetType: "BUILD_TEMPLATE" as const,
@@ -897,13 +909,10 @@ async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
       tags: [],
-      // Phase 8: builds don't carry icon columns (they use portraitUrl
-      // instead). Fall back to null + default color so the type
-      // contract holds; card will render with a placeholder glyph.
-      iconSource: null,
-      iconKey: null,
-      iconUrl: null,
-      iconColor: "#ffffff",
+      iconSource: icon.iconSource,
+      iconKey: icon.iconKey,
+      iconUrl: icon.iconUrl,
+      iconColor: icon.iconColor,
     };
   });
 }

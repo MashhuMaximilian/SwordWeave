@@ -300,33 +300,41 @@ function GridCard({
 }: GridCardProps) {
   const inner = (
     <>
-      {/* Phase 8: hero icon at the top of the card. Sized to ~32px so the
-          grid doesn't fight the list-view (36px) for visual weight — the
-          56px hero was overwhelming the card. The outer panel is 64px
-          tall so the card layout is unchanged. */}
-      <div className="flex h-16 items-center justify-start rounded-md border border-border bg-muted/20 px-2.5">
+      {/* Phase 8: header row with the icon sitting LEFT of the title —
+          inline, not a separate full-width row. On mobile this matters
+          because the previous 56px hero icon forced the card to render
+          as two stacked rows (icon strip + text strip), which made the
+          grid feel like a list of fat cards. Inlining the 28px icon
+          next to a smaller title makes the grid feel dense again.
+
+          Title size drops one step (text-base on the base mobile
+          viewport, text-sm below md). The "sm" / "md" breakpoints
+          inherit the size from the parent, so we only need one
+          explicit class per tier. */}
+      <header className="flex items-center gap-2">
         {item.iconSource ? (
           <IconDisplay
             iconSource={item.iconSource}
             iconKey={item.iconKey}
             iconUrl={item.iconUrl}
             iconColor={item.iconColor}
-            size={32}
+            size={28}
             alt={item.name}
+            className="shrink-0"
           />
         ) : (
           <div
             aria-hidden="true"
-            className="flex size-8 items-center justify-center rounded-md border border-dashed border-border text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+            className="flex size-7 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-[9px] font-medium uppercase tracking-wide text-muted-foreground"
           >
             {item.targetType.replace(/_/g, " ").slice(0, 3)}
           </div>
         )}
-      </div>
-      <header className="flex items-start justify-between gap-1.5">
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-sm font-semibold leading-tight">{item.name}</h3>
-          <p className="mt-0 text-[10px] uppercase tracking-wide text-muted-foreground">
+          <h3 className="truncate text-base font-semibold leading-tight md:text-sm">
+            {item.name}
+          </h3>
+          <p className="mt-0 truncate text-[10px] uppercase tracking-wide text-muted-foreground">
             {item.targetType.replace(/_/g, " ").toLowerCase()}
             {item.category ? ` · ${item.category.replace(/_/g, " ")}` : ""}
           </p>

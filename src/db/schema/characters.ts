@@ -416,6 +416,21 @@ export const builds = pgTable(
     }),
     isPublic: boolean("is_public").notNull().default(false),
     sourceOrigin: text("source_origin"),
+    // Phase 8: per-entity iconography. Builds previously had only
+    // portraitUrl (a free-form image link the user pastes in for the
+    // hero shot). They now ALSO get the system icon so the picker is
+    // available in the build composer and cards show the system icon
+    // in tight spaces. portraitUrl is unchanged; it's a separate concept
+    // (hero art, optional) from the system icon (always present, color
+    // is a per-row tint applied via /api/icons/game?color=…).
+    iconSource: iconSourceEnum("icon_source"),
+    iconKey: text("icon_key"),
+    iconUrl: text("icon_url"),
+    iconColor: text("icon_color").notNull().default("#ffffff"),
+    iconProposedSource: iconSourceEnum("icon_proposed_source"),
+    iconProposedKey: text("icon_proposed_key"),
+    iconProposedUrl: text("icon_proposed_url"),
+    iconProposedColor: text("icon_proposed_color"),
     ...timestamps,
   },
   (table) => [

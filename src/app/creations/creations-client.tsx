@@ -18,7 +18,7 @@
 // PUBLIC or FOLLOWERS_ONLY.
 // =============================================================================
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LayoutGrid, List, ExternalLink, History, Pencil, Trash2 } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
@@ -97,7 +97,30 @@ export function CreationsClient({
   // is the better default — grid icons were too dominant and a 2-column
   // mobile grid was cramped on a 393px viewport). Local state only; the
   // /library/browse page persists its own choice in the sw_lib_pref cookie.
+  //
+  // Mobile force-list: even if the user previously picked GRID, the
+  // server-rendered `view` prop coming from /creations/page.tsx is the
+  // server's readLibraryPreferences() result — which itself forces LIST
+  // on mobile (see src/lib/preferences/library-prefs.ts). On the client,
+  // the page's media-query check below is a belt-and-braces fallback in
+  // case the cookie says GRID and the user resizes the window without a
+  // server roundtrip.
   const [view, setView] = useState<LibraryView>("LIST");
+  // Belt-and-braces: on first effect, if the viewport is mobile-width,
+  // pin to LIST regardless of any subsequent GRID toggle. The user can
+  // still manually re-toggle to GRID, but on the next reload on a phone
+  // it snaps back. The server-side guard in readLibraryPreferences is
+  // the authoritative source; this is just a client-side nudge.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(max-width: 767px)");
+    const onChange = (e: MediaQueryListEvent) => {
+      if (e.matches) setView("LIST");
+    };
+    if (mql.matches) setView("LIST");
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
   // Lifted visibility map so optimistic updates from the preview modal
   // re-render the table without a refresh. Keyed by LibraryItem.id.
   // The previous implementation mutated `item.visibility` directly,

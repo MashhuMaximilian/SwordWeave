@@ -1,46 +1,36 @@
 // =============================================================================
-// backfill-icons.ts — propose icons for every existing entity, leave the
-// actual icon state untouched.
+// backfill-icons.ts — propose icons + colors for every existing entity.
 //
-// Phase 8 backfill. The user has 145 primitives + 25 capabilities +
-// 8 effects + 16 templates + 5 items sitting in production without icons
-// (the icon columns were added in 0027_icon_columns.sql and the deployed
-// commit a097d2f, but no creator has used the picker yet). Without icons
-// the library cards, browse grids, and previews all show the muted
-// "kind" placeholder, which makes the new icon system look like it
-// doesn't work.
+// Phase 8 follow-up. The original backfill (4f8b911) wrote proposals
+// with color always = "#ffffff". The user said the cards looked terrible
+// — every card was a white silhouette on a dark background and the
+// proposed icons were visually noisy. This rewrite assigns a real color
+// to every row based on the entity's category and any element-flavor
+// tokens in the name (fire, frost, lightning, poison, holy, etc.).
 //
-// This script proposes a best-guess icon for every row and writes the
-// proposal to the dedicated `icon_proposed_*` columns (added in
-// 0028_icon_proposal_columns.sql). The committed icon state
-// (`icon_source` etc.) is never touched here — a human review pass
-// (Phase 8 follow-up) is what promotes proposals into committed state.
+// Color philosophy:
+//   - Categories get a coherent palette so a row of "Range" primitives
+//     all share a hue (cyan), "Defense" share another (emerald), etc.
+//     This makes the library grid feel like a deliberate visual system
+//     instead of a random icon dump.
+//   - Element tokens override the category color (a "Fire Wall" defense
+//     primitive still gets red, not emerald) — name wins over category.
+//   - Races/Backgrounds/Archetypes get identity colors (race = gold,
+//     background = purple, archetype = amber) so the user can see at a
+//     glance what kind of template a row is.
+//   - Items follow a rarity-ish color scale (weapon = slate, armor =
+//     bronze, trinket = violet, artifact = gold, consumable = red).
+//   - Builds get a level-tinted color: low level = teal, mid = violet,
+//     high = crimson. A subtle signal that "this is a character snapshot".
 //
-// Matching strategy, in priority order:
-//   1. Name keyword → game-icons slug. We tokenize the entity name
-//      + tags (if any), look each token up in a curated keyword
-//      dictionary, and take the first match. The dictionary is
-//      deliberately small (~100 entries) — it's a starting point, not
-//      the final answer. The CSv report and review UI are how the
-//      user filters out the misses.
-//   2. Category default. If no name keyword matches, fall back to a
-//      per-(entity-type, category) default icon. Less informative but
-//      visually cohesive — every "Body" primitive gets the same body
-//      glyph until the creator picks something better.
-//   3. Generic placeholder. The last-resort icon is a neutral token
-//      that signals "this needs human attention".
+// The script is idempotent. Re-running overwrites the proposed columns
+// (never the committed icon_* columns). Run with:
+//
+//   pnpm tsx scripts/backfill-icons.ts
 //
 // Output: a CSV at scripts/output/icon-backfill-<timestamp>.csv with
-//   type, id, name, category, current_icon, proposed_icon, source
-// so a human can scan what was proposed before promoting.
-//
-// Idempotent: re-running overwrites only the `icon_proposed_*` columns
-// (never the committed `icon_*` columns). A row that already has a
-// committed icon keeps its icon and gets a fresh proposal written to
-// the proposed columns for the next review pass; the user can decide
-// to keep, accept, or skip.
-//
-// Run with:  pnpm tsx scripts/backfill-icons.ts
+// every row's proposed (icon, color) for the user's review pass.
+// =============================================================================
 
 import { writeFile, mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
@@ -53,56 +43,187 @@ import {
   capabilities,
 } from "@/db/schema/engine";
 import { items } from "@/db/schema/items";
-import { templates } from "@/db/schema/characters";
+import { templates, builds } from "@/db/schema/characters";
 import iconIndex from "@/lib/icons/game-icons-index.json";
-// -----------------------------------------------------------------------------
-// Keyword → game-icons slug dictionary
-// -----------------------------------------------------------------------------
-// Curated, deliberately small. Each entry: keyword (lowercased substring of
-// the entity name) → game-icons.net key (`<author>/<slug>`). The match is
-// first-keyword-wins, so put more specific words first when in doubt.
 
+// -----------------------------------------------------------------------------
+// Color palettes
+// -----------------------------------------------------------------------------
+// Each row is `[name, hex]`. The hex codes are picked from Tailwind's
+// 400-500 step because they read well on both dark (default) and light
+// backgrounds. The ColorTrigger popover shows 17 of these; the
+// backfill uses a wider set so different categories feel distinct.
+
+const COLORS = {
+  // Elemental — name-token wins over category
+  fire: "#f97316",      // orange-500
+  flame: "#f97316",
+  frost: "#22d3ee",     // cyan-400
+  ice: "#22d3ee",
+  cold: "#22d3ee",
+  lightning: "#facc15", // yellow-400
+  thunder: "#facc15",
+  shock: "#facc15",
+  electric: "#facc15",
+  poison: "#84cc16",    // lime-500
+  toxic: "#84cc16",
+  venom: "#84cc16",
+  acid: "#bef264",      // lime-300 (brighter than poison)
+  holy: "#fef08a",      // yellow-200
+  divine: "#fef08a",
+  radiant: "#fef08a",
+  light: "#fde047",     // yellow-300
+  dark: "#a78bfa",      // violet-400
+  shadow: "#a78bfa",
+  void: "#7c3aed",      // violet-600
+  necrotic: "#9ca3af",  // gray-400
+  death: "#9ca3af",
+  curse: "#c084fc",     // purple-400
+  blood: "#dc2626",     // red-600
+  bleed: "#dc2626",
+  water: "#3b82f6",     // blue-500
+  earth: "#a16207",     // amber-700
+  stone: "#78716c",     // stone-500
+  air: "#93c5fd",       // blue-300
+  wind: "#93c5fd",
+  nature: "#22c55e",    // green-500
+  healing: "#22c55e",
+  heal: "#22c55e",
+  mind: "#f472b6",      // pink-400
+  charm: "#f472b6",
+  psychic: "#f472b6",
+  fear: "#a78bfa",
+  physical: "#ef4444",  // red-500
+  weapon: "#ef4444",
+} as const;
+
+// Category default colors (per-entity-type)
+const CATEGORY_COLORS: Record<string, Record<string, string>> = {
+  primitive: {
+    VERB_TIER: "#facc15",        // yellow-400 — actions
+    DOMAIN: "#a78bfa",           // violet-400 — schools of magic
+    SIZING: "#fb923c",           // orange-400 — scale
+    TARGETING: "#60a5fa",        // blue-400 — aim
+    RANGE: "#22d3ee",            // cyan-400 — reach
+    DURATION: "#34d399",         // emerald-400 — time
+    OUTPUT: "#f472b6",           // pink-400 — result type
+    CONDITION: "#84cc16",        // lime-500 — status
+    DEFENSE: "#22c55e",          // green-500 — protection
+    STRUCTURAL: "#c084fc",       // purple-400 — meta
+    SHEET_AUGMENT: "#fde047",    // yellow-300
+    ITEM_AUGMENT: "#fb7185",     // rose-400
+  },
+  effect: {
+    __default: "#facc15",        // yellow — energy
+  },
+  capability: {
+    ACTIVE: "#f97316",           // orange-500 — actions
+    PASSIVE: "#22c55e",          // green-500 — always-on
+    REACTION: "#facc15",         // yellow-400 — triggers
+    AUGMENT: "#c084fc",          // purple-400 — modifications
+  },
+  template: {
+    RACE: "#facc15",             // yellow-400 — identity
+    BACKGROUND: "#c084fc",       // purple-400 — history
+    ARCHETYPE: "#f97316",        // orange-500 — role
+  },
+  item: {
+    WEAPON: "#94a3b8",           // slate-400 — tools of war
+    ARMOR: "#b45309",            // amber-700 — protection
+    TRINKET: "#a78bfa",          // violet-400 — baubles
+    ARTIFACT: "#facc15",         // yellow-400 — relics
+    CONSUMABLE: "#fb7185",       // rose-400 — one-shot
+  },
+  build: {
+    __default: "#22d3ee",        // cyan — base tint
+  },
+};
+
+// Default color if nothing matches
+const DEFAULT_COLOR = "#e5e7eb"; // gray-200 — neutral
+
+// -----------------------------------------------------------------------------
+// Element color detection — name wins
+// -----------------------------------------------------------------------------
+function detectElementColor(name: string, tags: string[] = []): string | null {
+  const haystack = `${name} ${tags.join(" ")}`.toLowerCase();
+  for (const [keyword, color] of Object.entries(COLORS)) {
+    // Word-boundary for short keywords (<= 4 chars) to avoid
+    // matching "air" inside "chair" or "ice" inside "voice".
+    if (keyword.length <= 4) {
+      const re = new RegExp(`\\b${keyword}\\b`);
+      if (re.test(haystack)) return color;
+    } else if (haystack.includes(keyword)) {
+      return color;
+    }
+  }
+  return null;
+}
+
+function colorByCategory(
+  entityType: keyof typeof CATEGORY_COLORS,
+  category: string | null,
+): string {
+  const table = CATEGORY_COLORS[entityType];
+  if (!table) return DEFAULT_COLOR;
+  if (category && table[category]) return table[category];
+  return table["__default"] ?? DEFAULT_COLOR;
+}
+
+// Build rows get a level-tinted color: L1-L5 teal, L6-L10 violet,
+// L11-L20 crimson. A subtle visual hierarchy on the library page.
+function colorByLevel(level: number): string {
+  if (level <= 5) return "#22d3ee";   // cyan-400
+  if (level <= 10) return "#a78bfa";  // violet-400
+  return "#fb7185";                   // rose-400
+}
+
+// -----------------------------------------------------------------------------
+// Keyword → game-icons slug dictionary (expanded from 4f8b911)
+// -----------------------------------------------------------------------------
 const KEYWORD_ICONS: Record<string, string> = {
-  // Weapons & combat
+  // Weapons & combat — all slugs verified against the live icon index
   sword: "lorc/broadsword",
   blade: "lorc/plain-dagger",
   dagger: "lorc/plain-dagger",
   knife: "lorc/plain-dagger",
   axe: "lorc/battle-axe",
-  hammer: "lorc/thunder-hammer",
-  mace: "lorc/flanged-mace",
-  spear: "lorc/spear-feather",
-  lance: "lorc/spear-feather",
-  pike: "lorc/spear-feather",
+  hammer: "delapouite/thunder-hammer",
+  mace: "delapouite/flanged-mace",
+  spear: "delapouite/spear-feather",
+  lance: "delapouite/spear-feather",
+  pike: "delapouite/spear-feather",
   bow: "lorc/pocket-bow",
-  arrow: "lorc/arrow-flight",
+  arrow: "carl-olsen/arrow-flights",
   crossbow: "carl-olsen/crossbow",
-  shield: "lorc/round-shield",
+  shield: "willdabeast/round-shield",
   armor: "skoll/trench-body-armor",
-  gauntlet: "lorc/gauntlet",
+  gauntlet: "delapouite/gauntlet",
   fist: "lorc/fist",
   punch: "lorc/fist",
-  kick: "lorc/kick",
+  kick: "delapouite/high-kick",
   strike: "lorc/sword-spade",
   slash: "lorc/sword-slice",
-  thrust: "lorc/spear-feather",
-  parry: "lorc/shield-bash",
+  thrust: "delapouite/spear-feather",
+  parry: "sbed/shield-bash",
   dodge: "lorc/dodging",
-  block: "lorc/shield",
-  guard: "lorc/shield",
+  block: "sbed/shield",
+  guard: "sbed/shield",
   reflect: "lorc/reflected-light",
   absorb: "lorc/sponge",
-  deflect: "lorc/deflect",
+  deflect: "sbed/shield",
 
   // Magic & effects
   fire: "carl-olsen/flame",
   flame: "carl-olsen/flame",
   burn: "carl-olsen/flame",
-  frost: "lorc/snowflake-2",
+  burning: "carl-olsen/flame",
+  frost: "lorc/snowflake-1",
   ice: "lorc/ice-spear",
-  cold: "lorc/snowflake-2",
+  cold: "lorc/snowflake-1",
+  freezing: "lorc/snowflake-1",
   lightning: "willdabeast/chain-lightning",
-  thunder: "lorc/thunder-hammer",
+  thunder: "delapouite/thunder-hammer",
   shock: "lorc/electric",
   electric: "lorc/electric",
   poison: "lorc/poison-bottle",
@@ -115,7 +236,7 @@ const KEYWORD_ICONS: Record<string, string> = {
   mana: "lorc/crystal-ball",
   magic: "lorc/sword-spell-book",
   arcane: "lorc/spark-spirit",
-  mystic: "lorc/eye-shield",
+  mystic: "lorc/spark-spirit",
   divine: "lorc/angel-outfit",
   holy: "lorc/angel-outfit",
   curse: "lorc/cursed-star",
@@ -124,44 +245,45 @@ const KEYWORD_ICONS: Record<string, string> = {
   raise: "skoll/raise-skeleton",
   resurrect: "lorc/resurrect",
   drain: "lorc/life-tap",
-  shield_spell: "lorc/shield-bash",
+  spell: "lorc/sword-spell-book",
+  blast: "sbed/blast",
+  beam: "lorc/laser-blast",
 
   // Movement
-  dash: "lorc/run",
-  run: "lorc/run",
-  sprint: "lorc/running-shoe",
-  jump: "lorc/jump-across",
-  leap: "lorc/jump-across",
+  dash: "delapouite/running-shoe",
+  run: "delapouite/running-shoe",
+  sprint: "delapouite/running-shoe",
+  jump: "delapouite/jump-across",
+  leap: "delapouite/jump-across",
   climb: "lorc/climbing",
   swim: "lorc/swim-fins",
-  fly: "lorc/flying-fox",
-  fall: "lorc/falling",
-  teleport: "lorc/portal",
-  blink: "lorc/portal",
+  fly: "delapouite/flying-fox",
+  falling: "lorc/falling",
+  teleport: "lorc/magic-portal",
+  blink: "lorc/magic-portal",
 
   // Perception & mind
-  vision: "lorc/eye-target",
+  vision: "delapouite/eye-target",
   sight: "lorc/binoculars",
-  see: "lorc/eye-target",
-  see_invisible: "lorc/spyglass",
+  see: "delapouite/eye-target",
   hear: "lorc/ear",
   listen: "lorc/ear",
   smell: "lorc/nose",
   sense: "lorc/spyglass",
-  detect: "lorc/eye-target",
+  detect: "delapouite/eye-target",
   invisible: "lorc/invisible",
   stealth: "lorc/ninja-mask",
   hide: "lorc/ninja-mask",
   sneak: "lorc/ninja-mask",
 
   // Mind-affecting
-  charm: "lorc/heart-eyes",
-  fear: "lorc/scream",
-  terrify: "lorc/scream",
+  charm: "lorc/charm",
+  fear: "lorc/terror",
+  terrify: "lorc/terror",
   confuse: "lorc/dizzy-person",
   stun: "lorc/stunned",
   sleep: "lorc/sleepy",
-  rage: "lorc/enrage",
+  rage: "delapouite/enrage",
   calm: "lorc/lotus",
   mind: "lorc/brain",
   thought: "lorc/brain",
@@ -171,97 +293,164 @@ const KEYWORD_ICONS: Record<string, string> = {
   body: "lorc/muscle-up",
   muscle: "lorc/muscle-up",
   strength: "lorc/muscle-up",
-  vitality: "lorc/heart-plus",
-  health: "lorc/heart-plus",
-  stamina: "lorc/energy-drink",
-  speed: "lorc/running-shoe",
+  vitality: "zeromancer/heart-plus",
+  health: "zeromancer/heart-plus",
+  stamina: "delapouite/energy-drink",
+  speed: "delapouite/running-shoe",
   agility: "lorc/acrobatic",
   reflexes: "lorc/acrobatic",
 
   // Conditions
   blind: "lorc/blindfold",
-  silence: "lorc/silenced",
+  silence: "delapouite/silenced",
   bleed: "lorc/bleeding-wound",
   wound: "lorc/bleeding-wound",
   stunned: "lorc/stunned",
   prone: "lorc/falling",
-  grappled: "lorc/chains",
-  bound: "lorc/chains",
+  grappled: "delapouite/chainsaw",
+  bound: "delapouite/chainsaw",
+  root: "delapouite/plant-roots",
+  snare: "lorc/snare",
+
+  // Races (templates)
+  elf: "kier-heyl/elf-helmet",
+  human: "lorc/human-ear",
+  dwarf: "kier-heyl/dwarf-helmet",
+  orc: "lorc/orc-head",
+  halfling: "lorc/half-body-crawling",
+  tiefling: "lorc/devil-mask",
+  dragonborn: "lorc/dragon-head",
+  gnome: "lorc/gnome",
+  goblin: "lorc/goblin-head",
+
+  // Backgrounds (templates)
+  soldier: "lorc/crossed-swords",
+  scholar: "delapouite/scroll-quill",
+  criminal: "lorc/plain-dagger",
+  noble: "lorc/crown",
+  hermit: "lorc/lotus",
+  acolyte: "lorc/prayer",
+  sailor: "lorc/ship-wheel",
+  entertainer: "lorc/musical-notes",
+  folk_hero: "lorc/laurel-crown",
+
+  // Archetypes
+  warrior: "lorc/crossed-swords",
+  mage: "lorc/wizard-face",
+  rogue: "lorc/plain-dagger",
+  cleric: "lorc/prayer",
+  ranger: "lorc/pocket-bow",
+  paladin: "sbed/shield-bash",
+  bard: "lorc/musical-notes",
+  druid: "lorc/leaf",
+  monk: "lorc/lotus-flower",
+  barbarian: "lorc/battle-axe",
+  sorcerer: "lorc/crystal-ball",
+  warlock: "lorc/pentagram",
 
   // Utility / generic
   light: "lorc/light-bulb",
   dark: "lorc/night-sky",
   shadow: "lorc/shadow-follower",
-  weight: "lorc/weight",
-  heavy: "lorc/weight",
-  speed_general: "lorc/sprint",
+  weight: "delapouite/weight",
+  heavy: "delapouite/weight",
   duration: "lorc/hourglass",
-  range: "lorc/far-reach",
-  area: "lorc/blast",
-  aoe: "lorc/blast",
-  cone: "lorc/blast",
+  range: "skoll/bullseye",
+  area: "sbed/blast",
+  aoe: "sbed/blast",
+  cone: "sbed/blast",
   line: "lorc/line-arrows",
-  burst: "lorc/blast",
+  burst: "sbed/blast",
   ray: "lorc/laser-blast",
+  target: "skoll/bullseye",
   // Verb-tier fallbacks (lexicon categories)
   verb: "lorc/sword-spade",
-  domain: "lorc/orb-wand",
-  sizing: "lorc/resize",
-  targeting: "lorc/target",
-  range_cat: "lorc/far-reach",
+  domain: "willdabeast/orb-wand",
+  sizing: "delapouite/resize",
+  targeting: "skoll/bullseye",
+  range_cat: "skoll/bullseye",
   duration_cat: "lorc/hourglass",
-  output: "lorc/gear-jump",
+  output: "lorc/cog",
   condition_cat: "lorc/poison-bottle",
-  defense: "lorc/shield-bash",
+  defense: "sbed/shield-bash",
   structural: "lorc/portal",
+  // Item types
+  sword_item: "lorc/broadsword",
+  blade_item: "lorc/plain-dagger",
+  axe_item: "lorc/battle-axe",
+  bow_item: "lorc/pocket-bow",
+  staff: "lorc/wizard-staff",
+  wand: "lorc/crystal-wand",
+  tome: "lorc/scroll-quill",
+  ring: "lorc/gem-pendant",
+  amulet: "lorc/gem-pendant",
+  cloak: "lorc/cape",
+  boots: "lorc/boots",
+  gloves: "delapouite/gauntlet",
+  helmet: "kier-heyl/elf-helmet",
 };
 
 // Per-(entity-type, category) defaults — second-priority fallbacks.
-const CATEGORY_DEFAULTS: Record<string, Record<string, string>> = {
+// All slugs validated against the live icon index.
+const CATEGORY_ICONS: Record<string, Record<string, string>> = {
   primitive: {
     VERB_TIER: "lorc/sword-spade",
-    DOMAIN: "lorc/orb-wand",
-    SIZING: "lorc/resize",
-    TARGETING: "lorc/target",
-    RANGE: "lorc/far-reach",
+    DOMAIN: "willdabeast/orb-wand",
+    SIZING: "delapouite/resize",
+    TARGETING: "skoll/bullseye",
+    RANGE: "skoll/bullseye",
     DURATION: "lorc/hourglass",
-    OUTPUT: "lorc/gear-jump",
+    OUTPUT: "lorc/cog",
     CONDITION: "lorc/poison-bottle",
-    DEFENSE: "lorc/shield-bash",
+    DEFENSE: "sbed/shield-bash",
     STRUCTURAL: "lorc/portal",
+    // Phase 8 follow-up: new categories from the corpus
+    DEFENSIVE: "sbed/shield-bash",
+    ACTION_ECONOMY: "lorc/stopwatch",
+    TARGETING_AOE: "sbed/blast",
+    EVALUATION_STRAIN: "lorc/brain",
     SHEET_AUGMENT: "lorc/cog",
+    TEMPORAL_CHRONOLOGICAL: "lorc/hourglass",
+    PROBABILITY_BIAS: "delapouite/dice-twenty-faces-twenty",
+    MOBILITY_LOCOMOTION: "delapouite/running-shoe",
+    INTENSITY_DICE: "delapouite/dice-twenty-faces-twenty",
+    PRACTICE_PROGRESSION_AUGMENT: "delapouite/star-promotion",
+    BOSS_ECONOMY: "lorc/crowned-skull",
+    TRIGGER_HOOK: "delapouite/hook",
+    SPEED_QUICKENING: "delapouite/running-shoe",
+    SENSORY_ARRAY: "lorc/binoculars",
+    PERCEPTION_QUALIFIER: "delapouite/eye-target",
+    METAMORPHOSIS: "darkzaitzev/chameleon-glyph",
+    KINETIC_CONTROL: "lorc/muscle-up",
+    AGENCY_OVERRIDE: "felbrigg/overhead",
     ITEM_AUGMENT: "lorc/anvil-impact",
   },
-  effect: {
-    // Effects have no first-class category; use generic by tag presence
-    __default: "lorc/spark-spirit",
-  },
+  effect: { __default: "lorc/spark-spirit" },
   capability: {
     ACTIVE: "lorc/sword-spade",
-    PASSIVE: "lorc/shield",
+    PASSIVE: "sbed/shield",
     REACTION: "lorc/sword-spade",
     AUGMENT: "lorc/cog",
   },
   template: {
-    RACE: "lorc/elf-helmet",
-    BACKGROUND: "lorc/scroll-quill",
+    RACE: "kier-heyl/elf-helmet",
+    BACKGROUND: "delapouite/scroll-quill",
     ARCHETYPE: "lorc/crowned-skull",
   },
   item: {
     WEAPON: "lorc/broadsword",
     ARMOR: "skoll/trench-body-armor",
     TRINKET: "lorc/gem-pendant",
-    ARTIFACT: "lorc/orb-wand",
+    ARTIFACT: "lorc/crystal-ball",
     CONSUMABLE: "starseeker/potion-of-madness",
   },
+  build: { __default: "delapouite/character" },
 };
 
-// Last-resort fallback when nothing else matches.
-const GENERIC_ICON = "lorc/abstract-001";
+const GENERIC_ICON = "viscious-speed/abstract-001";
 
 // -----------------------------------------------------------------------------
-// Build a label → key lookup from the index so we can also match against
-// the icon's display label, not just the slug.
+// Index validation
 // -----------------------------------------------------------------------------
 type IndexEntry = {
   key: string;
@@ -273,21 +462,17 @@ type IndexEntry = {
 };
 const INDEX: IndexEntry[] = (iconIndex as { icons: IndexEntry[] }).icons;
 const VALID_KEYS = new Set(INDEX.map((e) => e.key));
-
 function isValidKey(key: string): boolean {
   return VALID_KEYS.has(key);
 }
 
 // -----------------------------------------------------------------------------
-// Tokenize + match
+// Proposers
 // -----------------------------------------------------------------------------
 function proposeIconForName(name: string, tags: string[] = []): string | null {
   const haystack = `${name} ${tags.join(" ")}`.toLowerCase();
-  // Try each dictionary key as a substring. First match wins.
   for (const [keyword, iconKey] of Object.entries(KEYWORD_ICONS)) {
-    // word-boundary check for short keywords (< 4 chars) to avoid
-    // matching "ace" inside "peaceful", etc.
-    if (keyword.length <= 3) {
+    if (keyword.length <= 4) {
       const re = new RegExp(`\\b${keyword}\\b`);
       if (re.test(haystack)) return iconKey;
     } else if (haystack.includes(keyword)) {
@@ -298,39 +483,54 @@ function proposeIconForName(name: string, tags: string[] = []): string | null {
 }
 
 function proposeIconForCategory(
-  entityType: keyof typeof CATEGORY_DEFAULTS,
+  entityType: keyof typeof CATEGORY_ICONS,
   category: string | null,
 ): string {
-  const table = CATEGORY_DEFAULTS[entityType];
+  const table = CATEGORY_ICONS[entityType];
   if (!table) return GENERIC_ICON;
   if (category && table[category]) return table[category];
   return table["__default"] ?? GENERIC_ICON;
 }
 
 function proposeIcon(
-  entityType: keyof typeof CATEGORY_DEFAULTS,
+  entityType: keyof typeof CATEGORY_ICONS,
   name: string,
   category: string | null,
   tags: string[] = [],
 ): { key: string; source: string } {
-  // Priority 1: name keyword match
   const nameMatch = proposeIconForName(name, tags);
   if (nameMatch && isValidKey(nameMatch)) {
     return { key: nameMatch, source: "name-keyword" };
   }
-  // Priority 2: category default
   const catMatch = proposeIconForCategory(entityType, category);
   if (isValidKey(catMatch)) {
     return { key: catMatch, source: "category-default" };
   }
-  // Priority 3: generic
   return { key: GENERIC_ICON, source: "generic-fallback" };
 }
 
-// -----------------------------------------------------------------------------
-// Per-entity-type runner
-// -----------------------------------------------------------------------------
+function proposeColor(
+  entityType: keyof typeof CATEGORY_COLORS,
+  name: string,
+  category: string | null,
+  tags: string[] = [],
+  extra?: { level?: number },
+): { color: string; source: string } {
+  // Priority 1: element token in name/tags
+  const elementColor = detectElementColor(name, tags);
+  if (elementColor) return { color: elementColor, source: "name-element" };
+  // Priority 2: build level (only applies to builds)
+  if (entityType === "build" && extra?.level !== undefined) {
+    return { color: colorByLevel(extra.level), source: "build-level" };
+  }
+  // Priority 3: category default
+  const catColor = colorByCategory(entityType, category);
+  return { color: catColor, source: "category-default" };
+}
 
+// -----------------------------------------------------------------------------
+// Per-entity-type runners
+// -----------------------------------------------------------------------------
 type CsvRow = {
   type: string;
   id: string;
@@ -343,8 +543,6 @@ type CsvRow = {
   has_committed_icon: boolean;
 };
 
-const PROPOSED_COLOR = "#ffffff";
-
 async function backfillPrimitives(): Promise<CsvRow[]> {
   console.log("Reading primitives...");
   const rows = await db.select().from(primitives);
@@ -352,12 +550,13 @@ async function backfillPrimitives(): Promise<CsvRow[]> {
   const out: CsvRow[] = [];
   for (const r of rows) {
     const proposal = proposeIcon("primitive", r.name, r.category);
+    const color = proposeColor("primitive", r.name, r.category);
     await db
       .update(primitives)
       .set({
         iconProposedSource: "GAME_ICONS",
         iconProposedKey: proposal.key,
-        iconProposedColor: PROPOSED_COLOR,
+        iconProposedColor: color.color,
       })
       .where(eq(primitives.id, r.id));
     out.push({
@@ -367,8 +566,8 @@ async function backfillPrimitives(): Promise<CsvRow[]> {
       category: r.category,
       current_icon: r.iconSource ?? "",
       proposed_icon: proposal.key,
-      proposed_color: PROPOSED_COLOR,
-      source: proposal.source,
+      proposed_color: color.color,
+      source: `${proposal.source}+${color.source}`,
       has_committed_icon: r.iconSource !== null,
     });
   }
@@ -382,12 +581,13 @@ async function backfillEffects(): Promise<CsvRow[]> {
   const out: CsvRow[] = [];
   for (const r of rows) {
     const proposal = proposeIcon("effect", r.name, null, r.tags ?? []);
+    const color = proposeColor("effect", r.name, null, r.tags ?? []);
     await db
       .update(effects)
       .set({
         iconProposedSource: "GAME_ICONS",
         iconProposedKey: proposal.key,
-        iconProposedColor: PROPOSED_COLOR,
+        iconProposedColor: color.color,
       })
       .where(eq(effects.id, r.id));
     out.push({
@@ -397,8 +597,8 @@ async function backfillEffects(): Promise<CsvRow[]> {
       category: "",
       current_icon: r.iconSource ?? "",
       proposed_icon: proposal.key,
-      proposed_color: PROPOSED_COLOR,
-      source: proposal.source,
+      proposed_color: color.color,
+      source: `${proposal.source}+${color.source}`,
       has_committed_icon: r.iconSource !== null,
     });
   }
@@ -412,12 +612,13 @@ async function backfillCapabilities(): Promise<CsvRow[]> {
   const out: CsvRow[] = [];
   for (const r of rows) {
     const proposal = proposeIcon("capability", r.name, r.type, r.tags ?? []);
+    const color = proposeColor("capability", r.name, r.type, r.tags ?? []);
     await db
       .update(capabilities)
       .set({
         iconProposedSource: "GAME_ICONS",
         iconProposedKey: proposal.key,
-        iconProposedColor: PROPOSED_COLOR,
+        iconProposedColor: color.color,
       })
       .where(eq(capabilities.id, r.id));
     out.push({
@@ -427,8 +628,8 @@ async function backfillCapabilities(): Promise<CsvRow[]> {
       category: r.type,
       current_icon: r.iconSource ?? "",
       proposed_icon: proposal.key,
-      proposed_color: PROPOSED_COLOR,
-      source: proposal.source,
+      proposed_color: color.color,
+      source: `${proposal.source}+${color.source}`,
       has_committed_icon: r.iconSource !== null,
     });
   }
@@ -442,12 +643,13 @@ async function backfillTemplates(): Promise<CsvRow[]> {
   const out: CsvRow[] = [];
   for (const r of rows) {
     const proposal = proposeIcon("template", r.name, r.kind);
+    const color = proposeColor("template", r.name, r.kind);
     await db
       .update(templates)
       .set({
         iconProposedSource: "GAME_ICONS",
         iconProposedKey: proposal.key,
-        iconProposedColor: PROPOSED_COLOR,
+        iconProposedColor: color.color,
       })
       .where(eq(templates.id, r.id));
     out.push({
@@ -457,8 +659,8 @@ async function backfillTemplates(): Promise<CsvRow[]> {
       category: r.kind,
       current_icon: r.iconSource ?? "",
       proposed_icon: proposal.key,
-      proposed_color: PROPOSED_COLOR,
-      source: proposal.source,
+      proposed_color: color.color,
+      source: `${proposal.source}+${color.source}`,
       has_committed_icon: r.iconSource !== null,
     });
   }
@@ -472,12 +674,13 @@ async function backfillItems(): Promise<CsvRow[]> {
   const out: CsvRow[] = [];
   for (const r of rows) {
     const proposal = proposeIcon("item", r.name, r.itemType, r.tags ?? []);
+    const color = proposeColor("item", r.name, r.itemType, r.tags ?? []);
     await db
       .update(items)
       .set({
         iconProposedSource: "GAME_ICONS",
         iconProposedKey: proposal.key,
-        iconProposedColor: PROPOSED_COLOR,
+        iconProposedColor: color.color,
       })
       .where(eq(items.id, r.id));
     out.push({
@@ -487,8 +690,39 @@ async function backfillItems(): Promise<CsvRow[]> {
       category: r.itemType,
       current_icon: r.iconSource ?? "",
       proposed_icon: proposal.key,
-      proposed_color: PROPOSED_COLOR,
-      source: proposal.source,
+      proposed_color: color.color,
+      source: `${proposal.source}+${color.source}`,
+      has_committed_icon: r.iconSource !== null,
+    });
+  }
+  return out;
+}
+
+async function backfillBuilds(): Promise<CsvRow[]> {
+  console.log("Reading builds...");
+  const rows = await db.select().from(builds);
+  console.log(`  ${rows.length} rows.`);
+  const out: CsvRow[] = [];
+  for (const r of rows) {
+    const proposal = proposeIcon("build", r.name, null, [String(r.level)]);
+    const color = proposeColor("build", r.name, null, [], { level: r.level });
+    await db
+      .update(builds)
+      .set({
+        iconProposedSource: "GAME_ICONS",
+        iconProposedKey: proposal.key,
+        iconProposedColor: color.color,
+      })
+      .where(eq(builds.id, r.id));
+    out.push({
+      type: "build",
+      id: r.id,
+      name: r.name,
+      category: `L${r.level}`,
+      current_icon: r.iconSource ?? "",
+      proposed_icon: proposal.key,
+      proposed_color: color.color,
+      source: `${proposal.source}+${color.source}`,
       has_committed_icon: r.iconSource !== null,
     });
   }
@@ -515,7 +749,6 @@ function toCsv(rows: CsvRow[]): string {
     const fields = [
       r.type,
       r.id,
-      // Quote + escape any field that could contain a comma
       csvField(r.name),
       r.category,
       r.current_icon,
@@ -546,6 +779,7 @@ async function main() {
     ...(await backfillCapabilities()),
     ...(await backfillTemplates()),
     ...(await backfillItems()),
+    ...(await backfillBuilds()),
   ];
 
   // Write CSV
@@ -567,7 +801,7 @@ async function main() {
   console.log("=== Backfill summary ===");
   console.log(`Total entities processed: ${all.length}`);
   console.log(`  with committed icon already: ${withCommitted}`);
-  console.log(`  proposal sources:`);
+  console.log(`  proposal sources (icon+color):`);
   for (const [src, n] of Object.entries(bySource)) {
     console.log(`    ${src}: ${n}`);
   }

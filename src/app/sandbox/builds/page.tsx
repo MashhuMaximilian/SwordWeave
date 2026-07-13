@@ -38,7 +38,38 @@ export default async function BuildsSandboxPage({
       },
     });
     if (!target) notFound();
-    editingBuild = target;
+    // Phase 8: spread icon fields through to the BuildComposer so the
+    // IconSlot is pre-populated when editing an existing build. The
+    // composer reads `editingBuild.iconSource` / `iconKey` / etc. via
+    // its BuildRow type (see src/components/workshops/build-composer.tsx).
+    editingBuild = {
+      id: target.id,
+      name: target.name,
+      description: target.description,
+      level: target.level,
+      startingBu: target.startingBu,
+      isArchetypeTemplate: target.isArchetypeTemplate,
+      raceName: target.raceName,
+      raceDescription: target.raceDescription,
+      raceId: target.raceId,
+      backgroundName: target.backgroundName,
+      backgroundDescription: target.backgroundDescription,
+      backgroundId: target.backgroundId,
+      archetypeName: target.archetypeName,
+      attrPhysical: target.attrPhysical,
+      attrMental: target.attrMental,
+      attrMagical: target.attrMagical,
+      attrProficient: target.attrProficient,
+      practiceSlices: target.practiceSlices,
+      portraitUrl: target.portraitUrl,
+      iconSource: target.iconSource,
+      iconKey: target.iconKey,
+      iconUrl: target.iconUrl,
+      iconColor: target.iconColor,
+      isPublic: target.isPublic,
+      sourceOrigin: target.sourceOrigin,
+      capabilityLinks: target.capabilityLinks,
+    };
   }
 
   return (

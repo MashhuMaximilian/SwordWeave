@@ -254,8 +254,12 @@ function DrawerShell({
         aria-modal={isOpen}
         aria-label="Build & Preview"
         aria-hidden={!isOpen}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        inert={!isOpen ? ("" as unknown as boolean) : undefined}
+        // React 19 deprecates stringified booleans on the `inert` prop.
+        // Pass an explicit boolean — true when the drawer is closed so the
+        // subtree is removed from the focus order; false when open so
+        // focus can reach the Save button. Empty string `""` produced the
+        // "Received an empty string for a boolean attribute `inert`" warning.
+        inert={!isOpen}
         className={cn(
           "fixed inset-x-0 bottom-0 z-50 flex max-h-[90vh] flex-col rounded-t-2xl border-t border-border bg-card shadow-2xl transition-transform duration-300 ease-out sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:max-w-4xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl",
           isOpen

@@ -109,6 +109,14 @@ type SandboxBuild = {
   description: string | null;
   level: number;
   isPublic: boolean | null;
+  // Phase 8: per-entity iconography (builds now carry the same icon
+  // columns as the other entity tables). portraitUrl is still a
+  // separate free-form hero art field; these four are the system
+  // icon used by the picker and the cards.
+  iconSource: "GAME_ICONS" | "UPLOAD" | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string | null;
 };
 
 const EMPTY_AUTHORS = {
@@ -303,9 +311,12 @@ export function buildToLibraryItem(
     ...EMPTY_ENGAGEMENT,
     tags: [],
     visibility,
-    iconSource: null,
-    iconKey: null,
-    iconUrl: null,
-    iconColor: "#ffffff",
+    // Phase 8: builds now carry icon columns. portraitUrl (the hero
+    // art field) is separate and lives only on the build composer /
+    // detail page, not on the card.
+    iconSource: row.iconSource,
+    iconKey: row.iconKey,
+    iconUrl: row.iconUrl,
+    iconColor: row.iconColor ?? "#ffffff",
   };
 }

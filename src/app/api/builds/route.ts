@@ -112,6 +112,19 @@ export async function POST(request: Request) {
     const portraitUrl = String(values["portraitUrl"] ?? "").trim() || null;
     const sourceOrigin = String(values["sourceOrigin"] ?? "").trim() || "manual:build";
 
+    // Phase 8: per-entity iconography. Same shape as the other entity
+    // tables. Empty string is coerced to null; invalid colors fall
+    // through to the DB default (#ffffff) which is set on the column.
+    const iconSourceRaw = values["iconSource"];
+    const iconSource: "GAME_ICONS" | "UPLOAD" | null =
+      iconSourceRaw === "GAME_ICONS" || iconSourceRaw === "UPLOAD"
+        ? iconSourceRaw
+        : null;
+    const iconKey = String(values["iconKey"] ?? "").trim() || null;
+    const iconUrl = String(values["iconUrl"] ?? "").trim() || null;
+    const iconColor =
+      String(values["iconColor"] ?? "").trim() || "#ffffff";
+
     // Optional attributes
     const attrPhysical = "attrPhysical" in values ? parseIntInRange(values["attrPhysical"], -1, 5, 0) : null;
     const attrMental = "attrMental" in values ? parseIntInRange(values["attrMental"], -1, 5, 0) : null;
@@ -148,6 +161,10 @@ export async function POST(request: Request) {
           attrProficient: null,
           practiceSlices: practiceSlices ?? null,
           portraitUrl,
+          iconSource,
+          iconKey,
+          iconUrl,
+          iconColor,
           isPublic,
           sourceOrigin,
         })

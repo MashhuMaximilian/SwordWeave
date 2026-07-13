@@ -36,6 +36,14 @@ export interface PublicBuild {
     proficient: "PHYSICAL" | "MENTAL" | "MAGICAL" | null;
   };
   portraitUrl: string | null;
+  // Phase 8: per-entity iconography. The system icon (always present,
+  // tinted by iconColor) is separate from portraitUrl (free-form hero
+  // art, optional). When iconSource is null the consumer should fall
+  // back to a type badge or the portrait.
+  iconSource: "GAME_ICONS" | "UPLOAD" | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
   author: {
     id: string;
     username: string;
@@ -146,6 +154,10 @@ export async function loadPublicBuild(
     archetype,
     attributes: attrs,
     portraitUrl: row.portraitUrl,
+    iconSource: row.iconSource ?? null,
+    iconKey: row.iconKey ?? null,
+    iconUrl: row.iconUrl ?? null,
+    iconColor: row.iconColor ?? "#ffffff",
     author,
     capabilities: caps.map((c) => ({
       id: c.id,
