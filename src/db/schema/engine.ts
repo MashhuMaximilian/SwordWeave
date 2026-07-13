@@ -93,6 +93,16 @@ export const primitives = pgTable(
     iconKey: text("icon_key"),
     iconUrl: text("icon_url"),
     iconColor: text("icon_color").notNull().default("#ffffff"),
+    // Phase 8 backfill: per-entity icon proposal columns. The backfill
+    // script (scripts/backfill-icons.ts) writes its best-guess pick
+    // here; the review UI promotes accepted proposals into the
+    // committed iconSource/iconKey/iconUrl/iconColor columns. Keeping
+    // them as a separate set means the script can be re-run safely
+    // without overwriting manually-picked icons.
+    iconProposedSource: iconSourceEnum("icon_proposed_source"),
+    iconProposedKey: text("icon_proposed_key"),
+    iconProposedUrl: text("icon_proposed_url"),
+    iconProposedColor: text("icon_proposed_color"),
     ...timestamps,
   },
   (table) => [
@@ -161,6 +171,11 @@ export const effects = pgTable(
     iconKey: text("icon_key"),
     iconUrl: text("icon_url"),
     iconColor: text("icon_color").notNull().default("#ffffff"),
+    // Phase 8 backfill: see primitives for the rationale.
+    iconProposedSource: iconSourceEnum("icon_proposed_source"),
+    iconProposedKey: text("icon_proposed_key"),
+    iconProposedUrl: text("icon_proposed_url"),
+    iconProposedColor: text("icon_proposed_color"),
     ...timestamps,
   },
   (table) => [
@@ -246,6 +261,11 @@ export const capabilities = pgTable(
     iconKey: text("icon_key"),
     iconUrl: text("icon_url"),
     iconColor: text("icon_color").notNull().default("#ffffff"),
+    // Phase 8 backfill: see primitives for the rationale.
+    iconProposedSource: iconSourceEnum("icon_proposed_source"),
+    iconProposedKey: text("icon_proposed_key"),
+    iconProposedUrl: text("icon_proposed_url"),
+    iconProposedColor: text("icon_proposed_color"),
     ...timestamps,
   },
   (table) => [

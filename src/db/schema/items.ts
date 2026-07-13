@@ -46,6 +46,11 @@ export const items = pgTable(
     iconKey: text("icon_key"),
     iconUrl: text("icon_url"),
     iconColor: text("icon_color").notNull().default("#ffffff"),
+    // Phase 8 backfill: see primitives for the rationale.
+    iconProposedSource: iconSourceEnum("icon_proposed_source"),
+    iconProposedKey: text("icon_proposed_key"),
+    iconProposedUrl: text("icon_proposed_url"),
+    iconProposedColor: text("icon_proposed_color"),
     ...timestamps,
   },
   (table) => [
