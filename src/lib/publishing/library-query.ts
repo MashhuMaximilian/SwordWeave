@@ -129,6 +129,66 @@ export interface LibraryItem {
   iconColor: string;
 }
 
+/**
+ * Resolve the effective icon for a row that was selected from the DB
+ * with BOTH the live icon_* columns and the proposed icon_proposed_*
+ * columns. The proposed columns are populated by the backfill script
+ * (scripts/backfill-icon-proposals.mts) which writes a heuristic guess
+ * for every entity. The live columns stay null until the user explicitly
+ * accepts a proposal or picks an icon from the form.
+ *
+ * Why fall back to proposed at the read layer instead of a separate
+ * "promote" migration:
+ *  - The user asked for cards to show icons. They didn't ask to commit
+ *    proposals. A read-time fallback ships the visible result without
+ *    a destructive write that the user can't undo.
+ *  - A future "Accept proposal" button can still copy proposed_* into
+ *    icon_* if the user wants to commit permanently. Until then, the
+ *    proposal is just the visible default.
+ *  - The DB-level fallback (COALESCE in the SELECT) would be more
+ *    efficient but Drizzle's typed select shape makes it awkward to
+ *    widen two nullable columns into one "effective" value across five
+ *    fetch functions. A tiny helper here keeps the call sites tidy.
+ */
+export function resolveIcon(row: {
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string | null;
+  iconProposedSource: string | null;
+  iconProposedKey: string | null;
+  iconProposedUrl: string | null;
+  iconProposedColor: string | null;
+}): {
+  iconSource: "GAME_ICONS" | "UPLOAD" | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
+} {
+  if (row.iconSource) {
+    return {
+      iconSource: row.iconSource as "GAME_ICONS" | "UPLOAD",
+      iconKey: row.iconKey,
+      iconUrl: row.iconUrl,
+      iconColor: row.iconColor ?? "#ffffff",
+    };
+  }
+  if (row.iconProposedSource) {
+    return {
+      iconSource: row.iconProposedSource as "GAME_ICONS" | "UPLOAD",
+      iconKey: row.iconProposedKey,
+      iconUrl: row.iconProposedUrl,
+      iconColor: row.iconProposedColor ?? "#ffffff",
+    };
+  }
+  return {
+    iconSource: null,
+    iconKey: null,
+    iconUrl: null,
+    iconColor: row.iconColor ?? "#ffffff",
+  };
+}
+
 export interface LibraryResult {
   items: LibraryItem[];
   total: number;
@@ -285,11 +345,15 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       narrativeRule: primitives.narrativeRule,
       userId: primitives.userId,
       createdAt: primitives.createdAt,
-      // Phase 8: per-entity iconography
+      // Phase 8: per-entity iconography (live + proposed for resolveIcon)
       iconSource: primitives.iconSource,
       iconKey: primitives.iconKey,
       iconUrl: primitives.iconUrl,
       iconColor: primitives.iconColor,
+      iconProposedSource: primitives.iconProposedSource,
+      iconProposedKey: primitives.iconProposedKey,
+      iconProposedUrl: primitives.iconProposedUrl,
+      iconProposedColor: primitives.iconProposedColor,
     })
     .from(primitives)
     .where(and(...conditions))
@@ -307,6 +371,7 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       dislikes: 0,
       forks: 0,
     };
+    const icon = resolveIcon(r);
     return {
       id: `PRIMITIVE:${r.id}`,
       targetType: "PRIMITIVE" as const,
@@ -325,11 +390,14 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
       tags: [],
-      // Phase 8: per-entity iconography
-      iconSource: r.iconSource,
-      iconKey: r.iconKey,
-      iconUrl: r.iconUrl,
-      iconColor: r.iconColor,
+      // Phase 8: per-entity iconography. resolveIcon picks the live
+      // columns when set, otherwise falls back to the backfill
+      // proposal (icon_proposed_*) so the user sees the heuristic
+      // pick until they choose their own.
+      iconSource: icon.iconSource,
+      iconKey: icon.iconKey,
+      iconUrl: icon.iconUrl,
+      iconColor: icon.iconColor,
     };
   });
 }
@@ -356,11 +424,15 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
       tags: capabilities.tags,
       userId: capabilities.userId,
       createdAt: capabilities.createdAt,
-      // Phase 8: per-entity iconography
+      // Phase 8: per-entity iconography (live + proposed for resolveIcon)
       iconSource: capabilities.iconSource,
       iconKey: capabilities.iconKey,
       iconUrl: capabilities.iconUrl,
       iconColor: capabilities.iconColor,
+      iconProposedSource: capabilities.iconProposedSource,
+      iconProposedKey: capabilities.iconProposedKey,
+      iconProposedUrl: capabilities.iconProposedUrl,
+      iconProposedColor: capabilities.iconProposedColor,
     })
     .from(capabilities)
     .where(and(...conditions))
@@ -403,6 +475,7 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
       dislikes: 0,
       forks: 0,
     };
+    const icon = resolveIcon(r);
     return {
       id: `CAPABILITY:${r.id}`,
       targetType: "CAPABILITY" as const,
@@ -421,11 +494,11 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
       tags: r.tags,
-      // Phase 8: per-entity iconography
-      iconSource: r.iconSource,
-      iconKey: r.iconKey,
-      iconUrl: r.iconUrl,
-      iconColor: r.iconColor,
+      // Phase 8: per-entity iconography (resolved — live or proposed)
+      iconSource: icon.iconSource,
+      iconKey: icon.iconKey,
+      iconUrl: icon.iconUrl,
+      iconColor: icon.iconColor,
     };
   });
 }
@@ -454,11 +527,15 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
       tags: effects.tags,
       userId: effects.userId,
       createdAt: effects.createdAt,
-      // Phase 8: per-entity iconography
+      // Phase 8: per-entity iconography (live + proposed for resolveIcon)
       iconSource: effects.iconSource,
       iconKey: effects.iconKey,
       iconUrl: effects.iconUrl,
       iconColor: effects.iconColor,
+      iconProposedSource: effects.iconProposedSource,
+      iconProposedKey: effects.iconProposedKey,
+      iconProposedUrl: effects.iconProposedUrl,
+      iconProposedColor: effects.iconProposedColor,
     })
     .from(effects)
     .where(and(...conditions))
@@ -498,6 +575,7 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
       dislikes: 0,
       forks: 0,
     };
+    const icon = resolveIcon(r);
     return {
       id: `EFFECT:${r.id}`,
       targetType: "EFFECT" as const,
@@ -516,11 +594,11 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
       tags: r.tags ?? [],
-      // Phase 8: per-entity iconography
-      iconSource: r.iconSource,
-      iconKey: r.iconKey,
-      iconUrl: r.iconUrl,
-      iconColor: r.iconColor,
+      // Phase 8: per-entity iconography (resolved — live or proposed)
+      iconSource: icon.iconSource,
+      iconKey: icon.iconKey,
+      iconUrl: icon.iconUrl,
+      iconColor: icon.iconColor,
     };
   });
 }
@@ -563,11 +641,15 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
       tags: items.tags,
       userId: items.userId,
       createdAt: items.createdAt,
-      // Phase 8: per-entity iconography
+      // Phase 8: per-entity iconography (live + proposed for resolveIcon)
       iconSource: items.iconSource,
       iconKey: items.iconKey,
       iconUrl: items.iconUrl,
       iconColor: items.iconColor,
+      iconProposedSource: items.iconProposedSource,
+      iconProposedKey: items.iconProposedKey,
+      iconProposedUrl: items.iconProposedUrl,
+      iconProposedColor: items.iconProposedColor,
     })
     .from(items)
     .where(and(...conditions))
@@ -585,6 +667,7 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
       dislikes: 0,
       forks: 0,
     };
+    const icon = resolveIcon(r);
     return {
       id: `ITEM:${r.id}`,
       targetType: "ITEM" as const,
@@ -603,11 +686,11 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
       tags: r.tags ?? [],
-      // Phase 8: per-entity iconography
-      iconSource: r.iconSource,
-      iconKey: r.iconKey,
-      iconUrl: r.iconUrl,
-      iconColor: r.iconColor,
+      // Phase 8: per-entity iconography (resolved — live or proposed)
+      iconSource: icon.iconSource,
+      iconKey: icon.iconKey,
+      iconUrl: icon.iconUrl,
+      iconColor: icon.iconColor,
     };
   });
 }
@@ -650,11 +733,15 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
       imageUrl: templates.imageUrl,
       userId: templates.userId,
       createdAt: templates.createdAt,
-      // Phase 8: per-entity iconography
+      // Phase 8: per-entity iconography (live + proposed for resolveIcon)
       iconSource: templates.iconSource,
       iconKey: templates.iconKey,
       iconUrl: templates.iconUrl,
       iconColor: templates.iconColor,
+      iconProposedSource: templates.iconProposedSource,
+      iconProposedKey: templates.iconProposedKey,
+      iconProposedUrl: templates.iconProposedUrl,
+      iconProposedColor: templates.iconProposedColor,
     })
     .from(templates)
     .where(and(...conditions))
@@ -692,6 +779,7 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
       dislikes: 0,
       forks: 0,
     };
+    const icon = resolveIcon(r);
     return {
       id: compositeId,
       targetType,
@@ -710,11 +798,11 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
       tags: [],
-      // Phase 8: per-entity iconography
-      iconSource: r.iconSource,
-      iconKey: r.iconKey,
-      iconUrl: r.iconUrl,
-      iconColor: r.iconColor,
+      // Phase 8: per-entity iconography (resolved — live or proposed)
+      iconSource: icon.iconSource,
+      iconKey: icon.iconKey,
+      iconUrl: icon.iconUrl,
+      iconColor: icon.iconColor,
     };
   });
 }
@@ -785,6 +873,9 @@ async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
       dislikes: 0,
       forks: 0,
     };
+    // Builds use portraitUrl, not the Phase-8 icon_* columns — keep
+    // them null so the card falls back to the type badge. resolveIcon
+    // isn't called here because the builds row has no icon columns.
     return {
       id: `BUILD_TEMPLATE:${r.id}`,
       targetType: "BUILD_TEMPLATE" as const,

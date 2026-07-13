@@ -300,22 +300,24 @@ function GridCard({
 }: GridCardProps) {
   const inner = (
     <>
-      {/* Phase 8: hero icon at the top of the card. Larger than the
-          list-view icon (64px) so the grid feels visually distinct. */}
-      <div className="flex items-center justify-center rounded-md border border-border bg-muted/20 p-2">
+      {/* Phase 8: hero icon at the top of the card. Sized to ~32px so the
+          grid doesn't fight the list-view (36px) for visual weight — the
+          56px hero was overwhelming the card. The outer panel is 64px
+          tall so the card layout is unchanged. */}
+      <div className="flex h-16 items-center justify-start rounded-md border border-border bg-muted/20 px-2.5">
         {item.iconSource ? (
           <IconDisplay
             iconSource={item.iconSource}
             iconKey={item.iconKey}
             iconUrl={item.iconUrl}
             iconColor={item.iconColor}
-            size={56}
+            size={32}
             alt={item.name}
           />
         ) : (
           <div
             aria-hidden="true"
-            className="flex size-14 items-center justify-center rounded-md border border-dashed border-border text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+            className="flex size-8 items-center justify-center rounded-md border border-dashed border-border text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
           >
             {item.targetType.replace(/_/g, " ").slice(0, 3)}
           </div>

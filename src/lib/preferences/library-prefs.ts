@@ -20,7 +20,7 @@ export interface LibraryPreferences {
 const COOKIE_NAME = "sw_lib_pref";
 const DEFAULT_PREFS: LibraryPreferences = {
   sort: "ENGAGEMENT",
-  view: "GRID",
+  view: "LIST",
 };
 
 const VALID_SORTS: LibrarySort[] = [

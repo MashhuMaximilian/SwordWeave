@@ -32,7 +32,15 @@ import { cn } from "@/lib/utils";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import type { LibraryView } from "@/lib/preferences/library-prefs";
 
-type TypeFilter = "all" | "primitive" | "effect" | "capability" | "template" | "item" | "character";
+type TypeFilter =
+  | "all"
+  | "primitive"
+  | "effect"
+  | "capability"
+  | "template"
+  | "item"
+  | "character"
+  | "build";
 type StatusFilter = "all" | "draft";
 
 interface CreationsClientProps {
@@ -52,6 +60,7 @@ const TYPE_CHIPS: Array<{ key: TypeFilter; label: string }> = [
   { key: "template", label: "Templates" },
   { key: "item", label: "Items" },
   { key: "character", label: "Characters" },
+  { key: "build", label: "Builds" },
 ];
 
 // Map LibraryItem.targetType to TypeFilter.
@@ -65,6 +74,7 @@ const TARGET_TYPE_MAP: Record<string, TypeFilter> = {
   ITEM: "item",
   CHARACTER: "character",
   MONSTER: "character",
+  BUILD_TEMPLATE: "build",
 };
 
 export function CreationsClient({
@@ -83,10 +93,11 @@ export function CreationsClient({
   );
   const [search, setSearch] = useState("");
   // P5R-6: LIST view toggle. LibraryTable already supports both modes; the
-  // view prop is just plumbed through. Default GRID matches the previous
-  // behavior; persisted in local state for this page (no cookie — Creations
-  // is per-user, not shared with the public library where the cookie matters).
-  const [view, setView] = useState<LibraryView>("GRID");
+  // view prop is just plumbed through. Default LIST (the user said list view
+  // is the better default — grid icons were too dominant and a 2-column
+  // mobile grid was cramped on a 393px viewport). Local state only; the
+  // /library/browse page persists its own choice in the sw_lib_pref cookie.
+  const [view, setView] = useState<LibraryView>("LIST");
   // Lifted visibility map so optimistic updates from the preview modal
   // re-render the table without a refresh. Keyed by LibraryItem.id.
   // The previous implementation mutated `item.visibility` directly,
@@ -323,6 +334,19 @@ export function CreationsClient({
                       } else if (targetType === "CHARACTER") {
                         router.push(
                           `/characters/${item.targetId}`,
+                        );
+                      } else if (targetType === "BUILD_TEMPLATE") {
+                        // Builds have their own sandbox route at
+                        // /sandbox/builds (not /sandbox/blueprint — that
+                        // route is for templates/items/monsters). Builds
+                        // are a separate table (see db/schema/characters.ts)
+                        // keyed by uuid; ?edit=<id> makes the page load
+                        // the row into the BuildComposer with full
+                        // capability-link hydration. Without this branch
+                        // the user clicked Edit on a build and got a
+                        // silent no-op (the URL was never built).
+                        router.push(
+                          `/sandbox/builds?edit=${item.targetId}&intent=load`,
                         );
                       }
                     }}

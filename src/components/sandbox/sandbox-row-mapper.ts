@@ -103,6 +103,14 @@ type SandboxCharacter = {
   // in characterToLibraryItem.
 };
 
+type SandboxBuild = {
+  id: string;
+  name: string;
+  description: string | null;
+  level: number;
+  isPublic: boolean | null;
+};
+
 const EMPTY_AUTHORS = {
   authorId: null,
   authorUsername: null,
@@ -263,6 +271,38 @@ export function characterToLibraryItem(
     visibility,
     // Phase 8: characters/builds don't carry icon columns; null fallback
     // keeps the type contract honest. (Builds use portraitUrl instead.)
+    iconSource: null,
+    iconKey: null,
+    iconUrl: null,
+    iconColor: "#ffffff",
+  };
+}
+
+// -----------------------------------------------------------------------------
+// buildToLibraryItem — surfaces a row from the `builds` table as a
+// LibraryItem with targetType="BUILD_TEMPLATE". Library-browse filters
+// route BUILD_TEMPLATE → this; /creations calls it so the user's own
+// builds appear in the Creations table alongside other authored entries.
+// Builds use portraitUrl (a free-form image link) rather than the Phase-8
+// icon fields, so the icon columns stay null until/unless a future
+// migration promotes the portrait to the icon slots.
+// -----------------------------------------------------------------------------
+export function buildToLibraryItem(
+  row: SandboxBuild,
+  visibility: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC" = "PRIVATE",
+): LibraryItem {
+  return {
+    id: `BUILD_TEMPLATE:${row.id}`,
+    targetType: "BUILD_TEMPLATE",
+    targetId: row.id,
+    name: row.name,
+    description: row.description,
+    category: "build",
+    buCost: null,
+    ...EMPTY_AUTHORS,
+    ...EMPTY_ENGAGEMENT,
+    tags: [],
+    visibility,
     iconSource: null,
     iconKey: null,
     iconUrl: null,
