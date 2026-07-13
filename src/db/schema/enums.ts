@@ -1,6 +1,7 @@
 import { pgEnum } from "drizzle-orm/pg-core";
 
 export const primitiveCategoryEnum = pgEnum("primitive_category", [
+  // Core BU Market categories
   "VERB_TIER",
   "DOMAIN",
   "SIZING",
@@ -11,6 +12,23 @@ export const primitiveCategoryEnum = pgEnum("primitive_category", [
   "CONDITION",
   "DEFENSE",
   "STRUCTURAL",
+  "PROBABILITY_BIAS",
+  "TRIGGER_HOOK",
+  "PERCEPTION_QUALIFIER",
+  "KINETIC_CONTROL",
+  "AGENCY_OVERRIDE",
+  "METAMORPHOSIS",
+  "ACTION_ECONOMY",
+  "EVALUATION_STRAIN",
+  "TEMPORAL_CHRONOLOGICAL",
+  "SENSORY_ARRAY",
+  "MOBILITY_LOCOMOTION",
+  "TARGETING_AOE",
+  "INTENSITY_DICE",
+  "BOSS_ECONOMY",
+  "DEFENSIVE",
+  "SPEED_QUICKENING", // Phase 7: split from DURATION (when, not how long)
+  // Character-slot categories (legacy — slated for purge in Phase 7)
   "SHEET_AUGMENT",
   "HERITAGE_AUGMENT",
   "BACKGROUND_AUGMENT",

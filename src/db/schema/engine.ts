@@ -30,6 +30,12 @@ export const primitives = pgTable(
     category: primitiveCategoryEnum("category").notNull(),
     costTier: text("cost_tier").notNull().default("Tier 1: Minor (4 BU anchor)"),
     buCost: integer("bu_cost").notNull().default(0),
+    // What the primitive modifies (Phase 7). For metric/bias modifier primitives
+    // this identifies the scope axis: a specific Practice (e.g. 'AWARENESS'),
+    // an Attribute ('PHYSICAL'), 'HP' for vitality, 'NARROW_FOCUS' for ultra-
+    // specific triggers. Null for primitives that don't modify a metric
+    // (e.g., Mobility, Verbs, Domains). Enforced via targetScopeEnum.
+    targetScope: text("target_scope"),
     mechanicalOutputText: text("mechanical_output_text")
       .notNull()
       .default(""),
