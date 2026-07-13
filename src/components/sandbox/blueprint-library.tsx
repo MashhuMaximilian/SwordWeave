@@ -133,16 +133,39 @@ export function BlueprintLibrary({
   const availableTypes = ALL_AVAILABLE_TYPES;
 
   // Toolbar state — owned here, filtered list is derived.
+  // View default: LIST. Same rationale as /library — the user said
+  // list view is the better default because the 2-column mobile
+  // grid is cramped and a list of the corpus reads better on
+  // narrow viewports. Desktop users can still toggle to GRID via
+  // the toolbar (saved to the same sw_lib_pref cookie as the main
+  // /library page, so the choice persists across both pages).
+  //
+  // Mobile-UA override: if the user is on a phone/tablet, force
+  // LIST on first mount and on every window-resize across the
+  // breakpoint. The cookie can still say GRID for the desktop
+  // session — the override only applies to the active render.
   const [toolbarState, setToolbarState] = useState<LibraryToolbarState>(() => ({
     search: "",
     sort: "ENGAGEMENT",
-    view: "GRID",
+    view: "LIST",
     typeFilter: defaultTypeFilter,
     category: "",
     author: "",
     minLikes: "",
     hasForks: false,
   }));
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(max-width: 767px)");
+    const apply = (e: MediaQueryListEvent | MediaQueryList) => {
+      if (e.matches) {
+        setToolbarState((s) => (s.view === "GRID" ? { ...s, view: "LIST" } : s));
+      }
+    };
+    apply(mql);
+    mql.addEventListener("change", apply);
+    return () => mql.removeEventListener("change", apply);
+  }, []);
 
   // When the build mode changes, reset the type filter to the new default
   // so the user sees the right subset immediately. (Fix for "filters

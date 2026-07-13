@@ -127,16 +127,38 @@ export function GrammarLibrary({
   const availableTypes = AVAILABLE_TYPES_BY_BUILD[build];
 
   // Toolbar state — owned here, filtered list is derived.
+  // View default: LIST. Same rationale as /library (Phase 8 fix):
+  // the 2-column mobile grid is cramped, list view reads better on
+  // narrow viewports, and the user can still toggle to GRID via the
+  // toolbar (saved to sw_lib_pref cookie so the choice persists
+  // across both pages).
+  //
+  // Mobile-UA override: force LIST when the viewport is < 768px.
+  // The cookie can still say GRID for desktop sessions — the
+  // override is just a per-render nudge. The same client-side
+  // matchMedia listener that ships on /creations lives here.
   const [toolbarState, setToolbarState] = useState<LibraryToolbarState>(() => ({
     search: "",
     sort: "ENGAGEMENT",
-    view: "GRID",
+    view: "LIST",
     typeFilter: defaultTypeFilter,
     category: "",
     author: "",
     minLikes: "",
     hasForks: false,
   }));
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(max-width: 767px)");
+    const apply = (e: MediaQueryListEvent | MediaQueryList) => {
+      if (e.matches) {
+        setToolbarState((s) => (s.view === "GRID" ? { ...s, view: "LIST" } : s));
+      }
+    };
+    apply(mql);
+    mql.addEventListener("change", apply);
+    return () => mql.removeEventListener("change", apply);
+  }, []);
 
   // When the build mode changes, reset the type filter to the new default
   // and clear other filters so the user sees the right subset immediately.

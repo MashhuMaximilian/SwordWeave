@@ -55,6 +55,15 @@ export interface VersionHistoryResult {
   targetType: VersionTargetType;
   targetId: string;
   targetName: string;
+  // Phase 8: per-entity iconography for the version-history header.
+  // Same shape as the row-level resolver: nullable source, nullable
+  // key/url, hex color (defaults to #ffffff on the DB column).
+  targetIcon: {
+    iconSource: "GAME_ICONS" | "UPLOAD" | null;
+    iconKey: string | null;
+    iconUrl: string | null;
+    iconColor: string;
+  };
 }
 
 interface RawVersionRow {
@@ -80,10 +89,11 @@ export async function getVersionHistory(
   targetType: VersionTargetType,
   targetId: string,
 ): Promise<VersionHistoryResult | null> {
-  const targetName = await resolveTargetName(targetType, targetId);
+  const target = await resolveTargetName(targetType, targetId);
   // Target must exist. If resolveTargetName returned null, the target is
   // either deleted, never existed, or the id is wrong — surface a 404.
-  if (targetName === null) return null;
+  if (target === null) return null;
+  const targetName = target.name;
 
   const rows = await fetchVersionRows(targetType, targetId);
   // Target exists but has zero published versions — return an empty list.
@@ -156,6 +166,12 @@ export async function getVersionHistory(
     targetType,
     targetId,
     targetName: targetName ?? "(unknown)",
+    targetIcon: {
+      iconSource: target?.iconSource ?? null,
+      iconKey: target?.iconKey ?? null,
+      iconUrl: target?.iconUrl ?? null,
+      iconColor: target?.iconColor ?? "#ffffff",
+    },
   };
 }
 
@@ -269,7 +285,13 @@ async function fetchVersionRows(
 async function resolveTargetName(
   type: VersionTargetType,
   id: string,
-): Promise<string | null> {
+): Promise<{
+  name: string;
+  iconSource: "GAME_ICONS" | "UPLOAD" | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
+} | null> {
   const {
     primitives,
     capabilities,
@@ -277,28 +299,65 @@ async function resolveTargetName(
     templates,
   } = await import("@/db/schema");
 
+  // Phase 8: per-entity iconography. We select the same 4 columns
+  // every table has (iconSource, iconKey, iconUrl, iconColor) so the
+  // version-history page can render the entity's icon in the header.
+  const iconCols = {
+    iconSource: true,
+    iconKey: true,
+    iconUrl: true,
+    iconColor: true,
+  } as const;
+
   if (type === "PRIMITIVE") {
     const numId = Number(id);
     if (!Number.isFinite(numId)) return null;
     const row = await db.query.primitives.findFirst({
       where: (table, { eq }) => eq(table.id, numId),
-      columns: { name: true },
+      columns: { name: true, ...iconCols },
     });
-    return row?.name ?? null;
+    if (!row) return null;
+    return {
+      name: row.name,
+      iconSource: row.iconSource ?? null,
+      iconKey: row.iconKey ?? null,
+      iconUrl: row.iconUrl ?? null,
+      iconColor: row.iconColor ?? "#ffffff",
+    };
   }
   if (type === "CAPABILITY") {
     const row = await db.query.capabilities.findFirst({
       where: (table, { eq }) => eq(table.id, id),
-      columns: { name: true },
+      columns: { name: true, ...iconCols },
     });
-    return row?.name ?? null;
+    if (!row) return null;
+    return {
+      name: row.name,
+      iconSource: row.iconSource ?? null,
+      iconKey: row.iconKey ?? null,
+      iconUrl: row.iconUrl ?? null,
+      iconColor: row.iconColor ?? "#ffffff",
+    };
   }
   if (type === "CHARACTER") {
+    // Phase 8: characters table doesn't carry icon columns (only
+    // portraitUrl, the free-form hero art field). The version-history
+    // header falls back to no-icon for characters — same as the
+    // /creations list which shows characters with a placeholder
+    // glyph. Future: if the user asks for character icons, add the
+    // same 4 columns here and merge them into the iconCols object.
     const row = await db.query.characters.findFirst({
       where: (table, { eq }) => eq(table.id, String(id)),
       columns: { name: true },
     });
-    return row?.name ?? null;
+    if (!row) return null;
+    return {
+      name: row.name,
+      iconSource: null,
+      iconKey: null,
+      iconUrl: null,
+      iconColor: "#ffffff",
+    };
   }
   if (
     type === "RACE_TEMPLATE" ||
@@ -309,9 +368,16 @@ async function resolveTargetName(
     const row = await db.query.templates.findFirst({
       where: (table, { and, eq }) =>
         and(eq(table.kind, tplKind), eq(table.id, String(id))),
-      columns: { name: true },
+      columns: { name: true, ...iconCols },
     });
-    return row?.name ?? null;
+    if (!row) return null;
+    return {
+      name: row.name,
+      iconSource: row.iconSource ?? null,
+      iconKey: row.iconKey ?? null,
+      iconUrl: row.iconUrl ?? null,
+      iconColor: row.iconColor ?? "#ffffff",
+    };
   }
   return null;
 }

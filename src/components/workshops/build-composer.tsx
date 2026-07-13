@@ -324,8 +324,17 @@ export function BuildComposer({
         </p>
       </div>
 
-      {/* Sticky preview bar */}
-      <div className="sticky top-0 z-30 mt-6 -mx-5 border-y border-border bg-background/80 px-5 py-3 backdrop-blur-md">
+      {/* Sticky preview bar.
+          z-10: keep the bar above page background but BELOW the
+          modal stack and BELOW the form's interactive controls
+          above. The previous z-30 (Phase 8 default) caused the
+          bar to cover the form's IconSlot on scroll — the bar
+          uses bg-background/80 backdrop-blur-md, so the IconSlot
+          was visible through it but clicks hit the bar (which has
+          no click handler) and the modal never opened. z-10 puts
+          the bar at the page-content layer; the modal stack lives
+          at z-50+ so it still overlays correctly. */}
+      <div className="sticky top-0 z-10 mt-6 -mx-5 border-y border-border bg-background/80 px-5 py-3 backdrop-blur-md">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
@@ -400,7 +409,7 @@ export function BuildComposer({
       <form
         id="build-form"
         onSubmit={handleSubmit}
-        className="mt-8 grid gap-4 lg:grid-cols-[360px_1fr]"
+        className="relative z-20 mt-8 grid gap-4 lg:grid-cols-[360px_1fr]"
       >
         {/* LEFT: identity + attributes */}
         <section className="space-y-4">

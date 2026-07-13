@@ -46,10 +46,17 @@ export interface LibraryToolbarState {
   tags?: string;
 }
 
+// Default state for /library/browse when no cookie is set. List view
+// is the new default (was GRID). Same rationale as the /creations
+// page: the 2-column mobile grid was cramped, list reads better on
+// narrow viewports, and the server-side readLibraryPreferences()
+// already overrides to LIST on mobile UAs (see src/lib/preferences/
+// library-prefs.ts) so this default only matters for desktop sessions
+// without a saved preference.
 export const EMPTY_LIBRARY_TOOLBAR_STATE: LibraryToolbarState = {
   search: "",
   sort: "ENGAGEMENT",
-  view: "GRID",
+  view: "LIST",
   typeFilter: "ALL",
   category: "",
   author: "",

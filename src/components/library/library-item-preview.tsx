@@ -628,17 +628,44 @@ function PrimitiveBody({
 }) {
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">
-          {row.buCost} BU
-        </span>
-        <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-          {row.category}
-        </span>
-        <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-          {row.costTier}
-        </span>
-        <VisibilityPill isPublic={row.isPublic} />
+      {/* Phase 8: per-entity iconography in the preview header.
+          Renders a 40px tinted tile matching the entity's iconSource
+          + iconColor (game-icons / upload) and falls back to a
+          dashed placeholder when the row has no icon (e.g. a row
+          that pre-dates the Phase 8 migration). Mirrors the
+          EffectBody header pattern (the only body that had the icon
+          in the original commit). */}
+      <div className="flex items-start gap-3">
+        {row.iconSource ? (
+          <IconDisplay
+            iconSource={row.iconSource as "GAME_ICONS" | "UPLOAD"}
+            iconKey={row.iconKey}
+            iconUrl={row.iconUrl}
+            iconColor={row.iconColor}
+            size={40}
+            className="shrink-0 rounded-md border border-border"
+            alt={row.name}
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            className="flex size-10 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+          >
+            PRI
+          </div>
+        )}
+        <div className="flex flex-1 flex-wrap items-center gap-2 text-xs">
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">
+            {row.buCost} BU
+          </span>
+          <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
+            {row.category}
+          </span>
+          <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
+            {row.costTier}
+          </span>
+          <VisibilityPill isPublic={row.isPublic} />
+        </div>
       </div>
 
       {row.mechanicalOutputText ? (
@@ -839,22 +866,46 @@ function CapabilityBody({
   );
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">
-          {totalBu} BU
-        </span>
-        <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-          {row.type}
-        </span>
-        <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-          {row.sourceType}
-        </span>
-        {row.sourceOrigin ? (
-          <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-            {row.sourceOrigin}
+      {/* Phase 8: per-entity iconography — see PrimitiveBody for the
+          same pattern. 40px tile on the left, header chips flex to
+          its right. The icon color tints the game-icons slug via the
+          /api/icons/game?color=… proxy. */}
+      <div className="flex items-start gap-3">
+        {row.iconSource ? (
+          <IconDisplay
+            iconSource={row.iconSource as "GAME_ICONS" | "UPLOAD"}
+            iconKey={row.iconKey}
+            iconUrl={row.iconUrl}
+            iconColor={row.iconColor}
+            size={40}
+            className="shrink-0 rounded-md border border-border"
+            alt={row.name}
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            className="flex size-10 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+          >
+            CAP
+          </div>
+        )}
+        <div className="flex flex-1 flex-wrap items-center gap-2 text-xs">
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">
+            {totalBu} BU
           </span>
-        ) : null}
-        <VisibilityPill isPublic={row.isPublic} />
+          <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
+            {row.type}
+          </span>
+          <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
+            {row.sourceType}
+          </span>
+          {row.sourceOrigin ? (
+            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
+              {row.sourceOrigin}
+            </span>
+          ) : null}
+          <VisibilityPill isPublic={row.isPublic} />
+        </div>
       </div>
 
       {row.verboseDescription ? (
@@ -1011,14 +1062,38 @@ function TemplateBody({
   );
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">
-          {primitiveBu} BU
-        </span>
-        <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-          {row.kind}
-        </span>
-        <VisibilityPill isPublic={row.isPublic} />
+      {/* Phase 8: per-entity iconography — same pattern as
+          PrimitiveBody. The template's icon is tinted with the
+          template's iconColor (RACE=yellow, BACKGROUND=purple,
+          ARCHETYPE=orange by default from the backfill script). */}
+      <div className="flex items-start gap-3">
+        {row.iconSource ? (
+          <IconDisplay
+            iconSource={row.iconSource as "GAME_ICONS" | "UPLOAD"}
+            iconKey={row.iconKey}
+            iconUrl={row.iconUrl}
+            iconColor={row.iconColor}
+            size={40}
+            className="shrink-0 rounded-md border border-border"
+            alt={row.name}
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            className="flex size-10 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+          >
+            TPL
+          </div>
+        )}
+        <div className="flex flex-1 flex-wrap items-center gap-2 text-xs">
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">
+            {primitiveBu} BU
+          </span>
+          <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
+            {row.kind}
+          </span>
+          <VisibilityPill isPublic={row.isPublic} />
+        </div>
       </div>
 
       {row.description ? (
@@ -1138,10 +1213,35 @@ function ItemBody({
   const totalBu = row.buCost + primitiveBu;
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">
-          {totalBu} BU
-        </span>
+      {/* Phase 8: per-entity iconography — same pattern as
+          PrimitiveBody. Items get a 40px tile with the item's
+          iconColor tint (WEAPON=slate, ARMOR=amber, TRINKET=violet,
+          ARTIFACT=gold, CONSUMABLE=rose by default from the backfill
+          script). The rarity pill in the chips line is kept as a
+          second-tier signal. */}
+      <div className="flex items-start gap-3">
+        {row.iconSource ? (
+          <IconDisplay
+            iconSource={row.iconSource as "GAME_ICONS" | "UPLOAD"}
+            iconKey={row.iconKey}
+            iconUrl={row.iconUrl}
+            iconColor={row.iconColor}
+            size={40}
+            className="shrink-0 rounded-md border border-border"
+            alt={row.name}
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            className="flex size-10 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+          >
+            ITM
+          </div>
+        )}
+        <div className="flex flex-1 flex-wrap items-center gap-2 text-xs">
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">
+            {totalBu} BU
+          </span>
         <span
           className={cn(
             "rounded-full px-2 py-0.5 font-medium",
@@ -1177,6 +1277,7 @@ function ItemBody({
           </span>
         ) : null}
         <VisibilityPill isPublic={row.isPublic} />
+        </div>
       </div>
 
       {row.description ? (

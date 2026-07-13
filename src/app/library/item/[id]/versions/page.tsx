@@ -26,6 +26,7 @@ import {
 } from "@/lib/versions/version-history";
 import { RestoreButton } from "@/components/library/restore-button";
 import { VersionPreviewButton } from "@/components/library/version-preview-button";
+import { IconDisplay } from "@/components/icons/icon-display";
 import { db } from "@/db/client";
 import { primitives, effects, capabilities, effectPrimitives } from "@/db/schema";
 import { inArray } from "drizzle-orm";
@@ -194,17 +195,45 @@ export default async function VersionHistoryPage({ params }: PageProps) {
       </Link>
 
       <header className="border-b border-border pb-4">
-        <p className="text-xs font-semibold uppercase text-muted-foreground">
-          {parsed.type.replace(/_/g, " ")}
-        </p>
-        <h1 className="mt-1 break-words text-3xl font-semibold">
-          {result.targetName}
-        </h1>
-        <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-          <History className="size-4" />
-          {result.versions.length}{" "}
-          {result.versions.length === 1 ? "version" : "versions"} published
-        </p>
+        <div className="flex items-start gap-3">
+          {/* Phase 8: entity icon in the version-history header. Same
+              pattern as the source page (/library/item/[id]). The
+              icon is the entity's chosen game-icons / upload image
+              with its color tint applied via the IconDisplay
+              component. Fallback for characters (no icon columns) is
+              a dashed placeholder. */}
+          {result.targetIcon.iconSource ? (
+            <IconDisplay
+              iconSource={result.targetIcon.iconSource}
+              iconKey={result.targetIcon.iconKey}
+              iconUrl={result.targetIcon.iconUrl}
+              iconColor={result.targetIcon.iconColor}
+              size={48}
+              className="shrink-0 rounded-md border border-border"
+              alt={result.targetName}
+            />
+          ) : (
+            <div
+              aria-hidden="true"
+              className="flex size-12 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+            >
+              {parsed.type.replace(/_/g, " ").slice(0, 3)}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold uppercase text-muted-foreground">
+              {parsed.type.replace(/_/g, " ")}
+            </p>
+            <h1 className="mt-1 break-words text-3xl font-semibold">
+              {result.targetName}
+            </h1>
+            <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+              <History className="size-4" />
+              {result.versions.length}{" "}
+              {result.versions.length === 1 ? "version" : "versions"} published
+            </p>
+          </div>
+        </div>
         {/* P5R-8: discoverability for the diff page. The per-row
             "Compare with v[N-1]" link is small and easy to miss. This
             header CTA is the obvious entry point — "Compare the latest
