@@ -28,6 +28,8 @@ interface VersionPreviewButtonProps {
   payload: Record<string, unknown>;
   /** Pre-resolved entity names: "primitive:42" → "Strike", "effect:uuid" → "Shattered Composure" */
   nameMap?: Record<string, string>;
+  /** Pre-resolved primitive BU costs: primitiveId → buCost */
+  primitiveBuCosts?: Record<number, number>;
 }
 
 function mapPayloadToPreviewItem(
@@ -35,6 +37,7 @@ function mapPayloadToPreviewItem(
   targetId: string,
   payload: Record<string, unknown>,
   nameMap?: Record<string, string>,
+  primitiveBuCosts?: Record<number, number>,
 ): SandboxPreviewItem | null {
   if (targetType === "PRIMITIVE") {
     const numId = Number(targetId);
@@ -69,7 +72,7 @@ function mapPayloadToPreviewItem(
               id: pid,
               name: resolvedName ?? String(s["name"] ?? `Primitive ${pid}`),
               category: String(s["category"] ?? ""),
-              buCost: Number(s["buCost"]) || 0,
+              buCost: primitiveBuCosts?.[pid] ?? (Number(s["buCost"]) || 0),
             },
             versionNumber: undefined,
           };
@@ -102,7 +105,7 @@ function mapPayloadToPreviewItem(
               id: pid,
               name: resolvedName ?? String(s["name"] ?? `Primitive ${pid}`),
               category: String(s["category"] ?? ""),
-              buCost: Number(s["buCost"]) || 0,
+              buCost: primitiveBuCosts?.[pid] ?? (Number(s["buCost"]) || 0),
             },
             versionNumber: undefined,
           };
@@ -284,9 +287,10 @@ export function VersionPreviewButton({
   versionNumber,
   payload,
   nameMap,
+  primitiveBuCosts,
 }: VersionPreviewButtonProps) {
   const [open, setOpen] = useState(false);
-  const previewItem = mapPayloadToPreviewItem(targetType, targetId, payload, nameMap);
+  const previewItem = mapPayloadToPreviewItem(targetType, targetId, payload, nameMap, primitiveBuCosts);
 
   return (
     <>

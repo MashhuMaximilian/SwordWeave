@@ -100,10 +100,12 @@ export default async function VersionHistoryPage({ params }: PageProps) {
   // Bulk-fetch names from DB. Wrapped in try/catch so a failure just
   // means we fall back to ID-based labels instead of crashing.
   const nameMap: Record<string, string> = {};
+  const primitiveBuCosts: Record<number, number> = {};
+  const versionBuCosts: Record<number, number> = {};
   try {
     const [primRows, effRows, capRows] = await Promise.all([
       referencedPrimitiveIds.size > 0
-        ? db.select({ id: primitives.id, name: primitives.name }).from(primitives).where(inArray(primitives.id, [...referencedPrimitiveIds]))
+        ? db.select({ id: primitives.id, name: primitives.name, buCost: primitives.buCost }).from(primitives).where(inArray(primitives.id, [...referencedPrimitiveIds]))
         : Promise.resolve([]),
       referencedEffectIds.size > 0
         ? db.select({ id: effects.id, name: effects.name }).from(effects).where(inArray(effects.id, [...referencedEffectIds]))
@@ -115,6 +117,36 @@ export default async function VersionHistoryPage({ params }: PageProps) {
     for (const r of primRows) nameMap[`primitive:${r.id}`] = r.name;
     for (const r of effRows) nameMap[`effect:${r.id}`] = r.name;
     for (const r of capRows) nameMap[`capability:${r.id}`] = r.name;
+
+    // Build primitive buCost map for preview modal
+    for (const r of primRows) primitiveBuCosts[r.id] = r.buCost ?? 0;
+
+    // Compute per-version BU cost for capabilities/effects/templates
+    // (these don't have a top-level buCost in their payload — it's
+    // derived from composed primitives).
+    for (const v of result.versions) {
+      const p = v.payload;
+      // If the payload itself has buCost (primitives), use it directly
+      if (typeof p["buCost"] === "number" && Number.isFinite(p["buCost"])) {
+        versionBuCosts[v.versionNumber] = p["buCost"] as number;
+        continue;
+      }
+      // Otherwise compute from composed primitive slots
+      let total = 0;
+      if (Array.isArray(p["primitiveSlots"])) {
+        for (const s of p["primitiveSlots"] as Array<Record<string, unknown>>) {
+          const pid = Number(s["primitiveId"]) || 0;
+          const qty = Number(s["quantity"]) || 1;
+          total += Math.abs((primitiveBuCosts[pid] ?? 0) * qty);
+        }
+      }
+      if (Array.isArray(p["primitiveIds"])) {
+        for (const pid of p["primitiveIds"] as number[]) {
+          total += Math.abs(primitiveBuCosts[pid] ?? 0);
+        }
+      }
+      if (total > 0) versionBuCosts[v.versionNumber] = total;
+    }
   } catch (err) {
     console.error("[versions page] name resolution failed:", err);
   }
@@ -193,6 +225,8 @@ export default async function VersionHistoryPage({ params }: PageProps) {
               targetType={parsed.type}
               targetId={parsed.id}
               nameMap={nameMap}
+              primitiveBuCosts={primitiveBuCosts}
+              computedBuCost={versionBuCosts[v.versionNumber] ?? null}
             />
           );
         })}
@@ -267,6 +301,8 @@ function VersionRow({
   targetType,
   targetId,
   nameMap,
+  primitiveBuCosts,
+  computedBuCost,
 }: {
   version: VersionEntry;
   previousVersionNumber: number | null;
@@ -274,6 +310,8 @@ function VersionRow({
   targetType: VersionTargetType;
   targetId: string;
   nameMap: Record<string, string>;
+  primitiveBuCosts: Record<number, number>;
+  computedBuCost: number | null;
 }) {
   const summary = buildSummary(version);
   return (
@@ -297,7 +335,7 @@ function VersionRow({
             for entity types that have a buyPrice / buCost in their data
             (currently primitives + capabilities). For DELTAs where the
             buCost was changed, the reconstructed value reflects that. */}
-        <BuCostBadge payload={version.payload} />
+        <BuCostBadge payload={version.payload} computedBuCost={computedBuCost} />
         {isLatest && (
           <span className="rounded-full bg-green-500/15 px-2 py-0.5 text-xs font-medium text-green-600 dark:text-green-400">
             latest
@@ -331,6 +369,7 @@ function VersionRow({
           versionNumber={version.versionNumber}
           payload={version.payload}
           nameMap={nameMap}
+          primitiveBuCosts={primitiveBuCosts}
         />
         {(() => {
           const apiType: "PRIMITIVE" | "EFFECT" | "CAPABILITY" | "ITEM" | "TEMPLATE" | null = mapToApiType(targetType);
@@ -403,17 +442,20 @@ function VersionRow({
  */
 function BuCostBadge({
   payload,
+  computedBuCost,
 }: {
   payload: Record<string, unknown>;
+  computedBuCost: number | null;
 }) {
   const raw = payload["buCost"];
-  if (typeof raw !== "number" || !Number.isFinite(raw)) return null;
+  const bu = typeof raw === "number" && Number.isFinite(raw) ? raw : computedBuCost;
+  if (bu == null) return null;
   return (
     <span
       className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 font-mono text-xs font-medium text-amber-700 dark:text-amber-300"
-      title={`BU cost of this version: ${raw}`}
+      title={`BU cost of this version: ${bu}`}
     >
-      {raw} BU
+      {bu} BU
     </span>
   );
 }
