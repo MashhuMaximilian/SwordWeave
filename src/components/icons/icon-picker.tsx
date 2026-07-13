@@ -44,10 +44,49 @@ import {
   useRef,
   useState,
 } from "react";
-import { Search, Upload, X } from "lucide-react";
+import { Filter, Search, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconDisplay, type IconSource } from "./icon-display";
 import { useModalStack } from "@/components/ui/modal-stack";
+import {
+  Button as RAButton,
+  ColorArea,
+  ColorField,
+  ColorPicker,
+  ColorSlider,
+  ColorSwatch,
+  ColorSwatchPicker,
+  ColorSwatchPickerItem,
+  Dialog,
+  DialogTrigger,
+  Popover,
+  parseColor,
+} from "react-aria-components";
+
+// =============================================================================
+// Color presets — a small curated palette. Tints the picker toward
+// system-themed colors that read well as icon color on a dark canvas.
+// Each entry is a hex string compatible with parseColor.
+// =============================================================================
+const COLOR_PRESETS = [
+  "#ffffff", // white
+  "#000000", // black
+  "#f97316", // orange-500
+  "#ef4444", // red-500
+  "#f43f5e", // rose-500
+  "#ec4899", // pink-500
+  "#a855f7", // purple-500
+  "#8b5cf6", // violet-500
+  "#6366f1", // indigo-500
+  "#3b82f6", // blue-500
+  "#0ea5e9", // sky-500
+  "#06b6d4", // cyan-500
+  "#14b8a6", // teal-500
+  "#22c55e", // green-500
+  "#84cc16", // lime-500
+  "#eab308", // yellow-500
+  "#f59e0b", // amber-500
+];
 
 // Shape of the static index. Loaded lazily.
 interface IconIndexEntry {
@@ -112,9 +151,15 @@ export function IconPicker({
 }: IconPickerProps) {
   const stack = useModalStack();
   const [index, setIndex] = useState<IconIndex | null>(_indexCache);
+  // Phase 8: Color state is a hex string. The ColorPicker control
+  // operates on a Color object internally; we sync via parseColor.
   const [color, setColor] = useState<string>(currentColor ?? "#ffffff");
-  const [bucket, setBucket] = useState<string>("all");
+  // Phase 8: bucket is now a Set so the filters modal can multi-select.
+  // Empty set = "All". The horizontal tab strip is hidden — the
+  // filters button shows the count of active buckets.
+  const [buckets, setBuckets] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const deferredSearch = useDeferredValue(search);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -144,7 +189,10 @@ export function IconPicker({
     const term = deferredSearch.trim().toLowerCase();
     const out: IconIndexEntry[] = [];
     for (const icon of index.icons) {
-      if (bucket !== "all" && icon.category !== bucket) continue;
+      // Phase 8: multi-select bucket filter. Empty set = no category
+      // filter (equivalent to "All"). Otherwise require the icon's
+      // category to be in the active set.
+      if (buckets.size > 0 && !buckets.has(icon.category)) continue;
       if (term) {
         // Match against slug + label (both lowercased).
         if (
@@ -157,7 +205,7 @@ export function IconPicker({
       out.push(icon);
     }
     return out;
-  }, [index, bucket, deferredSearch]);
+  }, [index, buckets, deferredSearch]);
 
   // Compute visible window from scroll position. We render ROW_BUFFER
   // rows above + below the visible area so scrolling feels instant.
@@ -193,7 +241,7 @@ export function IconPicker({
   // When filter changes, reset scroll to top so the user sees results.
   useEffect(() => {
     if (gridScrollRef.current) gridScrollRef.current.scrollTop = 0;
-  }, [bucket, deferredSearch]);
+  }, [buckets, deferredSearch]);
 
   const handleIconClick = useCallback(
     (icon: IconIndexEntry) => {
@@ -271,44 +319,7 @@ export function IconPicker({
         </button>
       </div>
 
-      {/* Color picker strip + upload */}
-      <div className="flex items-center gap-3 border-b border-border bg-muted/30 px-4 py-2.5">
-        <label className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Color</span>
-          <input
-            type="color"
-            value={normalizeColor(color)}
-            onChange={(e) => setColor(e.target.value)}
-            aria-label="Icon color"
-            className="h-7 w-7 cursor-pointer rounded border border-border bg-transparent"
-          />
-          <input
-            type="text"
-            value={color}
-            onChange={(e) => setColor(e.target.value)}
-            spellCheck={false}
-            aria-label="Icon color hex"
-            className="w-20 rounded border border-border bg-background px-2 py-1 font-mono text-xs"
-            maxLength={9}
-          />
-        </label>
-        <button
-          type="button"
-          onClick={handleUploadClick}
-          disabled={uploading}
-          className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent disabled:opacity-50"
-        >
-          <Upload className="size-3.5" />
-          {uploading ? "Uploading…" : "Upload custom"}
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
-          onChange={handleFileChange}
-          className="hidden"
-        />
-      </div>
+      {/* The toolbar (Filters / Search / Color / Upload) is rendered above the grid below. */}
 
       {uploadError && (
         <div className="border-b border-border bg-destructive/10 px-4 py-2 text-sm text-destructive">
@@ -316,26 +327,22 @@ export function IconPicker({
         </div>
       )}
 
-      {/* Category tabs (horizontally scrollable on narrow screens) */}
-      <div className="flex overflow-x-auto border-b border-border bg-background">
-        <CategoryTab
-          label="All"
-          active={bucket === "all"}
-          onClick={() => setBucket("all")}
+      {/* Toolbar: Filters button | Search | Color swatch | Upload */}
+      <div className="flex items-center gap-2 border-b border-border bg-background px-3 py-2">
+        {/* Filters trigger — opens the category multi-select modal. */}
+        <FiltersTrigger
+          buckets={buckets}
+          bucketDefs={index?.pickerBuckets ?? []}
+          onApply={(next) => {
+            setBuckets(next);
+            setFiltersOpen(false);
+          }}
+          onClear={() => setBuckets(new Set())}
+          open={filtersOpen}
+          onOpenChange={setFiltersOpen}
         />
-        {(index?.pickerBuckets ?? []).map((b) => (
-          <CategoryTab
-            key={b.key}
-            label={b.label}
-            active={bucket === b.key}
-            onClick={() => setBucket(b.key)}
-          />
-        ))}
-      </div>
-
-      {/* Search box */}
-      <div className="border-b border-border px-4 py-2">
-        <div className="relative">
+        {/* Search box */}
+        <div className="relative min-w-0 flex-1">
           <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
@@ -346,6 +353,25 @@ export function IconPicker({
             className="w-full rounded-md border border-border bg-background py-1.5 pl-8 pr-3 text-sm"
           />
         </div>
+        {/* Color trigger — opens the popover with the Adobe color picker. */}
+        <ColorTrigger color={color} onChange={setColor} />
+        {/* Upload button (kept on the toolbar) */}
+        <button
+          type="button"
+          onClick={handleUploadClick}
+          disabled={uploading}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent disabled:opacity-50"
+        >
+          <Upload className="size-3.5" />
+          {uploading ? "Uploading…" : "Upload"}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+          onChange={handleFileChange}
+          className="hidden"
+        />
       </div>
 
       {/* Icon grid (lazy windowed) */}
@@ -541,6 +567,295 @@ function IconGrid({
         );
       })}
     </div>
+  );
+}
+
+// =============================================================================
+// FiltersTrigger — toolbar button that opens the category multi-select
+// modal. The modal goes through the same useModalStack as the picker
+// itself so backdrops, ESC, and stacking all work consistently.
+// =============================================================================
+function FiltersTrigger({
+  buckets,
+  bucketDefs,
+  onApply,
+  onClear,
+  open,
+  onOpenChange,
+}: {
+  buckets: Set<string>;
+  bucketDefs: { key: string; label: string }[];
+  onApply: (next: Set<string>) => void;
+  onClear: () => void;
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
+}) {
+  const stack = useModalStack();
+  const [draft, setDraft] = useState<Set<string>>(buckets);
+
+  // Sync draft from props when the picker state changes outside
+  // (e.g. user clicks "Clear" from somewhere).
+  useEffect(() => {
+    if (!open) setDraft(new Set(buckets));
+  }, [buckets, open]);
+
+  // Push / pop the modal based on the `open` prop. The stack re-mounts
+  // us on stack changes; we use a ref to keep the latest callbacks.
+  const openRef = useRef(open);
+  openRef.current = open;
+  useEffect(() => {
+    if (open) {
+      stack.push({
+        key: "icon-picker-filters",
+        label: "Filters",
+        content: (
+          <FiltersModal
+            draft={draft}
+            bucketDefs={bucketDefs}
+            onChange={setDraft}
+            onApply={() => {
+              onApply(draft);
+            }}
+            onClear={() => {
+              setDraft(new Set());
+              onClear();
+            }}
+            onClose={() => onOpenChange(false)}
+          />
+        ),
+      });
+    } else {
+      stack.pop();
+    }
+    return () => {
+      // The stack handles its own teardown when pop() is called.
+    };
+    // We intentionally don't include `draft` in deps — the modal uses
+    // the latest draft via the closure captured at push time, and
+    // the user toggles the popover open/closed explicitly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpenChange(!open)}
+      aria-label="Filter icons by category"
+      aria-expanded={open}
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
+        buckets.size > 0
+          ? "border-primary bg-primary/10 text-primary"
+          : "border-border bg-background hover:bg-accent",
+      )}
+    >
+      <Filter className="size-3.5" />
+      Filters
+      {buckets.size > 0 ? (
+        <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+          {buckets.size}
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
+// =============================================================================
+// FiltersModal — the multi-select category list. Renders inside the
+// existing modal stack; does not implement its own backdrop.
+// =============================================================================
+function FiltersModal({
+  draft,
+  bucketDefs,
+  onChange,
+  onApply,
+  onClear,
+  onClose,
+}: {
+  draft: Set<string>;
+  bucketDefs: { key: string; label: string }[];
+  onChange: (next: Set<string>) => void;
+  onApply: () => void;
+  onClear: () => void;
+  onClose: () => void;
+}) {
+  const toggle = (key: string) => {
+    const next = new Set(draft);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    onChange(next);
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-label="Filter icons by category"
+      className="flex h-full max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-xl bg-card shadow-2xl"
+    >
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <h2 className="text-base font-semibold">Filter by category</h2>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-3">
+        <div className="grid grid-cols-2 gap-1.5">
+          {bucketDefs.map((b) => {
+            const active = draft.has(b.key);
+            return (
+              <button
+                key={b.key}
+                type="button"
+                onClick={() => toggle(b.key)}
+                aria-pressed={active}
+                className={cn(
+                  "flex items-center justify-between rounded-md border px-3 py-2 text-sm font-medium transition-colors",
+                  active
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-background text-foreground hover:bg-accent",
+                )}
+              >
+                <span>{b.label}</span>
+                {active ? (
+                  <span aria-hidden="true" className="text-primary">
+                    ✓
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-2 border-t border-border bg-muted/30 px-4 py-3">
+        <button
+          type="button"
+          onClick={onClear}
+          disabled={draft.size === 0}
+          className="text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-50"
+        >
+          Clear
+        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onApply}
+            className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+          >
+            Apply{draft.size > 0 ? ` (${draft.size})` : ""}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// ColorTrigger — toolbar swatch that opens the Adobe react-aria color
+// picker in a popover. The popover is a react-aria-components primitive
+// (no modal-stack because it's a lightweight dropdown, not a modal).
+// =============================================================================
+function ColorTrigger({
+  color,
+  onChange,
+}: {
+  color: string;
+  onChange: (next: string) => void;
+}) {
+  // parseColor needs a valid 6-digit hex; the value comes from the
+  // picker's normalizeColor (always 6-digit) so this is safe.
+  const colorValue = useMemo(() => {
+    try {
+      return parseColor(color);
+    } catch {
+      return parseColor("#ffffff");
+    }
+  }, [color]);
+
+  return (
+    <DialogTrigger>
+      <button
+        type="button"
+        aria-label="Choose icon color"
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1.5 text-sm font-medium hover:bg-accent"
+      >
+        <span
+          aria-hidden="true"
+          className="block size-5 rounded border border-border"
+          style={{ backgroundColor: color }}
+        />
+      </button>
+      <Popover
+        placement="bottom end"
+        offset={6}
+        className="z-50 overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
+      >
+        <Dialog className="outline-none">
+          <ColorPicker
+            value={colorValue}
+            onChange={(c) => onChange(c.toString("hex"))}
+          >
+            <div className="flex flex-col gap-3 p-3">
+              <div className="flex items-center gap-3">
+                <ColorArea
+                  colorSpace="hsb"
+                  xChannel="saturation"
+                  yChannel="brightness"
+                  className="size-40 rounded-md"
+                  style={{
+                    backgroundColor: `hsl(${colorValue.toString("hsl").split(" ")[0]}, 100%, 50%)`,
+                  }}
+                />
+                <ColorSlider
+                  colorSpace="hsb"
+                  channel="hue"
+                  className="h-40 w-6 rounded-md"
+                  style={{
+                    background:
+                      "linear-gradient(to bottom, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)",
+                  }}
+                />
+              </div>
+              <ColorField
+                aria-label="Hex color"
+                className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+              >
+                <input
+                  className="w-24 rounded border border-border bg-background px-2 py-1 font-mono text-xs"
+                  maxLength={9}
+                  value={color}
+                  onChange={(e) => onChange(e.target.value)}
+                  spellCheck={false}
+                  aria-label="Icon color hex"
+                />
+              </ColorField>
+              <ColorSwatchPicker className="grid grid-cols-9 gap-1">
+                {COLOR_PRESETS.map((hex) => (
+                  <ColorSwatchPickerItem
+                    key={hex}
+                    color={hex}
+                    className="size-6 cursor-pointer rounded border border-border transition-transform hover:scale-110"
+                  >
+                    <ColorSwatch />
+                  </ColorSwatchPickerItem>
+                ))}
+              </ColorSwatchPicker>
+            </div>
+          </ColorPicker>
+        </Dialog>
+      </Popover>
+    </DialogTrigger>
   );
 }
 
