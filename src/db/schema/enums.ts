@@ -82,3 +82,23 @@ export const itemRarityEnum = pgEnum("item_rarity", [
   "EPIC",
   "LEGENDARY",
 ]);
+
+/**
+ * Phase 8: icon system. Every entity (primitive/effect/capability/
+ * template/item) can have a single icon attached. The icon is either:
+ *   - GAME_ICONS: a game-icons.net slug (e.g. "lorc/sword-brandish"),
+ *     served via the /api/icons/game/[author]/[slug] proxy which
+ *     recolors the SVG to the entity's icon_color and caches it
+ *     immutably at the edge.
+ *   - UPLOAD: a custom image stored in private Vercel Blob at
+ *     "user-uploads/<uuid>.<ext>", proxied through Clerk-auth
+ *     /api/icons/blob/[...path].
+ *
+ * The enum is intentionally narrow — only the two sources we support
+ * today. Adding new sources later (e.g. AI-generated icons) is an
+ * additive migration; existing rows keep their enum value.
+ */
+export const iconSourceEnum = pgEnum("icon_source", [
+  "GAME_ICONS",
+  "UPLOAD",
+]);

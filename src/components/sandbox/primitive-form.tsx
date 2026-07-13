@@ -20,6 +20,7 @@ import { VisibilitySelect, type Visibility } from "@/components/library/visibili
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
 import { computePrimitiveContentHash } from "@/lib/publishing/hash-content";
 import { useGlobalControls } from "@/components/layout/global-controls";
+import { IconSlot } from "@/components/icons/icon-slot";
 
 type PrimitiveRow = {
   id: number;
@@ -36,6 +37,11 @@ type PrimitiveRow = {
   mirrorBuCredit: number;
   mirrorEligibilityNotes: string;
   hardModifiers: unknown;
+  // Phase 8: per-entity iconography
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 };
 
 export type ModifierDraft = {
@@ -182,6 +188,11 @@ const blankForm: PrimitiveFormState = {
   mirrorVector: "STANDARD_ONLY",
   mirrorBuCredit: "0",
   mirrorEligibilityNotes: "",
+  // Phase 8: per-entity iconography
+  iconSource: null,
+  iconKey: null,
+  iconUrl: null,
+  iconColor: "#ffffff",
 };
 
 function categoryLabel(category: string) {
@@ -393,6 +404,11 @@ export function PrimitiveForm({
       mirrorVector: initialPrimitive.mirrorVector,
       mirrorBuCredit: String(initialPrimitive.mirrorBuCredit),
       mirrorEligibilityNotes: initialPrimitive.mirrorEligibilityNotes,
+      // Phase 8: per-entity iconography
+      iconSource: initialPrimitive.iconSource,
+      iconKey: initialPrimitive.iconKey,
+      iconUrl: initialPrimitive.iconUrl,
+      iconColor: initialPrimitive.iconColor,
     });
     setModifiers(drafts);
     setModifierCounter(drafts.length);
@@ -501,6 +517,11 @@ export function PrimitiveForm({
         mirrorBuCredit: form.mirrorBuCredit,
         mirrorEligibilityNotes: form.mirrorEligibilityNotes,
         hardModifiers: modifiers.map(toHardModifier),
+        // Phase 8: per-entity iconography
+        iconSource: form.iconSource,
+        iconKey: form.iconKey,
+        iconUrl: form.iconUrl,
+        iconColor: form.iconColor,
       });
 
       const response = await fetch("/api/primitives", {
@@ -705,6 +726,20 @@ export function PrimitiveForm({
           required
         />
       </label>
+
+      {/* Phase 8: per-entity iconography */}
+      <div className="md:col-span-2">
+        <IconSlot
+          iconSource={form.iconSource ?? null}
+          iconKey={form.iconKey ?? null}
+          iconUrl={form.iconUrl ?? null}
+          iconColor={form.iconColor ?? "#ffffff"}
+          onChange={(next) => setForm({ ...form, ...next })}
+          size={56}
+          label="Icon"
+          helper="Pick from game-icons.net or upload your own."
+        />
+      </div>
 
       <label className="block text-sm font-medium">
         Lexicon Category

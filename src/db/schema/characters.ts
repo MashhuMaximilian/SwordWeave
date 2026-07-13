@@ -23,6 +23,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import { iconSourceEnum } from "./enums";
 import { timestamps } from "./common";
 import { entities } from "./entities";
 import { items } from "./items";
@@ -269,6 +270,13 @@ export const templates = pgTable(
     isPublic: boolean("is_public").notNull().default(false),
     sourceOrigin: text("source_origin"),
     contentHash: text("content_hash"),
+    // Phase 8: per-entity iconography (see engine.ts primitives for
+    // rationale). Templates share the same icon contract as every
+    // other entity — single source, single key/url, single color.
+    iconSource: iconSourceEnum("icon_source"),
+    iconKey: text("icon_key"),
+    iconUrl: text("icon_url"),
+    iconColor: text("icon_color").notNull().default("#ffffff"),
     ...timestamps,
   },
   (table) => [

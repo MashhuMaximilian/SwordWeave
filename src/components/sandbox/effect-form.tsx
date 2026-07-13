@@ -10,6 +10,8 @@ import { useRouter } from "next/navigation";
 import type { EffectFormState, SlottedPrimitive } from "./effect-form-preview";
 import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
+import { computeEffectContentHash } from "@/lib/publishing/hash-content";
+import { IconSlot } from "@/components/icons/icon-slot";
 
 type EffectRow = {
   id: string;
@@ -30,6 +32,11 @@ type EffectRow = {
       buCost: number;
     };
   }>;
+  // Phase 8: per-entity iconography
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 };
 
 export type EffectFormSlot = {
@@ -56,6 +63,11 @@ const blankForm: EffectFormState = {
   sourceOrigin: "",
   tags: "",
   isPublic: false,
+  // Phase 8: per-entity iconography
+  iconSource: null,
+  iconKey: null,
+  iconUrl: null,
+  iconColor: "#ffffff",
 };
 
 export function EffectForm({

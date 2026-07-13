@@ -44,6 +44,15 @@ export interface CanonicalPrimitivePayload {
   mirrorBuCredit: number;
   mirrorEligibilityNotes: string;
   hardModifiers: readonly HardModifier[];
+  // Phase 8: per-entity iconography. The icon is part of the entity's
+  // identity, so a changed icon must trigger a content-hash diff and
+  // therefore a save (per the no-op detection rules). Nullable fields
+  // are coerced to empty strings / nulls so the canonical JSON is stable
+  // across rows that have vs haven't been icon'd.
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 }
 
 /**
@@ -70,6 +79,10 @@ export function buildCanonicalPrimitivePayload(args: {
   mirrorBuCredit: string | number;
   mirrorEligibilityNotes: string;
   hardModifiers: readonly HardModifier[];
+  iconSource?: string | null;
+  iconKey?: string | null;
+  iconUrl?: string | null;
+  iconColor?: string;
 }): CanonicalPrimitivePayload {
   const buCostNum =
     typeof args.buCost === "number" ? args.buCost : Number(args.buCost) || 0;
@@ -95,6 +108,10 @@ export function buildCanonicalPrimitivePayload(args: {
     mirrorBuCredit: mirrorBuCreditNum,
     mirrorEligibilityNotes: args.mirrorEligibilityNotes,
     hardModifiers: args.hardModifiers,
+    iconSource: args.iconSource ?? null,
+    iconKey: args.iconKey ?? null,
+    iconUrl: args.iconUrl ?? null,
+    iconColor: args.iconColor ?? "#ffffff",
   };
 }
 
@@ -187,6 +204,10 @@ export async function computePrimitiveContentHash(args: {
   mirrorBuCredit: string | number;
   mirrorEligibilityNotes: string;
   hardModifiers: readonly HardModifier[];
+  iconSource?: string | null;
+  iconKey?: string | null;
+  iconUrl?: string | null;
+  iconColor?: string;
 }): Promise<string> {
   const payload = buildCanonicalPrimitivePayload(args);
   return hashPrimitiveContent(payload);
@@ -223,6 +244,11 @@ export interface CanonicalEffectPayload {
   tags: readonly string[];
   isPublic: boolean;
   primitiveSlots: readonly { primitiveId: number; quantity: number; notes: string }[];
+  // Phase 8: per-entity iconography (see CanonicalPrimitivePayload).
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 }
 
 export function buildCanonicalEffectPayload(args: {
@@ -231,6 +257,10 @@ export function buildCanonicalEffectPayload(args: {
   tags: readonly string[];
   isPublic: boolean;
   primitiveSlots: readonly { primitiveId: number; quantity: number; notes: string }[];
+  iconSource?: string | null;
+  iconKey?: string | null;
+  iconUrl?: string | null;
+  iconColor?: string;
 }): CanonicalEffectPayload {
   // Sort slots by primitiveId so the hash is order-independent. (The original
   // form preserves user-chosen order via sortOrder in the DB; for the
@@ -250,6 +280,10 @@ export function buildCanonicalEffectPayload(args: {
     tags: [...args.tags].map((t) => t.trim()).filter(Boolean).sort(),
     isPublic: Boolean(args.isPublic),
     primitiveSlots: sortedSlots,
+    iconSource: args.iconSource ?? null,
+    iconKey: args.iconKey ?? null,
+    iconUrl: args.iconUrl ?? null,
+    iconColor: args.iconColor ?? "#ffffff",
   };
 }
 
@@ -270,6 +304,10 @@ export async function computeEffectContentHash(args: {
   tags: readonly string[];
   isPublic: boolean;
   primitiveSlots: readonly { primitiveId: number; quantity: number; notes: string }[];
+  iconSource?: string | null;
+  iconKey?: string | null;
+  iconUrl?: string | null;
+  iconColor?: string;
 }): Promise<string> {
   return hashEffectContent(buildCanonicalEffectPayload(args));
 }
@@ -295,6 +333,11 @@ export interface CanonicalCapabilityPayload {
    * stores per-slot metadata; the hash just doesn't read it.
    */
   effectIds: readonly string[];
+  // Phase 8: per-entity iconography (see CanonicalPrimitivePayload).
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 }
 
 export function buildCanonicalCapabilityPayload(args: {
@@ -306,6 +349,10 @@ export function buildCanonicalCapabilityPayload(args: {
   isPublic: boolean;
   primitiveSlots: readonly { primitiveId: number; role: string; quantity: number; slotLabel: string; notes: string }[];
   effectIds: readonly string[];
+  iconSource?: string | null;
+  iconKey?: string | null;
+  iconUrl?: string | null;
+  iconColor?: string;
 }): CanonicalCapabilityPayload {
   const sortedPrimitives = [...args.primitiveSlots]
     .map((s) => ({
@@ -326,6 +373,10 @@ export function buildCanonicalCapabilityPayload(args: {
     isPublic: Boolean(args.isPublic),
     primitiveSlots: sortedPrimitives,
     effectIds: [...args.effectIds].sort(),
+    iconSource: args.iconSource ?? null,
+    iconKey: args.iconKey ?? null,
+    iconUrl: args.iconUrl ?? null,
+    iconColor: args.iconColor ?? "#ffffff",
   };
 }
 
@@ -349,6 +400,10 @@ export async function computeCapabilityContentHash(args: {
   isPublic: boolean;
   primitiveSlots: readonly { primitiveId: number; role: string; quantity: number; slotLabel: string; notes: string }[];
   effectIds: readonly string[];
+  iconSource?: string | null;
+  iconKey?: string | null;
+  iconUrl?: string | null;
+  iconColor?: string;
 }): Promise<string> {
   return hashCapabilityContent(buildCanonicalCapabilityPayload(args));
 }
@@ -373,6 +428,11 @@ export interface CanonicalItemPayload {
   primitiveIds: readonly number[];
   capabilityIds: readonly string[];
   effectIds: readonly string[];
+  // Phase 8: per-entity iconography (see CanonicalPrimitivePayload).
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 }
 
 export function buildCanonicalItemPayload(args: {
@@ -391,6 +451,10 @@ export function buildCanonicalItemPayload(args: {
   primitiveIds: readonly number[];
   capabilityIds: readonly string[];
   effectIds: readonly string[];
+  iconSource?: string | null;
+  iconKey?: string | null;
+  iconUrl?: string | null;
+  iconColor?: string;
 }): CanonicalItemPayload {
   return {
     name: args.name.trim(),
@@ -408,6 +472,10 @@ export function buildCanonicalItemPayload(args: {
     primitiveIds: [...args.primitiveIds].sort((a, b) => a - b),
     capabilityIds: [...args.capabilityIds].sort(),
     effectIds: [...args.effectIds].sort(),
+    iconSource: args.iconSource ?? null,
+    iconKey: args.iconKey ?? null,
+    iconUrl: args.iconUrl ?? null,
+    iconColor: args.iconColor ?? "#ffffff",
   };
 }
 
@@ -438,6 +506,10 @@ export async function computeItemContentHash(args: {
   primitiveIds: readonly number[];
   capabilityIds: readonly string[];
   effectIds: readonly string[];
+  iconSource?: string | null;
+  iconKey?: string | null;
+  iconUrl?: string | null;
+  iconColor?: string;
 }): Promise<string> {
   return hashItemContent(buildCanonicalItemPayload(args));
 }
@@ -454,6 +526,11 @@ export interface CanonicalTemplatePayload {
   isPublic: boolean;
   primitiveIds: readonly number[];
   capabilityIds: readonly string[];
+  // Phase 8: per-entity iconography (see CanonicalPrimitivePayload).
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 }
 
 export function buildCanonicalTemplatePayload(args: {
@@ -464,6 +541,10 @@ export function buildCanonicalTemplatePayload(args: {
   isPublic: boolean;
   primitiveIds: readonly number[];
   capabilityIds: readonly string[];
+  iconSource?: string | null;
+  iconKey?: string | null;
+  iconUrl?: string | null;
+  iconColor?: string;
 }): CanonicalTemplatePayload {
   return {
     kind: args.kind,
@@ -473,6 +554,10 @@ export function buildCanonicalTemplatePayload(args: {
     isPublic: Boolean(args.isPublic),
     primitiveIds: [...args.primitiveIds].sort((a, b) => a - b),
     capabilityIds: [...args.capabilityIds].sort(),
+    iconSource: args.iconSource ?? null,
+    iconKey: args.iconKey ?? null,
+    iconUrl: args.iconUrl ?? null,
+    iconColor: args.iconColor ?? "#ffffff",
   };
 }
 
@@ -495,6 +580,10 @@ export async function computeTemplateContentHash(args: {
   isPublic: boolean;
   primitiveIds: readonly number[];
   capabilityIds: readonly string[];
+  iconSource?: string | null;
+  iconKey?: string | null;
+  iconUrl?: string | null;
+  iconColor?: string;
 }): Promise<string> {
   return hashTemplateContent(buildCanonicalTemplatePayload(args));
 }

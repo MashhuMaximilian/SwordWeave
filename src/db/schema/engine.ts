@@ -11,15 +11,15 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import type { HardModifier, JsonValue } from "@/types/swordweave";
-import { timestamps } from "./common";
 import {
   capabilityPrimitiveRoleEnum,
   capabilityTypeEnum,
+  iconSourceEnum,
   primitiveCategoryEnum,
   sourceTypeEnum,
 } from "./enums";
-
+import { timestamps } from "./common";
+import type { HardModifier, JsonValue } from "@/types/swordweave";
 export const primitives = pgTable(
   "primitives",
   {
@@ -82,6 +82,17 @@ export const primitives = pgTable(
      * src/lib/publishing/dispatch-save.ts.
      */
     contentHash: text("content_hash"),
+    // Phase 8: per-entity iconography. Source is either GAME_ICONS (slug
+    // in iconKey) or UPLOAD (blob path in iconUrl). iconColor is the
+    // creator's chosen hex color, applied at render time by either the
+    // /api/icons/game proxy (game-icons) or rendered as-is (uploads).
+    // Nullable iconSource/iconKey/iconUrl so existing rows remain valid
+    // (iconColor is NOT NULL with a #ffffff default — no migration
+    // backfill needed).
+    iconSource: iconSourceEnum("icon_source"),
+    iconKey: text("icon_key"),
+    iconUrl: text("icon_url"),
+    iconColor: text("icon_color").notNull().default("#ffffff"),
     ...timestamps,
   },
   (table) => [
@@ -146,6 +157,10 @@ export const effects = pgTable(
       .notNull()
       .default(sql`ARRAY[]::text[]`),
     contentHash: text("content_hash"),
+    iconSource: iconSourceEnum("icon_source"),
+    iconKey: text("icon_key"),
+    iconUrl: text("icon_url"),
+    iconColor: text("icon_color").notNull().default("#ffffff"),
     ...timestamps,
   },
   (table) => [
@@ -227,6 +242,10 @@ export const capabilities = pgTable(
       .notNull()
       .default(sql`'{}'::jsonb`),
     contentHash: text("content_hash"),
+    iconSource: iconSourceEnum("icon_source"),
+    iconKey: text("icon_key"),
+    iconUrl: text("icon_url"),
+    iconColor: text("icon_color").notNull().default("#ffffff"),
     ...timestamps,
   },
   (table) => [

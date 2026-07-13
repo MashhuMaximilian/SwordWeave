@@ -10,7 +10,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { timestamps } from "./common";
-import { itemRarityEnum, itemTypeEnum } from "./enums";
+import { itemRarityEnum, iconSourceEnum, itemTypeEnum } from "./enums";
 import { entities } from "./entities";
 import { capabilities, effects, primitives } from "./engine";
 
@@ -42,6 +42,10 @@ export const items = pgTable(
       .notNull()
       .default(sql`ARRAY[]::text[]`),
     contentHash: text("content_hash"),
+    iconSource: iconSourceEnum("icon_source"),
+    iconKey: text("icon_key"),
+    iconUrl: text("icon_url"),
+    iconColor: text("icon_color").notNull().default("#ffffff"),
     ...timestamps,
   },
   (table) => [

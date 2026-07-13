@@ -155,6 +155,10 @@ describe("isPrimitiveDraftEmpty", () => {
       mirrorBuCredit: 0,
       mirrorEligibilityNotes: "",
       hardModifiers: [],
+      iconSource: null,
+      iconKey: null,
+      iconUrl: null,
+      iconColor: "#ffffff",
     })).toBe(true);
     expect(isPrimitiveDraftEmpty({
       name: "   ",
@@ -169,6 +173,10 @@ describe("isPrimitiveDraftEmpty", () => {
       mirrorBuCredit: 0,
       mirrorEligibilityNotes: "",
       hardModifiers: [],
+      iconSource: null,
+      iconKey: null,
+      iconUrl: null,
+      iconColor: "#ffffff",
     })).toBe(true);
   });
 
@@ -186,6 +194,10 @@ describe("isPrimitiveDraftEmpty", () => {
       mirrorBuCredit: 0,
       mirrorEligibilityNotes: "",
       hardModifiers: [],
+      iconSource: null,
+      iconKey: null,
+      iconUrl: null,
+      iconColor: "#ffffff",
     })).toBe(false);
   });
 });
