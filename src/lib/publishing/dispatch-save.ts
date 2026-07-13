@@ -431,6 +431,12 @@ async function backfillSourceHash(
       mirrorBuCredit: source.mirrorBuCredit,
       mirrorEligibilityNotes: source.mirrorEligibilityNotes ?? "",
       hardModifiers: source.hardModifiers ?? [],
+      // Phase 8: include icon fields so the backfilled hash matches
+      // what the form will compute on the next save.
+      iconSource: source.iconSource,
+      iconKey: source.iconKey,
+      iconUrl: source.iconUrl,
+      iconColor: source.iconColor,
     });
     await db
       .update(primitives)
@@ -464,6 +470,12 @@ async function backfillSourceHash(
         quantity: l.quantity,
         notes: l.notes ?? "",
       })),
+      // Phase 8: include icon fields so the backfilled hash matches
+      // what the form will compute on the next save.
+      iconSource: source.iconSource,
+      iconKey: source.iconKey,
+      iconUrl: source.iconUrl,
+      iconColor: source.iconColor,
     });
     await db
       .update(effects)
@@ -517,6 +529,12 @@ async function backfillSourceHash(
         notes: l.notes ?? "",
       })),
       effectIds: effLinks.map((l) => l.effectId),
+      // Phase 8: include icon fields so the backfilled hash matches
+      // what the form will compute on the next save.
+      iconSource: source.iconSource,
+      iconKey: source.iconKey,
+      iconUrl: source.iconUrl,
+      iconColor: source.iconColor,
     });
     await db
       .update(capabilities)
@@ -571,6 +589,12 @@ async function backfillSourceHash(
       primitiveIds: primIds.map((r) => r.id),
       capabilityIds: capIds.map((r) => r.id),
       effectIds: effIds.map((r) => r.id),
+      // Phase 8: include icon fields so the backfilled hash matches
+      // what the form will compute on the next save.
+      iconSource: source.iconSource,
+      iconKey: source.iconKey,
+      iconUrl: source.iconUrl,
+      iconColor: source.iconColor,
     });
     await db
       .update(items)
@@ -610,6 +634,12 @@ async function backfillSourceHash(
       isPublic: source.isPublic,
       primitiveIds: primIds.map((r) => r.id),
       capabilityIds: capIds.map((r) => r.id),
+      // Phase 8: include icon fields so the backfilled hash matches
+      // what the form will compute on the next save.
+      iconSource: source.iconSource,
+      iconKey: source.iconKey,
+      iconUrl: source.iconUrl,
+      iconColor: source.iconColor,
     });
     await db
       .update(templates)

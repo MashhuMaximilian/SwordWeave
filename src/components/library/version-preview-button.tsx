@@ -59,6 +59,11 @@ function mapPayloadToPreviewItem(
       mirrorBuCredit: Number(payload["mirrorBuCredit"]) || 0,
       mirrorEligibilityNotes: String(payload["mirrorEligibilityNotes"] ?? ""),
       hardModifiers: payload["hardModifiers"],
+      // Phase 8: per-entity iconography (from the version's stored payload).
+      iconSource: (payload["iconSource"] as "GAME_ICONS" | "UPLOAD" | null) ?? null,
+      iconKey: (payload["iconKey"] as string | null) ?? null,
+      iconUrl: (payload["iconUrl"] as string | null) ?? null,
+      iconColor: String(payload["iconColor"] ?? "#ffffff"),
     };
     return { kind: "primitive", row };
   }
@@ -89,6 +94,11 @@ function mapPayloadToPreviewItem(
       tags: Array.isArray(payload["tags"]) ? (payload["tags"] as string[]) : [],
       isPublic: Boolean(payload["isPublic"]),
       primitiveLinks,
+      // Phase 8: per-entity iconography
+      iconSource: (payload["iconSource"] as "GAME_ICONS" | "UPLOAD" | null) ?? null,
+      iconKey: (payload["iconKey"] as string | null) ?? null,
+      iconUrl: (payload["iconUrl"] as string | null) ?? null,
+      iconColor: String(payload["iconColor"] ?? "#ffffff"),
     };
     return { kind: "effect", row };
   }
@@ -150,6 +160,11 @@ function mapPayloadToPreviewItem(
       isPublic: Boolean(payload["isPublic"]),
       primitiveLinks,
       effectLinks,
+      // Phase 8: per-entity iconography
+      iconSource: (payload["iconSource"] as "GAME_ICONS" | "UPLOAD" | null) ?? null,
+      iconKey: (payload["iconKey"] as string | null) ?? null,
+      iconUrl: (payload["iconUrl"] as string | null) ?? null,
+      iconColor: String(payload["iconColor"] ?? "#ffffff"),
     };
     return { kind: "capability", row };
   }
@@ -192,6 +207,11 @@ function mapPayloadToPreviewItem(
       isPublic: Boolean(payload["isPublic"]),
       primitiveLinks,
       capabilityLinks,
+      // Phase 8: per-entity iconography
+      iconSource: (payload["iconSource"] as "GAME_ICONS" | "UPLOAD" | null) ?? null,
+      iconKey: (payload["iconKey"] as string | null) ?? null,
+      iconUrl: (payload["iconUrl"] as string | null) ?? null,
+      iconColor: String(payload["iconColor"] ?? "#ffffff"),
     };
     return { kind: "template", row };
   }
@@ -264,6 +284,11 @@ function mapPayloadToPreviewItem(
       primitiveLinks,
       effectLinks,
       capabilityLinks,
+      // Phase 8: per-entity iconography
+      iconSource: (payload["iconSource"] as "GAME_ICONS" | "UPLOAD" | null) ?? null,
+      iconKey: (payload["iconKey"] as string | null) ?? null,
+      iconUrl: (payload["iconUrl"] as string | null) ?? null,
+      iconColor: String(payload["iconColor"] ?? "#ffffff"),
     };
     return { kind: "item", row };
   }

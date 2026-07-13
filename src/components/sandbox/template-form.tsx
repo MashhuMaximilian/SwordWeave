@@ -18,6 +18,8 @@ import type {
   TemplateSlot,
 } from "./template-form-preview";
 import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
+import { IconSlot } from "@/components/icons/icon-slot";
+import type { IconSource } from "@/components/icons/icon-display";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
 
 type TemplateRow = {
@@ -38,6 +40,11 @@ type TemplateRow = {
       buCost: number;
     };
   }>;
+  // Phase 8: per-entity iconography
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string | null;
 };
 
 const blankForm: TemplateFormState = {
@@ -47,6 +54,11 @@ const blankForm: TemplateFormState = {
   description: "",
   suggestedTraits: "",
   isPublic: false,
+  // Phase 8: per-entity iconography
+  iconSource: null,
+  iconKey: null,
+  iconUrl: null,
+  iconColor: "#ffffff",
 };
 
 function expectedCategory(kind: string): string {
@@ -149,6 +161,11 @@ export function TemplateForm({
       description: initialTemplate.description ?? "",
       suggestedTraits: initialTemplate.suggestedTraits ?? "",
       isPublic: initialTemplate.isPublic,
+      // Phase 8: per-entity iconography
+      iconSource: initialTemplate.iconSource,
+      iconKey: initialTemplate.iconKey,
+      iconUrl: initialTemplate.iconUrl,
+      iconColor: initialTemplate.iconColor ?? "#ffffff",
     });
     // Check for a saved draft (e.g. when the form unmounted in the panel
     // and remounted in the drawer). If a draft exists, restore primitiveIds
@@ -440,6 +457,26 @@ export function TemplateForm({
           </button>
         </div>
       </div>
+
+      {/* Phase 8: per-entity iconography */}
+      <IconSlot
+        iconSource={(form.iconSource as IconSource | null) ?? null}
+        iconKey={form.iconKey}
+        iconUrl={form.iconUrl}
+        iconColor={form.iconColor}
+        onChange={(next) =>
+          setForm({
+            ...form,
+            iconSource: next.iconSource,
+            iconKey: next.iconKey ?? null,
+            iconUrl: next.iconUrl ?? null,
+            iconColor: next.iconColor,
+          })
+        }
+        size={56}
+        label="Icon"
+        helper="Pick from game-icons.net or upload your own."
+      />
 
       <label className="block text-sm font-medium">
         Name

@@ -13,6 +13,8 @@ import type {
 } from "./capability-form-preview";
 import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
+import { IconSlot } from "@/components/icons/icon-slot";
+import type { IconSource } from "@/components/icons/icon-display";
 import {
   saveDraft,
   loadDraft,
@@ -44,6 +46,11 @@ type CapabilityRow = {
       buCost: number;
     };
   }>;
+  // Phase 8: per-entity iconography
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string | null;
 };
 
 const SLOT_ROLES = [
@@ -94,6 +101,11 @@ const blankForm: CapabilityFormState = {
   sourceOrigin: "",
   tags: "",
   isPublic: false,
+  // Phase 8: per-entity iconography
+  iconSource: null,
+  iconKey: null,
+  iconUrl: null,
+  iconColor: "#ffffff",
 };
 
 export function CapabilityForm({
@@ -172,6 +184,11 @@ export function CapabilityForm({
       sourceOrigin: initialCapability.sourceOrigin ?? "",
       tags: (initialCapability.tags ?? []).join(", "),
       isPublic: initialCapability.isPublic,
+      // Phase 8: per-entity iconography
+      iconSource: initialCapability.iconSource,
+      iconKey: initialCapability.iconKey,
+      iconUrl: initialCapability.iconUrl,
+      iconColor: initialCapability.iconColor ?? "#ffffff",
     });
     if (draft) {
       // Restore effectIds from the draft.
@@ -493,6 +510,26 @@ export function CapabilityForm({
           Reset
         </button>
       </div>
+
+      {/* Phase 8: per-entity iconography */}
+      <IconSlot
+        iconSource={(form.iconSource as IconSource | null) ?? null}
+        iconKey={form.iconKey}
+        iconUrl={form.iconUrl}
+        iconColor={form.iconColor}
+        onChange={(next) =>
+          setForm({
+            ...form,
+            iconSource: next.iconSource,
+            iconKey: next.iconKey ?? null,
+            iconUrl: next.iconUrl ?? null,
+            iconColor: next.iconColor,
+          })
+        }
+        size={56}
+        label="Icon"
+        helper="Pick from game-icons.net or upload your own."
+      />
 
       <label className="block text-sm font-medium">
         Capability Name

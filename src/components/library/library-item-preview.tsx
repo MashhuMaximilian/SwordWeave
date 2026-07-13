@@ -26,6 +26,7 @@ import { Markdown } from "@/components/ui/markdown";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 import { ChevronRight, History, Link2, Sparkles } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
+import { IconDisplay } from "@/components/icons/icon-display";
 
 // ---- Entity types (mirrored from sandbox-preview-modal.tsx) ----------------
 
@@ -55,6 +56,11 @@ export type SandboxPrimitiveRow = {
   mirrorBuCredit: number;
   mirrorEligibilityNotes: string;
   hardModifiers?: unknown;
+  // Phase 8: per-entity iconography
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 };
 
 export type SandboxEffectRow = {
@@ -76,6 +82,11 @@ export type SandboxEffectRow = {
       };
     } & WithVersion
   >;
+  // Phase 8: per-entity iconography
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 };
 
 export type SandboxCapabilityRow = {
@@ -128,6 +139,11 @@ export type SandboxCapabilityRow = {
       };
     } & WithVersion
   >;
+  // Phase 8: per-entity iconography
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 };
 
 export type SandboxTemplateRow = {
@@ -162,6 +178,11 @@ export type SandboxTemplateRow = {
       };
     } & WithVersion
   >;
+  // Phase 8: per-entity iconography
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 };
 
 export type SandboxItemRow = {
@@ -224,6 +245,11 @@ export type SandboxItemRow = {
       };
     } & WithVersion
   >;
+  // Phase 8: per-entity iconography
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 };
 
 export type SandboxPreviewItem =
@@ -680,9 +706,25 @@ function EffectBody({
       */}
       <div className="rounded-lg border border-border bg-card/50 p-4">
         <div className="flex items-center gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-gradient-to-br from-violet-500/20 to-cyan-500/20">
-            <Sparkles className="size-5 text-primary" />
-          </div>
+          {/* Phase 8: render the entity's chosen icon, falling back to the
+              generic Sparkles glyph when no icon is set. The IconDisplay
+              component is the canonical renderer for the three states
+              (none / game-icons / upload) and applies iconColor itself. */}
+          {row.iconSource ? (
+            <IconDisplay
+              iconSource={row.iconSource as "GAME_ICONS" | "UPLOAD"}
+              iconKey={row.iconKey}
+              iconUrl={row.iconUrl}
+              iconColor={row.iconColor}
+              size={40}
+              className="rounded-md border border-border"
+              alt={row.name}
+            />
+          ) : (
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-gradient-to-br from-violet-500/20 to-cyan-500/20">
+              <Sparkles className="size-5 text-primary" />
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               Effect

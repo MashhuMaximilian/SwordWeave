@@ -303,6 +303,10 @@ export default async function GrammarSandboxPage({
           mirrorBuCredit: number;
           mirrorEligibilityNotes: string;
           hardModifiers: unknown;
+          iconSource: string | null;
+          iconKey: string | null;
+          iconUrl: string | null;
+          iconColor: string | null;
         };
         return {
           id: row.id,
@@ -318,6 +322,12 @@ export default async function GrammarSandboxPage({
           mirrorBuCredit: row.mirrorBuCredit,
           mirrorEligibilityNotes: row.mirrorEligibilityNotes,
           hardModifiers: row.hardModifiers,
+          iconSource: row.iconSource,
+          iconKey: row.iconKey,
+          iconUrl: row.iconUrl,
+          // iconColor is NOT NULL in the DB with a '#ffffff' default
+          // but the row type allows null defensively; coerce.
+          iconColor: row.iconColor ?? "#ffffff",
         };
       })}
       effects={(effectRows as never[]).map((e) => {
@@ -338,6 +348,10 @@ export default async function GrammarSandboxPage({
               buCost: number;
             };
           }>;
+          iconSource: string | null;
+          iconKey: string | null;
+          iconUrl: string | null;
+          iconColor: string | null;
         };
         return {
           id: row.id,
@@ -346,6 +360,11 @@ export default async function GrammarSandboxPage({
           sourceOrigin: row.sourceOrigin,
           tags: row.tags ?? [],
           isPublic: row.isPublic,
+          iconSource: row.iconSource,
+          iconKey: row.iconKey,
+          iconUrl: row.iconUrl,
+          // See primitive-row mapping above — coerce nulls to default.
+          iconColor: row.iconColor ?? "#ffffff",
           primitiveLinks: (row.primitiveLinks ?? []).map((l) => ({
             primitiveId: l.primitiveId,
             quantity: l.quantity,
@@ -389,6 +408,10 @@ export default async function GrammarSandboxPage({
               sourceOrigin: string | null;
             };
           }>;
+          iconSource: string | null;
+          iconKey: string | null;
+          iconUrl: string | null;
+          iconColor: string | null;
         };
         return {
           id: row.id,
@@ -399,6 +422,11 @@ export default async function GrammarSandboxPage({
           tags: row.tags ?? [],
           isPublic: row.isPublic,
           verboseDescription: row.verboseDescription,
+          // Phase 8: per-entity iconography
+          iconSource: row.iconSource,
+          iconKey: row.iconKey,
+          iconUrl: row.iconUrl,
+          iconColor: row.iconColor ?? "#ffffff",
           // Pass the real primitiveLinks so the preview shows the
           // composed primitives. The form also reads from this when
           // loading a capability into the build.

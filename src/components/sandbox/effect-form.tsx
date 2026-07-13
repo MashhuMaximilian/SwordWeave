@@ -12,6 +12,7 @@ import { VisibilitySelect, type Visibility } from "@/components/library/visibili
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
 import { computeEffectContentHash } from "@/lib/publishing/hash-content";
 import { IconSlot } from "@/components/icons/icon-slot";
+import type { IconSource } from "@/components/icons/icon-display";
 
 type EffectRow = {
   id: string;
@@ -136,6 +137,11 @@ export function EffectForm({
       sourceOrigin: initialEffect.sourceOrigin ?? "",
       tags: (initialEffect.tags ?? []).join(", "),
       isPublic: initialEffect.isPublic,
+      // Phase 8: per-entity iconography
+      iconSource: initialEffect.iconSource,
+      iconKey: initialEffect.iconKey,
+      iconUrl: initialEffect.iconUrl,
+      iconColor: initialEffect.iconColor,
     });
     setSlots(
       initialEffect.primitiveLinks.map((link) => ({
@@ -365,6 +371,26 @@ export function EffectForm({
           Reset
         </button>
       </div>
+
+      {/* Phase 8: per-entity iconography */}
+      <IconSlot
+        iconSource={(form.iconSource as IconSource | null) ?? null}
+        iconKey={form.iconKey}
+        iconUrl={form.iconUrl}
+        iconColor={form.iconColor}
+        onChange={(next) =>
+          setForm({
+            ...form,
+            iconSource: next.iconSource,
+            iconKey: next.iconKey ?? null,
+            iconUrl: next.iconUrl ?? null,
+            iconColor: next.iconColor,
+          })
+        }
+        size={56}
+        label="Icon"
+        helper="Pick from game-icons.net or upload your own."
+      />
 
       <label className="block text-sm font-medium">
         Effect Name

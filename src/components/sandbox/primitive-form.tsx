@@ -21,6 +21,7 @@ import { saveIntentLabel } from "@/lib/publishing/save-intent";
 import { computePrimitiveContentHash } from "@/lib/publishing/hash-content";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import { IconSlot } from "@/components/icons/icon-slot";
+import type { IconSource } from "@/components/icons/icon-display";
 
 type PrimitiveRow = {
   id: number;
@@ -37,7 +38,10 @@ type PrimitiveRow = {
   mirrorBuCredit: number;
   mirrorEligibilityNotes: string;
   hardModifiers: unknown;
-  // Phase 8: per-entity iconography
+  // Phase 8: per-entity iconography. The form's blankForm always sets
+  // these with defaults; the optional flag here matches the
+  // grammar-sandbox-client's `PrimitiveRow` so the two can be assigned
+  // across files without TypeScript treating them as different types.
   iconSource: string | null;
   iconKey: string | null;
   iconUrl: string | null;
@@ -730,11 +734,19 @@ export function PrimitiveForm({
       {/* Phase 8: per-entity iconography */}
       <div className="md:col-span-2">
         <IconSlot
-          iconSource={form.iconSource ?? null}
+          iconSource={(form.iconSource as IconSource | null) ?? null}
           iconKey={form.iconKey ?? null}
           iconUrl={form.iconUrl ?? null}
           iconColor={form.iconColor ?? "#ffffff"}
-          onChange={(next) => setForm({ ...form, ...next })}
+          onChange={(next) =>
+            setForm({
+              ...form,
+              iconSource: next.iconSource,
+              iconKey: next.iconKey ?? null,
+              iconUrl: next.iconUrl ?? null,
+              iconColor: next.iconColor,
+            })
+          }
           size={56}
           label="Icon"
           helper="Pick from game-icons.net or upload your own."

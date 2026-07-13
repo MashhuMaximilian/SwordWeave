@@ -23,6 +23,11 @@ export type ItemFormState = {
   isPublic: boolean;
   sourceOrigin: string;
   tags: string;
+  // Phase 8: per-entity iconography
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 };
 
 export type ItemPrimitiveSlot = {

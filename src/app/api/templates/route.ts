@@ -161,6 +161,11 @@ export async function POST(request: Request) {
           suggestedTraits,
           isPublic,
           sourceOrigin: `manual:${kind.toLowerCase()}`,
+          // Phase 8: per-entity iconography
+          iconSource: pickIconSource(values["iconSource"]),
+          iconKey: pickStringOrNull(values["iconKey"]),
+          iconUrl: pickStringOrNull(values["iconUrl"]),
+          iconColor: pickStringOrDefault(values["iconColor"], "#ffffff"),
         })
         .returning();
 
@@ -243,4 +248,19 @@ export function expectedCategoryForKind(kind: TemplateKind): string {
   // returns an empty string so the previous guard is a no-op.
   void kind;
   return "";
+}
+
+/**
+ * Phase 8: per-entity iconography helpers. See the matching block in
+ * src/app/api/primitives/route.ts for the rationale.
+ */
+function pickIconSource(value: unknown): "GAME_ICONS" | "UPLOAD" | null {
+  if (value === "GAME_ICONS" || value === "UPLOAD") return value;
+  return null;
+}
+function pickStringOrNull(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+function pickStringOrDefault(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.length > 0 ? value : fallback;
 }

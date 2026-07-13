@@ -51,6 +51,11 @@ type TemplateRow = {
       }>;
     };
   }>;
+  // Phase 8: per-entity iconography
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 };
 
 type ItemRow = {
@@ -109,6 +114,11 @@ type ItemRow = {
       }>;
     };
   }>;
+  // Phase 8: per-entity iconography
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 };
 
 export type BlueprintBuildMode = "template" | "item" | "monster";
@@ -443,6 +453,11 @@ export function BlueprintSandboxClient({
             description: string;
             suggestedTraits: string;
             isPublic: boolean;
+            // Phase 8: per-entity iconography (mirrors TemplateFormState).
+            iconSource: string | null;
+            iconKey: string | null;
+            iconUrl: string | null;
+            iconColor: string;
           }
         | undefined;
       const snapPrimitiveIds = formSnapshot?.primitiveIds as
@@ -474,6 +489,11 @@ export function BlueprintSandboxClient({
         description: row.description ?? "",
         suggestedTraits: row.suggestedTraits ?? "",
         isPublic: row.isPublic,
+        // Phase 8: per-entity iconography
+        iconSource: row.iconSource,
+        iconKey: row.iconKey,
+        iconUrl: row.iconUrl,
+        iconColor: row.iconColor,
       } : null);
       // Map primitive IDs → primitive rows for the preview. We have
       // `primitives` (sandbox-supplied list of all primitives) so we
@@ -539,6 +559,11 @@ export function BlueprintSandboxClient({
             isPublic: boolean;
             sourceOrigin: string;
             tags: string;
+            // Phase 8: per-entity iconography (mirrors ItemFormState).
+            iconSource: string | null;
+            iconKey: string | null;
+            iconUrl: string | null;
+            iconColor: string;
           }
         | undefined;
       const snapPrimitiveIds = formSnapshot?.primitiveIds as
@@ -578,7 +603,24 @@ export function BlueprintSandboxClient({
         isPublic: row.isPublic,
         sourceOrigin: row.sourceOrigin ?? "",
         tags: row.tags.join(", "),
+        // Phase 8: per-entity iconography
+        iconSource: row.iconSource,
+        iconKey: row.iconKey,
+        iconUrl: row.iconUrl,
+        iconColor: row.iconColor,
       } : null);
+      // Coerce any null icon fields to defaults — ItemFormState requires
+      // iconColor: string (not nullable). Nulls only happen when a row
+      // predates the migration; new rows always have these populated.
+      const formWithDefaults = form
+        ? {
+            ...form,
+            iconSource: form.iconSource ?? null,
+            iconKey: form.iconKey ?? null,
+            iconUrl: form.iconUrl ?? null,
+            iconColor: form.iconColor ?? "#ffffff",
+          }
+        : null;
       const primitiveSlots = snapPrimitiveIds
         ? snapPrimitiveIds
             .map((id) =>
@@ -615,10 +657,10 @@ export function BlueprintSandboxClient({
               name: e.name,
             }))
         : [];
-      if (!form) return null;
+      if (!formWithDefaults) return null;
       return (
         <ItemFormPreview
-          form={form}
+          form={formWithDefaults}
           primitiveSlots={primitiveSlots}
           capabilitySlots={capabilitySlots}
           effectSlots={effectSlots}

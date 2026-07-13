@@ -34,8 +34,8 @@ export interface IconSlotProps {
    *  these fields into its form state. */
   onChange: (next: {
     iconSource: "GAME_ICONS" | "UPLOAD";
-    iconKey?: string | undefined;
-    iconUrl?: string | undefined;
+    iconKey?: string | null | undefined;
+    iconUrl?: string | null | undefined;
     iconColor: string;
   }) => void;
   /** Pixel size of the icon (default 64). */

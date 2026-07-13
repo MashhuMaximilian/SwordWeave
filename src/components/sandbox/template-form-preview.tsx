@@ -11,6 +11,11 @@ export type TemplateFormState = {
   description: string;
   suggestedTraits: string;
   isPublic: boolean;
+  // Phase 8: per-entity iconography
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 };
 
 export type TemplateSlot = {

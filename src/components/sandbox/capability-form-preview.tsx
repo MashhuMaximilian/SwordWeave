@@ -12,6 +12,11 @@ export type CapabilityFormState = {
   sourceOrigin: string;
   tags: string;
   isPublic: boolean;
+  // Phase 8: per-entity iconography
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 };
 
 export type CapabilitySlot = {

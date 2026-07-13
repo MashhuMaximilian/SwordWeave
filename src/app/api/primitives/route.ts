@@ -125,6 +125,11 @@ function buildPrimitiveValues(args: {
   mirrorEligibilityNotes: string;
   hardModifiers: readonly HardModifier[];
   sourceOrigin: string;
+  // Phase 8: per-entity iconography (see src/db/migrations/0027_icon_columns.sql).
+  iconSource: "GAME_ICONS" | "UPLOAD" | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 }) {
   const {
     name,
@@ -141,6 +146,10 @@ function buildPrimitiveValues(args: {
     mirrorEligibilityNotes,
     hardModifiers,
     sourceOrigin,
+    iconSource,
+    iconKey,
+    iconUrl,
+    iconColor,
   } = args;
   return {
     name,
@@ -157,7 +166,30 @@ function buildPrimitiveValues(args: {
     mirrorEligibilityNotes,
     hardModifiers,
     sourceOrigin,
+    iconSource,
+    iconKey,
+    iconUrl,
+    iconColor,
   };
+}
+
+/**
+ * Phase 8: per-entity iconography. The icon fields arrive in the save
+ * body as `string | null | undefined`. These helpers coerce them into
+ * the shapes the DB expects (the enum literal for source, string for
+ * key/url, a hex string for color). The DB column for `iconColor` is
+ * NOT NULL with a default of '#ffffff', so we use
+ * `pickStringOrDefault` for that one.
+ */
+function pickIconSource(value: unknown): "GAME_ICONS" | "UPLOAD" | null {
+  if (value === "GAME_ICONS" || value === "UPLOAD") return value;
+  return null;
+}
+function pickStringOrNull(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+function pickStringOrDefault(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.length > 0 ? value : fallback;
 }
 
 export async function POST(request: Request) {
@@ -343,6 +375,11 @@ export async function POST(request: Request) {
             mirrorEligibilityNotes,
             hardModifiers,
             sourceOrigin: versionSourceOrigin,
+            // Phase 8: per-entity iconography
+            iconSource: pickIconSource(values["iconSource"]),
+            iconKey: pickStringOrNull(values["iconKey"]),
+            iconUrl: pickStringOrNull(values["iconUrl"]),
+            iconColor: pickStringOrDefault(values["iconColor"], "#ffffff"),
           }),
           contentHash: serverDraftHash,
           updatedAt: new Date(),
@@ -444,6 +481,11 @@ export async function POST(request: Request) {
           mirrorEligibilityNotes,
           hardModifiers,
           sourceOrigin: forkSourceOrigin,
+          // Phase 8: per-entity iconography
+          iconSource: pickIconSource(values["iconSource"]),
+          iconKey: pickStringOrNull(values["iconKey"]),
+          iconUrl: pickStringOrNull(values["iconUrl"]),
+          iconColor: pickStringOrDefault(values["iconColor"], "#ffffff"),
         }),
         contentHash: serverDraftHash,
       })

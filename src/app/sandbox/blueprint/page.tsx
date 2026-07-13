@@ -374,6 +374,11 @@ export default async function BlueprintSandboxPage({
               buCost: number;
             };
           }>;
+          // Phase 8: per-entity iconography
+          iconSource: string | null;
+          iconKey: string | null;
+          iconUrl: string | null;
+          iconColor: string | null;
         };
         return {
           id: row.id,
@@ -388,6 +393,11 @@ export default async function BlueprintSandboxPage({
             primitive: l.primitive,
             versionNumber: versionMap.get(`primitive:${l.primitiveId}`) ?? 1,
           })),
+          // Phase 8: per-entity iconography
+          iconSource: row.iconSource,
+          iconKey: row.iconKey,
+          iconUrl: row.iconUrl,
+          iconColor: row.iconColor ?? "#ffffff",
         };
       })}
       libraryItems={libraryItems}
@@ -409,6 +419,11 @@ export default async function BlueprintSandboxPage({
           mirrorBuCredit: number;
           mirrorEligibilityNotes: string;
           hardModifiers: unknown;
+          // Phase 8: per-entity iconography
+          iconSource: string | null;
+          iconKey: string | null;
+          iconUrl: string | null;
+          iconColor: string | null;
         };
         return {
           id: row.id,
@@ -424,6 +439,11 @@ export default async function BlueprintSandboxPage({
           mirrorBuCredit: row.mirrorBuCredit,
           mirrorEligibilityNotes: row.mirrorEligibilityNotes,
           hardModifiers: row.hardModifiers,
+          // Phase 8: per-entity iconography
+          iconSource: row.iconSource,
+          iconKey: row.iconKey,
+          iconUrl: row.iconUrl,
+          iconColor: row.iconColor ?? "#ffffff",
         };
       })}
       sandboxCapabilities={(capabilityRows as never[]).map((c) => {
@@ -461,6 +481,11 @@ export default async function BlueprintSandboxPage({
               sourceOrigin: string | null;
             };
           }>;
+          // Phase 8: per-entity iconography
+          iconSource: string | null;
+          iconKey: string | null;
+          iconUrl: string | null;
+          iconColor: string | null;
         };
         return {
           id: row.id,
@@ -510,6 +535,11 @@ export default async function BlueprintSandboxPage({
               },
             };
           }),
+          // Phase 8: per-entity iconography
+          iconSource: row.iconSource,
+          iconKey: row.iconKey,
+          iconUrl: row.iconUrl,
+          iconColor: row.iconColor ?? "#ffffff",
         };
       })}
       dataLoadFailed={dataLoadFailed}

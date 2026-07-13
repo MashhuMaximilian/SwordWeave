@@ -16,6 +16,8 @@ import type {
   ItemFormState,
   ItemPrimitiveSlot,
 } from "./item-form-preview";
+import { IconSlot } from "@/components/icons/icon-slot";
+import type { IconSource } from "@/components/icons/icon-display";
 import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
 
@@ -44,6 +46,11 @@ type ItemRow = {
       buCost: number;
     };
   }>;
+  // Phase 8: per-entity iconography
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string | null;
 };
 
 const ITEM_TYPES = [
@@ -70,6 +77,11 @@ const blankForm: ItemFormState = {
   isPublic: false,
   sourceOrigin: "",
   tags: "",
+  // Phase 8: per-entity iconography
+  iconSource: null,
+  iconKey: null,
+  iconUrl: null,
+  iconColor: "#ffffff",
 };
 
 export function ItemForm({
@@ -166,6 +178,11 @@ export function ItemForm({
       isPublic: initialItem.isPublic,
       sourceOrigin: initialItem.sourceOrigin ?? "",
       tags: (initialItem.tags ?? []).join(", "),
+      // Phase 8: per-entity iconography
+      iconSource: initialItem.iconSource,
+      iconKey: initialItem.iconKey,
+      iconUrl: initialItem.iconUrl,
+      iconColor: initialItem.iconColor ?? "#ffffff",
     });
     // Check for a saved draft (e.g. when the form unmounted in the panel
     // and remounted in the drawer). If a draft exists, restore all three
@@ -460,6 +477,26 @@ export function ItemForm({
           Reset
         </button>
       </div>
+
+      {/* Phase 8: per-entity iconography */}
+      <IconSlot
+        iconSource={(form.iconSource as IconSource | null) ?? null}
+        iconKey={form.iconKey}
+        iconUrl={form.iconUrl}
+        iconColor={form.iconColor}
+        onChange={(next) =>
+          setForm({
+            ...form,
+            iconSource: next.iconSource,
+            iconKey: next.iconKey ?? null,
+            iconUrl: next.iconUrl ?? null,
+            iconColor: next.iconColor,
+          })
+        }
+        size={56}
+        label="Icon"
+        helper="Pick from game-icons.net or upload your own."
+      />
 
       <label className="block text-sm font-medium">
         Name

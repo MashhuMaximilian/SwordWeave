@@ -40,6 +40,19 @@ type PrimitiveRow = {
   mirrorBuCredit: number;
   mirrorEligibilityNotes: string;
   hardModifiers: unknown;
+  // Phase 8: per-entity iconography. Mirrored from the DB columns.
+  // Optional on the local "in-flight" row type because the grammar
+  // sandbox sometimes constructs a primitive row from URL params
+  // before the icon fields have been loaded; primitive-form.tsx has
+  // the same fields as required (the form's blank state always sets
+  // them). Type-system note: the grammar-side `PrimitiveRow` is the
+  // "in-flight" representation; the form-side is the canonical form
+  // state. They're kept structurally identical except for the optional
+  // flag here.
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 };
 
 type EffectRow = {
@@ -60,6 +73,11 @@ type EffectRow = {
       buCost: number;
     };
   }>;
+  // Phase 8: per-entity iconography (mirrors PrimitiveRow above).
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 };
 
 type CapabilityRow = {
@@ -97,6 +115,11 @@ type CapabilityRow = {
       sourceOrigin: string | null;
     };
   }>;
+  // Phase 8: per-entity iconography
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
 };
 
 export type GrammarBuildMode = "primitive" | "effect" | "capability";
@@ -525,6 +548,11 @@ export function GrammarSandboxClient({
             mirrorBuCredit: string;
             mirrorEligibilityNotes: string;
             isPublic: boolean;
+            // Phase 8: per-entity iconography (mirrors PrimitiveFormState).
+            iconSource: string | null;
+            iconKey: string | null;
+            iconUrl: string | null;
+            iconColor: string;
           }
         | undefined;
       if (!snapForm && !editing) {
@@ -554,6 +582,12 @@ export function GrammarSandboxClient({
         mirrorVector: row.mirrorVector,
         mirrorBuCredit: String(row.mirrorBuCredit),
         mirrorEligibilityNotes: row.mirrorEligibilityNotes,
+        // Phase 8: per-entity iconography — copied from the row into
+        // the form snapshot so the live preview can render the icon.
+        iconSource: row.iconSource,
+        iconKey: row.iconKey,
+        iconUrl: row.iconUrl,
+        iconColor: row.iconColor,
       } : null);
       if (!form) return null;
       return (
@@ -571,6 +605,11 @@ export function GrammarSandboxClient({
             sourceOrigin: string;
             tags: string;
             isPublic: boolean;
+            // Phase 8: per-entity iconography (mirrors EffectFormState).
+            iconSource: string | null;
+            iconKey: string | null;
+            iconUrl: string | null;
+            iconColor: string;
           }
         | undefined;
       const snapSlots = formSnapshot?.slots as
@@ -602,6 +641,12 @@ export function GrammarSandboxClient({
         sourceOrigin: row.sourceOrigin ?? "",
         tags: row.tags.join(", "),
         isPublic: row.isPublic,
+        // Phase 8: per-entity iconography — copied from the row into
+        // the form snapshot so the live preview can render the icon.
+        iconSource: row.iconSource,
+        iconKey: row.iconKey,
+        iconUrl: row.iconUrl,
+        iconColor: row.iconColor,
       } : null);
       const slots = snapSlots ?? (row ? row.primitiveLinks.map((link) => ({
         primitiveId: link.primitiveId,
@@ -625,6 +670,11 @@ export function GrammarSandboxClient({
           sourceOrigin: string;
           tags: string;
           isPublic: boolean;
+          // Phase 8: per-entity iconography (mirrors CapabilityFormState).
+          iconSource: string | null;
+          iconKey: string | null;
+          iconUrl: string | null;
+          iconColor: string;
         }
       | undefined;
     const snapSlots = formSnapshot?.slots as
@@ -662,7 +712,25 @@ export function GrammarSandboxClient({
       sourceOrigin: row.sourceOrigin ?? "",
       tags: row.tags.join(", "),
       isPublic: row.isPublic,
+      // Phase 8: per-entity iconography
+      iconSource: row.iconSource,
+      iconKey: row.iconKey,
+      iconUrl: row.iconUrl,
+      iconColor: row.iconColor,
     } : null);
+    // CapabilityFormState requires iconSource/iconKey/iconUrl as non-null
+    // strings (the form's blank state always populates them). snapForm
+    // comes from the live form state which has them as required strings,
+    // but the row-derived branch has them as `string | null`. Coerce.
+    const formWithDefaults = form
+      ? {
+          ...form,
+          iconSource: form.iconSource ?? null,
+          iconKey: form.iconKey ?? null,
+          iconUrl: form.iconUrl ?? null,
+          iconColor: form.iconColor ?? "#ffffff",
+        }
+      : null;
     const slots = snapSlots ?? (row ? row.primitiveLinks.map((link) => ({
       primitiveId: link.primitiveId,
       role: link.role ?? "OTHER",
@@ -686,10 +754,10 @@ export function GrammarSandboxClient({
             narrativeDescription: e.narrativeDescription,
           }))
       : [];
-    if (!form) return null;
+    if (!formWithDefaults) return null;
     return (
       <CapabilityFormPreview
-        form={form}
+        form={formWithDefaults}
         slots={slots}
         effects={effectRefs}
       />

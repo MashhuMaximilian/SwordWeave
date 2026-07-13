@@ -210,6 +210,11 @@ export async function PATCH(
       isPublic,
       primitiveIds,
       capabilityIds: capabilityIds as string[],
+      // Phase 8: per-entity iconography
+      iconSource: pickIconSource(values["iconSource"]),
+      iconKey: pickStringOrNull(values["iconKey"]),
+      iconUrl: pickStringOrNull(values["iconUrl"]),
+      iconColor: pickStringOrDefault(values["iconColor"], "#ffffff"),
     });
     const draftIsEmpty = isTemplateDraftEmpty(canonicalPayload);
     const draftHash = await computeTemplateContentHash({
@@ -220,6 +225,11 @@ export async function PATCH(
       isPublic,
       primitiveIds,
       capabilityIds: capabilityIds as string[],
+      // Phase 8: per-entity iconography
+      iconSource: pickIconSource(values["iconSource"]),
+      iconKey: pickStringOrNull(values["iconKey"]),
+      iconUrl: pickStringOrNull(values["iconUrl"]),
+      iconColor: pickStringOrDefault(values["iconColor"], "#ffffff"),
     });
 
     // -------------------------------------------------------------------
@@ -259,6 +269,11 @@ export async function PATCH(
         sourceOrigin: current.sourceOrigin, // preserve
         contentHash: draftHash,
         updatedAt: new Date(),
+        // Phase 8: per-entity iconography
+        iconSource: pickIconSource(values["iconSource"]),
+        iconKey: pickStringOrNull(values["iconKey"]),
+        iconUrl: pickStringOrNull(values["iconUrl"]),
+        iconColor: pickStringOrDefault(values["iconColor"], "#ffffff"),
       };
 
       const result = await db.transaction(async (tx) => {
@@ -478,4 +493,19 @@ export async function DELETE(
     const message = error instanceof Error ? error.message : "Unknown error.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
+}
+
+/**
+ * Phase 8: per-entity iconography helpers. See the matching block in
+ * src/app/api/primitives/route.ts for the rationale.
+ */
+function pickIconSource(value: unknown): "GAME_ICONS" | "UPLOAD" | null {
+  if (value === "GAME_ICONS" || value === "UPLOAD") return value;
+  return null;
+}
+function pickStringOrNull(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+function pickStringOrDefault(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.length > 0 ? value : fallback;
 }
