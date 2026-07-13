@@ -24,6 +24,7 @@ import { ForksList } from "@/components/engagement/forks-list";
 import { FlagAndForkFooter } from "@/components/engagement/flag-and-fork-footer";
 import type { ForkTargetType } from "@/lib/publishing/forks-query";
 import { Markdown } from "@/components/ui/markdown";
+import { IconDisplay } from "@/components/icons/icon-display";
 import {
   resolveAuthorByClerkId,
   resolveUserIdByClerkId,
@@ -381,6 +382,12 @@ function DetailShell({
   flagDistribution,
   flagNotes,
   forkSource,
+  // Phase 8: per-entity iconography. All optional — if absent, the
+  // header falls back to a "kind" placeholder.
+  iconSource,
+  iconKey,
+  iconUrl,
+  iconColor,
 }: {
   children: React.ReactNode;
   backHref: string;
@@ -443,6 +450,11 @@ function DetailShell({
     sourceAuthorUsername: string | null;
     forkedAt: Date | string;
   } | null;
+  // Phase 8: per-entity iconography
+  iconSource?: "GAME_ICONS" | "UPLOAD" | null;
+  iconKey?: string | null;
+  iconUrl?: string | null;
+  iconColor?: string | null;
 }) {
   const canEdit =
     editHref !== null &&
@@ -465,7 +477,28 @@ function DetailShell({
             {category ? ` · ${category.replace(/_/g, " ")}` : ""}
           </p>
           <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
-            <h1 className="font-display break-words text-3xl font-semibold uppercase tracking-wide">{name}</h1>
+            <div className="flex items-start gap-3 min-w-0 flex-1">
+              {/* Phase 8: entity icon in the detail header. */}
+              {iconSource ? (
+                <IconDisplay
+                  iconSource={iconSource}
+                  iconKey={iconKey ?? null}
+                  iconUrl={iconUrl ?? null}
+                  iconColor={iconColor ?? "#ffffff"}
+                  size={56}
+                  className="rounded-md border border-border"
+                  alt={name}
+                />
+              ) : (
+                <div
+                  aria-hidden="true"
+                  className="flex size-14 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                >
+                  {typeLabel.split(" ")[0]?.slice(0, 3) ?? "?"}
+                </div>
+              )}
+              <h1 className="font-display break-words text-3xl font-semibold uppercase tracking-wide">{name}</h1>
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               {buCost !== null && (
                 <span className="rounded-full bg-primary/10 px-3 py-1 font-mono text-sm font-semibold text-primary">
@@ -610,6 +643,10 @@ async function PrimitiveDetail({
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
       forkSource={forkSource}
+    iconSource={row.iconSource}
+    iconKey={row.iconKey}
+    iconUrl={row.iconUrl}
+    iconColor={row.iconColor}
     >
       <section>
         <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
@@ -730,6 +767,10 @@ async function CapabilityDetail({
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
       forkSource={forkSource}
+    iconSource={row.iconSource}
+    iconKey={row.iconKey}
+    iconUrl={row.iconUrl}
+    iconColor={row.iconColor}
     >
       <section className="grid gap-3 sm:grid-cols-2">
         <DataField label="Type" value={row.type} />
@@ -935,6 +976,10 @@ async function TemplateDetail({
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
       forkSource={forkSource}
+    iconSource={row.iconSource}
+    iconKey={row.iconKey}
+    iconUrl={row.iconUrl}
+    iconColor={row.iconColor}
     >
       {row.imageUrl && (
         <img
@@ -1135,6 +1180,10 @@ async function EffectDetail({
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
       forkSource={forkSource}
+    iconSource={effectRow.iconSource}
+    iconKey={effectRow.iconKey}
+    iconUrl={effectRow.iconUrl}
+    iconColor={effectRow.iconColor}
     >
       {effectRow.tags.length > 0 && (
         <section className="mb-5">
@@ -1360,6 +1409,10 @@ async function ItemDetail({
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
       forkSource={forkSource}
+    iconSource={itemRow.iconSource}
+    iconKey={itemRow.iconKey}
+    iconUrl={itemRow.iconUrl}
+    iconColor={itemRow.iconColor}
     >
       <section className="mb-5">
         <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
