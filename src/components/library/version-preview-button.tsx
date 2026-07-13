@@ -30,6 +30,8 @@ interface VersionPreviewButtonProps {
   nameMap?: Record<string, string>;
   /** Pre-resolved primitive BU costs: primitiveId → buCost */
   primitiveBuCosts?: Record<number, number>;
+  /** Pre-resolved effect→primitive links for BU computation */
+  effectPrimitiveLinks?: Record<string, Array<{ primitiveId: number; quantity: number }>>;
 }
 
 function mapPayloadToPreviewItem(
@@ -38,6 +40,7 @@ function mapPayloadToPreviewItem(
   payload: Record<string, unknown>,
   nameMap?: Record<string, string>,
   primitiveBuCosts?: Record<number, number>,
+  effectPrimitiveLinks?: Record<string, Array<{ primitiveId: number; quantity: number }>>,
 ): SandboxPreviewItem | null {
   if (targetType === "PRIMITIVE") {
     const numId = Number(targetId);
@@ -122,6 +125,16 @@ function mapPayloadToPreviewItem(
             name: nameMap?.[`effect:${eid}`] ?? `Effect ${eid.slice(0, 8)}`,
             narrativeDescription: null,
             sourceOrigin: null,
+            primitiveLinks: (effectPrimitiveLinks?.[eid] ?? []).map((link) => ({
+              primitiveId: link.primitiveId,
+              quantity: link.quantity,
+              primitive: {
+                id: link.primitiveId,
+                name: nameMap?.[`primitive:${link.primitiveId}`] ?? `Primitive ${link.primitiveId}`,
+                category: "",
+                buCost: primitiveBuCosts?.[link.primitiveId] ?? 0,
+              },
+            })),
           },
           versionNumber: undefined,
         }))
@@ -206,6 +219,16 @@ function mapPayloadToPreviewItem(
             id: eid,
             name: nameMap?.[`effect:${eid}`] ?? `Effect ${eid.slice(0, 8)}`,
             narrativeDescription: null,
+            primitiveLinks: (effectPrimitiveLinks?.[eid] ?? []).map((link) => ({
+              primitiveId: link.primitiveId,
+              quantity: link.quantity,
+              primitive: {
+                id: link.primitiveId,
+                name: nameMap?.[`primitive:${link.primitiveId}`] ?? `Primitive ${link.primitiveId}`,
+                category: "",
+                buCost: primitiveBuCosts?.[link.primitiveId] ?? 0,
+              },
+            })),
           },
           versionNumber: undefined,
         }))
@@ -288,9 +311,10 @@ export function VersionPreviewButton({
   payload,
   nameMap,
   primitiveBuCosts,
+  effectPrimitiveLinks,
 }: VersionPreviewButtonProps) {
   const [open, setOpen] = useState(false);
-  const previewItem = mapPayloadToPreviewItem(targetType, targetId, payload, nameMap, primitiveBuCosts);
+  const previewItem = mapPayloadToPreviewItem(targetType, targetId, payload, nameMap, primitiveBuCosts, effectPrimitiveLinks);
 
   return (
     <>

@@ -27,7 +27,7 @@ import {
 import { RestoreButton } from "@/components/library/restore-button";
 import { VersionPreviewButton } from "@/components/library/version-preview-button";
 import { db } from "@/db/client";
-import { primitives, effects, capabilities } from "@/db/schema";
+import { primitives, effects, capabilities, effectPrimitives } from "@/db/schema";
 import { inArray } from "drizzle-orm";
 
 interface PageProps {
@@ -102,6 +102,7 @@ export default async function VersionHistoryPage({ params }: PageProps) {
   const nameMap: Record<string, string> = {};
   const primitiveBuCosts: Record<number, number> = {};
   const versionBuCosts: Record<number, number> = {};
+  const effectPrimitiveLinks: Record<string, Array<{ primitiveId: number; quantity: number }>> = {};
   try {
     const [primRows, effRows, capRows] = await Promise.all([
       referencedPrimitiveIds.size > 0
@@ -117,6 +118,37 @@ export default async function VersionHistoryPage({ params }: PageProps) {
     for (const r of primRows) nameMap[`primitive:${r.id}`] = r.name;
     for (const r of effRows) nameMap[`effect:${r.id}`] = r.name;
     for (const r of capRows) nameMap[`capability:${r.id}`] = r.name;
+
+    // Fetch effect→primitive links so we can compute BU for effects
+    // shown inside capability/item previews.
+    const effectPrimRows = referencedEffectIds.size > 0
+      ? await db.select({
+          effectId: effectPrimitives.effectId,
+          primitiveId: effectPrimitives.primitiveId,
+          quantity: effectPrimitives.quantity,
+        }).from(effectPrimitives).where(inArray(effectPrimitives.effectId, [...referencedEffectIds]))
+      : [];
+
+    // Also ensure all primitives referenced by effects are in the
+    // buCost map (they might not be directly in the capability's
+    // primitiveSlots).
+    const extraPrimIds = effectPrimRows
+      .map(r => r.primitiveId)
+      .filter(pid => !(pid in primitiveBuCosts));
+    if (extraPrimIds.length > 0) {
+      const extraPrimRows = await db.select({ id: primitives.id, name: primitives.name, buCost: primitives.buCost })
+        .from(primitives).where(inArray(primitives.id, extraPrimIds));
+      for (const r of extraPrimRows) {
+        primitiveBuCosts[r.id] = r.buCost ?? 0;
+        nameMap[`primitive:${r.id}`] = r.name;
+      }
+    }
+
+    // Build effectId → primitiveLinks for the preview modal
+    for (const r of effectPrimRows) {
+      if (!effectPrimitiveLinks[r.effectId]) effectPrimitiveLinks[r.effectId] = [];
+      effectPrimitiveLinks[r.effectId]!.push({ primitiveId: r.primitiveId, quantity: r.quantity });
+    }
 
     // Build primitive buCost map for preview modal
     for (const r of primRows) primitiveBuCosts[r.id] = r.buCost ?? 0;
@@ -227,6 +259,7 @@ export default async function VersionHistoryPage({ params }: PageProps) {
               nameMap={nameMap}
               primitiveBuCosts={primitiveBuCosts}
               computedBuCost={versionBuCosts[v.versionNumber] ?? null}
+              effectPrimitiveLinks={effectPrimitiveLinks}
             />
           );
         })}
@@ -303,6 +336,7 @@ function VersionRow({
   nameMap,
   primitiveBuCosts,
   computedBuCost,
+  effectPrimitiveLinks,
 }: {
   version: VersionEntry;
   previousVersionNumber: number | null;
@@ -312,6 +346,7 @@ function VersionRow({
   nameMap: Record<string, string>;
   primitiveBuCosts: Record<number, number>;
   computedBuCost: number | null;
+  effectPrimitiveLinks: Record<string, Array<{ primitiveId: number; quantity: number }>>;
 }) {
   const summary = buildSummary(version);
   return (
@@ -370,6 +405,7 @@ function VersionRow({
           payload={version.payload}
           nameMap={nameMap}
           primitiveBuCosts={primitiveBuCosts}
+          effectPrimitiveLinks={effectPrimitiveLinks}
         />
         {(() => {
           const apiType: "PRIMITIVE" | "EFFECT" | "CAPABILITY" | "ITEM" | "TEMPLATE" | null = mapToApiType(targetType);
