@@ -26,6 +26,10 @@ import {
   type LibraryItem,
 } from "@/lib/publishing/library-query";
 import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
+import {
+  resolveEngagementMap,
+  enrichItemsWithEngagement,
+} from "@/lib/engagement/engagement-aggregates";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import { getVersionPayload } from "@/lib/versions/version-payload";
 import { parseSaveIntent, type SaveIntent } from "@/lib/publishing/save-intent";
@@ -199,12 +203,22 @@ export default async function GrammarSandboxPage({
   }
 
   // Build unified LibraryItem array for the left column. Sorted by name
-  // so the LibraryTable sort UI has a stable baseline.
-  const libraryItems: LibraryItem[] = [
+  // so the LibraryTable sort UI has a stable baseline. Enriched with
+  // engagement counts (likes / dislikes / forks) so the sandbox cards
+  // show real numbers — without this, every card reads ♥ 0 / ★ 0
+  // even when the underlying entry has engagement.
+  // Build unified LibraryItem array for the left column. The mapper sets
+  // `id` to the composite `<TYPE>:<id>` so we can reuse it directly
+  // for the engagement map lookup.
+  const baseItems: LibraryItem[] = [
     ...(primitiveRows as never[]).map((r) => primitiveToLibraryItem(r)),
     ...(effectRows as never[]).map((r) => effectToLibraryItem(r)),
     ...(capabilityRows as never[]).map((r) => capabilityToLibraryItem(r)),
   ];
+  let libraryItems: LibraryItem[] = enrichItemsWithEngagement(
+    baseItems,
+    await resolveEngagementMap(baseItems.map((it) => it.id)),
+  );
 
   // Load primitive category chips for the filter panel. Wrapped in
   // try/catch so a category query failure doesn't 500 the page —

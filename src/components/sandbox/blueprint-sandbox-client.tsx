@@ -305,12 +305,22 @@ export function BlueprintSandboxClient({
       setEditing({ kind: "item", row });
     }
     setFormIsDirty(false); // loaded entity starts pristine
+    // Open the build panel so the user actually sees the loaded row —
+    // same fix as grammar-sandbox-client.
+    if (sandboxSplit) {
+      setSandboxBottomTab("build");
+    } else {
+      openDrawer("build");
+    }
   }, [
     templates,
     items,
     router,
     pathname,
     currentSearchParams,
+    sandboxSplit,
+    openDrawer,
+    setSandboxBottomTab,
   ]);
 
   function guardedSwitchBuild(newMode: BlueprintBuildMode) {

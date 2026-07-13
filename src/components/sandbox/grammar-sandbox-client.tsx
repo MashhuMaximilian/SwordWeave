@@ -323,6 +323,16 @@ export function GrammarSandboxClient({
       setEditing({ kind: "capability", row });
     }
     setFormIsDirty(false); // loaded entity starts pristine
+    // Open the build panel so the user actually sees the loaded row —
+    // the server-routed path triggers this via the `initialEditing` effect
+    // (line ~255), but in-session loads change `editing` without changing
+    // that prop, so the effect never fires. Bug fix: mirror the slot
+    // action's drawer-open behaviour here.
+    if (sandboxSplit) {
+      setSandboxBottomTab("build");
+    } else {
+      openDrawer("build");
+    }
   }, [
     primitives,
     effects,
@@ -330,6 +340,9 @@ export function GrammarSandboxClient({
     router,
     pathname,
     currentSearchParams,
+    sandboxSplit,
+    openDrawer,
+    setSandboxBottomTab,
   ]);
 
   // ---- Dirty-check interceptors ------------------------------------------

@@ -27,6 +27,7 @@ import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import { VisibilitySelect, type Visibility, visibilityLabel } from "@/components/library/visibility-select";
+import type { LibraryEngagement } from "@/lib/engagement/library-engagement";
 import { cn } from "@/lib/utils";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import type { LibraryView } from "@/lib/preferences/library-prefs";
@@ -39,6 +40,8 @@ interface CreationsClientProps {
   counts: Record<Exclude<TypeFilter, "all">, number>;
   initialType: string;
   initialStatus: string;
+  engagement: LibraryEngagement;
+  currentUserInternalId: string | null;
 }
 
 const TYPE_CHIPS: Array<{ key: TypeFilter; label: string }> = [
@@ -69,6 +72,8 @@ export function CreationsClient({
   counts,
   initialType,
   initialStatus,
+  engagement: initialEngagement,
+  currentUserInternalId,
 }: CreationsClientProps) {
   const [type, setType] = useState<TypeFilter>(
     (TYPE_CHIPS.find((c) => c.key === initialType)?.key ?? "all") as TypeFilter,
@@ -265,8 +270,8 @@ export function CreationsClient({
           <LibraryTable
             items={filteredItems}
             view={view}
-            engagement={{ reactions: {}, following: {} }}
-            currentUserInternalId={null}
+            engagement={initialEngagement}
+            currentUserInternalId={currentUserInternalId}
             onSelect={(item) => {
               if (!stack.canPush) return;
               const isDraft = item.publishedAt === null;
@@ -316,6 +321,18 @@ export function CreationsClient({
                       }
                     }}
                     onVisibilityChange={async (vis) => {
+                      // Capture the previous value BEFORE the optimistic
+                      // update so the rollback below can restore it on
+                      // failure. The previous implementation read from
+                      // `prev[item.id]` inside the rollback, but by then
+                      // `prev[item.id]` had already been overwritten with
+                      // the new value, so the rollback was a no-op and
+                      // failures left the UI showing the new (unsaved)
+                      // chip state.
+                      const previousVisibility: Visibility =
+                        visibilityById[item.id] ??
+                        item.visibility ??
+                        "PRIVATE";
                       // Optimistic update — the local visibilityById map
                       // drives the re-render so the chip changes colour
                       // immediately. The previous version mutated
@@ -340,12 +357,18 @@ export function CreationsClient({
                             data.error ?? `HTTP ${res.status}`,
                           );
                         }
+                        // API success — refresh server data so the next
+                        // render reflects any server-side defaults (e.g.
+                        // re-fetching publication status). router.refresh
+                        // is non-blocking; the optimistic state stays.
+                        router.refresh();
                       } catch (e) {
-                        // Roll back optimistic update.
+                        // Roll back optimistic update to the captured
+                        // previous value (not `prev[item.id]`, which has
+                        // already been overwritten).
                         setVisibilityById((prev) => ({
                           ...prev,
-                          [item.id]:
-                            prev[item.id] ?? item.visibility ?? "PRIVATE",
+                          [item.id]: previousVisibility,
                         }));
                         throw e;
                       }

@@ -23,6 +23,12 @@ import {
 } from "@/components/sandbox/sandbox-row-mapper";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import { CreationsClient } from "./creations-client";
+import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
+import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
+import {
+  resolveEngagementMap,
+  enrichItemsWithEngagement,
+} from "@/lib/engagement/engagement-aggregates";
 
 export const dynamic = "force-dynamic";
 
@@ -118,16 +124,21 @@ export default async function CreationsPage({
   const visFor = (type: string, id: string) =>
     visByKey.get(`${type}:${id}`) ?? "PRIVATE";
 
-  const allItems: LibraryItem[] = [
-    ...primitiveRows.map((r) =>
-      primitiveToLibraryItem(r, visFor("PRIMITIVE", String(r.id))),
-    ),
-    ...effectRows.map((r) =>
-      effectToLibraryItem(r, visFor("EFFECT", r.id)),
-    ),
-    ...capabilityRows.map((r) =>
-      capabilityToLibraryItem(r, visFor("CAPABILITY", r.id)),
-    ),
+  // Resolve the current user's internal UUID so we can attach the user's
+  // own reaction state to each card (the LikeForkBar needs this to show
+  // the right "active" icon when the user has already liked the entry).
+  // Without it, the creations list renders an empty heart on every card
+  // and clicking it would prompt a sign-in modal even when authed.
+  const currentUserInternalId = await resolveUserIdByClerkId(userId);
+
+  // Build items WITHOUT engagement first so we can resolve the engagement
+  // map keyed by the same composite IDs the mappers emit
+  // (`<TYPE>:<id>`). LibraryItem `authorId` is always the current user on
+  // this page (we filter by userId above), so the follow bar is hidden.
+  const baseItems: LibraryItem[] = [
+    ...primitiveRows.map((r) => primitiveToLibraryItem(r, visFor("PRIMITIVE", String(r.id)))),
+    ...effectRows.map((r) => effectToLibraryItem(r, visFor("EFFECT", r.id))),
+    ...capabilityRows.map((r) => capabilityToLibraryItem(r, visFor("CAPABILITY", r.id))),
     ...templateRows.map((r) => {
       const t =
         r.kind === "RACE"
@@ -138,10 +149,29 @@ export default async function CreationsPage({
       return templateToLibraryItem(r, visFor(t, r.id));
     }),
     ...itemRows.map((r) => itemToLibraryItem(r, visFor("ITEM", r.id))),
-    ...characterRows.map((r) =>
-      characterToLibraryItem(r, visFor("CHARACTER", r.id)),
-    ),
+    ...characterRows.map((r) => characterToLibraryItem(r, visFor("CHARACTER", r.id))),
   ];
+
+  // Fetch engagement state for the user AND the count aggregates in
+  // parallel. Both depend on baseItems (for IDs + author IDs) but
+  // don't depend on each other.
+  const [engagement, engagementCounts] = await Promise.all([
+    loadLibraryEngagement(
+      currentUserInternalId,
+      baseItems.map((it) => ({
+        id: it.id,
+        targetType: it.targetType,
+        targetId: it.targetId,
+        authorId: it.authorId,
+      })),
+    ),
+    resolveEngagementMap(baseItems.map((it) => it.id)),
+  ]);
+
+  const allItems: LibraryItem[] = enrichItemsWithEngagement(
+    baseItems,
+    engagementCounts,
+  );
 
   const counts = {
     primitive: primitiveRows.length,
@@ -197,6 +227,8 @@ export default async function CreationsPage({
         counts={counts}
         initialType={params.type ?? "all"}
         initialStatus={statusFilter}
+        engagement={engagement}
+        currentUserInternalId={currentUserInternalId}
       />
     </div>
   );
