@@ -3,7 +3,24 @@ import type { HardModifier } from "@/types/swordweave";
 export const primitivePackageVersion = "swordweave.package.v1";
 export const primitivePackageKind = "primitive";
 
+// =============================================================================
+// Canonical primitive category list
+//
+// This MUST stay in lockstep with `primitiveCategoryEnum` in
+// `src/db/schema/enums.ts`. The export-package route at
+// `/api/primitives/export` narrows each row's `category` through this
+// type, so any category added to the DB enum (migration 0009, then
+// Phase 7's SPEED_QUICKENING) must be appended here. The previous
+// 16-value list was stale from before migration 0009 and broke the
+// production build (`next build` runs `tsc` and rejects the narrower
+// `PrimitiveCategoryValue` against the wider DB union).
+//
+// To add a category: add it to `primitiveCategoryEnum` in enums.ts
+// AND to the array below (same string). Keep the order matching the
+// DB enum for readability — strict ordering is not required.
+// =============================================================================
 export const primitiveCategories = [
+  // Core BU Market categories
   "VERB_TIER",
   "DOMAIN",
   "SIZING",
@@ -14,6 +31,23 @@ export const primitiveCategories = [
   "CONDITION",
   "DEFENSE",
   "STRUCTURAL",
+  "PROBABILITY_BIAS",
+  "TRIGGER_HOOK",
+  "PERCEPTION_QUALIFIER",
+  "KINETIC_CONTROL",
+  "AGENCY_OVERRIDE",
+  "METAMORPHOSIS",
+  "ACTION_ECONOMY",
+  "EVALUATION_STRAIN",
+  "TEMPORAL_CHRONOLOGICAL",
+  "SENSORY_ARRAY",
+  "MOBILITY_LOCOMOTION",
+  "TARGETING_AOE",
+  "INTENSITY_DICE",
+  "BOSS_ECONOMY",
+  "DEFENSIVE",
+  "SPEED_QUICKENING",
+  // Character-slot categories (legacy — slated for purge in Phase 7)
   "SHEET_AUGMENT",
   "HERITAGE_AUGMENT",
   "BACKGROUND_AUGMENT",
