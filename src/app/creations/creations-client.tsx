@@ -289,6 +289,12 @@ export function CreationsClient({
                       router.refresh();
                     }}
                     onEdit={() => {
+                      // Close the preview modal BEFORE navigating, otherwise
+                      // the modal stays open over the new sandbox page and
+                      // the build drawer (which opens on the new page's
+                      // initialEditing effect) appears behind the modal —
+                      // the user sees nothing happen.
+                      stack.clear();
                       const targetType = item.targetType;
                       if (targetType === "PRIMITIVE")
                         router.push(

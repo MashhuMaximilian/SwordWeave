@@ -280,12 +280,17 @@ export function BlueprintSandboxClient({
       return;
     }
     const { entityType, id } = action;
-    // Phase 1: also update the URL with ?edit=<id>&intent=load so
-    // the intent flag flows into the form via useSearchParams. See
-    // grammar-sandbox-client.tsx for the matching pattern.
+    // Phase 1: also update the URL with ?build=<entityType>&edit=<id>&intent=load
+    // so the intent flag flows into the form AND the server's `initialBuild`
+    // agrees with what we just set. Setting `build=` here fixes the
+    // "Load into build always lands on the first tab" bug — without it,
+    // the server returns `initialBuild` based on the OLD `build` query
+    // param, and the `setBuild(initialBuild)` sync effect resets the
+    // build state. See grammar-sandbox-client.tsx for the matching fix.
     const nextParams = new URLSearchParams(
       currentSearchParams?.toString() ?? "",
     );
+    nextParams.set("build", entityType);
     nextParams.set("edit", String(id));
     nextParams.set("intent", "load");
     router.replace(
