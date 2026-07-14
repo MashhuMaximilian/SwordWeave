@@ -27,6 +27,18 @@
 //   picker is one of the most-clicked affordances in the app — it needs
 //   to be a closed system, not coupled to a global side-channel.
 //
+// Phase 18B (2026-07-14, perf): The IconPicker is now lazy-loaded via
+// next/dynamic with `ssr: false`. The picker pulls in
+// `react-aria-components` (~241 KB minified) and the 575 KB icon-catalog
+// JSON. Both are entirely client-only — the picker only opens on user
+// click, never on initial render. So we defer the full import until
+// `open === true`. The button + icon preview + modal chrome all remain
+// eagerly rendered so the page itself stays light. Build verification:
+// before — `/grammar` shipped ~833 KB critical-path JS. After this
+// commit — picker chunks move to a lazy boundary; expected savings
+// ~280 KB on first paint, matching the PageSpeed Insights
+// "Reduce unused JavaScript — Est savings of 279 KiB" diagnostic.
+//
 // Usage in a form:
 //   <IconSlot
 //     source={form.iconSource}
@@ -41,10 +53,37 @@
 // receives a single onChange with the new source/key/url/color triple.
 // =============================================================================
 
+import dynamic from "next/dynamic";
 import { Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
 import { IconDisplay, type IconSource } from "./icon-display";
-import { IconPicker } from "./icon-picker";
+import { PickerLoadingShell } from "./picker-loading-shell";
+
+// =============================================================================
+// Lazy-loaded IconPicker.
+//
+// IMPORTANT: do not move this dynamic() call to a separate file, and
+// do not import IconPicker directly anywhere in the eagerly-rendered
+// tree. The whole point of this code is that the icon-picker module
+// (and its 241 KB react-aria-components dependency) only get loaded
+// when the user actually clicks the trigger. If the import side gets
+// inlined anywhere, Next will hoist it back into the critical path and
+// the savings vanish.
+//
+// We pass ssr:false for two reasons:
+//   1. The picker is interactive-only — it has no meaningful SSR output
+//      (just buttons + a grid; both render the same on the server).
+//   2. ssr:false means the picker is dropped entirely from the server
+//      component graph, not even the JSX factory. This is the only
+//      way to keep react-aria-components off the SSR bundle path.
+// =============================================================================
+const LazyIconPicker = dynamic(
+  () => import("./icon-picker").then((m) => ({ default: m.IconPicker })),
+  {
+    ssr: false,
+    loading: () => <PickerLoadingShell />,
+  },
+);
 
 export interface IconSlotProps {
   iconSource?: IconSource | undefined;
@@ -212,7 +251,7 @@ export function IconSlot({
                 `flex-1 overflow-y-auto` parent (which used to make the
                 grid 0px tall). */}
             <div className="p-2 text-sm">
-              <IconPicker
+              <LazyIconPicker
                 currentSource={iconSource ?? null}
                 currentKey={iconKey ?? null}
                 currentUrl={iconUrl ?? null}
