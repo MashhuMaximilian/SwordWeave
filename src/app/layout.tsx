@@ -57,6 +57,31 @@ export default function RootLayout({
           rel="icon"
           href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3C/svg%3E"
         />
+        {/* Phase 18J (2026-07-14, perf): preload Clerk's browser
+            bundle. Verified by inspecting /sandbox/grammar's <head>
+            on production: Clerk preloads `ui.browser.js` but injects
+            `clerk.browser.js` as a <script async> LATE in the HTML
+            (after ~15 Next chunks). The browser can't fetch
+            clerk.browser.js until it parses that late <script>, which
+            adds ~200-400ms of serial delay on Slow 4G real-user
+            mobile. With this link rel=preload, the browser starts
+            fetching clerk.browser.js in parallel with the very first
+            Next chunk. The crossorigin attribute matches Clerk's
+            `<script crossorigin="anonymous">` declaration so the
+            preload resolves to the same cache entry as the script.
+
+            Why this URL is stable: `clerk.swordweave.quest` is our
+            Clerk proxy subdomain (your account's instance URL); the
+            /npm path is what `@clerk/nextjs` injects across all v6
+            versions. Major-version bumps update the path; we'd notice
+            via 404s in browser console after a Vercel deploy and
+            update this. */}
+        <link
+          rel="preload"
+          href="https://clerk.swordweave.quest/npm/@clerk/clerk-js@6/dist/clerk.browser.js"
+          as="script"
+          crossOrigin="anonymous"
+        />
         {/* Phase 18F (2026-07-14, perf): early-connect hints for
             third-party origins that gate the LCP path.
 
