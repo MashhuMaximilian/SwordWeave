@@ -27,8 +27,28 @@ scope.
 
 System: `docs/audit-sources/11-damage-resistance.md`
 
-Source types are **Physical / Magical / Psychic** (the engine currently
-calls this Mental in some legacy rows — see Phase-7-B TODO).
+# Source types are **Physical / Magical / Psychic** (one of three
+# execution categories; the engine's canonical damage-source axis).
+
+# Page 11 maps source types to attributes for resolution:
+# - Physical damage → uses Physical modifier
+# - Magical damage → uses Magical/Abstract modifier
+# - Psychic damage → uses Mental modifier
+# So Psychic source-type resistance checks against the Mental attribute.
+
+# Mapping (Phase 7 + user's final clarification, 2026-07-14):
+#   - "Mental"     = the **Attribute name** for cognition/awareness axis
+#   - "Magical/Abstract" = the **Attribute name** for supernatural axis
+#                     (either word correct; canonical defers to user)
+#   - "Psychic"    = the **damage source / execution category** only
+#   - "Physical"   = the **Attribute name AND the damage source**
+#
+# This means there's no inconsistency — Psychic Firewall (which
+# targets Mental defense) is correctly named; Mental is the attribute
+# the Psychic source-type attacks.
+
+Source types: **Physical / Magical / Psychic** (canonical stays).
+Attributes remain: **Physical / Mental / Magical-Abstract**.
 
 | Mechanic | Coverage | Primitive(s) | Notes |
 |---|---|---|---|
@@ -375,28 +395,61 @@ Template categories: heritage, archetype, background, item, race.
 
 | # | Gap | Source page | Recommended action |
 |---|---|---|---|
-| 1 | Mental vs Psychic source-type naming inconsistency | 11-damage-resistance + 7-action-economy | **Rename `Mental` → `Psychic` in canonical page; update SHEET_AUGMENT scope vocabulary.** |
+| 1 | ~~Mental vs Psychic source-type naming inconsistency~~ | (none — resolved) | Mental = attribute, Psychic = source. No rename needed. Matrix §1 documents this. |
 | 2 | Cover Bonus primitive missing | 10-tactical-subsystems + 13-system-mathematics | **Add `TACTICAL`/`DEFENSIVE` Cover Tier I-IV to seed** |
-| 3 | Teleport primitive missing | (none — listed by user context as a likely gap) | **Defer; verify with user if tactical movement needs teleportation row** |
-| 4 | 2nd-Action-Turn primitive missing | (none — implied by Haste Vector) | **Verify; Haste Vector may already cover this** |
+| 3 | ~~Teleport primitive missing~~ | (none — resolved) | Teleport is a capability built from primitives. No new primitive row. |
+| 4 | ~~2nd-Action-Turn / Haste-vs-Haste Primitive missing~~ | (none — resolved) | Haste Vector already covers this. Verify no addition needed. |
 | 5 | Causality Interdiction primitive missing | 01-bu-market (line 161) | **Verify; may be an example, not a row** |
 | 6 | Manifestation / Vitality Collapse / Stabilization primitives | 10-tactical-subsystems | **Verify; may be death-state engine rules, not primitives** |
 | 7 | Trigger Hook primitives need targetScope | (gap from Phase-7 audit) | **Phase-7-B TODO: scope 5 rows** |
 
 ## Phase-7-B TODO (carry into code work)
 
-1. Resolve **Mental → Psychic** renaming in canonical.
-2. Apply `targetScope` to 5 trigger-hook primitive rows currently un-scoped:
+1. Apply `targetScope` to 5 trigger-hook primitive rows currently un-scoped:
    - `Conditional Informational Trigger`
    - `Direct Material Trigger`
    - `Dormant Trigger Hook`
    - `Interceptive Causal Trigger`
    - `Systemic Threshold Trigger`
-3. (After user sign-off) Add Cover Tier I-IV rows to `scripts/seed-bu-market.ts`.
-4. Decide on Teleport / Causality Interdiction / Death-state primitives — present to user.
-5. Probability Bias description pass is OPTIONAL — rows are structurally fine. Would just refine the language for clarity.
+2. (After user sign-off) Add Cover Tier I-IV rows to `scripts/seed-bu-market.ts`.
+3. Causality Interdiction and the death-state primitives (Manifestation,
+   Vitality Collapse, Stabilization) — present to user; they may be
+   engine rules without primitive rows.
+4. Probability Bias description pass is OPTIONAL — rows are structurally fine.
 
 ---
+
+## Phase-7 Corrections to Notion Canonical
+
+These differences exist between the BU Market page (Notion canonical)
+and the user's verbal corrections in this conversation. The audit
+matrix locks in the **corrected** form. Update Notion when you have a chance.
+
+### Volatility Ceiling (L1 = -4 BU, not -8 BU)
+
+BU Market page table reads:
+
+| Level | Accessible Lexicon Tier | Max Volatility Ceiling |
+|---|---|---|
+| Levels 1-4 | Tier I & II | -8 BU |
+| Levels 5-10 | Tier III | -12 BU |
+| Levels 11-15 | Tier IV | -16 BU |
+| Levels 16+ | Tier IV+ | -24 BU |
+
+**Canonical correction (Phase 7):**
+
+| Level | Accessible Lexicon Tier | Max Volatility Ceiling |
+|---|---|---|
+| **Level 1** | Tier I & II | **-4 BU** (starting budget) |
+| Levels 2-4 | Tier I & II | -8 BU |
+| Levels 5-10 | Tier III | -12 BU |
+| Levels 11-15 | Tier IV | -16 BU |
+| Levels 16+ | Tier IV+ | -24 BU |
+
+The "-4 BU at L1" reflects a "starting budget" framing — first-level
+characters start at a constrained debt ceiling that opens up as they
+progress. The "-8 BU" L1-4 in Notion may have been a copy from L2-4 that
+got merged.
 
 ## Verification scripts (run alongside audit)
 
