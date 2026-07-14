@@ -534,9 +534,62 @@ const SEED: SeedRow[] = [
     mechanicalOutputText: "Bypass up to three catastrophic debuffs or crowd-control effects per encounter.",
     narrativeRule: "High-tier protection. Used 3x per day." },
 
-  // ==========================================================================
+  // ===========================================================================
+  // TACTICAL (4 rows) — Cover Tiers I-IV, sourced from page 10
+  // (Tactical Subsystems: Cover, Manifestation, Vitality Collapse).
+  // Cover imposes accuracy penalties against Projected Vectors at the
+  // chosen coordinate. Direct Manifestations ignore these penalties.
+  // These primitives all GRANT cover to allies at the targeted coord;
+  // the cost scales with the severity of cover imposed.
+  // ===========================================================================
+  { name: "Minor Obstruction (Cover Tier I)", category: "TACTICAL", buCost: 4,
+    costTier: "Tier 1 — Minor (4 BU anchor)",
+    mechanicalOutputText: "Impose a -2 flat accuracy penalty against one attacker striking the chosen coordinate (DM Discretion: minor cover — leaves, light brush, opaque smoke).",
+    narrativeRule: "Conjures a brief obstruction at a coord. Half-strength cover. Forces attackers to re-pose the aim vector." },
+  { name: "Half Cover (Cover Tier II)", category: "TACTICAL", buCost: 6,
+    costTier: "Tier 2 — Standard (6 BU anchor)",
+    mechanicalOutputText: "Impose a -4 flat accuracy penalty against Projected Vectors striking the chosen coordinate (tree trunks, low stone walls, ally in the way).",
+    narrativeRule: "Standard half-cover. Line of sight intact but vector-trajectory is partially intercepted." },
+  { name: "Total Cover (Cover Tier III)", category: "TACTICAL", buCost: 12,
+    costTier: "Tier 3 — Major (12 BU anchor)",
+    mechanicalOutputText: "Total Cover. Projected Vectors cannot target the protected coordinate. Line of sight severed. Direct Manifestations still resolve if the attacker has bare awareness.",
+    narrativeRule: "Conjures a fully-blocking barrier at a coord. Heavy stone wall, magical ward, complete fog bank." },
+  { name: "Spatial Anchor Cover (Cover Tier IV)", category: "TACTICAL", buCost: 24,
+    costTier: "Tier 4 — Core Axis (24 BU anchor)",
+    mechanicalOutputText: "Persistent Spatial Cover. Total Cover that warps the local frame — protects against vectors AND dispositional attacks by anchoring the coordinate in denial-space.",
+    narrativeRule: "Apex-tier Tactical. The coordinate becomes a defended pocket of reality. Reserved for apex combat scenes." },
+
+  // ===========================================================================
+  // VITALITY (3 rows) — death-clock engines, sourced from page 10 + 9
+  //
+  // Per page 9, Vitality is the unified life pool. Page 10 specifies the
+  // collapse mechanics: hitting 0 Vitality starts a "heuristic clock"
+  // countdown (~10 rounds) unless stabilized; 2× Max Vitality in one
+  // strike triggers Existential Shatter (engine rule, no row).
+  //
+  // We add 3 primitives:
+  //   - Stabilize (Fieldcraft Aid): ally action, stops the clock.
+  //   - Last Breath (Tenacity): trigger — on collapse, instead of clock,
+  //     revert to 1 Vitality with Bleeding condition.
+  //   - Tether of Being: trigger — on collapse, instead of clock,
+  //     re-knit to half Vitality (higher tier than Last Breath).
+  // ===========================================================================
+  { name: "Stabilize (Fieldcraft Aid)", category: "VITALITY", buCost: 4,
+    costTier: "Tier 1 — Minor (4 BU anchor)",
+    mechanicalOutputText: "Action: Fieldcraft Check (PB + chosen attribute). On success, halt the dying target's narrative clock. They remain at 0 Vitality until healed.",
+    narrativeRule: "Standard stabilization per page 10. DM may also accept creative primitive-based stabilization (e.g., flash-freezing an artery). Out-of-combat use is common." },
+  { name: "Last Breath (Tenacity Trigger)", category: "VITALITY", buCost: 6,
+    costTier: "Tier 2 — Standard (6 BU anchor)",
+    mechanicalOutputText: "Trigger: When Vitality drops below 0, instead of starting the death clock, the character stabilizes at 1 Vitality and gains Bleeding I (1 Vitality/round for 3 rounds) and Exhaustion I.",
+    narrativeRule: "Refuses the death clock by sheer survival instinct. Narratively: the body refuses the collapse. Once per long rest." },
+  { name: "Tether of Being (Sustained Tenacity)", category: "VITALITY", buCost: 18,
+    costTier: "Tier 4 — Core Axis (18 BU anchor)",
+    mechanicalOutputText: "Trigger: When Vitality drops below 0, instead of starting the death clock, the character re-knits at half their Max Vitality (rounded down). No Bleeding condition. Subject to Massive Damage Boundary (Existential Shatter still applies).",
+    narrativeRule: "Pre-existing metaphysical binding — the soul's anchor rewrites the fatal moment. Reserved for apex character concepts." },
+
+  // ===========================================================================
   // PHASE 7: ADDITIONAL CANONICAL ROWS — bring seed up to full DB coverage
-  // ==========================================================================
+  // ===========================================================================
   // The DB has 139 primitives; this seed previously had 91. These 48 rows
   // were missing — verifier (scripts/_seed-vs-db.ts) confirms the gap.
   // Mirror/targetScope flags are aligned with the live DB so re-running

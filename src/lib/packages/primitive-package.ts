@@ -10,10 +10,11 @@ export const primitivePackageKind = "primitive";
 // `src/db/schema/enums.ts`. The export-package route at
 // `/api/primitives/export` narrows each row's `category` through this
 // type, so any category added to the DB enum (migration 0009, then
-// Phase 7's SPEED_QUICKENING) must be appended here. The previous
-// 16-value list was stale from before migration 0009 and broke the
-// production build (`next build` runs `tsc` and rejects the narrower
-// `PrimitiveCategoryValue` against the wider DB union).
+// Phase 7's SPEED_QUICKENING, then Phase-7-B's TACTICAL + VITALITY)
+// must be appended here. The previous 16-value list was stale from
+// before migration 0009 and broke the production build (`next build`
+// runs `tsc` and rejects the narrower `PrimitiveCategoryValue` against
+// the wider DB union).
 //
 // To add a category: add it to `primitiveCategoryEnum` in enums.ts
 // AND to the array below (same string). Keep the order matching the
@@ -46,7 +47,10 @@ export const primitiveCategories = [
   "INTENSITY_DICE",
   "BOSS_ECONOMY",
   "DEFENSIVE",
-  "SPEED_QUICKENING",
+  "SPEED_QUICKENING", // Phase 7: split from DURATION (when, not how long)
+  // Phase 7-B: tactical + life-state primitives
+  "TACTICAL", // Cover Tiers I-IV and future spatial/tactical modifiers
+  "VITALITY", // Stabilize, Last Breath, and life-state engine primitives
   // Character-slot categories (legacy — slated for purge in Phase 7)
   "SHEET_AUGMENT",
   "HERITAGE_AUGMENT",

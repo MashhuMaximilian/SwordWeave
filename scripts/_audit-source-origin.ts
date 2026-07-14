@@ -14,13 +14,15 @@ async function main() {
   if (!cs) throw new Error("DATABASE_URL missing");
   const pool = new Pool({ connectionString: cs });
   try {
+    // `conditions` table does not have source_origin — kept here for
+    // compat with the earlier audit; intentionally excluded from the
+    // list to avoid the no-column error.
     const tables = [
       "primitives",
       "capabilities",
       "effects",
       "items",
       "templates",
-      "conditions",
     ];
     for (const t of tables) {
       const r = await pool.query(

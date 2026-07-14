@@ -396,26 +396,27 @@ Template categories: heritage, archetype, background, item, race.
 | # | Gap | Source page | Recommended action |
 |---|---|---|---|
 | 1 | ~~Mental vs Psychic source-type naming inconsistency~~ | (none — resolved) | Mental = attribute, Psychic = source. No rename needed. Matrix §1 documents this. |
-| 2 | Cover Bonus primitive missing | 10-tactical-subsystems + 13-system-mathematics | **Add `TACTICAL`/`DEFENSIVE` Cover Tier I-IV to seed** |
+| 2 | ~~Cover Bonus primitive missing~~ | 10-tactical-subsystems | **RESOLVED (Phase 7-B.1, 2026-07-14):** 4 Cover Tier rows added under new TACTICAL enum |
 | 3 | ~~Teleport primitive missing~~ | (none — resolved) | Teleport is a capability built from primitives. No new primitive row. |
 | 4 | ~~2nd-Action-Turn / Haste-vs-Haste Primitive missing~~ | (none — resolved) | Haste Vector already covers this. Verify no addition needed. |
-| 5 | Causality Interdiction primitive missing | 01-bu-market (line 161) | **Verify; may be an example, not a row** |
-| 6 | Manifestation / Vitality Collapse / Stabilization primitives | 10-tactical-subsystems | **Verify; may be death-state engine rules, not primitives** |
+| 5 | ~~Causality Interdiction primitive missing~~ | (none — resolved) | `Interceptive Causal Trigger` already exists in canonical; its narrative description is "Causality Interdiction." |
+| 6 | ~~Manifestation / Vitality Collapse / Stabilization primitives~~ | 10-tactical-subsystems | **PARTIALLY RESOLVED:**<br>• Manifestation = engine/execution concept (page 10 §1.B), **no row needed**.<br>• Vitality Collapse = engine rule (page 10 §2), **no row needed**.<br>• Existential Shatter = engine rule (page 10 §3), **no row needed**.<br>• Stabilize / Last Breath / Tether of Being = 3 rows added under new VITALITY enum |
 | 7 | Trigger Hook primitives need targetScope | (gap from Phase-7 audit) | **Phase-7-B TODO: scope 5 rows** |
 
 ## Phase-7-B TODO (carry into code work)
 
-1. Apply `targetScope` to 5 trigger-hook primitive rows currently un-scoped:
+1. (Done in B.1) ~~Add Cover Tier I-IV rows + Stabilize/Last Breath/Tether-of-Being rows + enum migration 0031.~~
+2. Apply `targetScope` to 5 trigger-hook primitive rows currently un-scoped:
    - `Conditional Informational Trigger`
    - `Direct Material Trigger`
    - `Dormant Trigger Hook`
    - `Interceptive Causal Trigger`
    - `Systemic Threshold Trigger`
-2. (After user sign-off) Add Cover Tier I-IV rows to `scripts/seed-bu-market.ts`.
-3. Causality Interdiction and the death-state primitives (Manifestation,
-   Vitality Collapse, Stabilization) — present to user; they may be
-   engine rules without primitive rows.
-4. Probability Bias description pass is OPTIONAL — rows are structurally fine.
+3. After primitives locked, redo Capabilities/Effects templates (Phase 7-C, then 7-D).
+4. (Mirrored UI wiring) — see Q-B below; capability UIs must expose:
+   - source-type selector (Physical / Magical / Psychic)
+   - mirror toggle (mirrored/normal; budget-neutral at primitive level,
+     budget-positive only in templates)
 
 ---
 
@@ -450,6 +451,106 @@ The "-4 BU at L1" reflects a "starting budget" framing — first-level
 characters start at a constrained debt ceiling that opens up as they
 progress. The "-8 BU" L1-4 in Notion may have been a copy from L2-4 that
 got merged.
+
+---
+
+## Phase-7-B.1 — Added 2026-07-14
+
+### New enum values (migration 0031)
+- `TACTICAL` — Cover Tier I-IV and future spatial/tactical modifiers
+- `VITALITY` — life-state primitives (Stabilize, Last Breath, Tether of Being)
+
+### New canonical primitive rows
+
+| Name | Category | BU | Cost Tier | Tier |
+|---|---|---|---|---|
+| Minor Obstruction (Cover Tier I) | TACTICAL | 4 | Tier 1 | Minor (4 BU anchor) |
+| Half Cover (Cover Tier II) | TACTICAL | 6 | Tier 2 | Standard (6 BU anchor) |
+| Total Cover (Cover Tier III) | TACTICAL | 12 | Tier 3 | Major (12 BU anchor) |
+| Spatial Anchor Cover (Cover Tier IV) | TACTICAL | 24 | Tier 4 | Core Axis (24 BU anchor) |
+| Stabilize (Fieldcraft Aid) | VITALITY | 4 | Tier 1 | Minor (4 BU anchor) |
+| Last Breath (Tenacity Trigger) | VITALITY | 6 | Tier 2 | Standard (6 BU anchor) |
+| Tether of Being (Sustained Tenacity) | VITALITY | 18 | Tier 4 | Core Axis (18 BU anchor) |
+
+DB went from **139 → 146 primitives**. Migration 0031 ALTER TYPE both
+enum values idempotent; the seeder wrote the 7 rows. User-owned and fork
+rows untouched (still 5 + 1).
+
+### Decisions (1-6 closed)
+- (1) Cover Tiers: added.
+- (2) Causality Interdiction: not a missing row — `Interceptive Causal Trigger` already exists; that's the canonical name.
+- (3) Manifestation: pure execution concept — no row needed.
+- (3 cont'd) Vitality Collapse + Existential Shatter: engine rules, no row.
+- (3 cont'd) Stabilization: 3 rows added (Stabilize / Last Breath / Tether of Being).
+
+### TODO follow-ups
+- Phase-7-B.2: scope the 5 trigger-hook rows.
+- Phase-7-C: templates redo.
+- Phase-7-D: capabilities/effects redo (with Q-B UI changes).
+
+---
+
+## Q-B UI — Spec (locked 2026-07-14)
+
+Capability / Effect builder must expose at minimum one new control
+beyond the existing primitive-slot list. Source-type selector is
+pre-existing schema. Mirror toggle lives at character-slot, not
+capability. See per-item analysis below.
+
+### B.1 Source-type selector — ALREADY IN SCHEMA ✅
+- Component: dropdown, single-select.
+- Options: **PHYSICAL / MAGICAL / PSYCHIC** (per `source_type` enum).
+- Column: `capabilities.source_type` (USER-DEFINED enum, NOT NULL, no default).
+- Default: empty string `<select>` with placeholder "Auto (derive from primitives)" — engine fills.
+- When set: drives the capability's `source_type` field; affects which
+  attribute the engine uses for damage-source resistance checks (page 11).
+- Storage: ✅ no migration needed. Existing capabilities already
+  have `source_type` populated (NOT NULL enforced).
+
+### B.2 Mirror toggle — LIVES ON CHARACTER-PRIMITIVE-SLOTS, NOT CAPABILITIES
+**Architectural decision:** Mirror is **a character-acquisition state,
+not a capability state.** A capability has mirror-eligible primitive
+slots (`isMirrorable` on the primitive row + the acquisition char-slot's
+`is_mirrored` boolean). The capability itself doesn't need a toggle —
+it's a card, not a purchase.
+
+**Where the UI change actually goes:**
+- **Capability builder:** no change. (Capability is just a recipe.)
+- **Character-slot picker ("acquire primitives"):** UI toggle per slot
+  — labeled "Mirrored (Variable Vector)" — drives `is_mirrored` boolean
+  on the character_primitive_slots row.
+- **Template composer:** if a template composes character-side slots
+  with mirroring, apply mirror surcharge using the primitive's
+  `mirrorBuCredit` value (already in schema at line 45).
+
+**Storage:** Schema already has `character_primitive_slots.is_mirrored`
+(per `characters.ts:108 + :190`). No migration needed.
+
+### Wiring plan
+- (Optional polish, post-7-D) Re-verify capability builder exposes the
+  existing `source_type` dropdown cleanly. Quick UI audit check.
+- 7-C (Template composer): when generating slot suggestions, surface
+  mirror-surcharge preview (BU debt against character's tier cap).
+- Test coverage: unit test the BU-surcharge math
+  (mirror surcharge = primitive.mirrorBuCredit; debt goes negative).
+- UI smoke: dev-server manual check of source-type dropdown.
+- Document mirror-acquisition state in player's handbook so GMs
+  know toggling the option inverts polarity at the cost of budget.
+
+### Reference: where the mirrors live
+```
+primitives                          # catalog (is_mirrorable flag)
+  ↓
+capability_primitive_slots          # recipe wiring
+  ↓
+character_primitive_slots           # ACQUISITION STATE — is_mirrored lives HERE
+  ↓
+templates                          # composed acquisition plans (uses mirrorBuCredit)
+```
+
+---
+
+## Verification scripts (run alongside audit)
 
 ## Verification scripts (run alongside audit)
 

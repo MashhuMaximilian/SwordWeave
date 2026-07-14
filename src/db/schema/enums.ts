@@ -28,6 +28,9 @@ export const primitiveCategoryEnum = pgEnum("primitive_category", [
   "BOSS_ECONOMY",
   "DEFENSIVE",
   "SPEED_QUICKENING", // Phase 7: split from DURATION (when, not how long)
+  // Phase 7-B: tactical + life-state primitives
+  "TACTICAL", // Cover Tiers I-IV and future spatial/tactical modifiers
+  "VITALITY", // Stabilize, Last Breath, and life-state engine primitives
   // Character-slot categories (legacy — slated for purge in Phase 7)
   "SHEET_AUGMENT",
   "HERITAGE_AUGMENT",
