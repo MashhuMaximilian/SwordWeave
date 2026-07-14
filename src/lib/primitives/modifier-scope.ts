@@ -593,15 +593,27 @@ export function resolveStoredScope(modifier: {
   if (md && typeof md === "object") {
     const ts = (md as Record<string, unknown>)["targetScope"];
     if (ts && typeof ts === "object") {
-      const layer = (ts as Record<string, unknown>)["layer"] ?? null;
-      const raw = (ts as Record<string, unknown>)["values"];
-      const values = Array.isArray(raw)
-        ? raw.filter((v): v is string => typeof v === "string")
+      const tsObj = ts as Record<string, unknown>;
+      const layer = tsObj["layer"] ?? null;
+      // Phase-7-D-2: accept both `values: string[]` (canonical new
+      // shape) and a singular `value: string` (legacy row format
+      // already present in DB). The canonical shape carries both;
+      // legacy shape has `value`, not `values`.
+      const valuesRaw = tsObj["values"];
+      const values: string[] = Array.isArray(valuesRaw)
+        ? valuesRaw.filter((v): v is string => typeof v === "string")
         : [];
+      let valuesFixed = values;
+      if (valuesFixed.length === 0) {
+        const singular = tsObj["value"];
+        if (typeof singular === "string") {
+          valuesFixed = [singular];
+        }
+      }
       if (typeof layer === "string" || layer === null) {
         return {
           layer: (layer as ScopeLayer | null) ?? null,
-          values,
+          values: valuesFixed,
         };
       }
     }

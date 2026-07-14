@@ -11,7 +11,28 @@
  *  - Practice Proficiency grants +PB; Expertise Upgrade grants +2*PB
  *
  * (see AUDIT-REPORT.md for canonical sources)
+ *
+ * Phase-7-D: this module now consumes modifiers via the canonical
+ * short axis (`metadata.targetScope`) introduced by Phase-7-E. The
+ * legacy dotted-string targets still load via LEGACY_TARGET_MIGRATIONS,
+ * so a mix of old and new modifier rows round-trip transparently.
+ *
+ * Modifier matching rule (D2):
+ *   1. Resolve the modifier's stored target via `resolveStoredScope`.
+ *      New-format rows have metadata.targetScope.{layer, values}.
+ *      Legacy dotted-target rows resolve to the canonical axis via
+ *      `LEGACY_TARGET_MIGRATIONS`.
+ *   2. Filter modifiers by *scope* (layer + axis name), not by the
+ *      literal target string. A modifier targeting `attribute` axis
+ *      with layer=ATTRIBUTE matches any physical/mental/magical
+ *      attribute modifier, regardless of which `values[]` checkboxes
+ *      it has; the value list narrows the application axis.
  */
+import {
+  resolveStoredScope,
+  LEGACY_TARGET_MIGRATIONS,
+  type ModifierTarget,
+} from "@/lib/primitives/modifier-scope";
 import type {
   HardModifier,
   JsonValue,
@@ -87,6 +108,11 @@ export interface AttributeScores {
  *   - "character.attribute.physical"
  *   - "character.attribute.mental"
  *   - "character.attribute.magical"
+ *
+ * Phase-7-D: matching also accepts the canonical short axis
+ * `attribute` (with metadata.targetScope.layer === "ATTRIBUTE")
+ * carried over from the legacy dotted string via LEGACY_TARGET_MIGRATIONS.
+ * A modifier whose `target` is the legacy dotted form still matches.
  */
 export function calculateAttributeScore(
   base: number,
@@ -94,9 +120,20 @@ export function calculateAttributeScore(
   modifiers: readonly HardModifier[] = [],
 ): number {
   let value = base;
+  const expectedLegacy = `character.attribute.${target}`;
+  const expectedAxis: ModifierTarget = "attribute";
+  const expectedScopeLayer = "ATTRIBUTE";
+  const expectedScopeValue = target.toUpperCase();
 
   for (const mod of modifiers) {
-    if (mod.target !== `character.attribute.${target}`) continue;
+    if (!modifierMatchesScope(mod, {
+      legacyTarget: expectedLegacy,
+      shortAxis: expectedAxis,
+      scopeLayer: expectedScopeLayer,
+      scopeValue: expectedScopeValue,
+    })) {
+      continue;
+    }
 
     // Read numeric value (we accept number; non-numeric values are ignored
     // since attribute scores are numeric by definition)
@@ -214,7 +251,18 @@ export function calculateMaxVitality(
   let value = (BASELINE_DEFENSE + pb) * level; // 10 + PB * Level (Path A baseline)
 
   for (const mod of modifiers) {
-    if (mod.target !== "character.maxVitality") continue;
+    // Phase-7-D: accept either legacy dotted target or new short
+    // axis max_vitality with metadata.targetScope.layer === "METRIC".
+    if (
+      !modifierMatchesScope(mod, {
+        legacyTarget: "character.maxVitality",
+        shortAxis: "max_vitality",
+        scopeLayer: "METRIC",
+        scopeValue: "HP",
+      })
+    ) {
+      continue;
+    }
     if (typeof mod.value !== "number" && typeof mod.value !== "string") {
       continue;
     }
@@ -366,11 +414,22 @@ export function compileDefenses(
  *
  * Baseline: 30 ft land.
  * Modifiers can add/subtract or grant new movement types.
+ *
+ * Phase-7-D: matches by canonical short axis `speed` (with
+ * targetScope.values[] restricting the locomotion type) and falls
+ * back to legacy dotted targets `character.movement.land/fly/swim/
+ * climb/burrow`. The metadata.targetScope.values may contain any of
+ * WALKING_SPEED, CLIMBING_SPEED, SWIMMING_SPEED, FLYING_SPEED,
+ * BURROWING_SPEED; legacy migration resolves a dotted
+ * `character.movement.<X>` form to its METRIC layer value.
  */
 export function compileMovement(
   level: number,
   modifiers: readonly HardModifier[] = [],
 ): EntityLiveStats["movement"] {
+  // Level is reserved for future use (e.g. level-scaled traits).
+  void level;
+
   let land = BASELINE_LAND_SPEED;
   let fly: number | undefined;
   let swim: number | undefined;
@@ -378,23 +437,58 @@ export function compileMovement(
   let burrow: number | undefined;
 
   for (const mod of modifiers) {
-    const target = mod.target;
+    // Resolve the movement type. We try legacy dotted first
+    // (back-compat), then the canonical axis with metadata values.
+    let movementType: "land" | "fly" | "swim" | "climb" | "burrow" | undefined;
+
+    // Canonical axis match (Phase-7-E): `mod.target === "speed"`
+    // with `metadata.targetScope.values[i] === WALKING_SPEED` etc.
+    if (modifierMatchesScope(mod, {
+      legacyTarget: "character.movement.land",
+      shortAxis: "speed",
+      scopeLayer: "METRIC",
+      scopeValue: "WALKING_SPEED",
+    })) {
+      movementType = "land";
+    } else if (modifierMatchesScope(mod, {
+      legacyTarget: "character.movement.fly",
+      shortAxis: "speed",
+      scopeLayer: "METRIC",
+      scopeValue: "FLYING_SPEED",
+    })) {
+      movementType = "fly";
+    } else if (modifierMatchesScope(mod, {
+      legacyTarget: "character.movement.swim",
+      shortAxis: "speed",
+      scopeLayer: "METRIC",
+      scopeValue: "SWIMMING_SPEED",
+    })) {
+      movementType = "swim";
+    } else if (modifierMatchesScope(mod, {
+      legacyTarget: "character.movement.climb",
+      shortAxis: "speed",
+      scopeLayer: "METRIC",
+      scopeValue: "CLIMBING_SPEED",
+    })) {
+      movementType = "climb";
+    } else if (modifierMatchesScope(mod, {
+      legacyTarget: "character.movement.burrow",
+      shortAxis: "speed",
+      scopeLayer: "METRIC",
+      scopeValue: "BURROWING_SPEED",
+    })) {
+      movementType = "burrow";
+    }
+
+    if (!movementType) continue;
+    void land; // land touched at the bottom
+
     if (typeof mod.value !== "number" && typeof mod.value !== "string") {
       continue;
     }
     const numericValue =
       typeof mod.value === "number" ? mod.value : Number(mod.value);
     if (!Number.isFinite(numericValue)) continue;
-
-    let movementType: "land" | "fly" | "swim" | "climb" | "burrow" | undefined;
-
-    if (target === "character.movement.land") movementType = "land";
-    else if (target === "character.movement.fly") movementType = "fly";
-    else if (target === "character.movement.swim") movementType = "swim";
-    else if (target === "character.movement.climb") movementType = "climb";
-    else if (target === "character.movement.burrow") movementType = "burrow";
-
-    if (!movementType) continue;
 
     let current =
       movementType === "land"
@@ -501,4 +595,116 @@ export function compileEntityLiveStats(
     defenses,
     attributes,
   };
+}
+
+// =============================================================================
+// Phase-7-D: targetScope-aware modifier matching
+// =============================================================================
+
+interface ModifierMatchCriteria {
+  /**
+   * The legacy dotted target the old resolver expected. New-format
+   * modifiers with metadata.targetScope will still match this if their
+   * (axis, layer, value) trio fits, otherwise the resolver falls back.
+   */
+  readonly legacyTarget: string;
+  /** Canonical short axis (e.g., `"attribute"`, `"max_vitality"`). */
+  readonly shortAxis: ModifierTarget;
+  /** Layer the new format uses (e.g., `"ATTRIBUTE"`, `"METRIC"`). */
+  readonly scopeLayer: string;
+  /**
+   * Optional value within the scope values array that the modifier
+   * MUST hit. e.g. for an attribute PHYSICAL attribute, values must
+   * contain "PHYSICAL" (or be empty, "any"). Use `null` to skip the
+   * value check.
+   */
+  readonly scopeValue: string;
+}
+
+/**
+ * Decide whether a single modifier row applies to a given resolution
+ * axis, given both legacy dotted-target and new metadata.targetScope
+ * representations.
+ *
+ * Match precedence:
+ *   1. Legacy dotted target string equality (Phase-7 and earlier).
+ *   2. New-format short axis + layer match.
+ *   3. scopeValue check:
+ *      - empty values[]  → matches any (broad)
+ *      - non-empty values[] → at least one entry must match
+ *
+ * Pure function, no I/O.
+ */
+export function modifierMatchesScope(
+  mod: HardModifier,
+  criteria: ModifierMatchCriteria,
+): boolean {
+  // 1. Legacy dotted string equality. This covers Phase-7 and earlier
+  // modifiers whose `target` carries the full dotted name.
+  if (mod.target === criteria.legacyTarget) {
+    return true;
+  }
+
+  // 2. Migration: even when mod.target is dotted, the migration
+  // table points at the canonical short axis. We need to check
+  // the migration's defaultScope.values too, because the table
+  // maps every dotted attribute form to the same `attribute`
+  // axis with different values (PHYSICAL/MENTAL/MAGICAL).
+  const migration = (LEGACY_TARGET_MIGRATIONS as Record<string, unknown>)[
+    mod.target
+  ];
+  if (
+    migration &&
+    typeof migration === "object" &&
+    "target" in (migration as Record<string, unknown>) &&
+    (migration as { target: string }).target === criteria.shortAxis
+  ) {
+    // Check the migration's defaultScope.values matches our
+    // expected scopeValue. The migration table stores
+    // defaultScope.values: ["PHYSICAL"] (etc.) for attribute rows,
+    // so we use it directly.
+    const defaultScope = (migration as Record<string, unknown>)[
+      "defaultScope"
+    ];
+    if (
+      defaultScope &&
+      typeof defaultScope === "object" &&
+      "values" in (defaultScope as Record<string, unknown>)
+    ) {
+      const vals = (defaultScope as { values: unknown }).values;
+      if (Array.isArray(vals)) {
+        // If the migration's values array contains our expected
+        // scopeValue, match; if values is empty, broad match.
+        if (vals.length === 0) return true;
+        if (vals.includes(criteria.scopeValue)) return true;
+        // Fall through to the new-shape path below; if that
+        // doesn't match either, we'll return false.
+      }
+    }
+  }
+
+  // 3. New-format short axis. Compare to criteria.shortAxis.
+  if (mod.target !== criteria.shortAxis) {
+    return false;
+  }
+
+  // 4. Resolve the stored scope. If there is no metadata, accept any
+  // modifier on the matching axis (legacy behavior).
+  const scope = resolveStoredScope({
+    target: mod.target,
+    metadata:
+      mod.metadata && typeof mod.metadata === "object"
+        ? (mod.metadata as Record<string, unknown>)
+        : null,
+  });
+  if (!scope || scope.layer !== criteria.scopeLayer) {
+    return false;
+  }
+
+  // 5. scopeValue check: empty values[] is "any"; otherwise the
+  // expected value must be present.
+  if (scope.values.length === 0) {
+    return true;
+  }
+  return scope.values.includes(criteria.scopeValue);
 }

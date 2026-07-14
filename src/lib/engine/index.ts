@@ -8,6 +8,8 @@ export * from "./vitality";
 export * from "./bu-balance";
 export * from "./encumbrance";
 export * from "./sheet";
+// Phase-7-Q-M: mirror-vector resolution runtime.
+export * from "./mirror";
 
 // Practices — explicit imports to avoid clashes with stats.
 // We choose the PRACTICES versions for these (newer, more complete):

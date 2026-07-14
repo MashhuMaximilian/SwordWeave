@@ -648,6 +648,80 @@ targeting` keeps data written under the old name readable.
 
 ---
 
+## Phase-7-Q-M — Mirror resolution (engine) (2026-07-14)
+
+### Canonical source
+
+Notion `'BU Market of Primitive components' §'Mirror-Vector
+Architecture'` and §'Atomic Vector Toggle'. Two-class taxonomy:
+
+**Variable Vector — mirrorable** (numerical metrics, vitality blocks,
+probability bias tracks, structural defensive faults, kinematic
+metrics, strain buffers). Inverting these yields a BU credit.
+
+**Permission Vector — not mirrorable** (verbs, domains, dice,
+range/sizing, durations, system bypasses like flight/reaction slot,
+trigger hooks, semantic state tags).
+
+User overrides applied in Q-M discussion:
+- Practice Progression mirrorable (Practice Proficiency, Expertise
+  Upgrade, Reliable Practice, Broad Familiarity). Focused Edge is a
+  narrow permit, NOT mirrorable.
+- Causal Override is exempt.
+- Cover Tier I-IV (TACTICAL) not mirrorable.
+- Vitality primitives (Stabilize, Last Breath, Tether, Vitality
+  Shielding) not mirrorable (different primitives, not mirrors).
+
+### Engine surface — `src/lib/engine/mirror.ts`
+
+| Export | Purpose |
+|---|---|
+| `resolveMirrorEffect(vector, isMirrored, value)` | Per-vector effect application. VARIABLE_VECTOR sign-flips, STRUCTURAL_FAULT preserves magnitude for vuln/RESIST labeling, COST_INSTABILITY installs user-cost, STANDARD_ONLY pass-through. |
+| `resolveEffectiveModifierValue(primitive, slot, value)` | Convenience wrapper pairing mirror_vector (DB) with is_mirrored (slot state). |
+| `resolveResistanceMultiplier(strongestRes, strongestVuln)` | Canonical stacking rule: cancellation over stacking. |
+| `isMirroredSlot(slot)` / `isUserCostVector(v)` | Type guards. |
+
+### Engine wire-up — `src/lib/engine/stats.ts`
+
+`modifierMatchesScope(mod, criteria)` is the new matcher. Resolution:
+
+1. Legacy dotted-target string equality (Phase-7 data).
+2. LEGACY_TARGET_MIGRATIONS routes dotted → short axis, also carrying
+   the migration's `defaultScope.values[]` so cross-attribute false
+   positives don't occur (e.g. `character.attribute.mental` does not
+   match a `physical` resolve site).
+3. New-format short axis + `metadata.targetScope.layer` + the
+   value-array check (with `{layer, value}` legacy single-shape
+   normalized in `resolveStoredScope` to `{layer, values: [value]}`).
+
+`calculateAttributeScore`, `calculateMaxVitality`, `compileMovement`
+now use the matcher. `compileDefenses` still routes via legacy dotted
+strings (targetScope-aware rewrite deferred to Phase-7-D3).
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `pnpm exec vitest run` | 626 / 626 passing (added 6 mirror tests + 3 matcher tests + 8 helper tests) |
+| `pnpm exec tsc --noEmit` | clean |
+| `pnpm exec next build` | compiled successfully |
+| `pnpm exec tsx scripts/_mirror-taxonomy-draft.ts` | 47 mirror candidates (vs 12 currently) |
+
+### Open follow-ups
+
+- Wire `resolveEffectiveModifierValue` into `calculateDefenseDc` so
+  mirrored structural-defensive primitives (Resistance → Vulnerability)
+  flow through the canonical `resolveResistanceMultiplier` rule.
+- Build a small `compileMirrorFromSlots(slotModifierPairs)` helper that
+  takes character-acquisition state and returns resolved mirror effects
+  for downstream damage / status calls.
+- Mirror resolver needs a single canonical entry through `modifiers.ts`'s
+  `evaluateModifiers` so the damage / status code paths get mirror
+  semantics for free (Phase-7-Q-M-R2, to ship after a Condition UX
+  pass per the user's order).
+
+---
+
 ## Verification scripts (run alongside audit)
 
 - `pnpm exec tsx scripts/_seed-vs-db.ts` — confirms seed ↔ DB alignment

@@ -199,10 +199,11 @@ async function main() {
     const summary: Record<string, { current: number; proposed: number; rows: PrimitivesRow[] }> = {};
     for (const row of r.rows) {
       const cls = classify(row);
-      summary[row.category] ??= { current: 0, proposed: 0, rows: [] };
-      summary[row.category].rows.push(row);
-      if (row.is_mirrorable) summary[row.category].current++;
-      if (cls.isMirrorable) summary[row.category].proposed++;
+      const bucket = summary[row.category] ?? { current: 0, proposed: 0, rows: [] };
+      bucket.rows.push(row);
+      summary[row.category] = bucket;
+      if (row.is_mirrorable) bucket.current++;
+      if (cls.isMirrorable) bucket.proposed++;
     }
     console.log("Category summary (current → proposed mirror):");
     for (const [cat, s] of Object.entries(summary)) {
@@ -212,12 +213,15 @@ async function main() {
     console.log("\nPer-row proposal (only shows changes):");
     for (const row of r.rows) {
       const cls = classify(row);
+      const currentMirrorable = row.is_mirrorable === true;
+      const currentVector = row.mirror_vector ?? null;
+      const proposedVector = cls.mirrorVector ?? null;
       const changed =
-        cls.isMirrorable !== !!row.is_mirrorable ||
-        (cls.mirrorVector ?? null) !== (row.mirror_vector ?? null);
+        cls.isMirrorable !== currentMirrorable ||
+        proposedVector !== currentVector;
       if (!changed) continue;
-      const cur = `${row.is_mirrorable ? "yes/" + (row.mirror_vector ?? "?") : "no"}`;
-      const prop = `${cls.isMirrorable ? "yes/" + cls.mirrorVector : "no"}`;
+      const cur = `${currentMirrorable ? "yes/" + (currentVector ?? "?") : "no"}`;
+      const prop = `${cls.isMirrorable ? "yes/" + proposedVector : "no"}`;
       console.log(
         `  ${row.name.padEnd(46)} ${row.category.padEnd(14)}  ${cur.padEnd(28)} → ${prop.padEnd(28)} (${cls.reason})`,
       );
