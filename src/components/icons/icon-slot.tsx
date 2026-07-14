@@ -1,8 +1,8 @@
 "use client";
 
 // =============================================================================
-// IconSlot — clickable icon preview + "Choose icon" trigger used in entity
-// forms. Clicking opens the IconPicker via the modal stack.
+// IconSlot — clickable icon preview + an always-visible "Change" button used
+// in entity forms. Clicking either opens the IconPicker via the modal stack.
 //
 // Usage in a form:
 //   <IconSlot
@@ -18,9 +18,27 @@
 // receives a single onChange with the new source/key/url/color triple.
 // This makes it easy to wire into the existing form state and persist
 // via the same dispatch-save pipeline as everything else.
+//
+// Why an always-visible "Change" button (Phase 9):
+//   The previous UX had two affordances:
+//     (1) The icon tile itself — clickable, with a pencil overlay that
+//         fades in on hover.
+//     (2) A "Choose icon →" link — visible ONLY when no icon was set.
+//   Users with an existing icon (the common case post-backfill) had only
+//   affordance (1). On desktop (hover) it works fine — the pencil appears
+//   and the tooltip "Change <label>" cues the click. On touch / mobile /
+//   screen-readers, there is no hover state, and the click target is just
+//   a picture with no visible text. Result: the user reports "no button
+//   to change icon".
+//   Fix: always render a small "Change" button next to the icon. The
+//   click target is now explicit text, which works on every input mode
+//   (mouse, touch, keyboard, screen reader) and matches the visual
+//   language of the rest of the form (every field has a label, every
+//   field has a clear edit affordance).
 // =============================================================================
 
 import { Pencil } from "lucide-react";
+import { useId } from "react";
 import { IconDisplay, type IconSource } from "./icon-display";
 import { IconPicker } from "./icon-picker";
 import { useModalStack } from "@/components/ui/modal-stack";
@@ -57,11 +75,20 @@ export function IconSlot({
   helper,
 }: IconSlotProps) {
   const stack = useModalStack();
+  // Phase 9: unique key per slot. Previously every IconSlot pushed the
+  // literal "icon-picker" key, which collided when two slots on the
+  // same page both opened (e.g. a fork source + a fork target). React
+  // logs a duplicate-key warning and silently drops one of the modals.
+  // useId() gives each IconSlot a stable, distinct, SSR-safe key.
+  const slotId = useId();
 
   const handleOpen = () => {
+    // Phase 9: small breadcrumb so the user can tell which icon slot
+    // the modal belongs to when multiple are open. The label is the
+    // field's human-readable name (e.g. "Build icon", "Icon").
     stack.push({
-      key: "icon-picker",
-      label: "Icon",
+      key: `icon-picker-${slotId}`,
+      label,
       content: (
         <IconPicker
           currentSource={iconSource ?? null}
@@ -100,7 +127,10 @@ export function IconSlot({
           size={size}
           alt={label}
         />
-        <div className="absolute inset-0 flex items-end justify-end bg-gradient-to-tl from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100">
+        {/* Hover-only pencil overlay — desktop affordance. The always-
+            visible "Change" button below is the canonical affordance
+            across all input modes; this overlay is just a hint. */}
+        <div className="pointer-events-none absolute inset-0 flex items-end justify-end bg-gradient-to-tl from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100">
           <Pencil className="m-1 size-3.5 text-white" />
         </div>
       </button>
@@ -112,15 +142,20 @@ export function IconSlot({
           {helper && (
             <p className="mt-0.5 text-xs text-muted-foreground">{helper}</p>
           )}
-          {!iconSource && (
-            <button
-              type="button"
-              onClick={handleOpen}
-              className="mt-1 text-xs font-medium text-primary hover:underline"
-            >
-              Choose icon →
-            </button>
-          )}
+          {/* Phase 9: always-visible "Change" button. Sits where the
+              "Choose icon →" link used to be, but always renders (not
+              conditional on iconSource being null). The icon-empty
+              variant says "Choose icon" so the language still makes
+              sense for fresh entities; the icon-present variant says
+              "Change". Both call the same handler. */}
+          <button
+            type="button"
+            onClick={handleOpen}
+            className="mt-1.5 inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary focus:border-primary focus:outline-none"
+          >
+            <Pencil className="size-3" />
+            {iconSource ? "Change" : "Choose icon"}
+          </button>
         </div>
       )}
     </div>
