@@ -149,31 +149,65 @@ body {
 /* ---------------------------------------------------------------------------
  * COLOR THUMB (react-aria-components)
  *
- * ColorPicker consumers (icon picker, etc.) render <ColorThumb /> as a
- * child of <ColorArea> and <ColorSlider>. React-aria sets the thumb's
- * inline position + transform but does NOT style it — that is the
- * consumer's job. Without these rules the thumb renders as a 0x0
- * invisible element at the correct coordinates, so the user can drag
- * but cannot see WHERE they are in the value space.
+ * Each <ColorArea> and <ColorSlider> renders one <ColorThumb /> as a
+ * child. React-aria sets the inline `position: absolute; left:% /
+ * top:%; transform: translate(-50%, -50%)` so the thumb is correctly
+ * placed in the value space — but ships no visual styling at all,
+ * meaning without these rules the thumb collapses to a 0×0 invisible
+ * element at the correct coordinates (Phase 12 bug).
  *
- * Match Adobe's reference: 20px circle, 2px white border, 1px black
- * outer shadow for contrast on light gradients. The selected-shade
- * callout above the thumb is the ::after pseudo-element and uses the
- * `color` CSS variable React-aria injects per thumb.
+ * Phase 14: bumped to 28px visual + 44px invisible hit-target via
+ * ::before, so fat-fingering on mobile still picks up. The
+ * selected-shade callout is rendered as ::after with a teardrop
+ * (drop) shape using clip-path: the round body shows the currently
+ * picked color, and the tail points DOWNWARD at the thumb body so
+ * the user's eye naturally connects callout → thumb.
+ *
+ * Drop callout breakdown (24px total height):
+ *
+ *        ╭───────╮
+ *       │  body  │     ← 18×18 circle, color = current value
+ *        ╰───┬───╯
+ *            ▼            ← 8px triangular tail
+ *           ┌─┐
+ *           │ │       ← thumb body (28px circle below)
+ *           └─┘
+ *
+ * react-aria sets style.backgroundColor inline to the current value —
+ * we don't set background here so the library's value wins. forced-
+ * color-adjust keeps the border legible in Windows High Contrast.
  * --------------------------------------------------------------------------- */
 .color-thumb {
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   border: 2px solid white;
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.5),
-    0 2px 4px rgba(0, 0, 0, 0.3);
+    0 0 0 1px rgba(0, 0, 0, 0.55),
+    0 3px 8px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.1);
   /* react-aria-components sets style.backgroundColor inline via
      state.getDisplayColor().toString() — we don't set it here so the
      library's value wins. forced-color-adjust keeps the border
      legible in Windows High Contrast. */
   forced-color-adjust: none;
+  cursor: grab;
+}
+
+.color-thumb:active {
+  cursor: grabbing;
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+/* Invisible hit-target overlay: 44×44 around the thumb so mobile
+   touches register even when the user doesn't hit the visible 28px
+   exactly. The visible thumb is rendered ABOVE this overlay so the
+   cursor/active states stay on the visible element. */
+.color-thumb::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
 }
 
 .color-thumb[data-focus-visible] {
@@ -181,22 +215,46 @@ body {
   outline-offset: 2px;
 }
 
+/* Drop-shaped callout above the thumb. Body is the upper half of
+   an 18×18 circle (rounded top, octagonal body) plus a 4-pixel
+   triangular tail at the bottom centered on x=50% y=100% that
+   points down at the thumb. Drawn entirely with clip-path so it
+   scales cleanly and stays sharp at any DPR. */
 .color-thumb::after {
   content: "";
   position: absolute;
-  /* callout above the thumb — show the selected shade as a small dot.
-     We give it the same color via a currentColor override so it
-     tracks the thumb. */
-  bottom: calc(100% + 6px);
   left: 50%;
-  transform: translateX(-50%);
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
+  bottom: calc(100% + 10px);
+  width: 18px;
+  height: 22px;
+  border-radius: 0;
   background: inherit;
-  border: 1.5px solid white;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+  border: 2px solid white;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.55),
+    0 2px 6px rgba(0, 0, 0, 0.35);
   pointer-events: none;
+  /* Teardrop polygon — references are (x% from left, y% from top
+     of the 18×22 box, with y=0 at top):
+        top-left curve   30% 0%   top of the round head
+        top-right curve  70% 0%
+        mid-right bulge  100% 35%
+        waist right      82% 55%
+        tail tip         50% 100%    (single downward point)
+        waist left       18% 55%
+        mid-left bulge   0% 35%
+     Re-entered to 30% 0% to close the path. */
+  clip-path: polygon(
+    30% 0%,
+    70% 0%,
+    100% 35%,
+    82% 55%,
+    50% 100%,
+    18% 55%,
+    0% 35%,
+    30% 0%
+  );
+  forced-color-adjust: none;
 }
 
 /* Multi-color swatch picker swatches (e.g. the 17 color presets). */

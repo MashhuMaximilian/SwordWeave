@@ -58,6 +58,7 @@ import {
   ColorSwatchPicker,
   ColorSwatchPickerItem,
   ColorThumb,
+  SliderTrack,
   parseColor,
 } from "react-aria-components";
 
@@ -892,20 +893,29 @@ function ColorTrigger({
                       colorSpace="hsb"
                       channel="hue"
                       orientation="vertical"
-                      // Wrapper-positioning context for the thumb.
-                      // react-aria-components' <ColorSlider> sets
-                      // defaultClassName="react-aria-ColorSlider" but
-                      // consumer className REPLACES it, so we can't
-                      // rely on a CSS selector. The wrapper here
-                      // carries position:relative inline so the thumb's
-                      // `position:absolute; top:%` resolves correctly.
-                      className="relative h-40 w-6 rounded-md"
+                      // Wrapper-positioning context for the thumb. Use
+                      // w-8 so the slider is fat enough to hit with
+                      // a thumb on mobile; the hue bar is the only way
+                      // to select hue in HSB space without going via
+                      // swatches.
+                      //
+                      // IMPORTANT: <SliderTrack> child is required —
+                      // ColorSlider publishes trackProps via context,
+                      // and only <SliderTrack> consumes them to attach
+                      // the onPointerDown handler (the click-to-set
+                      // behavior). Without it, the user can only
+                      // drag the thumb itself; clicks on the empty
+                      // track do nothing. See Phase 14 notes in
+                      // globals.css.
+                      className="relative h-40 w-8 rounded-md"
                       style={{
                         background:
                           "linear-gradient(to bottom, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)",
                       }}
                     >
-                      <ColorThumb className="color-thumb" />
+                      <SliderTrack className="h-full w-full">
+                        <ColorThumb className="color-thumb" />
+                      </SliderTrack>
                     </ColorSlider>
                   </div>
                   <ColorField
