@@ -68,13 +68,17 @@ type SeedRow = {
 /**
  * Default source_origin for all 139 BU Market rows.
  *
- * Schema migration 0291e6b replaced the old (name, category, user_id)
- * unique constraint with (name, source_origin). This value MUST match
- * the one originally written by the phase-5 canonical seed for
- * ON CONFLICT to find existing rows. Re-running the seeder against
- * an existing DB will UPSERT all 139 rows with this provenance.
+ * Migration 0030 simplified this from the original seed-name suffix
+ * `'system:phase5-commit-c-library-seed'` (introduced by migration
+ * 0020 as a transient backfill marker) to the stable identity
+ * `'system'`. The (name, source_origin) unique constraint remains
+ * the public-identity contract; the simplified string lets canonical
+ * seeders UPSERT into existing rows without suffix-drift hazard.
+ *
+ * The migration that rewrote all 139 rows is
+ * `src/db/migrations/0030_simplify_system_source_origin.sql`.
  */
-const SEED_SOURCE_ORIGIN = "system:phase5-commit-c-library-seed";
+const SEED_SOURCE_ORIGIN = "system";
 
 const SEED: SeedRow[] = [
   // ===========================================================================
@@ -817,9 +821,9 @@ async function main() {
     }
 
     // Upsert on (name, source_origin) unique constraint (schema migration
-    // 0291e6b replaced the old (name, category, user_id) constraint).
-    // Source origin is fixed to SEED_SOURCE_ORIGIN so existing phase-5
-    // canonical rows are matched and updated in place.
+    // 0020 introduced it, replacing the prior (name, category, user_id)
+    // constraint). All canonical BU Market rows share SEED_SOURCE_ORIGIN
+    // so existing rows are matched and updated in place.
     const result = await db.execute(sql`
       INSERT INTO primitives (
         name, category, cost_tier, bu_cost, mechanical_output_text, narrative_rule,
