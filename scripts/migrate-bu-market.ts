@@ -19,6 +19,12 @@
 import { neon } from "@neondatabase/serverless";
 import { config } from "dotenv";
 import { BU_MARKET_PRIMITIVES, BU_MARKET_META } from "../data/bu-market-primitives";
+import {
+  buildScope,
+  serializeForDB,
+  validateScope,
+  type TargetScope,
+} from "../src/lib/primitives/target-scope";
 
 // Load .env.local explicitly (seed/migration scripts don't get Next.js env loading)
 config({ path: ".env.local" });
@@ -56,6 +62,27 @@ async function migrate() {
 
     for (const prim of BU_MARKET_PRIMITIVES) {
       try {
+        // Phase 7: target_scope — JSON-stringified structured scope
+        // (verb/domain primitives stay null; modifier primitives get a layer/value).
+        const targetScope: TargetScope | null = prim.targetScope
+          ? buildScope(
+              prim.targetScope.layer as TargetScope["layer"],
+              prim.targetScope.value ?? null,
+            )
+          : null;
+
+        const targetScopeJson = serializeForDB(targetScope);
+
+        // Soft validate the scope (don't block, just warn).
+        const validation = validateScope(targetScope);
+        if (validation.ok === false) {
+          console.warn(
+            `  ! ${prim.name}: invalid scope — ${validation.error}`,
+          );
+        } else if (validation.ok && validation.soft) {
+          console.log(`  · ${prim.name}: scope hint — ${validation.soft}`);
+        }
+
         // Check if exists first (Postgres treats NULL as distinct in unique indexes,
         // so we can't rely on ON CONFLICT with NULL user_id)
         const existing = await sql`
@@ -77,11 +104,12 @@ async function migrate() {
               mirror_vector = ${prim.mirrorVector},
               mirror_bu_credit = ${prim.mirrorBuCredit},
               mirror_eligibility_notes = ${prim.isMirrorable ? "Mirrorable - " + prim.mirrorVector : "Not mirrorable - permission vector"},
+              target_scope = ${targetScopeJson},
               updated_at = NOW()
             WHERE id = ${id}
           `;
           updated++;
-          console.log(`  ~ ${prim.name} (${prim.buCost} BU, ${prim.category}) — updated`);
+          console.log(`  ~ ${prim.name} (${prim.buCost} BU, ${prim.category}) — updated${targetScopeJson ? ` [scope: ${prim.targetScope?.layer}]` : ""}`);
         } else {
           // Insert new record
           await sql`
@@ -89,7 +117,7 @@ async function migrate() {
               name, user_id, is_public, category, cost_tier, bu_cost,
               mechanical_output_text, narrative_rule,
               is_mirrorable, mirror_vector, mirror_bu_credit, mirror_eligibility_notes,
-              hard_modifiers
+              hard_modifiers, target_scope
             )
             VALUES (
               ${prim.name},
@@ -104,11 +132,12 @@ async function migrate() {
               ${prim.mirrorVector},
               ${prim.mirrorBuCredit},
               ${prim.isMirrorable ? "Mirrorable - " + prim.mirrorVector : "Not mirrorable - permission vector"},
-              ${"[]"}::jsonb
+              ${"[]"}::jsonb,
+              ${targetScopeJson}
             )
           `;
           inserted++;
-          console.log(`  + ${prim.name} (${prim.buCost} BU, ${prim.category})`);
+          console.log(`  + ${prim.name} (${prim.buCost} BU, ${prim.category})${targetScopeJson ? ` [scope: ${prim.targetScope?.layer}]` : ""}`);
         }
       } catch (err) {
         failed++;

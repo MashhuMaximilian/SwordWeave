@@ -29,6 +29,18 @@ export interface PrimitiveSeed {
   readonly mirrorVector: "STANDARD_ONLY" | "VARIABLE_VECTOR" | "STRUCTURAL_FAULT" | "COST_INSTABILITY";
   readonly mirrorBuCredit: number;
   readonly sourceTable: string;
+  /**
+   * Target scope — Phase 7. What the modifier applies to.
+   * Optional: only set on modifier primitives (SHEET_AUGMENT,
+   * PROBABILITY_BIAS). Verbs, Domains, Structures etc. leave
+   * this undefined. Values are JSON-serialized into the
+   * `target_scope` text column at migration time; see
+   * src/lib/primitives/target-scope.ts for the canonical enums.
+   */
+  readonly targetScope?: {
+    readonly layer: string;
+    readonly value?: string | null;
+  };
 }
 
 export const BU_MARKET_PRIMITIVES: readonly PrimitiveSeed[] = [
@@ -437,6 +449,7 @@ export const BU_MARKET_PRIMITIVES: readonly PrimitiveSeed[] = [
     mirrorVector: "VARIABLE_VECTOR",
     mirrorBuCredit: 12,
     sourceTable: "Character Progression Market",
+    targetScope: { layer: "ATTRIBUTE", value: null },
   },
   {
     name: "Attack Bonus Increment",
@@ -448,6 +461,7 @@ export const BU_MARKET_PRIMITIVES: readonly PrimitiveSeed[] = [
     mirrorVector: "VARIABLE_VECTOR",
     mirrorBuCredit: 6,
     sourceTable: "Character Progression Market",
+    targetScope: { layer: "METRIC", value: "ATTACK_ROLL" },
   },
   {
     name: "Defensive Save Upgrade",
@@ -459,6 +473,7 @@ export const BU_MARKET_PRIMITIVES: readonly PrimitiveSeed[] = [
     mirrorVector: "STANDARD_ONLY",
     mirrorBuCredit: 0,
     sourceTable: "Character Progression Market",
+    targetScope: { layer: "ATTRIBUTE", value: null },
   },
   {
     name: "Broad Familiarity",
@@ -470,6 +485,7 @@ export const BU_MARKET_PRIMITIVES: readonly PrimitiveSeed[] = [
     mirrorVector: "STANDARD_ONLY",
     mirrorBuCredit: 0,
     sourceTable: "Practice Progression",
+    targetScope: { layer: "ALL", value: null },
   },
   {
     name: "Focused Edge",
@@ -481,6 +497,7 @@ export const BU_MARKET_PRIMITIVES: readonly PrimitiveSeed[] = [
     mirrorVector: "STANDARD_ONLY",
     mirrorBuCredit: 0,
     sourceTable: "Practice Progression",
+    targetScope: { layer: "NARROW_FOCUS", value: null },
   },
   {
     name: "Practice Proficiency",
@@ -492,6 +509,7 @@ export const BU_MARKET_PRIMITIVES: readonly PrimitiveSeed[] = [
     mirrorVector: "STANDARD_ONLY",
     mirrorBuCredit: 0,
     sourceTable: "Practice Progression",
+    targetScope: { layer: "PRACTICE", value: null },
   },
   {
     name: "Expertise Upgrade",
@@ -503,6 +521,7 @@ export const BU_MARKET_PRIMITIVES: readonly PrimitiveSeed[] = [
     mirrorVector: "STANDARD_ONLY",
     mirrorBuCredit: 0,
     sourceTable: "Practice Progression",
+    targetScope: { layer: "PRACTICE", value: null },
   },
   {
     name: "Reliable Practice",
@@ -514,6 +533,7 @@ export const BU_MARKET_PRIMITIVES: readonly PrimitiveSeed[] = [
     mirrorVector: "STANDARD_ONLY",
     mirrorBuCredit: 0,
     sourceTable: "Practice Progression",
+    targetScope: { layer: "PRACTICE", value: null },
   },
 
   // ==========================================================================
@@ -529,6 +549,7 @@ export const BU_MARKET_PRIMITIVES: readonly PrimitiveSeed[] = [
     mirrorVector: "VARIABLE_VECTOR",
     mirrorBuCredit: 4,
     sourceTable: "Vitality Extension Primitives",
+    targetScope: { layer: "METRIC", value: "HP" },
   },
   {
     name: "Vitality Core Augment II",
@@ -540,6 +561,7 @@ export const BU_MARKET_PRIMITIVES: readonly PrimitiveSeed[] = [
     mirrorVector: "VARIABLE_VECTOR",
     mirrorBuCredit: 8,
     sourceTable: "Vitality Extension Primitives",
+    targetScope: { layer: "METRIC", value: "HP" },
   },
   {
     name: "Vitality Core Augment III",
@@ -551,6 +573,7 @@ export const BU_MARKET_PRIMITIVES: readonly PrimitiveSeed[] = [
     mirrorVector: "VARIABLE_VECTOR",
     mirrorBuCredit: 12,
     sourceTable: "Vitality Extension Primitives",
+    targetScope: { layer: "METRIC", value: "HP" },
   },
 
   // ==========================================================================
@@ -566,6 +589,7 @@ export const BU_MARKET_PRIMITIVES: readonly PrimitiveSeed[] = [
     mirrorVector: "STANDARD_ONLY",
     mirrorBuCredit: 0,
     sourceTable: "Global Attack & DC Modifiers",
+    targetScope: { layer: "METRIC", value: "CHARACTER_DC" },
   },
   {
     name: "Precise Vector Alignment (Global Attack Modifier)",
@@ -577,6 +601,67 @@ export const BU_MARKET_PRIMITIVES: readonly PrimitiveSeed[] = [
     mirrorVector: "STANDARD_ONLY",
     mirrorBuCredit: 0,
     sourceTable: "Global Attack & DC Modifiers",
+    targetScope: { layer: "METRIC", value: "ATTACK_ROLL" },
+  },
+
+  // ==========================================================================
+  // PROBABILITY BIAS MARKET — Phase 7
+  // ==========================================================================
+  // Per BU Market canonical Probability Bias table. Scope is *intrinsic*
+  // to the tier — see src/lib/primitives/target-scope.ts PROBABILITY_BIAS_TIER_SPEC.
+  // Tiers I-III are mirrorable (accept Disadvantage for BU credit).
+  // Tier IV (Causal Override) is not: you cannot purchase a "negative fate."
+  {
+    name: "Probability Bias — Narrative Focus",
+    category: "PROBABILITY_BIAS",
+    buCost: 3,
+    tier: "Tier 1: Minor (3 BU)",
+    description:
+      "Tier I Probability Bias (3 BU). Gain Positive Bias (Advantage) OR impose Negative Bias (Disadvantage) within an ultra-specific, narrowly-defined narrative context. Examples: balancing boots granting Positive Bias vs. physical knockdowns; cursed item imposing Negative Bias on Awareness checks by smell only. Mountable on passive traits, refined sensory tools, or hyper-specific gear modifications.",
+    isMirrorable: true,
+    mirrorVector: "VARIABLE_VECTOR",
+    mirrorBuCredit: 3,
+    sourceTable: "Probability Bias Market",
+    targetScope: { layer: "NARROW_FOCUS", value: null },
+  },
+  {
+    name: "Probability Bias — Named Metric",
+    category: "PROBABILITY_BIAS",
+    buCost: 6,
+    tier: "Tier 2: Standard (6 BU)",
+    description:
+      "Tier II Probability Bias (6 BU). Gain Positive or impose Negative Bias across a full Named Practice (e.g., all Awareness checks) or a single combat interaction (e.g., attacks against a single chosen foe). Used for core active capabilities and deep tactical features.",
+    isMirrorable: true,
+    mirrorVector: "VARIABLE_VECTOR",
+    mirrorBuCredit: 6,
+    sourceTable: "Probability Bias Market",
+    targetScope: { layer: "PRACTICE", value: null },
+  },
+  {
+    name: "Probability Bias — Core Attribute",
+    category: "PROBABILITY_BIAS",
+    buCost: 12,
+    tier: "Tier 3: Major (12 BU)",
+    description:
+      "Tier III Probability Bias (12 BU). Gain Positive or impose Negative Bias across an entire primary Attribute axis (e.g., all Mental checks) or all attack/defense profiles. High-impact capability that temporarily distorts a target's overall efficiency or grants supreme clarity.",
+    isMirrorable: true,
+    mirrorVector: "VARIABLE_VECTOR",
+    mirrorBuCredit: 12,
+    sourceTable: "Probability Bias Market",
+    targetScope: { layer: "ATTRIBUTE", value: null },
+  },
+  {
+    name: "Causal Override (Timeline Lock)",
+    category: "PROBABILITY_BIAS",
+    buCost: 20,
+    tier: "Tier 4: Core Axis (20+ BU)",
+    description:
+      "Tier IV Probability Bias — Causal Override (20 BU). Bypass the rolling engine entirely. An unpredictable d20 roll is replaced with a fixed, static value. Timeline Lock: high-tier reality or chronological distortion. The user pre-determines a narrative outcome by substituting a variable roll with a guaranteed mathematical baseline. NOT mirrorable — you cannot possess a \"negative fate.\"",
+    isMirrorable: false,
+    mirrorVector: "STANDARD_ONLY",
+    mirrorBuCredit: 0,
+    sourceTable: "Probability Bias Market",
+    targetScope: { layer: "DICE", value: "D20" },
   },
 ];
 
