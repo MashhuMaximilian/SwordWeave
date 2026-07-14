@@ -401,17 +401,12 @@ Template categories: heritage, archetype, background, item, race.
 | 4 | ~~2nd-Action-Turn / Haste-vs-Haste Primitive missing~~ | (none — resolved) | Haste Vector already covers this. Verify no addition needed. |
 | 5 | ~~Causality Interdiction primitive missing~~ | (none — resolved) | `Interceptive Causal Trigger` already exists in canonical; its narrative description is "Causality Interdiction." |
 | 6 | ~~Manifestation / Vitality Collapse / Stabilization primitives~~ | 10-tactical-subsystems | **PARTIALLY RESOLVED:**<br>• Manifestation = engine/execution concept (page 10 §1.B), **no row needed**.<br>• Vitality Collapse = engine rule (page 10 §2), **no row needed**.<br>• Existential Shatter = engine rule (page 10 §3), **no row needed**.<br>• Stabilize / Last Breath / Tether of Being = 3 rows added under new VITALITY enum |
-| 7 | Trigger Hook primitives need targetScope | (gap from Phase-7 audit) | **Phase-7-B TODO: scope 5 rows** |
+| 7 | ~~Trigger Hook primitives need targetScope~~ | (resolved 2026-07-14) | **RESOLVED (Phase-7-B.2, 2026-07-14):** 5 trigger primitives scoped as `NARROW_FOCUS` with descriptive values (Direct Material, Systemic Threshold, Conditional Informational, Interceptive Causal, Dormant Trigger Hook). DB went from 32→37 rows-with-targetScope. |
 
 ## Phase-7-B TODO (carry into code work)
 
 1. (Done in B.1) ~~Add Cover Tier I-IV rows + Stabilize/Last Breath/Tether-of-Being rows + enum migration 0031.~~
-2. Apply `targetScope` to 5 trigger-hook primitive rows currently un-scoped:
-   - `Conditional Informational Trigger`
-   - `Direct Material Trigger`
-   - `Dormant Trigger Hook`
-   - `Interceptive Causal Trigger`
-   - `Systemic Threshold Trigger`
+2. (Done in B.2) ~~Apply `targetScope` to 5 trigger-hook primitive rows currently un-scoped.~~
 3. After primitives locked, redo Capabilities/Effects templates (Phase 7-C, then 7-D).
 4. (Mirrored UI wiring) — see Q-B below; capability UIs must expose:
    - source-type selector (Physical / Magical / Psychic)
