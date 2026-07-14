@@ -33,8 +33,12 @@ import {
 } from "../target-scope";
 
 describe("MODIFIER_TARGETS enum", () => {
-  it("has 16 entries (the trimmed-down dropdown)", () => {
-    expect(MODIFIER_TARGETS.length).toBe(16);
+  it("has 18 entries (UX2a + UX2b expanded)", () => {
+    // 16 base (Phase-7-E baseline) + walking_speed + climbing_speed +
+    // swimming_speed + flying_speed + burrowing_speed (UX2a)
+    // - action_range - target_count - area_size
+    // + action_shape_size (UX2b) = 18.
+    expect(MODIFIER_TARGETS.length).toBe(18);
   });
 
   it("consolidates the three Attribute variants into one entry", () => {
@@ -48,8 +52,23 @@ describe("MODIFIER_TARGETS enum", () => {
     expect(MODIFIER_TARGETS).toContain("defense_dc");
   });
 
-  it("consolidates the three speed variants into one entry", () => {
-    expect(MODIFIER_TARGETS).toContain("speed");
+  it("splits the speed variants into one entry per locomotion type (UX2a)", () => {
+    expect(MODIFIER_TARGETS).toContain("walking_speed");
+    expect(MODIFIER_TARGETS).toContain("climbing_speed");
+    expect(MODIFIER_TARGETS).toContain("swimming_speed");
+    expect(MODIFIER_TARGETS).toContain("flying_speed");
+    expect(MODIFIER_TARGETS).toContain("burrowing_speed");
+    // Legacy "speed" target is gone from the dropdown — old data
+    // loads via LEGACY_TARGET_MIGRATIONS to walking_speed.
+    expect(MODIFIER_TARGETS).not.toContain("speed");
+  });
+
+  it("collapses the three positional axes into one (UX2b)", () => {
+    expect(MODIFIER_TARGETS).toContain("action_shape_size");
+    // Legacy positional axes no longer in the dropdown.
+    expect(MODIFIER_TARGETS).not.toContain("action_range");
+    expect(MODIFIER_TARGETS).not.toContain("target_count");
+    expect(MODIFIER_TARGETS).not.toContain("area_size");
   });
 
   it("still includes single-axis entries", () => {
@@ -85,11 +104,28 @@ describe("MODIFIER_TARGET_SPEC", () => {
     expect(spec.options).toEqual(["PHYSICAL", "MENTAL", "MAGICAL"]);
   });
 
-  it("speed uses METRIC with Land/Fly/Swim checklist", () => {
-    const spec = MODIFIER_TARGET_SPEC.speed;
+  it("walking_speed uses METRIC with widget:none (single-axis)", () => {
+    const spec = MODIFIER_TARGET_SPEC.walking_speed;
     expect(spec.layer).toBe("METRIC");
-    expect(spec.widget).toBe("checklist");
-    expect(spec.options).toEqual(["LAND_SPEED", "FLY_SPEED", "SWIM_SPEED"]);
+    expect(spec.widget).toBe("none");
+  });
+
+  it("all four other speed axes mirror walking_speed shape", () => {
+    for (const t of ["climbing_speed", "swimming_speed", "flying_speed", "burrowing_speed"]) {
+      const spec = (MODIFIER_TARGET_SPEC as Record<string, { layer: string; widget: string; label: string }>)[t];
+      expect(spec?.layer).toBe("METRIC");
+      expect(spec?.widget).toBe("none");
+      expect(spec?.label).toBeTruthy();
+    }
+  });
+
+  it("action_shape_size uses NARROW_FOCUS with shape checklist (UX2b)", () => {
+    const spec = MODIFIER_TARGET_SPEC.action_shape_size;
+    expect(spec.layer).toBe("NARROW_FOCUS");
+    expect(spec.widget).toBe("checklist-with-free-text");
+    expect(spec.options).toContain("Single Target");
+    expect(spec.options).toContain("Cone");
+    expect(spec.options).toContain("Custom");
   });
 
   it("skill_practice_check uses radio-granularity widget", () => {
@@ -463,15 +499,18 @@ describe("scopeForSelection (round-trip with selectionForModifier)", () => {
   });
 
   it("round-trips speed multi-axis", () => {
+    // Phase-7-E/UX2a: each locomotion type is its own target now,
+    // so a multi-axis legacy "speed" target collapses to a single
+    // axis test on flying_speed.
     const sel = {
-      target: "speed" as ModifierTarget,
-      targetValues: ["FLY_SPEED", "SWIM_SPEED"],
+      target: "flying_speed" as ModifierTarget,
+      targetValues: ["FLYING_SPEED"],
       granularity: null,
     };
     const out = scopeForSelection(sel);
     expect(out.metadata.targetScope).toEqual({
       layer: "METRIC",
-      values: ["FLY_SPEED", "SWIM_SPEED"],
+      values: ["FLYING_SPEED"],
     });
   });
 

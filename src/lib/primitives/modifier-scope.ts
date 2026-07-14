@@ -34,14 +34,32 @@ import {
  * Compared to the legacy `ModifierTarget` (dotted strings like
  * "character.attribute.physical"), these are short axis labels —
  * the specific value is captured separately in `targetValue`.
+ *
+ * Phase-7-E/UX2a: the legacy single `speed` axis (multi-select of
+ * LAND_SPEED / FLY_SPEED / SWIM_SPEED) has been split into 5
+ * distinct axes (one per locomotion type). Each modifies a
+ * functionally different movement stat, so they deserve their own
+ * canonical target instead of overlapping.
+ *
+ * Phase-7-E/UX2b: the three positional axes (action_range / action.
+ * targetCount / action.areaSize) collapse into a single
+ * `action_shape_size` axis. The Target Value widget picks the
+ * Shape (Single / Multiple / Cone / Cube / Line / Sphere /
+ * Cylinder / Custom); the existing Operation+Value fields carry
+ * the magnitude (e.g. operation=set, value=20).
  */
 export const MODIFIER_TARGETS = [
   // Physical/Mental/Magical axis (consolidated)
   "attribute",
   // Physical/Mental/Magical defense DC axis (consolidated)
   "defense_dc",
-  // Land/Fly/Swim speed axis (consolidated)
-  "speed",
+  // Phase-7-E/UX2a: five distinct speed axes (replaces legacy
+  // single-axis checklist on speed).
+  "walking_speed",
+  "climbing_speed",
+  "swimming_speed",
+  "flying_speed",
+  "burrowing_speed",
   // Single-axis metrics
   "max_vitality",
   "current_vitality",
@@ -51,10 +69,9 @@ export const MODIFIER_TARGETS = [
   "skill_practice_check",
   // Damage/healing — dice layer
   "damage_healing_output",
-  // Positional / narrative
-  "action_range",
-  "target_count",
-  "area_size",
+  // Positional — Phase-7-E/UX2b: collapsed into one shape+size axis
+  "action_shape_size",
+  // Duration
   "duration",
   "strain",
   "item_slot_cost",
@@ -99,16 +116,24 @@ export const LEGACY_TARGET_MIGRATIONS: Record<
     defaultScope: { layer: "METRIC", values: ["DEFENSE_ROLL"] },
   },
   "character.movement.land": {
-    target: "speed",
-    defaultScope: { layer: "METRIC", values: ["LAND_SPEED"] },
+    target: "walking_speed",
+    defaultScope: { layer: "METRIC", values: ["WALKING_SPEED"] },
   },
   "character.movement.fly": {
-    target: "speed",
-    defaultScope: { layer: "METRIC", values: ["FLY_SPEED"] },
+    target: "flying_speed",
+    defaultScope: { layer: "METRIC", values: ["FLYING_SPEED"] },
   },
   "character.movement.swim": {
-    target: "speed",
-    defaultScope: { layer: "METRIC", values: ["SWIM_SPEED"] },
+    target: "swimming_speed",
+    defaultScope: { layer: "METRIC", values: ["SWIMMING_SPEED"] },
+  },
+  "character.movement.climb": {
+    target: "climbing_speed",
+    defaultScope: { layer: "METRIC", values: ["CLIMBING_SPEED"] },
+  },
+  "character.movement.burrow": {
+    target: "burrowing_speed",
+    defaultScope: { layer: "METRIC", values: ["BURROWING_SPEED"] },
   },
   "character.maxVitality": {
     target: "max_vitality",
@@ -135,15 +160,15 @@ export const LEGACY_TARGET_MIGRATIONS: Record<
     defaultScope: { layer: "DICE", values: [] },
   },
   "action.range": {
-    target: "action_range",
+    target: "action_shape_size",
     defaultScope: { layer: "NARROW_FOCUS", values: [] },
   },
   "action.targetCount": {
-    target: "target_count",
+    target: "action_shape_size",
     defaultScope: { layer: "NARROW_FOCUS", values: [] },
   },
   "action.areaSize": {
-    target: "area_size",
+    target: "action_shape_size",
     defaultScope: { layer: "NARROW_FOCUS", values: [] },
   },
   "action.duration": {
@@ -265,12 +290,37 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
     // DEFENSE_ROLL.
     options: ["PHYSICAL", "MENTAL", "MAGICAL"],
   },
-  speed: {
-    target: "speed",
-    label: "Speed",
+  walking_speed: {
+    // Phase-7-E/UX2a: explicit walking-speed axis. Single-axis
+    // metric, value is a number (ft/round or whatever the unit is).
+    target: "walking_speed",
+    label: "Walking Speed",
     layer: "METRIC",
-    widget: "checklist",
-    options: ["LAND_SPEED", "FLY_SPEED", "SWIM_SPEED"],
+    widget: "none",
+  },
+  climbing_speed: {
+    target: "climbing_speed",
+    label: "Climbing Speed",
+    layer: "METRIC",
+    widget: "none",
+  },
+  swimming_speed: {
+    target: "swimming_speed",
+    label: "Swimming Speed",
+    layer: "METRIC",
+    widget: "none",
+  },
+  flying_speed: {
+    target: "flying_speed",
+    label: "Flying Speed",
+    layer: "METRIC",
+    widget: "none",
+  },
+  burrowing_speed: {
+    target: "burrowing_speed",
+    label: "Burrowing Speed",
+    layer: "METRIC",
+    widget: "none",
   },
   max_vitality: {
     target: "max_vitality",
@@ -311,30 +361,37 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
     widget: "checklist",
     options: DICE_VALUES,
   },
-  action_range: {
-    target: "action_range",
-    label: "Action Range",
+  action_shape_size: {
+    // Phase-7-E/UX2b: one shape+size axis replaces the three
+    // previous positional axes (action_range, target_count,
+    // area_size). The Target Value widget picks the Shape; the
+    // existing Operation+Value fields carry the magnitude. So
+    // "20-ft Cone" = operation=set, value=20, targetValues=[CONE].
+    target: "action_shape_size",
+    label: "Action Shape & Size",
     layer: "NARROW_FOCUS",
     widget: "checklist-with-free-text",
-    options: ["Self", "Touch", "Near", "Far", "Line of Sight", "Global"],
-    freeTextPlaceholder: "Other range description",
+    options: [
+      "Single Target",
+      "Multiple Targets",
+      "Cone",
+      "Cube",
+      "Line",
+      "Sphere",
+      "Cylinder",
+      "Wall",
+      "Star",
+      "Custom",
+    ],
+    freeTextPlaceholder:
+      "Other shape (e.g. 'Spike on Touch') — set Operation below to configure.",
   },
-  target_count: {
-    target: "target_count",
-    label: "Target Count",
-    layer: "NARROW_FOCUS",
-    widget: "checklist-with-free-text",
-    options: ["Single", "2", "4", "8", "AoE", "All"],
-    freeTextPlaceholder: "Other target-count description",
-  },
-  area_size: {
-    target: "area_size",
-    label: "Area Size",
-    layer: "NARROW_FOCUS",
-    widget: "checklist-with-free-text",
-    options: ["5 ft", "15 ft", "30 ft", "60 ft", "Room", "Scene"],
-    freeTextPlaceholder: "Other area-size description",
-  },
+  // Phase-7-E/UX2b: legacy positional axes were removed entirely —
+  // action_range, target_count, and area_size no longer exist in the
+  // dropdown. LEGACY_TARGET_MIGRATIONS maps their dotted strings to
+  // action_shape_size when loading old data, but new code only
+  // uses action_shape_size. Keep the SPEC table focused on canonical
+  // targets only.
   duration: {
     target: "duration",
     label: "Duration",

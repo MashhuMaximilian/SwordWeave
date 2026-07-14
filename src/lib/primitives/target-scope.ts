@@ -97,6 +97,12 @@ export type Practice = (typeof PRACTICES)[number];
  * Standalone metrics — numeric axes that aren't practices.
  * Modifiers like "+5 HP" or "+1 to all Attack Rolls" point
  * to these values inside the METRIC layer.
+ *
+ * Phase-7-E/UX2a: split the legacy single MOVEMENT_SPEED bucket into
+ * five speed axes — Walking / Climbing / Swimming / Flying / Burrowing.
+ * Each one is functionally different (a "+5 Climbing Speed" buff should
+ * not affect Swimming Speed), so they earn their own canonical metric
+ * rather than overlapping on one.
  */
 export const STANDALONE_METRICS = [
   "HP",
@@ -109,6 +115,14 @@ export const STANDALONE_METRICS = [
   "CHARACTER_DC",
   "PROFICIENCY_BONUS",
   "REACTION_SLOT",
+  // Phase-7-E/UX2a: speed split
+  "WALKING_SPEED",
+  "CLIMBING_SPEED",
+  "SWIMMING_SPEED",
+  "FLYING_SPEED",
+  "BURROWING_SPEED",
+  // Legacy single-axis — kept so old saves round-trip; not exposed
+  // in the UI for new authoring.
   "MOVEMENT_SPEED",
   "INITIATIVE",
 ] as const;

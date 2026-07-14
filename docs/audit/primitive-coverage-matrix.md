@@ -545,6 +545,89 @@ templates                          # composed acquisition plans (uses mirrorBuCr
 
 ---
 
+## Phase-7-E/UX2 — Modifier form polish (2026-07-14)
+
+### UX2a — Speed split
+
+**Decision:** Each locomotion type deserves its own canonical modifier
+target instead of multi-selecting on a single axis. Different buff
+sources affect different locomotion types independently.
+
+| Old (legacy) | New (canonical) |
+|---|---|
+| `speed` axis with checkbox list `LAND_SPEED / FLY_SPEED / SWIM_SPEED` | `walking_speed`, `climbing_speed`, `swimming_speed`, `flying_speed`, `burrowing_speed` (5 separate axes) |
+
+- **`STANDALONE_METRICS`** closed list extended: added
+  `WALKING_SPEED / CLIMBING_SPEED / SWIMMING_SPEED / FLYING_SPEED /
+  BURROWING_SPEED`. `MOVEMENT_SPEED` kept for legacy round-trip.
+- **`LEGACY_TARGET_MIGRATIONS`** rewritten:
+  - `character.movement.land` → `walking_speed` (was `speed` + `LAND_SPEED`)
+  - `character.movement.fly` → `flying_speed`
+  - `character.movement.swim` → `swimming_speed`
+  - NEW: `character.movement.climb` → `climbing_speed`
+  - NEW: `character.movement.burrow` → `burrowing_speed`
+- **DB migration 0032** applied: 1 row updated
+  (`Stride Extension` `MOVEMENT_SPEED` → `WALKING_SPEED`).
+- **Target shape**: each speed target uses `widget: "none"` —
+  a single-axis metric where the existing `Operation + Value` fields
+  carry the magnitude. No checkbox needed; "Affects all Walking Speed
+  instances by default" info banner shown.
+
+### UX2b — Shape + Size collapses three axes
+
+**Decision:** The three positional axes (Range / Target Count / Area
+Size) collapse into one unified `action_shape_size` axis. Shape is
+the scope (single / multiple / cone / cube / line / sphere /
+cylinder / wall / star / custom). Magnitude lives in the existing
+`Operation + Value` fields.
+
+| Old | New |
+|---|---|
+| `action_range` (Self / Touch / Near / Far / LOS / Global) | merged |
+| `target_count` (Single / 2 / 4 / 8 / AoE / All) | merged |
+| `area_size` (5/15/30/60ft / Room / Scene) | merged |
+| → | `action_shape_size` (Single Target / Multiple Targets / Cone / Cube / Line / Sphere / Cylinder / Wall / Star / Custom + free-text) |
+
+- **`LEGACY_TARGET_MIGRATIONS`**: `action.range`, `action.targetCount`,
+  `action.areaSize` all now route to `action_shape_size`.
+- **Target shape**: `widget: "checklist-with-free-text"` — user picks
+  a shape from the checklist OR enters a custom shape string, then
+  uses the existing `Operation + Value` fields to set magnitude
+  (e.g. `operation: set`, `value: 20` → "20-ft Cone").
+
+### Both applied to both surfaces
+
+Both `src/components/sandbox/primitive-form.tsx` (Phase-7-E/B1-B3
+drop) AND `src/components/workshops/primitive-registry.tsx` (the
+parallel workshops form) updated to:
+- use the same `MODIFIER_TARGETS / MODIFIER_TARGET_SPEC` dropdown source
+- render the same dynamic Target Value widget
+- round-trip `metadata.targetScope` via the same `selectionForModifier
+  / scopeForSelection` helpers
+- expose `toggleTargetValue` and `setModifierGranularity` typed setters
+  (named with `Registry` suffix in the workshops form to keep them
+  distinguishable)
+
+### Counts after UX2
+
+`MODIFIER_TARGETS`: **22 → 18** (consolidated)
+- lost 3 (the 3 positional axes collapsed into 1)
+- gained 4 net speed axes (5 new − 1 legacy `speed`)
+- net change: −4
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `pnpm exec vitest run` | 595 / 595 passing |
+| `pnpm exec tsc --noEmit` | clean |
+| `pnpm exec next build` | compiled successfully |
+| `pnpm exec tsx scripts/_seed-vs-db.ts` | aligned 146 / 146 |
+| `pnpm exec tsx scripts/_verify-phase7.ts` | `Stride Extension` now reads `WALKING_SPEED` |
+| `pnpm exec tsx scripts/_apply-0032-speed-rename.ts` | 1 row rewritten idempotently |
+
+---
+
 ## Verification scripts (run alongside audit)
 
 ## Verification scripts (run alongside audit)
