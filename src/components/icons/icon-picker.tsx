@@ -893,26 +893,27 @@ function ColorTrigger({
                           gradient renders empty. (See
                           https://react-aria.adobe.com/ColorArea — the
                           default className is react-aria-ColorThumb.)
-                          Phase 16: the callout is a real DOM
-                          sibling of the thumb (rendered via
-                          <ColorThumb>'s children-as-function). The
-                          thumb gets `color: Color` from
-                          renderProps; we pipe it to the callout via
-                          inline style.backgroundColor so the
-                          callout mirrors the picked shade. The
-                          ::after SVG approach from Phase 15 was
-                          abandoned — SVG embedded in
-                          background-image:url(...) cannot resolve
-                          currentColor against the host element
-                          (browsers keep currentColor at the SVG's
-                          default — black). */}
+
+                          Phase 16 + 17: the callout is now an inline
+                          <svg> rendered via <ColorThumb>'s
+                          children-as-function render-prop. <svg>
+                          inheritance is resolved normally (the fill
+                          comes from React), and the <path stroke>
+                          uses native SVG stroke so the white outline
+                          traces the teardrop curve exactly — no
+                          clip-path+box-shadow tricks. Earlier
+                          attempts hit:
+                            - ::after SVG via background-image:url:
+                              fill=currentColor doesn't resolve
+                              across data: URL boundary.
+                            - ::after clip-path + box-shadow white
+                              halo: box-shadow renders around the
+                              unclipped rectangle, not the
+                              polygon — outline looked square.
+                        */}
                       <ColorThumb className="color-thumb">
                         {({ color }) => (
-                          <span
-                            aria-hidden
-                            className="color-callout"
-                            style={{ backgroundColor: color.toString("css") }}
-                          />
+                          <ColorCallout color={color.toString("css")} />
                         )}
                       </ColorThumb>
                     </ColorArea>
@@ -943,11 +944,7 @@ function ColorTrigger({
                       <SliderTrack className="h-full w-full">
                         <ColorThumb className="color-thumb">
                           {({ color }) => (
-                            <span
-                              aria-hidden
-                              className="color-callout"
-                              style={{ backgroundColor: color.toString("css") }}
-                            />
+                            <ColorCallout color={color.toString("css")} />
                           )}
                         </ColorThumb>
                       </SliderTrack>
@@ -998,4 +995,67 @@ function normalizeColor(c: string): string {
     return `#${h.split("").map((x) => x + x).join("")}`;
   }
   return "#ffffff";
+}
+
+// =============================================================================
+// ColorCallout — drop-shaped indicator rendered inside <ColorThumb>'s
+// children-as-function render-prop. The callout points DOWN at the
+// thumb from above.
+//
+// Phase 17 rationale: SVG-in-<svg>-in-DOM is the only path that
+// gives us ALL THREE of (1) a real vector shape with bezier curves
+// that scale crisply, (2) a fill that mirrors the picked shade
+// (resolves normally because the <svg> is in our DOM tree, not in
+// a background-image data: URL), and (3) a stroke that follows the
+// path exactly. Earlier attempts hit corner cases: the
+// background-image:url(data:svg+xml) approach couldn't resolve
+// currentColor; the clip-path+box-shadow approach had box-shadow
+// render around the unclipped rectangle, not the polygon.
+//
+// Geometry (28×30 viewBox):
+//   - 14  (top center) → start point
+//   - cubic curves forming a rounded dome across the top
+//   - tapered waist on each side (82% x 55%, 18% x 55%)
+//   - 14/29  (bottom center) = single downward point
+//   - 1px black stroke first, then 2px white stroke on top →
+//     layered outline visible on any background.
+//
+// Positioning: anchored to .color-thumb via .color-callout CSS
+// (positioned absolutely above the thumb). The SVG itself
+// auto-fits to whatever pixel size the CSS gives it via width/
+// height attributes matching the CSS box.
+// =============================================================================
+function ColorCallout({ color }: { color: string }) {
+  return (
+    <svg
+      aria-hidden
+      className="color-callout"
+      viewBox="0 0 28 30"
+      xmlns="http://www.w3.org/2000/svg"
+      // Larger SVG so the stroke doesn't dominate; CSS controls
+      // the on-screen pixel size separately from the viewBox.
+      width="28"
+      height="30"
+    >
+      <path
+        d="M 14 1 C 21.5 1, 27 6.5, 27 14 C 27 19.5, 23.5 23.5, 18 25.5 C 16 26.4, 14 29, 14 29 C 14 29, 12 26.4, 10 25.5 C 4.5 23.5, 1 19.5, 1 14 C 1 6.5, 6.5 1, 14 1 Z"
+        fill={color}
+        // 1px dark stroke first for contrast on white callouts,
+        // 2.5px white stroke on top so the outline reads cleanly
+        // against any dark background. SVG strokes layer
+        // sequentially, so the white stroke covers the dark one on
+        // top while the dark peeks out at the very edge.
+        stroke="#000"
+        strokeWidth="3"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M 14 1 C 21.5 1, 27 6.5, 27 14 C 27 19.5, 23.5 23.5, 18 25.5 C 16 26.4, 14 29, 14 29 C 14 29, 12 26.4, 10 25.5 C 4.5 23.5, 1 19.5, 1 14 C 1 6.5, 6.5 1, 14 1 Z"
+        fill={color}
+        stroke="#fff"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
