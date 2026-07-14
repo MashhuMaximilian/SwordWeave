@@ -146,6 +146,24 @@ body {
   min-height: 0;
 }
 
+/* BUG (Phase 15): react-aria's ColorSlider thumb is positioned
+   with top-only for vertical orientation (useSliderThumb sets
+   `[isVertical ? 'top' : 'left']` and "left" defaults to 0). The
+   thumb therefore sits flush against the LEFT edge of the strip
+   instead of horizontally centered. The browser applies translate
+   (-50%, -50%) AFTER positioning, so the thumb ends up half off
+   the strip on its left side.
+
+   Force center alignment for any color-thumb whose ancestor slider
+   is vertically oriented. We can't rely on the default className
+   "react-aria-ColorSlider" because the consumer passes its own
+   className — but `data-orientation` IS set on the slider track by
+   react-aria-components and survives any consumer className. */
+[data-orientation="vertical"] > .color-thumb,
+[data-orientation="vertical"] .color-thumb {
+  left: 50% !important;
+}
+
 /* ---------------------------------------------------------------------------
  * COLOR THUMB (react-aria-components)
  *
@@ -215,45 +233,39 @@ body {
   outline-offset: 2px;
 }
 
-/* Drop-shaped callout above the thumb. Body is the upper half of
-   an 18×18 circle (rounded top, octagonal body) plus a 4-pixel
-   triangular tail at the bottom centered on x=50% y=100% that
-   points down at the thumb. Drawn entirely with clip-path so it
-   scales cleanly and stays sharp at any DPR. */
+/* Drop-shaped callout above the thumb. Rendered as an inline SVG
+   background so the shape is true bezier curves and the white stroke
+   is a real SVG stroke applied around the fill, which trace the
+   curves cleanly at any DPR (clip-path polygons look angular).
+
+   The SVG has fill="currentColor" — the thumb sets `color: inherit`
+   and a sibling `--thumb-color` is set inline by the consumer
+   wrapper (icon-picker.tsx wires `state.value` → CSS variable), so
+   the callout is always the same picked shade as the thumb body.
+
+   Viewbox 28 × 30: a 22-wide rounded dome on top + a 6px tail tip at
+   (14, 29). Stroke is white, linejoin round so corners never pinch.
+   Filled with currentColor = the picked color. */
 .color-thumb::after {
   content: "";
   position: absolute;
   left: 50%;
-  bottom: calc(100% + 10px);
-  width: 18px;
-  height: 22px;
-  border-radius: 0;
-  background: inherit;
-  border: 2px solid white;
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.55),
-    0 2px 6px rgba(0, 0, 0, 0.35);
+  bottom: calc(100% + 8px);
+  width: 26px;
+  height: 28px;
+  transform: translateX(-50%);
   pointer-events: none;
-  /* Teardrop polygon — references are (x% from left, y% from top
-     of the 18×22 box, with y=0 at top):
-        top-left curve   30% 0%   top of the round head
-        top-right curve  70% 0%
-        mid-right bulge  100% 35%
-        waist right      82% 55%
-        tail tip         50% 100%    (single downward point)
-        waist left       18% 55%
-        mid-left bulge   0% 35%
-     Re-entered to 30% 0% to close the path. */
-  clip-path: polygon(
-    30% 0%,
-    70% 0%,
-    100% 35%,
-    82% 55%,
-    50% 100%,
-    18% 55%,
-    0% 35%,
-    30% 0%
-  );
+  /* Single-quoted data URL keeps double quotes inside the SVG markup.
+     fill="currentColor" pulls the picked color via the `color`
+     property; stroke="white" gives the smooth outline that matches
+     the thumb body's border. stroke-width="2" matches the thumb's
+     2px border. path is the teardrop curve, not a polygon. */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 30' fill='currentColor' stroke='white' stroke-width='2' stroke-linejoin='round'><path d='M 14 1 C 21.5 1, 27 6.5, 27 14 C 27 19.5, 23.5 23.5, 18 25.5 C 16 26.4, 14 29, 14 29 C 14 29, 12 26.4, 10 25.5 C 4.5 23.5, 1 19.5, 1 14 C 1 6.5, 6.5 1, 14 1 Z'/></svg>");
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  color: var(--thumb-color, #fff);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
   forced-color-adjust: none;
 }
 

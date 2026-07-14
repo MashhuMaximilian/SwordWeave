@@ -158,6 +158,17 @@ export function IconPicker({
   // Phase 8: Color state is a hex string. The ColorPicker control
   // operates on a Color object internally; we sync via parseColor.
   const [color, setColor] = useState<string>(currentColor ?? "#ffffff");
+  // Phase 15: keep local state in sync when the parent updates
+  // currentColor (e.g. user clicks a swatch → local setColor →
+  // onChange → parent setIconColor → re-mounts IconPicker with a
+  // fresh currentColor). Without this the ColorPicker would still
+  // hold the old value as long as the modal is open. The CSS hook
+  // `--thumb-color` in the wrapper depends on `color` staying
+  // accurate on every render, so this matters for both the visible
+  // thumb + the callout color.
+  useEffect(() => {
+    if (currentColor && currentColor !== color) setColor(currentColor);
+  }, [currentColor]); // eslint-disable-line react-hooks/exhaustive-deps
   // Phase 8: bucket is now a Set so the filters modal can multi-select.
   // Empty set = "All". The horizontal tab strip is hidden — the
   // filters button shows the count of active buckets.
@@ -867,9 +878,29 @@ function ColorTrigger({
               </div>
               <ColorPicker
                 value={colorValue}
+                // Phase 15: ColorTrigger is a separate component so
+                // setColor reaches us via the `onChange` prop. The
+                // local `color` state lives in the IconPicker parent
+                // — when setColor fires, colorValue re-derives,
+                // re-renders the wrapper's --thumb-color, and the
+                // callout pick up the new color via currentColor →
+                // SVG fill.
                 onChange={(c) => onChange(c.toString("hex"))}
               >
-                <div className="flex flex-col gap-3">
+                <div
+                  className="flex flex-col gap-3"
+                  style={
+                    {
+                      // CSS hook consumed by the .color-thumb::after
+                      // background-image SVG (which uses fill="currentColor").
+                      // Without this the drop callout would have no
+                      // way to mirror the picked color — react-aria
+                      // sets style.backgroundColor on the thumb
+                      // inline but never style.color.
+                      "--thumb-color": colorValue.toString("css"),
+                    } as React.CSSProperties
+                  }
+                >
                   <div className="flex items-center gap-3">
                     <ColorArea
                       colorSpace="hsb"
