@@ -25,6 +25,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { ChevronRight, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -156,11 +157,21 @@ function ModalStackRenderer() {
 
   if (stack.length === 0) return null;
 
-  return (
+  // Phase 9: portal to document.body so the modal stack is detached from
+  // the AppShell DOM hierarchy. Previously the modal renderer was a
+  // sibling of <main> / <footer> / <GlobalControls> (which contains
+  // BuildPreviewDrawer at z-50), so its z-index competed against the
+  // drawer's z-50 and the icon picker was visually eclipsed when the
+  // user opened a build-composer-style edit through the drawer. A
+  // portal puts the modals at the document root, where their z-index
+  // is unambiguously the highest on the page. (document.body is
+  // always present by the time we render — the modal only mounts on
+  // user interaction, after the body is hydrated.)
+  return createPortal(
     <>
       {stack.map((entry, idx) => {
         const isTop = idx === stack.length - 1;
-        const z = 50 + idx;
+        const z = 60 + idx;
 
         if (isDesktop) {
           // Desktop: side panel anchored to the left edge. No backdrop, no
@@ -211,7 +222,8 @@ function ModalStackRenderer() {
           </div>
         );
       })}
-    </>
+    </>,
+    document.body
   );
 }
 
