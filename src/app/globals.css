@@ -233,21 +233,32 @@ body {
   outline-offset: 2px;
 }
 
-/* Drop-shaped callout above the thumb. Rendered as an inline SVG
-   background so the shape is true bezier curves and the white stroke
-   is a real SVG stroke applied around the fill, which trace the
-   curves cleanly at any DPR (clip-path polygons look angular).
+/* Drop-shaped callout above the thumb.
 
-   The SVG has fill="currentColor" — the thumb sets `color: inherit`
-   and a sibling `--thumb-color` is set inline by the consumer
-   wrapper (icon-picker.tsx wires `state.value` → CSS variable), so
-   the callout is always the same picked shade as the thumb body.
+   Phase 16 architecture change: instead of an SVG embedded in
+   background-image:url(...) on the ::after pseudo, the callout
+   is now a REAL <span class="color-callout"> sibling of the
+   thumb circle, rendered via <ColorThumb>'s children-as-function
+   render-prop. The render-prop supplies `color: Color` from
+   react-aria's context, and we pipe it through the callout's
+   inline backgroundColor — so the callout always matches the
+   picked shade with zero CSS variable plumbing.
 
-   Viewbox 28 × 30: a 22-wide rounded dome on top + a 6px tail tip at
-   (14, 29). Stroke is white, linejoin round so corners never pinch.
-   Filled with currentColor = the picked color. */
-.color-thumb::after {
-  content: "";
+   Why the migration away from SVG-via-background-image? Browsers
+   render data: URLs in a separate context where `currentColor`
+   cannot resolve against the host element — the SVG's fill stays
+   at the default (black) instead of picking up the `color`
+   property. The element approach has no such limitation.
+
+   The teardrop is shaped via clip-path polygon. Polygon edges
+   accept the white stroke via `box-shadow: 0 0 0 2px white`
+   trick — clip-path clips box-shadow along the path, leaving a
+   smooth white outline that traces the polygon exactly. No
+   border (clip-path would chop border into segments), no
+   outline-offset hacks. The white outline is just a box-shadow
+   spread.
+*/
+.color-callout {
   position: absolute;
   left: 50%;
   bottom: calc(100% + 8px);
@@ -255,17 +266,26 @@ body {
   height: 28px;
   transform: translateX(-50%);
   pointer-events: none;
-  /* Single-quoted data URL keeps double quotes inside the SVG markup.
-     fill="currentColor" pulls the picked color via the `color`
-     property; stroke="white" gives the smooth outline that matches
-     the thumb body's border. stroke-width="2" matches the thumb's
-     2px border. path is the teardrop curve, not a polygon. */
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 30' fill='currentColor' stroke='white' stroke-width='2' stroke-linejoin='round'><path d='M 14 1 C 21.5 1, 27 6.5, 27 14 C 27 19.5, 23.5 23.5, 18 25.5 C 16 26.4, 14 29, 14 29 C 14 29, 12 26.4, 10 25.5 C 4.5 23.5, 1 19.5, 1 14 C 1 6.5, 6.5 1, 14 1 Z'/></svg>");
-  background-repeat: no-repeat;
-  background-size: contain;
-  background-position: center;
-  color: var(--thumb-color, #fff);
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+  /* Teardrop polygon — the box-shadow outline traces this path */
+  clip-path: polygon(
+    30% 0%,
+    70% 0%,
+    100% 35%,
+    82% 55%,
+    50% 100%,
+    18% 55%,
+    0% 35%
+  );
+  /* 2px white halo via box-shadow (clipped to the polygon path),
+     plus a 1px black halo for dark-bg contrast, plus drop shadow. */
+  box-shadow:
+    0 0 0 2px white,
+    0 0 0 3px rgba(0, 0, 0, 0.45),
+    0 4px 8px rgba(0, 0, 0, 0.35);
+  /* Default fill is white until React pipes the real color in.
+     forced-color-adjust: none keeps the callout legible in
+     Windows High Contrast. */
+  background-color: white;
   forced-color-adjust: none;
 }
 

@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Magra, Teko } from "next/font/google";
 import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AppShell } from "@/components/layout/app-shell";
 import { FullscreenInit } from "@/components/layout/fullscreen-init";
 import "./globals.css";
@@ -59,6 +61,23 @@ try {
         <ClerkProvider>
           <FullscreenInit />
           <AppShell>{children}</AppShell>
+          {/* Vercel Web Analytics — tracks pageviews, custom events,
+              and visitors. Per
+              https://vercel.com/docs/analytics/quickstart?framework=nextjs,
+              the Analytics component auto-handles route changes via
+              the App Router. Drop it anywhere in the tree; we put it
+              next to AppShell so it shares the clerk+theme context. */}
+          <Analytics />
+          {/* Vercel Speed Insights — tracks Core Web Vitals on real
+              visits. Per
+              https://vercel.com/docs/speed-insights/quickstart,
+              the SpeedInsights component ships a tiny client script
+              that records LCP/CLS/INP and reports them to the
+              project's Speed Insights dashboard. Next.js v13.5+
+              must use the /next subpath import (not /react) — the
+              docs call this out explicitly because the /react
+              subpath bypasses Next's app-router route detection. */}
+          <SpeedInsights />
         </ClerkProvider>
       </body>
     </html>
