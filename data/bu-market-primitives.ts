@@ -1,8 +1,34 @@
 /**
- * bu-market-primitives.ts — Canonical BU Market primitive catalog
+ * bu-market-primitives.ts — SUBSET / HISTORICAL SNAPSHOT
  *
- * Extracted from Notion page: "BU Market of Primitive components — Complete System"
- * Page ID: 37eed8479ccd8155b917c373194dbdf4
+ * ⚠️ STATUS: SUPERSEDED. Keep for reference; do NOT edit as canonical.
+ *
+ * This file is a partial snapshot of the BU Market primitive catalog
+ * (Notion page: 37eed8479ccd8155b917c373194dbdf4) extracted before the
+ * canonical seeding pass was completed. It contains 50 rows, primarily
+ * the modifier/sheet-augment section, and uses a flat SHEET_AUGMENT
+ * category for what later became properly-categorized rows
+ * (PRACTICE_PROGRESSION_AUGMENT, HERITAGE_AUGMENT, etc.).
+ *
+ * The CANONICAL BU Market catalog lives in two seed scripts:
+ *
+ *   • scripts/seed-bu-market.ts
+ *     — 91 rows covering the structural primitives (verbs, domains,
+ *       structures, ranges, durations, biases, modifiers, etc.).
+ *
+ *   • scripts/seed-library-augmentations.ts
+ *     — 25 rows covering template-linked augmentations
+ *       (HERITAGE_AUGMENT, BACKGROUND_AUGMENT, CHARACTER_SHEET_AUGMENT,
+ *       ITEM_AUGMENT). These are out of scope for Phase 7.
+ *
+ * The live database (Neon) holds 139 canonical primitives across 25
+ * categories, matching the BU Market Notion page exactly. New primitive
+ * work should go into the seeder scripts above, NOT this file.
+ *
+ * For Phase 7 work, see:
+ *   • src/lib/primitives/target-scope.ts        — vocabulary helper
+ *   • scripts/_diff-notion-vs-db.ts             — alignment check
+ *   • scripts/_check-drift.ts                   — seed-vs-DB drift
  *
  * Each primitive maps to the DB schema:
  *   - name: primitive name (canonical identity)
@@ -13,6 +39,7 @@
  *   - isMirrorable: whether primitive can be inverted for BU credit
  *   - mirrorVector: STANDARD_ONLY | VARIABLE_VECTOR | STRUCTURAL_FAULT | COST_INSTABILITY
  *   - mirrorBuCredit: BU credit when mirrored (typically = buCost)
+ *
  *   - sourceTable: which BU Market table this came from
  *
  * Per Notion rule: "BU Market is canonical for pricing; Lexicon pages are now
