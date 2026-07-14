@@ -13,15 +13,23 @@ import { useRouter } from "next/navigation";
 import type {
   ModifierOperation,
   ModifierStackingMode,
-  ModifierTarget,
 } from "@/types/swordweave";
+import { IconSlot } from "@/components/icons/icon-slot";
+import type { IconSource } from "@/components/icons/icon-display";
 import type { PrimitiveFormState } from "./primitive-form-preview";
 import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
 import { computePrimitiveContentHash } from "@/lib/publishing/hash-content";
 import { useGlobalControls } from "@/components/layout/global-controls";
-import { IconSlot } from "@/components/icons/icon-slot";
-import type { IconSource } from "@/components/icons/icon-display";
+import {
+  MODIFIER_TARGET_SPEC,
+  MODIFIER_TARGETS,
+  type ModifierTarget,
+  type SkillPracticeGranularity,
+  SKILL_PRACTICE_GRANULARITIES,
+  selectionForModifier,
+  scopeForSelection,
+} from "@/lib/primitives/modifier-scope";
 
 type PrimitiveRow = {
   id: number;
@@ -50,10 +58,24 @@ type PrimitiveRow = {
 
 export type ModifierDraft = {
   id: string;
+  // Phase-7-E: target is the canonical short axis label
+  // (e.g. "attribute", "defense_dc", "skill_practice_check").
+  // The legacy dotted strings (e.g. "character.attribute.physical")
+  // are still understood via selectionForModifier for backward
+  // compatibility when loading older rows.
   target: ModifierTarget | string;
   operation: ModifierOperation;
   value: string;
   valueKind: "number" | "text" | "boolean";
+  // Phase-7-E: Target Value(s) for this modifier — multi-select on
+  // the scope axis implied by `target`. Empty = "any".
+  targetValues: string[];
+  // Phase-7-E: only meaningful when target === "skill_practice_check".
+  // "broad"  → practice checklist (targetValues populated).
+  // "narrow" → free-text narrow focus (freeTextNarrowFocus populated).
+  granularity: SkillPracticeGranularity;
+  // Phase-7-E: free-text narrow-focus for skill_practice_check / narrow.
+  freeTextNarrowFocus: string;
   conditionMode: "always" | "custom";
   conditionKey: string;
   conditionOperator:
@@ -91,30 +113,15 @@ const costTiers = [
   "Tier 5: Narrative Layer (32+ BU anchor)",
 ] as const;
 
-const targetOptions: Array<{ label: string; value: ModifierTarget | string }> = [
-  { label: "Physical Attribute", value: "character.attribute.physical" },
-  { label: "Mental Attribute", value: "character.attribute.mental" },
-  { label: "Magical Attribute", value: "character.attribute.magical" },
-  { label: "Max Vitality", value: "character.maxVitality" },
-  { label: "Current Vitality", value: "character.currentVitality" },
-  { label: "Land Speed", value: "character.movement.land" },
-  { label: "Fly Speed", value: "character.movement.fly" },
-  { label: "Swim Speed", value: "character.movement.swim" },
-  { label: "Physical DC", value: "character.defense.physicalDc" },
-  { label: "Mental DC", value: "character.defense.mentalDc" },
-  { label: "Magical DC", value: "character.defense.magicalDc" },
-  { label: "Skill / Practice Check", value: "character.skill" },
-  { label: "Proficiency Bonus", value: "character.proficiencyBonus" },
-  { label: "Action Roll", value: "action.roll" },
-  { label: "Damage / Healing Output", value: "action.damage" },
-  { label: "Action Range", value: "action.range" },
-  { label: "Target Count", value: "action.targetCount" },
-  { label: "Area Size", value: "action.areaSize" },
-  { label: "Duration", value: "action.duration" },
-  { label: "Strain", value: "action.strain" },
-  { label: "Item Slot Cost", value: "item.slotCost" },
-  { label: "Scene Pace", value: "scene.pace" },
-];
+// Phase-7-E: "What changes?" is now a 16-axis dropdown built from
+// MODIFIER_TARGET_SPEC. The legacy 22-item dotted-string list is gone —
+// dotted strings still deserialize via selectionForModifier's legacy
+// path so old saves round-trip, but the form only writes the short form.
+const targetOptions: ReadonlyArray<{ readonly label: string; readonly value: ModifierTarget }> =
+  MODIFIER_TARGETS.map((t) => ({
+    label: MODIFIER_TARGET_SPEC[t].label,
+    value: t,
+  }));
 
 const operations: Array<{ label: string; value: ModifierOperation }> = [
   { label: "Add", value: "add" },
@@ -169,10 +176,16 @@ const mirrorVectors = [
 
 const blankModifier: ModifierDraft = {
   id: "modifier-1",
-  target: "action.roll",
+  target: "attribute",
   operation: "add",
   value: "1",
   valueKind: "number",
+  // Phase-7-E: defaults for the new Target Value widget. With
+  // target=attribute and an empty values list, the form will
+  // surface "any attribute (broad)" until the user checks one.
+  targetValues: [],
+  granularity: "broad",
+  freeTextNarrowFocus: "",
   conditionMode: "always",
   conditionKey: "",
   conditionOperator: "equals",
@@ -246,12 +259,29 @@ function fromHardModifier(modifier: Record<string, unknown>, index: number): Mod
         ? condRawValue
         : String(condRawValue);
 
+  // Phase-7-E: ask the helper which target + scope this modifier
+  // corresponds to. selectionForModifier handles both new short-label
+  // rows (with metadata.targetScope) and legacy dotted-target rows
+  // (no metadata) — so old saves load into the new form unchanged.
+  const selection = selectionForModifier({
+    target: typeof modifier["target"] === "string" ? (modifier["target"] as string) : null,
+    metadata:
+      modifier["metadata"] && typeof modifier["metadata"] === "object"
+        ? (modifier["metadata"] as Record<string, unknown>)
+        : null,
+  });
+
   return {
     id: `modifier-${index + 1}`,
-    target: String(modifier["target"] ?? "action.roll"),
+    target: selection.target,
     operation: String(modifier["operation"] ?? "add") as ModifierOperation,
     value,
     valueKind,
+    targetValues: [...selection.targetValues],
+    granularity:
+      selection.granularity ??
+      (SKILL_PRACTICE_GRANULARITIES[0] as SkillPracticeGranularity),
+    freeTextNarrowFocus: selection.freeTextNarrowFocus ?? "",
     conditionMode: cond ? "custom" : "always",
     conditionKey: String(cond?.["key"] ?? ""),
     conditionOperator:
@@ -274,12 +304,39 @@ function parseValue(value: string, valueKind: ModifierDraft["valueKind"]): unkno
 
 function toHardModifier(modifier: ModifierDraft): import("@/types/swordweave").HardModifier {
   const baseValue = parseValue(modifier.value, modifier.valueKind);
+
+  // Phase-7-E: write the canonical short axis + metadata.targetScope.
+  // If the form somehow still holds a legacy dotted target (only
+  // possible if the DB had one before this version), scopeForSelection
+  // will throw a type error — we coerce back to a recognized axis by
+  // routing through selectionForModifier at load time. for the write
+  // path, the form only ever produces short labels so this is the
+  // canonical happy path.
+  const target = String(modifier.target);
+  const targetForScope: ModifierTarget =
+    (MODIFIER_TARGETS as readonly string[]).includes(target)
+      ? (target as ModifierTarget)
+      : "action_roll";
+  const { target: canonicalTarget, metadata: scopeMetadata } = scopeForSelection({
+    target: targetForScope,
+    targetValues: modifier.targetValues,
+    granularity:
+      targetForScope === "skill_practice_check" ? modifier.granularity : null,
+    freeTextNarrowFocus: modifier.freeTextNarrowFocus,
+  });
+
   const hardModifier = {
     kind: "modify" as const,
-    target: modifier.target,
+    target: canonicalTarget,
     operation: modifier.operation,
     value: baseValue as import("@/types/swordweave").JsonValue,
     stacking: modifier.stacking,
+    metadata: {
+      targetScope: scopeMetadata.targetScope,
+      ...(scopeMetadata.granularity
+        ? { granularity: scopeMetadata.granularity }
+        : {}),
+    } as unknown as Record<string, import("@/types/swordweave").JsonValue>,
   };
 
   if (modifier.conditionMode === "custom" && modifier.conditionKey.trim()) {
@@ -471,6 +528,47 @@ export function PrimitiveForm({
     setModifiers((current) =>
       current.map((modifier) =>
         modifier.id === id ? { ...modifier, [field]: value } : modifier,
+      ),
+    );
+  }
+
+  // Phase-7-E: typed setters for the multi-select Target Value
+  // widget. updateModifier accepts string-only because its callers
+  // are mostly string fields; targetValues is an array, so we route
+  // it through a dedicated setter instead of overloading the type.
+  function toggleTargetValue(id: string, value: string, checked: boolean) {
+    setIsDirty(true);
+    setModifiers((current) =>
+      current.map((modifier) => {
+        if (modifier.id !== id) return modifier;
+        const has = modifier.targetValues.includes(value);
+        if (checked && !has) {
+          return {
+            ...modifier,
+            targetValues: Array.from(
+              new Set([...modifier.targetValues, value]),
+            ),
+          };
+        }
+        if (!checked && has) {
+          return {
+            ...modifier,
+            targetValues: modifier.targetValues.filter((v) => v !== value),
+          };
+        }
+        return modifier;
+      }),
+    );
+  }
+
+  function setModifierGranularity(
+    id: string,
+    granularity: SkillPracticeGranularity,
+  ) {
+    setIsDirty(true);
+    setModifiers((current) =>
+      current.map((modifier) =>
+        modifier.id === id ? { ...modifier, granularity } : modifier,
       ),
     );
   }
@@ -947,7 +1045,13 @@ export function PrimitiveForm({
               What changes?
               <select
                 className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                value={modifier.target}
+                value={
+                  (MODIFIER_TARGETS as readonly string[]).includes(
+                    String(modifier.target),
+                  )
+                    ? String(modifier.target)
+                    : "attribute"
+                }
                 onChange={(event) =>
                   updateModifier(modifier.id, "target", event.target.value)
                 }
@@ -959,6 +1063,190 @@ export function PrimitiveForm({
                 ))}
               </select>
             </label>
+
+            {(() => {
+              // Phase-7-E: render the dynamic Target Value widget
+              // for the current target axis. The widget below the
+              // dropdown answers "of which ones?" — the multi-select
+              // (or radio granularity, or free-text) that scopes this
+              // modifier's effect.
+              const currentTargetRaw = String(modifier.target);
+              const currentTarget: ModifierTarget =
+                (MODIFIER_TARGETS as readonly string[]).includes(currentTargetRaw)
+                  ? (currentTargetRaw as ModifierTarget)
+                  : "attribute";
+              const spec = MODIFIER_TARGET_SPEC[currentTarget];
+
+              // Some targets carry all their meaning in `value`
+              // (numeric, single-axis) — no checklist needed.
+              if (spec.widget === "none") {
+                return (
+                  <div className="rounded-md border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
+                    {spec.layer
+                      ? `Affects all ${spec.label.toLowerCase()} instances by default — use the Value field below to set the magnitude.`
+                      : `${spec.label} has no scope axis; the Value field carries the full effect.`}
+                  </div>
+                );
+              }
+
+              if (spec.widget === "free-text") {
+                return (
+                  <label className="block text-sm font-medium">
+                    {spec.label} details
+                    <input
+                      className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
+                      value={modifier.freeTextNarrowFocus}
+                      onChange={(event) =>
+                        updateModifier(
+                          modifier.id,
+                          "freeTextNarrowFocus",
+                          event.target.value,
+                        )
+                      }
+                      placeholder={spec.freeTextPlaceholder ?? ""}
+                    />
+                  </label>
+                );
+              }
+
+              if (spec.widget === "radio-granularity") {
+                // skill_practice_check: broad (practice checklist) or
+                // narrow (free-text focus string).
+                const options = spec.options ?? [];
+                return (
+                  <div className="md:col-span-2 space-y-2 rounded-md border border-border bg-background p-3">
+                    <div className="flex flex-wrap items-center gap-4">
+                      <span className="text-xs font-semibold uppercase text-muted-foreground">
+                        Practice focus
+                      </span>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="radio"
+                          name={`granularity-${modifier.id}`}
+                          checked={modifier.granularity === "broad"}
+                          onChange={() =>
+                            setModifierGranularity(modifier.id, "broad")
+                          }
+                        />
+                        <span>Broad (any of the below)</span>
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="radio"
+                          name={`granularity-${modifier.id}`}
+                          checked={modifier.granularity === "narrow"}
+                          onChange={() =>
+                            setModifierGranularity(modifier.id, "narrow")
+                          }
+                        />
+                        <span>Narrow (specific focus)</span>
+                      </label>
+                    </div>
+                    {modifier.granularity === "broad" ? (
+                      <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3">
+                        {options.map((opt) => {
+                          const checked = modifier.targetValues.includes(opt);
+                          return (
+                            <label
+                              key={opt}
+                              className="flex items-center gap-2 text-sm"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(event) =>
+                                  toggleTargetValue(
+                                    modifier.id,
+                                    opt,
+                                    event.target.checked,
+                                  )
+                                }
+                              />
+                              <span>{opt}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <label className="block text-sm font-medium">
+                        Specific focus (e.g.{" "}
+                        <span className="font-mono text-xs">
+                          Awareness (Smell)
+                        </span>
+                        )
+                        <input
+                          className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
+                          value={modifier.freeTextNarrowFocus}
+                          onChange={(event) =>
+                            updateModifier(
+                              modifier.id,
+                              "freeTextNarrowFocus",
+                              event.target.value,
+                            )
+                          }
+                          placeholder={
+                            spec.freeTextPlaceholder ?? "Awareness (Smell)"
+                          }
+                        />
+                      </label>
+                    )}
+                  </div>
+                );
+              }
+
+              // "checklist" or "checklist-with-free-text"
+              const options = spec.options ?? [];
+              return (
+                <div className="md:col-span-2 space-y-2 rounded-md border border-border bg-background p-3">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">
+                    Target Value (leave empty for "any")
+                  </p>
+                  <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3">
+                    {options.map((opt) => {
+                      const checked = modifier.targetValues.includes(opt);
+                      return (
+                        <label
+                          key={opt}
+                          className="flex items-center gap-2 text-sm"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(event) =>
+                              toggleTargetValue(
+                                modifier.id,
+                                opt,
+                                event.target.checked,
+                              )
+                            }
+                          />
+                          <span>{opt}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {spec.widget === "checklist-with-free-text" ? (
+                    <label className="block text-sm font-medium">
+                      Other (describe)
+                      <input
+                        className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
+                        value={modifier.freeTextNarrowFocus}
+                        onChange={(event) =>
+                          updateModifier(
+                            modifier.id,
+                            "freeTextNarrowFocus",
+                            event.target.value,
+                          )
+                        }
+                        placeholder={
+                          spec.freeTextPlaceholder ?? "Describe custom value"
+                        }
+                      />
+                    </label>
+                  ) : null}
+                </div>
+              );
+            })()}
 
             <label className="block text-sm font-medium">
               Operation

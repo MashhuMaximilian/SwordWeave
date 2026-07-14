@@ -275,3 +275,66 @@ B.2: 37/146 (32 existing + 5 new).
 6. **Tests:** helper + form draft round-trip + engine stat resolution
 7. **Verify:** build, typecheck, seed-vs-db, vitest
 8. **Commit + update audit matrix**
+
+---
+
+## Part G — Shipped Status (Phase-7-E — form refactor)
+
+### Step 1 — Done (commit `5ca2d5d`)
+- helper file: `src/lib/primitives/modifier-scope.ts`
+- 54 tests: `src/lib/primitives/__tests__/modifier-scope.test.ts`
+- spec doc committed in this branch
+
+### Step 2 — Done (this commit)
+- `src/components/sandbox/primitive-form.tsx` refactor:
+  - dropped the legacy 22-entry `targetOptions` array; replaced
+    with `MODIFIER_TARGETS.map(...)` derived from the spec
+  - `ModifierDraft` extended with `targetValues: string[]`,
+    `granularity: SkillPracticeGranularity`,
+    `freeTextNarrowFocus: string`
+  - default `blankModifier.target = "attribute"` (was `action.roll`)
+  - `fromHardModifier` reads `metadata.targetScope` via
+    `selectionForModifier`; legacy dotted targets still round-trip
+    via the helper's `LEGACY_TARGET_MIGRATIONS` fallback
+  - `toHardModifier` writes `metadata.targetScope` via
+    `scopeForSelection` (always short-axis target + structured
+    scope object)
+  - new JSX block renders the dynamic Target Value widget:
+    * `widget: "none"` → info banner explaining "affects all by default"
+    * `widget: "free-text"` → single text input
+    * `widget: "checklist"` → multi-select checklist
+    * `widget: "checklist-with-free-text"` → checklist + "Other" input
+    * `widget: "radio-granularity"` → broad/narrow radio; broad
+      renders the practice checklist, narrow renders a free-text input
+  - two new typed setters in the form component:
+    * `toggleTargetValue(id, value, checked)` — multi-select toggle
+    * `setModifierGranularity(id, granularity)` — radio setter
+
+### Step 3 — Engine stats resolver fallback
+- **TODO** — not yet wired. Engine still uses legacy `target`
+  heuristics only; `metadata.targetScope` is stored but not
+  consumed. Part D above is the spec; implementation deferred
+  to a follow-up commit.
+
+### Step 4 — Phase-7-B.2 — Done (commit `0cbdbec`)
+- 5 trigger primitives scoped with `NARROW_FOCUS` and
+  descriptive values
+- DB rows-with-targetScope: 32 → 37
+
+### Step 5 — Verification
+| Check | Result |
+|---|---|
+| `pnpm exec vitest run` | 592 / 592 passed (28 files) |
+| `pnpm exec tsc --noEmit` | clean |
+| `pnpm exec next build` | compiled successfully |
+| `pnpm exec tsx scripts/_seed-vs-db.ts` | aligned 146 / 146 |
+| `pnpm exec tsx scripts/_verify-phase7.ts` | 37 rows with targetScope; 5 new NARROW_FOCUS rows visible |
+
+### Outstanding
+- Engine stats resolver fallback chain (Part D above)
+- Engine "multiply-out" a single HardModifier across multiple
+  target values (one modifier card with `values: [PHYSICAL, MAGICAL]`
+  must resolve to two stat contributions)
+- Condition UX rewrite (Condition Key / Condition Value semantics)
+  — deferred to follow-up phase
+
