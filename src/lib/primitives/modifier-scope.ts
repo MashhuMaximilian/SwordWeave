@@ -287,18 +287,17 @@ export interface ModifierTargetSpec {
     | "none"
     | "checklist"
     | "free-text"
-    | "checklist-with-free-text"
-    | "radio"
-    | "radio-granularity";
+    | "checklist-with-free-text";
   /** Curated values to show as checkboxes (or radio options). */
   readonly options?: readonly string[];
   /** Free-text placeholder when widget involves free-text input. */
   readonly freeTextPlaceholder?: string;
   /**
-   * Display labels keyed by canonical option value. Used by the
-   * "radio" widget (e.g. Speed → "Walking" instead of "WALKING_SPEED").
+   * Display labels keyed by canonical option value. Used by
+   * checklist / radio widgets (e.g. Speed → "Walking" instead
+   * of "WALKING_SPEED").
    */
-  readonly radioLabels?: Readonly<Record<string, string>>;
+  readonly optionLabels?: Readonly<Record<string, string>>;
   /**
    * True if this target is *just a numeric effect*, in which case the
    * Value field carries the number. Used for Strain / Item Slot Cost.
@@ -327,16 +326,14 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
   },
   speed: {
     // Phase-7-E/UX2a-r: Speed is one dropdown entry. The five
-    // locomotion types (Walking/Climbing/Swimming/Flying/
-    // Burrowing) are radio options inside the widget, not
-    // separate top-level dropdown entries. Legacy single-axis
-    // had a checklist of LAND_SPEED / FLY_SPEED / SWIM_SPEED;
-    // users wanted a radio so the modifier is "this speed" not
-    // "any combination of speeds."
+    // locomotion types are options in the Target Value widget,
+    // not separate top-level dropdown entries. UI uses a
+    // multi-select CHECKLIST (a modifier can affect one or more
+    // speeds simultaneously — e.g. "+5 to Walking and Swimming").
     target: "speed",
     label: "Speed",
     layer: "METRIC",
-    widget: "radio",
+    widget: "checklist",
     options: [
       "WALKING_SPEED",
       "CLIMBING_SPEED",
@@ -344,9 +341,7 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
       "FLYING_SPEED",
       "BURROWING_SPEED",
     ],
-    radioLabels: {
-      // Display labels for the radio options. Keys here are the
-      // canonical METRIC values stored in target_scope.
+    optionLabels: {
       WALKING_SPEED: "Walking",
       CLIMBING_SPEED: "Climbing",
       SWIMMING_SPEED: "Swimming",
@@ -367,12 +362,17 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
     widget: "none",
   },
   skill_practice_check: {
+    // Phase-7-E/UX2-r3: skill_practice_check is now a pure
+    // practice checklist — no broad/narrow radio. If the user
+    // wants a narrow focus like "Awareness (Smell)" or
+    // "Fieldcraft (Tracking)," they enter it in the Condition
+    // field below, not as a granularity option in this widget.
+    // Storage shape: PRACTICE layer, free-form value array.
     target: "skill_practice_check",
     label: "Skill / Practice Check",
-    layer: null, // depends on granularity — populate at render time
-    widget: "radio-granularity",
+    layer: "PRACTICE",
+    widget: "checklist",
     options: PRACTICES,
-    freeTextPlaceholder: "Awareness (Smell), Fieldcraft (Tracking), ...",
   },
   proficiency_bonus: {
     target: "proficiency_bonus",
@@ -487,7 +487,15 @@ export function buildScopeFromValues(
 }
 
 /**
- * Build a TargetScopeLite from a single free-text narrow focus.
+ * Build a TargetScopeLite from a free-text narrow focus string.
+ *
+ * Phase-7-E/UX2-r3: legacy helper. Narrow focus moved to the
+ * Condition field of the modifier card; new code should compose
+ * conditions via `scopeForSelection(...).metadata.targetScope`
+ * (`NARROW_FOCUS` layer, free text) or rely on the Condition
+ * triple (`{key, operator, value}`) instead. Kept for backwards
+ * compatibility with older code/tests that produced `NARROW_FOCUS`
+ * scopes via this helper.
  */
 export function buildScopeFromNarrowFocus(text: string): TargetScopeLite {
   const trimmed = text.trim();
@@ -637,23 +645,35 @@ export function selectionForModifier(modifier: {
     const target = targetRaw as ModifierTarget;
     const scope = resolveStoredScope(modifier);
     const md = (modifier.metadata ?? {}) as Record<string, unknown>;
-    const granularityRaw = md["granularity"];
-    const granularity =
-      typeof granularityRaw === "string" &&
-      (SKILL_PRACTICE_GRANULARITIES as readonly string[]).includes(granularityRaw)
-        ? (granularityRaw as SkillPracticeGranularity)
+    // Phase-7-E/UX2-r3: granularity is no longer surfaced by
+    // the form. The metadata.granularity field is tolerated on
+    // older modifiers (so round-trip doesn't lose data) but it
+    // always maps to null at the selection level — the
+    // broad/narrow radio is gone from the form, and narrow
+    // focus is now a Condition field, not a Practice-axis knob.
+    //
+    // For skill_practice_check + NARROW_FOCUS scope, the legacy
+    // data shape stores the narrow-focus text in
+    // targetScope.values[0]. Carve that into freeTextNarrowFocus
+    // and leave targetValues empty (the new form no longer
+    // reads the NARROW_FOCUS layer's value as a checklist pick).
+    const layer = scope?.layer ?? null;
+    const narrowText =
+      target === "skill_practice_check" && layer === "NARROW_FOCUS"
+        ? (scope?.values[0] ?? null)
         : null;
-    const freeTextRaw =
-      target === "skill_practice_check" &&
-      scope?.layer === "NARROW_FOCUS"
-        ? (scope.values[0] ?? null)
-        : null;
+    void md; // md kept temporarily for forward-compat with future schema fields
     return {
       target,
-      granularity:
-        target === "skill_practice_check" ? (granularity ?? "broad") : null,
-      targetValues: scope?.values ?? [],
-      freeTextNarrowFocus: freeTextRaw,
+      granularity: null,
+      // legacy NARROW_FOCUS layer scopes hold the focus text in
+      // values[0]. Drop it from targetValues so the form
+      // checklist reflects only true practice picks.
+      targetValues:
+        target === "skill_practice_check" && layer === "NARROW_FOCUS"
+          ? []
+          : scope?.values ?? [],
+      freeTextNarrowFocus: narrowText,
     };
   }
   // Legacy dotted fallback.
@@ -661,8 +681,7 @@ export function selectionForModifier(modifier: {
   if (migration) {
     return {
       target: migration.target,
-      granularity:
-        migration.target === "skill_practice_check" ? "broad" : null,
+      granularity: null,
       targetValues: [...migration.defaultScope.values],
       freeTextNarrowFocus: null,
     };
@@ -707,45 +726,20 @@ export function scopeForSelection(args: {
   const spec = MODIFIER_TARGET_SPEC[args.target];
   let scope: TargetScopeLite;
 
-  // For radio widgets (Speed etc.) the modifier should always
-  // carry exactly one METRIC value. If the caller hasn't picked
-  // yet (e.g. brand-new modifier draft), default to WALKING_SPEED
-  // so engine resolution has a concrete locus instead of a
-  // confusing "empty array = any" semantics.
-  let targetValues = args.targetValues;
-  if (spec.widget === "radio") {
-    if (targetValues.length === 0) {
-      const fallback = spec.options?.[0];
-      targetValues = fallback ? [fallback] : [];
-    } else if (targetValues.length > 1) {
-      targetValues = [targetValues[0]!];
-    }
-  }
-
-  if (args.target === "skill_practice_check") {
-    const granularity =
-      args.granularity ??
-      (args.targetValues.length > 0 ? "broad" : "broad");
-    if (granularity === "narrow") {
-      scope = buildScopeFromNarrowFocus(args.freeTextNarrowFocus ?? "");
-    } else {
-      scope = buildScopeFromValues("PRACTICE", args.targetValues);
-    }
-    return {
-      target: args.target,
-      metadata: {
-        targetScope: scope,
-        granularity,
-      },
-    };
-  }
-
-  // For all other targets: use the spec's layer + the supplied values.
-  scope = buildScopeFromValues(spec.layer, targetValues);
+  // Phase-7-E/UX2-r3: skill_practice_check used to have a broad /
+  // narrow radio. Now it's a plain checklist (PRACTICE layer).
+  // Narrow-focus forms (e.g. "Awareness (Smell)") live in the
+  // Condition field below the modifier card, not in this widget.
+  // So skill_practice_check now shares the same code path as
+  // every other target.
+  scope = buildScopeFromValues(spec.layer, args.targetValues);
   return {
     target: args.target,
     metadata: {
       targetScope: scope,
+      // Preserved for backward compatibility with old metadata
+      // blobs that still carry granularity; new writes always set
+      // it to null (no granularity knob in the form anymore).
       granularity: null,
     },
   };

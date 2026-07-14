@@ -70,11 +70,23 @@ export type ModifierDraft = {
   // Phase-7-E: Target Value(s) for this modifier — multi-select on
   // the scope axis implied by `target`. Empty = "any".
   targetValues: string[];
-  // Phase-7-E: only meaningful when target === "skill_practice_check".
-  // "broad"  → practice checklist (targetValues populated).
-  // "narrow" → free-text narrow focus (freeTextNarrowFocus populated).
+  // Phase-7-E/UX2-r3: the granular broad/narrow split is gone
+  // from this form. Practice is a single-select checklist; if a
+  // user wants a narrow focus like "Awareness (Smell)" they
+  // enter it in the Condition field below, not in the Practice
+  // widget.
+  //
+  // `granularity` stays as `SkillPracticeGranularity` for
+  // backward compatibility with existing serialized modifiers
+  // (some primitives carry metadata.granularity = "narrow"). New
+  // writes always set it to "broad" — the field is effectively
+  // dead in the UI but kept in the data shape so older saves
+  // round-trip without surprises.
   granularity: SkillPracticeGranularity;
-  // Phase-7-E: free-text narrow-focus for skill_practice_check / narrow.
+  // Free-text narrow focus for the modifier (UX2-r3 moved here
+  // from the old skill_practice_check / narrow pathway). Saves
+  // raw text; the Condition triple below is where the user's
+  // intent actually lives.
   freeTextNarrowFocus: string;
   conditionMode: "always" | "custom";
   conditionKey: string;
@@ -278,9 +290,7 @@ function fromHardModifier(modifier: Record<string, unknown>, index: number): Mod
     value,
     valueKind,
     targetValues: [...selection.targetValues],
-    granularity:
-      selection.granularity ??
-      (SKILL_PRACTICE_GRANULARITIES[0] as SkillPracticeGranularity),
+    granularity: "broad",
     freeTextNarrowFocus: selection.freeTextNarrowFocus ?? "",
     conditionMode: cond ? "custom" : "always",
     conditionKey: String(cond?.["key"] ?? ""),
@@ -320,8 +330,11 @@ function toHardModifier(modifier: ModifierDraft): import("@/types/swordweave").H
   const { target: canonicalTarget, metadata: scopeMetadata } = scopeForSelection({
     target: targetForScope,
     targetValues: modifier.targetValues,
-    granularity:
-      targetForScope === "skill_practice_check" ? modifier.granularity : null,
+    // Phase-7-E/UX2-r3: skill_practice_check no longer has a
+    // granularity knob. We always pass null; the conditional
+    // is preserved here for backwards compatibility with the
+    // helper signature, but the form doesn't expose a knob.
+    granularity: null,
     freeTextNarrowFocus: modifier.freeTextNarrowFocus,
   });
 
@@ -561,26 +574,13 @@ export function PrimitiveForm({
     );
   }
 
-  function setModifierGranularity(
+  function setModifierGranularityRegistry(
     id: string,
     granularity: SkillPracticeGranularity,
   ) {
-    setIsDirty(true);
     setModifiers((current) =>
       current.map((modifier) =>
         modifier.id === id ? { ...modifier, granularity } : modifier,
-      ),
-    );
-  }
-
-  // Phase-7-E/UX2a-r: a radio target keeps exactly one value in
-  // targetValues. (Used by Speed → Walking/Climbing/Swimming/
-  // Flying/Burrowing.)
-  function setRadioValue(id: string, value: string) {
-    setIsDirty(true);
-    setModifiers((current) =>
-      current.map((modifier) =>
-        modifier.id === id ? { ...modifier, targetValues: [value] } : modifier,
       ),
     );
   }
@@ -1121,142 +1121,18 @@ export function PrimitiveForm({
                 );
               }
 
-              if (spec.widget === "radio-granularity") {
-                // skill_practice_check: broad (practice checklist) or
-                // narrow (free-text focus string).
-                const options = spec.options ?? [];
-                return (
-                  <div className="md:col-span-2 space-y-2 rounded-md border border-border bg-background p-3">
-                    <div className="flex flex-wrap items-center gap-4">
-                      <span className="text-xs font-semibold uppercase text-muted-foreground">
-                        Practice focus
-                      </span>
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="radio"
-                          name={`granularity-${modifier.id}`}
-                          checked={modifier.granularity === "broad"}
-                          onChange={() =>
-                            setModifierGranularity(modifier.id, "broad")
-                          }
-                        />
-                        <span>Broad (any of the below)</span>
-                      </label>
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="radio"
-                          name={`granularity-${modifier.id}`}
-                          checked={modifier.granularity === "narrow"}
-                          onChange={() =>
-                            setModifierGranularity(modifier.id, "narrow")
-                          }
-                        />
-                        <span>Narrow (specific focus)</span>
-                      </label>
-                    </div>
-                    {modifier.granularity === "broad" ? (
-                      <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3">
-                        {options.map((opt) => {
-                          const checked = modifier.targetValues.includes(opt);
-                          return (
-                            <label
-                              key={opt}
-                              className="flex items-center gap-2 text-sm"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={(event) =>
-                                  toggleTargetValue(
-                                    modifier.id,
-                                    opt,
-                                    event.target.checked,
-                                  )
-                                }
-                              />
-                              <span>{opt}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <label className="block text-sm font-medium">
-                        Specific focus (e.g.{" "}
-                        <span className="font-mono text-xs">
-                          Awareness (Smell)
-                        </span>
-                        )
-                        <input
-                          className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                          value={modifier.freeTextNarrowFocus}
-                          onChange={(event) =>
-                            updateModifier(
-                              modifier.id,
-                              "freeTextNarrowFocus",
-                              event.target.value,
-                            )
-                          }
-                          placeholder={
-                            spec.freeTextPlaceholder ?? "Awareness (Smell)"
-                          }
-                        />
-                      </label>
-                    )}
-                  </div>
-                );
-              }
-
-              if (spec.widget === "radio") {
-                // Phase-7-E/UX2a-r: speed is one axis with a single-
-                // choice radio for locomotion type. targetValues
-                // always carries exactly one entry while this widget
-                // is active.
-                const options = spec.options ?? [];
-                const radioLabels = spec.radioLabels ?? {};
-                const current = modifier.targetValues[0] ?? null;
-                return (
-                  <div className="md:col-span-2 space-y-2 rounded-md border border-border bg-background p-3">
-                    <p className="text-xs font-semibold uppercase text-muted-foreground">
-                      {spec.label} — pick one
-                    </p>
-                    <div className="flex flex-wrap items-center gap-4">
-                      {options.map((opt) => {
-                        const label = radioLabels[opt] ?? opt;
-                        const checked = current === opt;
-                        return (
-                          <label
-                            key={opt}
-                            className="flex items-center gap-2 text-sm"
-                          >
-                            <input
-                              type="radio"
-                              name={`radio-${modifier.id}`}
-                              checked={checked}
-                              onChange={() => setRadioValue(modifier.id, opt)}
-                            />
-                            <span>{label}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">
-                      Magnitude (how much) lives in the Value field below
-                      — this picks <em>which</em> speed gets affected.
-                    </p>
-                  </div>
-                );
-              }
-
               // "checklist" or "checklist-with-free-text"
               const options = spec.options ?? [];
+              const optionLabels = spec.optionLabels ?? {};
               return (
                 <div className="md:col-span-2 space-y-2 rounded-md border border-border bg-background p-3">
                   <p className="text-xs font-semibold uppercase text-muted-foreground">
-                    Target Value (leave empty for "any")
+                    {spec.label} — leave empty for "any"
                   </p>
                   <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3">
                     {options.map((opt) => {
                       const checked = modifier.targetValues.includes(opt);
+                      const label = optionLabels[opt] ?? opt;
                       return (
                         <label
                           key={opt}
@@ -1273,7 +1149,7 @@ export function PrimitiveForm({
                               )
                             }
                           />
-                          <span>{opt}</span>
+                          <span>{label}</span>
                         </label>
                       );
                     })}

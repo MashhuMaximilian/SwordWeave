@@ -44,6 +44,12 @@ type ModifierDraft = {
   // Phase-7-E/UX2: same fields the sandbox form carries, so the
   // two build surfaces stay in lockstep.
   targetValues: string[];
+  // Phase-7-E/UX2-r3: granularity kept at SkillPracticeGranularity
+  // for back-compat with serialized modifiers (some primitives
+  // carry metadata.granularity = "narrow"). New writes always
+  // set it to "broad" — the field is dead in the UI; the form
+  // has no broad/narrow radio anymore. Narrow focus (e.g.
+  // "Awareness (Smell)") goes in the Condition field.
   granularity: SkillPracticeGranularity;
   freeTextNarrowFocus: string;
   conditionMode: "always" | "custom";
@@ -458,26 +464,12 @@ export function PrimitiveRegistry({
     );
   }
 
-  function setModifierGranularityRegistry(
-    id: string,
-    granularity: SkillPracticeGranularity,
-  ) {
-    setModifiers((current) =>
-      current.map((modifier) =>
-        modifier.id === id ? { ...modifier, granularity } : modifier,
-      ),
-    );
-  }
-
-  // Phase-7-E/UX2a-r: radio targets keep exactly one value in
-  // targetValues (Speed → Walking/Climbing/Swimming/Flying/Burrowing).
-  function setRadioValueRegistry(id: string, value: string) {
-    setModifiers((current) =>
-      current.map((modifier) =>
-        modifier.id === id ? { ...modifier, targetValues: [value] } : modifier,
-      ),
-    );
-  }
+  // Phase-7-E/UX2-r3: setter removed. skill_practice_check no
+  // longer has a granularity knob in this form either. The
+  // broad/narrow distinction moved into the Condition field;
+  // the form keeps `ModifierDraft.granularity: "broad"` as a
+  // serialization placeholder but never exposes a UI to flip
+  // it.
 
   function addModifier() {
     setModifierCounter((current) => current + 1);
@@ -1082,142 +1074,23 @@ export function PrimitiveRegistry({
                         </label>
                       );
                     }
-                    if (spec.widget === "radio-granularity") {
-                      const options = spec.options ?? [];
-                      return (
-                        <div className="md:col-span-2 space-y-2 rounded-md border border-border bg-background p-3">
-                          <div className="flex flex-wrap items-center gap-4">
-                            <span className="text-xs font-semibold uppercase text-muted-foreground">
-                              Practice focus
-                            </span>
-                            <label className="flex items-center gap-2 text-sm">
-                              <input
-                                type="radio"
-                                name={`granularity-registry-${modifier.id}`}
-                                checked={modifier.granularity === "broad"}
-                                onChange={() =>
-                                  setModifierGranularityRegistry(
-                                    modifier.id,
-                                    "broad",
-                                  )
-                                }
-                              />
-                              <span>Broad</span>
-                            </label>
-                            <label className="flex items-center gap-2 text-sm">
-                              <input
-                                type="radio"
-                                name={`granularity-registry-${modifier.id}`}
-                                checked={modifier.granularity === "narrow"}
-                                onChange={() =>
-                                  setModifierGranularityRegistry(
-                                    modifier.id,
-                                    "narrow",
-                                  )
-                                }
-                              />
-                              <span>Narrow</span>
-                            </label>
-                          </div>
-                          {modifier.granularity === "broad" ? (
-                            <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3">
-                              {options.map((opt) => {
-                                const checked =
-                                  modifier.targetValues.includes(opt);
-                                return (
-                                  <label
-                                    key={opt}
-                                    className="flex items-center gap-2 text-sm"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={checked}
-                                      onChange={(event) =>
-                                        toggleTargetValueRegistry(
-                                          modifier.id,
-                                          opt,
-                                          event.target.checked,
-                                        )
-                                      }
-                                    />
-                                    <span>{opt}</span>
-                                  </label>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <input
-                              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-                              value={modifier.freeTextNarrowFocus}
-                              onChange={(event) =>
-                                updateModifier(
-                                  modifier.id,
-                                  "freeTextNarrowFocus",
-                                  event.target.value,
-                                )
-                              }
-                              placeholder={
-                                spec.freeTextPlaceholder ??
-                                "Awareness (Smell)"
-                              }
-                            />
-                          )}
-                        </div>
-                      );
-                    }
-                    // Phase-7-E/UX2a-r: Speed is one axis with a
-                    // single-choice radio (UX2a reverted). targetValues
-                    // always carries exactly one entry while this
-                    // widget is active.
-                    if (spec.widget === "radio") {
-                      const options = spec.options ?? [];
-                      const radioLabels = spec.radioLabels ?? {};
-                      const current = modifier.targetValues[0] ?? null;
-                      return (
-                        <div className="md:col-span-2 space-y-2 rounded-md border border-border bg-background p-3">
-                          <p className="text-xs font-semibold uppercase text-muted-foreground">
-                            {spec.label} — pick one
-                          </p>
-                          <div className="flex flex-wrap items-center gap-4">
-                            {options.map((opt) => {
-                              const label = radioLabels[opt] ?? opt;
-                              const checked = current === opt;
-                              return (
-                                <label
-                                  key={opt}
-                                  className="flex items-center gap-2 text-sm"
-                                >
-                                  <input
-                                    type="radio"
-                                    name={`radio-registry-${modifier.id}`}
-                                    checked={checked}
-                                    onChange={() =>
-                                      setRadioValueRegistry(modifier.id, opt)
-                                    }
-                                  />
-                                  <span>{label}</span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                          <p className="text-[11px] text-muted-foreground">
-                            Magnitude (how much) lives in the Value
-                            field below — this picks which speed gets
-                            affected.
-                          </p>
-                        </div>
-                      );
-                    }
+                    // Phase-7-E/UX2-r3: skill_practice_check no
+                    // longer has a broad/narrow radio. The widget
+                    // is now just a checklist (handled below by
+                    // the unified checklist branch). Drop the
+                    // entire radio-granularity branch.
                     // checklist / checklist-with-free-text
                     const options = spec.options ?? [];
+                    const optionLabels = spec.optionLabels ?? {};
                     return (
                       <div className="md:col-span-2 space-y-2 rounded-md border border-border bg-background p-3">
                         <p className="text-xs font-semibold uppercase text-muted-foreground">
-                          Target Value (empty = any)
+                          {spec.label} — empty = any
                         </p>
                         <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3">
                           {options.map((opt) => {
                             const checked = modifier.targetValues.includes(opt);
+                            const label = optionLabels[opt] ?? opt;
                             return (
                               <label
                                 key={opt}
@@ -1234,7 +1107,7 @@ export function PrimitiveRegistry({
                                     )
                                   }
                                 />
-                                <span>{opt}</span>
+                                <span>{label}</span>
                               </label>
                             );
                           })}

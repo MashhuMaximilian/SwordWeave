@@ -119,12 +119,15 @@ describe("MODIFIER_TARGET_SPEC", () => {
     expect(spec.options).toEqual(["PHYSICAL", "MENTAL", "MAGICAL"]);
   });
 
-  it("speed uses METRIC with radio widget (UX2a-r)", () => {
-    // Phase-7-E/UX2a-r: Speed is a single-axis target with five
-    // radio options (Walking/Climbing/Swimming/Flying/Burrowing).
+  it("speed uses METRIC with multi-select checklist (UX2a-r2)", () => {
+    // Phase-7-E/UX2a-r2: Speed is one axis with five locomotion
+    // options in a multi-select checklist widget. A single
+    // modifier can affect one or more speeds simultaneously —
+    // e.g. "+5 Walking and Swimming" — so a checkbox list, not a
+    // radio.
     const spec = MODIFIER_TARGET_SPEC.speed;
     expect(spec.layer).toBe("METRIC");
-    expect(spec.widget).toBe("radio");
+    expect(spec.widget).toBe("checklist");
     expect(spec.options).toEqual([
       "WALKING_SPEED",
       "CLIMBING_SPEED",
@@ -134,8 +137,8 @@ describe("MODIFIER_TARGET_SPEC", () => {
     ]);
     // Display labels are required (the option values look like
     // "WALKING_SPEED" to a user).
-    expect(spec.radioLabels?.["WALKING_SPEED"]).toBe("Walking");
-    expect(spec.radioLabels?.["FLYING_SPEED"]).toBe("Flying");
+    expect(spec.optionLabels?.["WALKING_SPEED"]).toBe("Walking");
+    expect(spec.optionLabels?.["FLYING_SPEED"]).toBe("Flying");
   });
 
   it("targeting uses NARROW_FOCUS with shape checklist (UX2b-r)", () => {
@@ -148,9 +151,14 @@ describe("MODIFIER_TARGET_SPEC", () => {
     expect(spec.options).toContain("Custom");
   });
 
-  it("skill_practice_check uses radio-granularity widget", () => {
+  it("skill_practice_check uses PRACTICE checklist (UX2-r3)", () => {
+    // Phase-7-E/UX2-r3: skill_practice_check is now a plain
+    // checklist (no broad/narrow radio). Narrow-focus forms
+    // (e.g. 'Awareness (Smell)') live in the Condition field,
+    // not the modifier card.
     const spec = MODIFIER_TARGET_SPEC.skill_practice_check;
-    expect(spec.widget).toBe("radio-granularity");
+    expect(spec.widget).toBe("checklist");
+    expect(spec.layer).toBe("PRACTICE");
     expect(spec.options).toEqual(PRACTICES);
   });
 
@@ -401,7 +409,12 @@ describe("selectionForModifier", () => {
     expect(sel.freeTextNarrowFocus).toBeNull();
   });
 
-  it("extracts granularity for skill_practice_check broad", () => {
+  it("skill_practice_check ignores stored granularity (UX2-r3)", () => {
+    // Phase-7-E/UX2-r3: granularity is no longer used in the
+    // canonical layer for skill_practice_check. selectionForModifier
+    // still TOLERATES the legacy field (some older metadata blobs
+    // carry it) but always reads the practice layer from
+    // targetScope. We do not surface "broad" / "narrow" anymore.
     const sel = selectionForModifier({
       target: "skill_practice_check",
       metadata: {
@@ -410,11 +423,17 @@ describe("selectionForModifier", () => {
       },
     });
     expect(sel.target).toBe("skill_practice_check");
-    expect(sel.granularity).toBe("broad");
     expect(sel.targetValues).toEqual(["AWARENESS"]);
+    // granularity in the response is always null now.
+    expect(sel.granularity).toBeNull();
   });
 
-  it("extracts narrow-focus text from skill_practice_check narrow", () => {
+  it("skill_practice_check with NARROW_FOCUS layer reads values[0]", () => {
+    // Phase-7-E/UX2-r3: legacy narrow-focus data (NARROW_FOCUS
+    // layer + free-text string in values[0]) still loads back
+    // into freeTextNarrowFocus for round-trip. The form then
+    // surfaces this as the Condition field's value rather than
+    // a Practice-axis knob.
     const sel = selectionForModifier({
       target: "skill_practice_check",
       metadata: {
@@ -422,11 +441,10 @@ describe("selectionForModifier", () => {
           layer: "NARROW_FOCUS",
           values: ["Awareness (Smell)"],
         },
-        granularity: "narrow",
       },
     });
     expect(sel.target).toBe("skill_practice_check");
-    expect(sel.granularity).toBe("narrow");
+    expect(sel.targetValues).toEqual([]);
     expect(sel.freeTextNarrowFocus).toBe("Awareness (Smell)");
   });
 
@@ -435,7 +453,10 @@ describe("selectionForModifier", () => {
       target: "character.skill",
     });
     expect(sel.target).toBe("skill_practice_check");
-    expect(sel.granularity).toBe("broad");
+    // Phase-7-E/UX2-r3: granularity is always null at selection
+    // level. The legacy "broad" default is gone from the form
+    // surface but the canonical axis is unchanged.
+    expect(sel.granularity).toBeNull();
   });
 
   it("handles unknown target by defaulting to action_roll", () => {
@@ -476,7 +497,12 @@ describe("scopeForSelection (round-trip with selectionForModifier)", () => {
     expect(back).toEqual({ ...sel, freeTextNarrowFocus: null });
   });
 
-  it("round-trips skill_practice_check broad", () => {
+  it("round-trips skill_practice_check with picked practices", () => {
+    // Phase-7-E/UX2-r3: skill_practice_check is now a simple
+    // checklist. granularity stays in the type for back-compat
+    // serialization but scopeForSelection writes null. (The
+    // legacy helper preserved the field for older saves; we
+    // match the same behavior here for symmetry.)
     const sel = {
       target: "skill_practice_check" as ModifierTarget,
       targetValues: ["AWARENESS"],
@@ -487,10 +513,33 @@ describe("scopeForSelection (round-trip with selectionForModifier)", () => {
       layer: "PRACTICE",
       values: ["AWARENESS"],
     });
-    expect(out.metadata.granularity).toBe("broad");
+    expect(out.metadata.granularity).toBeNull();
   });
 
-  it("round-trips skill_practice_check narrow with custom focus text", () => {
+  it("round-trips skill_practice_check with empty targetValues", () => {
+    // Phase-7-E/UX2-r3: an empty practice checklist is the
+    // canonical "any practice" case. granularity / narrow-focus
+    // navigation moved to the Condition field.
+    const sel = {
+      target: "skill_practice_check" as ModifierTarget,
+      targetValues: [],
+      granularity: null,
+    };
+    const out = scopeForSelection(sel);
+    expect(out.metadata.targetScope).toEqual({
+      layer: "PRACTICE",
+      values: [],
+    });
+  });
+
+  it("rejects legacy narrow skill_practice_check on the write path", () => {
+    // Phase-7-E/UX2-r3: skill_practice_check no longer has a
+    // narrow pathway through this widget. Modifiers with a
+    // narrow focus (e.g. "Awareness (Smell)") must use the
+    // Condition field, not the modifier card widget. Writes
+    // coming through scopeForSelection always carry null
+    // granularity and store the focus text in metadata only
+    // when an explicit future schema supports it.
     const sel = {
       target: "skill_practice_check" as ModifierTarget,
       targetValues: [],
@@ -498,11 +547,11 @@ describe("scopeForSelection (round-trip with selectionForModifier)", () => {
       freeTextNarrowFocus: "Awareness (Smell)",
     };
     const out = scopeForSelection(sel);
-    expect(out.metadata.targetScope).toEqual({
-      layer: "NARROW_FOCUS",
-      values: ["Awareness (Smell)"],
-    });
-    expect(out.metadata.granularity).toBe("narrow");
+    // granularity is forced to null on the write path
+    expect(out.metadata.granularity).toBeNull();
+    // targetScope is PRACTICE (not NARROW_FOCUS) — narrow
+    // focus no longer touches this axis.
+    expect(out.metadata.targetScope.layer).toBe("PRACTICE");
   });
 
   it("round-trips damage_healing_output with multiple dice", () => {
@@ -518,28 +567,29 @@ describe("scopeForSelection (round-trip with selectionForModifier)", () => {
     });
   });
 
-  it("round-trips speed axis with one locomotion radio pick", () => {
-    // Phase-7-E/UX2a-r: a "speed" modifier carries exactly one
-    // locomotion radio pick in targetValues (not a checklist).
-    // WALKING_SPEED is the canonical METRIC value.
+  it("round-trips speed axis with multiple locomotion checks", () => {
+    // Phase-7-E/UX2a-r2: Speed is a multi-select checklist.
+    // A single modifier can affect multiple locomotion types
+    // simultaneously (e.g. "+5 Walking and Swimming").
     const sel = {
       target: "speed" as ModifierTarget,
-      targetValues: ["WALKING_SPEED"],
+      targetValues: ["WALKING_SPEED", "SWIMMING_SPEED"],
       granularity: null,
     };
     const out = scopeForSelection(sel);
     expect(out.target).toBe("speed");
     expect(out.metadata.targetScope).toEqual({
       layer: "METRIC",
-      values: ["WALKING_SPEED"],
+      values: ["WALKING_SPEED", "SWIMMING_SPEED"],
     });
   });
 
-  it("speed radio with empty targetValues defaults to WALKING_SPEED", () => {
-    // Phase-7-E/UX2a-r regression guard: a freshly created
-    // Speed modifier has targetValues = []. scopeForSelection
-    // must default to the first radio option (WALKING_SPEED)
-    // so the engine has a concrete locus to apply the modifier.
+  it("speed with empty targetValues means 'any' (engine interprets as no specific axis)", () => {
+    // Phase-7-E/UX2a-r2: a Speed modifier with no locomotion
+    // checked applies to whatever the engine resolves the speed
+    // axis as (often 'all locomotion types' depending on rule
+    // sheets). We just preserve the empty array; downstream
+    // readers interpret it.
     const out = scopeForSelection({
       target: "speed" as ModifierTarget,
       targetValues: [],
@@ -548,20 +598,8 @@ describe("scopeForSelection (round-trip with selectionForModifier)", () => {
     expect(out.target).toBe("speed");
     expect(out.metadata.targetScope).toEqual({
       layer: "METRIC",
-      values: ["WALKING_SPEED"],
+      values: [],
     });
-  });
-
-  it("speed radio truncates to first option when given multiple", () => {
-    // Phase-7-E/UX2a-r defense: targetValues for radio targets
-    // is contractually length 1. If more than one is supplied,
-    // collapse to the first one (the radio picks one only).
-    const out = scopeForSelection({
-      target: "speed" as ModifierTarget,
-      targetValues: ["FLYING_SPEED", "SWIMMING_SPEED", "BURROWING_SPEED"],
-      granularity: null,
-    });
-    expect(out.metadata.targetScope.values).toEqual(["FLYING_SPEED"]);
   });
 
   it("round-trips targeting axis with multiple shape picks", () => {
