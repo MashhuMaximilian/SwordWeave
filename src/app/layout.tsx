@@ -47,6 +47,16 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Phase 18G (2026-07-14, perf): silence the browser's automatic
+            favicon request so it doesn't burn a network round-trip
+            during HTML parse on cold loads. We don't ship a favicon
+            yet — see public/manifest.json (icons: []) and the design
+            backlog for the real icon work. The data: URL satisfies
+            Chromium/Firefox/Safari in a single sync parse step. */}
+        <link
+          rel="icon"
+          href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3C/svg%3E"
+        />
         {/* Phase 18F (2026-07-14, perf): early-connect hints for
             third-party origins that gate the LCP path.
 
