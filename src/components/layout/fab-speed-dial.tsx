@@ -378,21 +378,34 @@ export const NAV_LINKS: FabItem[] = [
     kind: "link",
     key: "home",
     // Logo placed here 2026-07-14 — replaces the lucide Home icon
-    // for branded entry point into the app. Uses /logo-light.png
-    // (1000x1000 PNG, ~50KB) via next/image with a 32px display
-    // size to match the surrounding lucide icons (size-4 = 16px,
-    // we size-8 = 32px to give the hex composition room to
-    // breathe against the monoline icons).
+    // for branded entry point into the app. Theme-aware via two
+    // stacked <Image>s with `dark:` CSS swap: /logo-light.png is
+    // teal-on-transparent (visible against the FAB's light-mode
+    // button face), /logo-dark.png is white-on-transparent (visible
+    // against the dark-mode button face). Sized at 32px (size-8)
+    // to give the hex composition room against the 16px lucide
+    // siblings. `priority` on both because the FAB sits in the
+    // initial viewport on every route.
     label: "Home",
     icon: (
-      <Image
-        src="/logo-light.png"
-        alt=""
-        width={32}
-        height={32}
-        className="size-8 rounded-sm"
-        priority
-      />
+      <>
+        <Image
+          src="/logo-light.png"
+          alt=""
+          width={32}
+          height={32}
+          className="size-8 rounded-sm block dark:hidden"
+          priority
+        />
+        <Image
+          src="/logo-dark.png"
+          alt=""
+          width={32}
+          height={32}
+          className="size-8 rounded-sm hidden dark:block"
+          priority
+        />
+      </>
     ),
     href: "/",
   },

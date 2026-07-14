@@ -50,9 +50,12 @@ export default async function HomePage() {
       <section className="grid gap-5 border-b border-border pb-6 xl:grid-cols-[1fr_360px]">
         <div className="rounded-md border border-border bg-card p-5 sm:p-6">
           {/* SwordWeave brand mark — placed here 2026-07-14 at the
-              hero's visual anchor. Using light-bg version on top of
-              the card to keep the cream face + dark sword accent
-              legible against the dark theme. Decorative (alt="") so
+              hero's visual anchor. Theme-aware: /logo-light.png is the
+              teal-on-transparent version (visible against light
+              backgrounds), /logo-dark.png is the white-on-transparent
+              version (visible against dark backgrounds). The flip is
+              CSS-only via `dark:` so no React state is needed and the
+              mark stays above the LCP element. Decorative (alt="") so
               screen readers fall through to the headline. next/image
               with priority because the hero is the LCP element. */}
           <Image
@@ -60,7 +63,15 @@ export default async function HomePage() {
             alt=""
             width={96}
             height={96}
-            className="mb-4 size-16 sm:size-24"
+            className="mb-4 size-16 sm:size-24 block dark:hidden"
+            priority
+          />
+          <Image
+            src="/logo-dark.png"
+            alt=""
+            width={96}
+            height={96}
+            className="mb-4 size-16 sm:size-24 hidden dark:block"
             priority
           />
           <div className="flex flex-wrap items-center gap-2">
