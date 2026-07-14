@@ -469,6 +469,16 @@ export function PrimitiveRegistry({
     );
   }
 
+  // Phase-7-E/UX2a-r: radio targets keep exactly one value in
+  // targetValues (Speed → Walking/Climbing/Swimming/Flying/Burrowing).
+  function setRadioValueRegistry(id: string, value: string) {
+    setModifiers((current) =>
+      current.map((modifier) =>
+        modifier.id === id ? { ...modifier, targetValues: [value] } : modifier,
+      ),
+    );
+  }
+
   function addModifier() {
     setModifierCounter((current) => current + 1);
     setModifiers((current) => [...current, createModifier(modifierCounter + 1)]);
@@ -1152,6 +1162,49 @@ export function PrimitiveRegistry({
                               }
                             />
                           )}
+                        </div>
+                      );
+                    }
+                    // Phase-7-E/UX2a-r: Speed is one axis with a
+                    // single-choice radio (UX2a reverted). targetValues
+                    // always carries exactly one entry while this
+                    // widget is active.
+                    if (spec.widget === "radio") {
+                      const options = spec.options ?? [];
+                      const radioLabels = spec.radioLabels ?? {};
+                      const current = modifier.targetValues[0] ?? null;
+                      return (
+                        <div className="md:col-span-2 space-y-2 rounded-md border border-border bg-background p-3">
+                          <p className="text-xs font-semibold uppercase text-muted-foreground">
+                            {spec.label} — pick one
+                          </p>
+                          <div className="flex flex-wrap items-center gap-4">
+                            {options.map((opt) => {
+                              const label = radioLabels[opt] ?? opt;
+                              const checked = current === opt;
+                              return (
+                                <label
+                                  key={opt}
+                                  className="flex items-center gap-2 text-sm"
+                                >
+                                  <input
+                                    type="radio"
+                                    name={`radio-registry-${modifier.id}`}
+                                    checked={checked}
+                                    onChange={() =>
+                                      setRadioValueRegistry(modifier.id, opt)
+                                    }
+                                  />
+                                  <span>{label}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            Magnitude (how much) lives in the Value
+                            field below — this picks which speed gets
+                            affected.
+                          </p>
                         </div>
                       );
                     }

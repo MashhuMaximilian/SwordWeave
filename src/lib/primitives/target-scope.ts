@@ -98,11 +98,13 @@ export type Practice = (typeof PRACTICES)[number];
  * Modifiers like "+5 HP" or "+1 to all Attack Rolls" point
  * to these values inside the METRIC layer.
  *
- * Phase-7-E/UX2a: split the legacy single MOVEMENT_SPEED bucket into
- * five speed axes — Walking / Climbing / Swimming / Flying / Burrowing.
- * Each one is functionally different (a "+5 Climbing Speed" buff should
- * not affect Swimming Speed), so they earn their own canonical metric
- * rather than overlapping on one.
+ * Note on Speed: the previous Phase-7-E/UX2a split Speed into
+ * 5 distinct values (walking/climbing/swimming/flying/burrowing)
+ * as separate METRIC entries. After user feedback, those values
+ * live inside the Speed target's widget (radio, picked at the
+ * form layer) instead. We keep `WALKING_SPEED` etc. here for
+ * DB-value compatibility — they are radio option labels, not
+ * independent metric dimensions.
  */
 export const STANDALONE_METRICS = [
   "HP",
@@ -115,14 +117,15 @@ export const STANDALONE_METRICS = [
   "CHARACTER_DC",
   "PROFICIENCY_BONUS",
   "REACTION_SLOT",
-  // Phase-7-E/UX2a: speed split
+  // Speed locus options — populated at the form layer via the
+  // Speed radio widget, then stored as the target's value.
   "WALKING_SPEED",
   "CLIMBING_SPEED",
   "SWIMMING_SPEED",
   "FLYING_SPEED",
   "BURROWING_SPEED",
-  // Legacy single-axis — kept so old saves round-trip; not exposed
-  // in the UI for new authoring.
+  // Legacy single-axis value — kept so old saves round-trip;
+  // not offered in the radio.
   "MOVEMENT_SPEED",
   "INITIATIVE",
 ] as const;

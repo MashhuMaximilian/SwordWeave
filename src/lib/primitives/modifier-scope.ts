@@ -35,31 +35,25 @@ import {
  * "character.attribute.physical"), these are short axis labels —
  * the specific value is captured separately in `targetValue`.
  *
- * Phase-7-E/UX2a: the legacy single `speed` axis (multi-select of
- * LAND_SPEED / FLY_SPEED / SWIM_SPEED) has been split into 5
- * distinct axes (one per locomotion type). Each modifies a
- * functionally different movement stat, so they deserve their own
- * canonical target instead of overlapping.
+ * Phase-7-E/UX2a-r (revert): the previous attempt to give each
+ * locomotion type its own dropdown entry was the wrong shape —
+ * Speed is one axis with five locomotion values picked inside
+ * via the radio widget. Five top-level entries would clutter
+ * every Modifier card and force users to flip through axes to
+ * find "Climbing Speed." Now Speed is one entry; locomotion
+ * type is the radio choice.
  *
- * Phase-7-E/UX2b: the three positional axes (action_range / action.
- * targetCount / action.areaSize) collapse into a single
- * `action_shape_size` axis. The Target Value widget picks the
- * Shape (Single / Multiple / Cone / Cube / Line / Sphere /
- * Cylinder / Custom); the existing Operation+Value fields carry
- * the magnitude (e.g. operation=set, value=20).
+ * Phase-7-E/UX2b-r: action_shape_size renamed to "targeting".
+ * "Shape + size" was accurate mechanically but felt like a
+ * statistical term. "Targeting" reads as a player-facing verb.
  */
 export const MODIFIER_TARGETS = [
   // Physical/Mental/Magical axis (consolidated)
   "attribute",
   // Physical/Mental/Magical defense DC axis (consolidated)
   "defense_dc",
-  // Phase-7-E/UX2a: five distinct speed axes (replaces legacy
-  // single-axis checklist on speed).
-  "walking_speed",
-  "climbing_speed",
-  "swimming_speed",
-  "flying_speed",
-  "burrowing_speed",
+  // Single Speed axis with five radio options inside (UX2a revert)
+  "speed",
   // Single-axis metrics
   "max_vitality",
   "current_vitality",
@@ -69,8 +63,8 @@ export const MODIFIER_TARGETS = [
   "skill_practice_check",
   // Damage/healing — dice layer
   "damage_healing_output",
-  // Positional — Phase-7-E/UX2b: collapsed into one shape+size axis
-  "action_shape_size",
+  // Targeting — Shape + Size collapsed into one (UX2b)
+  "targeting",
   // Duration
   "duration",
   "strain",
@@ -116,23 +110,51 @@ export const LEGACY_TARGET_MIGRATIONS: Record<
     defaultScope: { layer: "METRIC", values: ["DEFENSE_ROLL"] },
   },
   "character.movement.land": {
-    target: "walking_speed",
+    // Phase-7-E/UX2a-r: legacy walking-speed modal lands on
+    // the single "speed" axis with locomotion WALKING_SPEED as
+    // the radio value (was 'speed' + LAND_SPEED — kept for
+    // round-trip from very-old data).
+    target: "speed",
     defaultScope: { layer: "METRIC", values: ["WALKING_SPEED"] },
   },
   "character.movement.fly": {
-    target: "flying_speed",
+    target: "speed",
     defaultScope: { layer: "METRIC", values: ["FLYING_SPEED"] },
   },
   "character.movement.swim": {
-    target: "swimming_speed",
+    target: "speed",
     defaultScope: { layer: "METRIC", values: ["SWIMMING_SPEED"] },
   },
   "character.movement.climb": {
-    target: "climbing_speed",
+    target: "speed",
     defaultScope: { layer: "METRIC", values: ["CLIMBING_SPEED"] },
   },
   "character.movement.burrow": {
-    target: "burrowing_speed",
+    target: "speed",
+    defaultScope: { layer: "METRIC", values: ["BURROWING_SPEED"] },
+  },
+  // Phase-7-E/UX2a-r bridge: data written when Speed was 5
+  // separate axes (e.g. commits 5a3364e..5a78a2e) carried target
+  // strings like "walking_speed". Load those back as the
+  // single "speed" axis with locomotion WALKING_SPEED selected.
+  walking_speed: {
+    target: "speed",
+    defaultScope: { layer: "METRIC", values: ["WALKING_SPEED"] },
+  },
+  climbing_speed: {
+    target: "speed",
+    defaultScope: { layer: "METRIC", values: ["CLIMBING_SPEED"] },
+  },
+  swimming_speed: {
+    target: "speed",
+    defaultScope: { layer: "METRIC", values: ["SWIMMING_SPEED"] },
+  },
+  flying_speed: {
+    target: "speed",
+    defaultScope: { layer: "METRIC", values: ["FLYING_SPEED"] },
+  },
+  burrowing_speed: {
+    target: "speed",
     defaultScope: { layer: "METRIC", values: ["BURROWING_SPEED"] },
   },
   "character.maxVitality": {
@@ -160,15 +182,22 @@ export const LEGACY_TARGET_MIGRATIONS: Record<
     defaultScope: { layer: "DICE", values: [] },
   },
   "action.range": {
-    target: "action_shape_size",
+    target: "targeting",
     defaultScope: { layer: "NARROW_FOCUS", values: [] },
   },
   "action.targetCount": {
-    target: "action_shape_size",
+    target: "targeting",
     defaultScope: { layer: "NARROW_FOCUS", values: [] },
   },
   "action.areaSize": {
-    target: "action_shape_size",
+    target: "targeting",
+    defaultScope: { layer: "NARROW_FOCUS", values: [] },
+  },
+  // Phase-7-E/UX2b-r bridge: data written when the canonical name
+  // was action_shape_size (commit 5a3364e onwards, before this
+  // rename) reads back as the renamed "targeting" axis.
+  action_shape_size: {
+    target: "targeting",
     defaultScope: { layer: "NARROW_FOCUS", values: [] },
   },
   "action.duration": {
@@ -259,11 +288,17 @@ export interface ModifierTargetSpec {
     | "checklist"
     | "free-text"
     | "checklist-with-free-text"
+    | "radio"
     | "radio-granularity";
   /** Curated values to show as checkboxes (or radio options). */
   readonly options?: readonly string[];
   /** Free-text placeholder when widget involves free-text input. */
   readonly freeTextPlaceholder?: string;
+  /**
+   * Display labels keyed by canonical option value. Used by the
+   * "radio" widget (e.g. Speed → "Walking" instead of "WALKING_SPEED").
+   */
+  readonly radioLabels?: Readonly<Record<string, string>>;
   /**
    * True if this target is *just a numeric effect*, in which case the
    * Value field carries the number. Used for Strain / Item Slot Cost.
@@ -290,37 +325,34 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
     // DEFENSE_ROLL.
     options: ["PHYSICAL", "MENTAL", "MAGICAL"],
   },
-  walking_speed: {
-    // Phase-7-E/UX2a: explicit walking-speed axis. Single-axis
-    // metric, value is a number (ft/round or whatever the unit is).
-    target: "walking_speed",
-    label: "Walking Speed",
+  speed: {
+    // Phase-7-E/UX2a-r: Speed is one dropdown entry. The five
+    // locomotion types (Walking/Climbing/Swimming/Flying/
+    // Burrowing) are radio options inside the widget, not
+    // separate top-level dropdown entries. Legacy single-axis
+    // had a checklist of LAND_SPEED / FLY_SPEED / SWIM_SPEED;
+    // users wanted a radio so the modifier is "this speed" not
+    // "any combination of speeds."
+    target: "speed",
+    label: "Speed",
     layer: "METRIC",
-    widget: "none",
-  },
-  climbing_speed: {
-    target: "climbing_speed",
-    label: "Climbing Speed",
-    layer: "METRIC",
-    widget: "none",
-  },
-  swimming_speed: {
-    target: "swimming_speed",
-    label: "Swimming Speed",
-    layer: "METRIC",
-    widget: "none",
-  },
-  flying_speed: {
-    target: "flying_speed",
-    label: "Flying Speed",
-    layer: "METRIC",
-    widget: "none",
-  },
-  burrowing_speed: {
-    target: "burrowing_speed",
-    label: "Burrowing Speed",
-    layer: "METRIC",
-    widget: "none",
+    widget: "radio",
+    options: [
+      "WALKING_SPEED",
+      "CLIMBING_SPEED",
+      "SWIMMING_SPEED",
+      "FLYING_SPEED",
+      "BURROWING_SPEED",
+    ],
+    radioLabels: {
+      // Display labels for the radio options. Keys here are the
+      // canonical METRIC values stored in target_scope.
+      WALKING_SPEED: "Walking",
+      CLIMBING_SPEED: "Climbing",
+      SWIMMING_SPEED: "Swimming",
+      FLYING_SPEED: "Flying",
+      BURROWING_SPEED: "Burrowing",
+    },
   },
   max_vitality: {
     target: "max_vitality",
@@ -361,14 +393,20 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
     widget: "checklist",
     options: DICE_VALUES,
   },
-  action_shape_size: {
-    // Phase-7-E/UX2b: one shape+size axis replaces the three
-    // previous positional axes (action_range, target_count,
-    // area_size). The Target Value widget picks the Shape; the
-    // existing Operation+Value fields carry the magnitude. So
-    // "20-ft Cone" = operation=set, value=20, targetValues=[CONE].
-    target: "action_shape_size",
-    label: "Action Shape & Size",
+  targeting: {
+    // Phase-7-E/UX2b: the three positional axes (Action Range /
+    // Target Count / Area Size) collapse into one "Targeting"
+    // axis. The Target Value widget picks the Shape (Single /
+    // Multiple / Cone / Cube / Line / Sphere / Cylinder / Wall /
+    // Star / Custom + free text); the existing Operation+Value
+    // fields carry the magnitude (e.g. operation=set, value=20
+    // → "20-ft Cone").
+    //
+    // Phase-7-E/UX2b-r: renamed "Action Shape & Size" → "Targeting"
+    // because the previous name read like an analytics term. UX
+    // feedback: terse player-facing verb reads better.
+    target: "targeting",
+    label: "Targeting",
     layer: "NARROW_FOCUS",
     widget: "checklist-with-free-text",
     options: [
@@ -389,9 +427,9 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
   // Phase-7-E/UX2b: legacy positional axes were removed entirely —
   // action_range, target_count, and area_size no longer exist in the
   // dropdown. LEGACY_TARGET_MIGRATIONS maps their dotted strings to
-  // action_shape_size when loading old data, but new code only
-  // uses action_shape_size. Keep the SPEC table focused on canonical
-  // targets only.
+  // targeting when loading old data, but new code only uses
+  // targeting. Keep the SPEC table focused on canonical targets
+  // only.
   duration: {
     target: "duration",
     label: "Duration",
@@ -669,6 +707,21 @@ export function scopeForSelection(args: {
   const spec = MODIFIER_TARGET_SPEC[args.target];
   let scope: TargetScopeLite;
 
+  // For radio widgets (Speed etc.) the modifier should always
+  // carry exactly one METRIC value. If the caller hasn't picked
+  // yet (e.g. brand-new modifier draft), default to WALKING_SPEED
+  // so engine resolution has a concrete locus instead of a
+  // confusing "empty array = any" semantics.
+  let targetValues = args.targetValues;
+  if (spec.widget === "radio") {
+    if (targetValues.length === 0) {
+      const fallback = spec.options?.[0];
+      targetValues = fallback ? [fallback] : [];
+    } else if (targetValues.length > 1) {
+      targetValues = [targetValues[0]!];
+    }
+  }
+
   if (args.target === "skill_practice_check") {
     const granularity =
       args.granularity ??
@@ -688,7 +741,7 @@ export function scopeForSelection(args: {
   }
 
   // For all other targets: use the spec's layer + the supplied values.
-  scope = buildScopeFromValues(spec.layer, args.targetValues);
+  scope = buildScopeFromValues(spec.layer, targetValues);
   return {
     target: args.target,
     metadata: {

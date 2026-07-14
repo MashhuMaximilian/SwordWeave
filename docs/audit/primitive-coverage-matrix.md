@@ -545,93 +545,113 @@ templates                          # composed acquisition plans (uses mirrorBuCr
 
 ---
 
-## Phase-7-E/UX2 — Modifier form polish (2026-07-14)
+## Phase-7-E/UX2 — Modifier form polish (2026-07-14, revised)
 
-### UX2a — Speed split
+### UX2a (initial) → UX2a-r (revert + radio)
 
-**Decision:** Each locomotion type deserves its own canonical modifier
-target instead of multi-selecting on a single axis. Different buff
-sources affect different locomotion types independently.
+**First attempt:** give each locomotion type its own
+dropdown entry (walking_speed / climbing_speed / etc.).
+**Problem:** cluttered the dropdown — every modifier card
+had 5 speed rows the user had to scan past to find the right
+one. *"Speed is one thing — pick the kind below"* was the
+real user model.
 
-| Old (legacy) | New (canonical) |
-|---|---|
-| `speed` axis with checkbox list `LAND_SPEED / FLY_SPEED / SWIM_SPEED` | `walking_speed`, `climbing_speed`, `swimming_speed`, `flying_speed`, `burrowing_speed` (5 separate axes) |
+**Second attempt (UX2a-r, current state):** one `speed` axis
+in the dropdown; the Target Value widget renders a single-
+choice **radio** with the five locomotion options. Buttons
+read "Walking", "Climbing", "Swimming", "Flying",
+"Burrowing" — not "WALKING_SPEED" etc. — so the labels are
+English-friendly and the canonical METRIC values stay
+machine-readable underneath.
 
-- **`STANDALONE_METRICS`** closed list extended: added
-  `WALKING_SPEED / CLIMBING_SPEED / SWIMMING_SPEED / FLYING_SPEED /
-  BURROWING_SPEED`. `MOVEMENT_SPEED` kept for legacy round-trip.
-- **`LEGACY_TARGET_MIGRATIONS`** rewritten:
-  - `character.movement.land` → `walking_speed` (was `speed` + `LAND_SPEED`)
-  - `character.movement.fly` → `flying_speed`
-  - `character.movement.swim` → `swimming_speed`
-  - NEW: `character.movement.climb` → `climbing_speed`
-  - NEW: `character.movement.burrow` → `burrowing_speed`
-- **DB migration 0032** applied: 1 row updated
-  (`Stride Extension` `MOVEMENT_SPEED` → `WALKING_SPEED`).
-- **Target shape**: each speed target uses `widget: "none"` —
-  a single-axis metric where the existing `Operation + Value` fields
-  carry the magnitude. No checkbox needed; "Affects all Walking Speed
-  instances by default" info banner shown.
+The closed `STANDALONE_METRICS` list still carries
+`WALKING_SPEED / CLIMBING_SPEED / SWIMMING_SPEED /
+FLYING_SPEED / BURROWING_SPEED` because those are the values
+stored in `target_scope.values[0]`.
 
-### UX2b — Shape + Size collapses three axes
+A blank radio (targetValues=[]) defaults to `WALKING_SPEED`
+in `scopeForSelection` so engine resolution always has a
+concrete locus to apply the modifier (not "any" semantics).
+A radio given more than one option truncates to the first.
 
-**Decision:** The three positional axes (Range / Target Count / Area
-Size) collapse into one unified `action_shape_size` axis. Shape is
-the scope (single / multiple / cone / cube / line / sphere /
-cylinder / wall / star / custom). Magnitude lives in the existing
-`Operation + Value` fields.
+### UX2b (initial) → UX2b-r (rename only)
 
-| Old | New |
-|---|---|
-| `action_range` (Self / Touch / Near / Far / LOS / Global) | merged |
-| `target_count` (Single / 2 / 4 / 8 / AoE / All) | merged |
-| `area_size` (5/15/30/60ft / Room / Scene) | merged |
-| → | `action_shape_size` (Single Target / Multiple Targets / Cone / Cube / Line / Sphere / Cylinder / Wall / Star / Custom + free-text) |
+The Shape + Size axis was renamed from `action_shape_size` →
+`targeting`. Same behavior; just a player-facing verb. The
+"Targeting" name reads as an action, not an analytics term.
+Bridge entry `LEGACY_TARGET_MIGRATIONS.action_shape_size →
+targeting` keeps data written under the old name readable.
 
-- **`LEGACY_TARGET_MIGRATIONS`**: `action.range`, `action.targetCount`,
-  `action.areaSize` all now route to `action_shape_size`.
-- **Target shape**: `widget: "checklist-with-free-text"` — user picks
-  a shape from the checklist OR enters a custom shape string, then
-  uses the existing `Operation + Value` fields to set magnitude
-  (e.g. `operation: set`, `value: 20` → "20-ft Cone").
+### UX2-r bridge entries
 
-### Both applied to both surfaces
+- `walking_speed / climbing_speed / swimming_speed /
+  flying_speed / burrowing_speed` (target strings, in case
+  anything in `hard_modifiers` carries them despite the
+  brief lifetime) → all route to `speed` with the matching
+  METRIC value. **DB query confirms zero such rows exist
+  today** (`scripts/_check-stale-speed-rows.ts`).
+- `action_shape_size` (target string) → `targeting`. **Zero
+  such rows currently exist.**
 
-Both `src/components/sandbox/primitive-form.tsx` (Phase-7-E/B1-B3
-drop) AND `src/components/workshops/primitive-registry.tsx` (the
-parallel workshops form) updated to:
-- use the same `MODIFIER_TARGETS / MODIFIER_TARGET_SPEC` dropdown source
-- render the same dynamic Target Value widget
-- round-trip `metadata.targetScope` via the same `selectionForModifier
-  / scopeForSelection` helpers
-- expose `toggleTargetValue` and `setModifierGranularity` typed setters
-  (named with `Registry` suffix in the workshops form to keep them
-  distinguishable)
+### Final dropdown entries (14)
 
-### Counts after UX2
+`MODIFIER_TARGETS.length === 14` (was 22 before Phase-7-E,
+→ 18 with the previous UX2 attempt, → 14 with the revert).
 
-`MODIFIER_TARGETS`: **22 → 18** (consolidated)
-- lost 3 (the 3 positional axes collapsed into 1)
-- gained 4 net speed axes (5 new − 1 legacy `speed`)
-- net change: −4
+| # | Entry | Widget | Purpose |
+|---|---|---|---|
+| 1 | attribute | checklist | Physical/Mental/Magical |
+| 2 | defense_dc | checklist | Defense DC by attribute |
+| 3 | speed | radio | Walking/Climbing/Swimming/Flying/Burrowing |
+| 4 | max_vitality | none | HP ceiling |
+| 5 | current_vitality | none | HP current |
+| 6 | proficiency_bonus | none | Stat |
+| 7 | action_roll | none | The action's roll |
+| 8 | skill_practice_check | radio-granularity | Practice focus (broad/narrow) |
+| 9 | damage_healing_output | checklist | D6/D8/D10/D12/D20 |
+| 10 | targeting | checklist-with-free-text | Shape + size of action |
+| 11 | duration | checklist | Scene/combat/instant/etc. |
+| 12 | strain | free-text | Narrative cost / strain |
+| 13 | item_slot_cost | free-text | Item-slot cost |
+| 14 | scene_pace | none | Scene pace |
+
+### Both form surfaces updated
+
+- `src/components/sandbox/primitive-form.tsx` — added
+  `setRadioValue` setter; new `widget: "radio"` branch in the
+  Target Value widget tree renders the locomotion radio.
+- `src/components/workshops/primitive-registry.tsx` — same
+  shape, prefixed with `…Registry` per the existing
+  convention in that file (`setRadioValueRegistry`).
+
+### Final state after UX2-r
+
+- `MODIFIER_TARGETS`: **22 → 14** (-8 net)
+- `STANDALONE_METRICS`: extended by 5 values (Walking/Climbing/
+  Swimming/Flying/Burrowing), + `MOVEMENT_SPEED` legacy
+- `LEGACY_TARGET_MIGRATIONS`: bridges for 5 old speed-target
+  strings + 1 old action_shape_size string
+- `MODIFIER_TARGET_SPEC.speed.widget`: `"checklist"` → `"radio"`
+- `MODIFIER_TARGET_SPEC.targeting.label`: `"Action Shape & Size"`
+  → `"Targeting"`
 
 ### Verification
 
 | Check | Result |
 |---|---|
-| `pnpm exec vitest run` | 595 / 595 passing |
+| `pnpm exec vitest run` | 598 / 598 passing |
 | `pnpm exec tsc --noEmit` | clean |
 | `pnpm exec next build` | compiled successfully |
 | `pnpm exec tsx scripts/_seed-vs-db.ts` | aligned 146 / 146 |
-| `pnpm exec tsx scripts/_verify-phase7.ts` | `Stride Extension` now reads `WALKING_SPEED` |
-| `pnpm exec tsx scripts/_apply-0032-speed-rename.ts` | 1 row rewritten idempotently |
+| `pnpm exec tsx scripts/_verify-phase7.ts` | Stride Extension still WALKING_SPEED |
+| `pnpm exec tsx scripts/_check-stale-speed-rows.ts` | 0 stale rows (no migration needed) |
 
 ---
-
-## Verification scripts (run alongside audit)
 
 ## Verification scripts (run alongside audit)
 
 - `pnpm exec tsx scripts/_seed-vs-db.ts` — confirms seed ↔ DB alignment
 - `pnpm exec tsx scripts/_verify-phase7.ts` — confirms target_scope populated
 - `pnpm exec tsx scripts/_audit-source-origin.ts` — confirms source_origin taxonomy
+- `pnpm exec tsx scripts/_check-stale-speed-rows.ts` — flags any primitive whose `hard_modifiers` carry the legacy 5-axis speed target strings or action_shape_size
+- `pnpm exec tsx scripts/_apply-0032-speed-rename.ts` — migration that rewrites MOVEMENT_SPEED → WALKING_SPEED in target_scope JSONB (idempotent, already applied)

@@ -33,12 +33,22 @@ import {
 } from "../target-scope";
 
 describe("MODIFIER_TARGETS enum", () => {
-  it("has 18 entries (UX2a + UX2b expanded)", () => {
-    // 16 base (Phase-7-E baseline) + walking_speed + climbing_speed +
-    // swimming_speed + flying_speed + burrowing_speed (UX2a)
-    // - action_range - target_count - area_size
-    // + action_shape_size (UX2b) = 18.
-    expect(MODIFIER_TARGETS.length).toBe(18);
+  it("has 14 entries (UX2a-r + UX2b-r)", () => {
+    // Phase-7-E/UX2a-r regression: 5 dedicated speed axes were a
+    // mistake (cluttering the dropdown). Back to one "speed" axis
+    // with locomotion options inside. UX2b-r renames
+    // "action_shape_size" → "targeting". Net count after the pair:
+    //   16 (Phase-7-E baseline)
+    //   +1  (targeting takes the place of action_shape_size; net
+    //        change on the dropdown entry count: 0 since action_
+    //        shape_size is the same idea renamed)
+    //   -4  (5 speed axes removed; "speed" added back, net -4)
+    //   = 13 — but defense_dc and a few others were already at 16.
+    // Real total: 14. Calc: attribute + defense_dc + speed +
+    // max_vitality + current_vitality + proficiency_bonus +
+    // action_roll + skill_practice_check + damage_healing_output +
+    // targeting + duration + strain + item_slot_cost + scene_pace.
+    expect(MODIFIER_TARGETS.length).toBe(14);
   });
 
   it("consolidates the three Attribute variants into one entry", () => {
@@ -52,23 +62,28 @@ describe("MODIFIER_TARGETS enum", () => {
     expect(MODIFIER_TARGETS).toContain("defense_dc");
   });
 
-  it("splits the speed variants into one entry per locomotion type (UX2a)", () => {
-    expect(MODIFIER_TARGETS).toContain("walking_speed");
-    expect(MODIFIER_TARGETS).toContain("climbing_speed");
-    expect(MODIFIER_TARGETS).toContain("swimming_speed");
-    expect(MODIFIER_TARGETS).toContain("flying_speed");
-    expect(MODIFIER_TARGETS).toContain("burrowing_speed");
-    // Legacy "speed" target is gone from the dropdown — old data
-    // loads via LEGACY_TARGET_MIGRATIONS to walking_speed.
-    expect(MODIFIER_TARGETS).not.toContain("speed");
+  it("uses one Speed entry with locomotion inside (UX2a-r)", () => {
+    // Phase-7-E/UX2a-r: 5 dedicated speed axes collapsed into
+    // one "speed" entry. Locomotion values are radio options
+    // inside the widget, not top-level dropdown entries.
+    expect(MODIFIER_TARGETS).toContain("speed");
+    expect(MODIFIER_TARGETS).not.toContain("walking_speed");
+    expect(MODIFIER_TARGETS).not.toContain("climbing_speed");
+    expect(MODIFIER_TARGETS).not.toContain("swimming_speed");
+    expect(MODIFIER_TARGETS).not.toContain("flying_speed");
+    expect(MODIFIER_TARGETS).not.toContain("burrowing_speed");
   });
 
-  it("collapses the three positional axes into one (UX2b)", () => {
-    expect(MODIFIER_TARGETS).toContain("action_shape_size");
+  it("uses one Targeting entry (UX2b-r renamed from action_shape_size)", () => {
+    expect(MODIFIER_TARGETS).toContain("targeting");
     // Legacy positional axes no longer in the dropdown.
     expect(MODIFIER_TARGETS).not.toContain("action_range");
     expect(MODIFIER_TARGETS).not.toContain("target_count");
     expect(MODIFIER_TARGETS).not.toContain("area_size");
+    // Phase-7-E/UX2b-r: action_shape_size is removed from the
+    // dropdown. Bridge entry in LEGACY_TARGET_MIGRATIONS reads
+    // it back as "targeting".
+    expect(MODIFIER_TARGETS).not.toContain("action_shape_size");
   });
 
   it("still includes single-axis entries", () => {
@@ -104,23 +119,28 @@ describe("MODIFIER_TARGET_SPEC", () => {
     expect(spec.options).toEqual(["PHYSICAL", "MENTAL", "MAGICAL"]);
   });
 
-  it("walking_speed uses METRIC with widget:none (single-axis)", () => {
-    const spec = MODIFIER_TARGET_SPEC.walking_speed;
+  it("speed uses METRIC with radio widget (UX2a-r)", () => {
+    // Phase-7-E/UX2a-r: Speed is a single-axis target with five
+    // radio options (Walking/Climbing/Swimming/Flying/Burrowing).
+    const spec = MODIFIER_TARGET_SPEC.speed;
     expect(spec.layer).toBe("METRIC");
-    expect(spec.widget).toBe("none");
+    expect(spec.widget).toBe("radio");
+    expect(spec.options).toEqual([
+      "WALKING_SPEED",
+      "CLIMBING_SPEED",
+      "SWIMMING_SPEED",
+      "FLYING_SPEED",
+      "BURROWING_SPEED",
+    ]);
+    // Display labels are required (the option values look like
+    // "WALKING_SPEED" to a user).
+    expect(spec.radioLabels?.["WALKING_SPEED"]).toBe("Walking");
+    expect(spec.radioLabels?.["FLYING_SPEED"]).toBe("Flying");
   });
 
-  it("all four other speed axes mirror walking_speed shape", () => {
-    for (const t of ["climbing_speed", "swimming_speed", "flying_speed", "burrowing_speed"]) {
-      const spec = (MODIFIER_TARGET_SPEC as Record<string, { layer: string; widget: string; label: string }>)[t];
-      expect(spec?.layer).toBe("METRIC");
-      expect(spec?.widget).toBe("none");
-      expect(spec?.label).toBeTruthy();
-    }
-  });
-
-  it("action_shape_size uses NARROW_FOCUS with shape checklist (UX2b)", () => {
-    const spec = MODIFIER_TARGET_SPEC.action_shape_size;
+  it("targeting uses NARROW_FOCUS with shape checklist (UX2b-r)", () => {
+    // Phase-7-E/UX2b-r: action_shape_size renamed to "targeting".
+    const spec = MODIFIER_TARGET_SPEC.targeting;
     expect(spec.layer).toBe("NARROW_FOCUS");
     expect(spec.widget).toBe("checklist-with-free-text");
     expect(spec.options).toContain("Single Target");
@@ -498,20 +518,79 @@ describe("scopeForSelection (round-trip with selectionForModifier)", () => {
     });
   });
 
-  it("round-trips speed multi-axis", () => {
-    // Phase-7-E/UX2a: each locomotion type is its own target now,
-    // so a multi-axis legacy "speed" target collapses to a single
-    // axis test on flying_speed.
+  it("round-trips speed axis with one locomotion radio pick", () => {
+    // Phase-7-E/UX2a-r: a "speed" modifier carries exactly one
+    // locomotion radio pick in targetValues (not a checklist).
+    // WALKING_SPEED is the canonical METRIC value.
     const sel = {
-      target: "flying_speed" as ModifierTarget,
-      targetValues: ["FLYING_SPEED"],
+      target: "speed" as ModifierTarget,
+      targetValues: ["WALKING_SPEED"],
       granularity: null,
     };
     const out = scopeForSelection(sel);
+    expect(out.target).toBe("speed");
     expect(out.metadata.targetScope).toEqual({
       layer: "METRIC",
-      values: ["FLYING_SPEED"],
+      values: ["WALKING_SPEED"],
     });
+  });
+
+  it("speed radio with empty targetValues defaults to WALKING_SPEED", () => {
+    // Phase-7-E/UX2a-r regression guard: a freshly created
+    // Speed modifier has targetValues = []. scopeForSelection
+    // must default to the first radio option (WALKING_SPEED)
+    // so the engine has a concrete locus to apply the modifier.
+    const out = scopeForSelection({
+      target: "speed" as ModifierTarget,
+      targetValues: [],
+      granularity: null,
+    });
+    expect(out.target).toBe("speed");
+    expect(out.metadata.targetScope).toEqual({
+      layer: "METRIC",
+      values: ["WALKING_SPEED"],
+    });
+  });
+
+  it("speed radio truncates to first option when given multiple", () => {
+    // Phase-7-E/UX2a-r defense: targetValues for radio targets
+    // is contractually length 1. If more than one is supplied,
+    // collapse to the first one (the radio picks one only).
+    const out = scopeForSelection({
+      target: "speed" as ModifierTarget,
+      targetValues: ["FLYING_SPEED", "SWIMMING_SPEED", "BURROWING_SPEED"],
+      granularity: null,
+    });
+    expect(out.metadata.targetScope.values).toEqual(["FLYING_SPEED"]);
+  });
+
+  it("round-trips targeting axis with multiple shape picks", () => {
+    // Phase-7-E/UX2b: a Targeting modifier can pick multiple
+    // shapes (e.g. Cone + Line for a "Linear AoE"). Magnitude
+    // remains in operation/value, not the scope.
+    const sel = {
+      target: "targeting" as ModifierTarget,
+      targetValues: ["Cone", "Line"],
+      granularity: null,
+    };
+    const out = scopeForSelection(sel);
+    expect(out.target).toBe("targeting");
+    expect(out.metadata.targetScope).toEqual({
+      layer: "NARROW_FOCUS",
+      values: ["Cone", "Line"],
+    });
+  });
+
+  it("round-trips legacy action_range/action.targetCount/action.areaSize to targeting", () => {
+    // Phase-7-E/UX2b-r: data written under the legacy action.* keys
+    // reads back as the unified "targeting" axis with empty values.
+    for (const legacy of ["action.range", "action.targetCount", "action.areaSize"] as const) {
+      const back = selectionForModifier({
+        target: legacy,
+        metadata: null,
+      });
+      expect(back.target).toBe("targeting");
+    }
   });
 
   it("round-trips duration scene", () => {

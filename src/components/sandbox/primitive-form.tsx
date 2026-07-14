@@ -573,6 +573,18 @@ export function PrimitiveForm({
     );
   }
 
+  // Phase-7-E/UX2a-r: a radio target keeps exactly one value in
+  // targetValues. (Used by Speed → Walking/Climbing/Swimming/
+  // Flying/Burrowing.)
+  function setRadioValue(id: string, value: string) {
+    setIsDirty(true);
+    setModifiers((current) =>
+      current.map((modifier) =>
+        modifier.id === id ? { ...modifier, targetValues: [value] } : modifier,
+      ),
+    );
+  }
+
   function addModifier() {
     setIsDirty(true);
     setModifierCounter((current) => current + 1);
@@ -1190,6 +1202,47 @@ export function PrimitiveForm({
                         />
                       </label>
                     )}
+                  </div>
+                );
+              }
+
+              if (spec.widget === "radio") {
+                // Phase-7-E/UX2a-r: speed is one axis with a single-
+                // choice radio for locomotion type. targetValues
+                // always carries exactly one entry while this widget
+                // is active.
+                const options = spec.options ?? [];
+                const radioLabels = spec.radioLabels ?? {};
+                const current = modifier.targetValues[0] ?? null;
+                return (
+                  <div className="md:col-span-2 space-y-2 rounded-md border border-border bg-background p-3">
+                    <p className="text-xs font-semibold uppercase text-muted-foreground">
+                      {spec.label} — pick one
+                    </p>
+                    <div className="flex flex-wrap items-center gap-4">
+                      {options.map((opt) => {
+                        const label = radioLabels[opt] ?? opt;
+                        const checked = current === opt;
+                        return (
+                          <label
+                            key={opt}
+                            className="flex items-center gap-2 text-sm"
+                          >
+                            <input
+                              type="radio"
+                              name={`radio-${modifier.id}`}
+                              checked={checked}
+                              onChange={() => setRadioValue(modifier.id, opt)}
+                            />
+                            <span>{label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Magnitude (how much) lives in the Value field below
+                      — this picks <em>which</em> speed gets affected.
+                    </p>
                   </div>
                 );
               }
