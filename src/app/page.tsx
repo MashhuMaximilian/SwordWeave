@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   Boxes,
@@ -48,6 +49,20 @@ export default async function HomePage() {
     <div className="mx-auto min-h-screen w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
       <section className="grid gap-5 border-b border-border pb-6 xl:grid-cols-[1fr_360px]">
         <div className="rounded-md border border-border bg-card p-5 sm:p-6">
+          {/* SwordWeave brand mark — placed here 2026-07-14 at the
+              hero's visual anchor. Using light-bg version on top of
+              the card to keep the cream face + dark sword accent
+              legible against the dark theme. Decorative (alt="") so
+              screen readers fall through to the headline. next/image
+              with priority because the hero is the LCP element. */}
+          <Image
+            src="/logo-light.png"
+            alt=""
+            width={96}
+            height={96}
+            className="mb-4 size-16 sm:size-24"
+            priority
+          />
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-sm bg-secondary px-2 py-1 text-xs font-bold uppercase text-secondary-foreground">
               Engine Workspace
