@@ -65,6 +65,17 @@ type SeedRow = {
   };
 };
 
+/**
+ * Default source_origin for all 139 BU Market rows.
+ *
+ * Schema migration 0291e6b replaced the old (name, category, user_id)
+ * unique constraint with (name, source_origin). This value MUST match
+ * the one originally written by the phase-5 canonical seed for
+ * ON CONFLICT to find existing rows. Re-running the seeder against
+ * an existing DB will UPSERT all 139 rows with this provenance.
+ */
+const SEED_SOURCE_ORIGIN = "system:phase5-commit-c-library-seed";
+
 const SEED: SeedRow[] = [
   // ===========================================================================
   // PROBABILITY_BIAS (4 tiers per Notion) — phase 7: targetScope tier-coupled
@@ -805,13 +816,16 @@ async function main() {
       continue;
     }
 
-    // Upsert on (name, category, userId) unique constraint. Public rows have userId=null.
+    // Upsert on (name, source_origin) unique constraint (schema migration
+    // 0291e6b replaced the old (name, category, user_id) constraint).
+    // Source origin is fixed to SEED_SOURCE_ORIGIN so existing phase-5
+    // canonical rows are matched and updated in place.
     const result = await db.execute(sql`
       INSERT INTO primitives (
         name, category, cost_tier, bu_cost, mechanical_output_text, narrative_rule,
         is_mirrorable, mirror_bu_credit, mirror_eligibility_notes,
         target_scope,
-        is_public, user_id, created_at, updated_at
+        source_origin, is_public, user_id, created_at, updated_at
       ) VALUES (
         ${row.name},
         ${row.category}::primitive_category,
@@ -823,9 +837,11 @@ async function main() {
         ${row.mirrorBuCredit ?? 0},
         ${row.mirrorEligibilityNotes ?? ""},
         ${targetScopeJson},
+        ${SEED_SOURCE_ORIGIN},
         true, NULL, NOW(), NOW()
       )
-      ON CONFLICT (name, category, user_id) DO UPDATE SET
+      ON CONFLICT (name, source_origin) DO UPDATE SET
+        category = EXCLUDED.category,
         cost_tier = EXCLUDED.cost_tier,
         bu_cost = EXCLUDED.bu_cost,
         mechanical_output_text = EXCLUDED.mechanical_output_text,
@@ -834,6 +850,8 @@ async function main() {
         mirror_bu_credit = EXCLUDED.mirror_bu_credit,
         mirror_eligibility_notes = EXCLUDED.mirror_eligibility_notes,
         target_scope = EXCLUDED.target_scope,
+        is_public = EXCLUDED.is_public,
+        user_id = EXCLUDED.user_id,
         updated_at = NOW()
       RETURNING (xmax = 0) AS was_inserted
     `);
