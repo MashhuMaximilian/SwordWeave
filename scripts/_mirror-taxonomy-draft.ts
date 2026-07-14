@@ -19,14 +19,52 @@ interface PrimitivesRow {
   cost_tier: string | null;
 }
 
-/** Bucket rules. First matching rule wins. */
+/** Bucket rules. First matching rule wins.
+ *
+ * Phase-7-Q-M canonical alignment:
+ *   - Variable Vector (mirrorable): numerical metrics, vitality
+ *     blocks, probability bias tracks, structural defensive faults,
+ *     kinematic metrics (movement speed), strain/cost buffers.
+ *   - Permission Vector (NOT mirrorable): verbs, domains,
+ *     intensity dice, spatial/targeting, durations, system
+ *     bypasses (senses, mobility types, extra reaction slots),
+ *     trigger hooks, semantic state tags.
+ */
 const rules: Array<{
   predicate: (name: string, category: string) => boolean;
   isMirrorable: boolean;
   mirrorVector: "STANDARD_ONLY" | "VARIABLE_VECTOR" | "STRUCTURAL_FAULT" | "COST_INSTABILITY" | null;
   reason: string;
 }> = [
-  // ---- VARIABLE_VECTOR (numerical inverts cleanly) ----
+  // ---- NOT MIRRORABLE: Permission-Vector categories ----
+  // Quickest wins first so Variable-Vector rows aren't shadowed.
+  {
+    predicate: (_n, c) =>
+      [
+        "VERB_TIER",
+        "DOMAIN",
+        "INTENSITY_DICE",
+        "TARGETING",
+        "TARGETING_AOE",
+        "RANGE",
+        "SIZING",
+        "CONDITION",
+        "TRIGGER_HOOK",
+        "KINETIC_CONTROL",
+        "AGENCY_OVERRIDE",
+        "METAMORPHOSIS",
+        "SPEED_QUICKENING",
+        "SENSORY_ARRAY",
+        "BOSS_ECONOMY",
+        "TACTICAL", // cover is a passive spatial unlock per canonical
+        "MOBILITY_LOCOMOTION_LAND", // not used; MOBILITY row level guard
+      ].includes(c) &&
+      c !== "MOBILITY_LOCOMOTION" /* stride extension exception */,
+    isMirrorable: false,
+    mirrorVector: null,
+    reason: "permission-vector category (not mirrorable per canonical)",
+  },
+  // ---- VARIABLE_VECTOR (mirrorable) ----
   {
     predicate: (n) => /\bnumerical?\b/i.test(n),
     isMirrorable: true,
@@ -34,104 +72,100 @@ const rules: Array<{
     reason: "bias/numerical primitive",
   },
   {
-    predicate: (n) => /\breaction\s+(slot|pulse|reflex)\b/i.test(n),
+    predicate: (n) => /^vitality core augment/i.test(n),
     isMirrorable: true,
     mirrorVector: "VARIABLE_VECTOR",
-    reason: "reaction slot — invert the slot count",
+    reason: "Vitality block (explicit canonical example)",
   },
   {
-    predicate: (n) => /(attack bonus|attackroll|attack roll)/i.test(n),
+    predicate: (n, c) => c === "SHEET_AUGMENT" && /(attribute increment|focused presence|precise vector|defensive save upgrade)/i.test(n),
     isMirrorable: true,
     mirrorVector: "VARIABLE_VECTOR",
-    reason: "attack roll inversion",
+    reason: "Sheet baseline metric",
   },
   {
-    predicate: (n) => /attribute (increment|augment)/i.test(n),
+    predicate: (n, c) => c === "PRACTICE_PROGRESSION_AUGMENT" &&
+      /(practice proficiency|reliable practice|expertise upgrade|broad familiarity)/i.test(n),
     isMirrorable: true,
     mirrorVector: "VARIABLE_VECTOR",
-    reason: "attribute ±",
+    reason: "Practice modifier (broad vector)",
+  },
+  // Focused Edge is a NARROW permit ("gain advantage on a
+  // narrative focus"), not a numerical modifier on the practice
+  // itself. Permission-Vector. NOT mirrorable.
+  {
+    predicate: (n) => /^focused edge/i.test(n),
+    isMirrorable: false,
+    mirrorVector: null,
+    reason: "Focused Edge is a narrow advantage permit, not a metric",
   },
   {
-    predicate: (n) => /vitality core augment/i.test(n),
+    predicate: (n, c) => c === "PROBABILITY_BIAS" && !/causal override/i.test(n),
     isMirrorable: true,
     mirrorVector: "VARIABLE_VECTOR",
-    reason: "HP ceiling ±",
+    reason: "Probability bias / narrative ±",
   },
-  {
-    predicate: (n) => /expertise upgrade/i.test(n),
-    isMirrorable: true,
-    mirrorVector: "VARIABLE_VECTOR",
-    reason: "expertise up/down",
-  },
-  {
-    predicate: (n) => /stride extension/i.test(n),
-    isMirrorable: true,
-    mirrorVector: "VARIABLE_VECTOR",
-    reason: "speed up/slow",
-  },
-  {
-    predicate: (n) => /clash dominance/i.test(n),
-    isMirrorable: true,
-    mirrorVector: "VARIABLE_VECTOR",
-    reason: "slot advantage/disadvantage",
-  },
-  {
-    predicate: (n) => /interceptive priority/i.test(n),
-    isMirrorable: true,
-    mirrorVector: "VARIABLE_VECTOR",
-    reason: "reaction priority inversion",
-  },
+  // Causal Override (Tier IV Probability) — user said NO mirror.
   {
     predicate: (n) => /causal override/i.test(n),
-    isMirrorable: true,
-    mirrorVector: "VARIABLE_VECTOR",
-    reason: "fate/reroll inversion",
+    isMirrorable: false,
+    mirrorVector: null,
+    reason: "Causal Override is exempt from mirror per user override",
   },
   {
-    predicate: (n) => /practice proficiency|reliable practice/i.test(n),
+    predicate: (n, c) => c === "ACTION_ECONOMY" && /(reaction reflex|reaction pulse|clash dominance|interceptive priority)/i.test(n),
     isMirrorable: true,
     mirrorVector: "VARIABLE_VECTOR",
-    reason: "proficiency up/down",
+    reason: "Reaction slot numbers / clash roll (numerical vectors)",
+  },
+  // Reaction Slot raw expansions (e.g. a "+1 Reaction Slot"
+  // primitive): those are Permission Vector system bypasses.
+  // We have no row currently named exactly that, but if a new
+  // row matches we leave it unmirrored.
+  {
+    predicate: (n) => /(^|\s)\+1\s+reaction\s+slot/i.test(n),
+    isMirrorable: false,
+    mirrorVector: null,
+    reason: "Reaction slot is a system bypass (permission vector)",
   },
   {
-    predicate: (n) => /\b(bias|narrative focus|narrative)\b/i.test(n),
+    predicate: (n, c) => c === "MOBILITY_LOCOMOTION" && /stride extension/i.test(n),
     isMirrorable: true,
     mirrorVector: "VARIABLE_VECTOR",
-    reason: "narrative +/- bias",
+    reason: "Stride Extension (movement speed metric, explicit canonical)",
   },
-  // ---- STRUCTURAL_FAULT (defense → vulnerability pairs) ----
+  // ---- STRUCTURAL_FAULT (mirrorable: structural defensive) ----
   {
-    predicate: (n, c) => c === "DEFENSIVE" && /(warding|hardening|shield|firewall|aegis|insulation)/i.test(n),
+    predicate: (n, c) => c === "DEFENSIVE" && /(hardening|firewall|shield|aegis|insulation|bulwark|warding)/i.test(n),
     isMirrorable: true,
     mirrorVector: "STRUCTURAL_FAULT",
-    reason: "defensive -> vulnerability",
+    reason: "defensive row -> its corresponding vulnerability twin",
   },
-  // ---- COST_INSTABILITY (protective / healing -> cost mirror) ----
+  // Some defensive rows in the seed are explicitly named as
+  // "Domain Resistance" / "Domain Immunity" — also mirrorable.
   {
-    predicate: (n, c) => c === "VITALITY" && /vitality shielding/i.test(n),
+    predicate: (n, c) => c === "DEFENSIVE" && /(resistance|immunity)/i.test(n),
+    isMirrorable: true,
+    mirrorVector: "STRUCTURAL_FAULT",
+    reason: "Damage resistance / immunity -> vulnerability twin",
+  },
+  // ---- COST_INSTABILITY (mirrorable: strain/cost buffers) ----
+  {
+    predicate: (n, c) => c === "EVALUATION_STRAIN" &&
+      /(heuristic buffer|vitality shielding|systemic sink|condition insulation|hazard transmutation|narrative pivot|cv matrix trap|volatile vent|domain lock shield)/i.test(n),
     isMirrorable: true,
     mirrorVector: "COST_INSTABILITY",
-    reason: "protect-by-paying cost inversion",
+    reason: "Strain / cost buffer mirrors into unstable form",
   },
+  // Eval rows that aren't in the canonical mirror list
+  // (e.g. stress transducers, environment hazard creators) —
+  // leave alone by default.
+  // ---- VITALITY (Stabilize/Last Breath/Tether) — NOT mirrorable ----
   {
-    predicate: (n, c) => c === "VITALITY" && /(stabilize|last breath|tether)/i.test(n),
-    isMirrorable: true,
-    mirrorVector: "STANDARD_ONLY",
-    reason: "vitality narrative flips polarity on casting",
-  },
-  // ---- TACTICAL primitives (Cover Tiers) ----
-  {
-    predicate: (n, c) => c === "TACTICAL" && /\bcover\b/i.test(n),
-    isMirrorable: true,
-    mirrorVector: "STRUCTURAL_FAULT",
-    reason: "cover tier -> exposed tier",
-  },
-  // ---- domain / resistance ----
-  {
-    predicate: (n, c) => c === "DEFENSIVE" && /(resistance|immunity|domain)/i.test(n),
-    isMirrorable: true,
-    mirrorVector: "STRUCTURAL_FAULT",
-    reason: "resistance -> vulnerability twin",
+    predicate: (_n, c) => c === "VITALITY",
+    isMirrorable: false,
+    mirrorVector: null,
+    reason: "VITALITY primitives are different primitives, not mirrors (user override)",
   },
 ];
 
