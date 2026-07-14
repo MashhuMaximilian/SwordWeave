@@ -46,6 +46,43 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Phase 18F (2026-07-14, perf): early-connect hints for
+            third-party origins that gate the LCP path.
+
+            Why each one matters:
+            - clerk.swordweave.quest: Clerk's client bundle
+              (clerk.browser.js + clerk-ui) is render-blocking for
+              any signed-in route. Without preconnect the browser
+              doesn't even START the DNS/TLS handshake until it
+              sees a <script src=> pointing at it, adding ~150ms
+              on Slow 4G. Three of them: dns-prefetch (cheap, runs
+              in parallel), preconnect (does full handshake but
+              parallelized with the rest of the HTML parse),
+              preload (no — we don't preload because we don't know
+              which Clerk script the user needs yet).
+            - cdn.jsdelivr.net: the game-icons.net SVGs are proxied
+              through jsDelivr's GitHub mirror at first-paint when
+              a row of icons becomes visible (lazy-img under the
+              fold). Preconnecting warms the connection so the first
+              scroll triggers IO with no RTT penalty.
+            - fonts.gstatic.com + fonts.googleapis.com: Teko and
+              Magra come from next/font/google, which already
+              self-hosts via next/font's optimization. The browser
+              only ever contacts our domain for the static font
+              files, so we don't need a hint here. Documented for
+              the next person who reads this comment.
+
+            Why we don't use crossOrigin="anonymous": preconnect
+            without crossOrigin does the bare TCP/TLS handshake,
+            which is the slow part. The actual GET comes later and
+            will add its own headers if needed.
+        */}
+        <link rel="dns-prefetch" href="https://clerk.swordweave.quest" />
+        <link rel="preconnect" href="https://clerk.swordweave.quest" />
+        <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+      </head>
       <body className={`${teko.variable} ${magra.variable}`}>
         <Script id="swordweave-theme" strategy="beforeInteractive">
           {`
