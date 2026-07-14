@@ -57,6 +57,7 @@ import {
   ColorSwatch,
   ColorSwatchPicker,
   ColorSwatchPickerItem,
+  ColorThumb,
   parseColor,
 } from "react-aria-components";
 
@@ -873,20 +874,39 @@ function ColorTrigger({
                       colorSpace="hsb"
                       xChannel="saturation"
                       yChannel="brightness"
-                      className="size-40 rounded-md"
+                      // positioning context + visible gradient.
+                      className="relative size-40 rounded-md"
                       style={{
                         backgroundColor: `hsl(${colorValue.toString("hsl").split(" ")[0]}, 100%, 50%)`,
                       }}
-                    />
+                    >
+                      {/* Phase 12: <ColorThumb /> is required inside
+                          <ColorArea> to render the draggable dot +
+                          selected-shade callout. Without it the
+                          gradient renders empty. (See
+                          https://react-aria.adobe.com/ColorArea — the
+                          default className is react-aria-ColorThumb.) */}
+                      <ColorThumb className="color-thumb" />
+                    </ColorArea>
                     <ColorSlider
                       colorSpace="hsb"
                       channel="hue"
-                      className="h-40 w-6 rounded-md"
+                      orientation="vertical"
+                      // Wrapper-positioning context for the thumb.
+                      // react-aria-components' <ColorSlider> sets
+                      // defaultClassName="react-aria-ColorSlider" but
+                      // consumer className REPLACES it, so we can't
+                      // rely on a CSS selector. The wrapper here
+                      // carries position:relative inline so the thumb's
+                      // `position:absolute; top:%` resolves correctly.
+                      className="relative h-40 w-6 rounded-md"
                       style={{
                         background:
                           "linear-gradient(to bottom, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)",
                       }}
-                    />
+                    >
+                      <ColorThumb className="color-thumb" />
+                    </ColorSlider>
                   </div>
                   <ColorField
                     aria-label="Hex color"

@@ -126,3 +126,97 @@ body {
 ::selection {
   background: color-mix(in srgb, var(--primary) 28%, transparent);
 }
+
+/* react-aria-components is style-free by design: it ships the
+   positioning logic but expects the consumer to provide layout
+   styles for the track. The thumb children use `position: absolute;
+   top: X%` so the track MUST itself be a positioning context,
+   otherwise the thumb falls back to the nearest positioned
+   ancestor (the dialog) and the slider "thumb at 0%" actually
+   renders at offset = 0 of the dialog. */
+.react-aria-ColorArea,
+.react-aria-ColorSlider {
+  position: relative;
+  touch-action: none;
+  forced-color-adjust: none;
+  /* Some browsers compute a default min-content size that crushes
+     the rounded-md/size-40 Tailwind classes. Force shrink so the
+     consumer's size utilities win. */
+  min-width: 0;
+  min-height: 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * COLOR THUMB (react-aria-components)
+ *
+ * ColorPicker consumers (icon picker, etc.) render <ColorThumb /> as a
+ * child of <ColorArea> and <ColorSlider>. React-aria sets the thumb's
+ * inline position + transform but does NOT style it — that is the
+ * consumer's job. Without these rules the thumb renders as a 0x0
+ * invisible element at the correct coordinates, so the user can drag
+ * but cannot see WHERE they are in the value space.
+ *
+ * Match Adobe's reference: 20px circle, 2px white border, 1px black
+ * outer shadow for contrast on light gradients. The selected-shade
+ * callout above the thumb is the ::after pseudo-element and uses the
+ * `color` CSS variable React-aria injects per thumb.
+ * --------------------------------------------------------------------------- */
+.color-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.3);
+  /* react-aria-components sets style.backgroundColor inline via
+     state.getDisplayColor().toString() — we don't set it here so the
+     library's value wins. forced-color-adjust keeps the border
+     legible in Windows High Contrast. */
+  forced-color-adjust: none;
+}
+
+.color-thumb[data-focus-visible] {
+  outline: 2px solid var(--ring, #008ca3);
+  outline-offset: 2px;
+}
+
+.color-thumb::after {
+  content: "";
+  position: absolute;
+  /* callout above the thumb — show the selected shade as a small dot.
+     We give it the same color via a currentColor override so it
+     tracks the thumb. */
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: inherit;
+  border: 1.5px solid white;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+/* Multi-color swatch picker swatches (e.g. the 17 color presets). */
+.color-swatch {
+  width: 100%;
+  height: 100%;
+  border-radius: 0.375rem;
+  forced-color-adjust: none;
+}
+
+/* Force react-aria's data-rac+role swatch rows to render with the
+   border + size we want — react-aria gives us a perfectly-sized wrapper
+   but no border, so each swatch blends together without this. */
+.react-aria-ColorSwatchPickerItem {
+  border-radius: 0.375rem;
+  outline: none;
+  position: relative;
+}
+
+.react-aria-ColorSwatchPickerItem[data-selected] {
+  outline: 2px solid var(--ring, #008ca3);
+  outline-offset: 2px;
+}
