@@ -61,17 +61,17 @@ export default async function HomePage() {
           <Image
             src="/logo-light.png"
             alt=""
-            width={96}
+            width={78}
             height={96}
-            className="mb-4 size-16 sm:size-24 block dark:hidden"
+            className="mb-4 block dark:hidden"
             priority
           />
           <Image
             src="/logo-dark.png"
             alt=""
-            width={96}
+            width={78}
             height={96}
-            className="mb-4 size-16 sm:size-24 hidden dark:block"
+            className="mb-4 hidden dark:block"
             priority
           />
           <div className="flex flex-wrap items-center gap-2">

@@ -392,17 +392,17 @@ export const NAV_LINKS: FabItem[] = [
         <Image
           src="/logo-light.png"
           alt=""
-          width={32}
-          height={32}
-          className="size-8 rounded-sm block dark:hidden"
+          width={22}
+          height={27}
+          className="rounded-sm block dark:hidden"
           priority
         />
         <Image
           src="/logo-dark.png"
           alt=""
-          width={32}
-          height={32}
-          className="size-8 rounded-sm hidden dark:block"
+          width={22}
+          height={27}
+          className="rounded-sm hidden dark:block"
           priority
         />
       </>
