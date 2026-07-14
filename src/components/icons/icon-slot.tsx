@@ -187,7 +187,7 @@ export function IconSlot({
           }}
         >
           <div
-            className="relative flex w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-card shadow-2xl sm:rounded-2xl"
+            className="relative flex h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-card shadow-2xl sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
             style={{ maxHeight: "95vh" }}
           >
@@ -204,7 +204,14 @@ export function IconSlot({
                 ✕
               </button>
             </header>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 text-sm">
+            {/* The icon grid scrolls inside the picker itself. We host
+                the picker in a fixed-height container (~80vh) so its
+                internal flex layout (`h-full max-h-[80vh] flex`) gets
+                a real parent height to fill, and its inner grid can
+                scroll without being collapsed by a wrapping
+                `flex-1 overflow-y-auto` parent (which used to make the
+                grid 0px tall). */}
+            <div className="p-2 text-sm">
               <IconPicker
                 currentSource={iconSource ?? null}
                 currentKey={iconKey ?? null}

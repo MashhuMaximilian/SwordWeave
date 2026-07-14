@@ -47,7 +47,6 @@ import {
 import { Filter, Search, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconDisplay, type IconSource } from "./icon-display";
-import { useModalStack } from "@/components/ui/modal-stack";
 import {
   Button as RAButton,
   ColorArea,
@@ -57,9 +56,6 @@ import {
   ColorSwatch,
   ColorSwatchPicker,
   ColorSwatchPickerItem,
-  Dialog,
-  DialogTrigger,
-  Popover,
   parseColor,
 } from "react-aria-components";
 
@@ -149,7 +145,12 @@ export function IconPicker({
   onSelect,
   onCancel,
 }: IconPickerProps) {
-  const stack = useModalStack();
+  // Phase 11: IconPicker no longer touches the modal stack. Previously
+  // FiltersTrigger pushed a 'Filters' modal into useModalStack and the
+  // close handlers called stack.pop(). With the picker now mounted
+  // inline inside the IconSlot overlay (Phase 10), pushing to the
+  // modal stack re-introduced z-order races and the modal rendered
+  // behind the picker. Everything below uses local React state instead.
   const [index, setIndex] = useState<IconIndex | null>(_indexCache);
   // Phase 8: Color state is a hex string. The ColorPicker control
   // operates on a Color object internally; we sync via parseColor.
@@ -250,9 +251,10 @@ export function IconPicker({
         key: icon.key,
         color,
       });
-      stack.pop();
+      // Phase 11: don't pop the modal stack — we're inline. The
+      // IconSlot's overlay handles its own open state.
     },
-    [onSelect, color, stack],
+    [onSelect, color],
   );
 
   const handleUploadClick = useCallback(() => {
@@ -282,7 +284,7 @@ export function IconPicker({
           url: body.pathname,
           color,
         });
-        stack.pop();
+        // Phase 11: IconSlot owns close state, no modal stack.
       } catch (err) {
         setUploadError(err instanceof Error ? err.message : String(err));
       } finally {
@@ -292,19 +294,23 @@ export function IconPicker({
         if (fileInputRef.current) fileInputRef.current.value = "";
       }
     },
-    [color, onSelect, stack],
+    [color, onSelect],
   );
 
   const handleClose = useCallback(() => {
     onCancel?.();
-    stack.pop();
-  }, [onCancel, stack]);
+    // Phase 11: IconSlot owns close state.
+  }, [onCancel]);
 
   return (
     <div
       role="dialog"
       aria-label="Choose icon"
-      className="flex h-full max-h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-card shadow-2xl"
+      // Phase 11: relative positioning context for the inline Filter/
+      // Color overlays (both use `absolute top-full` to anchor against
+      // this card). h-full still requires the parent (IconSlot's
+      // h-[80vh] card) to have a defined height, which it does.
+      className="relative flex h-full max-h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-card shadow-2xl"
     >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -572,8 +578,13 @@ function IconGrid({
 
 // =============================================================================
 // FiltersTrigger — toolbar button that opens the category multi-select
-// modal. The modal goes through the same useModalStack as the picker
-// itself so backdrops, ESC, and stacking all work consistently.
+// panel. Phase 11: this used to push a FiltersModal into useModalStack,
+// but that modals stack pushed from inside the inline picker renders
+// behind the picker overlay. Now the FiltersModal is rendered inline
+// (via the `open` prop) so it sits in the same DOM tree as the toolbar
+// and grid. The grid hides while filters are open; "Apply" commits
+// `draft` to `buckets` and closes; "Cancel" closes without commit;
+// "Clear" empties the selection.
 // =============================================================================
 function FiltersTrigger({
   buckets,
@@ -590,7 +601,6 @@ function FiltersTrigger({
   open: boolean;
   onOpenChange: (next: boolean) => void;
 }) {
-  const stack = useModalStack();
   const [draft, setDraft] = useState<Set<string>>(buckets);
 
   // Sync draft from props when the picker state changes outside
@@ -599,53 +609,17 @@ function FiltersTrigger({
     if (!open) setDraft(new Set(buckets));
   }, [buckets, open]);
 
-  // Push / pop the modal based on the `open` prop. The stack re-mounts
-  // us on stack changes; we use a ref to keep the latest callbacks.
-  const openRef = useRef(open);
-  openRef.current = open;
-  useEffect(() => {
-    if (open) {
-      stack.push({
-        key: "icon-picker-filters",
-        label: "Filters",
-        content: (
-          <FiltersModal
-            draft={draft}
-            bucketDefs={bucketDefs}
-            onChange={setDraft}
-            onApply={() => {
-              onApply(draft);
-            }}
-            onClear={() => {
-              setDraft(new Set());
-              onClear();
-            }}
-            onClose={() => onOpenChange(false)}
-          />
-        ),
-      });
-    } else {
-      stack.pop();
-    }
-    return () => {
-      // The stack handles its own teardown when pop() is called.
-    };
-    // We intentionally don't include `draft` in deps — the modal uses
-    // the latest draft via the closure captured at push time, and
-    // the user toggles the popover open/closed explicitly.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
   return (
-    <button
-      type="button"
-      onClick={() => onOpenChange(!open)}
-      aria-label="Filter icons by category"
-      aria-expanded={open}
-      className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
-        buckets.size > 0
-          ? "border-primary bg-primary/10 text-primary"
+    <>
+      <button
+        type="button"
+        onClick={() => onOpenChange(!open)}
+        aria-label="Filter icons by category"
+        aria-expanded={open}
+        className={cn(
+          "inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
+          buckets.size > 0
+            ? "border-primary bg-primary/10 text-primary"
           : "border-border bg-background hover:bg-accent",
       )}
     >
@@ -657,6 +631,23 @@ function FiltersTrigger({
         </span>
       ) : null}
     </button>
+    {open && (
+      <FiltersModal
+        draft={draft}
+        bucketDefs={bucketDefs}
+        onChange={setDraft}
+        onApply={() => {
+          onApply(draft);
+          onOpenChange(false);
+        }}
+        onClear={() => {
+          setDraft(new Set());
+          onClear();
+        }}
+        onClose={() => onOpenChange(false)}
+      />
+    )}
+    </>
   );
 }
 
@@ -690,7 +681,13 @@ function FiltersModal({
     <div
       role="dialog"
       aria-label="Filter icons by category"
-      className="flex h-full max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-xl bg-card shadow-2xl"
+      // Phase 11: the FiltersModal used to be the body of a top-level
+      // modal-stack entry, so h-full worked because the modal renderer
+      // gave it a real parent height. Now it's a sibling of the toolbar
+      // inside the picker, so we use absolute positioning to anchor it
+      // over the icon-grid area without disturbing the toolbar's flex
+      // row layout.
+      className="absolute inset-x-0 top-full z-40 mx-auto mt-2 flex max-h-[60vh] w-full max-w-md flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
     >
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h2 className="text-base font-semibold">Filter by category</h2>
@@ -783,12 +780,20 @@ function ColorTrigger({
     }
   }, [color]);
 
+  const [open, setOpen] = useState(false);
+
   return (
-    <DialogTrigger>
+    <>
       <button
         type="button"
+        onClick={() => setOpen((v) => !v)}
         aria-label="Choose icon color"
-        className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1.5 text-sm font-medium hover:bg-accent"
+        aria-expanded={open}
+        aria-pressed={open}
+        className={cn(
+          "inline-flex shrink-0 items-center gap-1.5 rounded-md border bg-background px-2 py-1.5 text-sm font-medium transition-colors hover:bg-accent",
+          open ? "border-primary text-primary" : "border-border",
+        )}
       >
         <span
           aria-hidden="true"
@@ -796,66 +801,78 @@ function ColorTrigger({
           style={{ backgroundColor: color }}
         />
       </button>
-      <Popover
-        placement="bottom end"
-        offset={6}
-        className="z-50 overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
-      >
-        <Dialog className="outline-none">
-          <ColorPicker
-            value={colorValue}
-            onChange={(c) => onChange(c.toString("hex"))}
-          >
-            <div className="flex flex-col gap-3 p-3">
-              <div className="flex items-center gap-3">
-                <ColorArea
-                  colorSpace="hsb"
-                  xChannel="saturation"
-                  yChannel="brightness"
-                  className="size-40 rounded-md"
-                  style={{
-                    backgroundColor: `hsl(${colorValue.toString("hsl").split(" ")[0]}, 100%, 50%)`,
-                  }}
-                />
-                <ColorSlider
-                  colorSpace="hsb"
-                  channel="hue"
-                  className="h-40 w-6 rounded-md"
-                  style={{
-                    background:
-                      "linear-gradient(to bottom, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)",
-                  }}
-                />
-              </div>
-              <ColorField
-                aria-label="Hex color"
-                className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+      {open && (
+        <div
+          role="dialog"
+          aria-label="Choose icon color"
+          className="absolute inset-0 z-50 flex items-center justify-center bg-background/95 p-4 backdrop-blur-sm"
+        >
+          <div className="w-full max-w-sm rounded-xl border border-border bg-card p-3 shadow-2xl">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Color</h3>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded-md border border-border bg-background px-2 py-0.5 text-xs font-medium hover:bg-accent"
               >
-                <input
-                  className="w-24 rounded border border-border bg-background px-2 py-1 font-mono text-xs"
-                  maxLength={9}
-                  value={color}
-                  onChange={(e) => onChange(e.target.value)}
-                  spellCheck={false}
-                  aria-label="Icon color hex"
-                />
-              </ColorField>
-              <ColorSwatchPicker className="grid grid-cols-9 gap-1">
-                {COLOR_PRESETS.map((hex) => (
-                  <ColorSwatchPickerItem
-                    key={hex}
-                    color={hex}
-                    className="size-6 cursor-pointer rounded border border-border transition-transform hover:scale-110"
-                  >
-                    <ColorSwatch />
-                  </ColorSwatchPickerItem>
-                ))}
-              </ColorSwatchPicker>
+                Done
+              </button>
             </div>
-          </ColorPicker>
-        </Dialog>
-      </Popover>
-    </DialogTrigger>
+            <ColorPicker
+              value={colorValue}
+              onChange={(c) => onChange(c.toString("hex"))}
+            >
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <ColorArea
+                    colorSpace="hsb"
+                    xChannel="saturation"
+                    yChannel="brightness"
+                    className="size-40 rounded-md"
+                    style={{
+                      backgroundColor: `hsl(${colorValue.toString("hsl").split(" ")[0]}, 100%, 50%)`,
+                    }}
+                  />
+                  <ColorSlider
+                    colorSpace="hsb"
+                    channel="hue"
+                    className="h-40 w-6 rounded-md"
+                    style={{
+                      background:
+                        "linear-gradient(to bottom, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)",
+                    }}
+                  />
+                </div>
+                <ColorField
+                  aria-label="Hex color"
+                  className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+                >
+                  <input
+                    className="w-24 rounded border border-border bg-background px-2 py-1 font-mono text-xs"
+                    maxLength={9}
+                    value={color}
+                    onChange={(e) => onChange(e.target.value)}
+                    spellCheck={false}
+                    aria-label="Icon color hex"
+                  />
+                </ColorField>
+                <ColorSwatchPicker className="grid grid-cols-9 gap-1">
+                  {COLOR_PRESETS.map((hex) => (
+                    <ColorSwatchPickerItem
+                      key={hex}
+                      color={hex}
+                      className="size-6 cursor-pointer rounded border border-border transition-transform hover:scale-110"
+                    >
+                      <ColorSwatch />
+                    </ColorSwatchPickerItem>
+                  ))}
+                </ColorSwatchPicker>
+              </div>
+            </ColorPicker>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
