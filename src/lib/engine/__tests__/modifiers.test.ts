@@ -239,6 +239,47 @@ describe("evaluateCondition", () => {
     };
     expect(evaluateCondition(cond, ctx)).toBe(true);
   });
+
+  // =================================================================
+  // Phase-7-Q-B: v1 condition shapes — engine returns true for all
+  // v1 conditions in v1 (DM adjudicates at the table).
+  // =================================================================
+  it("v1 preset condition always evaluates to true (DM adjudicates)", () => {
+    const cond = {
+      kind: "preset",
+      presetKey: "target-prone",
+      customTags: [],
+    } as const;
+    expect(evaluateCondition(cond, baseContext)).toBe(true);
+  });
+
+  it("v1 narrative condition always evaluates to true", () => {
+    const cond = { kind: "narrative", text: "during a full moon" } as const;
+    expect(evaluateCondition(cond, baseContext)).toBe(true);
+  });
+
+  it("v1 tags condition always evaluates to true", () => {
+    const cond = { kind: "tags", customTags: ["smell", "fog"] } as const;
+    expect(evaluateCondition(cond, baseContext)).toBe(true);
+  });
+
+  it("v1 preset with custom tags still evaluates to true", () => {
+    const cond = {
+      kind: "preset",
+      presetKey: "actor-below-half-hp",
+      customTags: ["tracking"],
+    } as const;
+    expect(evaluateCondition(cond, baseContext)).toBe(true);
+  });
+
+  it("legacy condition with explicit legacy triple still works", () => {
+    const cond: ModifierCondition = {
+      key: "character.level",
+      operator: "equals",
+      value: 1,
+    };
+    expect(evaluateCondition(cond, baseContext)).toBe(true);
+  });
 });
 
 // =============================================================================

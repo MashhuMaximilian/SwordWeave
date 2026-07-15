@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCondition,
   conditionToBadges,
+  legacyConditionProjection,
   migrateLegacyCondition,
   parseCondition,
   presetLabel,
@@ -529,5 +530,107 @@ describe("end-to-end smoke", () => {
       includeTags: false,
     });
     expect(parseCondition(narrative)).toEqual(narrative);
+  });
+});
+// =============================================================================
+// legacyConditionProjection (Phase-7-Q-B / D-prime)
+// =============================================================================
+
+describe("legacyConditionProjection", () => {
+  it("returns the empty triple for null / undefined / non-object input", () => {
+    expect(legacyConditionProjection(undefined)).toEqual({
+      key: "",
+      operator: "equals",
+      value: "",
+    });
+    expect(legacyConditionProjection(null)).toEqual({
+      key: "",
+      operator: "equals",
+      value: "",
+    });
+    expect(legacyConditionProjection("nope")).toEqual({
+      key: "",
+      operator: "equals",
+      value: "",
+    });
+  });
+
+  it("passes through the legacy {key, operator, value} triple", () => {
+    expect(
+      legacyConditionProjection({
+        key: "skill.context",
+        operator: "equals",
+        value: "tracking-creatures",
+      }),
+    ).toEqual({
+      key: "skill.context",
+      operator: "equals", // v1 doesn't evaluate; coerced
+      value: "tracking-creatures",
+    });
+  });
+
+  it("coerces legacy numeric / boolean values to strings", () => {
+    expect(
+      legacyConditionProjection({ key: "hp-pct", operator: "less-than", value: 50 }),
+    ).toEqual({ key: "hp-pct", operator: "equals", value: "50" });
+    expect(
+      legacyConditionProjection({ key: "flag", operator: "exists", value: true }),
+    ).toEqual({ key: "flag", operator: "equals", value: "true" });
+  });
+
+  it("drops `value` when undefined on legacy shape", () => {
+    const out = legacyConditionProjection({
+      key: "flag",
+      operator: "exists",
+    });
+    expect(out.key).toBe("flag");
+    expect(out.operator).toBe("equals");
+    expect(out.value).toBe("");
+  });
+
+  it("projects preset variant → presetKey as key, value empty", () => {
+    expect(
+      legacyConditionProjection({
+        kind: "preset",
+        presetKey: "target-prone",
+        customTags: [],
+      }),
+    ).toEqual({ key: "target-prone", operator: "equals", value: "" });
+  });
+
+  it("projects narrative variant → text as value, key empty", () => {
+    expect(
+      legacyConditionProjection({ kind: "narrative", text: "full moon" }),
+    ).toEqual({ key: "", operator: "equals", value: "full moon" });
+  });
+
+  it("projects tags variant → joined customTags as value", () => {
+    expect(
+      legacyConditionProjection({
+        kind: "tags",
+        customTags: ["smell", "fog", "by moon"],
+      }),
+    ).toEqual({
+      key: "",
+      operator: "equals",
+      value: "smell, fog, by moon",
+    });
+  });
+
+  it("filters non-string entries from tags.customTags", () => {
+    expect(
+      legacyConditionProjection({
+        kind: "tags",
+        customTags: ["a", 1, "b", null, "c"],
+      }),
+    ).toEqual({ key: "", operator: "equals", value: "a, b, c" });
+  });
+
+  it("returns empty triple for unknown shape", () => {
+    expect(legacyConditionProjection({ foo: "bar" })).toEqual({
+      key: "",
+      operator: "equals",
+      value: "",
+    });
   });
 });

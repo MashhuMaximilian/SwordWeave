@@ -51,3 +51,6 @@ test-site.mjs
 test-forks.mjs
 screenshots/
 scripts/output/
+
+# Local-only: condition picker preview HTML (artifact for visual review)
+docs-archive/

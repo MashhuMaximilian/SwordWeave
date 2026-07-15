@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/ui/markdown";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 import { ChevronRight, History, Link2, Sparkles } from "lucide-react";
+import { ConditionBadges } from "@/components/library/condition-badges";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { IconDisplay } from "@/components/icons/icon-display";
 
@@ -702,9 +703,38 @@ function PrimitiveBody({
 
       {Array.isArray(row.hardModifiers) && row.hardModifiers.length > 0 ? (
         <Section heading={`Hard modifiers (${row.hardModifiers.length})`}>
-          <pre className="overflow-x-auto rounded-md border border-border bg-muted/40 p-3 text-xs">
-            {JSON.stringify(row.hardModifiers, null, 2)}
-          </pre>
+          {/*
+            Phase-7-Q-B D-prime: replace the JSON dump with a proper
+            readable list. Each modifier gets a row showing
+            operation + target + value + condition badges. The old
+            shape (`{key, operator, value}`) and the new v1 shape
+            both render correctly because ConditionBadges handles
+            parsing internally.
+          */}
+          <ul className="space-y-2 text-xs">
+            {(row.hardModifiers as Array<Record<string, unknown>>).map((m, i) => (
+              <li
+                key={i}
+                className="rounded-md border border-border bg-muted/30 p-2"
+              >
+                <div className="flex flex-wrap items-baseline gap-2 font-mono">
+                  <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary">
+                    {String(m["operation"] ?? "?")}
+                  </span>
+                  <span className="text-foreground/80">
+                    {String(m["target"] ?? "?")}
+                  </span>
+                  <span className="text-muted-foreground">→</span>
+                  <span className="font-semibold text-foreground">
+                    {JSON.stringify(m["value"])}
+                  </span>
+                </div>
+                <div className="mt-1.5">
+                  <ConditionBadges condition={m["condition"]} />
+                </div>
+              </li>
+            ))}
+          </ul>
         </Section>
       ) : null}
     </div>

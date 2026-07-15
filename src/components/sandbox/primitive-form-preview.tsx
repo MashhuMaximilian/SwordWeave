@@ -6,6 +6,7 @@
 
 import { Markdown } from "@/components/ui/markdown";
 import type { HardModifier } from "@/types/swordweave";
+import { legacyConditionProjection } from "@/lib/primitives/condition";
 
 type ModifierDraft = {
   id: string;
@@ -223,22 +224,24 @@ export function modifiersFromHardModifiers(stored: unknown): ModifierDraft[] {
           : typeof modifier.value === "string"
             ? modifier.value
             : String(modifier.value);
+      // Phase-7-Q-B: condition may now be legacy {key, operator, value}
+      // OR v1 {kind: "preset"|"narrative"|"tags", ...}. Project both
+      // shapes back into the legacy triple for the ModifierDraft
+      // cache. The picker reads v1Condition on load (via v1Condition
+      // field); this projection only feeds the legacy fields that
+      // round-trip to the new shape via buildCondition when saved.
+      const raw = modifier.condition;
+      const legacyProjection = legacyConditionProjection(raw);
       return {
         id: `modifier-${index + 1}`,
         target: modifier.target,
         operation: modifier.operation,
         value,
         valueKind,
-        conditionMode: modifier.condition ? "custom" : "always",
-        conditionKey: modifier.condition?.key ?? "",
-        conditionOperator: modifier.condition?.operator ?? "equals",
-        conditionValue:
-          modifier.condition?.value === undefined ||
-          modifier.condition?.value === null
-            ? ""
-            : typeof modifier.condition.value === "string"
-              ? modifier.condition.value
-              : String(modifier.condition.value),
+        conditionMode: raw ? "custom" : "always",
+        conditionKey: legacyProjection.key,
+        conditionOperator: legacyProjection.operator,
+        conditionValue: legacyProjection.value,
         stacking: modifier.stacking ?? "stack",
       };
     });

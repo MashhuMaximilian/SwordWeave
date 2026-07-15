@@ -27,6 +27,7 @@ import {
   legacyFieldsFromAuthoring,
 } from "./condition-picker";
 import type { ConditionAuthoring } from "@/types/condition";
+import { buildCondition } from "@/lib/primitives/condition";
 import {
   MODIFIER_TARGET_SPEC,
   MODIFIER_TARGETS,
@@ -376,19 +377,14 @@ function toHardModifier(modifier: ModifierDraft): import("@/types/swordweave").H
     } as unknown as Record<string, import("@/types/swordweave").JsonValue>,
   };
 
-  if (modifier.conditionMode === "custom" && modifier.conditionKey.trim()) {
-    const condValue =
-      modifier.conditionOperator === "exists"
-        ? true
-        : parseValue(modifier.conditionValue, modifier.valueKind);
-    return {
-      ...hardModifier,
-      condition: {
-        key: modifier.conditionKey.trim(),
-        operator: modifier.conditionOperator,
-        value: condValue as import("@/types/swordweave").JsonValue,
-      },
-    };
+  // Phase-7-Q-B: write the canonical v1 condition shape via
+  // buildCondition(). Reads from `v1Condition` (the picker's
+  // authoritative state) and ignores the legacy conditionKey/Operator/
+  // Value cache. If v1Condition is empty, the resulting condition
+  // is null and `condition` is omitted.
+  const v1Condition = buildCondition(modifier.v1Condition);
+  if (v1Condition) {
+    return { ...hardModifier, condition: v1Condition };
   }
 
   return hardModifier;

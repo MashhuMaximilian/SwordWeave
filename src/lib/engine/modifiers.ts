@@ -27,8 +27,8 @@
 
 import type {
   HardModifier,
+  HardModifierCondition,
   JsonValue,
-  ModifierCondition,
   ModifierStackingMode,
   ModifierTarget,
 } from "@/types/swordweave";
@@ -92,11 +92,54 @@ export interface AppliedModifierTrace {
  * Returns true if the condition is satisfied (or if no condition).
  */
 export function evaluateCondition(
-  condition: ModifierCondition | undefined,
+  condition: HardModifierCondition | undefined,
   context: EvaluationContext,
 ): boolean {
   if (!condition) return true;
 
+  // Phase-7-Q-B: condition may be legacy {key, operator, value} OR
+  // v1 {kind, ...}.
+  //
+  // v1 evaluation: the engine does NOT evaluate v1 conditions in
+  // Phase 7. The character sheet displays the condition as a badge;
+  // the DM adjudicates at the table. Returning `true` means the
+  // modifier is always applied — the displayed condition is a hint,
+  // not a runtime gate. Future work can route preset keys through
+  // a real evaluation pass.
+  //
+  // Legacy evaluation: keep the existing operator-based logic so
+  // pre-v1 modifiers still gate correctly. Detect legacy first so
+  // we don't accidentally pass through parseCondition.
+  if ("kind" in condition) {
+    // v1 shape — always applies
+    return true;
+  }
+
+  // Legacy shape — delegate to operator-based evaluation.
+  const legacyCondition: { key: string; operator: string; value?: JsonValue } = {
+    key: String(condition.key),
+    operator: String(condition.operator),
+  };
+  if ("value" in condition && condition.value !== undefined) {
+    legacyCondition.value = condition.value;
+  }
+  return evaluateLegacyCondition(legacyCondition, context);
+}
+
+/**
+ * @deprecated Phase-7-Q-B: legacy operator-based evaluation kept
+ * for backwards compatibility with pre-v1 modifiers. New writes
+ * use the v1 shape; this path only fires when a modifier carries
+ * the legacy `{key, operator, value}` triple directly.
+ *
+ * Engine-side migration: new primitives should use v1 condition
+ * shapes (`{kind, ...}`). Once E (DB migration) runs, this helper
+ * becomes unreachable and can be deleted.
+ */
+function evaluateLegacyCondition(
+  condition: { key: string; operator: string; value?: JsonValue },
+  context: EvaluationContext,
+): boolean {
   const ctx = buildContextLookup(context);
   const targetValue = ctx[condition.key];
 
@@ -146,6 +189,12 @@ export function evaluateCondition(
 
     case "exists":
       return targetValue !== undefined;
+
+    default:
+      // Unknown operator — default to "applies" so we don't silently
+      // gate modifiers behind a typo. Logging happens via the
+      // engine's own trace path, not here.
+      return true;
   }
 }
 

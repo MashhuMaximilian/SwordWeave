@@ -87,12 +87,38 @@ export interface ModifierCondition {
   readonly value?: JsonValue;
 }
 
+/**
+ * @deprecated Phase-7-Q-B: legacy condition shape from pre-v1
+ * modifiers. Kept here so old `HardModifier.condition` rows keep
+ * deserializing. New writes should use the v1 shape from
+ * `@/types/condition`. The `HardModifier.condition` field below
+ * is widened to accept either shape during the migration window.
+ * This interface can be removed once E (the DB migration) runs
+ * and all rows are confirmed migrated.
+ *
+ * Re-exported from `@/types/condition` so that the migration
+ * catalog (which is the canonical home for both shapes) remains
+ * the single source of truth.
+ */
+export type { LegacyModifierCondition } from "./condition";
+
+/**
+ * The condition on a HardModifier. During the migration window this
+ * accepts either the legacy `{key, operator, value}` triple or the
+ * new v1 discriminated union from `@/types/condition`. The runtime
+ * parser (`parseCondition()` in `@/lib/primitives/condition`) handles
+ * both shapes transparently.
+ */
+export type HardModifierCondition =
+  | ModifierCondition
+  | import("./condition").ModifierCondition;
+
 export interface HardModifier {
   readonly kind: "modify";
   readonly target: ModifierTarget | string;
   readonly operation: ModifierOperation;
   readonly value: JsonValue;
-  readonly condition?: ModifierCondition;
+  readonly condition?: HardModifierCondition;
   readonly stacking?: ModifierStackingMode;
   readonly metadata?: Record<string, JsonValue>;
 }

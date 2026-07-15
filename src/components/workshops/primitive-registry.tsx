@@ -8,6 +8,7 @@ import type {
   ModifierOperation,
   ModifierStackingMode,
 } from "@/types/swordweave";
+import { legacyConditionProjection } from "@/lib/primitives/condition";
 import { resolveMirrorEffect } from "@/lib/engine/mirror";
 import {
   MODIFIER_TARGETS,
@@ -351,9 +352,9 @@ function fromHardModifier(modifier: HardModifier, index: number): ModifierDraft 
       (SKILL_PRACTICE_GRANULARITIES[0] as SkillPracticeGranularity),
     freeTextNarrowFocus: selection.freeTextNarrowFocus ?? "",
     conditionMode: modifier.condition ? "custom" : "always",
-    conditionKey: modifier.condition?.key ?? "",
-    conditionOperator: modifier.condition?.operator ?? "equals",
-    conditionValue: stringifyModifierValue(modifier.condition?.value),
+    conditionKey: legacyConditionProjection(modifier.condition).key,
+    conditionOperator: legacyConditionProjection(modifier.condition).operator,
+    conditionValue: legacyConditionProjection(modifier.condition).value,
     stacking: modifier.stacking ?? "stack",
   };
 }

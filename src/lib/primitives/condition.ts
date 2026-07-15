@@ -297,3 +297,73 @@ export function presetLabel(key: string): string | null {
   const entry = CONDITION_PRESETS.find((p) => p.key === key);
   return entry ? entry.label : null;
 }
+
+// =============================================================================
+// Migration window — legacy triple projection
+// =============================================================================
+
+/**
+ * Phase-7-Q-B: project any condition shape (legacy `{key, operator,
+ * value}` OR v1 `{kind, ...}`) into a legacy triple. Used by code
+ * paths that still carry a `ModifierDraft.conditionKey/Operator/Value`
+ * cache during the migration window.
+ *
+ * The v1 engine does not evaluate, so the `operator` is always
+ * coerced to `"equals"` for the legacy fields — the original operator
+ * is dropped on the floor. Authoring intent (text, preset name,
+ * custom tags) is preserved via the `value` field.
+ *
+ * Pure function. No side effects.
+ */
+export function legacyConditionProjection(
+  raw: unknown,
+): { key: string; operator: "equals"; value: string } {
+  const EMPTY = { key: "", operator: "equals" as const, value: "" };
+  if (raw === undefined || raw === null) return EMPTY;
+  if (typeof raw !== "object") return EMPTY;
+  const obj = raw as Record<string, unknown>;
+  // New v1 shape — has `kind`
+  if ("kind" in obj) {
+    const kind = obj["kind"];
+    if (kind === "preset") {
+      return {
+        key: typeof obj["presetKey"] === "string" ? obj["presetKey"] : "",
+        operator: "equals",
+        value: "",
+      };
+    }
+    if (kind === "narrative") {
+      return {
+        key: "",
+        operator: "equals",
+        value: typeof obj["text"] === "string" ? obj["text"] : "",
+      };
+    }
+    if (kind === "tags") {
+      const tags = Array.isArray(obj["customTags"])
+        ? obj["customTags"].filter((t): t is string => typeof t === "string")
+        : [];
+      return {
+        key: "",
+        operator: "equals",
+        value: tags.join(", "),
+      };
+    }
+    return EMPTY;
+  }
+  // Legacy shape — has `key` / `operator` / `value`
+  if ("key" in obj) {
+    const value = obj["value"];
+    return {
+      key: typeof obj["key"] === "string" ? obj["key"] : "",
+      operator: "equals", // ignore original operator; v1 doesn't evaluate
+      value:
+        value === undefined || value === null
+          ? ""
+          : typeof value === "string"
+            ? value
+            : String(value),
+    };
+  }
+  return EMPTY;
+}
