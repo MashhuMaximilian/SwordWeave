@@ -166,33 +166,36 @@ export function parseCondition(
 export function buildCondition(
   authoring: ConditionAuthoring,
 ): ModifierCondition | null {
-  // 1. Preset path — drops narrative, keeps customTags.
-  if (authoring.presetKey) {
-    return {
-      kind: "preset",
-      presetKey: authoring.presetKey,
-      customTags: authoring.customTags
-        .map((t) => t.trim())
-        .filter((t) => t.length > 0),
-    };
+  // 1. Custom-pills path. When the user picks any categories and
+  //    authors pills under them, we emit a tags variant where each
+  //    pill is prefixed with its category slug ("target:Prone").
+  //    This keeps storage shape compatible with the v1 schema
+  //    (no DB migration) and lets conditionToBadges render pills
+  //    bucketed under their category labels.
+  const pills = authoring.customPills
+    .map((p) => ({
+      category: p.category,
+      label: p.label.trim(),
+    }))
+    .filter((p) => p.label.length > 0);
+
+  if (pills.length > 0) {
+    const prefixed = pills.map(
+      (p) => `${p.category}:${p.label}`,
+    );
+    return { kind: "tags", customTags: prefixed };
   }
 
-  // 2. Tags-only path (author opted in).
-  const trimmedTags = authoring.customTags
-    .map((t) => t.trim())
-    .filter((t) => t.length > 0);
-  if (authoring.includeTags && trimmedTags.length > 0) {
-    return { kind: "tags", customTags: trimmedTags };
-  }
+  // 2. Tags-only path (author opted in but has no pills).
+  //    Empty authoring customPills + includeTags flag — kept for
+  //    backwards compat with the legacy authoring shape.
+  void authoring.categories;
+  void authoring.includeTags;
 
   // 3. Narrative path — fold any un-tagged tags in as a prefix.
   const trimmedNarrative = authoring.narrative.trim();
   if (trimmedNarrative.length > 0) {
-    const folded =
-      trimmedTags.length > 0
-        ? `${trimmedTags.join(", ")} — ${trimmedNarrative}`
-        : trimmedNarrative;
-    return { kind: "narrative", text: folded };
+    return { kind: "narrative", text: trimmedNarrative };
   }
 
   // 4. Nothing meaningful.
@@ -270,13 +273,37 @@ export function conditionToBadges(
     ];
   }
   if (condition.kind === "tags") {
+    // Each pill may carry a "category:label" prefix (Phase 7 Q-B m3
+    // — author can add custom pills bucketed under Target / Self /
+    // Scene). Strip the prefix for rendering; the category is
+    // surfaced via the surrounding UI section.
     return condition.customTags.map((t) => ({
       kind: "tag" as const,
-      label: t,
+      label: stripCategoryPrefix(t),
     }));
   }
   // condition.kind === "narrative"
   return [{ kind: "narrative", label: condition.text }];
+}
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+const KNOWN_CATEGORY_PREFIXES = new Set(["target", "actor", "scene"]);
+
+/**
+ * Strip the "category:" prefix from a tag pill. If the prefix is
+ * not one of the canonical categories, return the pill verbatim.
+ * Used by conditionToBadges when rendering tags stored under the
+ * `{kind: "tags", customTags}` variant.
+ */
+function stripCategoryPrefix(pill: string): string {
+  const idx = pill.indexOf(":");
+  if (idx === -1) return pill;
+  const prefix = pill.slice(0, idx);
+  if (!KNOWN_CATEGORY_PREFIXES.has(prefix)) return pill;
+  return pill.slice(idx + 1);
 }
 
 // =============================================================================

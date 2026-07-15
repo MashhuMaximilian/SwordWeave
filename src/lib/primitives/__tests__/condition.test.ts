@@ -269,147 +269,95 @@ describe("migrateLegacyCondition", () => {
 // =============================================================================
 
 describe("buildCondition", () => {
-  it("preset → preset variant, customTags trimmed and emptied of blanks", () => {
+  it("customPills → tags variant, each pill prefixed with its category slug", () => {
     const result = buildCondition({
-      presetKey: "target-prone",
-      customTags: ["  and pinned  ", "", "  "],
+      categories: ["target"],
+      customPills: [{ category: "target", label: "Prone" }],
       narrative: "ignored",
       includeTags: false,
     });
     expect(result).toEqual({
-      kind: "preset",
-      presetKey: "target-prone",
-      customTags: ["and pinned"],
+      kind: "tags",
+      customTags: ["target:Prone"],
     });
   });
 
-  it("preset path DROPS narrative (preset wins)", () => {
+  it("multi-category pills are all kept and prefixed with their category slug", () => {
     const result = buildCondition({
-      presetKey: "actor-stance",
-      customTags: [],
-      narrative: "this should be dropped",
-      includeTags: true,
-    });
-    expect(result).toEqual({
-      kind: "preset",
-      presetKey: "actor-stance",
-      customTags: [],
-    });
-  });
-
-  it("includeTags=true with non-empty tags and no preset → tags variant", () => {
-    const result = buildCondition({
-      presetKey: null,
-      customTags: ["when wounded"],
+      categories: ["target", "actor", "scene"],
+      customPills: [
+        { category: "target", label: "Prone" },
+        { category: "actor", label: "Stance" },
+        { category: "scene", label: "Dim" },
+      ],
       narrative: "",
-      includeTags: true,
+      includeTags: false,
     });
     expect(result).toEqual({
       kind: "tags",
-      customTags: ["when wounded"],
+      customTags: ["target:Prone", "actor:Stance", "scene:Dim"],
     });
   });
 
-  it("includeTags=true but empty tags → narrative if any, else null", () => {
-    expect(
-      buildCondition({
-        presetKey: null,
-        customTags: [],
-        narrative: "",
-        includeTags: true,
-      }),
-    ).toBeNull();
-    expect(
-      buildCondition({
-        presetKey: null,
-        customTags: [],
-        narrative: "during a storm",
-        includeTags: true,
-      }),
-    ).toEqual({ kind: "narrative", text: "during a storm" });
+  it("trims whitespace from pill labels and drops empty pills", () => {
+    const result = buildCondition({
+      categories: ["target"],
+      customPills: [
+        { category: "target", label: "  Prone  " },
+        { category: "target", label: "" },
+        { category: "target", label: "   " },
+      ],
+      narrative: "",
+      includeTags: false,
+    });
+    expect(result).toEqual({
+      kind: "tags",
+      customTags: ["target:Prone"],
+    });
   });
 
-  it("includeTags=false with tags but no preset and no narrative → null", () => {
+  it("narrative-only path → narrative variant", () => {
     expect(
       buildCondition({
-        presetKey: null,
-        customTags: ["when wounded"],
-        narrative: "",
+        categories: [],
+        customPills: [],
+        narrative: "  during a full moon  ",
         includeTags: false,
       }),
-    ).toBeNull();
+    ).toEqual({ kind: "narrative", text: "during a full moon" });
   });
 
-  it("narrative-only path (no preset, no tags, no includeTags) → narrative variant", () => {
+  it("pills win over narrative when both are set", () => {
     expect(
       buildCondition({
-        presetKey: null,
-        customTags: [],
-        narrative: "  at midnight  ",
-        includeTags: false,
-      }),
-    ).toEqual({ kind: "narrative", text: "at midnight" });
-  });
-
-  it("narrative + includeTags=false + tags → narrative folds tags in as prefix", () => {
-    expect(
-      buildCondition({
-        presetKey: null,
-        customTags: ["when wounded", "alone"],
-        narrative: "in the dark",
+        categories: ["target"],
+        customPills: [{ category: "target", label: "Prone" }],
+        narrative: "this should be dropped",
         includeTags: false,
       }),
     ).toEqual({
-      kind: "narrative",
-      text: "when wounded, alone — in the dark",
+      kind: "tags",
+      customTags: ["target:Prone"],
     });
-  });
-
-  it("narrative + includeTags=true + tags → narrative wins (tags empty after trimming OR tags win first)", () => {
-    // includeTags=true with non-empty tags wins via rule 2 → tags variant
-    expect(
-      buildCondition({
-        presetKey: null,
-        customTags: ["alone"],
-        narrative: "in the dark",
-        includeTags: true,
-      }),
-    ).toEqual({ kind: "tags", customTags: ["alone"] });
   });
 
   it("all empty → null", () => {
     expect(
       buildCondition({
-        presetKey: null,
-        customTags: [],
+        categories: [],
+        customPills: [],
         narrative: "",
         includeTags: false,
       }),
     ).toBeNull();
     expect(
       buildCondition({
-        presetKey: null,
-        customTags: [],
+        categories: [],
+        customPills: [],
         narrative: "   ",
         includeTags: true,
       }),
     ).toBeNull();
-  });
-
-  it("all 16 preset keys round-trip through buildCondition", () => {
-    for (const p of CONDITION_PRESETS) {
-      const result = buildCondition({
-        presetKey: p.key as ConditionPresetKey,
-        customTags: [],
-        narrative: "",
-        includeTags: false,
-      });
-      expect(result).toEqual({
-        kind: "preset",
-        presetKey: p.key,
-        customTags: [],
-      });
-    }
   });
 });
 
@@ -503,29 +451,20 @@ describe("end-to-end smoke", () => {
     ]);
   });
 
-  it("buildCondition → parseCondition round-trips for all 3 variants", () => {
-    // preset
-    const preset = buildCondition({
-      presetKey: "actor-stance",
-      customTags: ["aggressive"],
-      narrative: "ignored",
-      includeTags: false,
-    });
-    expect(parseCondition(preset)).toEqual(preset);
-
-    // tags
+  it("buildCondition → parseCondition round-trips for the new shapes", () => {
+    // tags (customPills with category prefix)
     const tags = buildCondition({
-      presetKey: null,
-      customTags: ["solo"],
+      categories: ["target"],
+      customPills: [{ category: "target", label: "Prone" }],
       narrative: "",
-      includeTags: true,
+      includeTags: false,
     });
     expect(parseCondition(tags)).toEqual(tags);
 
     // narrative
     const narrative = buildCondition({
-      presetKey: null,
-      customTags: [],
+      categories: [],
+      customPills: [],
       narrative: "full moon",
       includeTags: false,
     });

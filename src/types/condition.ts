@@ -249,16 +249,26 @@ export type ModifierCondition =
  * narrative text at render time.
  */
 export interface ConditionAuthoring {
-  readonly presetKey: ConditionPresetKey | null;
-  readonly customTags: readonly string[];
+  /**
+   * Selected categories the condition applies to. Empty array means
+   * "no categories chosen" — the author may still carry customTags
+   * or narrative. Multiple selections allowed.
+   */
+  readonly categories: readonly ConditionPresetCategory[];
+  /**
+   * User-authored pills, free-form text. Can be empty. Pills are
+   * associated with the selected categories via the same shape
+   * {category, label} so the picker can render them bucketed.
+   */
+  readonly customPills: readonly { category: ConditionPresetCategory; label: string }[];
   readonly narrative: string;
   /**
-   * Author's choice: when no preset is picked, should the
-   * customTags render as separate pills (true) or be folded into
-   * the narrative text (false)? Default false.
+   * Author's choice: when no category is picked, should the
+   * customPills render as separate badges (true) or be folded
+   * into the narrative text (false)? Default false.
    *
-   * Ignored when `presetKey` is set (preset path always renders
-   * customTags as separate pills by definition).
+   * Ignored when `categories` is non-empty (category path always
+   * renders customPills as separate pills by definition).
    */
   readonly includeTags: boolean;
 }

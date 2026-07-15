@@ -6,7 +6,8 @@
 // tests in src/__tests__/snapshots/ (when present). The adapter
 // helpers below are pure and worth pinning down: they translate
 // between the form's legacy ModifierDraft fields and the new
-// ConditionAuthoring shape.
+// ConditionAuthoring shape (Phase 7 Q-B m3: categories + per-category
+// custom pills, no preset catalog as the primary input).
 // =============================================================================
 
 import { describe, expect, it } from "vitest";
@@ -18,8 +19,8 @@ import {
 describe("conditionAuthoringFromLegacy", () => {
   it("returns an empty authoring when all legacy fields are blank", () => {
     expect(conditionAuthoringFromLegacy("", "", "")).toEqual({
-      presetKey: null,
-      customTags: [],
+      categories: [],
+      customPills: [],
       narrative: "",
       includeTags: false,
     });
@@ -29,8 +30,8 @@ describe("conditionAuthoringFromLegacy", () => {
     expect(
       conditionAuthoringFromLegacy("skill.context", "equals", "tracking-creatures"),
     ).toEqual({
-      presetKey: null,
-      customTags: [],
+      categories: [],
+      customPills: [],
       narrative: "tracking-creatures",
       includeTags: false,
     });
@@ -38,9 +39,42 @@ describe("conditionAuthoringFromLegacy", () => {
 
   it("falls back to the key when value is empty", () => {
     expect(conditionAuthoringFromLegacy("foo", "exists", "")).toEqual({
-      presetKey: null,
-      customTags: [],
+      categories: [],
+      customPills: [],
       narrative: "foo",
+      includeTags: false,
+    });
+  });
+
+  it("maps a target-* legacy key to the target category", () => {
+    expect(
+      conditionAuthoringFromLegacy("target-prone", "equals", ""),
+    ).toEqual({
+      categories: ["target"],
+      customPills: [],
+      narrative: "target-prone",
+      includeTags: false,
+    });
+  });
+
+  it("maps a scene-* legacy key to the scene category", () => {
+    expect(
+      conditionAuthoringFromLegacy("scene-dim", "equals", ""),
+    ).toEqual({
+      categories: ["scene"],
+      customPills: [],
+      narrative: "scene-dim",
+      includeTags: false,
+    });
+  });
+
+  it("maps an actor-* legacy key to the actor category (display label: Self)", () => {
+    expect(
+      conditionAuthoringFromLegacy("actor-stance", "equals", ""),
+    ).toEqual({
+      categories: ["actor"],
+      customPills: [],
+      narrative: "actor-stance",
       includeTags: false,
     });
   });
@@ -50,8 +84,8 @@ describe("legacyFieldsFromAuthoring", () => {
   it("returns the 'always' / empty legacy fields when authoring is empty", () => {
     expect(
       legacyFieldsFromAuthoring({
-        presetKey: null,
-        customTags: [],
+        categories: [],
+        customPills: [],
         narrative: "",
         includeTags: false,
       }),
@@ -63,27 +97,27 @@ describe("legacyFieldsFromAuthoring", () => {
     });
   });
 
-  it("returns 'custom' with presetKey as the legacy key when a preset is set", () => {
+  it("returns 'custom' with the first pill's category:label as the legacy key", () => {
     expect(
       legacyFieldsFromAuthoring({
-        presetKey: "target-prone",
-        customTags: [],
+        categories: ["target"],
+        customPills: [{ category: "target", label: "Prone" }],
         narrative: "",
         includeTags: false,
       }),
     ).toEqual({
       conditionMode: "custom",
-      conditionKey: "target-prone",
+      conditionKey: "target:Prone",
       conditionOperator: "equals",
-      conditionValue: "",
+      conditionValue: "target:Prone",
     });
   });
 
   it("returns the narrative text as the legacy value when only narrative is set", () => {
     expect(
       legacyFieldsFromAuthoring({
-        presetKey: null,
-        customTags: [],
+        categories: [],
+        customPills: [],
         narrative: "during a full moon",
         includeTags: false,
       }),
@@ -95,35 +129,22 @@ describe("legacyFieldsFromAuthoring", () => {
     });
   });
 
-  it("prefers narrative over customTags when includeTags is false", () => {
+  it("falls back to the joined customPills when narrative is empty", () => {
     expect(
       legacyFieldsFromAuthoring({
-        presetKey: null,
-        customTags: ["alone", "wounded"],
-        narrative: "in the dark",
+        categories: ["target", "actor"],
+        customPills: [
+          { category: "target", label: "Prone" },
+          { category: "actor", label: "Stunned" },
+        ],
+        narrative: "",
         includeTags: false,
       }),
     ).toEqual({
       conditionMode: "custom",
-      conditionKey: "",
+      conditionKey: "target:Prone",
       conditionOperator: "equals",
-      conditionValue: "in the dark",
-    });
-  });
-
-  it("joins customTags with commas when narrative is empty", () => {
-    expect(
-      legacyFieldsFromAuthoring({
-        presetKey: null,
-        customTags: ["alone", "wounded"],
-        narrative: "",
-        includeTags: true,
-      }),
-    ).toEqual({
-      conditionMode: "custom",
-      conditionKey: "",
-      conditionOperator: "equals",
-      conditionValue: "alone, wounded",
+      conditionValue: "target:Prone, actor:Stunned",
     });
   });
 });

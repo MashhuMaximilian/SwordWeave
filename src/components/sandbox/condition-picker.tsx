@@ -1,29 +1,25 @@
 "use client";
 
 /**
- * ConditionPicker — Phase 7 Q-B v1
+ * ConditionPicker — Phase 7 Q-B v1 + Q-B-m3
  *
- * Replaces the old Applies-When + 3-field triple with a categorized
- * preset picker + free-text escape hatch.
+ * Replaces the legacy "Applies When" triple with a 2-part picker:
  *
- * UX shape:
+ *   Part 1: Which categories? (multi-select)
+ *     [Target] [Self] [Scene]   ← toggle buttons
  *
- *   Triggers when…
- *   ┌─────────────────────────────────────────────────────────┐
- *   │ ▾ Target state                                          │
- *   │   [Bleeding] [Prone] [Grappled] [...]   ← pill chips    │
- *   │ ▸ Scene state                                           │
- *   │ ▸ Actor state                                           │
- *   │                                                         │
- *   │ ─── or describe it yourself ───                         │
- *   │ [_________________________________]  ← narrative text   │
- *   │ [ ] Show as separate badges (pills)                     │
- *   │ [add pill…] [+ add]                                     │
- *   └─────────────────────────────────────────────────────────┘
+ *   Part 2: User-authored pills (per selected category)
+ *     For each selected category, the user types their own
+ *     free-form pills. No limited preset list — the canonical
+ *     CONDITION_PRESETS catalog is suggested via "Insert preset"
+ *     but the primary affordance is free text.
  *
- * Authoring state → canonical `ModifierCondition` via
- * `buildCondition()` in `@/lib/primitives/condition`. Engine does
- * not evaluate in v1; the character sheet displays badges.
+ *   Or describe it yourself (free-text narrative escape hatch)
+ *
+ * No DB change — the stored shape remains the v1
+ * `{kind: "tags", customTags: string[]}` variant with each pill
+ * prefixed by its category slug (e.g. "target:Prone"). The badge
+ * renderer parses the prefix back into a category label.
  */
 
 import { useState, type ReactElement } from "react";
@@ -32,55 +28,43 @@ import {
   type ConditionAuthoring,
   type ConditionPresetCategory,
   type ConditionPresetEntry,
-  type ConditionPresetKey,
 } from "@/types/condition";
 
 const CATEGORY_LABELS: Record<ConditionPresetCategory, string> = {
-  target: "Target state",
-  scene: "Scene state",
-  actor: "Actor state",
+  target: "Target",
+  // The canonical category key is "actor" (matches presetKey
+  // prefixes like actor-stance, actor-below-half-hp). The display
+  // label is "Self" per the user's UX rule: conditions on this
+  // category apply to the entity using the modifier (the acting
+  // character), not a generic "actor" in the narrative sense.
+  actor: "Self",
+  scene: "Scene",
 };
 
-const CATEGORY_ORDER: ConditionPresetCategory[] = ["target", "scene", "actor"];
+const CATEGORY_ORDER: ConditionPresetCategory[] = ["target", "actor", "scene"];
 
 interface ConditionPickerProps {
-  /** Current authoring state. Read-only from the picker — emit via onChange. */
   readonly value: ConditionAuthoring;
-  /** Fired on every change. The parent decides what to do with the new state. */
   readonly onChange: (next: ConditionAuthoring) => void;
 }
 
-/**
- * Render the picker. Collapsible category sections (accordions).
- * Default: first category (Target) open, others collapsed.
- *
- * The "clear selection" button (small `x` next to the selected chip)
- * resets `presetKey` to null without touching customTags/narrative,
- * so the author can demote a preset back to tags/narrative without
- * losing other work.
- */
 export function ConditionPicker({
   value,
   onChange,
 }: ConditionPickerProps): ReactElement {
-  const [openCategories, setOpenCategories] = useState<Set<ConditionPresetCategory>>(
-    () => new Set<ConditionPresetCategory>(["target"]),
-  );
-
   const toggleCategory = (cat: ConditionPresetCategory) => {
-    setOpenCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(cat)) next.delete(cat);
-      else next.add(cat);
-      return next;
+    const has = value.categories.includes(cat);
+    // If removing the category, also drop pills in it.
+    const nextPills = has
+      ? value.customPills.filter((p) => p.category !== cat)
+      : value.customPills;
+    onChange({
+      ...value,
+      categories: has
+        ? value.categories.filter((c) => c !== cat)
+        : [...value.categories, cat],
+      customPills: nextPills,
     });
-  };
-
-  const setPreset = (key: ConditionPresetKey) => {
-    onChange({ ...value, presetKey: key });
-  };
-  const clearPreset = () => {
-    onChange({ ...value, presetKey: null });
   };
 
   const setNarrative = (text: string) => {
@@ -91,115 +75,145 @@ export function ConditionPicker({
     onChange({ ...value, includeTags: checked });
   };
 
-  const addCustomTag = (tag: string) => {
-    const trimmed = tag.trim();
+  const addCustomPill = (category: ConditionPresetCategory, label: string) => {
+    const trimmed = label.trim();
     if (trimmed.length === 0) return;
-    if (value.customTags.includes(trimmed)) return;
-    onChange({ ...value, customTags: [...value.customTags, trimmed] });
-  };
-  const removeCustomTag = (tag: string) => {
+    const dup = value.customPills.some(
+      (p) => p.category === category && p.label === trimmed,
+    );
+    if (dup) return;
     onChange({
       ...value,
-      customTags: value.customTags.filter((t) => t !== tag),
+      customPills: [...value.customPills, { category, label: trimmed }],
+    });
+  };
+  const removeCustomPill = (category: ConditionPresetCategory, label: string) => {
+    onChange({
+      ...value,
+      customPills: value.customPills.filter(
+        (p) => !(p.category === category && p.label === label),
+      ),
     });
   };
 
-  // Group presets by category for the accordions.
-  const grouped = groupByCategory(CONDITION_PRESETS);
-
-  const showCustomTagsSection = value.presetKey === null;
+  const showIncludeTagsCheckbox = value.customPills.length === 0;
 
   return (
     <div className="rounded-md border border-border bg-card p-3">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">Triggers when…</span>
-        {value.presetKey ? (
-          <button
-            type="button"
-            onClick={clearPreset}
-            className="text-xs text-muted-foreground hover:underline"
-            title="Clear preset (keeps custom tags and narrative)"
-          >
-            clear preset
-          </button>
-        ) : null}
-      </div>
+      {/* ── Header ── */}
+      <span className="text-sm font-medium">Triggers when…</span>
 
-      {/* ── Accordion: preset chips grouped by category ── */}
-      <div className="mt-2 flex flex-col gap-2">
-        {CATEGORY_ORDER.map((cat) => {
-          const entries = grouped[cat];
-          const isOpen = openCategories.has(cat);
-          return (
-            <div key={cat} className="rounded-md border border-border">
+      {/* ── Part 1: category multi-select ── */}
+      <div className="mt-2">
+        <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Categories
+        </div>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {CATEGORY_ORDER.map((cat) => {
+            const selected = value.categories.includes(cat);
+            return (
               <button
+                key={cat}
                 type="button"
                 onClick={() => toggleCategory(cat)}
-                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium hover:bg-accent"
-                aria-expanded={isOpen}
+                aria-pressed={selected}
+                className={
+                  selected
+                    ? "rounded-full border border-primary bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
+                    : "rounded-full border border-border bg-background px-3 py-1 text-xs hover:bg-accent"
+                }
               >
-                <span>{CATEGORY_LABELS[cat]}</span>
-                <span className="text-muted-foreground">
-                  {isOpen ? "▾" : "▸"}
-                </span>
+                {CATEGORY_LABELS[cat]}
               </button>
-              {isOpen ? (
-                <div className="flex flex-wrap gap-1.5 border-t border-border p-3">
-                  {entries.map((entry) => {
-                    const selected = value.presetKey === entry.key;
-                    return (
-                      <button
-                        key={entry.key}
-                        type="button"
-                        onClick={() => setPreset(entry.key)}
-                        title={entry.hint ?? entry.label}
-                        className={
-                          selected
-                            ? "rounded-full border border-primary bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
-                            : "rounded-full border border-border bg-background px-3 py-1 text-xs hover:bg-accent"
-                        }
-                      >
-                        {entry.label}
-                      </button>
-                    );
-                  })}
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Part 2: per-category custom pill authoring ── */}
+      {value.categories.length > 0 ? (
+        <div className="mt-3 space-y-3 border-t border-border pt-3">
+          {value.categories.map((cat) => {
+            const pills = value.customPills.filter(
+              (p) => p.category === cat,
+            );
+            // Suggested presets for this category from the canonical
+            // catalog (optional quick-pick). The user is not
+            // restricted to these — they can type their own pills.
+            const suggestions = CONDITION_PRESETS.filter(
+              (p) => p.category === cat,
+            );
+            return (
+              <div key={cat}>
+                <div className="flex items-baseline justify-between gap-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {CATEGORY_LABELS[cat]} pills
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">
+                    {pills.length} pill{pills.length === 1 ? "" : "s"}
+                  </span>
                 </div>
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
 
-      {/* ── Custom tags (preset's own customTags ride along, plus the
-              tags-only path) ── */}
-      <div className="mt-3 border-t border-border pt-3">
-        <span className="text-xs font-medium text-muted-foreground">
-          Custom pills
-        </span>
-        {value.customTags.length > 0 ? (
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {value.customTags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-xs"
-              >
-                {tag}
-                <button
-                  type="button"
-                  onClick={() => removeCustomTag(tag)}
-                  aria-label={`Remove pill ${tag}`}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        ) : null}
-        <CustomTagInput onAdd={addCustomTag} />
-      </div>
+                {/* Existing pills as chips with × delete affordance */}
+                {pills.length > 0 ? (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {pills.map((p) => (
+                      <span
+                        key={`${p.category}:${p.label}`}
+                        className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-xs"
+                      >
+                        {p.label}
+                        <button
+                          type="button"
+                          onClick={() => removeCustomPill(p.category, p.label)}
+                          aria-label={`Remove pill ${p.label}`}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
 
-      {/* ── Free-text escape hatch (narrative) ── */}
+                {/* Free-form pill input */}
+                <CustomPillInput
+                  onAdd={(label) => addCustomPill(cat, label)}
+                />
+
+                {/* Optional suggestions from canonical catalog */}
+                {suggestions.length > 0 ? (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {suggestions.map((s) => {
+                      const alreadyAdded = pills.some(
+                        (p) => p.label === s.label,
+                      );
+                      return (
+                        <button
+                          key={s.key}
+                          type="button"
+                          onClick={() => addCustomPill(cat, s.label)}
+                          disabled={alreadyAdded}
+                          title={s.hint ?? s.label}
+                          className={
+                            alreadyAdded
+                              ? "rounded-full border border-border bg-muted/30 px-2 py-0.5 text-[10px] text-muted-foreground line-through"
+                              : "rounded-full border border-dashed border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-accent"
+                          }
+                        >
+                          + {s.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {/* ── Free-text narrative escape hatch ── */}
       <div className="mt-3 border-t border-border pt-3">
         <label
           htmlFor="condition-narrative"
@@ -215,7 +229,7 @@ export function ConditionPicker({
           placeholder="e.g. when tracking by smell or in fog"
           className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm outline-none ring-ring focus:ring-2"
         />
-        {showCustomTagsSection ? (
+        {showIncludeTagsCheckbox ? (
           <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
             <input
               type="checkbox"
@@ -232,13 +246,13 @@ export function ConditionPicker({
 }
 
 // =============================================================================
-// Custom tag input
+// Custom pill input (per-category)
 // =============================================================================
 
-function CustomTagInput({
+function CustomPillInput({
   onAdd,
 }: {
-  readonly onAdd: (tag: string) => void;
+  readonly onAdd: (label: string) => void;
 }): ReactElement {
   const [draft, setDraft] = useState("");
 
@@ -279,58 +293,42 @@ function CustomTagInput({
 // Helpers
 // =============================================================================
 
-function groupByCategory(
-  entries: readonly ConditionPresetEntry[],
-): Record<ConditionPresetCategory, ConditionPresetEntry[]> {
-  const out: Record<ConditionPresetCategory, ConditionPresetEntry[]> = {
-    target: [],
-    scene: [],
-    actor: [],
-  };
-  for (const e of entries) {
-    out[e.category].push(e);
-  }
-  return out;
-}
+export type { ConditionPresetEntry };
 
 /**
- * Convert a legacy `{key, operator, value}` triple (the shape
- * `ModifierDraft.conditionKey/conditionOperator/conditionValue` carry
- * during the migration window) into a `ConditionAuthoring` value, so
- * the new picker can show existing rows correctly.
+ * Convert a legacy `{key, operator, value}` triple into a
+ * `ConditionAuthoring` value. Used by `fromHardModifier` to populate
+ * the new `v1Condition` field when loading old rows.
  *
- * Used by `fromHardModifier` to populate the new `v1Condition` field
- * when loading old rows.
+ * The legacy shape doesn't carry category metadata, so we don't
+ * try to map key prefixes (target-, scene-, actor-) back to
+ * categories — we treat the legacy value as narrative text and let
+ * the author re-pick categories + pills from the picker.
  */
 export function conditionAuthoringFromLegacy(
   conditionKey: string,
   conditionOperator: string,
   conditionValue: string,
 ): ConditionAuthoring {
-  // No legacy condition at all.
   if (!conditionKey && !conditionOperator && !conditionValue) {
     return {
-      presetKey: null,
-      customTags: [],
+      categories: [],
+      customPills: [],
       narrative: "",
       includeTags: false,
     };
   }
-
-  // The legacy form's "Mode" toggle is captured separately — if
-  // conditionMode is "always" the upstream caller won't reach this
-  // function. When called here, conditionMode was "custom", meaning
-  // the user typed something. We can't perfectly recover intent, so
-  // we default to a narrative variant carrying the legacy value as
-  // the text. The author can re-pick a preset from the picker.
-  //
-  // Future enhancement: detect that `conditionKey` matches a known
-  // preset slug and pre-populate the preset variant. v1 keeps it
-  // simple — narrative fallback for unknown legacy shapes.
-  void conditionOperator; // intentionally unused in v1
+  void conditionOperator;
+  // Legacy keys like "target-prone" carry a category prefix in v1.
+  // Map that prefix back to a category so the picker lights up the
+  // correct bucket on load.
+  let categories: ConditionPresetCategory[] = [];
+  if (conditionKey.startsWith("target-")) categories = ["target"];
+  else if (conditionKey.startsWith("scene-")) categories = ["scene"];
+  else if (conditionKey.startsWith("actor-")) categories = ["actor"];
   return {
-    presetKey: null,
-    customTags: [],
+    categories,
+    customPills: [],
     narrative: conditionValue || conditionKey,
     includeTags: false,
   };
@@ -339,12 +337,12 @@ export function conditionAuthoringFromLegacy(
 /**
  * Convert the picker's `ConditionAuthoring` back to the legacy
  * triple fields, so the existing `toHardModifier` path keeps working
- * without a separate code path for the new shape.
+ * during the migration window.
  *
- * In practice this is only used during the migration window: new
- * rows write the canonical `ModifierCondition` (via the new shape
- * coming next), and the legacy fields are kept in sync as a
- * transitional cache.
+ * Best-effort projection — the canonical `ModifierCondition` is
+ * written via the new `buildCondition()` path. This helper exists
+ * only so old code that reads from the legacy cache continues to
+ * render something coherent.
  */
 export function legacyFieldsFromAuthoring(
   authoring: ConditionAuthoring,
@@ -355,8 +353,8 @@ export function legacyFieldsFromAuthoring(
   conditionValue: string;
 } {
   const isEmpty =
-    authoring.presetKey === null &&
-    authoring.customTags.length === 0 &&
+    authoring.categories.length === 0 &&
+    authoring.customPills.length === 0 &&
     authoring.narrative.trim().length === 0;
   if (isEmpty) {
     return {
@@ -366,17 +364,21 @@ export function legacyFieldsFromAuthoring(
       conditionValue: "",
     };
   }
-  // Best-effort projection to the legacy triple. The canonical
-  // `ModifierCondition` is written via the new path; the legacy
-  // fields are a transitional cache so old `toHardModifier` still
-  // emits something coherent.
+  // Best-effort: the legacy triple can only carry one key. Use the
+  // first pill's category as a sentinel prefix, or empty if no pills.
+  const firstPill = authoring.customPills[0];
+  const conditionKey = firstPill
+    ? `${firstPill.category}:${firstPill.label}`
+    : "";
   return {
     conditionMode: "custom",
-    conditionKey: authoring.presetKey ?? "",
+    conditionKey,
     conditionOperator: "equals",
     conditionValue:
       authoring.narrative.trim() ||
-      authoring.customTags.join(", ") ||
+      authoring.customPills
+        .map((p) => `${p.category}:${p.label}`)
+        .join(", ") ||
       "",
   };
 }
