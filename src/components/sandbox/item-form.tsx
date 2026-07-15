@@ -264,13 +264,14 @@ export function ItemForm({
       form,
       primitiveSlots: slottedPrimitives.map((p) => ({
         primitiveId: p.id,
+        isMirrored: isMirroredIds.has(p.id),
         primitive: p,
       })),
       capabilityIds,
       effectIds,
       isDirty,
     });
-  }, [form, slottedPrimitives, capabilityIds, effectIds, onStateChange, isDirty]);
+  }, [form, slottedPrimitives, capabilityIds, effectIds, onStateChange, isDirty, isMirroredIds]);
 
   // External reset trigger from the speed-dial FAB / pinned Save/Reset footer.
   useEffect(() => {

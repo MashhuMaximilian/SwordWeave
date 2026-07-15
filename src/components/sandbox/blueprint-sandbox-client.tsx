@@ -220,6 +220,14 @@ export function BlueprintSandboxClient({
   const [formSnapshot, setFormSnapshot] = useState<{
     form: Record<string, unknown>;
     primitiveIds: string[];
+    /**
+     * Per-primitive mirror flag, keyed by primitiveId (number).
+     * Driven by the live isMirroredIds state in item-form /
+     * template-form. Pre-seeded from the loaded row's primitiveLinks.
+     * Phase 7 Q-M-UX — without this, the preview can't show
+     * MIRRORED badges while the user is actively editing.
+     */
+    mirroredPrimitiveIds: number[];
     capabilityIds: string[];
     effectIds: string[];
   } | null>(null);
@@ -391,6 +399,7 @@ export function BlueprintSandboxClient({
             setFormSnapshot({
               form: state.form as unknown as Record<string, unknown>,
               primitiveIds: state.primitives.map((p) => String(p.id)),
+              mirroredPrimitiveIds: [],
               capabilityIds: state.capabilities.map((c) => String(c.id)),
               effectIds: [],
             });
@@ -413,6 +422,9 @@ export function BlueprintSandboxClient({
             setFormSnapshot({
               form: state.form as unknown as Record<string, unknown>,
               primitiveIds: state.primitiveSlots.map((p) => String(p.primitiveId)),
+              mirroredPrimitiveIds: state.primitiveSlots
+                .filter((p) => p.isMirrored)
+                .map((p) => p.primitiveId),
               capabilityIds: state.capabilityIds,
               effectIds: state.effectIds,
             });
@@ -621,6 +633,9 @@ export function BlueprintSandboxClient({
             iconColor: form.iconColor ?? "#ffffff",
           }
         : null;
+      const snapMirroredIds = new Set<number>(
+        formSnapshot?.mirroredPrimitiveIds ?? [],
+      );
       const primitiveSlots = snapPrimitiveIds
         ? snapPrimitiveIds
             .map((id) => {
@@ -630,6 +645,7 @@ export function BlueprintSandboxClient({
             .filter((p): p is (typeof primitives)[number] => Boolean(p))
             .map((p) => ({
               primitiveId: p.id,
+              isMirrored: snapMirroredIds.has(p.id),
               primitive: p,
             }))
         : (row ? row.primitiveLinks.map((link) => ({
