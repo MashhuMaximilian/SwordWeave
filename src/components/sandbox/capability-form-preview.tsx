@@ -3,6 +3,7 @@
 // Live preview for the capability being composed in CapabilityForm.
 
 import { Markdown } from "@/components/ui/markdown";
+import { dispatchOpenPreview } from "@/lib/sandbox/slot-events";
 
 export type CapabilityFormState = {
   name: string;
@@ -170,9 +171,20 @@ export function CapabilityFormPreview({
                 key={`${slot.primitiveId}-${i}`}
                 className="flex items-center justify-between gap-2 p-2 text-sm"
               >
-                <span className="min-w-0 flex-1 truncate font-medium text-foreground">
+                <button
+                  type="button"
+                  onClick={() =>
+                    dispatchOpenPreview({
+                      targetType: "PRIMITIVE",
+                      targetId: String(slot.primitive.id),
+                      label: slot.primitive.name,
+                    })
+                  }
+                  className="min-w-0 flex-1 truncate text-left font-medium text-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
+                  title={`Open ${slot.primitive.name} in preview`}
+                >
                   {slot.primitive.name}
-                </span>
+                </button>
                 <span className="shrink-0 rounded-sm border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
                   {slot.role}
                 </span>
@@ -199,9 +211,20 @@ export function CapabilityFormPreview({
                 key={effect.id}
                 className="rounded-md border border-border bg-card/50 p-2.5"
               >
-                <p className="text-sm font-semibold text-foreground">
+                <button
+                  type="button"
+                  onClick={() =>
+                    dispatchOpenPreview({
+                      targetType: "EFFECT",
+                      targetId: effect.id,
+                      label: effect.name,
+                    })
+                  }
+                  className="text-left text-sm font-semibold text-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
+                  title={`Open ${effect.name} in preview`}
+                >
                   {effect.name}
-                </p>
+                </button>
                 {effect.narrativeDescription ? (
                   <div className="mt-1 rounded border border-border/40 bg-background/40 p-2 text-[11px] leading-relaxed text-muted-foreground">
                     <Markdown>{effect.narrativeDescription}</Markdown>

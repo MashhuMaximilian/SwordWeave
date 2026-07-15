@@ -356,6 +356,45 @@ export function GrammarLibrary({
     return () => window.removeEventListener("sw-sandbox-close-preview", handler);
   }, [stack]);
 
+  // Phase 7 Q-B UX: when the user clicks a slotted sub-entity in the
+  // right-column form preview, the form preview dispatches
+  // `sw-sandbox-open-preview`. We translate that to a pushPreview() so
+  // the user gets the same modal affordance as clicking from the
+  // library list. Lookup goes through the same find path that
+  // onSubLinkClick uses, so the targetType values match PreviewSubLink.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const e = event as CustomEvent<{
+        targetType: "PRIMITIVE" | "EFFECT" | "CAPABILITY" | "ITEM" | "TEMPLATE_RACE" | "TEMPLATE_CLASS" | "TEMPLATE_MONSTER" | "TEMPLATE_ITEM";
+        targetId: string;
+        label: string;
+      }>;
+      const detail = e.detail;
+      if (!detail) return;
+      if (detail.targetType === "PRIMITIVE") {
+        const sub = primitives.find((p) => String(p.id) === detail.targetId);
+        if (sub) pushPreview({ kind: "primitive", row: sub });
+        return;
+      }
+      if (detail.targetType === "EFFECT") {
+        const sub = effects.find((eff) => eff.id === detail.targetId);
+        if (sub) pushPreview({ kind: "effect", row: sub });
+        return;
+      }
+      if (detail.targetType === "CAPABILITY") {
+        const sub = capabilities.find((c) => c.id === detail.targetId);
+        if (sub) pushPreview({ kind: "capability", row: sub });
+        return;
+      }
+      // ITEM / TEMPLATE_* are owned by the blueprint sandbox; the
+      // blueprint library listens for the same event.
+    };
+    window.addEventListener("sw-sandbox-open-preview", handler);
+    return () =>
+      window.removeEventListener("sw-sandbox-open-preview", handler);
+  }, [primitives, effects, capabilities]);
+
   function pushPreview(item: SandboxPreviewItem) {
     if (!stack.canPush) return;
     // Resolve to the LibraryItem so the modal can show engagement counts

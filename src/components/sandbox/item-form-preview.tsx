@@ -3,6 +3,7 @@
 // Live preview for the item being composed in ItemForm.
 
 import { Markdown } from "@/components/ui/markdown";
+import { dispatchOpenPreview } from "@/lib/sandbox/slot-events";
 
 export type ItemFormState = {
   name: string;
@@ -198,9 +199,20 @@ export function ItemFormPreview({
                 key={slot.primitiveId}
                 className="flex items-center justify-between gap-2 p-2 text-sm"
               >
-                <span className="min-w-0 flex-1 truncate font-medium text-foreground">
+                <button
+                  type="button"
+                  onClick={() =>
+                    dispatchOpenPreview({
+                      targetType: "PRIMITIVE",
+                      targetId: String(slot.primitive.id),
+                      label: slot.primitive.name,
+                    })
+                  }
+                  className="min-w-0 flex-1 truncate text-left font-medium text-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
+                  title={`Open ${slot.primitive.name} in preview`}
+                >
                   {slot.primitive.name}
-                </span>
+                </button>
                 <span className="shrink-0 font-mono text-[10px] text-foreground">
                   {slot.primitive.buCost} BU
                 </span>
@@ -221,9 +233,20 @@ export function ItemFormPreview({
                 key={c.id}
                 className="flex items-center justify-between gap-2 p-2 text-sm"
               >
-                <span className="min-w-0 flex-1 truncate font-medium text-foreground">
+                <button
+                  type="button"
+                  onClick={() =>
+                    dispatchOpenPreview({
+                      targetType: "CAPABILITY",
+                      targetId: c.id,
+                      label: c.name,
+                    })
+                  }
+                  className="min-w-0 flex-1 truncate text-left font-medium text-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
+                  title={`Open ${c.name} in preview`}
+                >
                   {c.name}
-                </span>
+                </button>
                 <span className="shrink-0 text-[10px] text-muted-foreground">
                   {c.type}
                 </span>
@@ -244,9 +267,20 @@ export function ItemFormPreview({
                 key={e.id}
                 className="flex items-center justify-between gap-2 p-2 text-sm"
               >
-                <span className="min-w-0 flex-1 truncate font-medium text-foreground">
+                <button
+                  type="button"
+                  onClick={() =>
+                    dispatchOpenPreview({
+                      targetType: "EFFECT",
+                      targetId: e.id,
+                      label: e.name,
+                    })
+                  }
+                  className="min-w-0 flex-1 truncate text-left font-medium text-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
+                  title={`Open ${e.name} in preview`}
+                >
                   {e.name}
-                </span>
+                </button>
               </li>
             ))}
           </ul>

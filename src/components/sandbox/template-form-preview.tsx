@@ -3,6 +3,7 @@
 // Live preview for the template being composed in TemplateForm.
 
 import { Markdown } from "@/components/ui/markdown";
+import { dispatchOpenPreview } from "@/lib/sandbox/slot-events";
 
 export type TemplateFormState = {
   kind: "RACE" | "BACKGROUND" | "ARCHETYPE";
@@ -143,9 +144,20 @@ export function TemplateFormPreview({
                 key={p.id}
                 className="flex items-center justify-between gap-2 p-2 text-sm"
               >
-                <span className="min-w-0 flex-1 truncate font-medium text-foreground">
+                <button
+                  type="button"
+                  onClick={() =>
+                    dispatchOpenPreview({
+                      targetType: "PRIMITIVE",
+                      targetId: String(p.id),
+                      label: p.name,
+                    })
+                  }
+                  className="min-w-0 flex-1 truncate text-left font-medium text-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
+                  title={`Open ${p.name} in preview`}
+                >
                   {p.name}
-                </span>
+                </button>
                 <span className="shrink-0 font-mono text-[10px] text-foreground">
                   {p.buCost} BU
                 </span>
@@ -166,9 +178,20 @@ export function TemplateFormPreview({
                 key={c.id}
                 className="flex items-center justify-between gap-2 p-2 text-sm"
               >
-                <span className="min-w-0 flex-1 truncate font-medium text-foreground">
+                <button
+                  type="button"
+                  onClick={() =>
+                    dispatchOpenPreview({
+                      targetType: "CAPABILITY",
+                      targetId: String(c.id),
+                      label: c.name,
+                    })
+                  }
+                  className="min-w-0 flex-1 truncate text-left font-medium text-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
+                  title={`Open ${c.name} in preview`}
+                >
                   {c.name}
-                </span>
+                </button>
               </li>
             ))}
           </ul>

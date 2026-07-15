@@ -369,6 +369,53 @@ export function BlueprintLibrary({
     window.addEventListener("sw-sandbox-close-preview", handler);
     return () => window.removeEventListener("sw-sandbox-close-preview", handler);
   }, [stack]);
+
+  // Phase 7 Q-B UX: form-preview clicks on slotted sub-entities
+  // dispatch `sw-sandbox-open-preview`. Translate to pushPreview() so
+  // the user gets the same modal affordance as clicking from the
+  // library list. Blueprint library owns ITEM and TEMPLATE_* kinds;
+  // PRIMITIVE / EFFECT / CAPABILITY also handled here for the
+  // blueprint-mode templates that include them.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const e = event as CustomEvent<{
+        targetType: "PRIMITIVE" | "EFFECT" | "CAPABILITY" | "ITEM" | "TEMPLATE_RACE" | "TEMPLATE_CLASS" | "TEMPLATE_MONSTER" | "TEMPLATE_ITEM";
+        targetId: string;
+        label: string;
+      }>;
+      const detail = e.detail;
+      if (!detail) return;
+      if (detail.targetType === "PRIMITIVE") {
+        const sub = primitives.find((p) => String(p.id) === detail.targetId);
+        if (sub) pushPreview({ kind: "primitive", row: sub });
+        return;
+      }
+      if (detail.targetType === "EFFECT") {
+        const sub = effects.find((eff) => eff.id === detail.targetId);
+        if (sub) pushPreview({ kind: "effect", row: sub });
+        return;
+      }
+      if (detail.targetType === "CAPABILITY") {
+        const sub = capabilities.find((c) => c.id === detail.targetId);
+        if (sub) pushPreview({ kind: "capability", row: sub });
+        return;
+      }
+      if (detail.targetType === "ITEM") {
+        const sub = items.find((it) => it.id === detail.targetId);
+        if (sub) pushPreview({ kind: "item", row: sub });
+        return;
+      }
+      // TEMPLATE_RACE / TEMPLATE_CLASS / TEMPLATE_MONSTER / TEMPLATE_ITEM
+      // share the kind "template" here. We don't currently dispatch
+      // those from form previews — handled by the grammar sandbox path
+      // for now (TEMPLATE_<kind> items live there).
+    };
+    window.addEventListener("sw-sandbox-open-preview", handler);
+    return () =>
+      window.removeEventListener("sw-sandbox-open-preview", handler);
+  }, [primitives, effects, capabilities, items]);
+
   function pushPreview(item: SandboxPreviewItem) {
     if (!stack.canPush) return;
     const libraryItem = libraryItems.find(
