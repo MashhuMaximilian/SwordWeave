@@ -23,6 +23,12 @@ export type EffectFormState = {
 export type SlottedPrimitive = {
   primitiveId: number;
   quantity: number;
+  /**
+   * Per-slot mirror flag (Phase 7 Q-M-UX). Drives the BU debt at
+   * template/character-creation time when this effect is consumed.
+   * Optional so older snapshots without the field still render.
+   */
+  isMirrored?: boolean | undefined;
   primitive: {
     id: number;
     name: string;
@@ -156,6 +162,14 @@ export function EffectFormPreview({
                     x{slot.quantity}
                   </span>
                 </button>
+                {slot.isMirrored ? (
+                  <span
+                    className="shrink-0 rounded-sm border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400"
+                    title="This slot is mirrored — consumer pays BU debt at template/character-creation time"
+                  >
+                    Mirrored
+                  </span>
+                ) : null}
                 <span className="shrink-0 font-mono text-[10px] text-foreground">
                   {Math.abs(slot.primitive.buCost * slot.quantity)} BU
                 </span>

@@ -651,53 +651,57 @@ export function CapabilityForm({
             {slots.map((slot, idx) => (
               <li
                 key={`${slot.primitiveId}-${idx}`}
-                className="flex flex-col gap-1.5 rounded-md border border-border bg-card p-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2"
+                className="flex flex-col gap-2 rounded-md border border-border bg-card p-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2"
               >
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">
                   {slot.primitive.name}
                 </span>
-                <select
-                  value={slot.role}
-                  onChange={(e) => updateSlotRole(idx, e.target.value)}
-                  className="rounded-md border border-border bg-background px-2 py-1 text-xs"
-                >
-                  {SLOT_ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min={1}
-                  value={slot.quantity}
-                  onChange={(e) =>
-                    updateSlotQuantity(idx, Number(e.target.value) || 1)
-                  }
-                  className="w-14 rounded-md border border-border bg-background px-2 py-1 text-center text-xs"
-                />
-                <span className="font-mono text-xs text-muted-foreground">
-                  {Math.abs(slot.primitive.buCost * slot.quantity)} BU
-                </span>
-                <label
-                  className="flex cursor-pointer items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs"
-                  title="Phase 7 Q-M-UX: when this slot is mirrored, the consumer pays BU debt at template/character-creation time."
-                >
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={slot.role}
+                    onChange={(e) => updateSlotRole(idx, e.target.value)}
+                    className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+                  >
+                    {SLOT_ROLES.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
                   <input
-                    type="checkbox"
-                    checked={slot.isMirrored}
-                    onChange={() => toggleSlotMirror(idx)}
-                    className="size-3.5"
+                    type="number"
+                    min={1}
+                    value={slot.quantity}
+                    onChange={(e) =>
+                      updateSlotQuantity(idx, Number(e.target.value) || 1)
+                    }
+                    aria-label="Quantity"
+                    className="w-14 rounded-md border border-border bg-background px-2 py-1 text-center text-xs"
                   />
-                  <span>Mirror</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => removeSlot(idx)}
-                  className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
-                >
-                  <Trash2 className="size-3.5" /> Remove
-                </button>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {Math.abs(slot.primitive.buCost * slot.quantity)} BU
+                  </span>
+                  <label
+                    className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs"
+                    title="When this slot is mirrored, the consumer pays BU debt at template/character-creation time."
+                  >
+                    <input
+                      type="checkbox"
+                      checked={slot.isMirrored}
+                      onChange={() => toggleSlotMirror(idx)}
+                      className="size-3.5"
+                    />
+                    <span>Mirror</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => removeSlot(idx)}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
+                  >
+                    <Trash2 className="size-3.5" />
+                    <span className="hidden sm:inline">Remove</span>
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

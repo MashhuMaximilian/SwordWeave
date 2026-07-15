@@ -623,9 +623,10 @@ export function BlueprintSandboxClient({
         : null;
       const primitiveSlots = snapPrimitiveIds
         ? snapPrimitiveIds
-            .map((id) =>
-              primitives.find((p) => String(p.id) === id),
-            )
+            .map((id) => {
+              const p = primitives.find((p) => String(p.id) === id);
+              return p;
+            })
             .filter((p): p is (typeof primitives)[number] => Boolean(p))
             .map((p) => ({
               primitiveId: p.id,
@@ -633,6 +634,7 @@ export function BlueprintSandboxClient({
             }))
         : (row ? row.primitiveLinks.map((link) => ({
             primitiveId: link.primitiveId,
+            isMirrored: (link as { isMirrored?: boolean }).isMirrored,
             primitive: link.primitive,
           })) : []);
       const capabilitySlots = snapCapabilityIds

@@ -501,46 +501,49 @@ export function EffectForm({
             {slots.map((slot) => (
               <li
                 key={slot.primitiveId}
-                className="grid gap-3 rounded-md border border-border bg-card p-3 sm:grid-cols-[1fr_96px_auto_auto] sm:items-center"
+                className="flex flex-col gap-3 rounded-md border border-border bg-card p-3 sm:flex-row sm:items-center"
               >
-                <div>
-                  <p className="text-sm font-bold">{slot.primitive.name}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold">{slot.primitive.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {slot.primitive.buCost} BU each
                   </p>
                 </div>
-                <input
-                  className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-                  min={1}
-                  type="number"
-                  value={slot.quantity}
-                  onChange={(event) =>
-                    updateQuantity(
-                      slot.primitiveId,
-                      Number(event.target.value),
-                    )
-                  }
-                />
-                <label
-                  className="flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2 text-xs"
-                  title="Phase 7 Q-M-UX: when this slot is mirrored, the consumer pays BU debt at template/character-creation time."
-                >
+                <div className="flex items-center gap-2">
                   <input
-                    type="checkbox"
-                    checked={slot.isMirrored}
-                    onChange={() => toggleSlotMirror(slot.primitiveId)}
-                    className="size-3.5"
+                    aria-label="Quantity"
+                    className="h-9 w-20 rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+                    min={1}
+                    type="number"
+                    value={slot.quantity}
+                    onChange={(event) =>
+                      updateQuantity(
+                        slot.primitiveId,
+                        Number(event.target.value),
+                      )
+                    }
                   />
-                  <span>Mirror</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => removeSlot(slot.primitiveId)}
-                  className="inline-flex h-9 items-center justify-center gap-1 rounded-md border border-border px-3 text-xs font-medium text-muted-foreground hover:bg-accent"
-                >
-                  <Trash2 className="size-3.5" />
-                  Remove
-                </button>
+                  <label
+                    className="flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2 text-xs"
+                    title="When this slot is mirrored, the consumer pays BU debt at template/character-creation time."
+                  >
+                    <input
+                      type="checkbox"
+                      checked={slot.isMirrored}
+                      onChange={() => toggleSlotMirror(slot.primitiveId)}
+                      className="size-3.5"
+                    />
+                    <span>Mirror</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => removeSlot(slot.primitiveId)}
+                    className="inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-md border border-border px-3 text-xs font-medium text-muted-foreground hover:bg-accent"
+                  >
+                    <Trash2 className="size-3.5" />
+                    <span className="hidden sm:inline">Remove</span>
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

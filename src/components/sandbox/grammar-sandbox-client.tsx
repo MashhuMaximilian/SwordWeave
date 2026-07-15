@@ -624,6 +624,7 @@ export function GrammarSandboxClient({
         | Array<{
             primitiveId: number;
             quantity: number;
+            isMirrored?: boolean;
             primitive: { id: number; name: string; category: string; buCost: number };
           }>
         | undefined;
@@ -659,6 +660,7 @@ export function GrammarSandboxClient({
       const slots = snapSlots ?? (row ? row.primitiveLinks.map((link) => ({
         primitiveId: link.primitiveId,
         quantity: link.quantity,
+        isMirrored: link.isMirrored,
         primitive: link.primitive,
       })) : []);
       if (!form) return null;

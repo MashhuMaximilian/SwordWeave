@@ -621,34 +621,36 @@ export function TemplateForm({
             {slottedPrimitives.map((p) => (
               <li
                 key={p.id}
-                className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2 text-sm"
+                className="flex flex-col gap-2 rounded-md border border-border bg-card p-3 text-sm sm:flex-row sm:items-center"
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{p.name}</p>
                 </div>
-                <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 font-mono text-xs">
-                  {p.buCost} BU
-                </span>
-                <label
-                  className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs"
-                  title="Phase 7 Q-M-UX: when this slot is mirrored, the consumer pays BU debt at template/character-creation time."
-                >
-                  <input
-                    type="checkbox"
-                    checked={isMirroredIds.has(p.id)}
-                    onChange={() => toggleSlotMirror(p.id)}
-                    className="size-3.5"
-                  />
-                  <span>Mirror</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => togglePrimitive(p.id)}
-                  className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
-                >
-                  <Trash2 className="size-3.5" />
-                  Remove
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 font-mono text-xs">
+                    {p.buCost} BU
+                  </span>
+                  <label
+                    className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs"
+                    title="When this slot is mirrored, the consumer pays BU debt at template/character-creation time."
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isMirroredIds.has(p.id)}
+                      onChange={() => toggleSlotMirror(p.id)}
+                      className="size-3.5"
+                    />
+                    <span>Mirror</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => togglePrimitive(p.id)}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
+                  >
+                    <Trash2 className="size-3.5" />
+                    <span className="hidden sm:inline">Remove</span>
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

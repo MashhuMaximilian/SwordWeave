@@ -185,6 +185,14 @@ export function CapabilityFormPreview({
                 >
                   {slot.primitive.name}
                 </button>
+                {slot.isMirrored ? (
+                  <span
+                    className="shrink-0 rounded-sm border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400"
+                    title="This slot is mirrored — consumer pays BU debt at template/character-creation time"
+                  >
+                    Mirrored
+                  </span>
+                ) : null}
                 <span className="shrink-0 rounded-sm border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
                   {slot.role}
                 </span>

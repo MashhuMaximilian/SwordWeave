@@ -215,8 +215,8 @@ const blankModifier: ModifierDraft = {
   // Phase-7-Q-B: empty Condition v1 authoring state. Picker
   // starts collapsed with Target state open by default.
   v1Condition: {
-    presetKey: null,
-    customTags: [],
+    categories: [],
+    customPills: [],
     narrative: "",
     includeTags: false,
   },
@@ -1005,10 +1005,6 @@ export function PrimitiveForm({
                 {form.isMirrorable ? Number(form.buCost) || 0 : 0} <span className="text-muted-foreground">= buCost</span>
               </span>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Phase 7 Q-M: mirror vector and credit are auto-derived from the
-              canonical taxonomy. You can only edit the exposure notes below.
-            </p>
           </div>
         </div>
 
