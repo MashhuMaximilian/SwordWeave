@@ -22,6 +22,12 @@ import { saveIntentLabel } from "@/lib/publishing/save-intent";
 import { computePrimitiveContentHash } from "@/lib/publishing/hash-content";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import {
+  ConditionPicker,
+  conditionAuthoringFromLegacy,
+  legacyFieldsFromAuthoring,
+} from "./condition-picker";
+import type { ConditionAuthoring } from "@/types/condition";
+import {
   MODIFIER_TARGET_SPEC,
   MODIFIER_TARGETS,
   type ModifierTarget,
@@ -101,6 +107,11 @@ export type ModifierDraft = {
     | "exists";
   conditionValue: string;
   stacking: ModifierStackingMode;
+  // Phase-7-Q-B: canonical Condition v1 authoring state. Drives
+  // the new ConditionPicker. The legacy conditionKey/Operator/Value
+  // fields above are kept in sync via legacyFieldsFromAuthoring()
+  // for round-trip compatibility with old toHardModifier paths.
+  v1Condition: ConditionAuthoring;
 };
 
 const categories = [
@@ -148,16 +159,13 @@ const operations: Array<{ label: string; value: ModifierOperation }> = [
   { label: "Toggle", value: "toggle" },
 ];
 
-const conditionOperators: ModifierDraft["conditionOperator"][] = [
-  "equals",
-  "not-equals",
-  "greater-than",
-  "greater-than-or-equal",
-  "less-than",
-  "less-than-or-equal",
-  "includes",
-  "exists",
-];
+// Phase-7-Q-B: the legacy `conditionOperators` list (the 8-operator
+// dropdown) is gone. The ConditionPicker does not expose the
+// operator — the picker maps a preset chip to a baseline mechanic,
+// and the narrative/tags paths are display-only. The legacy
+// `conditionKey / conditionOperator / conditionValue` fields on
+// ModifierDraft remain as a transitional cache so the existing
+// toHardModifier path keeps working without a separate code path.
 
 const stackingOptions: ModifierStackingMode[] = [
   "stack",
@@ -203,6 +211,14 @@ const blankModifier: ModifierDraft = {
   conditionOperator: "equals",
   conditionValue: "",
   stacking: "stack",
+  // Phase-7-Q-B: empty Condition v1 authoring state. Picker
+  // starts collapsed with Target state open by default.
+  v1Condition: {
+    presetKey: null,
+    customTags: [],
+    narrative: "",
+    includeTags: false,
+  },
 };
 
 const blankForm: PrimitiveFormState = {
@@ -298,6 +314,14 @@ function fromHardModifier(modifier: Record<string, unknown>, index: number): Mod
       (String(cond?.["operator"] ?? "equals") as ModifierDraft["conditionOperator"]),
     conditionValue: condValue,
     stacking: (String(modifier["stacking"] ?? "stack") as ModifierStackingMode),
+    // Phase-7-Q-B: derive v1 authoring from the legacy fields. For
+    // unknown legacy shapes this falls back to a narrative variant
+    // (the author can re-pick a preset from the picker).
+    v1Condition: conditionAuthoringFromLegacy(
+      String(cond?.["key"] ?? ""),
+      String(cond?.["operator"] ?? ""),
+      condValue,
+    ),
   };
 }
 
@@ -535,7 +559,7 @@ export function PrimitiveForm({
   function updateModifier(
     id: string,
     field: keyof ModifierDraft,
-    value: string,
+    value: string | ConditionAuthoring,
   ) {
     setIsDirty(true);
     setModifiers((current) =>
@@ -1237,24 +1261,6 @@ export function PrimitiveForm({
             </label>
 
             <label className="block text-sm font-medium">
-              Applies When
-              <select
-                className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                value={modifier.conditionMode}
-                onChange={(event) =>
-                  updateModifier(
-                    modifier.id,
-                    "conditionMode",
-                    event.target.value,
-                  )
-                }
-              >
-                <option value="always">Always</option>
-                <option value="custom">Only when condition matches</option>
-              </select>
-            </label>
-
-            <label className="block text-sm font-medium">
               Stacking Rule
               <select
                 className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
@@ -1271,63 +1277,25 @@ export function PrimitiveForm({
               </select>
             </label>
 
-            {modifier.conditionMode === "custom" ? (
-              <div className="grid gap-3 md:col-span-2 md:grid-cols-3">
-                <label className="block text-sm font-medium">
-                  Condition Key
-                  <input
-                    className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                    value={modifier.conditionKey}
-                    onChange={(event) =>
-                      updateModifier(
-                        modifier.id,
-                        "conditionKey",
-                        event.target.value,
-                      )
-                    }
-                    placeholder="skill.context"
-                  />
-                </label>
-
-                <label className="block text-sm font-medium">
-                  Condition Rule
-                  <select
-                    className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                    value={modifier.conditionOperator}
-                    onChange={(event) =>
-                      updateModifier(
-                        modifier.id,
-                        "conditionOperator",
-                        event.target.value,
-                      )
-                    }
-                  >
-                    {conditionOperators.map((operator) => (
-                      <option key={operator} value={operator}>
-                        {operator}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="block text-sm font-medium">
-                  Condition Value
-                  <input
-                    className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                    disabled={modifier.conditionOperator === "exists"}
-                    value={modifier.conditionValue}
-                    onChange={(event) =>
-                      updateModifier(
-                        modifier.id,
-                        "conditionValue",
-                        event.target.value,
-                      )
-                    }
-                    placeholder="tracking-creatures"
-                  />
-                </label>
-              </div>
-            ) : null}
+            {/* Phase-7-Q-B: Triggers when… picker replaces the old
+                Applies-When dropdown + 3-field triple. The picker
+                emits a ConditionAuthoring; we keep the legacy
+                conditionKey/Operator/Value fields in sync via
+                legacyFieldsFromAuthoring so the toHardModifier path
+                still works without a separate code path. */}
+            <div className="md:col-span-2">
+              <ConditionPicker
+                value={modifier.v1Condition}
+                onChange={(next: ConditionAuthoring) => {
+                  const legacy = legacyFieldsFromAuthoring(next);
+                  updateModifier(modifier.id, "v1Condition", next);
+                  updateModifier(modifier.id, "conditionMode", legacy.conditionMode);
+                  updateModifier(modifier.id, "conditionKey", legacy.conditionKey);
+                  updateModifier(modifier.id, "conditionOperator", legacy.conditionOperator);
+                  updateModifier(modifier.id, "conditionValue", legacy.conditionValue);
+                }}
+              />
+            </div>
           </div>
         ))}
       </fieldset>
