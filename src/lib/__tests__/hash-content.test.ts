@@ -66,7 +66,7 @@ describe("buildCanonicalPrimitivePayload", () => {
     expect(payload.mirrorBuCredit).toBe(0);
   });
 
-  it("preserves mirror fields for mirrorable rows", () => {
+  it("preserves mirror fields for mirrorable rows (Phase 7 Q-M: mirror_bu_credit = bu_cost)", () => {
     const payload = buildCanonicalPrimitivePayload({
       name: "Strike",
       category: "VERB_TIER",
@@ -82,7 +82,10 @@ describe("buildCanonicalPrimitivePayload", () => {
       hardModifiers: [],
     });
     expect(payload.mirrorVector).toBe("VARIABLE_VECTOR");
-    expect(payload.mirrorBuCredit).toBe(2);
+    // Phase 7 Q-M canonical rule: mirror_bu_credit is auto-derived from
+    // bu_cost regardless of the form value passed in. The form value (2
+    // here) is ignored. The server also enforces this on write.
+    expect(payload.mirrorBuCredit).toBe(4);
   });
 
   it("treats empty mirrorVector on mirrorable rows as VARIABLE_VECTOR", () => {

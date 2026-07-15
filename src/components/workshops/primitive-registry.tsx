@@ -581,10 +581,13 @@ export function PrimitiveRegistry({
         },
         body: JSON.stringify({
           ...form,
+          // Phase 7 Q-M: auto-derive mirror_bu_credit = bu_cost when
+          // mirrorable. The server enforces this anyway, but we send the
+          // canonical value so the content hash matches what's stored.
           mirrorVector: form.isMirrorable
             ? form.mirrorVector
             : "STANDARD_ONLY",
-          mirrorBuCredit: form.isMirrorable ? form.mirrorBuCredit : "0",
+          mirrorBuCredit: form.isMirrorable ? Number(form.buCost) || 0 : 0,
           hardModifiers,
         }),
       });
@@ -1050,6 +1053,15 @@ export function PrimitiveRegistry({
                 </button>
               </div>
 
+              {modifiers.length === 0 ? (
+                <div className="rounded-md border border-dashed border-border bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
+                  No modifiers yet. Many primitives (Darkvision, Resistance,
+                  Domain features) only need a narrative rule above. Add a
+                  modifier if this primitive grants a numerical mechanical
+                  bonus.
+                </div>
+              ) : null}
+
               {modifiers.map((modifier, index) => (
                 <div
                   className="grid gap-3 rounded-md border border-border bg-card p-3 md:grid-cols-2"
@@ -1058,8 +1070,7 @@ export function PrimitiveRegistry({
                   <div className="flex items-center justify-between gap-3 md:col-span-2">
                     <p className="text-sm font-medium">Modifier {index + 1}</p>
                     <button
-                      className="h-8 rounded-md border border-border px-2 text-xs text-muted-foreground disabled:opacity-40"
-                      disabled={modifiers.length === 1}
+                      className="h-8 rounded-md border border-border px-2 text-xs text-muted-foreground"
                       onClick={() => removeModifier(modifier.id)}
                       type="button"
                     >

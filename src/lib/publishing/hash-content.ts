@@ -86,11 +86,14 @@ export function buildCanonicalPrimitivePayload(args: {
 }): CanonicalPrimitivePayload {
   const buCostNum =
     typeof args.buCost === "number" ? args.buCost : Number(args.buCost) || 0;
-  const mirrorBuCreditNum = args.isMirrorable
-    ? typeof args.mirrorBuCredit === "number"
-      ? args.mirrorBuCredit
-      : Number(args.mirrorBuCredit) || 0
-    : 0;
+  // Phase 7 Q-M: auto-derive mirror_bu_credit = bu_cost when isMirrorable.
+  // The route handler already enforces this server-side, but the content
+  // hash must match what gets STORED, otherwise save-to-update detection
+  // breaks: client says mirror_bu_credit=0, server stores bu_cost, hash
+  // sees a delta that isn't a real delta.
+  const mirrorBuCreditNum = args.isMirrorable ? buCostNum : 0;
+  // mirrorVector defaults to VARIABLE_VECTOR when mirrorable and caller
+  // didn't supply one; STANDARD_ONLY when not mirrorable.
   const mirrorVectorFinal = args.isMirrorable
     ? args.mirrorVector || "VARIABLE_VECTOR"
     : "STANDARD_ONLY";

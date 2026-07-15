@@ -655,8 +655,11 @@ export function PrimitiveForm({
             : {}),
           draftHash,
           ...form,
+          // Phase 7 Q-M: auto-derive mirror_bu_credit = bu_cost when
+          // mirrorable. The server enforces this anyway, but we send the
+          // canonical value so the content hash matches what's stored.
           mirrorVector: form.isMirrorable ? form.mirrorVector : "STANDARD_ONLY",
-          mirrorBuCredit: form.isMirrorable ? form.mirrorBuCredit : "0",
+          mirrorBuCredit: form.isMirrorable ? Number(form.buCost) || 0 : 0,
           hardModifiers: modifiers.map(toHardModifier),
         }),
       });
@@ -970,31 +973,45 @@ export function PrimitiveForm({
 
         <label className="block text-sm font-medium">
           Mirror Vector Type
-          <select
-            className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2 disabled:opacity-60"
-            disabled={!form.isMirrorable}
-            value={form.mirrorVector}
-            onChange={(event) => updateForm("mirrorVector", event.target.value)}
-          >
-            {mirrorVectors.map((vector) => (
-              <option key={vector.value} value={vector.value}>
-                {vector.label}
-              </option>
-            ))}
-          </select>
+          <div className="mt-2 flex items-center gap-2">
+            <select
+              className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2 disabled:opacity-60"
+              disabled={!form.isMirrorable}
+              value={form.mirrorVector}
+              onChange={(event) => updateForm("mirrorVector", event.target.value)}
+            >
+              {mirrorVectors.map((vector) => (
+                <option key={vector.value} value={vector.value}>
+                  {vector.label}
+                </option>
+              ))}
+            </select>
+            <span
+              className="rounded-md border border-border bg-muted px-2 py-1 text-xs font-medium text-muted-foreground"
+              title="Phase 7 Q-M canonical taxonomy. The DM-side mirror resolver uses this to decide what the inverted modifier does."
+            >
+              canonical
+            </span>
+          </div>
         </label>
 
         <label className="block text-sm font-medium">
           Mirror BU Credit
-          <input
-            className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2 disabled:opacity-60"
-            disabled={!form.isMirrorable}
-            min={0}
-            onChange={(event) => updateForm("mirrorBuCredit", event.target.value)}
-            step={1}
-            type="number"
-            value={form.mirrorBuCredit}
-          />
+          <div className="mt-2 flex items-center gap-2">
+            <input
+              className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2 disabled:opacity-60"
+              disabled
+              readOnly
+              type="number"
+              value={form.isMirrorable ? Number(form.buCost) || 0 : 0}
+            />
+            <span
+              className="rounded-md border border-border bg-muted px-2 py-1 text-xs font-medium text-muted-foreground"
+              title="Phase 7 Q-M: mirror_bu_credit is always auto-derived from bu_cost when the primitive is mirrorable. The server enforces this on write regardless of client input."
+            >
+              = buCost
+            </span>
+          </div>
         </label>
 
         <label className="block text-sm font-medium md:col-span-2">
@@ -1020,11 +1037,18 @@ export function PrimitiveForm({
             </p>
           </div>
           <button
-            className="h-9 rounded-md border border-border px-3 text-sm font-medium"
+            aria-disabled={modifiers.length >= 1}
+            className="h-9 rounded-md border border-border px-3 text-sm font-medium disabled:opacity-50"
+            disabled={modifiers.length >= 1}
             onClick={addModifier}
+            title={
+              modifiers.length >= 1
+                ? "A primitive houses exactly one mechanical payload. (Phase-7 atomic rule.)"
+                : "Add a modifier to this primitive (optional — primitives may be trigger-only)"
+            }
             type="button"
           >
-            Add Modifier
+            {modifiers.length >= 1 ? "Modifier Set" : "Add Modifier"}
           </button>
         </div>
 
