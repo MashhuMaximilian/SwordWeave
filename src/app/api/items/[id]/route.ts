@@ -213,11 +213,27 @@ export async function PATCH(
     const userSourceOriginRaw = String(values["sourceOrigin"] ?? "").trim();
     const tags = "tags" in values ? parseTags(values["tags"]) : [];
 
-    const primitiveIds = Array.isArray(values["primitiveIds"])
+    // Phase 7 Q-M-UX: accept primitiveSlots ({primitiveId, isMirrored}[]).
+    // Fall back to primitiveIds (number[]) for legacy payloads.
+    const primitiveSlotsInput = Array.isArray(values["primitiveSlots"])
+      ? (values["primitiveSlots"] as unknown[]).map((slotValue) => {
+          const slot = slotValue as Record<string, unknown>;
+          return {
+            primitiveId: Number(slot["primitiveId"] ?? slot["id"]),
+            isMirrored: Boolean(
+              slot["is_mirrored"] ?? slot["isMirrored"] ?? false,
+            ),
+          };
+        })
+      : [];
+    const legacyPrimitiveIds = Array.isArray(values["primitiveIds"])
       ? (values["primitiveIds"] as unknown[])
           .map(Number)
           .filter((n) => Number.isInteger(n) && n > 0)
+          .map((id) => ({ primitiveId: id, isMirrored: false }))
       : [];
+    const primitiveSlots =
+      primitiveSlotsInput.length > 0 ? primitiveSlotsInput : legacyPrimitiveIds;
     const capabilityIds = Array.isArray(values["capabilityIds"])
       ? (values["capabilityIds"] as unknown[]).filter(
           (c) => typeof c === "string",
@@ -249,7 +265,8 @@ export async function PATCH(
       actsAsFocus,
       isPublic,
       tags,
-      primitiveIds,
+      primitiveIds: primitiveSlots.map((s) => s.primitiveId),
+      primitiveSlots,
       capabilityIds: capabilityIds as string[],
       effectIds: effectIds as string[],
       // Phase 8: per-entity iconography
@@ -272,7 +289,8 @@ export async function PATCH(
       actsAsFocus,
       isPublic,
       tags,
-      primitiveIds,
+      primitiveIds: primitiveSlots.map((s) => s.primitiveId),
+      primitiveSlots,
       capabilityIds: capabilityIds as string[],
       effectIds: effectIds as string[],
       // Phase 8: per-entity iconography
@@ -352,11 +370,19 @@ export async function PATCH(
           );
 
         // Validate + replace primitive slots.
-        if (primitiveIds.length > 0) {
+        if (
+          ("primitiveSlots" in values || "primitiveIds" in values) &&
+          primitiveSlots.length > 0
+        ) {
+          const ids = primitiveSlots.map((s) => s.primitiveId);
           const prims = await tx
-            .select()
+            .select({
+              id: primitives.id,
+              category: primitives.category,
+              name: primitives.name,
+            })
             .from(primitives)
-            .where(inArray(primitives.id, primitiveIds));
+            .where(inArray(primitives.id, ids));
           const wrong = prims.filter(
             (p) => p.category !== ITEM_PRIMITIVE_CATEGORY,
           );
@@ -365,15 +391,22 @@ export async function PATCH(
               `Items can only use ${ITEM_PRIMITIVE_CATEGORY} primitives. Invalid: ${wrong.map((p) => p.name).join(", ")}`,
             );
           }
+          const validIdSet = new Set(prims.map((p) => p.id));
+          const validSlots = primitiveSlots.filter((s) =>
+            validIdSet.has(s.primitiveId),
+          );
           await tx.delete(itemPrimitives).where(eq(itemPrimitives.itemId, id));
           await tx.insert(itemPrimitives).values(
-            prims.map((p, idx) => ({
+            validSlots.map((slot, idx) => ({
               itemId: id,
-              primitiveId: p.id,
+              primitiveId: slot.primitiveId,
               sortOrder: idx,
+              // Phase 7 Q-M-UX: persist per-slot Mirrored flag.
+              isMirrored: slot.isMirrored,
             })),
           );
-        } else if ("primitiveIds" in values) {
+        } else if ("primitiveSlots" in values || "primitiveIds" in values) {
+          // Empty primitiveSlots payload — clear all slots.
           await tx.delete(itemPrimitives).where(eq(itemPrimitives.itemId, id));
         }
 
@@ -492,11 +525,16 @@ export async function PATCH(
       }
 
       // Validate + insert primitive slots.
-      if (primitiveIds.length > 0) {
+      if (primitiveSlots.length > 0) {
+        const ids = primitiveSlots.map((s) => s.primitiveId);
         const prims = await tx
-          .select()
+          .select({
+            id: primitives.id,
+            category: primitives.category,
+            name: primitives.name,
+          })
           .from(primitives)
-          .where(inArray(primitives.id, primitiveIds));
+          .where(inArray(primitives.id, ids));
         const wrong = prims.filter(
           (p) => p.category !== ITEM_PRIMITIVE_CATEGORY,
         );
@@ -505,11 +543,17 @@ export async function PATCH(
             `Items can only use ${ITEM_PRIMITIVE_CATEGORY} primitives. Invalid: ${wrong.map((p) => p.name).join(", ")}`,
           );
         }
+        const validIdSet = new Set(prims.map((p) => p.id));
+        const validSlots = primitiveSlots.filter((s) =>
+          validIdSet.has(s.primitiveId),
+        );
         await tx.insert(itemPrimitives).values(
-          prims.map((p, idx) => ({
+          validSlots.map((slot, idx) => ({
             itemId: inserted.id,
-            primitiveId: p.id,
+            primitiveId: slot.primitiveId,
             sortOrder: idx,
+            // Phase 7 Q-M-UX: persist per-slot Mirrored flag.
+            isMirrored: slot.isMirrored,
           })),
         );
       }

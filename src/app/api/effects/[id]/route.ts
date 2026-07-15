@@ -136,6 +136,10 @@ export async function PATCH(
             primitiveId: Number(slot["primitiveId"]),
             quantity: Number(slot["quantity"] ?? 1),
             notes: String(slot["notes"] ?? "").trim() || undefined,
+            // Phase 7 Q-M-UX: parse is_mirrored from payload.
+            isMirrored: Boolean(
+              slot["is_mirrored"] ?? slot["isMirrored"] ?? false,
+            ),
           };
         })
       : [];
@@ -265,6 +269,8 @@ export async function PATCH(
             quantity: slot.quantity,
             sortOrder: index,
             notes: slot.notes,
+            // Phase 7 Q-M-UX: persist per-slot Mirrored flag.
+            isMirrored: slot.isMirrored,
           })),
         );
       }

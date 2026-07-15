@@ -355,6 +355,8 @@ export async function PATCH(
               sortOrder: slot.sortOrder,
               slotLabel: slot.slotLabel,
               notes: slot.notes,
+              // Phase 7 Q-M-UX: persist per-slot Mirrored flag.
+              isMirrored: slot.isMirrored,
             })),
           );
         }
@@ -538,6 +540,8 @@ export async function PATCH(
             sortOrder: slot.sortOrder,
             slotLabel: slot.slotLabel,
             notes: slot.notes,
+            // Phase 7 Q-M-UX: persist per-slot Mirrored flag.
+            isMirrored: slot.isMirrored,
           })),
         );
 

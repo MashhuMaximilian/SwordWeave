@@ -66,6 +66,10 @@ type EffectRow = {
   primitiveLinks: Array<{
     primitiveId: number;
     quantity: number;
+    /**
+     * Phase 7 Q-M-UX: per-slot Mirrored flag from the DB.
+     */
+    isMirrored?: boolean;
     primitive: {
       id: number;
       name: string;
@@ -96,6 +100,10 @@ type CapabilityRow = {
     quantity: number;
     sortOrder: number;
     slotLabel: string | null;
+    /**
+     * Phase 7 Q-M-UX: per-slot Mirrored flag from the DB.
+     */
+    isMirrored?: boolean;
     primitive: {
       id: number;
       name: string;
@@ -684,6 +692,9 @@ export function GrammarSandboxClient({
           quantity: number;
           sortOrder: number;
           slotLabel: string | null;
+          // Phase 7 Q-M-UX: per-slot Mirrored flag carried through snapshots.
+          // Always populated by CapabilityForm.addSlot since Phase 7 Q-M-UX.
+          isMirrored: boolean;
           primitive: { id: number; name: string; category: string; buCost: number };
         }>
       | undefined;
@@ -737,6 +748,8 @@ export function GrammarSandboxClient({
       quantity: link.quantity,
       sortOrder: link.sortOrder,
       slotLabel: link.slotLabel ?? link.primitive.name,
+      // Phase 7 Q-M-UX: per-slot Mirrored flag.
+      isMirrored: link.isMirrored ?? false,
       primitive: link.primitive,
     })) : []);
     // Resolve effect references: prefer the live form snapshot

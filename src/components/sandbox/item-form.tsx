@@ -39,6 +39,10 @@ type ItemRow = {
   tags: string[];
   primitiveLinks: Array<{
     primitiveId: number;
+    /**
+     * Phase 7 Q-M-UX: per-slot Mirrored flag from the DB.
+     */
+    isMirrored?: boolean;
     primitive: {
       id: number;
       name: string;
@@ -139,6 +143,12 @@ export function ItemForm({
 }) {
   const [form, setForm] = useState<ItemFormState>(blankForm);
   const [primitiveIds, setPrimitiveIds] = useState<number[]>([]);
+  // Phase 7 Q-M-UX: parallel Set tracking which primitive slots are
+  // mirrored. Same pattern as the template form — flat primitiveIds for
+  // UI, primitiveSlots at payload-time.
+  const [isMirroredIds, setIsMirroredIds] = useState<Set<number>>(
+    () => new Set<number>(),
+  );
   const [capabilityIds, setCapabilityIds] = useState<string[]>([]);
   const [effectIds, setEffectIds] = useState<string[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -193,6 +203,12 @@ export function ItemForm({
       setPrimitiveIds(draft.primitiveIds);
       setCapabilityIds(draft.capabilityIds);
       setEffectIds(draft.effectIds);
+      // Phase 7 Q-M-UX: restore mirrored set from draft if present.
+      setIsMirroredIds(
+        new Set<number>(
+          (draft as { isMirroredIds?: number[] }).isMirroredIds ?? [],
+        ),
+      );
       setIsDirty(true);
       setMessage("Restored your in-progress edits.");
       clearDraft(draftKey);
@@ -201,6 +217,14 @@ export function ItemForm({
     setPrimitiveIds(initialItem.primitiveLinks.map((l) => l.primitiveId));
     setCapabilityIds([]);
     setEffectIds([]);
+    // Phase 7 Q-M-UX: restore mirrored flags from the DB column.
+    setIsMirroredIds(
+      new Set<number>(
+        initialItem.primitiveLinks
+          .filter((l) => l.isMirrored)
+          .map((l) => l.primitiveId),
+      ),
+    );
     setIsDirty(false); // pristine after load
     setMessage(
       initialItem.userId
@@ -222,6 +246,11 @@ export function ItemForm({
           capabilityIds,
           effectIds,
           notesByIndex: {},
+          // Phase 7 Q-M-UX: persist mirrored set alongside draft.
+          ...({ isMirroredIds: Array.from(isMirroredIds) } as Record<
+            string,
+            unknown
+          >),
         });
       } else {
         clearDraft(draftKey);
@@ -307,6 +336,23 @@ export function ItemForm({
     setPrimitiveIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
+    // Phase 7 Q-M-UX: drop removed primitives from the mirrored set.
+    setIsMirroredIds((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }
+
+  function toggleSlotMirror(id: number) {
+    setIsDirty(true);
+    setIsMirroredIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   function toggleCapability(id: string) {
@@ -328,6 +374,7 @@ export function ItemForm({
     setPrimitiveIds([]);
     setCapabilityIds([]);
     setEffectIds([]);
+    setIsMirroredIds(new Set<number>());
     setPickerOpen(false);
     setIsDirty(false); // pristine after reset
     setMessage("Started a fresh item.");
@@ -365,6 +412,12 @@ export function ItemForm({
         .map((t) => t.trim())
         .filter(Boolean),
       primitiveIds,
+      // Phase 7 Q-M-UX: also send primitiveSlots. Server accepts
+      // either primitiveIds or primitiveSlots (latter takes precedence).
+      primitiveSlots: primitiveIds.map((id) => ({
+        primitiveId: id,
+        isMirrored: isMirroredIds.has(id),
+      })),
       capabilityIds,
       effectIds,
     };
@@ -682,6 +735,18 @@ export function ItemForm({
                 <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 font-mono text-xs">
                   {p.buCost} BU
                 </span>
+                <label
+                  className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs"
+                  title="Phase 7 Q-M-UX: when this slot is mirrored, the consumer pays BU debt at template/character-creation time."
+                >
+                  <input
+                    type="checkbox"
+                    checked={isMirroredIds.has(p.id)}
+                    onChange={() => toggleSlotMirror(p.id)}
+                    className="size-3.5"
+                  />
+                  <span>Mirror</span>
+                </label>
                 <button
                   type="button"
                   onClick={() => togglePrimitive(p.id)}

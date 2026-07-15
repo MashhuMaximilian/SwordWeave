@@ -277,3 +277,72 @@ describe("hashPrimitiveContent", () => {
     expect(hashA).toBe(hashB);
   });
 });
+
+describe("buildCanonicalTemplatePayload (Phase 7 Q-M-UX)", () => {
+  it("derives primitiveSlots from primitiveIds when not provided", async () => {
+    const { buildCanonicalTemplatePayload, computeTemplateContentHash } =
+      await import("@/lib/publishing/hash-content");
+    const payload = buildCanonicalTemplatePayload({
+      kind: "RACE",
+      name: "Elf",
+      description: "",
+      suggestedTraits: "",
+      isPublic: false,
+      primitiveIds: [1, 2, 3],
+      capabilityIds: [],
+    });
+    expect(payload.primitiveIds).toEqual([1, 2, 3]);
+    expect(payload.primitiveSlots).toEqual([
+      { primitiveId: 1, isMirrored: false },
+      { primitiveId: 2, isMirrored: false },
+      { primitiveId: 3, isMirrored: false },
+    ]);
+    void computeTemplateContentHash;
+  });
+
+  it("uses provided primitiveSlots when given (mirrored slots preserved)", async () => {
+    const { buildCanonicalTemplatePayload, computeTemplateContentHash } =
+      await import("@/lib/publishing/hash-content");
+    const payload = buildCanonicalTemplatePayload({
+      kind: "RACE",
+      name: "Elf",
+      description: "",
+      suggestedTraits: "",
+      isPublic: false,
+      primitiveIds: [1, 2],
+      primitiveSlots: [
+        { primitiveId: 1, isMirrored: true },
+        { primitiveId: 2, isMirrored: false },
+      ],
+      capabilityIds: [],
+    });
+    expect(payload.primitiveSlots).toEqual([
+      { primitiveId: 1, isMirrored: true },
+      { primitiveId: 2, isMirrored: false },
+    ]);
+    // Hash differs from the non-mirrored version of the same template.
+    const mirroredHash = await computeTemplateContentHash({
+      kind: "RACE",
+      name: "Elf",
+      description: "",
+      suggestedTraits: "",
+      isPublic: false,
+      primitiveIds: [1, 2],
+      primitiveSlots: [
+        { primitiveId: 1, isMirrored: true },
+        { primitiveId: 2, isMirrored: false },
+      ],
+      capabilityIds: [],
+    });
+    const plainHash = await computeTemplateContentHash({
+      kind: "RACE",
+      name: "Elf",
+      description: "",
+      suggestedTraits: "",
+      isPublic: false,
+      primitiveIds: [1, 2],
+      capabilityIds: [],
+    });
+    expect(mirroredHash).not.toBe(plainHash);
+  });
+});

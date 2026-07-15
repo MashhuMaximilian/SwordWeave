@@ -26,6 +26,11 @@ type EffectRow = {
     primitiveId: number;
     quantity: number;
     notes?: string | null;
+    /**
+     * Phase 7 Q-M-UX: per-slot Mirrored flag from the DB. Defaulted
+     * to false when reading legacy rows that predate migration 0034.
+     */
+    isMirrored?: boolean;
     primitive: {
       id: number;
       name: string;
@@ -50,6 +55,12 @@ export type EffectFormSlot = {
    * dispatcher's no-op short-circuit never fires for legacy rows.
    */
   notes?: string | undefined;
+  /**
+   * Phase 7 Q-M-UX: per-slot Mirrored flag. Drives the BU debt at
+   * template/character-creation time but does NOT change the effect's
+   * own BU cost. Defaults to false.
+   */
+  isMirrored: boolean;
   primitive: {
     id: number;
     name: string;
@@ -148,6 +159,9 @@ export function EffectForm({
         primitiveId: link.primitiveId,
         quantity: link.quantity,
         notes: link.notes ?? undefined,
+        // Phase 7 Q-M-UX: read per-slot Mirrored flag from the link.
+        // `link.isMirrored` is the DB column we just added in migration 0034.
+        isMirrored: link.isMirrored ?? false,
         primitive: link.primitive,
       })),
     );
@@ -213,7 +227,7 @@ export function EffectForm({
       if (!primitive) return current;
       return [
         ...current,
-        { primitiveId, quantity: 1, primitive },
+        { primitiveId, quantity: 1, primitive, isMirrored: false },
       ];
     });
   }
@@ -232,6 +246,17 @@ export function EffectForm({
   function removeSlot(primitiveId: number) {
     setIsDirty(true);
     setSlots((current) => current.filter((s) => s.primitiveId !== primitiveId));
+  }
+
+  function toggleSlotMirror(primitiveId: number) {
+    setIsDirty(true);
+    setSlots((current) =>
+      current.map((s) =>
+        s.primitiveId === primitiveId
+          ? { ...s, isMirrored: !s.isMirrored }
+          : s,
+      ),
+    );
   }
 
   function resetEditor() {
@@ -261,6 +286,10 @@ export function EffectForm({
         primitiveId: s.primitiveId,
         quantity: s.quantity,
         notes: s.notes ?? "",
+        // Phase 7 Q-M-UX: per-slot Mirrored flag drives the BU debt at
+        // template/character-creation time but does NOT change the
+        // effect's own BU cost.
+        isMirrored: s.isMirrored,
       })),
     };
 
@@ -493,7 +522,7 @@ export function EffectForm({
             {slots.map((slot) => (
               <li
                 key={slot.primitiveId}
-                className="grid gap-3 rounded-md border border-border bg-card p-3 sm:grid-cols-[1fr_96px_auto] sm:items-center"
+                className="grid gap-3 rounded-md border border-border bg-card p-3 sm:grid-cols-[1fr_96px_auto_auto] sm:items-center"
               >
                 <div>
                   <p className="text-sm font-bold">{slot.primitive.name}</p>
@@ -513,6 +542,18 @@ export function EffectForm({
                     )
                   }
                 />
+                <label
+                  className="flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2 text-xs"
+                  title="Phase 7 Q-M-UX: when this slot is mirrored, the consumer pays BU debt at template/character-creation time."
+                >
+                  <input
+                    type="checkbox"
+                    checked={slot.isMirrored}
+                    onChange={() => toggleSlotMirror(slot.primitiveId)}
+                    className="size-3.5"
+                  />
+                  <span>Mirror</span>
+                </label>
                 <button
                   type="button"
                   onClick={() => removeSlot(slot.primitiveId)}

@@ -138,9 +138,27 @@ export async function POST(request: Request) {
     const tags = parseTags(values["tags"]);
     const sourceOrigin = String(values["sourceOrigin"] ?? "").trim() || null;
 
-    const primitiveIds = Array.isArray(values["primitiveIds"])
-      ? (values["primitiveIds"] as unknown[]).map(Number).filter((n) => Number.isInteger(n) && n > 0)
+    // Phase 7 Q-M-UX: accept primitiveSlots ({primitiveId, isMirrored}[]).
+    // Fall back to primitiveIds (number[]) for legacy payloads.
+    const primitiveSlotsInput = Array.isArray(values["primitiveSlots"])
+      ? (values["primitiveSlots"] as unknown[]).map((slotValue) => {
+          const slot = slotValue as Record<string, unknown>;
+          return {
+            primitiveId: Number(slot["primitiveId"] ?? slot["id"]),
+            isMirrored: Boolean(
+              slot["is_mirrored"] ?? slot["isMirrored"] ?? false,
+            ),
+          };
+        })
       : [];
+    const legacyPrimitiveIds = Array.isArray(values["primitiveIds"])
+      ? (values["primitiveIds"] as unknown[])
+          .map(Number)
+          .filter((n) => Number.isInteger(n) && n > 0)
+          .map((id) => ({ primitiveId: id, isMirrored: false }))
+      : [];
+    const primitiveSlots =
+      primitiveSlotsInput.length > 0 ? primitiveSlotsInput : legacyPrimitiveIds;
     const capabilityIds = Array.isArray(values["capabilityIds"])
       ? (values["capabilityIds"] as unknown[]).filter((c) => typeof c === "string")
       : [];
@@ -161,12 +179,13 @@ export async function POST(request: Request) {
     }
 
     // Validate primitives are item-augment
-    let validPrimitiveIds: number[] = [];
-    if (primitiveIds.length > 0) {
+    let validSlots: { primitiveId: number; isMirrored: boolean }[] = [];
+    if (primitiveSlots.length > 0) {
+      const ids = primitiveSlots.map((s) => s.primitiveId);
       const prims = await db
-        .select()
+        .select({ id: primitives.id, category: primitives.category, name: primitives.name })
         .from(primitives)
-        .where(inArray(primitives.id, primitiveIds));
+        .where(inArray(primitives.id, ids));
       const wrong = prims.filter((p) => p.category !== ITEM_PRIMITIVE_CATEGORY);
       if (wrong.length > 0) {
         return NextResponse.json(
@@ -176,7 +195,10 @@ export async function POST(request: Request) {
           { status: 400 },
         );
       }
-      validPrimitiveIds = prims.map((p) => p.id);
+      // Filter input slots against valid primitive IDs (preserving
+      // the per-slot isMirrored flag for downstream persistence).
+      const validIdSet = new Set(prims.map((p) => p.id));
+      validSlots = primitiveSlots.filter((s) => validIdSet.has(s.primitiveId));
     }
 
     const result = await db.transaction(async (tx) => {
@@ -207,12 +229,14 @@ export async function POST(request: Request) {
 
       if (!created) throw new Error("Unable to create item.");
 
-      if (validPrimitiveIds.length > 0) {
+      if (validSlots.length > 0) {
         await tx.insert(itemPrimitives).values(
-          validPrimitiveIds.map((pid, idx) => ({
+          validSlots.map((slot, idx) => ({
             itemId: created.id,
-            primitiveId: pid,
+            primitiveId: slot.primitiveId,
             sortOrder: idx,
+            // Phase 7 Q-M-UX: persist per-slot Mirrored flag.
+            isMirrored: slot.isMirrored,
           })),
         );
       }
@@ -261,7 +285,8 @@ export async function POST(request: Request) {
       actsAsFocus: result.actsAsFocus,
       isPublic: result.isPublic,
       tags: result.tags,
-      primitiveIds: validPrimitiveIds,
+      primitiveIds: validSlots.map((s) => s.primitiveId),
+      primitiveSlots: validSlots,
       capabilityIds,
       effectIds,
     });
@@ -278,7 +303,8 @@ export async function POST(request: Request) {
       actsAsFocus: result.actsAsFocus,
       isPublic: result.isPublic,
       tags: result.tags,
-      primitiveIds: validPrimitiveIds,
+      primitiveIds: validSlots.map((s) => s.primitiveId),
+      primitiveSlots: validSlots,
       capabilityIds,
       effectIds,
     });

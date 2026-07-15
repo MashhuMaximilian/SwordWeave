@@ -114,9 +114,28 @@ export async function POST(request: Request) {
     const description = String(values["description"] ?? "").trim() || null;
     const suggestedTraits = String(values["suggestedTraits"] ?? "").trim() || null;
     const isPublic = Boolean(values["isPublic"]);
-    const primitiveIds = Array.isArray(values["primitiveIds"])
-      ? (values["primitiveIds"] as unknown[]).map(Number).filter((n) => Number.isInteger(n) && n > 0)
+    // Phase 7 Q-M-UX: accept primitiveSlots ({primitiveId, isMirrored}[])
+    // for new clients. Fall back to primitiveIds (number[]) for legacy
+    // payloads — those parse as non-mirrored (the safe default).
+    const primitiveSlotsInput = Array.isArray(values["primitiveSlots"])
+      ? (values["primitiveSlots"] as unknown[]).map((slotValue) => {
+          const slot = slotValue as Record<string, unknown>;
+          return {
+            primitiveId: Number(slot["primitiveId"] ?? slot["id"]),
+            isMirrored: Boolean(
+              slot["is_mirrored"] ?? slot["isMirrored"] ?? false,
+            ),
+          };
+        })
       : [];
+    const legacyPrimitiveIds = Array.isArray(values["primitiveIds"])
+      ? (values["primitiveIds"] as unknown[])
+          .map(Number)
+          .filter((n) => Number.isInteger(n) && n > 0)
+          .map((id) => ({ primitiveId: id, isMirrored: false }))
+      : [];
+    const primitiveSlots =
+      primitiveSlotsInput.length > 0 ? primitiveSlotsInput : legacyPrimitiveIds;
     const capabilityIds = Array.isArray(values["capabilityIds"])
       ? (values["capabilityIds"] as unknown[]).filter((id) => typeof id === "string")
       : [];
@@ -140,14 +159,19 @@ export async function POST(request: Request) {
     // taxonomy is preserved in the primitive `category` column so
     // authors can still search/filter, but it's no longer enforced
     // server-side.
-    let validPrimitiveIds: number[] = [];
-    if (primitiveIds.length > 0) {
+    // Phase 7 Q-M-UX: filter only the primitive IDs against the
+    // canonical primitives table to validate they exist; we keep the
+    // isMirrored flag from the slot input.
+    let validSlots: { primitiveId: number; isMirrored: boolean }[] = [];
+    if (primitiveSlots.length > 0) {
+      const ids = primitiveSlots.map((s) => s.primitiveId);
       const prims = await db
-        .select()
+        .select({ id: primitives.id })
         .from(primitives)
-        .where(inArray(primitives.id, primitiveIds));
+        .where(inArray(primitives.id, ids));
 
-      validPrimitiveIds = prims.map((p) => p.id);
+      const validIdSet = new Set(prims.map((p) => p.id));
+      validSlots = primitiveSlots.filter((s) => validIdSet.has(s.primitiveId));
     }
 
     const result = await db.transaction(async (tx) => {
@@ -171,12 +195,14 @@ export async function POST(request: Request) {
 
       if (!created) throw new Error("Unable to create template.");
 
-      if (validPrimitiveIds.length > 0) {
+      if (validSlots.length > 0) {
         await tx.insert(templatePrimitives).values(
-          validPrimitiveIds.map((pid, idx) => ({
+          validSlots.map((slot, idx) => ({
             templateId: created.id,
-            primitiveId: pid,
+            primitiveId: slot.primitiveId,
             sortOrder: idx,
+            // Phase 7 Q-M-UX: persist per-slot Mirrored flag.
+            isMirrored: slot.isMirrored,
           })),
         );
       }
@@ -210,7 +236,8 @@ export async function POST(request: Request) {
       description: result.description ?? "",
       suggestedTraits: result.suggestedTraits ?? "",
       isPublic: result.isPublic,
-      primitiveIds: validPrimitiveIds,
+      primitiveIds: validSlots.map((s) => s.primitiveId),
+      primitiveSlots: validSlots,
       capabilityIds,
     });
     const contentHash = await computeTemplateContentHash({
@@ -219,7 +246,8 @@ export async function POST(request: Request) {
       description: result.description ?? "",
       suggestedTraits: result.suggestedTraits ?? "",
       isPublic: result.isPublic,
-      primitiveIds: validPrimitiveIds,
+      primitiveIds: validSlots.map((s) => s.primitiveId),
+      primitiveSlots: validSlots,
       capabilityIds,
     });
     await db

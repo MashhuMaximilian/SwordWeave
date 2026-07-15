@@ -33,6 +33,10 @@ type TemplateRow = {
   isPublic: boolean;
   primitiveLinks: Array<{
     primitiveId: number;
+    /**
+     * Phase 7 Q-M-UX: per-slot Mirrored flag from the DB.
+     */
+    isMirrored?: boolean;
     primitive: {
       id: number;
       name: string;
@@ -138,6 +142,15 @@ export function TemplateForm({
     kind: initialTemplate?.kind ?? initialKind ?? "RACE",
   });
   const [primitiveIds, setPrimitiveIds] = useState<number[]>([]);
+  // Phase 7 Q-M-UX: parallel Set tracking which primitive slots are
+  // mirrored. Stored as a Set for O(1) lookup; flattened to primitiveSlots
+  // at payload-time. Templates keep the flat primitiveIds array because
+  // the UI doesn't need to render per-slot rows for slots (slots are
+  // already trivially mirrored-aware via the workspace mirror-canonical
+  // table — the sandbox shows the toggle in the chip list below).
+  const [isMirroredIds, setIsMirroredIds] = useState<Set<number>>(
+    () => new Set<number>(),
+  );
   const [capabilityIds, setCapabilityIds] = useState<string[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<"primitive" | "capability">(
@@ -175,6 +188,14 @@ export function TemplateForm({
     if (draft) {
       setPrimitiveIds(draft.primitiveIds);
       setCapabilityIds(draft.capabilityIds);
+      // Phase 7 Q-M-UX: restore mirrored set from draft if present.
+      // Legacy drafts (pre-mirror-UX) restore an empty set — every slot
+      // defaults to non-mirrored, which is the safe default.
+      setIsMirroredIds(
+        new Set<number>(
+          (draft as { isMirroredIds?: number[] }).isMirroredIds ?? [],
+        ),
+      );
       setIsDirty(true);
       setMessage("Restored your in-progress edits.");
       clearDraft(draftKey);
@@ -182,6 +203,16 @@ export function TemplateForm({
     }
     setPrimitiveIds(initialTemplate.primitiveLinks.map((l) => l.primitiveId));
     setCapabilityIds([]);
+    // Phase 7 Q-M-UX: restore the per-slot Mirrored flags from the
+    // saved row. The DB column was added in migration 0034; legacy
+    // rows simply get an empty set (all slots non-mirrored).
+    setIsMirroredIds(
+      new Set<number>(
+        initialTemplate.primitiveLinks
+          .filter((l) => l.isMirrored)
+          .map((l) => l.primitiveId),
+      ),
+    );
     setIsDirty(false); // pristine after load
     setMessage(
       initialTemplate.userId
@@ -203,6 +234,13 @@ export function TemplateForm({
           effectIds: [],
           capabilityIds,
           notesByIndex: {},
+          // Phase 7 Q-M-UX: persist the mirrored set alongside the
+          // draft so a round-trip restore re-applies the user's
+          // mirror choices. Stored as array for JSON serializability.
+          ...({ isMirroredIds: Array.from(isMirroredIds) } as Record<
+            string,
+            unknown
+          >),
         });
       } else {
         clearDraft(draftKey);
@@ -290,6 +328,25 @@ export function TemplateForm({
     setPrimitiveIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
+    // Phase 7 Q-M-UX: when removing a primitive, drop it from the
+    // mirrored set so it doesn't leak across an add/remove cycle.
+    // When adding it back later, the user re-checks Mirror explicitly.
+    setIsMirroredIds((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }
+
+  function toggleSlotMirror(id: number) {
+    setIsDirty(true);
+    setIsMirroredIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   function toggleCapability(id: string) {
@@ -303,6 +360,7 @@ export function TemplateForm({
     setForm({ ...blankForm, kind: initialKind ?? "RACE" });
     setPrimitiveIds([]);
     setCapabilityIds([]);
+    setIsMirroredIds(new Set<number>());
     setPickerOpen(false);
     setIsDirty(false); // pristine after reset
     setMessage("Started a fresh template.");
@@ -327,6 +385,13 @@ export function TemplateForm({
       suggestedTraits: form.suggestedTraits.trim() || null,
       isPublic: form.isPublic,
       primitiveIds,
+      // Phase 7 Q-M-UX: also send primitiveSlots for clients that support
+      // the new schema. Server accepts either primitiveIds or
+      // primitiveSlots (the latter takes precedence when both are sent).
+      primitiveSlots: primitiveIds.map((id) => ({
+        primitiveId: id,
+        isMirrored: isMirroredIds.has(id),
+      })),
       capabilityIds,
     };
 
@@ -596,6 +661,18 @@ export function TemplateForm({
                 <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 font-mono text-xs">
                   {p.buCost} BU
                 </span>
+                <label
+                  className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs"
+                  title="Phase 7 Q-M-UX: when this slot is mirrored, the consumer pays BU debt at template/character-creation time."
+                >
+                  <input
+                    type="checkbox"
+                    checked={isMirroredIds.has(p.id)}
+                    onChange={() => toggleSlotMirror(p.id)}
+                    className="size-3.5"
+                  />
+                  <span>Mirror</span>
+                </label>
                 <button
                   type="button"
                   onClick={() => togglePrimitive(p.id)}

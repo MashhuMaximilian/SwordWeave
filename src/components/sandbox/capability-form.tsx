@@ -39,6 +39,10 @@ type CapabilityRow = {
     sortOrder: number;
     slotLabel: string | null;
     notes?: string | null;
+    /**
+     * Phase 7 Q-M-UX: per-slot Mirrored flag from the DB.
+     */
+    isMirrored?: boolean;
     primitive: {
       id: number;
       name: string;
@@ -209,6 +213,10 @@ export function CapabilityForm({
           quantity: 1,
           sortOrder: restoredSlots.length,
           slotLabel: prim.name,
+          // Phase 7 Q-M-UX: default to false on draft restore. The
+          // workshop composer (template-composer) is the canonical
+          // place to flag mirrors; sandbox drafts default to off.
+          isMirrored: false,
           primitive: prim,
         });
       }
@@ -223,6 +231,8 @@ export function CapabilityForm({
         sortOrder: link.sortOrder,
         slotLabel: link.slotLabel ?? link.primitive.name,
         notes: link.notes ?? undefined,
+        // Phase 7 Q-M-UX: read per-slot Mirrored flag from the link.
+        isMirrored: link.isMirrored ?? false,
         primitive: link.primitive,
       })),
     );
@@ -321,6 +331,8 @@ export function CapabilityForm({
         quantity: 1,
         sortOrder: prev.length,
         slotLabel: primitive.name,
+        // Phase 7 Q-M-UX: per-slot Mirrored flag.
+        isMirrored: false,
         primitive,
       },
     ]);
@@ -329,6 +341,13 @@ export function CapabilityForm({
   function removeSlot(index: number) {
     setIsDirty(true);
     setSlots((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function toggleSlotMirror(index: number) {
+    setIsDirty(true);
+    setSlots((prev) =>
+      prev.map((s, i) => (i === index ? { ...s, isMirrored: !s.isMirrored } : s)),
+    );
   }
 
   function updateSlotRole(index: number, role: string) {
@@ -394,6 +413,8 @@ export function CapabilityForm({
         sortOrder: s.sortOrder,
         slotLabel: s.slotLabel,
         notes: s.notes ?? "",
+        // Phase 7 Q-M-UX: per-slot Mirrored flag.
+        isMirrored: s.isMirrored,
       })),
       effectSlots: effectIds.map((id, idx) => ({
         effectId: id,
@@ -686,6 +707,18 @@ export function CapabilityForm({
                 <span className="font-mono text-xs text-muted-foreground">
                   {Math.abs(slot.primitive.buCost * slot.quantity)} BU
                 </span>
+                <label
+                  className="flex cursor-pointer items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs"
+                  title="Phase 7 Q-M-UX: when this slot is mirrored, the consumer pays BU debt at template/character-creation time."
+                >
+                  <input
+                    type="checkbox"
+                    checked={slot.isMirrored}
+                    onChange={() => toggleSlotMirror(idx)}
+                    className="size-3.5"
+                  />
+                  <span>Mirror</span>
+                </label>
                 <button
                   type="button"
                   onClick={() => removeSlot(idx)}

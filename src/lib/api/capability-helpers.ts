@@ -27,6 +27,12 @@ export interface ParsedCapabilityPrimitiveSlot {
   sortOrder: number;
   slotLabel: string | null;
   notes: string | null;
+  /**
+   * Phase 7 Q-M-UX: per-slot Mirrored flag. Defaults to false so
+   * existing payloads without the field continue to parse as
+   * "not mirrored" (safe backfill behavior).
+   */
+  isMirrored: boolean;
 }
 
 export type CapabilityType = "ACTIVE" | "PASSIVE" | "AUGMENT";
@@ -118,6 +124,9 @@ export function parsePrimitiveSlots(value: unknown): ParsedCapabilityPrimitiveSl
       sortOrder: Number(slot["sortOrder"] ?? index),
       slotLabel: slot["slotLabel"] ? String(slot["slotLabel"]) : null,
       notes: slot["notes"] ? String(slot["notes"]) : null,
+      // Phase 7 Q-M-UX: accept is_mirrored (snake_case from API) and
+      // isMirrored (camelCase from forms). Default false for backfill.
+      isMirrored: Boolean(slot["is_mirrored"] ?? slot["isMirrored"] ?? false),
     };
   });
 }

@@ -181,11 +181,28 @@ export async function PATCH(
       ? Boolean(values["isPublic"])
       : current.isPublic;
 
-    const primitiveIds = Array.isArray(values["primitiveIds"])
+    // Phase 7 Q-M-UX: accept primitiveSlots ({primitiveId, isMirrored}[])
+    // for new clients. Fall back to primitiveIds (number[]) for legacy
+    // payloads — those parse as non-mirrored (safe default).
+    const primitiveSlotsInput = Array.isArray(values["primitiveSlots"])
+      ? (values["primitiveSlots"] as unknown[]).map((slotValue) => {
+          const slot = slotValue as Record<string, unknown>;
+          return {
+            primitiveId: Number(slot["primitiveId"] ?? slot["id"]),
+            isMirrored: Boolean(
+              slot["is_mirrored"] ?? slot["isMirrored"] ?? false,
+            ),
+          };
+        })
+      : [];
+    const legacyPrimitiveIds = Array.isArray(values["primitiveIds"])
       ? (values["primitiveIds"] as unknown[])
           .map(Number)
           .filter((n) => Number.isInteger(n) && n > 0)
+          .map((id) => ({ primitiveId: id, isMirrored: false }))
       : [];
+    const primitiveSlots =
+      primitiveSlotsInput.length > 0 ? primitiveSlotsInput : legacyPrimitiveIds;
     const capabilityIds = Array.isArray(values["capabilityIds"])
       ? (values["capabilityIds"] as unknown[]).filter(
           (c) => typeof c === "string",
@@ -208,7 +225,8 @@ export async function PATCH(
       description: description ?? "",
       suggestedTraits: suggestedTraits ?? "",
       isPublic,
-      primitiveIds,
+      primitiveIds: primitiveSlots.map((s) => s.primitiveId),
+      primitiveSlots,
       capabilityIds: capabilityIds as string[],
       // Phase 8: per-entity iconography
       iconSource: pickIconSource(values["iconSource"]),
@@ -223,7 +241,8 @@ export async function PATCH(
       description: description ?? "",
       suggestedTraits: suggestedTraits ?? "",
       isPublic,
-      primitiveIds,
+      primitiveIds: primitiveSlots.map((s) => s.primitiveId),
+      primitiveSlots,
       capabilityIds: capabilityIds as string[],
       // Phase 8: per-entity iconography
       iconSource: pickIconSource(values["iconSource"]),
@@ -292,20 +311,30 @@ export async function PATCH(
         // can slot any primitive. The previous HERITAGE_AUGMENT
         // filter is gone; designers decide what makes sense for the
         // race/background/archetype they're composing.
-        if ("primitiveIds" in values && primitiveIds.length > 0) {
+        if (
+          ("primitiveSlots" in values || "primitiveIds" in values) &&
+          primitiveSlots.length > 0
+        ) {
+          const ids = primitiveSlots.map((s) => s.primitiveId);
           const prims = await tx
-            .select()
+            .select({ id: primitives.id })
             .from(primitives)
-            .where(inArray(primitives.id, primitiveIds));
+            .where(inArray(primitives.id, ids));
+          const validIdSet = new Set(prims.map((p) => p.id));
+          const validSlots = primitiveSlots.filter((s) =>
+            validIdSet.has(s.primitiveId),
+          );
 
           await tx
             .delete(templatePrimitives)
             .where(eq(templatePrimitives.templateId, id));
           await tx.insert(templatePrimitives).values(
-            prims.map((p, idx) => ({
+            validSlots.map((slot, idx) => ({
               templateId: id,
-              primitiveId: p.id,
+              primitiveId: slot.primitiveId,
               sortOrder: idx,
+              // Phase 7 Q-M-UX: persist per-slot Mirrored flag.
+              isMirrored: slot.isMirrored,
             })),
           );
         }
@@ -398,17 +427,24 @@ export async function PATCH(
 
       // Validate + insert primitive slots.
       // Mashu 2026-07-09: category restriction removed.
-      if (primitiveIds.length > 0) {
+      if (primitiveSlots.length > 0) {
+        const ids = primitiveSlots.map((s) => s.primitiveId);
         const prims = await tx
-          .select()
+          .select({ id: primitives.id })
           .from(primitives)
-          .where(inArray(primitives.id, primitiveIds));
+          .where(inArray(primitives.id, ids));
+        const validIdSet = new Set(prims.map((p) => p.id));
+        const validSlots = primitiveSlots.filter((s) =>
+          validIdSet.has(s.primitiveId),
+        );
 
         await tx.insert(templatePrimitives).values(
-          prims.map((p, idx) => ({
+          validSlots.map((slot, idx) => ({
             templateId: inserted.id,
-            primitiveId: p.id,
+            primitiveId: slot.primitiveId,
             sortOrder: idx,
+            // Phase 7 Q-M-UX: persist per-slot Mirrored flag.
+            isMirrored: slot.isMirrored,
           })),
         );
       }

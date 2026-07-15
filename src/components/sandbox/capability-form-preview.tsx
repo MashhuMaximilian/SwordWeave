@@ -31,6 +31,12 @@ export type CapabilitySlot = {
    * as the source's stored hash. Same pattern as EffectFormSlot.
    */
   notes?: string | undefined;
+  /**
+   * Phase 7 Q-M-UX: per-slot Mirrored flag. Drives the BU debt at
+   * template/character-creation time but does NOT change the capability's
+   * own BU cost.
+   */
+  isMirrored: boolean;
   primitive: {
     id: number;
     name: string;

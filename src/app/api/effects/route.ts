@@ -14,6 +14,12 @@ type PrimitiveSlotInput = {
   primitiveId: number;
   quantity: number;
   notes?: string | undefined;
+  /**
+   * Phase 7 Q-M-UX: per-slot Mirrored flag. Defaults to false so
+   * existing payloads without the field continue to parse as
+   * "not mirrored" (safe backfill behavior).
+   */
+  isMirrored: boolean;
 };
 
 function parseTags(value: unknown) {
@@ -57,6 +63,9 @@ function parsePrimitiveSlots(value: unknown): PrimitiveSlotInput[] {
       primitiveId,
       quantity,
       notes: String(slot["notes"] ?? "").trim() || undefined,
+      // Phase 7 Q-M-UX: accept is_mirrored or isMirrored from payload,
+      // default false for backfill safety.
+      isMirrored: Boolean(slot["is_mirrored"] ?? slot["isMirrored"] ?? false),
     };
   });
 
@@ -69,6 +78,10 @@ function parsePrimitiveSlots(value: unknown): PrimitiveSlotInput[] {
       mergedSlots.set(slot.primitiveId, {
         ...existing,
         quantity: existing.quantity + slot.quantity,
+        // Phase 7 Q-M-UX: when merging duplicate slots, the merged
+        // slot is mirrored if EITHER source slot was mirrored. This
+        // matches how quantity is OR'd.
+        isMirrored: existing.isMirrored || slot.isMirrored,
       });
     } else {
       mergedSlots.set(slot.primitiveId, slot);
@@ -206,6 +219,8 @@ export async function POST(request: Request) {
         quantity: slot.quantity,
         sortOrder: index,
         notes: slot.notes,
+        // Phase 7 Q-M-UX: persist per-slot Mirrored flag.
+        isMirrored: slot.isMirrored,
       })),
     );
 

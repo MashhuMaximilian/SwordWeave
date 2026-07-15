@@ -176,6 +176,29 @@ describe("parsePrimitiveSlots", () => {
       parsePrimitiveSlots([{ primitiveId: 1, role: "VERB", quantity: 0 }]),
     ).toThrow("quantity must be a positive integer.");
   });
+
+  // Phase 7 Q-M-UX: per-slot Mirrored flag — defaults to false for
+  // legacy payloads (backfill safety).
+  it("defaults isMirrored to false when not present", () => {
+    const result = parsePrimitiveSlots([
+      { primitiveId: 1, role: "VERB" },
+    ]);
+    expect(result[0]?.isMirrored).toBe(false);
+  });
+
+  it("accepts is_mirrored (snake_case)", () => {
+    const result = parsePrimitiveSlots([
+      { primitiveId: 1, role: "VERB", is_mirrored: true },
+    ]);
+    expect(result[0]?.isMirrored).toBe(true);
+  });
+
+  it("accepts isMirrored (camelCase)", () => {
+    const result = parsePrimitiveSlots([
+      { primitiveId: 1, role: "VERB", isMirrored: true },
+    ]);
+    expect(result[0]?.isMirrored).toBe(true);
+  });
 });
 
 describe("safeMetadata", () => {

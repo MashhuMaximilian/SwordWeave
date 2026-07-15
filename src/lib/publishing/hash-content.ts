@@ -428,7 +428,13 @@ export interface CanonicalItemPayload {
   actsAsFocus: boolean;
   isPublic: boolean;
   tags: readonly string[];
+  /**
+   * Phase 7 Q-M-UX: primitiveIds is now derived from primitiveSlots
+   * (kept for backwards compat). primitiveSlots is the source of truth
+   * for the per-slot Mirrored flag.
+   */
   primitiveIds: readonly number[];
+  primitiveSlots: readonly { primitiveId: number; isMirrored: boolean }[];
   capabilityIds: readonly string[];
   effectIds: readonly string[];
   // Phase 8: per-entity iconography (see CanonicalPrimitivePayload).
@@ -452,6 +458,7 @@ export function buildCanonicalItemPayload(args: {
   isPublic: boolean;
   tags: readonly string[];
   primitiveIds: readonly number[];
+  primitiveSlots?: readonly { primitiveId: number; isMirrored: boolean }[];
   capabilityIds: readonly string[];
   effectIds: readonly string[];
   iconSource?: string | null;
@@ -459,6 +466,15 @@ export function buildCanonicalItemPayload(args: {
   iconUrl?: string | null;
   iconColor?: string;
 }): CanonicalItemPayload {
+  const slots =
+    args.primitiveSlots ??
+    (args.primitiveIds.length > 0
+      ? args.primitiveIds.map((id) => ({ primitiveId: id, isMirrored: false }))
+      : EMPTY_SLOTS);
+  const sortedSlots = [...slots].sort((a, b) => {
+    if (a.primitiveId !== b.primitiveId) return a.primitiveId - b.primitiveId;
+    return Number(b.isMirrored) - Number(a.isMirrored);
+  });
   return {
     name: args.name.trim(),
     itemType: args.itemType,
@@ -472,7 +488,8 @@ export function buildCanonicalItemPayload(args: {
     actsAsFocus: Boolean(args.actsAsFocus),
     isPublic: Boolean(args.isPublic),
     tags: [...args.tags].map((t) => t.trim()).filter(Boolean).sort(),
-    primitiveIds: [...args.primitiveIds].sort((a, b) => a - b),
+    primitiveIds: sortedSlots.map((s) => s.primitiveId),
+    primitiveSlots: sortedSlots,
     capabilityIds: [...args.capabilityIds].sort(),
     effectIds: [...args.effectIds].sort(),
     iconSource: args.iconSource ?? null,
@@ -507,6 +524,7 @@ export async function computeItemContentHash(args: {
   isPublic: boolean;
   tags: readonly string[];
   primitiveIds: readonly number[];
+  primitiveSlots?: readonly { primitiveId: number; isMirrored: boolean }[];
   capabilityIds: readonly string[];
   effectIds: readonly string[];
   iconSource?: string | null;
@@ -527,7 +545,13 @@ export interface CanonicalTemplatePayload {
   description: string;
   suggestedTraits: string;
   isPublic: boolean;
+  /**
+   * Phase 7 Q-M-UX: per-slot Mirrored flag. The sorted primitiveIds
+   * are derivable from this — kept for backwards compatibility with
+   * any consumer that reads the canonical payload.
+   */
   primitiveIds: readonly number[];
+  primitiveSlots: readonly { primitiveId: number; isMirrored: boolean }[];
   capabilityIds: readonly string[];
   // Phase 8: per-entity iconography (see CanonicalPrimitivePayload).
   iconSource: string | null;
@@ -536,6 +560,11 @@ export interface CanonicalTemplatePayload {
   iconColor: string;
 }
 
+/**
+ * Default empty slot array — used when only primitiveIds is provided.
+ */
+const EMPTY_SLOTS: readonly { primitiveId: number; isMirrored: boolean }[] = [];
+
 export function buildCanonicalTemplatePayload(args: {
   kind: string;
   name: string;
@@ -543,19 +572,37 @@ export function buildCanonicalTemplatePayload(args: {
   suggestedTraits: string;
   isPublic: boolean;
   primitiveIds: readonly number[];
+  /**
+   * Phase 7 Q-M-UX: optional slot input. If provided, the canonical
+   * payload uses it directly. If absent, we synthesize non-mirrored
+   * slots from primitiveIds (the legacy path).
+   */
+  primitiveSlots?: readonly { primitiveId: number; isMirrored: boolean }[];
   capabilityIds: readonly string[];
   iconSource?: string | null;
   iconKey?: string | null;
   iconUrl?: string | null;
   iconColor?: string;
 }): CanonicalTemplatePayload {
+  const slots =
+    args.primitiveSlots ??
+    (args.primitiveIds.length > 0
+      ? args.primitiveIds.map((id) => ({ primitiveId: id, isMirrored: false }))
+      : EMPTY_SLOTS);
+  // Sort slots by primitiveId for hash stability. Sort mirror flag too
+  // (true > false) so the canonical representation is deterministic.
+  const sortedSlots = [...slots].sort((a, b) => {
+    if (a.primitiveId !== b.primitiveId) return a.primitiveId - b.primitiveId;
+    return Number(b.isMirrored) - Number(a.isMirrored);
+  });
   return {
     kind: args.kind,
     name: args.name.trim(),
     description: args.description.trim(),
     suggestedTraits: args.suggestedTraits.trim(),
     isPublic: Boolean(args.isPublic),
-    primitiveIds: [...args.primitiveIds].sort((a, b) => a - b),
+    primitiveIds: sortedSlots.map((s) => s.primitiveId),
+    primitiveSlots: sortedSlots,
     capabilityIds: [...args.capabilityIds].sort(),
     iconSource: args.iconSource ?? null,
     iconKey: args.iconKey ?? null,
@@ -582,6 +629,7 @@ export async function computeTemplateContentHash(args: {
   suggestedTraits: string;
   isPublic: boolean;
   primitiveIds: readonly number[];
+  primitiveSlots?: readonly { primitiveId: number; isMirrored: boolean }[];
   capabilityIds: readonly string[];
   iconSource?: string | null;
   iconKey?: string | null;
