@@ -218,6 +218,13 @@
       "when": 1784700000000,
       "tag": "0033_phase7_mirror_one_modifier",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1784117665740,
+      "tag": "0034_phase7_slot_is_mirrored",
+      "breakpoints": true
     }
   ]
 }

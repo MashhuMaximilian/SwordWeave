@@ -202,6 +202,9 @@ export const effectPrimitives = pgTable(
     quantity: integer("quantity").notNull().default(1),
     sortOrder: integer("sort_order").notNull().default(0),
     notes: text("notes"),
+    // Phase 7 Q-M-UX: per-slot Mirrored flag. Defaults to false so
+    // existing rows remain "not mirrored" (the safe initial state).
+    isMirrored: boolean("is_mirrored").notNull().default(false),
     ...timestamps,
   },
   (table) => [
@@ -296,6 +299,9 @@ export const capabilityPrimitives = pgTable(
     sortOrder: integer("sort_order").notNull().default(0),
     slotLabel: text("slot_label"),
     notes: text("notes"),
+    // Phase 7 Q-M-UX: per-slot Mirrored flag. Same rationale as
+    // effect_primitives.is_mirrored above.
+    isMirrored: boolean("is_mirrored").notNull().default(false),
     ...timestamps,
   },
   (table) => [

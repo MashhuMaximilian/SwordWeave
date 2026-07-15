@@ -155,6 +155,8 @@ export const itemPrimitives = pgTable(
       .notNull()
       .references(() => primitives.id, { onDelete: "restrict" }),
     sortOrder: integer("sort_order").notNull().default(0),
+    // Phase 7 Q-M-UX: per-slot Mirrored flag.
+    isMirrored: boolean("is_mirrored").notNull().default(false),
     ...timestamps,
   },
   (table) => [
