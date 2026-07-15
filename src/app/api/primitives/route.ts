@@ -162,7 +162,9 @@ function buildPrimitiveValues(args: {
     narrativeRule,
     isMirrorable,
     mirrorVector: isMirrorable ? mirrorVector || "VARIABLE_VECTOR" : "STANDARD_ONLY",
-    mirrorBuCredit: isMirrorable ? mirrorBuCredit : 0,
+    // Server-side enforcement: auto-derive mirror_bu_credit = bu_cost when is_mirrorable=true,
+    // regardless of what the client sent. This ensures DB consistency even if client is bypassed.
+    mirrorBuCredit: isMirrorable ? buCost : 0,
     mirrorEligibilityNotes,
     hardModifiers,
     sourceOrigin,
@@ -507,7 +509,8 @@ export async function POST(request: Request) {
           mirrorVector: isMirrorable
             ? mirrorVector || "VARIABLE_VECTOR"
             : "STANDARD_ONLY",
-          mirrorBuCredit: isMirrorable ? mirrorBuCredit : 0,
+          // Server-side enforcement: auto-derive mirror_bu_credit = bu_cost when is_mirrorable=true
+          mirrorBuCredit: isMirrorable ? buCost : 0,
           mirrorEligibilityNotes,
           hardModifiers,
           contentHash: serverDraftHash,

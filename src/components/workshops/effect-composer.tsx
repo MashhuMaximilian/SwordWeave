@@ -32,6 +32,7 @@ type EffectRow = {
 type SelectedPrimitive = {
   primitiveId: number;
   quantity: number;
+  is_mirrored?: boolean;
 };
 
 function categoryLabel(category: string) {
@@ -125,7 +126,7 @@ export function EffectComposer({
         );
       }
 
-      return [...current, { primitiveId, quantity: 1 }];
+      return [...current, { primitiveId, quantity: 1, is_mirrored: false }];
     });
   }
 
@@ -135,6 +136,14 @@ export function EffectComposer({
         slot.primitiveId === primitiveId
           ? { ...slot, quantity: Math.max(1, quantity) }
           : slot,
+      ),
+    );
+  }
+
+  function updateMirror(primitiveId: number, is_mirrored: boolean) {
+    setSelectedPrimitives((current) =>
+      current.map((slot) =>
+        slot.primitiveId === primitiveId ? { ...slot, is_mirrored } : slot,
       ),
     );
   }
@@ -382,15 +391,33 @@ export function EffectComposer({
                 <div className="mt-3 space-y-2">
                   {selectedPrimitiveRows.map((slot) => (
                     <div
-                      className="grid gap-3 rounded-md border border-border bg-card p-3 sm:grid-cols-[1fr_96px_auto] sm:items-center"
+                      className="grid gap-3 rounded-md border border-border bg-card p-3 sm:grid-cols-[1fr_auto_96px_auto] sm:items-center"
                       key={slot.primitiveId}
                     >
                       <div>
-                        <p className="text-sm font-bold">{slot.primitive.name}</p>
+                        <p className="text-sm font-bold">
+                          {slot.primitive.name}
+                          {slot.is_mirrored && (
+                            <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">
+                              (mirrored: behavioral flip at use time)
+                            </span>
+                          )}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {slot.primitive.buCost} BU each
                         </p>
                       </div>
+                      <label className="flex items-center gap-1 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={slot.is_mirrored ?? false}
+                          onChange={(e) =>
+                            updateMirror(slot.primitiveId, e.target.checked)
+                          }
+                          className="size-3"
+                        />
+                        Mirrored
+                      </label>
                       <input
                         className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
                         min={1}

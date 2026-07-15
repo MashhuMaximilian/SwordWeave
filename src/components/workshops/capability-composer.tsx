@@ -43,6 +43,7 @@ type CapabilityPrimitiveLink = {
   quantity: number;
   sortOrder: number;
   slotLabel: string | null;
+  is_mirrored?: boolean;
   primitive: PrimitiveRow;
 };
 
@@ -70,6 +71,7 @@ type PrimitiveSlot = {
   quantity: number;
   sortOrder: number;
   slotLabel: string | null;
+  is_mirrored?: boolean;
 };
 
 // Categories that map to specific slots
@@ -147,6 +149,7 @@ export function CapabilityComposer({
         quantity: link.quantity,
         sortOrder: link.sortOrder,
         slotLabel: link.slotLabel ?? link.primitive.name,
+        is_mirrored: link.is_mirrored ?? false,
       }))
     : [];
 
@@ -230,6 +233,7 @@ export function CapabilityComposer({
         quantity: 1,
         sortOrder: prev.length,
         slotLabel: primitive.name,
+        is_mirrored: false,
       },
     ]);
   }
@@ -252,6 +256,12 @@ export function CapabilityComposer({
     );
   }
 
+  function updateSlotMirror(index: number, is_mirrored: boolean) {
+    setSelectedSlots((prev) =>
+      prev.map((slot, i) => (i === index ? { ...slot, is_mirrored } : slot)),
+    );
+  }
+
   function resetForm() {
     if (isEditMode && editingCapability) {
       // Reset to the original edit-mode state
@@ -262,6 +272,7 @@ export function CapabilityComposer({
           quantity: link.quantity,
           sortOrder: link.sortOrder,
           slotLabel: link.slotLabel ?? link.primitive.name,
+          is_mirrored: link.is_mirrored ?? false,
         }),
       );
       setSelectedSlots(resetSlots);
@@ -701,7 +712,23 @@ export function CapabilityComposer({
                       >
                         <span className="flex-1 truncate text-sm font-medium">
                           {primitive.name}
+                          {slot.is_mirrored && (
+                            <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">
+                              (mirrored: behavioral flip at use time)
+                            </span>
+                          )}
                         </span>
+                        <label className="flex items-center gap-1 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={slot.is_mirrored ?? false}
+                            onChange={(e) =>
+                              updateSlotMirror(idx, e.target.checked)
+                            }
+                            className="size-3"
+                          />
+                          Mirrored
+                        </label>
                         <select
                           value={slot.role}
                           onChange={(e) =>

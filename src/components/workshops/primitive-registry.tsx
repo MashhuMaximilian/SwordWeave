@@ -8,6 +8,7 @@ import type {
   ModifierOperation,
   ModifierStackingMode,
 } from "@/types/swordweave";
+import { resolveMirrorEffect } from "@/lib/engine/mirror";
 import {
   MODIFIER_TARGETS,
   MODIFIER_TARGET_SPEC,
@@ -267,6 +268,43 @@ function stringifyModifierValue(value: JsonValue | undefined) {
   return "";
 }
 
+/**
+ * Render the mirrored form of a modifier for the preview pane.
+ * Wraps the engine's resolveMirrorEffect result with a ModifierDraft-
+ * shaped clone so the JSON.stringify output is human-readable.
+ */
+function renderMirrorPreview(vector: string, modifier: ModifierDraft): {
+  kind: "modify";
+  target: string;
+  operation: ModifierDraft["operation"];
+  value: JsonValue;
+  metadata?: Record<string, JsonValue>;
+} {
+  const mod: HardModifier = {
+    kind: "modify",
+    target: modifier.target,
+    operation: modifier.operation,
+    value: modifier.value,
+  };
+  const resolution = resolveMirrorEffect(vector, true, modifier.value);
+  return {
+    kind: "modify",
+    target: modifier.target,
+    operation: modifier.operation,
+    value: resolution.targetValue as JsonValue,
+    ...(modifier.conditionKey
+      ? {
+          metadata: {
+            mirror: {
+              vector,
+              userCost: resolution.userCost?.kind ?? null,
+            },
+          },
+        }
+      : {}),
+  };
+}
+
 function valueKindFromValue(value: JsonValue | undefined): ModifierDraft["valueKind"] {
   if (typeof value === "boolean") {
     return "boolean";
@@ -380,8 +418,12 @@ export function PrimitiveRegistry({
           mechanicalOutputText: form.mechanicalOutputText,
           narrativeRule: form.narrativeRule,
           isMirrorable: form.isMirrorable,
+          // Auto-derived: mirror_bu_credit always equals buCost when
+          // the primitive is mirrorable. Phase-7-Q-M canonical rule.
           mirrorVector: form.isMirrorable ? form.mirrorVector : "STANDARD_ONLY",
-          mirrorBuCredit: form.isMirrorable ? Number(form.mirrorBuCredit) || 0 : 0,
+          mirrorBuCredit: form.isMirrorable
+            ? Number(form.buCost) || 0
+            : 0,
           mirrorEligibilityNotes: form.mirrorEligibilityNotes,
           hardModifiers,
         },
@@ -908,61 +950,38 @@ export function PrimitiveRegistry({
               <div className="md:col-span-2">
                 <legend className="text-sm font-semibold">Mirror Vector</legend>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Mark whether this primitive can be inverted into a real
-                  drawback for BU credit.
+                  Mirror eligibility, vector type, and BU credit are
+                  auto-derived from the canonical taxonomy. Authors
+                  attach optional flavor notes for the mirrored form.
                 </p>
               </div>
 
-              <label className="flex items-start gap-3 rounded-md border border-border bg-card p-3 text-sm font-medium md:col-span-2">
-                <input
-                  checked={form.isMirrorable}
-                  className="mt-1 size-4"
-                  onChange={(event) =>
-                    updateForm("isMirrorable", event.target.checked)
-                  }
-                  type="checkbox"
-                />
-                <span>
-                  Mirrorable
-                  <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                    Valid only when the inverted primitive creates real campaign
-                    friction the DM can expose.
-                  </span>
-                </span>
-              </label>
-
-              <label className="block text-sm font-medium">
-                Mirror Vector Type
-                <select
-                  className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2 disabled:opacity-60"
-                  disabled={!form.isMirrorable}
-                  value={form.mirrorVector}
-                  onChange={(event) =>
-                    updateForm("mirrorVector", event.target.value)
-                  }
-                >
-                  {mirrorVectors.map((vector) => (
-                    <option key={vector.value} value={vector.value}>
-                      {vector.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block text-sm font-medium">
-                Mirror BU Credit
-                <input
-                  className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2 disabled:opacity-60"
-                  disabled={!form.isMirrorable}
-                  min={0}
-                  onChange={(event) =>
-                    updateForm("mirrorBuCredit", event.target.value)
-                  }
-                  step={1}
-                  type="number"
-                  value={form.mirrorBuCredit}
-                />
-              </label>
+              <div className="md:col-span-2 grid gap-3 md:grid-cols-3">
+                <div className="rounded-md border border-border bg-card p-3 text-sm">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Mirrorable
+                  </div>
+                  <div className="mt-1 font-semibold">
+                    {form.isMirrorable ? "Yes" : "No"}
+                  </div>
+                </div>
+                <div className="rounded-md border border-border bg-card p-3 text-sm">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Mirror Vector
+                  </div>
+                  <div className="mt-1 font-mono text-xs">
+                    {form.isMirrorable ? form.mirrorVector : "STANDARD_ONLY"}
+                  </div>
+                </div>
+                <div className="rounded-md border border-border bg-card p-3 text-sm">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Mirror BU Credit
+                  </div>
+                  <div className="mt-1 font-semibold">
+                    {form.isMirrorable ? form.buCost : 0}
+                  </div>
+                </div>
+              </div>
 
               <label className="block text-sm font-medium md:col-span-2">
                 Mirror Exposure Notes
@@ -972,10 +991,39 @@ export function PrimitiveRegistry({
                   onChange={(event) =>
                     updateForm("mirrorEligibilityNotes", event.target.value)
                   }
-                  placeholder="Explain the downside and how a DM can expose it in play."
+                  placeholder="Explain the downside and how a DM can expose it in play. Auto-render of the mirrored modifier is shown in the preview below; this field is for narrative flavor."
                   value={form.mirrorEligibilityNotes}
                 />
               </label>
+
+              {form.isMirrorable && modifiers[0] ? (
+                <div className="md:col-span-2 rounded-md border border-border bg-card p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Mirror Form Preview (auto-rendered)
+                  </div>
+                  <div className="mt-2 grid gap-2 md:grid-cols-2">
+                    <div className="rounded-md border border-border bg-background p-2">
+                      <div className="text-xs font-semibold">Standard</div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {JSON.stringify(toHardModifier(modifiers[0]))}
+                      </div>
+                    </div>
+                    <div className="rounded-md border border-border bg-background p-2">
+                      <div className="text-xs font-semibold">
+                        Mirrored ({form.mirrorVector})
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {JSON.stringify(
+                          renderMirrorPreview(
+                            form.mirrorVector,
+                            modifiers[0],
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </fieldset>
 
             <fieldset className="space-y-3 rounded-md border border-border bg-background p-4 md:col-span-2">
@@ -987,11 +1035,18 @@ export function PrimitiveRegistry({
                   </p>
                 </div>
                 <button
-                  className="h-9 rounded-md border border-border px-3 text-sm font-medium"
+                  aria-disabled={modifiers.length >= 1}
+                  className="h-9 rounded-md border border-border px-3 text-sm font-medium disabled:opacity-50"
+                  disabled={modifiers.length >= 1}
                   onClick={addModifier}
+                  title={
+                    modifiers.length >= 1
+                      ? "A primitive houses exactly one mechanical payload. (Phase-7 atomic rule.)"
+                      : "Add a modifier to this primitive"
+                  }
                   type="button"
                 >
-                  Add Modifier
+                  {modifiers.length >= 1 ? "Modifier Set" : "Add Modifier"}
                 </button>
               </div>
 

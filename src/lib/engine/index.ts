@@ -10,6 +10,8 @@ export * from "./encumbrance";
 export * from "./sheet";
 // Phase-7-Q-M: mirror-vector resolution runtime.
 export * from "./mirror";
+// Phase-7-Q-M: mirror-debt expansion (character creation / template).
+export * from "./bu-debt";
 
 // Practices — explicit imports to avoid clashes with stats.
 // We choose the PRACTICES versions for these (newer, more complete):

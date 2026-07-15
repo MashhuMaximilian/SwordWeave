@@ -33,6 +33,7 @@ type CapabilityRow = {
 
 type TemplatePrimitiveLink = {
   primitiveId: number;
+  is_mirrored?: boolean;
   primitive: PrimitiveRow;
 };
 
@@ -93,11 +94,16 @@ export function TemplateComposer({
   const [kind, setKind] = useState<TemplateKind>(initialKind);
   const allowedCategory = expectedCategory(kind);
 
-  const initialPrimitiveIds = editingTemplate
-    ? editingTemplate.primitiveLinks.map((l) => l.primitiveId)
+  // Track primitives with their mirrored state
+  type SelectedPrimitive = { id: number; is_mirrored: boolean };
+  const initialSelectedPrimitives: SelectedPrimitive[] = editingTemplate
+    ? editingTemplate.primitiveLinks.map((l) => ({
+        id: l.primitiveId,
+        is_mirrored: l.is_mirrored ?? false,
+      }))
     : [];
-  const [selectedPrimitiveIds, setSelectedPrimitiveIds] =
-    useState<number[]>(initialPrimitiveIds);
+  const [selectedPrimitives, setSelectedPrimitives] =
+    useState<SelectedPrimitive[]>(initialSelectedPrimitives);
   const [selectedCapabilityIds, setSelectedCapabilityIds] = useState<string[]>(
     [],
   );
@@ -138,16 +144,30 @@ export function TemplateComposer({
 
   const computedBu = useMemo(
     () =>
-      selectedPrimitiveIds.reduce((total, id) => {
-        const primitive = primitives.find((p) => p.id === id);
-        return total + (primitive?.buCost ?? 0);
+      selectedPrimitives.reduce((total, sel) => {
+        const primitive = primitives.find((p) => p.id === sel.id);
+        // At template level, mirrored adds BU (debt expansion)
+        const mirroredMultiplier = sel.is_mirrored ? 2 : 1;
+        return total + (primitive?.buCost ?? 0) * mirroredMultiplier;
       }, 0),
-    [selectedPrimitiveIds, primitives],
+    [selectedPrimitives, primitives],
   );
 
   function togglePrimitive(id: number) {
-    setSelectedPrimitiveIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    setSelectedPrimitives((prev) => {
+      const existing = prev.find((p) => p.id === id);
+      if (existing) {
+        return prev.filter((p) => p.id !== id);
+      }
+      return [...prev, { id, is_mirrored: false }];
+    });
+  }
+
+  function togglePrimitiveMirror(id: number) {
+    setSelectedPrimitives((prev) =>
+      prev.map((p) =>
+        p.id === id ? { ...p, is_mirrored: !p.is_mirrored } : p,
+      ),
     );
   }
 
@@ -158,7 +178,7 @@ export function TemplateComposer({
   }
 
   function resetForm() {
-    setSelectedPrimitiveIds([]);
+    setSelectedPrimitives([]);
     setSelectedCapabilityIds([]);
     setForm({
       name: "",
@@ -195,7 +215,7 @@ export function TemplateComposer({
             description: form.description.trim() || null,
             suggestedTraits: form.suggestedTraits.trim() || null,
             isPublic: form.isPublic,
-            primitiveIds: selectedPrimitiveIds,
+            primitiveSlots: selectedPrimitives,
             capabilityIds: selectedCapabilityIds,
           }),
         });
@@ -277,7 +297,7 @@ export function TemplateComposer({
                 Primitives
               </span>
               <span className="rounded-full bg-secondary px-3 py-1 text-sm font-medium">
-                {selectedPrimitiveIds.length}
+                {selectedPrimitives.length}
               </span>
             </div>
             <div className="hidden items-center gap-2 sm:flex">
@@ -401,7 +421,7 @@ export function TemplateComposer({
                 {kindSingular(kind)} Primitives
               </h2>
               <span className="text-xs text-muted-foreground">
-                {selectedPrimitiveIds.length} of {filteredPrimitives.length}{" "}
+                {selectedPrimitives.length} of {filteredPrimitives.length}{" "}
                 selected
               </span>
             </div>
@@ -425,7 +445,7 @@ export function TemplateComposer({
                 </p>
               ) : (
                 searchablePrimitives.map((p) => {
-                  const selected = selectedPrimitiveIds.includes(p.id);
+                  const selected = selectedPrimitives.find((sp) => sp.id === p.id);
                   return (
                     <button
                       key={p.id}
@@ -438,16 +458,39 @@ export function TemplateComposer({
                       }`}
                     >
                       <div className="min-w-0">
-                        <div className="font-medium">{p.name}</div>
+                        <div className="font-medium">
+                          {p.name}
+                          {selected?.is_mirrored && (
+                            <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">
+                              (mirrored: +{p.buCost} BU debt)
+                            </span>
+                          )}
+                        </div>
                         {p.narrativeRule && (
                           <div className="truncate text-xs text-muted-foreground">
                             {p.narrativeRule}
                           </div>
                         )}
                       </div>
-                      <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 font-mono text-xs font-bold">
-                        {p.buCost} BU
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {selected && (
+                          <label
+                            className="flex cursor-pointer items-center gap-1 text-xs"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selected.is_mirrored}
+                              onChange={() => togglePrimitiveMirror(p.id)}
+                              className="size-3"
+                            />
+                            Mirrored
+                          </label>
+                        )}
+                        <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 font-mono text-xs font-bold">
+                          {p.buCost} BU
+                        </span>
+                      </div>
                     </button>
                   );
                 })

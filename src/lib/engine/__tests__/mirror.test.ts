@@ -5,6 +5,7 @@ import {
   resolveResistanceMultiplier,
   isMirroredSlot,
   isUserCostVector,
+  readMirrorMeta,
 } from "../mirror";
 
 describe("resolveMirrorEffect — VARIABLE_VECTOR (sign flip)", () => {
@@ -129,28 +130,83 @@ describe("resolveEffectiveModifierValue", () => {
     const result = resolveEffectiveModifierValue(
       { mirror_vector: "VARIABLE_VECTOR" },
       { is_mirrored: true },
-      4,
+      { kind: "modify", target: "max_vitality", operation: "add", value: 4 },
     );
     expect(result.targetValue).toBe(-4);
     expect(result.userCost).toBeNull();
+    expect(result.vector).toBe("VARIABLE_VECTOR");
   });
 
   it("passes through when the slot is NOT mirrored", () => {
     const result = resolveEffectiveModifierValue(
       { mirror_vector: "VARIABLE_VECTOR" },
       { is_mirrored: false },
-      4,
+      { kind: "modify", target: "max_vitality", operation: "add", value: 4 },
     );
     expect(result.targetValue).toBe(4);
+    expect(result.vector).toBe("VARIABLE_VECTOR");
   });
 
   it("defaults to STANDARD_ONLY when mirror_vector is null", () => {
     const result = resolveEffectiveModifierValue(
       { mirror_vector: null },
       { is_mirrored: true },
-      4,
+      { kind: "modify", target: "max_vitality", operation: "add", value: 4 },
     );
     expect(result.targetValue).toBe(4);
     expect(result.userCost).toBeNull();
+    expect(result.vector).toBe("STANDARD_ONLY");
+  });
+
+  it("passes through when modifier has metadata.mirror.optedOut=true", () => {
+    const result = resolveEffectiveModifierValue(
+      { mirror_vector: "VARIABLE_VECTOR" },
+      { is_mirrored: true },
+      {
+        kind: "modify",
+        target: "max_vitality",
+        operation: "add",
+        value: 4,
+        metadata: { mirror: { optedOut: true } },
+      },
+    );
+    expect(result.targetValue).toBe(4);
+    expect(result.userCost).toBeNull();
+  });
+
+  it("returns the resolved vector alongside the value", () => {
+    const v = resolveEffectiveModifierValue(
+      { mirror_vector: "STRUCTURAL_FAULT" },
+      { is_mirrored: true },
+      { kind: "modify", target: "defense", operation: "multiply", value: 0.5 },
+    );
+    expect(v.vector).toBe("STRUCTURAL_FAULT");
+    expect(v.targetValue).toBe(0.5);
+  });
+});
+
+describe("readMirrorMeta", () => {
+  it("returns null when modifier has no metadata.mirror", () => {
+    expect(readMirrorMeta({ kind: "modify", target: "x", operation: "add", value: 1 })).toBeNull();
+  });
+
+  it("reads optedOut flag", () => {
+    expect(readMirrorMeta({
+      kind: "modify",
+      target: "x",
+      operation: "add",
+      value: 1,
+      metadata: { mirror: { optedOut: true } },
+    })?.optedOut).toBe(true);
+  });
+
+  it("reads exposureNotes string", () => {
+    expect(readMirrorMeta({
+      kind: "modify",
+      target: "x",
+      operation: "add",
+      value: 1,
+      metadata: { mirror: { exposureNotes: "this flips to a vulnerability" } },
+    })?.exposureNotes).toBe("this flips to a vulnerability");
   });
 });

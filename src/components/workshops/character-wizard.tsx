@@ -92,6 +92,9 @@ export function CharacterWizard({
   const [selectedCapabilityIds, setSelectedCapabilityIds] = useState<string[]>(
     [],
   );
+  // Track capabilities with their mirrored state (for debt expansion)
+  type SelectedCapability = { id: string; is_mirrored: boolean };
+  const [selectedCapabilities, setSelectedCapabilities] = useState<SelectedCapability[]>([]);
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
   const { toasts, showToast, dismissToast } = useToasts();
@@ -149,8 +152,20 @@ export function CharacterWizard({
   }
 
   function toggleCapability(id: string) {
-    setSelectedCapabilityIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    setSelectedCapabilities((prev) => {
+      const existing = prev.find((c) => c.id === id);
+      if (existing) {
+        return prev.filter((c) => c.id !== id);
+      }
+      return [...prev, { id, is_mirrored: false }];
+    });
+  }
+
+  function toggleCapabilityMirror(id: string) {
+    setSelectedCapabilities((prev) =>
+      prev.map((c) =>
+        c.id === id ? { ...c, is_mirrored: !c.is_mirrored } : c,
+      ),
     );
   }
 
@@ -197,7 +212,7 @@ export function CharacterWizard({
             archetypeName: form.archetypeName.trim() || null,
             enforceTemplateCaps: form.enforceTemplateCaps,
             practiceSlices: {},
-            capabilityIds: selectedCapabilityIds,
+            capabilitySlots: selectedCapabilities,
             itemIds: selectedItemIds,
           }),
         });
@@ -587,7 +602,7 @@ export function CharacterWizard({
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">Capabilities</h3>
                 <span className="text-xs text-muted-foreground">
-                  {selectedCapabilityIds.length} selected
+                  {selectedCapabilities.length} selected
                 </span>
               </div>
               <div className="mt-3 max-h-72 space-y-2 overflow-y-auto">
@@ -597,7 +612,7 @@ export function CharacterWizard({
                   </p>
                 ) : (
                   capabilities.map((c) => {
-                    const selected = selectedCapabilityIds.includes(c.id);
+                    const selected = selectedCapabilities.find((sc) => sc.id === c.id);
                     return (
                       <button
                         key={c.id}
@@ -610,11 +625,32 @@ export function CharacterWizard({
                         }`}
                       >
                         <div>
-                          <div className="font-medium">{c.name}</div>
+                          <div className="font-medium">
+                            {c.name}
+                            {selected?.is_mirrored && (
+                              <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">
+                                (mirrored: debt expansion)
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs text-muted-foreground">
                             {c.type} · {c.sourceType}
                           </div>
                         </div>
+                        {selected && (
+                          <label
+                            className="flex cursor-pointer items-center gap-1 text-xs"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selected.is_mirrored}
+                              onChange={() => toggleCapabilityMirror(c.id)}
+                              className="size-3"
+                            />
+                            Mirrored
+                          </label>
+                        )}
                       </button>
                     );
                   })
@@ -699,7 +735,7 @@ export function CharacterWizard({
               />
               <ReviewBlock
                 label="Capabilities"
-                value={`${selectedCapabilityIds.length} picked`}
+                value={`${selectedCapabilities.length} picked`}
               />
               <ReviewBlock
                 label="Items"
