@@ -269,10 +269,11 @@ describe("migrateLegacyCondition", () => {
 // =============================================================================
 
 describe("buildCondition", () => {
-  it("customPills → tags variant, each pill prefixed with its category slug", () => {
+  it("single pill → tags variant, prefixed with category slug", () => {
     const result = buildCondition({
       categories: ["target"],
-      customPills: [{ category: "target", label: "Prone" }],
+      pills: [{ category: "target", label: "Prone" }],
+      operators: [],
       narrative: "ignored",
       includeTags: false,
     });
@@ -282,37 +283,59 @@ describe("buildCondition", () => {
     });
   });
 
-  it("multi-category pills are all kept and prefixed with their category slug", () => {
+  it("two pills → compound variant with default OR operator", () => {
     const result = buildCondition({
-      categories: ["target", "actor", "scene"],
-      customPills: [
+      categories: ["target"],
+      pills: [
         { category: "target", label: "Prone" },
-        { category: "actor", label: "Stance" },
-        { category: "scene", label: "Dim" },
+        { category: "target", label: "Grappled" },
       ],
+      operators: ["OR"],
       narrative: "",
       includeTags: false,
     });
     expect(result).toEqual({
-      kind: "tags",
-      customTags: ["target:Prone", "actor:Stance", "scene:Dim"],
+      kind: "compound",
+      tokens: ["target:Prone", "OR", "target:Grappled"],
+    });
+  });
+
+  it("three pills with explicit AND/OR mix → compound variant", () => {
+    const result = buildCondition({
+      categories: ["target", "actor"],
+      pills: [
+        { category: "target", label: "Prone" },
+        { category: "target", label: "Grappled" },
+        { category: "actor", label: "Stance" },
+      ],
+      operators: ["OR", "AND"],
+      narrative: "",
+      includeTags: false,
+    });
+    expect(result).toEqual({
+      kind: "compound",
+      tokens: ["target:Prone", "OR", "target:Grappled", "AND", "actor:Stance"],
     });
   });
 
   it("trims whitespace from pill labels and drops empty pills", () => {
     const result = buildCondition({
       categories: ["target"],
-      customPills: [
+      pills: [
         { category: "target", label: "  Prone  " },
         { category: "target", label: "" },
         { category: "target", label: "   " },
+        { category: "target", label: "Grappled" },
       ],
+      operators: ["OR", "OR", "OR"],
       narrative: "",
       includeTags: false,
     });
+    // After dropping the empty pills, "Prone" and "Grappled"
+    // remain → compound variant with one OR between them.
     expect(result).toEqual({
-      kind: "tags",
-      customTags: ["target:Prone"],
+      kind: "compound",
+      tokens: ["target:Prone", "OR", "target:Grappled"],
     });
   });
 
@@ -320,7 +343,8 @@ describe("buildCondition", () => {
     expect(
       buildCondition({
         categories: [],
-        customPills: [],
+        pills: [],
+        operators: [],
         narrative: "  during a full moon  ",
         includeTags: false,
       }),
@@ -331,7 +355,8 @@ describe("buildCondition", () => {
     expect(
       buildCondition({
         categories: ["target"],
-        customPills: [{ category: "target", label: "Prone" }],
+        pills: [{ category: "target", label: "Prone" }],
+        operators: [],
         narrative: "this should be dropped",
         includeTags: false,
       }),
@@ -345,7 +370,8 @@ describe("buildCondition", () => {
     expect(
       buildCondition({
         categories: [],
-        customPills: [],
+        pills: [],
+        operators: [],
         narrative: "",
         includeTags: false,
       }),
@@ -353,11 +379,100 @@ describe("buildCondition", () => {
     expect(
       buildCondition({
         categories: [],
-        customPills: [],
+        pills: [],
+        operators: [],
         narrative: "   ",
         includeTags: true,
       }),
     ).toBeNull();
+  });
+});
+
+describe("parseCondition — compound variant", () => {
+  it("accepts valid compound token stream", () => {
+    const parsed = parseCondition({
+      kind: "compound",
+      tokens: ["target:Prone", "OR", "actor:Stance", "AND", "scene:Dim"],
+    });
+    expect(parsed).toEqual({
+      kind: "compound",
+      tokens: ["target:Prone", "OR", "actor:Stance", "AND", "scene:Dim"],
+    });
+  });
+
+  it("rejects compound with even token count (trailing operator)", () => {
+    expect(() =>
+      parseCondition({
+        kind: "compound",
+        tokens: ["target:Prone", "OR"],
+      }),
+    ).toThrow(/odd token count/);
+  });
+
+  it("rejects compound with non-AND/OR operator token", () => {
+    expect(() =>
+      parseCondition({
+        kind: "compound",
+        tokens: ["target:Prone", "XOR", "target:Grappled"],
+      }),
+    ).toThrow(/'AND' or 'OR'/);
+  });
+
+  it("rejects compound with pill missing category prefix", () => {
+    expect(() =>
+      parseCondition({
+        kind: "compound",
+        tokens: ["Prone", "OR", "Grappled"],
+      }),
+    ).toThrow(/must be '<category>:<label>'/);
+  });
+
+  it("rejects compound with pill prefix outside known categories", () => {
+    expect(() =>
+      parseCondition({
+        kind: "compound",
+        tokens: ["nope:Prone", "OR", "target:Grappled"],
+      }),
+    ).toThrow(/invalid category 'nope'/);
+  });
+
+  it("rejects compound with pill having empty label", () => {
+    expect(() =>
+      parseCondition({
+        kind: "compound",
+        tokens: ["target:", "OR", "target:Grappled"],
+      }),
+    ).toThrow(/empty label/);
+  });
+
+  it("returns null for empty compound tokens", () => {
+    expect(parseCondition({ kind: "compound", tokens: [] })).toBeNull();
+  });
+});
+
+describe("conditionToBadges — compound variant", () => {
+  it("renders alternating pill and operator badges", () => {
+    const badges = conditionToBadges({
+      kind: "compound",
+      tokens: ["target:Prone", "OR", "actor:Stance"],
+    });
+    expect(badges).toEqual([
+      { kind: "tag", label: "Prone" },
+      { kind: "tag", label: "OR" },
+      { kind: "tag", label: "Stance" },
+    ]);
+  });
+
+  it("strips category prefix from pill labels", () => {
+    const badges = conditionToBadges({
+      kind: "compound",
+      tokens: ["target:Target has Cover", "AND", "target:Target is Grappled"],
+    });
+    expect(badges).toEqual([
+      { kind: "tag", label: "Target has Cover" },
+      { kind: "tag", label: "AND" },
+      { kind: "tag", label: "Target is Grappled" },
+    ]);
   });
 });
 
@@ -452,19 +567,35 @@ describe("end-to-end smoke", () => {
   });
 
   it("buildCondition → parseCondition round-trips for the new shapes", () => {
-    // tags (customPills with category prefix)
+    // tags (single pill with category prefix)
     const tags = buildCondition({
       categories: ["target"],
-      customPills: [{ category: "target", label: "Prone" }],
+      pills: [{ category: "target", label: "Prone" }],
+      operators: [],
       narrative: "",
       includeTags: false,
     });
     expect(parseCondition(tags)).toEqual(tags);
 
+    // compound (multi-pill chain)
+    const compound = buildCondition({
+      categories: ["target", "actor"],
+      pills: [
+        { category: "target", label: "Prone" },
+        { category: "target", label: "Grappled" },
+        { category: "actor", label: "Stance" },
+      ],
+      operators: ["OR", "AND"],
+      narrative: "",
+      includeTags: false,
+    });
+    expect(parseCondition(compound)).toEqual(compound);
+
     // narrative
     const narrative = buildCondition({
       categories: [],
-      customPills: [],
+      pills: [],
+      operators: [],
       narrative: "full moon",
       includeTags: false,
     });

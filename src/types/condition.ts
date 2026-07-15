@@ -213,6 +213,31 @@ export type ModifierCondition =
   | {
       readonly kind: "tags";
       readonly customTags: readonly string[];
+    }
+  /**
+   * The author composed a multi-pill trigger expression with
+   * explicit AND/OR operators between pills (Phase 7 Q-B m4).
+   *
+   * Tokens are a flat interleaving of:
+   *   - pills, formatted as `<category>:<label>`
+   *   - operators, exactly `"AND"` or `"OR"` (uppercase)
+   *
+   * The structure MUST alternate: pill, operator, pill, operator,
+   * ..., pill. That is N pills and N-1 operators, with no trailing
+   * operator. The parser validates this on load.
+   *
+   * Example (3 pills, 2 connectors):
+   *   ["target:Prone", "OR", "target:Grappled", "AND", "actor:Stance"]
+   *   → "Prone OR Grappled AND Stance"
+   *
+   * Backwards compatibility: legacy `{kind: "tags", customTags}` rows
+   * with no operators implicitly have all-OR joins and can be
+   * emitted as compound on the next save (no migration needed —
+   * the loader accepts both shapes).
+   */
+  | {
+      readonly kind: "compound";
+      readonly tokens: readonly string[];
     };
 
 // =============================================================================
@@ -251,24 +276,47 @@ export type ModifierCondition =
 export interface ConditionAuthoring {
   /**
    * Selected categories the condition applies to. Empty array means
-   * "no categories chosen" — the author may still carry customTags
+   * "no categories chosen" — the author may still carry pills
    * or narrative. Multiple selections allowed.
+   *
+   * The picker uses this to decide which per-category pill
+   * sections to render. Unselected categories don't show their
+   * chip palettes.
    */
   readonly categories: readonly ConditionPresetCategory[];
   /**
-   * User-authored pills, free-form text. Can be empty. Pills are
-   * associated with the selected categories via the same shape
-   * {category, label} so the picker can render them bucketed.
+   * Ordered list of pills in the trigger expression chain.
+   * Empty array means "no pills yet — author may still have
+   * narrative text". Each pill carries its category explicitly
+   * (no need to consult `categories` for routing).
+   *
+   * Multiple pills allowed per category (e.g. target:Prone AND
+   * target:Grappled). Multi-category allowed too (target:Prone
+   * AND actor:Stance).
    */
-  readonly customPills: readonly { category: ConditionPresetCategory; label: string }[];
+  readonly pills: readonly {
+    readonly category: ConditionPresetCategory;
+    readonly label: string;
+  }[];
+  /**
+   * Operators BETWEEN pills. Length is always `pills.length - 1`.
+   * When pills.length is 0 or 1, this array is empty.
+   *
+   * operators[i] binds pills[i] to pills[i+1].
+   * - "OR" — pill[i] OR pill[i+1]
+   * - "AND" — pill[i] AND pill[i+1]
+   *
+   * Default for newly-added pills is "OR".
+   */
+  readonly operators: readonly ("AND" | "OR")[];
   readonly narrative: string;
   /**
    * Author's choice: when no category is picked, should the
-   * customPills render as separate badges (true) or be folded
-   * into the narrative text (false)? Default false.
+   * pills render as separate badges (true) or be folded into
+   * the narrative text (false)? Default false.
    *
    * Ignored when `categories` is non-empty (category path always
-   * renders customPills as separate pills by definition).
+   * renders pills as separate pills by definition).
    */
   readonly includeTags: boolean;
 }

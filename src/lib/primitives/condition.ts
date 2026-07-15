@@ -25,9 +25,16 @@
 import {
   CONDITION_PRESET_KEYS,
   type ConditionAuthoring,
+  type ConditionPresetCategory,
   type ConditionPresetKey,
   type ModifierCondition,
 } from "@/types/condition";
+
+/**
+ * The set of valid operator tokens in a `compound` expression.
+ * Anything else (case-sensitive) is a parse error.
+ */
+const COMPOUND_OPERATORS = new Set(["AND", "OR"]);
 
 // =============================================================================
 // Parser — accepts both legacy and new shapes
@@ -109,6 +116,25 @@ export function parseCondition(
       if (customTags.length === 0) return null;
       return { kind: "tags", customTags };
     }
+    if (kind === "compound") {
+      const tokens = obj["tokens"];
+      if (!Array.isArray(tokens)) {
+        throw new Error("compound condition requires tokens: string[].");
+      }
+      const stringTokens = tokens.map((t) => {
+        if (typeof t !== "string") {
+          throw new Error("compound condition tokens must be string[].");
+        }
+        return t;
+      });
+      // Validate alternating pill/operator structure (Phase 7
+      // Q-B m4). N pills and N-1 operators, no trailing operator.
+      // Also validate each pill's category prefix and each
+      // operator token's value.
+      validateCompoundTokens(stringTokens);
+      if (stringTokens.length === 0) return null;
+      return { kind: "compound", tokens: stringTokens };
+    }
     throw new Error(`unknown condition kind: ${String(kind)}`);
   }
 
@@ -123,6 +149,98 @@ export function parseCondition(
 
   // Unknown shape — empty
   return null;
+}
+
+// =============================================================================
+// Compound token validation (Phase 7 Q-B m4)
+// =============================================================================
+
+const VALID_CATEGORIES = new Set<ConditionPresetCategory>([
+  "target",
+  "actor",
+  "scene",
+]);
+
+/**
+ * Validate the alternating pill/operator structure of a
+ * `compound` condition's tokens array. Throws on any structural
+ * problem with a descriptive error message.
+ *
+ * Rules:
+ *   - Even-indexed tokens (0, 2, 4, ...) must be pills in the
+ *     shape `<category>:<label>` where category is one of
+ *     `target` / `actor` / `scene`.
+ *   - Odd-indexed tokens (1, 3, 5, ...) must be exactly `"AND"`
+ *     or `"OR"`.
+ *   - Last token must be a pill (no trailing operator).
+ *
+ * Empty arrays pass (caller decides what to do — usually `null`).
+ */
+export function validateCompoundTokens(tokens: readonly string[]): void {
+  if (tokens.length === 0) return;
+  if (tokens.length % 2 === 0) {
+    throw new Error(
+      `compound condition requires odd token count (N pills, N-1 operators); got ${tokens.length}.`,
+    );
+  }
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]!;
+    if (i % 2 === 0) {
+      // Pill slot
+      const colonIdx = token.indexOf(":");
+      if (colonIdx === -1) {
+        throw new Error(
+          `compound condition pill at index ${i} must be '<category>:<label>' (got '${token}').`,
+        );
+      }
+      const category = token.slice(0, colonIdx);
+      if (!VALID_CATEGORIES.has(category as ConditionPresetCategory)) {
+        throw new Error(
+          `compound condition pill at index ${i} has invalid category '${category}' (expected target/actor/scene).`,
+        );
+      }
+      const label = token.slice(colonIdx + 1);
+      if (label.length === 0) {
+        throw new Error(
+          `compound condition pill at index ${i} has empty label.`,
+        );
+      }
+    } else {
+      // Operator slot
+      if (!COMPOUND_OPERATORS.has(token)) {
+        throw new Error(
+          `compound condition operator at index ${i} must be 'AND' or 'OR' (got '${token}').`,
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Serialize a `compound` token stream from the structured
+ * authoring shape (pills + operators arrays). Walks them in
+ * parallel and interleaves them with the `category:` prefix
+ * on each pill.
+ */
+export function serializeCompoundTokens(
+  pills: readonly { category: ConditionPresetCategory; label: string }[],
+  operators: readonly ("AND" | "OR")[],
+): string[] {
+  if (pills.length === 0) return [];
+  if (operators.length !== pills.length - 1) {
+    throw new Error(
+      `serializeCompoundTokens: operators.length (${operators.length}) must equal pills.length - 1 (${pills.length - 1}).`,
+    );
+  }
+  const tokens: string[] = [];
+  for (let i = 0; i < pills.length; i++) {
+    const pill = pills[i]!;
+    tokens.push(`${pill.category}:${pill.label}`);
+    if (i < operators.length) {
+      tokens.push(operators[i]!);
+    }
+  }
+  return tokens;
 }
 
 // =============================================================================
@@ -166,28 +284,68 @@ export function parseCondition(
 export function buildCondition(
   authoring: ConditionAuthoring,
 ): ModifierCondition | null {
-  // 1. Custom-pills path. When the user picks any categories and
-  //    authors pills under them, we emit a tags variant where each
-  //    pill is prefixed with its category slug ("target:Prone").
-  //    This keeps storage shape compatible with the v1 schema
-  //    (no DB migration) and lets conditionToBadges render pills
-  //    bucketed under their category labels.
-  const pills = authoring.customPills
-    .map((p) => ({
-      category: p.category,
-      label: p.label.trim(),
-    }))
-    .filter((p) => p.label.length > 0);
+  // 1. Custom-pills path. When the user picks any pills (via the
+  //    authoring pills[] + operators[] chain), serialize the
+  //    structured shape into the flat token stream and emit a
+  //    compound variant. Two or more pills OR any operator
+  //    expression → compound. Single pill with no operators →
+  //    tags variant (legacy shape, no need for compound).
+  //
+  // When trimming pills (empty labels get dropped), the
+  // operators array must be re-indexed too. Operator at
+  // authoring.operators[i] originally sat between pills[i] and
+  // pills[i+1]. After trimming, the operator that now sits
+  // between the surviving pills[0] and surviving pills[1] is
+  // the operator whose LEFT pill is the first surviving pill —
+  // we look that up by finding which authoring.operators slot
+  // has pills[firstSurvivingIdx] as its left side.
+  const trimmed: { category: ConditionPresetCategory; label: string }[] = [];
+  // Map: trimmed index → authoring.operators index that connects
+  // trimmed[trimmedIdx] to trimmed[trimmedIdx+1].
+  const trimmedOps: ("AND" | "OR")[] = [];
+  for (let i = 0; i < authoring.pills.length; i++) {
+    const p = authoring.pills[i]!;
+    if (p.label.trim().length === 0) continue;
+    const newIdx = trimmed.length;
+    trimmed.push({ category: p.category, label: p.label.trim() });
+    if (newIdx > 0) {
+      // We just added a 2nd+ surviving pill. Find the operator
+      // whose LEFT pill is the previous surviving pill (i.e.
+      // operator at authoring.operators[prevSurvivingIdx]).
+      // prevSurvivingIdx is the index in authoring.pills of the
+      // pill that just became trimmed[newIdx - 1].
+      const prevSurvivingIdx = trimmed.length >= 2
+        ? authoring.pills.findIndex(
+            (q, j) =>
+              j < i &&
+              q.label.trim().length > 0 &&
+              authoring.pills.slice(j + 1, i).every(
+                (r) => r.label.trim().length === 0,
+              ),
+          )
+        : -1;
+      if (prevSurvivingIdx >= 0 && prevSurvivingIdx < authoring.operators.length) {
+        trimmedOps.push(authoring.operators[prevSurvivingIdx]!);
+      }
+    }
+  }
 
-  if (pills.length > 0) {
-    const prefixed = pills.map(
-      (p) => `${p.category}:${p.label}`,
-    );
-    return { kind: "tags", customTags: prefixed };
+  if (trimmed.length >= 2) {
+    // Compound path — multi-pill chain with operators.
+    const tokens = serializeCompoundTokens(trimmed, trimmedOps);
+    return { kind: "compound", tokens };
+  }
+
+  if (trimmed.length === 1) {
+    const single = trimmed[0]!;
+    return {
+      kind: "tags",
+      customTags: [`${single.category}:${single.label}`],
+    };
   }
 
   // 2. Tags-only path (author opted in but has no pills).
-  //    Empty authoring customPills + includeTags flag — kept for
+  //    Empty authoring pills + includeTags flag — kept for
   //    backwards compat with the legacy authoring shape.
   void authoring.categories;
   void authoring.includeTags;
@@ -282,8 +440,36 @@ export function conditionToBadges(
       label: stripCategoryPrefix(t),
     }));
   }
-  // condition.kind === "narrative"
-  return [{ kind: "narrative", label: condition.text }];
+  if (condition.kind === "compound") {
+    // Walk tokens alternately: pill → operator → pill → ...
+    // Render each pill as a tag badge and each operator as
+    // a connector. The character sheet displays them inline as
+    // "Prone OR Grappled AND Stance".
+    const badges: Array<{ kind: "preset" | "tag" | "narrative"; label: string }> = [];
+    for (let i = 0; i < condition.tokens.length; i++) {
+      const token = condition.tokens[i]!;
+      if (i % 2 === 0) {
+        // Pill slot — strip category prefix for display
+        badges.push({ kind: "tag", label: stripCategoryPrefix(token) });
+      } else {
+        // Operator slot — render as inline connector (using
+        // the same tag kind so the sheet renders it; future
+        // improvement: introduce a 'connector' badge kind).
+        badges.push({ kind: "tag", label: token });
+      }
+    }
+    return badges;
+  }
+  if (condition.kind === "narrative") {
+    return [{ kind: "narrative", label: condition.text }];
+  }
+  // Exhaustiveness — should be unreachable
+  throw new Error(
+    `conditionToBadges: unhandled condition kind '${
+      // @ts-expect-error - exhaustiveness check
+      condition.kind
+    }'`,
+  );
 }
 
 // =============================================================================

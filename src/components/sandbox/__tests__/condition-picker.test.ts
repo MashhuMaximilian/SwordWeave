@@ -1,13 +1,10 @@
 // =============================================================================
 // Unit tests for the ConditionPicker adapter helpers.
 //
-// The ConditionPicker component itself is a presentational React
-// component; its rendering is exercised by manual QA + the snapshot
-// tests in src/__tests__/snapshots/ (when present). The adapter
-// helpers below are pure and worth pinning down: they translate
-// between the form's legacy ModifierDraft fields and the new
-// ConditionAuthoring shape (Phase 7 Q-B m3: categories + per-category
-// custom pills, no preset catalog as the primary input).
+// Phase 7 Q-B m4: authoring shape changed from { categories,
+// customPills, narrative, includeTags } to { categories, pills,
+// operators, narrative, includeTags }. Helpers must reflect the
+// new shape.
 // =============================================================================
 
 import { describe, expect, it } from "vitest";
@@ -20,7 +17,8 @@ describe("conditionAuthoringFromLegacy", () => {
   it("returns an empty authoring when all legacy fields are blank", () => {
     expect(conditionAuthoringFromLegacy("", "", "")).toEqual({
       categories: [],
-      customPills: [],
+      pills: [],
+      operators: [],
       narrative: "",
       includeTags: false,
     });
@@ -31,7 +29,8 @@ describe("conditionAuthoringFromLegacy", () => {
       conditionAuthoringFromLegacy("skill.context", "equals", "tracking-creatures"),
     ).toEqual({
       categories: [],
-      customPills: [],
+      pills: [],
+      operators: [],
       narrative: "tracking-creatures",
       includeTags: false,
     });
@@ -40,7 +39,8 @@ describe("conditionAuthoringFromLegacy", () => {
   it("falls back to the key when value is empty", () => {
     expect(conditionAuthoringFromLegacy("foo", "exists", "")).toEqual({
       categories: [],
-      customPills: [],
+      pills: [],
+      operators: [],
       narrative: "foo",
       includeTags: false,
     });
@@ -51,7 +51,8 @@ describe("conditionAuthoringFromLegacy", () => {
       conditionAuthoringFromLegacy("target-prone", "equals", ""),
     ).toEqual({
       categories: ["target"],
-      customPills: [],
+      pills: [],
+      operators: [],
       narrative: "target-prone",
       includeTags: false,
     });
@@ -62,7 +63,8 @@ describe("conditionAuthoringFromLegacy", () => {
       conditionAuthoringFromLegacy("scene-dim", "equals", ""),
     ).toEqual({
       categories: ["scene"],
-      customPills: [],
+      pills: [],
+      operators: [],
       narrative: "scene-dim",
       includeTags: false,
     });
@@ -73,7 +75,8 @@ describe("conditionAuthoringFromLegacy", () => {
       conditionAuthoringFromLegacy("actor-stance", "equals", ""),
     ).toEqual({
       categories: ["actor"],
-      customPills: [],
+      pills: [],
+      operators: [],
       narrative: "actor-stance",
       includeTags: false,
     });
@@ -85,7 +88,8 @@ describe("legacyFieldsFromAuthoring", () => {
     expect(
       legacyFieldsFromAuthoring({
         categories: [],
-        customPills: [],
+        pills: [],
+        operators: [],
         narrative: "",
         includeTags: false,
       }),
@@ -101,7 +105,8 @@ describe("legacyFieldsFromAuthoring", () => {
     expect(
       legacyFieldsFromAuthoring({
         categories: ["target"],
-        customPills: [{ category: "target", label: "Prone" }],
+        pills: [{ category: "target", label: "Prone" }],
+        operators: [],
         narrative: "",
         includeTags: false,
       }),
@@ -117,7 +122,8 @@ describe("legacyFieldsFromAuthoring", () => {
     expect(
       legacyFieldsFromAuthoring({
         categories: [],
-        customPills: [],
+        pills: [],
+        operators: [],
         narrative: "during a full moon",
         includeTags: false,
       }),
@@ -129,14 +135,15 @@ describe("legacyFieldsFromAuthoring", () => {
     });
   });
 
-  it("falls back to the joined customPills when narrative is empty", () => {
+  it("falls back to the joined pills when narrative is empty", () => {
     expect(
       legacyFieldsFromAuthoring({
         categories: ["target", "actor"],
-        customPills: [
+        pills: [
           { category: "target", label: "Prone" },
           { category: "actor", label: "Stunned" },
         ],
+        operators: ["OR"],
         narrative: "",
         includeTags: false,
       }),

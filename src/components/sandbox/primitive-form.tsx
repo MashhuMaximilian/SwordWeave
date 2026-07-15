@@ -216,7 +216,8 @@ const blankModifier: ModifierDraft = {
   // starts collapsed with Target state open by default.
   v1Condition: {
     categories: [],
-    customPills: [],
+    pills: [],
+    operators: [],
     narrative: "",
     includeTags: false,
   },
