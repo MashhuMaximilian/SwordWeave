@@ -127,7 +127,6 @@ export function EffectForm({
 }) {
   const [form, setForm] = useState<EffectFormState>(blankForm);
   const [slots, setSlots] = useState<EffectFormSlot[]>([]);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
@@ -262,7 +261,6 @@ export function EffectForm({
   function resetEditor() {
     setForm(blankForm);
     setSlots([]);
-    setPickerOpen(false);
     setIsDirty(false); // pristine after reset
     setMessage("Started a fresh effect.");
     bootstrappedRef.current = null; // allow re-bootstrap on next entity load
@@ -489,33 +487,14 @@ export function EffectForm({
       <section className="rounded-md border border-border bg-background p-4">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-bold">Slotted Primitives</h3>
-          <div className="flex items-center gap-2">
-            <span className="rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
-              {totalBu} BU
-            </span>
-            <button
-              type="button"
-              onClick={() => setPickerOpen((v) => !v)}
-              className="h-9 rounded-md border border-border bg-card px-3 text-sm font-medium hover:bg-accent"
-            >
-              {pickerOpen ? "Close picker" : "+ Slot primitive"}
-            </button>
-          </div>
+          <span className="rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
+            {totalBu} BU
+          </span>
         </div>
-
-        {pickerOpen ? (
-          <PrimitivePicker
-            primitives={availablePrimitives}
-            alreadySlotted={new Set(slots.map((s) => s.primitiveId))}
-            onSelect={(id) => {
-              addSlot(id);
-            }}
-          />
-        ) : null}
-
         {slots.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            No primitives slotted yet. Click "+ Slot primitive" to add one.
+            No primitives slotted yet. Pick a primitive from the Library
+            column and use its &ldquo;Slot into build&rdquo; action.
           </p>
         ) : (
           <ul className="mt-3 space-y-2">
@@ -585,67 +564,10 @@ export function EffectForm({
   );
 }
 
-function PrimitivePicker({
-  primitives,
-  alreadySlotted,
-  onSelect,
-}: {
-  primitives: Array<{
-    id: number;
-    name: string;
-    category: string;
-    buCost: number;
-  }>;
-  alreadySlotted: Set<number>;
-  onSelect: (id: number) => void;
-}) {
-  const [query, setQuery] = useState("");
-  const filtered = primitives.filter((p) => {
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      p.name.toLowerCase().includes(q) ||
-      p.category.toLowerCase().includes(q)
-    );
-  });
-  return (
-    <div className="mt-3 max-h-72 overflow-auto rounded-md border border-border bg-card p-2">
-      <input
-        type="text"
-        placeholder="Search primitives…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className="mb-2 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-      />
-      <ul className="divide-y">
-        {filtered.map((p) => {
-          const isAlready = alreadySlotted.has(p.id);
-          return (
-            <li
-              key={p.id}
-              className="flex items-center justify-between gap-3 px-2 py-1.5 text-sm"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{p.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {p.category.replace(/_/g, " ")}
-                </p>
-              </div>
-              <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                {p.buCost} BU
-              </span>
-              <button
-                type="button"
-                disabled={isAlready}
-                onClick={() => onSelect(p.id)}
-                className="shrink-0 rounded-md bg-primary px-2 py-1 text-xs font-bold text-primary-foreground disabled:opacity-50"
-              >
-                {isAlready ? "Added" : "Add"}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
+// DEAD CODE REMOVED — Phase-7 cleanup: the in-form PrimitivePicker
+// was removed because the "+ Slot primitive" button was removed.
+// Slotting primitives happens via the Library column's "Slot into
+// build" action. PrimitivePicker is gone; the slot list is rendered
+// directly from the `slots` state.
+//
+// The function used to live here.

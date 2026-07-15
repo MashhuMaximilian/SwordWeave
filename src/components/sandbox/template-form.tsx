@@ -152,10 +152,7 @@ export function TemplateForm({
     () => new Set<number>(),
   );
   const [capabilityIds, setCapabilityIds] = useState<string[]>([]);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerTarget, setPickerTarget] = useState<"primitive" | "capability">(
-    "primitive",
-  );
+  const [mirroredSet, setMirroredSet] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
@@ -361,7 +358,6 @@ export function TemplateForm({
     setPrimitiveIds([]);
     setCapabilityIds([]);
     setIsMirroredIds(new Set<number>());
-    setPickerOpen(false);
     setIsDirty(false); // pristine after reset
     setMessage("Started a fresh template.");
     bootstrappedRef.current = null; // allow re-bootstrap on next entity load
@@ -607,46 +603,18 @@ export function TemplateForm({
           <h3 className="text-sm font-bold">
             {kindSingular(form.kind)} Primitives
           </h3>
-          <div className="flex items-center gap-2">
-            <span className="rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
-              {computedBu} BU
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setPickerTarget("primitive");
-                setPickerOpen((v) => !v);
-              }}
-              className="h-9 rounded-md border border-border bg-card px-3 text-sm font-medium hover:bg-accent"
-            >
-              {pickerOpen && pickerTarget === "primitive"
-                ? "Close picker"
-                : "+ Slot primitive"}
-            </button>
-          </div>
+          <span className="rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
+            {computedBu} BU
+          </span>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
           Pick any primitive — categories aren't restricted for this kind.
         </p>
 
-        {pickerOpen && pickerTarget === "primitive" ? (
-          <SlotPicker
-            items={allowedPrimitives.map((p) => ({
-              id: p.id,
-              name: p.name,
-              subtitle: p.category.replace(/_/g, " "),
-              badge: `${p.buCost} BU`,
-            }))}
-            alreadyAdded={new Set(primitiveIds)}
-            onSelect={(id) => {
-              togglePrimitive(Number(id));
-            }}
-          />
-        ) : null}
-
         {primitiveIds.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            No primitives slotted. Click "+ Slot primitive" to add one.
+            No primitives slotted. Pick a primitive from the Library
+            column and use its &ldquo;Slot into build&rdquo; action.
           </p>
         ) : (
           <ul className="mt-3 space-y-2">
@@ -690,41 +658,15 @@ export function TemplateForm({
       <section className="rounded-md border border-border bg-background p-4">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-bold">Bundled Capabilities</h3>
-          <button
-            type="button"
-            onClick={() => {
-              setPickerTarget("capability");
-              setPickerOpen((v) => !v);
-            }}
-            className="h-9 rounded-md border border-border bg-card px-3 text-sm font-medium hover:bg-accent"
-          >
-            {pickerOpen && pickerTarget === "capability"
-              ? "Close picker"
-              : "+ Slot capability"}
-          </button>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
           Capabilities granted automatically when this template is applied.
         </p>
 
-        {pickerOpen && pickerTarget === "capability" ? (
-          <SlotPicker
-            items={availableCapabilities.map((c) => ({
-              id: c.id,
-              name: c.name,
-              subtitle: `${c.type} · ${c.sourceType}`,
-              badge: null,
-            }))}
-            alreadyAdded={new Set(capabilityIds)}
-            onSelect={(id) => {
-              toggleCapability(String(id));
-            }}
-          />
-        ) : null}
-
         {capabilityIds.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            No capabilities bundled.
+            No capabilities bundled. Pick a capability from the Library
+            column and use its &ldquo;Slot into build&rdquo; action.
           </p>
         ) : (
           <ul className="mt-3 space-y-2">
@@ -771,70 +713,5 @@ export function TemplateForm({
         ) : null}
       </div>
     </form>
-  );
-}
-
-function SlotPicker({
-  items,
-  alreadyAdded,
-  onSelect,
-}: {
-  items: Array<{
-    id: number | string;
-    name: string;
-    subtitle: string;
-    badge: string | null;
-  }>;
-  alreadyAdded: Set<number | string>;
-  onSelect: (id: number | string) => void;
-}) {
-  const [query, setQuery] = useState("");
-  const filtered = items.filter((item) => {
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      item.name.toLowerCase().includes(q) ||
-      item.subtitle.toLowerCase().includes(q)
-    );
-  });
-  return (
-    <div className="mt-3 max-h-72 overflow-auto rounded-md border border-border bg-card p-2">
-      <input
-        type="text"
-        placeholder="Search…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className="mb-2 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-      />
-      <ul className="divide-y">
-        {filtered.map((item) => {
-          const isAlready = alreadyAdded.has(item.id);
-          return (
-            <li
-              key={item.id}
-              className="flex items-center justify-between gap-3 px-2 py-1.5 text-sm"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{item.name}</p>
-                <p className="text-xs text-muted-foreground">{item.subtitle}</p>
-              </div>
-              {item.badge ? (
-                <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                  {item.badge}
-                </span>
-              ) : null}
-              <button
-                type="button"
-                disabled={isAlready}
-                onClick={() => onSelect(item.id)}
-                className="shrink-0 rounded-md bg-primary px-2 py-1 text-xs font-bold text-primary-foreground disabled:opacity-50"
-              >
-                {isAlready ? "Added" : "Add"}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
   );
 }

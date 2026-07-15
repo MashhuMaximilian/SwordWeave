@@ -157,10 +157,6 @@ export function CapabilityForm({
   const [form, setForm] = useState<CapabilityFormState>(blankForm);
   const [slots, setSlots] = useState<CapabilitySlot[]>([]);
   const [effectIds, setEffectIds] = useState<string[]>([]);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerTarget, setPickerTarget] = useState<"primitive" | "effect">(
-    "primitive",
-  );
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
@@ -375,7 +371,6 @@ export function CapabilityForm({
     setForm(blankForm);
     setSlots([]);
     setEffectIds([]);
-    setPickerOpen(false);
     setIsDirty(false); // pristine after reset
     setMessage("Started a fresh capability.");
     bootstrappedRef.current = null; // allow re-bootstrap on next entity load
@@ -641,38 +636,15 @@ export function CapabilityForm({
       <section className="rounded-md border border-border bg-background p-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-sm font-bold">Primitive Slots</h3>
-          <div className="flex items-center gap-2">
-            <span className="rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
-              {previewBu} BU
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setPickerTarget("primitive");
-                setPickerOpen((v) => !v);
-              }}
-              className="h-9 rounded-md border border-border bg-card px-3 text-sm font-medium hover:bg-accent"
-            >
-              {pickerOpen && pickerTarget === "primitive"
-                ? "Close picker"
-                : "+ Slot primitive"}
-            </button>
-          </div>
+          <span className="rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
+            {previewBu} BU
+          </span>
         </div>
-
-        {pickerOpen && pickerTarget === "primitive" ? (
-          <SlotPicker
-            primitives={availablePrimitives}
-            alreadySlotted={new Set(slots.map((s) => s.primitiveId))}
-            onSelect={(id) => {
-              addSlot(id);
-            }}
-          />
-        ) : null}
 
         {slots.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            No primitives slotted yet. Click "+ Slot primitive" to add one.
+            No primitives slotted yet. Pick a primitive from the Library
+            column and use its &ldquo;Slot into build&rdquo; action.
           </p>
         ) : (
           <ul className="mt-3 space-y-2">
@@ -741,34 +713,12 @@ export function CapabilityForm({
               use the &ldquo;Slot into build&rdquo; action on a library card.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setPickerTarget("effect");
-              setPickerOpen((v) => !v);
-            }}
-            className="h-9 rounded-md border border-border bg-card px-3 text-sm font-medium hover:bg-accent"
-          >
-            {pickerOpen && pickerTarget === "effect"
-              ? "Close picker"
-              : "+ Slot effect"}
-          </button>
         </div>
-
-        {pickerOpen && pickerTarget === "effect" ? (
-          <EffectPicker
-            effects={availableEffects}
-            alreadySlotted={new Set(effectIds)}
-            onSelect={(id) => {
-              setEffectIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
-              setIsDirty(true);
-            }}
-          />
-        ) : null}
 
         {effectIds.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            No effects bundled yet. Click &ldquo;+ Slot effect&rdquo; to add one.
+            No effects bundled yet. Pick an effect from the Library column
+            and use its &ldquo;Slot into build&rdquo; action.
           </p>
         ) : (
           <ul className="mt-3 space-y-2">
@@ -814,118 +764,5 @@ export function CapabilityForm({
         ) : null}
       </div>
     </form>
-  );
-}
-
-function EffectPicker({
-  effects,
-  alreadySlotted,
-  onSelect,
-}: {
-  effects: Array<{ id: string; name: string }>;
-  alreadySlotted: Set<string>;
-  onSelect: (id: string) => void;
-}) {
-  const [query, setQuery] = useState("");
-  const filtered = effects.filter((e) => {
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-    return e.name.toLowerCase().includes(q);
-  });
-  return (
-    <div className="mt-3 max-h-72 overflow-auto rounded-md border border-border bg-card p-2">
-      <input
-        type="text"
-        placeholder="Search effects…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className="mb-2 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-      />
-      <ul className="divide-y">
-        {filtered.map((e) => {
-          const isAlready = alreadySlotted.has(e.id);
-          return (
-            <li
-              key={e.id}
-              className="flex items-center justify-between gap-3 px-2 py-1.5 text-sm"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{e.name}</p>
-              </div>
-              <button
-                type="button"
-                disabled={isAlready}
-                onClick={() => onSelect(e.id)}
-                className="shrink-0 rounded-md bg-primary px-2 py-1 text-xs font-bold text-primary-foreground disabled:opacity-50"
-              >
-                {isAlready ? "Added" : "Add"}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
-
-function SlotPicker({
-  primitives,
-  alreadySlotted,
-  onSelect,
-}: {
-  primitives: Array<{
-    id: number;
-    name: string;
-    category: string;
-    buCost: number;
-  }>;
-  alreadySlotted: Set<number>;
-  onSelect: (id: number) => void;
-}) {
-  const [query, setQuery] = useState("");
-  const filtered = primitives.filter((p) => {
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-    return p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q);
-  });
-  return (
-    <div className="mt-3 max-h-72 overflow-auto rounded-md border border-border bg-card p-2">
-      <input
-        type="text"
-        placeholder="Search primitives…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className="mb-2 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-      />
-      <ul className="divide-y">
-        {filtered.map((p) => {
-          const isAlready = alreadySlotted.has(p.id);
-          return (
-            <li
-              key={p.id}
-              className="flex items-center justify-between gap-3 px-2 py-1.5 text-sm"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{p.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {p.category.replace(/_/g, " ")}
-                </p>
-              </div>
-              <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                {p.buCost} BU
-              </span>
-              <button
-                type="button"
-                disabled={isAlready}
-                onClick={() => onSelect(p.id)}
-                className="shrink-0 rounded-md bg-primary px-2 py-1 text-xs font-bold text-primary-foreground disabled:opacity-50"
-              >
-                {isAlready ? "Added" : "Add"}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
   );
 }
