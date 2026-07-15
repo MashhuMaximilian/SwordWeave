@@ -89,9 +89,6 @@ export function CharacterWizard({
     archetypeName: "",
     enforceTemplateCaps: false,
   });
-  const [selectedCapabilityIds, setSelectedCapabilityIds] = useState<string[]>(
-    [],
-  );
   // Track capabilities with their mirrored state (for debt expansion)
   type SelectedCapability = { id: string; is_mirrored: boolean };
   const [selectedCapabilities, setSelectedCapabilities] = useState<SelectedCapability[]>([]);
