@@ -1,9 +1,10 @@
 # Phase 7 Q-B — Condition v1 Closeout
 
 **Status:** Phase 7 closed. New primitives write the v1 condition
-shape end-to-end. Old shapes still load and render correctly.
+shape end-to-end. Old shapes still load and render correctly. UI
+cleanup A + B complete; migration script (E) shipped.
 
-**Last commit:** see `git log` for `feat(phase-7-Q-B)` lines.
+**Last commit:** see `git log` for `feat/fix(phase-7-Q-B)` lines.
 
 ---
 
@@ -30,8 +31,8 @@ shape end-to-end. Old shapes still load and render correctly.
 - `migrateLegacyCondition(legacy)` — used by the DB migration (E).
 - `conditionToBadges(condition)` — character-sheet badge render.
 - `presetLabel(key)` — display lookup.
-- `legacyConditionProjection(raw)` — **new in D-prime**. Projects any
-  shape back into the legacy triple for the ModifierDraft cache.
+- `legacyConditionProjection(raw)` — projects any shape back into the
+  legacy triple for the ModifierDraft cache.
 
 ### 3. Picker UI (`src/components/sandbox/condition-picker.tsx`)
 
@@ -75,6 +76,89 @@ shape end-to-end. Old shapes still load and render correctly.
 - Renders presets as primary-tinted pills, custom tags as neutral
   pills, narrative as italic prose.
 
+### 7. UI cleanup A — removed in-modal slot pickers
+
+Removed the duplicate `+ Slot primitive/effect/capability` buttons
+from all four sandbox forms. Slotting always happens via the Library
+column's `Slot into build` action. Net change: **−550 lines of dead
+code**.
+
+- `effect-form.tsx` — dropped `+ Slot primitive` button,
+  `pickerOpen` state, and the local `PrimitivePicker` function.
+- `capability-form.tsx` — dropped `+ Slot primitive` AND
+  `+ Slot effect` buttons, `pickerOpen`/`pickerTarget` state, and
+  the local `SlotPicker` + `EffectPicker` functions.
+- `template-form.tsx` — dropped `+ Slot primitive` AND
+  `+ Slot capability` buttons, `pickerOpen`/`pickerTarget` state,
+  and the local `SlotPicker` function.
+- `item-form.tsx` — dropped `+ Slot capability` AND `+ Slot effect`
+  buttons, `pickerOpen`/`pickerTarget` state, and the local
+  `SlotPicker` function.
+
+Empty-state messages updated to point at the Library column.
+
+Commit: `749ca02`.
+
+### 8. UI cleanup B — click-to-preview in right column
+
+Clicking a slotted primitive/effect/capability in the right-column
+form preview now opens that sub-entity's library preview modal —
+same affordance as clicking from the library list.
+
+Mechanism: a new `sw-sandbox-open-preview` CustomEvent bus in
+`src/lib/sandbox/slot-events.ts`. The four form previews dispatch
+the event when the user clicks a slotted sub-entity. `grammar-library`
+and `blueprint-library` both listen for it and translate it to
+`pushPreview()` on their modal stack. This decouples the form
+previews from library internals — if a future sandbox adds another
+library owner, it just listens for the same event.
+
+- `slot-events.ts` — added `OpenPreviewEvent` + `dispatchOpenPreview()`
+  + `OPEN_PREVIEW_EVENT_NAME` constant.
+- `grammar-library.tsx` — listens for the event, routes to
+  `pushPreview()`.
+- `blueprint-library.tsx` — same; also handles `ITEM` targetType.
+- `effect-form-preview.tsx` — primitive slots become click-to-preview
+  buttons.
+- `capability-form-preview.tsx` — primitive slots + bundled effects.
+- `template-form-preview.tsx` — bundled primitives + capabilities.
+- `item-form-preview.tsx` — primitive slots + capabilities + effects.
+
+6 new tests for the slot-events bus (742/742 passing total).
+
+Commit: `0fa8154`.
+
+### 9. Migration script (E) — `scripts/migrate-primitive-conditions.mts`
+
+Backfill utility: walks every primitive row, migrates
+`HardModifier.condition` from the legacy `{key, operator, value}`
+shape to the v1 `{kind: 'preset' | 'narrative' | 'tags'}` shape,
+and writes the result back.
+
+- Dry-run by default (no DB writes). Pass `--apply` to UPDATE.
+- Idempotent: re-running on already-v1 rows is a no-op.
+- Reuses `migrateLegacyCondition()` from `src/lib/primitives/condition`.
+- Post-apply assertion: queries the DB to count remaining rows with
+  legacy condition shapes; should be zero after apply.
+
+**Verified against production Neon DB:**
+- 152 primitive rows scanned
+- 150 empty `hard_modifiers` arrays (no work)
+- 2 rows with modifiers but no conditions (no work)
+- 0 legacy-shaped conditions in production today
+
+The migration script ships so it's ready when staging / seeded data
+carries legacy conditions, but there's nothing for it to migrate on
+production right now.
+
+Usage:
+```
+pnpm tsx scripts/migrate-primitive-conditions.mts           # dry run
+pnpm tsx scripts/migrate-primitive-conditions.mts --apply  # write
+```
+
+Commit: `6c4c003`.
+
 ---
 
 ## What was deferred
@@ -90,16 +174,16 @@ save the primitive, see the badge appear in the preview.
 
 - **Character sheet rendering during play.** The actual
   `/sandbox/characters` page (and any character-creation flow) does
-  not yet render condition badges next to applied modifiers. When
-  a player has a modifier with a `target-below-half-hp` condition,
-  no badge appears in their active sheet — the modifier is applied
+  not yet render condition badges next to applied modifiers. When a
+  player has a modifier with a `target-below-half-hp` condition, no
+  badge appears in their active sheet — the modifier is applied
   (engine returns `true` for v1), but the condition is invisible to
   the player during play.
 
 - **DM-side condition tracker.** No way for a DM to track which
-  conditions are currently active for a target / scene / actor.
-  The condition is purely an authoring hint on the modifier
-  description at this point.
+  conditions are currently active for a target / scene / actor. The
+  condition is purely an authoring hint on the modifier description
+  at this point.
 
 This is the next-phase work. When the character-sheet phase opens,
 the same `<ConditionBadges>` component should drop in. The challenge
@@ -109,46 +193,39 @@ Possible approaches for the next phase:
 
 - LLM-assisted adjudication (parse narrative + current scene state).
 - Manual DM toggle ("this target is bleeding right now").
-- Hybrid: presets auto-trackable (HP thresholds), narrative
-  always manual.
+- Hybrid: presets auto-trackable (HP thresholds), narrative always
+  manual.
 
 Decision deferred until the character-sheet phase opens.
 
-### C2 — mirror picker into effect-form and capability-form
+### C2 — RETIRED (does not apply)
 
-The picker is currently only wired into `primitive-form.tsx`.
-Effect and capability forms still use the old condition triple.
+Earlier closeout drafts listed "C2 — mirror picker into
+effect-form and capability-form" as deferred work. After re-reading
+the chirality rule with the user, this entry was retired:
 
-When to do this:
-- After E (DB migration) lands and the new shape is canonical.
-- Or as a parallel milestone if effects/capabilities need richer
-  condition authoring sooner.
+> "You mirror the primitive you mirror its modifier. In capability or
+> effect these do not have mirrored versions. You just use the same
+> primitives and each one has its chirality nothing more. They don't
+> have chirality themselves as templates or effects and capabilities.
+> Only primitives (actually only their modifiers but the state carries
+> over to the primitive bc each primitive has one modifier max. If it
+> has no modifier it basically cannot be mirrored this is the implied
+> rule."
+
+Effects, capabilities, and templates don't carry conditions or
+chirality themselves — they're compositions of primitives. The
+condition picker is correctly wired only into `primitive-form.tsx`
+because conditions live on primitive modifiers. There's nothing to
+mirror into the other forms.
 
 ---
 
-## Migration plan for legacy DB rows (E)
+## Migration plan for legacy DB rows (E) — DONE
 
-When E is approved:
-
-1. **Backup first.** `pg_dump` of the entire Neon DB.
-2. **Dry run.** Run the migration in dry-run mode to count rows
-   that need migrating and surface any that look malformed.
-3. **Run the migration.** Use `migrateLegacyCondition()` on every
-   `modifier.condition` value across the primitive/effect/capability
-   tables.
-4. **Verify.** Spot-check rows. Confirm `kind === "preset"` rows map
-   to known preset keys. Confirm `kind === "narrative"` rows carry
-   the original value as text.
-5. **Optional cleanup.** Once verified, delete the
-   `LegacyModifierCondition` type, the `conditionKey/Operator/Value`
-   fields on `ModifierDraft`, and `evaluateLegacyCondition()` in the
-   engine. All known condition evaluation now routes through the
-   v1 path.
-
-E is not blocking Phase 7 closeout. The new code is forward-
-compatible with old data via `parseCondition()`, so existing
-primitives keep working without E. E is a one-shot housekeeping
-task for code cleanliness, not a functional requirement.
+E shipped as `scripts/migrate-primitive-conditions.mts`. The script
+is verified, idempotent, and ready to run whenever legacy-shape rows
+appear (production DB has none today). See section 9 above for usage.
 
 ---
 
