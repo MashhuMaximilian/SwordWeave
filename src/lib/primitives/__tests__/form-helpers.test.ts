@@ -353,26 +353,31 @@ describe("valueTypeLabel (UI display strings — 4 types in v3)", () => {
 });
 
 describe("allowedValueTypes (passes through to OP_VALUE_TYPE_MATRIX)", () => {
-  it("Add allows number + dice", () => {
-    expect(allowedValueTypes("add")).toEqual(["number", "dice"]);
+  it("Add allows number + dice + equation", () => {
+    expect(allowedValueTypes("add")).toEqual(["number", "dice", "equation"]);
   });
 
-  it("Min allows number + text (NOT dice)", () => {
-    expect(allowedValueTypes("min")).toEqual(["number", "text"]);
+  it("Min allows number + text + equation (NOT dice)", () => {
+    expect(allowedValueTypes("min")).toEqual(["number", "text", "equation"]);
     expect(allowedValueTypes("min")).not.toContain("dice");
   });
 
-  it("Set allows number + text + dice + boolean", () => {
+  it("Set allows number + text + dice + boolean + equation", () => {
     const types = allowedValueTypes("set");
     expect(types).toContain("number");
     expect(types).toContain("text");
     expect(types).toContain("dice");
     expect(types).toContain("boolean");
+    expect(types).toContain("equation");
   });
 
-  it("Grant/Revoke allow number + text + dice", () => {
-    expect(allowedValueTypes("grant")).toEqual(["number", "text", "dice"]);
-    expect(allowedValueTypes("revoke")).toEqual(["number", "text", "dice"]);
+  it("Grant/Revoke allow number + text + dice + equation", () => {
+    expect(allowedValueTypes("grant")).toEqual([
+      "number", "text", "dice", "equation",
+    ]);
+    expect(allowedValueTypes("revoke")).toEqual([
+      "number", "text", "dice", "equation",
+    ]);
   });
 });
 

@@ -312,6 +312,7 @@ export function valueTypeLabel(vt: ValueType): string {
     case "text": return "Text / Keyword";
     case "dice": return "Dice";
     case "boolean": return "True / False";
+    case "equation": return "Equation";
   }
 }
 

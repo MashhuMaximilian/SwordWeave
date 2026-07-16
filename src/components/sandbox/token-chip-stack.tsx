@@ -386,6 +386,8 @@ function chipClass(token: ValueToken): string {
       return `${base} border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-300`;
     case "behavior":
       return `${base} border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300`;
+    case "keyword":
+      return `${base} border-pink-500/30 bg-pink-500/10 text-pink-700 dark:text-pink-300`;
   }
 }
 
@@ -400,6 +402,7 @@ function chipTitle(token: ValueToken): string {
     case "dice": return `Dice expression: ${token.expression}`;
     case "number": return `Literal magnitude: ${token.value}`;
     case "behavior": return `Behavior: ${token.name}`;
+    case "keyword": return `Tag: ${token.text}`;
   }
 }
 

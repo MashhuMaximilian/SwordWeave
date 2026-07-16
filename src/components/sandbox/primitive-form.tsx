@@ -43,9 +43,11 @@ import {
   OP_SPECS,
   OP_VALUE_TYPE_MATRIX,
   applyMirror,
+  operandsFromTokens,
   parseValueField,
   serializeValueField,
   tokenLabel,
+  type Operand,
   type ValueToken,
   type ValueType,
 } from "@/types/modifier";
@@ -58,6 +60,7 @@ import {
   valueTypeLabel,
 } from "@/lib/primitives/form-helpers";
 import { TokenChipStack } from "./token-chip-stack";
+import { EquationPicker } from "./equation-picker";
 
 type PrimitiveRow = {
   id: number;
@@ -109,6 +112,18 @@ export type ModifierDraft = {
    * from `OP_VALUE_TYPE_MATRIX`.
    */
   valueKind: ValueType;
+  /**
+   * Phase 7.5 v4: operands — used when valueKind === "equation".
+   * An equation is a list of (operator, value) pairs that
+   * compose into an arithmetic expression. For non-equation
+   * modes, this is empty and the legacy `tokens` field is used.
+   *
+   * Coexistence with tokens: the data shape is additive —
+   * legacy rows have tokens but no operands; new equation
+   * rows have operands but no tokens. The resolver converts
+   * between them at the boundary.
+   */
+  operands: Operand[];
   // Phase-7-E: Target Value(s) for this modifier — multi-select on
   // the scope axis implied by `target`. Empty = "any".
   targetValues: string[];
@@ -238,6 +253,9 @@ const blankModifier: ModifierDraft = {
   tokens: [{ kind: "number", value: 1 }],
   value: "1",
   valueKind: "number",
+  // Phase 7.5 v4: empty operands. New equation rows populate
+  // this; legacy rows have empty operands.
+  operands: [],
   // Phase-7-E: defaults for the new Target Value widget. With
   // target=attribute and an empty values list, the form will
   // surface "any attribute (broad)" until the user checks one.
@@ -452,6 +470,12 @@ function fromHardModifier(modifier: Record<string, unknown>, index: number): Mod
     tokens: parseValueField(rawValue),
     value,
     valueKind,
+    // Phase 7.5 v4: legacy rows have no operands. If the
+    // serialized row contains an `operands` array, use it
+    // directly (forward-compat). Otherwise, default to empty.
+    operands: Array.isArray(modifier["operands"])
+      ? (modifier["operands"] as Operand[])
+      : [],
     targetValues: [...selection.targetValues],
     granularity: "broad",
     freeTextNarrowFocus: selection.freeTextNarrowFocus ?? "",
@@ -509,7 +533,7 @@ function toHardModifier(modifier: ModifierDraft): import("@/types/swordweave").H
     freeTextNarrowFocus: modifier.freeTextNarrowFocus,
   });
 
-  const hardModifier = {
+  const hardModifier: import("@/types/swordweave").HardModifier = {
     kind: "modify" as const,
     target: canonicalTarget,
     operation: modifier.operation,
@@ -522,6 +546,17 @@ function toHardModifier(modifier: ModifierDraft): import("@/types/swordweave").H
         : {}),
     } as unknown as Record<string, import("@/types/swordweave").JsonValue>,
   };
+
+  // Phase 7.5 v4: if valueKind is "equation", serialize the
+  // operands into metadata so the engine has the full
+  // expression. We also keep the legacy `value` as a derived
+  // cache (e.g. first operand's number) for backwards compat
+  // with older readers.
+  if (modifier.valueKind === "equation" && modifier.operands.length > 0) {
+    const meta = hardModifier.metadata as Record<string, import("@/types/swordweave").JsonValue>;
+    meta["operands"] = modifier.operands as unknown as import("@/types/swordweave").JsonValue;
+    meta["valueKind"] = "equation";
+  }
 
   // Phase-7-Q-B: write the canonical v1 condition shape via
   // buildCondition(). Reads from `v1Condition` (the picker's
@@ -701,7 +736,7 @@ export function PrimitiveForm({
   function updateModifier(
     id: string,
     field: keyof ModifierDraft,
-    value: string | ConditionAuthoring | ValueToken[],
+    value: string | ConditionAuthoring | ValueToken[] | Operand[],
   ) {
     setIsDirty(true);
     setModifiers((current) =>
@@ -1423,9 +1458,23 @@ export function PrimitiveForm({
                 </label>
               ) : null}
 
-              {/* Chip-stack — token classification is value-type-aware
-                  via `classifyTypedValue`. */}
+              {/* Value field — switches between TokenChipStack (legacy) and
+                  EquationPicker (v4). The EquationPicker renders for
+                  valueKind === "equation" only; otherwise the legacy
+                  chip-stack renders the value as a flat token list. */}
               {(() => {
+                if (modifier.valueKind === "equation") {
+                  return (
+                    <div className="mt-1.5">
+                      <EquationPicker
+                        operands={modifier.operands}
+                        onChange={(next) => {
+                          updateModifier(modifier.id, "operands", next);
+                        }}
+                      />
+                    </div>
+                  );
+                }
                 const { kinds, biasMode } = allowedTokenKinds(
                   modifier.operation,
                   modifier.valueKind,

@@ -34,27 +34,33 @@ import {
   type ValueToken,
 } from "../modifier";
 
-describe("OP_VALUE_TYPE_MATRIX (Phase 7.5 v2)", () => {
-  it("Add/Subtract/Multiply/Divide allow only number and dice", () => {
+describe("OP_VALUE_TYPE_MATRIX (Phase 7.5 v4 — adds equation)", () => {
+  it("Add/Subtract/Multiply/Divide allow number, dice, and equation", () => {
     for (const op of ["add", "subtract", "multiply", "divide"] as const) {
-      expect(OP_VALUE_TYPE_MATRIX[op]).toEqual(["number", "dice"]);
+      expect(OP_VALUE_TYPE_MATRIX[op]).toEqual([
+        "number", "dice", "equation",
+      ]);
     }
   });
 
-  it("Set To allows number, text, dice, boolean (universal setter)", () => {
+  it("Set To allows number, text, dice, boolean, equation (universal setter)", () => {
     expect(OP_VALUE_TYPE_MATRIX.set).toEqual([
-      "number", "text", "dice", "boolean",
+      "number", "text", "dice", "boolean", "equation",
     ]);
   });
 
-  it("Min/Max allow number and text (NOT dice)", () => {
-    expect(OP_VALUE_TYPE_MATRIX.min).toEqual(["number", "text"]);
-    expect(OP_VALUE_TYPE_MATRIX.max).toEqual(["number", "text"]);
+  it("Min/Max allow number, text, equation (NOT dice)", () => {
+    expect(OP_VALUE_TYPE_MATRIX.min).toEqual(["number", "text", "equation"]);
+    expect(OP_VALUE_TYPE_MATRIX.max).toEqual(["number", "text", "equation"]);
   });
 
-  it("Grant/Revoke allow number, text, and dice", () => {
-    expect(OP_VALUE_TYPE_MATRIX.grant).toEqual(["number", "text", "dice"]);
-    expect(OP_VALUE_TYPE_MATRIX.revoke).toEqual(["number", "text", "dice"]);
+  it("Grant/Revoke allow number, text, dice, equation", () => {
+    expect(OP_VALUE_TYPE_MATRIX.grant).toEqual([
+      "number", "text", "dice", "equation",
+    ]);
+    expect(OP_VALUE_TYPE_MATRIX.revoke).toEqual([
+      "number", "text", "dice", "equation",
+    ]);
   });
 
   it("Toggle and Bias are removed in v3", () => {
@@ -62,9 +68,14 @@ describe("OP_VALUE_TYPE_MATRIX (Phase 7.5 v2)", () => {
     expect(OP_VALUE_TYPE_MATRIX).not.toHaveProperty("bias");
   });
 
-  it("Text and Dice are separate value types (Phase 7.5 v3)", () => {
-    // Verify no op has 'text' AND 'dice' as a SINGLE combined type.
-    // Both should appear as separate types in different ops.
+  it("equation is in every op's allowed value types (v4)", () => {
+    for (const op of ["add", "subtract", "multiply", "divide",
+                      "min", "max", "set", "grant", "revoke"] as const) {
+      expect(OP_VALUE_TYPE_MATRIX[op]).toContain("equation");
+    }
+  });
+
+  it("Verify no op has 'text' AND 'dice' as a SINGLE combined type", () => {
     expect(OP_VALUE_TYPE_MATRIX.set).toContain("text");
     expect(OP_VALUE_TYPE_MATRIX.set).toContain("dice");
     expect(OP_VALUE_TYPE_MATRIX.min).not.toContain("dice");

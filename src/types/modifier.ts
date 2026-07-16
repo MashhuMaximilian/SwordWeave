@@ -103,7 +103,16 @@ export function migrateOperation(
  * tokens resolve to whatever the character has for that behavior;
  * dice expressions are rolled.
  */
-export type ValueType = "number" | "text" | "dice" | "boolean";
+export type ValueType =
+  | "number"
+  | "text"
+  | "dice"
+  | "boolean"
+  // Phase 7.5 v4: equation Value Type. Author builds an
+  // arithmetic expression using `Operand[]` (see OPERAND).
+  // Combines numbers, runtime tokens, dice, and tag-style
+  // keywords. Resolved at slot time by the engine.
+  | "equation";
 
 /**
  * Allowed value types per operation (Phase 7.5 v3).
@@ -114,15 +123,18 @@ export type ValueType = "number" | "text" | "dice" | "boolean";
 export const OP_VALUE_TYPE_MATRIX: Readonly<
   Record<ModifierOperation, readonly ValueType[]>
 > = {
-  add:      ["number", "dice"],
-  subtract: ["number", "dice"],
-  multiply: ["number", "dice"],
-  divide:   ["number", "dice"],
-  set:      ["number", "text", "dice", "boolean"],
-  min:      ["number", "text"],
-  max:      ["number", "text"],
-  grant:    ["number", "text", "dice"],
-  revoke:   ["number", "text", "dice"],
+  // Phase 7.5 v4: every op accepts "equation" — equations
+  // resolve to a number/dice/text/keyword combination that's
+  // valid for the op's semantics.
+  add:      ["number", "dice", "equation"],
+  subtract: ["number", "dice", "equation"],
+  multiply: ["number", "dice", "equation"],
+  divide:   ["number", "dice", "equation"],
+  set:      ["number", "text", "dice", "boolean", "equation"],
+  min:      ["number", "text", "equation"],
+  max:      ["number", "text", "equation"],
+  grant:    ["number", "text", "dice", "equation"],
+  revoke:   ["number", "text", "dice", "equation"],
 };
 
 /**
@@ -324,7 +336,267 @@ export type ValueToken =
   | { readonly kind: "derived"; readonly which: "pb" | "pb_half" | "level" }
   | { readonly kind: "behavior"; readonly name: string }
   | { readonly kind: "dice"; readonly expression: string }
-  | { readonly kind: "number"; readonly value: number };
+  | { readonly kind: "number"; readonly value: number }
+  // Phase 7.5 v4: keyword operand. Tag-style text attached to an
+  // expression (e.g. "fire" on a damage modifier). Not arithmetic —
+  // it tags the modifier with a category. The engine reads
+  // keyword operands as labels when resolving against typed
+  // targets (damage output, defense type, etc.).
+  | { readonly kind: "keyword"; readonly text: string };
+
+// =============================================================================
+// OPERATORS — arithmetic operators for equation Value Type
+// =============================================================================
+
+/**
+ * The 5 arithmetic operators for equation Value Type.
+ *
+ *   +   addition
+ *   -   subtraction
+ *   *   multiplication
+ *   /   division
+ *   %   percent (10% of preceding operand, e.g. "10% × PB"
+ *       resolves to PB * 0.1). Useful for "10% × damage",
+ *       "5% chance", etc. — closer to a DM's mental model than
+ *       "multiply by 0.1" or "/10".
+ *
+ * No logical operators (&& || !), no comparisons, no
+ * conditionals. Those belong to the Conditions UI, not the
+ * modifier value. A modifier's value is a pure arithmetic
+ * expression evaluated at slot time.
+ *
+ * Phase 8 may add `**` (power) and `min/max` if real use cases
+ * come up; for v4 we keep it to these 5.
+ */
+export type Operator = "+" | "-" | "*" | "/" | "%";
+
+export const ALL_OPERATORS: readonly Operator[] = ["+", "-", "*", "/", "%"];
+
+export function operatorLabel(op: Operator): string {
+  switch (op) {
+    case "+": return "+";
+    case "-": return "−";
+    case "*": return "×";
+    case "/": return "÷";
+    case "%": return "%";
+  }
+}
+
+/**
+ * Whether this operator produces a numeric result (true for all
+ * 5 — operators are arithmetic-only).
+ */
+export function isArithmetic(op: Operator): boolean {
+  return true;
+}
+
+// =============================================================================
+// OPERAND — a single (operator, value) pair in an equation
+// =============================================================================
+
+/**
+ * One operand in an equation. The operator is the operation
+ * applied to the value relative to the running accumulator:
+ *
+ *   [+ PB, - 2, / 4]   →   accumulator = (((PB) - 2) / 4)
+ *   [+ 2d6, + PB]      →   accumulator = (2d6 + PB)
+ *
+ * Paren groups are represented as nested operands:
+ *
+ *   [+ PB, + (level/4)]   →
+ *     [+ PB, + { kind:"paren", value:[ + level, / 4 ] }]
+ *
+ * The paren group's internal evaluation is recursive — see
+ * resolveExpression in lib/engine/equations.ts.
+ *
+ * The first operand's operator is conventionally "+" (we don't
+ * allow "starting" the equation with a non-+ op; the UI emits
+ * + for the first chip and the resolver treats the first
+ * operand's op as initial-direction).
+ */
+export interface Operand {
+  readonly op: Operator;
+  readonly value: OperandValue;
+}
+
+/**
+ * The payload of an operand. Either a flat token (number, dice,
+ * runtime reference, keyword) OR a paren group of nested
+ * operands (recursion).
+ *
+ * Phase 7.5 v4: text operands (keyword) are tag-style — they
+ * don't add to the numeric accumulator, they tag the modifier
+ * with a category. The resolver carries them through to the
+ * final result so the engine can apply them as labels.
+ */
+export type OperandValue =
+  | { readonly kind: "number"; readonly value: number }
+  | { readonly kind: "dice"; readonly expression: string }
+  | { readonly kind: "attribute"; readonly attribute: AttributeKey }
+  | { readonly kind: "practice"; readonly practice: PracticeKey }
+  | { readonly kind: "derived"; readonly which: "pb" | "pb_half" | "level" }
+  | { readonly kind: "behavior"; readonly name: string }
+  | { readonly kind: "keyword"; readonly text: string }
+  | { readonly kind: "paren"; readonly operands: readonly Operand[] };
+
+/**
+ * Empty equation — used as the default for new modifiers in
+ * equation mode.
+ */
+export const EMPTY_EQUATION: readonly Operand[] = [];
+
+/**
+ * Flatten operands to tokens (drops parens and keywords). Used
+ * for migration of legacy rows that used `tokens: ValueToken[]`:
+ * a row with `tokens: [PB, 2]` becomes `operands: [+ PB, + 2]`.
+ */
+export function operandsFromTokens(
+  tokens: readonly ValueToken[],
+): readonly Operand[] {
+  return tokens.map((t) => ({ op: "+" as const, value: tToOperandValue(t) }));
+}
+
+function tToOperandValue(t: ValueToken): OperandValue {
+  switch (t.kind) {
+    case "number": return { kind: "number", value: t.value };
+    case "dice": return { kind: "dice", expression: t.expression };
+    case "attribute": return { kind: "attribute", attribute: t.attribute };
+    case "practice": return { kind: "practice", practice: t.practice };
+    case "derived": return { kind: "derived", which: t.which };
+    case "behavior": return { kind: "behavior", name: t.name };
+    case "keyword": return { kind: "keyword", text: t.text };
+  }
+}
+
+/**
+ * Flatten operands to tokens (parens and keywords dropped). Used
+ * for legacy code paths that still expect `tokens: ValueToken[]`.
+ */
+export function tokensFromOperands(
+  operands: readonly Operand[],
+): readonly ValueToken[] {
+  const out: ValueToken[] = [];
+  for (const o of operands) {
+    flattenOperand(o, out);
+  }
+  return out;
+}
+
+function flattenOperand(o: Operand, out: ValueToken[]): void {
+  const v = o.value;
+  switch (v.kind) {
+    case "number": out.push({ kind: "number", value: v.value }); return;
+    case "dice": out.push({ kind: "dice", expression: v.expression }); return;
+    case "attribute": out.push({ kind: "attribute", attribute: v.attribute }); return;
+    case "practice": out.push({ kind: "practice", practice: v.practice }); return;
+    case "derived": out.push({ kind: "derived", which: v.which }); return;
+    case "behavior": out.push({ kind: "behavior", name: v.name }); return;
+    case "keyword": out.push({ kind: "keyword", text: v.text }); return;
+    case "paren":
+      for (const inner of v.operands) flattenOperand(inner, out);
+      return;
+  }
+}
+
+/**
+ * Render an equation as a human-readable string. Used by the
+ * equation chip preview, the JSON preview, and the live preview
+ * sidebar.
+ *
+ *   [+ PB, + 2, - level, / 4]
+ *     → "PB + 2 - level ÷ 4"
+ *
+ *   [+ PB, + {paren: [+ level, / 4]}]
+ *     → "PB + (level ÷ 4)"
+ *
+ *   [+ 2d6, + PB, + keyword("fire")]
+ *     → "2d6 + PB [fire]"
+ */
+export function renderEquation(operands: readonly Operand[]): string {
+  if (operands.length === 0) return "";
+  const parts: string[] = [];
+  for (let i = 0; i < operands.length; i++) {
+    const o = operands[i];
+    if (!o) continue;
+    const sym = operatorLabel(o.op);
+    if (o.value.kind === "paren") {
+      // First operand's operator is dropped if it's plain "+"
+      const inner = renderEquation(o.value.operands);
+      if (i === 0 && o.op === "+") {
+        parts.push(`(${inner})`);
+      } else {
+        parts.push(`${sym} (${inner})`);
+      }
+      continue;
+    }
+    if (o.value.kind === "keyword") {
+      // Keyword is tag-style; emit as [text] suffix.
+      parts.push(`[${o.value.text}]`);
+      continue;
+    }
+    const v = renderOperandValue(o.value);
+    if (i === 0 && o.op === "+") {
+      parts.push(v);
+    } else {
+      parts.push(`${sym} ${v}`);
+    }
+  }
+  return parts.join(" ");
+}
+
+function renderOperandValue(v: OperandValue): string {
+  switch (v.kind) {
+    case "number": return String(v.value);
+    case "dice": return v.expression;
+    case "attribute": return v.attribute;
+    case "practice": return v.practice;
+    case "derived":
+      // PB is canonically uppercase. PB/2 and level are kept
+      // short.
+      if (v.which === "pb") return "PB";
+      if (v.which === "pb_half") return "PB/2";
+      return v.which;
+    case "behavior": return v.name;
+    case "keyword": return `[${v.text}]`;
+    case "paren": return `(${renderEquation(v.operands)})`;
+  }
+}
+
+/**
+ * Phase 7.5 v4: classify which ValueType the operand value
+ * produces — numeric (for arithmetic), tag (keyword), or
+ * unsupported (mixed paren with tags, etc.).
+ *
+ *   number / dice / attribute / practice / derived / paren
+ *     → "numeric"
+ *   keyword
+ *     → "tag"
+ *   paren containing keyword
+ *     → "mixed" (soft-warn — paren should be all-numeric)
+ *
+ * The resolver uses this to decide what to do with each operand.
+ * Numeric operands feed the accumulator. Tag operands are
+ * carried through but don't affect the numeric result.
+ */
+export type OperandKind = "numeric" | "tag" | "mixed";
+
+export function operandKind(value: OperandValue): OperandKind {
+  if (value.kind === "keyword") return "tag";
+  if (value.kind === "paren") {
+    let hasTag = false;
+    let hasNumeric = false;
+    for (const o of value.operands) {
+      const k = operandKind(o.value);
+      if (k === "tag") hasTag = true;
+      else if (k === "numeric") hasNumeric = true;
+      else if (k === "mixed") return "mixed";
+    }
+    if (hasTag && hasNumeric) return "mixed";
+    if (hasTag) return "tag";
+    return "numeric";
+  }
+  return "numeric";
+}
 
 /**
  * The 10 canonical Practices. Names TBD against the Notion canon
@@ -534,6 +806,7 @@ export function tokenLabel(token: ValueToken): string {
     case "behavior": return token.name;
     case "dice": return token.expression;
     case "number": return String(token.value);
+    case "keyword": return `[${token.text}]`;
   }
 }
 
