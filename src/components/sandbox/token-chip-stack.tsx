@@ -1,21 +1,29 @@
 "use client";
 
 /**
- * TokenChipStack — Phase 7.5 modifier Value field.
+ * TokenChipStack — Phase 7.5 v3 modifier Value field.
  *
  * Renders the Value field as an ordered list of token chips with
- * a `[+ add token]` button that opens a small popover picker.
+ * a popover picker. The popover shows categorized suggestions
+ * (Attribute / Practice / Derived / Dice / Common numbers /
+ * boolean / custom) gated by the current `valueKind` and `op`
+ * tuple — see `allowedTokenKinds` in form-helpers.ts.
  *
- * Each token is a `ValueToken` (attribute / practice / derived /
- * behavior / dice / number). The popover lists canonical token
- * kinds for quick-pick plus a `[+ custom]` option that accepts
- * any string (becomes a behavior token).
- *
- * Real-time JSON: `onChange` fires on every chip add/remove.
- * The primitive form's preview updates immediately.
- *
- * Mobile-friendly: chips wrap, the popover is full-width on
- * small screens.
+ * v3 changes from pre-rev:
+ *   - Input classification is value-type-aware (`classifyTypedValue`).
+ *     Typed text becomes the right token kind for the current
+ *     Value Type (number string → number token, dice expr → dice
+ *     token, "true" → boolean token, etc.) — never just a
+ *     behavior token by default.
+ *   - Runtime tokens (+physical, +awareness, +PB) are now exposed
+ *     in number mode so users can compose "+ 2 + physical"
+ *     without typing.
+ *   - Boolean quick-pick chips ([+ true], [+ false]) appear in
+ *     Set To + Boolean.
+ *   - Common number chips (+1, +2, +3, +5, +10, -1, -2, -5)
+ *     appear in number mode.
+ *   - Soft-warnings are surfaced as inline text under the input
+ *     when a typed value doesn't match the current Value Type.
  */
 
 import { useState, type ReactElement } from "react";
@@ -24,12 +32,19 @@ import {
   ALL_DERIVED,
   ALL_PRACTICES,
   CANONICAL_DICE,
-  SUGGESTED_TOKENS,
   tokenLabel,
   type AttributeKey,
   type PracticeKey,
   type ValueToken,
 } from "@/types/modifier";
+import {
+  classifyTypedValue,
+  isBooleanValueType,
+  NUMBER_SHORTCUTS,
+  showsNumberShortcuts,
+  type FormValueKind,
+} from "@/lib/primitives/form-helpers";
+import type { ModifierOperation } from "@/types/modifier";
 
 interface TokenChipStackProps {
   readonly tokens: readonly ValueToken[];
@@ -40,32 +55,49 @@ interface TokenChipStackProps {
    * "number" only number/token kinds are allowed.
    */
   readonly allowedKinds: ReadonlySet<ValueToken["kind"]>;
+  /**
+   * Current operation. Used by classifyTypedValue to pick the
+   * right coercion (e.g. boolean is only valid for Set To).
+   */
+  readonly op: ModifierOperation;
+  /**
+   * Current valueKind. Drives which sections render in the
+   * popover AND how typed text classifies.
+   */
+  readonly valueKind: FormValueKind;
 }
 
-/**
- * Phase 7.5 v3: biasMode removed. The bias op is gone; advantage
- * / disadvantage are handled via grant/revoke on the canonical
- * `behavior:advantage` and `behavior:disadvantage` chips (which
- * show up in the regular behavior picker).
- */
 export function TokenChipStack({
   tokens,
   onChange,
   allowedKinds,
+  op,
+  valueKind,
 }: TokenChipStackProps): ReactElement {
   const [showPicker, setShowPicker] = useState(false);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const addToken = (token: ValueToken) => {
     onChange([...tokens, token]);
+    setWarning(null);
   };
 
   const removeToken = (index: number) => {
     onChange(tokens.filter((_, i) => i !== index));
   };
 
-  const filteredSuggestions = SUGGESTED_TOKENS.filter((t) =>
-    allowedKinds.has(t.kind),
-  );
+  const handleCustomSubmit = (raw: string) => {
+    const result = classifyTypedValue(raw, op, valueKind);
+    if (result.token === null) {
+      setWarning(null);
+      return;
+    }
+    onChange([...tokens, result.token]);
+    setWarning(result.warning);
+  };
+
+  const showNumbers = showsNumberShortcuts(op, valueKind);
+  const showBool = isBooleanValueType(op, valueKind);
 
   return (
     <div className="space-y-1.5">
@@ -96,6 +128,15 @@ export function TokenChipStack({
         )}
       </div>
 
+      {warning ? (
+        <p
+          data-testid="chip-stack-warning"
+          className="rounded-sm border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-700 dark:text-amber-300"
+        >
+          ⚠ {warning}
+        </p>
+      ) : null}
+
       {/* Add button */}
       <button
         type="button"
@@ -108,10 +149,16 @@ export function TokenChipStack({
       {/* Token picker popover */}
       {showPicker ? (
         <TokenPicker
+          op={op}
+          valueKind={valueKind}
           allowedKinds={allowedKinds}
-          suggestions={filteredSuggestions}
-          onPick={(token) => { addToken(token); setShowPicker(false); }}
-          onCustom={(name) => { addToken({ kind: "behavior", name }); setShowPicker(false); }}
+          showNumbers={showNumbers}
+          showBool={showBool}
+          onPick={(token) => {
+            addToken(token);
+            setShowPicker(false);
+          }}
+          onCustom={handleCustomSubmit}
         />
       ) : null}
     </div>
@@ -123,113 +170,186 @@ export function TokenChipStack({
 // =============================================================================
 
 interface TokenPickerProps {
+  readonly op: ModifierOperation;
+  readonly valueKind: FormValueKind;
   readonly allowedKinds: ReadonlySet<ValueToken["kind"]>;
-  readonly suggestions: readonly ValueToken[];
+  readonly showNumbers: boolean;
+  readonly showBool: boolean;
   readonly onPick: (token: ValueToken) => void;
-  readonly onCustom: (name: string) => void;
+  readonly onCustom: (raw: string) => void;
 }
 
 function TokenPicker({
+  op,
+  valueKind,
   allowedKinds,
-  suggestions,
+  showNumbers,
+  showBool,
   onPick,
   onCustom,
 }: TokenPickerProps): ReactElement {
   const [customName, setCustomName] = useState("");
 
-  const handleCustomSubmit = () => {
+  const submit = () => {
     const t = customName.trim();
     if (t.length === 0) return;
     onCustom(t);
     setCustomName("");
   };
 
+  // Section: Common numbers — only in number mode.
+  const numberSection = showNumbers ? (
+    <div>
+      <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Common Numbers
+      </p>
+      <div className="mt-1 flex flex-wrap gap-1">
+        {NUMBER_SHORTCUTS.map((n) => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => onPick({ kind: "number", value: n })}
+            className="rounded-full border border-border bg-background px-2 py-0.5 text-xs hover:bg-accent"
+          >
+            {n > 0 ? `+${n}` : n}
+          </button>
+        ))}
+      </div>
+    </div>
+  ) : null;
+
+  // Section: Boolean quick-pick — only Set To + Boolean.
+  const boolSection = showBool ? (
+    <div>
+      <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        True / False
+      </p>
+      <div className="mt-1 flex flex-wrap gap-1">
+        <button
+          type="button"
+          onClick={() => onPick({ kind: "behavior", name: "true" })}
+          className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20"
+        >
+          ✓ true
+        </button>
+        <button
+          type="button"
+          onClick={() => onPick({ kind: "behavior", name: "false" })}
+          className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-xs text-rose-700 dark:text-rose-300 hover:bg-rose-500/20"
+        >
+          ✗ false
+        </button>
+      </div>
+    </div>
+  ) : null;
+
+  // Section: Attribute — only when "attribute" is in allowedKinds.
+  const attributeSection = allowedKinds.has("attribute") ? (
+    <div>
+      <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Attribute
+      </p>
+      <div className="mt-1 flex flex-wrap gap-1">
+        {ALL_ATTRIBUTES.map((attr) => (
+          <button
+            key={attr}
+            type="button"
+            onClick={() => onPick({ kind: "attribute", attribute: attr })}
+            className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-xs text-blue-700 dark:text-blue-300 hover:bg-blue-500/20"
+          >
+            + {attr}
+          </button>
+        ))}
+      </div>
+    </div>
+  ) : null;
+
+  // Section: Practice — only when "practice" is in allowedKinds.
+  const practiceSection = allowedKinds.has("practice") ? (
+    <div>
+      <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Practice
+      </p>
+      <div className="mt-1 flex flex-wrap gap-1">
+        {ALL_PRACTICES.map((practice) => (
+          <button
+            key={practice}
+            type="button"
+            onClick={() => onPick({ kind: "practice", practice })}
+            className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-xs text-violet-700 dark:text-violet-300 hover:bg-violet-500/20"
+          >
+            + {practice}
+          </button>
+        ))}
+      </div>
+    </div>
+  ) : null;
+
+  // Section: Derived — only when "derived" is in allowedKinds.
+  const derivedSection = allowedKinds.has("derived") ? (
+    <div>
+      <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Derived
+      </p>
+      <div className="mt-1 flex flex-wrap gap-1">
+        {ALL_DERIVED.map((d) => (
+          <button
+            key={d}
+            type="button"
+            onClick={() => onPick({ kind: "derived", which: d })}
+            className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300 hover:bg-amber-500/20"
+          >
+            + {d === "pb_half" ? "PB/2" : d.toUpperCase()}
+          </button>
+        ))}
+      </div>
+    </div>
+  ) : null;
+
+  // Section: Dice — only when "dice" is in allowedKinds.
+  const diceSection = allowedKinds.has("dice") ? (
+    <div>
+      <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Dice (canonical)
+      </p>
+      <div className="mt-1 flex flex-wrap gap-1">
+        {CANONICAL_DICE.map((d) => (
+          <button
+            key={d}
+            type="button"
+            onClick={() => onPick({ kind: "dice", expression: d })}
+            className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-xs text-rose-700 dark:text-rose-300 hover:bg-rose-500/20"
+          >
+            + {d}
+          </button>
+        ))}
+      </div>
+      <p className="mt-1 px-1 text-[10px] text-muted-foreground">
+        For compound (2d10, 3d8+1) type below.
+      </p>
+    </div>
+  ) : null;
+
+  // Section: Custom input — context-aware placeholder + classifier.
+  const customPlaceholder = (() => {
+    if (valueKind === "number") return "Type a number (2, 5) or runtime name (physical, PB)";
+    if (valueKind === "dice") return "Type a dice expression (2d6, 1d10+3)";
+    if (valueKind === "boolean") return "Type true or false";
+    return "Type a keyword or behavior name (darkvision, mana_pool)";
+  })();
+
   return (
     <div className="space-y-2 rounded-md border border-border bg-card p-2 shadow-sm">
-      {allowedKinds.has("attribute") ? (
-        <div>
-          <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Attribute
-          </p>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {ALL_ATTRIBUTES.map((attr) => (
-              <button
-                key={attr}
-                type="button"
-                onClick={() => onPick({ kind: "attribute", attribute: attr })}
-                className="rounded-full border border-border bg-background px-2 py-0.5 text-xs hover:bg-accent"
-              >
-                + {attr}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
+      {numberSection}
+      {boolSection}
+      {attributeSection}
+      {practiceSection}
+      {derivedSection}
+      {diceSection}
 
-      {allowedKinds.has("practice") ? (
-        <div>
-          <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Practice
-          </p>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {ALL_PRACTICES.map((practice) => (
-              <button
-                key={practice}
-                type="button"
-                onClick={() => onPick({ kind: "practice", practice })}
-                className="rounded-full border border-border bg-background px-2 py-0.5 text-xs hover:bg-accent"
-              >
-                + {practice}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {allowedKinds.has("derived") ? (
-        <div>
-          <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Derived
-          </p>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {ALL_DERIVED.map((d) => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => onPick({ kind: "derived", which: d })}
-                className="rounded-full border border-border bg-background px-2 py-0.5 text-xs hover:bg-accent"
-              >
-                + {d === "pb_half" ? "PB/2" : d.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {allowedKinds.has("dice") ? (
-        <div>
-          <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Dice (canonical)
-          </p>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {CANONICAL_DICE.map((d) => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => onPick({ kind: "dice", expression: d })}
-                className="rounded-full border border-border bg-background px-2 py-0.5 text-xs hover:bg-accent"
-              >
-                + {d}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {/* Custom behavior input — always available */}
       <div>
         <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Custom behavior (any name)
+          Custom
         </p>
         <div className="mt-1 flex items-center gap-1.5">
           <input
@@ -239,77 +359,21 @@ function TokenPicker({
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
-                handleCustomSubmit();
+                submit();
               }
             }}
-            placeholder="e.g. darkvision, mana_pool"
+            placeholder={customPlaceholder}
             className="h-7 flex-1 rounded-md border border-input bg-background px-2 text-xs outline-none ring-ring focus:ring-2"
           />
           <button
             type="button"
-            onClick={handleCustomSubmit}
+            onClick={submit}
             className="h-7 rounded-md border border-border bg-background px-2 text-xs hover:bg-accent"
           >
             + add
           </button>
         </div>
       </div>
-
-      {/* Free-form text — always available, becomes a behavior token */}
-      <details className="rounded-md border border-dashed border-border">
-        <summary className="cursor-pointer px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          + free text
-        </summary>
-        <FreeTextInput
-          onSubmit={(text) => { onCustom(text); setCustomName(""); }}
-        />
-      </details>
-    </div>
-  );
-}
-
-// Phase 7.5 v3: BiasPicker removed (bias op is gone). Advantage
-// and disadvantage are now just behavior chips (use the regular
-// TokenPicker).
-
-// =============================================================================
-// Free-text input (multi-word → behavior token)
-// =============================================================================
-
-function FreeTextInput({
-  onSubmit,
-}: {
-  readonly onSubmit: (text: string) => void;
-}): ReactElement {
-  const [draft, setDraft] = useState("");
-  const submit = () => {
-    const t = draft.trim();
-    if (t.length === 0) return;
-    onSubmit(t);
-    setDraft("");
-  };
-  return (
-    <div className="flex items-center gap-1.5 p-2">
-      <input
-        type="text"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            submit();
-          }
-        }}
-        placeholder='e.g. "60 ft darkvision"'
-        className="h-7 flex-1 rounded-md border border-input bg-background px-2 text-xs outline-none ring-ring focus:ring-2"
-      />
-      <button
-        type="button"
-        onClick={submit}
-        className="h-7 rounded-md border border-border bg-background px-2 text-xs hover:bg-accent"
-      >
-        + add
-      </button>
     </div>
   );
 }

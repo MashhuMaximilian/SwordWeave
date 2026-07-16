@@ -1142,10 +1142,10 @@ export function PrimitiveForm({
 
         {modifiers.map((modifier, index) => (
           <div
-            className="grid gap-3 rounded-md border border-border bg-card p-3 md:grid-cols-2"
+            className="grid gap-3 rounded-md border border-border bg-card p-3"
             key={modifier.id}
           >
-            <div className="flex items-center justify-between gap-3 md:col-span-2">
+            <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-medium">Modifier {index + 1}</p>
               <button
                 className="h-8 rounded-md border border-border px-2 text-xs text-muted-foreground disabled:opacity-40"
@@ -1156,253 +1156,297 @@ export function PrimitiveForm({
               </button>
             </div>
 
-            <label className="block text-sm font-medium">
-              What changes?
-              <select
-                className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                value={
-                  (MODIFIER_TARGETS as readonly string[]).includes(
-                    String(modifier.target),
-                  )
-                    ? String(modifier.target)
-                    : "attribute"
-                }
-                onChange={(event) =>
-                  updateModifier(modifier.id, "target", event.target.value)
-                }
-              >
-                {targetOptions.map((target) => (
-                  <option key={target.value} value={target.value}>
-                    {target.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {/* ============================================================
+                SECTION 1 — TARGET
+                "What changes?" + per-axis target value widget.
+                The target value is the KEY (e.g. "darkvision", "physical",
+                "walking speed"). It's distinct from the modifier value
+                (e.g. 60, +2, true) which lives in SECTION 3.
+                ============================================================ */}
+            <fieldset className="space-y-3 rounded-md border border-border bg-background p-3">
+              <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Target
+              </legend>
 
-            {(() => {
-              // Phase-7-E: render the dynamic Target Value widget
-              // for the current target axis. The widget below the
-              // dropdown answers "of which ones?" — the multi-select
-              // (or radio granularity, or free-text) that scopes this
-              // modifier's effect.
-              const currentTargetRaw = String(modifier.target);
-              const currentTarget: ModifierTarget =
-                (MODIFIER_TARGETS as readonly string[]).includes(currentTargetRaw)
-                  ? (currentTargetRaw as ModifierTarget)
-                  : "attribute";
-              const spec = MODIFIER_TARGET_SPEC[currentTarget];
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="block text-sm font-medium">
+                  What changes?
+                  <select
+                    className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
+                    value={
+                      (MODIFIER_TARGETS as readonly string[]).includes(
+                        String(modifier.target),
+                      )
+                        ? String(modifier.target)
+                        : "attribute"
+                    }
+                    onChange={(event) =>
+                      updateModifier(modifier.id, "target", event.target.value)
+                    }
+                  >
+                    {targetOptions.map((target) => (
+                      <option key={target.value} value={target.value}>
+                        {target.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-              // Some targets carry all their meaning in `value`
-              // (numeric, single-axis) — no checklist needed.
-              if (spec.widget === "none") {
-                return (
-                  <div className="rounded-md border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
-                    {spec.layer
-                      ? `Affects all ${spec.label.toLowerCase()} instances by default — use the Value field below to set the magnitude.`
-                      : `${spec.label} has no scope axis; the Value field carries the full effect.`}
-                  </div>
-                );
-              }
+                {(() => {
+                  // Phase-7-E: render the dynamic Target Value widget
+                  // for the current target axis. The widget to the
+                  // right of the dropdown answers "of which ones?" —
+                  // the multi-select (or radio granularity, or
+                  // free-text) that scopes this modifier's effect.
+                  const currentTargetRaw = String(modifier.target);
+                  const currentTarget: ModifierTarget =
+                    (MODIFIER_TARGETS as readonly string[]).includes(currentTargetRaw)
+                      ? (currentTargetRaw as ModifierTarget)
+                      : "attribute";
+                  const spec = MODIFIER_TARGET_SPEC[currentTarget];
 
-              if (spec.widget === "free-text") {
-                return (
-                  <label className="block text-sm font-medium">
-                    {spec.label} details
-                    <input
-                      className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                      value={modifier.freeTextNarrowFocus}
-                      onChange={(event) =>
-                        updateModifier(
-                          modifier.id,
-                          "freeTextNarrowFocus",
-                          event.target.value,
-                        )
-                      }
-                      placeholder={spec.freeTextPlaceholder ?? ""}
-                    />
-                  </label>
-                );
-              }
+                  if (spec.widget === "none") {
+                    return (
+                      <div className="rounded-md border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
+                        {spec.layer
+                          ? `Affects all ${spec.label.toLowerCase()} instances by default — use the Value field below to set the magnitude.`
+                          : `${spec.label} has no scope axis; the Value field carries the full effect.`}
+                      </div>
+                    );
+                  }
 
-              // "checklist" or "checklist-with-free-text"
-              const options = spec.options ?? [];
-              const optionLabels = spec.optionLabels ?? {};
-              return (
-                <div className="md:col-span-2 space-y-2 rounded-md border border-border bg-background p-3">
-                  <p className="text-xs font-semibold uppercase text-muted-foreground">
-                    {spec.label} — leave empty for "any"
-                  </p>
-                  <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3">
-                    {options.map((opt) => {
-                      const checked = modifier.targetValues.includes(opt);
-                      const label = optionLabels[opt] ?? opt;
-                      return (
-                        <label
-                          key={opt}
-                          className="flex items-center gap-2 text-sm"
-                        >
+                  if (spec.widget === "free-text") {
+                    return (
+                      <label className="block text-sm font-medium">
+                        <span className="text-xs text-muted-foreground">
+                          Behavior name (key)
+                        </span>
+                        <input
+                          className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
+                          value={modifier.freeTextNarrowFocus}
+                          onChange={(event) =>
+                            updateModifier(
+                              modifier.id,
+                              "freeTextNarrowFocus",
+                              event.target.value,
+                            )
+                          }
+                          placeholder={spec.freeTextPlaceholder ?? ""}
+                        />
+                      </label>
+                    );
+                  }
+
+                  // "checklist" or "checklist-with-free-text"
+                  const options = spec.options ?? [];
+                  const optionLabels = spec.optionLabels ?? {};
+                  return (
+                    <div className="space-y-2 rounded-md border border-dashed border-border bg-background p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {spec.label} — leave empty for "any"
+                      </p>
+                      <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3">
+                        {options.map((opt) => {
+                          const checked = modifier.targetValues.includes(opt);
+                          const label = optionLabels[opt] ?? opt;
+                          return (
+                            <label
+                              key={opt}
+                              className="flex items-center gap-2 text-sm"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(event) =>
+                                  toggleTargetValue(
+                                    modifier.id,
+                                    opt,
+                                    event.target.checked,
+                                  )
+                                }
+                              />
+                              <span>{label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {spec.widget === "checklist-with-free-text" ? (
+                        <label className="block text-sm font-medium">
+                          Other (describe)
                           <input
-                            type="checkbox"
-                            checked={checked}
+                            className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
+                            value={modifier.freeTextNarrowFocus}
                             onChange={(event) =>
-                              toggleTargetValue(
+                              updateModifier(
                                 modifier.id,
-                                opt,
-                                event.target.checked,
+                                "freeTextNarrowFocus",
+                                event.target.value,
                               )
                             }
+                            placeholder={
+                              spec.freeTextPlaceholder ?? "Describe custom value"
+                            }
                           />
-                          <span>{label}</span>
                         </label>
-                      );
-                    })}
-                  </div>
-                  {spec.widget === "checklist-with-free-text" ? (
-                    <label className="block text-sm font-medium">
-                      Other (describe)
-                      <input
-                        className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                        value={modifier.freeTextNarrowFocus}
-                        onChange={(event) =>
-                          updateModifier(
-                            modifier.id,
-                            "freeTextNarrowFocus",
-                            event.target.value,
-                          )
-                        }
-                        placeholder={
-                          spec.freeTextPlaceholder ?? "Describe custom value"
-                        }
-                      />
-                    </label>
-                  ) : null}
+                      ) : null}
+                    </div>
+                  );
+                })()}
+              </div>
+            </fieldset>
+
+            {/* ============================================================
+                SECTION 2 — CHANGE
+                Operation + chirality indicator.
+                ============================================================ */}
+            <fieldset className="space-y-2 rounded-md border border-border bg-background p-3">
+              <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Change
+              </legend>
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="block text-sm font-medium">
+                  Operation
+                  <select
+                    className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
+                    value={modifier.operation}
+                    onChange={(event) =>
+                      updateModifier(modifier.id, "operation", event.target.value)
+                    }
+                  >
+                    {operations.map((operation) => (
+                      <option key={operation.value} value={operation.value}>
+                        {operation.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {/* Phase 7.5 v3: Mirror toggle UI removed from modifier
+                    row. Mirror logic is decided by the capability/
+                    affect layer (Phase 8), not by the primitive. The
+                    ChiralityBadge is kept as a passive indicator that
+                    shows whether the op is mirrorable. */}
+                <div className="flex flex-col justify-center rounded-md border border-border bg-background p-3">
+                  {(() => {
+                    const mirrorable = effectiveMirrorable(modifier.operation);
+                    return (
+                      <>
+                        <ChiralityBadge
+                          op={modifier.operation}
+                          mirrorable={mirrorable}
+                        />
+                        <p className="mt-1.5 text-[10px] text-muted-foreground">
+                          {mirrorable
+                            ? "Mirrorable — capability layer can flip this to its opposite when invoked in a mirrored context."
+                            : "Not mirrorable (permission-locked)."}
+                        </p>
+                      </>
+                    );
+                  })()}
                 </div>
-              );
-            })()}
+              </div>
+            </fieldset>
 
-            {/* Phase 7.5: Operation + Mirror toggle + chirality badge.
-                Layout: Operation select on the left, Mirror toggle
-                on the right (or hidden if not mirrorable), with the
-                Variable/Permission chirality indicator below. */}
-            <div>
-              <label className="block text-sm font-medium">
-                Operation
-              </label>
-              <select
-                className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                value={modifier.operation}
-                onChange={(event) =>
-                  updateModifier(modifier.id, "operation", event.target.value)
-                }
-              >
-                {operations.map((operation) => (
-                  <option key={operation.value} value={operation.value}>
-                    {operation.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* ============================================================
+                SECTION 3 — VALUE
+                Value Type + chip-stack.
+                The Value Type dropdown drives which sections render in
+                the chip-stack picker AND how typed text classifies.
+                ============================================================ */}
+            <fieldset className="space-y-2 rounded-md border border-border bg-background p-3">
+              <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Value
+              </legend>
 
-            {/* Phase 7.5 v3: Mirror toggle UI removed from modifier
-                row. Mirror logic is decided by the capability/
-                affect layer (Phase 8), not by the primitive. The
-                ChiralityBadge is kept as a passive indicator that
-                shows whether the op is mirrorable. */}
-            {(() => {
-              const mirrorable = effectiveMirrorable(modifier.operation);
-              return (
-                <div className="rounded-md border border-border bg-background p-2">
-                  <ChiralityBadge
-                    op={modifier.operation}
-                    mirrorable={mirrorable}
-                  />
-                  {!mirrorable && (
-                    <p className="mt-1.5 text-[10px] text-muted-foreground">
-                      Not mirrorable (permission-locked).
-                    </p>
-                  )}
-                </div>
-              );
-            })()}
+              {(!hidesValueTypeSelect(modifier.operation)) ? (
+                <label className="block text-sm font-medium">
+                  Value Type
+                  <select
+                    className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
+                    value={modifier.valueKind}
+                    onChange={(event) =>
+                      updateModifier(modifier.id, "valueKind", event.target.value)
+                    }
+                  >
+                    {allowedValueTypes(modifier.operation).map((vt) => (
+                      <option key={vt} value={vt}>
+                        {valueTypeLabel(vt)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
 
-            {/* Value Type — drives the chip-stack's allowed token
-                kinds. Options filtered by the current op's
-                allowed value types (OP_VALUE_TYPE_MATRIX). */}
-            {(!hidesValueTypeSelect(modifier.operation)) ? (
-              <label className="block text-sm font-medium">
-                Value Type
-                <select
-                  className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                  value={modifier.valueKind}
-                  onChange={(event) =>
-                    updateModifier(modifier.id, "valueKind", event.target.value)
-                  }
-                >
-                  {allowedValueTypes(modifier.operation).map((vt) => (
-                    <option key={vt} value={vt}>
-                      {valueTypeLabel(vt)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : (
-              <div />
-            )}
-
-            {/* Phase 7.5: Value field rendering. The chip-stack is
-                used when the op needs a structured value (number,
-                text, dice). For Toggle the field renders a True/
-                False select directly. For Bias the field renders
-                the bias dropdown. */}
-            <label className="block text-sm font-medium">
-              Value
+              {/* Chip-stack — token classification is value-type-aware
+                  via `classifyTypedValue`. */}
               {(() => {
                 const { kinds, biasMode } = allowedTokenKinds(
                   modifier.operation,
                   modifier.valueKind,
                 );
                 return (
-                  <TokenChipStack
-                    tokens={modifier.tokens}
-                    onChange={(next) => {
-                      updateModifier(modifier.id, "tokens", next);
-                      // Keep the derived `value` cache in sync.
-                      const serialized = serializeValueField(next);
-                      const first = serialized[0];
-                      const derived =
-                        typeof first === "string"
-                          ? first
-                          : typeof first === "number"
-                            ? String(first)
-                            : typeof first === "boolean"
-                              ? first
-                                ? "true"
-                                : "false"
-                              : "";
-                      updateModifier(modifier.id, "value", derived);
-                    }}
-                    allowedKinds={kinds}
-                  />
+                  <div className="mt-1.5">
+                    <TokenChipStack
+                      tokens={modifier.tokens}
+                      op={modifier.operation}
+                      valueKind={modifier.valueKind}
+                      onChange={(next) => {
+                        updateModifier(modifier.id, "tokens", next);
+                        // Keep the derived `value` cache in sync.
+                        const serialized = serializeValueField(next);
+                        const first = serialized[0];
+                        const derived =
+                          typeof first === "string"
+                            ? first
+                            : typeof first === "number"
+                              ? String(first)
+                              : typeof first === "boolean"
+                                ? first
+                                  ? "true"
+                                  : "false"
+                                : "";
+                        updateModifier(modifier.id, "value", derived);
+                      }}
+                      allowedKinds={kinds}
+                    />
+                  </div>
                 );
               })()}
-            </label>
+            </fieldset>
 
-            <label className="block text-sm font-medium">
-              Stacking Rule
-              <select
-                className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                value={modifier.stacking}
-                onChange={(event) =>
-                  updateModifier(modifier.id, "stacking", event.target.value)
-                }
-              >
-                {stackingOptions.map((stacking) => (
-                  <option key={stacking} value={stacking}>
-                    {stacking}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {/* Stacking + Condition are part of the modifier card but
+                live outside the three core sections (Target / Change /
+                Value) — they're configuration rather than definition. */}
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="block text-sm font-medium">
+                Stacking Rule
+                <select
+                  className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
+                  value={modifier.stacking}
+                  onChange={(event) =>
+                    updateModifier(modifier.id, "stacking", event.target.value)
+                  }
+                >
+                  {stackingOptions.map((stacking) => (
+                    <option key={stacking} value={stacking}>
+                      {stacking}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="rounded-md border border-dashed border-border bg-background p-3 text-[10px] text-muted-foreground">
+                <p className="font-semibold uppercase tracking-wide">
+                  How does this compose?
+                </p>
+                <p className="mt-1">
+                  <strong>stack</strong> = sum. <strong>highest-only</strong>{" "}
+                  = keep max. <strong>lowest-only</strong> = keep min.{" "}
+                  <strong>unique-by-primitive</strong> = first wins per source.{" "}
+                  <strong>unique-by-target</strong> = first wins per target.{" "}
+                  <strong>replace</strong> = last wins.
+                </p>
+              </div>
+            </div>
 
             {/* Phase-7-Q-B: Triggers when… picker replaces the old
                 Applies-When dropdown + 3-field triple. The picker
@@ -1410,7 +1454,7 @@ export function PrimitiveForm({
                 conditionKey/Operator/Value fields in sync via
                 legacyFieldsFromAuthoring so the toHardModifier path
                 still works without a separate code path. */}
-            <div className="md:col-span-2">
+            <div className="rounded-md border border-border bg-background p-3">
               <ConditionPicker
                 value={modifier.v1Condition}
                 onChange={(next: ConditionAuthoring) => {
