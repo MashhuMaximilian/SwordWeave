@@ -7,18 +7,28 @@
 import { Markdown } from "@/components/ui/markdown";
 import type { HardModifier } from "@/types/swordweave";
 import { legacyConditionProjection } from "@/lib/primitives/condition";
+import { renderEquation, type Operand } from "@/types/modifier";
 
 type ModifierDraft = {
   id: string;
   target: string;
   operation: string;
   value: string;
-  valueKind: "number" | "text" | "boolean";
-  conditionMode: "always" | "custom";
-  conditionKey: string;
-  conditionOperator: string;
-  conditionValue: string;
-  stacking: string;
+  valueKind: "number" | "text" | "boolean" | "dice" | "equation";
+  // Phase 7.5 v4: optional fields the preview uses to render
+  // the equation/condition/stacking summary in full. These are
+  // also present on the form's ModifierDraft; the preview reads
+  // them when present, falls back to the legacy summary when
+  // missing (older rows don't carry them).
+  operands?: Operand[];
+  targetValues?: string[];
+  freeTextNarrowFocus?: string;
+  conditionMode?: "always" | "custom";
+  conditionKey?: string;
+  conditionOperator?: string;
+  conditionValue?: string;
+  v1Condition?: unknown;
+  stacking?: string;
 };
 
 export type PrimitiveFormState = {
@@ -64,6 +74,100 @@ function modifierSummary(modifier: ModifierDraft): string {
   const val =
     modifier.valueKind === "text" ? `"${modifier.value}"` : modifier.value;
   return `${target} ${op} ${val}`;
+}
+
+/**
+ * Render a modifier as a structured card with all the
+ * fields the user composed — target, scope, operation,
+ * equation/value, condition, stacking, mirrorability.
+ * v4: replaces the old flat "target op value" line with
+ * a multi-row block that surfaces everything the form
+ * captured, including equation rendering and target
+ * scope checkboxes.
+ */
+function modifierBlock(modifier: ModifierDraft): React.ReactElement {
+  const target = String(modifier.target);
+  const targetShort = target.split(".").pop() ?? target;
+  const op = modifier.operation;
+
+  // Equation rendering for equation mode.
+  let valueLine: React.ReactElement;
+  if (modifier.valueKind === "equation" && Array.isArray(modifier.operands)) {
+    const eqText = renderEquation(modifier.operands as Operand[]);
+    valueLine = (
+      <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+        {eqText || "(empty)"}
+      </code>
+    );
+  } else if (modifier.valueKind === "text") {
+    valueLine = (
+      <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+        {`"${modifier.value}"`}
+      </code>
+    );
+  } else {
+    valueLine = (
+      <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+        {modifier.value || "0"}
+      </code>
+    );
+  }
+
+  // Target scope (targetValues or freeTextNarrowFocus).
+  const tv = modifier.targetValues ?? [];
+  const narrow = modifier.freeTextNarrowFocus ?? "";
+  const scopeLine: React.ReactElement | null =
+    tv.length > 0 || narrow.length > 0 ? (
+      <p className="mt-0.5 text-[10px] text-muted-foreground">
+        Scope: {tv.length > 0 ? tv.join(", ") : "any"}
+        {narrow ? ` · "${narrow}"` : ""}
+      </p>
+    ) : null;
+
+  // Condition line.
+  const condMode = modifier.conditionMode ?? "always";
+  const condLine: React.ReactElement | null =
+    condMode === "custom" ? (
+      <p className="mt-0.5 text-[10px] text-muted-foreground">
+        When: {modifier.conditionKey ?? "?"} {modifier.conditionOperator ?? "?"}{" "}
+        {modifier.conditionValue ?? ""}
+      </p>
+    ) : null;
+
+  // Mirrorability (per-op, derived from OP_SPECS).
+  const mirrorable = isOpMirrorable(op);
+
+  return (
+    <li
+      key={modifier.id}
+      className="space-y-1 border-b border-border p-2 text-sm last:border-b-0"
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <code className="min-w-0 flex-1 truncate font-mono text-xs">
+          {targetShort} <span className="text-primary">{op}</span> {valueLine}
+        </code>
+        <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground">
+          {modifier.stacking ?? "stack"}
+        </span>
+      </div>
+      {scopeLine}
+      {condLine}
+      <p className="mt-0.5 text-[10px] text-muted-foreground">
+        {mirrorable
+          ? "📊 Mirrorable (variable)"
+          : "🏛 Permission-locked (not mirrorable)"}
+      </p>
+    </li>
+  );
+}
+
+/**
+ * Re-derive op mirrorability at the preview site (so the
+ * preview doesn't have to import OP_SPECS directly).
+ * Matches the form's `effectiveMirrorable`.
+ */
+function isOpMirrorable(op: string): boolean {
+  return op !== "set";
 }
 
 export function PrimitiveFormPreview({
@@ -154,20 +258,8 @@ export function PrimitiveFormPreview({
           <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
             Modifiers ({modifiers.length})
           </h3>
-          <ul className="divide-y divide-border rounded-md border">
-            {modifiers.map((modifier) => (
-              <li
-                key={modifier.id}
-                className="flex items-center justify-between gap-2 p-2 text-sm"
-              >
-                <code className="min-w-0 flex-1 truncate font-mono text-xs">
-                  {modifierSummary(modifier)}
-                </code>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {modifier.stacking}
-                </span>
-              </li>
-            ))}
+          <ul className="rounded-md border">
+            {modifiers.map((modifier) => modifierBlock(modifier))}
           </ul>
         </section>
       ) : null}

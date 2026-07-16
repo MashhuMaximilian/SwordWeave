@@ -25,6 +25,7 @@ import {
   OP_SPECS,
   OP_VALUE_TYPE_MATRIX,
   type ModifierOperation,
+  type OperandValue,
   type ValueToken,
   type ValueType,
 } from "@/types/modifier";
@@ -70,6 +71,18 @@ export function allowedTokenKinds(
   op: ModifierOperation,
   valueKind: FormValueKind,
 ): { kinds: ReadonlySet<ValueToken["kind"]>; biasMode: boolean } {
+  // Phase 7.5 v4: keyword tokens are ALWAYS allowed — the
+  // SUB_CHOICE_KEYWORDS picker section needs to surface
+  // keywords in number/dice/text/boolean modes too (e.g.
+  // adding [walking] tag to a number-mode speed modifier,
+  // or [fire] to a dice-mode damage modifier).
+  //
+  // Keyword tokens are tag-style: they don't carry numeric
+  // weight, they're labels that the engine reads when
+  // resolving against typed targets (damage output type,
+  // speed type, etc.).
+  const keywordKind: ValueToken["kind"] = "keyword";
+
   // Numeric-value ops: number + all runtime token categories.
   // The runtime tokens (attribute/practice/derived) resolve to
   // numbers on the character sheet, so they're valid here.
@@ -79,55 +92,72 @@ export function allowedTokenKinds(
   ) {
     if (valueKind === "number") {
       return {
-        kinds: new Set<ValueToken["kind"]>(["number", "attribute", "practice", "derived"]),
+        kinds: new Set<ValueToken["kind"]>([
+          "number", "attribute", "practice", "derived", keywordKind,
+        ]),
         biasMode: false,
       };
     }
     if (valueKind === "dice") {
-      return { kinds: new Set<ValueToken["kind"]>(["dice"]), biasMode: false };
+      return {
+        kinds: new Set<ValueToken["kind"]>(["dice", keywordKind]),
+        biasMode: false,
+      };
     }
-    return { kinds: new Set<ValueToken["kind"]>(["behavior"]), biasMode: false };
+    return { kinds: new Set<ValueToken["kind"]>(["behavior", keywordKind]), biasMode: false };
   }
   // Min/Max: number (with runtime tokens) OR text (behavior).
   if (op === "min" || op === "max") {
     if (valueKind === "number") {
       return {
-        kinds: new Set<ValueToken["kind"]>(["number", "attribute", "practice", "derived"]),
+        kinds: new Set<ValueToken["kind"]>([
+          "number", "attribute", "practice", "derived", keywordKind,
+        ]),
         biasMode: false,
       };
     }
-    return { kinds: new Set<ValueToken["kind"]>(["behavior"]), biasMode: false };
+    return { kinds: new Set<ValueToken["kind"]>(["behavior", keywordKind]), biasMode: false };
   }
   // Set To: full vocabulary.
   if (op === "set") {
     if (valueKind === "number") {
       return {
-        kinds: new Set<ValueToken["kind"]>(["number", "attribute", "practice", "derived"]),
+        kinds: new Set<ValueToken["kind"]>([
+          "number", "attribute", "practice", "derived", keywordKind,
+        ]),
         biasMode: false,
       };
     }
     if (valueKind === "dice") {
-      return { kinds: new Set<ValueToken["kind"]>(["dice"]), biasMode: false };
+      return {
+        kinds: new Set<ValueToken["kind"]>(["dice", keywordKind]),
+        biasMode: false,
+      };
     }
     // boolean + text both use behavior tokens (true/false are
     // behavior tokens named "true"/"false").
-    return { kinds: new Set<ValueToken["kind"]>(["behavior"]), biasMode: false };
+    return { kinds: new Set<ValueToken["kind"]>(["behavior", keywordKind]), biasMode: false };
   }
   // Grant/Revoke: number (with runtime tokens), text, or dice.
   if (op === "grant" || op === "revoke") {
     if (valueKind === "number") {
       return {
-        kinds: new Set<ValueToken["kind"]>(["number", "attribute", "practice", "derived"]),
+        kinds: new Set<ValueToken["kind"]>([
+          "number", "attribute", "practice", "derived", keywordKind,
+        ]),
         biasMode: false,
       };
     }
     if (valueKind === "dice") {
-      return { kinds: new Set<ValueToken["kind"]>(["dice"]), biasMode: false };
+      return {
+        kinds: new Set<ValueToken["kind"]>(["dice", keywordKind]),
+        biasMode: false,
+      };
     }
-    return { kinds: new Set<ValueToken["kind"]>(["behavior"]), biasMode: false };
+    return { kinds: new Set<ValueToken["kind"]>(["behavior", keywordKind]), biasMode: false };
   }
   // Fallback (shouldn't hit).
-  return { kinds: new Set<ValueToken["kind"]>(["behavior"]), biasMode: false };
+  return { kinds: new Set<ValueToken["kind"]>(["behavior", keywordKind]), biasMode: false };
 }
 
 /**
@@ -352,3 +382,177 @@ export const OPERATION_LABELS: ReadonlyArray<{
   { value: "grant",    label: "Grant" },
   { value: "revoke",   label: "Revoke" },
 ];
+
+// =============================================================================
+// Sub-choice keyword suggestions
+// =============================================================================
+
+/**
+ * Mashu: the value picker needs MORE suggestions beyond
+ * attribute/practice/derived/dice. Every per-axis sub-choice in
+ * MODIFIER_TARGET_SPEC should also appear as a tag-style
+ * suggestion so the author can build modifiers like
+ *
+ *   target=damage_output, op=set, value=#2d6# [piercing]
+ *   target=speed, op=add, value=/5/ [walking]
+ *   target=defense_dc, op=set, value=/18/ [physical]
+ *
+ * without typing the keyword name. The KEYWORD_TOKENS list
+ * collects every meaningful sub-choice label across all axes.
+ *
+ * Token classification:
+ *   - "keyword"  → most labels (tag-only, not numeric)
+ *   - "number"   → labels tied to numeric effects (HP, vitality)
+ *
+ * The picker renders these as `[name]` buttons alongside the
+ * existing damage-type keyword presets. The author's picks
+ * flow through the same parser as the custom input.
+ */
+export interface SubChoiceKeyword {
+  /** Display label shown in the picker. */
+  readonly label: string;
+  /** Group for the picker's section heading. */
+  readonly group: "Defense" | "Speed" | "Targeting" | "Duration" | "Vitality" | "Action";
+}
+
+export const SUB_CHOICE_KEYWORDS: readonly SubChoiceKeyword[] = [
+  // Defense axes (defense_dc).
+  { label: "Physical DC", group: "Defense" },
+  { label: "Mental DC", group: "Defense" },
+  { label: "Magical DC", group: "Defense" },
+  // Speed axes (single axis with locomotion sub-choices).
+  { label: "Walking Speed", group: "Speed" },
+  { label: "Climbing Speed", group: "Speed" },
+  { label: "Swimming Speed", group: "Speed" },
+  { label: "Flying Speed", group: "Speed" },
+  { label: "Burrowing Speed", group: "Speed" },
+  // Targeting shapes.
+  { label: "Single Target", group: "Targeting" },
+  { label: "Multiple Targets", group: "Targeting" },
+  { label: "Cone", group: "Targeting" },
+  { label: "Cube", group: "Targeting" },
+  { label: "Line", group: "Targeting" },
+  { label: "Sphere", group: "Targeting" },
+  { label: "Cylinder", group: "Targeting" },
+  { label: "Wall", group: "Targeting" },
+  { label: "Star", group: "Targeting" },
+  // Duration windows.
+  { label: "Instant", group: "Duration" },
+  { label: "Short", group: "Duration" },
+  { label: "Medium", group: "Duration" },
+  { label: "Long", group: "Duration" },
+  { label: "Persistent", group: "Duration" },
+  { label: "Permanent", group: "Duration" },
+  // Vitality / HP.
+  { label: "Max Vitality", group: "Vitality" },
+  { label: "Current Vitality", group: "Vitality" },
+  // Action.
+  { label: "Attack Roll", group: "Action" },
+  { label: "Action Roll", group: "Action" },
+  { label: "Proficiency Bonus", group: "Action" },
+  { label: "Item Slot Cost", group: "Action" },
+];
+
+// =============================================================================
+// Equation input parser — bracket/delim convention
+// =============================================================================
+
+/**
+ * Parse a single string from the equation custom input into an
+ * OperandValue, using bracket/delim conventions chosen to avoid
+ * colliding with JSON, JS, or engine syntax.
+ *
+ * Conventions:
+ *   [text]    → keyword operand (tag-style). The brackets are
+ *               stripped; the inner text becomes the tag name.
+ *               Examples: [fire], [piercing], [60 ft darkvision]
+ *
+ *   #expr#    → dice expression. The hash marks are stripped;
+ *               the inner text must look like a standard dice
+ *               expression (NdM[+-K]). Examples: #2d6#, #1d10+3#
+ *
+ *   /value/   → numeric. The slashes are stripped; the inner
+ *               content is classified as either a literal
+ *               number or a runtime token (attribute, practice,
+ *               derived). Examples: /5/, /physical/, /level/,
+ *               /PB/
+ *
+ * Anything else: legacy classification by content — falls back
+ * to behavior tokens for unrecognized strings. This keeps the
+ * custom input backwards-compatible with the chip-stack's
+ * classifyTypedValue.
+ *
+ * The bracket/delim syntax lets the author type mixed-type
+ * expressions:
+ *
+ *   "PB + /2/ + #2d6# + [fire]"
+ *
+ * resolves to operands [+ PB, + 2, + 2d6, + fire] without
+ * needing separate inputs per type. The author stays in one
+ * text field; the parser does the classification.
+ */
+export function parseEquationInput(raw: string): OperandValue {
+  const t = raw.trim();
+
+  // [tag] convention.
+  if (t.startsWith("[") && t.endsWith("]") && t.length >= 3) {
+    const inner = t.slice(1, -1).trim();
+    if (inner.length > 0) return { kind: "keyword", text: inner };
+  }
+
+  // #dice# convention.
+  if (t.startsWith("#") && t.endsWith("#") && t.length >= 3) {
+    const inner = t.slice(1, -1).trim();
+    if (isDiceExpression(inner)) {
+      return { kind: "dice", expression: inner };
+    }
+    // #2d6# with a malformed inside — fall through to
+    // legacy classification but the result is a behavior
+    // token; the engine will treat it as text.
+  }
+
+  // /value/ convention.
+  if (t.startsWith("/") && t.endsWith("/") && t.length >= 3) {
+    const inner = t.slice(1, -1).trim();
+    // Numeric literal?
+    if (/^-?\d+(\.\d+)?$/.test(inner)) {
+      return { kind: "number", value: Number(inner) };
+    }
+    // Runtime token? Match case-insensitively so /PB/,
+    // /pb/, and /Pb/ all resolve to derived "pb".
+    const innerLower = inner.toLowerCase();
+    if ((ALL_ATTRIBUTES as readonly string[]).includes(innerLower)) {
+      return { kind: "attribute", attribute: innerLower as never };
+    }
+    if ((ALL_PRACTICES as readonly string[]).includes(innerLower)) {
+      return { kind: "practice", practice: innerLower as never };
+    }
+    if ((ALL_DERIVED as readonly string[]).includes(innerLower)) {
+      return { kind: "derived", which: innerLower as never };
+    }
+    // Unrecognized /value/ → behavior token, treated as text.
+  }
+
+  // Legacy classification (no brackets/hashes/slashes).
+  if (/^\d+d\d+([+-]\d+)?$/i.test(t)) {
+    return { kind: "dice", expression: t };
+  }
+  if (/^-?\d+(\.\d+)?$/.test(t)) {
+    return { kind: "number", value: Number(t) };
+  }
+  // Runtime tokens are case-insensitive ("PB" → "pb").
+  const tLower = t.toLowerCase();
+  if ((ALL_ATTRIBUTES as readonly string[]).includes(tLower)) {
+    return { kind: "attribute", attribute: tLower as never };
+  }
+  if ((ALL_PRACTICES as readonly string[]).includes(tLower)) {
+    return { kind: "practice", practice: tLower as never };
+  }
+  if ((ALL_DERIVED as readonly string[]).includes(tLower)) {
+    return { kind: "derived", which: tLower as never };
+  }
+  if (isBehaviorLike(t)) {
+    return { kind: "behavior", name: t };
+  }
+  return { kind: "behavior", name: t };
+}

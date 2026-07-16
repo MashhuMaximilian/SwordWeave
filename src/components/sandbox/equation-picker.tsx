@@ -49,6 +49,7 @@ import {
   type ValueToken,
 } from "@/types/modifier";
 import { resolveEquation, type EquationResolution } from "@/lib/engine/equations";
+import { parseEquationInput, SUB_CHOICE_KEYWORDS } from "@/lib/primitives/form-helpers";
 
 interface EquationPickerProps {
   readonly operands: readonly Operand[];
@@ -60,14 +61,40 @@ export function EquationPicker({
   onChange,
 }: EquationPickerProps): ReactElement {
   const [pendingOp, setPendingOp] = useState<Operator>("+");
-  const [parenDraft, setParenDraft] = useState<Operand[]>([]);
+  // Paren cursor: depth of currently-open parens. 0 means
+  // we're at the top level (between operands in the outer
+  // operand list). When > 0, the next operand click adds
+  // to the inner-most paren.
+  const [parenStack, setParenStack] = useState(0);
 
   // Live preview: re-resolve on every change to get warnings.
   // The resolver is pure; safe to call on every render.
   const resolution: EquationResolution = resolveEquation(operands);
 
+  /**
+   * Add an operand at the current cursor position. If
+   * parenStack > 0, route into the inner-most open paren.
+   * Otherwise append to the outer operand list.
+   *
+   * Cursor semantics:
+   *   parenStack === 0 → top-level operands
+   *   parenStack === 1 → inside the most-recently-opened paren
+   *   parenStack === 2 → nested inside two parens
+   *
+   * Note: the parenStack is a UI cursor, not the data
+   * structure. The data is a recursive Operand[] where each
+   * paren's `operands` array is its inner sequence. We track
+   * the cursor so the user knows where their next click will
+   * land.
+   */
   const addOperand = (op: Operator, value: OperandValue) => {
-    onChange([...operands, { op, value }]);
+    if (parenStack === 0) {
+      onChange([...operands, { op, value }]);
+      return;
+    }
+    // Route into the inner-most paren. Walk the operand
+    // list, find the last paren at depth parenStack.
+    onChange(appendToInnerParen(operands, parenStack, { op, value }));
   };
 
   const removeOperand = (index: number) => {
@@ -80,18 +107,42 @@ export function EquationPicker({
     );
   };
 
-  const wrapLastInParen = () => {
-    if (operands.length === 0) return;
-    const last = operands[operands.length - 1];
-    if (!last) return;
-    // Replace the last operand with a paren containing it.
-    // Note: this loses the operator context — the paren
-    // starts its own op sequence.
-    const parenOp = last.op;
+  /**
+   * Open a new paren group. The empty paren is appended to the
+   * current operand list. Subsequent operand additions go to
+   * the inner-most open paren (parenStack tracks open depth).
+   *
+   * The user clicks `(` to open and `)` to close. While inside
+   * a paren, the live preview shows "(...)" and the operator
+   * toggle still controls the next chip's op within that
+   * paren.
+   *
+   * If there's no open paren when `(` is clicked, we open a
+   * new one and switch the cursor to inside-paren mode.
+   * If a paren is already open when `(` is clicked, we open
+   * a nested paren.
+   */
+  const openParen = () => {
     onChange([
-      ...operands.slice(0, -1),
-      { op: parenOp, value: { kind: "paren", operands: [last] } },
+      ...operands,
+      {
+        op: "+",
+        value: { kind: "paren", operands: [] },
+      },
     ]);
+    setParenStack((s) => s + 1);
+  };
+
+  /**
+   * Close the inner-most open paren. After closing, the cursor
+   * is back at the outer operand sequence.
+   *
+   * If there's no open paren (parenStack === 0), `)` is a no-op
+   * (button disabled in that case).
+   */
+  const closeParen = () => {
+    if (parenStack === 0) return;
+    setParenStack((s) => Math.max(0, s - 1));
   };
 
   return (
@@ -157,15 +208,33 @@ export function EquationPicker({
             {operatorLabel(op)}
           </button>
         ))}
+        {/* Paren open / close — separate buttons so the user can
+            nest (2+PB)/2. While inside a paren (parenStack > 0),
+            operand clicks route into the inner-most open paren.
+            While outside (parenStack === 0), the close button is
+            disabled. */}
         <button
           type="button"
-          onClick={wrapLastInParen}
-          disabled={operands.length === 0}
-          className="rounded-full border border-dashed border-border bg-background px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent disabled:opacity-40"
-          title="Wrap last operand in parentheses"
+          onClick={openParen}
+          className="rounded-full border border-dashed border-border bg-background px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent"
+          title="Open a new paren group"
         >
-          ( … )
+          (
         </button>
+        <button
+          type="button"
+          onClick={closeParen}
+          disabled={parenStack === 0}
+          className="rounded-full border border-dashed border-border bg-background px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent disabled:opacity-40"
+          title="Close the inner-most open paren"
+        >
+          )
+        </button>
+        {parenStack > 0 ? (
+          <span className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">
+            Inside paren ×{parenStack}
+          </span>
+        ) : null}
       </div>
 
       {/* Suggestions — categorized by operand type */}
@@ -289,6 +358,53 @@ export function EquationPicker({
           </div>
         </div>
 
+        {/* Sub-choice keywords — every per-axis sub-choice label
+            from MODIFIER_TARGET_SPEC (defense axes, speeds,
+            targeting shapes, durations, vitals, action rolls).
+            Grouped by category. Always available. */}
+        <div>
+          <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Sub-Choice Keywords
+          </p>
+          <div className="mt-1 space-y-1.5">
+            {(() => {
+              const byGroup = new Map<string, typeof SUB_CHOICE_KEYWORDS>();
+              for (const k of SUB_CHOICE_KEYWORDS) {
+                const list = byGroup.get(k.group) ?? [];
+                byGroup.set(k.group, [...list, k]);
+              }
+              return Array.from(byGroup.entries());
+            })().map(([group, items]) => (
+              <div key={group}>
+                <p className="px-1 text-[9px] uppercase tracking-wide text-muted-foreground/70">
+                  {group}
+                </p>
+                <div className="mt-0.5 flex flex-wrap gap-1">
+                  {items.map((k) => (
+                    <button
+                      key={k.label}
+                      type="button"
+                      onClick={() =>
+                        addOperand(
+                          pendingOp,
+                          {
+                            kind: "keyword",
+                            text: k.label.toLowerCase().replace(/\s+/g, "_"),
+                          },
+                        )
+                      }
+                      title={`Tag this modifier with "${k.label}"`}
+                      className="rounded-full border border-pink-500/30 bg-pink-500/10 px-2 py-0.5 text-xs text-pink-700 hover:bg-pink-500/20 dark:text-pink-300"
+                    >
+                      [{k.label}]
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Custom input */}
         <EquationCustomInput
           onSubmit={(op, value) => addOperand(op, value)}
@@ -296,6 +412,69 @@ export function EquationPicker({
       </div>
     </div>
   );
+}
+
+/**
+ * Append an operand to the inner-most open paren at the given
+ * depth. Walks the operand list backwards to find the most
+ * recently opened paren at depth `targetDepth` (1-based from
+ * outermost = 0).
+ *
+ * Recursive structure: outer operands contain parens, parens
+ * contain inner operands, those can contain more parens, etc.
+ *
+ * For parenStack === 1, we find the LAST paren in the outer
+ * operand list and append to its inner operand array.
+ * For parenStack === 2, we find the last paren at depth 1,
+ * then the last paren inside IT, and append there.
+ */
+function appendToInnerParen(
+  operands: readonly Operand[],
+  targetDepth: number,
+  newOperand: Operand,
+): Operand[] {
+  if (targetDepth === 0) {
+    return [...operands, newOperand];
+  }
+  return appendAtDepth(operands, targetDepth, newOperand);
+}
+
+function appendAtDepth(
+  operands: readonly Operand[],
+  remainingDepth: number,
+  newOperand: Operand,
+): Operand[] {
+  if (remainingDepth === 0) {
+    return [...operands, newOperand];
+  }
+  // Find the last paren at this level.
+  let lastParenIndex = -1;
+  for (let i = operands.length - 1; i >= 0; i--) {
+    const o = operands[i];
+    if (o && o.value.kind === "paren") {
+      lastParenIndex = i;
+      break;
+    }
+  }
+  if (lastParenIndex === -1) {
+    // No paren at this depth — fall back to top-level append.
+    return [...operands, newOperand];
+  }
+  // Walk into that paren and recurse one level deeper.
+  const lastParen = operands[lastParenIndex];
+  if (!lastParen || lastParen.value.kind !== "paren") {
+    return [...operands, newOperand];
+  }
+  const newInner = appendAtDepth(
+    lastParen.value.operands,
+    remainingDepth - 1,
+    newOperand,
+  );
+  const newParen: Operand = {
+    op: lastParen.op,
+    value: { kind: "paren", operands: newInner },
+  };
+  return operands.map((o, i) => (i === lastParenIndex ? newParen : o));
 }
 
 // =============================================================================
@@ -404,29 +583,34 @@ function EquationCustomInput({
   const [text, setText] = useState("");
   const [op, setOp] = useState<Operator>("+");
 
+  /**
+   * Parse custom input using bracket/delim conventions:
+   *
+   *   [text]    → keyword operand (tag-style)
+   *               Examples: [fire], [piercing], [60 ft]
+   *
+   *   #expr#    → dice expression (the inside can be a standard
+   *               dice expression like 2d6+3)
+   *               Examples: #2d6#, #1d10+3#
+   *
+   *   /value/   → numeric (the inside is a number OR a runtime
+   *               reference that resolves to a number — physical,
+   *               mental, awareness, PB, level)
+   *               Examples: /5/, /physical/, /level/
+   *
+   * Anything else: classified by content (number/dice/keyword/
+   * runtime token) — same as before.
+   *
+   * This convention lets the author type mixed-type expressions
+   * in a single text field, e.g.:
+   *   "PB + /2/ + #2d6# + [fire]"
+   * would resolve to (PB + 2 + 2d6) tagged fire.
+   */
   const submit = () => {
     const t = text.trim();
     if (t.length === 0) return;
-    // Try to classify: dice expression → dice; numeric → number;
-    // keyword (lowercase text) → keyword; else → behavior.
-    let value: OperandValue;
-    if (/^\d+d\d+([+-]\d+)?$/i.test(t)) {
-      value = { kind: "dice", expression: t };
-    } else if (/^-?\d+(\.\d+)?$/.test(t)) {
-      value = { kind: "number", value: Number(t) };
-    } else if ((ALL_ATTRIBUTES as readonly string[]).includes(t)) {
-      value = { kind: "attribute", attribute: t as AttributeKey };
-    } else if ((ALL_PRACTICES as readonly string[]).includes(t)) {
-      value = { kind: "practice", practice: t as PracticeKey };
-    } else if ((ALL_DERIVED as readonly string[]).includes(t)) {
-      value = { kind: "derived", which: t as "pb" | "pb_half" | "level" };
-    } else if (/^[a-z][a-z0-9_]*$/i.test(t)) {
-      // Single-word lowercase — keyword (tag).
-      value = { kind: "keyword", text: t };
-    } else {
-      value = { kind: "behavior", name: t };
-    }
-    onSubmit(op, value);
+    const parsed = parseEquationInput(t);
+    onSubmit(op, parsed);
     setText("");
   };
 

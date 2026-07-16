@@ -20,9 +20,9 @@ import {
   ATTRIBUTES,
   PRACTICES,
   STANDALONE_METRICS,
-  DICE_VALUES,
   DURATION_VALUES,
   validateScope,
+  DICE_VALUES,
 } from "./target-scope";
 
 // =============================================================================
@@ -391,11 +391,18 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
     widget: "none",
   },
   damage_healing_output: {
+    // Phase 7.5 v4: Damage / Healing Output has NO target value
+    // widget. Mashu: modifiers carry their own dice and tags
+    // (via the value field), so the target value checklist
+    // was redundant — the modifier itself says "fire damage
+    // 2d6+PB" and the engine doesn't need to filter by damage
+    // type at the modifier level. The widget: "none" makes the
+    // form show an explanatory placeholder instead of a
+    // checklist.
     target: "damage_healing_output",
     label: "Damage / Healing Output",
     layer: "DICE",
-    widget: "checklist",
-    options: DICE_VALUES,
+    widget: "none",
   },
   targeting: {
     // Phase-7-E/UX2b: the three positional axes (Action Range /

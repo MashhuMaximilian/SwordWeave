@@ -163,11 +163,13 @@ describe("MODIFIER_TARGET_SPEC", () => {
     expect(spec.options).toEqual(PRACTICES);
   });
 
-  it("damage_healing_output uses DICE checklist", () => {
+  it("damage_healing_output uses DICE checklist (v4: widget is now 'none')", () => {
     const spec = MODIFIER_TARGET_SPEC.damage_healing_output;
     expect(spec.layer).toBe("DICE");
-    expect(spec.widget).toBe("checklist");
-    expect(spec.options).toEqual(DICE_VALUES);
+    // Phase 7.5 v4: modifiers carry their own dice and tags,
+    // so no checklist is needed at the target-value level.
+    expect(spec.widget).toBe("none");
+    expect(spec.options).toBeUndefined();
   });
 
   it("duration uses DURATION checklist", () => {

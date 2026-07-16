@@ -42,6 +42,7 @@ import {
   isBooleanValueType,
   NUMBER_SHORTCUTS,
   showsNumberShortcuts,
+  SUB_CHOICE_KEYWORDS,
   type FormValueKind,
 } from "@/lib/primitives/form-helpers";
 import type { ModifierOperation } from "@/types/modifier";
@@ -319,6 +320,54 @@ function TokenPicker({
     </div>
   ) : null;
 
+  // Section: Sub-Choice Keywords — every per-axis sub-choice
+  // label from MODIFIER_TARGET_SPEC. Always available so the
+  // author can quickly tag modifiers with the right scope
+  // axis (e.g. [Walking Speed] for a speed modifier,
+  // [Physical DC] for a defense modifier).
+  //
+  // Grouped by category for scan-ability. Each row is one
+  // group; multiple groups share a single section header.
+  const subChoiceGroups = (() => {
+    const byGroup = new Map<string, typeof SUB_CHOICE_KEYWORDS>();
+    for (const k of SUB_CHOICE_KEYWORDS) {
+      const list = byGroup.get(k.group) ?? [];
+      byGroup.set(k.group, [...list, k]);
+    }
+    return Array.from(byGroup.entries());
+  })();
+  const subChoiceSection = (
+    <div>
+      <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Sub-Choice Keywords
+      </p>
+      <div className="mt-1 space-y-1.5">
+        {subChoiceGroups.map(([group, items]) => (
+          <div key={group}>
+            <p className="px-1 text-[9px] uppercase tracking-wide text-muted-foreground/70">
+              {group}
+            </p>
+            <div className="mt-0.5 flex flex-wrap gap-1">
+              {items.map((k) => (
+                <button
+                  key={k.label}
+                  type="button"
+                  onClick={() =>
+                    onPick({ kind: "keyword", text: k.label.toLowerCase().replace(/\s+/g, "_") })
+                  }
+                  title={`Tag this modifier with "${k.label}"`}
+                  className="rounded-full border border-pink-500/30 bg-pink-500/10 px-2 py-0.5 text-xs text-pink-700 hover:bg-pink-500/20 dark:text-pink-300"
+                >
+                  [{k.label}]
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   // Section: Custom input — context-aware placeholder + classifier.
   const customPlaceholder = (() => {
     if (valueKind === "number") return "Type a number (2, 5) or runtime name (physical, PB)";
@@ -335,6 +384,7 @@ function TokenPicker({
       {practiceSection}
       {derivedSection}
       {diceSection}
+      {subChoiceSection}
 
       <div>
         <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">

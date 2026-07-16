@@ -32,7 +32,9 @@ import {
   isBooleanValueType,
   NUMBER_SHORTCUTS,
   OPERATION_LABELS,
+  parseEquationInput,
   showsNumberShortcuts,
+  SUB_CHOICE_KEYWORDS,
   valueTypeLabel,
 } from "../form-helpers";
 
@@ -73,82 +75,86 @@ describe("OPERATION_LABELS (Phase 7.5 v3 — 9 ops)", () => {
 describe("allowedTokenKinds — Phase 7.5 v3 (post-UI-rev)", () => {
   describe("Add/Subtract/Multiply/Divide", () => {
     for (const op of ["add", "subtract", "multiply", "divide"] as const) {
-      it(`${op} + number → number + runtime tokens (attr/practice/derived)`, () => {
+      it(`${op} + number → number + runtime tokens (+ keyword)`, () => {
         const { kinds, biasMode } = allowedTokenKinds(op, "number");
         // v3-rev: runtime tokens are exposed so users can compose
         // "+ 2 + physical" without typing.
-        expect(kinds).toEqual(new Set(["number", "attribute", "practice", "derived"]));
+        // v4: keyword tokens are always allowed so the
+        // SUB_CHOICE_KEYWORDS picker can tag any mode.
+        expect(kinds).toEqual(new Set([
+          "number", "attribute", "practice", "derived", "keyword",
+        ]));
         expect(biasMode).toBe(false);
       });
 
-      it(`${op} + dice → dice tokens`, () => {
+      it(`${op} + dice → dice tokens (+ keyword)`, () => {
         const { kinds, biasMode } = allowedTokenKinds(op, "dice");
-        expect(kinds).toEqual(new Set(["dice"]));
+        expect(kinds).toEqual(new Set(["dice", "keyword"]));
         expect(biasMode).toBe(false);
       });
 
-      it(`${op} + text → behavior tokens (custom names)`, () => {
+      it(`${op} + text → behavior tokens (+ keyword)`, () => {
         const { kinds } = allowedTokenKinds(op, "text");
-        expect(kinds).toEqual(new Set(["behavior"]));
+        expect(kinds).toEqual(new Set(["behavior", "keyword"]));
       });
     }
   });
 
   describe("Min/Max", () => {
     for (const op of ["min", "max"] as const) {
-      it(`${op} + number → number + runtime tokens`, () => {
+      it(`${op} + number → number + runtime tokens (+ keyword)`, () => {
         expect(allowedTokenKinds(op, "number").kinds).toEqual(
-          new Set(["number", "attribute", "practice", "derived"]),
+          new Set(["number", "attribute", "practice", "derived", "keyword"]),
         );
       });
 
-      it(`${op} + text → behavior tokens`, () => {
-        expect(allowedTokenKinds(op, "text").kinds).toEqual(new Set(["behavior"]));
+      it(`${op} + text → behavior tokens (+ keyword)`, () => {
+        expect(allowedTokenKinds(op, "text").kinds).toEqual(new Set(["behavior", "keyword"]));
       });
 
-      it(`${op} + dice → behavior tokens (fallback)`, () => {
+      it(`${op} + dice → behavior tokens (fallback + keyword)`, () => {
         // Min/Max don't allow dice — fall back to behavior.
-        expect(allowedTokenKinds(op, "dice").kinds).toEqual(new Set(["behavior"]));
+        expect(allowedTokenKinds(op, "dice").kinds).toEqual(new Set(["behavior", "keyword"]));
       });
     }
   });
 
   describe("Set To (universal setter)", () => {
-    it("set + number → number + runtime tokens", () => {
-      expect(allowedTokenKinds("set", "number").kinds).toEqual(
-        new Set(["number", "attribute", "practice", "derived"]),
-      );
-    });
+    it("set + number → number + runtime tokens (+ keyword)", () => {
+        expect(allowedTokenKinds("set", "number").kinds).toEqual(
+          new Set(["number", "attribute", "practice", "derived", "keyword"]),
+        );
+      });
 
-    it("set + dice → dice tokens", () => {
-      expect(allowedTokenKinds("set", "dice").kinds).toEqual(new Set(["dice"]));
-    });
+      it("set + dice → dice tokens (+ keyword)", () => {
+        expect(allowedTokenKinds("set", "dice").kinds).toEqual(new Set(["dice", "keyword"]));
+      });
 
-    it("set + text → behavior tokens", () => {
-      expect(allowedTokenKinds("set", "text").kinds).toEqual(new Set(["behavior"]));
-    });
+      it("set + text → behavior tokens (+ keyword)", () => {
+        expect(allowedTokenKinds("set", "text").kinds).toEqual(new Set(["behavior", "keyword"]));
+      });
 
-    it("set + boolean → behavior tokens (T/F as behavior)", () => {
-      // Boolean values are stored as behavior tokens named
-      // "true" or "false" (no dedicated boolean token kind).
-      expect(allowedTokenKinds("set", "boolean").kinds).toEqual(new Set(["behavior"]));
-    });
+      it("set + boolean → behavior tokens (+ keyword)", () => {
+        // Boolean values are stored as behavior tokens named
+        // "true" or "false" (no dedicated boolean token kind).
+        expect(allowedTokenKinds("set", "boolean").kinds).toEqual(new Set(["behavior", "keyword"]));
+      });
   });
 
   describe("Grant/Revoke", () => {
     for (const op of ["grant", "revoke"] as const) {
-      it(`${op} + number → number + runtime tokens`, () => {
+      it(`${op} + number → number + runtime tokens (+ keyword)`, () => {
         expect(allowedTokenKinds(op, "number").kinds).toEqual(
-          new Set(["number", "attribute", "practice", "derived"]),
+          new Set(["number", "attribute", "practice", "derived", "keyword"]),
         );
       });
 
-      it(`${op} + dice → dice tokens`, () => {
-        expect(allowedTokenKinds(op, "dice").kinds).toEqual(new Set(["dice"]));
+      it(`${op} + dice → dice tokens (+ keyword)`, () => {
+        expect(allowedTokenKinds(op, "dice").kinds).toEqual(new Set(["dice", "keyword"]));
       });
 
-      it(`${op} + text → behavior tokens`, () => {
-        expect(allowedTokenKinds(op, "text").kinds).toEqual(new Set(["behavior"]));
+      it(`${op} + text → behavior tokens (+ keyword)`, () => {
+        expect(allowedTokenKinds(op, "text").kinds).toEqual(new Set(["behavior", "keyword"]));
       });
     }
   });
@@ -390,15 +396,18 @@ describe("Form UX integration scenarios (Phase 7.5 v3 post-UI-rev)", () => {
     expect(kinds.has("derived")).toBe(true);
     expect(kinds.has("dice")).toBe(false);
   });
+  it("Grant + dice: chip-stack accepts dice tokens (+ keyword) for damage/healing", () => {
+      // e.g. "grant damage resistance 1d4" → grant + behavior:damage_resistance + dice:1d4
+      // v4: keyword tokens always allowed (sub-choice tags).
+      const { kinds } = allowedTokenKinds("grant", "dice");
+      expect(kinds).toEqual(new Set(["dice", "keyword"]));
+    });
 
-  it("Grant + dice: chip-stack accepts dice tokens for damage/healing", () => {
-    const { kinds } = allowedTokenKinds("grant", "dice");
-    expect(kinds).toEqual(new Set(["dice"]));
-  });
-
-  it("Set + boolean: chip-stack accepts behavior tokens for true/false (rendered as quick-pick chips)", () => {
+  it("Set + boolean: chip-stack accepts behavior tokens (+ keyword) for true/false (rendered as quick-pick chips)", () => {
+    // e.g. "set is_blind to True" → "set" + "is_blind" via behavior token with name "true"
+    // v4: keyword tokens always allowed (sub-choice tags).
     const { kinds } = allowedTokenKinds("set", "boolean");
-    expect(kinds).toEqual(new Set(["behavior"]));
+    expect(kinds).toEqual(new Set(["behavior", "keyword"]));
     expect(isBooleanValueType("set", "boolean")).toBe(true);
   });
 
@@ -421,5 +430,241 @@ describe("Form UX integration scenarios (Phase 7.5 v3 post-UI-rev)", () => {
   it("Typing '2d10' in Dice mode → dice token (Mashu's '2d10 in custom input' flow)", () => {
     const r = classifyTypedValue("2d10", "set", "dice");
     expect(r.token).toEqual({ kind: "dice", expression: "2d10" });
+  });
+});
+
+// =============================================================================
+// parseEquationInput — bracket/delim convention (v4)
+// =============================================================================
+
+describe("parseEquationInput — bracket/delim convention", () => {
+  describe("[tag] convention", () => {
+    it("[fire] → keyword 'fire'", () => {
+      expect(parseEquationInput("[fire]")).toEqual({
+        kind: "keyword",
+        text: "fire",
+      });
+    });
+
+    it("[piercing] → keyword 'piercing'", () => {
+      expect(parseEquationInput("[piercing]")).toEqual({
+        kind: "keyword",
+        text: "piercing",
+      });
+    });
+
+    it("[60 ft darkvision] → keyword with multi-word text", () => {
+      expect(parseEquationInput("[60 ft darkvision]")).toEqual({
+        kind: "keyword",
+        text: "60 ft darkvision",
+      });
+    });
+
+    it("[] (empty) → behavior '[]' (no keyword)", () => {
+      // Empty brackets fall through to legacy classification.
+      const r = parseEquationInput("[]");
+      expect(r.kind).toBe("behavior");
+    });
+  });
+
+  describe("#dice# convention", () => {
+    it("#2d6# → dice '2d6'", () => {
+      expect(parseEquationInput("#2d6#")).toEqual({
+        kind: "dice",
+        expression: "2d6",
+      });
+    });
+
+    it("#1d10+3# → dice '1d10+3'", () => {
+      expect(parseEquationInput("#1d10+3#")).toEqual({
+        kind: "dice",
+        expression: "1d10+3",
+      });
+    });
+
+    it("#not-a-dice# → falls through to legacy classification", () => {
+      // Malformed inside → legacy classifier sees "not-a-dice"
+      // which is not a dice expression, not a number, not a
+      // canonical token → behavior.
+      const r = parseEquationInput("#not-a-dice#");
+      expect(r.kind).toBe("behavior");
+    });
+  });
+
+  describe("/value/ convention", () => {
+    it("/5/ → number 5", () => {
+      expect(parseEquationInput("/5/")).toEqual({
+        kind: "number",
+        value: 5,
+      });
+    });
+
+    it("/-2/ → number -2", () => {
+      expect(parseEquationInput("/-2/")).toEqual({
+        kind: "number",
+        value: -2,
+      });
+    });
+
+    it("/physical/ → attribute 'physical'", () => {
+      expect(parseEquationInput("/physical/")).toEqual({
+        kind: "attribute",
+        attribute: "physical",
+      });
+    });
+
+    it("/PB/ → derived 'pb'", () => {
+      expect(parseEquationInput("/PB/")).toEqual({
+        kind: "derived",
+        which: "pb",
+      });
+    });
+
+    it("/unknown/ → behavior fallback", () => {
+      // Unrecognized inner → behavior token.
+      const r = parseEquationInput("/unknown/");
+      expect(r.kind).toBe("behavior");
+    });
+  });
+
+  describe("legacy classification (no brackets)", () => {
+    it("60 → number 60", () => {
+      expect(parseEquationInput("60")).toEqual({
+        kind: "number",
+        value: 60,
+      });
+    });
+
+    it("2d6 → dice '2d6'", () => {
+      expect(parseEquationInput("2d6")).toEqual({
+        kind: "dice",
+        expression: "2d6",
+      });
+    });
+
+    it("physical → attribute", () => {
+      expect(parseEquationInput("physical")).toEqual({
+        kind: "attribute",
+        attribute: "physical",
+      });
+    });
+
+    it("darkvision → behavior 'darkvision'", () => {
+      expect(parseEquationInput("darkvision")).toEqual({
+        kind: "behavior",
+        name: "darkvision",
+      });
+    });
+
+    it("multi-word → behavior with full string", () => {
+      expect(parseEquationInput("60 ft darkvision")).toEqual({
+        kind: "behavior",
+        name: "60 ft darkvision",
+      });
+    });
+  });
+
+  describe("mixed: PB + /2/ + #2d6# + [fire]", () => {
+    it("parses each piece with the right convention", () => {
+      // The custom input is one field, but each segment uses
+      // its own delim convention. The author types the whole
+      // expression; the parser applies each rule per segment.
+      expect(parseEquationInput("PB")).toEqual({
+        kind: "derived",
+        which: "pb",
+      });
+      expect(parseEquationInput("/2/")).toEqual({
+        kind: "number",
+        value: 2,
+      });
+      expect(parseEquationInput("#2d6#")).toEqual({
+        kind: "dice",
+        expression: "2d6",
+      });
+      expect(parseEquationInput("[fire]")).toEqual({
+        kind: "keyword",
+        text: "fire",
+      });
+    });
+  });
+});
+
+// =============================================================================
+// SUB_CHOICE_KEYWORDS — sub-choice picker (v4)
+// =============================================================================
+
+describe("SUB_CHOICE_KEYWORDS — sub-choice picker", () => {
+  it("includes defense axes", () => {
+    const labels = SUB_CHOICE_KEYWORDS.map((k) => k.label);
+    expect(labels).toContain("Physical DC");
+    expect(labels).toContain("Mental DC");
+    expect(labels).toContain("Magical DC");
+  });
+
+  it("includes speed axes", () => {
+    const labels = SUB_CHOICE_KEYWORDS.map((k) => k.label);
+    expect(labels).toContain("Walking Speed");
+    expect(labels).toContain("Climbing Speed");
+    expect(labels).toContain("Swimming Speed");
+    expect(labels).toContain("Flying Speed");
+    expect(labels).toContain("Burrowing Speed");
+  });
+
+  it("includes targeting shapes", () => {
+    const labels = SUB_CHOICE_KEYWORDS.map((k) => k.label);
+    expect(labels).toContain("Single Target");
+    expect(labels).toContain("Cone");
+    expect(labels).toContain("Cube");
+    expect(labels).toContain("Sphere");
+  });
+
+  it("includes duration windows", () => {
+    const labels = SUB_CHOICE_KEYWORDS.map((k) => k.label);
+    expect(labels).toContain("Instant");
+    expect(labels).toContain("Short");
+    expect(labels).toContain("Medium");
+    expect(labels).toContain("Long");
+    expect(labels).toContain("Persistent");
+    expect(labels).toContain("Permanent");
+  });
+
+  it("includes vitals", () => {
+    const labels = SUB_CHOICE_KEYWORDS.map((k) => k.label);
+    expect(labels).toContain("Max Vitality");
+    expect(labels).toContain("Current Vitality");
+  });
+
+  it("groups keywords by category", () => {
+    const groups = new Set(SUB_CHOICE_KEYWORDS.map((k) => k.group));
+    expect(groups).toContain("Defense");
+    expect(groups).toContain("Speed");
+    expect(groups).toContain("Targeting");
+    expect(groups).toContain("Duration");
+    expect(groups).toContain("Vitality");
+    expect(groups).toContain("Action");
+  });
+
+  it("Mashu's request: keywords for all sub-choices (no missing)", () => {
+    // v4 ensures every per-axis sub-choice in MODIFIER_TARGET_SPEC
+    // appears here so the picker can tag any modifier.
+    const expectedLabels = [
+      // Defense
+      "Physical DC", "Mental DC", "Magical DC",
+      // Speed
+      "Walking Speed", "Climbing Speed", "Swimming Speed",
+      "Flying Speed", "Burrowing Speed",
+      // Targeting
+      "Single Target", "Multiple Targets", "Cone", "Cube",
+      "Line", "Sphere", "Cylinder", "Wall", "Star",
+      // Duration
+      "Instant", "Short", "Medium", "Long", "Persistent", "Permanent",
+      // Vitality
+      "Max Vitality", "Current Vitality",
+      // Action
+      "Attack Roll", "Action Roll", "Proficiency Bonus", "Item Slot Cost",
+    ];
+    for (const label of expectedLabels) {
+      expect(SUB_CHOICE_KEYWORDS.find((k) => k.label === label)).toBeDefined();
+    }
   });
 });
