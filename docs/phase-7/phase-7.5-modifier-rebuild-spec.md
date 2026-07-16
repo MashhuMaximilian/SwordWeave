@@ -401,56 +401,65 @@ You said keep separate. Set To does not mirror. And Set To only
 takes Number or Text/Dice/Keyword — NOT True/False (Toggle
 handles that).
 
-### Q6 (NEW) — Are there token aliases beyond what I listed?
+### Q6 (CONFIRMED) — Custom tokens are open-ended
 
-In Q2's reply you said "auto complete is a set of existing
-system variables" and gave the example of "physical pill" that
-the character already slotted a modifier for. So the
-auto-complete Value field shows canonical tokens:
+You said: "Well player custom tokens will they can write like they
+can in conditions." Confirmed — token vocabulary is open-ended,
+same model as custom pills in the compound condition picker
+(Phase 7 Q-B m4).
 
-- 3 attributes: `physical`, `mental`, `magic`
-- 10 practices: `awareness`, `fieldcraft`, etc.
-- 3 derived: `pb`, `pb_half`, `level`
-- Free-form behaviors: `behavior:<name>` (user types any name)
-- Dice patterns: `1d4`, `1d6`, `1d8`, `1d10`, `1d12`, `1d20`,
-  and `2d6+3` style expressions
-- Raw numbers: typed directly
+The canonical list (3 attributes, 10 practices, 3 derived,
+dice, numbers, behavior-prefix) is **autocomplete suggestions
+only**. Players can type any custom name and it becomes a
+custom token at runtime. The storage shape is open:
 
-**Question: any other token types I should support?** (E.g.
-character class features, ancestry traits, slot counts, action
-economy slots?)
+```ts
+type ValueToken =
+  | { kind: "attribute"; attribute: "physical" | "mental" | "magic" }
+  | { kind: "practice"; practice: PracticeKey }
+  | { kind: "derived"; which: "pb" | "pb_half" | "level" }
+  | { kind: "behavior"; name: string }   // includes custom names
+  | { kind: "dice"; expression: string }
+  | { kind: "number"; value: number };
+```
 
-### Q7 (NEW) — What happens when a token resolves to 0?
+The form's autocomplete chip-list shows the canonical names
+for quick-pick, plus a `[+ custom]` option that prompts for any
+new name. Custom names get persisted as `behavior` tokens (the
+`name` field carries the custom value).
 
-When the character sheets a primitive whose Value contains a
-`behavior:darkvision` token but the character doesn't have
-darkvision defined, the modifier contributes 0. **Should the
-form warn the author at authoring time, or only at slot time
-when the character doesn't have the matching variable?**
+### Q7 (CONFIRMED) — Unresolved tokens warn at character-creation phase only
 
-My lean: warn at slot time only — the author doesn't need to
-know if every token resolves, they just need to know the
-primitive is correctly structured. The character sheet's
-runtime shows "Unresolved token: darkvision" as a warning when
-it hits a missing variable.
+You said:
+- Treat bare `darkvision` as a behavior token (see Q8).
+- Warning text shows up at character-creation phase when the
+  engine actually resolves the modifier values. In the sandbox
+  (Phase 7), there's no character base, so tokens don't resolve
+  — they're stored as opaque references.
+- Special case: `behavior:X = Y` is semantically equivalent to
+  `grant X with magnitude Y` when Y is non-zero. The form
+  doesn't enforce this — it stores what the author wrote.
+  The runtime engine (Phase 8) does the Set↔Grant equivalence
+  resolution.
 
-### Q8 (NEW) — Behavior tokens and free text: same thing?
+Implementation note: in the sandbox, the Value field renders as
+a token chip-stack with no resolved-value display (just
+"unresolved at sandbox time"). When character creation lands
+(Phase 8), the same chip-stack resolves to the character's
+actual values.
 
-If the user types `darkvision` plain (no `behavior:` prefix) in
-the Value field, does it work the same as `behavior:darkvision`?
+### Q8 (CONFIRMED) — Bare single-word text is a behavior token
 
-My lean: treat bare single-word text as a behavior token
-automatically (no prefix needed). `darkvision` →
-`{kind: "behavior", name: "darkvision"}`. Multi-word or
-symbolic text (e.g. `2d6+3`, `+4`) stays as dice/number.
-`behavior:` prefix is supported for explicitness.
+You said yes. `darkvision` (no prefix) → `{kind: "behavior",
+name: "darkvision"}`. Multi-word or symbolic text (e.g. `2d6+3`,
+`+4`) stays as dice/number. `behavior:` prefix is supported for
+explicitness.
 
 ## What I need from you
 
 Sign-off on the 11-op model + value-type constraint table +
-token vocabulary. Answers to Q2, Q6, Q7, Q8 (1-2 lines each
-should be enough).
+token vocabulary. Implementation starts now.
 
-Once confirmed, Milestone 1 is the storage shape + token
-vocabulary map. Milestone 2 is the form UI (token picker
+Milestone 1: storage shape + token vocabulary map + custom
+token registration. Milestone 2: form UI (token picker
 chip-stack).
