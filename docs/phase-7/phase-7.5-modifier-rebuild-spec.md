@@ -40,7 +40,7 @@ dropdown only shows the allowed types.
 | Divide | Number | YES | flip to Multiply, value becomes reciprocal |
 | Minimum | Number | YES | flip to Maximum, same value |
 | Maximum | Number | YES | flip to Minimum, same value |
-| Set To | Number, Text/Dice/Keyword, True/False | NO | (permission-locked) |
+| Set To | Number, Text/Dice/Keyword | **NO** | (permission-locked) |
 | Grant | Text/Dice/Keyword | YES | flip to Revoke |
 | Revoke | Text/Dice/Keyword | YES | flip to Grant |
 | Toggle | True/False | YES | flip the value (T→F, F→T) |
@@ -49,6 +49,8 @@ dropdown only shows the allowed types.
 **Notes from your message:**
 
 - "Set to is not mirrorable" — confirmed.
+- Set To accepts Number OR Text/Dice/Keyword — NOT True/False
+  (Toggle handles that).
 - "Toggle is not self-mirrorable per se, but its mirror is given
   by value field" — confirmed. Mirror of Toggle (True) is
   Toggle (False), same op.
@@ -118,49 +120,145 @@ Five stacking rules:
 The last two don't interact because they're already "unique"
 by construction — but they're listed for completeness.
 
-## Value field — pre-existing condition keys
+## Value field — runtime-resolvable tokens (revised)
 
-You mentioned wanting to type `+strength` or `+proficiency`
-directly in the value field. That's a request for an autocomplete
-on the Value input that knows about pre-existing condition keys:
+You corrected my "autocomplete = suggestions" reading. The
+correct model is: **the Value field holds runtime-resolvable
+tokens**, not raw text suggestions.
 
-- **+strength, +agility, +finesse, +physique, +willpower,
-  +intelligence, +presence** (the 7 core attributes from the
-  canon)
-- **+proficiency_bonus** (PB shorthand)
-- **+level**, **+attribute_modifier**, **+proficiency** (more
-  derived values)
-- **dice expressions** (`1d4`, `1d6`, `2d8+3`)
-- **keywords** (`grappled`, `prone`, `stunned`, `silenced`,
-  `deafened` — the standard condition set)
-- **plain numbers** (for set_to / add / subtract)
+### Why
 
-The form's Value input should autocomplete against this list. The
-user can also type a raw number — that's the simple case.
+The author's intent: "this primitive adds my physical modifier
+to my attack roll." They don't want to type `+4` manually. They
+want to say `physical` and let the character sheet resolve it
+to the character's actual Physical attribute modifier at slot
+time.
 
-## What changes per the screenshots
+### Token vocabulary (Phase 7.5 v1)
 
-I see 4 fields visible in the current UI:
-- What changes? (dropdown) — engine axis target.
-- ATTRIBUTE — LEAVE EMPTY FOR "ANY" — multi-checkbox for
-  Physical/Mental/Magical axes.
-- Operation + Value Type (paired).
-- Value + Stacking Rule (paired).
+| Token | Resolves to | Example |
+|---|---|---|
+| `physical` | Physical attribute modifier | "add +physical to attack roll" |
+| `mental` | Mental attribute modifier | "add +mental to Reason save" |
+| `magic` | Magic/Abstract attribute modifier | "add +magic to spell DC" |
+| `awareness` | Awareness Practice modifier | "add +awareness to tracking check" |
+| `fieldcraft` | Fieldcraft Practice modifier | (and the other 8 Practices) |
+| `pb` | Proficiency Bonus (full) | "add +pb to all saves" |
+| `pb_half` | Proficiency Bonus / 2 (rounded down) | "add +pb_half to non-proficient checks" |
+| `level` | Character level | (rare; allowed) |
+| `<behavior:NAME>` | Free-form axis the author names | "set darkvision to 60 ft" |
+| `NdM`, `NdM+K` | Dice expressions (1d4, 2d6+3) | "add 1d6 to damage" |
+| `<raw number>` | Literal magnitude | "add 4 to defense" |
 
-The 3rd screenshot shows the Value Type dropdown expanded:
-**Number / Text / Dice / Keyword / True / False.** Currently
-"Text / Dice / Keyword" appears as ONE option in the dropdown,
-not three separate ones. (Or maybe it's a misread — let me
-default to keeping it as 3 separate types per your message.)
+### Form UX
 
-The 4th screenshot shows the Operation dropdown: **Add / Subtract /
-Multiply / Divide / Set To / Minimum / Maximum / Grant / Revoke /
-Toggle.** No Bias yet. We add Bias.
+The Value field renders as a **token picker chip-stack** (not a
+free text input):
+
+```
+Value
+  [× physical]
+  [+ add token]
+```
+
+Clicking `[+ add token]` opens a small popover with the
+canonical token list. Each chip displays the token name and its
+currently-resolved value (gray text underneath the token — "= 4
+when slotted").
+
+- Numeric tokens (`4`, `2d6+3`) are typed directly. Dice uses
+  the canonical size abbreviations (`d4`, `d6`, `d8`, `d10`,
+  `d12`, `d20`).
+- Behavior tokens are typed as `behavior:<name>` where `<name>`
+  is any non-empty string. No autocomplete for behavior names
+  — author owns the namespace.
+- Multiple tokens can stack in the same Value field. "add
+  +physical +2" is two tokens (physical + 2).
+
+### Resolution at slot time (Phase 8 work — Phase 7.5 doesn't
+implement resolution, just the storage shape)
+
+The token picker emits structured data:
+
+```ts
+type ValueToken =
+  | { kind: "attribute"; attribute: "physical" | "mental" | "magic" }
+  | { kind: "practice"; practice: PracticeKey }
+  | { kind: "derived"; which: "pb" | "pb_half" | "level" }
+  | { kind: "behavior"; name: string }
+  | { kind: "dice"; expression: string }   // "1d4", "2d6+3"
+  | { kind: "number"; value: number };      // literal magnitude
+```
+
+When the character sheets a primitive, the engine walks the
+Value token list and replaces each token with the character's
+actual value at that moment. Unresolved tokens (e.g. behavior
+the character doesn't have) resolve to `0` with a soft warning.
+
+### Why this matters for chirality
+
+Token-based values also change how mirrors work:
+
+- Add(physical) mirrors to Subtract(physical). Same token,
+  flipped sign.
+- Set To(physical) does NOT mirror — there's no "set to
+  negative physical."
+- Bias("advantage") mirrors to Bias("disadvantage"). The
+  token value flips, not the op.
+
+Phase 7.5 only handles the form + storage. The runtime
+resolution is Phase 8.
+
+## What changes (the "What changes?" field)
+
+This is the **target engine axis** the modifier applies to. Per
+your message it includes a `behavior` option that's a free-form
+text escape hatch.
+
+### Canonical options
+
+- **Attribute** — one of Physical, Mental, Magic/Abstract.
+- **Practice** — one of the 10 Practices (Awareness, Fieldcraft,
+  Influence, Reason, Vitality, Lore, Magic, Combat, Movement,
+  Social — TBD from the Notion canon).
+- **Action Roll** — attack roll, save, check.
+- **Vitality** — HP pool, healing, damage.
+- **Defense** — physical/magical/mental defenses.
+- **Movement** — speed, jump, climb, swim, etc.
+- **Trigger Hook** — runtime reactive capability.
+- **State Tag** — semantic permission tags (Physical Interaction,
+  Cognitive & Agency, etc.).
+- **Behavior** — free-form axis. The author types any name:
+  `darkvision`, `mana_pool`, `mana_regen`, `stamina_drain`,
+  `flight_speed`, etc. The behavior name becomes a runtime
+  namespace the character sheet may or may not resolve. If the
+  character doesn't have the behavior defined, the modifier
+  contributes `0`.
+
+### Form UX
+
+```
+What changes?
+  [Attribute ▼]  or  [Practice ▼]  or  [Behavior ▼]
+```
+
+- For Attribute / Practice: dropdown shows the canonical list.
+- For Behavior: an input that takes any non-empty string. No
+  autocomplete.
+- The "ATTRIBUTE — LEAVE EMPTY FOR 'ANY'" checkbox row in the
+  screenshots (Physical / Mental / Magical) becomes a sub-filter
+  visible when `What changes = Attribute`. The user picks one or
+  more axes (or leaves all unchecked for "any attribute").
+
+### Token semantics
+
+When `What changes = Attribute` AND `Value = physical`, the
+modifier says "this primitive adds/subtracts the Physical
+attribute modifier to/from the targeted Attribute." The
+character sheet resolves both the target and the value through
+the same attribute system.
 
 ## What this means for the 13 "chirality violations"
-
-Reframing (you said "they are made by system, but otherwise I
-don't know what you mean by authoring"):
 
 The 13 primitives were flagged `is_mirrorable=true` but have no
 modifier. **We don't manually author modifier definitions for
@@ -250,82 +348,109 @@ Estimated: 2-3 hours.
 Estimated: 30 minutes.
 
 ## Open questions — simpler this time
+## Open questions — fuller context this time
 
-### Q1. Bias op value type — Text/Dice/Keyword?
+(I'm rewriting Q2 with more context. Q3, Q4, Q5 already answered
+in your last message. Confirming in the section below.)
 
-Your message says "Bias value type only text / dice / keyword
-and values only Advantage / Disadvantage." But the Bias op's
-VALUE is just the literal string "advantage" or "disadvantage" —
-not a user-typed text. So why is Bias's value type Text/Dice/
-Keyword?
+### Q1 (CONFIRMED) — Bias value field renders as binary dropdown
 
-My read: the form's value-type dropdown for Bias shows
-Text/Dice/Keyword because Bias shares the constraint bucket with
-Grant/Revoke. The actual rendered Value input for Bias is a
-binary dropdown (Advantage/Disadvantage), not a text input.
+You said yes. The Value field for op=Bias renders an
+Advantage/Disadvantage dropdown even though value_type is
+"Text/Dice/Keyword." Storage shape: `value_type: "text", value:
+"advantage" | "disadvantage"`.
 
-**Confirm:** Bias renders as a binary dropdown in the Value
-field, regardless of value_type being "Text/Dice/Keyword."
+### Q2 (NEW, fuller context) — What does "What changes" show by default?
 
-### Q2. Autocomplete vocabulary
+Right now the form's "What changes?" dropdown shows whatever
+options you implemented in the existing primitive form
+(Attribute / Practice / Vitality / etc.). I want to confirm the
+**canonical list of axes**:
 
-For the Value field's autocomplete, I listed:
-- 7 attributes
-- PB, level, attribute_modifier, proficiency
-- dice patterns
-- standard conditions (grappled, prone, stunned, silenced,
-  deafened)
-- plain numbers
+1. **Attribute** — Physical, Mental, Magic/Abstract (3).
+2. **Practice** — Awareness, Fieldcraft, Influence, Reason,
+   Vitality, Lore, Magic, Combat, Movement, Social (10).
+   (Confirm this is the right list — pulled from the Notion
+   canon, but I haven't verified all 10 names against the
+   canonical Practice page.)
+3. **Action Roll** — attack roll, save, check.
+4. **Vitality** — HP, healing, damage.
+5. **Defense** — physical, magical, mental.
+6. **Movement** — speed, jump, climb, swim, burrow, fly.
+7. **Trigger Hook** — runtime reactive capability.
+8. **State Tag** — semantic permission tag (Physical Interaction,
+   Cognitive & Agency, etc.).
+9. **Behavior** — free-form axis (the escape hatch).
 
-**Is the condition keyword set fixed, or is there a Notion
-table I should pull from?** (I see there's a "Lexicon — State
-Tags" table in the Notion hub I haven't fully read yet.)
+**Question: is that list complete, or are there other engine
+axes I'm missing?** (E.g. Strain, Complexity, Upkeep, Range
+modifiers, Duration modifiers.)
 
-### Q3. Mirror behavior for Grant/Revoke
+### Q3 (CONFIRMED) — Grant grappled mirrors to Revoke grappled
 
-If a modifier says "Grant grappled" (op=grant, value=grappled),
-what does mirror produce?
-- (a) Revoke grappled (op flips, value stays).
-- (b) Grant un-grappled (impossible — no "un-grappled" state).
+You said yes. Mirror flips the op, value stays.
 
-My read: (a). Mirror flips the op. The author's intent is "this
-primitive grants grappled; mirror revokes grappled." Same value,
-opposite operation.
+### Q4 (DROPPED — answered by your Q1 reply)
 
-**Confirm.**
+You already confirmed Bias's value is "advantage" / "disadvantage"
+as a binary choice. No need to ask twice.
 
-### Q4. Bias value type — could it be a custom enum?
+### Q5 (CONFIRMED) — Set To and Toggle stay separate, no True/False on Set To
 
-"advantage" and "disadvantage" are an enum, not free text. The
-form renders them as a binary select. But under the hood, is
-the storage:
-- (a) `value_type: "text"`, `value: "advantage"` (free text,
-  validated against enum)?
-- (b) `value_type: "bias"`, `value: "advantage" | "disadvantage"`
-  (typed enum)?
+You said keep separate. Set To does not mirror. And Set To only
+takes Number or Text/Dice/Keyword — NOT True/False (Toggle
+handles that).
 
-My lean: (a) — keeps the value_type matrix simple. Validation
-happens on save, not in the storage shape.
+### Q6 (NEW) — Are there token aliases beyond what I listed?
 
-**Confirm or correct.**
+In Q2's reply you said "auto complete is a set of existing
+system variables" and gave the example of "physical pill" that
+the character already slotted a modifier for. So the
+auto-complete Value field shows canonical tokens:
 
-### Q5. Set To + True/False: same as Toggle?
+- 3 attributes: `physical`, `mental`, `magic`
+- 10 practices: `awareness`, `fieldcraft`, etc.
+- 3 derived: `pb`, `pb_half`, `level`
+- Free-form behaviors: `behavior:<name>` (user types any name)
+- Dice patterns: `1d4`, `1d6`, `1d8`, `1d10`, `1d12`, `1d20`,
+  and `2d6+3` style expressions
+- Raw numbers: typed directly
 
-"Set To + True/False" behaves identically to "Toggle." Do we
-collapse them in the form? My read: no — keep Set To and
-Toggle as separate ops because semantically Set To is
-"assert this state is true" while Toggle is "flip this state."
-But functionally identical.
+**Question: any other token types I should support?** (E.g.
+character class features, ancestry traits, slot counts, action
+economy slots?)
 
-**Confirm: keep separate, OR collapse to one op.**
+### Q7 (NEW) — What happens when a token resolves to 0?
+
+When the character sheets a primitive whose Value contains a
+`behavior:darkvision` token but the character doesn't have
+darkvision defined, the modifier contributes 0. **Should the
+form warn the author at authoring time, or only at slot time
+when the character doesn't have the matching variable?**
+
+My lean: warn at slot time only — the author doesn't need to
+know if every token resolves, they just need to know the
+primitive is correctly structured. The character sheet's
+runtime shows "Unresolved token: darkvision" as a warning when
+it hits a missing variable.
+
+### Q8 (NEW) — Behavior tokens and free text: same thing?
+
+If the user types `darkvision` plain (no `behavior:` prefix) in
+the Value field, does it work the same as `behavior:darkvision`?
+
+My lean: treat bare single-word text as a behavior token
+automatically (no prefix needed). `darkvision` →
+`{kind: "behavior", name: "darkvision"}`. Multi-word or
+symbolic text (e.g. `2d6+3`, `+4`) stays as dice/number.
+`behavior:` prefix is supported for explicitness.
 
 ## What I need from you
 
-Sign-off on the 11-op model + value-type constraint table.
-Answers to the 5 questions above (1-line each is fine).
-Then I start with Milestone 1.
+Sign-off on the 11-op model + value-type constraint table +
+token vocabulary. Answers to Q2, Q6, Q7, Q8 (1-2 lines each
+should be enough).
 
-If you want to drop into the form and play with the current
-state before I change anything, the dev server is on port 3015
-(`pnpm dev`) — the primitive form is at
-`/dashboard/sandbox/primitives/[id]`.
+Once confirmed, Milestone 1 is the storage shape + token
+vocabulary map. Milestone 2 is the form UI (token picker
+chip-stack).
