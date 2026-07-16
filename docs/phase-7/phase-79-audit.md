@@ -113,6 +113,22 @@ Of the 115, **13 are flagged `is_mirrorable=true`** in the DB today. These are t
 
 ### 7.9.1 — Author the 13 mirrorable carryover (Priority 1)
 
+**Design decision (Mashu, round 4): Option A — keep the 3 Negative Bias rows as 3 distinct seeds.**
+
+The canonical primitives are *seeds*, not specifics. Forks inherit the
+seed's scope and add specifics (which focus, which practice, which
+attribute). The 3 Negative Bias rows are 3 different BU-priced seeds
+for 3 different scope tiers — kept as-is.
+
+**Fork guidance goes in `narrative_rule`** (the long-form description)
+as a disclaimer: "This is a seed. Fork it to specify [scope]. For
+example, fork 'Attribute Increment' into '+1 to Physical' for a 12 BU
+primitive that targets the Physical attribute specifically."
+
+We will **NOT** add a structured "how to fork" field. The disclaimer
+is free text in `narrative_rule`. This keeps the schema simple and
+lets the author describe the fork path in their own words.
+
 These are the explicit Phase-7.5 commitment. Each gets 1 modifier with a non-`set` op so mirrorability is auto-derived.
 
 **The 13:**
