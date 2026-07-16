@@ -9,6 +9,7 @@
 // component. They live in the SandboxLayout columns owned by the page.
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import type { ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import type {
   ModifierOperation,
@@ -37,6 +38,17 @@ import {
   selectionForModifier,
   scopeForSelection,
 } from "@/lib/primitives/modifier-scope";
+import {
+  BIAS_VALUES,
+  OP_SPECS,
+  OP_VALUE_TYPE_MATRIX,
+  applyMirror,
+  parseValueField,
+  serializeValueField,
+  tokenLabel,
+  type ValueToken,
+} from "@/types/modifier";
+import { TokenChipStack } from "./token-chip-stack";
 
 type PrimitiveRow = {
   id: number;
@@ -72,6 +84,14 @@ export type ModifierDraft = {
   // compatibility when loading older rows.
   target: ModifierTarget | string;
   operation: ModifierOperation;
+  // Phase 7.5: Value field is a token chip-stack. New writes
+  // emit `tokens: ValueToken[]` via the serializer. The legacy
+  // `value: string` field below is a derived cache populated
+  // whenever `tokens` changes — kept so the existing
+  // toHardModifier path and JSON preview keep working without
+  // surgery. On load, parseValueField auto-coerces legacy rows
+  // into tokens.
+  tokens: ValueToken[];
   value: string;
   valueKind: "number" | "text" | "boolean";
   // Phase-7-E: Target Value(s) for this modifier — multi-select on
@@ -147,6 +167,7 @@ const targetOptions: ReadonlyArray<{ readonly label: string; readonly value: Mod
     value: t,
   }));
 
+// Phase 7.5: extended to 11 ops (added "bias").
 const operations: Array<{ label: string; value: ModifierOperation }> = [
   { label: "Add", value: "add" },
   { label: "Subtract", value: "subtract" },
@@ -158,7 +179,74 @@ const operations: Array<{ label: string; value: ModifierOperation }> = [
   { label: "Grant", value: "grant" },
   { label: "Revoke", value: "revoke" },
   { label: "Toggle", value: "toggle" },
+  { label: "Bias", value: "bias" },
 ];
+
+/**
+ * Map a valueType + operation to the set of ValueToken kinds
+ * the chip-stack should accept for the "add token" popover.
+ *
+ * For most value types the form's valueKind field drives this
+ * (set/number/text/boolean/bias-value). When valueKind is
+ * "bias-value", the chip-stack renders the bias dropdown.
+ */
+function allowedTokenKinds(
+  op: ModifierOperation,
+  valueKind: ModifierDraft["valueKind"],
+): { kinds: ReadonlySet<ValueToken["kind"]>; biasMode: boolean } {
+  // Bias op always renders the bias picker regardless of valueKind.
+  if (op === "bias") {
+    return { kinds: new Set(), biasMode: true };
+  }
+  // Toggle always accepts boolean tokens (via custom behavior
+  // tokens that carry the value "true"/"false" or just T/F).
+  if (op === "toggle") {
+    return { kinds: new Set(["behavior", "number"]), biasMode: false };
+  }
+  // Grant/Revoke accept text/dice keywords (rendered as behavior
+  // tokens with the keyword as the name).
+  if (op === "grant" || op === "revoke") {
+    return { kinds: new Set(["behavior", "dice"]), biasMode: false };
+  }
+  // For Add/Subtract/Multiply/Divide/Min/Max: number + tokens.
+  if (
+    op === "add" || op === "subtract" ||
+    op === "multiply" || op === "divide" ||
+    op === "min" || op === "max"
+  ) {
+    if (valueKind === "number") {
+      return { kinds: new Set(["number"]), biasMode: false };
+    }
+    return {
+      kinds: new Set(["number", "attribute", "practice", "derived", "behavior"]),
+      biasMode: false,
+    };
+  }
+  // Set To: number OR text/dice/tokens.
+  if (op === "set") {
+    if (valueKind === "number") {
+      return { kinds: new Set<ValueToken["kind"]>(["number"]), biasMode: false };
+    }
+    return {
+      kinds: new Set<ValueToken["kind"]>(["number", "dice", "attribute", "practice", "derived", "behavior"]),
+      biasMode: false,
+    };
+  }
+  // Fallback (shouldn't hit).
+  return { kinds: new Set(["behavior"]), biasMode: false };
+}
+
+/**
+ * Derive the modifier's effective mirrorability from the current
+ * op + value type combo. Set To is always non-mirrorable.
+ * Otherwise follows OP_SPECS.
+ */
+function effectiveMirrorable(
+  op: ModifierOperation,
+  valueKind: ModifierDraft["valueKind"],
+): boolean {
+  return OP_SPECS[op].mirrorable;
+}
 
 // Phase-7-Q-B: the legacy `conditionOperators` list (the 8-operator
 // dropdown) is gone. The ConditionPicker does not expose the
@@ -199,6 +287,11 @@ const blankModifier: ModifierDraft = {
   id: "modifier-1",
   target: "attribute",
   operation: "add",
+  // Phase 7.5: tokens is the primary value storage. `value`
+  // below is a derived cache (the first token's serialized form)
+  // kept for backwards compat with the toHardModifier path and
+  // the JSON preview.
+  tokens: [{ kind: "number", value: 1 }],
   value: "1",
   valueKind: "number",
   // Phase-7-E: defaults for the new Target Value widget. With
@@ -247,6 +340,71 @@ function categoryLabel(category: string) {
     .split("_")
     .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
     .join(" ");
+}
+
+// =============================================================================
+// ChiralityBadge — Phase 7.5
+// Small visual indicator showing whether the current op is
+// Variable Vector (mirrorable) or Permission Vector (locked).
+// =============================================================================
+
+function ChiralityBadge({
+  op,
+  mirrorable,
+}: {
+  readonly op: ModifierOperation;
+  readonly mirrorable: boolean;
+}): ReactElement {
+  const isBias = op === "bias";
+  const isToggle = op === "toggle";
+  const isSetTo = op === "set";
+  if (isSetTo) {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-sm border border-slate-500/30 bg-slate-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300"
+        title="Set To is permission-locked; cannot be inverted."
+      >
+        🏛 Permission
+      </span>
+    );
+  }
+  if (isBias) {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-sm border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300"
+        title="Bias — mirror flips advantage <-> disadvantage."
+      >
+        📊 Variable (self-mirror)
+      </span>
+    );
+  }
+  if (isToggle) {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-sm border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300"
+        title="Toggle — mirror flips the value T <-> F."
+      >
+        📊 Variable (value-flip)
+      </span>
+    );
+  }
+  if (mirrorable) {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-sm border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300"
+        title="Variable Vector — mirrorable per OP_SPECS."
+      >
+        📊 Variable
+      </span>
+    );
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-sm border border-slate-500/30 bg-slate-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300"
+    >
+      🏛 Permission
+    </span>
+  );
 }
 
 function toModifierDraft(modifier: ModifierDraft, index: number): ModifierDraft {
@@ -305,6 +463,10 @@ function fromHardModifier(modifier: Record<string, unknown>, index: number): Mod
     id: `modifier-${index + 1}`,
     target: selection.target,
     operation: String(modifier["operation"] ?? "add") as ModifierOperation,
+    // Phase 7.5: parse the legacy value field into the new
+    // token shape. parseValueField auto-coerces plain numbers,
+    // strings, booleans, dice expressions, etc.
+    tokens: parseValueField(rawValue),
     value,
     valueKind,
     targetValues: [...selection.targetValues],
@@ -556,7 +718,7 @@ export function PrimitiveForm({
   function updateModifier(
     id: string,
     field: keyof ModifierDraft,
-    value: string | ConditionAuthoring,
+    value: string | ConditionAuthoring | ValueToken[],
   ) {
     setIsDirty(true);
     setModifiers((current) =>
@@ -619,6 +781,57 @@ export function PrimitiveForm({
     setIsDirty(true);
     setModifiers((current) =>
       current.filter((modifier) => modifier.id !== id),
+    );
+  }
+
+  /**
+   * Phase 7.5: Mirror toggle handler. Swaps the modifier's
+   * operation to its chiral pair (e.g. Add → Subtract) and
+   * adjusts the first token's value per OP_SPECS (sign flip,
+   * reciprocal, or value flip).
+   *
+   * Multi-token values: only the first token is mirrored. The
+   * intent is "this modifier, mirrored" — if the author wants
+   * a fully mirrored version with different conditions, they
+   * write a second modifier primitive with its own condition.
+   */
+  function mirrorModifier(id: string) {
+    setIsDirty(true);
+    setModifiers((current) =>
+      current.map((modifier) => {
+        if (modifier.id !== id) return modifier;
+        if (!OP_SPECS[modifier.operation].mirrorable) return modifier;
+        const spec = OP_SPECS[modifier.operation];
+        // Mirror each token through the op swap. For single-value
+        // tokens (number, behavior, dice), applyMirror semantics
+        // are baked in. For runtime tokens (attribute, practice,
+        // derived), the value is an identifier that doesn't
+        // change on mirror (it's still "physical" or "awareness").
+        const nextTokens: ValueToken[] = modifier.tokens.map((token): ValueToken => {
+          if (token.kind === "number") {
+            const result = applyMirror(modifier.operation, token.value);
+            if (result.op !== spec.mirrorOp) return token;
+            if (typeof result.value === "number") {
+              return { kind: "number", value: result.value };
+            }
+            return token;
+          }
+          if (token.kind === "behavior") {
+            const result = applyMirror(modifier.operation, token.name);
+            if (result.op !== spec.mirrorOp) return token;
+            if (result.value === "advantage" || result.value === "disadvantage") {
+              return { kind: "behavior", name: result.value };
+            }
+            return token;
+          }
+          return token;
+        });
+        return {
+          ...modifier,
+          operation: spec.mirrorOp ?? modifier.operation,
+          tokens: nextTokens,
+        };
+      }),
     );
   }
 
@@ -1196,8 +1409,14 @@ export function PrimitiveForm({
               );
             })()}
 
-            <label className="block text-sm font-medium">
-              Operation
+            {/* Phase 7.5: Operation + Mirror toggle + chirality badge.
+                Layout: Operation select on the left, Mirror toggle
+                on the right (or hidden if not mirrorable), with the
+                Variable/Permission chirality indicator below. */}
+            <div>
+              <label className="block text-sm font-medium">
+                Operation
+              </label>
               <select
                 className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
                 value={modifier.operation}
@@ -1211,8 +1430,44 @@ export function PrimitiveForm({
                   </option>
                 ))}
               </select>
-            </label>
+            </div>
 
+            {(() => {
+              const mirrorable = effectiveMirrorable(
+                modifier.operation,
+                modifier.valueKind,
+              );
+              const spec = OP_SPECS[modifier.operation];
+              return (
+                <div className="rounded-md border border-border bg-background p-2">
+                  {/* Chirality indicator */}
+                  <ChiralityBadge op={modifier.operation} mirrorable={mirrorable} />
+                  {/* Mirror toggle — hidden when not mirrorable */}
+                  {mirrorable ? (
+                    <button
+                      type="button"
+                      onClick={() => mirrorModifier(modifier.id)}
+                      className="mt-1.5 flex w-full items-center justify-between gap-2 rounded-md border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-xs font-medium text-violet-700 hover:bg-violet-500/20 dark:text-violet-300"
+                      title={`Mirror: swap operation to ${
+                        spec.mirrorOp ?? ""
+                      } and adjust value per OP_SPECS`}
+                    >
+                      <span>↔ Mirror</span>
+                      <span className="text-[10px] text-violet-600/80">
+                        → {spec.mirrorOp}
+                      </span>
+                    </button>
+                  ) : (
+                    <p className="mt-1.5 text-[10px] text-muted-foreground">
+                      Not mirrorable (permission-locked).
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Value Type — kept as a 3-option select for now,
+                drives the chip-stack's allowed token kinds. */}
             <label className="block text-sm font-medium">
               Value Type
               <select
@@ -1228,29 +1483,41 @@ export function PrimitiveForm({
               </select>
             </label>
 
+            {/* Phase 7.5: Value field is a token chip-stack. Replaces
+                the legacy single-value input/select. Real-time:
+                onChange fires on every chip add/remove. */}
             <label className="block text-sm font-medium">
               Value
-              {modifier.valueKind === "boolean" ? (
-                <select
-                  className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                  value={modifier.value}
-                  onChange={(event) =>
-                    updateModifier(modifier.id, "value", event.target.value)
-                  }
-                >
-                  <option value="true">True</option>
-                  <option value="false">False</option>
-                </select>
-              ) : (
-                <input
-                  className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                  value={modifier.value}
-                  onChange={(event) =>
-                    updateModifier(modifier.id, "value", event.target.value)
-                  }
-                  placeholder={modifier.valueKind === "number" ? "1" : "1d4"}
-                />
-              )}
+              {(() => {
+                const { kinds, biasMode } = allowedTokenKinds(
+                  modifier.operation,
+                  modifier.valueKind,
+                );
+                return (
+                  <TokenChipStack
+                    tokens={modifier.tokens}
+                    onChange={(next) => {
+                      updateModifier(modifier.id, "tokens", next);
+                      // Keep the derived `value` cache in sync.
+                      const serialized = serializeValueField(next);
+                      const first = serialized[0];
+                      const derived =
+                        typeof first === "string"
+                          ? first
+                          : typeof first === "number"
+                            ? String(first)
+                            : typeof first === "boolean"
+                              ? first
+                                ? "true"
+                                : "false"
+                              : "";
+                      updateModifier(modifier.id, "value", derived);
+                    }}
+                    allowedKinds={kinds}
+                    biasMode={biasMode}
+                  />
+                );
+              })()}
             </label>
 
             <label className="block text-sm font-medium">

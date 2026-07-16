@@ -39,7 +39,8 @@ export type ModifierOperation =
   | "max"
   | "grant"
   | "revoke"
-  | "toggle";
+  | "toggle"
+  | "bias";
 
 export type ModifierTarget =
   | "character.attribute.physical"

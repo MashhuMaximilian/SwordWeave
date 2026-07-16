@@ -291,6 +291,18 @@ export function applyOperation(
       if (typeof base === "boolean") return !base;
       return base;
     }
+
+    case "bias": {
+      // Bias (Phase 7.5): modifies a probability track. The
+      // base value is an existing advantage/disadvantage flag,
+      // and the modifier value ("advantage" or "disadvantage")
+      // overrides it. The runtime resolution engine (Phase 8)
+      // translates this into actual die roll mechanics.
+      if (modifierValue === "advantage" || modifierValue === "disadvantage") {
+        return modifierValue;
+      }
+      return base;
+    }
   }
 }
 
