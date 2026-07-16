@@ -47,7 +47,15 @@ import {
   serializeValueField,
   tokenLabel,
   type ValueToken,
+  type ValueType,
 } from "@/types/modifier";
+import {
+  allowedTokenKinds,
+  allowedValueTypes,
+  effectiveMirrorable,
+  hidesValueTypeSelect,
+  valueTypeLabel,
+} from "@/lib/primitives/form-helpers";
 import { TokenChipStack } from "./token-chip-stack";
 
 type PrimitiveRow = {
@@ -93,7 +101,13 @@ export type ModifierDraft = {
   // into tokens.
   tokens: ValueToken[];
   value: string;
-  valueKind: "number" | "text" | "boolean";
+  /**
+   * Phase 7.5 v2: Value Type is now dynamic per op. The form's
+   * Value Type select shows only the allowed types for the
+   * current op. Stored as the canonical `ValueType` string
+   * from `OP_VALUE_TYPE_MATRIX`.
+   */
+  valueKind: ValueType;
   // Phase-7-E: Target Value(s) for this modifier — multi-select on
   // the scope axis implied by `target`. Empty = "any".
   targetValues: string[];
@@ -182,71 +196,9 @@ const operations: Array<{ label: string; value: ModifierOperation }> = [
   { label: "Bias", value: "bias" },
 ];
 
-/**
- * Map a valueType + operation to the set of ValueToken kinds
- * the chip-stack should accept for the "add token" popover.
- *
- * For most value types the form's valueKind field drives this
- * (set/number/text/boolean/bias-value). When valueKind is
- * "bias-value", the chip-stack renders the bias dropdown.
- */
-function allowedTokenKinds(
-  op: ModifierOperation,
-  valueKind: ModifierDraft["valueKind"],
-): { kinds: ReadonlySet<ValueToken["kind"]>; biasMode: boolean } {
-  // Bias op always renders the bias picker regardless of valueKind.
-  if (op === "bias") {
-    return { kinds: new Set(), biasMode: true };
-  }
-  // Toggle always accepts boolean tokens (via custom behavior
-  // tokens that carry the value "true"/"false" or just T/F).
-  if (op === "toggle") {
-    return { kinds: new Set(["behavior", "number"]), biasMode: false };
-  }
-  // Grant/Revoke accept text/dice keywords (rendered as behavior
-  // tokens with the keyword as the name).
-  if (op === "grant" || op === "revoke") {
-    return { kinds: new Set(["behavior", "dice"]), biasMode: false };
-  }
-  // For Add/Subtract/Multiply/Divide/Min/Max: number + tokens.
-  if (
-    op === "add" || op === "subtract" ||
-    op === "multiply" || op === "divide" ||
-    op === "min" || op === "max"
-  ) {
-    if (valueKind === "number") {
-      return { kinds: new Set(["number"]), biasMode: false };
-    }
-    return {
-      kinds: new Set(["number", "attribute", "practice", "derived", "behavior"]),
-      biasMode: false,
-    };
-  }
-  // Set To: number OR text/dice/tokens.
-  if (op === "set") {
-    if (valueKind === "number") {
-      return { kinds: new Set<ValueToken["kind"]>(["number"]), biasMode: false };
-    }
-    return {
-      kinds: new Set<ValueToken["kind"]>(["number", "dice", "attribute", "practice", "derived", "behavior"]),
-      biasMode: false,
-    };
-  }
-  // Fallback (shouldn't hit).
-  return { kinds: new Set(["behavior"]), biasMode: false };
-}
-
-/**
- * Derive the modifier's effective mirrorability from the current
- * op + value type combo. Set To is always non-mirrorable.
- * Otherwise follows OP_SPECS.
- */
-function effectiveMirrorable(
-  op: ModifierOperation,
-  valueKind: ModifierDraft["valueKind"],
-): boolean {
-  return OP_SPECS[op].mirrorable;
-}
+// Phase 7.5 form helpers are extracted to @/lib/primitives/form-helpers
+// for testability. The local definitions are removed; the
+// imported functions are used directly in the JSX below.
 
 // Phase-7-Q-B: the legacy `conditionOperators` list (the 8-operator
 // dropdown) is gone. The ConditionPicker does not expose the
@@ -1433,10 +1385,7 @@ export function PrimitiveForm({
             </div>
 
             {(() => {
-              const mirrorable = effectiveMirrorable(
-                modifier.operation,
-                modifier.valueKind,
-              );
+              const mirrorable = effectiveMirrorable(modifier.operation);
               const spec = OP_SPECS[modifier.operation];
               return (
                 <div className="rounded-md border border-border bg-background p-2">
@@ -1466,58 +1415,82 @@ export function PrimitiveForm({
               );
             })()}
 
-            {/* Value Type — kept as a 3-option select for now,
-                drives the chip-stack's allowed token kinds. */}
-            <label className="block text-sm font-medium">
-              Value Type
-              <select
-                className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                value={modifier.valueKind}
-                onChange={(event) =>
-                  updateModifier(modifier.id, "valueKind", event.target.value)
-                }
-              >
-                <option value="number">Number</option>
-                <option value="text">Text / Dice / Keyword</option>
-                <option value="boolean">True / False</option>
-              </select>
-            </label>
+            {/* Value Type — drives the chip-stack's allowed token
+                kinds. Options filtered by the current op's
+                allowed value types (OP_VALUE_TYPE_MATRIX). For
+                Toggle and Bias, the Value Type select is hidden
+                (the op determines the value shape directly). */}
+            {(!hidesValueTypeSelect(modifier.operation)) ? (
+              <label className="block text-sm font-medium">
+                Value Type
+                <select
+                  className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
+                  value={modifier.valueKind}
+                  onChange={(event) =>
+                    updateModifier(modifier.id, "valueKind", event.target.value)
+                  }
+                >
+                  {allowedValueTypes(modifier.operation).map((vt) => (
+                    <option key={vt} value={vt}>
+                      {valueTypeLabel(vt)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <div />
+            )}
 
-            {/* Phase 7.5: Value field is a token chip-stack. Replaces
-                the legacy single-value input/select. Real-time:
-                onChange fires on every chip add/remove. */}
+            {/* Phase 7.5: Value field rendering. The chip-stack is
+                used when the op needs a structured value (number,
+                text, dice). For Toggle the field renders a True/
+                False select directly. For Bias the field renders
+                the bias dropdown. */}
             <label className="block text-sm font-medium">
               Value
-              {(() => {
-                const { kinds, biasMode } = allowedTokenKinds(
-                  modifier.operation,
-                  modifier.valueKind,
-                );
-                return (
-                  <TokenChipStack
-                    tokens={modifier.tokens}
-                    onChange={(next) => {
-                      updateModifier(modifier.id, "tokens", next);
-                      // Keep the derived `value` cache in sync.
-                      const serialized = serializeValueField(next);
-                      const first = serialized[0];
-                      const derived =
-                        typeof first === "string"
-                          ? first
-                          : typeof first === "number"
-                            ? String(first)
-                            : typeof first === "boolean"
-                              ? first
-                                ? "true"
-                                : "false"
-                              : "";
-                      updateModifier(modifier.id, "value", derived);
-                    }}
-                    allowedKinds={kinds}
-                    biasMode={biasMode}
-                  />
-                );
-              })()}
+              {modifier.operation === "toggle" ? (
+                <select
+                  className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
+                  value={modifier.value}
+                  onChange={(event) =>
+                    updateModifier(modifier.id, "value", event.target.value)
+                  }
+                >
+                  <option value="true">True</option>
+                  <option value="false">False</option>
+                </select>
+              ) : (
+                (() => {
+                  const { kinds, biasMode } = allowedTokenKinds(
+                    modifier.operation,
+                    modifier.valueKind,
+                  );
+                  return (
+                    <TokenChipStack
+                      tokens={modifier.tokens}
+                      onChange={(next) => {
+                        updateModifier(modifier.id, "tokens", next);
+                        // Keep the derived `value` cache in sync.
+                        const serialized = serializeValueField(next);
+                        const first = serialized[0];
+                        const derived =
+                          typeof first === "string"
+                            ? first
+                            : typeof first === "number"
+                              ? String(first)
+                              : typeof first === "boolean"
+                                ? first
+                                  ? "true"
+                                  : "false"
+                                : "";
+                        updateModifier(modifier.id, "value", derived);
+                      }}
+                      allowedKinds={kinds}
+                      biasMode={biasMode}
+                    />
+                  );
+                })()
+              )}
             </label>
 
             <label className="block text-sm font-medium">

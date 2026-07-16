@@ -33,28 +33,45 @@ import {
   type ValueToken,
 } from "../modifier";
 
-describe("OP_VALUE_TYPE_MATRIX", () => {
-  it("Add/Subtract/Multiply/Divide/Min/Max only allow number and token", () => {
-    for (const op of ["add", "subtract", "multiply", "divide", "min", "max"] as const) {
-      expect(OP_VALUE_TYPE_MATRIX[op]).toEqual(["number", "token"]);
+describe("OP_VALUE_TYPE_MATRIX (Phase 7.5 v2)", () => {
+  it("Add/Subtract/Multiply/Divide allow only number and dice", () => {
+    for (const op of ["add", "subtract", "multiply", "divide"] as const) {
+      expect(OP_VALUE_TYPE_MATRIX[op]).toEqual(["number", "dice"]);
     }
   });
 
-  it("Set allows number, text, dice, token — but NOT boolean or bias-value", () => {
-    expect(OP_VALUE_TYPE_MATRIX.set).toEqual(["number", "text", "dice", "token"]);
+  it("Set To allows number, text, dice, boolean (universal setter)", () => {
+    expect(OP_VALUE_TYPE_MATRIX.set).toEqual([
+      "number", "text", "dice", "boolean",
+    ]);
   });
 
-  it("Grant/Revoke only allow text and dice", () => {
-    expect(OP_VALUE_TYPE_MATRIX.grant).toEqual(["text", "dice"]);
-    expect(OP_VALUE_TYPE_MATRIX.revoke).toEqual(["text", "dice"]);
+  it("Min/Max allow number and text (NOT dice)", () => {
+    expect(OP_VALUE_TYPE_MATRIX.min).toEqual(["number", "text"]);
+    expect(OP_VALUE_TYPE_MATRIX.max).toEqual(["number", "text"]);
   });
 
-  it("Toggle only allows boolean", () => {
+  it("Grant/Revoke allow number, text, and dice", () => {
+    expect(OP_VALUE_TYPE_MATRIX.grant).toEqual(["number", "text", "dice"]);
+    expect(OP_VALUE_TYPE_MATRIX.revoke).toEqual(["number", "text", "dice"]);
+  });
+
+  it("Toggle allows only boolean", () => {
     expect(OP_VALUE_TYPE_MATRIX.toggle).toEqual(["boolean"]);
   });
 
-  it("Bias only allows bias-value", () => {
+  it("Bias allows only bias-value", () => {
     expect(OP_VALUE_TYPE_MATRIX.bias).toEqual(["bias-value"]);
+  });
+
+  it("Text and Dice are separate value types (Phase 7.5 v2)", () => {
+    // Verify no op has 'text' AND 'dice' as a SINGLE combined type.
+    // Both should appear as separate types in different ops.
+    expect(OP_VALUE_TYPE_MATRIX.set).toContain("text");
+    expect(OP_VALUE_TYPE_MATRIX.set).toContain("dice");
+    expect(OP_VALUE_TYPE_MATRIX.min).not.toContain("dice");
+    expect(OP_VALUE_TYPE_MATRIX.bias).not.toContain("text");
+    expect(OP_VALUE_TYPE_MATRIX.bias).not.toContain("dice");
   });
 });
 

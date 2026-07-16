@@ -70,6 +70,10 @@ export const MODIFIER_TARGETS = [
   "strain",
   "item_slot_cost",
   "scene_pace",
+  // Phase 7.5: free-form behavior axis (escape hatch).
+  // When this is selected, the form renders a text input for
+  // the behavior name (e.g. "darkvision", "mana_pool").
+  "behavior",
 ] as const;
 export type ModifierTarget = (typeof MODIFIER_TARGETS)[number];
 
@@ -458,6 +462,18 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
     layer: null,
     widget: "free-text",
     freeTextPlaceholder: "Round / Scene / Day / Custom",
+  },
+  // Phase 7.5: free-form behavior axis. The form renders a
+  // text input for the behavior name. The runtime stores it
+  // as a BehaviorTarget ("behavior:<name>") and the character
+  // sheet resolves it against whatever behavior the character
+  // has defined.
+  behavior: {
+    target: "behavior",
+    label: "Behavior (custom)",
+    layer: null,
+    widget: "free-text",
+    freeTextPlaceholder: "e.g. darkvision, mana_pool",
   },
 };
 

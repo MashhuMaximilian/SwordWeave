@@ -44,11 +44,12 @@ describe("MODIFIER_TARGETS enum", () => {
     //        shape_size is the same idea renamed)
     //   -4  (5 speed axes removed; "speed" added back, net -4)
     //   = 13 — but defense_dc and a few others were already at 16.
-    // Real total: 14. Calc: attribute + defense_dc + speed +
+    // Real total: 15. Calc: attribute + defense_dc + speed +
     // max_vitality + current_vitality + proficiency_bonus +
     // action_roll + skill_practice_check + damage_healing_output +
-    // targeting + duration + strain + item_slot_cost + scene_pace.
-    expect(MODIFIER_TARGETS.length).toBe(14);
+    // targeting + duration + strain + item_slot_cost + scene_pace
+    // + behavior (Phase 7.5 escape hatch).
+    expect(MODIFIER_TARGETS.length).toBe(15);
   });
 
   it("consolidates the three Attribute variants into one entry", () => {

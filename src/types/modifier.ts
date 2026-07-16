@@ -57,34 +57,50 @@ export type ModifierOperation =
  * Value type — the shape that the Value field is constrained to
  * for a given operation.
  *
- * - `number`     — literal magnitude (`2`, `-1`, `3.5`).
- * - `text`       — free-form string (`"60 ft"`, `"silenced"`).
- *                  Used for behaviors and keywords.
- * - `dice`       — dice expression (`"1d4"`, `"2d6+3"`).
- * - `boolean`    — `true` / `false` (used by Toggle).
- * - `bias-value` — `"advantage"` | `"disadvantage"` (used by Bias).
- * - `token`      — runtime-resolvable token
- *                  (`physical`, `awareness`, `pb`, etc.).
+ * Phase 7.5 v2: Text and Dice are SEPARATE value types (was
+ * combined "Text/Dice/Keyword" in v1).
+ *
+ * - `number`       — int/float literal OR a runtime token
+ *                    (`+physical`, `+awareness`, `+PB`). Both
+ *                    resolve to numbers on the character sheet.
+ * - `text`         — free text OR custom pills (custom behaviors
+ *                    the author names — `darkvision`, `mana_pool`,
+ *                    etc.). NOT dice.
+ * - `dice`         — dice expressions only (`1d4`, `2d6+3`,
+ *                    `20d8`, custom).
+ * - `boolean`      — `true` / `false` (used by Toggle).
+ * - `bias-value`   — `"advantage"` | `"disadvantage"` (used by Bias).
+ *
+ * The runtime token resolution (Phase 8) replaces tokens with
+ * character-sheet values. Numbers resolve to numbers; text/keyword
+ * tokens resolve to whatever the character has for that behavior;
+ * dice expressions are rolled.
  */
-export type ValueType = "number" | "text" | "dice" | "boolean" | "bias-value" | "token";
+export type ValueType = "number" | "text" | "dice" | "boolean" | "bias-value";
 
 /**
- * Allowed value types per operation. The form's Value Type
- * dropdown filters to only the allowed types when the user picks
- * an op.
+ * Allowed value types per operation (Phase 7.5 v2).
+ *
+ * The form's Value Type dropdown filters to only the allowed
+ * types when the user picks an op.
+ *
+ * Special cases:
+ *   - Toggle: only Boolean. The Value field renders as a
+ *     True/False toggle directly — no Value Type dropdown.
+ *   - Bias: only bias-value (`advantage` / `disadvantage`).
  */
 export const OP_VALUE_TYPE_MATRIX: Readonly<
   Record<ModifierOperation, readonly ValueType[]>
 > = {
-  add:      ["number", "token"],
-  subtract: ["number", "token"],
-  multiply: ["number", "token"],
-  divide:   ["number", "token"],
-  set:      ["number", "text", "dice", "token"],
-  min:      ["number", "token"],
-  max:      ["number", "token"],
-  grant:    ["text", "dice"],
-  revoke:   ["text", "dice"],
+  add:      ["number", "dice"],
+  subtract: ["number", "dice"],
+  multiply: ["number", "dice"],
+  divide:   ["number", "dice"],
+  set:      ["number", "text", "dice", "boolean"],
+  min:      ["number", "text"],
+  max:      ["number", "text"],
+  grant:    ["number", "text", "dice"],
+  revoke:   ["number", "text", "dice"],
   toggle:   ["boolean"],
   bias:     ["bias-value"],
 };

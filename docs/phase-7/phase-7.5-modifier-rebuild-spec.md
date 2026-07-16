@@ -26,36 +26,45 @@ previous spec:
   5. **Stacking Rule** — stack / highest / lowest / unique by
      primitive / unique by target.
 
-## Operation × Value Type constraint table (from your message)
+## Operation × Value Type constraint table (Phase 7.5 v2)
 
-This is the **canonical constraint matrix**. The form UI
-must enforce these — when the user picks an op, the Value Type
-dropdown only shows the allowed types.
+Refined after your message (2026-07-16). The exact rules:
 
-| Operation | Allowed Value Types | Mirrorable? | Mirror Behavior |
-|---|---|---|---|
-| Add | Number | YES | flip to Subtract, value sign flips |
-| Subtract | Number | YES | flip to Add, value sign flips |
-| Multiply | Number | YES | flip to Divide, value becomes reciprocal |
-| Divide | Number | YES | flip to Multiply, value becomes reciprocal |
-| Minimum | Number | YES | flip to Maximum, same value |
-| Maximum | Number | YES | flip to Minimum, same value |
-| Set To | Number, Text/Dice/Keyword | **NO** | (permission-locked) |
-| Grant | Text/Dice/Keyword | YES | flip to Revoke |
-| Revoke | Text/Dice/Keyword | YES | flip to Grant |
-| Toggle | True/False | YES | flip the value (T→F, F→T) |
-| **Bias** | Text/Dice/Keyword | YES | flip "advantage"↔"disadvantage" |
+| Operation | Allowed Value Types |
+|---|---|
+| Add | Number, Dice |
+| Subtract | Number, Dice |
+| Multiply | Number, Dice |
+| Divide | Number, Dice |
+| Minimum | Number, **Text/Keyword** |
+| Maximum | Number, **Text/Keyword** |
+| Set To | Number, Text/Keyword, Dice, Boolean |
+| Grant | Number, Text/Keyword, Dice |
+| Revoke | Number, Text/Keyword, Dice |
+| Toggle | Boolean only (no Value Type dropdown — op is self-explanatory) |
+| Bias | Text/Keyword only |
 
-**Notes from your message:**
+**Differences from v1:**
 
-- "Set to is not mirrorable" — confirmed.
-- Set To accepts Number OR Text/Dice/Keyword — NOT True/False
-  (Toggle handles that).
-- "Toggle is not self-mirrorable per se, but its mirror is given
-  by value field" — confirmed. Mirror of Toggle (True) is
-  Toggle (False), same op.
-- **Bias** replaces what I called `advantage`/`disadvantage` as
-  separate ops. Single op, value flips on mirror.
+- **Text and Dice are now SEPARATE value types** (not combined).
+  - "Text/Keyword" = free text OR custom pills (custom behaviors
+    the author names — e.g. `darkvision`, `mana_pool`).
+  - "Dice" = dice expressions only (`1d4`, `2d6+3`, `20d8`,
+    custom). The chip-stack shows canonical dice sizes + a
+    custom-dice input.
+- **Number** accepts int/float literals AND runtime tokens
+  (`+physical`, `+awareness`, `+PB`) — because those resolve to
+  numbers on the character sheet.
+- **Min/Max** accept Number OR Text/Keyword (e.g. "max target
+  size = Large" is a Text/Keyword). NOT dice.
+- **Grant/Revoke** accept all three (Number, Text/Keyword,
+  Dice) — they're general-purpose state operations.
+- **Bias** accepts only Text/Keyword (probability track
+  declarations like "advantage on Awareness checks").
+- **Toggle** has no Value Type field — the op is the entire
+  semantic. Pick Toggle, the value field renders as a True/False
+  toggle directly.
+- **Set To** accepts everything (it's the universal setter).
 
 ## Mirrorability is NOT just about the operation
 
