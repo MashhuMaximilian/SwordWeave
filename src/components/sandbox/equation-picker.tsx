@@ -38,7 +38,7 @@ import {
   ALL_ATTRIBUTES,
   ALL_DERIVED,
   ALL_PRACTICES,
-  CANONICAL_DICE,
+  DICE_TYPES,
   ALL_OPERATORS,
   operatorLabel,
   type AttributeKey,
@@ -104,6 +104,71 @@ export function EquationPicker({
   const setOperandOp = (index: number, op: Operator) => {
     onChange(
       operands.map((o, i) => (i === index ? { ...o, op } : o)),
+    );
+  };
+
+  /**
+   * Phase 7.5 v4: paren-internal mutations. These are
+   * called by the expanded paren chip's children. They find
+   * the paren at `parenIndex` in the outer operand list and
+   * mutate its inner operands.
+   *
+   * For nested parens, the caller (OperandChip inside
+   * ParenChipContents) recurses with the parenIndex being
+   * the inner index.
+   */
+  const appendToParenAt = (
+    parenIndex: number,
+    op: Operator,
+    value: OperandValue,
+  ) => {
+    onChange(
+      operands.map((o, i) => {
+        if (i !== parenIndex) return o;
+        if (o.value.kind !== "paren") return o;
+        return { op: o.op, value: { kind: "paren", operands: [...o.value.operands, { op, value }] } };
+      }),
+    );
+  };
+
+  const setOpInParenAt = (
+    parenIndex: number,
+    innerIndex: number,
+    op: Operator,
+  ) => {
+    onChange(
+      operands.map((o, i) => {
+        if (i !== parenIndex) return o;
+        if (o.value.kind !== "paren") return o;
+        return {
+          op: o.op,
+          value: {
+            kind: "paren",
+            operands: o.value.operands.map((inner, j) =>
+              j === innerIndex ? { ...inner, op } : inner
+            ),
+          },
+        };
+      }),
+    );
+  };
+
+  const removeInParenAt = (
+    parenIndex: number,
+    innerIndex: number,
+  ) => {
+    onChange(
+      operands.map((o, i) => {
+        if (i !== parenIndex) return o;
+        if (o.value.kind !== "paren") return o;
+        return {
+          op: o.op,
+          value: {
+            kind: "paren",
+            operands: o.value.operands.filter((_, j) => j !== innerIndex),
+          },
+        };
+      }),
     );
   };
 
@@ -182,8 +247,12 @@ export function EquationPicker({
             <OperandChip
               key={i}
               operand={operand}
+              parenIndex={i}
               onOpChange={(op) => setOperandOp(i, op)}
               onRemove={() => removeOperand(i)}
+              onAppendToParenAt={appendToParenAt}
+              onSetOpInParenAt={setOpInParenAt}
+              onRemoveInParenAt={removeInParenAt}
             />
           ))
         )}
@@ -315,25 +384,26 @@ export function EquationPicker({
           </div>
         </div>
 
-        {/* Dice */}
+        {/* Dice — just the type, count scales at runtime */}
         <div>
           <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Dice
+            Dice Type (Xd6 / Xd10)
           </p>
           <div className="mt-1 flex flex-wrap gap-1">
-            {CANONICAL_DICE.map((d) => (
+            {DICE_TYPES.map((d) => (
               <button
                 key={d}
                 type="button"
-                onClick={() => addOperand(pendingOp, { kind: "dice", expression: d })}
+                onClick={() => addOperand(pendingOp, { kind: "dice", expression: `1${d}` })}
+                title={`Add a 1${d} dice expression. The count X scales at runtime.`}
                 className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-xs text-rose-700 dark:text-rose-300 hover:bg-rose-500/20"
               >
-                + {d}
+                + 1{d}
               </button>
             ))}
           </div>
-          <p className="mt-1 px-1 text-[10px] text-muted-foreground">
-            For compound (2d6+3, 1d10-2) type in the input below.
+          <p className="mt-1 px-1 text-[9px] text-muted-foreground">
+            Die type only — count (1, 2, 3...) is decided at runtime.
           </p>
         </div>
 
@@ -485,25 +555,93 @@ function OperandChip({
   operand,
   onOpChange,
   onRemove,
+  parenIndex,
+  parenDepth = 0,
+  onAppendToParenAt,
+  onSetOpInParenAt,
+  onRemoveInParenAt,
 }: {
   readonly operand: Operand;
   readonly onOpChange: (op: Operator) => void;
   readonly onRemove: () => void;
+  /**
+   * Phase 7.5 v4: this operand's index in its containing
+   * operand list. For top-level operands, it's the index in
+   * the outer list. For operands inside a paren, it's the
+   * index in the paren's inner operand list. Used to route
+   * edits when this operand is a paren.
+   */
+  readonly parenIndex: number;
+  /**
+   * Phase 7.5 v4: paren depth this chip is rendered at. 0
+   * means top-level; 1+ means we're rendering inside a
+   * paren. Used to style the paren border distinctly from
+   * top-level chips.
+   */
+  readonly parenDepth?: number;
+  /**
+   * Direct callbacks that route to the parent (which knows
+   * the operand list to mutate). The OperandChip's paren
+   * child passes these through to its inner chips.
+   */
+  readonly onAppendToParenAt: (
+    parenIndex: number,
+    op: Operator,
+    value: OperandValue,
+  ) => void;
+  readonly onSetOpInParenAt: (
+    parenIndex: number,
+    innerIndex: number,
+    op: Operator,
+  ) => void;
+  readonly onRemoveInParenAt: (
+    parenIndex: number,
+    innerIndex: number,
+  ) => void;
 }): ReactElement {
   const { op, value } = operand;
+  const depth = parenDepth;
 
   // The first chip's operator is conventionally "+"; show it
   // but make it non-clickable (otherwise the user could create
   // negative starting values which the resolver doesn't support).
   const isFirst = false; // We can't know this from props; the
-                         // operator badge is always editable. The
-                         // resolver handles the convention.
+                        // operator badge is always editable. The
+                        // resolver handles the convention.
 
   const cycleOp = () => {
     const idx = ALL_OPERATORS.indexOf(op);
     const next = ALL_OPERATORS[(idx + 1) % ALL_OPERATORS.length];
     if (next) onOpChange(next);
   };
+
+  // Phase 7.5 v4: paren chips are rendered EXPANDED by
+  // default. Mashu: "I cannot expand the paranthesis to see
+  // what is inside, it's hard to make things inside
+  // paranthesis bc i cannot see and the tag with 'inside
+  // paranthesis' is not helping.... I need that to be
+  // expanded by default".
+  //
+  // The paren chip shows:
+  //   ( + chip1 + chip2 + chip3 )
+  // with the inner operands as full chips (each editable).
+  // The outer ( and ) brackets are rendered as part of the
+  // paren group's wrapper, not as separate operands.
+  if (value.kind === "paren") {
+    return (
+      <ParenChipContents
+        op={op}
+        parenIndex={parenIndex}
+        operands={value.operands}
+        depth={depth}
+        onRemove={onRemove}
+        onOpChange={cycleOp}
+        onAppendToParenAt={onAppendToParenAt}
+        onSetOpInParenAt={onSetOpInParenAt}
+        onRemoveInParenAt={onRemoveInParenAt}
+      />
+    );
+  }
 
   return (
     <span className="inline-flex items-center gap-0.5">
@@ -535,6 +673,112 @@ function OperandChip({
   );
 }
 
+/**
+ * ParenChipContents — renders a paren group with its inner
+ * operands visible inline. Replaces the old "(…)" compact
+ * chip with an expanded view.
+ *
+ * Layout:
+ *   ( + chip1 + chip2 + chip3 )
+ *
+ * The outer ( and ) are decorative brackets, NOT operands.
+ * The inner chips are full OperandChip instances, each
+ * with their own parenIndex relative to the paren's inner
+ * list.
+ */
+function ParenChipContents({
+  op,
+  parenIndex,
+  operands,
+  depth,
+  onRemove,
+  onOpChange,
+  onAppendToParenAt,
+  onSetOpInParenAt,
+  onRemoveInParenAt,
+}: {
+  readonly op: Operator;
+  readonly parenIndex: number;
+  readonly operands: readonly Operand[];
+  readonly depth: number;
+  readonly onRemove: () => void;
+  readonly onOpChange: () => void;
+  readonly onAppendToParenAt: (
+    parenIndex: number,
+    op: Operator,
+    value: OperandValue,
+  ) => void;
+  readonly onSetOpInParenAt: (
+    parenIndex: number,
+    innerIndex: number,
+    op: Operator,
+  ) => void;
+  readonly onRemoveInParenAt: (
+    parenIndex: number,
+    innerIndex: number,
+  ) => void;
+}): ReactElement {
+  // Paren border color by depth — distinct shade per nesting
+  // level so the user can see at a glance which paren they're
+  // inside. Top-level paren is cyan; nested parens shift
+  // through teal/blue/violet.
+  const parenBorderClass = (() => {
+    if (depth === 0) return "border-cyan-500/40 bg-cyan-500/5";
+    if (depth === 1) return "border-teal-500/40 bg-teal-500/5";
+    if (depth === 2) return "border-blue-500/40 bg-blue-500/5";
+    return "border-violet-500/40 bg-violet-500/5";
+  })();
+
+  return (
+    <span
+      className={`inline-flex flex-wrap items-center gap-1 rounded-lg border-2 border-dashed ${parenBorderClass} px-1.5 py-1`}
+    >
+      {/* Operator badge for the paren itself */}
+      <button
+        type="button"
+        onClick={onOpChange}
+        title={`Paren operator: ${op} (click to cycle)`}
+        className="inline-flex h-5 items-center rounded border border-primary bg-primary/20 px-1.5 font-mono text-[10px] font-bold text-primary hover:bg-primary/30"
+      >
+        {operatorLabel(op)}
+      </button>
+      <span className="font-mono text-sm text-cyan-700 dark:text-cyan-300">
+        (
+      </span>
+      {operands.length === 0 ? (
+        <span className="text-[10px] italic text-muted-foreground">
+          empty paren
+        </span>
+      ) : (
+        operands.map((inner, i) => (
+          <OperandChip
+            key={`${depth}-${i}`}
+            operand={inner}
+            parenIndex={i}
+            parenDepth={depth + 1}
+            onOpChange={(newOp) => onSetOpInParenAt(parenIndex, i, newOp)}
+            onRemove={() => onRemoveInParenAt(parenIndex, i)}
+            onAppendToParenAt={onAppendToParenAt}
+            onSetOpInParenAt={onSetOpInParenAt}
+            onRemoveInParenAt={onRemoveInParenAt}
+          />
+        ))
+      )}
+      <span className="font-mono text-sm text-cyan-700 dark:text-cyan-300">
+        )
+      </span>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Remove paren`}
+        className="ml-1 text-cyan-700 hover:text-cyan-900 dark:text-cyan-300"
+      >
+        ×
+      </button>
+    </span>
+  );
+}
+
 function chipClass(value: OperandValue): string {
   const base = "inline-flex items-center rounded-r-full border-y border-r px-2 py-0.5 text-xs font-medium";
   switch (value.kind) {
@@ -548,6 +792,13 @@ function chipClass(value: OperandValue): string {
       return `${base} border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300`;
     case "keyword":
       return `${base} border-pink-500/30 bg-pink-500/10 text-pink-700 dark:text-pink-300`;
+    case "runtime":
+      // Phase 7.5 v4: deferred runtime reference. Indeterminate
+      // value — render in a neutral indigo so it reads as
+      // "to be filled in at slot time" rather than a fixed
+      // number. Distinct from behavior (which is text) and
+      // from runtime tokens like PB (which are amber).
+      return `${base} border-indigo-500/30 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 italic`;
     case "paren":
       return `${base} border-cyan-500/30 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300`;
   }
@@ -565,6 +816,12 @@ function chipLabel(value: OperandValue): string {
       return value.which;
     case "behavior": return value.name;
     case "keyword": return `[${value.text}]`;
+    case "runtime":
+      // Phase 7.5 v4: show the name with the delim convention
+      // so the author can see at a glance that this is a
+      // deferred reference (e.g. "/blockValue/") rather than
+      // a fixed number.
+      return `/${value.name}/`;
     case "paren":
       return `(…)`;  // Rendered compactly — full preview is
                      // shown in the live preview above.
@@ -641,7 +898,7 @@ function EquationCustomInput({
               submit();
             }
           }}
-          placeholder="Type a number, dice, runtime name, or keyword"
+          placeholder="Add #dice#, [tag or keyword], or /number or runtime name/"
           className="h-7 flex-1 rounded-md border border-input bg-background px-2 text-xs outline-none ring-ring focus:ring-2"
         />
         <button

@@ -49,9 +49,12 @@ describe("OP_VALUE_TYPE_MATRIX (Phase 7.5 v4 — adds equation)", () => {
     ]);
   });
 
-  it("Min/Max allow number, text, equation (NOT dice)", () => {
-    expect(OP_VALUE_TYPE_MATRIX.min).toEqual(["number", "text", "equation"]);
-    expect(OP_VALUE_TYPE_MATRIX.max).toEqual(["number", "text", "equation"]);
+  it("Min/Max allow number, text, dice, equation (v4-rev)", () => {
+    // v4-rev: min/max also accept dice so authors can write
+    // "min 1d6 damage" or "max 2d10 healing" — useful for
+    // capped random ranges.
+    expect(OP_VALUE_TYPE_MATRIX.min).toEqual(["number", "text", "dice", "equation"]);
+    expect(OP_VALUE_TYPE_MATRIX.max).toEqual(["number", "text", "dice", "equation"]);
   });
 
   it("Grant/Revoke allow number, text, dice, equation", () => {
@@ -78,7 +81,8 @@ describe("OP_VALUE_TYPE_MATRIX (Phase 7.5 v4 — adds equation)", () => {
   it("Verify no op has 'text' AND 'dice' as a SINGLE combined type", () => {
     expect(OP_VALUE_TYPE_MATRIX.set).toContain("text");
     expect(OP_VALUE_TYPE_MATRIX.set).toContain("dice");
-    expect(OP_VALUE_TYPE_MATRIX.min).not.toContain("dice");
+    // v4-rev: min/max also accept dice now (capped ranges).
+    expect(OP_VALUE_TYPE_MATRIX.min).toContain("dice");
     expect(OP_VALUE_TYPE_MATRIX.add).toContain("dice");
     expect(OP_VALUE_TYPE_MATRIX.add).not.toContain("text");
   });

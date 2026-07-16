@@ -126,13 +126,19 @@ export const OP_VALUE_TYPE_MATRIX: Readonly<
   // Phase 7.5 v4: every op accepts "equation" — equations
   // resolve to a number/dice/text/keyword combination that's
   // valid for the op's semantics.
+  //
+  // Phase 7.5 v4-rev: min/max also accept "dice" so authors
+  // can write "min 1d6 damage" or "max 2d10 healing" — useful
+  // for capped random ranges. The dice type carries just the
+  // die type (e.g. d6, d10); the count is decided by scaling
+  // at runtime.
   add:      ["number", "dice", "equation"],
   subtract: ["number", "dice", "equation"],
   multiply: ["number", "dice", "equation"],
   divide:   ["number", "dice", "equation"],
   set:      ["number", "text", "dice", "boolean", "equation"],
-  min:      ["number", "text", "equation"],
-  max:      ["number", "text", "equation"],
+  min:      ["number", "text", "dice", "equation"],
+  max:      ["number", "text", "dice", "equation"],
   grant:    ["number", "text", "dice", "equation"],
   revoke:   ["number", "text", "dice", "equation"],
 };
@@ -342,7 +348,18 @@ export type ValueToken =
   // it tags the modifier with a category. The engine reads
   // keyword operands as labels when resolving against typed
   // targets (damage output, defense type, etc.).
-  | { readonly kind: "keyword"; readonly text: string };
+  | { readonly kind: "keyword"; readonly text: string }
+  // Phase 7.5 v4: deferred runtime reference. The author types a
+  // name (e.g. "blockValue") that doesn't currently exist as a
+  // canonical token but the engine will resolve at slot time
+  // against the character sheet (e.g. "the current block value
+  // from this character's equipped shield"). The parser emits
+  // these when the user types /value/ with a non-canonical inner
+  // string, so the modifier can reference values that don't
+  // exist yet at authoring time. The resolver soft-warns at
+  // character-sheet render time if the runtime reference is
+  // still unresolved (no warning — it's an open future slot).
+  | { readonly kind: "runtime"; readonly name: string; readonly hint: "number" | "text" };
 
 // =============================================================================
 // OPERATORS — arithmetic operators for equation Value Type
@@ -437,6 +454,7 @@ export type OperandValue =
   | { readonly kind: "derived"; readonly which: "pb" | "pb_half" | "level" }
   | { readonly kind: "behavior"; readonly name: string }
   | { readonly kind: "keyword"; readonly text: string }
+  | { readonly kind: "runtime"; readonly name: string; readonly hint: "number" | "text" }
   | { readonly kind: "paren"; readonly operands: readonly Operand[] };
 
 /**
@@ -465,6 +483,7 @@ function tToOperandValue(t: ValueToken): OperandValue {
     case "derived": return { kind: "derived", which: t.which };
     case "behavior": return { kind: "behavior", name: t.name };
     case "keyword": return { kind: "keyword", text: t.text };
+    case "runtime": return { kind: "runtime", name: t.name, hint: t.hint };
   }
 }
 
@@ -558,6 +577,7 @@ function renderOperandValue(v: OperandValue): string {
       return v.which;
     case "behavior": return v.name;
     case "keyword": return `[${v.text}]`;
+    case "runtime": return `/${v.name}/`;
     case "paren": return `(${renderEquation(v.operands)})`;
   }
 }
@@ -649,6 +669,18 @@ export const ALL_DERIVED = ["pb", "pb_half", "level"] as const;
  * Progression table). Quick-pick for the form's dice chip.
  */
 export const CANONICAL_DICE = ["1d4", "1d6", "1d8", "1d10", "1d12", "1d20"] as const;
+
+/**
+ * The 7 die types available in SwordWeave. Just the type
+ * ("d6", "d10") — the count prefix (1, 2, 3...) is decided at
+ * runtime via scaling rules. Mashu's request: "we also need
+ * in dice tags the dice type, maybe i just say add d6 (and
+ * the number will be decided by scaling at runtime, or xd6
+ * or xd10 (just the dice type so to say not a value per
+ * se)". So this array is "d4, d6, d8, d10, d12, d20, d100"
+ * — the canonical die types without a count.
+ */
+export const DICE_TYPES = ["d4", "d6", "d8", "d10", "d12", "d20", "d100"] as const;
 
 /**
  * Phase 7.5 v3: BIAS_VALUES is gone — the bias op was removed.
@@ -807,6 +839,7 @@ export function tokenLabel(token: ValueToken): string {
     case "dice": return token.expression;
     case "number": return String(token.value);
     case "keyword": return `[${token.text}]`;
+    case "runtime": return `/${token.name}/`;
   }
 }
 

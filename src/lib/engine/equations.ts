@@ -168,6 +168,11 @@ type NumericOperandValue =
   | { readonly kind: "practice"; readonly practice: string }
   | { readonly kind: "derived"; readonly which: string }
   | { readonly kind: "behavior"; readonly name: string }
+  // Phase 7.5 v4: deferred runtime reference. Resolves to a
+  // placeholder (0 for "number" hint, "" for "text" hint) at
+  // authoring time. The character-sheet resolver replaces this
+  // with the actual value from the character's compiled state.
+  | { readonly kind: "runtime"; readonly name: string; readonly hint: "number" | "text" }
   | {
     readonly kind: "parenResolved";
     readonly inner: NumericResolution;
@@ -190,6 +195,13 @@ function toNumericOperandValue(v: OperandValue): NumericOperandValue {
     case "practice": return { kind: "practice", practice: v.practice };
     case "derived": return { kind: "derived", which: v.which };
     case "behavior": return { kind: "behavior", name: v.name };
+    case "runtime":
+      // Phase 7.5 v4: deferred runtime reference. Treated as a
+      // numeric operand with a soft-warn at character-sheet
+      // render time (the actual value comes from the character
+      // sheet's compiled state). At authoring time we treat
+      // it as a placeholder that will be replaced.
+      return { kind: "runtime", name: v.name, hint: v.hint };
     case "keyword":
       // Should never reach here — classify() routes keyword
       // operands to tags.
@@ -326,6 +338,15 @@ function numericValueOf(
         kind: "structure",
         preview: tokenLikeToString(v),
       };
+    case "runtime":
+      // Phase 7.5 v4: deferred runtime reference. Resolve to a
+      // placeholder. The character-sheet engine replaces this
+      // with the actual value at slot time. Soft-warn so the
+      // author knows the value is being held open.
+      if (v.hint === "number") {
+        return { kind: "number", value: 0 };
+      }
+      return { kind: "structure", preview: `/${v.name}/` };
     case "parenResolved":
       return v.inner;
   }
@@ -425,6 +446,7 @@ function operandValueToString(v: NumericOperandValue): string {
     case "practice": return v.practice;
     case "derived": return v.which;
     case "behavior": return v.name;
+    case "runtime": return `/${v.name}/`;
     case "parenResolved": return `(${v.inner.kind === "structure" ? v.inner.preview : numericResolutionToString(v.inner)})`;
   }
 }
@@ -484,6 +506,7 @@ function flattenOperandToToken(o: Operand, out: ValueToken[]): void {
     case "derived": out.push({ kind: "derived", which: v.which }); return;
     case "behavior": out.push({ kind: "behavior", name: v.name }); return;
     case "keyword": out.push({ kind: "keyword", text: v.text }); return;
+    case "runtime": out.push({ kind: "runtime", name: v.name, hint: v.hint }); return;
     case "paren":
       for (const inner of v.operands) flattenOperandToToken(inner, out);
       return;

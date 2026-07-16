@@ -363,9 +363,9 @@ describe("allowedValueTypes (passes through to OP_VALUE_TYPE_MATRIX)", () => {
     expect(allowedValueTypes("add")).toEqual(["number", "dice", "equation"]);
   });
 
-  it("Min allows number + text + equation (NOT dice)", () => {
-    expect(allowedValueTypes("min")).toEqual(["number", "text", "equation"]);
-    expect(allowedValueTypes("min")).not.toContain("dice");
+  it("Min allows number + text + dice + equation (v4-rev)", () => {
+    // v4-rev: dice added to min/max for capped ranges.
+    expect(allowedValueTypes("min")).toEqual(["number", "text", "dice", "equation"]);
   });
 
   it("Set allows number + text + dice + boolean + equation", () => {
@@ -520,10 +520,28 @@ describe("parseEquationInput — bracket/delim convention", () => {
       });
     });
 
-    it("/unknown/ → behavior fallback", () => {
-      // Unrecognized inner → behavior token.
-      const r = parseEquationInput("/unknown/");
-      expect(r.kind).toBe("behavior");
+    it("/unknown/ → runtime token (v4: deferred to slot time)", () => {
+      // v4: any unrecognized /value/ is treated as a deferred
+      // runtime reference. The character-sheet engine will
+      // look up the name at slot time. If it's still
+      // unresolved, the resolver soft-warns.
+      expect(parseEquationInput("/unknown/")).toEqual({
+        kind: "runtime",
+        name: "unknown",
+        hint: "number",
+      });
+    });
+
+    it("/blockValue/ → runtime 'blockvalue' (Mashu's use case)", () => {
+      // Mashu requested this in the v4 review: "/blockValue/
+      // did not [work as a runtime reference]". Now it does
+      // — the parser emits a runtime token, the engine
+      // resolves it at slot time.
+      expect(parseEquationInput("/blockValue/")).toEqual({
+        kind: "runtime",
+        name: "blockvalue",
+        hint: "number",
+      });
     });
   });
 

@@ -4,6 +4,11 @@
 
 import { Markdown } from "@/components/ui/markdown";
 import { IconDisplay } from "@/components/icons/icon-display";
+import type { HardModifier } from "@/types/swordweave";
+import {
+  OP_SPECS,
+  type ModifierOperation,
+} from "@/types/modifier";
 
 type PrimitiveRow = {
   id: number;
@@ -23,6 +28,14 @@ type PrimitiveRow = {
   iconKey: string | null;
   iconUrl: string | null;
   iconColor: string;
+  /**
+   * Phase 7.5 v4: optional modifier list. When present,
+   * each modifier is rendered with its op, target, and
+   * mirrorability. The pre-existing primitives built before
+   * this field was added carry undefined — those rows
+   * just skip the modifier block.
+   */
+  modifiers?: readonly HardModifier[];
 };
 
 function categoryLabel(category: string): string {
@@ -30,6 +43,46 @@ function categoryLabel(category: string): string {
     .split("_")
     .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
     .join(" ");
+}
+
+/**
+ * Phase 7.5 v4: human-readable mirror description for a
+ * modifier op. "Add" mirrors to "Subtract" (sign flip),
+ * "Multiply" mirrors to "Divide" (value inversion), "Set To"
+ * is permission-locked (not mirrorable), etc.
+ *
+ * This is what the user sees in the source/build preview so
+ * they know what the modifier does when invoked in a
+ * mirrored context.
+ */
+function mirrorDescription(op: ModifierOperation): {
+  readonly mirrorable: boolean;
+  readonly summary: string;
+} {
+  const spec = OP_SPECS[op];
+  if (!spec.mirrorable || !spec.mirrorOp) {
+    return {
+      mirrorable: false,
+      summary: `Permission-locked — ${op} does not mirror. The effect is one-directional regardless of polarity.`,
+    };
+  }
+  const target = spec.mirrorOp;
+  if (spec.mirrorFlipsSign) {
+    return {
+      mirrorable: true,
+      summary: `Mirrors to ${target} (sign flip) — the value is negated in mirrored contexts.`,
+    };
+  }
+  if (spec.mirrorInvertsValue) {
+    return {
+      mirrorable: true,
+      summary: `Mirrors to ${target} (value inversion) — the value becomes its reciprocal in mirrored contexts.`,
+    };
+  }
+  return {
+    mirrorable: true,
+    summary: `Mirrors to ${target} — the operator flips; the value stays the same.`,
+  };
 }
 
 export function PrimitivePreview({ row }: { row: PrimitiveRow }) {
@@ -90,6 +143,62 @@ export function PrimitivePreview({ row }: { row: PrimitiveRow }) {
           <div className="prose prose-invert prose-sm max-w-none break-words text-sm leading-7">
             <Markdown>{row.narrativeRule}</Markdown>
           </div>
+        </section>
+      ) : null}
+
+      {row.modifiers && row.modifiers.length > 0 ? (
+        <section>
+          <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+            Modifiers ({row.modifiers.length})
+          </h3>
+          <ul className="space-y-1.5 rounded-md border border-border p-2">
+            {row.modifiers.map((m, idx) => {
+              // Operation may be a string from the database —
+              // cast through the OP_SPECS dictionary to get
+              // the typed spec. Unknown ops fall through to
+              // "not mirrorable" so the preview doesn't crash
+              // on legacy data.
+              const opKey = String(m.operation) as ModifierOperation;
+              const spec = OP_SPECS[opKey];
+              const targetShort = String(m.target).split(".").pop() ?? String(m.target);
+              const valueText = (() => {
+                if (typeof m.value === "number") return String(m.value);
+                if (typeof m.value === "boolean") return m.value ? "true" : "false";
+                if (m.value === undefined || m.value === null) return "0";
+                return String(m.value);
+              })();
+              const mirror = mirrorDescription(opKey);
+              return (
+                <li
+                  key={`mod-${idx}`}
+                  className="rounded border border-border/60 bg-card/50 p-2 text-xs"
+                >
+                  <div className="flex items-baseline justify-between gap-2 font-mono">
+                    <span>
+                      <span className="text-muted-foreground">{targetShort}</span>{" "}
+                      <span className="font-semibold text-primary">
+                        {opKey}
+                      </span>{" "}
+                      <span>{valueText}</span>
+                    </span>
+                    <span
+                      className={
+                        "shrink-0 rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wide " +
+                        (mirror.mirrorable
+                          ? "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300"
+                          : "bg-amber-500/10 text-amber-700 dark:text-amber-300")
+                      }
+                    >
+                      {mirror.mirrorable ? "📊 Mirrorable" : "🔒 Locked"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
+                    {mirror.summary}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
         </section>
       ) : null}
 

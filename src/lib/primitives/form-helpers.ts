@@ -530,7 +530,15 @@ export function parseEquationInput(raw: string): OperandValue {
     if ((ALL_DERIVED as readonly string[]).includes(innerLower)) {
       return { kind: "derived", which: innerLower as never };
     }
-    // Unrecognized /value/ → behavior token, treated as text.
+    // Phase 7.5 v4: unrecognized /value/ — emit a runtime
+    // token. The author may have typed something the engine
+    // will resolve at slot time (e.g. /blockValue/ from an
+    // equipped shield, /currentSpellSlots/ from a class
+    // ability). We don't want to silently swallow it as a
+    // behavior token — the runtime kind tells the engine
+    // "this is a deferred reference, look it up in the
+    // character sheet at slot time."
+    return { kind: "runtime", name: innerLower, hint: "number" };
   }
 
   // Legacy classification (no brackets/hashes/slashes).

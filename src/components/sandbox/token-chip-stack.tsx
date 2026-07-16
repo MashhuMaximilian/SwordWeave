@@ -31,7 +31,7 @@ import {
   ALL_ATTRIBUTES,
   ALL_DERIVED,
   ALL_PRACTICES,
-  CANONICAL_DICE,
+  DICE_TYPES,
   tokenLabel,
   type AttributeKey,
   type PracticeKey,
@@ -189,10 +189,11 @@ function TokenPicker({
 
   // Section: Common numbers — only in number mode.
   const numberSection = showNumbers ? (
-    <div>
-      <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        Common Numbers
-      </p>
+    <CollapsibleSection
+      title="Common Numbers"
+      defaultOpen
+      count={NUMBER_SHORTCUTS.length}
+    >
       <div className="mt-1 flex flex-wrap gap-1">
         {NUMBER_SHORTCUTS.map((n) => (
           <button
@@ -205,15 +206,12 @@ function TokenPicker({
           </button>
         ))}
       </div>
-    </div>
+    </CollapsibleSection>
   ) : null;
 
   // Section: Boolean quick-pick — only Set To + Boolean.
   const boolSection = showBool ? (
-    <div>
-      <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        True / False
-      </p>
+    <CollapsibleSection title="True / False" count={2}>
       <div className="mt-1 flex flex-wrap gap-1">
         <button
           type="button"
@@ -230,15 +228,16 @@ function TokenPicker({
           ✗ false
         </button>
       </div>
-    </div>
+    </CollapsibleSection>
   ) : null;
 
   // Section: Attribute — only when "attribute" is in allowedKinds.
   const attributeSection = allowedKinds.has("attribute") ? (
-    <div>
-      <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        Attribute
-      </p>
+    <CollapsibleSection
+      title="Attribute"
+      defaultOpen
+      count={ALL_ATTRIBUTES.length}
+    >
       <div className="mt-1 flex flex-wrap gap-1">
         {ALL_ATTRIBUTES.map((attr) => (
           <button
@@ -251,15 +250,12 @@ function TokenPicker({
           </button>
         ))}
       </div>
-    </div>
+    </CollapsibleSection>
   ) : null;
 
   // Section: Practice — only when "practice" is in allowedKinds.
   const practiceSection = allowedKinds.has("practice") ? (
-    <div>
-      <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        Practice
-      </p>
+    <CollapsibleSection title="Practice" count={ALL_PRACTICES.length}>
       <div className="mt-1 flex flex-wrap gap-1">
         {ALL_PRACTICES.map((practice) => (
           <button
@@ -272,15 +268,12 @@ function TokenPicker({
           </button>
         ))}
       </div>
-    </div>
+    </CollapsibleSection>
   ) : null;
 
   // Section: Derived — only when "derived" is in allowedKinds.
   const derivedSection = allowedKinds.has("derived") ? (
-    <div>
-      <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        Derived
-      </p>
+    <CollapsibleSection title="Derived (PB, Level)" count={ALL_DERIVED.length}>
       <div className="mt-1 flex flex-wrap gap-1">
         {ALL_DERIVED.map((d) => (
           <button
@@ -289,35 +282,33 @@ function TokenPicker({
             onClick={() => onPick({ kind: "derived", which: d })}
             className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300 hover:bg-amber-500/20"
           >
-            + {d === "pb_half" ? "PB/2" : d.toUpperCase()}
+                        + {d === "pb_half" ? "PB/2" : d.toUpperCase()}
           </button>
         ))}
       </div>
-    </div>
+    </CollapsibleSection>
   ) : null;
 
   // Section: Dice — only when "dice" is in allowedKinds.
   const diceSection = allowedKinds.has("dice") ? (
-    <div>
-      <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        Dice (canonical)
-      </p>
+    <CollapsibleSection title="Dice Type (Xd6 / Xd10)" count={DICE_TYPES.length}>
       <div className="mt-1 flex flex-wrap gap-1">
-        {CANONICAL_DICE.map((d) => (
+        {DICE_TYPES.map((d) => (
           <button
             key={d}
             type="button"
-            onClick={() => onPick({ kind: "dice", expression: d })}
+            onClick={() => onPick({ kind: "dice", expression: `1${d}` })}
+            title={`Add a 1${d} dice expression. The count X scales at runtime.`}
             className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-xs text-rose-700 dark:text-rose-300 hover:bg-rose-500/20"
           >
-            + {d}
+            + 1{d}
           </button>
         ))}
       </div>
-      <p className="mt-1 px-1 text-[10px] text-muted-foreground">
-        For compound (2d10, 3d8+1) type below.
+      <p className="mt-1 px-1 text-[9px] text-muted-foreground">
+        The die type (d4/d6/d8/d10/d12/d20/d100). Count scales at runtime.
       </p>
-    </div>
+    </CollapsibleSection>
   ) : null;
 
   // Section: Sub-Choice Keywords — every per-axis sub-choice
@@ -337,10 +328,10 @@ function TokenPicker({
     return Array.from(byGroup.entries());
   })();
   const subChoiceSection = (
-    <div>
-      <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        Sub-Choice Keywords
-      </p>
+    <CollapsibleSection
+      title="Sub-Choice Keywords"
+      count={SUB_CHOICE_KEYWORDS.length}
+    >
       <div className="mt-1 space-y-1.5">
         {subChoiceGroups.map(([group, items]) => (
           <div key={group}>
@@ -365,16 +356,44 @@ function TokenPicker({
           </div>
         ))}
       </div>
-    </div>
+    </CollapsibleSection>
   );
 
   // Section: Custom input — context-aware placeholder + classifier.
   const customPlaceholder = (() => {
-    if (valueKind === "number") return "Type a number (2, 5) or runtime name (physical, PB)";
-    if (valueKind === "dice") return "Type a dice expression (2d6, 1d10+3)";
+    if (valueKind === "number") return "Add /number/ or /runtime name/ (e.g. /5/, /physical/, /PB/)";
+    if (valueKind === "dice") return "Add #dice# (e.g. #2d6#, #1d10+3#)";
     if (valueKind === "boolean") return "Type true or false";
-    return "Type a keyword or behavior name (darkvision, mana_pool)";
+    return "Add [tag or keyword] (e.g. [fire], [60 ft darkvision])";
   })();
+
+  // Syntax info block — explains the bracket/delim convention
+  // so the user doesn't have to guess. Rendered below the
+  // input. Mashu's request: "either this or make an info block
+  // below with these rules and what they mean like we did with
+  // stacking." Both: the placeholder shows the syntax; the
+  // block explains the rules.
+  const syntaxBlock = (
+    <div className="mt-1 rounded border border-border/60 bg-muted/30 px-2 py-1.5 text-[10px] leading-relaxed text-muted-foreground">
+      <p className="font-semibold uppercase tracking-wide text-foreground/70">
+        Custom input syntax
+      </p>
+      <ul className="mt-0.5 space-y-0.5">
+        <li>
+          <code className="font-mono text-pink-700 dark:text-pink-300">#dice#</code>
+          {" — "}dice expression. Examples: <code className="font-mono">#2d6#</code>, <code className="font-mono">#1d10+3#</code>. Scaled at runtime.
+        </li>
+        <li>
+          <code className="font-mono text-pink-700 dark:text-pink-300">[tag]</code>
+          {" — "}keyword / text tag. Examples: <code className="font-mono">[fire]</code>, <code className="font-mono">[piercing]</code>, <code className="font-mono">[60 ft darkvision]</code>.
+        </li>
+        <li>
+          <code className="font-mono text-pink-700 dark:text-pink-300">/value/</code>
+          {" — "}number OR runtime reference. Examples: <code className="font-mono">/5/</code>, <code className="font-mono">/physical/</code>, <code className="font-mono">/PB/</code>, <code className="font-mono">/blockValue/</code> (deferred to runtime).
+        </li>
+      </ul>
+    </div>
+  );
 
   return (
     <div className="space-y-2 rounded-md border border-border bg-card p-2 shadow-sm">
@@ -412,8 +431,73 @@ function TokenPicker({
             + add
           </button>
         </div>
+        {syntaxBlock}
       </div>
     </div>
+  );
+}
+
+// =============================================================================
+// CollapsibleSection — used by every chip-picker section header
+// =============================================================================
+
+/**
+ * Mashu: "we should make all those chip categories collapsible
+ * and collapsed by default. only number and attribute expanded
+ * by default. so user will not be overwhelmed by colors. and
+ * especially on mobile it will help the user."
+ *
+ * Each chip-picker section uses this so the user can collapse
+ * a category and free vertical space. Number and Attribute
+ * sections stay open by default (they're the most-used and
+ * contain the canonical token kinds); everything else
+ * collapses. Click the header to expand/collapse — state
+ * persists per-section during a single picker session.
+ */
+function CollapsibleSection({
+  title,
+  count,
+  defaultOpen = false,
+  children,
+}: {
+  readonly title: string;
+  readonly count?: number;
+  readonly defaultOpen?: boolean;
+  readonly children: React.ReactNode;
+}): ReactElement {
+  // Local state — only used for the chevron icon. The actual
+  // open/close is controlled by <details>.
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <details
+      open={isOpen}
+      onToggle={(e) => setIsOpen((e.currentTarget as HTMLDetailsElement).open)}
+      className="rounded"
+    >
+      <summary
+        className="flex cursor-pointer select-none items-center justify-between gap-2 rounded px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground hover:bg-accent/50"
+        title={isOpen ? "Click to collapse" : "Click to expand"}
+      >
+        <span className="flex items-center gap-1.5">
+          <span
+            aria-hidden
+            className={`inline-block text-[8px] transition-transform ${
+              isOpen ? "rotate-90" : "rotate-0"
+            }`}
+          >
+            ▶
+          </span>
+          {title}
+        </span>
+        {count !== undefined ? (
+          <span className="rounded-full bg-muted px-1.5 text-[9px] font-medium text-muted-foreground">
+            {count}
+          </span>
+        ) : null}
+      </summary>
+      <div className="px-1 pb-1">{children}</div>
+    </details>
   );
 }
 
@@ -438,6 +522,11 @@ function chipClass(token: ValueToken): string {
       return `${base} border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300`;
     case "keyword":
       return `${base} border-pink-500/30 bg-pink-500/10 text-pink-700 dark:text-pink-300`;
+    case "runtime":
+      // Phase 7.5 v4: deferred runtime reference. Indeterminate
+      // — render in indigo italic so it reads as "to be filled
+      // in at slot time" rather than a fixed number.
+      return `${base} border-indigo-500/30 bg-indigo-500/10 italic text-indigo-700 dark:text-indigo-300`;
   }
 }
 
@@ -453,6 +542,12 @@ function chipTitle(token: ValueToken): string {
     case "number": return `Literal magnitude: ${token.value}`;
     case "behavior": return `Behavior: ${token.name}`;
     case "keyword": return `Tag: ${token.text}`;
+    case "runtime":
+      // Phase 7.5 v4: deferred runtime reference. Held open
+      // until character-sheet slot time, when the engine
+      // resolves the name against the character's compiled
+      // state.
+      return `Runtime reference: /${token.name}/ (resolved at slot time)`;
   }
 }
 
