@@ -1,14 +1,19 @@
 // =============================================================================
-// M4 tests — Phase 7.5 modifier form UI behavior.
+// Phase 7.5 v3 — Modifier form UI behavior tests.
 //
 // Tests the pure helpers extracted to form-helpers.ts. These
-// functions drive the form's decision logic (allowed token kinds
-// per op, effective mirrorability, value-type labels, hidden
-// Value Type select).
+// functions drive the form's decision logic (allowed token
+// kinds per op, effective mirrorability, value-type labels,
+// hidden Value Type select).
 //
 // Without a DOM renderer (jsdom/testing-library not installed),
 // this is the testable surface of the form. The component itself
 // is verified via visual inspection in the dev server.
+//
+// v3 changes:
+//   - Removed bias and toggle ops (no more biasMode or hidden
+//     Value Type select).
+//   - 9 ops × 4 value types.
 // =============================================================================
 
 import { describe, expect, it } from "vitest";
@@ -17,10 +22,45 @@ import {
   allowedValueTypes,
   effectiveMirrorable,
   hidesValueTypeSelect,
+  OPERATION_LABELS,
   valueTypeLabel,
 } from "../form-helpers";
 
-describe("allowedTokenKinds — Phase 7.5 v2", () => {
+describe("OPERATION_LABELS (Phase 7.5 v3 — 9 ops)", () => {
+  it("has exactly 9 operations", () => {
+    expect(OPERATION_LABELS.length).toBe(9);
+  });
+
+  it("includes the standard arithmetic ops", () => {
+    const values = OPERATION_LABELS.map((o) => o.value);
+    expect(values).toContain("add");
+    expect(values).toContain("subtract");
+    expect(values).toContain("multiply");
+    expect(values).toContain("divide");
+  });
+
+  it("includes min/max/set/grant/revoke", () => {
+    const values = OPERATION_LABELS.map((o) => o.value);
+    expect(values).toContain("min");
+    expect(values).toContain("max");
+    expect(values).toContain("set");
+    expect(values).toContain("grant");
+    expect(values).toContain("revoke");
+  });
+
+  it("does NOT include toggle or bias (removed in v3)", () => {
+    const values = OPERATION_LABELS.map((o) => o.value);
+    expect(values).not.toContain("toggle");
+    expect(values).not.toContain("bias");
+  });
+
+  it("has unique values", () => {
+    const values = OPERATION_LABELS.map((o) => o.value);
+    expect(new Set(values).size).toBe(values.length);
+  });
+});
+
+describe("allowedTokenKinds — Phase 7.5 v3", () => {
   describe("Add/Subtract/Multiply/Divide (number + dice only)", () => {
     for (const op of ["add", "subtract", "multiply", "divide"] as const) {
       it(`${op} + number valueKind → number tokens`, () => {
@@ -35,10 +75,7 @@ describe("allowedTokenKinds — Phase 7.5 v2", () => {
         expect(biasMode).toBe(false);
       });
 
-      it(`${op} + text valueKind → empty (not allowed)`, () => {
-        // Text isn't allowed for these ops. Helper falls back
-        // to empty (number) — the form should hide the text
-        // valueKind option in the first place.
+      it(`${op} + text valueKind → fallback to number (text not allowed)`, () => {
         const { kinds } = allowedTokenKinds(op, "text");
         expect(kinds).toEqual(new Set(["number"]));
       });
@@ -55,14 +92,13 @@ describe("allowedTokenKinds — Phase 7.5 v2", () => {
         expect(allowedTokenKinds(op, "text").kinds).toEqual(new Set(["behavior"]));
       });
 
-      it(`${op} + dice → fallback (dice not allowed)`, () => {
-        // Dice isn't in the matrix for min/max. Helper falls back.
+      it(`${op} + dice → fallback to behavior (dice not allowed)`, () => {
         expect(allowedTokenKinds(op, "dice").kinds).toEqual(new Set(["behavior"]));
       });
     }
   });
 
-  describe("Set To (universal setter)", () => {
+  describe("Set To (universal setter — number / text / dice / boolean)", () => {
     it("set + number → number tokens", () => {
       expect(allowedTokenKinds("set", "number").kinds).toEqual(new Set(["number"]));
     });
@@ -75,9 +111,9 @@ describe("allowedTokenKinds — Phase 7.5 v2", () => {
       expect(allowedTokenKinds("set", "text").kinds).toEqual(new Set(["behavior"]));
     });
 
-    it("set + boolean → behavior tokens (T/F)", () => {
-      // Set To + boolean: stores as behavior tokens with name
-      // "true" or "false".
+    it("set + boolean → behavior tokens (T/F as behavior)", () => {
+      // Boolean values are stored as behavior tokens named
+      // "true" or "false" (no dedicated boolean token kind).
       expect(allowedTokenKinds("set", "boolean").kinds).toEqual(new Set(["behavior"]));
     });
   });
@@ -98,40 +134,21 @@ describe("allowedTokenKinds — Phase 7.5 v2", () => {
     }
   });
 
-  describe("Bias (binary dropdown, no chip-stack)", () => {
-    it("bias → biasMode=true, empty kinds", () => {
-      const { kinds, biasMode } = allowedTokenKinds("bias", "number");
-      expect(biasMode).toBe(true);
-      expect(kinds.size).toBe(0);
-    });
-
-    it("bias + any valueKind → still biasMode", () => {
-      // Bias ignores valueKind — op drives the form.
-      expect(allowedTokenKinds("bias", "text").biasMode).toBe(true);
-      expect(allowedTokenKinds("bias", "boolean").biasMode).toBe(true);
-    });
-  });
-
-  describe("Toggle (True/False select, no chip-stack)", () => {
-    it("toggle → no chip-stack", () => {
-      const { kinds, biasMode } = allowedTokenKinds("toggle", "boolean");
-      expect(kinds.size).toBe(0);
-      expect(biasMode).toBe(false);
-    });
+  describe("v3: no biasMode anywhere (bias op is gone)", () => {
+    for (const op of ["add", "subtract", "multiply", "divide",
+                     "min", "max", "set", "grant", "revoke"] as const) {
+      it(`${op} + any valueKind → biasMode=false`, () => {
+        for (const vt of ["number", "text", "dice", "boolean"] as const) {
+          expect(allowedTokenKinds(op, vt).biasMode).toBe(false);
+        }
+      });
+    }
   });
 });
 
-describe("effectiveMirrorable (Phase 7.5 v2 — op drives mirrorability)", () => {
+describe("effectiveMirrorable (Phase 7.5 v3 — op drives mirrorability)", () => {
   it("Set To is never mirrorable (permission-locked)", () => {
     expect(effectiveMirrorable("set")).toBe(false);
-  });
-
-  it("Toggle is mirrorable (value flips T↔F)", () => {
-    expect(effectiveMirrorable("toggle")).toBe(true);
-  });
-
-  it("Bias is mirrorable (value flips advantage↔disadvantage)", () => {
-    expect(effectiveMirrorable("bias")).toBe(true);
   });
 
   it("Add/Subtract/Multiply/Divide are mirrorable", () => {
@@ -152,34 +169,20 @@ describe("effectiveMirrorable (Phase 7.5 v2 — op drives mirrorability)", () =>
   });
 });
 
-describe("hidesValueTypeSelect (Toggle + Bias don't show the dropdown)", () => {
-  it("Toggle hides the Value Type select", () => {
-    expect(hidesValueTypeSelect("toggle")).toBe(true);
-  });
-
-  it("Bias hides the Value Type select", () => {
-    expect(hidesValueTypeSelect("bias")).toBe(true);
-  });
-
-  it("All other ops show the Value Type select", () => {
-    expect(hidesValueTypeSelect("add")).toBe(false);
-    expect(hidesValueTypeSelect("subtract")).toBe(false);
-    expect(hidesValueTypeSelect("multiply")).toBe(false);
-    expect(hidesValueTypeSelect("divide")).toBe(false);
-    expect(hidesValueTypeSelect("min")).toBe(false);
-    expect(hidesValueTypeSelect("max")).toBe(false);
-    expect(hidesValueTypeSelect("set")).toBe(false);
-    expect(hidesValueTypeSelect("grant")).toBe(false);
-    expect(hidesValueTypeSelect("revoke")).toBe(false);
+describe("hidesValueTypeSelect (Phase 7.5 v3 — always false)", () => {
+  it("All ops show the Value Type dropdown", () => {
+    for (const op of ["add", "subtract", "multiply", "divide",
+                     "min", "max", "set", "grant", "revoke"] as const) {
+      expect(hidesValueTypeSelect(op)).toBe(false);
+    }
   });
 });
 
-describe("valueTypeLabel (UI display strings)", () => {
+describe("valueTypeLabel (UI display strings — 4 types in v3)", () => {
   it("Number", () => expect(valueTypeLabel("number")).toBe("Number"));
   it("Text / Keyword", () => expect(valueTypeLabel("text")).toBe("Text / Keyword"));
   it("Dice", () => expect(valueTypeLabel("dice")).toBe("Dice"));
   it("True / False", () => expect(valueTypeLabel("boolean")).toBe("True / False"));
-  it("Bias", () => expect(valueTypeLabel("bias-value")).toBe("Bias"));
 });
 
 describe("allowedValueTypes (passes through to OP_VALUE_TYPE_MATRIX)", () => {
@@ -192,26 +195,22 @@ describe("allowedValueTypes (passes through to OP_VALUE_TYPE_MATRIX)", () => {
     expect(allowedValueTypes("min")).not.toContain("dice");
   });
 
-  it("Set allows everything except bias-value", () => {
+  it("Set allows number + text + dice + boolean", () => {
     const types = allowedValueTypes("set");
     expect(types).toContain("number");
     expect(types).toContain("text");
     expect(types).toContain("dice");
     expect(types).toContain("boolean");
-    expect(types).not.toContain("bias-value");
   });
 
-  it("Toggle allows only boolean", () => {
-    expect(allowedValueTypes("toggle")).toEqual(["boolean"]);
-  });
-
-  it("Bias allows only bias-value", () => {
-    expect(allowedValueTypes("bias")).toEqual(["bias-value"]);
+  it("Grant/Revoke allow number + text + dice", () => {
+    expect(allowedValueTypes("grant")).toEqual(["number", "text", "dice"]);
+    expect(allowedValueTypes("revoke")).toEqual(["number", "text", "dice"]);
   });
 });
 
-describe("Form UX integration scenarios (combined)", () => {
-  it("Add + number: chip-stack accepts only number tokens (no attribute/practice/dice)", () => {
+describe("Form UX integration scenarios (Phase 7.5 v3)", () => {
+  it("Add + number: chip-stack accepts only number tokens", () => {
     const { kinds } = allowedTokenKinds("add", "number");
     expect(kinds).toEqual(new Set(["number"]));
     expect(kinds.has("attribute")).toBe(false);
@@ -220,7 +219,7 @@ describe("Form UX integration scenarios (combined)", () => {
   });
 
   it("Min + text: chip-stack accepts behavior tokens for custom text", () => {
-    // e.g. "set max target size = Large" → "max" + "Large" (behavior token)
+    // e.g. "max target size = Large" → "max" + "Large" (behavior token)
     const { kinds } = allowedTokenKinds("max", "text");
     expect(kinds).toEqual(new Set(["behavior"]));
     expect(kinds.has("number")).toBe(false);
@@ -233,14 +232,9 @@ describe("Form UX integration scenarios (combined)", () => {
     expect(kinds).toEqual(new Set(["behavior"]));
   });
 
-  it("Bias: chip-stack hidden, biasMode=true (binary dropdown)", () => {
-    const { kinds, biasMode } = allowedTokenKinds("bias", "bias-value");
-    expect(biasMode).toBe(true);
-    expect(kinds.size).toBe(0);
-  });
-
-  it("Toggle: chip-stack hidden, Value Type select hidden, True/False select renders", () => {
-    expect(allowedTokenKinds("toggle", "boolean").kinds.size).toBe(0);
-    expect(hidesValueTypeSelect("toggle")).toBe(true);
+  it("Grant + dice: chip-stack accepts dice tokens for damage/healing", () => {
+    // e.g. "grant damage resistance 1d4" → grant + behavior:damage_resistance + dice:1d4
+    const { kinds } = allowedTokenKinds("grant", "dice");
+    expect(kinds).toEqual(new Set(["dice"]));
   });
 });

@@ -23,7 +23,6 @@ import {
   ALL_ATTRIBUTES,
   ALL_DERIVED,
   ALL_PRACTICES,
-  BIAS_VALUES,
   CANONICAL_DICE,
   SUGGESTED_TOKENS,
   tokenLabel,
@@ -41,19 +40,18 @@ interface TokenChipStackProps {
    * "number" only number/token kinds are allowed.
    */
   readonly allowedKinds: ReadonlySet<ValueToken["kind"]>;
-  /**
-   * Show the bias-value picker (Advantage/Disadvantage dropdown
-   * instead of the regular token picker). Used when op is
-   * "bias" — the only allowed value type is bias-value.
-   */
-  readonly biasMode?: boolean;
 }
 
+/**
+ * Phase 7.5 v3: biasMode removed. The bias op is gone; advantage
+ * / disadvantage are handled via grant/revoke on the canonical
+ * `behavior:advantage` and `behavior:disadvantage` chips (which
+ * show up in the regular behavior picker).
+ */
 export function TokenChipStack({
   tokens,
   onChange,
   allowedKinds,
-  biasMode = false,
 }: TokenChipStackProps): ReactElement {
   const [showPicker, setShowPicker] = useState(false);
 
@@ -65,9 +63,9 @@ export function TokenChipStack({
     onChange(tokens.filter((_, i) => i !== index));
   };
 
-  const filteredSuggestions = biasMode
-    ? []
-    : SUGGESTED_TOKENS.filter((t) => allowedKinds.has(t.kind));
+  const filteredSuggestions = SUGGESTED_TOKENS.filter((t) =>
+    allowedKinds.has(t.kind),
+  );
 
   return (
     <div className="space-y-1.5">
@@ -75,7 +73,7 @@ export function TokenChipStack({
       <div className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5">
         {tokens.length === 0 ? (
           <span className="text-xs text-muted-foreground">
-            {biasMode ? "Pick a bias direction" : "Empty — pick a token below"}
+            Empty — pick a token below
           </span>
         ) : (
           tokens.map((token, i) => (
@@ -98,21 +96,17 @@ export function TokenChipStack({
         )}
       </div>
 
-      {/* Add controls */}
-      {biasMode ? (
-        <BiasPicker onPick={(v) => { addToken({ kind: "behavior", name: v }); setShowPicker(false); }} />
-      ) : (
-        <button
-          type="button"
-          onClick={() => setShowPicker(!showPicker)}
-          className="rounded-md border border-dashed border-border bg-background px-3 py-1 text-xs text-muted-foreground hover:bg-accent"
-        >
-          {showPicker ? "× close" : "+ add token"}
-        </button>
-      )}
+      {/* Add button */}
+      <button
+        type="button"
+        onClick={() => setShowPicker(!showPicker)}
+        className="rounded-md border border-dashed border-border bg-background px-3 py-1 text-xs text-muted-foreground hover:bg-accent"
+      >
+        {showPicker ? "× close" : "+ add token"}
+      </button>
 
       {/* Token picker popover */}
-      {showPicker && !biasMode ? (
+      {showPicker ? (
         <TokenPicker
           allowedKinds={allowedKinds}
           suggestions={filteredSuggestions}
@@ -274,31 +268,9 @@ function TokenPicker({
   );
 }
 
-// =============================================================================
-// Bias picker — special-case for Bias op
-// =============================================================================
-
-function BiasPicker({
-  onPick,
-}: {
-  readonly onPick: (v: "advantage" | "disadvantage") => void;
-}): ReactElement {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-xs text-muted-foreground">Bias:</span>
-      {BIAS_VALUES.map((v) => (
-        <button
-          key={v}
-          type="button"
-          onClick={() => onPick(v)}
-          className="rounded-full border border-border bg-background px-3 py-0.5 text-xs hover:bg-accent"
-        >
-          {v}
-        </button>
-      ))}
-    </div>
-  );
-}
+// Phase 7.5 v3: BiasPicker removed (bias op is gone). Advantage
+// and disadvantage are now just behavior chips (use the regular
+// TokenPicker).
 
 // =============================================================================
 // Free-text input (multi-word → behavior token)

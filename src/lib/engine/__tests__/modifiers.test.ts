@@ -74,9 +74,7 @@ describe("applyOperation", () => {
     expect(applyOperation(30, "revoke", 0)).toBe(0);
   });
 
-  it("toggle flips boolean", () => {
-    expect(applyOperation(true, "toggle", false)).toBe(false);
-  });
+  // v3: Toggle removed. Boolean changes use Set.
 
   it("returns base unchanged for non-numeric add", () => {
     expect(applyOperation("hello", "add", 1)).toBe("hello");
@@ -114,6 +112,33 @@ describe("applyStacking", () => {
 
   it("non-numeric with highest-only returns first", () => {
     expect(applyStacking(["a", "b", "c"], "highest-only")).toBe("a");
+  });
+
+  // Phase 7.5 v3: new "replace" stack rule.
+  it("replace takes the LAST value (explicit override)", () => {
+    expect(applyStacking([2, 5, 3], "replace")).toBe(3);
+    expect(applyStacking([10, 20], "replace")).toBe(20);
+  });
+
+  it("replace for non-numeric takes the last", () => {
+    expect(applyStacking(["darkvision 60ft", "darkvision 120ft"], "replace")).toBe("darkvision 120ft");
+  });
+
+  it("replace for single value returns it", () => {
+    expect(applyStacking([42], "replace")).toBe(42);
+  });
+
+  it("replace differs from stack (sum) and highest-only (max)", () => {
+    const values = [10, 5, 20];
+    expect(applyStacking(values, "stack")).toBe(35);
+    expect(applyStacking(values, "highest-only")).toBe(20);
+    expect(applyStacking(values, "replace")).toBe(20);
+  });
+
+  it("replace differs from highest-only when last < others", () => {
+    const values = [100, 50, 10];
+    expect(applyStacking(values, "highest-only")).toBe(100);
+    expect(applyStacking(values, "replace")).toBe(10); // explicit last-wins
   });
 });
 

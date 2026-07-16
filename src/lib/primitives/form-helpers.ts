@@ -1,15 +1,19 @@
 /**
- * Phase 7.5: Modifier form helper functions — pure, testable.
+ * Phase 7.5 v3 — Modifier form helper functions (pure, testable).
  *
  * Extracted from primitive-form.tsx so they can be unit tested
  * without rendering React components. Each helper is a pure
  * function that takes the form's current state and returns a
- * derived decision (allowed token kinds, effective mirrorability,
- * value-type label).
+ * derived decision (allowed token kinds, effective
+ * mirrorability, value-type label).
  *
- * v2 (Phase 7.5): value type constraints tightened per user
- * feedback. Text and Dice are SEPARATE value types. Min/Max
- * don't accept dice. Toggle has no Value Type field.
+ * v3 changes from v2:
+ *   - Removed bias and toggle ops. Now 9 ops.
+ *   - Removed bias-value ValueType. Now 4 value types.
+ *   - Mirror logic still in OP_SPECS but unused at primitive
+ *     level (mirror is decided by capability/affect layer).
+ *   - hidesValueTypeSelect always returns false in v3 (all 9 ops
+ *     use the Value Type dropdown).
  */
 
 import {
@@ -21,10 +25,7 @@ import {
 } from "@/types/modifier";
 
 /**
- * The form's legacy `valueKind` was a 3-option union
- * (number/text/boolean). Phase 7.5 v2 widened it to the full
- * `ValueType` enum. This type alias keeps the form's
- * ModifierDraft type narrower for storage compatibility.
+ * The form's stored valueKind is the canonical ValueType enum.
  */
 export type FormValueKind = ValueType;
 
@@ -32,29 +33,19 @@ export type FormValueKind = ValueType;
  * Map (op, valueKind) to the set of ValueToken kinds the
  * chip-stack should accept for the "add token" popover.
  *
- * Rules (Phase 7.5 v2):
+ * Rules (Phase 7.5 v3):
  *   - Add/Subtract/Multiply/Divide: number tokens (incl. runtime
  *     tokens like +physical) AND dice tokens. valueKind filters
  *     to literal numbers or dice expressions.
  *   - Min/Max: number OR text/keyword (custom pills). NOT dice.
- *   - Set To: number, text, dice, OR boolean.
+ *   - Set To: number, text, dice, OR boolean (stored as
+ *     behavior tokens named "true"/"false").
  *   - Grant/Revoke: number, text, OR dice.
- *   - Bias: only bias-value (binary dropdown).
- *   - Toggle: only boolean (True/False toggle).
  */
 export function allowedTokenKinds(
   op: ModifierOperation,
   valueKind: FormValueKind,
 ): { kinds: ReadonlySet<ValueToken["kind"]>; biasMode: boolean } {
-  // Bias op renders the bias picker regardless of valueKind.
-  if (op === "bias") {
-    return { kinds: new Set(), biasMode: true };
-  }
-  // Toggle renders a True/False toggle directly. Chip-stack
-  // not used.
-  if (op === "toggle") {
-    return { kinds: new Set(), biasMode: false };
-  }
   // Add/Subtract/Multiply/Divide: number + dice.
   if (
     op === "add" || op === "subtract" ||
@@ -75,7 +66,7 @@ export function allowedTokenKinds(
     }
     return { kinds: new Set<ValueToken["kind"]>(["behavior"]), biasMode: false };
   }
-  // Set To: number / text / dice / boolean — all kinds accepted.
+  // Set To: number / text / dice / boolean.
   if (op === "set") {
     if (valueKind === "number") {
       return { kinds: new Set<ValueToken["kind"]>(["number"]), biasMode: false };
@@ -83,8 +74,8 @@ export function allowedTokenKinds(
     if (valueKind === "dice") {
       return { kinds: new Set<ValueToken["kind"]>(["dice"]), biasMode: false };
     }
-    // boolean and text both go through behavior tokens (with
-    // the booleans as behavior tokens named "true"/"false").
+    // boolean (rendered as a chip-pair "true"/"false") and
+    // text (custom behavior pills) both use behavior tokens.
     return { kinds: new Set<ValueToken["kind"]>(["behavior"]), biasMode: false };
   }
   // Grant/Revoke: number, text, or dice.
@@ -106,9 +97,9 @@ export function allowedTokenKinds(
  * current op. Set To is always non-mirrorable; everything else
  * follows OP_SPECS.
  *
- * (Phase 7.5 v2: valueKind no longer affects mirrorability —
- * only the op does. Set To is permission-locked regardless of
- * valueKind.)
+ * Note: this is the OP-level mirrorability. In v3, mirror is
+ * decided by the capability/affect layer (Phase 8), not by the
+ * primitive. This function is kept for that future use.
  */
 export function effectiveMirrorable(op: ModifierOperation): boolean {
   return OP_SPECS[op].mirrorable;
@@ -124,17 +115,17 @@ export function valueTypeLabel(vt: ValueType): string {
     case "text": return "Text / Keyword";
     case "dice": return "Dice";
     case "boolean": return "True / False";
-    case "bias-value": return "Bias";
   }
 }
 
 /**
  * Whether the Value Type dropdown should be hidden for a given
- * op. Toggle and Bias don't have a Value Type field — the op
- * determines the value shape directly.
+ * op. In v3, all 9 ops show the Value Type dropdown. Returns
+ * false for everything. Kept as a function for symmetry with
+ * the spec and potential future op additions.
  */
-export function hidesValueTypeSelect(op: ModifierOperation): boolean {
-  return op === "toggle" || op === "bias";
+export function hidesValueTypeSelect(_op: ModifierOperation): boolean {
+  return false;
 }
 
 /**
@@ -145,3 +136,21 @@ export function hidesValueTypeSelect(op: ModifierOperation): boolean {
 export function allowedValueTypes(op: ModifierOperation): readonly ValueType[] {
   return OP_VALUE_TYPE_MATRIX[op];
 }
+
+/**
+ * Canonical list of operations in display order. v3: 9 ops.
+ */
+export const OPERATION_LABELS: ReadonlyArray<{
+  readonly value: ModifierOperation;
+  readonly label: string;
+}> = [
+  { value: "add",      label: "Add" },
+  { value: "subtract", label: "Subtract" },
+  { value: "multiply", label: "Multiply" },
+  { value: "divide",   label: "Divide" },
+  { value: "min",      label: "Minimum" },
+  { value: "max",      label: "Maximum" },
+  { value: "set",      label: "Set To" },
+  { value: "grant",    label: "Grant" },
+  { value: "revoke",   label: "Revoke" },
+];

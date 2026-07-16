@@ -111,7 +111,6 @@ const operations: Array<{ label: string; value: ModifierOperation }> = [
   { label: "Maximum", value: "max" },
   { label: "Grant", value: "grant" },
   { label: "Revoke", value: "revoke" },
-  { label: "Toggle", value: "toggle" },
 ];
 
 const conditionOperators: ModifierDraft["conditionOperator"][] = [

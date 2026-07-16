@@ -54,6 +54,7 @@ import {
   allowedValueTypes,
   effectiveMirrorable,
   hidesValueTypeSelect,
+  OPERATION_LABELS,
   valueTypeLabel,
 } from "@/lib/primitives/form-helpers";
 import { TokenChipStack } from "./token-chip-stack";
@@ -181,20 +182,9 @@ const targetOptions: ReadonlyArray<{ readonly label: string; readonly value: Mod
     value: t,
   }));
 
-// Phase 7.5: extended to 11 ops (added "bias").
-const operations: Array<{ label: string; value: ModifierOperation }> = [
-  { label: "Add", value: "add" },
-  { label: "Subtract", value: "subtract" },
-  { label: "Multiply", value: "multiply" },
-  { label: "Divide", value: "divide" },
-  { label: "Set To", value: "set" },
-  { label: "Minimum", value: "min" },
-  { label: "Maximum", value: "max" },
-  { label: "Grant", value: "grant" },
-  { label: "Revoke", value: "revoke" },
-  { label: "Toggle", value: "toggle" },
-  { label: "Bias", value: "bias" },
-];
+// Phase 7.5 v3: 9 ops (toggle and bias removed). Use OPERATION_LABELS
+// from form-helpers.ts for the canonical list.
+const operations = OPERATION_LABELS;
 
 // Phase 7.5 form helpers are extracted to @/lib/primitives/form-helpers
 // for testability. The local definitions are removed; the
@@ -208,12 +198,14 @@ const operations: Array<{ label: string; value: ModifierOperation }> = [
 // ModifierDraft remain as a transitional cache so the existing
 // toHardModifier path keeps working without a separate code path.
 
+// Phase 7.5 v3: 6 stack rules (added "replace" for explicit override).
 const stackingOptions: ModifierStackingMode[] = [
   "stack",
   "highest-only",
   "lowest-only",
   "unique-by-primitive",
   "unique-by-target",
+  "replace",
 ];
 
 const mirrorVectors = [
@@ -295,9 +287,10 @@ function categoryLabel(category: string) {
 }
 
 // =============================================================================
-// ChiralityBadge — Phase 7.5
+// ChiralityBadge — Phase 7.5 v3
 // Small visual indicator showing whether the current op is
-// Variable Vector (mirrorable) or Permission Vector (locked).
+// mirrorable (Variable) or permission-locked (Set To).
+// v3: removed Bias/Toggle-specific cases (those ops are gone).
 // =============================================================================
 
 function ChiralityBadge({
@@ -307,8 +300,6 @@ function ChiralityBadge({
   readonly op: ModifierOperation;
   readonly mirrorable: boolean;
 }): ReactElement {
-  const isBias = op === "bias";
-  const isToggle = op === "toggle";
   const isSetTo = op === "set";
   if (isSetTo) {
     return (
@@ -317,26 +308,6 @@ function ChiralityBadge({
         title="Set To is permission-locked; cannot be inverted."
       >
         🏛 Permission
-      </span>
-    );
-  }
-  if (isBias) {
-    return (
-      <span
-        className="inline-flex items-center gap-1 rounded-sm border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300"
-        title="Bias — mirror flips advantage <-> disadvantage."
-      >
-        📊 Variable (self-mirror)
-      </span>
-    );
-  }
-  if (isToggle) {
-    return (
-      <span
-        className="inline-flex items-center gap-1 rounded-sm border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300"
-        title="Toggle — mirror flips the value T <-> F."
-      >
-        📊 Variable (value-flip)
       </span>
     );
   }
@@ -1132,61 +1103,9 @@ export function PrimitiveForm({
         />
       </label>
 
-      <fieldset className="grid gap-3 rounded-md border border-border bg-background p-4 md:col-span-2 md:grid-cols-2">
-        <div className="md:col-span-2">
-          <legend className="text-sm font-semibold">Mirror Vector</legend>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Mark whether this primitive can be inverted into a real drawback
-            for BU credit.
-          </p>
-        </div>
-
-        <label className="flex items-start gap-3 rounded-md border border-border bg-card p-3 text-sm font-medium md:col-span-2">
-          <input
-            checked={form.isMirrorable}
-            className="mt-1 size-4"
-            onChange={(event) => updateForm("isMirrorable", event.target.checked)}
-            type="checkbox"
-          />
-          <span>
-            Mirrorable
-            <span className="mt-1 block text-xs font-normal text-muted-foreground">
-              Valid only when the inverted primitive creates real campaign
-              friction the DM can expose.
-            </span>
-          </span>
-        </label>
-
-        <div className="md:col-span-2 space-y-2">
-          <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
-            <div className="flex items-center justify-between gap-3">
-              <span className="font-medium text-muted-foreground">Mirror Vector</span>
-              <span className="rounded-md border border-border bg-background px-2 py-0.5 text-xs font-medium">
-                {form.isMirrorable ? form.mirrorVector || "VARIABLE_VECTOR" : "STANDARD_ONLY"}
-              </span>
-            </div>
-            <div className="mt-1 flex items-center justify-between gap-3">
-              <span className="font-medium text-muted-foreground">Mirror BU Credit</span>
-              <span className="rounded-md border border-border bg-background px-2 py-0.5 text-xs font-medium">
-                {form.isMirrorable ? Number(form.buCost) || 0 : 0} <span className="text-muted-foreground">= buCost</span>
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <label className="block text-sm font-medium md:col-span-2">
-          Mirror Exposure Notes
-          <textarea
-            className="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2 disabled:opacity-60"
-            disabled={!form.isMirrorable}
-            onChange={(event) =>
-              updateForm("mirrorEligibilityNotes", event.target.value)
-            }
-            placeholder="Explain the downside and how a DM can expose it in play."
-            value={form.mirrorEligibilityNotes}
-          />
-        </label>
-      </fieldset>
+      {/* Phase 7.5 v3: Mirror Vector card removed from primitive
+          form. Mirror logic moves to capability/affect layer
+          (Phase 8). The primitive no longer carries mirror state. */}
 
       <fieldset className="space-y-3 rounded-md border border-border bg-background p-4 md:col-span-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1384,29 +1303,20 @@ export function PrimitiveForm({
               </select>
             </div>
 
+            {/* Phase 7.5 v3: Mirror toggle UI removed from modifier
+                row. Mirror logic is decided by the capability/
+                affect layer (Phase 8), not by the primitive. The
+                ChiralityBadge is kept as a passive indicator that
+                shows whether the op is mirrorable. */}
             {(() => {
               const mirrorable = effectiveMirrorable(modifier.operation);
-              const spec = OP_SPECS[modifier.operation];
               return (
                 <div className="rounded-md border border-border bg-background p-2">
-                  {/* Chirality indicator */}
-                  <ChiralityBadge op={modifier.operation} mirrorable={mirrorable} />
-                  {/* Mirror toggle — hidden when not mirrorable */}
-                  {mirrorable ? (
-                    <button
-                      type="button"
-                      onClick={() => mirrorModifier(modifier.id)}
-                      className="mt-1.5 flex w-full items-center justify-between gap-2 rounded-md border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-xs font-medium text-violet-700 hover:bg-violet-500/20 dark:text-violet-300"
-                      title={`Mirror: swap operation to ${
-                        spec.mirrorOp ?? ""
-                      } and adjust value per OP_SPECS`}
-                    >
-                      <span>↔ Mirror</span>
-                      <span className="text-[10px] text-violet-600/80">
-                        → {spec.mirrorOp}
-                      </span>
-                    </button>
-                  ) : (
+                  <ChiralityBadge
+                    op={modifier.operation}
+                    mirrorable={mirrorable}
+                  />
+                  {!mirrorable && (
                     <p className="mt-1.5 text-[10px] text-muted-foreground">
                       Not mirrorable (permission-locked).
                     </p>
@@ -1417,9 +1327,7 @@ export function PrimitiveForm({
 
             {/* Value Type — drives the chip-stack's allowed token
                 kinds. Options filtered by the current op's
-                allowed value types (OP_VALUE_TYPE_MATRIX). For
-                Toggle and Bias, the Value Type select is hidden
-                (the op determines the value shape directly). */}
+                allowed value types (OP_VALUE_TYPE_MATRIX). */}
             {(!hidesValueTypeSelect(modifier.operation)) ? (
               <label className="block text-sm font-medium">
                 Value Type
@@ -1448,49 +1356,35 @@ export function PrimitiveForm({
                 the bias dropdown. */}
             <label className="block text-sm font-medium">
               Value
-              {modifier.operation === "toggle" ? (
-                <select
-                  className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                  value={modifier.value}
-                  onChange={(event) =>
-                    updateModifier(modifier.id, "value", event.target.value)
-                  }
-                >
-                  <option value="true">True</option>
-                  <option value="false">False</option>
-                </select>
-              ) : (
-                (() => {
-                  const { kinds, biasMode } = allowedTokenKinds(
-                    modifier.operation,
-                    modifier.valueKind,
-                  );
-                  return (
-                    <TokenChipStack
-                      tokens={modifier.tokens}
-                      onChange={(next) => {
-                        updateModifier(modifier.id, "tokens", next);
-                        // Keep the derived `value` cache in sync.
-                        const serialized = serializeValueField(next);
-                        const first = serialized[0];
-                        const derived =
-                          typeof first === "string"
-                            ? first
-                            : typeof first === "number"
-                              ? String(first)
-                              : typeof first === "boolean"
-                                ? first
-                                  ? "true"
-                                  : "false"
-                                : "";
-                        updateModifier(modifier.id, "value", derived);
-                      }}
-                      allowedKinds={kinds}
-                      biasMode={biasMode}
-                    />
-                  );
-                })()
-              )}
+              {(() => {
+                const { kinds, biasMode } = allowedTokenKinds(
+                  modifier.operation,
+                  modifier.valueKind,
+                );
+                return (
+                  <TokenChipStack
+                    tokens={modifier.tokens}
+                    onChange={(next) => {
+                      updateModifier(modifier.id, "tokens", next);
+                      // Keep the derived `value` cache in sync.
+                      const serialized = serializeValueField(next);
+                      const first = serialized[0];
+                      const derived =
+                        typeof first === "string"
+                          ? first
+                          : typeof first === "number"
+                            ? String(first)
+                            : typeof first === "boolean"
+                              ? first
+                                ? "true"
+                                : "false"
+                              : "";
+                      updateModifier(modifier.id, "value", derived);
+                    }}
+                    allowedKinds={kinds}
+                  />
+                );
+              })()}
             </label>
 
             <label className="block text-sm font-medium">

@@ -38,9 +38,7 @@ export type ModifierOperation =
   | "min"
   | "max"
   | "grant"
-  | "revoke"
-  | "toggle"
-  | "bias";
+  | "revoke";
 
 export type ModifierTarget =
   | "character.attribute.physical"
@@ -72,7 +70,8 @@ export type ModifierStackingMode =
   | "highest-only"
   | "lowest-only"
   | "unique-by-primitive"
-  | "unique-by-target";
+  | "unique-by-target"
+  | "replace";
 
 export interface ModifierCondition {
   readonly key: string;

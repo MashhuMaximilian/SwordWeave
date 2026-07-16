@@ -25,6 +25,7 @@ import {
   formatBehaviorTarget,
   isBehaviorLike,
   isDiceExpression,
+  migrateOperation,
   parseBehaviorTarget,
   parseValueField,
   serializeValueField,
@@ -56,22 +57,19 @@ describe("OP_VALUE_TYPE_MATRIX (Phase 7.5 v2)", () => {
     expect(OP_VALUE_TYPE_MATRIX.revoke).toEqual(["number", "text", "dice"]);
   });
 
-  it("Toggle allows only boolean", () => {
-    expect(OP_VALUE_TYPE_MATRIX.toggle).toEqual(["boolean"]);
+  it("Toggle and Bias are removed in v3", () => {
+    expect(OP_VALUE_TYPE_MATRIX).not.toHaveProperty("toggle");
+    expect(OP_VALUE_TYPE_MATRIX).not.toHaveProperty("bias");
   });
 
-  it("Bias allows only bias-value", () => {
-    expect(OP_VALUE_TYPE_MATRIX.bias).toEqual(["bias-value"]);
-  });
-
-  it("Text and Dice are separate value types (Phase 7.5 v2)", () => {
+  it("Text and Dice are separate value types (Phase 7.5 v3)", () => {
     // Verify no op has 'text' AND 'dice' as a SINGLE combined type.
     // Both should appear as separate types in different ops.
     expect(OP_VALUE_TYPE_MATRIX.set).toContain("text");
     expect(OP_VALUE_TYPE_MATRIX.set).toContain("dice");
     expect(OP_VALUE_TYPE_MATRIX.min).not.toContain("dice");
-    expect(OP_VALUE_TYPE_MATRIX.bias).not.toContain("text");
-    expect(OP_VALUE_TYPE_MATRIX.bias).not.toContain("dice");
+    expect(OP_VALUE_TYPE_MATRIX.add).toContain("dice");
+    expect(OP_VALUE_TYPE_MATRIX.add).not.toContain("text");
   });
 });
 
@@ -108,14 +106,9 @@ describe("OP_SPECS — chirality", () => {
     expect(OP_SPECS.revoke.mirrorOp).toBe("grant");
   });
 
-  it("Toggle mirror is itself, flips the value", () => {
-    expect(OP_SPECS.toggle.mirrorOp).toBe("toggle");
-    expect(OP_SPECS.toggle.mirrorFlipsValue).toBe(true);
-  });
-
-  it("Bias mirror is itself, flips the value", () => {
-    expect(OP_SPECS.bias.mirrorOp).toBe("bias");
-    expect(OP_SPECS.bias.mirrorFlipsValue).toBe(true);
+  it("v3: Toggle and Bias removed from OP_SPECS", () => {
+    expect(OP_SPECS).not.toHaveProperty("toggle");
+    expect(OP_SPECS).not.toHaveProperty("bias");
   });
 });
 
@@ -150,25 +143,8 @@ describe("applyMirror", () => {
     expect(result).toEqual({ op: "revoke", value: "grappled" });
   });
 
-  it("Toggle(true) mirrors to Toggle(false)", () => {
-    const result = applyMirror("toggle", true);
-    expect(result).toEqual({ op: "toggle", value: false });
-  });
-
-  it("Toggle(false) mirrors to Toggle(true)", () => {
-    const result = applyMirror("toggle", false);
-    expect(result).toEqual({ op: "toggle", value: true });
-  });
-
-  it("Bias('advantage') mirrors to Bias('disadvantage')", () => {
-    const result = applyMirror("bias", "advantage");
-    expect(result).toEqual({ op: "bias", value: "disadvantage" });
-  });
-
-  it("Bias('disadvantage') mirrors to Bias('advantage')", () => {
-    const result = applyMirror("bias", "disadvantage");
-    expect(result).toEqual({ op: "bias", value: "advantage" });
-  });
+  // v3: Toggle and Bias removed. Set handles boolean changes.
+  // Bias handled via grant/revoke on behavior:advantage / disadvantage.
 
   it("Set throws (not mirrorable)", () => {
     expect(() => applyMirror("set", 5)).toThrow(/not mirrorable/);
@@ -208,7 +184,7 @@ describe("parseValueField — auto-coercion", () => {
     expect(parseValueField(false)).toEqual([{ kind: "behavior", name: "false" }]);
   });
 
-  it("parses 'advantage' and 'disadvantage' as bias values", () => {
+  it("parses 'advantage' and 'disadvantage' as behavior tokens (v3: bias op is gone)", () => {
     expect(parseValueField("advantage")).toEqual([{ kind: "behavior", name: "advantage" }]);
     expect(parseValueField("disadvantage")).toEqual([{ kind: "behavior", name: "disadvantage" }]);
   });
@@ -452,5 +428,28 @@ describe("defaultTargetsForAxis", () => {
 
   it("behavior returns 'behavior' (free-form text input)", () => {
     expect(defaultTargetsForAxis("behavior")).toBe("behavior");
+  });
+});
+
+describe("migrateOperation (Phase 7.5 v3 — back-compat)", () => {
+  it("'toggle' → 'set' with boolean value coerced", () => {
+    expect(migrateOperation("toggle", true)).toEqual({ op: "set", value: "true" });
+    expect(migrateOperation("toggle", false)).toEqual({ op: "set", value: "false" });
+    expect(migrateOperation("toggle", "true")).toEqual({ op: "set", value: "true" });
+  });
+
+  it("'bias' → 'grant' with advantage/disadvantage coerced", () => {
+    expect(migrateOperation("bias", "advantage")).toEqual({ op: "grant", value: "advantage" });
+    expect(migrateOperation("bias", "disadvantage")).toEqual({ op: "grant", value: "disadvantage" });
+  });
+
+  it("non-legacy ops pass through unchanged", () => {
+    expect(migrateOperation("add", 5)).toEqual({ op: "add", value: "5" });
+    expect(migrateOperation("grant", "darkvision")).toEqual({ op: "grant", value: "darkvision" });
+  });
+
+  it("'undefined' legacy values get safe defaults", () => {
+    expect(migrateOperation("toggle", undefined).op).toBe("set");
+    expect(migrateOperation("bias", undefined).op).toBe("grant");
   });
 });

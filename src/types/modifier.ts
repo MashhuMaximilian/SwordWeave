@@ -1,30 +1,28 @@
 /**
- * Phase 7.5 — Modifier operation taxonomy + value-token system.
+ * Phase 7.5 v3 — Final modifier operation taxonomy + value-token
+ * system.
  *
  * Three things:
  *
- *   1. `ModifierOperation` (11 ops) — extends the existing union in
- *      `@/types/swordweave.ts` by adding `bias`. The original 10
- *      stay unchanged for backwards compat with existing rows.
+ *   1. `ModifierOperation` (9 ops) — the final vocabulary after
+ *      removing `toggle` and `bias` from v2.
  *
- *   2. `OP_SPECS` + `OP_VALUE_TYPE_MATRIX` — the chirality model.
- *      Each op declares its allowed value types, mirror behavior,
- *      and whether it's mirrorable at all. The form enforces
- *      these.
+ *   2. `OP_SPECS` + `OP_VALUE_TYPE_MATRIX` — the constraint
+ *      matrix. Each op declares its allowed value types and
+ *      mirror behavior (used by Phase 8 capability/affect layer;
+ *      mirror logic is no longer in the primitive form).
  *
  *   3. `ValueToken` discriminated union — the runtime-resolvable
- *      value system. Replaces the loose `value: JsonValue` on
- *      `HardModifier` with a structured token list. Each token
- *      has a `kind` and kind-specific payload; the character
- *      sheet engine resolves each token at slot time.
+ *      value system. Each token has a `kind` and kind-specific
+ *      payload; the character sheet engine resolves each token
+ *      at slot time.
  *
  * Backwards compatibility:
+ *   - Existing rows with `operation: "toggle"` or
+ *     `operation: "bias"` are migrated via `migrateOperation()`.
  *   - Existing modifier rows with `value: number` still parse via
  *     `parseValueField` which auto-coerces plain numbers into
  *     `{kind: "number", value}` tokens.
- *   - The legacy `JsonValue` field is preserved as
- *     `legacyValue?: JsonValue` for old rows that haven't migrated
- *     yet. New writes use `tokens: ValueToken[]`.
  *   - Existing modifiers with `value: "grappled"` etc. parse as
  *     `{kind: "behavior", name: "grappled"}` tokens.
  */
@@ -34,11 +32,17 @@
 // =============================================================================
 
 /**
- * Phase 7.5 — extended from the original 10 ops in
- * `@/types/swordweave.ts`. Added `bias` (advantage/disadvantage).
+ * Phase 7.5 v3 — the final 9 ops. The original 10 ops from
+ * `@/types/swordweave.ts` had `toggle` and `bias` added in v1/v2.
+ * Both are removed in v3:
  *
- * The 10 original ops are preserved verbatim for backwards compat
- * with existing rows in the DB.
+ *   - `toggle` was redundant with `set` (set to true/false).
+ *   - `bias` was replaced by `grant`/`revoke` on the canonical
+ *     `behavior:advantage` and `behavior:disadvantage` chips.
+ *
+ * Backwards compat: existing rows in the DB with `operation:
+ * "toggle"` or `operation: "bias"` are migrated to `set` and
+ * `grant` respectively via `migrateOperation()`.
  */
 export type ModifierOperation =
   | "add"
@@ -49,45 +53,63 @@ export type ModifierOperation =
   | "min"
   | "max"
   | "grant"
-  | "revoke"
-  | "toggle"
-  | "bias";
+  | "revoke";
+
+/**
+ * Migrate legacy op strings to v3.
+ *
+ * - "toggle" → "set" (with value coerced to "true"/"false")
+ * - "bias"   → "grant" (with value coerced to
+ *               "behavior:advantage" or "behavior:disadvantage")
+ */
+export function migrateOperation(
+  legacyOp: string,
+  legacyValue: unknown,
+): { op: ModifierOperation; value: string } {
+  if (legacyOp === "toggle") {
+    const v = String(legacyValue ?? "true").toLowerCase();
+    return { op: "set", value: v === "false" ? "false" : "true" };
+  }
+  if (legacyOp === "bias") {
+    const v = String(legacyValue ?? "advantage").toLowerCase();
+    return {
+      op: "grant",
+      value: v === "disadvantage" ? "disadvantage" : "advantage",
+    };
+  }
+  return { op: legacyOp as ModifierOperation, value: String(legacyValue ?? "") };
+}
 
 /**
  * Value type — the shape that the Value field is constrained to
  * for a given operation.
  *
- * Phase 7.5 v2: Text and Dice are SEPARATE value types (was
- * combined "Text/Dice/Keyword" in v1).
+ * Phase 7.5 v3: 4 value types. `bias-value` is gone (bias op
+ * is gone too).
  *
- * - `number`       — int/float literal OR a runtime token
- *                    (`+physical`, `+awareness`, `+PB`). Both
- *                    resolve to numbers on the character sheet.
- * - `text`         — free text OR custom pills (custom behaviors
- *                    the author names — `darkvision`, `mana_pool`,
- *                    etc.). NOT dice.
- * - `dice`         — dice expressions only (`1d4`, `2d6+3`,
- *                    `20d8`, custom).
- * - `boolean`      — `true` / `false` (used by Toggle).
- * - `bias-value`   — `"advantage"` | `"disadvantage"` (used by Bias).
+ * - `number`   — int/float literal OR a runtime token
+ *                (`+physical`, `+awareness`, `+PB`). Both
+ *                resolve to numbers on the character sheet.
+ * - `text`     — free text OR custom pills (custom behaviors
+ *                the author names — `darkvision`, `mana_pool`,
+ *                etc.) OR behavior tokens that resolve to text
+ *                values.
+ * - `dice`     — dice expressions only (`1d4`, `2d6+3`, `20d8`,
+ *                custom).
+ * - `boolean`  — `true` / `false`.
  *
  * The runtime token resolution (Phase 8) replaces tokens with
- * character-sheet values. Numbers resolve to numbers; text/keyword
+ * character-sheet values. Numbers resolve to numbers; text
  * tokens resolve to whatever the character has for that behavior;
  * dice expressions are rolled.
  */
-export type ValueType = "number" | "text" | "dice" | "boolean" | "bias-value";
+export type ValueType = "number" | "text" | "dice" | "boolean";
 
 /**
- * Allowed value types per operation (Phase 7.5 v2).
+ * Allowed value types per operation (Phase 7.5 v3).
  *
  * The form's Value Type dropdown filters to only the allowed
  * types when the user picks an op.
- *
- * Special cases:
- *   - Toggle: only Boolean. The Value field renders as a
- *     True/False toggle directly — no Value Type dropdown.
- *   - Bias: only bias-value (`advantage` / `disadvantage`).
  */
 export const OP_VALUE_TYPE_MATRIX: Readonly<
   Record<ModifierOperation, readonly ValueType[]>
@@ -101,8 +123,6 @@ export const OP_VALUE_TYPE_MATRIX: Readonly<
   max:      ["number", "text"],
   grant:    ["number", "text", "dice"],
   revoke:   ["number", "text", "dice"],
-  toggle:   ["boolean"],
-  bias:     ["bias-value"],
 };
 
 /**
@@ -120,20 +140,28 @@ export const OP_VALUE_TYPE_MATRIX: Readonly<
  *   - Multiply ↔ Divide: invert value (reciprocal).
  *   - Min ↔ Max: flip op, value stays.
  *   - Grant ↔ Revoke: flip op, value stays.
- *   - Toggle: flip value (T→F, F→T). Same op.
- *   - Bias: flip value ("advantage" ↔ "disadvantage"). Same op.
+ *   - Set To: NOT mirrorable (permission-locked).
+ *
+ * Note: Toggle and Bias are gone in v3. Set To handles boolean
+ * values. Grant/Revoke on behavior:advantage / behavior:disadvantage
+ * chips replaces Bias.
  */
 export interface ModifierOpSpec {
   readonly kind: ModifierOperation;
   readonly label: string;
   readonly mirrorable: boolean;
-  /** The op that mirror swaps to. Same op for Toggle / Bias. */
+  /** The op that mirror swaps to. Null for non-mirrorable ops (Set To). */
   readonly mirrorOp: ModifierOperation | null;
   /** Whether the mirror op flips the value's sign (Add ↔ Subtract). */
   readonly mirrorFlipsSign: boolean;
   /** Whether the mirror inverts the value to its reciprocal (× ↔ ÷). */
   readonly mirrorInvertsValue: boolean;
-  /** Whether the mirror flips a boolean or bias-value (Toggle / Bias). */
+  /**
+   * Whether the mirror flips a boolean value. Used by the
+   * capability/affect layer (Phase 8) when the parent capability
+   * is invoked in a mirrored context. Not used by the primitive
+   * form itself (mirroring is decided by the caller).
+   */
   readonly mirrorFlipsValue: boolean;
 }
 
@@ -219,24 +247,6 @@ export const OP_SPECS: Readonly<Record<ModifierOperation, ModifierOpSpec>> = {
     mirrorInvertsValue: false,
     mirrorFlipsValue: false,
   },
-  toggle: {
-    kind: "toggle",
-    label: "Toggle",
-    mirrorable: true,
-    mirrorOp: "toggle",
-    mirrorFlipsSign: false,
-    mirrorInvertsValue: false,
-    mirrorFlipsValue: true,
-  },
-  bias: {
-    kind: "bias",
-    label: "Bias",
-    mirrorable: true,
-    mirrorOp: "bias",
-    mirrorFlipsSign: false,
-    mirrorInvertsValue: false,
-    mirrorFlipsValue: true,
-  },
 };
 
 /**
@@ -268,23 +278,25 @@ export function applyMirror(
   } else if (spec.mirrorFlipsValue) {
     if (value === true) nextValue = false;
     else if (value === false) nextValue = true;
-    else if (value === "advantage") nextValue = "disadvantage";
-    else if (value === "disadvantage") nextValue = "advantage";
+    // Note: bias-value flipping (advantage/disadvantage) was
+    // removed in v3 since the bias op itself was removed.
+    // Behavior tokens can be flipped by re-authoring or via
+    // Phase 8 capability/affect mirror logic.
   }
   return { op: nextOp, value: nextValue };
 }
 
 /**
  * The shape of a single Value field entry. The form's chip-stack
- * holds an array of these. Numbers, dice, text, booleans,
- * bias-values, and tokens all fit in this union.
+ * holds an array of these. Numbers, dice, text, booleans, and
+ * tokens all fit in this union. (Bias-value removed in v3 since
+ * the bias op is gone — advantage/disadvantage are now just
+ * behavior tokens.)
  */
 export type ModifierValue =
   | number
   | string
   | boolean
-  | "advantage"
-  | "disadvantage"
   | ValueToken;
 
 // =============================================================================
@@ -367,7 +379,11 @@ export const ALL_DERIVED = ["pb", "pb_half", "level"] as const;
 export const CANONICAL_DICE = ["1d4", "1d6", "1d8", "1d10", "1d12", "1d20"] as const;
 
 /**
- * Canonical Bias values for the Bias op's value field.
+ * Phase 7.5 v3: BIAS_VALUES is gone — the bias op was removed.
+ * Advantage/disadvantage are now handled by grant/revoke on the
+ * canonical behavior:advantage and behavior:disadvantage chips.
+ * Kept here as a stub to make migrations visible.
+ * @deprecated
  */
 export const BIAS_VALUES = ["advantage", "disadvantage"] as const;
 
@@ -398,10 +414,11 @@ export function isBehaviorLike(s: string): boolean {
  * Parse a raw value field (number, string, boolean, or array of
  * those) into a structured ValueToken[].
  *
- * Auto-coercion rules (Phase 7.5):
+ * Auto-coercion rules (Phase 7.5 v3):
  *   - number → `{kind: "number", value}`.
- *   - boolean → kept as raw boolean (used by Toggle).
- *   - "advantage" / "disadvantage" → kept as bias-value string.
+ *   - boolean → `{kind: "behavior", name: "true"|"false"}`.
+ *   - "advantage" / "disadvantage" → `{kind: "behavior", name}`
+ *     (used by grant/revoke since bias op is gone).
  *   - Dice expression ("1d4", "2d6+3") → `{kind: "dice"}`.
  *   - "behavior:NAME" → `{kind: "behavior", name: "NAME"}`.
  *   - "physical" | "mental" | "magic" → `{kind: "attribute"}`.
@@ -448,13 +465,13 @@ function isTokenLike(value: unknown): boolean {
 function coerceSingleValue(raw: unknown): ValueToken | null {
   if (typeof raw === "number") return { kind: "number", value: raw };
   if (typeof raw === "boolean") {
-    // Toggle's boolean value — wrap as a fake "token" that holds
-    // the boolean. We don't have a boolean-token kind, so we
-    // store as `{kind: "behavior", name: "true"|"false"}` to fit
-    // the token shape. Toggle-specific parsing handles this.
+    // v3: boolean values are stored as behavior tokens named
+    // "true" or "false". Set To interprets these back as booleans.
     return { kind: "behavior", name: raw ? "true" : "false" };
   }
   if (typeof raw !== "string") return null;
+  // v3: "advantage"/"disadvantage" strings parse as behavior
+  // tokens (since the bias op is gone). Used by grant/revoke.
   if (raw === "advantage" || raw === "disadvantage") {
     return { kind: "behavior", name: raw };
   }

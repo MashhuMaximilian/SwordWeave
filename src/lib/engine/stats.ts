@@ -172,7 +172,6 @@ export function calculateAttributeScore(
       // "grant" and "revoke" don't apply to numeric attribute scores
       case "grant":
       case "revoke":
-      case "toggle":
         break;
     }
   }
@@ -295,7 +294,6 @@ export function calculateMaxVitality(
         break;
       case "grant":
       case "revoke":
-      case "toggle":
         break;
     }
   }
@@ -362,7 +360,6 @@ export function calculateDefenseDc(
         break;
       case "grant":
       case "revoke":
-      case "toggle":
         break;
     }
   }
@@ -530,7 +527,8 @@ export function compileMovement(
         if (numericValue === 0) break;
         current /= numericValue;
         break;
-      case "toggle":
+      case "grant":
+      case "revoke":
         break;
     }
 

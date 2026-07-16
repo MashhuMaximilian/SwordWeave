@@ -285,25 +285,11 @@ export function applyOperation(
       if (typeof base === "object" && base !== null) return {};
       return null;
     }
-
-    case "toggle": {
-      // Toggle flips boolean
-      if (typeof base === "boolean") return !base;
-      return base;
-    }
-
-    case "bias": {
-      // Bias (Phase 7.5): modifies a probability track. The
-      // base value is an existing advantage/disadvantage flag,
-      // and the modifier value ("advantage" or "disadvantage")
-      // overrides it. The runtime resolution engine (Phase 8)
-      // translates this into actual die roll mechanics.
-      if (modifierValue === "advantage" || modifierValue === "disadvantage") {
-        return modifierValue;
-      }
-      return base;
-    }
   }
+  // Phase 7.5 v3: default is to return base unchanged. This
+  // covers unexpected op strings from legacy data after
+  // migrateOperation() has run.
+  return base;
 }
 
 function toNumber(value: JsonValue): number | null {
@@ -385,7 +371,19 @@ export function applyStacking(
       const first = values[0];
       return first ?? 0;
     }
+
+    case "replace": {
+      // Phase 7.5 v3: explicit override. The latest value
+      // wins — no merging, no averaging. For numeric stacks,
+      // take the LAST value (since authors usually order
+      // overrides after the original). For non-numeric, take
+      // the LAST value verbatim.
+      const last = values[values.length - 1];
+      return last ?? 0;
+    }
   }
+  // Default for unknown modes — fall through to last value.
+  return values[values.length - 1] ?? 0;
 }
 
 // =============================================================================
