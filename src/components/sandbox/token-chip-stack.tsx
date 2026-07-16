@@ -74,7 +74,6 @@ export function TokenChipStack({
   op,
   valueKind,
 }: TokenChipStackProps): ReactElement {
-  const [showPicker, setShowPicker] = useState(false);
   const [warning, setWarning] = useState<string | null>(null);
 
   const addToken = (token: ValueToken) => {
@@ -100,12 +99,12 @@ export function TokenChipStack({
   const showBool = isBooleanValueType(op, valueKind);
 
   return (
-    <div className="space-y-1.5">
-      {/* Chip stack */}
+    <div className="space-y-2">
+      {/* Chip stack — current tokens */}
       <div className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5">
         {tokens.length === 0 ? (
           <span className="text-xs text-muted-foreground">
-            Empty — pick a token below
+            No tokens yet — pick suggestions below or type a value
           </span>
         ) : (
           tokens.map((token, i) => (
@@ -137,30 +136,20 @@ export function TokenChipStack({
         </p>
       ) : null}
 
-      {/* Add button */}
-      <button
-        type="button"
-        onClick={() => setShowPicker(!showPicker)}
-        className="rounded-md border border-dashed border-border bg-background px-3 py-1 text-xs text-muted-foreground hover:bg-accent"
-      >
-        {showPicker ? "× close" : "+ add token"}
-      </button>
-
-      {/* Token picker popover */}
-      {showPicker ? (
-        <TokenPicker
-          op={op}
-          valueKind={valueKind}
-          allowedKinds={allowedKinds}
-          showNumbers={showNumbers}
-          showBool={showBool}
-          onPick={(token) => {
-            addToken(token);
-            setShowPicker(false);
-          }}
-          onCustom={handleCustomSubmit}
-        />
-      ) : null}
+      {/* Suggestions — always visible. Mashu's UX feedback: the
+          popover toggle made users click once before seeing
+          anything; suggestions should be the default state. The
+          user only needs to hide them if the value area gets
+          cramped (rare). */}
+      <TokenPicker
+        op={op}
+        valueKind={valueKind}
+        allowedKinds={allowedKinds}
+        showNumbers={showNumbers}
+        showBool={showBool}
+        onPick={addToken}
+        onCustom={handleCustomSubmit}
+      />
     </div>
   );
 }

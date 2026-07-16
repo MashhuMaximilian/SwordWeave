@@ -330,6 +330,66 @@ function ChiralityBadge({
   );
 }
 
+// =============================================================================
+// MirrorSwapCard — Phase 7.5 v3 UI rev
+// Clickable card showing the chirality badge AND a "↔ Mirror"
+// action button. The mirror action swaps the modifier to its
+// chiral pair (Add ↔ Subtract, Multiply ↔ Divide, Min ↔ Max,
+// Grant ↔ Revoke). For Set To (permission-locked), the button
+// is hidden — the badge is shown as a passive indicator.
+//
+// The mirror button is the *primitive-level* mirror: it's an
+// authoring convenience for the DM to write the inverse modifier
+// quickly. The capability/affect layer (Phase 8) ALSO uses
+// mirror semantics when invoking the primitive in a mirrored
+// context — but for now this is the user-facing mirror UI.
+//
+// v3 update: this card is back. Mashu flagged its absence as a
+// regression — the badge alone didn't communicate "you can flip
+// this". The explicit mirror button restores the affordance.
+// =============================================================================
+
+function MirrorSwapCard({
+  op,
+  onSwap,
+}: {
+  readonly op: ModifierOperation;
+  readonly onSwap: () => void;
+}): ReactElement {
+  const mirrorable = effectiveMirrorable(op);
+  const mirrorOp = mirrorable ? OP_SPECS[op].mirrorOp : null;
+  const mirrorLabel = mirrorOp
+    ? OP_SPECS[mirrorOp].label
+    : null;
+
+  return (
+    <div
+      data-testid="mirror-swap-card"
+      className="flex items-center justify-between gap-3 rounded-md border border-border bg-background p-3"
+    >
+      <div className="flex flex-col gap-1.5">
+        <ChiralityBadge op={op} mirrorable={mirrorable} />
+        <p className="text-[10px] text-muted-foreground">
+          {mirrorable && mirrorOp && mirrorLabel
+            ? `Mirrorable — flips to ${mirrorLabel} when inverted (sign/reciprocal flipped per OP_SPECS).`
+            : "Not mirrorable (permission-locked). Set To has no meaningful inverse."}
+        </p>
+      </div>
+      {mirrorable && mirrorOp && mirrorLabel ? (
+        <button
+          type="button"
+          data-testid="mirror-toggle"
+          onClick={onSwap}
+          className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300"
+          title={`Swap operation to ${mirrorLabel}`}
+        >
+          ↔ Mirror to {mirrorLabel}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function toModifierDraft(modifier: ModifierDraft, index: number): ModifierDraft {
   return { ...modifier, id: `modifier-${index + 1}` };
 }
@@ -1158,7 +1218,10 @@ export function PrimitiveForm({
 
             {/* ============================================================
                 SECTION 1 — TARGET
-                "What changes?" + per-axis target value widget.
+                "What changes?" dropdown first, then the per-axis
+                target value widget BELOW it (not beside it — the
+                beside layout was cramped on narrow screens and the
+                widget pushed past the card boundary).
                 The target value is the KEY (e.g. "darkvision", "physical",
                 "walking speed"). It's distinct from the modifier value
                 (e.g. 60, +2, true) which lives in SECTION 3.
@@ -1168,59 +1231,109 @@ export function PrimitiveForm({
                 Target
               </legend>
 
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="block text-sm font-medium">
-                  What changes?
-                  <select
-                    className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                    value={
-                      (MODIFIER_TARGETS as readonly string[]).includes(
-                        String(modifier.target),
-                      )
-                        ? String(modifier.target)
-                        : "attribute"
-                    }
-                    onChange={(event) =>
-                      updateModifier(modifier.id, "target", event.target.value)
-                    }
-                  >
-                    {targetOptions.map((target) => (
-                      <option key={target.value} value={target.value}>
-                        {target.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                {(() => {
-                  // Phase-7-E: render the dynamic Target Value widget
-                  // for the current target axis. The widget to the
-                  // right of the dropdown answers "of which ones?" —
-                  // the multi-select (or radio granularity, or
-                  // free-text) that scopes this modifier's effect.
-                  const currentTargetRaw = String(modifier.target);
-                  const currentTarget: ModifierTarget =
-                    (MODIFIER_TARGETS as readonly string[]).includes(currentTargetRaw)
-                      ? (currentTargetRaw as ModifierTarget)
-                      : "attribute";
-                  const spec = MODIFIER_TARGET_SPEC[currentTarget];
-
-                  if (spec.widget === "none") {
-                    return (
-                      <div className="rounded-md border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
-                        {spec.layer
-                          ? `Affects all ${spec.label.toLowerCase()} instances by default — use the Value field below to set the magnitude.`
-                          : `${spec.label} has no scope axis; the Value field carries the full effect.`}
-                      </div>
-                    );
+              <label className="block text-sm font-medium">
+                What changes?
+                <select
+                  className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
+                  value={
+                    (MODIFIER_TARGETS as readonly string[]).includes(
+                      String(modifier.target),
+                    )
+                      ? String(modifier.target)
+                      : "attribute"
                   }
+                  onChange={(event) =>
+                    updateModifier(modifier.id, "target", event.target.value)
+                  }
+                >
+                  {targetOptions.map((target) => (
+                    <option key={target.value} value={target.value}>
+                      {target.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-                  if (spec.widget === "free-text") {
-                    return (
+              {(() => {
+                // Phase-7-E: render the dynamic Target Value widget
+                // BELOW the dropdown (the previous beside-the-dropdown
+                // layout was cramped for the wider widgets like
+                // Speed's 5-checkbox list).
+                const currentTargetRaw = String(modifier.target);
+                const currentTarget: ModifierTarget =
+                  (MODIFIER_TARGETS as readonly string[]).includes(currentTargetRaw)
+                    ? (currentTargetRaw as ModifierTarget)
+                    : "attribute";
+                const spec = MODIFIER_TARGET_SPEC[currentTarget];
+
+                if (spec.widget === "none") {
+                  return (
+                    <div className="rounded-md border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
+                      {spec.layer
+                        ? `Affects all ${spec.label.toLowerCase()} instances by default — use the Value field below to set the magnitude.`
+                        : `${spec.label} has no scope axis; the Value field carries the full effect.`}
+                    </div>
+                  );
+                }
+
+                if (spec.widget === "free-text") {
+                  return (
+                    <label className="block text-sm font-medium">
+                      <span className="text-xs text-muted-foreground">
+                        Behavior name (key)
+                      </span>
+                      <input
+                        className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
+                        value={modifier.freeTextNarrowFocus}
+                        onChange={(event) =>
+                          updateModifier(
+                            modifier.id,
+                            "freeTextNarrowFocus",
+                            event.target.value,
+                          )
+                        }
+                        placeholder={spec.freeTextPlaceholder ?? ""}
+                      />
+                    </label>
+                  );
+                }
+
+                // "checklist" or "checklist-with-free-text"
+                const options = spec.options ?? [];
+                const optionLabels = spec.optionLabels ?? {};
+                return (
+                  <div className="space-y-2 rounded-md border border-dashed border-border bg-background p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {spec.label} — leave empty for "any"
+                    </p>
+                    <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3">
+                      {options.map((opt) => {
+                        const checked = modifier.targetValues.includes(opt);
+                        const label = optionLabels[opt] ?? opt;
+                        return (
+                          <label
+                            key={opt}
+                            className="flex items-center gap-2 text-sm"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(event) =>
+                                toggleTargetValue(
+                                  modifier.id,
+                                  opt,
+                                  event.target.checked,
+                                )
+                              }
+                            />
+                            <span>{label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {spec.widget === "checklist-with-free-text" ? (
                       <label className="block text-sm font-medium">
-                        <span className="text-xs text-muted-foreground">
-                          Behavior name (key)
-                        </span>
+                        Other (describe)
                         <input
                           className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
                           value={modifier.freeTextNarrowFocus}
@@ -1231,120 +1344,53 @@ export function PrimitiveForm({
                               event.target.value,
                             )
                           }
-                          placeholder={spec.freeTextPlaceholder ?? ""}
+                          placeholder={
+                            spec.freeTextPlaceholder ?? "Describe custom value"
+                          }
                         />
                       </label>
-                    );
-                  }
-
-                  // "checklist" or "checklist-with-free-text"
-                  const options = spec.options ?? [];
-                  const optionLabels = spec.optionLabels ?? {};
-                  return (
-                    <div className="space-y-2 rounded-md border border-dashed border-border bg-background p-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        {spec.label} — leave empty for "any"
-                      </p>
-                      <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3">
-                        {options.map((opt) => {
-                          const checked = modifier.targetValues.includes(opt);
-                          const label = optionLabels[opt] ?? opt;
-                          return (
-                            <label
-                              key={opt}
-                              className="flex items-center gap-2 text-sm"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={(event) =>
-                                  toggleTargetValue(
-                                    modifier.id,
-                                    opt,
-                                    event.target.checked,
-                                  )
-                                }
-                              />
-                              <span>{label}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                      {spec.widget === "checklist-with-free-text" ? (
-                        <label className="block text-sm font-medium">
-                          Other (describe)
-                          <input
-                            className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                            value={modifier.freeTextNarrowFocus}
-                            onChange={(event) =>
-                              updateModifier(
-                                modifier.id,
-                                "freeTextNarrowFocus",
-                                event.target.value,
-                              )
-                            }
-                            placeholder={
-                              spec.freeTextPlaceholder ?? "Describe custom value"
-                            }
-                          />
-                        </label>
-                      ) : null}
-                    </div>
-                  );
-                })()}
-              </div>
+                    ) : null}
+                  </div>
+                );
+              })()}
             </fieldset>
 
             {/* ============================================================
                 SECTION 2 — CHANGE
-                Operation + chirality indicator.
+                Operation dropdown first, then chirality/mirror UI below
+                (also stacked — the previous 2-column layout was cramped).
                 ============================================================ */}
-            <fieldset className="space-y-2 rounded-md border border-border bg-background p-3">
+            <fieldset className="space-y-3 rounded-md border border-border bg-background p-3">
               <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Change
               </legend>
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="block text-sm font-medium">
-                  Operation
-                  <select
-                    className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                    value={modifier.operation}
-                    onChange={(event) =>
-                      updateModifier(modifier.id, "operation", event.target.value)
-                    }
-                  >
-                    {operations.map((operation) => (
-                      <option key={operation.value} value={operation.value}>
-                        {operation.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+              <label className="block text-sm font-medium">
+                Operation
+                <select
+                  className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
+                  value={modifier.operation}
+                  onChange={(event) =>
+                    updateModifier(modifier.id, "operation", event.target.value)
+                  }
+                >
+                  {operations.map((operation) => (
+                    <option key={operation.value} value={operation.value}>
+                      {operation.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-                {/* Phase 7.5 v3: Mirror toggle UI removed from modifier
-                    row. Mirror logic is decided by the capability/
-                    affect layer (Phase 8), not by the primitive. The
-                    ChiralityBadge is kept as a passive indicator that
-                    shows whether the op is mirrorable. */}
-                <div className="flex flex-col justify-center rounded-md border border-border bg-background p-3">
-                  {(() => {
-                    const mirrorable = effectiveMirrorable(modifier.operation);
-                    return (
-                      <>
-                        <ChiralityBadge
-                          op={modifier.operation}
-                          mirrorable={mirrorable}
-                        />
-                        <p className="mt-1.5 text-[10px] text-muted-foreground">
-                          {mirrorable
-                            ? "Mirrorable — capability layer can flip this to its opposite when invoked in a mirrored context."
-                            : "Not mirrorable (permission-locked)."}
-                        </p>
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
+              {/* Chirality / mirror indicator. Clickable badge that
+                  swaps the modifier to its mirror op (Add ↔ Subtract,
+                  Multiply ↔ Divide, Min ↔ Max, Grant ↔ Revoke). The
+                  chirality badge stays as the visible affordance — the
+                  user clicks it to invert. For Set To (permission-locked),
+                  it's a passive indicator. */}
+              <MirrorSwapCard
+                op={modifier.operation}
+                onSwap={() => mirrorModifier(modifier.id)}
+              />
             </fieldset>
 
             {/* ============================================================
