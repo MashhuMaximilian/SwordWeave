@@ -527,14 +527,23 @@ export function CapabilityForm({
         </button>
       </div>
 
-      {/* Phase 8: per-entity iconography */}
-      {/* Phase 7.5 v4-rev: mobile layout — Icon + Name on
-          one row, Type + Source on one row. Mashu: "In
-          builder/editor for capability we can use the same
-          icon and name on a row and the 2 type and source
-          in a single row." */}
-      <div className="grid grid-cols-[auto_1fr] items-center gap-2 md:hidden">
-        <div className="row-span-2">
+      {/*
+        Mobile compact layout. Mashu (round 3): "In
+        capability build the type and source should be
+        their own row below both name and icon."
+
+        The previous attempt put Icon | Name in row 1 and
+        Type | Source in row 2 of the same `auto_1fr` grid,
+        but because the grid was auto_1fr, Type/Source
+        landed in column 2 alongside the Name input. The
+        new layout uses TWO independent grids:
+
+          Row 1:  [Icon] [Name........]      (grid-cols-auto-1fr)
+          Row 2:  [Type] [Source]            (grid-cols-2, full width)
+
+      */}
+      <div className="space-y-2 md:hidden">
+        <div className="grid grid-cols-[auto_1fr] items-center gap-2">
           <IconSlot
             iconSource={(form.iconSource as IconSource | null) ?? null}
             iconKey={form.iconKey ?? null}
@@ -550,25 +559,25 @@ export function CapabilityForm({
               })
             }
             size={56}
-            label="Icon"
+            label=""
             helper=""
           />
-        </div>
-        <label className="block text-sm font-medium">
-          Capability Name
-          <input
-            className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2"
-            value={form.name}
-            onChange={(e) => updateForm("name", e.target.value)}
-            placeholder="e.g. Fire Strike"
-            required
-          />
-        </label>
-        <div className="grid grid-cols-2 gap-2">
           <label className="block text-sm font-medium">
+            Capability Name
+            <input
+              className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2"
+              value={form.name}
+              onChange={(e) => updateForm("name", e.target.value)}
+              placeholder="e.g. Fire Strike"
+              required
+            />
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block text-[11px] font-medium">
             Type
             <select
-              className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2"
+              className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none ring-ring focus:ring-2"
               value={form.type}
               onChange={(e) => updateForm("type", e.target.value)}
             >
@@ -577,10 +586,10 @@ export function CapabilityForm({
               <option value="AUGMENT">Augment</option>
             </select>
           </label>
-          <label className="block text-sm font-medium">
+          <label className="block text-[11px] font-medium">
             Source
             <select
-              className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2"
+              className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none ring-ring focus:ring-2"
               value={form.sourceType}
               onChange={(e) => updateForm("sourceType", e.target.value)}
             >

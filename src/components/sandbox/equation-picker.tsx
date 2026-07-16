@@ -320,7 +320,7 @@ export function EquationPicker({
                 onClick={() => addOperand(pendingOp, { kind: "number", value: n })}
                 className="rounded-full border border-slate-500/30 bg-slate-500/10 px-2 py-0.5 text-xs hover:bg-slate-500/20"
               >
-                {n > 0 ? `+${n}` : n}
+                {n}
               </button>
             ))}
           </div>

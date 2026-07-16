@@ -186,33 +186,30 @@ function modifierBlock(modifier: ModifierDraft): React.ReactElement {
       </div>
     ) : null;
 
-  // Condition line — displayed as styled chips, NOT as
-  // raw text. Mashu: "we need to also add conditions
-  // or/and between them just displaying as text is not
-  // good." The current data model stores one condition
-  // per modifier (conditionKey/conditionOperator/conditionValue),
-  // but we can still render the components as proper
-  // chips with the operator in a separate color, and
-  // stack the condition + the scope checkboxes with a
-  // visual AND between them.
-  const condMode = modifier.conditionMode ?? "always";
+  // Condition line — rendered from the v1
+  // ConditionAuthoring (pills + operators) when present.
+  // Mashu: "we need to also add conditions or/and
+  // between them just displaying as text is not good.
+  // Should be just triggers when: [self] (self is
+  // prone) OR [target] [target is prone] AND [scene]
+  // [scene is dim] or something as an example."
+  //
+  // The v1 condition has:
+  //   pills: [{ category, label }, ...]   (ordered)
+  //   operators: ("AND" | "OR")[]         (length = pills.length - 1)
+  //   categories: selected categories    (used for the [scope] chip)
+  //   narrative: free-text fallback
+  //
+  // Render as: "When: [actor] prone OR [target] prone AND [scene] dim"
+  // Each pill is a chip with its category prefix. Operators between
+  // pills are uppercased AND/OR chips.
+  //
+  // Fallback to the legacy triple (conditionKey/Operator/Value)
+  // if v1Condition is absent or unparseable. The "equals" word
+  // the user saw in the screenshot is the legacy operator —
+  // it's a fallback from the old shape, not the intended UI.
   const condLine: React.ReactElement | null =
-    condMode === "custom" ? (
-      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
-        <span className="font-semibold uppercase tracking-wide text-muted-foreground">
-          When:
-        </span>
-        <span className="rounded bg-muted px-1.5 py-0.5 font-mono">
-          {modifier.conditionKey ?? "?"}
-        </span>
-        <span className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-primary">
-          {modifier.conditionOperator ?? "?"}
-        </span>
-        <span className="rounded bg-muted px-1.5 py-0.5 font-mono">
-          {modifier.conditionValue ?? ""}
-        </span>
-      </div>
-    ) : null;
+    renderConditionLine(modifier);
 
   // Mirrorability (per-op, derived from OP_SPECS). Mashu:
   // "Also I need to see what mirrors so in mirror we'd
@@ -463,4 +460,129 @@ export function modifiersFromHardModifiers(stored: unknown): ModifierDraft[] {
         stacking: modifier.stacking ?? "stack",
       };
     });
+}
+
+// =============================================================================
+// renderConditionLine — render the "When: …" row in the preview block.
+//
+// Reads `modifier.v1Condition` (a ConditionAuthoring) and renders the
+// structured trigger chain: pills interleaved with AND/OR chips,
+// each pill prefixed with a [scope] chip from the pill's category.
+// Falls back to the legacy triple (conditionKey/Operator/Value) when
+// v1Condition is missing or unparseable — older rows that haven't been
+// migrated yet.
+//
+// Mashu (round 3): "In preview the conditions AND and OR are not
+// properly pulled in. They are weird and that 'equals' is probably
+// fallback from the old ways of doing things."
+//
+// Example output (matching Mashu's spec):
+//   When: [actor] prone OR [target] prone AND [scene] dim
+// =============================================================================
+
+// v1Condition is typed as `unknown` in ModifierDraft (it's optional
+// and could be in any of the legacy shapes during the migration
+// window). We narrow with a runtime shape check below.
+type V1ConditionShape = {
+  readonly categories?: readonly string[];
+  readonly pills?: readonly { readonly category: string; readonly label: string }[];
+  readonly operators?: readonly ("AND" | "OR")[];
+  readonly narrative?: string;
+};
+
+function isV1ConditionShape(value: unknown): value is V1ConditionShape {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    ("pills" in value || "narrative" in value || "categories" in value)
+  );
+}
+
+function renderConditionLine(
+  modifier: ModifierDraft,
+): React.ReactElement | null {
+  const mode = modifier.conditionMode ?? "always";
+  if (mode === "always") return null;
+
+  // 1. Try v1 condition first (the new structured shape).
+  if (
+    "v1Condition" in modifier &&
+    modifier.v1Condition !== null &&
+    modifier.v1Condition !== undefined &&
+    isV1ConditionShape(modifier.v1Condition)
+  ) {
+    const v1 = modifier.v1Condition as V1ConditionShape;
+    const pills = v1.pills ?? [];
+    const operators = v1.operators ?? [];
+    const narrative = v1.narrative ?? "";
+
+    if (pills.length === 0 && narrative.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+        <span className="font-semibold uppercase tracking-wide text-muted-foreground">
+          When:
+        </span>
+        {pills.length > 0 ? (
+          pills.map((pill, i) => (
+            <Fragment key={`pill-${i}-${pill.label}`}>
+              {/* Operator BEFORE the pill at index > 0 */}
+              {i > 0 ? (
+                <span
+                  className={`rounded px-1.5 py-0.5 font-mono font-bold ${
+                    operators[i - 1] === "AND"
+                      ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                      : "bg-sky-500/15 text-sky-700 dark:text-sky-300"
+                  }`}
+                >
+                  {operators[i - 1] ?? "OR"}
+                </span>
+              ) : null}
+              <span className="rounded bg-violet-500/15 px-1.5 py-0.5 font-mono text-violet-700 dark:text-violet-300">
+                [{pill.category}]
+              </span>
+              <span className="rounded bg-muted px-1.5 py-0.5 font-mono">
+                {pill.category} {pill.label.toLowerCase().replace(/_/g, " ")}
+              </span>
+            </Fragment>
+          ))
+        ) : null}
+        {narrative ? (
+          <span className="rounded bg-muted px-1.5 py-0.5 italic text-muted-foreground">
+            {narrative}
+          </span>
+        ) : null}
+      </div>
+    );
+  }
+
+  // 2. Legacy fallback — the user is editing with the old
+  // single-condition triple. We render the components as chips
+  // so they at least look structured, but the AND/OR is implicit
+  // (single condition = always true together).
+  if (modifier.conditionKey || modifier.conditionValue) {
+    return (
+      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+        <span className="font-semibold uppercase tracking-wide text-muted-foreground">
+          When:
+        </span>
+        <span className="rounded bg-muted px-1.5 py-0.5 font-mono">
+          {modifier.conditionKey || "?"}
+        </span>
+        <span className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-primary">
+          {modifier.conditionOperator || "?"}
+        </span>
+        <span className="rounded bg-muted px-1.5 py-0.5 font-mono">
+          {modifier.conditionValue || ""}
+        </span>
+        <span className="ml-1 text-[9px] italic text-muted-foreground">
+          (legacy)
+        </span>
+      </div>
+    );
+  }
+
+  return null;
 }

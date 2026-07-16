@@ -115,7 +115,9 @@ export function BuildPreviewDrawer() {
   const [, setTick] = useState(0);
   useEffect(() => DrawerSlotCtx.subscribe(() => setTick((t) => t + 1)), []);
   const slot = DrawerSlotCtx.get();
-  const activeContent = drawerTab === "preview" ? slot.preview : slot.build;
+  // NOTE: we don't compute `activeContent` here. Both panels are
+  // mounted simultaneously (the inactive one is hidden via CSS) so
+  // the form's local state survives tab switches.
 
   // Find the inner form's Save/Reset buttons by data-attribute.
   function dispatchReset() {
@@ -182,15 +184,43 @@ export function BuildPreviewDrawer() {
         {/* Body — pages register per-tab content; the drawer shows the
             active tab's content. ALWAYS rendered (even when drawer is
             closed) so the form's slot listener is always live — otherwise
-            slotting into a closed drawer silently drops the event. */}
+            slotting into a closed drawer silently drops the event.
+
+            BOTH tabs are mounted at the same time, with the inactive
+            one hidden via CSS. This preserves the form's local state
+            across tab switches — without it, switching tabs would
+            unmount the form and reset its `useState`s (including the
+            `modifiers` array the user just spent a minute building).
+            Mashu (round 3): "I go to preview after I build something
+            with conditions and modifiers when I go back to build tab
+            the modifier disappears."
+
+            We don't use the conditional-render pattern
+            (`{activeContent ?? <empty>}`) because that would mount/
+            unmount on every tab switch. Instead we render BOTH panels
+            and toggle their visibility via display:none. */}
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {activeContent ?? (
+          {/*
+            The "no content" empty state still applies if BOTH slots
+            are null (page hasn't registered anything). Show it as a
+            third sibling, hidden when at least one slot is filled.
+          */}
+          {slot.build === null && slot.preview === null ? (
             <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
               {drawerTab === "preview"
                 ? "No preview registered for this page."
                 : "No build context on this page."}
             </div>
+          ) : (
+            <div className={drawerTab === "build" ? "block" : "hidden"}>
+              {slot.build}
+            </div>
           )}
+          {slot.preview !== null ? (
+            <div className={drawerTab === "preview" ? "block" : "hidden"}>
+              {slot.preview}
+            </div>
+          ) : null}
         </div>
 
         {/* Pinned Save/Reset footer — only shown when a build is registered. */}
