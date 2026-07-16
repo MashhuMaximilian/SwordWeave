@@ -435,27 +435,30 @@ export function EffectForm({
         </label>
       </div>
 
-      {/* Desktop layout — original full-width stack */}
-      <IconSlot
-        iconSource={(form.iconSource as IconSource | null) ?? null}
-        iconKey={form.iconKey}
-        iconUrl={form.iconUrl}
-        iconColor={form.iconColor}
-        onChange={(next) =>
-          setForm({
-            ...form,
-            iconSource: next.iconSource,
-            iconKey: next.iconKey ?? null,
-            iconUrl: next.iconUrl ?? null,
-            iconColor: next.iconColor,
-          })
-        }
-        size={56}
-        label="Icon"
-        helper="Pick from game-icons.net or upload your own."
-      />
+      {/* Desktop layout — original full-width stack.
+          Hidden on mobile, shown on md+. */}
+      <div className="hidden md:block">
+        <IconSlot
+          iconSource={(form.iconSource as IconSource | null) ?? null}
+          iconKey={form.iconKey}
+          iconUrl={form.iconUrl}
+          iconColor={form.iconColor}
+          onChange={(next) =>
+            setForm({
+              ...form,
+              iconSource: next.iconSource,
+              iconKey: next.iconKey ?? null,
+              iconUrl: next.iconUrl ?? null,
+              iconColor: next.iconColor,
+            })
+          }
+          size={56}
+          label="Icon"
+          helper="Pick from game-icons.net or upload your own."
+        />
+      </div>
 
-      <label className="block text-sm font-medium">
+      <label className="hidden text-sm font-medium md:block">
         Effect Name
         <input
           className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"

@@ -4,10 +4,16 @@
 // Reads the current form state and renders a read-only PrimitivePreview card.
 // Empty state when no fields are filled in.
 
+import { Fragment } from "react";
 import { Markdown } from "@/components/ui/markdown";
 import type { HardModifier } from "@/types/swordweave";
 import { legacyConditionProjection } from "@/lib/primitives/condition";
-import { renderEquation, type Operand } from "@/types/modifier";
+import {
+  renderEquation,
+  type ModifierOperation,
+  type Operand,
+} from "@/types/modifier";
+import { mirrorDescription } from "./primitive-preview";
 
 export type ModifierDraft = {
   id: string;
@@ -87,21 +93,53 @@ function modifierSummary(modifier: ModifierDraft): string {
  */
 function modifierBlock(modifier: ModifierDraft): React.ReactElement {
   const target = String(modifier.target);
-  const targetShort = target.split(".").pop() ?? target;
+  // Mashu: "I don't want skill_practice_check, just practice
+  // (the name I chose from the list)." The target field
+  // stores fully-qualified target IDs like
+  // "skill_practice_check.awareness" — for display, the
+  // first segment is the *target kind* (the axis), and the
+  // rest is the value. We want to show just the value, e.g.
+  // "awareness", not "skill_practice_check.awareness".
+  const targetParts = target.split(".");
+  // If the second segment exists and isn't a number/UUID,
+  // it's the user-chosen value (e.g. "awareness" or
+  // "fire"). If not, fall back to the full target.
+  const targetShort =
+    targetParts.length > 1 && /^[a-z][a-z0-9_-]*$/i.test(targetParts[1] ?? "")
+      ? (targetParts[1] ?? target)
+      : target;
   const op = modifier.operation;
 
-  // Equation rendering for equation mode.
+  // Equation rendering for equation mode. Mashu: "I'd like
+  // to see the whole equation there." Render the full
+  // equation text (with operator symbols) on its own line
+  // when the value kind is equation, not just a placeholder.
   let valueLine: React.ReactElement;
+  let valueLine2: React.ReactElement | null = null;
   if (modifier.valueKind === "equation" && Array.isArray(modifier.operands)) {
     const eqText = renderEquation(modifier.operands as Operand[]);
+    // Mashu: "the skill_practice_check and add would be in
+    // one row, scope below and then equation or value on
+    // one row or more." So the equation goes on its own
+    // line(s), with the value/expression displayed
+    // monospace.
     valueLine = (
-      <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+      <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs break-all">
         {eqText || "(empty)"}
       </code>
     );
+    // If the equation has 4+ operands, also show a wrapped
+    // version for readability (Mashu: "on one row or more").
+    if ((modifier.operands as Operand[]).length > 3) {
+      valueLine2 = (
+        <p className="mt-0.5 break-all font-mono text-[10px] text-muted-foreground">
+          {eqText}
+        </p>
+      );
+    }
   } else if (modifier.valueKind === "text") {
     valueLine = (
-      <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+      <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs break-all">
         {`"${modifier.value}"`}
       </code>
     );
@@ -114,48 +152,107 @@ function modifierBlock(modifier: ModifierDraft): React.ReactElement {
   }
 
   // Target scope (targetValues or freeTextNarrowFocus).
+  // Mashu: "scope below" — scope renders on its own line
+  // beneath the target/op/value row. Rendered as chips so
+  // it reads naturally: "Scope: melee, ranged" rather than
+  // a comma-joined string.
   const tv = modifier.targetValues ?? [];
   const narrow = modifier.freeTextNarrowFocus ?? "";
   const scopeLine: React.ReactElement | null =
     tv.length > 0 || narrow.length > 0 ? (
-      <p className="mt-0.5 text-[10px] text-muted-foreground">
-        Scope: {tv.length > 0 ? tv.join(", ") : "any"}
-        {narrow ? ` · "${narrow}"` : ""}
-      </p>
+      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+        <span className="font-semibold uppercase tracking-wide text-muted-foreground">
+          Scope:
+        </span>
+        {tv.length > 0 ? (
+          tv.map((v) => (
+            <span
+              key={v}
+              className="rounded bg-muted px-1.5 py-0.5 font-mono"
+            >
+              {v}
+            </span>
+          ))
+        ) : (
+          <span className="rounded bg-amber-500/10 px-1.5 py-0.5 font-mono text-amber-700 dark:text-amber-400">
+            any
+          </span>
+        )}
+        {narrow ? (
+          <span className="rounded bg-muted px-1.5 py-0.5 font-mono italic">
+            "{narrow}"
+          </span>
+        ) : null}
+      </div>
     ) : null;
 
-  // Condition line.
+  // Condition line — displayed as styled chips, NOT as
+  // raw text. Mashu: "we need to also add conditions
+  // or/and between them just displaying as text is not
+  // good." The current data model stores one condition
+  // per modifier (conditionKey/conditionOperator/conditionValue),
+  // but we can still render the components as proper
+  // chips with the operator in a separate color, and
+  // stack the condition + the scope checkboxes with a
+  // visual AND between them.
   const condMode = modifier.conditionMode ?? "always";
   const condLine: React.ReactElement | null =
     condMode === "custom" ? (
-      <p className="mt-0.5 text-[10px] text-muted-foreground">
-        When: {modifier.conditionKey ?? "?"} {modifier.conditionOperator ?? "?"}{" "}
-        {modifier.conditionValue ?? ""}
-      </p>
+      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+        <span className="font-semibold uppercase tracking-wide text-muted-foreground">
+          When:
+        </span>
+        <span className="rounded bg-muted px-1.5 py-0.5 font-mono">
+          {modifier.conditionKey ?? "?"}
+        </span>
+        <span className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-primary">
+          {modifier.conditionOperator ?? "?"}
+        </span>
+        <span className="rounded bg-muted px-1.5 py-0.5 font-mono">
+          {modifier.conditionValue ?? ""}
+        </span>
+      </div>
     ) : null;
 
-  // Mirrorability (per-op, derived from OP_SPECS).
-  const mirrorable = isOpMirrorable(op);
+  // Mirrorability (per-op, derived from OP_SPECS). Mashu:
+  // "Also I need to see what mirrors so in mirror we'd
+  // have mirrors to subtract." Use the existing
+  // mirrorDescription() helper from primitive-preview.tsx
+  // — it produces "Mirrors to subtract (sign flip)..."
+  // strings.
+  const mirror = mirrorDescription(op as ModifierOperation);
 
   return (
     <li
       key={modifier.id}
       className="space-y-1 border-b border-border p-2 text-sm last:border-b-0"
     >
-      <div className="flex items-baseline justify-between gap-2">
-        <code className="min-w-0 flex-1 truncate font-mono text-xs">
-          {targetShort} <span className="text-primary">{op}</span> {valueLine}
-        </code>
-        <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground">
+      {/* Row 1: target + op + value (the "equation" or
+          scalar). Mashu: "the skill_practice_check and
+          add would be in one row." Note: targetShort
+          is just "awareness" (not the full target id). */}
+      <div className="flex flex-wrap items-baseline gap-1.5">
+        <span className="font-mono text-xs font-semibold">
+          {targetShort}
+        </span>
+        <span className="font-mono text-xs text-primary">{op}</span>
+        {valueLine}
+        <span className="ml-auto shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground">
           {modifier.stacking ?? "stack"}
         </span>
       </div>
+      {/* Optional wrapped second line for long equations. */}
+      {valueLine2}
+      {/* Scope below the row. */}
       {scopeLine}
+      {/* Condition below scope. */}
       {condLine}
-      <p className="mt-0.5 text-[10px] text-muted-foreground">
-        {mirrorable
-          ? "📊 Mirrorable (variable)"
-          : "🏛 Permission-locked (not mirrorable)"}
+      {/* Mirror info — explicit "mirrors to X" label so the
+          user can see the inverse op at a glance. Mashu: "in
+          mirror we'd have mirrors to subtract". */}
+      <p className="text-[10px] text-muted-foreground">
+        {mirror.mirrorable ? "📊 " : "🏛 "}
+        {mirror.summary}
       </p>
     </li>
   );
@@ -165,10 +262,13 @@ function modifierBlock(modifier: ModifierDraft): React.ReactElement {
  * Re-derive op mirrorability at the preview site (so the
  * preview doesn't have to import OP_SPECS directly).
  * Matches the form's `effectiveMirrorable`.
+ *
+ * Phase 7.5 v4-rev: replaced by mirrorDescription() from
+ * primitive-preview.tsx, which gives the same boolean AND
+ * a human-readable "mirrors to X (sign flip)" summary.
+ * Mashu: "Also I need to see what mirrors so in mirror
+ * we'd have mirrors to subtract."
  */
-function isOpMirrorable(op: string): boolean {
-  return op !== "set";
-}
 
 export function PrimitiveFormPreview({
   form,
@@ -259,7 +359,33 @@ export function PrimitiveFormPreview({
             Modifiers ({modifiers.length})
           </h3>
           <ul className="rounded-md border">
-            {modifiers.map((modifier) => modifierBlock(modifier))}
+            {/*
+              Mashu: "we need to also add conditions or/and
+              between them just displaying as text is not
+              good." Each modifier row has its own
+              conditions. The convention is:
+                - Multiple modifier rows combine with AND
+                  (each modifier applies in addition to
+                  the others).
+                - Within a single row, the condition line
+                  and the scope line are both required, so
+                  they also combine with AND.
+              We render the AND as a visible chip between
+              adjacent rows so the relationship is obvious.
+            */}
+            {modifiers.map((modifier, i) => (
+              <Fragment key={modifier.id}>
+                {i > 0 ? (
+                  <li
+                    aria-hidden="true"
+                    className="flex items-center justify-center border-b border-border bg-muted/30 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground"
+                  >
+                    and
+                  </li>
+                ) : null}
+                {modifierBlock(modifier)}
+              </Fragment>
+            ))}
           </ul>
         </section>
       ) : null}

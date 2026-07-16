@@ -14,7 +14,7 @@
 // to open the drawer directly on the preview tab.
 // =============================================================================
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useGlobalControls } from "./global-controls";
 import { Wrench, Eye, RotateCcw, Save, X } from "lucide-react";
@@ -51,35 +51,62 @@ const DrawerSlotCtx = (() => {
  * every parent render. The previous per-tab effect caused the same
  * re-render-loop as the right filter panel had.
  *
- * Phase 7.5 v4-rev (Mashu): on cleanup, the previous version
- * always nulled BOTH tabs even if the caller only set one.
- * That made the form state disappear on every effect re-run
- * (e.g. when memo deps changed) — which is what was happening
- * on mobile when the user switched from Build to Preview and
- * back: SandboxLayout re-rendered with a fresh `builder`
- * element, the effect cleanup ran, the slot was wiped, and
- * the new effect hadn't fired yet. The user saw an empty
- * drawer.
+ * Phase 7.5 v4-rev (Mashu): the previous versions of this
+ * hook were buggy when the caller's `content` object changed
+ * identity on every render (which is the case here — the
+ * parent passes fresh JSX `builder`/`preview` props each
+ * render). Each effect re-run's cleanup would restore the
+ * slot to the state at the start of the OLD run, briefly
+ * wiping the drawer. On dev hot-reload and on rapid tab
+ * switching the user could click the Build tab and see an
+ * empty drawer. Mashu: "If I go back to build tab the
+ * build tab is empty again."
  *
- * Fix: track the previous slot state. On cleanup, restore
- * whatever was there before this effect ran. On re-run,
- * merge: the new content takes precedence, but slots the
- * caller didn't touch keep their previous value.
+ * Fix: split into two effects.
+ *   1. The "set" effect re-runs whenever content changes.
+ *      It does NOT clean up on re-run (only on unmount of
+ *      the whole hook, but we use a separate effect for
+ *      that). Re-runs just update the slot.
+ *   2. The "teardown" effect runs ONLY on real unmount
+ *      (deps = []). It clears only the keys this hook
+ *      instance last set, so other pages' slots survive.
  */
 export function useDrawerSlot(content: Partial<DrawerSlotState>) {
+  // Track which keys this hook instance last set, so the
+  // unmount cleanup can clear only those keys without
+  // wiping slots registered by other pages.
+  const lastSet = useRef<{ build: boolean; preview: boolean }>({
+    build: false,
+    preview: false,
+  });
+
+  // Set effect — re-runs whenever content changes.
   useEffect(() => {
-    // Snapshot the prior state so we can restore on cleanup
-    // without losing content the caller never touched.
     const previous = DrawerSlotCtx.get();
-    DrawerSlotCtx.set({
-      build: content.build !== undefined ? content.build : previous.build,
-      preview: content.preview !== undefined ? content.preview : previous.preview,
-    });
-    return () => {
-      DrawerSlotCtx.set(previous);
+    const buildNext =
+      content.build !== undefined ? content.build : previous.build;
+    const previewNext =
+      content.preview !== undefined ? content.preview : previous.preview;
+    DrawerSlotCtx.set({ build: buildNext, preview: previewNext });
+    lastSet.current = {
+      build: content.build !== undefined,
+      preview: content.preview !== undefined,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // No cleanup here — on re-run, the new body overwrites
+    // the slot with the new content. On real unmount, the
+    // teardown effect below handles clearing.
   }, [content.build, content.preview]);
+
+  // Teardown effect — runs ONLY on real unmount.
+  useEffect(() => {
+    return () => {
+      const current = DrawerSlotCtx.get();
+      DrawerSlotCtx.set({
+        build: lastSet.current.build ? null : current.build,
+        preview: lastSet.current.preview ? null : current.preview,
+      });
+    };
+  }, []);
 }
 
 export function BuildPreviewDrawer() {

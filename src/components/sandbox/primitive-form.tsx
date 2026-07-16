@@ -1085,26 +1085,31 @@ export function PrimitiveForm({
         </div>
       </div>
 
-      {/* Phase 7.5 v4-rev: mobile-first two-row layout.
-          Mashu: "Name and icon could be on the same row? Same
-          for lexicon, tier, and cost? So we have 2 rows
-          instead of like 5?" On mobile the form has 5
-          stacked rows that take forever to scroll through.
-          On md+ screens the original full-width stack is
-          fine, so we gate the new compact layout behind
-          the small breakpoint. */}
-      <div className="grid grid-cols-2 gap-2 md:hidden">
-        <label className="col-span-2 block text-sm font-medium">
-          Name
-          <input
-            className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2"
-            value={form.name}
-            onChange={(event) => updateForm("name", event.target.value)}
-            placeholder="Kinetic Velocity Arrest"
-            required
-          />
-        </label>
-        <div className="col-span-2">
+      {/* Phase 7.5 v4-rev: mobile-first compact layout.
+          Mashu (round 1): "Name and icon could be on the
+          same row? Same for lexicon, tier, and cost? So we
+          have 2 rows instead of like 5?"
+          Mashu (round 2): "And in primitive the icon and
+          name are still not on the same row. And the
+          lexicon tier and cost are not on the same row
+          (these 3 have to be on same row maybe the field
+          value could be smaller text)"
+
+          The previous attempt put Name on row 1 (full
+          width), Icon on row 2 (full width), Lexicon + Tier
+          on row 3, and Cost on row 4. That wasn't what
+          Mashu asked for. The new layout:
+
+            Row 1: [Icon] [Name........]
+            Row 2: [Lexicon] [Tier] [Cost (BU)]
+
+          The IconSlot is shrunk to 40px and the Name input
+          takes the rest of the row. Lexicon/Tier/Cost are
+          in a 3-col grid. The Cost field uses a smaller
+          text size so the 3 columns fit on phone widths.
+      */}
+      <div className="space-y-2 md:hidden">
+        <div className="grid grid-cols-[auto_1fr] items-center gap-2">
           <IconSlot
             iconSource={(form.iconSource as IconSource | null) ?? null}
             iconKey={form.iconKey ?? null}
@@ -1120,50 +1125,62 @@ export function PrimitiveForm({
               })
             }
             size={40}
-            label="Icon"
-            helper="Pick from game-icons.net or upload your own."
+            label=""
+            helper=""
           />
+          <label className="block text-sm font-medium">
+            Name
+            <input
+              className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2"
+              value={form.name}
+              onChange={(event) => updateForm("name", event.target.value)}
+              placeholder="Kinetic Velocity Arrest"
+              required
+            />
+          </label>
         </div>
-        <label className="block text-sm font-medium">
-          Lexicon
-          <select
-            className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2"
-            value={form.category}
-            onChange={(event) => updateForm("category", event.target.value)}
-          >
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {categoryLabel(category)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-sm font-medium">
-          Tier
-          <select
-            className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2"
-            value={form.costTier}
-            onChange={(event) => updateForm("costTier", event.target.value)}
-          >
-            {costTiers.map((tier) => (
-              <option key={tier} value={tier}>
-                {tier}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="col-span-2 block text-sm font-medium">
-          Cost (BU)
-          <input
-            className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2"
-            value={form.buCost}
-            onChange={(event) => updateForm("buCost", event.target.value)}
-            min={0}
-            step={1}
-            type="number"
-            required
-          />
-        </label>
+        <div className="grid grid-cols-3 gap-2">
+          <label className="block text-[11px] font-medium">
+            Lexicon
+            <select
+              className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none ring-ring focus:ring-2"
+              value={form.category}
+              onChange={(event) => updateForm("category", event.target.value)}
+            >
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {categoryLabel(category)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-[11px] font-medium">
+            Tier
+            <select
+              className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none ring-ring focus:ring-2"
+              value={form.costTier}
+              onChange={(event) => updateForm("costTier", event.target.value)}
+            >
+              {costTiers.map((tier) => (
+                <option key={tier} value={tier}>
+                  {tier}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-[11px] font-medium">
+            Cost (BU)
+            <input
+              className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none ring-ring focus:ring-2"
+              value={form.buCost}
+              onChange={(event) => updateForm("buCost", event.target.value)}
+              min={0}
+              step={1}
+              type="number"
+              required
+            />
+          </label>
+        </div>
       </div>
 
       {/* Desktop layout — original full-width stack.

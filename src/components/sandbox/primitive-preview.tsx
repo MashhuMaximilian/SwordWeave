@@ -55,7 +55,7 @@ function categoryLabel(category: string): string {
  * they know what the modifier does when invoked in a
  * mirrored context.
  */
-function mirrorDescription(op: ModifierOperation): {
+export function mirrorDescription(op: ModifierOperation): {
   readonly mirrorable: boolean;
   readonly summary: string;
 } {

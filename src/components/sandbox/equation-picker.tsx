@@ -860,6 +860,53 @@ function EquationCustomInput({
     setText("");
   };
 
+  // Phase 7.5 v4-rev: syntax info block. The token-chip
+  // stack has one (Mashu asked for it last round), the
+  // equation picker didn't get it. Mashu: "Idk why in
+  // equation the block with info about syntax is not
+  // showing." Now it does. The block explains the
+  // bracket/delim convention so the user doesn't have to
+  // guess what `#2d6#` vs `[fire]` vs `/physical/` means.
+  const syntaxBlock = (
+    <div className="mt-1 rounded border border-border/60 bg-muted/30 px-2 py-1.5 text-[10px] leading-relaxed text-muted-foreground">
+      <p className="font-semibold uppercase tracking-wide text-foreground/70">
+        Custom input syntax
+      </p>
+      <ul className="mt-0.5 space-y-0.5">
+        <li>
+          <code className="rounded bg-background/60 px-1 font-mono">#dice#</code>{" "}
+          — dice expression. e.g.{" "}
+          <code className="rounded bg-background/60 px-1 font-mono">#2d6#</code>,{" "}
+          <code className="rounded bg-background/60 px-1 font-mono">#1d10+3#</code>
+        </li>
+        <li>
+          <code className="rounded bg-background/60 px-1 font-mono">[tag]</code>{" "}
+          — keyword / tag. e.g.{" "}
+          <code className="rounded bg-background/60 px-1 font-mono">[fire]</code>,{" "}
+          <code className="rounded bg-background/60 px-1 font-mono">
+            [60 ft darkvision]
+          </code>
+        </li>
+        <li>
+          <code className="rounded bg-background/60 px-1 font-mono">
+            /value/
+          </code>{" "}
+          — number or runtime reference. e.g.{" "}
+          <code className="rounded bg-background/60 px-1 font-mono">/5/</code>,{" "}
+          <code className="rounded bg-background/60 px-1 font-mono">/physical/</code>
+          ,{" "}
+          <code className="rounded bg-background/60 px-1 font-mono">/PB/</code>
+        </li>
+        <li className="text-muted-foreground/80">
+          Mix them:{" "}
+          <code className="rounded bg-background/60 px-1 font-mono">
+            PB + /2/ + #2d6# + [fire]
+          </code>
+        </li>
+      </ul>
+    </div>
+  );
+
   return (
     <div className="space-y-1">
       <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -898,6 +945,7 @@ function EquationCustomInput({
           + add
         </button>
       </div>
+      {syntaxBlock}
     </div>
   );
 }
