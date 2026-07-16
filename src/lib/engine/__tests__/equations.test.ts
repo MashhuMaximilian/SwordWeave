@@ -188,6 +188,33 @@ describe("resolveEquation — dice + number", () => {
     expect(r.numeric.kind).toBe("structure");
   });
 
+  it("5 × 1d4 → '5d4' (commutative dice × number, v4-rev)", () => {
+    // Mashu: "if dice are xd6 why are tags 1d6, 1d4
+    // instead of D4 D6? So in equation I'd be able to
+    // write 5xd4 if I only have the dice type which
+    // would be neat." Multiplication is commutative
+    // for dice: 5 × 1d4 = 1d4 × 5 = 5d4.
+    const r = resolveEquation([num(5), diceOp("1d4", "*")]);
+    expect(r.numeric).toEqual({ kind: "dice", expression: "5d4" });
+  });
+
+  it("1d4 × 5 → '5d4' (dice × number, v4-rev)", () => {
+    const r = resolveEquation([diceOp("1d4"), num(5, "*")]);
+    expect(r.numeric).toEqual({ kind: "dice", expression: "5d4" });
+  });
+
+  it("2 × 1d6+3 → '2d6+3' (modifier preserved on multiply, v4-rev)", () => {
+    // 2 × (1d6+3) = 2d6 + 3 — the +3 modifier stays,
+    // only the die count is multiplied.
+    const r = resolveEquation([num(2), diceOp("1d6+3", "*")]);
+    expect(r.numeric).toEqual({ kind: "dice", expression: "2d6+3" });
+  });
+
+  it("3 × 1d4 → '3d4' (count scales)", () => {
+    const r = resolveEquation([num(3), diceOp("1d4", "*")]);
+    expect(r.numeric).toEqual({ kind: "dice", expression: "3d4" });
+  });
+
   it("dice × dice → structure (unusual)", () => {
     const r = resolveEquation([diceOp("1d6"), diceOp("1d4", "*")]);
     expect(r.numeric.kind).toBe("structure");

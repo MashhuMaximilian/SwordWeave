@@ -24,6 +24,7 @@ import { useGlobalControls } from "@/components/layout/global-controls";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import type { SaveIntent } from "@/lib/publishing/save-intent";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
+import type { ModifierDraft } from "@/components/sandbox/primitive-form-preview";
 
 type PrimitiveRow = {
   id: number;
@@ -242,6 +243,22 @@ export function GrammarSandboxClient({
     form: Record<string, unknown>;
     slots: unknown[];
     effectIds: string[];
+    /**
+     * Phase 7.5 v4-rev: live modifier list for the
+     * preview. Previously the preview was rendered with
+     * `modifiers={[]}` (a hardcoded empty array) so the
+     * modifier block in the preview was always empty,
+     * even when the form had a modifier card. Mashu:
+     * "Nor can I see the mirroring conditions modifiers
+     * etc on preview tab in modal (or the right
+     * column)."
+     *
+     * Now we thread the modifier draft list through the
+     * snapshot. The primitive-form's onStateChange
+     * callback already includes `modifiers: ModifierDraft[]`
+     * — we just need to forward it.
+     */
+    modifiers: ModifierDraft[];
   } | null>(null);
   // Pending action waits for the user to confirm/cancel in the modal.
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
@@ -448,7 +465,7 @@ export function GrammarSandboxClient({
           {...formCommon}
           onStateChange={(state) => {
             setFormIsDirty(state.isDirty);
-            setFormSnapshot({ form: state.form as unknown as Record<string, unknown>, slots: [], effectIds: [] });
+            setFormSnapshot({ form: state.form as unknown as Record<string, unknown>, slots: [], effectIds: [], modifiers: state.modifiers });
           }}
           onSaved={(saved) => {
             // Phase 1: if dispatch saved into a NEW row (fork path),
@@ -502,7 +519,7 @@ export function GrammarSandboxClient({
           }))}
           onStateChange={(state) => {
             setFormIsDirty(state.isDirty);
-            setFormSnapshot({ form: state.form as unknown as Record<string, unknown>, slots: state.slots, effectIds: [] });
+            setFormSnapshot({ form: state.form as unknown as Record<string, unknown>, slots: state.slots, effectIds: [], modifiers: [] });
           }}
           onSaved={() => {}}
           onReset={() => setEditing(null)}
@@ -527,7 +544,7 @@ export function GrammarSandboxClient({
         }))}
         onStateChange={(state) => {
           setFormIsDirty(state.isDirty);
-          setFormSnapshot({ form: state.form as unknown as Record<string, unknown>, slots: state.slots, effectIds: state.effectIds });
+          setFormSnapshot({ form: state.form as unknown as Record<string, unknown>, slots: state.slots, effectIds: state.effectIds, modifiers: [] });
         }}
         onSaved={() => {}}
         onReset={() => setEditing(null)}
@@ -598,10 +615,14 @@ export function GrammarSandboxClient({
         iconColor: row.iconColor,
       } : null);
       if (!form) return null;
+      // Phase 7.5 v4-rev: thread the live modifier list
+      // through the snapshot. Previously this was a
+      // hardcoded empty array, which is why the user
+      // couldn't see mirroring/conditions in the preview.
       return (
         <PrimitiveFormPreview
           form={form}
-          modifiers={[]}
+          modifiers={formSnapshot?.modifiers ?? []}
         />
       );
     }

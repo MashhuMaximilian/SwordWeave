@@ -1085,7 +1085,90 @@ export function PrimitiveForm({
         </div>
       </div>
 
-      <label className="block text-sm font-medium md:col-span-2">
+      {/* Phase 7.5 v4-rev: mobile-first two-row layout.
+          Mashu: "Name and icon could be on the same row? Same
+          for lexicon, tier, and cost? So we have 2 rows
+          instead of like 5?" On mobile the form has 5
+          stacked rows that take forever to scroll through.
+          On md+ screens the original full-width stack is
+          fine, so we gate the new compact layout behind
+          the small breakpoint. */}
+      <div className="grid grid-cols-2 gap-2 md:hidden">
+        <label className="col-span-2 block text-sm font-medium">
+          Name
+          <input
+            className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2"
+            value={form.name}
+            onChange={(event) => updateForm("name", event.target.value)}
+            placeholder="Kinetic Velocity Arrest"
+            required
+          />
+        </label>
+        <div className="col-span-2">
+          <IconSlot
+            iconSource={(form.iconSource as IconSource | null) ?? null}
+            iconKey={form.iconKey ?? null}
+            iconUrl={form.iconUrl ?? null}
+            iconColor={form.iconColor ?? "#ffffff"}
+            onChange={(next) =>
+              setForm({
+                ...form,
+                iconSource: next.iconSource,
+                iconKey: next.iconKey ?? null,
+                iconUrl: next.iconUrl ?? null,
+                iconColor: next.iconColor,
+              })
+            }
+            size={40}
+            label="Icon"
+            helper="Pick from game-icons.net or upload your own."
+          />
+        </div>
+        <label className="block text-sm font-medium">
+          Lexicon
+          <select
+            className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2"
+            value={form.category}
+            onChange={(event) => updateForm("category", event.target.value)}
+          >
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {categoryLabel(category)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-sm font-medium">
+          Tier
+          <select
+            className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2"
+            value={form.costTier}
+            onChange={(event) => updateForm("costTier", event.target.value)}
+          >
+            {costTiers.map((tier) => (
+              <option key={tier} value={tier}>
+                {tier}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="col-span-2 block text-sm font-medium">
+          Cost (BU)
+          <input
+            className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2"
+            value={form.buCost}
+            onChange={(event) => updateForm("buCost", event.target.value)}
+            min={0}
+            step={1}
+            type="number"
+            required
+          />
+        </label>
+      </div>
+
+      {/* Desktop layout — original full-width stack.
+          Hidden on mobile, shown on md+. */}
+      <label className="hidden text-sm font-medium md:block md:col-span-2">
         Name
         <input
           className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
@@ -1097,7 +1180,7 @@ export function PrimitiveForm({
       </label>
 
       {/* Phase 8: per-entity iconography */}
-      <div className="md:col-span-2">
+      <div className="hidden md:block md:col-span-2">
         <IconSlot
           iconSource={(form.iconSource as IconSource | null) ?? null}
           iconKey={form.iconKey ?? null}
@@ -1118,7 +1201,7 @@ export function PrimitiveForm({
         />
       </div>
 
-      <label className="block text-sm font-medium">
+      <label className="hidden text-sm font-medium md:block">
         Lexicon Category
         <select
           className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
@@ -1133,7 +1216,7 @@ export function PrimitiveForm({
         </select>
       </label>
 
-      <label className="block text-sm font-medium">
+      <label className="hidden text-sm font-medium md:block">
         Cost Tier Bracket
         <select
           className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
@@ -1148,7 +1231,7 @@ export function PrimitiveForm({
         </select>
       </label>
 
-      <label className="block text-sm font-medium">
+      <label className="hidden text-sm font-medium md:block">
         Exact BU
         <input
           className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"

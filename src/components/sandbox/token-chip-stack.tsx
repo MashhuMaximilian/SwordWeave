@@ -27,6 +27,7 @@
  */
 
 import { useState, type ReactElement } from "react";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import {
   ALL_ATTRIBUTES,
   ALL_DERIVED,
@@ -298,15 +299,15 @@ function TokenPicker({
             key={d}
             type="button"
             onClick={() => onPick({ kind: "dice", expression: `1${d}` })}
-            title={`Add a 1${d} dice expression. The count X scales at runtime.`}
+            title={`Add a 1${d} dice expression. The count X scales at runtime. Use this type as a multiplier in equations: 5 × D6 = 5d6.`}
             className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-xs text-rose-700 dark:text-rose-300 hover:bg-rose-500/20"
           >
-            + 1{d}
+            + D{d.replace(/^d/, "")}
           </button>
         ))}
       </div>
       <p className="mt-1 px-1 text-[9px] text-muted-foreground">
-        The die type (d4/d6/d8/d10/d12/d20/d100). Count scales at runtime.
+        Die type only (D4, D6, D10, D12, D20, D100). Count scales at runtime. Try <code className="font-mono">5 × D6</code> in the equation.
       </p>
     </CollapsibleSection>
   ) : null;
@@ -434,70 +435,6 @@ function TokenPicker({
         {syntaxBlock}
       </div>
     </div>
-  );
-}
-
-// =============================================================================
-// CollapsibleSection — used by every chip-picker section header
-// =============================================================================
-
-/**
- * Mashu: "we should make all those chip categories collapsible
- * and collapsed by default. only number and attribute expanded
- * by default. so user will not be overwhelmed by colors. and
- * especially on mobile it will help the user."
- *
- * Each chip-picker section uses this so the user can collapse
- * a category and free vertical space. Number and Attribute
- * sections stay open by default (they're the most-used and
- * contain the canonical token kinds); everything else
- * collapses. Click the header to expand/collapse — state
- * persists per-section during a single picker session.
- */
-function CollapsibleSection({
-  title,
-  count,
-  defaultOpen = false,
-  children,
-}: {
-  readonly title: string;
-  readonly count?: number;
-  readonly defaultOpen?: boolean;
-  readonly children: React.ReactNode;
-}): ReactElement {
-  // Local state — only used for the chevron icon. The actual
-  // open/close is controlled by <details>.
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <details
-      open={isOpen}
-      onToggle={(e) => setIsOpen((e.currentTarget as HTMLDetailsElement).open)}
-      className="rounded"
-    >
-      <summary
-        className="flex cursor-pointer select-none items-center justify-between gap-2 rounded px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground hover:bg-accent/50"
-        title={isOpen ? "Click to collapse" : "Click to expand"}
-      >
-        <span className="flex items-center gap-1.5">
-          <span
-            aria-hidden
-            className={`inline-block text-[8px] transition-transform ${
-              isOpen ? "rotate-90" : "rotate-0"
-            }`}
-          >
-            ▶
-          </span>
-          {title}
-        </span>
-        {count !== undefined ? (
-          <span className="rounded-full bg-muted px-1.5 text-[9px] font-medium text-muted-foreground">
-            {count}
-          </span>
-        ) : null}
-      </summary>
-      <div className="px-1 pb-1">{children}</div>
-    </details>
   );
 }
 

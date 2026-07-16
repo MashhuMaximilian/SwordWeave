@@ -258,6 +258,32 @@ describe("classifyTypedValue — value-type-aware input classification", () => {
       expect(r.token).toEqual({ kind: "behavior", name: "60 ft darkvision" });
       expect(r.warning).toMatch(/not a number/i);
     });
+    it("/physical/ in number mode → attribute token, no warning (v4-rev forgiveness)", () => {
+      // Mashu: "/physical/ shouldn't error here. those
+      // should not error here. But on character sheet they
+      // are resolved and properly computed." Even though
+      // the /value/ delim is optional in number mode, we
+      // forgive the input and strip the delims.
+      const r = classifyTypedValue("/physical/", "add", "number");
+      expect(r.token).toEqual({ kind: "attribute", attribute: "physical" });
+      expect(r.warning).toBeNull();
+    });
+    it("/PB/ in number mode → derived token, no warning (v4-rev forgiveness)", () => {
+      const r = classifyTypedValue("/PB/", "add", "number");
+      expect(r.token).toEqual({ kind: "derived", which: "pb" });
+      expect(r.warning).toBeNull();
+    });
+    it("[fire] in number mode → keyword token, no warning (v4-rev forgiveness)", () => {
+      const r = classifyTypedValue("[fire]", "add", "number");
+      expect(r.token).toEqual({ kind: "keyword", text: "fire" });
+      expect(r.warning).toBeNull();
+    });
+    it("#2d6# in number mode → behavior token with 'switch to dice' warning", () => {
+      // Dice expression in number mode is a mistake but
+      // we recognize it and suggest switching.
+      const r = classifyTypedValue("#2d6#", "add", "number");
+      expect(r.warning).toMatch(/switch.*dice/i);
+    });
     it("empty string → null token", () => {
       expect(classifyTypedValue("", "add", "number").token).toBeNull();
     });

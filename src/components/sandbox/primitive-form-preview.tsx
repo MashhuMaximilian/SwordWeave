@@ -9,7 +9,7 @@ import type { HardModifier } from "@/types/swordweave";
 import { legacyConditionProjection } from "@/lib/primitives/condition";
 import { renderEquation, type Operand } from "@/types/modifier";
 
-type ModifierDraft = {
+export type ModifierDraft = {
   id: string;
   target: string;
   operation: string;

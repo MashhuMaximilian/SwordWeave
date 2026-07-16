@@ -50,20 +50,35 @@ const DrawerSlotCtx = (() => {
  * Pass a memoized slot object (useMemo) so the effect doesn't refire on
  * every parent render. The previous per-tab effect caused the same
  * re-render-loop as the right filter panel had.
+ *
+ * Phase 7.5 v4-rev (Mashu): on cleanup, the previous version
+ * always nulled BOTH tabs even if the caller only set one.
+ * That made the form state disappear on every effect re-run
+ * (e.g. when memo deps changed) — which is what was happening
+ * on mobile when the user switched from Build to Preview and
+ * back: SandboxLayout re-rendered with a fresh `builder`
+ * element, the effect cleanup ran, the slot was wiped, and
+ * the new effect hadn't fired yet. The user saw an empty
+ * drawer.
+ *
+ * Fix: track the previous slot state. On cleanup, restore
+ * whatever was there before this effect ran. On re-run,
+ * merge: the new content takes precedence, but slots the
+ * caller didn't touch keep their previous value.
  */
 export function useDrawerSlot(content: Partial<DrawerSlotState>) {
   useEffect(() => {
+    // Snapshot the prior state so we can restore on cleanup
+    // without losing content the caller never touched.
+    const previous = DrawerSlotCtx.get();
     DrawerSlotCtx.set({
-      build: content.build ?? DrawerSlotCtx.get().build,
-      preview: content.preview ?? DrawerSlotCtx.get().preview,
+      build: content.build !== undefined ? content.build : previous.build,
+      preview: content.preview !== undefined ? content.preview : previous.preview,
     });
     return () => {
-      // Only clear slots we set (so another page's content survives).
-      const next: DrawerSlotState = { build: null, preview: null };
-      if (content.build !== undefined) next.build = null;
-      if (content.preview !== undefined) next.preview = null;
-      DrawerSlotCtx.set(next);
+      DrawerSlotCtx.set(previous);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content.build, content.preview]);
 }
 

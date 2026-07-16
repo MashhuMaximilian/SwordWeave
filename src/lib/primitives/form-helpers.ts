@@ -273,6 +273,59 @@ export function classifyTypedValue(
     if (isBehaviorLike(trimmed)) {
       return { token: { kind: "behavior", name: trimmed }, warning: null };
     }
+    // Phase 7.5 v4-rev: handle bracket/delim syntax in
+    // classifyTypedValue. Mashu: "/physical/ shouldn't
+    // error here. those should not error here. But on
+    // character sheet they are resolved and properly
+    // computed. And we didn't get there yet. Here is
+    // just the variables/syntax in build."
+    //
+    // The user might type /physical/ thinking the / /
+    // delim is required. It's NOT required in number
+    // mode (the parser is implicit), but we should
+    // forgive the input and strip the delims rather
+    // than warn. Re-run classification on the inner
+    // string; if it's still unrecognizable, warn as
+    // before.
+        if (trimmed.startsWith("/") && trimmed.endsWith("/") && trimmed.length >= 3) {
+      const inner = trimmed.slice(1, -1).trim();
+      // Recurse on the inner string. The recursive
+      // call will hit the attribute/practice/derived
+      // checks and return cleanly. We discard the
+      // warning from the recursive call (the user
+      // explicitly used the runtime reference syntax,
+      // so they're aware it's a reference).
+      //
+      // We lowercase the inner so /PB/ → "pb" → matches
+      // the derived list (which is lowercase). The
+      // inner for /physical/ stays lowercase, so it
+      // matches the attribute list as-is.
+      const innerLower = inner.toLowerCase();
+      const innerResult = classifyTypedValue(innerLower, op, valueKind);
+      if (innerResult.token) {
+        return { token: innerResult.token, warning: null };
+      }
+    }
+    if (trimmed.startsWith("[") && trimmed.endsWith("]") && trimmed.length >= 3) {
+      // Tag/keyword — store as keyword token if the
+      // inner is non-empty. No warning.
+      const inner = trimmed.slice(1, -1).trim();
+      if (inner.length > 0) {
+        return { token: { kind: "keyword", text: inner }, warning: null };
+      }
+    }
+    if (trimmed.startsWith("#") && trimmed.endsWith("#") && trimmed.length >= 3) {
+      // Dice expression. In number mode this is a
+      // mistake but we should still recognize it and
+      // warn the user to switch to dice mode.
+      const inner = trimmed.slice(1, -1).trim();
+      if (isDiceExpression(inner)) {
+        return {
+          token: { kind: "behavior", name: inner },
+          warning: `"${inner}" is a dice expression. Switch Value Type to Dice?`,
+        };
+      }
+    }
     return {
       token: { kind: "behavior", name: trimmed },
       warning: `Not a number; stored as behavior token "${trimmed}".`,
@@ -283,6 +336,14 @@ export function classifyTypedValue(
   if (valueKind === "dice") {
     if (isDiceExpression(trimmed)) {
       return { token: { kind: "dice", expression: trimmed }, warning: null };
+    }
+    // Strip # dice# delim convention — user might type
+    // #2d6# thinking the syntax is required.
+    if (trimmed.startsWith("#") && trimmed.endsWith("#") && trimmed.length >= 3) {
+      const inner = trimmed.slice(1, -1).trim();
+      if (isDiceExpression(inner)) {
+        return { token: { kind: "dice", expression: inner }, warning: null };
+      }
     }
     const num = Number(trimmed);
     if (Number.isFinite(num) && /^-?\d+(\.\d+)?$/.test(trimmed)) {
@@ -315,7 +376,15 @@ export function classifyTypedValue(
     };
   }
 
-  // Text mode — anything becomes a behavior token.
+  // Text mode — anything becomes a behavior token. But
+  // strip the [tag] convention so users who type
+  // [fire] don't see the brackets in the chip.
+  if (trimmed.startsWith("[") && trimmed.endsWith("]") && trimmed.length >= 3) {
+    const inner = trimmed.slice(1, -1).trim();
+    if (inner.length > 0) {
+      return { token: { kind: "keyword", text: inner }, warning: null };
+    }
+  }
   return { token: { kind: "behavior", name: trimmed }, warning: null };
 }
 

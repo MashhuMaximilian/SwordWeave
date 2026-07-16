@@ -47,9 +47,11 @@ import {
   type Operator,
   type PracticeKey,
   type ValueToken,
+  normalizeDiceLabel,
 } from "@/types/modifier";
 import { resolveEquation, type EquationResolution } from "@/lib/engine/equations";
 import { parseEquationInput, SUB_CHOICE_KEYWORDS } from "@/lib/primitives/form-helpers";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
 
 interface EquationPickerProps {
   readonly operands: readonly Operand[];
@@ -309,10 +311,7 @@ export function EquationPicker({
       {/* Suggestions — categorized by operand type */}
       <div className="space-y-2 rounded-md border border-border bg-card p-2">
         {/* Numbers */}
-        <div>
-          <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Numbers
-          </p>
+        <CollapsibleSection title="Numbers" count={8} defaultOpen>
           <div className="mt-1 flex flex-wrap gap-1">
             {[-5, -2, -1, 1, 2, 3, 5, 10].map((n) => (
               <button
@@ -325,13 +324,10 @@ export function EquationPicker({
               </button>
             ))}
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Attribute */}
-        <div>
-          <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Attribute
-          </p>
+        <CollapsibleSection title="Attribute" count={ALL_ATTRIBUTES.length} defaultOpen>
           <div className="mt-1 flex flex-wrap gap-1">
             {ALL_ATTRIBUTES.map((a) => (
               <button
@@ -344,13 +340,10 @@ export function EquationPicker({
               </button>
             ))}
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Practice */}
-        <div>
-          <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Practice
-          </p>
+        <CollapsibleSection title="Practice" count={ALL_PRACTICES.length}>
           <div className="mt-1 flex flex-wrap gap-1">
             {ALL_PRACTICES.map((p) => (
               <button
@@ -363,13 +356,10 @@ export function EquationPicker({
               </button>
             ))}
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Derived */}
-        <div>
-          <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Derived
-          </p>
+        <CollapsibleSection title="Derived (PB, Level)" count={ALL_DERIVED.length}>
           <div className="mt-1 flex flex-wrap gap-1">
             {ALL_DERIVED.map((d) => (
               <button
@@ -382,36 +372,33 @@ export function EquationPicker({
               </button>
             ))}
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Dice — just the type, count scales at runtime */}
-        <div>
-          <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Dice Type (Xd6 / Xd10)
-          </p>
+        <CollapsibleSection title="Dice Type (Xd6 / Xd10)" count={DICE_TYPES.length}>
           <div className="mt-1 flex flex-wrap gap-1">
             {DICE_TYPES.map((d) => (
               <button
                 key={d}
                 type="button"
                 onClick={() => addOperand(pendingOp, { kind: "dice", expression: `1${d}` })}
-                title={`Add a 1${d} dice expression. The count X scales at runtime.`}
+                title={`Add a 1${d} dice expression. The count X scales at runtime. Use as a multiplier: 5 × D6 = 5d6.`}
                 className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-xs text-rose-700 dark:text-rose-300 hover:bg-rose-500/20"
               >
-                + 1{d}
+                + D{d.replace(/^d/, "")}
               </button>
             ))}
           </div>
           <p className="mt-1 px-1 text-[9px] text-muted-foreground">
-            Die type only — count (1, 2, 3...) is decided at runtime.
+            Die type only — count (1, 2, 3...) is decided at runtime. Try <code className="font-mono">5 × D6</code>.
           </p>
-        </div>
+        </CollapsibleSection>
 
         {/* Keywords (tags) — used for damage type, etc. */}
-        <div>
-          <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Tag (keyword)
-          </p>
+        <CollapsibleSection
+          title="Tag (keyword)"
+          count={11}
+        >
           <div className="mt-1 flex flex-wrap gap-1">
             {["fire", "cold", "lightning", "acid", "poison",
               "piercing", "slashing", "bludgeoning",
@@ -426,16 +413,13 @@ export function EquationPicker({
               </button>
             ))}
           </div>
-        </div>
+        </CollapsibleSection>
 
-        {/* Sub-choice keywords — every per-axis sub-choice label
-            from MODIFIER_TARGET_SPEC (defense axes, speeds,
-            targeting shapes, durations, vitals, action rolls).
-            Grouped by category. Always available. */}
-        <div>
-          <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Sub-Choice Keywords
-          </p>
+        {/* Sub-choice keywords */}
+        <CollapsibleSection
+          title="Sub-Choice Keywords"
+          count={SUB_CHOICE_KEYWORDS.length}
+        >
           <div className="mt-1 space-y-1.5">
             {(() => {
               const byGroup = new Map<string, typeof SUB_CHOICE_KEYWORDS>();
@@ -473,7 +457,7 @@ export function EquationPicker({
               </div>
             ))}
           </div>
-        </div>
+        </CollapsibleSection>
 
         {/* Custom input */}
         <EquationCustomInput
@@ -822,6 +806,11 @@ function chipLabel(value: OperandValue): string {
       // deferred reference (e.g. "/blockValue/") rather than
       // a fixed number.
       return `/${value.name}/`;
+    case "dice":
+      // Phase 7.5 v4-rev: normalize dice display — show
+      // D4 instead of 1d4. See normalizeDiceLabel for the
+      // full conversion rules.
+      return normalizeDiceLabel(value.expression);
     case "paren":
       return `(…)`;  // Rendered compactly — full preview is
                      // shown in the live preview above.

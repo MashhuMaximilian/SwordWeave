@@ -836,11 +836,47 @@ export function tokenLabel(token: ValueToken): string {
       if (token.which === "pb_half") return "PB/2";
       return token.which.toUpperCase();
     case "behavior": return token.name;
-    case "dice": return token.expression;
+    case "dice":
+      // Phase 7.5 v4-rev: normalize dice display. If the
+      // count is 1, show just "D4" (the type). Otherwise
+      // show "5d4" (count + type). This is what Mashu
+      // wants: "if dice are xd6 why are tags 1d6, 1d4
+      // instead of D4 D6? So in equation I'd be able to
+      // write 5xd4 if I only have the dice type which
+      // would be neat."
+      return normalizeDiceLabel(token.expression);
     case "number": return String(token.value);
     case "keyword": return `[${token.text}]`;
     case "runtime": return `/${token.name}/`;
   }
+}
+
+/**
+ * Phase 7.5 v4-rev: normalize a dice expression to its
+ * display form. Strips a leading "1" so "1d4" displays as
+ * "D4". Anything with a count > 1 (e.g. "2d6") displays
+ * as-is ("2d6"). Non-standard expressions fall through to
+ * uppercase normalization.
+ */
+export function normalizeDiceLabel(expression: string): string {
+  // Match NdM with optional +/-X modifier. Examples:
+  //   "1d4"   → "D4"
+  //   "1d10"  → "D10"
+  //   "1d6+3" → "D6+3"
+  //   "2d4"   → "2d4"
+  //   "d6"    → "D6" (no count, treat as 1)
+  const m = /^(\d*)d(\d+)(.*)$/i.exec(expression);
+  if (!m) {
+    // Not a standard NdN expression — return as-is, uppercased.
+    return expression.toUpperCase();
+  }
+  const count = m[1] ?? "1";
+  const die = m[2] ?? "";
+  const mod = m[3] ?? "";
+  if (count === "" || count === "0" || count === "1") {
+    return `D${die}${mod}`;
+  }
+  return `${count}D${die}${mod}`;
 }
 
 /**

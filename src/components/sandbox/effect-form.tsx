@@ -399,7 +399,43 @@ export function EffectForm({
         </button>
       </div>
 
-      {/* Phase 8: per-entity iconography */}
+      {/* Phase 7.5 v4-rev: mobile layout — Icon + Name on
+          one row. Mashu: "And in effects just the name and
+          icon on the same row." */}
+      <div className="grid grid-cols-[auto_1fr] items-center gap-2 md:hidden">
+        <div>
+          <IconSlot
+            iconSource={(form.iconSource as IconSource | null) ?? null}
+            iconKey={form.iconKey ?? null}
+            iconUrl={form.iconUrl ?? null}
+            iconColor={form.iconColor ?? "#ffffff"}
+            onChange={(next) =>
+              setForm({
+                ...form,
+                iconSource: next.iconSource,
+                iconKey: next.iconKey ?? null,
+                iconUrl: next.iconUrl ?? null,
+                iconColor: next.iconColor,
+              })
+            }
+            size={56}
+            label="Icon"
+            helper=""
+          />
+        </div>
+        <label className="block text-sm font-medium">
+          Effect Name
+          <input
+            className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2"
+            value={form.name}
+            onChange={(event) => updateForm("name", event.target.value)}
+            placeholder="Vertigo Spasms"
+            required
+          />
+        </label>
+      </div>
+
+      {/* Desktop layout — original full-width stack */}
       <IconSlot
         iconSource={(form.iconSource as IconSource | null) ?? null}
         iconKey={form.iconKey}

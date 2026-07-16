@@ -337,7 +337,34 @@ describe("tokenLabel", () => {
   });
 
   it("renders dice expressions verbatim", () => {
-    expect(tokenLabel({ kind: "dice", expression: "2d6+3" })).toBe("2d6+3");
+    // v4-rev: 2d6+3 stays as 2d6+3 (count > 1 keeps the
+    // count, but normalizes to uppercase to match the new
+    // display convention).
+    expect(tokenLabel({ kind: "dice", expression: "2d6+3" })).toBe("2D6+3");
+  });
+
+  it("renders 1d4 as 'D4' (count-1 normalization, v4-rev)", () => {
+    // Mashu: "if dice are xd6 why are tags 1d6, 1d4
+    // instead of D4 D6? So in equation I'd be able to
+    // write 5xd4 if I only have the dice type which would
+    // be neat." 1d4 is the type at count 1 — display as
+    // just D4 so the user can write "5 × D4" in the
+    // equation and get 5d4.
+    expect(tokenLabel({ kind: "dice", expression: "1d4" })).toBe("D4");
+    expect(tokenLabel({ kind: "dice", expression: "1d6" })).toBe("D6");
+    expect(tokenLabel({ kind: "dice", expression: "1d10" })).toBe("D10");
+    expect(tokenLabel({ kind: "dice", expression: "1d100" })).toBe("D100");
+  });
+
+  it("keeps dice expression with count > 1 verbatim (v4-rev)", () => {
+    // Already-multi-die expressions are kept as-is
+    // (uppercased to match the new display convention).
+    expect(tokenLabel({ kind: "dice", expression: "2d6" })).toBe("2D6");
+    expect(tokenLabel({ kind: "dice", expression: "5d10" })).toBe("5D10");
+  });
+
+  it("strips the leading 1 from dice with modifier (v4-rev)", () => {
+    expect(tokenLabel({ kind: "dice", expression: "1d6+3" })).toBe("D6+3");
   });
 
   it("renders numbers as their string form", () => {

@@ -367,14 +367,27 @@ function applyOp(
 
   if (a.kind === "dice" || b.kind === "dice") {
     // Mixed dice+number: numeric part folds into the dice
-    // expression via flat-string concat (parser-friendly).
+    // expression. Multiplication is commutative
+    // (number × dice = dice × number = N×dM), so we
+    // accept either order.
     if (a.kind === "dice" && b.kind === "number") {
+      if (op === "*") {
+        return { kind: "dice", expression: formatDiceMultiply(a.expression, b.value) };
+      }
       const expr = `${a.expression}${formatDiceModifier(op, b.value)}`;
       return { kind: "dice", expression: expr };
     }
     if (a.kind === "number" && b.kind === "dice") {
-      // We can't lead with a number on a dice expression
-      // (it'd parse as dice_count). Treat as structure.
+      // 5 × 1d4 → "5d4". Multiplication is commutative
+      // for dice; we re-route through the dice-first
+      // branch by swapping sides.
+      if (op === "*") {
+        return { kind: "dice", expression: formatDiceMultiply(b.expression, a.value) };
+      }
+      // Other ops (add/sub/divide/percent) keep the
+      // asymmetric structure since "1d4 + 5" means
+      // something different from "5 + 1d4" in dice
+      // semantics.
       return {
         kind: "structure",
         preview: `${a.value} ${op} ${b.expression}`,
@@ -429,6 +442,32 @@ function formatDiceModifier(op: Operator, n: number): string {
   // Caller handles the structure case before reaching here.
   const sign = n >= 0 ? "+" : "-";
   return `${sign}${Math.abs(n)}`;
+}
+
+/**
+ * Phase 7.5 v4-rev: scale a dice expression by a count.
+ * "1d4" × 5 → "5d4". "1d6+3" × 2 → "2d6+3" (modifier
+ * stays, only the count is multiplied). "0.5d6" × 2 →
+ * "1d6" (rounded up — we never want a zero-die
+ * expression).
+ */
+function formatDiceMultiply(diceExpression: string, count: number): string {
+  if (count === 0) return "0";
+  if (count === 1) return diceExpression;
+  // Parse "NdM" or "NdM±X" into { count, die, mod }.
+  // Default count is 1 if absent (e.g. "d6" → count 1).
+  const m = /^(\d*)d(\d+)(.*)$/i.exec(diceExpression);
+  if (!m) {
+    // Not a standard dice expression — fall back to a
+    // structure-style string the engine will treat as
+    // opaque.
+    return `${count}*${diceExpression}`;
+  }
+  const baseCount = m[1] === "" ? 1 : Number(m[1]);
+  const die = m[2] ?? "0";
+  const mod = m[3] ?? "";
+  const newCount = Math.max(1, Math.round(baseCount * count));
+  return `${newCount}d${die}${mod}`;
 }
 
 function numericOperandToString(p: NumericOperand): string {

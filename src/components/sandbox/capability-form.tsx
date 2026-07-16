@@ -528,11 +528,76 @@ export function CapabilityForm({
       </div>
 
       {/* Phase 8: per-entity iconography */}
+      {/* Phase 7.5 v4-rev: mobile layout — Icon + Name on
+          one row, Type + Source on one row. Mashu: "In
+          builder/editor for capability we can use the same
+          icon and name on a row and the 2 type and source
+          in a single row." */}
+      <div className="grid grid-cols-[auto_1fr] items-center gap-2 md:hidden">
+        <div className="row-span-2">
+          <IconSlot
+            iconSource={(form.iconSource as IconSource | null) ?? null}
+            iconKey={form.iconKey ?? null}
+            iconUrl={form.iconUrl ?? null}
+            iconColor={form.iconColor ?? "#ffffff"}
+            onChange={(next) =>
+              setForm({
+                ...form,
+                iconSource: next.iconSource,
+                iconKey: next.iconKey ?? null,
+                iconUrl: next.iconUrl ?? null,
+                iconColor: next.iconColor,
+              })
+            }
+            size={56}
+            label="Icon"
+            helper=""
+          />
+        </div>
+        <label className="block text-sm font-medium">
+          Capability Name
+          <input
+            className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2"
+            value={form.name}
+            onChange={(e) => updateForm("name", e.target.value)}
+            placeholder="e.g. Fire Strike"
+            required
+          />
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block text-sm font-medium">
+            Type
+            <select
+              className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2"
+              value={form.type}
+              onChange={(e) => updateForm("type", e.target.value)}
+            >
+              <option value="ACTIVE">Active</option>
+              <option value="PASSIVE">Passive</option>
+              <option value="AUGMENT">Augment</option>
+            </select>
+          </label>
+          <label className="block text-sm font-medium">
+            Source
+            <select
+              className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2"
+              value={form.sourceType}
+              onChange={(e) => updateForm("sourceType", e.target.value)}
+            >
+              <option value="PHYSICAL">Physical</option>
+              <option value="MAGICAL">Magical</option>
+              <option value="PSYCHIC">Psychic</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      {/* Desktop layout — original full-width stack */}
       <IconSlot
         iconSource={(form.iconSource as IconSource | null) ?? null}
-        iconKey={form.iconKey}
-        iconUrl={form.iconUrl}
-        iconColor={form.iconColor}
+        iconKey={form.iconKey ?? null}
+        iconUrl={form.iconUrl ?? null}
+        iconColor={form.iconColor ?? "#ffffff"}
         onChange={(next) =>
           setForm({
             ...form,
