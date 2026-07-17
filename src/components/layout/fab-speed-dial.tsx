@@ -23,15 +23,12 @@
 // =============================================================================
 
 import {
-  BookOpen,
   Columns2,
   Filter,
-  Hammer,
   Maximize2,
   Menu,
   Minimize2,
   Moon,
-  Swords,
   Sun,
   UserRound,
   Wrench,
@@ -410,14 +407,30 @@ export const NAV_LINKS: FabItem[] = [
     kind: "link",
     key: "library",
     label: "Library",
-    icon: <BookOpen className="size-4" />,
+    icon: (
+      <IconDisplay
+        iconSource="GAME_ICONS"
+        iconKey="delapouite/bookshelf"
+        iconColor={FAB_ICON_COLOR}
+        size={18}
+        alt="Library"
+      />
+    ),
     href: "/library/browse",
   },
   {
     kind: "link",
     key: "creations",
     label: "My Creations",
-    icon: <Hammer className="size-4" />,
+    icon: (
+      <IconDisplay
+        iconSource="GAME_ICONS"
+        iconKey="delapouite/cosmic-egg"
+        iconColor={FAB_ICON_COLOR}
+        size={18}
+        alt="My Creations"
+      />
+    ),
     href: "/creations",
   },
   {
@@ -429,7 +442,6 @@ export const NAV_LINKS: FabItem[] = [
         iconSource="GAME_ICONS"
         iconKey="lorc/jigsaw-piece"
         iconColor={FAB_ICON_COLOR}
-        outline
         size={18}
         alt="Grammar"
       />
@@ -455,7 +467,15 @@ export const NAV_LINKS: FabItem[] = [
     kind: "link",
     key: "builds",
     label: "Builds",
-    icon: <Swords className="size-4" />,
+    icon: (
+      <IconDisplay
+        iconSource="GAME_ICONS"
+        iconKey="seregacthtuf/armor-blueprint"
+        iconColor={FAB_ICON_COLOR}
+        size={18}
+        alt="Builds"
+      />
+    ),
     href: "/characters",
   },
 ];
@@ -475,16 +495,13 @@ export const ACCOUNT_LINKS: FabItem[] = [
 
 // Re-export icons for convenience.
 export const FabIcons = {
-  BookOpen,
   Columns2,
   Filter,
-  Hammer,
   Maximize2,
   Menu,
   Minimize2,
   Moon,
   Sun,
-  Swords,
   UserRound,
   Wrench,
   X,
