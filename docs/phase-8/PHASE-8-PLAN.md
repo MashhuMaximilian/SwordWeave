@@ -2,33 +2,45 @@
 
 **Date:** 2026-07-17
 **Author:** Senku (mod for Mashu, Phase 8 kickoff)
-**Status:** 📝 PLAN — awaiting sign-off
+**Status:** 🔄 IN PROGRESS — answers received 2026-07-17
 
 ---
 
 ## What this phase is
 
-Phase 8 = **character sheet + character creation, modal-style**. The character is reachable from anywhere in the sandbox, doesn't take you out of your build flow, and uses the Phase 7.9 modifier model to compute live values during play.
+Phase 8 = **character sheet + character creation, FAB-launched modal**. A persistent floating-action button in the sandbox opens a character builder overlay. The overlay sits ABOVE the sandbox 3-column layout (desktop) or full-screen (mobile). State survives tab navigation. The character sheet (view mode) is its own page.
 
 The central question the user flagged: **"character creation in a modal system like build?"**
 
-The answer: mirror the existing build-mode URL pattern. `/sandbox/builds?edit=X` is already "modal-style" — it's a deep-linkable URL route that the sandbox library can slot into. Do the same for `/sandbox/characters?edit=X`. Add a **Slot into character** button alongside the existing **Slot into build** button.
+The answer (clarified): the character builder is **NOT** a page route like build mode. It's a **persistent overlay layer** above the sandbox. State lives in client memory (Zustand/Context), NOT in the URL. A FAB in the bottom-right of the sandbox launches it.
+
+The user can have grammar → templates → blueprint open below, character builder above, and the builder doesn't reset when they navigate.
 
 ---
 
-## What's NOT in this phase
+## User-confirmed answers (2026-07-17)
 
-- **No DM tracker** (deferred indefinitely per Phase 7 closeout)
-- **No BU cost rebalancing for conditions** (open design question, see 8.6)
-- **No versioning/forking architectural work** (the Phase 7 closeout's Q5 ambiguity resolved to "the mirror-badge bug, not the version system")
-- **No pill engine work** (display-only continues until 8.6 design call)
-- **No realtime sync** (polling for v1)
+1. **8.1 modal pattern:** FAB-launched persistent modal. Both desktop and mobile. Layer above sandbox, not a URL route.
+2. **8.6 Q1 (custom pills):** **NO registry.** Custom tags = display-only forever. The engine handles HP/resources + auto-calculated primitives (like damage reduction) + math assistance. It does NOT try to adjudicate author-written custom conditions.
+3. **8.6 Q2 (BU cost):** **NO change.** Cost is the modifier's intrinsic value. Condition is metadata.
+4. **8.7 (template pre-loads):** **Ship in Phase 8.**
+5. **8.9 (collections):** **Ship in Phase 8.**
+
+---
+
+## What the character sheet IS
+
+Per user clarification (2026-07-17):
+- **Not a VTT.** People play at the table IRL.
+- **Display** the character: stats, capabilities, slotted primitives, conditions, notes
+- **Track** HP, resources, status (checkboxes for conditions, current/max HP)
+- **Lightweight actions** that help with math (apply damage, apply healing, etc.) — the engine handles primitives that auto-calculate (like Vitality Shielding halving incoming damage)
+- **Soft warnings** when a capability references missing primitives (system flags the gap, user resolves at the table)
+- **Never** adjudicates custom conditions automatically. The DM/player handles that.
 
 ---
 
 ## Sub-phase ordering
-
-Ordering principle: **the central issue first, unblockers next, soft features last.**
 
 ### 8.0 — Mirror Badge Fix (carryover from Phase 7 closeout, Q5)
 
@@ -41,64 +53,90 @@ Ordering principle: **the central issue first, unblockers next, soft features la
 - Item form's preview pane reads from snapshot, not just DB row
 - MIRRORED badges now show while editing, not only after save
 
-This was a known carryover from the Phase 7 closeout. Land it first so nothing else has to backtrack.
+Land first; nothing else has to backtrack.
 
 ---
 
-### 8.1 — Character Creation Modal Mode (THE central issue)
+### 8.1 — Character Creation Modal (FAB-launched persistent overlay) — THE central issue
 
-**Effort:** 4-6 days
-**Risk:** Medium-high (architectural; touches sandbox layout + character-wizard)
-**Blocks:** 8.7-8.9 (template pre-loads, share, collections all flow through the modal)
+**Effort:** 6-8 days
+**Risk:** Medium-high (architectural; new persistent layer pattern)
+**Blocks:** 8.3, 8.7, 8.9 (everything that touches the character creation flow)
 
-**The problem:**
-Character creation today is a stepped wizard at `/sandbox/characters` (a page route). To use it, you leave your build/grammar/blueprint tab. The user wants to **edit a character and a build simultaneously** — same screen, different concerns.
-
-**The solution:**
-Mirror the `/sandbox/builds?edit=X` URL pattern for characters:
+**The architecture:**
 
 ```
-/sandbox/characters            → list of my characters + "new character" CTA
-/sandbox/characters?edit=X     → character editor (URL-addressable, deep-linkable)
-/characters/[id]               → view-only character sheet (the existing page)
-/sandbox/characters?edit=X&slot=Y   → open editor with slot pre-loaded from a sandbox item
+┌─────────────────────────────────────────────────┐
+│  Sandbox page (grammar / templates / blueprint) │  ← URL-driven, navigates normally
+│                                                 │
+│  ┌───────────────────────────────────────────┐ │
+│  │                                           │ │
+│  │         Character Builder Modal           │ │  ← Fixed-position overlay, persistent
+│  │         (persistent client-side state)    │ │
+│  │                                           │ │
+│  │   ⛶                                       │ │
+│  └───────────────────────────────────────────┘ │
+│                              [⚒ FAB]            │  ← Floating Action Button, bottom-right
+└─────────────────────────────────────────────────┘
 ```
 
-Then add **Slot into character** buttons throughout the sandbox/library, mirroring the existing Slot into build buttons.
+The modal is **always overlay** (both desktop and mobile). The 3-column sandbox layout stays visible behind the dim/blur. On mobile, the modal goes full-screen. The modal state persists across sandbox tab navigation because it lives in a global Zustand store, not in any URL.
 
-**On desktop (3-column layout):** character editor opens in a new column / split, build mode stays in the other column.
-**On mobile (single column):** character editor opens in a new tab.
-
-**Component breakdown:**
+**Implementation:**
 
 | New file | Purpose |
 |---|---|
-| `src/app/sandbox/characters/page.tsx` (refactor) | Existing — convert to URL-addressable `?edit=X` pattern matching `/sandbox/builds` |
-| `src/components/workshops/character-composer.tsx` | Refactor `character-wizard.tsx` into a URL-driven composer. Reads `?edit=X`, pre-fills form, supports `?slot=Y` |
-| `src/components/sandbox/slot-into-character-button.tsx` | The new "Slot into character" button. Mirrors `slot-into-build-button.tsx`. Reads `?character=X&slot=Y` query params |
-| `src/components/layout/character-mode-launcher.tsx` | The "Open character builder" global button. On desktop → side panel; on mobile → new tab |
-| `src/lib/characters/slot-targets.ts` | New helper: resolve `?slot=Y` to a target (primitive/capability/effect/item) and dispatch to the character editor |
+| `src/lib/characters/character-store.ts` | Zustand store: `currentCharacter`, `pendingSlots`, `setName()`, `addSlot()`, etc. Persists across navigations. |
+| `src/components/character-modal/character-modal.tsx` | The persistent overlay component. Mounted once in the sandbox layout. Reads/writes to the store. |
+| `src/components/character-modal/character-fab.tsx` | The floating action button. Always visible in sandbox bottom-right. Toggles the modal. |
+| `src/components/character-modal/character-modal-provider.tsx` | Provider that mounts the modal + FAB at the sandbox layout level. |
+| `src/app/sandbox/layout.tsx` (or root layout) | Wraps children with `<CharacterModalProvider>` so it covers all sandbox tabs. |
 
-**The modal question, answered:** this isn't a CSS-overlay modal. It's a **URL-addressable, slot-compatible editor** — same pattern as build mode, so users can have both open. On mobile they're separate tabs; on desktop they're panes.
+**The wizard flow (inside the modal):**
+
+The modal contains a step indicator + the existing `CharacterWizard` UI, adapted to read/write from the Zustand store instead of `useState`. The user can:
+1. Click FAB → modal opens (empty character form, or current `currentCharacter` if any)
+2. Walk through steps: Identity → Attributes → Race/Background → Capabilities/Items → Review
+3. Click "Save" → POST `/api/characters` → close modal, character is now in their library
+4. Click "Save & Continue" → persists draft without closing
+
+**Slotting from sandbox into character modal:**
+
+When the user is in `/sandbox/grammar` looking at a primitive, and clicks "Slot into character":
+- The primitive id is added to the store's `pendingSlots`
+- The FAB shows a small badge ("3 pending")
+- When the user opens the modal, those slots are pre-loaded into the character's capability/item list
+
+The "Slot into character" button reads from the same `library-engagement`/library action system that "Slot into build" uses, but writes to the character store instead of the build's local state.
+
+**Layout integration:**
+
+The sandbox layout (currently `src/app/sandbox/`) needs to wrap all its children with `<CharacterModalProvider>`. The modal sits as a fixed-position div with `z-50`, the FAB as `fixed bottom-6 right-6`. On mobile, the modal goes full-screen. On desktop, it's a centered 80% width panel.
+
+**Out of scope for 8.1:**
+- The actual character sheet view (separate page) is part of 8.3
+- The "edit existing character" entry point is in 8.3 (the character sheet page has an "Edit" button that opens the modal pre-filled)
+- Condition badges (8.5) come after 8.3
 
 ---
 
-### 8.2 — Token Resolution Engine
+### 8.2 — Token Resolution Engine + Missing-Primitive Warnings
 
-**Effort:** 4-5 days
+**Effort:** 5-6 days
 **Risk:** Medium (foundational; everything character-sheet depends on this)
-**Blocks:** 8.3, 8.4, 8.5 (all live-sheet work)
+**Blocks:** 8.3, 8.4, 8.5
 
 **The problem:**
-Phase 7.5 stored modifier values as **tokens** (`{kind: "attribute", value: "PHYSICAL"}`) instead of raw numbers. This was correct — modifiers reference character state, not constants. But the runtime engine was deferred to Phase 8 because at author-time we don't have a character in scope.
+Phase 7.5 stored modifier values as **tokens** (`{kind: "attribute", value: "PHYSICAL"}`) instead of raw numbers. This was correct — modifiers reference character state, not constants. But the runtime engine was deferred to Phase 8.
+
+Also: when a character has a capability but is missing required primitives, we need to flag it. Soft warning, not a hard error.
 
 **The solution:**
-Build `resolveTokens(tokens, character, context)` that walks the token list and returns concrete numbers at character-sheet slot time.
 
 ```typescript
 type ResolutionResult = {
-  number: number;        // the resolved numeric value
-  warnings: Warning[];   // soft warnings for unresolvable tokens
+  number: number;          // the resolved numeric value
+  warnings: Warning[];     // soft warnings for unresolvable tokens
 };
 
 function resolveTokens(
@@ -120,31 +158,41 @@ function resolveTokens(
 
 **Mirror handling extracted here:** when a modifier is on a mirrored primitive, the value flips per `OP_SPECS`. Mirror the op (e.g. `add` → `subtract`), then resolve normally.
 
-**Soft warnings:** if a `behavior` token references something the character doesn't have, emit a `Warning` with `{kind:"unresolved", token, message}`. Render in the sheet as a callout, not a hard error.
+**Soft warnings (per user's note: "missing primitives should be flagged, not duplicated"):**
+
+```typescript
+type Warning = 
+  | {kind:"unresolved-token", token: ValueToken, message: string}
+  | {kind:"missing-primitive", capabilityId: string, primitiveId: number, message: string};
+```
+
+**`missing-primitive` warning:** when a character has a capability slotted that requires primitive X (per the capability's required-primitive list), and X is not in the character's slotted primitives, emit a warning. Don't auto-add (avoid duplicates). Surface in the sheet as a yellow callout: "Required primitive 'Vitality Shielding' not slotted. Add it from the library to enable this capability's full effect."
+
+This is the soft-warning hook the user wants. The character sheet shows the gap; the user decides whether to slot the missing primitive or accept the limitation.
 
 **Location:** `src/lib/engine/token-resolver.ts`
 
 ---
 
-### 8.3 — Character Sheet Live Rendering
+### 8.3 — Character Sheet Live Rendering + View Mode
 
-**Effort:** 5-7 days
+**Effort:** 6-8 days
 **Risk:** Medium
-**Blocks:** 8.4, 8.5 (conditions sit on top of the live sheet)
+**Blocks:** 8.4, 8.5
 
 **The problem:**
-The existing `/characters/[id]` view shows static stored values. We need it to compute live values from the modifier graph using `resolveTokens`.
+The existing `/characters/[id]` view shows static stored values. We need it to compute live values from the modifier graph using `resolveTokens`. The view is a separate page (NOT a modal) — this is the "view-only" experience.
 
 **The solution:**
 Wire `resolveTokens` into the character-sheet-view component. For every modifier-bearing slot, resolve the modifier's tokens and aggregate the effect on the relevant character stat.
 
 **Stats to live-render:**
-- HP (current / max)
+- HP (current / max) — trackable: HP up/down buttons, current HP box
 - Each attribute (Physical / Mental / Magical)
 - Each practice total (10 of them)
 - Proficiency bonus (derived)
 - BU total spent / remaining
-- Attack / Save / Defense bonuses (if character has abilities affecting them)
+- Damage reduction (from slotted primitives like Vitality Shielding)
 - Movement speed
 - Initiative
 
@@ -157,54 +205,59 @@ character-sheet-view.tsx
      2. For each modifier, resolveTokens(modifier.tokens, character, context)
      3. Apply the operation with the resolved number (with mirror flip)
      4. Accumulate effects per target stat
-  → renders the live values
+  → renders the live values + soft warnings (missing primitives, unresolved tokens)
 ```
+
+**Lightweight actions (per user):**
+The sheet has buttons for common math:
+- **Apply Damage** — opens a small modal: input damage amount → runs through damage reduction primitives → updates current HP
+- **Apply Healing** — similar
+- **Add Note** — appends to character's notes
+- **Toggle Condition** — checkbox UI for tracked conditions (poisoned, etc.)
+
+These are math helpers. They call `/api/characters/[id]/adjust` with the change. The engine runs the math; the user confirms.
 
 **Files:**
 - `src/lib/engine/resolve-all-modifiers.ts` — the new entry point
-- `src/components/characters/character-sheet-view.tsx` — replace static values with live values
+- `src/components/characters/character-sheet-view.tsx` — replace static values with live values, add lightweight action buttons
+- `src/app/characters/[id]/page.tsx` — existing; add Edit button that opens character modal with this character pre-loaded
 
 ---
 
-### 8.4 — Condition Evaluator v2
+### 8.4 — Condition Evaluator v2 (auto-trackable only)
 
 **Effort:** 3-4 days
-**Risk:** Low-medium
+**Risk:** Low
 **Blocks:** 8.5
 
 **The problem:**
-v1 conditions are display-only. Phase 7 closed with the engine returning `true` for any v1 condition — meaning the condition badge shows, but the engine never gates the modifier. The Phase 7 closeout identified this as a "Phase 28 (probably never)" issue, but the user is now scoping it into Phase 8.
+v1 conditions are display-only. Phase 7 closed with the engine returning `true` for any v1 condition. The Phase 7 closeout identified this as a "Phase 28 (probably never)" issue, but the user is now scoping it in.
 
-**The solution:**
-Build `evaluateCondition(condition, character, scene)` that returns `{active, source}`:
+**The solution (simplified by user clarification):**
 
 ```typescript
-type ConditionSource = "auto" | "narrative" | "manual";
+type ConditionSource = "auto" | "narrative";
 type Evaluation = {
   active: boolean;
   source: ConditionSource;
-  reason: string;
 };
 
 function evaluateCondition(
   condition: ModifierCondition,
-  character: Character,
-  scene?: SceneContext
+  character: Character
 ): Evaluation
 ```
 
-**Auto-trackable (initial whitelist):**
+**Auto-trackable (initial whitelist — only what we can derive from existing columns):**
 - `target-below-half-hp` → `character.hp / character.maxHp < 0.5`
 - `target-below-quarter-hp` → `character.hp / character.maxHp < 0.25`
-- Anything else with a clear numeric rule we can derive from existing columns
+- That's it for v1. Add more as new primitives need them.
 
-**Narrative (display-only):**
+**Narrative (display-only, ALWAYS):**
 - `{kind: "narrative"}` → always `{active: false, source: "narrative"}`
-- `{kind: "tags"}` with custom tags → always narrative, source: "narrative"
+- `{kind: "tags"}` with custom tags → always narrative
 - Unknown preset keys → narrative, source: "narrative", warning
-
-**Manual (deferred):**
-- No DM tracker exists, so "manual" source returns active=false for now. The function shape supports it for when the DM tracker ships.
+- **No engine evaluation of custom tags. Ever.** Per user answer.
 
 **Mirror handling here too:** when the underlying primitive is mirrored, the condition's "active" status is computed identically — mirror affects value sign, not trigger logic.
 
@@ -215,25 +268,24 @@ function evaluateCondition(
 ### 8.5 — Live Condition Badges
 
 **Effort:** 2-3 days
-**Risk:** Low (mostly UI)
+**Risk:** Low
 **Blocks:** none
 
 **The problem:**
-`<ConditionBadges>` exists, but it only renders preset/tag/narrative — no `active`/`source` coloring.
+`<ConditionBadges>` exists but only renders preset/tag/narrative — no `active`/`source` coloring.
 
 **The solution:**
 Extend `<ConditionBadges>` to accept a live evaluation, color badges by `source`:
 - `auto + active` → green (vivid, drawing attention)
 - `auto + inactive` → outlined gray (visible but not shouting)
 - `narrative` → gray italic (always display, never active)
-- `manual` → blue (deferred)
 
 Drop the enhanced component into `character-sheet-view.tsx`. For each modifier-bearing slot, render its condition badge with the live evaluation.
 
 **Live updates:**
-- Polling every 5s for v1 (re-evaluate conditions on tick)
-- When HP changes (after combat), next tick reflects new state
-- Realtime sync deferred — no Supabase realtime channel yet
+- Polling every 5s for v1
+- When HP changes (after Apply Damage / Apply Healing), next tick reflects new state
+- Realtime sync deferred
 
 **Files:**
 - `src/components/library/condition-badges.tsx` — extend with `evaluation` prop
@@ -241,24 +293,12 @@ Drop the enhanced component into `character-sheet-view.tsx`. For each modifier-b
 
 ---
 
-### 8.6 — Design Calls: Custom Pills + BU Cost of Conditions
+### 8.6 — DELETED
 
-**Effort:** 1-2 days
-**Risk:** Depends on user decisions
-**Blocks:** possibly 8.4 expansion
+Q1 (custom pills): NO registry. Display-only forever. No work needed.
+Q2 (BU cost): NO change. No work needed.
 
-**Two open design questions from Phase 7 closeout:**
-
-**Q1:** Should author-added custom pills (via the custom-tag adder in condition-picker) be engine-addressable?
-- **Option A:** Display-only, like v1. Author can write tags, they show as badges, engine never resolves them. Simpler, current behavior.
-- **Option B:** Permissioned registry. Authors register tags with rules (HP threshold, attribute check, etc.), engine recognizes registered tags. More flexible but bigger scope.
-
-**Q2:** Should a modifier's BU cost change if it carries a preset condition?
-- **Option A:** No. Cost is the modifier's intrinsic value. The condition is metadata. (Phase 7 closeout's implicit stance.)
-- **Option B:** Yes, by tier. e.g. +1 BU for a preset, +0 for narrative.
-- **Option C:** Discount for narrow conditions (target-below-half-hp narrows the trigger, so it should be cheaper).
-
-**These are user decisions.** Phase 8 ships the questions here; implementation per the answers lands in 8.6.1 / 8.6.2 (or split into 8.6 if both answers are clear).
+This sub-phase is closed. Both decisions are codified in 8.4 ("narrative = always display-only").
 
 ---
 
@@ -269,7 +309,7 @@ Drop the enhanced component into `character-sheet-view.tsx`. For each modifier-b
 **Blocks:** none
 
 **What:**
-A character sheet template system that pre-loads canonical primitives / capabilities / items when the user picks a template at character creation time. Already partially supported via the `archetypeName` field on `BuildComposer` — extend to `CharacterComposer`.
+A character sheet template system that pre-loads canonical primitives / capabilities / items when the user picks a template at character creation time. Already partially supported via the `archetypeName` field on `BuildComposer` — extend to `CharacterComposer` (the modal from 8.1).
 
 When a user picks a template (race/background/archetype), the character editor auto-fills:
 - The relevant primitives slotted at level 1
@@ -345,58 +385,49 @@ Plus user-created custom collections.
 
 ---
 
-## Suggested build order (recommended execution)
+## Suggested build order (revised, after user answers)
 
-If we have limited credits/time, this is the priority order that gives the most user value per phase:
+If we have limited credits/time, this is the priority order:
 
 | # | Sub-phase | Days | Why this priority |
 |---|---|---|---|
 | 1 | **8.0** Mirror fix | 0.5d | Trivial carryover; unblocks 8.3 |
-| 2 | **8.1** Character modal | 5d | THE central issue, user-flagged |
-| 3 | **8.2** Token resolver | 5d | Foundational; blocks all live-sheet work |
-| 4 | **8.3** Live rendering | 6d | The "wow" of Phase 8 |
-| 5 | **8.4** Condition evaluator | 4d | Unblocks 8.5 |
+| 2 | **8.1** Character modal (FAB) | 7d | **THE central issue** |
+| 3 | **8.2** Token resolver + missing-primitive warnings | 5d | Foundational |
+| 4 | **8.3** Live rendering + lightweight actions | 7d | The "wow" of Phase 8 |
+| 5 | **8.4** Condition evaluator v2 | 4d | Unblocks 8.5 |
 | 6 | **8.5** Live condition badges | 3d | Visible payoff of 8.3 + 8.4 |
-| 7 | **8.6** Design calls | 2d | Depends on user |
-| 8 | **8.7** Template pre-loads | 3d | Polish on the creation flow |
-| 9 | **8.8** Share-with-link | 4d | Community engagement |
-| 10 | **8.9** Collections | 6d | Big surface; ship last |
+| 7 | **8.7** Template pre-loads | 3d | Polish on creation flow |
+| 8 | **8.8** Share-with-link | 4d | Community |
+| 9 | **8.9** Collections | 6d | Community |
 
-**Total estimated effort:** ~38 days at single-developer pace.
+**Total estimated effort:** ~39.5 days at single-developer pace.
 
-If we ship 8.0 → 8.6, that's the **core character-sheet experience**: modal creation, live values, live conditions. ~25.5 days of work for the fundamental Phase 8 promise.
+8.6 deleted (no work needed).
 
-8.7-8.9 are the **community features** that make the system social. Ship those after 8.6.
+If we ship 8.0 → 8.7, that's the **complete character experience**: modal creation + live sheet with computed values + live conditions + template pre-loads. ~29.5 days.
 
----
-
-## Open questions to resolve before kicking off
-
-1. **8.1 (modal pattern):** confirm URL-addressable (`/sandbox/characters?edit=X`) is the right interpretation of "modal like build" — or did the user want a true CSS-overlay modal that lives over the current sandbox view?
-
-2. **8.6 Q1 (custom pills):** display-only forever, or permissioned registry? This affects scope of 8.4.
-
-3. **8.6 Q2 (BU cost):** does the modifier's BU change when it carries a preset? Affects the modifier engine in 8.3.
-
-4. **8.7 (templates):** ship now, or defer to Phase 9?
-
-5. **8.9 (collections):** ship now with default 3 only, or wait for full feature?
+8.8 and 8.9 are the **community features**.
 
 ---
 
-## What ships with Phase 8 (the punchline)
+## What ships with Phase 8 (the punchline, revised)
 
 When Phase 8 is fully done:
 
-1. From any sandbox tab, the user can open a character editor in a side panel / new tab
-2. They slot a primitive, capability, item, effect into the character
-3. The character sheet renders live — HP, attributes, practices, BU totals, all computed from the modifier graph via token resolution
-4. Conditions show as colored badges — green for active HP-threshold presets, gray for narrative
-5. Mirror badges show live in the editor AND the sheet
-6. The user can share their build with a public link (anonymous-readable)
-7. They can organize bookmarks into collections, follow users, see what others made
+1. **FAB in the sandbox** launches a persistent character builder modal
+2. Modal state survives tab navigation (grammar → templates → blueprint → back)
+3. Slot primitives/capabilities/items into the character from anywhere in the sandbox
+4. **Character sheet view** (separate page) renders live: HP, attributes, practices, BU totals, all computed from the modifier graph via token resolution
+5. Apply damage/healing buttons that handle math through slotted primitives (Vitality Shielding halves, etc.)
+6. Conditions show as colored badges — green for active HP-threshold presets, gray for narrative
+7. **Soft warnings** when a capability references missing primitives (system flags, user resolves)
+8. Mirror badges show live in the editor AND the sheet
+9. Race/background/archetype templates pre-load canonical primitives
+10. Public share links (anonymous-readable, signed-in to use)
+11. Collections to organize bookmarks (My Creations / Forked / Favorites + custom)
 
-That's a complete player experience.
+That's a complete interactive character-sheet experience + community features.
 
 ---
 
