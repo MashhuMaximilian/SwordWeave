@@ -1,8 +1,39 @@
-# Phase 8 — Character Sheet & Character Creation Modal
+# Phase 8 — Character Creation Modal & Character Sheet
 
 **Date:** 2026-07-17
 **Author:** Senku (mod for Mashu, Phase 8 kickoff)
-**Status:** 🔄 IN PROGRESS — answers received 2026-07-17 (rev 2)
+**Status:** 🔄 IN PROGRESS — rev 4 split into two tracks
+
+---
+
+## 🚨 Important: read the creation-flow doc for the central work
+
+**This phase was split into two tracks after user feedback (2026-07-17 rev 4):**
+
+1. **Character CREATION** — the modal-based flow for building/editing characters. This is the central, immediate work.
+2. **Character SHEET** — the runtime engine for computing live values, custom stats, capability modes, etc. Deferred; tokens are conceptual, runtime not implemented yet.
+
+**→ For the creation track, see `docs/phase-8/CREATION-MODAL-FLOW.md`.** This file (`PHASE-8-PLAN.md`) is the broader master plan and should be read as background, not as the immediate scope.
+
+The creation track is what's being planned in detail and built first. The sheet track is referenced for completeness but stays in "later" status until the creation track is done.
+
+---
+
+## Legacy scope (from rev 3, before split)
+
+The rest of this file describes the original combined plan. It is **kept for context** but is no longer the active build target. The active target is the creation-flow doc above.
+
+For the sheet track (deferred), the key items are:
+- Live character sheet rendering with computed values
+- Token resolver (deferred — was conceptual in Phase 7.5, not yet implemented)
+- Custom stats system (JSONB on characters)
+- Capability mode axis (Style A/B/C → passive/actionable/toggleable)
+- Math helpers (Apply Damage, etc.)
+- Condition evaluator v2
+- Share-with-link
+- Collections / follow lists
+
+These are all valid future work but should NOT block the creation track.
 
 ---
 
