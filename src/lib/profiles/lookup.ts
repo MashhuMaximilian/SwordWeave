@@ -20,6 +20,10 @@ export interface CreateProfileInput {
   username: string;
   displayName?: string | null;
   avatarUrl?: string | null;
+  // Phase 7.10 system-user rule: when true, the user's authored canon rows
+  // render as "System" in the UI. Populated from Clerk publicMetadata.role
+  // === "admin" by the webhook and sync route.
+  isAdmin?: boolean;
 }
 
 export interface CreateProfileResult {
@@ -90,6 +94,7 @@ export async function createProfileFromClerk(
       username,
       displayName: input.displayName ?? null,
       avatarUrl: input.avatarUrl ?? null,
+      isAdmin: input.isAdmin ?? false,
     })
     .returning({ id: users.id });
 

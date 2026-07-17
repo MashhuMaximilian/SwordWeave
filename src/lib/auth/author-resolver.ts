@@ -16,6 +16,10 @@ export interface AuthorInfo {
   username: string;
   displayName: string | null;
   avatarUrl: string | null;
+  // Phase 7.10 system-user rule: when true, the user's authored canon rows
+  // render as "System" in the library UI. Set from Clerk publicMetadata.role
+  // === "admin" by the webhook and sync route.
+  isAdmin: boolean;
 }
 
 export async function resolveAuthorByClerkId(
@@ -31,6 +35,7 @@ export async function resolveAuthorByClerkId(
       avatarUrl: true,
       isAnonymized: true,
       deletedAt: true,
+      isAdmin: true,
     },
   });
   if (!row) return null;
@@ -44,6 +49,7 @@ export async function resolveAuthorByClerkId(
     username: row.username,
     displayName: row.displayName,
     avatarUrl: row.avatarUrl,
+    isAdmin: row.isAdmin,
   };
 }
 

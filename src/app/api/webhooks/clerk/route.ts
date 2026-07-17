@@ -51,6 +51,9 @@ interface ClerkUserJSON {
     id: string;
     email_address: string;
   }>;
+  // Phase 7.10 system-user rule: Clerk carries admin role in
+  // publicMetadata.role. Webhook payload nests it as public_metadata.
+  public_metadata?: { role?: string } | null;
 }
 
 interface ClerkUserDeletedJSON {
@@ -76,6 +79,8 @@ export async function POST(req: NextRequest): Promise<Response> {
         const displayName =
           [data.first_name, data.last_name].filter(Boolean).join(" ") || null;
         const avatarUrl = data.image_url ?? null;
+        // Phase 7.10 system-user rule: read Clerk publicMetadata.role.
+        const isAdmin = data.public_metadata?.role === "admin";
 
         // Check if profile already exists by Clerk id
         const existing = await db.query.users.findFirst({
@@ -91,7 +96,7 @@ export async function POST(req: NextRequest): Promise<Response> {
           }
           await db
             .update(users)
-            .set({ displayName, avatarUrl })
+            .set({ displayName, avatarUrl, isAdmin })
             .where(eq(users.id, existing.id));
           return NextResponse.json({ ok: true, action: "updated" });
         }
@@ -114,6 +119,7 @@ export async function POST(req: NextRequest): Promise<Response> {
           username,
           displayName,
           avatarUrl,
+          isAdmin,
         });
         if (!result.ok) {
           console.error(

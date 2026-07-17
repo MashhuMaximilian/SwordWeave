@@ -66,6 +66,11 @@ export const users = pgTable(
       .default({}),
     isPublic: boolean("is_public").notNull().default(true),
     isAnonymized: boolean("is_anonymized").notNull().default(false),
+    // Phase 7.10 system-user rule: when true, the user's authored canon rows
+    // (primitives/effects/capabilities) render as "System" in the library UI.
+    // Populated from Clerk publicMetadata.role === "admin" by the webhook
+    // and /api/users/sync route. See docs/phase-7/phase-710-COMPLETE.md.
+    isAdmin: boolean("is_admin").notNull().default(false),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     purgeAfter: timestamp("purge_after", { withTimezone: true }),
     ...timestamps,
@@ -75,6 +80,7 @@ export const users = pgTable(
     uniqueIndex("users_clerk_user_id_unique_idx").on(table.clerkUserId),
     index("users_deleted_at_idx").on(table.deletedAt),
     index("users_purge_after_idx").on(table.purgeAfter),
+    index("users_is_admin_idx").on(table.isAdmin),
   ],
 );
 

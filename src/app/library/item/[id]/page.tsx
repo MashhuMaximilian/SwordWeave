@@ -11,7 +11,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { ArrowLeft, ChevronRight, Pencil, User as UserIcon } from "lucide-react";
+import { ArrowLeft, ChevronRight, Pencil, Shield, User as UserIcon } from "lucide-react";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
@@ -401,6 +401,9 @@ function DetailShell({
     username: string;
     displayName: string | null;
     avatarUrl: string | null;
+    // Phase 7.10 system-user rule: when true, the row renders as "System"
+    // in the UI and follow button is hidden.
+    isAdmin: boolean;
   } | null;
   /**
    * Clerk userId of the row's creator. Use this (not `author.id`) for
@@ -517,7 +520,7 @@ function DetailShell({
               )}
             </div>
           </div>
-          {author && (
+          {author && !author.isAdmin && (
             <Link
               href={`/u/${author.username}`}
               className="mt-3 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
@@ -536,6 +539,26 @@ function DetailShell({
                 {author.displayName ?? author.username}
               </span>
             </Link>
+          )}
+          {author?.isAdmin && (
+            <span
+              data-testid="system-author-label"
+              className="mt-3 inline-flex items-center gap-2 text-sm text-muted-foreground"
+            >
+              <Shield className="size-4" />
+              by{" "}
+              <span className="font-semibold">System</span>
+            </span>
+          )}
+          {!author && (
+            <span
+              data-testid="system-author-label"
+              className="mt-3 inline-flex items-center gap-2 text-sm text-muted-foreground"
+            >
+              <Shield className="size-4" />
+              by{" "}
+              <span className="font-semibold">System</span>
+            </span>
           )}
         </header>
 
@@ -569,8 +592,9 @@ function DetailShell({
             initialDislikes={engagement.dislikes}
             initialForks={engagement.forks}
             initialUserReaction={engagement.userReaction}
-            authorId={author?.id ?? null}
-            authorUsername={author?.username ?? null}
+            // Phase 7.10 system-user rule: hide follow button for system-authored rows
+            authorId={author?.isAdmin ? null : (author?.id ?? null)}
+            authorUsername={author?.isAdmin ? null : (author?.username ?? null)}
             currentUserId={currentUserId}
           />
           <FlagAndForkFooter

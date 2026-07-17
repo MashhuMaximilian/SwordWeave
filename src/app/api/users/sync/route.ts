@@ -75,6 +75,10 @@ export async function POST(req: NextRequest): Promise<Response> {
   const displayName =
     [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") || null;
   const avatarUrl = clerkUser.imageUrl || null;
+  // Phase 7.10 system-user rule: read Clerk publicMetadata.role === "admin".
+  // Admins' authored canon rows render as "System" in the library UI.
+  const clerkRole = (clerkUser.publicMetadata as { role?: string } | null)?.role;
+  const isAdmin = clerkRole === "admin";
 
   // Validate username (skip if updating an existing profile without change)
   if (username) {
@@ -104,7 +108,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     }
     await db
       .update(users)
-      .set({ displayName, avatarUrl })
+      .set({ displayName, avatarUrl, isAdmin })
       .where(eq(users.id, existing.id));
     return NextResponse.json({
       ok: true,
@@ -130,6 +134,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     username,
     displayName,
     avatarUrl,
+    isAdmin,
   });
 
   if (!result.ok) {
