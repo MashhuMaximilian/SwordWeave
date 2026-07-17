@@ -19,7 +19,7 @@ import { LibraryToolbar, type LibraryToolbarState } from "@/components/library/l
 import { LibraryTable } from "@/components/library/library-table";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-query";
-import { sortLibraryItems } from "@/lib/publishing/library-query";
+import { sortLibraryItems } from "@/lib/publishing/sort-library-items";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import { useModalStack } from "@/components/ui/modal-stack";
