@@ -127,21 +127,23 @@ Limitations of the current wizard:
 - Practice totals (read-only display)
 
 **Race tab:**
-- Race name + description (freeform or picked from library)
-- Primitives slotted as RACE source
-- Capabilities slotted as RACE source
+- Race name + description (freeform or picked from library template)
+- Primitives slotted as **RACE source** (auto-set)
+- Capabilities slotted as **RACE source** (auto-set)
 - BU total for race-only slots
-- "+ Slot primitive" → opens library picker, on confirm slots to RACE source
+- "+ Slot primitive" → opens library picker, on confirm slots with source = RACE
 
 **Background tab:**
 - Same as Race tab, source = BACKGROUND
 
 **Archetype tab:**
-- Same, source = (currently mapped to PERSONAL or LEVEL_UP, see "open question" below)
+- Same, source = PERSONAL (since archetype isn't a slot-source value — see Q1 below)
+- User can also pick archetype template from library to pre-load its capabilities
 
 **Items tab:**
 - Items the character owns (separate from leveling BU)
-- "+ Slot item" → opens library picker OR "Create from scratch" link to /sandbox/blueprint
+- "+ Slot item from library" → opens library picker
+- "+ Create new item" → link to `/sandbox/blueprint?build=item` (opens new tab)
 
 **Notes tab:**
 - Freeform notes, session log, etc.
@@ -381,20 +383,15 @@ The user confirmed: **preview should always open in a new tab**. So:
 - `character_primitives` junction with `source`, `isMirrored`, `acquiredAtLevel`, `versionId`
 - `character_capabilities` junction
 - `character_items` junction
-- `characterPrimitiveSourceEnum` with 6 values
+- `characterPrimitiveSourceEnum` with 6 values (`RACE | BACKGROUND | PERSONAL | TRAINING | LEVEL_UP | DM`)
+- `templateKindEnum` with 3 values (`RACE | BACKGROUND | ARCHETYPE`) — separate from slot source
 - BU engine with positive/mirror/net/volatility
 - Sheet aggregator with practice/vitality/encumbrance
 
-### Probably needs adding
-- (TBD, see open question above) `ARCHETYPE` slot source value? Or use `PERSONAL`?
-
-### NOT needed for creation modal
-- Custom stats system (deferred — see prior plan rev 3)
-- Capability modes (deferred — see prior plan rev 3)
-- Token resolver (deferred — see prior plan rev 3)
-- Condition evaluator (deferred — see prior plan rev 3)
-
-The creation modal just needs to **organize and save the data** the schema already supports. The runtime engine is its own later concern.
+### Probably NOT needed for v1 modal
+- (Q1 resolved) No `ARCHETYPE` slot source needed — archetype is a template kind, slots get PERSONAL
+- (Q2 resolved) PERSONAL/LEVEL_UP/TRAINING/DM distinction stays in schema but not surfaced in v1 modal UI
+- (Q5 resolved) Visibility is `is_public` on the character row — already a standard pattern
 
 ---
 
@@ -477,49 +474,62 @@ After 8.7f, character creation is complete. The character sheet work (8.2-8.5 in
 
 ## Open questions (need user input)
 
-### Q1: Slot source for archetypes
+### Q1: Slot source for archetypes — RESOLVED 2026-07-17
 
-The schema has `RACE | BACKGROUND | PERSONAL | TRAINING | LEVEL_UP | DM`. There's no `ARCHETYPE` value. The user wants multi-tab with race/bg/archetype as separate tabs.
+User clarification: archetypes are template kinds (like race/background), NOT slot-source values. The existing `template_kind` enum already has `RACE | BACKGROUND | ARCHETYPE`.
 
-**Three options:**
-- (a) Add `ARCHETYPE` as a new enum value (migration)
-- (b) Use `PERSONAL` for archetype slots (simplest, no migration)
-- (c) Treat archetype slots specially — they're not "source-assigned", they're picked from templates table
+The slot-source enum (`RACE | BACKGROUND | PERSONAL | TRAINING | LEVEL_UP | DM`) is **about how the character acquired the slot**, NOT which template it came from. The values `RACE` and `BACKGROUND` in the slot-source enum refer to slots that come from those templates.
 
-**My recommendation:** (a) Add `ARCHETYPE` for clarity. The migration is small.
+**Resolution:** No new source value needed. The multi-tab layout maps:
+- **Race tab** → slots with source = RACE (auto-set when slotted here)
+- **Background tab** → slots with source = BACKGROUND
+- **Archetype tab** → slots with source = PERSONAL by default (archetype is template kind, not slot source)
+- **Personal catch-all** → slots with source = PERSONAL
 
-### Q2: PERSONAL vs LEVEL_UP semantics
+**Surface in v1 modal:** RACE, BACKGROUND, PERSONAL (auto-set based on tab). Hide TRAINING, LEVEL_UP, DM — they exist in the enum for future DM bookkeeping but aren't implemented yet. The user didn't know what DM meant, confirming it's an unimplemented legacy value.
 
-When user slots a primitive at lvl 16 (high-level character), should it default to:
-- `PERSONAL` (permanent from creation)?
-- `LEVEL_UP` (acquired via leveling up, can be lost)?
+### Q2: PERSONAL vs LEVEL_UP semantics — RESOLVED 2026-07-17
 
-**My recommendation:** Default new slots to `PERSONAL`. User can explicitly mark as `LEVEL_UP` if it's something acquired during play. Same with `TRAINING` (in-game training) and `DM` (DM-granted).
+User clarification: doesn't understand the distinction because nothing uses it yet. Confirmed by codebase search: no code reads or writes these values, just defaults to PERSONAL.
 
-### Q3: "Slot into character" click behavior
+**Resolution:** In v1 modal, only PERSONAL is surfaced for non-template slots. The character has a single BU total — no per-source subtotals in v1. The enum values stay in the schema for future DM bookkeeping tools.
 
-When user is in primitive editor and clicks "Slot into character":
-- (A) Open modal immediately (interrupt flow)
-- (B) Add to pending queue (FAB badge), user opens modal later
-- (C) Inline dialog asking where to slot
+**Future:** When DM tools are built (later phase), they can use these values to filter "show me all slots acquired via level-up at level 5" etc.
 
-**My recommendation:** (B) Default. (A) shortcut when modal already open.
+### Q3: "Slot into character" click behavior — RESOLVED 2026-07-17
 
-### Q4: Items tab — create from scratch vs pick from library
+**User picked: Option B (pending queue with FAB badge).**
 
-Items tab should support:
-- Picking items from library (existing flow)
-- Linking to `/sandbox/blueprint?build=item` for new item authoring (separate tab)
+When user is editing a primitive and clicks "Slot into character":
+1. Component checks if character modal is open
+2. If **modal closed**: open modal + add primitive to `pendingSlots` queue. FAB shows badge "1 pending".
+3. If **modal open**: drop primitive directly into modal (skip queue).
 
-**My recommendation:** Both. "Slot from library" + "Create new item" buttons side by side.
+User assigns the slot to a tab (Race/Background/Archetype/Personal) when they open the modal.
 
-### Q5: Save flow
+### Q4: Items tab — RESOLVED 2026-07-17
 
-- (A) Auto-save on every change
-- (B) Save button at the bottom of the modal
-- (C) Auto-save draft + explicit "Publish" button
+User clarification: the Items tab is just another slot-source target, like Race/Background. The library action buttons are `Load into Build` / `Slot into Build` / `Slot into Character`.
 
-**My recommendation:** (C) Hybrid. Auto-save draft to local storage every 5s when dirty. Explicit "Save" button writes to server. "Publish" only for new characters (first save creates the row).
+**Resolution:** Items tab in the modal shows:
+- "+ Slot item from library" button (uses the same library picker pattern as primitives)
+- "+ Create new item" link goes to `/sandbox/blueprint?build=item` (separate tab, opens new tab — same pattern as preview)
+- Items are slotted with source = PERSONAL (separate from race/bg/archetype semantics)
+
+No special "create from scratch inside the modal" needed for v1.
+
+### Q5: Save flow — RESOLVED 2026-07-17
+
+**User picked: Auto-save draft + explicit publish (with visibility selector).**
+
+- **Auto-save draft** to local storage every 5s when dirty (no server roundtrip)
+- **Save button** at the bottom of the modal writes to server
+  - For new character: POST `/api/characters` → creates row
+  - For edit character: PATCH `/api/characters/[id]` → updates row
+- **Visibility selector** in the save flow: Private / Followers / Public (matches existing visibility model on library items)
+- The character has an `is_public` flag like other entities — drives who can see it
+
+This matches the existing visibility model used by primitives/effects/capabilities/etc. — no new pattern needed.
 
 ---
 
