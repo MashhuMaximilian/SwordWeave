@@ -15,6 +15,8 @@ import {
   characterVersions,
   primitiveVersions,
   templateVersions,
+  effectVersions,
+  itemVersions,
   users,
 } from "@/db/schema";
 import {
@@ -26,6 +28,8 @@ export type VersionTargetType =
   | "PRIMITIVE"
   | "CAPABILITY"
   | "CHARACTER"
+  | "EFFECT"
+  | "ITEM"
   | "RACE_TEMPLATE"
   | "BACKGROUND_TEMPLATE"
   | "ARCHETYPE_TEMPLATE";
@@ -229,6 +233,48 @@ async function fetchVersionRows(
       .then((rs) => rs as RawVersionRow[]);
   }
 
+  if (type === "EFFECT") {
+    return db
+      .select({
+        id: effectVersions.id,
+        versionNumber: effectVersions.versionNumber,
+        deltaKind: effectVersions.deltaKind,
+        snapshot: effectVersions.snapshot,
+        publishedAt: effectVersions.publishedAt,
+        publishedByUserId: effectVersions.publishedByUserId,
+        publisherUsername: users.username,
+        publisherDisplayName: users.displayName,
+        publisherIsAnonymized: users.isAnonymized,
+        publisherDeletedAt: users.deletedAt,
+      })
+      .from(effectVersions)
+      .leftJoin(users, eq(users.id, effectVersions.publishedByUserId))
+      .where(eq(effectVersions.effectId, targetId))
+      .orderBy(asc(effectVersions.versionNumber))
+      .then((rs) => rs as RawVersionRow[]);
+  }
+
+  if (type === "ITEM") {
+    return db
+      .select({
+        id: itemVersions.id,
+        versionNumber: itemVersions.versionNumber,
+        deltaKind: itemVersions.deltaKind,
+        snapshot: itemVersions.snapshot,
+        publishedAt: itemVersions.publishedAt,
+        publishedByUserId: itemVersions.publishedByUserId,
+        publisherUsername: users.username,
+        publisherDisplayName: users.displayName,
+        publisherIsAnonymized: users.isAnonymized,
+        publisherDeletedAt: users.deletedAt,
+      })
+      .from(itemVersions)
+      .leftJoin(users, eq(users.id, itemVersions.publishedByUserId))
+      .where(eq(itemVersions.itemId, targetId))
+      .orderBy(asc(itemVersions.versionNumber))
+      .then((rs) => rs as RawVersionRow[]);
+  }
+
   if (type === "CHARACTER") {
     return db
       .select({
@@ -297,6 +343,8 @@ async function resolveTargetName(
     capabilities,
     characters,
     templates,
+    effects,
+    items,
   } = await import("@/db/schema");
 
   // Phase 8: per-entity iconography. We select the same 4 columns
@@ -327,6 +375,34 @@ async function resolveTargetName(
   }
   if (type === "CAPABILITY") {
     const row = await db.query.capabilities.findFirst({
+      where: (table, { eq }) => eq(table.id, id),
+      columns: { name: true, ...iconCols },
+    });
+    if (!row) return null;
+    return {
+      name: row.name,
+      iconSource: row.iconSource ?? null,
+      iconKey: row.iconKey ?? null,
+      iconUrl: row.iconUrl ?? null,
+      iconColor: row.iconColor ?? "#ffffff",
+    };
+  }
+  if (type === "EFFECT") {
+    const row = await db.query.effects.findFirst({
+      where: (table, { eq }) => eq(table.id, id),
+      columns: { name: true, ...iconCols },
+    });
+    if (!row) return null;
+    return {
+      name: row.name,
+      iconSource: row.iconSource ?? null,
+      iconKey: row.iconKey ?? null,
+      iconUrl: row.iconUrl ?? null,
+      iconColor: row.iconColor ?? "#ffffff",
+    };
+  }
+  if (type === "ITEM") {
+    const row = await db.query.items.findFirst({
       where: (table, { eq }) => eq(table.id, id),
       columns: { name: true, ...iconCols },
     });

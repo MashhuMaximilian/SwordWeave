@@ -31,6 +31,8 @@ function parseCompositeId(raw: string): {
     "PRIMITIVE",
     "CAPABILITY",
     "CHARACTER",
+    "EFFECT",
+    "ITEM",
     "RACE_TEMPLATE",
     "BACKGROUND_TEMPLATE",
     "ARCHETYPE_TEMPLATE",
