@@ -48,8 +48,8 @@ import { useModalStack } from "@/components/ui/modal-stack";
 import { cn } from "@/lib/utils";
 import { IconDisplay } from "@/components/icons/icon-display";
 
-/** Teal used for unselected FAB build icon (matches --primary). */
-const FAB_ICON_TEAL = "#008ca3";
+/** Color for the FAB build icon — white to match the lucide icons. */
+const FAB_ICON_COLOR = "#ffffff";
 
 type DrawerTab = "build" | "preview" | null;
 
@@ -357,8 +357,8 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
           <IconDisplay
             iconSource="GAME_ICONS"
             iconKey="lorc/anvil-impact"
-            iconColor={FAB_ICON_TEAL}
-            size={16}
+            iconColor={FAB_ICON_COLOR}
+            size={18}
             alt="Build & Preview"
           />
         ),

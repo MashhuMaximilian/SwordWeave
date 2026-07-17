@@ -64,7 +64,7 @@ function normalizeHex(input: string | null): string | null {
 // recolor the icon's solid mass, not thin outlines. The icon CSS file
 // itself uses currentColor in a few places — we leave those alone so
 // authors can still style icons via parent CSS when needed.
-function recolorSvg(svg: string, color: string): string {
+function recolorSvg(svg: string, color: string, outline = false): string {
   // Pre-lowercase so matches are case-insensitive (the official pack is
   // all-lowercase but be safe).
   const lower = svg.toLowerCase();
@@ -84,6 +84,15 @@ function recolorSvg(svg: string, color: string): string {
   // uses for fill (Lorc icons occasionally do this). Replace with the
   // requested color so the icon actually renders in the chosen color.
   out = out.replace(/fill=["']currentColor["']/gi, `fill="${color}"`);
+
+  // Outline mode: hollow the icon — drop all fills (including the color we
+  // just applied) and draw the shapes with a colored stroke instead. This
+  // matches the stroke-based lucide icons used elsewhere in the UI.
+  if (outline) {
+    out = out.replace(/fill=["'][^"']*["']/gi, 'fill="none"');
+    out = out.replace(/stroke=["'][^"']*["']/gi, `stroke="${color}"`);
+    out = out.replace(/<svg([^>]*)>/i, `<svg$1 stroke="${color}" stroke-width="2" fill="none">`);
+  }
   return out;
 }
 
@@ -138,6 +147,10 @@ export async function GET(
     return new NextResponse("Invalid color", { status: 400 });
   }
 
+  // 3b. Outline (hollow) variant — converts solid fills to strokes so the
+  // icon reads as a line drawing, matching the lucide icons elsewhere.
+  const outline = req.nextUrl.searchParams.get("outline") === "1";
+
   // 4. Fetch + recolor. The result is cached at the edge by Vercel for
   // 1 year (immutable) keyed by full URL including the color query param.
   const upstream = await fetchUpstream(author, slug);
@@ -145,7 +158,7 @@ export async function GET(
     return new NextResponse("Not found upstream", { status: 404 });
   }
 
-  const recolored = recolorSvg(upstream, color);
+  const recolored = recolorSvg(upstream, color, outline);
 
   return new NextResponse(recolored, {
     headers: {

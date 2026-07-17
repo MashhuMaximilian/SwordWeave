@@ -33,8 +33,8 @@ import {
 import { cn } from "@/lib/utils";
 import { IconDisplay } from "@/components/icons/icon-display";
 
-/** Teal used for the unselected build icon (matches --primary). */
-const BUILD_ICON_TEAL = "#008ca3";
+/** Color for build-column game-icons — white to match the lucide icons. */
+const BUILD_ICON_COLOR = "#ffffff";
 /**
  * SandboxLayout — three-column resizable shell used by every /sandbox/* page.
  *
@@ -455,7 +455,7 @@ function DesktopSandboxLayout({
             <IconDisplay
               iconSource="GAME_ICONS"
               iconKey="lorc/anvil-impact"
-              iconColor={BUILD_ICON_TEAL}
+              iconColor={BUILD_ICON_COLOR}
               size={16}
               alt="Build"
             />
@@ -553,8 +553,8 @@ function TabletSandboxLayout({
               <IconDisplay
                 iconSource="GAME_ICONS"
                 iconKey="lorc/anvil-impact"
-                iconColor={BUILD_ICON_TEAL}
-                size={16}
+                iconColor={BUILD_ICON_COLOR}
+                size={18}
                 alt="Build"
               />
             }
@@ -835,8 +835,8 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
                   <IconDisplay
                     iconSource="GAME_ICONS"
                     iconKey="lorc/anvil-impact"
-                    iconColor={BUILD_ICON_TEAL}
-                    size={16}
+                    iconColor={BUILD_ICON_COLOR}
+                    size={18}
                     alt="Build"
                   />
                 )
@@ -866,8 +866,8 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
                       <IconDisplay
                         iconSource="GAME_ICONS"
                         iconKey="lorc/anvil-impact"
-                        iconColor={BUILD_ICON_TEAL}
-                        size={12}
+                        iconColor={BUILD_ICON_COLOR}
+                        size={14}
                         alt="Build"
                       /> Build
                     </button>
@@ -958,8 +958,8 @@ function RestoreColumnButton({ columnKey }: { columnKey: ColumnKey }) {
         <IconDisplay
           iconSource="GAME_ICONS"
           iconKey="lorc/anvil-impact"
-          iconColor={BUILD_ICON_TEAL}
-          size={16}
+          iconColor={BUILD_ICON_COLOR}
+          size={18}
           alt="Show Build"
         />
       ),

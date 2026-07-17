@@ -204,7 +204,7 @@ function ListItem({
       {/* Phase 8: entity icon to the left of the text. Falls back to a
           muted glyph when no icon is set, so the layout doesn't shift
           between rows. */}
-      <div className="shrink-0">
+      <div className="flex w-12 shrink-0 flex-col items-center gap-1">
         {item.iconSource ? (
           <IconDisplay
             iconSource={item.iconSource}
@@ -217,11 +217,16 @@ function ListItem({
           />
         ) : (
           <div
-            aria-hidden="true"
+            aria-hidden
             className="flex size-9 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
           >
             {item.targetType.replace(/_/g, " ").slice(0, 3)}
           </div>
+        )}
+        {item.buCost !== null && (
+          <span className="rounded-full bg-primary/10 px-1.5 py-0 text-center font-mono text-[10px] font-semibold text-primary">
+            {item.buCost} BU
+          </span>
         )}
       </div>
       <div className="min-w-0 flex-1">
@@ -231,11 +236,6 @@ function ListItem({
             {item.targetType.replace(/_/g, " ").toLowerCase()}
             {item.category ? ` · ${item.category.replace(/_/g, " ")}` : ""}
           </span>
-          {item.buCost !== null && (
-            <span className="rounded-full bg-primary/10 px-1.5 py-0 font-mono text-[10px] font-semibold text-primary">
-              {item.buCost} BU
-            </span>
-          )}
         </div>
         {item.description && (
           <div className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-muted-foreground [&_p]:m-0 [&_strong]:font-semibold [&_em]:italic">
@@ -311,25 +311,32 @@ function GridCard({
           viewport, text-sm below md). The "sm" / "md" breakpoints
           inherit the size from the parent, so we only need one
           explicit class per tier. */}
-      <header className="flex items-center gap-2">
-        {item.iconSource ? (
-          <IconDisplay
-            iconSource={item.iconSource}
-            iconKey={item.iconKey}
-            iconUrl={item.iconUrl}
-            iconColor={item.iconColor}
-            size={28}
-            alt={item.name}
-            className="shrink-0"
-          />
-        ) : (
-          <div
-            aria-hidden="true"
-            className="flex size-7 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-[9px] font-medium uppercase tracking-wide text-muted-foreground"
-          >
-            {item.targetType.replace(/_/g, " ").slice(0, 3)}
-          </div>
-        )}
+      <header className="flex items-start gap-2">
+        <div className="flex w-10 shrink-0 flex-col items-center gap-1">
+          {item.iconSource ? (
+            <IconDisplay
+              iconSource={item.iconSource}
+              iconKey={item.iconKey}
+              iconUrl={item.iconUrl}
+              iconColor={item.iconColor}
+              size={28}
+              alt={item.name}
+              className="shrink-0"
+            />
+          ) : (
+            <div
+              aria-hidden
+              className="flex size-7 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-[9px] font-medium uppercase tracking-wide text-muted-foreground"
+            >
+              {item.targetType.replace(/_/g, " ").slice(0, 3)}
+            </div>
+          )}
+          {item.buCost !== null && (
+            <span className="rounded-full bg-primary/10 px-1 py-0 text-center font-mono text-[10px] font-semibold text-primary">
+              {item.buCost} BU
+            </span>
+          )}
+        </div>
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-base font-semibold leading-tight md:text-sm">
             {item.name}
@@ -339,11 +346,6 @@ function GridCard({
             {item.category ? ` · ${item.category.replace(/_/g, " ")}` : ""}
           </p>
         </div>
-        {item.buCost !== null && (
-          <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0 font-mono text-[10px] font-semibold text-primary">
-            {item.buCost} BU
-          </span>
-        )}
       </header>
 
       {item.description && (

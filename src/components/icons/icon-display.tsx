@@ -50,6 +50,8 @@ export interface IconDisplayProps {
   /** When true, render with eager loading + high fetchpriority for
    *  above-the-fold placement. Default lazy. */
   priority?: boolean | undefined;
+  /** When true, request the outline (hollow) variant from the proxy. */
+  outline?: boolean | undefined;
 }
 
 export function IconDisplay({
@@ -61,6 +63,7 @@ export function IconDisplay({
   alt,
   className,
   priority = false,
+  outline = false,
 }: IconDisplayProps) {
   if (!iconSource) {
     // No icon set on this entity. Render a subtle fallback square so
@@ -95,7 +98,7 @@ export function IconDisplay({
   if (iconSource === "GAME_ICONS") {
     if (!iconKey) return null;
     const color = encodeURIComponent(iconColor ?? "#ffffff");
-    const src = `/api/icons/game/${iconKey}?color=${color}`;
+    const src = `/api/icons/game/${iconKey}?color=${color}${outline ? "&outline=1" : ""}`;
     return (
       <img
         src={src}

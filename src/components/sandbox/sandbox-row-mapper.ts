@@ -95,6 +95,9 @@ type SandboxTemplate = {
   iconKey: string | null;
   iconUrl: string | null;
   iconColor: string | null;
+  /** Composed primitive links — used to derive the template's BU cost
+   *  (sum of slotted primitive costs, mirroring template-form.tsx). */
+  primitiveLinks?: Array<{ primitive: { buCost: number }; quantity: number }>;
 };
 
 type SandboxItem = {
@@ -244,6 +247,7 @@ export function templateToLibraryItem(
       : row.kind === "BACKGROUND"
         ? "BACKGROUND_TEMPLATE"
         : "ARCHETYPE_TEMPLATE";
+  const buCost = computeComposedBu(row.primitiveLinks);
   return {
     id: `${targetType}:${row.id}`,
     targetType,
@@ -251,7 +255,7 @@ export function templateToLibraryItem(
     name: row.name,
     description: row.description ?? row.suggestedTraits ?? null,
     category: row.kind,
-    buCost: null,
+    buCost,
     ...EMPTY_AUTHORS,
     ...EMPTY_ENGAGEMENT,
     tags: [],

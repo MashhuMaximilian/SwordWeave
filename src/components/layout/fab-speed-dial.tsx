@@ -43,8 +43,8 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { IconDisplay } from "@/components/icons/icon-display";
 
-/** Teal used for unselected FAB nav/build icons (matches --primary). */
-const FAB_ICON_TEAL = "#008ca3";
+/** Color for FAB nav/build game-icons — white to match the lucide icons. */
+const FAB_ICON_COLOR = "#ffffff";
 /** Action button: toggles a state, calls onClick. */
 export type FabAction = {
   kind?: "action";
@@ -428,8 +428,9 @@ export const NAV_LINKS: FabItem[] = [
       <IconDisplay
         iconSource="GAME_ICONS"
         iconKey="lorc/jigsaw-piece"
-        iconColor={FAB_ICON_TEAL}
-        size={16}
+        iconColor={FAB_ICON_COLOR}
+        outline
+        size={18}
         alt="Grammar"
       />
     ),
@@ -443,8 +444,8 @@ export const NAV_LINKS: FabItem[] = [
       <IconDisplay
         iconSource="GAME_ICONS"
         iconKey="caro-asercion/tarot-11-justice"
-        iconColor={FAB_ICON_TEAL}
-        size={16}
+        iconColor={FAB_ICON_COLOR}
+        size={18}
         alt="Templates"
       />
     ),
