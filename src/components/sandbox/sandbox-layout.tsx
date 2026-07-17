@@ -17,7 +17,6 @@ import {
   Maximize2,
   Minimize2,
   RotateCcw,
-  Wrench,
 } from "lucide-react";
 import {
   createContext,
@@ -32,7 +31,10 @@ import {
 } from "react";
 
 import { cn } from "@/lib/utils";
+import { IconDisplay } from "@/components/icons/icon-display";
 
+/** Teal used for the unselected build icon (matches --primary). */
+const BUILD_ICON_TEAL = "#008ca3";
 /**
  * SandboxLayout — three-column resizable shell used by every /sandbox/* page.
  *
@@ -449,7 +451,15 @@ function DesktopSandboxLayout({
         <ColumnChrome
           columnKey="builder"
           title="Build"
-          icon={<Wrench className="size-4" />}
+          icon={
+            <IconDisplay
+              iconSource="GAME_ICONS"
+              iconKey="lorc/anvil-impact"
+              iconColor={BUILD_ICON_TEAL}
+              size={16}
+              alt="Build"
+            />
+          }
           isHidden={false}
           hydrated={hydrated}
         />
@@ -537,7 +547,18 @@ function TabletSandboxLayout({
           <div className="flex-1 min-h-0 overflow-auto">{library}</div>
         </div>
         <div className="flex h-full min-h-0 flex-1 flex-col">
-          <TabletColumnChrome title="Build" icon={<Wrench className="size-4" />} />
+          <TabletColumnChrome
+            title="Build"
+            icon={
+              <IconDisplay
+                iconSource="GAME_ICONS"
+                iconKey="lorc/anvil-impact"
+                iconColor={BUILD_ICON_TEAL}
+                size={16}
+                alt="Build"
+              />
+            }
+          />
           <div className="flex-1 min-h-0 overflow-auto">{builder}</div>
         </div>
         {previewVisible ? (
@@ -811,7 +832,13 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
                 sandboxBottomTab === "preview" ? (
                   <Eye className="size-4" />
                 ) : (
-                  <Wrench className="size-4" />
+                  <IconDisplay
+                    iconSource="GAME_ICONS"
+                    iconKey="lorc/anvil-impact"
+                    iconColor={BUILD_ICON_TEAL}
+                    size={16}
+                    alt="Build"
+                  />
                 )
               }
               action={
@@ -836,7 +863,13 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
                           : "text-muted-foreground hover:text-foreground",
                       )}
                     >
-                      <Wrench className="size-3" /> Build
+                      <IconDisplay
+                        iconSource="GAME_ICONS"
+                        iconKey="lorc/anvil-impact"
+                        iconColor={BUILD_ICON_TEAL}
+                        size={12}
+                        alt="Build"
+                      /> Build
                     </button>
                     <button
                       type="button"
@@ -921,7 +954,15 @@ function RestoreColumnButton({ columnKey }: { columnKey: ColumnKey }) {
       edge: "left-0",
     },
     builder: {
-      icon: <Wrench className="size-4" />,
+      icon: (
+        <IconDisplay
+          iconSource="GAME_ICONS"
+          iconKey="lorc/anvil-impact"
+          iconColor={BUILD_ICON_TEAL}
+          size={16}
+          alt="Show Build"
+        />
+      ),
       label: "Show Build",
       edge: "left-1/2 -translate-x-1/2",
     },

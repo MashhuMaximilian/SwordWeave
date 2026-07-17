@@ -20,6 +20,7 @@ import { LibraryToolbar, type LibraryToolbarState } from "@/components/library/l
 import { LibraryTable } from "@/components/library/library-table";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-query";
+import { sortLibraryItems } from "@/lib/publishing/library-query";
 import { cn } from "@/lib/utils";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
@@ -352,7 +353,7 @@ export function BlueprintLibrary({
       }
     }
 
-    return items;
+    return sortLibraryItems(items, toolbarState.sort);
   }, [build, libraryItems, toolbarState]);
 
   // Card click → push to modal stack. The "Load into build" action still

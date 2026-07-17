@@ -15,6 +15,7 @@ interface SortUrlMap {
   RECENT: string;
   FORKS: string;
   ALPHABETICAL: string;
+  BU: string;
 }
 
 interface ViewUrlMap {

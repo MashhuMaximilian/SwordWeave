@@ -357,6 +357,7 @@ export function LibraryToolbar({
                 ["FORKS", "Most forked"],
                 ["RECENT", "Recent"],
                 ["ALPHABETICAL", "A → Z"],
+                ["BU", "BU cost"],
               ] as const
             ).map(([key, label]) => {
               const active = state.sort === key;

@@ -27,7 +27,6 @@ import {
   Columns2,
   Filter,
   Hammer,
-  Library as LibraryIcon,
   Maximize2,
   Menu,
   Minimize2,
@@ -42,7 +41,10 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { IconDisplay } from "@/components/icons/icon-display";
 
+/** Teal used for unselected FAB nav/build icons (matches --primary). */
+const FAB_ICON_TEAL = "#008ca3";
 /** Action button: toggles a state, calls onClick. */
 export type FabAction = {
   kind?: "action";
@@ -370,11 +372,6 @@ export function FabSpeedDial({
  */
 export const NAV_LINKS: FabItem[] = [
   {
-    kind: "divider",
-    key: "div-nav",
-    label: "Navigate",
-  },
-  {
     kind: "link",
     key: "home",
     // Logo placed here 2026-07-14 — replaces the lucide Home icon
@@ -427,14 +424,30 @@ export const NAV_LINKS: FabItem[] = [
     kind: "link",
     key: "sandbox-grammar",
     label: "Grammar",
-    icon: <LibraryIcon className="size-4" />,
+    icon: (
+      <IconDisplay
+        iconSource="GAME_ICONS"
+        iconKey="lorc/jigsaw-piece"
+        iconColor={FAB_ICON_TEAL}
+        size={16}
+        alt="Grammar"
+      />
+    ),
     href: "/sandbox/grammar?build=primitive",
   },
   {
     kind: "link",
     key: "sandbox-templates",
     label: "Templates",
-    icon: <UserRound className="size-4" />,
+    icon: (
+      <IconDisplay
+        iconSource="GAME_ICONS"
+        iconKey="caro-asercion/tarot-11-justice"
+        iconColor={FAB_ICON_TEAL}
+        size={16}
+        alt="Templates"
+      />
+    ),
     href: "/sandbox/blueprint?build=template",
   },
   {
@@ -465,7 +478,6 @@ export const FabIcons = {
   Columns2,
   Filter,
   Hammer,
-  LibraryIcon,
   Maximize2,
   Menu,
   Minimize2,

@@ -19,6 +19,7 @@ import { LibraryToolbar, type LibraryToolbarState } from "@/components/library/l
 import { LibraryTable } from "@/components/library/library-table";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-query";
+import { sortLibraryItems } from "@/lib/publishing/library-query";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import { useModalStack } from "@/components/ui/modal-stack";
@@ -233,7 +234,7 @@ export function GrammarLibrary({
   // We now apply every toolbar state field that the result set can
   // meaningfully filter on.
   const filteredItems = useMemo(() => {
-    return libraryItems.filter((item) => {
+    const filtered = libraryItems.filter((item) => {
       // Only show items of the types available in this build mode.
       const allowedKeys = availableTypes.map((t) => t.key);
       if (!allowedKeys.includes(item.targetType) && !allowedKeys.includes("ALL")) {
@@ -304,6 +305,7 @@ export function GrammarLibrary({
       }
       return true;
     });
+    return sortLibraryItems(filtered, toolbarState.sort);
   }, [libraryItems, availableTypes, toolbarState]);
 
   // Right-side filter panel slot: render the full toolbar inside it.

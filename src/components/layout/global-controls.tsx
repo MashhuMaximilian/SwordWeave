@@ -43,10 +43,13 @@ import {
   Settings,
   Sun,
   User as UserIcon,
-  Wrench,
 } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { cn } from "@/lib/utils";
+import { IconDisplay } from "@/components/icons/icon-display";
+
+/** Teal used for unselected FAB build icon (matches --primary). */
+const FAB_ICON_TEAL = "#008ca3";
 
 type DrawerTab = "build" | "preview" | null;
 
@@ -350,7 +353,15 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         // PREVIEW tab in split mode — which IS populated — and the
         // build tab otherwise.
         label: "Build & Preview",
-        icon: <Wrench className="size-4" />,
+        icon: (
+          <IconDisplay
+            iconSource="GAME_ICONS"
+            iconKey="lorc/anvil-impact"
+            iconColor={FAB_ICON_TEAL}
+            size={16}
+            alt="Build & Preview"
+          />
+        ),
         onClick: () => openDrawer(sandboxSplit ? "preview" : "build"),
       },
       // Filters only appear on routes that actually open the filter panel

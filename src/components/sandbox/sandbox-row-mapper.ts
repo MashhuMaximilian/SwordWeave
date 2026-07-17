@@ -16,6 +16,25 @@
 
 import type { LibraryItem } from "@/lib/publishing/library-query";
 
+/**
+ * Derive an entity's BU cost from its composed primitive links. Mirrors
+ * the formula used by the sandbox preview pane (sandbox-preview-modal.tsx)
+ * so the card and the preview always agree:
+ *   sum over links of |primitive.buCost * quantity|
+ * Returns null when there are no links (e.g. an effect/capability with no
+ * primitives composed yet).
+ */
+function computeComposedBu(
+  links: Array<{ primitive: { buCost: number }; quantity: number }> | undefined,
+): number | null {
+  if (!links || links.length === 0) return null;
+  const total = links.reduce(
+    (sum, l) => sum + Math.abs((l.primitive?.buCost ?? 0) * (l.quantity ?? 1)),
+    0,
+  );
+  return total;
+}
+
 type SandboxPrimitive = {
   id: number;
   name: string;
@@ -42,6 +61,9 @@ type SandboxEffect = {
   iconKey: string | null;
   iconUrl: string | null;
   iconColor: string | null;
+  /** Composed primitive links — used to derive the effect's BU cost
+   *  (same formula the preview pane uses). */
+  primitiveLinks?: Array<{ primitive: { buCost: number }; quantity: number }>;
 };
 
 type SandboxCapability = {
@@ -57,6 +79,9 @@ type SandboxCapability = {
   iconKey: string | null;
   iconUrl: string | null;
   iconColor: string | null;
+  /** Composed primitive links — used to derive the capability's BU cost
+   *  (same formula the preview pane uses). */
+  primitiveLinks?: Array<{ primitive: { buCost: number }; quantity: number }>;
 };
 
 type SandboxTemplate = {
@@ -162,6 +187,7 @@ export function effectToLibraryItem(
   row: SandboxEffect,
   visibility: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC" = "PRIVATE",
 ): LibraryItem {
+  const buCost = computeComposedBu(row.primitiveLinks);
   return {
     id: `EFFECT:${row.id}`,
     targetType: "EFFECT",
@@ -169,7 +195,7 @@ export function effectToLibraryItem(
     name: row.name,
     description: row.narrativeDescription,
     category: row.sourceOrigin,
-    buCost: null,
+    buCost,
     ...EMPTY_AUTHORS,
     ...EMPTY_ENGAGEMENT,
     tags: row.tags ?? [],
@@ -186,6 +212,7 @@ export function capabilityToLibraryItem(
   row: SandboxCapability,
   visibility: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC" = "PRIVATE",
 ): LibraryItem {
+  const buCost = computeComposedBu(row.primitiveLinks);
   return {
     id: `CAPABILITY:${row.id}`,
     targetType: "CAPABILITY",
@@ -193,7 +220,7 @@ export function capabilityToLibraryItem(
     name: row.name,
     description: row.verboseDescription,
     category: row.type,
-    buCost: null,
+    buCost,
     ...EMPTY_AUTHORS,
     ...EMPTY_ENGAGEMENT,
     tags: row.tags ?? [],
