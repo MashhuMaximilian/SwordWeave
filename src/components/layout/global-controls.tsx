@@ -358,7 +358,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
             iconSource="GAME_ICONS"
             iconKey="lorc/anvil-impact"
             iconColor={FAB_ICON_COLOR}
-            size={18}
+            size={22}
             alt="Build & Preview"
           />
         ),

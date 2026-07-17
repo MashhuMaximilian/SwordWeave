@@ -554,7 +554,7 @@ function TabletSandboxLayout({
                 iconSource="GAME_ICONS"
                 iconKey="lorc/anvil-impact"
                 iconColor={BUILD_ICON_COLOR}
-                size={18}
+                size={22}
                 alt="Build"
               />
             }
@@ -836,7 +836,7 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
                     iconSource="GAME_ICONS"
                     iconKey="lorc/anvil-impact"
                     iconColor={BUILD_ICON_COLOR}
-                    size={18}
+                    size={22}
                     alt="Build"
                   />
                 )
@@ -867,7 +867,7 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
                         iconSource="GAME_ICONS"
                         iconKey="lorc/anvil-impact"
                         iconColor={BUILD_ICON_COLOR}
-                        size={14}
+                        size={18}
                         alt="Build"
                       /> Build
                     </button>
@@ -959,7 +959,7 @@ function RestoreColumnButton({ columnKey }: { columnKey: ColumnKey }) {
           iconSource="GAME_ICONS"
           iconKey="lorc/anvil-impact"
           iconColor={BUILD_ICON_COLOR}
-          size={18}
+          size={22}
           alt="Show Build"
         />
       ),

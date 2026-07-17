@@ -412,7 +412,7 @@ export const NAV_LINKS: FabItem[] = [
         iconSource="GAME_ICONS"
         iconKey="delapouite/bookshelf"
         iconColor={FAB_ICON_COLOR}
-        size={18}
+        size={22}
         alt="Library"
       />
     ),
@@ -427,7 +427,7 @@ export const NAV_LINKS: FabItem[] = [
         iconSource="GAME_ICONS"
         iconKey="delapouite/cosmic-egg"
         iconColor={FAB_ICON_COLOR}
-        size={18}
+        size={22}
         alt="My Creations"
       />
     ),
@@ -442,7 +442,7 @@ export const NAV_LINKS: FabItem[] = [
         iconSource="GAME_ICONS"
         iconKey="lorc/jigsaw-piece"
         iconColor={FAB_ICON_COLOR}
-        size={18}
+        size={22}
         alt="Grammar"
       />
     ),
@@ -457,7 +457,7 @@ export const NAV_LINKS: FabItem[] = [
         iconSource="GAME_ICONS"
         iconKey="caro-asercion/tarot-11-justice"
         iconColor={FAB_ICON_COLOR}
-        size={18}
+        size={22}
         alt="Templates"
       />
     ),
@@ -472,7 +472,7 @@ export const NAV_LINKS: FabItem[] = [
         iconSource="GAME_ICONS"
         iconKey="seregacthtuf/armor-blueprint"
         iconColor={FAB_ICON_COLOR}
-        size={18}
+        size={22}
         alt="Builds"
       />
     ),
