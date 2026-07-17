@@ -20,6 +20,7 @@ import { LibraryToolbar, type LibraryToolbarState } from "@/components/library/l
 import { LibraryTable } from "@/components/library/library-table";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-query";
+import { cn } from "@/lib/utils";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import { useModalStack } from "@/components/ui/modal-stack";
@@ -562,6 +563,46 @@ export function BlueprintLibrary({
           onOpenFilters={() => setFilterPanelOpen(true)}
           hasActiveFilters={hasActiveFilters}
         />
+        {/* PHASE-8 quick-filter: when in the template tab, surface a
+            dedicated Races / Backgrounds / Archetypes chip row directly
+            under the search bar. The full type-filter chips already
+            exist in the slide-out Filters panel, but the user wanted a
+            faster, always-visible inline filter scoped to just the
+            template sub-kinds (mirrors the side-panel behaviour, only
+            quicker, and only in this tab). */}
+        {build === "template" ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {(
+              [
+                { key: "RACE_TEMPLATE", label: "Races" },
+                { key: "BACKGROUND_TEMPLATE", label: "Backgrounds" },
+                { key: "ARCHETYPE_TEMPLATE", label: "Archetypes" },
+              ] as Array<{ key: LibraryTargetType; label: string }>
+            ).map((chip) => {
+              const active = toolbarState.typeFilter === chip.key;
+              return (
+                <button
+                  key={chip.key}
+                  type="button"
+                  onClick={() =>
+                    setToolbarState((prev) => ({
+                      ...prev,
+                      typeFilter: active ? "ALL" : chip.key,
+                    }))
+                  }
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    active
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-foreground hover:border-primary hover:text-primary",
+                  )}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-3">
