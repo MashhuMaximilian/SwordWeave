@@ -30,6 +30,12 @@ const nextConfig: NextConfig = {
   // keep working. Next preserves the incoming query string
   // (e.g. ?build=effect) across the redirect, so the correct tab still
   // opens on /atelier.
+  //
+  // The bare /sandbox index was a workshops hub whose cards all pointed at
+  // /atelier or the still-lived /sandbox/builds + /sandbox/characters
+  // sub-routes. It is now orphaned (the FAB links straight to /atelier),
+  // so we redirect the exact "/sandbox" segment to /atelier while leaving
+  // its /sandbox/builds and /sandbox/characters sub-routes intact.
   async redirects() {
     return [
       {
@@ -44,6 +50,11 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/sandbox/atelier",
+        destination: "/atelier",
+        permanent: false,
+      },
+      {
+        source: "/sandbox",
         destination: "/atelier",
         permanent: false,
       },
