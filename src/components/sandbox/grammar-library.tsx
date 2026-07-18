@@ -127,6 +127,14 @@ const GLOBAL_TYPES: Array<{ key: LibraryTargetType | "ALL"; label: string }> = [
   { key: "ITEM", label: "Items" },
 ];
 
+// Group filters: a single chip that matches several concrete types. Used by
+// the "All mechanics" / "All heritages" quick-filter chips. The typeFilter
+// state can hold a group key; TYPE_GROUPS resolves it to concrete types.
+const TYPE_GROUPS: Record<string, LibraryTargetType[]> = {
+  GROUP_MECHANICS: ["PRIMITIVE", "EFFECT", "CAPABILITY"],
+  GROUP_HERITAGES: ["RACE_TEMPLATE", "BACKGROUND_TEMPLATE", "ARCHETYPE_TEMPLATE"],
+};
+
 export function GrammarLibrary({
   build,
   libraryItems,
@@ -274,12 +282,17 @@ export function GrammarLibrary({
         const q = toolbarState.search.toLowerCase();
         if (!item.name.toLowerCase().includes(q)) return false;
       }
-      // Apply type filter (ALL = all available).
-      if (
-        toolbarState.typeFilter !== "ALL" &&
-        item.targetType !== toolbarState.typeFilter
-      ) {
-        return false;
+      // Apply type filter. "ALL" = everything available in this build
+      // mode. Group keys (GROUP_MECHANICS / GROUP_HERITAGES) match a set
+      // of concrete types. Otherwise it's a single concrete type.
+      const tf = toolbarState.typeFilter;
+      if (tf !== "ALL") {
+        const group = TYPE_GROUPS[tf as keyof typeof TYPE_GROUPS];
+        const allowedTf =
+          group && group.length ? group : [tf as LibraryTargetType];
+        if (!allowedTf.includes(item.targetType as LibraryTargetType)) {
+          return false;
+        }
       }
       // Apply category filter (primitives only — LibraryItem.category
       // is only set for primitive rows).
@@ -496,14 +509,15 @@ export function GrammarLibrary({
         {/* Collapsed Mechanics tab: quick-filter chips for the concrete
             kinds (mirrors the Heritage tab's chip row). */}
         {build === "mechanics" ? (
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="-mx-1 mt-2 flex flex-nowrap gap-1.5 overflow-x-auto px-1">
             {(
               [
-                { key: "ALL", label: "All mechanics" },
+                { key: "ALL", label: "All" },
+                { key: "GROUP_MECHANICS", label: "All mechanics" },
                 { key: "PRIMITIVE", label: "Primitives" },
                 { key: "EFFECT", label: "Effects" },
                 { key: "CAPABILITY", label: "Capabilities" },
-              ] as Array<{ key: LibraryTargetType | "ALL"; label: string }>
+              ] as Array<{ key: LibraryTargetType | "ALL" | "GROUP_MECHANICS"; label: string }>
             ).map((chip) => {
               const active = toolbarState.typeFilter === chip.key;
               return (
@@ -670,11 +684,13 @@ function SandboxPreviewBody({
                   // route to `RACE_TEMPLATE:<id>` etc. — `item.kind.toUpperCase()`
                   // produced `TEMPLATE:<id>` which 404'd.
                   openSourceHref: `/library/item/${libraryCompositeId(item)}`,
+                  sandboxPath: "/sandbox/atelier",
                 },
               }
             : {
                 callbacks: {
                   openSourceHref: `/library/item/${libraryCompositeId(item)}`,
+                  sandboxPath: "/sandbox/atelier",
                 },
               })}
         />

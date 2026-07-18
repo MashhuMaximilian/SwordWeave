@@ -321,6 +321,10 @@ export interface PreviewCallbacks {
   /** Optional "Open source page" URL. When set, the preview footer
    *  shows this link next to the version-history link on the same row. */
   openSourceHref?: string;
+  /** Optional override for the sandbox route the Fork button navigates to.
+   *  The Atelier page passes "/sandbox/atelier" so forking stays on the
+   *  unified page instead of bouncing to the legacy /sandbox/grammar route. */
+  sandboxPath?: string;
 }
 
 // -----------------------------------------------------------------------------
@@ -510,6 +514,7 @@ function PreviewFooter({
         authorId={eng.authorId}
         authorUsername={eng.authorUsername}
         currentUserId={eng.currentUserInternalId}
+        sandboxPath={callbacks.sandboxPath}
       />
       <div className="flex flex-wrap items-center justify-between gap-3 pb-1 text-xs">
         {/* Open source page is opt-in via callbacks. The sandbox preview

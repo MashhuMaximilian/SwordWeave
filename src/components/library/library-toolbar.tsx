@@ -28,7 +28,7 @@ export interface LibraryToolbarState {
   search: string;
   sort: LibrarySort;
   view: LibraryView;
-  typeFilter: LibraryTargetType | "ALL";
+  typeFilter: LibraryTargetType | "ALL" | "GROUP_MECHANICS" | "GROUP_HERITAGES";
   category: string;
   author: string;
   minLikes: string;

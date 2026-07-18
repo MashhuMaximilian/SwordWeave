@@ -68,6 +68,25 @@ function tabForKind(kind: AtelierEntityKind): AtelierTab {
   return kind;
 }
 
+// The concrete `build` value to put in the URL for a kind — matches the
+// proven deep-link format (?build=primitive&edit=…&intent=load) used by the
+// working Codex/Creations flows. The Atelier tab is a library filter, but the
+// URL must carry a concrete build so the server + form resolve it correctly.
+function concreteBuildForKind(kind: AtelierEntityKind): string {
+  switch (kind) {
+    case "primitive":
+      return "primitive";
+    case "effect":
+      return "effect";
+    case "capability":
+      return "capability";
+    case "template":
+      return "template";
+    case "item":
+      return "item";
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Row shapes (merged from the two legacy clients).
 // ---------------------------------------------------------------------------
@@ -325,6 +344,54 @@ export function AtelierSandboxClient({
     setSandboxFormDirty(formIsDirty || editing !== null);
   }, [formIsDirty, editing, setSandboxFormDirty]);
 
+  // Navigation guard: when the build has unsaved changes, warn before
+  // leaving the sandbox. The user wants to be able to navigate to
+  // /creations, /library, etc., but with a "discard changes or cancel"
+  // prompt rather than silently losing work (or being trapped).
+  //  - Internal <Link> clicks to a path outside /sandbox/atelier -> confirm.
+  //  - back/forward (popstate) + tab close/refresh (beforeunload) -> confirm.
+  useEffect(() => {
+    if (!formIsDirty) return;
+    const onAnchorClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey)
+        return;
+      const anchor = (e.target as HTMLElement | null)?.closest(
+        "a[href]",
+      ) as HTMLAnchorElement | null;
+      if (!anchor) return;
+      const href = anchor.getAttribute("href") ?? "";
+      // Only guard navigation away from the sandbox page.
+      if (href.startsWith("/sandbox/atelier")) return;
+      if (!href.startsWith("/")) return; // external / hash links ignored
+      const ok = window.confirm(
+        "You have unsaved changes in the build. Leaving will discard them. Continue?",
+      );
+      if (!ok) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    const onPop = (e: PopStateEvent) => {
+      if (!window.confirm("Discard unsaved build changes and leave?")) {
+        // Cancel the back/forward navigation by pushing the state back.
+        e.preventDefault?.();
+        window.history.pushState(null, "", window.location.href);
+      }
+    };
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    document.addEventListener("click", onAnchorClick, true);
+    window.addEventListener("popstate", onPop);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      document.removeEventListener("click", onAnchorClick, true);
+      window.removeEventListener("popstate", onPop);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [formIsDirty]);
+
   // Listen for the FAB "Build & Preview" action.
   //  - If the build column is EMPTY (no entity loaded and nothing typed),
   //    open the new-entity chooser (Point 4). This re-prompts even after
@@ -374,14 +441,15 @@ export function AtelierSandboxClient({
         return;
       }
       const { entityType, id } = action;
-      // Load into build: update the URL with the loaded entity + intent.
-      // The `build` param is intentionally left as-is (the tab is an
-      // independent library filter) — only ?edit / ?intent reflect the
-      // build contents, per the user's spec. The form renders from
-      // editing.kind, so no tab switch is needed.
+      // Load into build: update the URL with the loaded entity + intent +
+      // a CONCRETE build value (matching the proven deep-link format that
+      // already works from Codex/Creations). The active tab is an
+      // independent library filter, but the URL needs a concrete build so
+      // the server + form resolve the entity and the intent chip applies.
       const nextParams = new URLSearchParams(
         currentSearchParams?.toString() ?? "",
       );
+      nextParams.set("build", concreteBuildForKind(entityType));
       nextParams.set("edit", String(id));
       nextParams.set("intent", action.intent ?? "load");
       router.replace(

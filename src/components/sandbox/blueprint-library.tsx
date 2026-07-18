@@ -572,14 +572,15 @@ export function BlueprintLibrary({
             template sub-kinds (mirrors the side-panel behaviour, only
             quicker, and only in this tab). */}
         {build === "template" ? (
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="-mx-1 mt-2 flex flex-nowrap gap-1.5 overflow-x-auto px-1">
             {(
               [
-                { key: "ALL", label: "All heritages" },
+                { key: "ALL", label: "All" },
+                { key: "GROUP_HERITAGES", label: "All heritages" },
                 { key: "RACE_TEMPLATE", label: "Lineage" },
                 { key: "BACKGROUND_TEMPLATE", label: "Upbringing" },
                 { key: "ARCHETYPE_TEMPLATE", label: "Manifest" },
-              ] as Array<{ key: LibraryTargetType; label: string }>
+              ] as Array<{ key: LibraryTargetType | "ALL" | "GROUP_HERITAGES"; label: string }>
             ).map((chip) => {
               const active = toolbarState.typeFilter === chip.key;
               return (
@@ -762,11 +763,13 @@ function BlueprintPreviewBody({
                   // expects the full enum (`RACE_TEMPLATE` etc.). Use the
                   // shared helper so this can't drift again.
                   openSourceHref: `/library/item/${libraryCompositeId(item)}`,
+                  sandboxPath: "/sandbox/atelier",
                 },
               }
             : {
                 callbacks: {
                   openSourceHref: `/library/item/${libraryCompositeId(item)}`,
+                  sandboxPath: "/sandbox/atelier",
                 },
               })}
         />

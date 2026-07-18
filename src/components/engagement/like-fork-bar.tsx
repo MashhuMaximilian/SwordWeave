@@ -54,6 +54,13 @@ export interface LikeForkBarProps {
   /** Compact mode for browse cards (icon-only). */
   compact?: boolean;
   className?: string;
+  /**
+   * Override the sandbox route the Fork button navigates to. Defaults to
+   * the legacy route resolved by buildSandboxUrl (e.g. /sandbox/grammar).
+   * The Atelier page passes "/sandbox/atelier" so forking stays on the
+   * unified page instead of bouncing to the legacy route.
+   */
+  sandboxPath?: string | undefined;
 }
 
 type FlagReason =
@@ -262,7 +269,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
       setError("This content type can't be forked yet.");
       return;
     }
-    router.push(`${target.sandboxPath}${target.search}`);
+    router.push(`${props.sandboxPath ?? target.sandboxPath}${target.search}`);
   };
 
   /**
