@@ -18,6 +18,7 @@ import { ItemFormPreview } from "./item-form-preview";
 import { BlueprintLibrary } from "./blueprint-library";
 import { UnsavedChangesModal } from "./unsaved-changes-modal";
 import { useGlobalControls } from "@/components/layout/global-controls";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import type { SaveIntent } from "@/lib/publishing/save-intent";
 
@@ -241,6 +242,7 @@ export function BlueprintSandboxClient({
   // change.
   const { setSandboxFormDirty, openDrawer, sandboxSplit, setSandboxBottomTab } =
     useGlobalControls();
+  const isMobile = useIsMobile();
   // URL sync — when the user switches build mode via the bottom tab
   // bar, push ?build=<mode> so a refresh / deep-link lands on the same
   // mode. Without this the URL stays on whatever was set in the
@@ -260,10 +262,16 @@ export function BlueprintSandboxClient({
   // bottom tab.
   useEffect(() => {
     if (initialEditing !== null) {
-      if (sandboxSplit) {
-        setSandboxBottomTab("build");
-      } else {
-        openDrawer("build");
+      // The drawer is the MOBILE mechanism. On tablet/desktop the build
+      // form is already mounted inline in the middle column, so we must
+      // NOT open the drawer there (it would overlay the inline build —
+      // the "modal on desktop" bug). Only open on mobile.
+      if (isMobile) {
+        if (sandboxSplit) {
+          setSandboxBottomTab("build");
+        } else {
+          openDrawer("build");
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -328,8 +336,11 @@ export function BlueprintSandboxClient({
       setEditing({ kind: "item", row });
     }
     setFormIsDirty(false); // loaded entity starts pristine
-    // Open the build panel so the user actually sees the loaded row —
-    // same fix as grammar-sandbox-client.
+    // Open the build panel so the user actually sees the loaded row — but
+    // ONLY on mobile. On tablet/desktop the form is already mounted inline
+    // in the middle column, so opening the drawer there would overlay it
+    // (the "modal on desktop" bug). Same fix as grammar-sandbox-client.
+    if (!isMobile) return;
     if (sandboxSplit) {
       setSandboxBottomTab("build");
     } else {

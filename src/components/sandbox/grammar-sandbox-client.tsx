@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { SandboxLayout } from "@/components/sandbox/sandbox-layout";
 import { PrimitiveForm } from "@/components/sandbox/primitive-form";
 import { PrimitiveFormPreview } from "@/components/sandbox/primitive-form-preview";
@@ -272,6 +273,7 @@ export function GrammarSandboxClient({
   // change so we don't need a manual clear here.
   const { setSandboxFormDirty, openDrawer, sandboxSplit, setSandboxBottomTab } =
     useGlobalControls();
+  const isMobile = useIsMobile();
   // URL sync — switchBuild needs to push ?build=<mode> so refresh /
   // deep-link lands on the right mode. Without this the URL stays on
   // whatever was set in the initial request, which is confusing once
@@ -302,12 +304,17 @@ export function GrammarSandboxClient({
   // re-render that would pop the drawer over a different page state.
   useEffect(() => {
     if (initialEditing === null) return;
+    // The drawer is the MOBILE mechanism. On tablet/desktop the build form
+    // is already mounted inline in the middle column, so we must NOT open
+    // the drawer there (it would overlay the inline build — the "modal on
+    // desktop" bug, with its header peeking at the bottom of the page).
+    if (!isMobile) return;
     if (sandboxSplit) {
       setSandboxBottomTab("build");
     } else {
       openDrawer("build");
     }
-  }, [initialEditing, sandboxSplit, openDrawer, setSandboxBottomTab]);
+  }, [initialEditing, sandboxSplit, openDrawer, setSandboxBottomTab, isMobile]);
 
   // ---- Apply pending action (called on modal confirm) ---------------------
 
@@ -378,11 +385,12 @@ export function GrammarSandboxClient({
       setEditing({ kind: "capability", row });
     }
     setFormIsDirty(false); // loaded entity starts pristine
-    // Open the build panel so the user actually sees the loaded row —
-    // the server-routed path triggers this via the `initialEditing` effect
-    // (line ~255), but in-session loads change `editing` without changing
-    // that prop, so the effect never fires. Bug fix: mirror the slot
-    // action's drawer-open behaviour here.
+    // Open the build panel so the user actually sees the loaded row — but
+    // ONLY on mobile. On tablet/desktop the form is already mounted inline
+    // in the middle column, so opening the drawer there would overlay it
+    // (the "modal on desktop" bug). The inline column shows the loaded row
+    // without any drawer interaction.
+    if (!isMobile) return;
     if (sandboxSplit) {
       setSandboxBottomTab("build");
     } else {

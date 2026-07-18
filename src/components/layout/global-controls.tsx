@@ -47,6 +47,7 @@ import {
 import { useModalStack } from "@/components/ui/modal-stack";
 import { cn } from "@/lib/utils";
 import { IconDisplay } from "@/components/icons/icon-display";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 
 /** Color for the FAB build icon — white to match the lucide icons. */
 const FAB_ICON_COLOR = "#ffffff";
@@ -75,6 +76,10 @@ interface GlobalControlsState {
   setSandboxSplit: (v: boolean) => void;
   /** True when the current route is a sandbox route (enables split toggle). */
   isSandboxRoute: boolean;
+  /** True on viewports < 768px (mobile). The build/preview *drawer* must
+   *  only open on mobile — on tablet/desktop the build lives in the inline
+   *  3-column layout, so opening the drawer there would overlay it. */
+  isMobile: boolean;
   /** True when the active sandbox form has unsaved changes. The FAB shows a
    *  notification dot on the Build & Preview button when this is true, and
    *  tab-switch handlers consult it before letting the user change modes. */
@@ -111,6 +116,7 @@ const NOOP_GLOBAL_CONTROLS: GlobalControlsState = {
   sandboxSplit: false,
   setSandboxSplit: () => {},
   isSandboxRoute: false,
+  isMobile: false,
   sandboxFormDirty: false,
   setSandboxFormDirty: () => {},
   sandboxBottomTab: "build",
@@ -143,6 +149,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isSandboxRoute = pathname?.startsWith("/sandbox") ?? false;
+  const isMobile = useIsMobile();
   const { user, isSignedIn, isLoaded } = useUser();
   const { signOut, openUserProfile } = useClerk();
   const stack = useModalStack();
@@ -362,7 +369,15 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
             alt="Build & Preview"
           />
         ),
-        onClick: () => openDrawer(sandboxSplit ? "preview" : "build"),
+        onClick: () => {
+          // The build/preview drawer is the MOBILE mechanism only. On
+          // tablet/desktop the build lives in the inline middle column,
+          // so opening the drawer there would overlay it (the "modal on
+          // desktop" bug). Only open the drawer on mobile; on desktop the
+          // column is already visible.
+          if (!isMobile) return;
+          openDrawer(sandboxSplit ? "preview" : "build");
+        },
       },
       // Filters only appear on routes that actually open the filter panel
       // via setFilterPanelOpen: the library browse view and the grammar
@@ -441,6 +456,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
     sandboxSplit,
     setSandboxSplit,
     isSandboxRoute,
+    isMobile,
     sandboxFormDirty,
     setSandboxFormDirty,
     sandboxBottomTab,
