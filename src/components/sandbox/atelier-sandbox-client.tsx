@@ -293,6 +293,12 @@ export function AtelierSandboxClient({
   const [editing, setEditing] = useState<EditingState>(initialEditing);
   const [formIsDirty, setFormIsDirty] = useState(false);
   const [buildStarted, setBuildStarted] = useState(initialEditing !== null);
+  // Intent (fork | load) shown as a chip on the build form. We keep it in
+  // React state (not just the URL) because router.push/replace to the SAME
+  // pathname does NOT reliably update Next's useSearchParams / address bar
+  // in this App Router setup — so we drive the chip from state and sync the
+  // URL via window.history.pushState (which always updates the bar).
+  const [liveIntent, setLiveIntent] = useState<SaveIntent | null>(initialIntent ?? null);
   const [formSnapshot, setFormSnapshot] = useState<{
     form: Record<string, unknown>;
     slots: unknown[];
@@ -411,11 +417,39 @@ export function AtelierSandboxClient({
   //    the wrong flow (Point 2 / Point 3).
   useEffect(() => {
     function onOpenNew() {
-      if (editing === null && !formIsDirty) setShowNewModal(true);
+      // Always open the new-entity chooser. It's non-destructive until the
+      // user picks a kind (startNewEntity wipes then), so opening it over
+      // an in-progress build is safe — cancelling preserves the work.
+      setShowNewModal(true);
     }
     window.addEventListener("sw-open-new-entity", onOpenNew);
     return () => window.removeEventListener("sw-open-new-entity", onOpenNew);
-  }, [editing, formIsDirty]);
+  }, []);
+
+  // Fork from the preview's LikeForkBar (when sandboxPath=/sandbox/atelier).
+  // LikeForkBar clears the modal + dispatches this event; we load the
+  // fork-draft via the same reliable path as "Load into build" (client-side
+  // setEditing + history.pushState + intent chip) — because router.push to
+  // the same pathname doesn't update the URL in this App Router setup.
+  useEffect(() => {
+    function onAtelierFork(e: Event) {
+      const detail = (e as CustomEvent<{ targetType: string; targetId: string }>).detail;
+      if (!detail) return;
+      const map: Record<string, AtelierEntityKind> = {
+        PRIMITIVE: "primitive",
+        EFFECT: "effect",
+        CAPABILITY: "capability",
+        ITEM: "item",
+        RACE_TEMPLATE: "template",
+        BACKGROUND_TEMPLATE: "template",
+        ARCHETYPE_TEMPLATE: "template",
+      };
+      const entityType = map[detail.targetType];
+      if (entityType) guardedLibrarySelect(entityType, detail.targetId, "fork");
+    }
+    window.addEventListener("sw-atelier-fork", onAtelierFork);
+    return () => window.removeEventListener("sw-atelier-fork", onAtelierFork);
+  }, [guardedLibrarySelect]);
 
   // Auto-open build panel on server-routed loads (?edit=<id>) — mobile only.
   useEffect(() => {
@@ -490,10 +524,16 @@ export function AtelierSandboxClient({
       setBuildStarted(true);
       // Update the URL with the concrete ?build=<kind>&edit=<id>&intent=load|fork
       // (same format the working /sandbox/grammar|blueprint routes use).
+      // IMPORTANT: router.push/replace to the SAME pathname does NOT update
+      // the address bar in this App Router setup, so use window.history
+      // directly — it always updates the URL (and survives reload for
+      // deep-linking). The chip is driven by liveIntent state below.
       const target = buildSandboxUrl(targetType, String(id), action.intent ?? "load");
       if (target) {
-        router.push(`/sandbox/atelier${target.search}`);
+        const url = `/sandbox/atelier${target.search}`;
+        window.history.pushState(null, "", url);
       }
+      setLiveIntent((action.intent ?? "load") as SaveIntent);
       return;
     },
     [
@@ -567,9 +607,11 @@ export function AtelierSandboxClient({
       | "load"
       | null;
     const urlEdit = currentSearchParams?.get("edit") ?? null;
-    const liveIntent = urlIntent ?? initialIntent ?? null;
+    // Prefer the live React state (set on load/fork via pushState) over the
+    // URL, because a same-pathname pushState doesn't re-render useSearchParams.
+    const liveIntentResolved = liveIntent ?? urlIntent ?? initialIntent ?? null;
     const liveSourceId = urlEdit ?? initialSourceId ?? null;
-    const formCommon = { intent: liveIntent, sourceId: liveSourceId };
+    const formCommon = { intent: liveIntentResolved, sourceId: liveSourceId };
     // The build form is INDEPENDENT of the library tab. Which form renders
     // is driven by what's loaded (editing.kind) or, for a blank "new entity"
     // draft, by the chosen draft kind. The active tab is just a library

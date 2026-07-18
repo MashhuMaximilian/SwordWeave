@@ -276,7 +276,21 @@ export function LikeForkBar(props: LikeForkBarProps) {
       return;
     }
     stack.clear();
-    router.push(`${props.sandboxPath ?? target.sandboxPath}${target.search}`);
+    if (props.sandboxPath) {
+      // Atelier route: same-pathname navigation (router.push) does NOT
+      // update the URL bar in this App Router setup, and the server won't
+      // re-resolve the form on a soft nav. Instead notify the Atelier
+      // client, which loads the fork-draft via the same reliable path as
+      // "Load into build" (client-side setEditing + history.pushState +
+      // intent chip). The preview modal is already cleared above.
+      window.dispatchEvent(
+        new CustomEvent("sw-atelier-fork", {
+          detail: { targetType: props.targetType, targetId: props.targetId },
+        }),
+      );
+      return;
+    }
+    router.push(`${target.sandboxPath}${target.search}`);
   };
   /**
    * Called by ForkSuccessModal when the user dismisses it (X / click
