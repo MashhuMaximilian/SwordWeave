@@ -514,23 +514,15 @@ export function AtelierSandboxClient({
       openBuildPanel();
       // Update the URL with the concrete ?build=<kind>&edit=<id>&intent=load|fork
       // (same format the working /sandbox/grammar|blueprint routes use).
-      // IMPORTANT: router.push/replace to the SAME pathname does NOT update
-      // the address bar in this App Router setup, so use window.history
-      // directly — it always updates the URL (and survives reload for
-      // deep-linking). The chip is driven by liveIntent state below.
+      // Use Next's router.push (NOT window.history.pushState): pushState
+      // desyncs Next's client router from window.location, which (a) breaks
+      // subsequent <Link> navigation off the page and (b) the earlier
+      // router.replace workaround re-ran the server and caused a render
+      // mismatch that crashed PrimitiveForm on load-over-content.
+      // router.push keeps Next in sync (URL bar updates, no stale state).
       const target = buildSandboxUrl(targetType, String(id), action.intent ?? "load");
       if (target) {
-        const url = `/sandbox/atelier${target.search}`;
-        window.history.pushState(null, "", url);
-        // Resync Next's client router to the new URL. Raw pushState
-        // desyncs Next (its internal URL state lags window.location),
-        // which can throw a navigation error when the next render
-        // reconciles — especially after a discard-confirm that swaps the
-        // loaded entity. router.replace to the same URL re-aligns Next
-        // without adding a history entry or scrolling.
-        router.replace(window.location.pathname + window.location.search, {
-          scroll: false,
-        });
+        router.push(`/sandbox/atelier${target.search}`, { scroll: false });
       }
       setLiveIntent((action.intent ?? "load") as SaveIntent);
       return;
