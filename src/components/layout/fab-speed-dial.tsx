@@ -435,33 +435,18 @@ export const NAV_LINKS: FabItem[] = [
   },
   {
     kind: "link",
-    key: "sandbox-grammar",
-    label: "Grammar",
+    key: "atelier",
+    label: "Atelier",
     icon: (
       <IconDisplay
         iconSource="GAME_ICONS"
-        iconKey="lorc/jigsaw-piece"
+        iconKey="lorc/jigsaw-box"
         iconColor={FAB_ICON_COLOR}
         size={22}
-        alt="Grammar"
+        alt="Atelier"
       />
     ),
-    href: "/sandbox/grammar?build=primitive",
-  },
-  {
-    kind: "link",
-    key: "sandbox-templates",
-    label: "Templates",
-    icon: (
-      <IconDisplay
-        iconSource="GAME_ICONS"
-        iconKey="caro-asercion/tarot-11-justice"
-        iconColor={FAB_ICON_COLOR}
-        size={22}
-        alt="Templates"
-      />
-    ),
-    href: "/sandbox/blueprint?build=template",
+    href: "/sandbox/atelier",
   },
   {
     kind: "link",

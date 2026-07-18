@@ -24,6 +24,26 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // The unified sandbox now lives at /sandbox/atelier. The legacy
+  // /sandbox/grammar and /sandbox/blueprint routes are folded into it
+  // (the unified client selects the active tab from ?build=). Redirect
+  // the old paths here so bookmarks / old links keep working. Next
+  // preserves the incoming query string (e.g. ?build=effect) across
+  // the redirect, so the correct tab still opens.
+  async redirects() {
+    return [
+      {
+        source: "/sandbox/grammar",
+        destination: "/sandbox/atelier",
+        permanent: false,
+      },
+      {
+        source: "/sandbox/blueprint",
+        destination: "/sandbox/atelier",
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

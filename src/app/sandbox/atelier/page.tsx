@@ -1,0 +1,612 @@
+// /sandbox/atelier — unified sandbox.
+// Merges the former /sandbox/grammar (primitive | effect | capability)
+// and /sandbox/blueprint (template | item | monster) routes into one
+// page with a 6-tab bottom bar. See atelier-sandbox-client.tsx.
+//
+// ?build=<tab> selects the active tab (defaults to "primitive").
+// ?kind=<RACE|BACKGROUND|ARCHETYPE> only relevant when build=template.
+// ?edit=<id> pre-fills the form with the matching entity.
+// ?intent=<fork|load> (Phase 1) records HOW the user entered the sandbox.
+// ?version=N deep-links a specific published version for pre-fill.
+
+import { asc } from "drizzle-orm";
+import { auth } from "@clerk/nextjs/server";
+
+import {
+  AtelierSandboxClient,
+  type AtelierTab,
+} from "@/components/sandbox/atelier-sandbox-client";
+import { db } from "@/db/client";
+import {
+  capabilities,
+  effects,
+  items,
+  primitives,
+  templates,
+} from "@/db/schema";
+import {
+  capabilityToLibraryItem,
+  effectToLibraryItem,
+  itemToLibraryItem,
+  primitiveToLibraryItem,
+  templateToLibraryItem,
+} from "@/components/sandbox/sandbox-row-mapper";
+import { listPrimitiveCategories, type LibraryItem } from "@/lib/publishing/library-query";
+import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
+import {
+  resolveEngagementMap,
+  enrichItemsWithEngagement,
+} from "@/lib/engagement/engagement-aggregates";
+import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
+import { getVersionPayload } from "@/lib/versions/version-payload";
+import { parseSaveIntent, type SaveIntent } from "@/lib/publishing/save-intent";
+import {
+  bulkResolveLatestVersionNumbers,
+} from "@/lib/versions/bulk-resolve-latest-version-numbers";
+
+export const dynamic = "force-dynamic";
+
+function parseBuild(value: string | undefined): AtelierTab {
+  if (
+    value === "effect" ||
+    value === "capability" ||
+    value === "template" ||
+    value === "item" ||
+    value === "monster"
+  ) {
+    return value;
+  }
+  return "primitive";
+}
+
+function parseKind(
+  value: string | undefined,
+): "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined {
+  if (value === "RACE" || value === "BACKGROUND" || value === "ARCHETYPE")
+    return value;
+  return undefined;
+}
+
+export default async function AtelierSandboxPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    build?: string;
+    kind?: string;
+    edit?: string;
+    version?: string;
+    intent?: string;
+  }>;
+}) {
+  const params = await searchParams;
+  const build = parseBuild(params.build);
+  const kind = parseKind(params.kind);
+  const editId = params.edit;
+  const intent: SaveIntent = parseSaveIntent(params.intent);
+  const versionNumber = params.version ? Number(params.version) : Number.NaN;
+
+  let dataLoadFailed = false;
+  let primitiveRows: unknown[] = [];
+  let effectRows: unknown[] = [];
+  let capabilityRows: unknown[] = [];
+  let templateRows: unknown[] = [];
+  let itemRows: unknown[] = [];
+
+  let sandboxViewerId: string | null = null;
+  try {
+    const { userId } = await auth();
+    if (userId) {
+      sandboxViewerId = await resolveUserIdByClerkId(userId);
+    }
+  } catch {
+    /* not logged in */
+  }
+
+  const visFilter = (r: { isPublic: boolean; userId: string | null }) =>
+    r.isPublic || !r.userId || r.userId === sandboxViewerId;
+
+  // PRIMITIVES
+  try {
+    const rows = await db.query.primitives.findMany({
+      orderBy: [asc(primitives.category), asc(primitives.name)],
+    });
+    primitiveRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(visFilter) as unknown[];
+  } catch (err) {
+    dataLoadFailed = true;
+    console.error("[atelier sandbox] primitives query failed:", err);
+  }
+
+  // EFFECTS
+  try {
+    const rows = await db.query.effects.findMany({
+      orderBy: [asc(effects.name)],
+      with: { primitiveLinks: { with: { primitive: true } } },
+    });
+    effectRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(visFilter) as unknown[];
+  } catch (err) {
+    dataLoadFailed = true;
+    console.error("[atelier sandbox] effects query failed:", err);
+  }
+
+  // CAPABILITIES
+  try {
+    const rows = await db.query.capabilities.findMany({
+      orderBy: [asc(capabilities.name)],
+      with: {
+        primitiveLinks: { with: { primitive: true } },
+        effectLinks: {
+          with: { effect: { with: { primitiveLinks: { with: { primitive: true } } } } },
+        },
+      },
+    });
+    capabilityRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(visFilter) as unknown[];
+  } catch (err) {
+    dataLoadFailed = true;
+    console.error("[atelier sandbox] capabilities query failed:", err);
+  }
+
+  // TEMPLATES
+  try {
+    const rows = await db.query.templates.findMany({
+      orderBy: [asc(templates.kind), asc(templates.name)],
+      with: {
+        primitiveLinks: { with: { primitive: true } },
+        capabilityLinks: { with: { capability: { with: { primitiveLinks: { with: { primitive: true } } } } } },
+      },
+    });
+    templateRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(visFilter) as unknown[];
+  } catch (err) {
+    dataLoadFailed = true;
+    console.error("[atelier sandbox] templates query failed:", err);
+  }
+
+  // ITEMS
+  try {
+    const rows = await db.query.items.findMany({
+      orderBy: [asc(items.name)],
+      with: {
+        primitiveLinks: { with: { primitive: true } },
+        effectLinks: { with: { effect: { with: { primitiveLinks: { with: { primitive: true } } } } } },
+        capabilityLinks: { with: { capability: { with: { primitiveLinks: { with: { primitive: true } } } } } },
+      },
+    });
+    itemRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(visFilter) as unknown[];
+  } catch (err) {
+    dataLoadFailed = true;
+    console.error("[atelier sandbox] items query failed:", err);
+  }
+
+  // Resolve ?edit=<id> into initial editing row (across all kinds).
+  let initialEditing:
+    | { kind: "primitive"; row: { id: number } }
+    | { kind: "effect"; row: { id: string } }
+    | { kind: "capability"; row: { id: string } }
+    | { kind: "template"; row: { id: string } }
+    | { kind: "item"; row: { id: string } }
+    | null = null;
+
+  if (editId) {
+    if (build === "primitive") {
+      const numId = Number(editId);
+      if (Number.isFinite(numId)) {
+        let baseRow: Record<string, unknown> | null = null;
+        if (Number.isFinite(versionNumber)) {
+          try {
+            const ver = await getVersionPayload("PRIMITIVE", String(numId), versionNumber);
+            if (ver) baseRow = ver.payload;
+          } catch (err) {
+            console.error("[atelier sandbox] version load failed:", err);
+          }
+        }
+        const row = primitiveRows.find((p) => (p as { id: number }).id === numId);
+        if (row) {
+          initialEditing = {
+            kind: "primitive",
+            row: { ...(row as Record<string, unknown>), ...(baseRow ?? {}) } as { id: number },
+          };
+        }
+      }
+    } else if (build === "effect") {
+      const row = effectRows.find((e) => (e as { id: string }).id === editId);
+      if (row) initialEditing = { kind: "effect", row: row as { id: string } };
+    } else if (build === "capability") {
+      const row = capabilityRows.find((c) => (c as { id: string }).id === editId);
+      if (row) initialEditing = { kind: "capability", row: row as { id: string } };
+    } else if (build === "template") {
+      let baseRow: Record<string, unknown> | null = null;
+      if (Number.isFinite(versionNumber)) {
+        const targetType =
+          kind === "BACKGROUND"
+            ? "BACKGROUND_TEMPLATE"
+            : kind === "ARCHETYPE"
+              ? "ARCHETYPE_TEMPLATE"
+              : "RACE_TEMPLATE";
+        try {
+          const ver = await getVersionPayload(targetType, editId, versionNumber);
+          if (ver) baseRow = ver.payload;
+        } catch (err) {
+          console.error("[atelier sandbox] version load failed:", err);
+        }
+      }
+      const row = templateRows.find((t) => (t as { id: string }).id === editId) as { id: string } | undefined;
+      if (row) {
+        const merged = baseRow ? ({ ...row, ...baseRow } as { id: string }) : row;
+        initialEditing = { kind: "template", row: merged };
+      }
+    } else if (build === "item") {
+      const row = itemRows.find((i) => (i as { id: string }).id === editId) as { id: string } | undefined;
+      if (row) initialEditing = { kind: "item", row };
+    }
+  }
+
+  // Unified LibraryItem[] for the left column.
+  const baseItems: LibraryItem[] = [
+    ...(templateRows as never[]).map((r) => templateToLibraryItem(r)),
+    ...(itemRows as never[]).map((r) => itemToLibraryItem(r)),
+    ...(primitiveRows as never[]).map((r) => primitiveToLibraryItem(r)),
+    ...(effectRows as never[]).map((r) => effectToLibraryItem(r)),
+    ...(capabilityRows as never[]).map((r) => capabilityToLibraryItem(r)),
+  ];
+
+  const engagementMapPromise = (async () => {
+    try {
+      return await resolveEngagementMap(baseItems.map((it) => it.id));
+    } catch (err) {
+      console.error("[atelier sandbox] resolveEngagementMap failed:", err);
+      return new Map();
+    }
+  })();
+
+  const categoriesPromise = (async () => {
+    try {
+      return await listPrimitiveCategories();
+    } catch (err) {
+      console.error("[atelier sandbox] listPrimitiveCategories failed:", err);
+      return [];
+    }
+  })();
+
+  const versionsPromise = (async () => {
+    try {
+      return await bulkResolveLatestVersionNumbers([
+        ...primitiveRows.map((p) => ({ kind: "primitive" as const, id: (p as { id: number }).id })),
+        ...effectRows.map((e) => ({ kind: "effect" as const, id: (e as { id: string }).id })),
+        ...capabilityRows.map((c) => ({ kind: "capability" as const, id: (c as { id: string }).id })),
+        ...templateRows.map((t) => ({ kind: "template" as const, id: (t as { id: string }).id })),
+        ...itemRows.map((i) => ({ kind: "item" as const, id: (i as { id: string }).id })),
+      ]);
+    } catch (err) {
+      console.error("[atelier sandbox] version resolution failed:", err);
+      return new Map();
+    }
+  })();
+
+  const loadEngagementPromise = (async () => {
+    try {
+      return await loadLibraryEngagement(
+        sandboxViewerId,
+        baseItems.map((it) => ({ id: it.id, targetType: it.targetType, targetId: it.targetId, authorId: it.authorId })),
+      );
+    } catch (err) {
+      console.error("[atelier sandbox] engagement prefetch failed:", err);
+      return { reactions: {}, following: {} };
+    }
+  })();
+
+  const [engagementMap, primitiveCategories, versionMap, engagement] = await Promise.all([
+    engagementMapPromise,
+    categoriesPromise,
+    versionsPromise,
+    loadEngagementPromise,
+  ]);
+
+  const libraryItems: LibraryItem[] = enrichItemsWithEngagement(baseItems, engagementMap);
+  const currentUserInternalId = sandboxViewerId;
+
+  return (
+    <AtelierSandboxClient
+      initialBuild={build}
+      initialKind={kind}
+      initialEditing={initialEditing as never}
+      initialIntent={intent}
+      initialSourceId={editId ?? null}
+      dataLoadFailed={dataLoadFailed}
+      primitives={(primitiveRows as never[]).map((p) => {
+        const row = p as {
+          id: number;
+          name: string;
+          category: string;
+          buCost: number;
+          isPublic: boolean;
+          costTier: string;
+          mechanicalOutputText: string;
+          narrativeRule: string;
+          isMirrorable: boolean;
+          mirrorVector: string;
+          mirrorBuCredit: number;
+          mirrorEligibilityNotes: string;
+          hardModifiers: unknown;
+          iconSource: string | null;
+          iconKey: string | null;
+          iconUrl: string | null;
+          iconColor: string | null;
+        };
+        return {
+          id: row.id,
+          name: row.name,
+          category: row.category,
+          buCost: row.buCost,
+          isPublic: row.isPublic,
+          costTier: row.costTier,
+          mechanicalOutputText: row.mechanicalOutputText,
+          narrativeRule: row.narrativeRule,
+          isMirrorable: row.isMirrorable,
+          mirrorVector: row.mirrorVector,
+          mirrorBuCredit: row.mirrorBuCredit,
+          mirrorEligibilityNotes: row.mirrorEligibilityNotes,
+          hardModifiers: row.hardModifiers,
+          iconSource: row.iconSource,
+          iconKey: row.iconKey,
+          iconUrl: row.iconUrl,
+          iconColor: row.iconColor ?? "#ffffff",
+        };
+      })}
+      effects={(effectRows as never[]).map((e) => {
+        const row = e as {
+          id: string;
+          name: string;
+          narrativeDescription: string;
+          sourceOrigin: string | null;
+          tags: string[] | null;
+          isPublic: boolean;
+          primitiveLinks?: Array<{
+            primitiveId: number;
+            quantity: number;
+            primitive: { id: number; name: string; category: string; buCost: number };
+          }>;
+          iconSource: string | null;
+          iconKey: string | null;
+          iconUrl: string | null;
+          iconColor: string | null;
+        };
+        return {
+          id: row.id,
+          name: row.name,
+          narrativeDescription: row.narrativeDescription,
+          sourceOrigin: row.sourceOrigin,
+          tags: row.tags ?? [],
+          isPublic: row.isPublic,
+          iconSource: row.iconSource,
+          iconKey: row.iconKey,
+          iconUrl: row.iconUrl,
+          iconColor: row.iconColor ?? "#ffffff",
+          primitiveLinks: (row.primitiveLinks ?? []).map((l) => ({
+            primitiveId: l.primitiveId,
+            quantity: l.quantity,
+            primitive: l.primitive,
+            versionNumber: versionMap.get(`primitive:${l.primitiveId}`) ?? 1,
+          })),
+        };
+      })}
+      capabilities={(capabilityRows as never[]).map((c) => {
+        const row = c as {
+          id: string;
+          name: string;
+          type: string;
+          sourceType: string;
+          sourceOrigin: string | null;
+          tags: string[] | null;
+          isPublic: boolean;
+          verboseDescription: string;
+          primitiveLinks?: Array<{
+            primitiveId: number;
+            role: string;
+            quantity: number;
+            sortOrder: number;
+            slotLabel: string | null;
+            primitive: { id: number; name: string; category: string; buCost: number };
+          }>;
+          effectLinks?: Array<{
+            effectId: string;
+            sortOrder: number;
+            slotLabel: string | null;
+            notes: string | null;
+            effect: {
+              id: string;
+              name: string;
+              narrativeDescription: string | null;
+              sourceOrigin: string | null;
+            };
+          }>;
+          iconSource: string | null;
+          iconKey: string | null;
+          iconUrl: string | null;
+          iconColor: string | null;
+        };
+        return {
+          id: row.id,
+          name: row.name,
+          type: row.type,
+          sourceType: row.sourceType,
+          sourceOrigin: row.sourceOrigin,
+          tags: row.tags ?? [],
+          isPublic: row.isPublic,
+          verboseDescription: row.verboseDescription,
+          iconSource: row.iconSource,
+          iconKey: row.iconKey,
+          iconUrl: row.iconUrl,
+          iconColor: row.iconColor ?? "#ffffff",
+          primitiveLinks: (row.primitiveLinks ?? []).map((l) => ({
+            primitiveId: l.primitiveId,
+            role: l.role,
+            quantity: l.quantity,
+            sortOrder: l.sortOrder,
+            slotLabel: l.slotLabel,
+            primitive: l.primitive,
+            versionNumber: versionMap.get(`primitive:${l.primitiveId}`) ?? 1,
+          })),
+          effectLinks: (row.effectLinks ?? []).map((l) => {
+            const effectWithLinks = l.effect as typeof l.effect & {
+              primitiveLinks?: Array<{
+                primitiveId: number;
+                quantity: number;
+                primitive: { id: number; name: string; category: string; buCost: number };
+              }>;
+            };
+            return {
+              effectId: l.effectId,
+              sortOrder: l.sortOrder,
+              slotLabel: l.slotLabel,
+              notes: l.notes,
+              versionNumber: versionMap.get(`effect:${l.effectId}`) ?? 1,
+              effect: {
+                id: effectWithLinks.id,
+                name: effectWithLinks.name,
+                narrativeDescription: effectWithLinks.narrativeDescription,
+                sourceOrigin: effectWithLinks.sourceOrigin,
+                primitiveLinks: (effectWithLinks.primitiveLinks ?? []).map((pl) => ({
+                  primitiveId: pl.primitiveId,
+                  quantity: pl.quantity,
+                  primitive: pl.primitive,
+                })),
+              },
+            };
+          }),
+        };
+      })}
+      templates={templateRows as never}
+      items={itemRows as never}
+      sandboxPrimitives={(primitiveRows as never[]).map((p) => {
+        const row = p as {
+          id: number;
+          name: string;
+          category: string;
+          buCost: number;
+          isPublic: boolean;
+          costTier: string;
+          mechanicalOutputText: string;
+          narrativeRule: string;
+          isMirrorable: boolean;
+          mirrorVector: string;
+          mirrorBuCredit: number;
+          mirrorEligibilityNotes: string;
+          hardModifiers: unknown;
+          iconSource: string | null;
+          iconKey: string | null;
+          iconUrl: string | null;
+          iconColor: string | null;
+        };
+        return {
+          id: row.id,
+          name: row.name,
+          category: row.category,
+          buCost: row.buCost,
+          isPublic: row.isPublic,
+          costTier: row.costTier,
+          mechanicalOutputText: row.mechanicalOutputText,
+          narrativeRule: row.narrativeRule,
+          isMirrorable: row.isMirrorable,
+          mirrorVector: row.mirrorVector,
+          mirrorBuCredit: row.mirrorBuCredit,
+          mirrorEligibilityNotes: row.mirrorEligibilityNotes,
+          hardModifiers: row.hardModifiers,
+          iconSource: row.iconSource,
+          iconKey: row.iconKey,
+          iconUrl: row.iconUrl,
+          iconColor: row.iconColor ?? "#ffffff",
+        };
+      })}
+      sandboxCapabilities={(capabilityRows as never[]).map((c) => {
+        const row = c as {
+          id: string;
+          name: string;
+          type: string;
+          sourceType: string;
+          verboseDescription: string;
+          sourceOrigin: string | null;
+          tags: string[] | null;
+          isPublic: boolean;
+          primitiveLinks?: Array<{
+            primitiveId: number;
+            role: string;
+            quantity: number;
+            sortOrder: number;
+            slotLabel: string | null;
+            primitive: { id: number; name: string; category: string; buCost: number };
+          }>;
+          effectLinks?: Array<{
+            effectId: string;
+            sortOrder: number;
+            slotLabel: string | null;
+            notes: string | null;
+            effect: {
+              id: string;
+              name: string;
+              narrativeDescription: string | null;
+              sourceOrigin: string | null;
+            };
+          }>;
+          iconSource: string | null;
+          iconKey: string | null;
+          iconUrl: string | null;
+          iconColor: string | null;
+        };
+        return {
+          id: row.id,
+          name: row.name,
+          type: row.type,
+          sourceType: row.sourceType,
+          verboseDescription: row.verboseDescription,
+          sourceOrigin: row.sourceOrigin,
+          tags: row.tags ?? [],
+          isPublic: row.isPublic,
+          primitiveLinks: (row.primitiveLinks ?? []).map((l) => ({
+            primitiveId: l.primitiveId,
+            role: l.role,
+            quantity: l.quantity,
+            sortOrder: l.sortOrder,
+            slotLabel: l.slotLabel,
+            primitive: l.primitive,
+            versionNumber: versionMap.get(`primitive:${l.primitiveId}`) ?? 1,
+          })),
+          effectLinks: (row.effectLinks ?? []).map((l) => {
+            const effectWithLinks = l.effect as typeof l.effect & {
+              primitiveLinks?: Array<{
+                primitiveId: number;
+                quantity: number;
+                primitive: { id: number; name: string; category: string; buCost: number };
+              }>;
+            };
+            return {
+              effectId: l.effectId,
+              sortOrder: l.sortOrder,
+              slotLabel: l.slotLabel,
+              notes: l.notes,
+              versionNumber: versionMap.get(`effect:${l.effectId}`) ?? 1,
+              effect: {
+                id: effectWithLinks.id,
+                name: effectWithLinks.name,
+                narrativeDescription: effectWithLinks.narrativeDescription,
+                sourceOrigin: effectWithLinks.sourceOrigin,
+                primitiveLinks: (effectWithLinks.primitiveLinks ?? []).map((pl) => ({
+                  primitiveId: pl.primitiveId,
+                  quantity: pl.quantity,
+                  primitive: pl.primitive,
+                })),
+              },
+            };
+          }),
+          iconSource: row.iconSource,
+          iconKey: row.iconKey,
+          iconUrl: row.iconUrl,
+          iconColor: row.iconColor ?? "#ffffff",
+        };
+      })}
+      libraryItems={libraryItems}
+      primitiveCategories={primitiveCategories}
+      engagement={engagement}
+      currentUserInternalId={currentUserInternalId}
+      versionMap={Object.fromEntries(versionMap)}
+    />
+  );
+}
