@@ -1046,35 +1046,9 @@ export function PrimitiveForm({
           })()}
         </div>
         <div className="flex items-center gap-2">
-          {/*
-            Phase 1: Discard button — clears the edit/intent URL
-            params and navigates back to the originating surface
-            (library, sandbox, etc). No side effect; the source
-            row is untouched. Mashu: cancel/back-out should leave
-            no trace.
-          */}
-          {sourceId != null && (
-            <button
-              type="button"
-              data-testid="discard-edit-button"
-              onClick={() => {
-                const params = new URLSearchParams(window.location.search);
-                params.delete("edit");
-                params.delete("intent");
-                params.delete("version");
-                const qs = params.toString();
-                const target = window.location.pathname + (qs ? `?${qs}` : "");
-                // Use replace so the user can't "back" into the
-                // discarded state. router.refresh() then refreshes
-                // server data for the destination.
-                window.location.replace(target);
-              }}
-              className="h-9 rounded-md border border-border bg-background px-3 text-sm font-bold text-foreground hover:border-rose-500 hover:text-rose-500"
-              title="Discard this edit — no fork will be created"
-            >
-              Discard
-            </button>
-          )}
+          {/* Phase 1: Discard button — REMOVED. It navigated back to the
+            originating (legacy) surface and was superseded by the Reset
+            flow + the in-app discard prompt. Mashu: hide it. */}
           <button
             type="button"
             onClick={resetEditor}

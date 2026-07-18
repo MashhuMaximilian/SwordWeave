@@ -33,10 +33,6 @@ interface UnsavedChangesModalProps {
   confirmLabel?: string;
   /** Label of the safe button. Defaults to "Cancel". */
   cancelLabel?: string;
-  /** When true, hide the destructive confirm ("Discard changes")
-   *  button. Used for the in-build load prompt, where Reset is the
-   *  intended clear path — the user resets first, then loads. */
-  hideDiscard?: boolean;
 }
 
 export function UnsavedChangesModal({
@@ -47,7 +43,6 @@ export function UnsavedChangesModal({
   description = "You have unsaved work in the current form. Switching now will lose it.",
   confirmLabel = "Discard changes",
   cancelLabel = "Cancel",
-  hideDiscard = false,
 }: UnsavedChangesModalProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
 
@@ -118,15 +113,13 @@ export function UnsavedChangesModal({
           >
             {cancelLabel}
           </button>
-          {!hideDiscard && (
-            <button
-              type="button"
-              onClick={onConfirm}
-              className="h-9 rounded-md bg-destructive px-4 text-sm font-semibold text-destructive-foreground hover:bg-destructive/90"
-            >
-              {confirmLabel}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="h-9 rounded-md bg-destructive px-4 text-sm font-semibold text-destructive-foreground hover:bg-destructive/90"
+          >
+            {confirmLabel}
+          </button>
         </div>
       </div>
     </div>

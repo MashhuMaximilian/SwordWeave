@@ -385,7 +385,12 @@ export function AtelierSandboxClient({
   //  - tab close / refresh (beforeunload) -> native browser prompt (cannot
   //    be intercepted with an in-app modal).
   useEffect(() => {
-    if (!formIsDirty) return;
+    // Guard off-page navigation (FAB links, header nav) whenever the build
+    // has content loaded OR unsaved edits — not just when dirty. Matches
+    // the user expectation: "when there is content in the build and I leave,
+    // the discard modal should appear." Uses `editing` in the closure, so
+    // `editing` must be in the dep array (stale-closure bug fixed).
+    if (!formIsDirty && editing === null) return;
     const onAnchorClick = (e: MouseEvent) => {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey)
         return;
@@ -414,7 +419,7 @@ export function AtelierSandboxClient({
       document.removeEventListener("click", onAnchorClick, true);
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
-  }, [formIsDirty]);
+  }, [formIsDirty, editing]);
 
   // Listen for the FAB "Build & Preview" action.
   //  - If the build column is EMPTY (no entity loaded and nothing typed),
@@ -1213,11 +1218,6 @@ export function AtelierSandboxClient({
       />
       <UnsavedChangesModal
         isOpen={pendingAction !== null || pendingNav !== null}
-        // The build-load prompt (pendingAction) hides the discard
-        // button: Reset is the explicit clear path, so the user
-        // resets first, then loads. The off-page FAB-nav prompt
-        // (pendingNav) keeps the discard button for dirty-exit safety.
-        hideDiscard={pendingAction !== null}
         onCancel={() => {
           setPendingAction(null);
           setPendingNav(null);
@@ -1227,11 +1227,10 @@ export function AtelierSandboxClient({
             const href = pendingNav;
             setPendingNav(null);
             setPendingAction(null);
-            // Hard navigation: bypasses Next's client router entirely, so
-            // it works regardless of any URL/router state. (We avoid
-            // router.push here because loading into build uses
-            // window.history.replaceState, which intentionally does NOT
-            // update Next's router — so router.push could be stale.)
+            // Discard the build before leaving: clear editing + URL so the
+            // destination page doesn't inherit stale build state, and the
+            // next time Atelier is opened it starts empty (Reset-equivalent).
+            startNewEntity();
             window.location.assign(href);
             return;
           }
