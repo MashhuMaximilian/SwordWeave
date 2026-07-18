@@ -572,72 +572,36 @@ export function BlueprintLibrary({
             template sub-kinds (mirrors the side-panel behaviour, only
             quicker, and only in this tab). */}
         {build === "template" ? (
-          <div className="mt-2 flex flex-col gap-1.5">
-            <div className="flex flex-wrap gap-1.5">
-              {(
-                [
-                  { key: "RACE_TEMPLATE", label: "Lineage" },
-                  { key: "BACKGROUND_TEMPLATE", label: "Upbringing" },
-                  { key: "ARCHETYPE_TEMPLATE", label: "Manifest" },
-                ] as Array<{ key: LibraryTargetType; label: string }>
-              ).map((chip) => {
-                const active = toolbarState.typeFilter === chip.key;
-                return (
-                  <button
-                    key={chip.key}
-                    type="button"
-                    onClick={() =>
-                      setToolbarState((prev) => ({
-                        ...prev,
-                        typeFilter: active ? "ALL" : chip.key,
-                      }))
-                    }
-                    className={cn(
-                      "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                      active
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-card text-foreground hover:border-primary hover:text-primary",
-                    )}
-                  >
-                    {chip.label}
-                  </button>
-                );
-              })}
-            </div>
-            {/* Mechanics kinds are also browsable from the Heritage tab,
-                per the unified-library spec (primitives/effects/capabilities
-                are global filters, not gated to the Mechanics tab). */}
-            <div className="flex flex-wrap gap-1.5">
-              {(
-                [
-                  { key: "PRIMITIVE", label: "Primitives" },
-                  { key: "EFFECT", label: "Effects" },
-                  { key: "CAPABILITY", label: "Capabilities" },
-                ] as Array<{ key: LibraryTargetType; label: string }>
-              ).map((chip) => {
-                const active = toolbarState.typeFilter === chip.key;
-                return (
-                  <button
-                    key={chip.key}
-                    type="button"
-                    onClick={() =>
-                      setToolbarState((prev) => ({
-                        ...prev,
-                        typeFilter: active ? "ALL" : chip.key,
-                      }))
-                    }
-                    className={cn(
-                      "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                      active
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-card text-foreground hover:border-primary hover:text-primary",
-                    )}
-                  >
-                    {chip.label}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {(
+              [
+                { key: "RACE_TEMPLATE", label: "Lineage" },
+                { key: "BACKGROUND_TEMPLATE", label: "Upbringing" },
+                { key: "ARCHETYPE_TEMPLATE", label: "Manifest" },
+              ] as Array<{ key: LibraryTargetType; label: string }>
+            ).map((chip) => {
+              const active = toolbarState.typeFilter === chip.key;
+              return (
+                <button
+                  key={chip.key}
+                  type="button"
+                  onClick={() =>
+                    setToolbarState((prev) => ({
+                      ...prev,
+                      typeFilter: active ? "ALL" : chip.key,
+                    }))
+                  }
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    active
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-foreground hover:border-primary hover:text-primary",
+                  )}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
           </div>
         ) : null}
       </div>

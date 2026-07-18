@@ -32,6 +32,22 @@ import {
 
 import { cn } from "@/lib/utils";
 import { IconDisplay } from "@/components/icons/icon-display";
+import { useIsDark } from "@/lib/hooks/use-is-dark";
+
+/** Codex (Library) column header icon — matches the FAB bookshelf icon,
+ *  theme-colored (white on dark, near-black on light). */
+function CodexIcon() {
+  const isDark = useIsDark();
+  return (
+    <IconDisplay
+      iconSource="GAME_ICONS"
+      iconKey="delapouite/bookshelf"
+      iconColor={isDark ? "#ffffff" : "#011614"}
+      size={16}
+      alt="Codex"
+    />
+  );
+}
 
 /** Color for build-column game-icons — white to match the lucide icons. */
 const BUILD_ICON_COLOR = "#ffffff";
@@ -419,8 +435,8 @@ function DesktopSandboxLayout({
         >
           <ColumnChrome
             columnKey="library"
-            title="Library"
-            icon={<LibraryIcon className="size-4" />}
+            title="Codex"
+            icon={<CodexIcon />}
             isHidden={false}
             isFirst
             hydrated={hydrated}
@@ -543,7 +559,7 @@ function TabletSandboxLayout({
       {/* Body — Library + Builder (always), Preview (conditional). */}
       <div className="flex flex-1 min-h-0">
         <div className="flex h-full min-h-0 w-[36%] max-w-[360px] min-w-[240px] flex-col border-r">
-          <TabletColumnChrome title="Library" icon={<LibraryIcon className="size-4" />} />
+          <TabletColumnChrome title="Codex" icon={<CodexIcon />} />
           <div className="flex-1 min-h-0 overflow-auto">{library}</div>
         </div>
         <div className="flex h-full min-h-0 flex-1 flex-col">
@@ -764,7 +780,7 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
         // Default mode: Library fills the viewport, Build is a drawer.
         // Add bottom padding to keep content above the fixed bottom tab bar.
         <div className="flex h-full min-h-0 flex-col pb-12">
-          <MobileColumnChrome title="Library" icon={<LibraryIcon className="size-4" />} />
+          <MobileColumnChrome title="Codex" icon={<CodexIcon />} />
           <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
         </div>
       ) : (
@@ -782,7 +798,7 @@ function MobileSandboxLayout({ library, builder, preview }: MobileProps) {
             className="flex min-h-0 flex-col"
             style={{ height: `${splitPct}%` }}
           >
-            <MobileColumnChrome title="Library" icon={<LibraryIcon className="size-4" />} />
+            <MobileColumnChrome title="Codex" icon={<CodexIcon />} />
             <div className="flex-1 min-h-0 overflow-hidden">{library}</div>
           </div>
           {/*
@@ -950,7 +966,7 @@ function RestoreColumnButton({ columnKey }: { columnKey: ColumnKey }) {
   const config: Record<ColumnKey, { icon: ReactNode; label: string; edge: string }> = {
     library: {
       icon: <LibraryIcon className="size-4" />,
-      label: "Show Library",
+      label: "Show Codex",
       edge: "left-0",
     },
     builder: {

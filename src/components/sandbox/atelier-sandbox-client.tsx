@@ -319,16 +319,19 @@ export function AtelierSandboxClient({
     setSandboxFormDirty(formIsDirty || editing !== null);
   }, [formIsDirty, editing, setSandboxFormDirty]);
 
-  // Listen for the FAB "Build & Preview" action: when the build column is
-  // empty, surface the new-entity chooser (Point 4). The FAB dispatches a
-  // window event because it lives outside this client.
+  // Listen for the FAB "Build & Preview" action.
+  //  - If the build column is EMPTY, open the new-entity chooser (Point 4).
+  //  - If something is already loaded, do nothing here: the editor is
+  //    already shown in the build column (desktop) or the FAB has just
+  //    opened the drawer to reveal it (mobile). Re-opening the chooser
+  //    would be the wrong flow (Point 3 / Point 5).
   useEffect(() => {
     function onOpenNew() {
-      setShowNewModal(true);
+      if (!buildStarted) setShowNewModal(true);
     }
     window.addEventListener("sw-open-new-entity", onOpenNew);
     return () => window.removeEventListener("sw-open-new-entity", onOpenNew);
-  }, []);
+  }, [buildStarted]);
 
   // Auto-open build panel on server-routed loads (?edit=<id>) — mobile only.
   useEffect(() => {
@@ -459,22 +462,28 @@ export function AtelierSandboxClient({
     applyPendingAction({ kind: "switchBuild", mode: newMode });
   }
 
-  // "New entity" picker: switch to the chosen kind with a BLANK form.
-  // If the form currently has state, the dirty-guard (guardedSwitchBuild)
-  // intercepts with the unsaved-changes modal; otherwise it lands on a
-  // fresh form of the chosen kind immediately.
+  // "New entity" picker: open the editor for the chosen kind directly.
+  // No discard prompt, no tab-cache wipe — just switch to the target tab
+  // with a blank form of the chosen kind. The build column then renders
+  // the right editor (Point 3 / Point 5).
   function startNewEntity(choice: NewEntityChoice) {
     setShowNewModal(false);
-    setBuildStarted(true);
     if (choice.templateSubKind) setTemplateKind(choice.templateSubKind);
     if (choice.mechanicsSubKind) setMechanicsDraftKind(choice.mechanicsSubKind);
-    // Already on the target tab with a pristine form → nothing to do.
-    if (choice.tab === build && !formIsDirty && editing === null) {
-      setEditing(null);
-      setFormSnapshot(null);
-      return;
-    }
-    guardedSwitchBuild(choice.tab);
+    setBuild(choice.tab);
+    setEditing(null);
+    setFormSnapshot(null);
+    setFormIsDirty(false);
+    setBuildStarted(true);
+    const nextParams = new URLSearchParams(
+      currentSearchParams?.toString() ?? "",
+    );
+    nextParams.set("build", choice.tab);
+    nextParams.delete("edit");
+    nextParams.delete("intent");
+    router.replace(
+      nextParams.toString() ? `${pathname}?${nextParams.toString()}` : pathname,
+    );
   }
 
   function guardedLibrarySelect(entityType: AtelierEntityKind, id: string | number) {
@@ -504,13 +513,6 @@ export function AtelierSandboxClient({
       editing?.kind === "effect" || editing?.kind === "capability"
         ? editing.kind
         : mechanicsDraftKind;
-
-    // Empty build: show the inline "start a new entity" chooser instead
-    // of a blank form (Point 4). Once the user picks (or loads) something,
-    // buildStarted flips true and the form renders.
-    if (!buildStarted) {
-      return <EmptyBuildChooser onPick={startNewEntity} />;
-    }
 
     if (build === "mechanics" && activeKind !== "effect" && activeKind !== "capability") {
       return (
@@ -685,6 +687,10 @@ export function AtelierSandboxClient({
   }, [
     build,
     editing,
+    buildStarted,
+    mechanicsDraftKind,
+    formSnapshot,
+    templateKind,
     primitives,
     effects,
     capabilities,
@@ -1103,16 +1109,16 @@ const NEW_ENTITY_GROUPS: { heading: string; choices: NewEntityChoice[] }[] = [
   {
     heading: "Mechanics",
     choices: [
-      { tab: "mechanics", mechanicsSubKind: "primitive", label: "Primitive", hint: "Raw mechanical building block", icon: "lorc/jigsaw-piece" },
-      { tab: "mechanics", mechanicsSubKind: "effect", label: "Effect", hint: "Composed primitive effect", icon: "lorc/jigsaw-piece" },
-      { tab: "mechanics", mechanicsSubKind: "capability", label: "Capability", hint: "Ability built from primitives + effects", icon: "lorc/jigsaw-piece" },
+      { tab: "mechanics", mechanicsSubKind: "primitive", label: "Primitive", hint: "Raw mechanical building block", icon: "delapouite/cube" },
+      { tab: "mechanics", mechanicsSubKind: "effect", label: "Effect", hint: "Composed primitive effect", icon: "lorc/cubes" },
+      { tab: "mechanics", mechanicsSubKind: "capability", label: "Capability", hint: "Ability built from primitives + effects", icon: "lorc/cubeforce" },
     ],
   },
   {
     heading: "Heritage",
     choices: [
-      { tab: "template", templateSubKind: "RACE", label: "Lineage", hint: "Race template", icon: "caro-asercion/tarot-11-justice" },
-      { tab: "template", templateSubKind: "BACKGROUND", label: "Upbringing", hint: "Background template", icon: "caro-asercion/tarot-11-justice" },
+      { tab: "template", templateSubKind: "RACE", label: "Lineage", hint: "Race template", icon: "lorc/dna2" },
+      { tab: "template", templateSubKind: "BACKGROUND", label: "Upbringing", hint: "Background template", icon: "delapouite/plant-roots" },
       { tab: "template", templateSubKind: "ARCHETYPE", label: "Manifest", hint: "Archetype template", icon: "caro-asercion/tarot-11-justice" },
     ],
   },
@@ -1232,56 +1238,6 @@ function NewEntityModal({
   );
 }
 
-// Inline "start a new entity" chooser shown in the build column when it's
-// empty (Point 4). Mirrors the new-entity modal's 8 options so the desktop
-// middle column and the modal stay consistent.
-function EmptyBuildChooser({
-  onPick,
-}: {
-  onPick: (choice: NewEntityChoice) => void;
-}) {
-  const isDark = useIsDark();
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-6 p-6 text-center">
-      <div className="space-y-1">
-        <h2 className="text-lg font-semibold text-foreground">
-          Start something new
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Pick what you want to build.
-        </p>
-      </div>
-      <div className="grid w-full max-w-md gap-4">
-        {NEW_ENTITY_GROUPS.map((group) => (
-          <div key={group.heading} className="space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {group.heading}
-            </p>
-            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
-              {group.choices.map((choice) => (
-                <button
-                  key={choice.label + (choice.templateSubKind ?? choice.mechanicsSubKind ?? "")}
-                  type="button"
-                  onClick={() => onPick(choice)}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary hover:bg-primary/5"
-                >
-                  <IconDisplay
-                    iconSource="GAME_ICONS"
-                    iconKey={choice.icon}
-                    iconColor={isDark ? "#94a3b8" : "#64748b"}
-                    size={18}
-                    alt={choice.label}
-                  />
-                  {choice.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 // 6-tab bottom bar. Icon-only when inactive, icon + label when active.
 // Active tab widens to fit the label; inactive tabs are icon-only.
