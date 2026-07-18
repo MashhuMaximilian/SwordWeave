@@ -575,7 +575,11 @@ export function AtelierSandboxClient({
     setEditing(null);
     setFormSnapshot(null);
     setFormIsDirty(false);
-    setBuildStarted(true);
+    // buildStarted must go FALSE on reset: it gates the "what do you want
+    // to build?" chooser. If we left it true, re-opening the (now empty)
+    // build panel would skip the chooser and show a blank form instead of
+    // re-prompting — exactly the bug where reset+reopen didn't ask.
+    setBuildStarted(false);
     setLiveIntent(null);
     const nextParams = new URLSearchParams(
       currentSearchParams?.toString() ?? "",
