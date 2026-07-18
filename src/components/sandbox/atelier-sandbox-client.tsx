@@ -610,15 +610,15 @@ export function AtelierSandboxClient({
       const editingId = (editing.row as { id: string | number }).id;
       if (editingId === id) return;
     }
-    // Fork always loads the fork-draft (replacing whatever is in the build)
-    // — it mirrors the source-page behaviour where Fork navigates to a
-    // fresh sandbox. Load keeps the unsaved-changes guard.
-    if (intent === "fork" || (!formIsDirty && editing === null)) {
-      applyPendingAction({ kind: "loadFromLibrary", entityType, id, intent });
-      return;
-    }
-    modalDescRef.current = `You have unsaved changes in the ${buildLabel(build)} form. Loading another row will discard them.`;
-    setPendingAction({ kind: "loadFromLibrary", entityType, id, intent });
+    // Fork AND load both replace whatever is in the build. We no
+    // longer prompt a discard here: Reset clears the build on demand,
+    // and picking a row from the library is an explicit user action to
+    // swap the entity — re-asking "discard changes?" on every pick
+    // was redundant once Reset existed. The only remaining dirty-guard
+    // is navigating OFF the page (FAB links), handled by the
+    // separate document-level nav-guard effect, which keeps the
+    // in-app UnsavedChangesModal for that case.
+    applyPendingAction({ kind: "loadFromLibrary", entityType, id, intent });
   }
 
   const builderNode = useMemo(() => {
