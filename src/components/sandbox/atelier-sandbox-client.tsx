@@ -309,6 +309,11 @@ export function AtelierSandboxClient({
     modifiers: ModifierDraft[];
   } | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  // Pending off-page navigation awaiting the discard confirmation (when
+  // the build is dirty). Set by the nav guard; the UnsavedChangesModal
+  // confirms/cancels it. Using the in-app modal (not window.confirm) keeps
+  // the UX consistent with the load-into-build discard prompt.
+  const [pendingNav, setPendingNav] = useState<string | null>(null);
   const [templateKind, setTemplateKind] = useState<
     "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined
   >(initialKind);
@@ -336,6 +341,18 @@ export function AtelierSandboxClient({
   const isMobile = useIsMobile();
   const isDark = useIsDark();
 
+  // Open the build panel (mobile drawer / split bottom tab). No-op on
+  // desktop where the build column is always visible. Declared before the
+  // effects below so onOpenNew / loadFromLibrary can reference it.
+  const openBuildPanel = useCallback(() => {
+    if (!isMobile) return;
+    if (sandboxSplit) {
+      setSandboxBottomTab("build");
+    } else {
+      openDrawer("build");
+    }
+  }, [isMobile, sandboxSplit, openDrawer, setSandboxBottomTab]);
+
   const router = useRouter();
   const pathname = usePathname();
   const currentSearchParams = useSearchParams();
@@ -360,10 +377,13 @@ export function AtelierSandboxClient({
 
   // Navigation guard: when the build has unsaved changes, warn before
   // leaving the sandbox. The user wants to be able to navigate to
-  // /creations, /library, etc., but with a "discard changes or cancel"
-  // prompt rather than silently losing work (or being trapped).
-  //  - Internal <Link> clicks to a path outside /sandbox/atelier -> confirm.
-  //  - back/forward (popstate) + tab close/refresh (beforeunload) -> confirm.
+  // /creations, /library, etc., but with the SAME in-app "discard changes
+  // or cancel" modal that appears when loading into build over existing
+  // work — not the browser's native confirm().
+  //  - Internal <Link> clicks to a path outside /sandbox/atelier -> open the
+  //    in-app UnsavedChangesModal (pendingNav), confirming navigates there.
+  //  - tab close / refresh (beforeunload) -> native browser prompt (cannot
+  //    be intercepted with an in-app modal).
   useEffect(() => {
     if (!formIsDirty) return;
     const onAnchorClick = (e: MouseEvent) => {
@@ -377,31 +397,21 @@ export function AtelierSandboxClient({
       // Only guard navigation away from the sandbox page.
       if (href.startsWith("/sandbox/atelier")) return;
       if (!href.startsWith("/")) return; // external / hash links ignored
-      const ok = window.confirm(
-        "You have unsaved changes in the build. Leaving will discard them. Continue?",
-      );
-      if (!ok) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-    const onPop = (e: PopStateEvent) => {
-      if (!window.confirm("Discard unsaved build changes and leave?")) {
-        // Cancel the back/forward navigation by pushing the state back.
-        e.preventDefault?.();
-        window.history.pushState(null, "", window.location.href);
-      }
+      // Open the in-app discard modal; confirming navigates to href.
+      e.preventDefault();
+      e.stopPropagation();
+      modalDescRef.current =
+        "You have unsaved changes in the build. Leaving will discard them. Continue?";
+      setPendingNav(href);
     };
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "";
     };
     document.addEventListener("click", onAnchorClick, true);
-    window.addEventListener("popstate", onPop);
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
       document.removeEventListener("click", onAnchorClick, true);
-      window.removeEventListener("popstate", onPop);
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
   }, [formIsDirty]);
@@ -417,14 +427,20 @@ export function AtelierSandboxClient({
   //    the wrong flow (Point 2 / Point 3).
   useEffect(() => {
     function onOpenNew() {
-      // Always open the new-entity chooser. It's non-destructive until the
-      // user picks a kind (startNewEntity wipes then), so opening it over
-      // an in-progress build is safe — cancelling preserves the work.
-      setShowNewModal(true);
+      // If a build is already in progress, don't show the "what do you want
+      // to build?" chooser over the loaded content — open the build panel
+      // instead (mobile). On desktop the build column is already visible,
+      // so openBuildPanel is a no-op there. Only show the chooser when the
+      // build is empty.
+      if (editing !== null || buildStarted) {
+        openBuildPanel();
+      } else {
+        setShowNewModal(true);
+      }
     }
     window.addEventListener("sw-open-new-entity", onOpenNew);
     return () => window.removeEventListener("sw-open-new-entity", onOpenNew);
-  }, []);
+  }, [editing, buildStarted, openBuildPanel]);
 
   // Auto-open build panel on server-routed loads (?edit=<id>) — mobile only.
   useEffect(() => {
@@ -438,16 +454,8 @@ export function AtelierSandboxClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialEditing, sandboxSplit, openDrawer, setSandboxBottomTab, isMobile]);
 
-  const openBuildPanel = useCallback(() => {
-    if (!isMobile) return;
-    if (sandboxSplit) {
-      setSandboxBottomTab("build");
-    } else {
-      openDrawer("build");
-    }
-  }, [isMobile, sandboxSplit, openDrawer, setSandboxBottomTab]);
-
   const applyPendingAction = useCallback(
+
     (action: PendingAction) => {
       if (action.kind === "switchBuild") {
         // A tab is a LIBRARY FILTER only. Switching it must never touch the
@@ -500,6 +508,10 @@ export function AtelierSandboxClient({
       }
       setFormIsDirty(false);
       setBuildStarted(true);
+      setShowNewModal(false);
+      // Auto-open the build panel on mobile so the loaded content is
+      // visible (desktop already shows it inline).
+      openBuildPanel();
       // Update the URL with the concrete ?build=<kind>&edit=<id>&intent=load|fork
       // (same format the working /sandbox/grammar|blueprint routes use).
       // IMPORTANT: router.push/replace to the SAME pathname does NOT update
@@ -510,6 +522,15 @@ export function AtelierSandboxClient({
       if (target) {
         const url = `/sandbox/atelier${target.search}`;
         window.history.pushState(null, "", url);
+        // Resync Next's client router to the new URL. Raw pushState
+        // desyncs Next (its internal URL state lags window.location),
+        // which can throw a navigation error when the next render
+        // reconciles — especially after a discard-confirm that swaps the
+        // loaded entity. router.replace to the same URL re-aligns Next
+        // without adding a history entry or scrolling.
+        router.replace(window.location.pathname + window.location.search, {
+          scroll: false,
+        });
       }
       setLiveIntent((action.intent ?? "load") as SaveIntent);
       return;
@@ -1167,9 +1188,19 @@ export function AtelierSandboxClient({
         bottomBar={<AtelierTabBar build={build} onSwitch={guardedSwitchBuild} />}
       />
       <UnsavedChangesModal
-        isOpen={pendingAction !== null}
-        onCancel={() => setPendingAction(null)}
+        isOpen={pendingAction !== null || pendingNav !== null}
+        onCancel={() => {
+          setPendingAction(null);
+          setPendingNav(null);
+        }}
         onConfirm={() => {
+          if (pendingNav) {
+            const href = pendingNav;
+            setPendingNav(null);
+            setPendingAction(null);
+            router.push(href);
+            return;
+          }
           if (pendingAction) applyPendingAction(pendingAction);
           setPendingAction(null);
         }}
