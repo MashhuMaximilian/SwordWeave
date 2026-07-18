@@ -153,9 +153,9 @@ export function GrammarLibrary({
   // together (the user picks a specific chip to narrow). The legacy
   // primitive/effect/capability build modes still default to their own
   // kind for backwards-compatible deep links.
-  const defaultTypeFilter: LibraryTargetType | "ALL" =
+  const defaultTypeFilter: LibraryTargetType | "ALL" | "GROUP_MECHANICS" =
     build === "mechanics"
-      ? "ALL"
+      ? "GROUP_MECHANICS"
       : build === "primitive"
         ? "PRIMITIVE"
         : build === "effect"

@@ -125,9 +125,9 @@ export function BlueprintLibrary({
   //   - monster → "ALL" (no dedicated MONSTER target type in the
   //     type union yet, so default to all).
   // The user can broaden or narrow via the chip filter.
-  const defaultTypeFilter: LibraryTargetType | "ALL" =
+  const defaultTypeFilter: LibraryTargetType | "ALL" | "GROUP_HERITAGES" =
     build === "template"
-      ? "ALL"
+      ? "GROUP_HERITAGES"
       : build === "item"
         ? "ITEM"
         : "ALL"; // Monster — fallback

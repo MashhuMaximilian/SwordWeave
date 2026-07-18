@@ -457,23 +457,40 @@ export function AtelierSandboxClient({
         const row = templates.find((t) => t.id === id);
         targetType = row?.kind ? `${row.kind}_TEMPLATE` : "RACE_TEMPLATE";
       }
-      // Load into build / Fork: do EXACTLY what the working flows do
-      // (My Creations "Edit" and /library "Fork"):
-      //   1. clear the preview modal stack (the pathname stays
-      //      /sandbox/atelier, so ModalStackHost's pathname-change
-      //      auto-clear won't fire — we must clear it explicitly),
-      //   2. router.push to the sandbox route with the concrete
-      //      ?build=<kind>&edit=<id>&intent=load|fork URL.
-      // The server resolves initialEditing from that URL and the form
-      // populates — same as the legacy /sandbox/grammar|blueprint routes.
-      // We target /sandbox/atelier (not the legacy route) by swapping the
-      // helper's sandboxPath for our path.
+      // Close the preview popup (the pathname stays /sandbox/atelier, so
+      // ModalStackHost's auto-clear won't fire — clear explicitly).
       stack.clear();
-      const target = buildSandboxUrl(
-        targetType,
-        String(id),
-        action.intent ?? "load",
-      );
+      // Populate the form CLIENT-SIDE immediately. We do NOT rely on
+      // router.push re-running the server component (Next treats a push to
+      // the same pathname as a soft navigation and may skip the re-render,
+      // leaving the form empty). Setting editing here fills the form now;
+      // the URL update below keeps it deep-linkable + drives the intent chip.
+      if (entityType === "primitive") {
+        const row = primitives.find((p) => p.id === id);
+        if (!row) return;
+        setEditing({ kind: "primitive", row });
+      } else if (entityType === "effect") {
+        const row = effects.find((e) => e.id === id);
+        if (!row) return;
+        setEditing({ kind: "effect", row });
+      } else if (entityType === "capability") {
+        const row = capabilities.find((c) => c.id === id);
+        if (!row) return;
+        setEditing({ kind: "capability", row });
+      } else if (entityType === "template") {
+        const row = templates.find((t) => t.id === id);
+        if (!row) return;
+        setEditing({ kind: "template", row });
+      } else if (entityType === "item") {
+        const row = items.find((i) => i.id === id);
+        if (!row) return;
+        setEditing({ kind: "item", row });
+      }
+      setFormIsDirty(false);
+      setBuildStarted(true);
+      // Update the URL with the concrete ?build=<kind>&edit=<id>&intent=load|fork
+      // (same format the working /sandbox/grammar|blueprint routes use).
+      const target = buildSandboxUrl(targetType, String(id), action.intent ?? "load");
       if (target) {
         router.push(`/sandbox/atelier${target.search}`);
       }
@@ -483,6 +500,11 @@ export function AtelierSandboxClient({
       stack,
       router,
       buildSandboxUrl,
+      primitives,
+      effects,
+      capabilities,
+      templates,
+      items,
     ],
   );
 
