@@ -10,7 +10,7 @@ import {
 
 const workshops = [
   {
-    href: "/sandbox/atelier?build=primitive",
+    href: "/atelier?build=primitive",
     title: "Primitives",
     status: "Live",
     description:
@@ -18,7 +18,7 @@ const workshops = [
     icon: Boxes,
   },
   {
-    href: "/sandbox/atelier?build=effect",
+    href: "/atelier?build=effect",
     title: "Effects",
     status: "Live",
     description:
@@ -26,7 +26,7 @@ const workshops = [
     icon: FlaskConical,
   },
   {
-    href: "/sandbox/atelier?build=capability",
+    href: "/atelier?build=capability",
     title: "Capabilities",
     status: "Live",
     description:
@@ -34,7 +34,7 @@ const workshops = [
     icon: Swords,
   },
   {
-    href: "/sandbox/atelier?build=item",
+    href: "/atelier?build=item",
     title: "Items",
     status: "Live",
     description:
@@ -42,7 +42,7 @@ const workshops = [
     icon: Package,
   },
   {
-    href: "/sandbox/atelier?build=template&kind=race",
+    href: "/atelier?build=template&kind=race",
     title: "Heritage",
     status: "Live",
     description:

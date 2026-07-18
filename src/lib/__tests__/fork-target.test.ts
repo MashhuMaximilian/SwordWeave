@@ -9,39 +9,39 @@ import { describe, expect, it } from "vitest";
 import { buildSandboxUrl } from "../publishing/fork-target";
 
 describe("buildSandboxUrl — entity types", () => {
-  it("PRIMITIVE → /sandbox/grammar?build=primitive&edit=<id>&intent=fork", () => {
+  it("PRIMITIVE → /atelier?build=primitive&edit=<id>&intent=fork", () => {
     const url = buildSandboxUrl("PRIMITIVE", "13");
     expect(url).toEqual({
-      sandboxPath: "/sandbox/grammar",
+      sandboxPath: "/atelier",
       build: "primitive",
       search: "?build=primitive&edit=13&intent=fork",
     });
   });
 
-  it("EFFECT → /sandbox/grammar?build=effect", () => {
+  it("EFFECT → /atelier?build=effect", () => {
     const url = buildSandboxUrl("EFFECT", "abc");
-    expect(url?.sandboxPath).toBe("/sandbox/grammar");
+    expect(url?.sandboxPath).toBe("/atelier");
     expect(url?.build).toBe("effect");
     expect(url?.search).toContain("build=effect");
     expect(url?.search).toContain("edit=abc");
     expect(url?.search).toContain("intent=fork");
   });
 
-  it("CAPABILITY → /sandbox/grammar?build=capability", () => {
+  it("CAPABILITY → /atelier?build=capability", () => {
     const url = buildSandboxUrl("CAPABILITY", "cap-1");
     expect(url?.build).toBe("capability");
     expect(url?.search).toContain("build=capability");
     expect(url?.search).toContain("edit=cap-1");
   });
 
-  it("ITEM → /sandbox/blueprint?build=item", () => {
+  it("ITEM → /atelier?build=item", () => {
     const url = buildSandboxUrl("ITEM", "item-1");
-    expect(url?.sandboxPath).toBe("/sandbox/blueprint");
+    expect(url?.sandboxPath).toBe("/atelier");
     expect(url?.build).toBe("item");
     expect(url?.search).toContain("build=item");
   });
 
-  it("RACE_TEMPLATE → /sandbox/blueprint?build=template&kind=RACE", () => {
+  it("RACE_TEMPLATE → /atelier?build=template&kind=RACE", () => {
     const url = buildSandboxUrl("RACE_TEMPLATE", "tpl-1");
     expect(url?.build).toBe("template");
     expect(url?.search).toContain("kind=RACE");
@@ -89,6 +89,6 @@ describe("buildSandboxUrl — composability", () => {
     const url = buildSandboxUrl("PRIMITIVE", "13");
     expect(url).not.toBeNull();
     const full = `${url!.sandboxPath}${url!.search}`;
-    expect(full).toBe("/sandbox/grammar?build=primitive&edit=13&intent=fork");
+    expect(full).toBe("/atelier?build=primitive&edit=13&intent=fork");
   });
 });

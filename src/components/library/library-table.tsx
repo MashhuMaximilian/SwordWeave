@@ -104,7 +104,7 @@ export function LibraryTable({
         primaryAction={
           showClearFilters
             ? { label: "Clear filters", href: "/library/browse" }
-            : { label: "Build a primitive", href: "/sandbox/grammar?build=primitive" }
+            : { label: "Build a primitive", href: "/atelier?build=primitive" }
         }
         {...(showClearFilters
           ? {}

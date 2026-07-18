@@ -658,7 +658,7 @@ async function PrimitiveDetail({
       description={row.narrativeRule || row.mechanicalOutputText || null}
       author={author}
       ownerId={row.userId}
-      editHref={`/sandbox/grammar?build=primitive&edit=${row.id}`}
+      editHref={`/atelier?build=primitive&edit=${row.id}`}
       targetType="PRIMITIVE"
       targetId={String(id)}
       engagement={engagement}
@@ -782,7 +782,7 @@ async function CapabilityDetail({
       description={row.verboseDescription || null}
       author={author}
       ownerId={row.userId}
-      editHref={`/sandbox/grammar?build=capability&edit=${row.id}`}
+      editHref={`/atelier?build=capability&edit=${row.id}`}
       targetType="CAPABILITY"
       targetId={id}
       engagement={engagement}
@@ -991,7 +991,7 @@ async function TemplateDetail({
       description={row.description || null}
       author={author}
       ownerId={row.userId}
-      editHref={`/sandbox/blueprint?build=template&edit=${row.id}`}
+      editHref={`/atelier?build=template&edit=${row.id}`}
       targetType={targetTypeForEngagement}
       targetId={id}
       engagement={engagement}
@@ -1195,7 +1195,7 @@ async function EffectDetail({
       description={effectRow.narrativeDescription || null}
       author={author}
       ownerId={effectRow.userId}
-      editHref={`/sandbox/grammar?build=effect&edit=${id}`}
+      editHref={`/atelier?build=effect&edit=${id}`}
       targetType="EFFECT"
       targetId={id}
       engagement={engagement}
@@ -1422,7 +1422,7 @@ async function ItemDetail({
       ownerId={itemRow.userId}
       editHref={
         itemRow.userId
-          ? `/sandbox/blueprint?build=item&edit=${id}`
+          ? `/atelier?build=item&edit=${id}`
           : null
       }
       targetType="ITEM"

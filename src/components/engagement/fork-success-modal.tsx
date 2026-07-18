@@ -191,23 +191,23 @@ function buildSandboxEditUrl(r: ForkResult): string {
   const editId = encodeURIComponent(r.forkedTargetId);
   switch (r.targetType) {
     case "PRIMITIVE":
-      return `/sandbox/grammar?build=primitive&edit=${editId}`;
+      return `/atelier?build=primitive&edit=${editId}`;
     case "EFFECT":
-      return `/sandbox/grammar?build=effect&edit=${editId}`;
+      return `/atelier?build=effect&edit=${editId}`;
     case "CAPABILITY":
-      return `/sandbox/grammar?build=capability&edit=${editId}`;
+      return `/atelier?build=capability&edit=${editId}`;
     case "ITEM":
-      return `/sandbox/blueprint?build=item&edit=${editId}`;
+      return `/atelier?build=item&edit=${editId}`;
     case "RACE_TEMPLATE":
-      return `/sandbox/blueprint?build=template&kind=RACE&edit=${editId}`;
+      return `/atelier?build=template&kind=RACE&edit=${editId}`;
     case "BACKGROUND_TEMPLATE":
-      return `/sandbox/blueprint?build=template&kind=BACKGROUND&edit=${editId}`;
+      return `/atelier?build=template&kind=BACKGROUND&edit=${editId}`;
     case "ARCHETYPE_TEMPLATE":
-      return `/sandbox/blueprint?build=template&kind=ARCHETYPE&edit=${editId}`;
+      return `/atelier?build=template&kind=ARCHETYPE&edit=${editId}`;
     case "CHARACTER":
       return `/sandbox/builds?edit=${editId}`;
     case "BUILD_TEMPLATE":
-      return `/sandbox/blueprint?build=template&edit=${editId}`;
+      return `/atelier?build=template&edit=${editId}`;
     default:
       // Defensive fallback — should never happen if the schema enums stay
       // in sync with this switch.

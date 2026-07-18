@@ -344,17 +344,17 @@ function buildSandboxSlotUrl(
 ): string | null {
   switch (targetType) {
     case "PRIMITIVE":
-      return `/sandbox/grammar?build=primitive&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
+      return `/atelier?build=primitive&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
     case "CAPABILITY":
-      return `/sandbox/grammar?build=capability&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
+      return `/atelier?build=capability&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
     case "CHARACTER":
       return `/sandbox/builds?edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
     case "RACE_TEMPLATE":
-      return `/sandbox/blueprint?build=template&kind=RACE&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
+      return `/atelier?build=template&kind=RACE&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
     case "BACKGROUND_TEMPLATE":
-      return `/sandbox/blueprint?build=template&kind=BACKGROUND&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
+      return `/atelier?build=template&kind=BACKGROUND&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
     case "ARCHETYPE_TEMPLATE":
-      return `/sandbox/blueprint?build=template&kind=ARCHETYPE&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
+      return `/atelier?build=template&kind=ARCHETYPE&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
     default:
       return null;
   }

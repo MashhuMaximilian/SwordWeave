@@ -37,11 +37,15 @@ import {
   type SandboxTemplateRow,
 } from "@/components/library/library-item-preview";
 import { useSandboxEngagement } from "@/components/library/use-sandbox-engagement";
-import type { BlueprintBuildMode } from "./blueprint-sandbox-client";
 import {
   SLOT_EVENT_NAME,
   type SlotEvent,
 } from "@/lib/sandbox/slot-events";
+
+// Build modes this library column serves. (Relocated from the now-deleted
+// blueprint-sandbox-client — Atelier owns the build surface; the library
+// column only needs the mode union for its prop types.)
+export type BlueprintBuildMode = "template" | "item" | "monster";
 
 interface BlueprintLibraryProps {
   build: BlueprintBuildMode;
@@ -783,14 +787,14 @@ function BlueprintPreviewBody({
                   // expects the full enum (`RACE_TEMPLATE` etc.). Use the
                   // shared helper so this can't drift again.
                   openSourceHref: `/library/item/${libraryCompositeId(item)}`,
-                  sandboxPath: "/sandbox/atelier",
+                  sandboxPath: "/atelier",
                   onFork,
                 },
               }
             : {
                 callbacks: {
                   openSourceHref: `/library/item/${libraryCompositeId(item)}`,
-                  sandboxPath: "/sandbox/atelier",
+                  sandboxPath: "/atelier",
                   onFork,
                 },
               })}

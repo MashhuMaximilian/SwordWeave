@@ -58,7 +58,7 @@ export interface LikeForkBarProps {
   /**
    * Override the sandbox route the Fork button navigates to. Defaults to
    * the legacy route resolved by buildSandboxUrl (e.g. /sandbox/grammar).
-   * The Atelier page passes "/sandbox/atelier" so forking stays on the
+   * The Atelier page passes "/atelier" so forking stays on the
    * unified page instead of bouncing to the legacy route.
    */
   sandboxPath?: string | undefined;

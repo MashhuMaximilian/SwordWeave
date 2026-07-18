@@ -1,26 +1,19 @@
-// =============================================================================
-// fork-target — Phase 1 of the edit-creates-fork refactor (§11 of
-// docs/architecture/edit-creates-fork.md).
-//
 // Maps an entity targetType (from LikeForkBar etc.) to the sandbox
 // route + build-mode + URL suffix that the Fork button should navigate
 // to. Clicking Fork now just navigates; the actual fork is created
 // at save time via dispatch-save.ts.
 //
+// The unified sandbox lives at /atelier (formerly /sandbox/atelier, and
+// before that the per-type /sandbox/grammar + /sandbox/blueprint routes).
+// The route is always "/atelier"; the ?build=<kind> query selects the
+// form, so this helper only emits that single host route.
+//
 // Example outputs (for targetType="PRIMITIVE", targetId="13"):
-//   { sandboxPath: "/sandbox/grammar", build: "primitive", search: "?build=primitive&edit=13&intent=fork" }
-// =============================================================================
+//   { sandboxPath: "/atelier", build: "primitive", search: "?build=primitive&edit=13&intent=fork" }
 
 import type { SaveIntent } from "./save-intent";
 
-export type SandboxPath =
-  | "/sandbox/grammar"
-  | "/sandbox/blueprint"
-  // characters/builds sandboxes are read-only for Phase 1 — Fork
-  // doesn't apply to them (you can't fork a character). The shape
-  // is reserved for future expansion.
-  | "/sandbox/characters"
-  | "/sandbox/builds";
+export type SandboxPath = "/atelier";
 
 export interface ForkTarget {
   sandboxPath: SandboxPath;
@@ -43,64 +36,33 @@ export function buildSandboxUrl(
   targetId: string,
   intent: SaveIntent = "fork",
 ): ForkTarget | null {
+  let build: string;
+  let kind: string | undefined;
   switch (targetType) {
     case "PRIMITIVE":
-      return {
-        sandboxPath: "/sandbox/grammar",
-        build: "primitive",
-        search: buildSearch({ build: "primitive", edit: targetId, intent }),
-      };
+      build = "primitive";
+      break;
     case "EFFECT":
-      return {
-        sandboxPath: "/sandbox/grammar",
-        build: "effect",
-        search: buildSearch({ build: "effect", edit: targetId, intent }),
-      };
+      build = "effect";
+      break;
     case "CAPABILITY":
-      return {
-        sandboxPath: "/sandbox/grammar",
-        build: "capability",
-        search: buildSearch({ build: "capability", edit: targetId, intent }),
-      };
+      build = "capability";
+      break;
     case "ITEM":
-      return {
-        sandboxPath: "/sandbox/blueprint",
-        build: "item",
-        search: buildSearch({ build: "item", edit: targetId, intent }),
-      };
+      build = "item";
+      break;
     case "RACE_TEMPLATE":
-      return {
-        sandboxPath: "/sandbox/blueprint",
-        build: "template",
-        search: buildSearch({
-          build: "template",
-          kind: "RACE",
-          edit: targetId,
-          intent,
-        }),
-      };
+      build = "template";
+      kind = "RACE";
+      break;
     case "BACKGROUND_TEMPLATE":
-      return {
-        sandboxPath: "/sandbox/blueprint",
-        build: "template",
-        search: buildSearch({
-          build: "template",
-          kind: "BACKGROUND",
-          edit: targetId,
-          intent,
-        }),
-      };
+      build = "template";
+      kind = "BACKGROUND";
+      break;
     case "ARCHETYPE_TEMPLATE":
-      return {
-        sandboxPath: "/sandbox/blueprint",
-        build: "template",
-        search: buildSearch({
-          build: "template",
-          kind: "ARCHETYPE",
-          edit: targetId,
-          intent,
-        }),
-      };
+      build = "template";
+      kind = "ARCHETYPE";
+      break;
     case "CHARACTER":
     case "BUILD":
     case "BUILD_TEMPLATE":
@@ -113,6 +75,11 @@ export function buildSandboxUrl(
     default:
       return null;
   }
+  return {
+    sandboxPath: "/atelier",
+    build,
+    search: buildSearch({ build, edit: targetId, intent, ...(kind ? { kind } : {}) }),
+  };
 }
 
 function buildSearch(params: {

@@ -297,7 +297,7 @@ export function LibraryCapabilitiesView({
                     Clone
                   </button>
                   <Link
-                    href={`/sandbox/grammar?build=capability&edit=${cap.id}`}
+                    href={`/atelier?build=capability&edit=${cap.id}`}
                     className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
                   >
                     <Pencil className="size-3.5" />
@@ -449,7 +449,7 @@ export function LibraryCapabilitiesView({
                 Clone
               </button>
               <Link
-                href={`/sandbox/grammar?build=capability&edit=${detailCap.id}`}
+                href={`/atelier?build=capability&edit=${detailCap.id}`}
                 onClick={() => setDetailCap(null)}
                 className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >

@@ -691,14 +691,14 @@ function SandboxPreviewBody({
                   // route to `RACE_TEMPLATE:<id>` etc. — `item.kind.toUpperCase()`
                   // produced `TEMPLATE:<id>` which 404'd.
                   openSourceHref: `/library/item/${libraryCompositeId(item)}`,
-                  sandboxPath: "/sandbox/atelier",
+                  sandboxPath: "/atelier",
                   onFork,
                 },
               }
             : {
                 callbacks: {
                   openSourceHref: `/library/item/${libraryCompositeId(item)}`,
-                  sandboxPath: "/sandbox/atelier",
+                  sandboxPath: "/atelier",
                   onFork,
                 },
               })}

@@ -314,18 +314,14 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
   // its own layout that doesn't benefit from a split, so the FAB button
   // is hidden there.
   const isSplitableSandboxRoute =
-    pathname?.startsWith("/sandbox/grammar") ||
-    pathname?.startsWith("/sandbox/blueprint") ||
-    pathname?.startsWith("/sandbox/atelier");
+    pathname?.startsWith("/atelier");
 
   // Filters only appear on routes that actually open the filter panel
   // via setFilterPanelOpen: the library browse view and the sandbox
   // pages (which render an embedded library table).
   const isFilterableRoute =
     pathname === "/library/browse" ||
-    pathname?.startsWith("/sandbox/grammar") ||
-    pathname?.startsWith("/sandbox/blueprint") ||
-    pathname?.startsWith("/sandbox/atelier");
+    pathname?.startsWith("/atelier");
 
   // ---------------------- FAB items ----------------------
   // Note: per the user's spec, the in-list "Functions" row is hidden in

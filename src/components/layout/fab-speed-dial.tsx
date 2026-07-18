@@ -464,7 +464,7 @@ export const NAV_LINKS: FabItem[] = [
     icon: (
       <FabIcon iconKey="lorc/jigsaw-box" alt="Atelier" />
     ),
-    href: "/sandbox/atelier",
+    href: "/atelier",
   },
   {
     kind: "link",

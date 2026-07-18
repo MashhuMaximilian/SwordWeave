@@ -1,6 +1,6 @@
 "use client";
 
-// /sandbox/atelier — unified sandbox client.
+// /atelier — unified sandbox client.
 //
 // One route, one 3-column layout (library / build / preview), with a
 // bottom tab bar of 6 build modes:
@@ -253,7 +253,7 @@ export function AtelierSandboxClient({
   initialIntent,
   initialSourceId,
   // Deep-linked mechanics sub-kind (primitive/effect/capability) so a
-  // fresh /sandbox/atelier?build=effect opens the Effect form blank.
+  // fresh /atelier?build=effect opens the Effect form blank.
   initialMechanicsKind = "primitive",
   dataLoadFailed = false,
   primitives,
@@ -358,7 +358,7 @@ export function AtelierSandboxClient({
   const currentSearchParams = useSearchParams();
   // Modal stack — the preview popup is pushed here. When we Load/Fork
   // into build we must clear it explicitly: the pathname stays
-  // /sandbox/atelier (unlike the legacy routes), so ModalStackHost's
+  // /atelier (unlike the legacy routes), so ModalStackHost's
   // pathname-change auto-clear does NOT fire. Without stack.clear() the
   // preview modal stays on top of the page, hiding the URL change.
   const stack = useModalStack();
@@ -380,7 +380,7 @@ export function AtelierSandboxClient({
   // /creations, /library, etc., but with the SAME in-app "discard changes
   // or cancel" modal that appears when loading into build over existing
   // work — not the browser's native confirm().
-  //  - Internal <Link> clicks to a path outside /sandbox/atelier -> open the
+  //  - Internal <Link> clicks to a path outside /atelier -> open the
   //    in-app UnsavedChangesModal (pendingNav), confirming navigates there.
   //  - tab close / refresh (beforeunload) -> native browser prompt (cannot
   //    be intercepted with an in-app modal).
@@ -400,7 +400,7 @@ export function AtelierSandboxClient({
       if (!anchor) return;
       const href = anchor.getAttribute("href") ?? "";
       // Only guard navigation away from the sandbox page.
-      if (href.startsWith("/sandbox/atelier")) return;
+      if (href.startsWith("/atelier")) return;
       if (!href.startsWith("/")) return; // external / hash links ignored
       // Open the in-app discard modal; confirming navigates to href.
       e.preventDefault();
@@ -480,7 +480,7 @@ export function AtelierSandboxClient({
         const row = templates.find((t) => String(t.id) === idStr);
         targetType = row?.kind ? `${row.kind}_TEMPLATE` : "RACE_TEMPLATE";
       }
-      // Close the preview popup (the pathname stays /sandbox/atelier, so
+      // Close the preview popup (the pathname stays /atelier, so
       // ModalStackHost's auto-clear won't fire — clear explicitly).
       stack.clear();
       // Populate the form CLIENT-SIDE immediately. We do NOT rely on
@@ -539,7 +539,7 @@ export function AtelierSandboxClient({
       // no crash. The form is already filled by setEditing above.
       const target = buildSandboxUrl(targetType, String(id), action.intent ?? "load");
       if (target) {
-        const url = `/sandbox/atelier${target.search}`;
+        const url = `/atelier${target.search}`;
         window.history.replaceState(null, "", url);
       }
       setLiveIntent((action.intent ?? "load") as SaveIntent);
@@ -590,7 +590,7 @@ export function AtelierSandboxClient({
       currentSearchParams?.toString() ?? "",
     );
     // Clear ALL loaded-entity params so Reset returns to a clean
-    // /sandbox/atelier (the user wants the URL stripped on Reset, not
+    // /atelier (the user wants the URL stripped on Reset, not
     // left with a stale ?build=). We use replaceState (not router.replace):
     // a Next navigation re-renders the server and re-resolves
     // initialEditing, which can throw during the editing -> null transition
@@ -815,7 +815,7 @@ export function AtelierSandboxClient({
           Monster authoring is queued. The schema is in place — the composer
           will be migrated from{" "}
           <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-            /sandbox/atelier?build=monster
+            /atelier?build=monster
           </code>{" "}
           once the data model stabilizes.
         </p>

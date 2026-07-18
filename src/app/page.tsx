@@ -14,21 +14,21 @@ import { HomepageAuth } from "@/components/layout/homepage-auth";
 
 const workspaces = [
   {
-    href: "/sandbox/grammar?build=primitive",
+    href: "/atelier?build=primitive",
     title: "Primitive Sandbox",
     status: "Live",
     description: "Atomic BU records, mirror vectors, and generated modifiers.",
     icon: Boxes,
   },
   {
-    href: "/sandbox/grammar?build=effect",
+    href: "/atelier?build=effect",
     title: "Effect Builder",
     status: "Next",
     description: "Reusable states assembled from primitive groups.",
     icon: FlaskConical,
   },
   {
-    href: "/sandbox/grammar?build=capability",
+    href: "/atelier?build=capability",
     title: "Capability Compiler",
     status: "Queued",
     description: "Action cards compiled from verbs, domains, and effects.",
@@ -95,7 +95,7 @@ export default async function HomePage() {
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground"
-              href="/sandbox/grammar?build=primitive"
+              href="/atelier?build=primitive"
             >
               Open Primitive Sandbox
               <ArrowRight className="size-4" />

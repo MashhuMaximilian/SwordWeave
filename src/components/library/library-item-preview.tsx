@@ -322,7 +322,7 @@ export interface PreviewCallbacks {
    *  shows this link next to the version-history link on the same row. */
   openSourceHref?: string;
   /** Optional override for the sandbox route the Fork button navigates to.
-   *  The Atelier page passes "/sandbox/atelier" so forking stays on the
+   *  The Atelier page passes "/atelier" so forking stays on the
    *  unified page instead of bouncing to the legacy /sandbox/grammar route. */
   sandboxPath?: string;
   /** Direct fork handler (Atelier). When set, the Fork button calls this
