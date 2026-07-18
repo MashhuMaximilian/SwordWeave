@@ -216,7 +216,22 @@ export function FabSpeedDial({
                 <Link
                   key={item.key}
                   href={item.href}
-                  onClick={() => setOpen(false)}
+                  onClick={(e) => {
+                    // Navigate with a hard navigation. Relying on <Link>'s
+                    // built-in client-nav alone fails here: setOpen(false)
+                    // unmounts the menu during the same click, which aborts
+                    // Next's router.push before it commits — so the page
+                    // never changes (the FAB just closes). router.push from
+                    // useRouter() here also proved unreliable in this
+                    // context, so we navigate directly via the location
+                    // API, which always works. (When the build is dirty the
+                    // document-level nav guard intercepts first and opens
+                    // the in-app discard modal, whose confirm also uses a
+                    // hard navigation — same reliable path.)
+                    e.preventDefault();
+                    window.location.assign(item.href);
+                    setOpen(false);
+                  }}
                   style={{
                     animation: `sw-fab-item-in 180ms ease-out both`,
                     animationDelay: `${index * 20}ms`,

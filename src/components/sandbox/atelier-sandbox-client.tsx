@@ -506,6 +506,15 @@ export function AtelierSandboxClient({
         if (!row) return;
         setEditing({ kind: "item", row });
       }
+      // Reset the live form snapshot. The preview is built as
+      // `formSnapshot?.form ?? row`; if we DON'T clear it here, a stale
+      // snapshot from the previously-loaded entity (e.g. a template, which
+      // has no `category` field) is used for the new primitive preview,
+      // and PrimitiveFormPreview's categoryLabel(undefined) throws
+      // "Cannot read properties of undefined (reading 'split')". Clearing
+      // it forces the preview to fall back to `row` (which always has a
+      // category) until the newly-loaded form repopulates the snapshot.
+      setFormSnapshot(null);
       setFormIsDirty(false);
       setBuildStarted(true);
       setShowNewModal(false);
@@ -556,10 +565,10 @@ export function AtelierSandboxClient({
   // No discard prompt, no tab-cache wipe — just switch to the target tab
   // with a blank form of the chosen kind. The build column then renders
   // the right editor (Point 3 / Point 5).
-  function startNewEntity(choice: NewEntityChoice) {
+  function startNewEntity(choice?: NewEntityChoice) {
     setShowNewModal(false);
-    if (choice.templateSubKind) setTemplateKind(choice.templateSubKind);
-    if (choice.mechanicsSubKind) setMechanicsDraftKind(choice.mechanicsSubKind);
+    if (choice?.templateSubKind) setTemplateKind(choice.templateSubKind);
+    if (choice?.mechanicsSubKind) setMechanicsDraftKind(choice.mechanicsSubKind);
     // NOTE: deliberately do NOT switch the active tab — the tab is a library
     // filter and the build form renders from the chosen draft kind
     // (mechanicsDraftKind / templateKind), independent of the tab.
@@ -571,12 +580,14 @@ export function AtelierSandboxClient({
     const nextParams = new URLSearchParams(
       currentSearchParams?.toString() ?? "",
     );
-    // Clear any loaded-entity params (starting fresh), but leave `build`
-    // untouched so the URL doesn't fight the user's current tab.
-    // Use replaceState (not router.replace): a Next navigation re-renders
-    // the server and re-resolves initialEditing, which can throw during the
-    // editing -> null transition (the "reload page" error). replaceState
-    // updates the bar + deep-link state without a server re-render.
+    // Clear ALL loaded-entity params so Reset returns to a clean
+    // /sandbox/atelier (the user wants the URL stripped on Reset, not
+    // left with a stale ?build=). We use replaceState (not router.replace):
+    // a Next navigation re-renders the server and re-resolves
+    // initialEditing, which can throw during the editing -> null transition
+    // (the "reload page" error). replaceState updates the bar + deep-link
+    // state without a server re-render.
+    nextParams.delete("build");
     nextParams.delete("edit");
     nextParams.delete("intent");
     const clearedUrl = nextParams.toString()
@@ -661,7 +672,7 @@ export function AtelierSandboxClient({
               setFormIsDirty(false);
             }
           }}
-          onReset={() => setEditing(null)}
+          onReset={startNewEntity}
         />
       );
     }
@@ -692,7 +703,7 @@ export function AtelierSandboxClient({
             });
           }}
           onSaved={() => {}}
-          onReset={() => setEditing(null)}
+          onReset={startNewEntity}
         />
       );
     }
@@ -723,7 +734,7 @@ export function AtelierSandboxClient({
             });
           }}
           onSaved={() => {}}
-          onReset={() => setEditing(null)}
+          onReset={startNewEntity}
         />
       );
     }
@@ -748,7 +759,7 @@ export function AtelierSandboxClient({
             });
           }}
           onSaved={() => {}}
-          onReset={() => setEditing(null)}
+          onReset={startNewEntity}
         />
       );
     }
@@ -775,7 +786,7 @@ export function AtelierSandboxClient({
             });
           }}
           onSaved={() => {}}
-          onReset={() => setEditing(null)}
+          onReset={startNewEntity}
         />
       );
     }

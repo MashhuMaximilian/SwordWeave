@@ -56,7 +56,8 @@ export type PrimitiveFormState = {
   iconColor: string;
 };
 
-function categoryLabel(category: string): string {
+function categoryLabel(category: string | undefined | null): string {
+  if (!category) return "";
   return category
     .split("_")
     .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
