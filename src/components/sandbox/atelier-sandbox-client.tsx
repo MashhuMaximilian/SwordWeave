@@ -458,12 +458,13 @@ export function AtelierSandboxClient({
         return;
       }
       const { entityType, id } = action;
+      const idStr = String(id);
       // Map to the concrete targetType buildSandboxUrl expects. For
       // templates, "TEMPLATE" isn't a valid key — resolve the concrete
       // sub-kind (RACE/BACKGROUND/ARCHETYPE) from the loaded row.
       let targetType = entityType.toUpperCase();
       if (entityType === "template") {
-        const row = templates.find((t) => t.id === id);
+        const row = templates.find((t) => String(t.id) === idStr);
         targetType = row?.kind ? `${row.kind}_TEMPLATE` : "RACE_TEMPLATE";
       }
       // Close the preview popup (the pathname stays /sandbox/atelier, so
@@ -474,24 +475,26 @@ export function AtelierSandboxClient({
       // the same pathname as a soft navigation and may skip the re-render,
       // leaving the form empty). Setting editing here fills the form now;
       // the URL update below keeps it deep-linkable + drives the intent chip.
+      // NOTE: ids may arrive as strings (fork's engagement targetId) or
+      // numbers (load's row id) — compare with String() on both sides.
       if (entityType === "primitive") {
-        const row = primitives.find((p) => p.id === id);
+        const row = primitives.find((p) => String(p.id) === idStr);
         if (!row) return;
         setEditing({ kind: "primitive", row });
       } else if (entityType === "effect") {
-        const row = effects.find((e) => e.id === id);
+        const row = effects.find((e) => String(e.id) === idStr);
         if (!row) return;
         setEditing({ kind: "effect", row });
       } else if (entityType === "capability") {
-        const row = capabilities.find((c) => c.id === id);
+        const row = capabilities.find((c) => String(c.id) === idStr);
         if (!row) return;
         setEditing({ kind: "capability", row });
       } else if (entityType === "template") {
-        const row = templates.find((t) => t.id === id);
+        const row = templates.find((t) => String(t.id) === idStr);
         if (!row) return;
         setEditing({ kind: "template", row });
       } else if (entityType === "item") {
-        const row = items.find((i) => i.id === id);
+        const row = items.find((i) => String(i.id) === idStr);
         if (!row) return;
         setEditing({ kind: "item", row });
       }

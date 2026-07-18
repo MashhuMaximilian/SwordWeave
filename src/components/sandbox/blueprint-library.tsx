@@ -89,6 +89,11 @@ interface BlueprintLibraryProps {
 // "we should also be able to view/filter primitives, effects, capabilities
 // in the templates tab"). The sub-kind filter was redundant with the kind
 // filter — it has been removed.
+// Group chips: "All heritages" resolves to every template sub-kind.
+const TYPE_GROUPS: Record<string, LibraryTargetType[]> = {
+  GROUP_HERITAGES: ["RACE_TEMPLATE", "BACKGROUND_TEMPLATE", "ARCHETYPE_TEMPLATE"],
+};
+
 const ALL_AVAILABLE_TYPES: Array<{
   key: LibraryTargetType | "ALL";
   label: string;
@@ -293,9 +298,17 @@ export function BlueprintLibrary({
       items = items.filter((item) => item.name.toLowerCase().includes(q));
     }
 
-    // Toolbar type filter.
+    // Toolbar type filter. "ALL" = everything. Group keys
+    // (GROUP_HERITAGES) match a set of concrete types; otherwise it's a
+    // single concrete type.
     if (toolbarState.typeFilter !== "ALL" && items.length > 0) {
-      items = items.filter((item) => item.targetType === toolbarState.typeFilter);
+      const tf = toolbarState.typeFilter;
+      const group = TYPE_GROUPS[tf as keyof typeof TYPE_GROUPS];
+      const allowedTf =
+        group && group.length ? group : [tf as LibraryTargetType];
+      items = items.filter((item) =>
+        allowedTf.includes(item.targetType as LibraryTargetType),
+      );
     }
 
     // Category (items only carry category in template rows).
@@ -599,7 +612,7 @@ export function BlueprintLibrary({
                     }))
                   }
                   className={cn(
-                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    "whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium transition-colors",
                     active
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border bg-card text-foreground hover:border-primary hover:text-primary",

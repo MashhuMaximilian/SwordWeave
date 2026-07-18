@@ -536,7 +536,7 @@ export function GrammarLibrary({
                     }))
                   }
                   className={cn(
-                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    "whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium transition-colors",
                     active
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border bg-card text-foreground hover:border-primary hover:text-primary",
