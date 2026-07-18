@@ -71,11 +71,11 @@ function isValidKind(value: string | null | undefined): value is TemplateKind {
 function kindSingular(kind: TemplateKind): string {
   switch (kind) {
     case "RACE":
-      return "Race";
+      return "Lineage";
     case "BACKGROUND":
-      return "Background";
+      return "Upbringing";
     case "ARCHETYPE":
-      return "Archetype";
+      return "Manifest";
   }
 }
 

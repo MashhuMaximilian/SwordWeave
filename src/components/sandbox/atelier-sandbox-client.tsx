@@ -256,6 +256,10 @@ export function AtelierSandboxClient({
     modifiers: ModifierDraft[];
   } | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [templateKind, setTemplateKind] = useState<
+    "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined
+  >(initialKind);
+  const [showNewModal, setShowNewModal] = useState(false);
   const modalDescRef = useRef<string | undefined>(undefined);
 
   const { setSandboxFormDirty, openDrawer, sandboxSplit, setSandboxBottomTab } =
@@ -382,6 +386,22 @@ export function AtelierSandboxClient({
     }
     modalDescRef.current = `You have unsaved changes in the ${buildLabel(build)} form. Switching to ${buildLabel(newMode)} will lose them.`;
     setPendingAction({ kind: "switchBuild", mode: newMode });
+  }
+
+  // "New entity" picker: switch to the chosen kind with a BLANK form.
+  // If the form currently has state, the dirty-guard (guardedSwitchBuild)
+  // intercepts with the unsaved-changes modal; otherwise it lands on a
+  // fresh form of the chosen kind immediately.
+  function startNewEntity(choice: NewEntityChoice) {
+    setShowNewModal(false);
+    if (choice.templateSubKind) setTemplateKind(choice.templateSubKind);
+    // Already on the target tab with a pristine form → nothing to do.
+    if (choice.tab === build && !formIsDirty && editing === null) {
+      setEditing(null);
+      setFormSnapshot(null);
+      return;
+    }
+    guardedSwitchBuild(choice.tab);
   }
 
   function guardedLibrarySelect(entityType: AtelierTab, id: string | number) {
@@ -520,7 +540,7 @@ export function AtelierSandboxClient({
       return (
         <TemplateForm
           initialTemplate={editing?.kind === "template" ? editing.row : null}
-          initialKind={initialKind ?? undefined}
+          initialKind={templateKind ?? undefined}
           availablePrimitives={primitives}
           availableCapabilities={capabilities}
           {...formCommon}
@@ -935,7 +955,16 @@ export function AtelierSandboxClient({
       <SandboxLayout
         storageKey="atelier"
         library={libraryNode}
-        builder={builderNode}
+        builder={
+          <BuilderPane
+            onNew={() => setShowNewModal(true)}
+            showNewModal={showNewModal}
+            onPickNew={startNewEntity}
+            onCloseNew={() => setShowNewModal(false)}
+          >
+            {builderNode}
+          </BuilderPane>
+        }
         preview={previewNode}
         bottomBar={<AtelierTabBar build={build} onSwitch={guardedSwitchBuild} />}
       />
@@ -970,10 +999,156 @@ function buildLabel(mode: AtelierTab): string {
     case "primitive": return "Primitive";
     case "effect": return "Effect";
     case "capability": return "Capability";
-    case "template": return "Template";
-    case "item": return "Item";
-    case "monster": return "Monster";
+    case "template": return "Heritage";
+    case "item": return "Items";
+    case "monster": return "Monsters";
   }
+}
+
+// ---- New-entity picker (Stage 3) ----------------------------------------
+
+type NewEntityChoice = {
+  tab: AtelierTab;
+  templateSubKind?: "RACE" | "BACKGROUND" | "ARCHETYPE";
+  label: string;
+  hint: string;
+  icon: string;
+};
+
+// The 8 entity kinds the user can start from an empty build. Labels use
+// the renamed taxonomy (Lineage / Upbringing / Manifest) per the user's
+// rename spec, even though the underlying tab/type keep their canonical
+// ids. Grouped for display only.
+const NEW_ENTITY_GROUPS: { heading: string; choices: NewEntityChoice[] }[] = [
+  {
+    heading: "Mechanics",
+    choices: [
+      { tab: "primitive", label: "Primitive", hint: "Raw mechanical building block", icon: "lorc/jigsaw-piece" },
+      { tab: "effect", label: "Effect", hint: "Composed primitive effect", icon: "lorc/jigsaw-piece" },
+      { tab: "capability", label: "Capability", hint: "Ability built from primitives + effects", icon: "lorc/jigsaw-piece" },
+    ],
+  },
+  {
+    heading: "Heritage",
+    choices: [
+      { tab: "template", templateSubKind: "RACE", label: "Lineage", hint: "Race template", icon: "caro-asercion/tarot-11-justice" },
+      { tab: "template", templateSubKind: "BACKGROUND", label: "Upbringing", hint: "Background template", icon: "caro-asercion/tarot-11-justice" },
+      { tab: "template", templateSubKind: "ARCHETYPE", label: "Manifest", hint: "Archetype template", icon: "caro-asercion/tarot-11-justice" },
+    ],
+  },
+  {
+    heading: "Other",
+    choices: [
+      { tab: "item", label: "Item", hint: "Equipable / consumable", icon: "lorc/battle-gear" },
+      { tab: "monster", label: "Monster", hint: "Coming soon", icon: "lorc/gluttonous-smile" },
+    ],
+  },
+];
+
+function BuilderPane({
+  onNew,
+  showNewModal,
+  onPickNew,
+  onCloseNew,
+  children,
+}: {
+  onNew: () => void;
+  showNewModal: boolean;
+  onPickNew: (choice: NewEntityChoice) => void;
+  onCloseNew: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3 py-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Build
+        </span>
+        <button
+          type="button"
+          onClick={onNew}
+          className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+        >
+          <span className="text-base leading-none">+</span>
+          New entity
+        </button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+      {showNewModal ? (
+        <NewEntityModal onPick={onPickNew} onClose={onCloseNew} />
+      ) : null}
+    </div>
+  );
+}
+
+function NewEntityModal({
+  onPick,
+  onClose,
+}: {
+  onPick: (choice: NewEntityChoice) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="New entity"
+      >
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <h2 className="text-sm font-semibold">Start a new entity</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-md p-1.5 hover:bg-accent"
+          >
+            <span className="text-base leading-none">×</span>
+          </button>
+        </div>
+        <div className="max-h-[60vh] space-y-4 overflow-y-auto p-4">
+          {NEW_ENTITY_GROUPS.map((group) => (
+            <div key={group.heading}>
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                {group.heading}
+              </p>
+              <div className="grid grid-cols-1 gap-1.5">
+                {group.choices.map((choice) => (
+                  <button
+                    key={choice.label + (choice.templateSubKind ?? "")}
+                    type="button"
+                    onClick={() => onPick(choice)}
+                    className="flex items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-left transition-colors hover:border-primary hover:bg-primary/5"
+                  >
+                    <IconDisplay
+                      iconSource="GAME_ICONS"
+                      iconKey={choice.icon}
+                      iconColor="#94a3b8"
+                      size={20}
+                      alt={choice.label}
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-foreground">
+                        {choice.label}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {choice.hint}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // 6-tab bottom bar. Icon-only when inactive, icon + label when active.
@@ -986,9 +1161,9 @@ const ATELIER_TABS: {
   { key: "primitive", label: "Primitive", icon: "lorc/jigsaw-piece" },
   { key: "effect", label: "Effect", icon: "lorc/jigsaw-piece" },
   { key: "capability", label: "Capability", icon: "lorc/jigsaw-piece" },
-  { key: "template", label: "Template", icon: "caro-asercion/tarot-11-justice" },
-  { key: "item", label: "Item", icon: "lorc/battle-gear" },
-  { key: "monster", label: "Monster", icon: "lorc/gluttonous-smile" },
+  { key: "template", label: "Heritage", icon: "caro-asercion/tarot-11-justice" },
+  { key: "item", label: "Items", icon: "lorc/battle-gear" },
+  { key: "monster", label: "Monsters", icon: "lorc/gluttonous-smile" },
 ];
 
 function AtelierTabBar({

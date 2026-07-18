@@ -27,9 +27,9 @@ export type TemplateSlot = {
 };
 
 function kindLabel(kind: string): string {
-  if (kind === "RACE") return "Race";
-  if (kind === "BACKGROUND") return "Background";
-  if (kind === "ARCHETYPE") return "Archetype";
+  if (kind === "RACE") return "Lineage";
+  if (kind === "BACKGROUND") return "Upbringing";
+  if (kind === "ARCHETYPE") return "Manifest";
   return kind;
 }
 

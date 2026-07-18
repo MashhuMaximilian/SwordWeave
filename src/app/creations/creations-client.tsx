@@ -57,7 +57,7 @@ const TYPE_CHIPS: Array<{ key: TypeFilter; label: string }> = [
   { key: "primitive", label: "Primitives" },
   { key: "effect", label: "Effects" },
   { key: "capability", label: "Capabilities" },
-  { key: "template", label: "Templates" },
+  { key: "template", label: "Heritage" },
   { key: "item", label: "Items" },
   { key: "character", label: "Characters" },
   { key: "build", label: "Builds" },

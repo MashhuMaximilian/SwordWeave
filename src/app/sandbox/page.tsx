@@ -10,7 +10,7 @@ import {
 
 const workshops = [
   {
-    href: "/sandbox/grammar?build=primitive",
+    href: "/sandbox/atelier?build=primitive",
     title: "Primitives",
     status: "Live",
     description:
@@ -18,7 +18,7 @@ const workshops = [
     icon: Boxes,
   },
   {
-    href: "/sandbox/grammar?build=effect",
+    href: "/sandbox/atelier?build=effect",
     title: "Effects",
     status: "Live",
     description:
@@ -26,7 +26,7 @@ const workshops = [
     icon: FlaskConical,
   },
   {
-    href: "/sandbox/grammar?build=capability",
+    href: "/sandbox/atelier?build=capability",
     title: "Capabilities",
     status: "Live",
     description:
@@ -34,7 +34,7 @@ const workshops = [
     icon: Swords,
   },
   {
-    href: "/sandbox/blueprint?build=item",
+    href: "/sandbox/atelier?build=item",
     title: "Items",
     status: "Live",
     description:
@@ -42,11 +42,11 @@ const workshops = [
     icon: Package,
   },
   {
-    href: "/sandbox/blueprint?build=template&kind=race",
-    title: "Templates",
+    href: "/sandbox/atelier?build=template&kind=race",
+    title: "Heritage",
     status: "Live",
     description:
-      "Author races, backgrounds, and archetype templates. Kind-switched.",
+      "Author Lineage, Upbringing, and Manifest templates. Kind-switched.",
     icon: Swords,
   },
   {

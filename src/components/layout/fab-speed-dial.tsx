@@ -406,7 +406,7 @@ export const NAV_LINKS: FabItem[] = [
   {
     kind: "link",
     key: "library",
-    label: "Library",
+    label: "Codex",
     icon: (
       <IconDisplay
         iconSource="GAME_ICONS"
