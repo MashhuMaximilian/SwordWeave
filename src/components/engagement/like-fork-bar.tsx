@@ -4,6 +4,7 @@ import { useState, useTransition, useRef, useEffect, useLayoutEffect } from "rea
 import { useRouter } from "next/navigation";
 import { useSession, useClerk } from "@clerk/nextjs";
 import { createPortal } from "react-dom";
+import { useModalStack } from "@/components/ui/modal-stack";
 import {
   Heart,
   GitFork,
@@ -82,6 +83,11 @@ export function LikeForkBar(props: LikeForkBarProps) {
   const router = useRouter();
   const { session } = useSession();
   const clerk = useClerk();
+  // Modal stack holds the preview popup. When forking, the pathname stays
+  // on the current sandbox route (e.g. /sandbox/atelier), so ModalStackHost's
+  // pathname-change auto-clear won't fire — clear it explicitly so the
+  // preview doesn't stay on top of the forked build.
+  const stack = useModalStack();
 
   // Clerk's session token has a 60s TTL by default. If the user lingers
   // on a page past that window then clicks Like, the cached JWT is stale
@@ -269,9 +275,9 @@ export function LikeForkBar(props: LikeForkBarProps) {
       setError("This content type can't be forked yet.");
       return;
     }
+    stack.clear();
     router.push(`${props.sandboxPath ?? target.sandboxPath}${target.search}`);
   };
-
   /**
    * Called by ForkSuccessModal when the user dismisses it (X / click
    * backdrop / "View source page"). We refresh the parent server tree

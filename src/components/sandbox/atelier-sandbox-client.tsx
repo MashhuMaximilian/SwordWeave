@@ -23,6 +23,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useModalStack } from "@/components/ui/modal-stack";
+import { buildSandboxUrl } from "@/lib/publishing/fork-target";
 import { SandboxLayout } from "./sandbox-layout";
 import { PrimitiveForm } from "./primitive-form";
 import { PrimitiveFormPreview } from "./primitive-form-preview";
@@ -331,6 +333,12 @@ export function AtelierSandboxClient({
   const router = useRouter();
   const pathname = usePathname();
   const currentSearchParams = useSearchParams();
+  // Modal stack — the preview popup is pushed here. When we Load/Fork
+  // into build we must clear it explicitly: the pathname stays
+  // /sandbox/atelier (unlike the legacy routes), so ModalStackHost's
+  // pathname-change auto-clear does NOT fire. Without stack.clear() the
+  // preview modal stays on top of the page, hiding the URL change.
+  const stack = useModalStack();
 
   useEffect(() => {
     setBuild(initialBuild);
@@ -441,70 +449,40 @@ export function AtelierSandboxClient({
         return;
       }
       const { entityType, id } = action;
-      // Load into build: update the URL with the loaded entity + intent +
-      // a CONCRETE build value (matching the proven deep-link format that
-      // already works from Codex/Creations). The active tab is an
-      // independent library filter, but the URL needs a concrete build so
-      // the server + form resolve the entity and the intent chip applies.
-      const nextParams = new URLSearchParams(
-        currentSearchParams?.toString() ?? "",
-      );
-      nextParams.set("build", concreteBuildForKind(entityType));
-      nextParams.set("edit", String(id));
-      nextParams.set("intent", action.intent ?? "load");
-      router.replace(
-        nextParams.toString()
-          ? `${pathname}?${nextParams.toString()}`
-          : pathname,
-      );
-      if (entityType === "primitive") {
-        const row = primitives.find((p) => p.id === id);
-        if (!row) return;
-        setEditing({ kind: "primitive", row });
-      } else if (entityType === "effect") {
-        const row = effects.find((e) => e.id === id);
-        if (!row) return;
-        setEditing({ kind: "effect", row });
-      } else if (entityType === "capability") {
-        const row = capabilities.find((c) => c.id === id);
-        if (!row) return;
-        setEditing({ kind: "capability", row });
-      } else if (entityType === "template") {
+      // Map to the concrete targetType buildSandboxUrl expects. For
+      // templates, "TEMPLATE" isn't a valid key — resolve the concrete
+      // sub-kind (RACE/BACKGROUND/ARCHETYPE) from the loaded row.
+      let targetType = entityType.toUpperCase();
+      if (entityType === "template") {
         const row = templates.find((t) => t.id === id);
-        if (!row) return;
-        setEditing({ kind: "template", row });
-      } else if (entityType === "item") {
-        const row = items.find((i) => i.id === id);
-        if (!row) return;
-        setEditing({ kind: "item", row });
-      } else {
-        // monster — no form yet; just switch the tab.
-        setBuild("monster");
-        setEditing(null);
+        targetType = row?.kind ? `${row.kind}_TEMPLATE` : "RACE_TEMPLATE";
       }
-      setFormIsDirty(false);
-      setBuildStarted(true);
-      openBuildPanel();
+      // Load into build / Fork: do EXACTLY what the working flows do
+      // (My Creations "Edit" and /library "Fork"):
+      //   1. clear the preview modal stack (the pathname stays
+      //      /sandbox/atelier, so ModalStackHost's pathname-change
+      //      auto-clear won't fire — we must clear it explicitly),
+      //   2. router.push to the sandbox route with the concrete
+      //      ?build=<kind>&edit=<id>&intent=load|fork URL.
+      // The server resolves initialEditing from that URL and the form
+      // populates — same as the legacy /sandbox/grammar|blueprint routes.
+      // We target /sandbox/atelier (not the legacy route) by swapping the
+      // helper's sandboxPath for our path.
+      stack.clear();
+      const target = buildSandboxUrl(
+        targetType,
+        String(id),
+        action.intent ?? "load",
+      );
+      if (target) {
+        router.push(`/sandbox/atelier${target.search}`);
+      }
+      return;
     },
     [
-      primitives,
-      effects,
-      capabilities,
-      templates,
-      items,
+      stack,
       router,
-      pathname,
-      currentSearchParams,
-      openBuildPanel,
-      // State captured into the per-tab cache snapshot — MUST be in deps
-      // or the snapshot reads stale (initial) values and tab-switch
-      // preservation silently breaks.
-      build,
-      editing,
-      formSnapshot,
-      mechanicsDraftKind,
-      templateKind,
-      buildStarted,
+      buildSandboxUrl,
     ],
   );
 
