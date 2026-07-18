@@ -218,7 +218,12 @@ type EditingState =
 
 type PendingAction =
   | { kind: "switchBuild"; mode: AtelierTab }
-  | { kind: "loadFromLibrary"; entityType: AtelierEntityKind; id: string | number };
+  | {
+      kind: "loadFromLibrary";
+      entityType: AtelierEntityKind;
+      id: string | number;
+      intent?: "fork" | "load";
+    };
 
 export function AtelierSandboxClient({
   initialBuild,
@@ -308,13 +313,14 @@ export function AtelierSandboxClient({
   const pathname = usePathname();
   const currentSearchParams = useSearchParams();
 
-  useEffect(() => {
-    setBuild(initialBuild);
-  }, [initialBuild]);
-  useEffect(() => {
-    setEditing(initialEditing);
-  }, [initialEditing]);
-
+  // NOTE: previously there were effects here that re-synced `build` /
+  // `editing` from the `initialBuild` / `initialEditing` props whenever the
+  // URL changed. Those fought the in-session state + per-tab cache: on a tab
+  // switch the URL still carried the old `?edit=<id>`, the server re-derived
+  // `initialEditing` (often null on a tab mismatch), and the sync effect
+  // clobbered the loaded entity — wiping progress. The source of truth is
+  // now React state + the per-tab cache; the props only seed the initial
+  // useState. In-session navigation (load / tab switch) sets state directly.
   useEffect(() => {
     setSandboxFormDirty(formIsDirty || editing !== null);
   }, [formIsDirty, editing, setSandboxFormDirty]);
@@ -390,6 +396,13 @@ export function AtelierSandboxClient({
           currentSearchParams?.toString() ?? "",
         );
         nextParams.set("build", nextMode);
+        // Drop the loaded-entity params — they belong to whichever tab the
+        // entity was loaded in, not the tab we're switching to. Leaving them
+        // behind causes a URL/build mismatch on the next server render and
+        // would wipe the in-session form. The per-tab cache preserves the
+        // actual editing state across the switch.
+        nextParams.delete("edit");
+        nextParams.delete("intent");
         router.replace(
           nextParams.toString()
             ? `${pathname}?${nextParams.toString()}`
@@ -404,7 +417,7 @@ export function AtelierSandboxClient({
       );
       nextParams.set("build", tab);
       nextParams.set("edit", String(id));
-      nextParams.set("intent", "load");
+      nextParams.set("intent", action.intent ?? "load");
       router.replace(
         nextParams.toString()
           ? `${pathname}?${nextParams.toString()}`
@@ -498,18 +511,22 @@ export function AtelierSandboxClient({
     );
   }
 
-  function guardedLibrarySelect(entityType: AtelierEntityKind, id: string | number) {
+  function guardedLibrarySelect(
+    entityType: AtelierEntityKind,
+    id: string | number,
+    intent: "fork" | "load" = "load",
+  ) {
     // Same entity already loaded? No-op.
     if (editing?.kind === entityType) {
       const editingId = (editing.row as { id: string | number }).id;
       if (editingId === id) return;
     }
     if (!formIsDirty && editing === null) {
-      applyPendingAction({ kind: "loadFromLibrary", entityType, id });
+      applyPendingAction({ kind: "loadFromLibrary", entityType, id, intent });
       return;
     }
     modalDescRef.current = `You have unsaved changes in the ${buildLabel(build)} form. Loading another row will discard them.`;
-    setPendingAction({ kind: "loadFromLibrary", entityType, id });
+    setPendingAction({ kind: "loadFromLibrary", entityType, id, intent });
   }
 
   const builderNode = useMemo(() => {
@@ -1009,6 +1026,9 @@ export function AtelierSandboxClient({
           onSelect={(entityType, id) =>
             guardedLibrarySelect(entityType as AtelierEntityKind, id)
           }
+          onFork={(entityType, id) =>
+            guardedLibrarySelect(entityType as AtelierEntityKind, id, "fork")
+          }
         />
       );
     }
@@ -1027,6 +1047,9 @@ export function AtelierSandboxClient({
         editingKey={editingKey}
         onSelect={(entityType, id) =>
           guardedLibrarySelect(entityType as AtelierEntityKind, id)
+        }
+        onFork={(entityType, id) =>
+          guardedLibrarySelect(entityType as AtelierEntityKind, id, "fork")
         }
         versionMap={versionMap}
       />

@@ -80,6 +80,11 @@ interface GrammarLibraryProps {
     kind: "primitive" | "effect" | "capability",
     id: string | number,
   ) => void;
+  /** Fork an entry into the build with intent=fork (saves as a new fork). */
+  onFork?: (
+    kind: "primitive" | "effect" | "capability",
+    id: string | number,
+  ) => void;
 }
 
 // Chip set per build mode:
@@ -125,6 +130,7 @@ export function GrammarLibrary({
   editingKey,
   versionMap,
   onSelect,
+  onFork,
 }: GrammarLibraryProps) {
   // Default type filter per build mode. For the collapsed Mechanics tab
   // we default to "ALL" so primitives + effects + capabilities show
@@ -440,6 +446,16 @@ export function GrammarLibrary({
             }
             stack.clear();
           }}
+          onForkIntoBuild={() => {
+            if (item.kind === "primitive") {
+              onFork?.("primitive", item.row.id);
+            } else if (item.kind === "effect") {
+              onFork?.("effect", item.row.id);
+            } else {
+              onFork?.("capability", item.row.id);
+            }
+            stack.clear();
+          }}
           onSubLinkClick={(link) => {
             // Look up the full row and push it onto the stack.
             if (link.targetType === "PRIMITIVE") {
@@ -555,12 +571,14 @@ function SandboxPreviewBody({
   libraryItem,
   build,
   onLoadIntoBuild,
+  onForkIntoBuild,
   onSubLinkClick,
 }: {
   item: SandboxPreviewItem;
   libraryItem: LibraryItem | null;
   build: MechanicsBuildMode;
   onLoadIntoBuild: () => void;
+  onForkIntoBuild?: () => void;
   onSubLinkClick?: (link: {
     targetType: "PRIMITIVE" | "CAPABILITY" | "EFFECT" | "ITEM";
     targetId: string;
@@ -696,6 +714,23 @@ function SandboxPreviewBody({
         >
           Load into build
         </button>
+        {onForkIntoBuild ? (
+          <button
+            type="button"
+            onClick={() => {
+              onForkIntoBuild?.();
+              if (sandboxSplit) {
+                setSandboxBottomTab("preview");
+              } else {
+                openDrawer("build");
+              }
+            }}
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:border-primary"
+            title="Fork this entry into your sandbox (saves as a new copy)"
+          >
+            Fork
+          </button>
+        ) : null}
         {canSlot ? (
           <button
             type="button"
