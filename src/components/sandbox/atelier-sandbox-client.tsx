@@ -514,15 +514,19 @@ export function AtelierSandboxClient({
       openBuildPanel();
       // Update the URL with the concrete ?build=<kind>&edit=<id>&intent=load|fork
       // (same format the working /sandbox/grammar|blueprint routes use).
-      // Use Next's router.push (NOT window.history.pushState): pushState
-      // desyncs Next's client router from window.location, which (a) breaks
-      // subsequent <Link> navigation off the page and (b) the earlier
-      // router.replace workaround re-ran the server and caused a render
-      // mismatch that crashed PrimitiveForm on load-over-content.
-      // router.push keeps Next in sync (URL bar updates, no stale state).
+      // IMPORTANT: do NOT use router.push/replace here. A Next navigation
+      // re-renders the server, which re-resolves initialEditing and pushes a
+      // server editing row down that the setEditing(initialEditing) sync
+      // effect then applies OVER the client editing we just set — during the
+      // same commit where editing.kind is switching. That mid-transition
+      // swap throws a render error ("reload page") on load-over-content,
+      // reset, etc. window.history.replaceState updates the address bar +
+      // deep-link state WITHOUT a Next navigation, so no server re-render,
+      // no crash. The form is already filled by setEditing above.
       const target = buildSandboxUrl(targetType, String(id), action.intent ?? "load");
       if (target) {
-        router.push(`/sandbox/atelier${target.search}`, { scroll: false });
+        const url = `/sandbox/atelier${target.search}`;
+        window.history.replaceState(null, "", url);
       }
       setLiveIntent((action.intent ?? "load") as SaveIntent);
       return;
@@ -530,6 +534,7 @@ export function AtelierSandboxClient({
     [
       stack,
       router,
+      openBuildPanel,
       buildSandboxUrl,
       primitives,
       effects,
@@ -562,16 +567,22 @@ export function AtelierSandboxClient({
     setFormSnapshot(null);
     setFormIsDirty(false);
     setBuildStarted(true);
+    setLiveIntent(null);
     const nextParams = new URLSearchParams(
       currentSearchParams?.toString() ?? "",
     );
     // Clear any loaded-entity params (starting fresh), but leave `build`
     // untouched so the URL doesn't fight the user's current tab.
+    // Use replaceState (not router.replace): a Next navigation re-renders
+    // the server and re-resolves initialEditing, which can throw during the
+    // editing -> null transition (the "reload page" error). replaceState
+    // updates the bar + deep-link state without a server re-render.
     nextParams.delete("edit");
     nextParams.delete("intent");
-    router.replace(
-      nextParams.toString() ? `${pathname}?${nextParams.toString()}` : pathname,
-    );
+    const clearedUrl = nextParams.toString()
+      ? `${pathname}?${nextParams.toString()}`
+      : pathname;
+    window.history.replaceState(null, "", clearedUrl);
   }
 
   function guardedLibrarySelect(
@@ -1190,7 +1201,12 @@ export function AtelierSandboxClient({
             const href = pendingNav;
             setPendingNav(null);
             setPendingAction(null);
-            router.push(href);
+            // Hard navigation: bypasses Next's client router entirely, so
+            // it works regardless of any URL/router state. (We avoid
+            // router.push here because loading into build uses
+            // window.history.replaceState, which intentionally does NOT
+            // update Next's router — so router.push could be stale.)
+            window.location.assign(href);
             return;
           }
           if (pendingAction) applyPendingAction(pendingAction);
