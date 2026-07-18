@@ -1207,6 +1207,11 @@ export function AtelierSandboxClient({
       />
       <UnsavedChangesModal
         isOpen={pendingAction !== null || pendingNav !== null}
+        // The build-load prompt (pendingAction) hides the discard
+        // button: Reset is the explicit clear path, so the user
+        // resets first, then loads. The off-page FAB-nav prompt
+        // (pendingNav) keeps the discard button for dirty-exit safety.
+        hideDiscard={pendingAction !== null}
         onCancel={() => {
           setPendingAction(null);
           setPendingNav(null);
