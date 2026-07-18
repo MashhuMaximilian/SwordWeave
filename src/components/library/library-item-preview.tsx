@@ -325,6 +325,10 @@ export interface PreviewCallbacks {
    *  The Atelier page passes "/sandbox/atelier" so forking stays on the
    *  unified page instead of bouncing to the legacy /sandbox/grammar route. */
   sandboxPath?: string;
+  /** Direct fork handler (Atelier). When set, the Fork button calls this
+   *  instead of navigating — the parent loads the fork-draft into its own
+   *  build form. Takes the engagement targetType + targetId. */
+  onFork?: ((targetType: string, targetId: string) => void) | undefined;
 }
 
 // -----------------------------------------------------------------------------
@@ -515,6 +519,7 @@ function PreviewFooter({
         authorUsername={eng.authorUsername}
         currentUserId={eng.currentUserInternalId}
         sandboxPath={callbacks.sandboxPath}
+        onFork={callbacks.onFork}
       />
       <div className="flex flex-wrap items-center justify-between gap-3 pb-1 text-xs">
         {/* Open source page is opt-in via callbacks. The sandbox preview

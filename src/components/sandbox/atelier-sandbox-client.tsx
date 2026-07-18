@@ -426,31 +426,6 @@ export function AtelierSandboxClient({
     return () => window.removeEventListener("sw-open-new-entity", onOpenNew);
   }, []);
 
-  // Fork from the preview's LikeForkBar (when sandboxPath=/sandbox/atelier).
-  // LikeForkBar clears the modal + dispatches this event; we load the
-  // fork-draft via the same reliable path as "Load into build" (client-side
-  // setEditing + history.pushState + intent chip) — because router.push to
-  // the same pathname doesn't update the URL in this App Router setup.
-  useEffect(() => {
-    function onAtelierFork(e: Event) {
-      const detail = (e as CustomEvent<{ targetType: string; targetId: string }>).detail;
-      if (!detail) return;
-      const map: Record<string, AtelierEntityKind> = {
-        PRIMITIVE: "primitive",
-        EFFECT: "effect",
-        CAPABILITY: "capability",
-        ITEM: "item",
-        RACE_TEMPLATE: "template",
-        BACKGROUND_TEMPLATE: "template",
-        ARCHETYPE_TEMPLATE: "template",
-      };
-      const entityType = map[detail.targetType];
-      if (entityType) guardedLibrarySelect(entityType, detail.targetId, "fork");
-    }
-    window.addEventListener("sw-atelier-fork", onAtelierFork);
-    return () => window.removeEventListener("sw-atelier-fork", onAtelierFork);
-  }, [guardedLibrarySelect]);
-
   // Auto-open build panel on server-routed loads (?edit=<id>) — mobile only.
   useEffect(() => {
     if (initialEditing === null) return;
@@ -593,7 +568,10 @@ export function AtelierSandboxClient({
       const editingId = (editing.row as { id: string | number }).id;
       if (editingId === id) return;
     }
-    if (!formIsDirty && editing === null) {
+    // Fork always loads the fork-draft (replacing whatever is in the build)
+    // — it mirrors the source-page behaviour where Fork navigates to a
+    // fresh sandbox. Load keeps the unsaved-changes guard.
+    if (intent === "fork" || (!formIsDirty && editing === null)) {
       applyPendingAction({ kind: "loadFromLibrary", entityType, id, intent });
       return;
     }
@@ -1103,6 +1081,19 @@ export function AtelierSandboxClient({
           onSelect={(entityType, id) =>
             guardedLibrarySelect(entityType as AtelierEntityKind, id)
           }
+          onFork={(targetType, targetId) =>
+            guardedLibrarySelect(
+              (targetType === "PRIMITIVE"
+                ? "primitive"
+                : targetType === "EFFECT"
+                  ? "effect"
+                  : targetType === "CAPABILITY"
+                    ? "capability"
+                    : "item") as AtelierEntityKind,
+              targetId,
+              "fork",
+            )
+          }
         />
       );
     }
@@ -1121,6 +1112,17 @@ export function AtelierSandboxClient({
         editingKey={editingKey}
         onSelect={(entityType, id) =>
           guardedLibrarySelect(entityType as AtelierEntityKind, id)
+        }
+        onFork={(targetType, targetId) =>
+          guardedLibrarySelect(
+            (targetType === "RACE_TEMPLATE" ||
+            targetType === "BACKGROUND_TEMPLATE" ||
+            targetType === "ARCHETYPE_TEMPLATE"
+              ? "template"
+              : "item") as AtelierEntityKind,
+            targetId,
+            "fork",
+          )
         }
         versionMap={versionMap}
       />

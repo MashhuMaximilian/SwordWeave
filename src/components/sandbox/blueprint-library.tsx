@@ -76,6 +76,9 @@ interface BlueprintLibraryProps {
   currentUserInternalId: string | null;
   editingKey: string | null;
   onSelect: (kind: "template" | "item", id: string) => void;
+  /** Direct fork handler (Atelier). When set, the preview's Fork button
+   *  loads the fork-draft into the build form instead of navigating. */
+  onFork?: (targetType: string, targetId: string) => void;
   /** Map of "type:id" → latest published version number. Used to show
    *  version chips in the preview modal header. */
   versionMap?: Record<string, number> | undefined;
@@ -113,6 +116,7 @@ export function BlueprintLibrary({
   currentUserInternalId,
   editingKey,
   onSelect,
+  onFork,
   versionMap,
 }: BlueprintLibraryProps) {
   // Default type filter per build mode. The kind filter is exposed in
@@ -440,6 +444,7 @@ export function BlueprintLibrary({
             }
             stack.clear();
           }}
+          onFork={onFork}
           onSubLinkClick={(link) => {
             // Resolve the sub-entity to its full row and push a real
             // preview onto the modal stack. Same UX as the grammar
@@ -643,11 +648,13 @@ function BlueprintPreviewBody({
   build,
   onLoadIntoBuild,
   onSubLinkClick,
+  onFork,
 }: {
   item: SandboxPreviewItem;
   libraryItem: LibraryItem | null;
   build: BlueprintBuildMode;
   onLoadIntoBuild: () => void;
+  onFork?: ((targetType: string, targetId: string) => void) | undefined;
   onSubLinkClick?: (link: {
     targetType: "PRIMITIVE" | "CAPABILITY" | "EFFECT" | "ITEM";
     targetId: string;
@@ -764,12 +771,14 @@ function BlueprintPreviewBody({
                   // shared helper so this can't drift again.
                   openSourceHref: `/library/item/${libraryCompositeId(item)}`,
                   sandboxPath: "/sandbox/atelier",
+                  onFork,
                 },
               }
             : {
                 callbacks: {
                   openSourceHref: `/library/item/${libraryCompositeId(item)}`,
                   sandboxPath: "/sandbox/atelier",
+                  onFork,
                 },
               })}
         />

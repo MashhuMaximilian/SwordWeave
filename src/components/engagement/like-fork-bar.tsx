@@ -62,6 +62,14 @@ export interface LikeForkBarProps {
    * unified page instead of bouncing to the legacy route.
    */
   sandboxPath?: string | undefined;
+  /**
+   * Direct fork handler. When provided (e.g. by the Atelier page), the
+   * Fork button calls this instead of navigating. This is the most
+   * reliable path for in-page forking: the parent loads the fork-draft
+   * into its own build form directly (no cross-component event, no
+   * same-pathname router.push that doesn't update the URL bar).
+   */
+  onFork?: ((targetType: string, targetId: string) => void) | undefined;
 }
 
 type FlagReason =
@@ -276,13 +284,17 @@ export function LikeForkBar(props: LikeForkBarProps) {
       return;
     }
     stack.clear();
+    // Direct fork handler (Atelier): the parent loads the fork-draft into
+    // its own build form. This is the most reliable in-page fork — no
+    // cross-component event, no same-pathname router.push that fails to
+    // update the URL bar.
+    if (props.onFork) {
+      props.onFork(props.targetType, props.targetId);
+      return;
+    }
     if (props.sandboxPath) {
-      // Atelier route: same-pathname navigation (router.push) does NOT
-      // update the URL bar in this App Router setup, and the server won't
-      // re-resolve the form on a soft nav. Instead notify the Atelier
-      // client, which loads the fork-draft via the same reliable path as
-      // "Load into build" (client-side setEditing + history.pushState +
-      // intent chip). The preview modal is already cleared above.
+      // Fallback for any caller that sets sandboxPath without onFork:
+      // notify the Atelier client via event.
       window.dispatchEvent(
         new CustomEvent("sw-atelier-fork", {
           detail: { targetType: props.targetType, targetId: props.targetId },

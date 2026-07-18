@@ -80,6 +80,9 @@ interface GrammarLibraryProps {
     kind: "primitive" | "effect" | "capability",
     id: string | number,
   ) => void;
+  /** Direct fork handler (Atelier). When set, the preview's Fork button
+   *  loads the fork-draft into the build form instead of navigating. */
+  onFork?: (targetType: string, targetId: string) => void;
 }
 
 // Chip set per build mode:
@@ -147,6 +150,7 @@ export function GrammarLibrary({
   editingKey,
   versionMap,
   onSelect,
+  onFork,
 }: GrammarLibraryProps) {
   // Default type filter per build mode. For the collapsed Mechanics tab
   // we default to "ALL" so primitives + effects + capabilities show
@@ -490,6 +494,7 @@ export function GrammarLibrary({
               return;
             }
           }}
+          onFork={onFork}
         />
       ),
     });
@@ -584,11 +589,13 @@ function SandboxPreviewBody({
   build,
   onLoadIntoBuild,
   onSubLinkClick,
+  onFork,
 }: {
   item: SandboxPreviewItem;
   libraryItem: LibraryItem | null;
   build: MechanicsBuildMode;
   onLoadIntoBuild: () => void;
+  onFork?: ((targetType: string, targetId: string) => void) | undefined;
   onSubLinkClick?: (link: {
     targetType: "PRIMITIVE" | "CAPABILITY" | "EFFECT" | "ITEM";
     targetId: string;
@@ -685,12 +692,14 @@ function SandboxPreviewBody({
                   // produced `TEMPLATE:<id>` which 404'd.
                   openSourceHref: `/library/item/${libraryCompositeId(item)}`,
                   sandboxPath: "/sandbox/atelier",
+                  onFork,
                 },
               }
             : {
                 callbacks: {
                   openSourceHref: `/library/item/${libraryCompositeId(item)}`,
                   sandboxPath: "/sandbox/atelier",
+                  onFork,
                 },
               })}
         />
