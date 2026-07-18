@@ -83,8 +83,10 @@ export default async function AtelierSandboxPage({
   const editId = params.edit;
   const intent: SaveIntent = parseSaveIntent(params.intent);
   const versionNumber = params.version ? Number(params.version) : Number.NaN;
-  const initialMechanicsKind =
+  const initialMechanicsKindRaw =
     rawBuild === "effect" || rawBuild === "capability" ? rawBuild : "primitive";
+  let initialMechanicsKind: "primitive" | "effect" | "capability" =
+    initialMechanicsKindRaw;
 
   let dataLoadFailed = false;
   let primitiveRows: unknown[] = [];
@@ -237,6 +239,37 @@ export default async function AtelierSandboxPage({
     } else if (build === "item") {
       const row = itemRows.find((i) => (i as { id: string }).id === editId) as { id: string } | undefined;
       if (row) initialEditing = { kind: "item", row };
+    } else if (build === "mechanics") {
+      // Collapsed Mechanics tab: the concrete kind isn't in the URL
+      // (build=mechanics), so resolve the loaded entity by trying each
+      // mechanics kind by id. Without this, `?build=mechanics&edit=<id>`
+      // left initialEditing null and the in-session load / tab-switch
+      // couldn't re-resolve the entity (the legacy /sandbox/grammar route
+      // used concrete build=primitive, so it resolved fine).
+      const numId = Number(editId);
+      const pRow = Number.isFinite(numId)
+        ? primitiveRows.find((p) => (p as { id: number }).id === numId)
+        : undefined;
+      if (pRow) {
+        initialEditing = { kind: "primitive", row: pRow as { id: number } };
+        initialMechanicsKind = "primitive";
+      } else {
+        const eRow = effectRows.find((e) => (e as { id: string }).id === editId) as
+          | { id: string }
+          | undefined;
+        if (eRow) {
+          initialEditing = { kind: "effect", row: eRow };
+          initialMechanicsKind = "effect";
+        } else {
+          const cRow = capabilityRows.find((c) => (c as { id: string }).id === editId) as
+            | { id: string }
+            | undefined;
+          if (cRow) {
+            initialEditing = { kind: "capability", row: cRow };
+            initialMechanicsKind = "capability";
+          }
+        }
+      }
     }
   }
 

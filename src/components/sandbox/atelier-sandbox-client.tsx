@@ -313,14 +313,14 @@ export function AtelierSandboxClient({
   const pathname = usePathname();
   const currentSearchParams = useSearchParams();
 
-  // NOTE: previously there were effects here that re-synced `build` /
-  // `editing` from the `initialBuild` / `initialEditing` props whenever the
-  // URL changed. Those fought the in-session state + per-tab cache: on a tab
-  // switch the URL still carried the old `?edit=<id>`, the server re-derived
-  // `initialEditing` (often null on a tab mismatch), and the sync effect
-  // clobbered the loaded entity — wiping progress. The source of truth is
-  // now React state + the per-tab cache; the props only seed the initial
-  // useState. In-session navigation (load / tab switch) sets state directly.
+  useEffect(() => {
+    setBuild(initialBuild);
+  }, [initialBuild]);
+  useEffect(() => {
+    setEditing(initialEditing);
+  }, [initialEditing]);
+
+  // Mirrored from the form's onStateChange. Drives the dirty-check gate.
   useEffect(() => {
     setSandboxFormDirty(formIsDirty || editing !== null);
   }, [formIsDirty, editing, setSandboxFormDirty]);
@@ -367,42 +367,22 @@ export function AtelierSandboxClient({
     (action: PendingAction) => {
       if (action.kind === "switchBuild") {
         const nextMode = action.mode;
-        // Save the current tab's form state into the cache, then restore
-        // the target tab's (if any). Switching tabs never discards what
-        // you were building (Point 5).
-        const snapshot: TabCacheEntry = {
-          editing,
-          formSnapshot,
-          mechanicsDraftKind,
-          templateKind,
-          buildStarted,
-        };
-        const restored = tabCacheRef.current[nextMode];
-        setTabCache((prev) => ({ ...prev, [build]: snapshot }));
+        // Proven legacy behaviour (mirrors /sandbox/grammar): switching
+        // tabs resets the in-memory form and lets the URL's ?edit param
+        // re-resolve the loaded entity on the next server render. The
+        // setEditing(initialEditing) sync effect below restores the
+        // loaded entity when you switch back — so a loaded build is
+        // preserved across tab switches, exactly as the user expects.
         setBuild(nextMode);
-        if (restored) {
-          setEditing(restored.editing);
-          setFormSnapshot(restored.formSnapshot);
-          setMechanicsDraftKind(restored.mechanicsDraftKind);
-          setTemplateKind(restored.templateKind);
-          setBuildStarted(restored.buildStarted);
-        } else {
-          setEditing(null);
-          setFormSnapshot(null);
-          setBuildStarted(false);
-        }
-        setFormIsDirty(false);
+        setEditing(null);
+        setFormSnapshot(null);
+        setFormIsDirty(false); // new mode = fresh form, force pristine
         const nextParams = new URLSearchParams(
           currentSearchParams?.toString() ?? "",
         );
         nextParams.set("build", nextMode);
-        // Drop the loaded-entity params — they belong to whichever tab the
-        // entity was loaded in, not the tab we're switching to. Leaving them
-        // behind causes a URL/build mismatch on the next server render and
-        // would wipe the in-session form. The per-tab cache preserves the
-        // actual editing state across the switch.
-        nextParams.delete("edit");
-        nextParams.delete("intent");
+        // Keep ?edit / ?intent so the server re-resolves the loaded entity
+        // and the sync effect restores it on return to that tab.
         router.replace(
           nextParams.toString()
             ? `${pathname}?${nextParams.toString()}`
@@ -1027,7 +1007,12 @@ export function AtelierSandboxClient({
             guardedLibrarySelect(entityType as AtelierEntityKind, id)
           }
           onFork={(entityType, id) =>
-            guardedLibrarySelect(entityType as AtelierEntityKind, id, "fork")
+            applyPendingAction({
+              kind: "loadFromLibrary",
+              entityType: entityType as AtelierEntityKind,
+              id,
+              intent: "fork",
+            })
           }
         />
       );
@@ -1049,7 +1034,12 @@ export function AtelierSandboxClient({
           guardedLibrarySelect(entityType as AtelierEntityKind, id)
         }
         onFork={(entityType, id) =>
-          guardedLibrarySelect(entityType as AtelierEntityKind, id, "fork")
+          applyPendingAction({
+            kind: "loadFromLibrary",
+            entityType: entityType as AtelierEntityKind,
+            id,
+            intent: "fork",
+          })
         }
         versionMap={versionMap}
       />
