@@ -37,6 +37,7 @@ import {
   SLOT_EVENT_NAME,
   type SlotEvent,
 } from "@/lib/sandbox/slot-events";
+import { cn } from "@/lib/utils";
 
 // The Mechanics tab collapses primitive/effect/capability into one tab.
 // The library still distinguishes the concrete kinds for chips + select,
@@ -478,6 +479,42 @@ export function GrammarLibrary({
           onOpenFilters={() => setFilterPanelOpen(true)}
           hasActiveFilters={hasActiveFilters}
         />
+        {/* Collapsed Mechanics tab: quick-filter chips for the concrete
+            kinds (mirrors the Heritage tab's chip row). */}
+        {build === "mechanics" ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {(
+              [
+                { key: "ALL", label: "All" },
+                { key: "PRIMITIVE", label: "Primitives" },
+                { key: "EFFECT", label: "Effects" },
+                { key: "CAPABILITY", label: "Capabilities" },
+              ] as Array<{ key: LibraryTargetType | "ALL"; label: string }>
+            ).map((chip) => {
+              const active = toolbarState.typeFilter === chip.key;
+              return (
+                <button
+                  key={chip.key}
+                  type="button"
+                  onClick={() =>
+                    setToolbarState((prev) => ({
+                      ...prev,
+                      typeFilter: active ? "ALL" : chip.key,
+                    }))
+                  }
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    active
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-foreground hover:border-primary hover:text-primary",
+                  )}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-3">

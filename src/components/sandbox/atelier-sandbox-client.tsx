@@ -320,18 +320,21 @@ export function AtelierSandboxClient({
   }, [formIsDirty, editing, setSandboxFormDirty]);
 
   // Listen for the FAB "Build & Preview" action.
-  //  - If the build column is EMPTY, open the new-entity chooser (Point 4).
-  //  - If something is already loaded, do nothing here: the editor is
-  //    already shown in the build column (desktop) or the FAB has just
-  //    opened the drawer to reveal it (mobile). Re-opening the chooser
-  //    would be the wrong flow (Point 3 / Point 5).
+  //  - If the build column is EMPTY (no entity loaded and nothing typed),
+  //    open the new-entity chooser (Point 4). This re-prompts even after
+  //    you've picked a blank form and closed it, because a blank form is
+  //    still "empty".
+  //  - If something is already loaded or you've typed content, do nothing
+  //    here: the editor is already shown (desktop) or the FAB just opened
+  //    the drawer to reveal it (mobile). Re-opening the chooser would be
+  //    the wrong flow (Point 2 / Point 3).
   useEffect(() => {
     function onOpenNew() {
-      if (!buildStarted) setShowNewModal(true);
+      if (editing === null && !formIsDirty) setShowNewModal(true);
     }
     window.addEventListener("sw-open-new-entity", onOpenNew);
     return () => window.removeEventListener("sw-open-new-entity", onOpenNew);
-  }, [buildStarted]);
+  }, [editing, formIsDirty]);
 
   // Auto-open build panel on server-routed loads (?edit=<id>) — mobile only.
   useEffect(() => {
@@ -451,6 +454,15 @@ export function AtelierSandboxClient({
       pathname,
       currentSearchParams,
       openBuildPanel,
+      // State captured into the per-tab cache snapshot — MUST be in deps
+      // or the snapshot reads stale (initial) values and tab-switch
+      // preservation silently breaks.
+      build,
+      editing,
+      formSnapshot,
+      mechanicsDraftKind,
+      templateKind,
+      buildStarted,
     ],
   );
 
