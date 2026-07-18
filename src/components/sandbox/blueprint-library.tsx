@@ -76,8 +76,6 @@ interface BlueprintLibraryProps {
   currentUserInternalId: string | null;
   editingKey: string | null;
   onSelect: (kind: "template" | "item", id: string) => void;
-  /** Fork an entry into the build with intent=fork (saves as a new fork). */
-  onFork?: (kind: "template" | "item", id: string) => void;
   /** Map of "type:id" → latest published version number. Used to show
    *  version chips in the preview modal header. */
   versionMap?: Record<string, number> | undefined;
@@ -115,7 +113,6 @@ export function BlueprintLibrary({
   currentUserInternalId,
   editingKey,
   onSelect,
-  onFork,
   versionMap,
 }: BlueprintLibraryProps) {
   // Default type filter per build mode. The kind filter is exposed in
@@ -443,14 +440,6 @@ export function BlueprintLibrary({
             }
             stack.clear();
           }}
-          onForkIntoBuild={() => {
-            if (item.kind === "template") {
-              onFork?.("template", item.row.id);
-            } else {
-              onFork?.("item", String(item.row.id));
-            }
-            stack.clear();
-          }}
           onSubLinkClick={(link) => {
             // Resolve the sub-entity to its full row and push a real
             // preview onto the modal stack. Same UX as the grammar
@@ -586,7 +575,7 @@ export function BlueprintLibrary({
           <div className="mt-2 flex flex-wrap gap-1.5">
             {(
               [
-                { key: "ALL", label: "All" },
+                { key: "ALL", label: "All heritages" },
                 { key: "RACE_TEMPLATE", label: "Lineage" },
                 { key: "BACKGROUND_TEMPLATE", label: "Upbringing" },
                 { key: "ARCHETYPE_TEMPLATE", label: "Manifest" },
@@ -652,24 +641,18 @@ function BlueprintPreviewBody({
   libraryItem,
   build,
   onLoadIntoBuild,
-  onForkIntoBuild,
   onSubLinkClick,
 }: {
   item: SandboxPreviewItem;
   libraryItem: LibraryItem | null;
   build: BlueprintBuildMode;
   onLoadIntoBuild: () => void;
-  onForkIntoBuild?: () => void;
   onSubLinkClick?: (link: {
     targetType: "PRIMITIVE" | "CAPABILITY" | "EFFECT" | "ITEM";
     targetId: string;
     label: string;
   }) => void;
 }) {
-  // Capture the optional fork handler so the action closure has a definite
-  // (possibly-undefined) value rather than re-reading the prop, which TS
-  // flags as "possibly undefined" inside the nested onClick.
-  const onForkIntoBuildFn = onForkIntoBuild;
   // Pull openDrawer so slot/load actions can pop the build preview
   // drawer after they fire — the user wants to see the result of
   // the action, not have to manually tap the build/preview tab.
@@ -800,23 +783,6 @@ function BlueprintPreviewBody({
         >
           Load into build
         </button>
-        {onForkIntoBuildFn ? (
-          <button
-            type="button"
-            onClick={() => {
-              onForkIntoBuildFn();
-              if (sandboxSplit) {
-                setSandboxBottomTab("preview");
-              } else {
-                openDrawer("build");
-              }
-            }}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:border-primary"
-            title="Fork this entry into your sandbox (saves as a new copy)"
-          >
-            Fork
-          </button>
-        ) : null}
         {canSlot ? (
           <button
             type="button"

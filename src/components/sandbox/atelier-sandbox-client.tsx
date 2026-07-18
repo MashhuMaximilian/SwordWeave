@@ -366,36 +366,22 @@ export function AtelierSandboxClient({
   const applyPendingAction = useCallback(
     (action: PendingAction) => {
       if (action.kind === "switchBuild") {
-        const nextMode = action.mode;
-        // Proven legacy behaviour (mirrors /sandbox/grammar): switching
-        // tabs resets the in-memory form and lets the URL's ?edit param
-        // re-resolve the loaded entity on the next server render. The
-        // setEditing(initialEditing) sync effect below restores the
-        // loaded entity when you switch back — so a loaded build is
-        // preserved across tab switches, exactly as the user expects.
-        setBuild(nextMode);
-        setEditing(null);
-        setFormSnapshot(null);
-        setFormIsDirty(false); // new mode = fresh form, force pristine
-        const nextParams = new URLSearchParams(
-          currentSearchParams?.toString() ?? "",
-        );
-        nextParams.set("build", nextMode);
-        // Keep ?edit / ?intent so the server re-resolves the loaded entity
-        // and the sync effect restores it on return to that tab.
-        router.replace(
-          nextParams.toString()
-            ? `${pathname}?${nextParams.toString()}`
-            : pathname,
-        );
+        // A tab is a LIBRARY FILTER only. Switching it must never touch the
+        // build form, the editing state, or the URL. The form is decoupled
+        // (renderkeyed on editing.kind), so browsing a different tab keeps
+        // whatever you loaded in the build intact.
+        setBuild(action.mode);
         return;
       }
       const { entityType, id } = action;
-      const tab = tabForKind(entityType);
+      // Load into build: update the URL with the loaded entity + intent.
+      // The `build` param is intentionally left as-is (the tab is an
+      // independent library filter) — only ?edit / ?intent reflect the
+      // build contents, per the user's spec. The form renders from
+      // editing.kind, so no tab switch is needed.
       const nextParams = new URLSearchParams(
         currentSearchParams?.toString() ?? "",
       );
-      nextParams.set("build", tab);
       nextParams.set("edit", String(id));
       nextParams.set("intent", action.intent ?? "load");
       router.replace(
@@ -406,27 +392,22 @@ export function AtelierSandboxClient({
       if (entityType === "primitive") {
         const row = primitives.find((p) => p.id === id);
         if (!row) return;
-        setBuild("mechanics");
         setEditing({ kind: "primitive", row });
       } else if (entityType === "effect") {
         const row = effects.find((e) => e.id === id);
         if (!row) return;
-        setBuild("mechanics");
         setEditing({ kind: "effect", row });
       } else if (entityType === "capability") {
         const row = capabilities.find((c) => c.id === id);
         if (!row) return;
-        setBuild("mechanics");
         setEditing({ kind: "capability", row });
       } else if (entityType === "template") {
         const row = templates.find((t) => t.id === id);
         if (!row) return;
-        setBuild("template");
         setEditing({ kind: "template", row });
       } else if (entityType === "item") {
         const row = items.find((i) => i.id === id);
         if (!row) return;
-        setBuild("item");
         setEditing({ kind: "item", row });
       } else {
         // monster — no form yet; just switch the tab.
@@ -475,7 +456,9 @@ export function AtelierSandboxClient({
     setShowNewModal(false);
     if (choice.templateSubKind) setTemplateKind(choice.templateSubKind);
     if (choice.mechanicsSubKind) setMechanicsDraftKind(choice.mechanicsSubKind);
-    setBuild(choice.tab);
+    // NOTE: deliberately do NOT switch the active tab — the tab is a library
+    // filter and the build form renders from the chosen draft kind
+    // (mechanicsDraftKind / templateKind), independent of the tab.
     setEditing(null);
     setFormSnapshot(null);
     setFormIsDirty(false);
@@ -483,7 +466,8 @@ export function AtelierSandboxClient({
     const nextParams = new URLSearchParams(
       currentSearchParams?.toString() ?? "",
     );
-    nextParams.set("build", choice.tab);
+    // Clear any loaded-entity params (starting fresh), but leave `build`
+    // untouched so the URL doesn't fight the user's current tab.
     nextParams.delete("edit");
     nextParams.delete("intent");
     router.replace(
@@ -518,12 +502,15 @@ export function AtelierSandboxClient({
     const liveIntent = urlIntent ?? initialIntent ?? null;
     const liveSourceId = urlEdit ?? initialSourceId ?? null;
     const formCommon = { intent: liveIntent, sourceId: liveSourceId };
-    const activeKind: "primitive" | "effect" | "capability" =
-      editing?.kind === "effect" || editing?.kind === "capability"
-        ? editing.kind
-        : mechanicsDraftKind;
+    // The build form is INDEPENDENT of the library tab. Which form renders
+    // is driven by what's loaded (editing.kind) or, for a blank "new entity"
+    // draft, by the chosen draft kind. The active tab is just a library
+    // filter and must never switch/reset the form.
+    const formKind: "primitive" | "effect" | "capability" | "template" | "item" | null =
+      editing?.kind ??
+      (mechanicsDraftKind ? mechanicsDraftKind : templateKind ? "template" : null);
 
-    if (build === "mechanics" && activeKind !== "effect" && activeKind !== "capability") {
+    if (formKind === "primitive") {
       return (
         <PrimitiveForm
           initialPrimitive={editing?.kind === "primitive" ? editing.row : null}
@@ -563,7 +550,7 @@ export function AtelierSandboxClient({
         />
       );
     }
-    if (build === "mechanics" && activeKind === "effect") {
+    if (formKind === "effect") {
       const editingPrimitives = primitives.filter(
         (p) => p.category === "ITEM_AUGMENT",
       );
@@ -594,7 +581,7 @@ export function AtelierSandboxClient({
         />
       );
     }
-    if (build === "mechanics" && activeKind === "capability") {
+    if (formKind === "capability") {
       return (
         <CapabilityForm
           initialCapability={
@@ -625,7 +612,7 @@ export function AtelierSandboxClient({
         />
       );
     }
-    if (build === "template") {
+    if (formKind === "template") {
       return (
         <TemplateForm
           initialTemplate={editing?.kind === "template" ? editing.row : null}
@@ -650,7 +637,7 @@ export function AtelierSandboxClient({
         />
       );
     }
-    if (build === "item") {
+    if (formKind === "item") {
       return (
         <ItemForm
           initialItem={editing?.kind === "item" ? editing.row : null}
@@ -694,7 +681,6 @@ export function AtelierSandboxClient({
       </div>
     );
   }, [
-    build,
     editing,
     buildStarted,
     mechanicsDraftKind,
@@ -712,11 +698,12 @@ export function AtelierSandboxClient({
   ]);
 
   const previewNode = useMemo(() => {
-    const activeKind: "primitive" | "effect" | "capability" =
-      editing?.kind === "effect" || editing?.kind === "capability"
-        ? editing.kind
-        : mechanicsDraftKind;
-    if (build === "mechanics" && activeKind !== "effect" && activeKind !== "capability") {
+    // Form preview is driven by what's loaded (or the blank draft kind),
+    // NOT the active library tab. Same decoupling as builderNode.
+    const formKind: "primitive" | "effect" | "capability" | "template" | "item" | null =
+      editing?.kind ??
+      (mechanicsDraftKind ? mechanicsDraftKind : templateKind ? "template" : null);
+    if (formKind === "primitive") {
       const snapForm = formSnapshot?.form as
         | {
             name: string;
@@ -762,7 +749,7 @@ export function AtelierSandboxClient({
         <PrimitiveFormPreview form={form} modifiers={formSnapshot?.modifiers ?? []} />
       );
     }
-    if (build === "mechanics" && activeKind === "effect") {
+    if (formKind === "effect") {
       const snapForm = formSnapshot?.form as
         | {
             name: string;
@@ -803,7 +790,7 @@ export function AtelierSandboxClient({
       if (!form) return null;
       return <EffectFormPreview form={form} slots={slots} />;
     }
-    if (build === "mechanics" && activeKind === "capability") {
+    if (formKind === "capability") {
       const snapForm = formSnapshot?.form as
         | {
             name: string;
@@ -869,7 +856,7 @@ export function AtelierSandboxClient({
         <CapabilityFormPreview form={formWithDefaults} slots={slots} effects={effectRefs} />
       );
     }
-    if (build === "template") {
+    if (formKind === "template") {
       const snapForm = formSnapshot?.form as
         | {
             kind: "RACE" | "BACKGROUND" | "ARCHETYPE";
@@ -917,7 +904,7 @@ export function AtelierSandboxClient({
       if (!form) return null;
       return <TemplateFormPreview form={form} primitives={primitiveSlots} capabilities={capabilitySlots} />;
     }
-    if (build === "item") {
+    if (formKind === "item") {
       const snapForm = formSnapshot?.form as
         | {
             name: string;
@@ -1006,14 +993,6 @@ export function AtelierSandboxClient({
           onSelect={(entityType, id) =>
             guardedLibrarySelect(entityType as AtelierEntityKind, id)
           }
-          onFork={(entityType, id) =>
-            applyPendingAction({
-              kind: "loadFromLibrary",
-              entityType: entityType as AtelierEntityKind,
-              id,
-              intent: "fork",
-            })
-          }
         />
       );
     }
@@ -1032,14 +1011,6 @@ export function AtelierSandboxClient({
         editingKey={editingKey}
         onSelect={(entityType, id) =>
           guardedLibrarySelect(entityType as AtelierEntityKind, id)
-        }
-        onFork={(entityType, id) =>
-          applyPendingAction({
-            kind: "loadFromLibrary",
-            entityType: entityType as AtelierEntityKind,
-            id,
-            intent: "fork",
-          })
         }
         versionMap={versionMap}
       />

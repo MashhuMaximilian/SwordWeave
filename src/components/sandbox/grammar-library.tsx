@@ -80,11 +80,6 @@ interface GrammarLibraryProps {
     kind: "primitive" | "effect" | "capability",
     id: string | number,
   ) => void;
-  /** Fork an entry into the build with intent=fork (saves as a new fork). */
-  onFork?: (
-    kind: "primitive" | "effect" | "capability",
-    id: string | number,
-  ) => void;
 }
 
 // Chip set per build mode:
@@ -118,6 +113,20 @@ const AVAILABLE_TYPES_BY_BUILD: Record<
   ],
 };
 
+// Global type chips for the side Filters panel — every kind, regardless of
+// which tab is active. The Atelier page is one unified library; the tab is
+// just a quick-filter, so the panel must expose all kinds at once.
+const GLOBAL_TYPES: Array<{ key: LibraryTargetType | "ALL"; label: string }> = [
+  { key: "ALL", label: "All" },
+  { key: "PRIMITIVE", label: "Primitives" },
+  { key: "EFFECT", label: "Effects" },
+  { key: "CAPABILITY", label: "Capabilities" },
+  { key: "RACE_TEMPLATE", label: "Lineage" },
+  { key: "BACKGROUND_TEMPLATE", label: "Upbringing" },
+  { key: "ARCHETYPE_TEMPLATE", label: "Manifest" },
+  { key: "ITEM", label: "Items" },
+];
+
 export function GrammarLibrary({
   build,
   libraryItems,
@@ -130,7 +139,6 @@ export function GrammarLibrary({
   editingKey,
   versionMap,
   onSelect,
-  onFork,
 }: GrammarLibraryProps) {
   // Default type filter per build mode. For the collapsed Mechanics tab
   // we default to "ALL" so primitives + effects + capabilities show
@@ -341,7 +349,7 @@ export function GrammarLibrary({
         <LibraryToolbar
           state={toolbarState}
           onStateChange={setToolbarState}
-          availableTypes={availableTypes}
+          availableTypes={GLOBAL_TYPES}
           primitiveCategories={primitiveCategories}
           showSearch={true}
           showAdvancedFilters={true}
@@ -349,7 +357,7 @@ export function GrammarLibrary({
         />
       </div>
     ),
-    [toolbarState, setToolbarState, availableTypes, primitiveCategories],
+    [toolbarState, setToolbarState, primitiveCategories],
   );
   useFilterSlot(filterPanelContent);
 
@@ -446,16 +454,6 @@ export function GrammarLibrary({
             }
             stack.clear();
           }}
-          onForkIntoBuild={() => {
-            if (item.kind === "primitive") {
-              onFork?.("primitive", item.row.id);
-            } else if (item.kind === "effect") {
-              onFork?.("effect", item.row.id);
-            } else {
-              onFork?.("capability", item.row.id);
-            }
-            stack.clear();
-          }}
           onSubLinkClick={(link) => {
             // Look up the full row and push it onto the stack.
             if (link.targetType === "PRIMITIVE") {
@@ -501,7 +499,7 @@ export function GrammarLibrary({
           <div className="mt-2 flex flex-wrap gap-1.5">
             {(
               [
-                { key: "ALL", label: "All" },
+                { key: "ALL", label: "All mechanics" },
                 { key: "PRIMITIVE", label: "Primitives" },
                 { key: "EFFECT", label: "Effects" },
                 { key: "CAPABILITY", label: "Capabilities" },
@@ -571,14 +569,12 @@ function SandboxPreviewBody({
   libraryItem,
   build,
   onLoadIntoBuild,
-  onForkIntoBuild,
   onSubLinkClick,
 }: {
   item: SandboxPreviewItem;
   libraryItem: LibraryItem | null;
   build: MechanicsBuildMode;
   onLoadIntoBuild: () => void;
-  onForkIntoBuild?: () => void;
   onSubLinkClick?: (link: {
     targetType: "PRIMITIVE" | "CAPABILITY" | "EFFECT" | "ITEM";
     targetId: string;
@@ -714,23 +710,6 @@ function SandboxPreviewBody({
         >
           Load into build
         </button>
-        {onForkIntoBuild ? (
-          <button
-            type="button"
-            onClick={() => {
-              onForkIntoBuild?.();
-              if (sandboxSplit) {
-                setSandboxBottomTab("preview");
-              } else {
-                openDrawer("build");
-              }
-            }}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:border-primary"
-            title="Fork this entry into your sandbox (saves as a new copy)"
-          >
-            Fork
-          </button>
-        ) : null}
         {canSlot ? (
           <button
             type="button"
