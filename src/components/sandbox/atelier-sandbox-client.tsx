@@ -45,12 +45,27 @@ import type { SaveIntent } from "@/lib/publishing/save-intent";
 import type { ModifierDraft } from "./primitive-form-preview";
 
 export type AtelierTab =
+  | "mechanics"
+  | "template"
+  | "item"
+  | "monster";
+
+// Concrete library entity kinds (used for load/select; the Mechanics tab
+// groups primitive/effect/capability under one tab).
+export type AtelierEntityKind =
   | "primitive"
   | "effect"
   | "capability"
   | "template"
-  | "item"
-  | "monster";
+  | "item";
+
+// Map a concrete entity kind to its tab (Mechanics groups the three
+// mechanics kinds under one tab).
+function tabForKind(kind: AtelierEntityKind): AtelierTab {
+  if (kind === "primitive" || kind === "effect" || kind === "capability")
+    return "mechanics";
+  return kind;
+}
 
 // ---------------------------------------------------------------------------
 // Row shapes (merged from the two legacy clients).
@@ -202,7 +217,7 @@ type EditingState =
 
 type PendingAction =
   | { kind: "switchBuild"; mode: AtelierTab }
-  | { kind: "loadFromLibrary"; entityType: AtelierTab; id: string | number };
+  | { kind: "loadFromLibrary"; entityType: AtelierEntityKind; id: string | number };
 
 export function AtelierSandboxClient({
   initialBuild,
@@ -210,6 +225,9 @@ export function AtelierSandboxClient({
   initialEditing,
   initialIntent,
   initialSourceId,
+  // Deep-linked mechanics sub-kind (primitive/effect/capability) so a
+  // fresh /sandbox/atelier?build=effect opens the Effect form blank.
+  initialMechanicsKind = "primitive",
   dataLoadFailed = false,
   primitives,
   effects,
@@ -229,6 +247,7 @@ export function AtelierSandboxClient({
   initialEditing: EditingState;
   initialIntent?: SaveIntent;
   initialSourceId?: string | null;
+  initialMechanicsKind?: "primitive" | "effect" | "capability";
   dataLoadFailed?: boolean;
   primitives: PrimitiveRow[];
   effects: EffectRow[];
@@ -260,6 +279,9 @@ export function AtelierSandboxClient({
     "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined
   >(initialKind);
   const [showNewModal, setShowNewModal] = useState(false);
+  const [mechanicsDraftKind, setMechanicsDraftKind] = useState<
+    "primitive" | "effect" | "capability"
+  >(initialMechanicsKind);
   const modalDescRef = useRef<string | undefined>(undefined);
 
   const { setSandboxFormDirty, openDrawer, sandboxSplit, setSandboxBottomTab } =
@@ -321,10 +343,11 @@ export function AtelierSandboxClient({
         return;
       }
       const { entityType, id } = action;
+      const tab = tabForKind(entityType);
       const nextParams = new URLSearchParams(
         currentSearchParams?.toString() ?? "",
       );
-      nextParams.set("build", entityType);
+      nextParams.set("build", tab);
       nextParams.set("edit", String(id));
       nextParams.set("intent", "load");
       router.replace(
@@ -335,17 +358,17 @@ export function AtelierSandboxClient({
       if (entityType === "primitive") {
         const row = primitives.find((p) => p.id === id);
         if (!row) return;
-        setBuild("primitive");
+        setBuild("mechanics");
         setEditing({ kind: "primitive", row });
       } else if (entityType === "effect") {
         const row = effects.find((e) => e.id === id);
         if (!row) return;
-        setBuild("effect");
+        setBuild("mechanics");
         setEditing({ kind: "effect", row });
       } else if (entityType === "capability") {
         const row = capabilities.find((c) => c.id === id);
         if (!row) return;
-        setBuild("capability");
+        setBuild("mechanics");
         setEditing({ kind: "capability", row });
       } else if (entityType === "template") {
         const row = templates.find((t) => t.id === id);
@@ -395,6 +418,7 @@ export function AtelierSandboxClient({
   function startNewEntity(choice: NewEntityChoice) {
     setShowNewModal(false);
     if (choice.templateSubKind) setTemplateKind(choice.templateSubKind);
+    if (choice.mechanicsSubKind) setMechanicsDraftKind(choice.mechanicsSubKind);
     // Already on the target tab with a pristine form → nothing to do.
     if (choice.tab === build && !formIsDirty && editing === null) {
       setEditing(null);
@@ -404,16 +428,10 @@ export function AtelierSandboxClient({
     guardedSwitchBuild(choice.tab);
   }
 
-  function guardedLibrarySelect(entityType: AtelierTab, id: string | number) {
-    if (build === entityType && editing?.kind === entityType) {
-      const editingId =
-        editing.kind === "primitive" ||
-        editing.kind === "effect" ||
-        editing.kind === "capability" ||
-        editing.kind === "template" ||
-        editing.kind === "item"
-          ? (editing.row as { id: string | number }).id
-          : null;
+  function guardedLibrarySelect(entityType: AtelierEntityKind, id: string | number) {
+    // Same entity already loaded? No-op.
+    if (editing?.kind === entityType) {
+      const editingId = (editing.row as { id: string | number }).id;
       if (editingId === id) return;
     }
     if (!formIsDirty && editing === null) {
@@ -433,8 +451,12 @@ export function AtelierSandboxClient({
     const liveIntent = urlIntent ?? initialIntent ?? null;
     const liveSourceId = urlEdit ?? initialSourceId ?? null;
     const formCommon = { intent: liveIntent, sourceId: liveSourceId };
+    const activeKind: "primitive" | "effect" | "capability" =
+      editing?.kind === "effect" || editing?.kind === "capability"
+        ? editing.kind
+        : mechanicsDraftKind;
 
-    if (build === "primitive") {
+    if (build === "mechanics" && activeKind !== "effect" && activeKind !== "capability") {
       return (
         <PrimitiveForm
           initialPrimitive={editing?.kind === "primitive" ? editing.row : null}
@@ -474,7 +496,7 @@ export function AtelierSandboxClient({
         />
       );
     }
-    if (build === "effect") {
+    if (build === "mechanics" && activeKind === "effect") {
       const editingPrimitives = primitives.filter(
         (p) => p.category === "ITEM_AUGMENT",
       );
@@ -505,7 +527,7 @@ export function AtelierSandboxClient({
         />
       );
     }
-    if (build === "capability") {
+    if (build === "mechanics" && activeKind === "capability") {
       return (
         <CapabilityForm
           initialCapability={
@@ -619,7 +641,11 @@ export function AtelierSandboxClient({
   ]);
 
   const previewNode = useMemo(() => {
-    if (build === "primitive") {
+    const activeKind: "primitive" | "effect" | "capability" =
+      editing?.kind === "effect" || editing?.kind === "capability"
+        ? editing.kind
+        : mechanicsDraftKind;
+    if (build === "mechanics" && activeKind !== "effect" && activeKind !== "capability") {
       const snapForm = formSnapshot?.form as
         | {
             name: string;
@@ -665,7 +691,7 @@ export function AtelierSandboxClient({
         <PrimitiveFormPreview form={form} modifiers={formSnapshot?.modifiers ?? []} />
       );
     }
-    if (build === "effect") {
+    if (build === "mechanics" && activeKind === "effect") {
       const snapForm = formSnapshot?.form as
         | {
             name: string;
@@ -706,7 +732,7 @@ export function AtelierSandboxClient({
       if (!form) return null;
       return <EffectFormPreview form={form} slots={slots} />;
     }
-    if (build === "capability") {
+    if (build === "mechanics" && activeKind === "capability") {
       const snapForm = formSnapshot?.form as
         | {
             name: string;
@@ -889,15 +915,14 @@ export function AtelierSandboxClient({
 
   // Library column — swap the library component based on the active group.
   const libraryNode = useMemo(() => {
-    const isMechanics =
-      build === "primitive" || build === "effect" || build === "capability";
+    const isMechanics = build === "mechanics";
     const editingKey = editing
       ? `${editing.kind}:${editing.row.id}`
       : null;
     if (isMechanics) {
       return (
         <GrammarLibrary
-          build={build as "primitive" | "effect" | "capability"}
+          build={build as "mechanics"}
           libraryItems={libraryItems}
           primitives={primitives}
           effects={effects}
@@ -908,7 +933,7 @@ export function AtelierSandboxClient({
           versionMap={versionMap}
           editingKey={editingKey}
           onSelect={(entityType, id) =>
-            guardedLibrarySelect(entityType as AtelierTab, id)
+            guardedLibrarySelect(entityType as AtelierEntityKind, id)
           }
         />
       );
@@ -927,7 +952,7 @@ export function AtelierSandboxClient({
         currentUserInternalId={currentUserInternalId}
         editingKey={editingKey}
         onSelect={(entityType, id) =>
-          guardedLibrarySelect(entityType as AtelierTab, id)
+          guardedLibrarySelect(entityType as AtelierEntityKind, id)
         }
         versionMap={versionMap}
       />
@@ -996,9 +1021,7 @@ function emptyPreview(title: string, sub: string) {
 
 function buildLabel(mode: AtelierTab): string {
   switch (mode) {
-    case "primitive": return "Primitive";
-    case "effect": return "Effect";
-    case "capability": return "Capability";
+    case "mechanics": return "Mechanics";
     case "template": return "Heritage";
     case "item": return "Items";
     case "monster": return "Monsters";
@@ -1010,6 +1033,7 @@ function buildLabel(mode: AtelierTab): string {
 type NewEntityChoice = {
   tab: AtelierTab;
   templateSubKind?: "RACE" | "BACKGROUND" | "ARCHETYPE";
+  mechanicsSubKind?: "primitive" | "effect" | "capability";
   label: string;
   hint: string;
   icon: string;
@@ -1023,9 +1047,9 @@ const NEW_ENTITY_GROUPS: { heading: string; choices: NewEntityChoice[] }[] = [
   {
     heading: "Mechanics",
     choices: [
-      { tab: "primitive", label: "Primitive", hint: "Raw mechanical building block", icon: "lorc/jigsaw-piece" },
-      { tab: "effect", label: "Effect", hint: "Composed primitive effect", icon: "lorc/jigsaw-piece" },
-      { tab: "capability", label: "Capability", hint: "Ability built from primitives + effects", icon: "lorc/jigsaw-piece" },
+      { tab: "mechanics", mechanicsSubKind: "primitive", label: "Primitive", hint: "Raw mechanical building block", icon: "lorc/jigsaw-piece" },
+      { tab: "mechanics", mechanicsSubKind: "effect", label: "Effect", hint: "Composed primitive effect", icon: "lorc/jigsaw-piece" },
+      { tab: "mechanics", mechanicsSubKind: "capability", label: "Capability", hint: "Ability built from primitives + effects", icon: "lorc/jigsaw-piece" },
     ],
   },
   {
@@ -1158,9 +1182,7 @@ const ATELIER_TABS: {
   label: string;
   icon: string; // game-icon key
 }[] = [
-  { key: "primitive", label: "Primitive", icon: "lorc/jigsaw-piece" },
-  { key: "effect", label: "Effect", icon: "lorc/jigsaw-piece" },
-  { key: "capability", label: "Capability", icon: "lorc/jigsaw-piece" },
+  { key: "mechanics", label: "Mechanics", icon: "lorc/jigsaw-piece" },
   { key: "template", label: "Heritage", icon: "caro-asercion/tarot-11-justice" },
   { key: "item", label: "Items", icon: "lorc/battle-gear" },
   { key: "monster", label: "Monsters", icon: "lorc/gluttonous-smile" },

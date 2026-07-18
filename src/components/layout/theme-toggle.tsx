@@ -22,8 +22,8 @@ export function ThemeToggle() {
       onClick={toggleTheme}
       type="button"
     >
-      <Moon className="size-4 dark:hidden" />
-      <Sun className="hidden size-4 dark:block" />
+      <Moon className="hidden size-4 dark:block" />
+      <Sun className="size-4 dark:hidden" />
     </button>
   );
 }

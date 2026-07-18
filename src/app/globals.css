@@ -16,11 +16,11 @@
 
 :root {
   --background: #f8fafc;
-  --foreground: #0f172a;
+  --foreground: #011614;
   --card: oklch(1 0 0);
-  --card-foreground: #0f172a;
+  --card-foreground: #011614;
   --popover: oklch(1 0 0);
-  --popover-foreground: #0f172a;
+  --popover-foreground: #011614;
   --primary: #008ca3;
   --primary-foreground: #f8fafc;
   --secondary: #e6f8f4;
@@ -48,7 +48,7 @@
   --card-foreground: #f1f5f9;
   --popover: #0e1317;
   --popover-foreground: #f1f5f9;
-  --primary: #00f0ff;
+  --primary: #64e1d9;
   --primary-foreground: #061116;
   --secondary: #103832;
   --secondary-foreground: #d9fff6;
@@ -60,7 +60,7 @@
   --destructive-foreground: #111827;
   --border: #1d242b;
   --input: #29323b;
-  --ring: #00f0ff;
+  --ring: #64e1d9;
   --shell: #0b1015;
   --panel: #0e1317;
   --success: #00ffc4;

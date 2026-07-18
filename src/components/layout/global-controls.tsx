@@ -415,9 +415,9 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         key: "dark",
         label: (dark ?? false) ? "Light Mode" : "Dark Mode",
         icon: (dark ?? false) ? (
-          <Sun className="size-4" />
-        ) : (
           <Moon className="size-4" />
+        ) : (
+          <Sun className="size-4" />
         ),
         onClick: toggleDark,
         active: dark ?? false,

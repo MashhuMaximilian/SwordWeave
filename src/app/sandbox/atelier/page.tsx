@@ -47,16 +47,11 @@ import {
 export const dynamic = "force-dynamic";
 
 function parseBuild(value: string | undefined): AtelierTab {
-  if (
-    value === "effect" ||
-    value === "capability" ||
-    value === "template" ||
-    value === "item" ||
-    value === "monster"
-  ) {
+  // primitive/effect/capability all collapse into the single Mechanics tab.
+  if (value === "template" || value === "item" || value === "monster") {
     return value;
   }
-  return "primitive";
+  return "mechanics";
 }
 
 function parseKind(
@@ -79,11 +74,17 @@ export default async function AtelierSandboxPage({
   }>;
 }) {
   const params = await searchParams;
-  const build = parseBuild(params.build);
+  // `rawBuild` is the literal ?build= value (primitive/effect/capability/
+  // template/...); `build` is the collapsed tab (mechanics/...). The
+  // editing resolution keys off the concrete kind, so it uses rawBuild.
+  const rawBuild = params.build;
+  const build = parseBuild(rawBuild);
   const kind = parseKind(params.kind);
   const editId = params.edit;
   const intent: SaveIntent = parseSaveIntent(params.intent);
   const versionNumber = params.version ? Number(params.version) : Number.NaN;
+  const initialMechanicsKind =
+    rawBuild === "effect" || rawBuild === "capability" ? rawBuild : "primitive";
 
   let dataLoadFailed = false;
   let primitiveRows: unknown[] = [];
@@ -186,7 +187,7 @@ export default async function AtelierSandboxPage({
     | null = null;
 
   if (editId) {
-    if (build === "primitive") {
+    if (rawBuild === "primitive") {
       const numId = Number(editId);
       if (Number.isFinite(numId)) {
         let baseRow: Record<string, unknown> | null = null;
@@ -206,10 +207,10 @@ export default async function AtelierSandboxPage({
           };
         }
       }
-    } else if (build === "effect") {
+    } else if (rawBuild === "effect") {
       const row = effectRows.find((e) => (e as { id: string }).id === editId);
       if (row) initialEditing = { kind: "effect", row: row as { id: string } };
-    } else if (build === "capability") {
+    } else if (rawBuild === "capability") {
       const row = capabilityRows.find((c) => (c as { id: string }).id === editId);
       if (row) initialEditing = { kind: "capability", row: row as { id: string } };
     } else if (build === "template") {
@@ -310,6 +311,7 @@ export default async function AtelierSandboxPage({
       initialEditing={initialEditing as never}
       initialIntent={intent}
       initialSourceId={editId ?? null}
+      initialMechanicsKind={initialMechanicsKind}
       dataLoadFailed={dataLoadFailed}
       primitives={(primitiveRows as never[]).map((p) => {
         const row = p as {

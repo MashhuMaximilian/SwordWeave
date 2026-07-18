@@ -33,14 +33,18 @@ import {
   type SandboxCapabilityRow,
 } from "@/components/library/library-item-preview";
 import { useSandboxEngagement } from "@/components/library/use-sandbox-engagement";
-import type { GrammarBuildMode } from "./grammar-sandbox-client";
 import {
   SLOT_EVENT_NAME,
   type SlotEvent,
 } from "@/lib/sandbox/slot-events";
 
+// The Mechanics tab collapses primitive/effect/capability into one tab.
+// The library still distinguishes the concrete kinds for chips + select,
+// but the build mode "mechanics" shows all three together by default.
+type MechanicsBuildMode = "primitive" | "effect" | "capability" | "mechanics";
+
 interface GrammarLibraryProps {
-  build: GrammarBuildMode;
+  build: MechanicsBuildMode;
   libraryItems: LibraryItem[];
   /**
    * Full typed rows used to render the modal preview. Kept here so the
@@ -83,9 +87,17 @@ interface GrammarLibraryProps {
 //   primitive to slot into the effect)
 // - Capability: all three (capability can slot primitives + effects)
 const AVAILABLE_TYPES_BY_BUILD: Record<
-  GrammarBuildMode,
+  MechanicsBuildMode,
   Array<{ key: LibraryTargetType | "ALL"; label: string }>
 > = {
+  // Mechanics (collapsed tab): all three kinds as chips, All shown first
+  // so the user browses primitives + effects + capabilities together.
+  mechanics: [
+    { key: "ALL", label: "All" },
+    { key: "PRIMITIVE", label: "Primitives" },
+    { key: "EFFECT", label: "Effects" },
+    { key: "CAPABILITY", label: "Capabilities" },
+  ],
   primitive: [
     { key: "PRIMITIVE", label: "Primitives" },
   ],
@@ -113,17 +125,19 @@ export function GrammarLibrary({
   versionMap,
   onSelect,
 }: GrammarLibraryProps) {
-  // Default type filter per build mode. The kind filter is exposed in
-  // the toolbar. We pick the kind that matches the active build so the
-  // user sees the relevant entries by default when switching tabs
-  // (Primitive tab → primitives, Effect tab → effects, etc.). The user
-  // can broaden to "ALL" via the chip filter when they want everything.
-  const defaultTypeFilter: LibraryTargetType =
-    build === "primitive"
-      ? "PRIMITIVE"
-      : build === "effect"
-        ? "EFFECT"
-        : "CAPABILITY";
+  // Default type filter per build mode. For the collapsed Mechanics tab
+  // we default to "ALL" so primitives + effects + capabilities show
+  // together (the user picks a specific chip to narrow). The legacy
+  // primitive/effect/capability build modes still default to their own
+  // kind for backwards-compatible deep links.
+  const defaultTypeFilter: LibraryTargetType | "ALL" =
+    build === "mechanics"
+      ? "ALL"
+      : build === "primitive"
+        ? "PRIMITIVE"
+        : build === "effect"
+          ? "EFFECT"
+          : "CAPABILITY";
 
   const availableTypes = AVAILABLE_TYPES_BY_BUILD[build];
 
@@ -508,7 +522,7 @@ function SandboxPreviewBody({
 }: {
   item: SandboxPreviewItem;
   libraryItem: LibraryItem | null;
-  build: GrammarBuildMode;
+  build: MechanicsBuildMode;
   onLoadIntoBuild: () => void;
   onSubLinkClick?: (link: {
     targetType: "PRIMITIVE" | "CAPABILITY" | "EFFECT" | "ITEM";
