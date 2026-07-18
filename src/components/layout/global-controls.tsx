@@ -48,9 +48,12 @@ import { useModalStack } from "@/components/ui/modal-stack";
 import { cn } from "@/lib/utils";
 import { IconDisplay } from "@/components/icons/icon-display";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
+import { useIsDark } from "@/lib/hooks/use-is-dark";
 
-/** Color for the FAB build icon — white to match the lucide icons. */
-const FAB_ICON_COLOR = "#ffffff";
+/** Color for the FAB build icon — flips with theme (white on dark,
+ *  near-black on light) so it stays visible. */
+const FAB_ICON_COLOR_LIGHT = "#011614";
+const FAB_ICON_COLOR_DARK = "#ffffff";
 
 type DrawerTab = "build" | "preview" | null;
 
@@ -150,6 +153,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const isSandboxRoute = pathname?.startsWith("/sandbox") ?? false;
   const isMobile = useIsMobile();
+  const isDark = useIsDark();
   const { user, isSignedIn, isLoaded } = useUser();
   const { signOut, openUserProfile } = useClerk();
   const stack = useModalStack();
@@ -363,19 +367,22 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
           <IconDisplay
             iconSource="GAME_ICONS"
             iconKey="lorc/anvil-impact"
-            iconColor={FAB_ICON_COLOR}
+            iconColor={isDark ? FAB_ICON_COLOR_DARK : FAB_ICON_COLOR_LIGHT}
             size={22}
             alt="Build & Preview"
           />
         ),
         onClick: () => {
-          // The build/preview drawer is the MOBILE mechanism only. On
-          // tablet/desktop the build lives in the inline middle column,
-          // so opening the drawer there would overlay it (the "modal on
-          // desktop" bug). Only open the drawer on mobile; on desktop the
-          // column is already visible.
-          if (!isMobile) return;
-          openDrawer(sandboxSplit ? "preview" : "build");
+          // Surface the build chooser (the Atelier client listens for
+          // this and opens the new-entity modal when the build is empty;
+          // on desktop the inline column is already visible, so this is
+          // effectively a no-op there beyond opening the chooser). On
+          // mobile, also open the build/preview drawer so the panel is
+          // visible behind the chooser.
+          window.dispatchEvent(new CustomEvent("sw-open-new-entity"));
+          if (isMobile) {
+            openDrawer(sandboxSplit ? "preview" : "build");
+          }
         },
       },
       // Filters only appear on routes that actually open the filter panel

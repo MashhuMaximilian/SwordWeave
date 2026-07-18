@@ -711,13 +711,13 @@ export function CharacterWizard({
                 label="Attribute Sum"
                 value={`${attrSum} / 10 ${attrValid ? "✓" : "✗ INVALID"}`}
               />
-              <ReviewBlock label="Race" value={form.raceName || "—"} />
+              <ReviewBlock label="Lineage" value={form.raceName || "—"} />
               <ReviewBlock
-                label="Background"
+                label="Upbringing"
                 value={form.backgroundName || "—"}
               />
               <ReviewBlock
-                label="Archetype"
+                label="Manifest"
                 value={form.archetypeName || "—"}
               />
               <ReviewBlock

@@ -39,6 +39,7 @@ import { BlueprintLibrary } from "./blueprint-library";
 import { UnsavedChangesModal } from "./unsaved-changes-modal";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
+import { useIsDark } from "@/lib/hooks/use-is-dark";
 import { IconDisplay } from "@/components/icons/icon-display";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import type { SaveIntent } from "@/lib/publishing/save-intent";
@@ -265,6 +266,7 @@ export function AtelierSandboxClient({
   const [build, setBuild] = useState<AtelierTab>(initialBuild);
   const [editing, setEditing] = useState<EditingState>(initialEditing);
   const [formIsDirty, setFormIsDirty] = useState(false);
+  const [buildStarted, setBuildStarted] = useState(initialEditing !== null);
   const [formSnapshot, setFormSnapshot] = useState<{
     form: Record<string, unknown>;
     slots: unknown[];
@@ -282,11 +284,25 @@ export function AtelierSandboxClient({
   const [mechanicsDraftKind, setMechanicsDraftKind] = useState<
     "primitive" | "effect" | "capability"
   >(initialMechanicsKind);
+  // Per-tab form-state cache so switching tabs never discards what you
+  // were building (Point 5). Keyed by tab; each entry snapshots the
+  // editing state + draft-kind selectors for that tab.
+  type TabCacheEntry = {
+    editing: EditingState;
+    formSnapshot: typeof formSnapshot;
+    mechanicsDraftKind: "primitive" | "effect" | "capability";
+    templateKind: "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined;
+    buildStarted: boolean;
+  };
+  const [tabCache, setTabCache] = useState<Partial<Record<AtelierTab, TabCacheEntry>>>({});
+  const tabCacheRef = useRef(tabCache);
+  tabCacheRef.current = tabCache;
   const modalDescRef = useRef<string | undefined>(undefined);
 
   const { setSandboxFormDirty, openDrawer, sandboxSplit, setSandboxBottomTab } =
     useGlobalControls();
   const isMobile = useIsMobile();
+  const isDark = useIsDark();
 
   const router = useRouter();
   const pathname = usePathname();
@@ -302,6 +318,17 @@ export function AtelierSandboxClient({
   useEffect(() => {
     setSandboxFormDirty(formIsDirty || editing !== null);
   }, [formIsDirty, editing, setSandboxFormDirty]);
+
+  // Listen for the FAB "Build & Preview" action: when the build column is
+  // empty, surface the new-entity chooser (Point 4). The FAB dispatches a
+  // window event because it lives outside this client.
+  useEffect(() => {
+    function onOpenNew() {
+      setShowNewModal(true);
+    }
+    window.addEventListener("sw-open-new-entity", onOpenNew);
+    return () => window.removeEventListener("sw-open-new-entity", onOpenNew);
+  }, []);
 
   // Auto-open build panel on server-routed loads (?edit=<id>) — mobile only.
   useEffect(() => {
@@ -327,14 +354,36 @@ export function AtelierSandboxClient({
   const applyPendingAction = useCallback(
     (action: PendingAction) => {
       if (action.kind === "switchBuild") {
-        setBuild(action.mode);
-        setEditing(null);
+        const nextMode = action.mode;
+        // Save the current tab's form state into the cache, then restore
+        // the target tab's (if any). Switching tabs never discards what
+        // you were building (Point 5).
+        const snapshot: TabCacheEntry = {
+          editing,
+          formSnapshot,
+          mechanicsDraftKind,
+          templateKind,
+          buildStarted,
+        };
+        const restored = tabCacheRef.current[nextMode];
+        setTabCache((prev) => ({ ...prev, [build]: snapshot }));
+        setBuild(nextMode);
+        if (restored) {
+          setEditing(restored.editing);
+          setFormSnapshot(restored.formSnapshot);
+          setMechanicsDraftKind(restored.mechanicsDraftKind);
+          setTemplateKind(restored.templateKind);
+          setBuildStarted(restored.buildStarted);
+        } else {
+          setEditing(null);
+          setFormSnapshot(null);
+          setBuildStarted(false);
+        }
         setFormIsDirty(false);
-        setFormSnapshot(null);
         const nextParams = new URLSearchParams(
           currentSearchParams?.toString() ?? "",
         );
-        nextParams.set("build", action.mode);
+        nextParams.set("build", nextMode);
         router.replace(
           nextParams.toString()
             ? `${pathname}?${nextParams.toString()}`
@@ -386,6 +435,7 @@ export function AtelierSandboxClient({
         setEditing(null);
       }
       setFormIsDirty(false);
+      setBuildStarted(true);
       openBuildPanel();
     },
     [
@@ -402,13 +452,11 @@ export function AtelierSandboxClient({
   );
 
   function guardedSwitchBuild(newMode: AtelierTab) {
+    // Switching tabs never discards your work (Point 5): the per-tab
+    // cache in applyPendingAction preserves each tab's form state. So we
+    // just switch — no unsaved-changes prompt.
     if (newMode === build) return;
-    if (!formIsDirty && editing === null) {
-      applyPendingAction({ kind: "switchBuild", mode: newMode });
-      return;
-    }
-    modalDescRef.current = `You have unsaved changes in the ${buildLabel(build)} form. Switching to ${buildLabel(newMode)} will lose them.`;
-    setPendingAction({ kind: "switchBuild", mode: newMode });
+    applyPendingAction({ kind: "switchBuild", mode: newMode });
   }
 
   // "New entity" picker: switch to the chosen kind with a BLANK form.
@@ -417,6 +465,7 @@ export function AtelierSandboxClient({
   // fresh form of the chosen kind immediately.
   function startNewEntity(choice: NewEntityChoice) {
     setShowNewModal(false);
+    setBuildStarted(true);
     if (choice.templateSubKind) setTemplateKind(choice.templateSubKind);
     if (choice.mechanicsSubKind) setMechanicsDraftKind(choice.mechanicsSubKind);
     // Already on the target tab with a pristine form → nothing to do.
@@ -455,6 +504,13 @@ export function AtelierSandboxClient({
       editing?.kind === "effect" || editing?.kind === "capability"
         ? editing.kind
         : mechanicsDraftKind;
+
+    // Empty build: show the inline "start a new entity" chooser instead
+    // of a blank form (Point 4). Once the user picks (or loads) something,
+    // buildStarted flips true and the form renders.
+    if (!buildStarted) {
+      return <EmptyBuildChooser onPick={startNewEntity} />;
+    }
 
     if (build === "mechanics" && activeKind !== "effect" && activeKind !== "capability") {
       return (
@@ -1112,6 +1168,7 @@ function NewEntityModal({
   onPick: (choice: NewEntityChoice) => void;
   onClose: () => void;
 }) {
+  const isDark = useIsDark();
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
@@ -1152,7 +1209,7 @@ function NewEntityModal({
                     <IconDisplay
                       iconSource="GAME_ICONS"
                       iconKey={choice.icon}
-                      iconColor="#94a3b8"
+                      iconColor={isDark ? "#94a3b8" : "#64748b"}
                       size={20}
                       alt={choice.label}
                     />
@@ -1170,6 +1227,57 @@ function NewEntityModal({
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Inline "start a new entity" chooser shown in the build column when it's
+// empty (Point 4). Mirrors the new-entity modal's 8 options so the desktop
+// middle column and the modal stay consistent.
+function EmptyBuildChooser({
+  onPick,
+}: {
+  onPick: (choice: NewEntityChoice) => void;
+}) {
+  const isDark = useIsDark();
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-6 p-6 text-center">
+      <div className="space-y-1">
+        <h2 className="text-lg font-semibold text-foreground">
+          Start something new
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Pick what you want to build.
+        </p>
+      </div>
+      <div className="grid w-full max-w-md gap-4">
+        {NEW_ENTITY_GROUPS.map((group) => (
+          <div key={group.heading} className="space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              {group.heading}
+            </p>
+            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+              {group.choices.map((choice) => (
+                <button
+                  key={choice.label + (choice.templateSubKind ?? choice.mechanicsSubKind ?? "")}
+                  type="button"
+                  onClick={() => onPick(choice)}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary hover:bg-primary/5"
+                >
+                  <IconDisplay
+                    iconSource="GAME_ICONS"
+                    iconKey={choice.icon}
+                    iconColor={isDark ? "#94a3b8" : "#64748b"}
+                    size={18}
+                    alt={choice.label}
+                  />
+                  {choice.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1195,6 +1303,7 @@ function AtelierTabBar({
   build: AtelierTab;
   onSwitch: (mode: AtelierTab) => void;
 }) {
+  const isDark = useIsDark();
   return (
     <div role="tablist" aria-label="Build mode" className="flex bg-card">
       {ATELIER_TABS.map((tab) => {
@@ -1216,7 +1325,7 @@ function AtelierTabBar({
             <IconDisplay
               iconSource="GAME_ICONS"
               iconKey={tab.icon}
-              iconColor={active ? "#008ca3" : "#94a3b8"}
+              iconColor={active ? (isDark ? "#64e1d9" : "#011614") : isDark ? "#94a3b8" : "#64748b"}
               size={18}
               alt={tab.label}
             />

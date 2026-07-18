@@ -791,13 +791,13 @@ function OverviewTab({
           Identity
         </h3>
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Field label="Race" value={props.raceName ?? "—"} {...(props.raceDescription ? { description: props.raceDescription } : {})} />
+          <Field label="Lineage" value={props.raceName ?? "—"} {...(props.raceDescription ? { description: props.raceDescription } : {})} />
           <Field
-            label="Background"
+            label="Upbringing"
             value={props.backgroundName ?? "—"}
             {...(props.backgroundDescription ? { description: props.backgroundDescription } : {})}
           />
-          <Field label="Archetype" value={props.archetypeName ?? "—"} />
+          <Field label="Manifest" value={props.archetypeName ?? "—"} />
           <Field
             label="Attribute Sum"
             value={`${attrSum} / 10 ${

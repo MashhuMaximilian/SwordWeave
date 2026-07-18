@@ -39,9 +39,26 @@ import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { IconDisplay } from "@/components/icons/icon-display";
+import { useIsDark } from "@/lib/hooks/use-is-dark";
 
-/** Color for FAB nav/build game-icons — white to match the lucide icons. */
-const FAB_ICON_COLOR = "#ffffff";
+
+
+// Nav-icon helper: game-icons need a baked hex color (they're <img>), so
+// we resolve the theme-aware color here via useIsDark. Used for the
+// module-level NAV_LINKS entries that sit outside the FabSpeedDial scope.
+function FabIcon({ iconKey, alt }: { iconKey: string; alt: string }) {
+  const isDark = useIsDark();
+  return (
+    <IconDisplay
+      iconSource="GAME_ICONS"
+      iconKey={iconKey}
+      iconColor={isDark ? "#ffffff" : "#011614"}
+      size={22}
+      alt={alt}
+    />
+  );
+}
+
 /** Action button: toggles a state, calls onClick. */
 export type FabAction = {
   kind?: "action";
@@ -114,6 +131,10 @@ export function FabSpeedDial({
 }: FabSpeedDialProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const isDark = useIsDark();
+  // FAB game-icons: white on dark, near-black (#011614) on light so they
+  // stay visible against the light surface.
+  const fabIconColor = isDark ? "#ffffff" : "#011614";
 
   // Close on outside click / Escape.
   useEffect(() => {
@@ -408,13 +429,7 @@ export const NAV_LINKS: FabItem[] = [
     key: "library",
     label: "Codex",
     icon: (
-      <IconDisplay
-        iconSource="GAME_ICONS"
-        iconKey="delapouite/bookshelf"
-        iconColor={FAB_ICON_COLOR}
-        size={22}
-        alt="Library"
-      />
+      <FabIcon iconKey="delapouite/bookshelf" alt="Library" />
     ),
     href: "/library/browse",
   },
@@ -423,13 +438,7 @@ export const NAV_LINKS: FabItem[] = [
     key: "creations",
     label: "My Creations",
     icon: (
-      <IconDisplay
-        iconSource="GAME_ICONS"
-        iconKey="delapouite/cosmic-egg"
-        iconColor={FAB_ICON_COLOR}
-        size={22}
-        alt="My Creations"
-      />
+      <FabIcon iconKey="delapouite/cosmic-egg" alt="My Creations" />
     ),
     href: "/creations",
   },
@@ -438,13 +447,7 @@ export const NAV_LINKS: FabItem[] = [
     key: "atelier",
     label: "Atelier",
     icon: (
-      <IconDisplay
-        iconSource="GAME_ICONS"
-        iconKey="lorc/jigsaw-box"
-        iconColor={FAB_ICON_COLOR}
-        size={22}
-        alt="Atelier"
-      />
+      <FabIcon iconKey="lorc/jigsaw-box" alt="Atelier" />
     ),
     href: "/sandbox/atelier",
   },
@@ -453,13 +456,7 @@ export const NAV_LINKS: FabItem[] = [
     key: "builds",
     label: "Builds",
     icon: (
-      <IconDisplay
-        iconSource="GAME_ICONS"
-        iconKey="seregacthtuf/armor-blueprint"
-        iconColor={FAB_ICON_COLOR}
-        size={22}
-        alt="Builds"
-      />
+      <FabIcon iconKey="seregacthtuf/armor-blueprint" alt="Builds" />
     ),
     href: "/characters",
   },

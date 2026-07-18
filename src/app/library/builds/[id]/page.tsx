@@ -99,13 +99,13 @@ export default async function BuildDetailPage({ params }: PageProps) {
         <section className="grid gap-3 sm:grid-cols-2">
           <SlotCard
             icon={<Sparkles className="size-4" aria-hidden="true" />}
-            label="Race"
+            label="Lineage"
             name={build.race?.name}
             description={build.race?.description}
           />
           <SlotCard
             icon={<Shield className="size-4" aria-hidden="true" />}
-            label="Background"
+            label="Upbringing"
             name={build.background?.name}
             description={build.background?.description}
           />
