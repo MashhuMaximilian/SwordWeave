@@ -1,0 +1,859 @@
+"use client";
+
+// =============================================================================
+// EntityPreview — THE unified preview for every SwordWeave entity, rendered
+// identically in My Creations, Library, the Atelier sandbox library, and the
+// Atelier build-modal preview tab.
+//
+// variant:
+//   "read"  — full surface (header + sections + engagement footer w/ like /
+//             fork / version history). Used by library, creations, sandbox.
+//   "build" — same body, but the action footer is replaced by Save + Reset
+//             (the build modal owns those) and engagement controls are hidden.
+//
+// The body is a single source of truth. No more per-surface drift: the
+// modifiers render as structured cards with a color-coded OperationBadge,
+// the "When:" condition line (AND/OR pills), and a MirrorPanel that shows
+// the inverse operation. The legacy `mirrorVector` string is intentionally
+// NOT displayed.
+// =============================================================================
+
+import { type ReactNode } from "react";
+import { Markdown } from "@/components/ui/markdown";
+import { IconDisplay } from "@/components/icons/icon-display";
+import { LikeForkBar } from "@/components/engagement/like-fork-bar";
+import { ChevronRight, History, Link2 } from "lucide-react";
+import { useModalStack } from "@/components/ui/modal-stack";
+import {
+  OperationBadge,
+  Section,
+  VersionChip,
+  VisibilityPill,
+  ConditionLine,
+  MirrorPanel,
+  opLabel,
+  mirrorSummary,
+} from "./preview-shared";
+import {
+  type SandboxPreviewItem,
+  type SandboxPrimitiveRow,
+  type SandboxEffectRow,
+  type SandboxCapabilityRow,
+  type SandboxTemplateRow,
+  type SandboxItemRow,
+  type PreviewSubLink,
+  type PreviewCallbacks,
+  libraryCompositeId,
+} from "@/components/library/library-item-preview";
+
+export type EntityPreviewVariant = "read" | "build";
+
+export interface EntityPreviewProps {
+  item: SandboxPreviewItem;
+  variant?: EntityPreviewVariant;
+  callbacks?: PreviewCallbacks;
+  /** build variant only: Save / Reset handlers + labels. */
+  onSave?: () => void;
+  onReset?: () => void;
+  saveLabel?: string;
+  resetLabel?: string;
+  isDirty?: boolean;
+  /**
+   * Live build draft modifiers (primitive form). When provided AND the
+   * item is a primitive, the modifier cards render from this (richer:
+   * equations, scope, structured conditions) instead of the stored
+   * `row.hardModifiers`. Keeps the build-modal preview identical to the
+   * library one while still showing the live draft.
+   */
+  buildModifiers?: Array<Record<string, unknown>>;
+}
+
+// ---- per-kind section label ------------------------------------------------
+
+function sectionLabel(item: SandboxPreviewItem): string {
+  switch (item.kind) {
+    case "primitive":
+      return "Primitive";
+    case "effect":
+      return "Effect";
+    case "capability":
+      return `Capability · ${item.row.type}`;
+    case "template":
+      return `Template · ${item.row.kind}`;
+    case "item":
+      return `Item · ${item.row.itemType}`;
+  }
+}
+
+// ---- icon header tile -------------------------------------------------------
+
+function IconTile({ row }: { row: { iconSource: string | null; iconKey: string | null; iconUrl: string | null; iconColor: string; fallback: string } }) {
+  if (row.iconSource) {
+    return (
+      <IconDisplay
+        iconSource={row.iconSource as "GAME_ICONS" | "UPLOAD"}
+        iconKey={row.iconKey}
+        iconUrl={row.iconUrl}
+        iconColor={row.iconColor}
+        size={40}
+        className="shrink-0 rounded-md border border-border"
+        alt=""
+      />
+    );
+  }
+  return (
+    <div
+      aria-hidden="true"
+      className="flex size-10 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+    >
+      {row.fallback}
+    </div>
+  );
+}
+
+// ---- composed-entity drill-down list (primitives/effects/caps/items) -------
+
+function ComposedList({
+  title,
+  items,
+  onSubLink,
+}: {
+  title: string;
+  items: Array<{
+    id: string;
+    name: string;
+    meta?: ReactNode;
+    bu: number;
+    versionNumber?: number | null | undefined;
+    subText?: ReactNode;
+    note?: string | null;
+  }>;
+  onSubLink?: (link: PreviewSubLink) => void;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <Section heading={title}>
+      <ul className="divide-y divide-border rounded-md border border-border">
+        {items.map((it) => (
+          <li
+            key={it.id}
+            role={onSubLink ? "button" : undefined}
+            tabIndex={onSubLink ? 0 : undefined}
+            onClick={
+              onSubLink
+                ? () =>
+                    onSubLink({
+                      targetType: "PRIMITIVE",
+                      targetId: it.id,
+                      label: it.name,
+                    })
+                : undefined
+            }
+            onKeyDown={
+              onSubLink
+                ? (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSubLink!({ targetType: "PRIMITIVE", targetId: it.id, label: it.name });
+                    }
+                  }
+                : undefined
+            }
+            className={onSubLink ? "flex items-center justify-between gap-2 p-2.5 text-sm hover:bg-accent/40 cursor-pointer" : "flex items-center justify-between gap-2 p-2.5 text-sm"}
+          >
+            <div className="min-w-0 flex-1 truncate text-left">
+              <VersionChip versionNumber={it.versionNumber} />
+              <span className="font-semibold text-foreground hover:underline">{it.name}</span>
+              {it.subText ? <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">{it.subText}</div> : null}
+              {it.note ? <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{it.note}</div> : null}
+            </div>
+            <span className="shrink-0 font-mono text-xs text-foreground">{it.bu} BU</span>
+            {onSubLink ? <ChevronRight className="size-4 shrink-0 text-muted-foreground" /> : null}
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+}
+
+// ---- primitive modifier cards ----------------------------------------------
+
+function ModifierCards({
+  row,
+  buildModifiers,
+}: {
+  row: SandboxPrimitiveRow;
+  buildModifiers?: Array<Record<string, unknown>> | undefined;
+}) {
+  // Live build draft (from the primitive form) carries the rich ModifierDraft
+  // shape: target, operation, value, valueKind, operands (for equations),
+  // targetValues / freeTextNarrowFocus (scope), v1Condition, stacking. The
+  // stored SandboxPrimitiveRow.hardModifiers is the legacy v1 shape
+  // {operation,target,value,condition,stacking}. We render both through one
+  // card so the library preview and the build-modal preview are identical.
+  type Card = {
+    op: string;
+    target: string;
+    valueLine: React.ReactNode;
+    stacking: string;
+    condition?: unknown;
+    scope?: React.ReactNode;
+  };
+
+  const cards: Card[] = (buildModifiers ?? (row.hardModifiers as Array<Record<string, unknown>> | undefined) ?? []).map((m, i): Card => {
+    const op = String(m["operation"] ?? "add");
+    const target = String(m["target"] ?? "")
+      .split(".")
+      .pop() ?? String(m["target"] ?? "");
+    const stacking = String(m["stacking"] ?? "stack");
+
+    // Rich draft value rendering (equation / text / number) — mirrors the
+    // build-modal's modifierBlock.
+    let valueLine: React.ReactNode;
+    const valueKind = m["valueKind"] as string | undefined;
+    const operands = m["operands"] as Array<Record<string, unknown>> | undefined;
+    if (valueKind === "equation" && Array.isArray(operands)) {
+      const eqText = operands
+        .map((o) => String(o["text"] ?? o["value"] ?? ""))
+        .join(" ");
+      valueLine = (
+        <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs break-all">
+          {eqText || "(empty)"}
+        </code>
+      );
+    } else if (valueKind === "text") {
+      valueLine = (
+        <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs break-all">
+          {`"${String(m["value"] ?? "")}"`}
+        </code>
+      );
+    } else {
+      const v =
+        typeof m["value"] === "number"
+          ? String(m["value"])
+          : m["value"] === undefined || m["value"] === null
+            ? "0"
+            : JSON.stringify(m["value"]);
+      valueLine = (
+        <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs break-all">{v}</code>
+      );
+    }
+
+    // Scope (targetValues / freeTextNarrowFocus) — only present in the draft.
+    const tv = (m["targetValues"] as string[] | undefined) ?? [];
+    const narrow = String(m["freeTextNarrowFocus"] ?? "");
+    let scope: React.ReactNode = null;
+    if (tv.length > 0 || narrow.length > 0) {
+      scope = (
+        <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+          <span className="font-semibold uppercase tracking-wide text-muted-foreground">Scope:</span>
+          {tv.length > 0
+            ? tv.map((v) => (
+                <span key={v} className="rounded bg-muted px-1.5 py-0.5 font-mono">
+                  {v}
+                </span>
+              ))
+            : (
+              <span className="rounded bg-amber-500/10 px-1.5 py-0.5 font-mono text-amber-700 dark:text-amber-400">any</span>
+            )}
+          {narrow ? (
+            <span className="rounded bg-muted px-1.5 py-0.5 font-mono italic">{narrow}</span>
+          ) : null}
+        </div>
+      );
+    }
+
+    // The condition prop is passed as-is; the shared parseCondition
+    // (inside ConditionLine) understands every stored shape: legacy
+    // {key,operator,value}, v1 {kind:"preset"|"tags"|"compound"|
+    // "narrative"}, and the build-form {pills,operators,narrative}.
+    const condition = m["condition"];
+
+    return { op, target, valueLine, stacking, scope, condition };
+  });
+
+  if (cards.length === 0) return null;
+  return (
+    <Section heading={`Modifiers (${cards.length})`}>
+      <ul className="rounded-md border">
+        {cards.map((c, i) => {
+          const op = c.op as Parameters<typeof OperationBadge>[0]["op"];
+          const mirror = mirrorSummary(op);
+          return (
+            <li key={i} className="space-y-1 border-b border-border p-2 text-sm last:border-b-0">
+              <div className="flex flex-wrap items-baseline gap-1.5">
+                <span className="font-mono text-xs font-semibold">{c.target}</span>
+                <OperationBadge op={op} />
+                {c.valueLine}
+                <span className="ml-auto shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground">
+                  {c.stacking}
+                </span>
+              </div>
+              {c.scope}
+              <ConditionLine
+                condition={c.condition}
+              />
+              <p className={`text-[10px] leading-relaxed ${mirror.mirrorable ? "text-cyan-700 dark:text-cyan-300" : "text-muted-foreground"}`}>
+                {mirror.mirrorable ? "📊 " : "🔒 "}
+                {mirror.label}
+              </p>
+            </li>
+          );
+        })}
+      </ul>
+    </Section>
+  );
+}
+
+// ---- main -------------------------------------------------------------------
+
+export function EntityPreview({
+  item,
+  variant = "read",
+  callbacks,
+  onSave,
+  onReset,
+  saveLabel = "Save changes",
+  resetLabel = "Reset",
+  isDirty = false,
+  buildModifiers,
+}: EntityPreviewProps) {
+  const stack = useModalStack();
+  const onSubLink = (link: PreviewSubLink) => {
+    if (callbacks?.onSubLinkClick) {
+      callbacks.onSubLinkClick(link);
+      return;
+    }
+    if (!stack.canPush) return;
+    const url = `/library/item/${link.targetType}:${link.targetId}`;
+    stack.push({
+      key: `sublink:${link.targetType}:${link.targetId}`,
+      label: link.label,
+      category: link.targetType,
+      content: (
+        <div className="space-y-3 p-1">
+          <p className="text-sm text-muted-foreground">{link.label} — full details open in a new modal.</p>
+          <a
+            href={url}
+            className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+          >
+            <Link2 className="size-3.5" />
+            Open in library
+          </a>
+        </div>
+      ),
+    });
+  };
+
+  const body = (() => {
+    switch (item.kind) {
+      case "primitive":
+        return <PrimitiveBody row={item.row} onSubLink={onSubLink} buildModifiers={buildModifiers} />;
+      case "effect":
+        return <EffectBody row={item.row} onSubLink={onSubLink} />;
+      case "capability":
+        return <CapabilityBody row={item.row} onSubLink={onSubLink} />;
+      case "template":
+        return <TemplateBody row={item.row} onSubLink={onSubLink} />;
+      case "item":
+        return <ItemBody row={item.row} onSubLink={onSubLink} />;
+    }
+  })();
+
+  // build variant: the body only. Save/Reset are owned by the build form's
+  // own chrome (the form renders them), so the preview stays a pure preview
+  // and we don't duplicate action buttons. Callers may still pass onSave /
+  // onReset + isDirty to render an in-preview footer if they prefer.
+  const footer =
+    variant === "build"
+      ? onSave || onReset
+        ? (
+          <div className="mt-2 flex items-center gap-2 border-t border-border px-1 pb-4 pt-4">
+            {onSave ? (
+              <button
+                type="button"
+                onClick={onSave}
+                disabled={!isDirty}
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+              >
+                {saveLabel}
+              </button>
+            ) : null}
+            {onReset ? (
+              <button
+                type="button"
+                onClick={onReset}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card/50 px-3 py-1.5 text-sm font-medium text-muted-foreground transition hover:border-primary hover:text-foreground"
+              >
+                {resetLabel}
+              </button>
+            ) : null}
+          </div>
+        )
+        : null
+      : callbacks?.engagement
+        ? <PreviewFooter callbacks={callbacks} item={item} />
+        : null;
+
+  return (
+    <div className="space-y-4">
+      {body}
+      {footer}
+    </div>
+  );
+}
+
+// ---- footer (read variant) --------------------------------------------------
+
+function PreviewFooter({
+  callbacks,
+  item,
+}: {
+  callbacks: PreviewCallbacks;
+  item: SandboxPreviewItem;
+}) {
+  const eng = callbacks.engagement!;
+  const { targetType, targetId } = engagementKeys(item);
+  const historyHref =
+    callbacks.versionHistoryHref ?? `/library/item/${targetType}:${targetId}/versions`;
+  return (
+    <footer className="mt-2 space-y-4 border-t border-border px-1 pb-6 pt-4">
+      <LikeForkBar
+        targetType={targetType}
+        targetId={targetId}
+        initialLikes={eng.likes}
+        initialDislikes={eng.dislikes}
+        initialForks={eng.forks}
+        initialUserReaction={eng.userReaction}
+        authorId={eng.authorId}
+        authorUsername={eng.authorUsername}
+        currentUserId={eng.currentUserInternalId}
+        sandboxPath={callbacks.sandboxPath}
+        onFork={callbacks.onFork}
+      />
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-1 text-xs">
+        {callbacks.openSourceHref ? (
+          <a href={callbacks.openSourceHref} className="inline-flex items-center gap-1 text-primary hover:underline">
+            Open source page →
+          </a>
+        ) : (
+          <span />
+        )}
+        <a
+          href={historyHref}
+          className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <History className="size-3.5" />
+          Version history →
+        </a>
+      </div>
+    </footer>
+  );
+}
+
+function engagementKeys(item: SandboxPreviewItem): {
+  targetType:
+    | "PRIMITIVE"
+    | "EFFECT"
+    | "CAPABILITY"
+    | "ITEM"
+    | "RACE_TEMPLATE"
+    | "BACKGROUND_TEMPLATE"
+    | "ARCHETYPE_TEMPLATE";
+  targetId: string;
+} {
+  switch (item.kind) {
+    case "primitive":
+      return { targetType: "PRIMITIVE", targetId: String(item.row.id) };
+    case "capability":
+      return { targetType: "CAPABILITY", targetId: item.row.id };
+    case "template":
+      return {
+        targetType:
+          item.row.kind === "RACE"
+            ? "RACE_TEMPLATE"
+            : item.row.kind === "BACKGROUND"
+              ? "BACKGROUND_TEMPLATE"
+              : "ARCHETYPE_TEMPLATE",
+        targetId: item.row.id,
+      };
+    case "item":
+      return { targetType: "ITEM", targetId: item.row.id };
+    case "effect":
+      return { targetType: "EFFECT", targetId: item.row.id };
+  }
+}
+
+// ---- per-kind bodies --------------------------------------------------------
+
+function PrimitiveBody({
+  row,
+  onSubLink,
+  buildModifiers,
+}: {
+  row: SandboxPrimitiveRow;
+  onSubLink: (link: PreviewSubLink) => void;
+  buildModifiers?: Array<Record<string, unknown>> | undefined;
+}) {
+  return (
+    <div className="space-y-4">
+      <Header
+        fallback="PRI"
+        iconSource={row.iconSource}
+        iconKey={row.iconKey}
+        iconUrl={row.iconUrl}
+        iconColor={row.iconColor}
+        label={row.category}
+        name={row.name}
+        chips={
+          <>
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{row.buCost} BU</span>
+            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">{row.costTier}</span>
+            <VisibilityPill isPublic={row.isPublic} />
+          </>
+        }
+      />
+      {row.mechanicalOutputText ? (
+        <Section heading="Mechanical output">
+          <Markdown>{row.mechanicalOutputText}</Markdown>
+        </Section>
+      ) : null}
+      {row.narrativeRule ? (
+        <Section heading="Narrative rule">
+          <Markdown>{row.narrativeRule}</Markdown>
+        </Section>
+      ) : null}
+      <ModifierCards row={row} buildModifiers={buildModifiers} />
+      {row.isMirrorable ? (
+        <MirrorPanel
+          op={"add" as Parameters<typeof MirrorPanel>[0]["op"]}
+          buCredit={row.mirrorBuCredit}
+          notes={row.mirrorEligibilityNotes}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function EffectBody({
+  row,
+  onSubLink,
+}: {
+  row: SandboxEffectRow;
+  onSubLink: (link: PreviewSubLink) => void;
+}) {
+  const totalBu = row.primitiveLinks.reduce((s, l) => s + Math.abs(l.primitive.buCost * l.quantity), 0);
+  return (
+    <div className="space-y-5">
+      <Header
+        fallback="EFF"
+        iconSource={row.iconSource}
+        iconKey={row.iconKey}
+        iconUrl={row.iconUrl}
+        iconColor={row.iconColor}
+        label="Effect"
+        name={row.name}
+        chips={
+          <>
+            <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-mono font-semibold text-primary">{totalBu} BU</span>
+            {row.sourceOrigin ? <span className="rounded-full bg-secondary px-2 py-0.5 font-medium uppercase tracking-wide text-secondary-foreground">{row.sourceOrigin}</span> : null}
+            <VisibilityPill isPublic={row.isPublic} />
+          </>
+        }
+      />
+      {row.narrativeDescription ? (
+        <Section heading="Narrative description">
+          <div className="rounded-md border border-border/60 bg-background/40 p-3 text-sm leading-7 [&_p]:mb-2 [&_p:last-child]:mb-0 [&_strong]:font-bold [&_strong]:text-foreground [&_em]:italic">
+            <Markdown>{row.narrativeDescription}</Markdown>
+          </div>
+        </Section>
+      ) : null}
+      {row.tags.length > 0 ? (
+        <Section heading="Tags">
+          <div className="flex flex-wrap gap-1.5">
+            {row.tags.map((tag) => (
+              <span key={tag} className="rounded-full border border-border bg-secondary/60 px-2.5 py-0.5 text-xs font-medium">{tag}</span>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+      <ComposedList
+        title={`Composed primitives (${row.primitiveLinks.length})`}
+        onSubLink={onSubLink}
+        items={row.primitiveLinks.map((l) => ({
+          id: String(l.primitive.id),
+          name: l.primitive.name,
+          bu: Math.abs(l.primitive.buCost * l.quantity),
+          versionNumber: l.versionNumber,
+          subText: <span>{l.primitive.category}{l.quantity > 1 ? ` ×${l.quantity}` : ""}</span>,
+        }))}
+      />
+    </div>
+  );
+}
+
+function CapabilityBody({
+  row,
+  onSubLink,
+}: {
+  row: SandboxCapabilityRow;
+  onSubLink: (link: PreviewSubLink) => void;
+}) {
+  const totalBu = row.primitiveLinks.reduce((s, l) => s + Math.abs(l.primitive.buCost * l.quantity), 0);
+  return (
+    <div className="space-y-4">
+      <Header
+        fallback="CAP"
+        iconSource={row.iconSource}
+        iconKey={row.iconKey}
+        iconUrl={row.iconUrl}
+        iconColor={row.iconColor}
+        label={`${row.type} · ${row.sourceType}`}
+        name={row.name}
+        chips={
+          <>
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{totalBu} BU</span>
+            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">{row.sourceOrigin ?? "—"}</span>
+            <VisibilityPill isPublic={row.isPublic} />
+          </>
+        }
+      />
+      {row.verboseDescription ? (
+        <Section heading="Description">
+          <Markdown>{row.verboseDescription}</Markdown>
+        </Section>
+      ) : null}
+      {row.tags.length > 0 ? (
+        <Section heading="Tags">
+          <div className="flex flex-wrap gap-1">
+            {row.tags.map((tag) => (
+              <span key={tag} className="rounded-full bg-secondary px-2 py-0.5 text-xs">{tag}</span>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+      <ComposedList
+        title={`Composed primitives (${row.primitiveLinks.length})`}
+        onSubLink={onSubLink}
+        items={row.primitiveLinks.map((l, i) => ({
+          id: String(l.primitive.id),
+          name: l.primitive.name,
+          bu: Math.abs(l.primitive.buCost * l.quantity),
+          versionNumber: l.versionNumber,
+          subText: (
+            <>
+              <span>{l.primitive.category}</span>
+              <span className="rounded bg-secondary px-1.5 py-0.5 font-medium">{l.role.replace(/_/g, " ")}</span>
+              {l.quantity > 1 ? <span>× {l.quantity}</span> : null}
+              {l.slotLabel ? <span className="italic">"{l.slotLabel}"</span> : null}
+            </>
+          ),
+        }))}
+      />
+      <ComposedList
+        title={`Composed effects (${row.effectLinks.length})`}
+        items={row.effectLinks.map((l) => ({
+          id: l.effectId,
+          name: l.effect.name,
+          bu: (l.effect.primitiveLinks ?? []).reduce((s, x) => s + Math.abs(x.primitive.buCost * x.quantity), 0),
+          versionNumber: l.versionNumber,
+          note: l.effect.narrativeDescription ?? null,
+          subText: l.slotLabel ? <span className="italic">"{l.slotLabel}"</span> : undefined,
+        }))}
+      />
+    </div>
+  );
+}
+
+function TemplateBody({
+  row,
+  onSubLink,
+}: {
+  row: SandboxTemplateRow;
+  onSubLink: (link: PreviewSubLink) => void;
+}) {
+  const primitiveBu = row.primitiveLinks.reduce((s, l) => s + l.primitive.buCost, 0);
+  return (
+    <div className="space-y-4">
+      <Header
+        fallback="TPL"
+        iconSource={row.iconSource}
+        iconKey={row.iconKey}
+        iconUrl={row.iconUrl}
+        iconColor={row.iconColor}
+        label={row.kind}
+        name={row.name}
+        chips={
+          <>
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{primitiveBu} BU</span>
+            <VisibilityPill isPublic={row.isPublic} />
+          </>
+        }
+      />
+      {row.description ? (
+        <Section heading="Description">
+          <Markdown>{row.description}</Markdown>
+        </Section>
+      ) : null}
+      {row.suggestedTraits ? (
+        <Section heading="Suggested traits">
+          <Markdown>{row.suggestedTraits}</Markdown>
+        </Section>
+      ) : null}
+      <ComposedList
+        title={`Bundled primitives (${row.primitiveLinks.length})`}
+        onSubLink={onSubLink}
+        items={row.primitiveLinks.map((l) => ({
+          id: String(l.primitive.id),
+          name: l.primitive.name,
+          bu: l.primitive.buCost,
+          versionNumber: l.versionNumber,
+        }))}
+      />
+      <ComposedList
+        title={`Bundled capabilities (${row.capabilityLinks.length})`}
+        items={row.capabilityLinks.map((l) => ({
+          id: l.capability.id,
+          name: l.capability.name,
+          bu: (l.capability.primitiveLinks ?? []).reduce((s, x) => s + Math.abs(x.primitive.buCost), 0),
+          versionNumber: l.versionNumber,
+        }))}
+      />
+    </div>
+  );
+}
+
+function ItemBody({
+  row,
+  onSubLink,
+}: {
+  row: SandboxItemRow;
+  onSubLink: (link: PreviewSubLink) => void;
+}) {
+  const primitiveBu = row.primitiveLinks.reduce((s, l) => s + l.primitive.buCost, 0);
+  const totalBu = row.buCost + primitiveBu;
+  return (
+    <div className="space-y-4">
+      <Header
+        fallback="ITM"
+        iconSource={row.iconSource}
+        iconKey={row.iconKey}
+        iconUrl={row.iconUrl}
+        iconColor={row.iconColor}
+        label={row.itemType}
+        name={row.name}
+        chips={
+          <>
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{totalBu} BU</span>
+            <span className={`rounded-full px-2 py-0.5 font-medium ${rarityClass(row.rarity)}`}>{row.rarity}</span>
+            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">Slot {row.slotCost}</span>
+            {row.isTwoHanded ? <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">Two-handed</span> : null}
+            {row.isConsumable ? <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">Consumable</span> : null}
+            {row.actsAsFocus ? <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">Focus</span> : null}
+            {row.sourceOrigin ? <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">{row.sourceOrigin}</span> : null}
+            <VisibilityPill isPublic={row.isPublic} />
+          </>
+        }
+      />
+      {row.description ? (
+        <Section heading="Description">
+          <Markdown>{row.description}</Markdown>
+        </Section>
+      ) : null}
+      {row.tags.length > 0 ? (
+        <Section heading="Tags">
+          <div className="flex flex-wrap gap-1">
+            {row.tags.map((tag) => (
+              <span key={tag} className="rounded-full bg-secondary px-2 py-0.5 text-xs">{tag}</span>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+      <ComposedList
+        title={`Item-augment primitives (${row.primitiveLinks.length})`}
+        onSubLink={onSubLink}
+        items={row.primitiveLinks.map((l) => ({
+          id: String(l.primitive.id),
+          name: l.primitive.name,
+          bu: l.primitive.buCost,
+          versionNumber: l.versionNumber,
+        }))}
+      />
+      <ComposedList
+        title={`Composed effects (${row.effectLinks.length})`}
+        onSubLink={onSubLink}
+        items={row.effectLinks.map((l) => ({
+          id: l.effectId,
+          name: l.effect.name,
+          bu: (l.effect.primitiveLinks ?? []).reduce((s, x) => s + Math.abs(x.primitive.buCost * x.quantity), 0),
+          versionNumber: l.versionNumber,
+          note: l.effect.narrativeDescription ?? null,
+        }))}
+      />
+      <ComposedList
+        title={`Composed capabilities (${row.capabilityLinks.length})`}
+        onSubLink={onSubLink}
+        items={row.capabilityLinks.map((l) => ({
+          id: l.capabilityId,
+          name: l.capability.name,
+          bu: (l.capability.primitiveLinks ?? []).reduce((s, x) => s + Math.abs(x.primitive.buCost), 0),
+          versionNumber: l.versionNumber,
+        }))}
+      />
+    </div>
+  );
+}
+
+// ---- shared header ----------------------------------------------------------
+
+function Header({
+  fallback,
+  iconSource,
+  iconKey,
+  iconUrl,
+  iconColor,
+  label,
+  name,
+  chips,
+}: {
+  fallback: string;
+  iconSource: string | null;
+  iconKey: string | null;
+  iconUrl: string | null;
+  iconColor: string;
+  label: string;
+  name: string;
+  chips: ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <IconTile
+        row={{ iconSource, iconKey, iconUrl, iconColor, fallback }}
+      />
+      <div className="flex flex-1 flex-wrap items-center gap-2 text-xs">
+        <span className="w-full text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          {label}
+        </span>
+        <span className="text-base font-semibold leading-tight">{name}</span>
+        <span className="flex flex-wrap items-center gap-2">{chips}</span>
+      </div>
+    </div>
+  );
+}
+
+function rarityClass(rarity: string): string {
+  switch (rarity) {
+    case "COMMON":
+      return "bg-slate-500/15 text-slate-700 dark:text-slate-300";
+    case "UNCOMMON":
+      return "bg-green-500/15 text-green-700 dark:text-green-400";
+    case "RARE":
+      return "bg-blue-500/15 text-blue-700 dark:text-blue-400";
+    case "EPIC":
+      return "bg-purple-500/15 text-purple-700 dark:text-purple-400";
+    case "LEGENDARY":
+      return "bg-amber-500/15 text-amber-700 dark:text-amber-400";
+    default:
+      return "bg-secondary";
+  }
+}

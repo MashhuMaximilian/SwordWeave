@@ -27,7 +27,6 @@ import { useModalStack } from "@/components/ui/modal-stack";
 import { buildSandboxUrl } from "@/lib/publishing/fork-target";
 import { SandboxLayout } from "./sandbox-layout";
 import { PrimitiveForm } from "./primitive-form";
-import { PrimitiveFormPreview } from "./primitive-form-preview";
 import { EffectForm } from "./effect-form";
 import { EffectFormPreview } from "./effect-form-preview";
 import { CapabilityForm } from "./capability-form";
@@ -40,6 +39,8 @@ import { GrammarLibrary } from "./grammar-library";
 import { BlueprintLibrary } from "./blueprint-library";
 import { UnsavedChangesModal } from "./unsaved-changes-modal";
 import { useGlobalControls } from "@/components/layout/global-controls";
+import { EntityPreview } from "@/components/preview/entity-preview";
+import type { SandboxPreviewItem } from "@/components/library/library-item-preview";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { useIsDark } from "@/lib/hooks/use-is-dark";
 import { IconDisplay } from "@/components/icons/icon-display";
@@ -886,8 +887,34 @@ export function AtelierSandboxClient({
         iconColor: row.iconColor,
       } : null);
       if (!form) return null;
+      const previewItem: SandboxPreviewItem = {
+        kind: "primitive",
+        row: {
+          id: -1,
+          name: form.name || "Unnamed Primitive",
+          category: form.category,
+          buCost: Number(form.buCost) || 0,
+          isPublic: form.isPublic,
+          costTier: form.costTier,
+          mechanicalOutputText: form.mechanicalOutputText,
+          narrativeRule: form.narrativeRule,
+          isMirrorable: form.isMirrorable,
+          mirrorVector: form.mirrorVector,
+          mirrorBuCredit: Number(form.mirrorBuCredit) || 0,
+          mirrorEligibilityNotes: form.mirrorEligibilityNotes,
+          hardModifiers: [],
+          iconSource: form.iconSource,
+          iconKey: form.iconKey,
+          iconUrl: form.iconUrl,
+          iconColor: form.iconColor,
+        },
+      };
       return (
-        <PrimitiveFormPreview form={form} modifiers={formSnapshot?.modifiers ?? []} />
+        <EntityPreview
+          item={previewItem}
+          variant="build"
+          buildModifiers={formSnapshot?.modifiers ?? []}
+        />
       );
     }
     if (formKind === "effect") {

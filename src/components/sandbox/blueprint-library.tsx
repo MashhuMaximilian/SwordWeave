@@ -26,7 +26,6 @@ import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import { useModalStack } from "@/components/ui/modal-stack";
 import {
-  LibraryItemPreview,
   previewHeadingLabel,
   type SandboxCapabilityRow,
   libraryCompositeId,
@@ -36,6 +35,7 @@ import {
   type SandboxPrimitiveRow,
   type SandboxTemplateRow,
 } from "@/components/library/library-item-preview";
+import { EntityPreview } from "@/components/preview/entity-preview";
 import { useSandboxEngagement } from "@/components/library/use-sandbox-engagement";
 import {
   SLOT_EVENT_NAME,
@@ -775,8 +775,9 @@ function BlueprintPreviewBody({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-        <LibraryItemPreview
+        <EntityPreview
           item={item}
+          variant="read"
           {...(onSubLinkClick || engagement
             ? {
                 callbacks: {
