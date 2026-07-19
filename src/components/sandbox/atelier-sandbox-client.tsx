@@ -109,6 +109,8 @@ type PrimitiveRow = {
   mirrorBuCredit: number;
   mirrorEligibilityNotes: string;
   hardModifiers: unknown;
+  sourceOrigin: string | null;
+  tags: string[];
   iconSource: string | null;
   iconKey: string | null;
   iconUrl: string | null;
@@ -863,6 +865,8 @@ export function AtelierSandboxClient({
             iconKey: string | null;
             iconUrl: string | null;
             iconColor: string;
+            sourceOrigin: string;
+            tags: string;
           }
         | undefined;
       if (!snapForm && !editing) {
@@ -881,6 +885,8 @@ export function AtelierSandboxClient({
         mirrorVector: row.mirrorVector,
         mirrorBuCredit: String(row.mirrorBuCredit),
         mirrorEligibilityNotes: row.mirrorEligibilityNotes,
+        sourceOrigin: row.sourceOrigin ?? "",
+        tags: row.tags.join(", "),
         iconSource: row.iconSource,
         iconKey: row.iconKey,
         iconUrl: row.iconUrl,
@@ -903,6 +909,11 @@ export function AtelierSandboxClient({
           mirrorBuCredit: Number(form.mirrorBuCredit) || 0,
           mirrorEligibilityNotes: form.mirrorEligibilityNotes,
           hardModifiers: [],
+          sourceOrigin: form.sourceOrigin || null,
+          tags:
+            typeof form.tags === "string"
+              ? form.tags.split(",").map((t) => t.trim()).filter(Boolean)
+              : [],
           iconSource: form.iconSource,
           iconKey: form.iconKey,
           iconUrl: form.iconUrl,

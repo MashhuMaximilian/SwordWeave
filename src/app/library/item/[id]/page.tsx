@@ -20,6 +20,7 @@ import {
   reactions,
 } from "@/db/schema";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
+import { EntityPreview } from "@/components/preview/entity-preview";
 import { ForksList } from "@/components/engagement/forks-list";
 import { FlagAndForkFooter } from "@/components/engagement/flag-and-fork-footer";
 import type { ForkTargetType } from "@/lib/publishing/forks-query";
@@ -672,47 +673,44 @@ async function PrimitiveDetail({
     iconUrl={row.iconUrl}
     iconColor={row.iconColor}
     >
-      <section>
-        <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
-          Mechanical Output
-        </h2>
-        <p className="whitespace-pre-wrap rounded-md bg-secondary/50 p-3 font-mono text-sm leading-6">
-          {row.mechanicalOutputText || "(no mechanical output)"}
-        </p>
-      </section>
-
-      <section className="mt-5 grid gap-3 sm:grid-cols-2">
-        <DataField label="Cost tier" value={row.costTier} />
-        <DataField
-          label="Mirrorable"
-          value={row.isMirrorable ? "Yes" : "No"}
-        />
-        {row.isMirrorable && (
-          <DataField label="Mirror vector" value={row.mirrorVector} />
-        )}
-        {row.mirrorBuCredit > 0 && (
-          <DataField
-            label="Mirror BU credit"
-            value={String(row.mirrorBuCredit)}
-          />
-        )}
-      </section>
-
-      {row.hardModifiers.length > 0 && (
-        <section className="mt-5">
-          <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
-            Hard Modifiers
-          </h2>
-          <ul className="ml-5 list-disc text-sm">
-            {row.hardModifiers.map((m, i) => (
-              <li key={i}>
-                <span className="font-mono">{m.target}</span>:{" "}
-                {m.operation} {String(m.value)}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <EntityPreview
+        item={{
+          kind: "primitive",
+          row: {
+            id: row.id,
+            name: row.name,
+            category: row.category,
+            buCost: row.buCost,
+            isPublic: row.isPublic,
+            costTier: row.costTier,
+            mechanicalOutputText: row.mechanicalOutputText,
+            narrativeRule: row.narrativeRule,
+            isMirrorable: row.isMirrorable,
+            mirrorVector: row.mirrorVector,
+            mirrorBuCredit: row.mirrorBuCredit,
+            mirrorEligibilityNotes: row.mirrorEligibilityNotes,
+            sourceOrigin: row.sourceOrigin ?? null,
+            tags: row.tags ?? [],
+            hardModifiers: row.hardModifiers,
+            iconSource: row.iconSource,
+            iconKey: row.iconKey,
+            iconUrl: row.iconUrl,
+            iconColor: row.iconColor,
+          },
+        }}
+        variant="read"
+        owner={{
+          authorId: row.userId,
+          authorUsername: author?.username ?? null,
+          authorDisplayName: author?.displayName ?? null,
+          authorAvatarUrl: author?.avatarUrl ?? null,
+          isOwner: row.userId != null && row.userId === currentUserId,
+        }}
+        actions={{
+          openSourceHref: `/library/item/PRIMITIVE:${row.id}`,
+          versionHistoryHref: `/library/item/PRIMITIVE:${row.id}/versions`,
+        }}
+      />
     </DetailShell>
   );
 }

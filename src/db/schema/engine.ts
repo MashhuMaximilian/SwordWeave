@@ -71,6 +71,14 @@ export const primitives = pgTable(
      */
     sourceOrigin: text("source_origin"),
     /**
+     * Free-form tags (Phase 9). One chip each in the unified preview.
+     * Stored as a text array, mirroring effects/capabilities/items/templates.
+     */
+    tags: text("tags")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    /**
      * SHA-256 hex digest of the canonical-JSON content envelope
      * (sorted keys, versioned `{v:1, primitive:{...}}`). Populated
      * by the client on save; used by the dispatch matrix to detect

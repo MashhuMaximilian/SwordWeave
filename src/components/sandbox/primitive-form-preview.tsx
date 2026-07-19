@@ -6,6 +6,8 @@
 
 import { Fragment } from "react";
 import { Markdown } from "@/components/ui/markdown";
+import { EntityPreview } from "@/components/preview/entity-preview";
+import type { SandboxPreviewItem } from "@/components/library/library-item-preview";
 import type { HardModifier } from "@/types/swordweave";
 import { legacyConditionProjection } from "@/lib/primitives/condition";
 import {
@@ -49,6 +51,10 @@ export type PrimitiveFormState = {
   mirrorVector: string;
   mirrorBuCredit: string;
   mirrorEligibilityNotes: string;
+  /** Comma-separated world/book origin (e.g. "Forgotten Realms"). */
+  sourceOrigin: string;
+  /** Comma-separated free-form tags. */
+  tags: string;
   // Phase 8: per-entity iconography
   iconSource: string | null;
   iconKey: string | null;
@@ -297,122 +303,43 @@ export function PrimitiveFormPreview({
     );
   }
 
-  const buCredit = form.isMirrorable ? Number(form.mirrorBuCredit) || 0 : 0;
-  const vector = form.isMirrorable ? form.mirrorVector : null;
-
+  // Unified preview: render the SAME EntityPreview used by the library /
+  // creations / atelier modals. The build-modal variant hides the
+  // engagement footer (Save/Reset live in the form chrome) and shows the
+  // live draft modifiers. This guarantees the preview looks identical
+  // everywhere — and drops the raw `mirrorVector` string display.
+  const item: SandboxPreviewItem = {
+    kind: "primitive",
+    row: {
+      id: -1,
+      name: form.name || "Unnamed Primitive",
+      category: form.category,
+      buCost,
+      isPublic: form.isPublic,
+      costTier: form.costTier,
+      mechanicalOutputText: form.mechanicalOutputText,
+      narrativeRule: form.narrativeRule,
+      isMirrorable: form.isMirrorable,
+      mirrorVector: form.mirrorVector,
+      mirrorBuCredit: form.isMirrorable ? Number(form.mirrorBuCredit) || 0 : 0,
+      mirrorEligibilityNotes: form.mirrorEligibilityNotes,
+      sourceOrigin: form.sourceOrigin || null,
+      tags: typeof form.tags === "string"
+        ? form.tags.split(",").map((t) => t.trim()).filter(Boolean)
+        : [],
+      hardModifiers: [],
+      iconSource: form.iconSource,
+      iconKey: form.iconKey,
+      iconUrl: form.iconUrl,
+      iconColor: form.iconColor,
+    },
+  };
   return (
-    <div className="space-y-5 p-4">
-      <header className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {categoryLabel(form.category)}
-        </p>
-        <h2 className="text-base font-semibold leading-tight text-foreground">
-          {form.name || "Unnamed Primitive"}
-        </h2>
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">
-            {buCost} BU
-          </span>
-          <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-            {form.costTier}
-          </span>
-          <span
-            className={
-              "rounded-full px-2 py-0.5 font-medium " +
-              (form.isPublic
-                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                : "bg-amber-500/10 text-amber-600 dark:text-amber-400")
-            }
-          >
-            {form.isPublic ? "Public" : "Draft"}
-          </span>
-        </div>
-      </header>
-
-      {form.mechanicalOutputText ? (
-        <section>
-          <h3 className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
-            Mechanical output
-          </h3>
-          <div className="prose prose-invert prose-sm max-w-none break-words text-sm leading-7">
-            <Markdown>{form.mechanicalOutputText}</Markdown>
-          </div>
-        </section>
-      ) : null}
-
-      {form.narrativeRule ? (
-        <section>
-          <h3 className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
-            Narrative rule
-          </h3>
-          <div className="prose prose-invert prose-sm max-w-none break-words text-sm leading-7">
-            <Markdown>{form.narrativeRule}</Markdown>
-          </div>
-        </section>
-      ) : null}
-
-      {modifiers.length > 0 ? (
-        <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-            Modifiers ({modifiers.length})
-          </h3>
-          <ul className="rounded-md border">
-            {/*
-              Mashu: "we need to also add conditions or/and
-              between them just displaying as text is not
-              good." Each modifier row has its own
-              conditions. The convention is:
-                - Multiple modifier rows combine with AND
-                  (each modifier applies in addition to
-                  the others).
-                - Within a single row, the condition line
-                  and the scope line are both required, so
-                  they also combine with AND.
-              We render the AND as a visible chip between
-              adjacent rows so the relationship is obvious.
-            */}
-            {modifiers.map((modifier, i) => (
-              <Fragment key={modifier.id}>
-                {i > 0 ? (
-                  <li
-                    aria-hidden="true"
-                    className="flex items-center justify-center border-b border-border bg-muted/30 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground"
-                  >
-                    and
-                  </li>
-                ) : null}
-                {modifierBlock(modifier)}
-              </Fragment>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {form.isMirrorable ? (
-        <section>
-          <h3 className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
-            Mirror
-          </h3>
-          <dl className="grid grid-cols-1 gap-y-1 text-sm sm:grid-cols-2">
-            <dt className="text-xs text-muted-foreground">Vector</dt>
-            <dd>
-              <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                {vector ?? "—"}
-              </code>
-            </dd>
-            <dt className="text-xs text-muted-foreground">BU credit</dt>
-            <dd>
-              <span className="font-mono text-xs">{buCredit} BU</span>
-            </dd>
-          </dl>
-          {form.mirrorEligibilityNotes ? (
-            <div className="prose prose-invert prose-sm mt-2 max-w-none break-words text-sm leading-7">
-              <Markdown>{form.mirrorEligibilityNotes}</Markdown>
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-    </div>
+    <EntityPreview
+      item={item}
+      variant="build"
+      buildModifiers={modifiers as Array<Record<string, unknown>>}
+    />
   );
 }
 

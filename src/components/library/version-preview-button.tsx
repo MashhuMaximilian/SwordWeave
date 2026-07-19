@@ -64,6 +64,14 @@ function mapPayloadToPreviewItem(
       iconKey: (payload["iconKey"] as string | null) ?? null,
       iconUrl: (payload["iconUrl"] as string | null) ?? null,
       iconColor: String(payload["iconColor"] ?? "#ffffff"),
+      // Phase 9: tags + sourceOrigin (from the version's stored payload).
+      sourceOrigin:
+        (payload["sourceOrigin"] as string | null) ?? null,
+      tags: Array.isArray(payload["tags"])
+        ? (payload["tags"] as string[])
+        : typeof payload["tags"] === "string"
+          ? (payload["tags"] as string).split(",").map((t) => t.trim()).filter(Boolean)
+          : [],
     };
     return { kind: "primitive", row };
   }

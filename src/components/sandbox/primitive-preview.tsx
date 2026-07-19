@@ -4,6 +4,10 @@
 
 import { Markdown } from "@/components/ui/markdown";
 import { IconDisplay } from "@/components/icons/icon-display";
+import { EntityPreview } from "@/components/preview/entity-preview";
+import type {
+  SandboxPreviewItem,
+} from "@/components/library/library-item-preview";
 import type { HardModifier } from "@/types/swordweave";
 import {
   OP_SPECS,
@@ -86,150 +90,35 @@ export function mirrorDescription(op: ModifierOperation): {
 }
 
 export function PrimitivePreview({ row }: { row: PrimitiveRow }) {
-  return (
-    <div className="space-y-5 p-4">
-      <header className="space-y-2">
-        {/* Phase 8: entity icon above the title. Falls back to nothing
-            when no icon is set so the layout doesn't shift. */}
-        {row.iconSource ? (
-          <IconDisplay
-            iconSource={row.iconSource as "GAME_ICONS" | "UPLOAD"}
-            iconKey={row.iconKey}
-            iconUrl={row.iconUrl}
-            iconColor={row.iconColor}
-            size={56}
-            className="rounded-md border border-border"
-            alt={row.name}
-          />
-        ) : null}
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {categoryLabel(row.category)}
-        </p>
-        <h2 className="text-2xl font-semibold leading-tight">{row.name}</h2>
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">
-            {row.buCost} BU
-          </span>
-          <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-            {row.costTier}
-          </span>
-          <span
-            className={
-              "rounded-full px-2 py-0.5 font-medium " +
-              (row.isPublic
-                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                : "bg-amber-500/10 text-amber-600 dark:text-amber-400")
-            }
-          >
-            {row.isPublic ? "Public" : "Draft"}
-          </span>
-        </div>
-      </header>
-
-      <section>
-        <h3 className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
-          Mechanical output
-        </h3>
-        <div className="prose prose-invert prose-sm max-w-none break-words text-sm leading-7">
-          <Markdown>{row.mechanicalOutputText}</Markdown>
-        </div>
-      </section>
-
-      {row.narrativeRule ? (
-        <section>
-          <h3 className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
-            Narrative rule
-          </h3>
-          <div className="prose prose-invert prose-sm max-w-none break-words text-sm leading-7">
-            <Markdown>{row.narrativeRule}</Markdown>
-          </div>
-        </section>
-      ) : null}
-
-      {row.modifiers && row.modifiers.length > 0 ? (
-        <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-            Modifiers ({row.modifiers.length})
-          </h3>
-          <ul className="space-y-1.5 rounded-md border border-border p-2">
-            {row.modifiers.map((m, idx) => {
-              // Operation may be a string from the database —
-              // cast through the OP_SPECS dictionary to get
-              // the typed spec. Unknown ops fall through to
-              // "not mirrorable" so the preview doesn't crash
-              // on legacy data.
-              const opKey = String(m.operation) as ModifierOperation;
-              const spec = OP_SPECS[opKey];
-              const targetShort = String(m.target).split(".").pop() ?? String(m.target);
-              const valueText = (() => {
-                if (typeof m.value === "number") return String(m.value);
-                if (typeof m.value === "boolean") return m.value ? "true" : "false";
-                if (m.value === undefined || m.value === null) return "0";
-                return String(m.value);
-              })();
-              const mirror = mirrorDescription(opKey);
-              return (
-                <li
-                  key={`mod-${idx}`}
-                  className="rounded border border-border/60 bg-card/50 p-2 text-xs"
-                >
-                  <div className="flex items-baseline justify-between gap-2 font-mono">
-                    <span>
-                      <span className="text-muted-foreground">{targetShort}</span>{" "}
-                      <span className="font-semibold text-primary">
-                        {opKey}
-                      </span>{" "}
-                      <span>{valueText}</span>
-                    </span>
-                    <span
-                      className={
-                        "shrink-0 rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wide " +
-                        (mirror.mirrorable
-                          ? "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300"
-                          : "bg-amber-500/10 text-amber-700 dark:text-amber-300")
-                      }
-                    >
-                      {mirror.mirrorable ? "📊 Mirrorable" : "🔒 Locked"}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
-                    {mirror.summary}
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      ) : null}
-
-      {row.isMirrorable ? (
-        <section>
-          <h3 className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
-            Mirror
-          </h3>
-          <dl className="grid grid-cols-1 gap-y-1 text-sm sm:grid-cols-2">
-            <dt className="text-xs text-muted-foreground">Vector</dt>
-            <dd>
-              <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                {row.mirrorVector ?? "—"}
-              </code>
-            </dd>
-            <dt className="text-xs text-muted-foreground">BU credit</dt>
-            <dd>
-              <span className="font-mono text-xs">
-                {row.mirrorBuCredit ?? 0} BU
-              </span>
-            </dd>
-          </dl>
-          {row.mirrorEligibilityNotes ? (
-            <div className="prose prose-invert prose-sm mt-2 max-w-none break-words text-sm leading-7">
-              <Markdown>{row.mirrorEligibilityNotes}</Markdown>
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-    </div>
-  );
+  // Unify with every other surface: render through the single
+  // EntityPreview so the detail page + character sheets match the
+  // library / creations / atelier modals exactly (same header, same
+  // modifier cards, same mirror panel — and NO raw `mirrorVector` string).
+  const item: SandboxPreviewItem = {
+    kind: "primitive",
+    row: {
+      id: row.id,
+      name: row.name,
+      category: row.category,
+      buCost: row.buCost,
+      isPublic: row.isPublic,
+      costTier: row.costTier,
+      mechanicalOutputText: row.mechanicalOutputText,
+      narrativeRule: row.narrativeRule,
+      isMirrorable: row.isMirrorable,
+      mirrorVector: row.mirrorVector ?? "STANDARD_ONLY",
+      mirrorBuCredit: row.mirrorBuCredit ?? 0,
+      mirrorEligibilityNotes: row.mirrorEligibilityNotes ?? "",
+      sourceOrigin: null,
+      tags: [],
+      hardModifiers: row.modifiers ?? [],
+      iconSource: row.iconSource,
+      iconKey: row.iconKey,
+      iconUrl: row.iconUrl,
+      iconColor: row.iconColor,
+    },
+  };
+  return <EntityPreview item={item} variant="read" />;
 }
 
 export function PrimitivePreviewEmpty() {

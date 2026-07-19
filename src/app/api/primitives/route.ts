@@ -125,6 +125,8 @@ function buildPrimitiveValues(args: {
   mirrorEligibilityNotes: string;
   hardModifiers: readonly HardModifier[];
   sourceOrigin: string;
+  /** Free-form tags. */
+  tags: string[];
   // Phase 8: per-entity iconography (see src/db/migrations/0027_icon_columns.sql).
   iconSource: "GAME_ICONS" | "UPLOAD" | null;
   iconKey: string | null;
@@ -146,6 +148,7 @@ function buildPrimitiveValues(args: {
     mirrorEligibilityNotes,
     hardModifiers,
     sourceOrigin,
+    tags,
     iconSource,
     iconKey,
     iconUrl,
@@ -168,6 +171,7 @@ function buildPrimitiveValues(args: {
     mirrorEligibilityNotes,
     hardModifiers,
     sourceOrigin,
+    tags,
     iconSource,
     iconKey,
     iconUrl,
@@ -250,6 +254,20 @@ export async function POST(request: Request) {
       values["mirrorEligibilityNotes"] ?? "",
     ).trim();
     const hardModifiers = parseHardModifiers(values["hardModifiers"]);
+    // Phase 9: free-form tags (comma-separated -> array) for the
+    // unified preview's Tags section.
+    const tagsRaw = typeof values["tags"] === "string" ? (values["tags"] as string) : "";
+    const tags = tagsRaw
+      .split(",")
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+    // Phase 9: free-form sourceOrigin (world / book / setting) so it
+    // behaves like effects/capabilities. Falls back to the computed
+    // provenance (user:<id> / fork:<id> / system) when empty — matching
+    // the legacy behaviour for forks and system content.
+    const clientSourceOrigin = typeof values["sourceOrigin"] === "string"
+      ? (values["sourceOrigin"] as string).trim()
+      : "";
 
     if (!name) {
       return NextResponse.json({ error: "Name is required." }, { status: 400 });
@@ -294,6 +312,7 @@ export async function POST(request: Request) {
       mirrorBuCredit,
       mirrorEligibilityNotes,
       hardModifiers,
+      tags,
     });
     const draftIsEmpty = isPrimitiveDraftEmpty(serverCanonicalPayload);
 
@@ -377,6 +396,7 @@ export async function POST(request: Request) {
             mirrorEligibilityNotes,
             hardModifiers,
             sourceOrigin: versionSourceOrigin,
+            tags,
             // Phase 8: per-entity iconography
             iconSource: pickIconSource(values["iconSource"]),
             iconKey: pickStringOrNull(values["iconKey"]),
@@ -465,6 +485,14 @@ export async function POST(request: Request) {
           ))
         : name;
 
+    // For greenfield inserts, honour the user's free-text sourceOrigin
+    // (world / book) when provided; otherwise fall back to the computed
+    // provenance. Forks always keep the computed fork lineage.
+    const insertSourceOrigin =
+      source === null && clientSourceOrigin
+        ? clientSourceOrigin
+        : forkSourceOrigin;
+
     const [created] = await db
       .insert(primitives)
       .values({
@@ -482,7 +510,8 @@ export async function POST(request: Request) {
           mirrorBuCredit,
           mirrorEligibilityNotes,
           hardModifiers,
-          sourceOrigin: forkSourceOrigin,
+          sourceOrigin: insertSourceOrigin,
+          tags,
           // Phase 8: per-entity iconography
           iconSource: pickIconSource(values["iconSource"]),
           iconKey: pickStringOrNull(values["iconKey"]),

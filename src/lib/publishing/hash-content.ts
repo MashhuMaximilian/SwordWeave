@@ -44,6 +44,9 @@ export interface CanonicalPrimitivePayload {
   mirrorBuCredit: number;
   mirrorEligibilityNotes: string;
   hardModifiers: readonly HardModifier[];
+  /** Free-form tags (Phase 9). Part of the canonical payload so a tag
+   *  change triggers a content-hash diff and therefore a save. */
+  tags: readonly string[];
   // Phase 8: per-entity iconography. The icon is part of the entity's
   // identity, so a changed icon must trigger a content-hash diff and
   // therefore a save (per the no-op detection rules). Nullable fields
@@ -79,6 +82,8 @@ export function buildCanonicalPrimitivePayload(args: {
   mirrorBuCredit: string | number;
   mirrorEligibilityNotes: string;
   hardModifiers: readonly HardModifier[];
+  /** Free-form tags (comma-separated -> array). */
+  tags?: readonly string[];
   iconSource?: string | null;
   iconKey?: string | null;
   iconUrl?: string | null;
@@ -86,7 +91,7 @@ export function buildCanonicalPrimitivePayload(args: {
 }): CanonicalPrimitivePayload {
   const buCostNum =
     typeof args.buCost === "number" ? args.buCost : Number(args.buCost) || 0;
-  // Phase 7 Q-M: auto-derive mirror_bu_credit = bu_cost when isMirrorable.
+  // Phase 7 Q-M: auto-derive mirror_bu_credit = bu_cost when is_mirrorable.
   // The route handler already enforces this server-side, but the content
   // hash must match what gets STORED, otherwise save-to-update detection
   // breaks: client says mirror_bu_credit=0, server stores bu_cost, hash
@@ -111,6 +116,7 @@ export function buildCanonicalPrimitivePayload(args: {
     mirrorBuCredit: mirrorBuCreditNum,
     mirrorEligibilityNotes: args.mirrorEligibilityNotes,
     hardModifiers: args.hardModifiers,
+    tags: args.tags ?? [],
     iconSource: args.iconSource ?? null,
     iconKey: args.iconKey ?? null,
     iconUrl: args.iconUrl ?? null,

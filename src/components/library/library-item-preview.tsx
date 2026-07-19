@@ -56,6 +56,10 @@ export type SandboxPrimitiveRow = {
   mirrorVector: string;
   mirrorBuCredit: number;
   mirrorEligibilityNotes: string;
+  /** Comma-separated world/book origin (e.g. "Forgotten Realms"). */
+  sourceOrigin: string | null;
+  /** Free-form tags, one chip each. */
+  tags: string[];
   hardModifiers?: unknown;
   // Phase 8: per-entity iconography
   iconSource: string | null;

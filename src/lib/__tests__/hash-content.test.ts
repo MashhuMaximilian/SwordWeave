@@ -162,6 +162,7 @@ describe("isPrimitiveDraftEmpty", () => {
       iconKey: null,
       iconUrl: null,
       iconColor: "#ffffff",
+      tags: [],
     })).toBe(true);
     expect(isPrimitiveDraftEmpty({
       name: "   ",
@@ -180,6 +181,7 @@ describe("isPrimitiveDraftEmpty", () => {
       iconKey: null,
       iconUrl: null,
       iconColor: "#ffffff",
+      tags: [],
     })).toBe(true);
   });
 
@@ -201,6 +203,7 @@ describe("isPrimitiveDraftEmpty", () => {
       iconKey: null,
       iconUrl: null,
       iconColor: "#ffffff",
+      tags: [],
     })).toBe(false);
   });
 });

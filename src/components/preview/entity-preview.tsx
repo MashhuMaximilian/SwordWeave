@@ -46,12 +46,58 @@ import {
   libraryCompositeId,
 } from "@/components/library/library-item-preview";
 
+// Prettify a stored modifier value. The primitive form persists values in a
+// compact syntax like `behavior:/240/[ft]` (target : value : unit). Render it
+// humanly as `240 ft` so the preview reads cleanly instead of dumping the raw
+// string. Falls back to the raw value for anything it doesn't recognise.
+function prettifyModifierValue(raw: string): string {
+  const trimmed = raw.trim();
+  // Pattern: <target>:/<value>/[<unit>]  e.g. behavior:/240/[ft]
+  // Tolerant of stray whitespace (some stored values are
+  // `behavior:/240/ [ft]` with a space before the unit bracket).
+  const m = /^[^:]+:\s*\/([^/]+)\/\s*(?:\[([^\]]*)\])?\s*$/.exec(trimmed);
+  if (m) {
+    const value = m[1]?.trim() ?? "";
+    const unit = m[2]?.trim() ?? "";
+    return unit ? `${value} ${unit}` : value;
+  }
+  return trimmed;
+}
+
 export type EntityPreviewVariant = "read" | "build";
+
+export type EntityPreviewOwner = {
+  authorId: string | null;
+  authorUsername: string | null;
+  authorDisplayName?: string | null;
+  authorAvatarUrl?: string | null;
+  isOwner: boolean;
+};
+
+export type EntityPreviewActions = {
+  onEdit?: () => void;
+  onDelete?: () => void;
+  openSourceHref?: string;
+  versionHistoryHref?: string;
+};
 
 export interface EntityPreviewProps {
   item: SandboxPreviewItem;
   variant?: EntityPreviewVariant;
   callbacks?: PreviewCallbacks;
+  /**
+   * Ownership + author metadata. When provided, the preview shows the
+   * owner ("by @user") with avatar, and — if `isOwner` — the
+   * owner highlight. Keeps the action bar identical across every
+   * surface (creations, library, sandbox, atelier).
+   */
+  owner?: EntityPreviewOwner;
+  /**
+   * Action bar (Edit / Open source / Version history / Delete). Every
+   * preview surface renders the SAME row in the SAME order so the modal
+   * looks identical regardless of where it was opened from.
+   */
+  actions?: EntityPreviewActions;
   /** build variant only: Save / Reset handlers + labels. */
   onSave?: () => void;
   onReset?: () => void;
@@ -228,12 +274,15 @@ function ModifierCards({
         </code>
       );
     } else {
-      const v =
-        typeof m["value"] === "number"
-          ? String(m["value"])
-          : m["value"] === undefined || m["value"] === null
-            ? "0"
-            : JSON.stringify(m["value"]);
+      const raw =
+        m["value"] === undefined || m["value"] === null
+          ? null
+          : m["value"];
+      const v = typeof raw === "number"
+        ? String(raw)
+        : raw === null
+          ? "0"
+          : prettifyModifierValue(String(raw));
       valueLine = (
         <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs break-all">{v}</code>
       );
@@ -317,6 +366,8 @@ export function EntityPreview({
   resetLabel = "Reset",
   isDirty = false,
   buildModifiers,
+  owner,
+  actions,
 }: EntityPreviewProps) {
   const stack = useModalStack();
   const onSubLink = (link: PreviewSubLink) => {
@@ -392,13 +443,102 @@ export function EntityPreview({
         )
         : null
       : callbacks?.engagement
-        ? <PreviewFooter callbacks={callbacks} item={item} />
-        : null;
+        ? (
+          <>
+            <PreviewFooter callbacks={callbacks} item={item} />
+            {actions ? <ActionBar actions={actions} /> : null}
+          </>
+        )
+        : actions
+          ? <ActionBar actions={actions} />
+          : null;
 
   return (
     <div className="space-y-4">
+      {owner ? <OwnerBar owner={owner} /> : null}
       {body}
       {footer}
+    </div>
+  );
+}
+
+// ---- owner + action bars (identical across every surface) -----------------
+
+function OwnerBar({ owner }: { owner: NonNullable<EntityPreviewProps["owner"]> }) {
+  if (!owner.authorUsername && !owner.authorDisplayName) return null;
+  const name = owner.authorDisplayName || owner.authorUsername || "unknown";
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      {owner.authorAvatarUrl ? (
+        <img src={owner.authorAvatarUrl} alt="" className="size-5 rounded-full" />
+      ) : (
+        <span className="flex size-5 items-center justify-center rounded-full bg-muted text-[10px] font-semibold uppercase">
+          {name.slice(0, 1)}
+        </span>
+      )}
+      <span>
+        by{" "}
+        <span className="font-semibold text-foreground">
+          {owner.authorUsername ? `@${owner.authorUsername}` : name}
+        </span>
+      </span>
+      {owner.isOwner ? (
+        <span className="rounded-full bg-primary/10 px-1.5 py-0.5 font-semibold text-primary">
+          you
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function ActionBar({
+  actions,
+}: {
+  actions: NonNullable<EntityPreviewProps["actions"]>;
+}) {
+  const hasEdit = Boolean(actions.onEdit);
+  const hasDelete = Boolean(actions.onDelete);
+  const hasSource = Boolean(actions.openSourceHref);
+  const hasVersions = Boolean(actions.versionHistoryHref);
+  if (!hasEdit && !hasDelete && !hasSource && !hasVersions) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-t border-border px-1 pb-4 pt-4">
+      {hasEdit ? (
+        <button
+          type="button"
+          onClick={actions.onEdit}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition hover:border-primary"
+        >
+          Edit
+        </button>
+      ) : null}
+      {hasVersions ? (
+        <a
+          href={actions.versionHistoryHref}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition hover:border-primary"
+        >
+          <History className="size-3.5" />
+          Versions
+        </a>
+      ) : null}
+      {hasSource ? (
+        <a
+          href={actions.openSourceHref}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition hover:border-primary"
+        >
+          <Link2 className="size-3.5" />
+          Source page
+        </a>
+      ) : null}
+      {hasDelete ? (
+        <button
+          type="button"
+          onClick={actions.onDelete}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-sm font-medium text-rose-700 transition hover:bg-rose-500/20 dark:text-rose-300"
+        >
+          Delete
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -509,10 +649,29 @@ function PrimitiveBody({
           <>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{row.buCost} BU</span>
             <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">{row.costTier}</span>
+            {row.sourceOrigin ? (
+              <span className="rounded-full bg-secondary px-2 py-0.5 font-medium uppercase tracking-wide text-secondary-foreground">
+                {row.sourceOrigin}
+              </span>
+            ) : null}
             <VisibilityPill isPublic={row.isPublic} />
           </>
         }
       />
+      {row.tags.length > 0 ? (
+        <Section heading="Tags">
+          <div className="flex flex-wrap gap-1.5">
+            {row.tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-border bg-secondary/60 px-2.5 py-0.5 text-xs font-medium"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </Section>
+      ) : null}
       {row.mechanicalOutputText ? (
         <Section heading="Mechanical output">
           <Markdown>{row.mechanicalOutputText}</Markdown>

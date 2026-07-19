@@ -85,6 +85,10 @@ type PrimitiveRow = {
   iconKey: string | null;
   iconUrl: string | null;
   iconColor: string;
+  /** Public-identity column (Phase 3 / migration 0020). */
+  sourceOrigin: string | null;
+  /** Free-form tags (comma-separated display in the form; array in the DB). */
+  tags: string[];
 };
 
 export type ModifierDraft = {
@@ -291,6 +295,8 @@ const blankForm: PrimitiveFormState = {
   mirrorBuCredit: "0",
   mirrorEligibilityNotes: "",
   // Phase 8: per-entity iconography
+  sourceOrigin: "",
+  tags: "",
   iconSource: null,
   iconKey: null,
   iconUrl: null,
@@ -680,6 +686,8 @@ export function PrimitiveForm({
       mirrorBuCredit: String(initialPrimitive.mirrorBuCredit),
       mirrorEligibilityNotes: initialPrimitive.mirrorEligibilityNotes,
       // Phase 8: per-entity iconography
+      sourceOrigin: initialPrimitive.sourceOrigin ?? "",
+      tags: initialPrimitive.tags?.join(", ") ?? "",
       iconSource: initialPrimitive.iconSource,
       iconKey: initialPrimitive.iconKey,
       iconUrl: initialPrimitive.iconUrl,
@@ -1269,6 +1277,36 @@ export function PrimitiveForm({
           value={form.narrativeRule}
           onChange={(event) => updateForm("narrativeRule", event.target.value)}
           placeholder="Roots an entity to its current spatial coordinate..."
+        />
+      </label>
+
+      {/* Phase 9: tags + source origin — now editable on every primitive
+          (matches effects / capabilities / items). tags is comma-separated
+          in the form, split to an array on save. sourceOrigin is free text
+          (a world / book / setting the primitive belongs to). */}
+      <label className="block text-sm font-medium md:col-span-2">
+        Tags
+        <span className="ml-2 text-xs font-normal text-muted-foreground">
+          Comma-separated, e.g. "fire, ranged, condition"
+        </span>
+        <input
+          className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+          value={form.tags}
+          onChange={(event) => updateForm("tags", event.target.value)}
+          placeholder="fire, ranged, condition"
+        />
+      </label>
+
+      <label className="block text-sm font-medium md:col-span-2">
+        Source origin
+        <span className="ml-2 text-xs font-normal text-muted-foreground">
+          World, book, or setting this belongs to
+        </span>
+        <input
+          className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+          value={form.sourceOrigin}
+          onChange={(event) => updateForm("sourceOrigin", event.target.value)}
+          placeholder="Forgotten Realms"
         />
       </label>
 

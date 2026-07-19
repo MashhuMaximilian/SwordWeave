@@ -361,6 +361,8 @@ export default async function AtelierSandboxPage({
           mirrorBuCredit: number;
           mirrorEligibilityNotes: string;
           hardModifiers: unknown;
+          sourceOrigin: string | null;
+          tags: string[] | null;
           iconSource: string | null;
           iconKey: string | null;
           iconUrl: string | null;
@@ -380,6 +382,8 @@ export default async function AtelierSandboxPage({
           mirrorBuCredit: row.mirrorBuCredit,
           mirrorEligibilityNotes: row.mirrorEligibilityNotes,
           hardModifiers: row.hardModifiers,
+          sourceOrigin: row.sourceOrigin ?? null,
+          tags: row.tags ?? [],
           iconSource: row.iconSource,
           iconKey: row.iconKey,
           iconUrl: row.iconUrl,
@@ -526,6 +530,8 @@ export default async function AtelierSandboxPage({
           mirrorBuCredit: number;
           mirrorEligibilityNotes: string;
           hardModifiers: unknown;
+          sourceOrigin: string | null;
+          tags: string[] | null;
           iconSource: string | null;
           iconKey: string | null;
           iconUrl: string | null;
@@ -545,6 +551,8 @@ export default async function AtelierSandboxPage({
           mirrorBuCredit: row.mirrorBuCredit,
           mirrorEligibilityNotes: row.mirrorEligibilityNotes,
           hardModifiers: row.hardModifiers,
+          sourceOrigin: row.sourceOrigin ?? null,
+          tags: row.tags ?? [],
           iconSource: row.iconSource,
           iconKey: row.iconKey,
           iconUrl: row.iconUrl,
