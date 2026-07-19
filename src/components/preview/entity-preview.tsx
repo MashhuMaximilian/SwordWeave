@@ -75,6 +75,9 @@ export type EntityPreviewOwner = {
   authorDisplayName?: string | null;
   authorAvatarUrl?: string | null;
   isOwner: boolean;
+  /** Profile page URL (e.g. /u/username). When set, the author name +
+   *  avatar become a link to the profile. */
+  profileHref?: string | null;
 };
 
 export type EntityPreviewActions = {
@@ -334,7 +337,7 @@ function ModifierCards({
 
   if (cards.length === 0) return null;
   return (
-    <Section heading={`Modifiers (${cards.length})`}>
+    <Section heading="Modifier">
       <ul className="rounded-md border">
         {cards.map((c, i) => {
           const op = c.op as Parameters<typeof OperationBadge>[0]["op"];
@@ -475,8 +478,9 @@ export function EntityPreview({
 function OwnerBar({ owner }: { owner: NonNullable<EntityPreviewProps["owner"]> }) {
   if (!owner.authorUsername && !owner.authorDisplayName) return null;
   const name = owner.authorDisplayName || owner.authorUsername || "unknown";
-  return (
-    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+  const atName = owner.authorUsername ? `@${owner.authorUsername}` : name;
+  const inner = (
+    <>
       {owner.authorAvatarUrl ? (
         <img src={owner.authorAvatarUrl} alt="" className="size-5 rounded-full" />
       ) : (
@@ -487,7 +491,7 @@ function OwnerBar({ owner }: { owner: NonNullable<EntityPreviewProps["owner"]> }
       <span>
         by{" "}
         <span className="font-semibold text-foreground">
-          {owner.authorUsername ? `@${owner.authorUsername}` : name}
+          {atName}
         </span>
       </span>
       {owner.isOwner ? (
@@ -495,6 +499,17 @@ function OwnerBar({ owner }: { owner: NonNullable<EntityPreviewProps["owner"]> }
           you
         </span>
       ) : null}
+    </>
+  );
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      {owner.profileHref ? (
+        <a href={owner.profileHref} className="flex items-center gap-2 hover:underline">
+          {inner}
+        </a>
+      ) : (
+        inner
+      )}
     </div>
   );
 }
@@ -510,8 +525,6 @@ function PreviewFooter({
 }) {
   const eng = callbacks.engagement!;
   const { targetType, targetId } = engagementKeys(item);
-  const historyHref =
-    callbacks.versionHistoryHref ?? `/library/item/${targetType}:${targetId}/versions`;
   return (
     <footer className="mt-2 space-y-4 border-t border-border px-1 pb-6 pt-4">
       <LikeForkBar
@@ -527,22 +540,6 @@ function PreviewFooter({
         sandboxPath={callbacks.sandboxPath}
         onFork={callbacks.onFork}
       />
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-1 text-xs">
-        {callbacks.openSourceHref ? (
-          <a href={callbacks.openSourceHref} className="inline-flex items-center gap-1 text-primary hover:underline">
-            Open source page →
-          </a>
-        ) : (
-          <span />
-        )}
-        <a
-          href={historyHref}
-          className="inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <History className="size-3.5" />
-          Version history →
-        </a>
-      </div>
     </footer>
   );
 }
@@ -605,11 +602,6 @@ function PrimitiveBody({
           <>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{row.buCost} BU</span>
             <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">{row.costTier}</span>
-            {row.sourceOrigin ? (
-              <span className="rounded-full bg-secondary px-2 py-0.5 font-medium uppercase tracking-wide text-secondary-foreground">
-                {row.sourceOrigin}
-              </span>
-            ) : null}
             <VisibilityPill isPublic={row.isPublic} />
           </>
         }
@@ -628,9 +620,14 @@ function PrimitiveBody({
           </div>
         </Section>
       ) : null}
+      {row.sourceOrigin ? (
+        <p className="-mt-2 text-xs font-medium italic text-muted-foreground">
+          {row.sourceOrigin}
+        </p>
+      ) : null}
       {row.mechanicalOutputText ? (
         <Section heading="Mechanical output">
-          <div className="rounded-md border border-border bg-green-500/15 p-3 font-mono text-sm leading-7 text-foreground">
+          <div className="rounded-md border border-border bg-green-500/15 p-3 font-mono text-xs leading-5 text-foreground">
             <Markdown>{row.mechanicalOutputText}</Markdown>
           </div>
         </Section>

@@ -705,6 +705,7 @@ async function PrimitiveDetail({
           authorDisplayName: author?.displayName ?? null,
           authorAvatarUrl: author?.avatarUrl ?? null,
           isOwner: row.userId != null && row.userId === currentUserId,
+          profileHref: author?.username ? `/u/${author.username}` : null,
         }}
         actionBar={{
           openSourceHref: `/library/item/PRIMITIVE:${row.id}`,

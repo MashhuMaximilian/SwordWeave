@@ -32,7 +32,7 @@ import {
   type SandboxEffectRow,
   type SandboxCapabilityRow,
 } from "@/components/library/library-item-preview";
-import { EntityPreview, type PreviewActionProps } from "@/components/preview/entity-preview";
+import { EntityPreview, type PreviewActionProps, type EntityPreviewOwner } from "@/components/preview/entity-preview";
 import { type Visibility } from "@/components/library/visibility-select";
 import { useSandboxEngagement } from "@/components/library/use-sandbox-engagement";
 import {
@@ -677,6 +677,17 @@ function SandboxPreviewBody({
   const visibility = (libraryItem?.visibility ?? "PRIVATE") as Visibility;
   const canDelete = visibility === "PRIVATE";
   const compositeId = libraryCompositeId(item);
+  const ownerUsername = libraryItem?.authorUsername ?? engagement?.authorUsername ?? null;
+  const owner: EntityPreviewOwner | undefined = ownerUsername
+    ? {
+        authorId: engagement?.authorId ?? libraryItem?.authorId ?? null,
+        authorUsername: ownerUsername,
+        authorDisplayName: libraryItem?.authorDisplayName ?? null,
+        authorAvatarUrl: libraryItem?.authorAvatarUrl ?? null,
+        isOwner,
+        profileHref: `/u/${ownerUsername}`,
+      }
+    : undefined;
 
   async function handleDelete() {
     const res = await fetch("/api/creations/delete", {
@@ -695,7 +706,7 @@ function SandboxPreviewBody({
   }
 
   const actionBar: PreviewActionProps = {
-    primary: { label: "Load into build", onClick: onLoadIntoBuild },
+    loadIntoBuild: { label: "Load into build", onClick: onLoadIntoBuild },
     ...(canSlot ? { primarySecondary: { label: "Slot into build", onClick: slotIntoBuild } } : {}),
     ...(isOwner
       ? {
@@ -728,6 +739,7 @@ function SandboxPreviewBody({
         <EntityPreview
           item={item}
           variant="read"
+          owner={owner}
           {...(onSubLinkClick || engagement
             ? {
                 callbacks: {
