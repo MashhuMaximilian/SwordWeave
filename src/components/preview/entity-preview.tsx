@@ -426,10 +426,26 @@ export function EntityPreview({
     }
   })();
 
-  // build variant: the body only. Save/Reset are owned by the build form's
-  // own chrome (the form renders them), so the preview stays a pure preview
-  // and we don't duplicate action buttons. Callers may still pass onSave /
-  // onReset + isDirty to render an in-preview footer if they prefer.
+  // Derive owner from engagement when the caller didn't pass `owner`
+  // explicitly. In the Atelier + library previews the engagement snapshot
+  // always carries author info, so this guarantees the author line shows
+  // (clickable → profile) even when the `owner` prop is omitted.
+  const resolvedOwner: EntityPreviewOwner | undefined =
+    owner ??
+    (callbacks?.engagement?.authorUsername
+      ? {
+          authorId: callbacks.engagement.authorId,
+          authorUsername: callbacks.engagement.authorUsername,
+          authorDisplayName: callbacks.engagement.authorUsername,
+          authorAvatarUrl: null,
+          isOwner:
+            !!callbacks.engagement.authorId &&
+            callbacks.engagement.authorId ===
+              callbacks.engagement.currentUserInternalId,
+          profileHref: `/u/${callbacks.engagement.authorUsername}`,
+        }
+      : undefined);
+
   const footer =
     variant === "build"
       ? onSave || onReset
@@ -459,20 +475,22 @@ export function EntityPreview({
         : null
       : (
         <>
+
           {callbacks?.engagement ? <PreviewFooter callbacks={callbacks} item={item} /> : null}
           {actionBar ? <PreviewActions {...actionBar} /> : null}
         </>
       );
 
   return (
-    <div className="space-y-4">
-      {owner ? <OwnerBar owner={owner} /> : null}
-      {body}
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+        {resolvedOwner ? <OwnerBar owner={resolvedOwner} /> : null}
+        {body}
+      </div>
       {footer}
     </div>
   );
 }
-
 // ---- owner + action bars (identical across every surface) -----------------
 
 function OwnerBar({ owner }: { owner: NonNullable<EntityPreviewProps["owner"]> }) {
@@ -526,7 +544,7 @@ function PreviewFooter({
   const eng = callbacks.engagement!;
   const { targetType, targetId } = engagementKeys(item);
   return (
-    <footer className="mt-2 space-y-4 border-t border-border px-1 pb-6 pt-4">
+    <footer className="mt-2 space-y-4 px-1 pb-6 pt-4">
       <LikeForkBar
         targetType={targetType}
         targetId={targetId}
@@ -597,7 +615,6 @@ function PrimitiveBody({
         iconUrl={row.iconUrl}
         iconColor={row.iconColor}
         label={row.category}
-        name={row.name}
         chips={
           <>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{row.buCost} BU</span>
@@ -622,12 +639,12 @@ function PrimitiveBody({
       ) : null}
       {row.sourceOrigin ? (
         <p className="-mt-2 text-xs font-medium italic text-muted-foreground">
-          {row.sourceOrigin}
+          Source: {row.sourceOrigin}
         </p>
       ) : null}
       {row.mechanicalOutputText ? (
         <Section heading="Mechanical output">
-          <div className="rounded-md border border-border bg-green-500/15 p-3 font-mono text-xs leading-5 text-foreground">
+          <div className="rounded-md border border-border bg-green-500/15 p-3 font-mono text-xs leading-5 text-foreground [&_p]:mb-2 [&_p]:text-xs [&_p]:leading-5 [&_ul]:text-xs [&_ul]:leading-5">
             <Markdown>{row.mechanicalOutputText}</Markdown>
           </div>
         </Section>
@@ -666,7 +683,6 @@ function EffectBody({
         iconUrl={row.iconUrl}
         iconColor={row.iconColor}
         label="Effect"
-        name={row.name}
         chips={
           <>
             <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-mono font-semibold text-primary">{totalBu} BU</span>
@@ -723,7 +739,6 @@ function CapabilityBody({
         iconUrl={row.iconUrl}
         iconColor={row.iconColor}
         label={`${row.type} · ${row.sourceType}`}
-        name={row.name}
         chips={
           <>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{totalBu} BU</span>
@@ -796,7 +811,6 @@ function TemplateBody({
         iconUrl={row.iconUrl}
         iconColor={row.iconColor}
         label={row.kind}
-        name={row.name}
         chips={
           <>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{primitiveBu} BU</span>
@@ -855,7 +869,6 @@ function ItemBody({
         iconUrl={row.iconUrl}
         iconColor={row.iconColor}
         label={row.itemType}
-        name={row.name}
         chips={
           <>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{totalBu} BU</span>
@@ -927,7 +940,6 @@ function Header({
   iconUrl,
   iconColor,
   label,
-  name,
   chips,
 }: {
   fallback: string;
@@ -936,7 +948,6 @@ function Header({
   iconUrl: string | null;
   iconColor: string;
   label: string;
-  name: string;
   chips: ReactNode;
 }) {
   return (
@@ -948,7 +959,6 @@ function Header({
         <span className="w-full text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
           {label}
         </span>
-        <span className="text-base font-semibold leading-tight">{name}</span>
         <span className="flex flex-wrap items-center gap-2">{chips}</span>
       </div>
     </div>

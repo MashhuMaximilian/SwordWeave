@@ -807,31 +807,29 @@ function BlueprintPreviewBody({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-        <EntityPreview
-          item={item}
-          variant="read"
-          owner={owner}
-          {...(onSubLinkClick || engagement
-            ? {
-                callbacks: {
-                  ...(onSubLinkClick ? { onSubLinkClick } : {}),
-                  ...(engagement ? { engagement } : {}),
-                  openSourceHref: `/library/item/${compositeId}`,
-                  sandboxPath: "/atelier",
-                  onFork,
-                },
-              }
-            : {
-                callbacks: {
-                  openSourceHref: `/library/item/${compositeId}`,
-                  sandboxPath: "/atelier",
-                  onFork,
-                },
-              })}
-          actionBar={actionBar}
-        />
-      </div>
+      <EntityPreview
+        item={item}
+        variant="read"
+        owner={owner}
+        {...(onSubLinkClick || engagement
+          ? {
+              callbacks: {
+                ...(onSubLinkClick ? { onSubLinkClick } : {}),
+                ...(engagement ? { engagement } : {}),
+                openSourceHref: `/library/item/${compositeId}`,
+                sandboxPath: "/atelier",
+                onFork,
+              },
+            }
+          : {
+              callbacks: {
+                openSourceHref: `/library/item/${compositeId}`,
+                sandboxPath: "/atelier",
+                onFork,
+              },
+            })}
+        actionBar={actionBar}
+      />
     </div>
   );
 }

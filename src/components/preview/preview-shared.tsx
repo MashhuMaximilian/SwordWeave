@@ -469,42 +469,42 @@ export function PreviewActions(props: PreviewActionProps) {
         )
       ) : null}
 
-      <div className={`grid gap-1.5 border-t border-border pt-3 ${loadIntoBuild ? "grid-cols-4" : "grid-cols-3"}`}>
+      <div className={`flex gap-1.5 pt-3`}>
         {onEdit ? (
           <button
             type="button"
             onClick={onEdit}
-            className="inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md bg-primary px-1.5 py-2 text-[11px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            <Pencil className="size-3.5" />
-            Edit
+            <Pencil className="size-3.5 shrink-0" />
+            <span className="truncate">Edit</span>
           </button>
         ) : null}
         {openSourceHref ? (
           <a
             href={openSourceHref}
-            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-2 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+            className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-border bg-card px-1.5 py-2 text-[11px] font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
           >
-            <ExternalLink className="size-3.5" />
-            <span>Source</span>
+            <ExternalLink className="size-3.5 shrink-0" />
+            <span className="truncate">Source</span>
           </a>
         ) : null}
         {versionHistoryHref ? (
           <a
             href={versionHistoryHref}
-            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-2 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+            className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-border bg-card px-1.5 py-2 text-[11px] font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
           >
-            <History className="size-3.5" />
-            <span>Versions</span>
+            <History className="size-3.5 shrink-0" />
+            <span className="truncate">Versions</span>
           </a>
         ) : null}
         {loadIntoBuild ? (
           <button
             type="button"
             onClick={loadIntoBuild.onClick}
-            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-primary bg-primary/10 px-2 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+            className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary bg-primary/10 px-1.5 py-2 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/20"
           >
-            {loadIntoBuild.label}
+            <span className="truncate">{loadIntoBuild.label}</span>
           </button>
         ) : null}
       </div>
