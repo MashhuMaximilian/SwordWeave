@@ -23,7 +23,7 @@ import { X } from "lucide-react";
 import {
   EntityPreview,
   type EntityPreviewOwner,
-  type EntityPreviewActions,
+  type PreviewActionProps,
 } from "@/components/preview/entity-preview";
 import {
   libraryCompositeId,
@@ -52,8 +52,8 @@ interface SandboxPreviewModalProps {
   onPrimaryAction?: () => void;
   /** Ownership + author display (rendered identically to every other surface). */
   owner?: EntityPreviewOwner;
-  /** Action bar (Edit / Open source / Versions / Delete). */
-  actions?: EntityPreviewActions;
+  /** Shared action bar (Edit / Source / Versions / Delete / visibility). */
+  actions?: PreviewActionProps;
 }
 
 // ---- Modal shell -----------------------------------------------------------
@@ -82,6 +82,18 @@ export function SandboxPreviewModal({
 
   if (!item) return null;
 
+  // The modal shell keeps a Close button. The "Load into Build" primary
+  // (when provided) is surfaced inside the unified action bar so it sits
+  // in the SAME position as the creations preview's primary action.
+  const actionBar: PreviewActionProps | undefined = actions
+    ? {
+        ...actions,
+        ...(primaryActionLabel !== null && onPrimaryAction
+          ? { primary: { label: primaryActionLabel, onClick: onPrimaryAction } }
+          : {}),
+      }
+    : undefined;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
@@ -99,7 +111,7 @@ export function SandboxPreviewModal({
             item={item}
             variant="read"
             {...(owner ? { owner } : {})}
-            {...(actions ? { actions } : {})}
+            {...(actionBar ? { actionBar } : {})}
           />
         </div>
 
@@ -111,15 +123,6 @@ export function SandboxPreviewModal({
           >
             Close
           </button>
-          {primaryActionLabel !== null && onPrimaryAction ? (
-            <button
-              type="button"
-              onClick={onPrimaryAction}
-              className="h-9 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-            >
-              {primaryActionLabel}
-            </button>
-          ) : null}
         </footer>
       </div>
     </div>

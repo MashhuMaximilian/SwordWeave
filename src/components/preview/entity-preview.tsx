@@ -33,7 +33,12 @@ import {
   MirrorPanel,
   opLabel,
   mirrorSummary,
+  PreviewActions,
+  type PreviewActionProps,
+  type PreviewSubLink,
+  type PreviewCallbacks,
 } from "./preview-shared";
+export type { PreviewActionProps } from "./preview-shared";
 import {
   type SandboxPreviewItem,
   type SandboxPrimitiveRow,
@@ -41,8 +46,6 @@ import {
   type SandboxCapabilityRow,
   type SandboxTemplateRow,
   type SandboxItemRow,
-  type PreviewSubLink,
-  type PreviewCallbacks,
   libraryCompositeId,
 } from "@/components/library/library-item-preview";
 
@@ -84,20 +87,28 @@ export type EntityPreviewActions = {
 export interface EntityPreviewProps {
   item: SandboxPreviewItem;
   variant?: EntityPreviewVariant;
-  callbacks?: PreviewCallbacks;
+  callbacks?: PreviewCallbacks | undefined;
   /**
    * Ownership + author metadata. When provided, the preview shows the
    * owner ("by @user") with avatar, and — if `isOwner` — the
    * owner highlight. Keeps the action bar identical across every
    * surface (creations, library, sandbox, atelier).
    */
-  owner?: EntityPreviewOwner;
+  owner?: EntityPreviewOwner | undefined;
   /**
    * Action bar (Edit / Open source / Version history / Delete). Every
    * preview surface renders the SAME row in the SAME order so the modal
    * looks identical regardless of where it was opened from.
    */
   actions?: EntityPreviewActions;
+  /**
+   * Full set of action-bar props (Edit / Source / Versions / Delete /
+   * visibility). When provided, THE SAME shared `PreviewActions` bar is
+   * rendered as in My Creations — guaranteeing identical layout/order
+   * across every surface. Prefer passing `actions` (the higher-level
+   * object) over the deprecated individual fields below.
+   */
+  actionBar?: PreviewActionProps | undefined;
   /** build variant only: Save / Reset handlers + labels. */
   onSave?: () => void;
   onReset?: () => void;
@@ -368,6 +379,7 @@ export function EntityPreview({
   buildModifiers,
   owner,
   actions,
+  actionBar,
 }: EntityPreviewProps) {
   const stack = useModalStack();
   const onSubLink = (link: PreviewSubLink) => {
@@ -442,16 +454,12 @@ export function EntityPreview({
           </div>
         )
         : null
-      : callbacks?.engagement
-        ? (
-          <>
-            <PreviewFooter callbacks={callbacks} item={item} />
-            {actions ? <ActionBar actions={actions} /> : null}
-          </>
-        )
-        : actions
-          ? <ActionBar actions={actions} />
-          : null;
+      : (
+        <>
+          {callbacks?.engagement ? <PreviewFooter callbacks={callbacks} item={item} /> : null}
+          {actionBar ? <PreviewActions {...actionBar} /> : null}
+        </>
+      );
 
   return (
     <div className="space-y-4">
@@ -486,58 +494,6 @@ function OwnerBar({ owner }: { owner: NonNullable<EntityPreviewProps["owner"]> }
         <span className="rounded-full bg-primary/10 px-1.5 py-0.5 font-semibold text-primary">
           you
         </span>
-      ) : null}
-    </div>
-  );
-}
-
-function ActionBar({
-  actions,
-}: {
-  actions: NonNullable<EntityPreviewProps["actions"]>;
-}) {
-  const hasEdit = Boolean(actions.onEdit);
-  const hasDelete = Boolean(actions.onDelete);
-  const hasSource = Boolean(actions.openSourceHref);
-  const hasVersions = Boolean(actions.versionHistoryHref);
-  if (!hasEdit && !hasDelete && !hasSource && !hasVersions) return null;
-  return (
-    <div className="flex flex-wrap items-center gap-2 border-t border-border px-1 pb-4 pt-4">
-      {hasEdit ? (
-        <button
-          type="button"
-          onClick={actions.onEdit}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition hover:border-primary"
-        >
-          Edit
-        </button>
-      ) : null}
-      {hasVersions ? (
-        <a
-          href={actions.versionHistoryHref}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition hover:border-primary"
-        >
-          <History className="size-3.5" />
-          Versions
-        </a>
-      ) : null}
-      {hasSource ? (
-        <a
-          href={actions.openSourceHref}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition hover:border-primary"
-        >
-          <Link2 className="size-3.5" />
-          Source page
-        </a>
-      ) : null}
-      {hasDelete ? (
-        <button
-          type="button"
-          onClick={actions.onDelete}
-          className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-sm font-medium text-rose-700 transition hover:bg-rose-500/20 dark:text-rose-300"
-        >
-          Delete
-        </button>
       ) : null}
     </div>
   );
@@ -674,7 +630,9 @@ function PrimitiveBody({
       ) : null}
       {row.mechanicalOutputText ? (
         <Section heading="Mechanical output">
-          <Markdown>{row.mechanicalOutputText}</Markdown>
+          <div className="rounded-md border border-border bg-green-500/15 p-3 font-mono text-sm leading-7 text-foreground">
+            <Markdown>{row.mechanicalOutputText}</Markdown>
+          </div>
         </Section>
       ) : null}
       {row.narrativeRule ? (

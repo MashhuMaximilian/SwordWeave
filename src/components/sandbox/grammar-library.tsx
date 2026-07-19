@@ -15,6 +15,7 @@
 // Dirty mode: parent's guardedLibrarySelect opens the unsaved modal.
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { LibraryToolbar, type LibraryToolbarState } from "@/components/library/library-toolbar";
 import { LibraryTable } from "@/components/library/library-table";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
@@ -31,7 +32,8 @@ import {
   type SandboxEffectRow,
   type SandboxCapabilityRow,
 } from "@/components/library/library-item-preview";
-import { EntityPreview } from "@/components/preview/entity-preview";
+import { EntityPreview, type PreviewActionProps } from "@/components/preview/entity-preview";
+import { type Visibility } from "@/components/library/visibility-select";
 import { useSandboxEngagement } from "@/components/library/use-sandbox-engagement";
 import {
   SLOT_EVENT_NAME,
@@ -617,6 +619,7 @@ function SandboxPreviewBody({
     sandboxSplit,
     setSandboxBottomTab,
   } = useGlobalControls();
+  const stack = useModalStack();
   // "Slot into build" is only valid for kinds the current build mode
   // can accept. Per the user's spec:
   //   - Primitive mode:  nothing can be slotted (you're authoring a new
@@ -639,6 +642,7 @@ function SandboxPreviewBody({
   // hook fetches the user's existing reaction (so the bar shows the right
   // active state) on first open. Counts + author info come from the
   // LibraryItem we passed in.
+  const router = useRouter();
   const { engagement } = useSandboxEngagement(libraryItem);
 
   function slotIntoBuild() {
@@ -652,23 +656,7 @@ function SandboxPreviewBody({
       window.dispatchEvent(
         new CustomEvent<SlotEvent>(SLOT_EVENT_NAME, { detail: event }),
       );
-      // Notify the parent to close the preview modal-stack so the user
-      // sees the slot land in the build column. The event dispatch
-      // already triggered the active form's listener, so the slot
-      // exists by the time the modal closes.
       window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
-      // Open the BUILD drawer tab — not preview — so the user sees
-      // the slot land in the form they were composing. The form is
-      // mounted in the drawer's `build` tab (in non-split mobile
-      // mode), so opening `preview` previously showed an empty
-      // panel and the user thought nothing happened. The preview
-      // tab is one tap away and is always populated by the form's
-      // live snapshot.
-      //
-      // Split-mode contract: in split mode the build tab is already
-      // rendered inline in the bottom panel — do NOT pop the drawer
-      // (it would overlay the inline content). Just switch the bottom
-      // tab to "build" so the user sees the slot landing.
       if (sandboxSplit) {
         setSandboxBottomTab("build");
       } else {
@@ -676,6 +664,63 @@ function SandboxPreviewBody({
       }
     }
   }
+
+  // Ownership + visibility drive the unified action bar. The bar is the
+  // SAME component used by My Creations + the library detail page, so the
+  // Atelier preview now matches them exactly: a 3-col Edit/Source/Versions
+  // grid, a full-width Delete (gated on PRIVATE), and the "Load into build"
+  // / "Slot into build" CTAs surfaced as primary buttons above the grid.
+  const isOwner =
+    !!engagement &&
+    !!engagement.authorId &&
+    engagement.authorId === engagement.currentUserInternalId;
+  const visibility = (libraryItem?.visibility ?? "PRIVATE") as Visibility;
+  const canDelete = visibility === "PRIVATE";
+  const compositeId = libraryCompositeId(item);
+
+  async function handleDelete() {
+    const res = await fetch("/api/creations/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        targetType: item.kind.toUpperCase(),
+        targetId: compositeId,
+      }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error ?? `HTTP ${res.status}`);
+    }
+    stack.clear();
+  }
+
+  const actionBar: PreviewActionProps = {
+    primary: { label: "Load into build", onClick: onLoadIntoBuild },
+    ...(canSlot ? { primarySecondary: { label: "Slot into build", onClick: slotIntoBuild } } : {}),
+    ...(isOwner
+      ? {
+          onEdit: () =>
+            router.push(`/atelier?build=${item.kind}&edit=${item.row.id}`),
+          onDelete: handleDelete,
+          deletable: true,
+          canDelete,
+          visibility,
+          onVisibilityChange: (next: Visibility) => {
+            void fetch("/api/creations/visibility", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                targetType: item.kind.toUpperCase(),
+                targetId: compositeId,
+                visibility: next,
+              }),
+            });
+          },
+        }
+      : {}),
+    openSourceHref: `/library/item/${compositeId}`,
+    versionHistoryHref: `/library/item/${compositeId}/versions`,
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -688,64 +733,20 @@ function SandboxPreviewBody({
                 callbacks: {
                   ...(onSubLinkClick ? { onSubLinkClick } : {}),
                   ...(engagement ? { engagement } : {}),
-                  // Bug fix: use the shared helper so template previews
-                  // route to `RACE_TEMPLATE:<id>` etc. — `item.kind.toUpperCase()`
-                  // produced `TEMPLATE:<id>` which 404'd.
-                  openSourceHref: `/library/item/${libraryCompositeId(item)}`,
+                  openSourceHref: `/library/item/${compositeId}`,
                   sandboxPath: "/atelier",
                   onFork,
                 },
               }
             : {
                 callbacks: {
-                  openSourceHref: `/library/item/${libraryCompositeId(item)}`,
+                  openSourceHref: `/library/item/${compositeId}`,
                   sandboxPath: "/atelier",
                   onFork,
                 },
               })}
+          actionBar={actionBar}
         />
-        {/* The LibraryItemPreview's PreviewFooter now renders the
-            "Open source page" + "Version history" links on the same row
-            at the bottom of the scrollable area per the user's spec. */}
-      </div>
-      <div className="sticky bottom-0 z-10 flex shrink-0 flex-wrap items-center gap-2 border-t border-border bg-card px-3 py-3 shadow-[0_-2px_6px_rgba(0,0,0,0.06)]">
-        <button
-          type="button"
-          onClick={() => {
-            onLoadIntoBuild();
-            // Open the BUILD drawer tab — the form is mounted there
-            // and is what the user just loaded. The previous behaviour
-            // opened `preview`, which shows the entity's live snapshot
-            // rendered by the form — but in non-split mobile mode the
-            // form is in the drawer and the preview reads from the
-            // form's state via the parent. Opening the drawer's
-            // `build` tab is the always-populated target.
-            //
-            // Split-mode contract: the build form is already rendered
-            // inline in the bottom panel — switch the tab to "preview"
-            // so the user immediately sees the loaded entity's live
-            // preview (which is populated by the form on load).
-            if (sandboxSplit) {
-              setSandboxBottomTab("preview");
-            } else {
-              openDrawer("build");
-            }
-          }}
-          className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-          title="Create a fork-draft of this entry in your sandbox"
-        >
-          Load into build
-        </button>
-        {canSlot ? (
-          <button
-            type="button"
-            onClick={slotIntoBuild}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:border-primary"
-            title={`Drop this ${item.kind} into the ${build} you're currently composing`}
-          >
-            Slot into build
-          </button>
-        ) : null}
       </div>
     </div>
   );

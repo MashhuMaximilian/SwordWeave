@@ -706,7 +706,7 @@ async function PrimitiveDetail({
           authorAvatarUrl: author?.avatarUrl ?? null,
           isOwner: row.userId != null && row.userId === currentUserId,
         }}
-        actions={{
+        actionBar={{
           openSourceHref: `/library/item/PRIMITIVE:${row.id}`,
           versionHistoryHref: `/library/item/PRIMITIVE:${row.id}/versions`,
         }}

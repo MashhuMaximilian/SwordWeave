@@ -16,6 +16,39 @@
 import { Fragment, type ReactElement, type ReactNode } from "react";
 import { OP_SPECS, type ModifierOperation } from "@/types/modifier";
 
+// =============================================================================
+// Shared preview callback + sub-link types. Declared here (a cycle-free
+// module) so both `entity-preview` and `library-item-preview` import them
+// from one place — previously they were defined in `library-item-preview`
+// and re-imported by `entity-preview`, creating a circular type dependency
+// that broke under exactOptionalPropertyTypes.
+// =============================================================================
+
+export interface PreviewEngagement {
+  likes: number;
+  dislikes: number;
+  forks: number;
+  userReaction: "LIKE" | "DISLIKE" | null;
+  authorId: string | null;
+  authorUsername: string | null;
+  currentUserInternalId: string | null;
+}
+
+export interface PreviewSubLink {
+  targetType: "PRIMITIVE" | "CAPABILITY" | "EFFECT" | "ITEM";
+  targetId: string;
+  label: string;
+}
+
+export interface PreviewCallbacks {
+  onSubLinkClick?: (link: PreviewSubLink) => void;
+  engagement?: PreviewEngagement;
+  versionHistoryHref?: string;
+  openSourceHref?: string;
+  sandboxPath?: string;
+  onFork?: ((targetType: string, targetId: string) => void) | undefined;
+}
+
 // ---- Section ----------------------------------------------------------------
 
 export function Section({
@@ -303,6 +336,231 @@ export function ConditionLine({
           </span>
         );
       })}
+    </div>
+  );
+}
+
+// =============================================================================
+// PreviewActions — THE shared action bar used by EVERY preview surface
+// (My Creations, Library, Atelier sandbox, build modal). Identical structure
+// and order everywhere, so a preview looks the same regardless of where it
+// was opened from. Lifted verbatim from the My Creations preview so the two
+// implementations converge on one component.
+//
+// Layout (matches creations):
+//   - 3-col grid: Edit · Source · Versions  (each equal visual weight;
+//     predictable tap targets on mobile — the user asked for desktop AND
+//     mobile to match).
+//   - optional 4th primary action (e.g. Atelier's "Load into build") rendered
+//     as a full-width primary button above the grid.
+//   - full-width Delete below the grid (only when `deletable`), with a
+//     canDelete gate + confirm dialog. When not deletable, a hint to set
+//     visibility to Private is shown instead (mirrors creations' rule).
+// =============================================================================
+
+import { useState } from "react";
+import { Pencil, ExternalLink, History, Trash2 } from "lucide-react";
+import {
+  VisibilitySelect,
+  visibilityLabel,
+  type Visibility,
+} from "@/components/library/visibility-select";
+
+export type PreviewActionProps = {
+  /** Primary CTA shown as a full-width button above the grid (e.g. Load into build). */
+  primary?: { label: string; onClick?: () => void; href?: string };
+  /** Optional secondary primary CTA (e.g. Slot into build) shown full-width
+   *  above the grid, after `primary`. */
+  primarySecondary?: { label: string; onClick?: () => void; href?: string };
+  onEdit?: () => void;
+  openSourceHref?: string;
+  versionHistoryHref?: string;
+  onDelete?: () => void;
+  /** Show the Delete button at all. */
+  deletable?: boolean;
+  /** Only true when the item is PRIVATE (nothing published). Gates deletion. */
+  canDelete?: boolean;
+  /** Current visibility — drives the canDelete hint + the optional select. */
+  visibility?: Visibility;
+  onVisibilityChange?: (vis: Visibility) => void;
+};
+
+export function PreviewActions(props: PreviewActionProps) {
+  const {
+    primary,
+    primarySecondary,
+    onEdit,
+    openSourceHref,
+    versionHistoryHref,
+    onDelete,
+    deletable,
+    canDelete,
+    visibility,
+    onVisibilityChange,
+  } = props;
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function handleConfirmDelete() {
+    if (!onDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDelete();
+      setConfirmOpen(false);
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      {onVisibilityChange && visibility ? (
+        <VisibilitySelect
+          value={visibility}
+          onChange={(next) => onVisibilityChange(next)}
+        />
+      ) : null}
+
+      {primary ? (
+        primary.href ? (
+          <a
+            href={primary.href}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            {primary.label}
+          </a>
+        ) : (
+          <button
+            type="button"
+            onClick={primary.onClick}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            {primary.label}
+          </button>
+        )
+      ) : null}
+
+      {primarySecondary ? (
+        primarySecondary.href ? (
+          <a
+            href={primarySecondary.href}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+          >
+            {primarySecondary.label}
+          </a>
+        ) : (
+          <button
+            type="button"
+            onClick={primarySecondary.onClick}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+          >
+            {primarySecondary.label}
+          </button>
+        )
+      ) : null}
+
+      <div className="grid grid-cols-3 gap-1.5 border-t border-border pt-3">
+        {onEdit ? (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            <Pencil className="size-3.5" />
+            Edit
+          </button>
+        ) : null}
+        {openSourceHref ? (
+          <a
+            href={openSourceHref}
+            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-2 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+          >
+            <ExternalLink className="size-3.5" />
+            <span>Source</span>
+          </a>
+        ) : null}
+        {versionHistoryHref ? (
+          <a
+            href={versionHistoryHref}
+            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-2 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+          >
+            <History className="size-3.5" />
+            <span>Versions</span>
+          </a>
+        ) : null}
+      </div>
+
+      {deletable ? (
+        canDelete ? (
+          <button
+            type="button"
+            onClick={() => {
+              setDeleteError(null);
+              setConfirmOpen(true);
+            }}
+            className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-rose-500/50 px-3 py-2 text-xs font-medium text-rose-500 transition-colors hover:bg-rose-500/10"
+          >
+            <Trash2 className="size-3.5" />
+            Delete
+          </button>
+        ) : (
+          <p className="mt-2 rounded-md border border-dashed border-border bg-card/30 px-3 py-2 text-center text-[10px] text-muted-foreground">
+            Set visibility to <span className="font-semibold">Private</span> to enable deletion
+          </p>
+        )
+      ) : null}
+
+      {deleteError ? (
+        <p className="text-xs text-rose-400" role="alert">
+          {deleteError}
+        </p>
+      ) : null}
+
+      {confirmOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm deletion"
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
+        >
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => !deleting && setConfirmOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="relative z-10 w-full max-w-sm overflow-hidden rounded-lg border border-border bg-card shadow-2xl">
+            <header className="border-b border-border px-4 py-3">
+              <h4 className="text-sm font-semibold">Delete this creation?</h4>
+            </header>
+            <div className="space-y-3 p-4 text-sm">
+              <p>This cannot be undone.</p>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmOpen(false)}
+                  disabled={deleting}
+                  className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  disabled={deleting}
+                  className="inline-flex items-center gap-1 rounded-md bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-600 disabled:opacity-50"
+                >
+                  {deleting ? "Deleting…" : "Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

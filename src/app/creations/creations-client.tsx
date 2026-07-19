@@ -20,13 +20,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutGrid, List, ExternalLink, History, Pencil, Trash2 } from "lucide-react";
+import { LayoutGrid, List } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { LibraryTable } from "@/components/library/library-table";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
-import { VisibilitySelect, type Visibility, visibilityLabel } from "@/components/library/visibility-select";
+import { PreviewActions } from "@/components/preview/preview-shared";
+import { visibilityLabel, type Visibility } from "@/components/library/visibility-select";
 import type { LibraryEngagement } from "@/lib/engagement/library-engagement";
 import { cn } from "@/lib/utils";
 import type { LibraryItem } from "@/lib/publishing/library-query";
@@ -481,35 +482,23 @@ function CreationPreview({
   // FOLLOWERS_ONLY) blocks deletion since other people may have slotted
   // it into their builds and pinned that version.
   const canDelete = liveVisibility === "PRIVATE";
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   async function handleDelete() {
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      const res = await fetch("/api/creations/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          targetType: item.targetType,
-          targetId: item.targetId,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? `HTTP ${res.status}`);
-      }
-      // Close the confirm modal, fire onDeleted so parent refreshes +
-      // closes its own modal, then we're done.
-      setConfirmOpen(false);
-      onDeleted?.();
-    } catch (e) {
-      setDeleteError(e instanceof Error ? e.message : "Failed to delete");
-    } finally {
-      setDeleting(false);
+    const res = await fetch("/api/creations/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        targetType: item.targetType,
+        targetId: item.targetId,
+      }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error ?? `HTTP ${res.status}`);
     }
+    // PreviewActions closes its own confirm dialog on success; fire
+    // onDeleted so the parent refreshes + closes its own modal.
+    onDeleted?.();
   }
 
   // Visibility IS the publish action. There is no separate "publish" button
@@ -552,131 +541,28 @@ function CreationPreview({
         ) : null}
       </dl>
 
-      {onVisibilityChange ? (
-        <VisibilitySelect
-          value={liveVisibility}
-          onChange={(next) => {
-            // Optimistic local update so the chip flips immediately, then
-            // propagate up so the table row + map stay in sync. We can't
-            // await onVisibilityChange here (the select's onChange is sync);
-            // if it rejects, the parent's catch handler rolls the map back
-            // and we mirror by reverting local state too.
-            setLiveVisibility(next);
-            void Promise.resolve(onVisibilityChange(next)).catch(() => {
-              setLiveVisibility((item.visibility ?? "PRIVATE") as Visibility);
-            });
-          }}
-        />
-      ) : null}
-
-      {/* Action buttons. Mashu 2026-07-09: 1×3 grid of the three primary
-          actions (Edit in sandbox / Source page / Version history).
-          Fork history removed — the source page already renders the
-          ForksList at #forks, so a separate button was redundant.
-          Delete stays full-width below the row since it has its own
-          canDelete gate + confirm dialog. 1×3 = equal visual weight,
-          predictable tap targets on mobile. */}
-      <div className="grid grid-cols-3 gap-1.5 border-t border-border pt-3">
-        <button
-          type="button"
-          onClick={onEdit}
-          className="inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-2 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          <Pencil className="size-3.5" />
-          Edit
-        </button>
-        <a
-          href={`/library/item/${item.id}`}
-          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-2 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
-        >
-          <ExternalLink className="size-3.5" />
-          <span>Source</span>
-        </a>
-        <a
-          href={`/library/item/${item.id}/versions`}
-          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card px-2 py-2 text-xs font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
-        >
-          <History className="size-3.5" />
-          <span>Versions</span>
-        </a>
-      </div>
-
-      {onDeleted ? (
-        canDelete ? (
-          <button
-            type="button"
-            onClick={() => {
-              setDeleteError(null);
-              setConfirmOpen(true);
-            }}
-            className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-rose-500/50 px-3 py-2 text-xs font-medium text-rose-500 transition-colors hover:bg-rose-500/10"
-          >
-            <Trash2 className="size-3.5" />
-            Delete
-          </button>
-        ) : (
-          <p
-            className="mt-2 rounded-md border border-dashed border-border bg-card/30 px-3 py-2 text-center text-[10px] text-muted-foreground"
-            title="Set visibility to PRIVATE to enable deletion. This unpublishes the row so version history becomes private-only."
-          >
-            Set visibility to <span className="font-semibold">Private</span> to enable deletion
-          </p>
-        )
-      ) : null}
-
-      {deleteError ? (
-        <p className="text-xs text-rose-400" role="alert">
-          {deleteError}
-        </p>
-      ) : null}
-
-      {confirmOpen ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Confirm deletion"
-          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
-        >
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => !deleting && setConfirmOpen(false)}
-            aria-hidden="true"
-          />
-          <div className="relative z-10 w-full max-w-sm overflow-hidden rounded-lg border border-border bg-card shadow-2xl">
-            <header className="border-b border-border px-4 py-3">
-              <h4 className="text-sm font-semibold">Delete this creation?</h4>
-            </header>
-            <div className="space-y-3 p-4 text-sm">
-              <p>
-                <span className="font-semibold">{item.name}</span> will be
-                permanently deleted along with any composition links
-                (capabilities, effects, primitives it slots into).
-              </p>
-              <p className="text-xs text-muted-foreground">
-                This cannot be undone.
-              </p>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setConfirmOpen(false)}
-                  disabled={deleting}
-                  className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="inline-flex items-center gap-1 rounded-md bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-600 disabled:opacity-50"
-                >
-                  {deleting ? "Deleting…" : "Delete"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {/* Unified action bar — identical to the library / atelier previews.
+          Edit · Source · Versions in a 3-col grid, plus a full-width Delete
+          (gated on PRIVATE visibility) with its own confirm dialog. */}
+      <PreviewActions
+        onEdit={onEdit}
+        openSourceHref={`/library/item/${item.id}`}
+        versionHistoryHref={`/library/item/${item.id}/versions`}
+        onDelete={handleDelete}
+        deletable={Boolean(onDeleted)}
+        canDelete={canDelete}
+        visibility={liveVisibility}
+        {...(onVisibilityChange
+          ? {
+              onVisibilityChange: (next: Visibility) => {
+                setLiveVisibility(next);
+                void Promise.resolve(onVisibilityChange(next)).catch(() => {
+                  setLiveVisibility((item.visibility ?? "PRIVATE") as Visibility);
+                });
+              },
+            }
+          : {})}
+      />
     </div>
   );
 }
