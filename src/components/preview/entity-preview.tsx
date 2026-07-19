@@ -615,6 +615,7 @@ function PrimitiveBody({
         iconUrl={row.iconUrl}
         iconColor={row.iconColor}
         label={row.category}
+        name={row.name}
         chips={
           <>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{row.buCost} BU</span>
@@ -683,6 +684,7 @@ function EffectBody({
         iconUrl={row.iconUrl}
         iconColor={row.iconColor}
         label="Effect"
+        name={row.name}
         chips={
           <>
             <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-mono font-semibold text-primary">{totalBu} BU</span>
@@ -739,6 +741,7 @@ function CapabilityBody({
         iconUrl={row.iconUrl}
         iconColor={row.iconColor}
         label={`${row.type} · ${row.sourceType}`}
+        name={row.name}
         chips={
           <>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{totalBu} BU</span>
@@ -811,6 +814,7 @@ function TemplateBody({
         iconUrl={row.iconUrl}
         iconColor={row.iconColor}
         label={row.kind}
+        name={row.name}
         chips={
           <>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{primitiveBu} BU</span>
@@ -869,6 +873,7 @@ function ItemBody({
         iconUrl={row.iconUrl}
         iconColor={row.iconColor}
         label={row.itemType}
+        name={row.name}
         chips={
           <>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{totalBu} BU</span>
@@ -940,6 +945,7 @@ function Header({
   iconUrl,
   iconColor,
   label,
+  name,
   chips,
 }: {
   fallback: string;
@@ -948,6 +954,7 @@ function Header({
   iconUrl: string | null;
   iconColor: string;
   label: string;
+  name: string;
   chips: ReactNode;
 }) {
   return (
@@ -959,6 +966,7 @@ function Header({
         <span className="w-full text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
           {label}
         </span>
+        <span className="text-base font-semibold leading-tight">{name}</span>
         <span className="flex flex-wrap items-center gap-2">{chips}</span>
       </div>
     </div>
