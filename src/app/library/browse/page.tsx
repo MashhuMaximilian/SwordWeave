@@ -83,6 +83,13 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
   // render in a single round-trip's wall-clock time. Each query is a small
   // index scan; the cost of running them concurrently vs. serially is
   // negligible compared to the latency reduction.
+  //
+  // viewerClerkId is passed so the visibility helper can include
+  // FOLLOWERS_ONLY rows where the viewer follows the author. Without
+  // it, only PUBLIC + system rows show up — which is the right default
+  // for anonymous browsers but loses the personalised row set for
+  // signed-in viewers.
+  const { userId: viewerClerkId } = await auth();
   const [
     categories,
     itemTags,
@@ -103,6 +110,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
       ...(targetType === "ITEM" && tagFilter.length > 0
         ? { tags: tagFilter }
         : {}),
+      ...(viewerClerkId ? { viewerClerkId } : {}),
       sort,
       limit: PAGE_SIZE,
       offset,
@@ -113,7 +121,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
   // Both can run in parallel with the rest of the page load — the
   // engagement map is keyed off the result set we just fetched, so
   // it's not blocked on any earlier await.
-  const { userId: clerkUserId } = await auth();
+  const clerkUserId = viewerClerkId;
   const currentUserInternalId = clerkUserId
     ? await resolveUserIdByClerkId(clerkUserId)
     : null;

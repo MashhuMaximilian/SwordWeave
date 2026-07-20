@@ -75,6 +75,10 @@ export default async function CodexPage({ searchParams }: PageProps) {
     .map((t) => t.trim())
     .filter(Boolean);
 
+  // Phase 9 follow-up: viewerClerkId is passed to queryLibrary so the
+  // visibility helper can include FOLLOWERS_ONLY rows where the viewer
+  // follows the author. Without it, only PUBLIC + system rows show.
+  const { userId: viewerClerkId } = await auth();
   const [categories, itemTags, result] = await Promise.all([
     listPrimitiveCategories(),
     listItemTags(),
@@ -88,13 +92,14 @@ export default async function CodexPage({ searchParams }: PageProps) {
       ...(targetType === "ITEM" && tagFilter.length > 0
         ? { tags: tagFilter }
         : {}),
+      ...(viewerClerkId ? { viewerClerkId } : {}),
       sort,
       limit: PAGE_SIZE,
       offset,
     }),
   ]);
 
-  const { userId: clerkUserId } = await auth();
+  const clerkUserId = viewerClerkId;
   const currentUserInternalId = clerkUserId
     ? await resolveUserIdByClerkId(clerkUserId)
     : null;

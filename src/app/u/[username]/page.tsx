@@ -66,12 +66,25 @@ export default async function ProfilePage({
   // empty for every user. Now we query entity tables directly via the
   // new `authorClerkId` + `kind` filters. This surfaces BOTH forks and
   // creations regardless of how they were created.
+  //
+  // viewerClerkId is passed so the visibility filter can run at the DB
+  // level: when the viewer isn't the author, PRIVATE rows and
+  // FOLLOWERS_ONLY rows (without a follow) are excluded. Without
+  // viewerClerkId the visibility helper treats the viewer as
+  // anonymous and only PUBLIC rows leak through.
   const userClerkId = profile.clerkUserId ?? null;
   const profileItems = userClerkId
     ? await queryLibrary({
         authorClerkId: userClerkId,
+        ...(viewerClerkId ? { viewerClerkId } : {}),
         ...(kindFilter && { kind: kindFilter }),
-        limit: 200,
+        // Cap at 100 per request. After visibility filtering this
+        // still leaves room for the chip group to slice the result,
+        // and avoids loading thousands of rows on profiles with many
+        // forks. If a user has >100 of one type the page shows "100+
+        // items" with a library link — same as the public library
+        // browse already does.
+        limit: 100,
       })
     : { items: [] as Array<Record<string, unknown>> };
 
@@ -83,29 +96,18 @@ export default async function ProfilePage({
     sourceOrigin: string | null;
   }>;
 
-  // Phase 9 follow-up: visibility filter applied post-fetch (LibraryQuery
-  // doesn't yet accept a visibility filter; the entity tables carry
-  // isPublic but the canonical visibility tier lives in publications).
-  // PRIVATE is the implicit default for unpublished rows — same rule
-  // My Creations uses — so a row with no visibility is treated as
-  // PRIVATE when the user clicks the Private-only chip. The viewer is
-  // also considered: when the profile belongs to someone ELSE we hide
-  // their PRIVATE rows entirely (privacy boundary), but the filter
-  // itself still works when viewing your own profile.
+  // Phase 9 follow-up: chip-driven visibility filter for the user's
+  // OWN profile. (The privacy boundary for OTHER profiles is enforced
+  // at the DB level by queryLibrary's visibilityCondition — non-owners
+  // never see PRIVATE rows in the result set.)
+  //
+  // PRIVATE is the implicit default for unpublished rows (no
+  // publications row) — same rule My Creations uses.
   const isOwner = profile.isOwner === true;
   const filteredItems = items.filter((it) => {
-    if (visibilityFilter) {
-      if (!isOwner) {
-        // Non-owner: only PUBLIC and FOLLOWERS_ONLY rows are visible
-        // at all. PRIVATE rows are filtered out before the chip even
-        // runs — keeps the privacy boundary intact.
-        if (it.visibility === "PRIVATE") return false;
-        if (it.visibility !== visibilityFilter) return false;
-      } else {
-        const itemVis = it.visibility ?? "PRIVATE";
-        if (itemVis !== visibilityFilter) return false;
-      }
-    }
+    if (!isOwner || !visibilityFilter) return true;
+    const itemVis = it.visibility ?? "PRIVATE";
+    if (itemVis !== visibilityFilter) return false;
     return true;
   });
 

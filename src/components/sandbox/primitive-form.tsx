@@ -8,7 +8,7 @@
 // The library list, live preview sidebar, and saved-records grid are NOT in this
 // component. They live in the SandboxLayout columns owned by the page.
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import type {
@@ -638,7 +638,14 @@ export function PrimitiveForm({
   const [modifiers, setModifiers] = useState<ModifierDraft[]>([]);
   const [showJsonPreview, setShowJsonPreview] = useState(false);
   const [message, setMessage] = useState("");
-  const [isPending, startTransition] = useTransition();
+  // Local pending flag — independent of useTransition. The previous
+  // implementation wrapped the save flow in startTransition() which
+  // kept the button stuck on "Saving..." because router.refresh()
+  // inside the transition triggered a Suspense-driven re-render that
+  // held the transition open indefinitely. Tracking our own flag
+  // decouples the button label from Next.js's navigation transitions
+  // and lets us toggle it synchronously when the fetch resolves.
+  const [isSaving, setIsSaving] = useState(false);
   // Tracks unsaved edits. Flipped to true on the first user mutation after a
   // load/reset/save; flipped back to false by resetEditor() and after a
   // successful save (resetEditor runs there too).
@@ -875,8 +882,13 @@ export function PrimitiveForm({
   function submitPrimitive(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
+    setIsSaving(true);
 
-    startTransition(async () => {
+    // (Async save flow — previously wrapped in startTransition(), which
+    // kept the Save button stuck on "Saving..." indefinitely because
+    // router.refresh() inside the transition triggered a Suspense
+    // re-render. We now toggle a local isSaving flag instead.)
+    (async () => {
       // Phase 4: compute the content hash so the server can detect no-op saves.
       const draftHash = await computePrimitiveContentHash({
         name: form.name,
@@ -898,32 +910,41 @@ export function PrimitiveForm({
         iconColor: form.iconColor,
       });
 
-      const response = await fetch("/api/primitives", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          // Phase 1: thread the intent flag + sourceId into the body.
-          // The server's dispatch-save.ts decides fork vs version-update
-          // vs no-op based on these + draftHash. See §6.7 of the design doc.
-          // (Legacy `id` field is still honored as a fallback by the
-          // server for the brief window where forms haven't been
-          // migrated; new code prefers intent + sourceId.)
-          ...(intent ? { intent } : {}),
-          ...(sourceId != null ? { sourceId } : {}),
-          ...(initialPrimitive?.id != null && initialPrimitive?.userId
-            ? { id: initialPrimitive.id }
-            : {}),
-          draftHash,
-          ...form,
-          // Phase 7 Q-M: auto-derive mirror_bu_credit = bu_cost when
-          // mirrorable. The server enforces this anyway, but we send the
-          // canonical value so the content hash matches what's stored.
-          mirrorVector: form.isMirrorable ? form.mirrorVector : "STANDARD_ONLY",
-          mirrorBuCredit: form.isMirrorable ? Number(form.buCost) || 0 : 0,
-          hardModifiers: modifiers.map(toHardModifier),
-        }),
-      });
-      const payload: unknown = await response.json();
+      let response: Response;
+      let payload: unknown;
+      try {
+        response = await fetch("/api/primitives", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            // Phase 1: thread the intent flag + sourceId into the body.
+            // The server's dispatch-save.ts decides fork vs version-update
+            // vs no-op based on these + draftHash. See §6.7 of the design doc.
+            // (Legacy `id` field is still honored as a fallback by the
+            // server for the brief window where forms haven't been
+            // migrated; new code prefers intent + sourceId.)
+            ...(intent ? { intent } : {}),
+            ...(sourceId != null ? { sourceId } : {}),
+            ...(initialPrimitive?.id != null && initialPrimitive?.userId
+              ? { id: initialPrimitive.id }
+              : {}),
+            draftHash,
+            ...form,
+            // Phase 7 Q-M: auto-derive mirror_bu_credit = bu_cost when
+            // mirrorable. The server enforces this anyway, but we send the
+            // canonical value so the content hash matches what's stored.
+            mirrorVector: form.isMirrorable ? form.mirrorVector : "STANDARD_ONLY",
+            mirrorBuCredit: form.isMirrorable ? Number(form.buCost) || 0 : 0,
+            hardModifiers: modifiers.map(toHardModifier),
+          }),
+        });
+        payload = await response.json();
+      } catch (err) {
+        const m = err instanceof Error ? err.message : "Network error.";
+        setMessage(m);
+        setIsSaving(false);
+        return;
+      }
 
       if (!response.ok) {
         const error =
@@ -931,6 +952,7 @@ export function PrimitiveForm({
             ? String(payload.error)
             : "Unable to save primitive.";
         setMessage(error);
+        setIsSaving(false);
         return;
       }
 
@@ -953,6 +975,7 @@ export function PrimitiveForm({
             ? String((dispatchOutcome as { message?: unknown }).message ?? "")
             : "Nothing to save.";
         setMessage(msg);
+        setIsSaving(false);
         return;
       }
 
@@ -981,9 +1004,17 @@ export function PrimitiveForm({
       if (!outcome?.swapTarget) {
         resetEditor();
       }
-      router.refresh();
       setMessage("Primitive saved to your account.");
-    });
+      // Flip isSaving false SYNCHRONOUSLY before triggering router.refresh().
+      // The refresh fires-and-forgets — we don't await it — so the button
+      // label snaps back to "Save Primitive" the moment the server has
+      // accepted the write. The refresh then re-fetches the page data in
+      // the background.
+      setIsSaving(false);
+      // void (not awaited): this is the naviguation refresh. It's a
+      // fire-and-forget side effect, separate from the save completion.
+      void router.refresh();
+    })();
   }
 
   const primitiveJsonPreview = {
@@ -1694,11 +1725,11 @@ export function PrimitiveForm({
       <div className="flex flex-wrap items-center gap-3 md:col-span-2">
         <button
           className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-60"
-          disabled={isPending}
+          disabled={isSaving}
           type="submit"
           data-sandbox-submit
         >
-          {isPending ? "Saving..." : "Save Primitive"}
+          {isSaving ? "Saving..." : "Save Primitive"}
         </button>
         {message ? (
           <p className="text-sm text-muted-foreground">{message}</p>

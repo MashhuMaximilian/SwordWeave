@@ -81,6 +81,15 @@ interface RawVersionRow {
   publisherDisplayName: string | null;
   publisherIsAnonymized: boolean | null;
   publisherDeletedAt: Date | null;
+  /**
+   * Phase 9 follow-up: when the publisher is a Clerk admin, we render
+   * them as "system" — same rule as the OwnerBar in the live preview.
+   * Admins editing canon are swordweave staff acting on behalf of the
+   * corpus, not a personal fork. Carrying the flag up from the join
+   * lets the page display "system / unpublished" for admin edits
+   * while keeping `publishedByUserId` accurate for audit purposes.
+   */
+  publisherIsAdmin: boolean | null;
 }
 
 /**
@@ -151,6 +160,14 @@ export async function getVersionHistory(
 
     const publisherVisible =
       !r.publisherIsAnonymized && !r.publisherDeletedAt;
+    // Phase 9 follow-up: when the publisher is a Clerk admin, mask
+    // the username/displayName as null so the version-history UI
+    // renders "system / unpublished" instead of "@xeun". The audit
+    // trail is preserved (publishedByUserId stays set) so an admin
+    // can still trace the edit, but the public-facing attribution
+    // matches the OwnerBar's "by System" treatment in the live
+    // preview. Same rule, same source of truth.
+    const isAdminPublisher = r.publisherIsAdmin === true;
 
     versions.push({
       id: r.id,
@@ -158,8 +175,12 @@ export async function getVersionHistory(
       deltaKind: r.deltaKind,
       publishedAt: r.publishedAt,
       publishedByUserId: r.publishedByUserId,
-      publishedByUsername: publisherVisible ? r.publisherUsername : null,
-      publishedByDisplayName: publisherVisible ? r.publisherDisplayName : null,
+      publishedByUsername:
+        publisherVisible && !isAdminPublisher ? r.publisherUsername : null,
+      publishedByDisplayName:
+        publisherVisible && !isAdminPublisher
+          ? r.publisherDisplayName
+          : null,
       payload,
       changeStats,
     });
@@ -204,6 +225,9 @@ async function fetchVersionRows(
         publisherDisplayName: users.displayName,
         publisherIsAnonymized: users.isAnonymized,
         publisherDeletedAt: users.deletedAt,
+        // Phase 9 follow-up: hoist is_admin to mask admin publishers
+        // as "system" in the version-history UI.
+        publisherIsAdmin: users.isAdmin,
       })
       .from(primitiveVersions)
       .leftJoin(users, eq(users.id, primitiveVersions.publishedByUserId))
@@ -225,6 +249,7 @@ async function fetchVersionRows(
         publisherDisplayName: users.displayName,
         publisherIsAnonymized: users.isAnonymized,
         publisherDeletedAt: users.deletedAt,
+        publisherIsAdmin: users.isAdmin,
       })
       .from(capabilityVersions)
       .leftJoin(users, eq(users.id, capabilityVersions.publishedByUserId))
@@ -246,6 +271,7 @@ async function fetchVersionRows(
         publisherDisplayName: users.displayName,
         publisherIsAnonymized: users.isAnonymized,
         publisherDeletedAt: users.deletedAt,
+        publisherIsAdmin: users.isAdmin,
       })
       .from(effectVersions)
       .leftJoin(users, eq(users.id, effectVersions.publishedByUserId))
@@ -267,6 +293,7 @@ async function fetchVersionRows(
         publisherDisplayName: users.displayName,
         publisherIsAnonymized: users.isAnonymized,
         publisherDeletedAt: users.deletedAt,
+        publisherIsAdmin: users.isAdmin,
       })
       .from(itemVersions)
       .leftJoin(users, eq(users.id, itemVersions.publishedByUserId))
@@ -288,6 +315,7 @@ async function fetchVersionRows(
         publisherDisplayName: users.displayName,
         publisherIsAnonymized: users.isAnonymized,
         publisherDeletedAt: users.deletedAt,
+        publisherIsAdmin: users.isAdmin,
       })
       .from(characterVersions)
       .leftJoin(users, eq(users.id, characterVersions.publishedByUserId))
@@ -317,6 +345,7 @@ async function fetchVersionRows(
         publisherDisplayName: users.displayName,
         publisherIsAnonymized: users.isAnonymized,
         publisherDeletedAt: users.deletedAt,
+        publisherIsAdmin: users.isAdmin,
       })
       .from(heritageVersions)
       .leftJoin(users, eq(users.id, heritageVersions.publishedByUserId))

@@ -40,6 +40,7 @@ import {
   characters,
   effectPrimitives,
   effects,
+  follows,
   items,
   primitives,
   publications,
@@ -90,6 +91,27 @@ export interface LibraryQuery {
    * no filter is applied.
    */
   kind?: "fork" | "creation";
+  /**
+   * Phase 9 follow-up: filter by visibility tier. The publications
+   * table stores `PRIVATE | FOLLOWERS_ONLY | PUBLIC` per
+   * (target_type, target_id). The query joins it and applies the
+   * right rule:
+   *   - PUBLIC: visible to everyone
+   *   - FOLLOWERS_ONLY: visible to author + followers of author
+   *   - PRIVATE: visible to author only
+   *
+   * Requires `viewerClerkId` so the followers check can resolve
+   * "is the viewer following this author?" — without it, FOLLOWERS_ONLY
+   * rows are silently skipped (the safer default).
+   */
+  visibility?: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC";
+  /**
+   * Phase 9 follow-up: the Clerk user ID of the viewer making the
+   * request. Combined with `visibility` to enforce the visibility
+   * tier. When the viewer is the author, all their rows are visible
+   * regardless of tier (they always see their own profile).
+   */
+  viewerClerkId?: string;
   minLikes?: number;
   hasForks?: boolean;
   /**
@@ -349,21 +371,127 @@ function notUnpublished(targetType: string, idExpr: SQL) {
   )`;
 }
 
+/**
+ * Phase 9 follow-up: enforce visibility tier at the DB level so
+ * PRIVATE rows of OTHER users don't leak into the library browse
+ * or profile pages. The previous implementation skipped the isPublic
+ * gate entirely when `authorClerkId` was set (so the author's own
+ * profile showed everything they owned) — which also meant anyone
+ * visiting their profile saw their PRIVATE drafts. This filter
+ * restores the boundary.
+ *
+ * The rule is:
+ *   - Row is owned by the viewer → always visible
+ *   - Row has a publications row (target_type, target_id) where
+ *     unpublished_at IS NULL AND visibility = PUBLIC → visible
+ *   - Row has a publications row with visibility = FOLLOWERS_ONLY
+ *     AND viewer follows the author → visible
+ *   - Otherwise → not visible (PRIVATE or FOLLOWERS_ONLY without
+ *     a follow)
+ *
+ * Built as a WHERE-clause SQL fragment using correlated EXISTS
+ * subqueries. Postgres handles these efficiently thanks to the
+ * `publications_target_idx (target_type, target_id)` index. When
+ * `viewerClerkId` is undefined, the conservative default applies:
+ * the only visible rows are ones the viewer already happens to own
+ * (matched via entityUserId = NULL, i.e. never — since
+ * viewerClerkId is unknown, no entity's user_id can equal it).
+ *
+ * Parameters:
+ *   - targetType: the publications.target_type literal (e.g. "PRIMITIVE")
+ *   - entityIdExpr: SQL expr for the entity's primary key — usually
+ *     `sql\`${primitives.id}\`` for primitives, etc. Must cast to text.
+ *   - entityUserIdExpr: SQL expr for the entity's Clerk user_id
+ *     column (primitives.userId, capabilities.userId, etc.)
+ *   - viewerClerkId: the Clerk user ID of the viewer, or undefined
+ *     for "anonymous viewer" (e.g. unauthenticated browse).
+ */
+function visibilityCondition(
+  targetType: string,
+  entityIdExpr: SQL,
+  entityUserIdExpr: SQL,
+  viewerClerkId: string | undefined,
+): SQL {
+  // Owner case: row.user_id = viewer's clerk ID. Direct equality —
+  // both sides are Clerk IDs (text). If viewerClerkId is undefined,
+  // isOwner is always false (no entity's user_id can match an
+  // unknown string).
+  const isOwner = viewerClerkId
+    ? eq(entityUserIdExpr, viewerClerkId)
+    : sql`false`;
+
+  // Public case: a publications row exists for this (type, id) with
+  // visibility=PUBLIC and no unpublished_at.
+  const isPublic = sql`EXISTS (
+    SELECT 1 FROM publications
+    WHERE target_type = ${targetType}
+      AND target_id = CAST(${entityIdExpr} AS text)
+      AND visibility = 'PUBLIC'
+      AND unpublished_at IS NULL
+  )`;
+
+  // Followers-only case: requires BOTH a publications row with
+  // visibility=FOLLOWERS_ONLY AND a `follows` row matching
+  // (viewer-clerk-id → author-clerk-id). We resolve the internal
+  // user uuids via subqueries on the `users` table because that's
+  // the schema's primary key (`follows.follower_id` /
+  // `follows.following_id` are both `users.id` uuids).
+  const isFollowersOnlyVisible = viewerClerkId
+    ? sql`EXISTS (
+        SELECT 1 FROM publications
+        WHERE target_type = ${targetType}
+          AND target_id = CAST(${entityIdExpr} AS text)
+          AND visibility = 'FOLLOWERS_ONLY'
+          AND unpublished_at IS NULL
+      )
+      AND EXISTS (
+        SELECT 1 FROM follows f
+        JOIN users author_user ON author_user.clerk_user_id = ${entityUserIdExpr}
+        JOIN users viewer_user ON viewer_user.clerk_user_id = ${viewerClerkId}
+        WHERE f.following_id = author_user.id
+          AND f.follower_id = viewer_user.id
+      )`
+    : sql`false`;
+
+  return or(isOwner, isPublic, isFollowersOnlyVisible)!;
+}
+
 async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
   // Phase 9 follow-up: when filtering by authorClerkId (profile page),
-  // drop the isPublic gate — forks are private by default and the user
-  // expects to see their own forks on their profile regardless of
-  // publication status. The kind filter (fork/creation) further slices
-  // by sourceOrigin.
-  const conditions: SQL[] = q.authorClerkId
-    ? [
-        eq(primitives.userId, q.authorClerkId),
-        notUnpublished("PRIMITIVE", sql`${primitives.id}`),
-      ]
-    : [
-        or(eq(primitives.isPublic, true), isNull(primitives.userId))!,
-        notUnpublished("PRIMITIVE", sql`${primitives.id}`),
-      ];
+  // surface only the rows the viewer is allowed to see — owner sees
+  // everything; others see PUBLIC + FOLLOWERS_ONLY (the latter only
+  // when they follow the author). The visibility condition is the
+  // canonical privacy gate; the kind filter (fork/creation) further
+  // slices by sourceOrigin.
+  //
+  // For unauthenticated viewers on the public library (no
+  // authorClerkId, no viewerClerkId), we fall back to the
+  // isPublic/system rule — same as before this round. The library
+  // browse page passes viewerClerkId when signed in so the visibility
+  // filter fires correctly.
+  const conditions: SQL[] = [];
+  if (q.authorClerkId) {
+    conditions.push(eq(primitives.userId, q.authorClerkId));
+    conditions.push(
+      visibilityCondition(
+        "PRIMITIVE",
+        sql`${primitives.id}`,
+        sql`${primitives.userId}`,
+        q.viewerClerkId,
+      ),
+    );
+  } else {
+    conditions.push(
+      or(eq(primitives.isPublic, true), isNull(primitives.userId))!,
+    );
+    // For unauthenticated browse, also enforce visibility tier via
+    // the same helper. The isPublic gate above already restricts to
+    // public/system rows; the helper is a defence-in-depth check.
+    if (q.visibility) {
+      conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
+    }
+  }
+  conditions.push(notUnpublished("PRIMITIVE", sql`${primitives.id}`));
   if (q.kind === "fork") conditions.push(like(primitives.sourceOrigin, "fork:%"));
   if (q.kind === "creation") conditions.push(or(isNull(primitives.sourceOrigin), notLike(primitives.sourceOrigin, "fork:%"))!);
 
@@ -444,15 +572,26 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
 }
 
 async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
-  const conditions: SQL[] = q.authorClerkId
-    ? [
-        eq(capabilities.userId, q.authorClerkId),
-        notUnpublished("CAPABILITY", sql`${capabilities.id}`),
-      ]
-    : [
-        or(eq(capabilities.isPublic, true), isNull(capabilities.userId))!,
-        notUnpublished("CAPABILITY", sql`${capabilities.id}`),
-      ];
+  const conditions: SQL[] = [];
+  if (q.authorClerkId) {
+    conditions.push(eq(capabilities.userId, q.authorClerkId));
+    conditions.push(
+      visibilityCondition(
+        "CAPABILITY",
+        sql`${capabilities.id}`,
+        sql`${capabilities.userId}`,
+        q.viewerClerkId,
+      ),
+    );
+  } else {
+    conditions.push(
+      or(eq(capabilities.isPublic, true), isNull(capabilities.userId))!,
+    );
+    if (q.visibility) {
+      conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
+    }
+  }
+  conditions.push(notUnpublished("CAPABILITY", sql`${capabilities.id}`));
   if (q.kind === "fork") conditions.push(like(capabilities.sourceOrigin, "fork:%"));
   if (q.kind === "creation") conditions.push(or(isNull(capabilities.sourceOrigin), notLike(capabilities.sourceOrigin, "fork:%"))!);
 
@@ -558,15 +697,26 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
 }
 
 async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
-  const conditions: SQL[] = q.authorClerkId
-    ? [
-        eq(effects.userId, q.authorClerkId),
-        notUnpublished("EFFECT", sql`${effects.id}`),
-      ]
-    : [
-        or(eq(effects.isPublic, true), isNull(effects.userId))!,
-        notUnpublished("EFFECT", sql`${effects.id}`),
-      ];
+  const conditions: SQL[] = [];
+  if (q.authorClerkId) {
+    conditions.push(eq(effects.userId, q.authorClerkId));
+    conditions.push(
+      visibilityCondition(
+        "EFFECT",
+        sql`${effects.id}`,
+        sql`${effects.userId}`,
+        q.viewerClerkId,
+      ),
+    );
+  } else {
+    conditions.push(
+      or(eq(effects.isPublic, true), isNull(effects.userId))!,
+    );
+    if (q.visibility) {
+      conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
+    }
+  }
+  conditions.push(notUnpublished("EFFECT", sql`${effects.id}`));
   if (q.kind === "fork") conditions.push(like(effects.sourceOrigin, "fork:%"));
   if (q.kind === "creation") conditions.push(or(isNull(effects.sourceOrigin), notLike(effects.sourceOrigin, "fork:%"))!);
 
@@ -671,15 +821,26 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
 }
 
 async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
-  const conditions: SQL[] = q.authorClerkId
-    ? [
-        eq(items.userId, q.authorClerkId),
-        notUnpublished("ITEM", sql`${items.id}`),
-      ]
-    : [
-        or(eq(items.isPublic, true), isNull(items.userId))!,
-        notUnpublished("ITEM", sql`${items.id}`),
-      ];
+  const conditions: SQL[] = [];
+  if (q.authorClerkId) {
+    conditions.push(eq(items.userId, q.authorClerkId));
+    conditions.push(
+      visibilityCondition(
+        "ITEM",
+        sql`${items.id}`,
+        sql`${items.userId}`,
+        q.viewerClerkId,
+      ),
+    );
+  } else {
+    conditions.push(
+      or(eq(items.isPublic, true), isNull(items.userId))!,
+    );
+    if (q.visibility) {
+      conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
+    }
+  }
+  conditions.push(notUnpublished("ITEM", sql`${items.id}`));
   if (q.kind === "fork") conditions.push(like(items.sourceOrigin, "fork:%"));
   if (q.kind === "creation") conditions.push(or(isNull(items.sourceOrigin), notLike(items.sourceOrigin, "fork:%"))!);
 
@@ -776,15 +937,26 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
 }
 
 async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
-  const conditions: SQL[] = q.authorClerkId
-    ? [
-        eq(heritage.userId, q.authorClerkId),
-        notUnpublished("LINEAGE_TEMPLATE", sql`${heritage.id}`),
-      ]
-    : [
-        or(eq(heritage.isPublic, true), isNull(heritage.userId))!,
-        notUnpublished("LINEAGE_TEMPLATE", sql`${heritage.id}`),
-      ];
+  const conditions: SQL[] = [];
+  if (q.authorClerkId) {
+    conditions.push(eq(heritage.userId, q.authorClerkId));
+    conditions.push(
+      visibilityCondition(
+        "LINEAGE_TEMPLATE",
+        sql`${heritage.id}`,
+        sql`${heritage.userId}`,
+        q.viewerClerkId,
+      ),
+    );
+  } else {
+    conditions.push(
+      or(eq(heritage.isPublic, true), isNull(heritage.userId))!,
+    );
+    if (q.visibility) {
+      conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
+    }
+  }
+  conditions.push(notUnpublished("LINEAGE_TEMPLATE", sql`${heritage.id}`));
   if (q.kind === "fork") conditions.push(like(heritage.sourceOrigin, "fork:%"));
   if (q.kind === "creation") conditions.push(or(isNull(heritage.sourceOrigin), notLike(heritage.sourceOrigin, "fork:%"))!);
 
@@ -924,15 +1096,26 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
 // =============================================================================
 
 async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
-  const conditions: SQL[] = q.authorClerkId
-    ? [
-        eq(builds.userId, q.authorClerkId),
-        notUnpublished("BUILD_TEMPLATE", sql`${builds.id}`),
-      ]
-    : [
-        or(eq(builds.isPublic, true), isNull(builds.userId))!,
-        notUnpublished("BUILD_TEMPLATE", sql`${builds.id}`),
-      ];
+  const conditions: SQL[] = [];
+  if (q.authorClerkId) {
+    conditions.push(eq(builds.userId, q.authorClerkId));
+    conditions.push(
+      visibilityCondition(
+        "BUILD_TEMPLATE",
+        sql`${builds.id}`,
+        sql`${builds.userId}`,
+        q.viewerClerkId,
+      ),
+    );
+  } else {
+    conditions.push(
+      or(eq(builds.isPublic, true), isNull(builds.userId))!,
+    );
+    if (q.visibility) {
+      conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
+    }
+  }
+  conditions.push(notUnpublished("BUILD_TEMPLATE", sql`${builds.id}`));
   if (q.kind === "fork") conditions.push(like(builds.sourceOrigin, "fork:%"));
   if (q.kind === "creation") conditions.push(or(isNull(builds.sourceOrigin), notLike(builds.sourceOrigin, "fork:%"))!);
 
