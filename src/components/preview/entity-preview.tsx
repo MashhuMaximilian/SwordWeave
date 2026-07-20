@@ -78,6 +78,10 @@ export type EntityPreviewOwner = {
   /** Profile page URL (e.g. /u/username). When set, the author name +
    *  avatar become a link to the profile. */
   profileHref?: string | null;
+  /** Optional "Source: <origin>" pill rendered on the right of the
+   *  owner row. Carries the same value as the build-edit "Source
+   *  origin" field (world, book, setting). */
+  sourceOrigin?: string | null;
 };
 
 export type EntityPreviewActions = {
@@ -430,9 +434,18 @@ export function EntityPreview({
   // explicitly. In the Atelier + library previews the engagement snapshot
   // always carries author info, so this guarantees the author line shows
   // (clickable → profile) even when the `owner` prop is omitted.
+  //
+  // `sourceOrigin` is pulled from `item.row.sourceOrigin` so the "Source:
+  // <origin>" pill in the owner row always reflects the same value the
+  // build-edit form uses — Phase 9 round-3.
+  const rowSourceOrigin =
+    "row" in item && item.row && typeof item.row === "object" && "sourceOrigin" in item.row
+      ? (item.row as { sourceOrigin?: string | null }).sourceOrigin ?? null
+      : null;
   const resolvedOwner: EntityPreviewOwner | undefined =
-    owner ??
-    (callbacks?.engagement?.authorUsername
+    owner
+      ? { ...owner, sourceOrigin: owner.sourceOrigin ?? rowSourceOrigin }
+      : callbacks?.engagement?.authorUsername
       ? {
           authorId: callbacks.engagement.authorId,
           authorUsername: callbacks.engagement.authorUsername,
@@ -443,8 +456,29 @@ export function EntityPreview({
             callbacks.engagement.authorId ===
               callbacks.engagement.currentUserInternalId,
           profileHref: `/u/${callbacks.engagement.authorUsername}`,
+          sourceOrigin: rowSourceOrigin,
         }
-      : undefined);
+      : callbacks?.engagement // engagement exists but no author username
+      ? {
+          authorId: null,
+          authorUsername: null,
+          authorDisplayName: null,
+          authorAvatarUrl: null,
+          isOwner: false,
+          profileHref: null,
+          sourceOrigin: rowSourceOrigin,
+        }
+      : rowSourceOrigin
+      ? {
+          authorId: null,
+          authorUsername: null,
+          authorDisplayName: null,
+          authorAvatarUrl: null,
+          isOwner: false,
+          profileHref: null,
+          sourceOrigin: rowSourceOrigin,
+        }
+      : undefined;
 
   const footer =
     variant === "build"
@@ -539,14 +573,28 @@ function OwnerBar({ owner }: { owner: NonNullable<EntityPreviewProps["owner"]> }
     </>
   );
   return (
-    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+    // Phase 9 round-3: `pt-2` adds a touch of breathing room above the
+    // owner row so it doesn't visually hug the body content (user:
+    // 'User is good just a bit of more padding top'). When sourceOrigin
+    // is set, a small "Source: <origin>" pill renders on the right so
+    // the user can see which world/book the entity comes from at a
+    // glance — same data as the build-edit "Source origin" field.
+    <div className="flex items-center justify-between gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
       {profileHref ? (
         <a href={profileHref} className="flex items-center gap-2 hover:underline">
           {inner}
         </a>
       ) : (
-        inner
+        <div className="flex items-center gap-2">{inner}</div>
       )}
+      {owner.sourceOrigin ? (
+        <span
+          className="truncate rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-secondary-foreground"
+          title={owner.sourceOrigin}
+        >
+          Source: {owner.sourceOrigin}
+        </span>
+      ) : null}
     </div>
   );
 }

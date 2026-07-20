@@ -197,22 +197,32 @@ function ModalStackRenderer() {
           );
         }
 
-        // Mobile / tablet: full-screen overlay with dimming backdrop and
-        // click-to-close on the top modal.
+        // Mobile / tablet: full-viewport modal with explicit top inset so
+        // the modal always sits at the same height regardless of body
+        // scroll. Phase 9 round-3: user-reported that the previous
+        // `items-end` + `max-h-[90dvh]` modal appeared to 'scroll up' when
+        // the page scrolled, and the sticky header wasn't always visible.
+        // Solution: pin to all four edges (`inset-y-0`) so the modal fills
+        // the viewport from a top safe-area to the bottom edge. The
+        // close button + header are always reachable because they're at
+        // the top of the modal.
         return (
           <div
             key={entry.key}
             role="dialog"
             aria-modal="true"
             aria-label={entry.label}
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
+            className="fixed inset-0 z-50 flex justify-center bg-black/60 sm:items-center sm:p-4"
             style={{ zIndex: z }}
             onClick={isTop ? (e) => { if (e.target === e.currentTarget) pop(); } : undefined}
           >
             <div
               className={cn(
                 "relative flex w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-card shadow-2xl sm:rounded-2xl",
-                "max-h-[95vh]",
+                // Mobile: explicit top + bottom positioning so the modal
+                // never moves with body scroll. sm+: cap height with dvh
+                // and center vertically via the parent's `items-center`.
+                "inset-x-0 bottom-0 top-2 sm:inset-auto sm:max-h-[90dvh]",
                 !isTop && "max-w-md",
               )}
               onClick={(e) => e.stopPropagation()}
@@ -257,18 +267,14 @@ function renderModalBody(
           scroll container so it pins when content scrolls under it. */}
       <div className="min-h-0 flex-1 overflow-y-auto text-sm">
         <header className="sticky top-0 z-20 flex h-10 items-center justify-between gap-2 border-b border-border bg-card px-4">
+          {/* Phase 9 round-3: header now shows only the CATEGORY (uppercase
+              muted). The entity name is rendered inside the body (above
+              the type chips) so the user sees "PRIMITIVE" in the header
+              and "Domain of Storm" prominently in the preview body. */}
           <div className="flex min-w-0 flex-1 items-center gap-2">
             {entry.category ? (
               <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {entry.category}
-              </span>
-            ) : null}
-            {entry.category && entry.label ? (
-              <span className="shrink-0 text-xs text-muted-foreground">·</span>
-            ) : null}
-            {entry.label ? (
-              <span className="truncate text-sm font-semibold text-foreground">
-                {entry.label}
               </span>
             ) : null}
           </div>
@@ -320,6 +326,17 @@ function renderModalBody(
           )}
         </header>
         <div className="p-4">
+          {/* Phase 9 round-3: entity name rendered INSIDE the body
+              (above the type chips + meta), not in the modal header.
+              User-feedback: 'the name is in the header (where close
+              button is) not the body of preview like I asked... Just
+              about "domain" for example from pictures'. The header
+              keeps just the category + close button. */}
+          {entry.label ? (
+            <h2 className="mb-3 text-lg font-semibold text-foreground">
+              {entry.label}
+            </h2>
+          ) : null}
           {entry.content}
         </div>
       </div>
