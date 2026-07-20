@@ -1489,7 +1489,12 @@ function AtelierTabBar({
             aria-selected={active}
             onClick={() => onSwitch(tab.key)}
             className={
-              "flex items-center justify-center gap-1.5 border-t-2 px-2.5 py-2.5 text-sm font-medium transition-all " +
+              // Open tab fills 50% (flex-1) so the active label is readable;
+              // collapsed tabs sit at a fixed 25% width each — same split the
+              // user requested ("open tab 50%, the other tabs equally in the
+              // other half"). Without the explicit basis the collapsed tabs
+              // collapsed to icon-only width which made the labels invisible.
+              "flex basis-1/4 items-center justify-center gap-1.5 border-t-2 px-2.5 py-2.5 text-sm font-medium transition-all " +
               (active
                 ? "flex-1 border-primary bg-primary/5 text-primary"
                 : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground")

@@ -920,7 +920,7 @@ async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
   });
 }
 
-async function resolveAuthorMap(
+export async function resolveAuthorMap(
   clerkUserIds: (string | null)[],
 ): Promise<
   Map<

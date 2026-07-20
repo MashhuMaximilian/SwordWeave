@@ -32,7 +32,11 @@ import {
   heritageToLibraryItem,
 } from "@/components/sandbox/sandbox-row-mapper";
 import { resolveAuthorByClerkId } from "@/lib/auth/author-resolver";
-import { listPrimitiveCategories, type LibraryItem } from "@/lib/publishing/library-query";
+import {
+  listPrimitiveCategories,
+  resolveAuthorMap,
+  type LibraryItem,
+} from "@/lib/publishing/library-query";
 import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
 import {
   resolveEngagementMap,
@@ -283,6 +287,56 @@ export default async function AtelierSandboxPage({
     ...(effectRows as never[]).map((r) => effectToLibraryItem(r)),
     ...(capabilityRows as never[]).map((r) => capabilityToLibraryItem(r)),
   ];
+
+  // Resolve authors so every preview can show a creator tag (the
+  // *ToLibraryItem mappers above fill EMPTY_AUTHORS — they operate on raw
+  // rows that don't carry the joined user record). User-reported (Phase 9
+  // review): no "by @username" was visible in the atelier preview modal
+  // because every author field was null.
+  type RowWithUserId = { id: string | number; userId?: string | null };
+  const userIdByRowKey = new Map<string, string | null>();
+  const addRows = (rows: unknown[], targetType: string) => {
+    for (const r of rows as RowWithUserId[]) {
+      const compositeId = `${targetType}:${String(r.id)}`;
+      userIdByRowKey.set(compositeId, r.userId ?? null);
+    }
+  };
+  addRows(heritageRows, "HERITAGE");
+  addRows(itemRows, "ITEM");
+  addRows(primitiveRows, "PRIMITIVE");
+  addRows(effectRows, "EFFECT");
+  addRows(capabilityRows, "CAPABILITY");
+
+  const allUserIds = Array.from(userIdByRowKey.values());
+  const authorMap = await resolveAuthorMap(allUserIds).catch(
+    () =>
+      new Map<
+        string,
+        { username: string; displayName: string | null; avatarUrl: string | null }
+      >(),
+  );
+
+  // Map LibraryTargetType values used here to the composite-id prefix used
+  // by the LibraryItem.id field. (Items use ITEM, heritage uses HERITAGE.)
+  const targetPrefix: Record<string, string> = {
+    PRIMITIVE: "PRIMITIVE",
+    EFFECT: "EFFECT",
+    CAPABILITY: "CAPABILITY",
+    HERITAGE: "HERITAGE",
+    ITEM: "ITEM",
+  };
+
+  for (const item of baseItems) {
+    const prefix = targetPrefix[item.targetType] ?? item.targetType;
+    const rowUserId = userIdByRowKey.get(`${prefix}:${item.targetId}`);
+    if (!rowUserId) continue;
+    const author = authorMap.get(rowUserId);
+    if (!author) continue;
+    item.authorId = rowUserId;
+    item.authorUsername = author.username;
+    item.authorDisplayName = author.displayName;
+    item.authorAvatarUrl = author.avatarUrl;
+  }
 
   const engagementMapPromise = (async () => {
     try {

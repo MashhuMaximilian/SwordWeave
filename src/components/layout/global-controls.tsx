@@ -481,9 +481,10 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         // (default gap) + 48px (tab bar visible height) + ~16px extra
         // buffer so the FAB also clears any half-collapsed sidebar
         // chrome (user-reported: FAB was sitting on top of the
-        // collapsed Codex/Preview strip — bump high enough to clear
-        // the tab strip + a comfortable margin).
-        bottomOffset={isSandboxRoute ? 128 : 16}
+        // collapsed Codex/Preview strip + the bottom tab bar — bump
+        // well above the tab strip and add a generous margin so it
+        // also clears the last list row on mobile).
+        bottomOffset={isSandboxRoute ? 160 : 16}
       />
       <RightFilterPanel />
       {isMobile ? <BuildPreviewDrawer /> : null}
