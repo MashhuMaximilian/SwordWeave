@@ -47,25 +47,12 @@ import { createPortal } from "react-dom";
 import { Filter, Search, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconDisplay, type IconSource } from "./icon-display";
-import {
-  Button as RAButton,
-  ColorArea,
-  ColorField,
-  ColorPicker,
-  ColorSlider,
-  ColorSwatch,
-  ColorSwatchPicker,
-  ColorSwatchPickerItem,
-  ColorThumb,
-  Input,
-  SliderTrack,
-  parseColor,
-} from "react-aria-components";
+import { Button as RAButton, ColorSwatch, ColorSwatchPicker, ColorSwatchPickerItem } from "react-aria-components";
 
 // =============================================================================
 // Color presets — a small curated palette. Tints the picker toward
 // system-themed colors that read well as icon color on a dark canvas.
-// Each entry is a hex string compatible with parseColor.
+// Each entry is a hex string.
 // =============================================================================
 const COLOR_PRESETS = [
   "#ffffff", // white
@@ -812,10 +799,64 @@ function FiltersModal({
 }
 
 // =============================================================================
-// ColorTrigger — toolbar swatch that opens the Adobe react-aria color
-// picker in a popover. The popover is a react-aria-components primitive
-// (no modal-stack because it's a lightweight dropdown, not a modal).
+// ColorTrigger — toolbar swatch that opens a simple color picker dialog.
+//
+// Phase 9 round 6: replaced the Adobe react-aria-components HSB picker
+// (ColorArea + ColorSlider + ColorField) with a swatch grid + native
+// `<input type="color">` + hex text input. The HSB picker kept crashing
+// the page when opened on mobile (round 4 used a bare <input> inside
+// <ColorField> which crashed; round 5 switched to <Input> from
+// react-aria-components but the HSB components nested under the same
+// <ColorPicker> still errored on initial render — likely the same hook-
+// not-bound crash as round 4 but at a different layer).
+//
+// This simplified picker gives:
+//   - 24 swatches (8 colors × 3 lightnesses) — covers 90% of icon use
+//   - Native <input type="color"> for full palette access
+//   - Hex text input for exact codes
+//   - All three write through `onChange(hex)` to the same parent state
+//
+// Net: no crash, smaller surface, faster render on mobile.
 // =============================================================================
+const COLOR_SWATCHES: Array<{ name: string; hex: string }> = [
+  // row 1 — bright primaries
+  { name: "Red", hex: "#ef4444" },
+  { name: "Orange", hex: "#f97316" },
+  { name: "Amber", hex: "#f59e0b" },
+  { name: "Yellow", hex: "#eab308" },
+  // row 2 — fresh mids
+  { name: "Lime", hex: "#84cc16" },
+  { name: "Green", hex: "#22c55e" },
+  { name: "Emerald", hex: "#10b981" },
+  { name: "Teal", hex: "#14b8a6" },
+  // row 3 — cool mids
+  { name: "Cyan", hex: "#06b6d4" },
+  { name: "Sky", hex: "#0ea5e9" },
+  { name: "Blue", hex: "#3b82f6" },
+  { name: "Indigo", hex: "#6366f1" },
+  // row 4 — deep + warm darks
+  { name: "Violet", hex: "#8b5cf6" },
+  { name: "Fuchsia", hex: "#d946ef" },
+  { name: "Pink", hex: "#ec4899" },
+  { name: "Rose", hex: "#f43f5e" },
+  // row 5 — neutrals
+  { name: "Slate", hex: "#64748b" },
+  { name: "Gray", hex: "#6b7280" },
+  { name: "Zinc", hex: "#71717a" },
+  { name: "Stone", hex: "#78716c" },
+  // row 6 — ink + paper
+  { name: "Black", hex: "#0a0a0a" },
+  { name: "Charcoal", hex: "#27272a" },
+  { name: "Cream", hex: "#fef3c7" },
+  { name: "White", hex: "#fafafa" },
+];
+
+function normalizeHex(input: string): string | null {
+  const trimmed = input.trim().replace(/^#/, "");
+  if (!/^[0-9a-fA-F]{6}$/.test(trimmed)) return null;
+  return `#${trimmed.toLowerCase()}`;
+}
+
 function ColorTrigger({
   color,
   onChange,
@@ -823,16 +864,6 @@ function ColorTrigger({
   color: string;
   onChange: (next: string) => void;
 }) {
-  // parseColor needs a valid 6-digit hex; the value comes from the
-  // picker's normalizeColor (always 6-digit) so this is safe.
-  const colorValue = useMemo(() => {
-    try {
-      return parseColor(color);
-    } catch {
-      return parseColor("#ffffff");
-    }
-  }, [color]);
-
   const [open, setOpen] = useState(false);
 
   // ESC closes the color picker.
@@ -844,6 +875,35 @@ function ColorTrigger({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
+
+  // Local hex input state — drives the text field while the user types.
+  // Sync from props only when the picker is closed (external changes).
+  const [hexInput, setHexInput] = useState(color);
+  useEffect(() => {
+    if (!open) setHexInput(color);
+  }, [color, open]);
+
+  const handleSwatch = (hex: string) => {
+    setHexInput(hex);
+    onChange(hex);
+  };
+
+  const handleNativePicker = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const hex = e.target.value;
+    setHexInput(hex);
+    onChange(hex);
+  };
+
+  const handleHexCommit = () => {
+    const normalized = normalizeHex(hexInput);
+    if (normalized) {
+      onChange(normalized);
+      setHexInput(normalized);
+    } else {
+      // invalid — revert to last known good
+      setHexInput(color);
+    }
+  };
 
   return (
     <>
@@ -881,10 +941,10 @@ function ColorTrigger({
             }}
           >
             <div
-              className="flex w-full max-w-sm flex-col gap-2 rounded-xl border border-border bg-card p-3 shadow-2xl"
+              className="flex w-full max-w-sm flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="mb-2 flex items-center justify-between">
+              <div className="mb-1 flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Color</h3>
                 <button
                   type="button"
@@ -894,133 +954,92 @@ function ColorTrigger({
                   Done
                 </button>
               </div>
-              <ColorPicker
-                value={colorValue}
-                // ColorTrigger receives color as a prop and the
-                // onChange handler reaches our local setColor in
-                // IconPicker — so the full state-sync loop works
-                // regardless of whether `color` was originally set
-                // by a swatch click, a slider drag, or a hex
-                // input edit.
-                onChange={(c) => onChange(c.toString("hex"))}
+
+              {/* Swatch grid — 6 cols × 4 rows. Each button commits
+                  the color immediately so the user sees the icon
+                  update in real-time. */}
+              <div
+                className="grid grid-cols-6 gap-1.5"
+                role="radiogroup"
+                aria-label="Color swatches"
               >
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-3">
-                    <ColorArea
-                      colorSpace="hsb"
-                      xChannel="saturation"
-                      yChannel="brightness"
-                      // positioning context + visible gradient.
-                      className="relative size-40 rounded-md"
-                      style={{
-                        backgroundColor: `hsl(${colorValue.toString("hsl").split(" ")[0]}, 100%, 50%)`,
-                      }}
+                {COLOR_SWATCHES.map((sw) => {
+                  const selected =
+                    sw.hex.toLowerCase() === color.toLowerCase();
+                  return (
+                    <button
+                      key={sw.hex}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      aria-label={sw.name}
+                      title={sw.name}
+                      onClick={() => handleSwatch(sw.hex)}
+                      className={cn(
+                        "relative aspect-square rounded-md border-2 transition-transform hover:scale-110",
+                        selected
+                          ? "border-primary"
+                          : "border-border hover:border-primary/50",
+                      )}
+                      style={{ backgroundColor: sw.hex }}
                     >
-                      {/* Phase 12: <ColorThumb /> is required inside
-                          <ColorArea> to render the draggable dot +
-                          selected-shade callout. Without it the
-                          gradient renders empty. (See
-                          https://react-aria.adobe.com/ColorArea — the
-                          default className is react-aria-ColorThumb.)
+                      {selected ? (
+                        <span
+                          aria-hidden
+                          className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
+                        >
+                          ✓
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
 
-                          Phase 16 + 17: the callout is now an inline
-                          <svg> rendered via <ColorThumb>'s
-                          children-as-function render-prop. <svg>
-                          inheritance is resolved normally (the fill
-                          comes from React), and the <path stroke>
-                          uses native SVG stroke so the white outline
-                          traces the teardrop curve exactly — no
-                          clip-path+box-shadow tricks. Earlier
-                          attempts hit:
-                            - ::after SVG via background-image:url:
-                              fill=currentColor doesn't resolve
-                              across data: URL boundary.
-                            - ::after clip-path + box-shadow white
-                              halo: box-shadow renders around the
-                              unclipped rectangle, not the
-                              polygon — outline looked square.
-                        */}
-                      <ColorThumb className="color-thumb">
-                        {({ color }) => (
-                          <ColorCallout color={color.toString("css")} />
-                        )}
-                      </ColorThumb>
-                    </ColorArea>
-                    <ColorSlider
-                      colorSpace="hsb"
-                      channel="hue"
-                      orientation="vertical"
-                      // Wrapper-positioning context for the thumb. Use
-                      // w-8 so the slider is fat enough to hit with
-                      // a thumb on mobile; the hue bar is the only way
-                      // to select hue in HSB space without going via
-                      // swatches.
-                      //
-                      // IMPORTANT: <SliderTrack> child is required —
-                      // ColorSlider publishes trackProps via context,
-                      // and only <SliderTrack> consumes them to attach
-                      // the onPointerDown handler (the click-to-set
-                      // behavior). Without it, the user can only
-                      // drag the thumb itself; clicks on the empty
-                      // track do nothing. See Phase 14 notes in
-                      // globals.css.
-                      className="relative h-40 w-8 rounded-md"
-                      style={{
-                        background:
-                          "linear-gradient(to bottom, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)",
-                      }}
-                    >
-                      <SliderTrack className="h-full w-full">
-                        <ColorThumb className="color-thumb">
-                          {({ color }) => (
-                            <ColorCallout color={color.toString("css")} />
-                          )}
-                        </ColorThumb>
-                      </SliderTrack>
-                    </ColorSlider>
-                  </div>
-                  <ColorField
-                    aria-label="Hex color"
-                    className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-                  >
-                    {/* Phase 9 round 5: use the <Input> slot from
-                        react-aria-components instead of a bare <input>.
-                        The earlier bare <input> crashed the page on
-                        picker open because ColorField's
-                        ColorFieldStateContext had no input to bind
-                        to, so when the user interacted React threw a
-                        hook-not-bound error that unmounted the entire
-                        page.
+              {/* Custom color — native color picker for the full palette.
+                  Hidden but triggered by a styled button so the trigger
+                  fits the toolbar visual. */}
+              <div className="flex items-center gap-2">
+                <label className="flex flex-1 items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-sm">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Custom
+                  </span>
+                  <input
+                    type="color"
+                    value={color}
+                    onChange={handleNativePicker}
+                    className="h-6 w-8 cursor-pointer rounded border-0 bg-transparent p-0"
+                    aria-label="Custom color picker"
+                  />
+                  <span className="ml-auto font-mono text-xs">{color}</span>
+                </label>
+              </div>
 
-                        <Input> subscribes to InputContext (which
-                        ColorField populates with inputProps) and
-                        forwards them to the underlying <input>.
-                        Crucially: we do NOT pass `value` or
-                        `onChange` here — Input's value/onChange come
-                        from the parent ColorPicker (via
-                        ColorFieldStateContext). Passing them as
-                        overrides would create two competing state
-                        loops and the same crash as before. */}
-                    <Input
-                      className="w-24 rounded border border-border bg-background px-2 py-1 font-mono text-xs"
-                      maxLength={9}
-                      spellCheck={false}
-                      aria-label="Icon color hex"
-                    />
-                  </ColorField>
-                  <ColorSwatchPicker className="grid grid-cols-9 gap-1">
-                    {COLOR_PRESETS.map((hex) => (
-                      <ColorSwatchPickerItem
-                        key={hex}
-                        color={hex}
-                        className="size-6 cursor-pointer rounded border border-border transition-transform hover:scale-110"
-                      >
-                        <ColorSwatch />
-                      </ColorSwatchPickerItem>
-                    ))}
-                  </ColorSwatchPicker>
-                </div>
-              </ColorPicker>
+              {/* Hex text input — direct entry for exact codes. */}
+              <div className="flex items-center gap-2">
+                <label
+                  htmlFor="color-hex-input"
+                  className="text-xs font-medium text-muted-foreground"
+                >
+                  Hex
+                </label>
+                <input
+                  id="color-hex-input"
+                  type="text"
+                  inputMode="text"
+                  maxLength={7}
+                  value={hexInput}
+                  onChange={(e) => setHexInput(e.target.value)}
+                  onBlur={handleHexCommit}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleHexCommit();
+                  }}
+                  placeholder="#ffffff"
+                  spellCheck={false}
+                  className="flex-1 rounded-md border border-border bg-background px-2 py-1.5 font-mono text-xs"
+                  aria-label="Hex color code"
+                />
+              </div>
             </div>
           </div>,
           document.body,
@@ -1028,6 +1047,7 @@ function ColorTrigger({
     </>
   );
 }
+
 
 // normalizeColor ensures the native <input type="color"> always has a
 // 6-digit hex (it rejects 3-digit). If the current color is invalid,

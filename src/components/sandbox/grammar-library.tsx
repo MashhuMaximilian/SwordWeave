@@ -684,22 +684,36 @@ function SandboxPreviewBody({
   const visibility = (libraryItem?.visibility ?? "PRIVATE") as Visibility;
   const canDelete = visibility === "PRIVATE";
   const compositeId = libraryCompositeId(item);
-  // Phase 9 follow-up: mask admin authors to "by System" via the
-  // unified helper. We pull the resolved username + displayName
-  // through authorDisplayUsername / authorDisplayName so a Clerk
-  // admin's fork renders as "by System" instead of "@xeun".
+  // Phase 9 round 5: mask admin authors + legacy system rows via
+  // the unified helper. The helper now also fires on sourceOrigin
+  // === "system" (legacy stock corpus with dirty user_ids).
+  //
+  // CRITICAL: do NOT fall back to `currentUser?.username` here.
+  // That fallback was overriding the admin/system mask — for a
+  // legacy stock row with no resolved author, the helper returns
+  // null (correctly), but then the caller would re-fill it with
+  // the logged-in user's handle, so the preview rendered "by
+  // @mashu" instead of "by System". The logged-in user is the
+  // EDITOR, not necessarily the AUTHOR — those are different
+  // identities. Only fall back to currentUser when the user is
+  // actually the owner AND we have positive proof of that, which
+  // the isOwner flag below already encodes.
   const ownerUsername = authorDisplayUsername({
     authorUsername:
       libraryItem?.authorUsername ??
       engagement?.authorUsername ??
-      currentUser?.username ??
       null,
     authorIsAdmin: libraryItem?.authorIsAdmin ?? engagement?.authorIsAdmin ?? null,
+    sourceOrigin: libraryItem?.sourceOrigin ?? null,
   });
   const ownerDisplayName = authorDisplayName({
-    authorUsername: ownerUsername,
-    authorDisplayName: libraryItem?.authorDisplayName ?? currentUser?.displayName ?? null,
+    authorUsername:
+      libraryItem?.authorUsername ??
+      engagement?.authorUsername ??
+      null,
+    authorDisplayName: libraryItem?.authorDisplayName ?? null,
     authorIsAdmin: libraryItem?.authorIsAdmin ?? engagement?.authorIsAdmin ?? null,
+    sourceOrigin: libraryItem?.sourceOrigin ?? null,
   });
   const owner: EntityPreviewOwner | undefined = ownerUsername
     ? {
