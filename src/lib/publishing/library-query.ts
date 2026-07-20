@@ -750,11 +750,13 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
 
   const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
 
-  // Map template kinds → composite IDs for engagement lookup
+  // Map template kinds → composite IDs for engagement lookup.
+  // (Post-heritage-rename: keys must match the new LINEAGE/UPBRINGING/MANIFEST
+  // enum values, not the old RACE/BACKGROUND/ARCHETYPE.)
   const targetTypeByKind: Record<string, LibraryTargetType> = {
-    RACE: "LINEAGE_TEMPLATE",
-    BACKGROUND: "UPBRINGING_TEMPLATE",
-    ARCHETYPE: "MANIFEST_TEMPLATE",
+    LINEAGE: "LINEAGE_TEMPLATE",
+    UPBRINGING: "UPBRINGING_TEMPLATE",
+    MANIFEST: "MANIFEST_TEMPLATE",
   };
   const engagementMap = await resolveEngagementMap(
     rows.map((r) => `${targetTypeByKind[r.kind] ?? "LINEAGE_TEMPLATE"}:${r.id}`),

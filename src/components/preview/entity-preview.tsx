@@ -486,6 +486,28 @@ export function EntityPreview({
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         {resolvedOwner ? <OwnerBar owner={resolvedOwner} /> : null}
         {body}
+        {/* Bottom-of-body creator line (moved out of per-Body components
+            so it has access to `callbacks.engagement` — the only place
+            we know the Clerk user-id → username mapping). When the row
+            was authored by a Clerk user, render the username as a
+            profile link; for system / fork / unknown origins, render a
+            small italic tag with the raw origin. User-reported (Phase 9
+            review): the legacy "Source: user:user_xxx" line was
+            unreadable and not navigable. */}
+        {callbacks?.engagement?.authorUsername ? (
+          <p className="mt-4 text-xs text-muted-foreground">
+            By{" "}
+            <a
+              href={`/u/${callbacks.engagement.authorUsername}`}
+              className="font-semibold text-foreground hover:underline"
+            >
+              @{callbacks.engagement.authorUsername}
+            </a>
+            <span className="ml-2 text-[10px] uppercase tracking-wide">
+              (creator)
+            </span>
+          </p>
+        ) : null}
       </div>
       {footer}
     </div>
@@ -618,7 +640,6 @@ function PrimitiveBody({
         iconUrl={row.iconUrl}
         iconColor={row.iconColor}
         label={row.category}
-        name={row.name}
         chips={
           <>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{row.buCost} BU</span>
@@ -640,11 +661,6 @@ function PrimitiveBody({
             ))}
           </div>
         </Section>
-      ) : null}
-      {row.sourceOrigin ? (
-        <p className="-mt-2 text-xs font-medium italic text-muted-foreground">
-          Source: {row.sourceOrigin}
-        </p>
       ) : null}
       {row.mechanicalOutputText ? (
         <Section heading="Mechanical output">
@@ -687,7 +703,6 @@ function EffectBody({
         iconUrl={row.iconUrl}
         iconColor={row.iconColor}
         label="Effect"
-        name={row.name}
         chips={
           <>
             <span className="rounded-full bg-primary/15 px-2.5 py-0.5 font-mono font-semibold text-primary">{totalBu} BU</span>
@@ -744,7 +759,6 @@ function CapabilityBody({
         iconUrl={row.iconUrl}
         iconColor={row.iconColor}
         label={`${row.type} · ${row.sourceType}`}
-        name={row.name}
         chips={
           <>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{totalBu} BU</span>
@@ -817,7 +831,6 @@ function TemplateBody({
         iconUrl={row.iconUrl}
         iconColor={row.iconColor}
         label={row.kind}
-        name={row.name}
         chips={
           <>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{primitiveBu} BU</span>
@@ -876,7 +889,6 @@ function ItemBody({
         iconUrl={row.iconUrl}
         iconColor={row.iconColor}
         label={row.itemType}
-        name={row.name}
         chips={
           <>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{totalBu} BU</span>
@@ -948,7 +960,6 @@ function Header({
   iconUrl,
   iconColor,
   label,
-  name,
   chips,
 }: {
   fallback: string;
@@ -957,19 +968,17 @@ function Header({
   iconUrl: string | null;
   iconColor: string;
   label: string;
-  name: string;
   chips: ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex items-center gap-2">
       <IconTile
         row={{ iconSource, iconKey, iconUrl, iconColor, fallback }}
       />
       <div className="flex flex-1 flex-wrap items-center gap-2 text-xs">
-        <span className="w-full text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
           {label}
         </span>
-        <span className="text-sm font-semibold leading-tight">{name}</span>
         <span className="flex flex-wrap items-center gap-2">{chips}</span>
       </div>
     </div>

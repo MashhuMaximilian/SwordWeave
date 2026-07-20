@@ -477,12 +477,15 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         // is fixed to the viewport bottom. The default FAB bottom
         // offset (16px) puts the FAB ON TOP of the tab bar's
         // labels — the "Capability" tab is unreadable. Lift the FAB
-        // above the tab bar so the two don't collide. 64px = 16px
-        // (default gap) + 48px (tab bar visible height).
-        bottomOffset={isSandboxRoute ? 64 : 16}
+        // above the tab bar so the two don't collide. 80px = 16px
+        // (default gap) + 48px (tab bar visible height) + ~16px extra
+        // buffer so the FAB also clears any half-collapsed sidebar
+        // chrome (user-reported: FAB was sitting on top of the
+        // collapsed Codex/Preview strip).
+        bottomOffset={isSandboxRoute ? 80 : 16}
       />
       <RightFilterPanel />
-      <BuildPreviewDrawer />
+      {isMobile ? <BuildPreviewDrawer /> : null}
     </Ctx.Provider>
   );
 }
