@@ -31,6 +31,7 @@ import {
   primitiveToLibraryItem,
   templateToLibraryItem,
 } from "@/components/sandbox/sandbox-row-mapper";
+import { resolveAuthorByClerkId } from "@/lib/auth/author-resolver";
 import { listPrimitiveCategories, type LibraryItem } from "@/lib/publishing/library-query";
 import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
 import {
@@ -336,6 +337,21 @@ export default async function AtelierSandboxPage({
 
   const libraryItems: LibraryItem[] = enrichItemsWithEngagement(baseItems, engagementMap);
   const currentUserInternalId = sandboxViewerId;
+
+  // Resolve the current user's profile so fork previews (which aren't in
+  // libraryItems and carry no author info) can still show the creator
+  // (the forker = current user) with username + avatar + profile link.
+  let currentUser: { username: string; displayName: string | null; avatarUrl: string | null } | null = null;
+  if (sandboxViewerId) {
+    const author = await resolveAuthorByClerkId(sandboxViewerId);
+    if (author) {
+      currentUser = {
+        username: author.username,
+        displayName: author.displayName,
+        avatarUrl: author.avatarUrl,
+      };
+    }
+  }
 
   return (
     <AtelierSandboxClient
@@ -649,6 +665,7 @@ export default async function AtelierSandboxPage({
       primitiveCategories={primitiveCategories}
       engagement={engagement}
       currentUserInternalId={currentUserInternalId}
+      currentUser={currentUser}
       versionMap={Object.fromEntries(versionMap)}
     />
   );

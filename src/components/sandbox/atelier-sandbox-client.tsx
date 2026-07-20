@@ -270,15 +270,16 @@ export function AtelierSandboxClient({
   primitiveCategories,
   engagement,
   currentUserInternalId,
+  currentUser,
   versionMap,
 }: {
   initialBuild: AtelierTab;
   initialKind?: "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined;
   initialEditing: EditingState;
-  initialIntent?: SaveIntent;
-  initialSourceId?: string | null;
-  initialMechanicsKind?: "primitive" | "effect" | "capability";
-  dataLoadFailed?: boolean;
+  initialIntent?: SaveIntent | undefined;
+  initialSourceId?: string | null | undefined;
+  initialMechanicsKind?: "primitive" | "effect" | "capability" | undefined;
+  dataLoadFailed?: boolean | undefined;
   primitives: PrimitiveRow[];
   effects: EffectRow[];
   capabilities: CapabilityRow[];
@@ -290,7 +291,8 @@ export function AtelierSandboxClient({
   primitiveCategories: Array<{ value: string; label: string; count: number }>;
   engagement: { reactions: Record<string, "LIKE" | "DISLIKE" | null>; following: Record<string, boolean> };
   currentUserInternalId: string | null;
-  versionMap?: Record<string, number>;
+  currentUser: { username: string; displayName: string | null; avatarUrl: string | null } | null;
+  versionMap?: Record<string, number> | undefined;
 }) {
   const [build, setBuild] = useState<AtelierTab>(initialBuild);
   const [editing, setEditing] = useState<EditingState>(initialEditing);
@@ -1167,6 +1169,7 @@ export function AtelierSandboxClient({
           primitiveCategories={primitiveCategories}
           engagement={engagement}
           currentUserInternalId={currentUserInternalId}
+          currentUser={currentUser}
           versionMap={versionMap}
           editingKey={editingKey}
           onSelect={(entityType, id) =>
@@ -1200,6 +1203,7 @@ export function AtelierSandboxClient({
         primitiveCategories={primitiveCategories}
         engagement={engagement}
         currentUserInternalId={currentUserInternalId}
+        currentUser={currentUser}
         editingKey={editingKey}
         onSelect={(entityType, id) =>
           guardedLibrarySelect(entityType as AtelierEntityKind, id)

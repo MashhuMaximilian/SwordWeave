@@ -31,6 +31,7 @@ import {
   type SandboxPrimitiveRow,
   type SandboxEffectRow,
   type SandboxCapabilityRow,
+  type PreviewSubLink,
 } from "@/components/library/library-item-preview";
 import { EntityPreview, type PreviewActionProps, type EntityPreviewOwner } from "@/components/preview/entity-preview";
 import { type Visibility } from "@/components/library/visibility-select";
@@ -75,6 +76,8 @@ interface GrammarLibraryProps {
    * own content + show follow buttons. `null` when signed out.
    */
   currentUserInternalId: string | null;
+  /** Current user's resolved profile — creator fallback for fork previews. */
+  currentUser: { username: string; displayName: string | null; avatarUrl: string | null } | null;
   editingKey: string | null;
   /** Latest published version numbers per entity. Keyed by "primitive:<id>" etc. */
   versionMap: Record<string, number> | undefined;
@@ -149,6 +152,7 @@ export function GrammarLibrary({
   primitiveCategories,
   engagement,
   currentUserInternalId,
+  currentUser,
   editingKey,
   versionMap,
   onSelect,
@@ -473,6 +477,7 @@ export function GrammarLibrary({
             }
             stack.clear();
           }}
+          currentUser={currentUser}
           onSubLinkClick={(link) => {
             // Look up the full row and push it onto the stack.
             if (link.targetType === "PRIMITIVE") {
@@ -592,17 +597,15 @@ function SandboxPreviewBody({
   onLoadIntoBuild,
   onSubLinkClick,
   onFork,
+  currentUser,
 }: {
   item: SandboxPreviewItem;
   libraryItem: LibraryItem | null;
   build: MechanicsBuildMode;
   onLoadIntoBuild: () => void;
-  onFork?: ((targetType: string, targetId: string) => void) | undefined;
-  onSubLinkClick?: (link: {
-    targetType: "PRIMITIVE" | "CAPABILITY" | "EFFECT" | "ITEM";
-    targetId: string;
-    label: string;
-  }) => void;
+  onSubLinkClick: (link: PreviewSubLink) => void;
+  onFork: ((targetType: string, targetId: string) => void) | undefined;
+  currentUser: { username: string; displayName: string | null; avatarUrl: string | null } | null;
 }) {
   // Pull openDrawer from the global controls so we can pop the build
   // preview after a slot/load — the user wants to see the build
@@ -677,13 +680,18 @@ function SandboxPreviewBody({
   const visibility = (libraryItem?.visibility ?? "PRIVATE") as Visibility;
   const canDelete = visibility === "PRIVATE";
   const compositeId = libraryCompositeId(item);
-  const ownerUsername = libraryItem?.authorUsername ?? engagement?.authorUsername ?? null;
+  const ownerUsername =
+    libraryItem?.authorUsername ??
+    engagement?.authorUsername ??
+    currentUser?.username ??
+    null;
   const owner: EntityPreviewOwner | undefined = ownerUsername
     ? {
         authorId: engagement?.authorId ?? libraryItem?.authorId ?? null,
         authorUsername: ownerUsername,
-        authorDisplayName: libraryItem?.authorDisplayName ?? null,
-        authorAvatarUrl: libraryItem?.authorAvatarUrl ?? null,
+        authorDisplayName:
+          libraryItem?.authorDisplayName ?? currentUser?.displayName ?? null,
+        authorAvatarUrl: libraryItem?.authorAvatarUrl ?? currentUser?.avatarUrl ?? null,
         isOwner,
         profileHref: `/u/${ownerUsername}`,
       }
@@ -739,11 +747,11 @@ function SandboxPreviewBody({
         item={item}
         variant="read"
         owner={owner}
-        {...(onSubLinkClick || engagement
+        {...(engagement
           ? {
               callbacks: {
-                ...(onSubLinkClick ? { onSubLinkClick } : {}),
-                ...(engagement ? { engagement } : {}),
+                onSubLinkClick,
+                engagement,
                 openSourceHref: `/library/item/${compositeId}`,
                 sandboxPath: "/atelier",
                 onFork,
@@ -751,6 +759,7 @@ function SandboxPreviewBody({
             }
           : {
               callbacks: {
+                onSubLinkClick,
                 openSourceHref: `/library/item/${compositeId}`,
                 sandboxPath: "/atelier",
                 onFork,

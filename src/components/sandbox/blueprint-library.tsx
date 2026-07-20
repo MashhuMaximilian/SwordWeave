@@ -28,13 +28,14 @@ import { useGlobalControls } from "@/components/layout/global-controls";
 import { useModalStack } from "@/components/ui/modal-stack";
 import {
   previewHeadingLabel,
-  type SandboxCapabilityRow,
   libraryCompositeId,
-  type SandboxEffectRow,
-  type SandboxItemRow,
   type SandboxPreviewItem,
   type SandboxPrimitiveRow,
+  type SandboxEffectRow,
+  type SandboxCapabilityRow,
   type SandboxTemplateRow,
+  type SandboxItemRow,
+  type PreviewSubLink,
 } from "@/components/library/library-item-preview";
 import { EntityPreview, type PreviewActionProps, type EntityPreviewOwner } from "@/components/preview/entity-preview";
 import { type Visibility } from "@/components/library/visibility-select";
@@ -80,6 +81,8 @@ interface BlueprintLibraryProps {
    * Current viewer's internal ID. `null` when signed out.
    */
   currentUserInternalId: string | null;
+  /** Current user's resolved profile — creator fallback for fork previews. */
+  currentUser: { username: string; displayName: string | null; avatarUrl: string | null } | null;
   editingKey: string | null;
   onSelect: (kind: "template" | "item", id: string) => void;
   /** Direct fork handler (Atelier). When set, the preview's Fork button
@@ -125,6 +128,7 @@ export function BlueprintLibrary({
   primitiveCategories,
   engagement,
   currentUserInternalId,
+  currentUser,
   editingKey,
   onSelect,
   onFork,
@@ -463,6 +467,7 @@ export function BlueprintLibrary({
             }
             stack.clear();
           }}
+          currentUser={currentUser}
           onFork={onFork}
           onSubLinkClick={(link) => {
             // Resolve the sub-entity to its full row and push a real
@@ -668,17 +673,15 @@ function BlueprintPreviewBody({
   onLoadIntoBuild,
   onSubLinkClick,
   onFork,
+  currentUser,
 }: {
   item: SandboxPreviewItem;
   libraryItem: LibraryItem | null;
   build: BlueprintBuildMode;
   onLoadIntoBuild: () => void;
-  onFork?: ((targetType: string, targetId: string) => void) | undefined;
-  onSubLinkClick?: (link: {
-    targetType: "PRIMITIVE" | "CAPABILITY" | "EFFECT" | "ITEM";
-    targetId: string;
-    label: string;
-  }) => void;
+  onSubLinkClick: (link: PreviewSubLink) => void;
+  onFork: ((targetType: string, targetId: string) => void) | undefined;
+  currentUser: { username: string; displayName: string | null; avatarUrl: string | null } | null;
 }) {
   // Pull openDrawer so slot/load actions can pop the build preview
   // drawer after they fire — the user wants to see the result of
@@ -749,13 +752,18 @@ function BlueprintPreviewBody({
   const visibility = (libraryItem?.visibility ?? "PRIVATE") as Visibility;
   const canDelete = visibility === "PRIVATE";
   const compositeId = libraryCompositeId(item);
-  const ownerUsername = libraryItem?.authorUsername ?? engagement?.authorUsername ?? null;
+  const ownerUsername =
+    libraryItem?.authorUsername ??
+    engagement?.authorUsername ??
+    currentUser?.username ??
+    null;
   const owner: EntityPreviewOwner | undefined = ownerUsername
     ? {
         authorId: engagement?.authorId ?? libraryItem?.authorId ?? null,
         authorUsername: ownerUsername,
-        authorDisplayName: libraryItem?.authorDisplayName ?? null,
-        authorAvatarUrl: libraryItem?.authorAvatarUrl ?? null,
+        authorDisplayName:
+          libraryItem?.authorDisplayName ?? currentUser?.displayName ?? null,
+        authorAvatarUrl: libraryItem?.authorAvatarUrl ?? currentUser?.avatarUrl ?? null,
         isOwner,
         profileHref: `/u/${ownerUsername}`,
       }
@@ -811,11 +819,11 @@ function BlueprintPreviewBody({
         item={item}
         variant="read"
         owner={owner}
-        {...(onSubLinkClick || engagement
+        {...(engagement
           ? {
               callbacks: {
-                ...(onSubLinkClick ? { onSubLinkClick } : {}),
-                ...(engagement ? { engagement } : {}),
+                onSubLinkClick,
+                engagement,
                 openSourceHref: `/library/item/${compositeId}`,
                 sandboxPath: "/atelier",
                 onFork,
@@ -823,6 +831,7 @@ function BlueprintPreviewBody({
             }
           : {
               callbacks: {
+                onSubLinkClick,
                 openSourceHref: `/library/item/${compositeId}`,
                 sandboxPath: "/atelier",
                 onFork,
