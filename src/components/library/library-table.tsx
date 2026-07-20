@@ -26,6 +26,10 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 import { IconDisplay } from "@/components/icons/icon-display";
 import { cn } from "@/lib/utils";
+import {
+  authorDisplayName,
+  authorDisplayUsername,
+} from "@/lib/publishing/author-display";
 import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-query";
 import type { LibraryView } from "@/lib/preferences/library-prefs";
 
@@ -245,8 +249,12 @@ function ListItem({
         <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
           <span>♥ {item.likesCount}</span>
           <span>★ {item.forkCount}</span>
-          {item.authorUsername && (
-            <span className="truncate">by {item.authorDisplayName ?? item.authorUsername}</span>
+          {authorDisplayUsername(item) && (
+            // Phase 9 follow-up: mask admin authors to "by System"
+            // via the unified helper. The condition also masks so
+            // admin authors don't show a stray "by System" while
+            // the link below shows nothing (consistent surfaces).
+            <span className="truncate">by {authorDisplayUsername(item) ?? "System"}</span>
           )}
         </div>
       </div>
@@ -367,9 +375,14 @@ function GridCard({
         </div>
       )}
 
-      {item.authorUsername && (
+      {authorDisplayUsername(item) && (
+        // Phase 9 follow-up: skip the entire author block when the
+        // row's author is a Clerk admin (render nothing — the
+        // OwnerBar / preview modal handles the "by System" case).
+        // Without this, an admin's personal fork would link to a
+        // profile page for an admin user — confusing UX.
         <Link
-          href={`/u/${item.authorUsername}`}
+          href={`/u/${authorDisplayUsername(item)}`}
           className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground"
         >
           {item.authorAvatarUrl ? (
@@ -384,7 +397,7 @@ function GridCard({
           <span className="truncate">
             by{" "}
             <span className="font-semibold">
-              {item.authorDisplayName ?? item.authorUsername}
+              {authorDisplayName(item) ?? authorDisplayUsername(item)}
             </span>
           </span>
         </Link>

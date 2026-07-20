@@ -57,6 +57,7 @@ import {
   ColorSwatchPicker,
   ColorSwatchPickerItem,
   ColorThumb,
+  Input,
   SliderTrack,
   parseColor,
 } from "react-aria-components";
@@ -982,7 +983,17 @@ function ColorTrigger({
                     aria-label="Hex color"
                     className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-sm"
                   >
-                    <input
+                    {/* Phase 9 follow-up: use the <Input> slot from
+                        react-aria-components instead of a bare <input>.
+                        A bare <input> inside <ColorField> doesn't bind
+                        to ColorFieldStateContext — ColorField ends up
+                        controlling a phantom input that doesn't exist,
+                        which crashes React on the first render after
+                        the picker opens (input refs and event handlers
+                        never wire up). <Input> consumes the slot props
+                        and binds them to the underlying <input>
+                        correctly. */}
+                    <Input
                       className="w-24 rounded border border-border bg-background px-2 py-1 font-mono text-xs"
                       maxLength={9}
                       value={color}

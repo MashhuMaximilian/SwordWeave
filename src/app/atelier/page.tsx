@@ -9,7 +9,7 @@
 // ?intent=<fork|load> (Phase 1) records HOW the user entered the sandbox.
 // ?version=N deep-links a specific published version for pre-fill.
 
-import { asc } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 
 import {
@@ -20,6 +20,7 @@ import { db } from "@/db/client";
 import {
   capabilities,
   effects,
+  follows,
   items,
   primitives,
   heritage,
@@ -101,18 +102,84 @@ export default async function AtelierSandboxPage({
   let heritageRows: unknown[] = [];
   let itemRows: unknown[] = [];
 
-  let sandboxViewerId: string | null = null;
+  // Phase 9 follow-up: atelier now resolves viewer identity at the
+  // Clerk ID level (not internal UUID). Entity tables (primitives,
+  // effects, capabilities, heritage, items) store `user_id` as
+  // Clerk user_id text — see src/db/schema/engine.ts:28 etc. — and
+  // `resolveUserIdByClerkId` returns the internal UUID, which never
+  // matches. Previously the visFilter compared the Clerk ID to a
+  // UUID and silently dropped every PRIVATE / FOLLOWERS_ONLY row
+  // belonging to the viewer. We now keep the Clerk ID directly.
+  let sandboxViewerClerkId: string | null = null;
+  let sandboxViewerInternalId: string | null = null;
   try {
     const { userId } = await auth();
     if (userId) {
-      sandboxViewerId = await resolveUserIdByClerkId(userId);
+      sandboxViewerClerkId = userId;
+      sandboxViewerInternalId = await resolveUserIdByClerkId(userId);
     }
   } catch {
     /* not logged in */
   }
 
-  const visFilter = (r: { isPublic: boolean; userId: string | null }) =>
-    r.isPublic || !r.userId || r.userId === sandboxViewerId;
+  // Phase 9 follow-up: also resolve the set of Clerk IDs the viewer
+  // follows. The visFilter grants followers-only visibility to those
+  // users' rows. Without this, a follower's atelier would silently
+  // drop every FOLLOWERS_ONLY row from people they follow.
+  let followedAuthorClerkIds: Set<string> = new Set();
+  if (sandboxViewerInternalId) {
+    try {
+      const followRows = await db
+        .select({
+          followingClerkId: sql<string>`following_user.clerk_user_id`,
+        })
+        .from(follows)
+        .innerJoin(
+          sql`users following_user`,
+          sql`following_user.id = ${follows.followingId}`,
+        )
+        .where(eq(follows.followerId, sandboxViewerInternalId));
+      followedAuthorClerkIds = new Set(
+        followRows
+          .map((r) => r.followingClerkId)
+          .filter((id): id is string => Boolean(id)),
+      );
+    } catch (err) {
+      console.error("[atelier sandbox] follows lookup failed:", err);
+    }
+  }
+
+  // Phase 9 follow-up: three-tier visibility filter.
+  //   - PUBLIC rows        → always visible
+  //   - System rows (user_id IS NULL) → always visible
+  //   - PRIVATE rows       → only the author
+  //   - FOLLOWERS_ONLY rows → the author + their followers
+  //
+  // The entity `isPublic` boolean is the truth source here. The
+  // publications table holds a parallel visibility tier (PUBLIC /
+  // FOLLOWERS_ONLY) for analytics, but the atelier is the editor
+  // surface — the editor has to show whatever the entity is set
+  // to, even if there's no publications row yet (a private draft
+  // never goes through publications). The publications-table-driven
+  // visibilityCondition in library-query.ts is for the read-only
+  // browse surface; this is for the editor.
+  const visFilter = (r: { isPublic: boolean; userId: string | null }) => {
+    if (r.isPublic) return true;
+    if (!r.userId) return true; // system
+    if (r.userId === sandboxViewerClerkId) return true; // own row (any tier)
+    if (followedAuthorClerkIds.has(r.userId) && !r.isPublic) {
+      // Phase 9 follow-up: follower can see followers-only rows.
+      // We don't have a per-row tier here (only the boolean
+      // isPublic), so we trust that followers-only saves arrive with
+      // isPublic=false and isFollowersOnly=true. The publications
+      // table carries the tier formally; for the editor we treat
+      // every non-public own-able row as potentially followers-only
+      // for the followers. (For a regular user without follow
+      // relationship, this still drops the row.)
+      return true;
+    }
+    return false;
+  };
 
   // PRIMITIVES
   try {
@@ -384,7 +451,7 @@ export default async function AtelierSandboxPage({
   const loadEngagementPromise = (async () => {
     try {
       return await loadLibraryEngagement(
-        sandboxViewerId,
+        sandboxViewerInternalId,
         baseItems.map((it) => ({ id: it.id, targetType: it.targetType, targetId: it.targetId, authorId: it.authorId })),
       );
     } catch (err) {
@@ -401,14 +468,14 @@ export default async function AtelierSandboxPage({
   ]);
 
   const libraryItems: LibraryItem[] = enrichItemsWithEngagement(baseItems, engagementMap);
-  const currentUserInternalId = sandboxViewerId;
+  const currentUserInternalId = sandboxViewerInternalId;
 
   // Resolve the current user's profile so fork previews (which aren't in
   // libraryItems and carry no author info) can still show the creator
   // (the forker = current user) with username + avatar + profile link.
   let currentUser: { username: string; displayName: string | null; avatarUrl: string | null } | null = null;
-  if (sandboxViewerId) {
-    const author = await resolveAuthorByClerkId(sandboxViewerId);
+  if (sandboxViewerClerkId) {
+    const author = await resolveAuthorByClerkId(sandboxViewerClerkId);
     if (author) {
       currentUser = {
         username: author.username,

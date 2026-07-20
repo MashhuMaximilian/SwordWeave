@@ -15,6 +15,10 @@ import Link from "next/link";
 import { ArrowRight, ExternalLink, User as UserIcon } from "lucide-react";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 import { Markdown } from "@/components/ui/markdown";
+import {
+  authorDisplayName,
+  authorDisplayUsername,
+} from "@/lib/publishing/author-display";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import type { LibraryEngagement } from "@/components/library/library-table";
 
@@ -120,13 +124,17 @@ export function LibraryPreviewPane({
             </section>
           ) : null}
 
-          {item.authorUsername ? (
+          {authorDisplayUsername(item) ? (
+            // Phase 9 follow-up: mask admin authors. The preview
+            // pane shows "Author" + a profile link; we skip the
+            // section entirely when the row is admin-authored so
+            // the link doesn't point at an admin's user profile.
             <section>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Author
               </h3>
               <Link
-                href={`/u/${item.authorUsername}`}
+                href={`/u/${authorDisplayUsername(item)}`}
                 className="flex items-center gap-2 text-sm hover:text-foreground"
               >
                 {item.authorAvatarUrl ? (
@@ -139,7 +147,7 @@ export function LibraryPreviewPane({
                   <UserIcon className="size-4" />
                 )}
                 <span className="font-semibold">
-                  {item.authorDisplayName ?? item.authorUsername}
+                  {authorDisplayName(item) ?? authorDisplayUsername(item)}
                 </span>
               </Link>
             </section>

@@ -20,6 +20,10 @@ import { useRouter } from "next/navigation";
 import { LibraryToolbar, type LibraryToolbarState } from "@/components/library/library-toolbar";
 import { LibraryTable } from "@/components/library/library-table";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
+import {
+  authorDisplayName,
+  authorDisplayUsername,
+} from "@/lib/publishing/author-display";
 import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-query";
 import { sortLibraryItems } from "@/lib/publishing/sort-library-items";
 import { cn } from "@/lib/utils";
@@ -752,17 +756,27 @@ function BlueprintPreviewBody({
   const visibility = (libraryItem?.visibility ?? "PRIVATE") as Visibility;
   const canDelete = visibility === "PRIVATE";
   const compositeId = libraryCompositeId(item);
-  const ownerUsername =
-    libraryItem?.authorUsername ??
-    engagement?.authorUsername ??
-    currentUser?.username ??
-    null;
+  // Phase 9 follow-up: mask admin authors via the unified helper so
+  // heritage row previews show "by System" instead of "@xeun" for
+  // admin-authored rows.
+  const ownerUsername = authorDisplayUsername({
+    authorUsername:
+      libraryItem?.authorUsername ??
+      engagement?.authorUsername ??
+      currentUser?.username ??
+      null,
+    authorIsAdmin: libraryItem?.authorIsAdmin ?? engagement?.authorIsAdmin ?? null,
+  });
+  const ownerDisplayName = authorDisplayName({
+    authorUsername: ownerUsername,
+    authorDisplayName: libraryItem?.authorDisplayName ?? currentUser?.displayName ?? null,
+    authorIsAdmin: libraryItem?.authorIsAdmin ?? engagement?.authorIsAdmin ?? null,
+  });
   const owner: EntityPreviewOwner | undefined = ownerUsername
     ? {
         authorId: engagement?.authorId ?? libraryItem?.authorId ?? null,
         authorUsername: ownerUsername,
-        authorDisplayName:
-          libraryItem?.authorDisplayName ?? currentUser?.displayName ?? null,
+        authorDisplayName: ownerDisplayName ?? ownerUsername,
         authorAvatarUrl: libraryItem?.authorAvatarUrl ?? currentUser?.avatarUrl ?? null,
         isOwner,
         profileHref: `/u/${ownerUsername}`,

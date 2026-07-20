@@ -30,6 +30,7 @@ import { PreviewActions } from "@/components/preview/preview-shared";
 import { visibilityLabel, type Visibility } from "@/components/library/visibility-select";
 import type { LibraryEngagement } from "@/lib/engagement/library-engagement";
 import { cn } from "@/lib/utils";
+import { authorDisplayUsername } from "@/lib/publishing/author-display";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import type { LibraryView } from "@/lib/preferences/library-prefs";
 
@@ -650,10 +651,11 @@ function CreationPreview({
           <dt className="uppercase text-muted-foreground">Visibility</dt>
           <dd>{visibilityLabel(liveVisibility)}</dd>
         </div>
-        {item.authorUsername ? (
+        {authorDisplayUsername(item) ? (
           <div>
             <dt className="uppercase text-muted-foreground">Author</dt>
-            <dd>{item.authorUsername}</dd>
+            {/* Phase 9 follow-up: mask admin authors via unified helper. */}
+            <dd>{authorDisplayUsername(item) ?? "System"}</dd>
           </div>
         ) : null}
       </dl>
