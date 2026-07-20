@@ -43,6 +43,15 @@ type TypeFilter =
   | "character"
   | "build";
 type StatusFilter = "all" | "draft";
+// Phase 9 follow-up: fork/creation kind filter. "fork" = rows whose
+// sourceOrigin starts with "fork:" (came from someone else's entity);
+// "creation" = everything else (authored-from-scratch or re-edit of own
+// row).
+type KindFilter = "all" | "fork" | "creation";
+// Phase 9 follow-up: visibility filter at the canonical level.
+// Mirrors the publications.visibility enum so users can slice their
+// creations by audience.
+type VisibilityFilter = "all" | "public" | "followers";
 
 interface CreationsClientProps {
   items: LibraryItem[];
@@ -92,6 +101,9 @@ export function CreationsClient({
   const [status, setStatus] = useState<StatusFilter>(
     initialStatus === "draft" ? "draft" : "all",
   );
+  // Phase 9 follow-up: two new orthogonal filter dimensions.
+  const [kind, setKind] = useState<KindFilter>("all");
+  const [visibility, setVisibility] = useState<VisibilityFilter>("all");
   const [search, setSearch] = useState("");
   // P5R-6: LIST view toggle. LibraryTable already supports both modes; the
   // view prop is just plumbed through. Default LIST (the user said list view
@@ -213,13 +225,95 @@ export function CreationsClient({
             })}
           </div>
         </div>
+        {/* Phase 9 follow-up: "Kind" filter chips slice the list by
+            authorship origin. "Forks only" shows rows whose sourceOrigin
+            starts with "fork:" (came from someone else's entity); the
+            "Creations only" chip is the inverse. "All" passes both. */}
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+            Kind
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {(
+              [
+                { key: "all", label: "All" },
+                { key: "fork", label: "Forks only" },
+                { key: "creation", label: "Creations only" },
+              ] as const
+            ).map((c) => {
+              const active = kind === c.key;
+              const count =
+                c.key === "all"
+                  ? items.length
+                  : c.key === "fork"
+                    ? items.filter((it) => it.sourceOrigin?.startsWith("fork:"))
+                      .length
+                    : items.filter(
+                        (it) => !it.sourceOrigin?.startsWith("fork:"),
+                      ).length;
+              return (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => setKind(c.key)}
+                  className={cn(
+                    "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                    active
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card hover:border-primary",
+                  )}
+                >
+                  {c.label}
+                  {count > 0 ? (
+                    <span className="ml-1 opacity-70">({count})</span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {/* Phase 9 follow-up: "Visibility" filter chips slice the list by
+            the canonical publication audience. The "Drafts only" Status
+            chip above covers PRIVATE; this group separates PUBLIC and
+            FOLLOWERS_ONLY. */}
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+            Visibility
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {(
+              [
+                { key: "all", label: "All" },
+                { key: "public", label: "Public" },
+                { key: "followers", label: "Followers only" },
+              ] as const
+            ).map((c) => {
+              const active = visibility === c.key;
+              return (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => setVisibility(c.key)}
+                  className={cn(
+                    "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                    active
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card hover:border-primary",
+                  )}
+                >
+                  {c.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <p className="text-[10px] text-muted-foreground/80">
           Tip: cards open a preview modal. Click "Open source page" inside to
           visit the full canonical detail page.
         </p>
       </div>
     ),
-    [type, status, items.length, counts],
+    [type, status, kind, visibility, items.length, counts],
   );
   useFilterSlot(filterSlot);
 
@@ -231,12 +325,28 @@ export function CreationsClient({
       // "Drafts only" = unpublished (no publishedAt). LibraryItem doesn't
       // carry isPublic; the query layer fills publishedAt only for public rows.
       if (status === "draft" && item.publishedAt !== null) return false;
+      // Phase 9 follow-up: Kind filter. "fork" = sourceOrigin starts with
+      // "fork:" (came from someone else's entity); "creation" = the rest
+      // (authored-from-scratch, re-edit of own row, admin canon-edit).
+      if (kind === "fork" && !item.sourceOrigin?.startsWith("fork:")) return false;
+      if (kind === "creation" && item.sourceOrigin?.startsWith("fork:")) return false;
+      // Phase 9 follow-up: Visibility filter. visibility comes from the
+      // publications table joined at page-load time; `visibilityById`
+      // overrides it for optimistic UI updates from the preview modal.
+      if (visibility !== "all" && item.visibility) {
+        if (visibility === "public" && item.visibility !== "PUBLIC") return false;
+        if (visibility === "followers" && item.visibility !== "FOLLOWERS_ONLY") return false;
+      }
       if (q && !item.name.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [items, type, status, search]);
+  }, [items, type, status, kind, visibility, search]);
 
-  const hasActiveFilters = type !== "all" || status !== "draft";
+  const hasActiveFilters =
+    type !== "all" ||
+    status !== "draft" ||
+    kind !== "all" ||
+    visibility !== "all";
 
   return (
     <div className="mt-8 space-y-4">

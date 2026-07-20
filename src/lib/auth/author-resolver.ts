@@ -54,6 +54,26 @@ export async function resolveAuthorByClerkId(
 }
 
 /**
+ * Phase 9 follow-up: look up the caller's `is_admin` flag in one fast
+ * query. Used by `dispatchEntitySave` to apply the admin canon-edit
+ * exception (intent=load + admin caller + system/admin source →
+ * version-update instead of fork).
+ *
+ * Returns `false` when the user is unknown (safer default — non-admin
+ * matrix applies) so callers don't have to null-check.
+ */
+export async function getCallerIsAdmin(
+  clerkUserId: string | null | undefined,
+): Promise<boolean> {
+  if (!clerkUserId) return false;
+  const row = await db.query.users.findFirst({
+    where: (table, { eq }) => eq(table.clerkUserId, clerkUserId),
+    columns: { isAdmin: true },
+  });
+  return row?.isAdmin ?? false;
+}
+
+/**
  * Resolve a Clerk user ID → internal user UUID (the `users.id` value).
  * Returns null if the Clerk ID doesn't correspond to a known user.
  */

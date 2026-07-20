@@ -43,6 +43,8 @@ type SandboxPrimitive = {
   isPublic: boolean | null;
   mechanicalOutputText: string | null;
   narrativeRule: string | null;
+  // Phase 9 follow-up: provenance marker for the Kind filter.
+  sourceOrigin: string | null;
   // Phase 8: per-entity iconography (sandbox-side row mirror).
   iconSource: string | null;
   iconKey: string | null;
@@ -95,6 +97,10 @@ type SandboxTemplate = {
   iconKey: string | null;
   iconUrl: string | null;
   iconColor: string | null;
+  // Phase 9 follow-up: provenance marker (fork:<id> / user:<id> /
+  // system:<seed>). Populated when the mappers are called from the
+  // atelier codex page so the Kind filter can distinguish forks.
+  sourceOrigin: string | null;
   /** Composed primitive links — used to derive the template's BU cost
    *  (sum of slotted primitive costs, mirroring heritage-form.tsx). */
   primitiveLinks?: Array<{ primitive: { buCost: number }; quantity: number }>;
@@ -111,6 +117,7 @@ type SandboxItem = {
   tags: string[] | null;
   slotCost: number;
   quantity: number;
+  sourceOrigin: string | null;
   iconSource: string | null;
   iconKey: string | null;
   iconUrl: string | null;
@@ -127,6 +134,8 @@ type SandboxCharacter = {
   attrMagical: number;
   attrProficient: string | null;
   isPublic: boolean | null;
+  // Phase 9 follow-up: provenance marker.
+  sourceOrigin: string | null;
   // Characters (builds) don't carry icon columns — falls back to null
   // in characterToLibraryItem.
 };
@@ -137,6 +146,8 @@ type SandboxBuild = {
   description: string | null;
   level: number;
   isPublic: boolean | null;
+  // Phase 9 follow-up: provenance marker.
+  sourceOrigin: string | null;
   // Phase 8: per-entity iconography (builds now carry the same icon
   // columns as the other entity tables). portraitUrl is still a
   // separate free-form hero art field; these four are the system
@@ -178,6 +189,7 @@ export function primitiveToLibraryItem(
     ...EMPTY_ENGAGEMENT,
     tags: [],
     visibility,
+    sourceOrigin: row.sourceOrigin ?? null,
     // Phase 8: per-entity iconography
     iconSource: row.iconSource as "GAME_ICONS" | "UPLOAD" | null,
     iconKey: row.iconKey,
@@ -203,6 +215,7 @@ export function effectToLibraryItem(
     ...EMPTY_ENGAGEMENT,
     tags: row.tags ?? [],
     visibility,
+    sourceOrigin: row.sourceOrigin ?? null,
     // Phase 8: per-entity iconography
     iconSource: row.iconSource as "GAME_ICONS" | "UPLOAD" | null,
     iconKey: row.iconKey,
@@ -228,6 +241,7 @@ export function capabilityToLibraryItem(
     ...EMPTY_ENGAGEMENT,
     tags: row.tags ?? [],
     visibility,
+    sourceOrigin: row.sourceOrigin ?? null,
     // Phase 8: per-entity iconography
     iconSource: row.iconSource as "GAME_ICONS" | "UPLOAD" | null,
     iconKey: row.iconKey,
@@ -260,6 +274,7 @@ export function heritageToLibraryItem(
     ...EMPTY_ENGAGEMENT,
     tags: [],
     visibility,
+    sourceOrigin: row.sourceOrigin ?? null,
     // Phase 8: per-entity iconography
     iconSource: row.iconSource as "GAME_ICONS" | "UPLOAD" | null,
     iconKey: row.iconKey,
@@ -284,6 +299,7 @@ export function itemToLibraryItem(
     ...EMPTY_ENGAGEMENT,
     tags: row.tags ?? [],
     visibility,
+    sourceOrigin: row.sourceOrigin ?? null,
     // Phase 8: per-entity iconography
     iconSource: row.iconSource as "GAME_ICONS" | "UPLOAD" | null,
     iconKey: row.iconKey,
@@ -308,6 +324,7 @@ export function characterToLibraryItem(
     ...EMPTY_ENGAGEMENT,
     tags: [],
     visibility,
+    sourceOrigin: row.sourceOrigin ?? null,
     // Phase 8: characters/builds don't carry icon columns; null fallback
     // keeps the type contract honest. (Builds use portraitUrl instead.)
     iconSource: null,
@@ -342,6 +359,7 @@ export function buildToLibraryItem(
     ...EMPTY_ENGAGEMENT,
     tags: [],
     visibility,
+    sourceOrigin: row.sourceOrigin ?? null,
     // Phase 8: builds now carry icon columns. portraitUrl (the hero
     // art field) is separate and lives only on the build composer /
     // detail page, not on the card.

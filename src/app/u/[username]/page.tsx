@@ -15,19 +15,36 @@ import { db } from "@/db/client";
 import { users } from "@/db/schema/profiles";
 import { eq } from "drizzle-orm";
 import { loadProfileByUsername } from "@/lib/profiles/profile-loader";
-import { listByForker } from "@/lib/publishing/forks-query";
-import { ForkEntry } from "@/lib/publishing/forks-query";
+import { queryLibrary } from "@/lib/publishing/library-query";
 import { FollowButton } from "@/components/profile/follow-button";
+import { ProfileFilterChips } from "@/components/profile/profile-filter-chips";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ username: string }>;
+  searchParams: Promise<{ kind?: string; visibility?: string }>;
 }) {
   const { username } = await params;
+  const sp = await searchParams;
   const { userId: viewerClerkId } = await auth();
+  // Phase 9 follow-up: parse the kind + visibility URL params for the
+  // profile filter chips. The chips push these back as ?kind=<>&visibility=<>
+  // and the server reads them on render.
+  const kindFilter: "fork" | "creation" | undefined =
+    sp.kind === "fork" || sp.kind === "creation" ? sp.kind : undefined;
+  const visibilityFilter:
+    | "PUBLIC"
+    | "FOLLOWERS_ONLY"
+    | undefined =
+    sp.visibility === "public"
+      ? "PUBLIC"
+      : sp.visibility === "followers"
+        ? "FOLLOWERS_ONLY"
+        : undefined;
 
   const profile = await loadProfileByUsername(username, viewerClerkId);
 
@@ -42,6 +59,33 @@ export default async function ProfilePage({
   if (!profile) {
     notFound();
   }
+
+  // Phase 9 follow-up: query the user's authored content via queryLibrary.
+  // Previously the profile showed "forks" by joining `forks` table —
+  // but the atelier fork path never wrote rows there, so the list was
+  // empty for every user. Now we query entity tables directly via the
+  // new `authorClerkId` + `kind` filters. This surfaces BOTH forks and
+  // creations regardless of how they were created.
+  const userClerkId = profile.clerkUserId ?? null;
+  const profileItems = userClerkId
+    ? await queryLibrary({
+        authorClerkId: userClerkId,
+        ...(kindFilter && { kind: kindFilter }),
+        ...(visibilityFilter && { visibility: visibilityFilter }),
+        limit: 100,
+      })
+    : { items: [] as Array<Record<string, unknown>> };
+
+  const items = (profileItems.items as unknown) as Array<{
+    id: string;
+    name: string;
+    targetType: string;
+    visibility?: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC";
+    sourceOrigin: string | null;
+  }>;
+  const forkCount = items.filter((it) => it.sourceOrigin?.startsWith("fork:"))
+    .length;
+  const creationCount = items.length - forkCount;
 
   return (
     <div className="mx-auto w-full max-w-4xl px-5 py-8">
@@ -112,13 +156,12 @@ export default async function ProfilePage({
               />
               <Stat
                 label="Forks created"
-                value={profile.stats.totalForksCreated}
+                value={forkCount}
               />
               <Stat
                 label="Net likes"
                 value={
-                  profile.stats.totalLikesReceived -
-                  profile.stats.totalDislikesReceived
+                  profile.stats.totalLikesReceived - profile.stats.totalDislikesReceived
                 }
               />
             </div>
@@ -126,9 +169,10 @@ export default async function ProfilePage({
         </div>
       </div>
 
-      <PublicEntriesSection
+      <ProfileEntriesSection
         userId={profile.id}
         clerkUserId={profile.clerkUserId ?? null}
+        items={items}
       />
     </div>
   );
@@ -207,53 +251,54 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-async function PublicEntriesSection({
+async function ProfileEntriesSection({
   userId,
-  clerkUserId,
+  items,
 }: {
   userId: string;
   clerkUserId: string | null;
+  items: Array<{
+    id: string;
+    name: string;
+    targetType: string;
+    visibility?: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC";
+    sourceOrigin: string | null;
+  }>;
 }) {
-  // Look up the user to see if they have any public entries yet.
+  // Look up the username to render the empty-state copy.
   const userRow = await db.query.users.findFirst({
     where: eq(users.id, userId),
     columns: { username: true },
   });
   if (!userRow) return null;
 
-  // Fetch recent forks this user created
-  const recentForks = clerkUserId ? await listByForker(clerkUserId, 10) : [];
-
   return (
     <section className="mt-8 rounded-2xl border border-sword-border bg-sword-surface p-6">
-      <h2 className="flex items-center gap-2 text-lg font-semibold text-sword-fg">
-        <Globe className="h-5 w-5 text-sword-accent" /> Public entries
-      </h2>
-      <p className="mt-2 text-sm text-sword-muted">
-        Primitives, capabilities, characters, items, and heritage by{" "}
-        @{userRow.username} will appear here once they publish to the Library.
-      </p>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-sword-fg">
+          <Globe className="h-5 w-5 text-sword-accent" /> Public entries
+        </h2>
+        <span className="text-xs text-sword-muted">
+          {items.length} {items.length === 1 ? "item" : "items"}
+        </span>
+      </div>
+      <ProfileFilterChips
+        basePath={`/u/${userRow.username}`}
+        kind="all"
+        visibility="all"
+      />
 
-      {recentForks.length > 0 && (
-        <div className="mt-6 border-t border-sword-border pt-6">
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-sword-fg">
-            <GitFork className="h-4 w-4 text-sword-accent" />
-            Recent forks ({recentForks.length})
-          </h3>
-          <ul className="mt-3 divide-y divide-sword-border/60 text-sm">
-            {recentForks.map((fork) => (
-              <RecentForkRow key={fork.id} fork={fork} />
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {recentForks.length === 0 && (
+      {items.length > 0 ? (
+        <ul className="mt-4 divide-y divide-sword-border/60 text-sm">
+          {items.map((it) => (
+            <ProfileEntryRow key={it.id} item={it} />
+          ))}
+        </ul>
+      ) : (
         <div className="mt-6 flex flex-col items-center gap-3 rounded-md border border-dashed border-sword-border/60 bg-sword-bg/40 px-4 py-8 text-center">
           <Library className="h-6 w-6 text-sword-muted" aria-hidden="true" />
           <p className="text-sm text-sword-muted">
-            @{userRow.username} hasn&apos;t published anything yet — and has no
-            forks to show.
+            @{userRow.username} hasn&apos;t authored any matching entries yet.
           </p>
           <Link
             href="/library/browse"
@@ -267,44 +312,40 @@ async function PublicEntriesSection({
   );
 }
 
-function RecentForkRow({ fork }: { fork: ForkEntry }) {
-  const targetLabel =
-    fork.forkedTargetName ?? `(${fork.forkedTargetType.toLowerCase()})`;
-  const sourceLabel =
-    fork.sourceTargetName ?? `(${fork.sourceTargetType.toLowerCase()})`;
-  const linkPath = `/library/item/${fork.forkedTargetType}:${fork.forkedTargetId}`;
-
+function ProfileEntryRow({
+  item,
+}: {
+  item: {
+    id: string;
+    name: string;
+    targetType: string;
+    visibility?: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC";
+    sourceOrigin: string | null;
+  };
+}) {
+  const isFork = item.sourceOrigin?.startsWith("fork:") ?? false;
+  const linkPath = `/library/item/${item.id.split(":")[0]}:${item.id.split(":")[1] ?? ""}`;
   return (
     <li className="flex flex-wrap items-center gap-x-2 gap-y-1 py-2">
       <Link
         href={linkPath}
         className="font-medium text-sword-fg hover:text-sword-accent"
       >
-        {targetLabel}
+        {item.name}
       </Link>
-      <span className="text-sword-muted">forked from</span>
-      <Link
-        href={`/library/item/${fork.sourceTargetType}:${fork.sourceTargetId}`}
-        className="text-sword-muted hover:text-sword-fg"
-      >
-        {sourceLabel}
-      </Link>
-      <span className="ml-auto text-xs text-sword-muted">
-        {timeAgo(fork.forkedAt)}
+      <span className="rounded-full bg-sword-bg px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sword-muted">
+        {item.targetType.toLowerCase().replace("_template", "")}
       </span>
+      {isFork ? (
+        <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
+          Fork
+        </span>
+      ) : null}
+      {item.visibility && item.visibility !== "PRIVATE" ? (
+        <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-secondary-foreground">
+          {item.visibility === "PUBLIC" ? "Public" : "Followers"}
+        </span>
+      ) : null}
     </li>
   );
-}
-
-function timeAgo(date: Date): string {
-  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  const months = Math.floor(days / 30);
-  return `${months}mo ago`;
 }

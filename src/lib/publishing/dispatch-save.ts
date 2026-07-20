@@ -35,8 +35,9 @@
 
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { primitives } from "@/db/schema";
+import { primitives, users } from "@/db/schema";
 import type { SaveIntent } from "./save-intent";
+import { getCallerIsAdmin } from "@/lib/auth/author-resolver";
 import {
   computeCapabilityContentHash,
   computeEffectContentHash,
@@ -98,12 +99,29 @@ export interface SourceRowIdentity {
   userId: string | null;
   contentHash: string | null;
   sourceOrigin: string | null;
+  /**
+   * Phase 9 follow-up: whether the source row's owner is an admin.
+   * `null` when the source row is system-attributed (userId === null).
+   * `true` when the owner is a Clerk user with `users.is_admin = true`.
+   * `false` when the owner is a regular Clerk user.
+   *
+   * Used by the dispatch matrix to apply the admin canon-edit
+   * exception: `intent=load` + admin caller + (source.userId IS NULL
+   * OR ownerIsAdmin) → version-update instead of fork.
+   */
+  ownerIsAdmin: boolean | null;
 }
 
 export interface DecideSaveOutcomeParams {
   intent: SaveIntent;
   source: SourceRowIdentity | null;
   callerUserId: string;
+  /**
+   * Phase 9 follow-up: whether the caller is an admin. Used to apply
+   * the admin canon-edit exception. When omitted, defaults to `false`
+   * so existing tests / call-sites don't break.
+   */
+  callerIsAdmin?: boolean;
   /**
    * SHA-256 hex of the canonical-JSON content envelope, computed by the
    * caller. Used to detect no-op saves. The dispatcher treats `null` as
@@ -147,6 +165,7 @@ export function decideSaveOutcome(
     intent,
     source,
     callerUserId,
+    callerIsAdmin = false,
     draftHash,
     draftIsEmpty = false,
   } = params;
@@ -238,6 +257,29 @@ export function decideSaveOutcome(
     };
   }
 
+  // Phase 9 follow-up: admin canon-edit exception.
+  // Rule: when intent=load AND the caller is an admin AND the source
+  // row's owner is either system-attributed (userId IS NULL) or
+  // another admin, treat the save as a version-update so the admin
+  // can patch canon directly. The entity's `userId` stays unchanged
+  // (so the row keeps its canon attribution) and a `versions` row is
+  // written by the caller to audit who edited it.
+  //
+  // Non-admin callers never reach this path — `callerIsAdmin = false`
+  // makes the check trivially false and the existing matrix applies.
+  if (intent === "load" && callerIsAdmin) {
+    const ownerIsSystem = source.userId === null;
+    const ownerIsAdmin = source.ownerIsAdmin === true;
+    if (ownerIsSystem || ownerIsAdmin) {
+      return {
+        kind: "version-update",
+        newId: source.id,
+        sourceId: source.id,
+        swapTarget: false,
+      };
+    }
+  }
+
   if (isOwner) {
     return {
       kind: "version-update",
@@ -269,8 +311,14 @@ export async function loadPrimitiveOwner(
       userId: primitives.userId,
       contentHash: primitives.contentHash,
       sourceOrigin: primitives.sourceOrigin,
+      ownerIsAdmin: users.isAdmin,
     })
     .from(primitives)
+    // LEFT JOIN to users: when the source row is system-attributed
+    // (userId IS NULL) the join produces no row and `ownerIsAdmin` is
+    // null — exactly the semantic we want for the admin canon-edit
+    // exception (system source → admin caller → version-update).
+    .leftJoin(users, eq(users.clerkUserId, primitives.userId))
     .where(eq(primitives.id, primitiveId))
     .limit(1);
   const row = rows[0];
@@ -280,6 +328,7 @@ export async function loadPrimitiveOwner(
     userId: row.userId,
     contentHash: row.contentHash,
     sourceOrigin: row.sourceOrigin,
+    ownerIsAdmin: row.ownerIsAdmin,
   };
 }
 
@@ -302,9 +351,15 @@ export type SaveTargetType =
   | "TEMPLATE";
 
 /**
- * Loads the source row's identity (id, userId, contentHash) for any of the
- * 5 entity types. Returns null if the row doesn't exist. Used by the
- * per-entity POST handlers to populate the dispatcher's SourceRowIdentity.
+ * Loads the source row's identity (id, userId, contentHash, ownerIsAdmin)
+ * for any of the 5 entity types. Returns null if the row doesn't exist.
+ * Used by the per-entity POST handlers to populate the dispatcher's
+ * SourceRowIdentity.
+ *
+ * `ownerIsAdmin` is joined from `users.is_admin` keyed on the row's
+ * `user_id` (Clerk ID). When the source is system-attributed
+ * (`user_id IS NULL`) the LEFT JOIN returns no row and `ownerIsAdmin`
+ * is null — exactly the signal the admin canon-edit exception needs.
  */
 export async function loadEntityOwner(
   targetType: SaveTargetType,
@@ -322,13 +377,21 @@ export async function loadEntityOwner(
         userId: effects.userId,
         contentHash: effects.contentHash,
         sourceOrigin: effects.sourceOrigin,
+        ownerIsAdmin: users.isAdmin,
       })
       .from(effects)
+      .leftJoin(users, eq(users.clerkUserId, effects.userId))
       .where(eq(effects.id, String(targetId)))
       .limit(1);
     const row = rows[0];
     if (!row) return null;
-    return { id: row.id, userId: row.userId, contentHash: row.contentHash, sourceOrigin: row.sourceOrigin };
+    return {
+      id: row.id,
+      userId: row.userId,
+      contentHash: row.contentHash,
+      sourceOrigin: row.sourceOrigin,
+      ownerIsAdmin: row.ownerIsAdmin,
+    };
   }
 
   if (targetType === "CAPABILITY") {
@@ -339,13 +402,21 @@ export async function loadEntityOwner(
         userId: capabilities.userId,
         contentHash: capabilities.contentHash,
         sourceOrigin: capabilities.sourceOrigin,
+        ownerIsAdmin: users.isAdmin,
       })
       .from(capabilities)
+      .leftJoin(users, eq(users.clerkUserId, capabilities.userId))
       .where(eq(capabilities.id, String(targetId)))
       .limit(1);
     const row = rows[0];
     if (!row) return null;
-    return { id: row.id, userId: row.userId, contentHash: row.contentHash, sourceOrigin: row.sourceOrigin };
+    return {
+      id: row.id,
+      userId: row.userId,
+      contentHash: row.contentHash,
+      sourceOrigin: row.sourceOrigin,
+      ownerIsAdmin: row.ownerIsAdmin,
+    };
   }
 
   if (targetType === "ITEM") {
@@ -356,13 +427,21 @@ export async function loadEntityOwner(
         userId: items.userId,
         contentHash: items.contentHash,
         sourceOrigin: items.sourceOrigin,
+        ownerIsAdmin: users.isAdmin,
       })
       .from(items)
+      .leftJoin(users, eq(users.clerkUserId, items.userId))
       .where(eq(items.id, String(targetId)))
       .limit(1);
     const row = rows[0];
     if (!row) return null;
-    return { id: row.id, userId: row.userId, contentHash: row.contentHash, sourceOrigin: row.sourceOrigin };
+    return {
+      id: row.id,
+      userId: row.userId,
+      contentHash: row.contentHash,
+      sourceOrigin: row.sourceOrigin,
+      ownerIsAdmin: row.ownerIsAdmin,
+    };
   }
 
   if (targetType === "TEMPLATE") {
@@ -373,13 +452,21 @@ export async function loadEntityOwner(
         userId: heritage.userId,
         contentHash: heritage.contentHash,
         sourceOrigin: heritage.sourceOrigin,
+        ownerIsAdmin: users.isAdmin,
       })
       .from(heritage)
+      .leftJoin(users, eq(users.clerkUserId, heritage.userId))
       .where(eq(heritage.id, String(targetId)))
       .limit(1);
     const row = rows[0];
     if (!row) return null;
-    return { id: row.id, userId: row.userId, contentHash: row.contentHash, sourceOrigin: row.sourceOrigin };
+    return {
+      id: row.id,
+      userId: row.userId,
+      contentHash: row.contentHash,
+      sourceOrigin: row.sourceOrigin,
+      ownerIsAdmin: row.ownerIsAdmin,
+    };
   }
 
   // Exhaustiveness — if a new SaveTargetType is added without a case above,
@@ -669,6 +756,14 @@ export interface DispatchEntitySaveArgs {
   callerUserId: string;
   draftHash: string;
   draftIsEmpty: boolean;
+  /**
+   * Phase 9 follow-up: optional pre-resolved callerIsAdmin flag. When
+   * omitted, the dispatcher calls `getCallerIsAdmin(callerUserId)` to
+   * resolve it (one extra DB query per save). Pass it explicitly when
+   * the caller has already looked it up — e.g. the per-entity POST
+   * handler that needs callerIsAdmin for fork attribution rules.
+   */
+  callerIsAdmin?: boolean;
 }
 
 export interface DispatchEntitySaveResult {
@@ -693,10 +788,17 @@ export async function dispatchEntitySave(
     ? await loadEntityOwner(args.targetType, args.sourceId)
     : null;
 
+  // Resolve callerIsAdmin at most once per dispatch call. The helper
+  // returns `false` for unknown callers so we can pass it through
+  // unconditionally — no null-check needed.
+  const callerIsAdmin =
+    args.callerIsAdmin ?? (await getCallerIsAdmin(args.callerUserId));
+
   const outcome = decideSaveOutcome({
     intent: args.intent,
     source,
     callerUserId: args.callerUserId,
+    callerIsAdmin,
     draftHash: args.draftHash,
     draftIsEmpty: args.draftIsEmpty,
   });

@@ -15,6 +15,9 @@ import {
   type SaveTargetType,
 } from "@/lib/publishing/dispatch-save";
 import { parseSaveIntent } from "@/lib/publishing/save-intent";
+import { getCallerIsAdmin, resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
+import { recordForkAttribution } from "@/lib/publishing/fork-attribution";
+import type { ReactionTargetType } from "@/lib/engagement/version-helpers";
 import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
 import {
   buildCanonicalItemPayload,
@@ -303,11 +306,16 @@ export async function PATCH(
     // -------------------------------------------------------------------
     // Dispatcher.
     // -------------------------------------------------------------------
+    // Phase 9 follow-up: pre-resolve callerIsAdmin once so we can pass it
+    // through to dispatchEntitySave (admin canon-edit rule) AND to the
+    // fork-attribution call below (avoid duplicate DB queries).
+    const callerIsAdmin = await getCallerIsAdmin(userId);
     const { source, outcome } = await dispatchEntitySave({
       targetType: TARGET_TYPE,
       sourceId: id,
       intent: effectiveIntent,
       callerUserId: userId,
+      callerIsAdmin,
       draftHash,
       draftIsEmpty,
     });
@@ -600,6 +608,28 @@ export async function PATCH(
       snapshot: canonicalPayload as unknown as Record<string, unknown>,
       publishedByUserId: userId,
     });
+
+    // Phase 9 follow-up: record fork attribution (forks row +
+    // fork_aggregates counter + user_stats bumps). Only when this is
+    // a real fork (source !== null) — greenfield inserts don't get
+    // attribution. System-authored sources still write the fork row;
+    // the helper skips the source-author totalForksReceived bump when
+    // sourceClerkUserId is null.
+    if (source !== null) {
+      const forkerInternalId = await resolveUserIdByClerkId(userId);
+      if (forkerInternalId) {
+        await recordForkAttribution({
+          forkerInternalId,
+          forkerClerkId: userId,
+          sourceClerkUserId: source.userId,
+          sourceTargetType: TARGET_TYPE as ReactionTargetType,
+          sourceTargetId: String(source.id),
+          forkedTargetType: TARGET_TYPE as ReactionTargetType,
+          forkedTargetId: created.id,
+          metadata: { name: baseName },
+        });
+      }
+    }
 
     return NextResponse.json(
       {

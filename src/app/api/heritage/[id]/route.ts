@@ -15,6 +15,8 @@ import {
   type SaveTargetType,
 } from "@/lib/publishing/dispatch-save";
 import { parseSaveIntent } from "@/lib/publishing/save-intent";
+import { getCallerIsAdmin, resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
+import { recordForkAttribution } from "@/lib/publishing/fork-attribution";
 import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
 import {
   buildCanonicalTemplatePayload,
@@ -254,11 +256,15 @@ export async function PATCH(
     // -------------------------------------------------------------------
     // Dispatcher.
     // -------------------------------------------------------------------
+    // Phase 9 follow-up: pre-resolve callerIsAdmin once so we can pass it
+    // through to dispatchEntitySave (admin canon-edit rule).
+    const callerIsAdmin = await getCallerIsAdmin(userId);
     const { source, outcome } = await dispatchEntitySave({
       targetType: TARGET_TYPE,
       sourceId: id,
       intent: effectiveIntent,
       callerUserId: userId,
+      callerIsAdmin,
       draftHash,
       draftIsEmpty,
     });
@@ -480,6 +486,34 @@ export async function PATCH(
       snapshot: canonicalPayload as unknown as Record<string, unknown>,
       publishedByUserId: userId,
     });
+
+    // Phase 9 follow-up: record fork attribution. Only when this is
+    // a real fork (source !== null). Heritage is special — TARGET_TYPE
+    // is "TEMPLATE" (the SaveTargetType) but the actual publish enum
+    // depends on `created.kind` (LINEAGE_TEMPLATE / UPBRINGING_TEMPLATE /
+    // MANIFEST_TEMPLATE). The fork's kind matches the source's kind by
+    // definition, so we derive the targetType from `created.kind`.
+    if (source !== null) {
+      const forkerInternalId = await resolveUserIdByClerkId(userId);
+      if (forkerInternalId) {
+        const heritageTargetType =
+          created.kind === "LINEAGE"
+            ? "LINEAGE_TEMPLATE"
+            : created.kind === "UPBRINGING"
+              ? "UPBRINGING_TEMPLATE"
+              : "MANIFEST_TEMPLATE";
+        await recordForkAttribution({
+          forkerInternalId,
+          forkerClerkId: userId,
+          sourceClerkUserId: source.userId,
+          sourceTargetType: heritageTargetType,
+          sourceTargetId: String(source.id),
+          forkedTargetType: heritageTargetType,
+          forkedTargetId: created.id,
+          metadata: { name: baseName, kind: created.kind },
+        });
+      }
+    }
 
     const bu = created.primitiveLinks.reduce(
       (t, l) => t + (l.primitive?.buCost ?? 0),

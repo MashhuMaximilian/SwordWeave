@@ -31,7 +31,7 @@
 // Pagination: limit (default 24, max 100), offset
 // =============================================================================
 
-import { and, asc, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNull, like, notLike, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   builds,
@@ -74,6 +74,22 @@ export interface LibraryQuery {
   category?: string;
   search?: string;
   authorUsername?: string;
+  /**
+   * Phase 9 follow-up: filter by the author's Clerk user ID. When
+   * set, the query returns rows where the entity's `user_id`
+   * (Clerk ID text) matches. Combined with `kind: "fork"` /
+   * `kind: "creation"` to slice a profile page into forks vs
+   * authored-from-scratch. Mutually compatible with `authorUsername`
+   * — when both are set, both filters apply.
+   */
+  authorClerkId?: string;
+  /**
+   * Phase 9 follow-up: filter by provenance. "fork" = sourceOrigin
+   * starts with "fork:"; "creation" = sourceOrigin is null OR starts
+   * with anything else (user:<id>, system:<seed>, etc.). When unset,
+   * no filter is applied.
+   */
+  kind?: "fork" | "creation";
   minLikes?: number;
   hasForks?: boolean;
   /**
@@ -122,6 +138,15 @@ export interface LibraryItem {
    * query (the WHERE clause already filters by isPublic = true).
    */
   visibility?: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC";
+  /**
+   * Phase 9 follow-up: provenance marker — "user:<clerkId>" for
+   * authored-from-scratch, "fork:<sourceId>" for forks of someone
+   * else's entity, "system:<seed>" for system-attributed rows, or
+   * null. The My Creations "Kind" filter chip ("Forks only" vs
+   * "Creations only") slices on `sourceOrigin?.startsWith("fork:")`.
+   * Profile pages render it as the "SOURCE: <origin>" pill.
+   */
+  sourceOrigin: string | null;
   // Phase 8: per-entity iconography. All 4 are nullable on the row —
   // iconSource null = no icon set, iconColor defaults to "#ffffff" in DB.
   iconSource: "GAME_ICONS" | "UPLOAD" | null;
@@ -325,10 +350,22 @@ function notUnpublished(targetType: string, idExpr: SQL) {
 }
 
 async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
-  const conditions = [
-    or(eq(primitives.isPublic, true), isNull(primitives.userId))!,
-    notUnpublished("PRIMITIVE", sql`${primitives.id}`),
-  ];
+  // Phase 9 follow-up: when filtering by authorClerkId (profile page),
+  // drop the isPublic gate — forks are private by default and the user
+  // expects to see their own forks on their profile regardless of
+  // publication status. The kind filter (fork/creation) further slices
+  // by sourceOrigin.
+  const conditions: SQL[] = q.authorClerkId
+    ? [
+        eq(primitives.userId, q.authorClerkId),
+        notUnpublished("PRIMITIVE", sql`${primitives.id}`),
+      ]
+    : [
+        or(eq(primitives.isPublic, true), isNull(primitives.userId))!,
+        notUnpublished("PRIMITIVE", sql`${primitives.id}`),
+      ];
+  if (q.kind === "fork") conditions.push(like(primitives.sourceOrigin, "fork:%"));
+  if (q.kind === "creation") conditions.push(or(isNull(primitives.sourceOrigin), notLike(primitives.sourceOrigin, "fork:%"))!);
 
   if (q.category) {
     conditions.push(eq(primitives.category, q.category as never));
@@ -346,6 +383,8 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       narrativeRule: primitives.narrativeRule,
       userId: primitives.userId,
       createdAt: primitives.createdAt,
+      // Phase 9 follow-up: needed for My Creations "Kind" filter.
+      sourceOrigin: primitives.sourceOrigin,
       // Phase 8: per-entity iconography (live + proposed for resolveIcon)
       iconSource: primitives.iconSource,
       iconKey: primitives.iconKey,
@@ -391,6 +430,7 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
       tags: [],
+      sourceOrigin: r.sourceOrigin ?? null,
       // Phase 8: per-entity iconography. resolveIcon picks the live
       // columns when set, otherwise falls back to the backfill
       // proposal (icon_proposed_*) so the user sees the heuristic
@@ -404,7 +444,17 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
 }
 
 async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
-  const conditions = [eq(capabilities.isPublic, true), notUnpublished("CAPABILITY", sql`${capabilities.id}`)];
+  const conditions: SQL[] = q.authorClerkId
+    ? [
+        eq(capabilities.userId, q.authorClerkId),
+        notUnpublished("CAPABILITY", sql`${capabilities.id}`),
+      ]
+    : [
+        or(eq(capabilities.isPublic, true), isNull(capabilities.userId))!,
+        notUnpublished("CAPABILITY", sql`${capabilities.id}`),
+      ];
+  if (q.kind === "fork") conditions.push(like(capabilities.sourceOrigin, "fork:%"));
+  if (q.kind === "creation") conditions.push(or(isNull(capabilities.sourceOrigin), notLike(capabilities.sourceOrigin, "fork:%"))!);
 
   if (q.search) {
     conditions.push(
@@ -425,6 +475,8 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
       tags: capabilities.tags,
       userId: capabilities.userId,
       createdAt: capabilities.createdAt,
+      // Phase 9 follow-up: needed for My Creations "Kind" filter.
+      sourceOrigin: capabilities.sourceOrigin,
       // Phase 8: per-entity iconography (live + proposed for resolveIcon)
       iconSource: capabilities.iconSource,
       iconKey: capabilities.iconKey,
@@ -495,6 +547,7 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
       tags: r.tags,
+      sourceOrigin: r.sourceOrigin ?? null,
       // Phase 8: per-entity iconography (resolved — live or proposed)
       iconSource: icon.iconSource,
       iconKey: icon.iconKey,
@@ -505,7 +558,17 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
 }
 
 async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
-  const conditions = [eq(effects.isPublic, true), notUnpublished("EFFECT", sql`${effects.id}`)];
+  const conditions: SQL[] = q.authorClerkId
+    ? [
+        eq(effects.userId, q.authorClerkId),
+        notUnpublished("EFFECT", sql`${effects.id}`),
+      ]
+    : [
+        or(eq(effects.isPublic, true), isNull(effects.userId))!,
+        notUnpublished("EFFECT", sql`${effects.id}`),
+      ];
+  if (q.kind === "fork") conditions.push(like(effects.sourceOrigin, "fork:%"));
+  if (q.kind === "creation") conditions.push(or(isNull(effects.sourceOrigin), notLike(effects.sourceOrigin, "fork:%"))!);
 
   if (q.search) {
     conditions.push(
@@ -528,6 +591,8 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
       tags: effects.tags,
       userId: effects.userId,
       createdAt: effects.createdAt,
+      // Phase 9 follow-up: needed for My Creations "Kind" filter.
+      sourceOrigin: effects.sourceOrigin,
       // Phase 8: per-entity iconography (live + proposed for resolveIcon)
       iconSource: effects.iconSource,
       iconKey: effects.iconKey,
@@ -595,6 +660,7 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
       tags: r.tags ?? [],
+      sourceOrigin: r.sourceOrigin ?? null,
       // Phase 8: per-entity iconography (resolved — live or proposed)
       iconSource: icon.iconSource,
       iconKey: icon.iconKey,
@@ -605,7 +671,17 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
 }
 
 async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
-  const conditions = [eq(items.isPublic, true), notUnpublished("ITEM", sql`${items.id}`)];
+  const conditions: SQL[] = q.authorClerkId
+    ? [
+        eq(items.userId, q.authorClerkId),
+        notUnpublished("ITEM", sql`${items.id}`),
+      ]
+    : [
+        or(eq(items.isPublic, true), isNull(items.userId))!,
+        notUnpublished("ITEM", sql`${items.id}`),
+      ];
+  if (q.kind === "fork") conditions.push(like(items.sourceOrigin, "fork:%"));
+  if (q.kind === "creation") conditions.push(or(isNull(items.sourceOrigin), notLike(items.sourceOrigin, "fork:%"))!);
 
   if (q.search) {
     conditions.push(
@@ -642,6 +718,8 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
       tags: items.tags,
       userId: items.userId,
       createdAt: items.createdAt,
+      // Phase 9 follow-up: needed for My Creations "Kind" filter.
+      sourceOrigin: items.sourceOrigin,
       // Phase 8: per-entity iconography (live + proposed for resolveIcon)
       iconSource: items.iconSource,
       iconKey: items.iconKey,
@@ -687,6 +765,7 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
       tags: r.tags ?? [],
+      sourceOrigin: r.sourceOrigin ?? null,
       // Phase 8: per-entity iconography (resolved — live or proposed)
       iconSource: icon.iconSource,
       iconKey: icon.iconKey,
@@ -697,7 +776,17 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
 }
 
 async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
-  const conditions = [eq(heritage.isPublic, true), notUnpublished("LINEAGE_TEMPLATE", sql`${heritage.id}`)];
+  const conditions: SQL[] = q.authorClerkId
+    ? [
+        eq(heritage.userId, q.authorClerkId),
+        notUnpublished("LINEAGE_TEMPLATE", sql`${heritage.id}`),
+      ]
+    : [
+        or(eq(heritage.isPublic, true), isNull(heritage.userId))!,
+        notUnpublished("LINEAGE_TEMPLATE", sql`${heritage.id}`),
+      ];
+  if (q.kind === "fork") conditions.push(like(heritage.sourceOrigin, "fork:%"));
+  if (q.kind === "creation") conditions.push(or(isNull(heritage.sourceOrigin), notLike(heritage.sourceOrigin, "fork:%"))!);
 
   if (q.targetType === "LINEAGE_TEMPLATE") {
     conditions.push(eq(heritage.kind, "LINEAGE"));
@@ -734,6 +823,8 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
       imageUrl: heritage.imageUrl,
       userId: heritage.userId,
       createdAt: heritage.createdAt,
+      // Phase 9 follow-up: needed for My Creations "Kind" filter.
+      sourceOrigin: heritage.sourceOrigin,
       // Phase 8: per-entity iconography (live + proposed for resolveIcon)
       iconSource: heritage.iconSource,
       iconKey: heritage.iconKey,
@@ -801,6 +892,7 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
       tags: [],
+      sourceOrigin: r.sourceOrigin ?? null,
       // Phase 8: per-entity iconography (resolved — live or proposed)
       iconSource: icon.iconSource,
       iconKey: icon.iconKey,
@@ -832,7 +924,17 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
 // =============================================================================
 
 async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
-  const conditions = [eq(builds.isPublic, true), notUnpublished("BUILD_TEMPLATE", sql`${builds.id}`)];
+  const conditions: SQL[] = q.authorClerkId
+    ? [
+        eq(builds.userId, q.authorClerkId),
+        notUnpublished("BUILD_TEMPLATE", sql`${builds.id}`),
+      ]
+    : [
+        or(eq(builds.isPublic, true), isNull(builds.userId))!,
+        notUnpublished("BUILD_TEMPLATE", sql`${builds.id}`),
+      ];
+  if (q.kind === "fork") conditions.push(like(builds.sourceOrigin, "fork:%"));
+  if (q.kind === "creation") conditions.push(or(isNull(builds.sourceOrigin), notLike(builds.sourceOrigin, "fork:%"))!);
 
   if (q.search) {
     conditions.push(
@@ -868,6 +970,10 @@ async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
       iconProposedKey: builds.iconProposedKey,
       iconProposedUrl: builds.iconProposedUrl,
       iconProposedColor: builds.iconProposedColor,
+      // Phase 9 follow-up: needed for the My Creations "Kind" filter
+      // (Forks only / Creations only) — fork rows have sourceOrigin
+      // starting with "fork:", creations are everything else.
+      sourceOrigin: builds.sourceOrigin,
     })
     .from(builds)
     .where(and(...conditions))
@@ -912,6 +1018,7 @@ async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
       tags: [],
+      sourceOrigin: r.sourceOrigin ?? null,
       iconSource: icon.iconSource,
       iconKey: icon.iconKey,
       iconUrl: icon.iconUrl,

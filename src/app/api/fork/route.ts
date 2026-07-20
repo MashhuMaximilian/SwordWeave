@@ -22,7 +22,6 @@ import { randomUUID } from "node:crypto";
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   capabilities,
@@ -31,8 +30,6 @@ import {
   effectPrimitives,
   effects,
   effectConditions,
-  forkAggregates,
-  forks,
   itemCapabilities,
   itemEffects,
   itemPrimitives,
@@ -40,37 +37,16 @@ import {
   primitives,
   heritage,
   heritagePrimitives,
-  userStats,
 } from "@/db/schema";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
-import { resolveVirtualVersionId } from "@/lib/engagement/version-helpers";
+import { recordForkAttribution } from "@/lib/publishing/fork-attribution";
 import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
 
-/**
- * Increment user_stats.totalForksCreated for the forker.
- *
- * Uses an UPSERT so the first fork by a user without a stats row yet still
- * counts (creates a stats row with totalForksCreated=1 and zeros elsewhere).
- *
- * @returns New totalForksCreated value
- */
-async function incrementForksCreated(forkerInternalId: string): Promise<number> {
-  const result = await db
-    .insert(userStats)
-    .values({
-      userId: forkerInternalId,
-      totalForksCreated: 1,
-    })
-    .onConflictDoUpdate({
-      target: userStats.userId,
-      set: {
-        totalForksCreated: sql`${userStats.totalForksCreated} + 1`,
-        updatedAt: sql`NOW()`,
-      },
-    })
-    .returning({ total: userStats.totalForksCreated });
-  return Number(result[0]?.total ?? 1);
-}
+// Phase 9 follow-up: incrementForksCreated was here. The 5 entity-type
+// fork functions below now use the shared recordForkAttribution helper
+// (src/lib/publishing/fork-attribution.ts) which does the forker's
+// totalForksCreated bump AND the source author's totalForksReceived bump
+// in one call. The inline helper is no longer needed.
 
 const ForkSchema = z.object({
   targetType: z.enum([
@@ -260,54 +236,24 @@ async function forkPrimitive(input: {
     throw new Error("Failed to insert forked primitive");
   }
 
-  // Attribution. versionId is synthesized from targetId (which is integer).
-  const versionId = resolveVirtualVersionId("PRIMITIVE", String(source.id));
-  // Resolve source author — source.userId is Clerk ID text; forking wants
-  // internal UUID. Null when source is system content (no user).
-  const sourceAuthorId = source.userId
-    ? await resolveUserIdByClerkId(source.userId)
-    : null;
-  await db.insert(forks).values({
-    // forks.forkedByUserId is uuid → use internal user.id
-    forkedByUserId: forkerInternalId,
+  // Attribution — Phase 9 follow-up: refactored to use the shared
+  // recordForkAttribution helper. Previously this route did the
+  // forks-row insert + fork_aggregates UPSERT + user_stats bump
+  // inline (and only for the forker's side). The helper does both
+  // sides (forker + source author when applicable) and lives in
+  // src/lib/publishing/fork-attribution.ts so the atelier API
+  // routes can share the same logic.
+  const attribution = await recordForkAttribution({
+    forkerInternalId,
+    forkerClerkId: forkerClerkUserId,
+    sourceClerkUserId: source.userId,
     sourceTargetType: "PRIMITIVE",
     sourceTargetId: String(source.id),
-    sourceVersionId: versionId,
-    sourceAuthorId,
     forkedTargetType: "PRIMITIVE",
     forkedTargetId: String(forked.id),
-    // forkedVersionId: tracks "the fork's own current published version."
-    // At fork time the fork IS a copy of the source version, so we point
-    // it at the source's virtual version id. When the forker re-publishes
-    // their own version, publish-service updates this to the real version
-    // row id (see publish-service.ts post-publish hook).
-    forkedVersionId: versionId,
     metadata: { name: source.name, category: source.category },
   });
-
-  // Atomic fork_count increment
-  const [agg] = await db
-    .insert(forkAggregates)
-    .values({
-      sourceTargetType: "PRIMITIVE",
-      sourceTargetId: String(source.id),
-      sourceVersionId: versionId,
-      forkCount: 1,
-    })
-    .onConflictDoUpdate({
-      target: [
-        forkAggregates.sourceTargetType,
-        forkAggregates.sourceTargetId,
-        forkAggregates.sourceVersionId,
-      ],
-      set: {
-        forkCount: sql`${forkAggregates.forkCount} + 1`,
-        updatedAt: sql`NOW()`,
-      },
-    })
-    .returning({ forkCount: forkAggregates.forkCount });
-
-  const forkCount = await incrementForksCreated(forkerInternalId);
+  const forkCount = attribution.aggregateCount;
 
   return {
     forkedTargetId: String(forked.id),
@@ -391,44 +337,17 @@ async function forkCapability(input: {
     );
   }
 
-  const versionId = resolveVirtualVersionId("CAPABILITY", targetId);
-  const sourceAuthorId = source.userId
-    ? await resolveUserIdByClerkId(source.userId)
-    : null;
-  await db.insert(forks).values({
-    forkedByUserId: forkerInternalId,
+  const attribution = await recordForkAttribution({
+    forkerInternalId,
+    forkerClerkId: forkerClerkUserId,
+    sourceClerkUserId: source.userId,
     sourceTargetType: "CAPABILITY",
     sourceTargetId: source.id,
-    sourceVersionId: versionId,
-    sourceAuthorId,
     forkedTargetType: "CAPABILITY",
     forkedTargetId: forked.id,
-    forkedVersionId: versionId,
     metadata: { name: source.name },
   });
-
-  const [agg] = await db
-    .insert(forkAggregates)
-    .values({
-      sourceTargetType: "CAPABILITY",
-      sourceTargetId: source.id,
-      sourceVersionId: versionId,
-      forkCount: 1,
-    })
-    .onConflictDoUpdate({
-      target: [
-        forkAggregates.sourceTargetType,
-        forkAggregates.sourceTargetId,
-        forkAggregates.sourceVersionId,
-      ],
-      set: {
-        forkCount: sql`${forkAggregates.forkCount} + 1`,
-        updatedAt: sql`NOW()`,
-      },
-    })
-    .returning({ forkCount: forkAggregates.forkCount });
-
-  const forkCount = await incrementForksCreated(forkerInternalId);
+  const forkCount = attribution.aggregateCount;
 
   return {
     forkedTargetId: forked.id,
@@ -525,44 +444,18 @@ async function forkTemplate(input: {
     }
   })();
 
-  const versionId = resolveVirtualVersionId(targetType, targetId);
-  const sourceAuthorId = source.userId
-    ? await resolveUserIdByClerkId(source.userId)
-    : null;
-  await db.insert(forks).values({
-    forkedByUserId: forkerInternalId,
+  // Attribution — Phase 9 follow-up: use the shared helper.
+  const attribution = await recordForkAttribution({
+    forkerInternalId,
+    forkerClerkId: forkerClerkUserId,
+    sourceClerkUserId: source.userId,
     sourceTargetType: targetType,
     sourceTargetId: source.id,
-    sourceVersionId: versionId,
-    sourceAuthorId,
     forkedTargetType: targetType,
     forkedTargetId: forked.id,
-    forkedVersionId: versionId,
     metadata: { name: source.name, kind: source.kind },
   });
-
-  const [agg] = await db
-    .insert(forkAggregates)
-    .values({
-      sourceTargetType: targetType,
-      sourceTargetId: source.id,
-      sourceVersionId: versionId,
-      forkCount: 1,
-    })
-    .onConflictDoUpdate({
-      target: [
-        forkAggregates.sourceTargetType,
-        forkAggregates.sourceTargetId,
-        forkAggregates.sourceVersionId,
-      ],
-      set: {
-        forkCount: sql`${forkAggregates.forkCount} + 1`,
-        updatedAt: sql`NOW()`,
-      },
-    })
-    .returning({ forkCount: forkAggregates.forkCount });
-
-  const forkCount = await incrementForksCreated(forkerInternalId);
+  const forkCount = attribution.aggregateCount;
 
   return {
     forkedTargetId: forked.id,
@@ -645,43 +538,18 @@ async function forkEffect(input: {
     );
   }
 
-  const versionId = resolveVirtualVersionId("EFFECT", targetId);
-  const sourceAuthorId = source.userId
-    ? await resolveUserIdByClerkId(source.userId)
-    : null;
-  await db.insert(forks).values({
-    forkedByUserId: forkerInternalId,
+  // Attribution — Phase 9 follow-up: use the shared helper.
+  const attribution = await recordForkAttribution({
+    forkerInternalId,
+    forkerClerkId: forkerClerkUserId,
+    sourceClerkUserId: source.userId,
     sourceTargetType: "EFFECT",
     sourceTargetId: source.id,
-    sourceVersionId: versionId,
-    sourceAuthorId,
     forkedTargetType: "EFFECT",
     forkedTargetId: forked.id,
-    forkedVersionId: versionId,
     metadata: { name: source.name },
   });
-
-  await db
-    .insert(forkAggregates)
-    .values({
-      sourceTargetType: "EFFECT",
-      sourceTargetId: source.id,
-      sourceVersionId: versionId,
-      forkCount: 1,
-    })
-    .onConflictDoUpdate({
-      target: [
-        forkAggregates.sourceTargetType,
-        forkAggregates.sourceTargetId,
-        forkAggregates.sourceVersionId,
-      ],
-      set: {
-        forkCount: sql`${forkAggregates.forkCount} + 1`,
-        updatedAt: sql`NOW()`,
-      },
-    });
-
-  const forkCount = await incrementForksCreated(forkerInternalId);
+  const forkCount = attribution.aggregateCount;
 
   return {
     forkedTargetId: forked.id,
@@ -784,43 +652,18 @@ async function forkItem(input: {
     );
   }
 
-  const versionId = resolveVirtualVersionId("ITEM", targetId);
-  const sourceAuthorId = source.userId
-    ? await resolveUserIdByClerkId(source.userId)
-    : null;
-  await db.insert(forks).values({
-    forkedByUserId: forkerInternalId,
+  // Attribution — Phase 9 follow-up: use the shared helper.
+  const attribution = await recordForkAttribution({
+    forkerInternalId,
+    forkerClerkId: forkerClerkUserId,
+    sourceClerkUserId: source.userId,
     sourceTargetType: "ITEM",
     sourceTargetId: source.id,
-    sourceVersionId: versionId,
-    sourceAuthorId,
     forkedTargetType: "ITEM",
     forkedTargetId: forked.id,
-    forkedVersionId: versionId,
     metadata: { name: source.name },
   });
-
-  await db
-    .insert(forkAggregates)
-    .values({
-      sourceTargetType: "ITEM",
-      sourceTargetId: source.id,
-      sourceVersionId: versionId,
-      forkCount: 1,
-    })
-    .onConflictDoUpdate({
-      target: [
-        forkAggregates.sourceTargetType,
-        forkAggregates.sourceTargetId,
-        forkAggregates.sourceVersionId,
-      ],
-      set: {
-        forkCount: sql`${forkAggregates.forkCount} + 1`,
-        updatedAt: sql`NOW()`,
-      },
-    });
-
-  const forkCount = await incrementForksCreated(forkerInternalId);
+  const forkCount = attribution.aggregateCount;
 
   return {
     forkedTargetId: forked.id,

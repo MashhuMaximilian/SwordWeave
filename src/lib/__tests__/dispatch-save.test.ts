@@ -32,30 +32,46 @@ import {
 
 const CALLER = "user_caller";
 const OTHER_USER = "user_other";
+const ADMIN_USER = "user_admin";
 
 const OWNED_SOURCE: SourceRowIdentity = {
   id: 42,
   userId: CALLER,
   contentHash: "hash_owned",
   sourceOrigin: `user:${CALLER}`,
+  ownerIsAdmin: false,
 };
 const FOREIGN_SOURCE: SourceRowIdentity = {
   id: 99,
   userId: OTHER_USER,
   contentHash: "hash_foreign",
   sourceOrigin: `user:${OTHER_USER}`,
+  ownerIsAdmin: false,
 };
 const SYSTEM_SOURCE: SourceRowIdentity = {
   id: 7,
   userId: null,
   contentHash: "hash_system",
   sourceOrigin: "system:phase5-commit-c-library-seed",
+  // ownerIsAdmin is null for system-attributed rows — there's no
+  // owner to be an admin. The dispatcher's admin canon-edit rule
+  // explicitly handles null as "system source" → admin caller
+  // version-updates.
+  ownerIsAdmin: null,
+};
+const ADMIN_OWNED_SOURCE: SourceRowIdentity = {
+  id: 11,
+  userId: ADMIN_USER,
+  contentHash: "hash_admin",
+  sourceOrigin: `user:${ADMIN_USER}`,
+  ownerIsAdmin: true,
 };
 const LEGACY_OWNED_SOURCE: SourceRowIdentity = {
   id: 43,
   userId: CALLER,
   contentHash: null,
   sourceOrigin: `user:${CALLER}`,
+  ownerIsAdmin: false,
 };
 
 const DRAFT_DIFFERENT = "hash_different";
@@ -452,5 +468,115 @@ describe("decideSaveOutcome — invariants", () => {
       expect(outcome.sourceId).toBe(null);
       expect(outcome.swapTarget).toBe(false);
     }
+  });
+});
+
+// =============================================================================
+// Phase 9 follow-up: admin canon-edit exception.
+//
+// Rule: intent=load AND caller is admin AND (source.userId IS NULL OR
+// source.ownerIsAdmin === true) → version-update. Everything else
+// (intent=fork even for admin, intent=load on non-admin source even
+// for admin, intent=load on admin source for non-admin caller) falls
+// through to the existing matrix.
+// =============================================================================
+
+describe("decideSaveOutcome — admin canon-edit exception", () => {
+  it("admin caller + load + system source → version-update", () => {
+    const outcome = decideSaveOutcome({
+      intent: "load",
+      source: SYSTEM_SOURCE,
+      callerUserId: ADMIN_USER,
+      callerIsAdmin: true,
+      draftHash: DRAFT_DIFFERENT,
+    });
+    expect(outcome.kind).toBe("version-update");
+    if (outcome.kind === "version-update") {
+      expect(outcome.newId).toBe(SYSTEM_SOURCE.id);
+      expect(outcome.swapTarget).toBe(false);
+    }
+  });
+
+  it("admin caller + load + admin-owned source → version-update", () => {
+    const outcome = decideSaveOutcome({
+      intent: "load",
+      source: ADMIN_OWNED_SOURCE,
+      callerUserId: ADMIN_USER,
+      callerIsAdmin: true,
+      draftHash: DRAFT_DIFFERENT,
+    });
+    expect(outcome.kind).toBe("version-update");
+    if (outcome.kind === "version-update") {
+      expect(outcome.newId).toBe(ADMIN_OWNED_SOURCE.id);
+      expect(outcome.swapTarget).toBe(false);
+    }
+  });
+
+  it("admin caller + load + non-admin source → fork (regular rule applies)", () => {
+    const outcome = decideSaveOutcome({
+      intent: "load",
+      source: FOREIGN_SOURCE,
+      callerUserId: ADMIN_USER,
+      callerIsAdmin: true,
+      draftHash: DRAFT_DIFFERENT,
+    });
+    expect(outcome.kind).toBe("forked");
+    if (outcome.kind === "forked") {
+      expect(outcome.swapTarget).toBe(true);
+      expect(outcome.sourceId).toBe(FOREIGN_SOURCE.id);
+    }
+  });
+
+  it("admin caller + fork + system source → fork (intent=fork always forks)", () => {
+    const outcome = decideSaveOutcome({
+      intent: "fork",
+      source: SYSTEM_SOURCE,
+      callerUserId: ADMIN_USER,
+      callerIsAdmin: true,
+      draftHash: DRAFT_DIFFERENT,
+    });
+    expect(outcome.kind).toBe("forked");
+    if (outcome.kind === "forked") {
+      expect(outcome.swapTarget).toBe(true);
+    }
+  });
+
+  it("non-admin caller + load + system source → fork (callerIsAdmin gate)", () => {
+    const outcome = decideSaveOutcome({
+      intent: "load",
+      source: SYSTEM_SOURCE,
+      callerUserId: CALLER,
+      callerIsAdmin: false,
+      draftHash: DRAFT_DIFFERENT,
+    });
+    expect(outcome.kind).toBe("forked");
+    if (outcome.kind === "forked") {
+      expect(outcome.swapTarget).toBe(true);
+    }
+  });
+
+  it("admin caller + load + admin source + matching hashes → no-op", () => {
+    // Make ADMIN_OWNED_SOURCE match the draft — confirms the
+    // no-op short-circuit fires BEFORE the admin canon-edit rule
+    // when content hasn't actually changed.
+    const outcome = decideSaveOutcome({
+      intent: "load",
+      source: { ...ADMIN_OWNED_SOURCE, contentHash: DRAFT_DIFFERENT },
+      callerUserId: ADMIN_USER,
+      callerIsAdmin: true,
+      draftHash: DRAFT_DIFFERENT,
+    });
+    expect(outcome.kind).toBe("no-op");
+  });
+
+  it("admin caller + load + system source + matching hashes → no-op", () => {
+    const outcome = decideSaveOutcome({
+      intent: "load",
+      source: SYSTEM_SOURCE, // contentHash = "hash_system"
+      callerUserId: ADMIN_USER,
+      callerIsAdmin: true,
+      draftHash: DRAFT_MATCHES_SYSTEM,
+    });
+    expect(outcome.kind).toBe("no-op");
   });
 });
