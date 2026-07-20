@@ -24,6 +24,7 @@ import { EntityPreview } from "@/components/preview/entity-preview";
 import { ForksList } from "@/components/engagement/forks-list";
 import { FlagAndForkFooter } from "@/components/engagement/flag-and-fork-footer";
 import type { ForkTargetType } from "@/lib/publishing/forks-query";
+import { isSystemAuthoredServer } from "@/lib/publishing/author-display";
 import { Markdown } from "@/components/ui/markdown";
 import { IconDisplay } from "@/components/icons/icon-display";
 import {
@@ -383,6 +384,11 @@ function DetailShell({
   flagDistribution,
   flagNotes,
   forkSource,
+  // Phase 9 round 5: sourceOrigin drives the legacy-system mask.
+  // A row with sourceOrigin === "system" renders "by System" even
+  // when its user_id was stamped with a real user during an
+  // unrelated edit.
+  sourceOrigin,
   // Phase 8: per-entity iconography. All optional — if absent, the
   // header falls back to a "kind" placeholder.
   iconSource,
@@ -422,6 +428,16 @@ function DetailShell({
   targetId: string;
   engagement: EngagementData;
   currentUserId: string | null;
+  /**
+   * The row's sourceOrigin column. Drives the legacy-system mask
+   * (see author-display.ts): a row with sourceOrigin === "system"
+   * renders "by System" regardless of who is logged in, even when
+   * the row's user_id was stamped with a real user during an
+   * unrelated edit. Without this, the legacy stock corpus shows
+   * the logged-in user's @handle in the page header instead of
+   * "by System".
+   */
+  sourceOrigin: string | null;
   /**
    * Tag chips to render above the Flags section. Empty array hides
    * the row entirely.
@@ -521,27 +537,44 @@ function DetailShell({
               )}
             </div>
           </div>
-          {author && !author.isAdmin && (
-            <Link
-              href={`/u/${author.username}`}
-              className="mt-3 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              {author.avatarUrl ? (
-                <img
-                  src={author.avatarUrl}
-                  alt=""
-                  className="size-5 rounded-full"
-                />
-              ) : (
-                <UserIcon className="size-4" />
-              )}
-              by{" "}
-              <span className="font-semibold">
-                {author.displayName ?? author.username}
-              </span>
-            </Link>
-          )}
-          {author?.isAdmin && (
+          {/* Phase 9 round 5: render author via the unified mask.
+              Three triggers to "by System":
+                - author is null (no user)
+                - author.isAdmin (admin user)
+                - sourceOrigin === "system" (legacy stock corpus,
+                  user_id stamped with a real user during an
+                  unrelated edit but sourceOrigin still says system)
+              The helper combines these. */}
+          {!isSystemAuthoredServer({
+            author: author ?? null,
+            sourceOrigin,
+            hasUserId: author != null,
+          }) &&
+            author && (
+              <Link
+                href={`/u/${author.username}`}
+                className="mt-3 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+              >
+                {author.avatarUrl ? (
+                  <img
+                    src={author.avatarUrl}
+                    alt=""
+                    className="size-5 rounded-full"
+                  />
+                ) : (
+                  <UserIcon className="size-4" />
+                )}
+                by{" "}
+                <span className="font-semibold">
+                  {author.displayName ?? author.username}
+                </span>
+              </Link>
+            )}
+          {isSystemAuthoredServer({
+            author: author ?? null,
+            sourceOrigin,
+            hasUserId: author != null,
+          }) && (
             <span
               data-testid="system-author-label"
               className="mt-3 inline-flex items-center gap-2 text-sm text-muted-foreground"
@@ -665,6 +698,7 @@ async function PrimitiveDetail({
       engagement={engagement}
       currentUserId={currentUserId}
       tags={[]}
+      sourceOrigin={row.sourceOrigin ?? null}
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
       forkSource={forkSource}
@@ -699,27 +733,37 @@ async function PrimitiveDetail({
           },
         }}
         variant="read"
-        owner={{
-          // Phase 9 follow-up: when the row's author is a Clerk admin,
-          // mask authorId/username/displayName/avatar to null so the
-          // OwnerBar renders "by System" — same rule as the atelier
-          // modal preview. Admins are swordweave staff acting on
-          // behalf of the corpus; their personal forks still attribute
-          // to system. The audit trail (row.userId) stays set.
-          authorId: author?.isAdmin ? null : row.userId,
-          authorUsername: author?.isAdmin ? null : author?.username ?? null,
-          authorDisplayName: author?.isAdmin
-            ? null
-            : author?.displayName ?? null,
-          authorAvatarUrl: author?.isAdmin
-            ? null
-            : author?.avatarUrl ?? null,
-          isOwner: row.userId != null && row.userId === currentUserId,
-          profileHref:
-            author && !author.isAdmin && author.username
-              ? `/u/${author.username}`
-              : null,
-        }}
+        owner={(() => {
+          // Phase 9 round 5: mask author fields when the row is
+          // system-authored. Three trigger conditions:
+          //   - row.userId is null
+          //   - the resolved author has isAdmin === true
+          //   - row.sourceOrigin === "system" (legacy dirty rows
+          //     that got a real user_id stamped during an unrelated
+          //     edit but the sourceOrigin column still says system)
+          const mask = isSystemAuthoredServer({
+            author: author ?? null,
+            sourceOrigin: row.sourceOrigin,
+            hasUserId: row.userId != null,
+          });
+          return mask
+            ? {
+                authorId: null,
+                authorUsername: null,
+                authorDisplayName: null,
+                authorAvatarUrl: null,
+                isOwner: false,
+                profileHref: null,
+              }
+            : {
+                authorId: row.userId,
+                authorUsername: author?.username ?? null,
+                authorDisplayName: author?.displayName ?? null,
+                authorAvatarUrl: author?.avatarUrl ?? null,
+                isOwner: row.userId != null && row.userId === currentUserId,
+                profileHref: author?.username ? `/u/${author.username}` : null,
+              };
+        })()}
         actionBar={{
           openSourceHref: `/library/item/PRIMITIVE:${row.id}`,
           versionHistoryHref: `/library/item/PRIMITIVE:${row.id}/versions`,
@@ -800,6 +844,7 @@ async function CapabilityDetail({
       engagement={engagement}
       currentUserId={currentUserId}
       tags={row.tags ?? []}
+      sourceOrigin={row.sourceOrigin ?? null}
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
       forkSource={forkSource}
@@ -1009,6 +1054,7 @@ async function TemplateDetail({
       engagement={engagement}
       currentUserId={currentUserId}
       tags={[]}
+      sourceOrigin={row.sourceOrigin ?? null}
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
       forkSource={forkSource}
@@ -1213,6 +1259,7 @@ async function EffectDetail({
       engagement={engagement}
       currentUserId={currentUserId}
       tags={effectRow.tags ?? []}
+      sourceOrigin={effectRow.sourceOrigin ?? null}
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
       forkSource={forkSource}
@@ -1442,6 +1489,7 @@ async function ItemDetail({
       engagement={engagement}
       currentUserId={currentUserId}
       tags={itemRow.tags ?? []}
+      sourceOrigin={itemRow.sourceOrigin ?? null}
       flagDistribution={flagDistribution}
       flagNotes={flagNotes}
       forkSource={forkSource}

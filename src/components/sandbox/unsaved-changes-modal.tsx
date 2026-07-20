@@ -78,7 +78,17 @@ export function UnsavedChangesModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
+      // Phase 9 round 5: z-[12000] so the discard-changes modal
+      // always sits ABOVE every other modal in the app — the
+      // atelier preview modal (z-[60]), the icon picker (z-[9999]),
+      // and the color picker (z-[11000]). Previously z-50, which
+      // placed it BELOW the atelier modal — when the user tried
+      // to navigate away from the load panel with unsaved edits,
+      // the confirm modal appeared beneath the panel and was
+      // invisible. The 12000 tier is the dedicated "modal-stacked-
+      // on-modal-stacked-on-modal" band used by Hermes in-app
+      // confirms; see fab-speed-dial.tsx and modal-stack.tsx.
+      className="fixed inset-0 z-[12000] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
       onClick={onCancel}
       role="alertdialog"
       aria-modal="true"

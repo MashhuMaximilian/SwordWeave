@@ -442,16 +442,21 @@ export function EntityPreview({
     "row" in item && item.row && typeof item.row === "object" && "sourceOrigin" in item.row
       ? (item.row as { sourceOrigin?: string | null }).sourceOrigin ?? null
       : null;
-  // Phase 9 follow-up: hoist the admin mask. When the row's author
-  // is a Clerk admin, render "by System" everywhere — same rule as
-  // the OwnerBar's "no Clerk user attached" branch for system
-  // content. We check `callbacks.engagement.authorIsAdmin` and treat
-  // the row as author-less for display purposes. The audit trail
+  // Phase 9 round 5 (post-feedback): the admin mask now also fires
+  // when the row's sourceOrigin === "system" — the legacy stock
+  // corpus has dirty user_ids (stamped with the current user's
+  // clerk id during unrelated edits) so authorIsAdmin doesn't fire
+  // for those rows. The sourceOrigin column is the only honest
+  // signal that the row belongs to the corpus. Audit trail
   // (authorId) is still set so internal tooling can trace edits.
   const eng = callbacks?.engagement;
   const isAdminAuthor = eng?.authorIsAdmin === true;
-  const effectiveAuthorUsername =
-    eng?.authorUsername && !isAdminAuthor ? eng.authorUsername : null;
+  const isLegacySystemRow = rowSourceOrigin === "system";
+  const maskAuthor =
+    isAdminAuthor ||
+    isLegacySystemRow ||
+    !eng?.authorUsername;
+  const effectiveAuthorUsername = maskAuthor ? null : eng?.authorUsername;
 
   const resolvedOwner: EntityPreviewOwner | undefined =
     owner

@@ -9,7 +9,7 @@
 // ?intent=<fork|load> (Phase 1) records HOW the user entered the sandbox.
 // ?version=N deep-links a specific published version for pre-fill.
 
-import { asc, eq, sql } from "drizzle-orm";
+import { asc } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 
 import {
@@ -20,7 +20,6 @@ import { db } from "@/db/client";
 import {
   capabilities,
   effects,
-  follows,
   items,
   primitives,
   heritage,
@@ -122,64 +121,30 @@ export default async function AtelierSandboxPage({
     /* not logged in */
   }
 
-  // Phase 9 follow-up: also resolve the set of Clerk IDs the viewer
-  // follows. The visFilter grants followers-only visibility to those
-  // users' rows. Without this, a follower's atelier would silently
-  // drop every FOLLOWERS_ONLY row from people they follow.
-  let followedAuthorClerkIds: Set<string> = new Set();
-  if (sandboxViewerInternalId) {
-    try {
-      const followRows = await db
-        .select({
-          followingClerkId: sql<string>`following_user.clerk_user_id`,
-        })
-        .from(follows)
-        .innerJoin(
-          sql`users following_user`,
-          sql`following_user.id = ${follows.followingId}`,
-        )
-        .where(eq(follows.followerId, sandboxViewerInternalId));
-      followedAuthorClerkIds = new Set(
-        followRows
-          .map((r) => r.followingClerkId)
-          .filter((id): id is string => Boolean(id)),
-      );
-    } catch (err) {
-      console.error("[atelier sandbox] follows lookup failed:", err);
-    }
-  }
+  // (No follow-relationship lookup here — the atelier is the
+  // editor; it only shows rows the viewer owns. Followers-only
+  // publications surface in /library/browse via the publications-
+  // table-driven visibilityCondition in library-query.ts.)
 
-  // Phase 9 follow-up: three-tier visibility filter.
+  // Phase 9 follow-up: three-tier visibility filter for the editor.
   //   - PUBLIC rows        → always visible
   //   - System rows (user_id IS NULL) → always visible
-  //   - PRIVATE rows       → only the author
-  //   - FOLLOWERS_ONLY rows → the author + their followers
+  //   - PRIVATE / FOLLOWERS_ONLY rows → only the author
   //
-  // The entity `isPublic` boolean is the truth source here. The
-  // publications table holds a parallel visibility tier (PUBLIC /
-  // FOLLOWERS_ONLY) for analytics, but the atelier is the editor
-  // surface — the editor has to show whatever the entity is set
-  // to, even if there's no publications row yet (a private draft
-  // never goes through publications). The publications-table-driven
-  // visibilityCondition in library-query.ts is for the read-only
-  // browse surface; this is for the editor.
-  const visFilter = (r: { isPublic: boolean; userId: string | null }) => {
-    if (r.isPublic) return true;
-    if (!r.userId) return true; // system
-    if (r.userId === sandboxViewerClerkId) return true; // own row (any tier)
-    if (followedAuthorClerkIds.has(r.userId) && !r.isPublic) {
-      // Phase 9 follow-up: follower can see followers-only rows.
-      // We don't have a per-row tier here (only the boolean
-      // isPublic), so we trust that followers-only saves arrive with
-      // isPublic=false and isFollowersOnly=true. The publications
-      // table carries the tier formally; for the editor we treat
-      // every non-public own-able row as potentially followers-only
-      // for the followers. (For a regular user without follow
-      // relationship, this still drops the row.)
-      return true;
-    }
-    return false;
-  };
+  // The entity `isPublic` boolean doesn't distinguish between PRIVATE
+  // and FOLLOWERS_ONLY — that tier lives on the publications table.
+  // The editor (atelier) should not grant followers visibility to
+  // followed authors' rows because:
+  //   1. You can't edit them (only the author can).
+  //   2. Granting visibility-by-follow would expose fully-private
+  //      drafts to followers — a real privacy leak.
+  //
+  // If a followed author publishes a row to FOLLOWERS_ONLY, it shows
+  // up in /library/browse via the publications-table-driven
+  // visibilityCondition in library-query.ts. The atelier is the
+  // editor; it only shows what you own.
+  const visFilter = (r: { isPublic: boolean; userId: string | null }) =>
+    r.isPublic || !r.userId || r.userId === sandboxViewerClerkId;
 
   // PRIMITIVES
   try {

@@ -983,21 +983,27 @@ function ColorTrigger({
                     aria-label="Hex color"
                     className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-sm"
                   >
-                    {/* Phase 9 follow-up: use the <Input> slot from
+                    {/* Phase 9 round 5: use the <Input> slot from
                         react-aria-components instead of a bare <input>.
-                        A bare <input> inside <ColorField> doesn't bind
-                        to ColorFieldStateContext — ColorField ends up
-                        controlling a phantom input that doesn't exist,
-                        which crashes React on the first render after
-                        the picker opens (input refs and event handlers
-                        never wire up). <Input> consumes the slot props
-                        and binds them to the underlying <input>
-                        correctly. */}
+                        The earlier bare <input> crashed the page on
+                        picker open because ColorField's
+                        ColorFieldStateContext had no input to bind
+                        to, so when the user interacted React threw a
+                        hook-not-bound error that unmounted the entire
+                        page.
+
+                        <Input> subscribes to InputContext (which
+                        ColorField populates with inputProps) and
+                        forwards them to the underlying <input>.
+                        Crucially: we do NOT pass `value` or
+                        `onChange` here — Input's value/onChange come
+                        from the parent ColorPicker (via
+                        ColorFieldStateContext). Passing them as
+                        overrides would create two competing state
+                        loops and the same crash as before. */}
                     <Input
                       className="w-24 rounded border border-border bg-background px-2 py-1 font-mono text-xs"
                       maxLength={9}
-                      value={color}
-                      onChange={(e) => onChange(e.target.value)}
                       spellCheck={false}
                       aria-label="Icon color hex"
                     />
