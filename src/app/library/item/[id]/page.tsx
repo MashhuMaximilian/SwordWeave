@@ -700,12 +700,25 @@ async function PrimitiveDetail({
         }}
         variant="read"
         owner={{
-          authorId: row.userId,
-          authorUsername: author?.username ?? null,
-          authorDisplayName: author?.displayName ?? null,
-          authorAvatarUrl: author?.avatarUrl ?? null,
+          // Phase 9 follow-up: when the row's author is a Clerk admin,
+          // mask authorId/username/displayName/avatar to null so the
+          // OwnerBar renders "by System" — same rule as the atelier
+          // modal preview. Admins are swordweave staff acting on
+          // behalf of the corpus; their personal forks still attribute
+          // to system. The audit trail (row.userId) stays set.
+          authorId: author?.isAdmin ? null : row.userId,
+          authorUsername: author?.isAdmin ? null : author?.username ?? null,
+          authorDisplayName: author?.isAdmin
+            ? null
+            : author?.displayName ?? null,
+          authorAvatarUrl: author?.isAdmin
+            ? null
+            : author?.avatarUrl ?? null,
           isOwner: row.userId != null && row.userId === currentUserId,
-          profileHref: author?.username ? `/u/${author.username}` : null,
+          profileHref:
+            author && !author.isAdmin && author.username
+              ? `/u/${author.username}`
+              : null,
         }}
         actionBar={{
           openSourceHref: `/library/item/PRIMITIVE:${row.id}`,

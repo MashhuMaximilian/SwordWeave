@@ -163,6 +163,13 @@ const EMPTY_AUTHORS = {
   authorUsername: null,
   authorDisplayName: null,
   authorAvatarUrl: null,
+  // Phase 9 follow-up: sandbox-row mappers run before the per-row
+  // author resolution pass in atelier/page.tsx (which overwrites this
+  // with the real isAdmin value). Defaulting to `null` here is safe
+  // because every code path that consumes a LibraryItem either runs
+  // through atelier/page.tsx first (which fills the field) or treats
+  // null as "unknown / not an admin".
+  authorIsAdmin: null,
 };
 
 const EMPTY_ENGAGEMENT = {

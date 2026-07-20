@@ -37,7 +37,6 @@
 
 import {
   useCallback,
-  useDeferredValue,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -164,7 +163,15 @@ export function IconPicker({
   const [buckets, setBuckets] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const deferredSearch = useDeferredValue(search);
+  // Phase 18: drop useDeferredValue here. The deferred-value wrapper
+  // updates the search filter on a separate render cycle from the
+  // input's controlled value, which made the grid look stale while
+  // the user was still typing — the search box would show "Storm"
+  // but the grid kept showing the first icons from the unfiltered
+  // catalog. With 4180 icons the substring match is cheap enough
+  // (sub-millisecond on a desktop browser) that the deferral is
+  // not buying us anything visible.
+  const deferredSearch = search;
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -188,6 +195,14 @@ export function IconPicker({
 
   // Filtered icon list — recompute on bucket/search change. We compute
   // over the full 4180-icon array (cheap — substring match is fast).
+  //
+  // Search matches against slug + label + tags. The icon index
+  // includes author-assigned tags like "sky", "lightning", "weather"
+  // — searching "storm" without tag support yields only 4 matches
+  // (sandstorm, book-storm, brainstorm, lightning-storm), missing
+  // icons tagged "thunder", "weather", "rain" etc. that the user
+  // would expect when they type "storm". Tags-as-search-input also
+  // makes the picker discoverable for non-exact names.
   const filtered = useMemo(() => {
     if (!index) return [];
     const term = deferredSearch.trim().toLowerCase();
@@ -198,10 +213,15 @@ export function IconPicker({
       // category to be in the active set.
       if (buckets.size > 0 && !buckets.has(icon.category)) continue;
       if (term) {
-        // Match against slug + label (both lowercased).
+        // Match against slug + label + tags. Tags are already
+        // lower-cased when indexed; we still call .toLowerCase() on
+        // them defensively in case the index schema changes.
+        const tags = icon.tags ?? [];
+        const tagMatch = tags.some((t) => t.toLowerCase().includes(term));
         if (
           !icon.slug.toLowerCase().includes(term) &&
-          !icon.label.toLowerCase().includes(term)
+          !icon.label.toLowerCase().includes(term) &&
+          !tagMatch
         ) {
           continue;
         }
@@ -311,8 +331,16 @@ export function IconPicker({
       aria-label="Choose icon"
       // h-full resolves against IconSlot's h-[80vh] container, so
       // the picker's flex column gets a real height and the inner
-      // grid scrolls correctly.
-      className="flex h-full max-h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-card shadow-2xl"
+      // grid scrolls correctly. min-h-0 lets the inner grid shrink
+      // below its content's intrinsic height (otherwise the flex
+      // container grows past the 80vh cap and the search input +
+      // grid both end up cropped or the search stops filtering
+      // because the grid is rendered at 0 height). The previous
+      // shape used `h-full max-h-[80vh]` which collapsed to ~0
+      // when the IconSlot wrapper passed through a wrapper with no
+      // explicit height — search would update the filter but the
+      // grid would still render the first icons in the catalog.
+      className="flex min-h-0 h-full max-h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-card shadow-2xl"
     >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">

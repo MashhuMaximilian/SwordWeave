@@ -31,6 +31,12 @@ export interface PreviewEngagement {
   userReaction: "LIKE" | "DISLIKE" | null;
   authorId: string | null;
   authorUsername: string | null;
+  /**
+   * Phase 9 follow-up: when true, the OwnerBar masks the author to
+   * "by System" instead of "@username". Hoisted through the engagement
+   * payload so the OwnerBar doesn't have to look up the user again.
+   */
+  authorIsAdmin: boolean | null;
   currentUserInternalId: string | null;
 }
 

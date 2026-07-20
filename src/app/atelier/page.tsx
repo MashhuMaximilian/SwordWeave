@@ -312,7 +312,14 @@ export default async function AtelierSandboxPage({
     () =>
       new Map<
         string,
-        { username: string; displayName: string | null; avatarUrl: string | null }
+        {
+          username: string;
+          displayName: string | null;
+          avatarUrl: string | null;
+          // Phase 9 follow-up: hoist isAdmin onto the catch-path map so
+          // the type matches resolveAuthorMap's actual return shape.
+          isAdmin: boolean;
+        }
       >(),
   );
 
@@ -336,6 +343,9 @@ export default async function AtelierSandboxPage({
     item.authorUsername = author.username;
     item.authorDisplayName = author.displayName;
     item.authorAvatarUrl = author.avatarUrl;
+    // Phase 9 follow-up: hoist isAdmin onto the LibraryItem so the
+    // OwnerBar can mask admin authors to "by System".
+    item.authorIsAdmin = author.isAdmin;
   }
 
   const engagementMapPromise = (async () => {

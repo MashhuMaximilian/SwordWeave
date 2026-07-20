@@ -202,7 +202,7 @@ export default async function ProfilePage({
         clerkUserId={profile.clerkUserId ?? null}
         items={filteredItems}
         kind={kindFilter ? (kindFilter as "fork" | "creation") : "all"}
-        visibility={visibilityFilter ? (visibilityFilter === "FOLLOWERS_ONLY" ? "followers" : visibilityFilter === "PUBLIC" ? "public" : "private") : "all"}
+        visibility={visibilityFilter ? (visibilityFilter === "FOLLOWERS_ONLY" ? "followers" : "public") : "all"}
       />
     </div>
   );
@@ -297,7 +297,7 @@ async function ProfileEntriesSection({
     sourceOrigin: string | null;
   }>;
   kind: "all" | "fork" | "creation";
-  visibility: "all" | "public" | "followers" | "private";
+  visibility: "all" | "public" | "followers";
 }) {
   // Look up the username to render the empty-state copy.
   const userRow = await db.query.users.findFirst({

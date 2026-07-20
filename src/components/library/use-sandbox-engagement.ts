@@ -85,6 +85,10 @@ export function useSandboxEngagement(
       userReaction: reaction,
       authorId: item.authorId,
       authorUsername: item.authorUsername,
+      // Phase 9 follow-up: surface isAdmin from LibraryItem so the
+      // OwnerBar can render "by System" instead of "@xeun" for
+      // admin-authored rows.
+      authorIsAdmin: item.authorIsAdmin ?? null,
       currentUserInternalId,
     },
     loading,

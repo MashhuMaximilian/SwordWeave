@@ -442,23 +442,33 @@ export function EntityPreview({
     "row" in item && item.row && typeof item.row === "object" && "sourceOrigin" in item.row
       ? (item.row as { sourceOrigin?: string | null }).sourceOrigin ?? null
       : null;
+  // Phase 9 follow-up: hoist the admin mask. When the row's author
+  // is a Clerk admin, render "by System" everywhere — same rule as
+  // the OwnerBar's "no Clerk user attached" branch for system
+  // content. We check `callbacks.engagement.authorIsAdmin` and treat
+  // the row as author-less for display purposes. The audit trail
+  // (authorId) is still set so internal tooling can trace edits.
+  const eng = callbacks?.engagement;
+  const isAdminAuthor = eng?.authorIsAdmin === true;
+  const effectiveAuthorUsername =
+    eng?.authorUsername && !isAdminAuthor ? eng.authorUsername : null;
+
   const resolvedOwner: EntityPreviewOwner | undefined =
     owner
       ? { ...owner, sourceOrigin: owner.sourceOrigin ?? rowSourceOrigin }
-      : callbacks?.engagement?.authorUsername
+      : effectiveAuthorUsername
       ? {
-          authorId: callbacks.engagement.authorId,
-          authorUsername: callbacks.engagement.authorUsername,
-          authorDisplayName: callbacks.engagement.authorUsername,
+          authorId: eng?.authorId ?? null,
+          authorUsername: effectiveAuthorUsername,
+          authorDisplayName: effectiveAuthorUsername,
           authorAvatarUrl: null,
           isOwner:
-            !!callbacks.engagement.authorId &&
-            callbacks.engagement.authorId ===
-              callbacks.engagement.currentUserInternalId,
-          profileHref: `/u/${callbacks.engagement.authorUsername}`,
+            !!eng?.authorId &&
+            eng.authorId === eng?.currentUserInternalId,
+          profileHref: `/u/${effectiveAuthorUsername}`,
           sourceOrigin: rowSourceOrigin,
         }
-      : callbacks?.engagement // engagement exists but no author username
+      : callbacks?.engagement // engagement exists but no author username (or admin author)
       ? {
           authorId: null,
           authorUsername: null,

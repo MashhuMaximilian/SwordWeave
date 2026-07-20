@@ -20,7 +20,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 export type KindFilter = "all" | "fork" | "creation";
-export type VisibilityFilter = "all" | "public" | "followers" | "private";
+export type VisibilityFilter = "all" | "public" | "followers";
 
 interface ProfileFilterChipsProps {
   basePath: string;
@@ -34,11 +34,15 @@ const KIND_CHIPS: Array<{ key: KindFilter; label: string }> = [
   { key: "creation", label: "Creations only" },
 ];
 
+// Phase 9 follow-up: profile pages are PUBLIC — non-owners can never
+// see PRIVATE rows (the DB-level visibility filter excludes them).
+// So "Private only" makes no sense as a chip on the profile page; it
+// only belongs on /creations where the author can slice their own
+// drafts. The chip is intentionally omitted here.
 const VISIBILITY_CHIPS: Array<{ key: VisibilityFilter; label: string }> = [
   { key: "all", label: "All" },
   { key: "public", label: "Public" },
   { key: "followers", label: "Followers only" },
-  { key: "private", label: "Private only" },
 ];
 
 export function ProfileFilterChips({

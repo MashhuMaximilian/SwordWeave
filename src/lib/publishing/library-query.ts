@@ -152,6 +152,17 @@ export interface LibraryItem {
   netReactions: number;
   tags: string[];
   /**
+   * Phase 9 follow-up: whether this row's author is a Clerk admin.
+   * When true, the UI masks `authorUsername` and `authorDisplayName`
+   * to null and renders "by System" everywhere — same rule as the
+   * OwnerBar's existing "no author" branch. Admins are swordweave
+   * staff acting on behalf of the corpus; personal forks from an
+   * admin still belong to "system" for attribution purposes (the
+   * row's actual author is preserved in `authorId` for audit).
+   * `null` when the author is unknown / system-attributed.
+   */
+  authorIsAdmin: boolean | null;
+  /**
    * Visibility tier:
    *   - "PRIVATE"        — author only, no publication row
    *   - "FOLLOWERS_ONLY" — author + their followers
@@ -552,6 +563,10 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       authorUsername: author?.username ?? null,
       authorDisplayName: author?.displayName ?? null,
       authorAvatarUrl: author?.avatarUrl ?? null,
+      // Phase 9 follow-up: hoist isAdmin so the OwnerBar + source page
+      // can render "by System" instead of "@xeun" for admin-authored
+      // rows (personal forks from an admin still attribute to system).
+      authorIsAdmin: author?.isAdmin ?? false,
       publishedAt: r.createdAt,
       likesCount: eng.likes,
       dislikesCount: eng.dislikes,
@@ -680,6 +695,10 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
       authorUsername: author?.username ?? null,
       authorDisplayName: author?.displayName ?? null,
       authorAvatarUrl: author?.avatarUrl ?? null,
+      // Phase 9 follow-up: hoist isAdmin so the OwnerBar + source page
+      // can render "by System" instead of "@xeun" for admin-authored
+      // rows (personal forks from an admin still attribute to system).
+      authorIsAdmin: author?.isAdmin ?? false,
       publishedAt: r.createdAt,
       likesCount: eng.likes,
       dislikesCount: eng.dislikes,
@@ -804,6 +823,10 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
       authorUsername: author?.username ?? null,
       authorDisplayName: author?.displayName ?? null,
       authorAvatarUrl: author?.avatarUrl ?? null,
+      // Phase 9 follow-up: hoist isAdmin so the OwnerBar + source page
+      // can render "by System" instead of "@xeun" for admin-authored
+      // rows (personal forks from an admin still attribute to system).
+      authorIsAdmin: author?.isAdmin ?? false,
       publishedAt: r.createdAt,
       likesCount: eng.likes,
       dislikesCount: eng.dislikes,
@@ -920,6 +943,10 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
       authorUsername: author?.username ?? null,
       authorDisplayName: author?.displayName ?? null,
       authorAvatarUrl: author?.avatarUrl ?? null,
+      // Phase 9 follow-up: hoist isAdmin so the OwnerBar + source page
+      // can render "by System" instead of "@xeun" for admin-authored
+      // rows (personal forks from an admin still attribute to system).
+      authorIsAdmin: author?.isAdmin ?? false,
       publishedAt: r.createdAt,
       likesCount: eng.likes,
       dislikesCount: eng.dislikes,
@@ -1058,6 +1085,10 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
       authorUsername: author?.username ?? null,
       authorDisplayName: author?.displayName ?? null,
       authorAvatarUrl: author?.avatarUrl ?? null,
+      // Phase 9 follow-up: hoist isAdmin so the OwnerBar + source page
+      // can render "by System" instead of "@xeun" for admin-authored
+      // rows (personal forks from an admin still attribute to system).
+      authorIsAdmin: author?.isAdmin ?? false,
       publishedAt: r.createdAt,
       likesCount: eng.likes,
       dislikesCount: eng.dislikes,
@@ -1195,6 +1226,10 @@ async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
       authorUsername: author?.username ?? null,
       authorDisplayName: author?.displayName ?? null,
       authorAvatarUrl: author?.avatarUrl ?? null,
+      // Phase 9 follow-up: hoist isAdmin so the OwnerBar + source page
+      // can render "by System" instead of "@xeun" for admin-authored
+      // rows (personal forks from an admin still attribute to system).
+      authorIsAdmin: author?.isAdmin ?? false,
       publishedAt: r.createdAt,
       likesCount: eng.likes,
       dislikesCount: eng.dislikes,
@@ -1215,12 +1250,25 @@ export async function resolveAuthorMap(
 ): Promise<
   Map<
     string,
-    { username: string; displayName: string | null; avatarUrl: string | null }
+    {
+      username: string;
+      displayName: string | null;
+      avatarUrl: string | null;
+      // Phase 9 follow-up: hoisted isAdmin so callers can mask
+      // admin authors to "by System" in the OwnerBar + source page
+      // without a second DB round-trip.
+      isAdmin: boolean;
+    }
   >
 > {
   const map = new Map<
     string,
-    { username: string; displayName: string | null; avatarUrl: string | null }
+    {
+      username: string;
+      displayName: string | null;
+      avatarUrl: string | null;
+      isAdmin: boolean;
+    }
   >();
   const unique = Array.from(
     new Set(clerkUserIds.filter((id): id is string => Boolean(id))),
@@ -1237,6 +1285,7 @@ export async function resolveAuthorMap(
       avatarUrl: true,
       isAnonymized: true,
       deletedAt: true,
+      isAdmin: true,
     },
   });
   for (const r of rows) {
@@ -1249,6 +1298,7 @@ export async function resolveAuthorMap(
       username: r.username,
       displayName: r.displayName,
       avatarUrl: r.avatarUrl,
+      isAdmin: r.isAdmin,
     });
   }
   return map;
