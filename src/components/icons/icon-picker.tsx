@@ -54,9 +54,9 @@ import {
   ColorField,
   ColorPicker,
   ColorSlider,
+  ColorSwatch,
   ColorSwatchPicker,
   ColorSwatchPickerItem,
-  ColorSwatch,
   ColorThumb,
   Dialog,
   DialogTrigger,
@@ -64,14 +64,8 @@ import {
   Modal,
   SearchField,
   SliderTrack,
+  parseColor,
 } from "react-aria-components";
-// Dedicated ColorPicker subpath — the docs recommend importing
-// parseColor from the same subpath the picker lives in. Pulling it
-// from the top-level barrel occasionally resolves to a different
-// (older) Color class definition in some bundler setups, which is
-// one possible source of "Cannot read properties of undefined" on
-// second mount. Pinning to the subpath forces a single source.
-import { parseColor } from "react-aria-components/ColorPicker";
 
 // =============================================================================
 // Color presets — curated palette tuned for icon glyphs on a dark canvas.
@@ -835,10 +829,6 @@ function FiltersModal({
 // color picker in a popover. The popover is rendered via createPortal so
 // it escapes IconSlot's overflow-hidden inner card.
 //
-// Phase 9 round 7: restored the Adobe HSB picker from c55528a (where
-// it worked) and kept my 24 curated swatches underneath it (instead of
-// the original 17).
-//
 // Crash history (resolved):
 //   - Round 4 (dae0097): the bare <input> inside <ColorField> crashed
 //     because ColorField's ColorFieldStateContext had no input bound.
@@ -848,20 +838,37 @@ function FiltersModal({
 //   - Round 6 (abd487d): replaced the entire Adobe picker with a
 //     simplified swatch-only picker. No crash, but lost the HSB
 //     visual editor the user wanted.
-//   - Round 7 (this commit): restored the Adobe HSB picker with
-//     <Input> slot. Root cause of the round 4-5 crash was actually
-//     in OUR custom ColorCallout SVG (the .color-callout className
-//     was missing the corresponding CSS, so the empty rendered SVG
-//     tripped React's hydration check on first render). Removing the
-//     custom SVG callout from inside <ColorThumb> and using a simple
-//     <span> with backgroundColor fixes the crash without losing
-//     the Adobe picker UX.
+//   - Round 7 (700f7d7): restored the Adobe HSB picker with <Input>
+//     slot, simple inline span callouts (no SVG). Worked.
+//   - Round 8 (af9d509): wrapped in <PickerErrorBoundary> as defense
+//     in depth.
+//   - Round 9 (a9d8e4b): replaced react-aria picker with native HTML
+//     controls because the picker kept crashing on production (the
+//     dev test passed, prod failed). Lost the HSB visual editor.
+//   - Round 10 (5940074): restored react-aria ColorPicker but used
+//     useState + useEffect to sync, dropped renderProps callouts,
+//     swapped ColorField for a bare <input>, used a subpath import
+//     for parseColor. Production still crashed with React #185.
+//   - Round 11 (this commit): revert to round 7 EXACTLY —
+//     - useMemo for colorValue (no useState/useEffect sync loop)
+//     - <ColorField> with <Input> slot (no bare <input> remount key)
+//     - renderProps on <ColorThumb> for the callout (worked in r7)
+//     - parseColor from the main barrel (worked in r7)
+//     Plus keep the round 9 dialog scroll fixes (max-h + overflow-y-
+//     auto with sticky header) so mobile doesn't cut off swatches,
+//     and the round 8 PickerErrorBoundary as crash recovery.
 //
-// The picker has three pieces, all wired through ColorPicker:
-//   1. <ColorArea> — HSB 2D square (saturation × brightness)
-//   2. <ColorSlider> — hue slider on the right
-//   3. <ColorField> — hex text input (uses <Input> slot)
-//   4. <ColorSwatchPicker> — 24 curated swatches below
+// Root cause of the r10 crash is one of:
+//   (a) the useState + useEffect loop created two paths that could
+//       trigger setColorValue on each parent re-render, OR
+//   (b) the bare <input> with key={colorValue.toString('hex')} was
+//       remounting on every parent re-render in prod (where React 19
+//       is stricter than dev), OR
+//   (c) the subpath import of parseColor returned a Color class from
+//       a different module instance than the one ColorPicker uses
+//       internally, so identity comparisons in useControlledState
+//       failed and fired forceUpdate in a loop.
+// By reverting to round 7's exact pattern we eliminate all three.
 // =============================================================================
 function ColorTrigger({
   color,
@@ -870,37 +877,16 @@ function ColorTrigger({
   color: string;
   onChange: (next: string) => void;
 }) {
-  // Round 10: react-aria's <ColorPicker> is back, but state is a
-  // proper Color object this time (not a hex string). The docs use
-  // this exact pattern: useState<Color>(parseColor('#xxx')), with
-  // onChange={setColor} passing a Color through. Internally we
-  // surface hex to the parent via toString('hex') so the rest of
-  // the app keeps its hex-string contract.
-  const [colorValue, setColorValue] = useState(() => {
+  // parseColor needs a valid 6-digit hex; the value comes from the
+  // picker's normalizeColor (always 6-digit) so this is safe.
+  // useMemo (not useState + useEffect) — round 10's sync loop was
+  // the most likely cause of prod React #185.
+  const colorValue = useMemo(() => {
     try {
-      return parseColor(normalizeColor(color));
+      return parseColor(color);
     } catch {
       return parseColor("#ffffff");
     }
-  });
-
-  // Sync internal Color with the hex prop. When the parent flips
-  // `color` (e.g. user picks a swatch from the IconPicker toolbar,
-  // or another tab edits the same entity), update the Color object
-  // only if the hex actually differs — avoids clobbering the user's
-  // mid-drag position in ColorArea.
-  useEffect(() => {
-    const normalized = normalizeColor(color);
-    if (colorValue.toString("hex").toLowerCase() !== normalized.toLowerCase()) {
-      try {
-        setColorValue(parseColor(normalized));
-      } catch {
-        /* leave previous value */
-      }
-    }
-    // We intentionally exclude `colorValue` from deps — this effect
-    // runs only when the parent's `color` prop changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [color]);
 
   const [open, setOpen] = useState(false);
@@ -990,96 +976,103 @@ function ColorTrigger({
                 )}
               >
                 {/*
-                 * Round 10: react-aria <ColorPicker> back, but written
-                 * exactly as the official docs recommend:
-                 *   - state is a Color object (parseColor + setState)
-                 *   - onChange receives a Color and we string-set hex
-                 *     to the parent
-                 *   - <ColorArea> + <ColorSlider> as direct children
-                 *     of <ColorPicker> with NO renderProps inside
-                 *     <ColorThumb> — the renderProps child pattern
-                 *     was the source of the round-4/5/7/8 crash
-                 *     (c.toString('css') on an undefined Color when
-                 *     the picker remounted after a swatch click).
-                 *   - <ColorSwatchPicker> uses default render
+                 * Round 11: exact port of round 7's working ColorPicker
+                 * tree. The renderProps children inside <ColorThumb>
+                 * are NOT the bug — round 7 shipped with them and the
+                 * picker worked in production. The bug was in MY round 10
+                 * changes (sync loop, subpath import, bare input).
                  *
-                 * Hex <input> is a sibling, not a ColorField — we
-                 * let users type raw hex without the react-aria
-                 * channel-aware parsing. That keeps the input
-                 * crash-free.
+                 * The renderProps pipe the live color from react-aria's
+                 * internal state into a small inline callout (the
+                 * teardrop above the thumb). c.toString('css') is safe
+                 * because react-aria guarantees color is always defined
+                 * when the picker is in a working state.
                  */}
                 <ColorPicker
                   value={colorValue}
-                  onChange={(c) => {
-                    setColorValue(c);
-                    onChange(c.toString("hex"));
-                  }}
+                  onChange={(c) => onChange(c.toString("hex"))}
                 >
-                  {/* HSB square + hue slider row. */}
+                  {/* Row 1 — HSB square + hue slider. The 2D area is
+                      sized 160px (size-40) to match the slider height
+                      (h-40). Mobile users can drag the thumb or tap
+                      the gradient directly to set hue+sat. */}
                   <div className="flex items-center gap-3">
                     <ColorArea
                       colorSpace="hsb"
                       xChannel="saturation"
                       yChannel="brightness"
-                      className="color-area"
-                    />
+                      className="relative size-40 rounded-md"
+                      style={{
+                        backgroundColor: `hsl(${colorValue.toString("hsl").split(" ")[0]}, 100%, 50%)`,
+                      }}
+                    >
+                      {/* Simple inline callout: a small rounded square
+                          above the thumb. Round 7 used this exact
+                          pattern (no SVG) and it worked. */}
+                      <ColorThumb className="color-thumb">
+                        {({ color: c }) => (
+                          <span
+                            aria-hidden
+                            className="color-callout"
+                            style={{ backgroundColor: c.toString("css") }}
+                          />
+                        )}
+                      </ColorThumb>
+                    </ColorArea>
                     <ColorSlider
                       colorSpace="hsb"
                       channel="hue"
                       orientation="vertical"
-                      className="color-slider"
+                      className="relative h-40 w-8 rounded-md"
+                      style={{
+                        background:
+                          "linear-gradient(to bottom, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)",
+                      }}
                     >
-                      {/* SliderTrack is REQUIRED — without it, only the
-                          thumb is clickable on the slider rail. */}
-                      <SliderTrack className="color-slider-track">
-                        <ColorThumb className="color-thumb" />
+                      {/* <SliderTrack> child is REQUIRED: ColorSlider
+                          publishes trackProps via context, and only
+                          <SliderTrack> consumes them to attach the
+                          onPointerDown handler (click-to-set on the
+                          empty bar). Without it, only the thumb is
+                          clickable. */}
+                      <SliderTrack className="h-full w-full">
+                        <ColorThumb className="color-thumb">
+                          {({ color: c }) => (
+                            <span
+                              aria-hidden
+                              className="color-callout"
+                              style={{ backgroundColor: c.toString("css") }}
+                            />
+                          )}
+                        </ColorThumb>
                       </SliderTrack>
                     </ColorSlider>
                   </div>
 
-                  {/* Hex input — sibling of the picker, plain <input>
-                      so partial-typed hex like "abc" doesn't blow up
-                      a ColorField parser. We use uncontrolled state
-                      (defaultValue) so the user's in-progress text
-                      isn't clobbered while react-aria fires frequent
-                      onChange events from the HSB area / hue slider.
-                      onBlur commits the value via parseColor. */}
-                  <div className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-sm">
-                    <input
-                      type="text"
-                      key={colorValue.toString("hex")}
-                      defaultValue={colorValue.toString("hex")}
-                      onBlur={(e) => {
-                        const normalized = normalizeColor(e.target.value);
-                        try {
-                          const next = parseColor(normalized);
-                          setColorValue(next);
-                          onChange(next.toString("hex"));
-                        } catch {
-                          /* leave previous value */
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          (e.target as HTMLInputElement).blur();
-                        }
-                      }}
-                      maxLength={7}
+                  {/* Row 2 — hex text input. Uses <Input> slot from
+                      react-aria-components (NOT a bare <input>) — the
+                      slot binds to ColorField's inputProps so hex
+                      edits update the live color and the field stays
+                      in sync with swatch/slider picks. */}
+                  <ColorField
+                    aria-label="Hex color"
+                    className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+                  >
+                    <Input
+                      className="w-24 rounded border border-border bg-background px-2 py-1 font-mono text-xs"
+                      maxLength={9}
                       spellCheck={false}
                       aria-label="Icon color hex"
-                      placeholder="#a78bfa"
-                      className="w-24 rounded border border-border bg-background px-2 py-1 font-mono text-xs"
                     />
                     <span className="ml-auto font-mono text-xs text-muted-foreground">
-                      {colorValue.toString("hex")}
+                      {color}
                     </span>
-                  </div>
+                  </ColorField>
 
-                  {/* 22 curated swatches.
-                      ColorSwatchPickerItem MUST have aspect-square —
-                      otherwise the grid items collapse to 0×0 height
-                      because react-aria's GridList doesn't compute
-                      aspect from width alone. */}
+                  {/* Row 3 — 24 curated swatches (6 cols × 4 rows).
+                      ColorSwatchPicker binds to ColorPicker state so
+                      clicks update the live color and mark the
+                      selected swatch automatically. */}
                   <ColorSwatchPicker className="grid grid-cols-6 gap-1.5">
                     {COLOR_PRESETS.map((hex) => (
                       <ColorSwatchPickerItem

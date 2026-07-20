@@ -594,7 +594,12 @@ function OwnerBar({ owner }: { owner: NonNullable<EntityPreviewProps["owner"]> }
     // is set, a small "Source: <origin>" pill renders on the right so
     // the user can see which world/book the entity comes from at a
     // glance — same data as the build-edit "Source origin" field.
-    <div className="flex items-center justify-between gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
+    // Phase 9 round-11: user reported 'in preview in atelier we need
+    // just a bit of margin top above where the creator is. The border
+    // top or whatever that is is too close to the thing above it'.
+    // pt-2 → pt-4 for one more breath between the body content and
+    // the creator tag.
+    <div className="flex items-center justify-between gap-2 border-t border-border pt-4 text-xs text-muted-foreground">
       {profileHref ? (
         <a href={profileHref} className="flex items-center gap-2 hover:underline">
           {inner}
