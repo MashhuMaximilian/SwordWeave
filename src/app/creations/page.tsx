@@ -11,7 +11,7 @@ import {
   effects,
   items,
   primitives,
-  templates,
+  heritage,
   publications,
 } from "@/db/schema";
 import {
@@ -21,7 +21,7 @@ import {
   effectToLibraryItem,
   itemToLibraryItem,
   primitiveToLibraryItem,
-  templateToLibraryItem,
+  heritageToLibraryItem,
 } from "@/components/sandbox/sandbox-row-mapper";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import { CreationsClient } from "./creations-client";
@@ -66,9 +66,9 @@ export default async function CreationsPage({
         orderBy: [asc(capabilities.name)],
         with: { primitiveLinks: { with: { primitive: true } } },
       }),
-      db.query.templates.findMany({
-        where: eq(templates.userId, userId),
-        orderBy: [asc(templates.kind), asc(templates.name)],
+      db.query.heritage.findMany({
+        where: eq(heritage.userId, userId),
+        orderBy: [asc(heritage.kind), asc(heritage.name)],
       }),
       db.query.items.findMany({
         where: eq(items.userId, userId),
@@ -97,11 +97,11 @@ export default async function CreationsPage({
     ...capabilityRows.map((r) => ({ type: "CAPABILITY" as const, id: r.id })),
     ...templateRows.map((r) => ({
       type:
-        r.kind === "RACE"
-          ? ("RACE_TEMPLATE" as const)
-          : r.kind === "BACKGROUND"
-            ? ("BACKGROUND_TEMPLATE" as const)
-            : ("ARCHETYPE_TEMPLATE" as const),
+        r.kind === "LINEAGE"
+          ? ("LINEAGE_TEMPLATE" as const)
+          : r.kind === "UPBRINGING"
+            ? ("UPBRINGING_TEMPLATE" as const)
+            : ("MANIFEST_TEMPLATE" as const),
       id: r.id,
     })),
     ...itemRows.map((r) => ({ type: "ITEM" as const, id: r.id })),
@@ -152,12 +152,12 @@ export default async function CreationsPage({
     ...capabilityRows.map((r) => capabilityToLibraryItem(r, visFor("CAPABILITY", r.id))),
     ...templateRows.map((r) => {
       const t =
-        r.kind === "RACE"
-          ? "RACE_TEMPLATE"
-          : r.kind === "BACKGROUND"
-            ? "BACKGROUND_TEMPLATE"
-            : "ARCHETYPE_TEMPLATE";
-      return templateToLibraryItem(r, visFor(t, r.id));
+        r.kind === "LINEAGE"
+          ? "LINEAGE_TEMPLATE"
+          : r.kind === "UPBRINGING"
+            ? "UPBRINGING_TEMPLATE"
+            : "MANIFEST_TEMPLATE";
+      return heritageToLibraryItem(r, visFor(t, r.id));
     }),
     ...itemRows.map((r) => itemToLibraryItem(r, visFor("ITEM", r.id))),
     ...characterRows.map((r) => characterToLibraryItem(r, visFor("CHARACTER", r.id))),
@@ -208,7 +208,7 @@ export default async function CreationsPage({
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
             All your authored entries — primitives, effects, capabilities,
-            templates, and items — in one place. Filter by type or status to
+            heritage, and items — in one place. Filter by type or status to
             find drafts, jump into the sandbox to keep editing, or open the
             canonical detail page to view forks and likes.
           </p>
@@ -221,10 +221,10 @@ export default async function CreationsPage({
             <Plus className="size-4" /> New Grammar
           </Link>
           <Link
-            href="/atelier?build=template"
+            href="/atelier?build=heritage"
             className="flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:border-primary"
           >
-            <Plus className="size-4" /> New Template
+            <Plus className="size-4" /> New Heritage
           </Link>
           <Link
             href="/sandbox/characters"

@@ -24,9 +24,9 @@ export type ForkTargetType =
   | "EFFECT"
   | "ITEM"
   | "CHARACTER"
-  | "RACE_TEMPLATE"
-  | "BACKGROUND_TEMPLATE"
-  | "ARCHETYPE_TEMPLATE"
+  | "LINEAGE_TEMPLATE"
+  | "UPBRINGING_TEMPLATE"
+  | "MANIFEST_TEMPLATE"
   | "BUILD_TEMPLATE";
 
 export interface ForkEntry {
@@ -313,7 +313,7 @@ async function resolveSourceAuthors(
     effects,
     items,
     characters,
-    templates,
+    heritage,
   } = await import("@/db/schema");
 
   const get = (type: string) => Array.from(idsByType.get(type) ?? []);
@@ -398,17 +398,17 @@ async function resolveSourceAuthors(
     }
   }
 
-  const tplKinds = ["RACE_TEMPLATE", "BACKGROUND_TEMPLATE", "ARCHETYPE_TEMPLATE"] as const;
+  const tplKinds = ["LINEAGE_TEMPLATE", "UPBRINGING_TEMPLATE", "MANIFEST_TEMPLATE"] as const;
   for (const engagementType of tplKinds) {
     const ids = get(engagementType);
     if (ids.length === 0) continue;
     // DB enum is RACE / BACKGROUND / ARCHETYPE (no _TEMPLATE suffix).
     const kind = engagementType.replace(/_TEMPLATE$/, "");
     const rows = await db
-      .select({ id: templates.id, userId: templates.userId })
-      .from(templates)
+      .select({ id: heritage.id, userId: heritage.userId })
+      .from(heritage)
       .where(
-        sql`${templates.kind} = ${kind} AND ${templates.id} IN (${sql.join(
+        sql`${heritage.kind} = ${kind} AND ${heritage.id} IN (${sql.join(
           ids.map((i) => sql`${i}`),
           sql`, `,
         )})`,
@@ -473,7 +473,7 @@ async function resolveTargetNames(
     effects,
     items,
     characters,
-    templates,
+    heritage,
   } = await import("@/db/schema");
 
   const get = (type: string) => Array.from(idsByType.get(type) ?? []);
@@ -533,23 +533,23 @@ async function resolveTargetNames(
     for (const r of rows) out.set(`CHARACTER:${r.id}`, r.name);
   }
 
-  // RACE_TEMPLATE / BACKGROUND_TEMPLATE / ARCHETYPE_TEMPLATE all share the
-  // `templates` table with a `kind` discriminator. The DB enum values are
+  // LINEAGE_TEMPLATE / UPBRINGING_TEMPLATE / MANIFEST_TEMPLATE all share the
+  // `heritage` table with a `kind` discriminator. The DB enum values are
   // `RACE` / `BACKGROUND` / `ARCHETYPE` — we strip the `_TEMPLATE` suffix
   // before querying.
   const tplIdsByKind = {
-    RACE_TEMPLATE: get("RACE_TEMPLATE"),
-    BACKGROUND_TEMPLATE: get("BACKGROUND_TEMPLATE"),
-    ARCHETYPE_TEMPLATE: get("ARCHETYPE_TEMPLATE"),
+    LINEAGE_TEMPLATE: get("LINEAGE_TEMPLATE"),
+    UPBRINGING_TEMPLATE: get("UPBRINGING_TEMPLATE"),
+    MANIFEST_TEMPLATE: get("MANIFEST_TEMPLATE"),
   };
   for (const [engagementType, ids] of Object.entries(tplIdsByKind)) {
     if (ids.length === 0) continue;
     const kind = engagementType.replace(/_TEMPLATE$/, "");
     const rows = await db
-      .select({ id: templates.id, name: templates.name })
-      .from(templates)
+      .select({ id: heritage.id, name: heritage.name })
+      .from(heritage)
       .where(
-        sql`${templates.kind} = ${kind} AND ${templates.id} IN (${sql.join(
+        sql`${heritage.kind} = ${kind} AND ${heritage.id} IN (${sql.join(
           ids.map((i) => sql`${i}`),
           sql`, `,
         )})`,

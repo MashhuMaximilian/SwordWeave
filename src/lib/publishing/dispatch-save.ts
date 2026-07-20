@@ -29,7 +29,7 @@
 // a coherent explanation of why nothing happened.
 //
 // `DispatchSaveParams` is intentionally generic — Phase 2 will pass
-// effects/capabilities/items/templates through the same helper by
+// effects/capabilities/items/heritage through the same helper by
 // binding the row type at each call site.
 // =============================================================================
 
@@ -258,7 +258,7 @@ export function decideSaveOutcome(
 /**
  * Convenience helper for the API route. Loads the source row's identity
  * AND its current content hash in one query. Phase 2 will add parallel
- * helpers for effects/capabilities/items/templates.
+ * helpers for effects/capabilities/items/heritage.
  */
 export async function loadPrimitiveOwner(
   primitiveId: number,
@@ -366,16 +366,16 @@ export async function loadEntityOwner(
   }
 
   if (targetType === "TEMPLATE") {
-    const { templates } = await import("@/db/schema/characters");
+    const { heritage } = await import("@/db/schema/characters");
     const rows = await db
       .select({
-        id: templates.id,
-        userId: templates.userId,
-        contentHash: templates.contentHash,
-        sourceOrigin: templates.sourceOrigin,
+        id: heritage.id,
+        userId: heritage.userId,
+        contentHash: heritage.contentHash,
+        sourceOrigin: heritage.sourceOrigin,
       })
-      .from(templates)
-      .where(eq(templates.id, String(targetId)))
+      .from(heritage)
+      .where(eq(heritage.id, String(targetId)))
       .limit(1);
     const row = rows[0];
     if (!row) return null;
@@ -605,27 +605,27 @@ async function backfillSourceHash(
 
   if (targetType === "TEMPLATE") {
     const {
-      templates,
-      templatePrimitives,
-      templateCapabilities,
+      heritage,
+      heritagePrimitives,
+      heritageCapabilities,
     } = await import("@/db/schema/characters");
-    const source = await db.query.templates.findFirst({
-      where: eq(templates.id, String(sourceId)),
+    const source = await db.query.heritage.findFirst({
+      where: eq(heritage.id, String(sourceId)),
     });
     if (!source || source.contentHash !== null) return;
-    // templatePrimitives has `notes`; templateCapabilities has no
+    // heritagePrimitives has `notes`; heritageCapabilities has no
     // `slotLabel` / `notes` / `sortOrder` — it's a flat set of pairs.
     // Templates' canonical hash is `primitiveIds` / `capabilityIds` only.
     const primIds = await db
-      .select({ id: templatePrimitives.primitiveId })
-      .from(templatePrimitives)
-      .where(eq(templatePrimitives.templateId, source.id))
-      .orderBy(asc(templatePrimitives.primitiveId));
+      .select({ id: heritagePrimitives.primitiveId })
+      .from(heritagePrimitives)
+      .where(eq(heritagePrimitives.templateId, source.id))
+      .orderBy(asc(heritagePrimitives.primitiveId));
     const capIds = await db
-      .select({ id: templateCapabilities.capabilityId })
-      .from(templateCapabilities)
-      .where(eq(templateCapabilities.templateId, source.id))
-      .orderBy(asc(templateCapabilities.capabilityId));
+      .select({ id: heritageCapabilities.capabilityId })
+      .from(heritageCapabilities)
+      .where(eq(heritageCapabilities.templateId, source.id))
+      .orderBy(asc(heritageCapabilities.capabilityId));
     const hash = await computeTemplateContentHash({
       kind: source.kind,
       name: source.name,
@@ -642,9 +642,9 @@ async function backfillSourceHash(
       iconColor: source.iconColor,
     });
     await db
-      .update(templates)
+      .update(heritage)
       .set({ contentHash: hash })
-      .where(eq(templates.id, source.id));
+      .where(eq(heritage.id, source.id));
     return;
   }
 

@@ -233,7 +233,7 @@ export function isPrimitiveDraftEmpty(payload: CanonicalPrimitivePayload): boole
 
 // =============================================================================
 // Phase 2 of the edit-creates-fork refactor (§11 of edit-creates-fork.md):
-// content-hash envelopes for effects, capabilities, items, and templates.
+// content-hash envelopes for effects, capabilities, items, and heritage.
 // Same algorithm as primitives (SHA-256 over a canonical-JSON envelope).
 //
 // Each entity type has a distinct canonical-payload shape that mirrors its

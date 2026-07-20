@@ -110,9 +110,9 @@ export async function GET(request: Request) {
  *   - attrPhysical, attrMental, attrMagical (must sum to 10, each in [-1, 5])
  *   - attrProficient (PHYSICAL | MENTAL | MAGICAL, optional)
  *   - practiceSlices (object, optional)
- *   - raceName, raceImageUrl, raceDescription (optional — direct fields)
- *   - backgroundName, backgroundImageUrl, backgroundDescription (optional)
- *   - archetypeName (optional)
+ *   - lineageName, lineageImageUrl, lineageDescription (optional — direct fields)
+ *   - upbringingName, upbringingImageUrl, upbringingDescription (optional)
+ *   - manifestName (optional)
  *   - startingBu (default 25)
  *   - buSpent (default 0) — must be ≤ starting_bu + (level-1)*5 + dm_bonus_bu
  *   - dmBonusBu (default 0)
@@ -188,13 +188,13 @@ export async function POST(request: Request) {
         ? (values["practiceSlices"] as Record<string, unknown>)
         : {};
 
-    const raceName = String(values["raceName"] ?? "").trim() || null;
-    const raceImageUrl = String(values["raceImageUrl"] ?? "").trim() || null;
-    const raceDescription = String(values["raceDescription"] ?? "").trim() || null;
-    const backgroundName = String(values["backgroundName"] ?? "").trim() || null;
-    const backgroundImageUrl = String(values["backgroundImageUrl"] ?? "").trim() || null;
-    const backgroundDescription = String(values["backgroundDescription"] ?? "").trim() || null;
-    const archetypeName = String(values["archetypeName"] ?? "").trim() || null;
+    const lineageName = String(values["lineageName"] ?? "").trim() || null;
+    const lineageImageUrl = String(values["lineageImageUrl"] ?? "").trim() || null;
+    const lineageDescription = String(values["lineageDescription"] ?? "").trim() || null;
+    const upbringingName = String(values["upbringingName"] ?? "").trim() || null;
+    const upbringingImageUrl = String(values["upbringingImageUrl"] ?? "").trim() || null;
+    const upbringingDescription = String(values["upbringingDescription"] ?? "").trim() || null;
+    const manifestName = String(values["manifestName"] ?? "").trim() || null;
     const notes = String(values["notes"] ?? "").trim() || null;
     const dmNotes = String(values["dmNotes"] ?? "").trim() || null;
     const portraitUrl = String(values["portraitUrl"] ?? "").trim() || null;
@@ -243,13 +243,13 @@ export async function POST(request: Request) {
           attrMagical,
           attrProficient,
           practiceSlices,
-          raceName,
-          raceImageUrl,
-          raceDescription,
-          backgroundName,
-          backgroundImageUrl,
-          backgroundDescription,
-          archetypeName,
+          lineageName,
+          lineageImageUrl,
+          lineageDescription,
+          upbringingName,
+          upbringingImageUrl,
+          upbringingDescription,
+          manifestName,
           startingBu,
           buSpent,
           dmBonusBu,

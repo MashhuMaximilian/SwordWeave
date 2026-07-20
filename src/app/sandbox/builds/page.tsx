@@ -2,7 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { BuildComposer } from "@/components/workshops/build-composer";
 import { db } from "@/db/client";
-import { capabilities, builds, templates } from "@/db/schema";
+import { capabilities, builds, heritage } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -14,15 +14,15 @@ export default async function BuildsSandboxPage({
   const params = await searchParams;
   const editId = params.edit;
 
-  // Load all races + backgrounds from templates library
+  // Load all races + backgrounds from heritage library
   const [races, backgrounds, allCapabilities] = await Promise.all([
-    db.query.templates.findMany({
-      where: eq(templates.kind, "RACE"),
-      orderBy: [asc(templates.name)],
+    db.query.heritage.findMany({
+      where: eq(heritage.kind, "LINEAGE"),
+      orderBy: [asc(heritage.name)],
     }),
-    db.query.templates.findMany({
-      where: eq(templates.kind, "BACKGROUND"),
-      orderBy: [asc(templates.name)],
+    db.query.heritage.findMany({
+      where: eq(heritage.kind, "UPBRINGING"),
+      orderBy: [asc(heritage.name)],
     }),
     db.query.capabilities.findMany({
       orderBy: [asc(capabilities.name)],
@@ -48,14 +48,14 @@ export default async function BuildsSandboxPage({
       description: target.description,
       level: target.level,
       startingBu: target.startingBu,
-      isArchetypeTemplate: target.isArchetypeTemplate,
-      raceName: target.raceName,
-      raceDescription: target.raceDescription,
-      raceId: target.raceId,
-      backgroundName: target.backgroundName,
-      backgroundDescription: target.backgroundDescription,
-      backgroundId: target.backgroundId,
-      archetypeName: target.archetypeName,
+      isManifestTemplate: target.isManifestTemplate,
+      lineageName: target.lineageName,
+      lineageDescription: target.lineageDescription,
+      lineageId: target.lineageId,
+      upbringingName: target.upbringingName,
+      upbringingDescription: target.upbringingDescription,
+      upbringingId: target.upbringingId,
+      manifestName: target.manifestName,
       attrPhysical: target.attrPhysical,
       attrMental: target.attrMental,
       attrMagical: target.attrMagical,

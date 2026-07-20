@@ -41,21 +41,21 @@ describe("buildSandboxUrl — entity types", () => {
     expect(url?.search).toContain("build=item");
   });
 
-  it("RACE_TEMPLATE → /atelier?build=template&kind=RACE", () => {
-    const url = buildSandboxUrl("RACE_TEMPLATE", "tpl-1");
-    expect(url?.build).toBe("template");
-    expect(url?.search).toContain("kind=RACE");
+  it("LINEAGE_TEMPLATE → /atelier?build=heritage&kind=lineage", () => {
+    const url = buildSandboxUrl("LINEAGE_TEMPLATE", "tpl-1");
+    expect(url?.build).toBe("heritage");
+    expect(url?.search).toContain("kind=lineage");
     expect(url?.search).toContain("edit=tpl-1");
   });
 
-  it("BACKGROUND_TEMPLATE → kind=BACKGROUND", () => {
-    const url = buildSandboxUrl("BACKGROUND_TEMPLATE", "tpl-2");
-    expect(url?.search).toContain("kind=BACKGROUND");
+  it("UPBRINGING_TEMPLATE → kind=upbringing", () => {
+    const url = buildSandboxUrl("UPBRINGING_TEMPLATE", "tpl-2");
+    expect(url?.search).toContain("kind=upbringing");
   });
 
-  it("ARCHETYPE_TEMPLATE → kind=ARCHETYPE", () => {
-    const url = buildSandboxUrl("ARCHETYPE_TEMPLATE", "tpl-3");
-    expect(url?.search).toContain("kind=ARCHETYPE");
+  it("MANIFEST_TEMPLATE → kind=manifest", () => {
+    const url = buildSandboxUrl("MANIFEST_TEMPLATE", "tpl-3");
+    expect(url?.search).toContain("kind=manifest");
   });
 
   it("CHARACTER → null (not fork-able)", () => {

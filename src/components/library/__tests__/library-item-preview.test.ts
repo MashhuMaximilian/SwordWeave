@@ -30,21 +30,21 @@ describe("libraryCompositeId", () => {
     // which made the library URL `/library/item/TEMPLATE:<id>` — a 404.
     expect(
       libraryCompositeId({
-        kind: "template",
-        row: { id: "race_1", kind: "RACE" } as never,
+        kind: "heritage",
+        row: { id: "race_1", kind: "LINEAGE" } as never,
       }),
-    ).toBe("RACE_TEMPLATE:race_1");
+    ).toBe("LINEAGE_TEMPLATE:race_1");
     expect(
       libraryCompositeId({
-        kind: "template",
-        row: { id: "bg_1", kind: "BACKGROUND" } as never,
+        kind: "heritage",
+        row: { id: "bg_1", kind: "UPBRINGING" } as never,
       }),
-    ).toBe("BACKGROUND_TEMPLATE:bg_1");
+    ).toBe("UPBRINGING_TEMPLATE:bg_1");
     expect(
       libraryCompositeId({
-        kind: "template",
-        row: { id: "arch_1", kind: "ARCHETYPE" } as never,
+        kind: "heritage",
+        row: { id: "arch_1", kind: "MANIFEST" } as never,
       }),
-    ).toBe("ARCHETYPE_TEMPLATE:arch_1");
+    ).toBe("MANIFEST_TEMPLATE:arch_1");
   });
 });

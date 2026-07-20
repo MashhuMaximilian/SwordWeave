@@ -3,9 +3,9 @@
  *
  * Populates the Sandbox / Library with starter content so the workspace isn't
  * empty when users explore it. Creates:
- *   - 5 races        (templates, kind=RACE, linked to HERITAGE_AUGMENT prims)
- *   - 5 backgrounds  (templates, kind=BACKGROUND, linked to BACKGROUND_AUGMENT)
- *   - 5 archetypes   (templates, kind=ARCHETYPE, linked to CHARACTER_SHEET_AUGMENT)
+ *   - 5 races        (heritage, kind=RACE, linked to HERITAGE_AUGMENT prims)
+ *   - 5 backgrounds  (heritage, kind=BACKGROUND, linked to BACKGROUND_AUGMENT)
+ *   - 5 archetypes   (heritage, kind=ARCHETYPE, linked to CHARACTER_SHEET_AUGMENT)
  *   - 5 items        (items table, linked to ITEM_AUGMENT prims via itemPrimitives)
  *
  * All entries are seeded as system content (user_id=NULL, is_public=true) so
@@ -201,7 +201,7 @@ async function upsertTemplate(
 ): Promise<string> {
   // Insert template (or update if exists). user_id NULL = system template.
   const tRes: any = await db.execute(sql`
-    INSERT INTO templates (kind, name, description, suggested_traits, image_url, is_public, user_id, source_origin, created_at, updated_at)
+    INSERT INTO heritage (kind, name, description, suggested_traits, image_url, is_public, user_id, source_origin, created_at, updated_at)
     VALUES (${kind}::template_kind, ${name}, ${description}, ${traits}, ${imageUrl}, true, NULL, ${"system:" + kind.toLowerCase()}, NOW(), NOW())
     ON CONFLICT (name, user_id, kind) DO UPDATE SET
       description = EXCLUDED.description,

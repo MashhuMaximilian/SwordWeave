@@ -5,7 +5,7 @@
  * Architecture' + the user's debt-model clarification:
  *
  *   "When slotted in capability and effects it's same cost whether
- *    mirrored or not. In templates and character creation, a mirrored
+ *    mirrored or not. In heritage and character creation, a mirrored
  *    primitive adds to debt. I have starting budget 25 BU at lvl 1.
  *    I take a mirrored primitive that costs 4BU. I get the effects
  *    of that, and I now have 29 total BU to spend (25+4). But based

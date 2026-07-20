@@ -1,12 +1,12 @@
 "use client";
 
-// Live preview for the template being composed in TemplateForm.
+// Live preview for the template being composed in HeritageForm.
 
 import { Markdown } from "@/components/ui/markdown";
 import { dispatchOpenPreview } from "@/lib/sandbox/slot-events";
 
-export type TemplateFormState = {
-  kind: "RACE" | "BACKGROUND" | "ARCHETYPE";
+export type HeritageFormState = {
+  kind: "LINEAGE" | "UPBRINGING" | "MANIFEST";
   name: string;
   imageUrl: string;
   description: string;
@@ -27,25 +27,25 @@ export type TemplateSlot = {
 };
 
 function kindLabel(kind: string): string {
-  if (kind === "RACE") return "Lineage";
-  if (kind === "BACKGROUND") return "Upbringing";
-  if (kind === "ARCHETYPE") return "Manifest";
+  if (kind === "LINEAGE") return "Lineage";
+  if (kind === "UPBRINGING") return "Upbringing";
+  if (kind === "MANIFEST") return "Manifest";
   return kind;
 }
 
 function expectedCategory(kind: string): string {
-  if (kind === "RACE") return "HERITAGE_AUGMENT";
-  if (kind === "BACKGROUND") return "BACKGROUND_AUGMENT";
-  if (kind === "ARCHETYPE") return "CHARACTER_SHEET_AUGMENT";
+  if (kind === "LINEAGE") return "HERITAGE_AUGMENT";
+  if (kind === "UPBRINGING") return "BACKGROUND_AUGMENT";
+  if (kind === "MANIFEST") return "CHARACTER_SHEET_AUGMENT";
   return "";
 }
 
-export function TemplateFormPreview({
+export function HeritageFormPreview({
   form,
   primitives,
   capabilities,
 }: {
-  form: TemplateFormState;
+  form: HeritageFormState;
   primitives: TemplateSlot[];
   capabilities: TemplateSlot[];
 }) {

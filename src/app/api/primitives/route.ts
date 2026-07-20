@@ -106,7 +106,7 @@ function computeSourceOrigin(args: {
  * Build the values object shared by every primitive INSERT/UPDATE
  * path. Phase 3 added `source_origin` (migration 0020) so the public
  * identity of every primitive is `(name, source_origin)` — the same
- * convention as effects/capabilities/items/templates. The runtime
+ * convention as effects/capabilities/items/heritage. The runtime
  * computes source_origin from the dispatch outcome (see computeSourceOrigin
  * above) and threads it through.
  */

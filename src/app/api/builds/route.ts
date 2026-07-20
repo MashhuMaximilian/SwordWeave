@@ -30,7 +30,7 @@ function parseUuidArray(value: unknown): string[] {
  *
  * Lists builds. By default: public + user-owned (if authenticated).
  * Optional filter: ?user=me
- * Optional filter: ?archetype=true (only archetype templates)
+ * Optional filter: ?archetype=true (only archetype heritage)
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     whereClause.push(eq(builds.userId, userId));
   }
   if (archetypeFilter === "true") {
-    whereClause.push(eq(builds.isArchetypeTemplate, true));
+    whereClause.push(eq(builds.isManifestTemplate, true));
   }
 
   const rows = await db.query.builds.findMany({
@@ -72,9 +72,9 @@ export async function GET(request: Request) {
  *   - description (optional)
  *   - level (1-20, default 1)
  *   - startingBu (default 25)
- *   - isArchetypeTemplate (default false) — archetype builds are pre-built character templates
- *   - raceName, raceDescription, backgroundName, backgroundDescription (snapshot fields)
- *   - raceId, backgroundId (optional refs to templates library)
+ *   - isManifestTemplate (default false) — archetype builds are pre-built character heritage
+ *   - lineageName, lineageDescription, upbringingName, upbringingDescription (snapshot fields)
+ *   - lineageId, upbringingId (optional refs to heritage library)
  *   - attrPhysical, attrMental, attrMagical, attrProficient (optional snapshot)
  *   - practiceSlices (optional)
  *   - portraitUrl (optional)
@@ -99,16 +99,16 @@ export async function POST(request: Request) {
     const description = String(values["description"] ?? "").trim() || null;
     const level = parseIntInRange(values["level"], 1, 20, 1);
     const startingBu = parseIntInRange(values["startingBu"], 0, 1000, 25);
-    const isArchetypeTemplate = Boolean(values["isArchetypeTemplate"]);
+    const isManifestTemplate = Boolean(values["isManifestTemplate"]);
     const isPublic = Boolean(values["isPublic"]);
 
-    const raceName = String(values["raceName"] ?? "").trim() || null;
-    const raceDescription = String(values["raceDescription"] ?? "").trim() || null;
-    const raceId = String(values["raceId"] ?? "").trim() || null;
-    const backgroundName = String(values["backgroundName"] ?? "").trim() || null;
-    const backgroundDescription = String(values["backgroundDescription"] ?? "").trim() || null;
-    const backgroundId = String(values["backgroundId"] ?? "").trim() || null;
-    const archetypeName = String(values["archetypeName"] ?? "").trim() || null;
+    const lineageName = String(values["lineageName"] ?? "").trim() || null;
+    const lineageDescription = String(values["lineageDescription"] ?? "").trim() || null;
+    const lineageId = String(values["lineageId"] ?? "").trim() || null;
+    const upbringingName = String(values["upbringingName"] ?? "").trim() || null;
+    const upbringingDescription = String(values["upbringingDescription"] ?? "").trim() || null;
+    const upbringingId = String(values["upbringingId"] ?? "").trim() || null;
+    const manifestName = String(values["manifestName"] ?? "").trim() || null;
     const portraitUrl = String(values["portraitUrl"] ?? "").trim() || null;
     const sourceOrigin = String(values["sourceOrigin"] ?? "").trim() || "manual:build";
 
@@ -147,14 +147,14 @@ export async function POST(request: Request) {
           description,
           level,
           startingBu,
-          isArchetypeTemplate,
-          raceName,
-          raceDescription,
-          raceId,
-          backgroundName,
-          backgroundDescription,
-          backgroundId,
-          archetypeName,
+          isManifestTemplate,
+          lineageName,
+          lineageDescription,
+          lineageId,
+          upbringingName,
+          upbringingDescription,
+          upbringingId,
+          manifestName,
           attrPhysical,
           attrMental,
           attrMagical,

@@ -45,7 +45,7 @@ The central question the user flagged: **"character creation in a modal system l
 
 The answer (clarified): the character builder is **NOT** a page route like build mode. It's a **persistent overlay layer** above the sandbox. State lives in client memory (Zustand/Context), NOT in the URL. A FAB in the bottom-right of the sandbox launches it.
 
-The user can have grammar → templates → blueprint open below, character builder above, and the builder doesn't reset when they navigate.
+The user can have grammar → heritage → blueprint open below, character builder above, and the builder doesn't reset when they navigate.
 
 **FAB icon:** `delapouite/mona-lisa` from game-icons.net (verified in `src/lib/icons/game-icons-index.json`). Rendered via the existing `/api/icons/game/delapouite/mona-lisa` route.
 
@@ -64,7 +64,7 @@ The user can have grammar → templates → blueprint open below, character buil
    - **Both (Style B+C)** = toggle gate + trigger button (e.g. Channeled ability)
 6. **Trigger actions:** One-shot math operations — roll dice from modifier tokens, apply effects (damage, heal, etc.), don't persist state changes (HP loss from incoming damage is logged separately).
 7. **8.6 Q2 (BU cost):** **NO change.** Cost is the modifier's intrinsic value. Condition is metadata.
-8. **8.7 (template pre-loads):** **Ship in Phase 8.**
+8. **8.7 (heritage pre-loads):** **Ship in Phase 8.**
 9. **8.9 (collections):** **Ship in Phase 8.**
 
 ---
@@ -201,7 +201,7 @@ Land first; nothing else has to backtrack.
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  Sandbox page (grammar / templates / blueprint) │  ← URL-driven, navigates normally
+│  Sandbox page (grammar / heritage / blueprint) │  ← URL-driven, navigates normally
 │                                                 │
 │  ┌───────────────────────────────────────────┐ │
 │  │                                           │ │
@@ -230,7 +230,7 @@ The modal is **always overlay** (both desktop and mobile). The 3-column sandbox 
 
 The modal contains a step indicator + the existing `CharacterWizard` UI, adapted to read/write from the Zustand store instead of `useState`. The user can:
 1. Click FAB → modal opens (empty character form, or current `currentCharacter` if any)
-2. Walk through steps: Identity → Attributes → Race/Background → Capabilities/Items → Review
+2. Walk through steps: Identity → Attributes → Lineage/Upbringing → Capabilities/Items → Review
 3. Click "Save" → POST `/api/characters` → close modal, character is now in their library
 4. Click "Save & Continue" → persists draft without closing
 
@@ -571,9 +571,9 @@ Drop the enhanced component into `character-sheet-view.tsx`. For each modifier-b
 **Blocks:** none
 
 **What:**
-A character sheet template system that pre-loads canonical primitives / capabilities / items when the user picks a template at character creation time. Already partially supported via the `archetypeName` field on `BuildComposer` — extend to `CharacterComposer` (the modal from 8.1).
+A character sheet template system that pre-loads canonical primitives / capabilities / items when the user picks a heritage at character creation time. Already partially supported via the `manifestName` field on `BuildComposer` — extend to `CharacterComposer` (the modal from 8.1).
 
-When a user picks a template (race/background/archetype), the character editor auto-fills:
+When a user picks a template (lineage/upbringing/manifest), the character editor auto-fills:
 - The relevant primitives slotted at level 1
 - The starting capabilities
 - The starting items
@@ -581,7 +581,7 @@ When a user picks a template (race/background/archetype), the character editor a
 
 User can then customize (add/remove/change).
 
-**Location:** `src/lib/characters/template-loader.ts`
+**Location:** `src/lib/characters/heritage-loader.ts`
 
 ---
 
@@ -666,7 +666,7 @@ If we have limited credits/time, this is the priority order:
 
 **Total estimated effort:** ~50.5 days at single-developer pace.
 
-If we ship 8.0 → 8.7, that's the **complete character experience**: modal creation + live sheet with computed values + live conditions + custom stats + capability modes/triggers + template pre-loads + math helpers. ~40.5 days.
+If we ship 8.0 → 8.7, that's the **complete character experience**: modal creation + live sheet with computed values + live conditions + custom stats + capability modes/triggers + heritage pre-loads + math helpers. ~40.5 days.
 
 8.8 and 8.9 are the **community features**.
 
@@ -677,7 +677,7 @@ If we ship 8.0 → 8.7, that's the **complete character experience**: modal crea
 When Phase 8 is fully done:
 
 1. **FAB in the sandbox** (Mona Lisa icon) launches a persistent character builder modal
-2. Modal state survives tab navigation (grammar → templates → blueprint → back)
+2. Modal state survives tab navigation (grammar → heritage → blueprint → back)
 3. Slot primitives/capabilities/items into the character from anywhere in the sandbox
 4. **Character sheet view** (separate page) renders live: HP, attributes, practices, BU totals, all computed from the modifier graph via token resolution
 5. **Custom stats** (block_value, ki_points, etc.) discovered by walking the modifier graph, rendered in their own section
@@ -688,7 +688,7 @@ When Phase 8 is fully done:
 10. Conditions show as colored badges — green for active auto-resolved, gray for narrative
 11. **Soft warnings** when a capability references missing primitives (system flags, user resolves)
 12. Mirror badges show live in the editor AND the sheet
-13. Race/background/archetype templates pre-load canonical primitives
+13. Lineage/Upbringing/Manifest templates pre-load canonical primitives
 14. Public share links (anonymous-readable, signed-in to use)
 15. Collections to organize bookmarks (My Creations / Forked / Favorites + custom)
 

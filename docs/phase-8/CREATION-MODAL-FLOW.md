@@ -91,7 +91,7 @@ Limitations of the current wizard:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Sandbox page (grammar / templates / blueprint)         │  ← navigate freely
+│  Sandbox page (grammar / heritage / blueprint)         │  ← navigate freely
 │                                                         │
 │  ┌───────────────────────────────────────────────────┐ │
 │  │       Character Modal (overlay, persistent)        │ │  ← Zustand state
@@ -106,7 +106,7 @@ Limitations of the current wizard:
 **Two modes inside the modal:**
 
 **Mode A — New character (lvl 1, first time):** stepped wizard
-- 5 steps as today (Identity → Attributes → Race → Background → Archetype → Review)
+- 5 steps as today (Identity → Attributes → Lineage → Upbringing → Manifest → Review)
 - "Save & Exit" → creates character, exits wizard mode
 - "Continue editing" → converts to Mode B
 
@@ -115,7 +115,7 @@ Limitations of the current wizard:
 - Each tab shows the relevant slots + pickers
 - Live BU budget bar at the top: `199 / 199 BU used (level 16) | -24 BU debt remaining`
 - Live attribute/practice display in Identity tab
-- Live capability/primitive listing in each template tab
+- Live capability/primitive listing in each heritage tab
 - Items in their own tab (separate BU tracking)
 
 ### Tab breakdown (Mode B)
@@ -126,19 +126,19 @@ Limitations of the current wizard:
 - Level (display only, computed from BU)
 - Practice totals (read-only display)
 
-**Race tab:**
-- Race name + description (freeform or picked from library template)
-- Primitives slotted as **RACE source** (auto-set)
-- Capabilities slotted as **RACE source** (auto-set)
-- BU total for race-only slots
-- "+ Slot primitive" → opens library picker, on confirm slots with source = RACE
+**Lineage tab:**
+- Lineage name + description (freeform or picked from library heritage)
+- Primitives slotted as **LINEAGE source** (auto-set)
+- Capabilities slotted as **LINEAGE source** (auto-set)
+- BU total for lineage-only slots
+- "+ Slot primitive" → opens library picker, on confirm slots with source = LINEAGE
 
-**Background tab:**
-- Same as Race tab, source = BACKGROUND
+**Upbringing tab:**
+- Same as Lineage tab, source = UPBRINGING
 
-**Archetype tab:**
+**Manifest tab:**
 - Same, source = PERSONAL (since archetype isn't a slot-source value — see Q1 below)
-- User can also pick archetype template from library to pre-load its capabilities
+- User can also pick manifest heritage from library to pre-load its capabilities
 
 **Items tab:**
 - Items the character owns (separate from leveling BU)
@@ -209,22 +209,22 @@ This needs user input.
 ### Where to slot (the source enum)
 
 When user picks "where" in the modal:
-- For new character: defaults to PERSONAL (no race/bg picked yet)
-- For existing character with race picked: option to assign to RACE / BACKGROUND / PERSONAL
+- For new character: defaults to PERSONAL (no lineage/upbringing picked yet)
+- For existing character with lineage picked: option to assign to RACE / BACKGROUND / PERSONAL
 - For high-level character: PERSONAL vs LEVEL_UP — needs clarification (see below)
 
 ---
 
 ## Slot source semantics (the open question)
 
-The enum has `RACE | BACKGROUND | PERSONAL | TRAINING | LEVEL_UP | DM`. The wizard doesn't surface this distinction. The user wants the multi-tab layout for race/bg/archetype — but the schema doesn't have an `ARCHETYPE` source value (archetype is its own template kind).
+The enum has `RACE | BACKGROUND | PERSONAL | TRAINING | LEVEL_UP | DM`. The wizard doesn't surface this distinction. The user wants the multi-tab layout for lineage/upbringing/archetype — but the schema doesn't have an `ARCHETYPE` source value (archetype is its own template kind).
 
 **Two design questions:**
 
 1. **How do archetypes fit into the slot-source enum?**
    - Option (a): Add `ARCHETYPE` as a source value (migration)
    - Option (b): Map archetype slots to `PERSONAL` (default) or `LEVEL_UP`
-   - Option (c): Treat archetype as a special template that's not source-assigned (it's picked from the templates table separately)
+   - Option (c): Treat archetype as a special template that's not source-assigned (it's picked from the heritage table separately)
 
 2. **What does `LEVEL_UP` vs `PERSONAL` mean operationally?**
    - `PERSONAL` = slotted at character creation, permanent
@@ -251,7 +251,7 @@ src/components/character-modal/
 │   └── tabbed-editor-mode.tsx      # Mode B — existing character tabs
 ├── tabs/
 │   ├── identity-tab.tsx            # Identity (name, attrs, etc.)
-│   ├── template-tab.tsx            # Generic template tab (Race/BG/Archetype)
+│   ├── heritage-tab.tsx            # Generic template tab (Lineage/Upbringing/Manifest)
 │   ├── items-tab.tsx               # Items (separate BU)
 │   └── notes-tab.tsx               # Freeform notes
 ├── bu-budget-bar.tsx               # Live BU display
@@ -384,7 +384,7 @@ The user confirmed: **preview should always open in a new tab**. So:
 - `character_capabilities` junction
 - `character_items` junction
 - `characterPrimitiveSourceEnum` with 6 values (`RACE | BACKGROUND | PERSONAL | TRAINING | LEVEL_UP | DM`)
-- `templateKindEnum` with 3 values (`RACE | BACKGROUND | ARCHETYPE`) — separate from slot source
+- `heritageKindEnum` with 3 values (`LINEAGE | UPBRINGING | MANIFEST`) — separate from slot source
 - BU engine with positive/mirror/net/volatility
 - Sheet aggregator with practice/vitality/encumbrance
 
@@ -410,7 +410,7 @@ The user confirmed: **preview should always open in a new tab**. So:
 11. ✅ Library picker side panel within modal
 12. ✅ Save flows (new character → POST, edit → PATCH)
 13. ✅ Preview opens in new tab (per user clarification)
-14. ✅ Templates pre-load (race/bg/archetype fill their tabs when picked)
+14. ✅ Templates pre-load (lineage/upbringing/archetype fill their tabs when picked)
 
 ## What's OUT of scope (deferred to later phases)
 
@@ -438,7 +438,7 @@ Same as before.
 ### 8.7a — Multi-tab layout for existing characters
 
 **Effort:** 3-4 days
-**What:** When character is loaded (or post-creation), modal converts to tabbed editor. Each tab (Identity/Race/BG/Archetype/Items/Notes) shows the relevant slots and pickers.
+**What:** When character is loaded (or post-creation), modal converts to tabbed editor. Each tab (Identity/Lineage/Upbringing/Manifest/Items/Notes) shows the relevant slots and pickers.
 **Out of scope:** BU budget bar (use simple count for now).
 
 ### 8.7b — Live BU budget bar
@@ -461,7 +461,7 @@ Same as before.
 **Effort:** 2-3 days
 **What:** Side panel slides in from right when user wants to slot from library while in modal. Search + filter + click-to-slot.
 
-### 8.7f — Templates pre-load (race/bg/archetype)
+### 8.7f — Templates pre-load (lineage/upbringing/archetype)
 
 **Effort:** 1-2 days
 **What:** When user picks a template in the modal (or auto-loads from existing character), the template's primitives and capabilities populate the appropriate tab.
@@ -476,14 +476,14 @@ After 8.7f, character creation is complete. The character sheet work (8.2-8.5 in
 
 ### Q1: Slot source for archetypes — RESOLVED 2026-07-17
 
-User clarification: archetypes are template kinds (like race/background), NOT slot-source values. The existing `template_kind` enum already has `RACE | BACKGROUND | ARCHETYPE`.
+User clarification: archetypes are template kinds (like lineage/upbringing), NOT slot-source values. The existing `heritage_kind` enum already has `LINEAGE | UPBRINGING | MANIFEST`.
 
 The slot-source enum (`RACE | BACKGROUND | PERSONAL | TRAINING | LEVEL_UP | DM`) is **about how the character acquired the slot**, NOT which template it came from. The values `RACE` and `BACKGROUND` in the slot-source enum refer to slots that come from those templates.
 
 **Resolution:** No new source value needed. The multi-tab layout maps:
-- **Race tab** → slots with source = RACE (auto-set when slotted here)
-- **Background tab** → slots with source = BACKGROUND
-- **Archetype tab** → slots with source = PERSONAL by default (archetype is template kind, not slot source)
+- **Lineage tab** → slots with source = LINEAGE (auto-set when slotted here)
+- **Upbringing tab** → slots with source = UPBRINGING
+- **Manifest tab** → slots with source = PERSONAL by default (archetype is template kind, not slot source)
 - **Personal catch-all** → slots with source = PERSONAL
 
 **Surface in v1 modal:** RACE, BACKGROUND, PERSONAL (auto-set based on tab). Hide TRAINING, LEVEL_UP, DM — they exist in the enum for future DM bookkeeping but aren't implemented yet. The user didn't know what DM meant, confirming it's an unimplemented legacy value.
@@ -514,7 +514,7 @@ User clarification: the Items tab is just another slot-source target, like Race/
 **Resolution:** Items tab in the modal shows:
 - "+ Slot item from library" button (uses the same library picker pattern as primitives)
 - "+ Create new item" link goes to `/sandbox/blueprint?build=item` (separate tab, opens new tab — same pattern as preview)
-- Items are slotted with source = PERSONAL (separate from race/bg/archetype semantics)
+- Items are slotted with source = PERSONAL (separate from lineage/upbringing/archetype semantics)
 
 No special "create from scratch inside the modal" needed for v1.
 
@@ -547,7 +547,7 @@ When 8.0 → 8.7f is done:
 8. **"Slot into character" button**: in primitive/effect/capability/item editors + library preview
 9. **Pending slot queue**: FAB badge shows count, opens modal to assign
 10. **Library picker side panel**: in modal, browse + pick from library without leaving
-11. **Template pre-loads**: picking a race populates the Race tab with its primitives+capabilities
+11. **Template pre-loads**: picking a race populates the Lineage tab with its primitives+capabilities
 12. **Preview opens in new tab**: `/characters/[id]` always opens separately, doesn't disrupt building
 
 That's a complete **character creation experience**. The character sheet work (sheet rendering, live values, math helpers, custom stats, capability modes) is a separate track that comes after.

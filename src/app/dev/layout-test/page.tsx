@@ -15,7 +15,7 @@ export default function SandboxLayoutTestPage() {
         <div className="p-4">
           <h2 className="font-semibold">Library Column</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Browse primitives / templates / capabilities here.
+            Browse primitives / heritage / capabilities here.
           </p>
           <ul className="mt-4 space-y-1 text-sm">
             <li>• Arcane Heritage</li>

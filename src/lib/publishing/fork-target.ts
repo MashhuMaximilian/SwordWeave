@@ -23,7 +23,7 @@ export interface ForkTarget {
 
 /**
  * Convert a targetType string (PRIMITIVE / EFFECT / CAPABILITY /
- * ITEM / RACE_TEMPLATE / etc.) into the sandbox URL pieces the Fork
+ * ITEM / LINEAGE_TEMPLATE / etc.) into the sandbox URL pieces the Fork
  * button should navigate to. Returns null when the target isn't
  * fork-able (characters, builds — reserved).
  *
@@ -51,17 +51,17 @@ export function buildSandboxUrl(
     case "ITEM":
       build = "item";
       break;
-    case "RACE_TEMPLATE":
-      build = "template";
-      kind = "RACE";
+    case "LINEAGE_TEMPLATE":
+      build = "heritage";
+      kind = "lineage";
       break;
-    case "BACKGROUND_TEMPLATE":
-      build = "template";
-      kind = "BACKGROUND";
+    case "UPBRINGING_TEMPLATE":
+      build = "heritage";
+      kind = "upbringing";
       break;
-    case "ARCHETYPE_TEMPLATE":
-      build = "template";
-      kind = "ARCHETYPE";
+    case "MANIFEST_TEMPLATE":
+      build = "heritage";
+      kind = "manifest";
       break;
     case "CHARACTER":
     case "BUILD":

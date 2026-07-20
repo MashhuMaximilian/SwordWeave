@@ -76,15 +76,15 @@ export async function PATCH(
       if (v === null) return NextResponse.json({ error: "startingBu must be 0-1000." }, { status: 400 });
       updatePayload["startingBu"] = v;
     }
-    if ("isArchetypeTemplate" in values) updatePayload["isArchetypeTemplate"] = Boolean(values["isArchetypeTemplate"]);
+    if ("isManifestTemplate" in values) updatePayload["isManifestTemplate"] = Boolean(values["isManifestTemplate"]);
     if ("isPublic" in values) updatePayload["isPublic"] = Boolean(values["isPublic"]);
-    if ("raceName" in values) updatePayload["raceName"] = emptyToNull(values["raceName"]);
-    if ("raceDescription" in values) updatePayload["raceDescription"] = emptyToNull(values["raceDescription"]);
-    if ("raceId" in values) updatePayload["raceId"] = emptyToNull(values["raceId"]);
-    if ("backgroundName" in values) updatePayload["backgroundName"] = emptyToNull(values["backgroundName"]);
-    if ("backgroundDescription" in values) updatePayload["backgroundDescription"] = emptyToNull(values["backgroundDescription"]);
-    if ("backgroundId" in values) updatePayload["backgroundId"] = emptyToNull(values["backgroundId"]);
-    if ("archetypeName" in values) updatePayload["archetypeName"] = emptyToNull(values["archetypeName"]);
+    if ("lineageName" in values) updatePayload["lineageName"] = emptyToNull(values["lineageName"]);
+    if ("lineageDescription" in values) updatePayload["lineageDescription"] = emptyToNull(values["lineageDescription"]);
+    if ("lineageId" in values) updatePayload["lineageId"] = emptyToNull(values["lineageId"]);
+    if ("upbringingName" in values) updatePayload["upbringingName"] = emptyToNull(values["upbringingName"]);
+    if ("upbringingDescription" in values) updatePayload["upbringingDescription"] = emptyToNull(values["upbringingDescription"]);
+    if ("upbringingId" in values) updatePayload["upbringingId"] = emptyToNull(values["upbringingId"]);
+    if ("manifestName" in values) updatePayload["manifestName"] = emptyToNull(values["manifestName"]);
     if ("portraitUrl" in values) updatePayload["portraitUrl"] = emptyToNull(values["portraitUrl"]);
 
     // Phase 8: per-entity iconography — same shape as the POST route.

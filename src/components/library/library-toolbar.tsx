@@ -144,9 +144,9 @@ const DEFAULT_TYPE_CHIPS: LibraryTypeChip[] = [
   { key: "CAPABILITY", label: "Capabilities" },
   { key: "EFFECT", label: "Effects" },
   { key: "ITEM", label: "Items" },
-  { key: "RACE_TEMPLATE", label: "Races" },
-  { key: "BACKGROUND_TEMPLATE", label: "Backgrounds" },
-  { key: "ARCHETYPE_TEMPLATE", label: "Archetypes" },
+  { key: "LINEAGE_TEMPLATE", label: "Races" },
+  { key: "UPBRINGING_TEMPLATE", label: "Backgrounds" },
+  { key: "MANIFEST_TEMPLATE", label: "Archetypes" },
   // Mashu 2026-07-09: builds surfaced as a public library browse
   // option. The chip label is "Builds"; the URL value remains
   // "BUILD_TEMPLATE" so it matches the engagement enum + library-query.

@@ -188,7 +188,7 @@ const NOTION_APPENDS: Record<string, string> = {
   "Legendary Cadence III": "Operational Rule: Apex boss baseline. Restores all spent action points at the start of the Council Phase.",
 
   // ===== Targeting AOE =====
-  "Linear / Conical Vector": "Operational Rule: Rigid spatial templates radiating outward from the user's current facing direction.",
+  "Linear / Conical Vector": "Operational Rule: Rigid spatial heritage radiating outward from the user's current facing direction.",
 
   // ===== Duration =====
   "Long Duration": "Operational Rule: Persistent strategic effect.",

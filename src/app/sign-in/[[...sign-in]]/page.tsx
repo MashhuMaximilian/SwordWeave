@@ -14,7 +14,7 @@ export default function SignInPage() {
             </h1>
             <p className="mt-4 max-w-md text-sm leading-6 text-muted-foreground">
               Save private primitives, compose effects, and prepare account-owned
-              characters, monsters, items, and templates.
+              characters, monsters, items, and heritage.
             </p>
           </div>
           <p className="mt-8 text-xs text-muted-foreground">

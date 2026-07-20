@@ -1,7 +1,7 @@
 // =============================================================================
 // GET /api/library — browse the public library with sort + filter
 // Query params:
-//   targetType: PRIMITIVE | CAPABILITY | RACE_TEMPLATE | ...
+//   targetType: PRIMITIVE | CAPABILITY | LINEAGE_TEMPLATE | ...
 //   category: primitive category
 //   authorUsername: filter by author
 //   visibility: PUBLIC (default) | FOLLOWERS_ONLY

@@ -1,6 +1,6 @@
 "use client";
 
-// TemplateForm: controlled form-only composer for templates (race/background/archetype).
+// HeritageForm: controlled form-only composer for heritage (race/background/archetype).
 // Kind selector switches which primitive category is allowed.
 // PATCH support via initialTemplate.
 
@@ -14,18 +14,18 @@ import {
   makeDraftKey,
 } from "@/lib/sandbox/form-draft";
 import type {
-  TemplateFormState,
+  HeritageFormState,
   TemplateSlot,
-} from "./template-form-preview";
+} from "./heritage-form-preview";
 import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
 import { IconSlot } from "@/components/icons/icon-slot";
 import type { IconSource } from "@/components/icons/icon-display";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
 
-type TemplateRow = {
+type HeritageRow = {
   id: string;
   userId?: string | null;
-  kind: "RACE" | "BACKGROUND" | "ARCHETYPE";
+  kind: "LINEAGE" | "UPBRINGING" | "MANIFEST";
   name: string;
   imageUrl: string | null;
   description: string | null;
@@ -51,8 +51,8 @@ type TemplateRow = {
   iconColor: string | null;
 };
 
-const blankForm: TemplateFormState = {
-  kind: "RACE",
+const blankForm: HeritageFormState = {
+  kind: "LINEAGE",
   name: "",
   imageUrl: "",
   description: "",
@@ -82,13 +82,13 @@ function expectedCategory(kind: string): string {
 }
 
 function kindSingular(kind: string): string {
-  if (kind === "RACE") return "Lineage";
-  if (kind === "BACKGROUND") return "Upbringing";
-  if (kind === "ARCHETYPE") return "Manifest";
+  if (kind === "LINEAGE") return "Lineage";
+  if (kind === "UPBRINGING") return "Upbringing";
+  if (kind === "MANIFEST") return "Manifest";
   return kind;
 }
 
-export function TemplateForm({
+export function HeritageForm({
   initialTemplate,
   initialKind,
   availablePrimitives,
@@ -99,8 +99,8 @@ export function TemplateForm({
   onSaved,
   onReset,
 }: {
-  initialTemplate?: TemplateRow | null;
-  initialKind?: "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined;
+  initialTemplate?: HeritageRow | null;
+  initialKind?: "LINEAGE" | "UPBRINGING" | "MANIFEST" | undefined;
   availablePrimitives: Array<{
     id: number;
     name: string;
@@ -120,13 +120,13 @@ export function TemplateForm({
    */
   intent?: "fork" | "load" | null;
   /**
-   * Phase 2: the source row's id. Currently the URL `/api/templates/[id]`
+   * Phase 2: the source row's id. Currently the URL `/api/heritage/[id]`
    * carries this, but forms that need it for client-side logic can read
    * it from here. The PATCH route uses the URL param.
    */
   sourceId?: string | number | null;
   onStateChange?: (state: {
-    form: TemplateFormState;
+    form: HeritageFormState;
     primitives: TemplateSlot[];
     capabilities: TemplateSlot[];
     /**
@@ -134,12 +134,12 @@ export function TemplateForm({
      */
     isDirty: boolean;
   }) => void;
-  onSaved?: (template: TemplateRow) => void;
+  onSaved?: (template: HeritageRow) => void;
   onReset?: () => void;
 }) {
-  const [form, setForm] = useState<TemplateFormState>({
+  const [form, setForm] = useState<HeritageFormState>({
     ...blankForm,
-    kind: initialTemplate?.kind ?? initialKind ?? "RACE",
+    kind: initialTemplate?.kind ?? initialKind ?? "LINEAGE",
   });
   const [primitiveIds, setPrimitiveIds] = useState<number[]>([]);
   // Phase 7 Q-M-UX: parallel Set tracking which primitive slots are
@@ -248,9 +248,9 @@ export function TemplateForm({
 
   // Mashu 2026-07-09: removed the category filter. All primitives are
   // allowed regardless of template kind. Designers slot whatever makes
-  // sense; the schema only enforces that templates contain primitives +
+  // sense; the schema only enforces that heritage contain primitives +
   // capabilities (no effects, no items), which is checked at save time
-  // by the templates API.
+  // by the heritage API.
   const allowedPrimitives = availablePrimitives;
   const slottedPrimitives = primitiveIds
     .map((id) => availablePrimitives.find((p) => p.id === id))
@@ -315,7 +315,7 @@ export function TemplateForm({
     return () => window.removeEventListener("sw-sandbox-slot", handler);
   }, []);
 
-  function updateForm(field: keyof TemplateFormState, value: string | boolean) {
+  function updateForm(field: keyof HeritageFormState, value: string | boolean) {
     setIsDirty(true);
     setForm((current) => ({ ...current, [field]: value }));
   }
@@ -354,7 +354,7 @@ export function TemplateForm({
   }
 
   function resetEditor() {
-    setForm({ ...blankForm, kind: initialKind ?? "RACE" });
+    setForm({ ...blankForm, kind: initialKind ?? "LINEAGE" });
     setPrimitiveIds([]);
     setCapabilityIds([]);
     setIsMirroredIds(new Set<number>());
@@ -399,8 +399,8 @@ export function TemplateForm({
     }
 
     const url = initialTemplate
-      ? `/api/templates/${initialTemplate.id}`
-      : "/api/templates";
+      ? `/api/heritage/${initialTemplate.id}`
+      : "/api/heritage";
     const method = initialTemplate ? "PATCH" : "POST";
 
     startTransition(async () => {
@@ -439,7 +439,7 @@ export function TemplateForm({
 
       const template =
         payload && typeof payload === "object" && "template" in payload
-          ? (payload.template as TemplateRow)
+          ? (payload.template as HeritageRow)
           : null;
 
       if (template) {
@@ -500,13 +500,13 @@ export function TemplateForm({
             <select
               value={form.kind}
               onChange={(e) =>
-                updateForm("kind", e.target.value as TemplateFormState["kind"])
+                updateForm("kind", e.target.value as HeritageFormState["kind"])
               }
               className="h-9 rounded-md border border-input bg-background px-3 text-sm"
             >
-              <option value="RACE">Race</option>
-              <option value="BACKGROUND">Background</option>
-              <option value="ARCHETYPE">Archetype</option>
+              <option value="LINEAGE">Race</option>
+              <option value="UPBRINGING">Background</option>
+              <option value="MANIFEST">Archetype</option>
             </select>
           ) : null}
           <button
@@ -545,7 +545,7 @@ export function TemplateForm({
           className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
           value={form.name}
           onChange={(e) => updateForm("name", e.target.value)}
-          placeholder={`e.g. ${form.kind === "RACE" ? "High Elf" : form.kind === "BACKGROUND" ? "Sellsword" : "Glass Cannon Mage"}`}
+          placeholder={`e.g. ${form.kind === "LINEAGE" ? "High Elf" : form.kind === "UPBRINGING" ? "Sellsword" : "Glass Cannon Mage"}`}
           required
         />
       </label>

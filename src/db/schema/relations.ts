@@ -26,16 +26,16 @@ import {
   characterItems,
   characterPrimitives,
   characters,
-  templateCapabilities,
-  templatePrimitives,
-  templates,
+  heritageCapabilities,
+  heritagePrimitives,
+  heritage,
 } from "./characters";
 import {
   capabilityVersions,
   characterVersions,
+  heritageVersions,
   primitiveAdoptions,
   primitiveVersions,
-  templateVersions,
 } from "./versions";
 import {
   flags,
@@ -58,7 +58,7 @@ export const primitivesRelations = relations(primitives, ({ many }) => ({
   capabilityLinks: many(capabilityPrimitives),
   entityLinks: many(entityPrimitives),
   characterLinks: many(characterPrimitives),
-  templateLinks: many(templatePrimitives),
+  templateLinks: many(heritagePrimitives),
   itemLinks: many(itemPrimitives),
   versions: many(primitiveVersions),
 }));
@@ -126,7 +126,7 @@ export const capabilitiesRelations = relations(capabilities, ({ many }) => ({
   entityLinks: many(entityCapabilities),
   itemLinks: many(itemCapabilities),
   characterLinks: many(characterCapabilities),
-  templateLinks: many(templateCapabilities),
+  templateLinks: many(heritageCapabilities),
   buildLinks: many(buildCapabilities),
   versions: many(capabilityVersions),
 }));
@@ -332,37 +332,37 @@ export const characterItemsRelations = relations(characterItems, ({ one }) => ({
 // Template relations (Phase 4)
 // =============================================================================
 
-export const templatesRelations = relations(templates, ({ many }) => ({
-  primitiveLinks: many(templatePrimitives),
-  capabilityLinks: many(templateCapabilities),
-  raceBuilds: many(builds, { relationName: "build_race" }),
-  backgroundBuilds: many(builds, { relationName: "build_background" }),
-  versions: many(templateVersions),
+export const heritageRelations = relations(heritage, ({ many }) => ({
+  primitiveLinks: many(heritagePrimitives),
+  capabilityLinks: many(heritageCapabilities),
+  lineageBuilds: many(builds, { relationName: "build_lineage" }),
+  upbringingBuilds: many(builds, { relationName: "build_upbringing" }),
+  versions: many(heritageVersions),
 }));
 
-export const templatePrimitivesRelations = relations(
-  templatePrimitives,
+export const heritagePrimitivesRelations = relations(
+  heritagePrimitives,
   ({ one }) => ({
-    template: one(templates, {
-      fields: [templatePrimitives.templateId],
-      references: [templates.id],
+    template: one(heritage, {
+      fields: [heritagePrimitives.templateId],
+      references: [heritage.id],
     }),
     primitive: one(primitives, {
-      fields: [templatePrimitives.primitiveId],
+      fields: [heritagePrimitives.primitiveId],
       references: [primitives.id],
     }),
   }),
 );
 
-export const templateCapabilitiesRelations = relations(
-  templateCapabilities,
+export const heritageCapabilitiesRelations = relations(
+  heritageCapabilities,
   ({ one }) => ({
-    template: one(templates, {
-      fields: [templateCapabilities.templateId],
-      references: [templates.id],
+    template: one(heritage, {
+      fields: [heritageCapabilities.templateId],
+      references: [heritage.id],
     }),
     capability: one(capabilities, {
-      fields: [templateCapabilities.capabilityId],
+      fields: [heritageCapabilities.capabilityId],
       references: [capabilities.id],
     }),
   }),
@@ -374,15 +374,15 @@ export const templateCapabilitiesRelations = relations(
 
 export const buildsRelations = relations(builds, ({ many, one }) => ({
   capabilityLinks: many(buildCapabilities),
-  race: one(templates, {
-    fields: [builds.raceId],
-    references: [templates.id],
-    relationName: "build_race",
+  lineage: one(heritage, {
+    fields: [builds.lineageId],
+    references: [heritage.id],
+    relationName: "build_lineage",
   }),
-  background: one(templates, {
-    fields: [builds.backgroundId],
-    references: [templates.id],
-    relationName: "build_background",
+  upbringing: one(heritage, {
+    fields: [builds.upbringingId],
+    references: [heritage.id],
+    relationName: "build_upbringing",
   }),
 }));
 
@@ -422,10 +422,10 @@ export const characterVersionsRelations = relations(
   }),
 );
 
-export const templateVersionsRelations = relations(templateVersions, ({ one }) => ({
-  template: one(templates, {
-    fields: [templateVersions.templateId],
-    references: [templates.id],
+export const heritageVersionsRelations = relations(heritageVersions, ({ one }) => ({
+  template: one(heritage, {
+    fields: [heritageVersions.templateId],
+    references: [heritage.id],
   }),
 }));
 

@@ -282,7 +282,7 @@ export function ItemForm({
   }, [onReset]);
 
   // External slot trigger: items accept primitives + effects + capabilities
-  // (items are templates in the user's spec). The form already has state
+  // (items are heritage in the user's spec). The form already has state
   // for all three (primitiveIds, effectIds, capabilityIds), so this just
   // wires the events into the existing state.
   useEffect(() => {

@@ -89,7 +89,7 @@ export default async function HomePage() {
           <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
             Build the shared engine from atomic primitives upward, then reuse
             the same records across effects, capabilities, sheets, monsters,
-            items, templates, and JSON packages.
+            items, heritage, and JSON packages.
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">

@@ -7,7 +7,7 @@
 // left column. Replaces the previous "View in Library" CTA with full
 // inline rendering of every field the row carries.
 //
-// Supports primitives, effects, capabilities, templates, and items.
+// Supports primitives, effects, capabilities, heritage, and items.
 // The body content is rendered by <LibraryItemPreview />, which is also
 // used directly in the modal stack body (no chrome duplication).
 //

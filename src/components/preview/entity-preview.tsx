@@ -138,7 +138,7 @@ function sectionLabel(item: SandboxPreviewItem): string {
       return "Effect";
     case "capability":
       return `Capability · ${item.row.type}`;
-    case "template":
+    case "heritage":
       return `Template · ${item.row.kind}`;
     case "item":
       return `Item · ${item.row.itemType}`;
@@ -419,7 +419,7 @@ export function EntityPreview({
         return <EffectBody row={item.row} onSubLink={onSubLink} />;
       case "capability":
         return <CapabilityBody row={item.row} onSubLink={onSubLink} />;
-      case "template":
+      case "heritage":
         return <TemplateBody row={item.row} onSubLink={onSubLink} />;
       case "item":
         return <ItemBody row={item.row} onSubLink={onSubLink} />;
@@ -571,9 +571,9 @@ function engagementKeys(item: SandboxPreviewItem): {
     | "EFFECT"
     | "CAPABILITY"
     | "ITEM"
-    | "RACE_TEMPLATE"
-    | "BACKGROUND_TEMPLATE"
-    | "ARCHETYPE_TEMPLATE";
+    | "LINEAGE_TEMPLATE"
+    | "UPBRINGING_TEMPLATE"
+    | "MANIFEST_TEMPLATE";
   targetId: string;
 } {
   switch (item.kind) {
@@ -581,14 +581,14 @@ function engagementKeys(item: SandboxPreviewItem): {
       return { targetType: "PRIMITIVE", targetId: String(item.row.id) };
     case "capability":
       return { targetType: "CAPABILITY", targetId: item.row.id };
-    case "template":
+    case "heritage":
       return {
         targetType:
-          item.row.kind === "RACE"
-            ? "RACE_TEMPLATE"
-            : item.row.kind === "BACKGROUND"
-              ? "BACKGROUND_TEMPLATE"
-              : "ARCHETYPE_TEMPLATE",
+          item.row.kind === "LINEAGE"
+            ? "LINEAGE_TEMPLATE"
+            : item.row.kind === "UPBRINGING"
+              ? "UPBRINGING_TEMPLATE"
+              : "MANIFEST_TEMPLATE",
         targetId: item.row.id,
       };
     case "item":

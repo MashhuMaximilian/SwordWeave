@@ -1,13 +1,16 @@
 /**
- * Phase 4 schema — characters, races, backgrounds, items, builds.
+ * Phase 4 schema — characters, lineages, upbringings, items, builds.
  *
  * Identity model:
  * - Characters are user-owned (user_id required for ownership)
- * - Races, backgrounds, items, builds have nullable user_id (null = canonical/system)
+ * - Lineages, upbringings, items, builds have nullable user_id (null = canonical/system)
  * - All support soft identity: (name, user_id) is unique; (name, source_origin) is public identity
  *
  * Identity follows the DM-Override principle from UX-WORKFLOW-SPEC:
  * anyone can edit any record if they're using it.
+ *
+ * Heritage rename (Phase 8+): heritage→heritage, race→lineage, background→upbringing,
+ * archetype→manifest. See docs/phase-8/HERITAGE-RENAME-PLAN.md.
  */
 import {
   boolean,
@@ -53,18 +56,18 @@ export const characterAttrEnum = pgEnum("character_attribute", [
 ]);
 
 export const characterPrimitiveSourceEnum = pgEnum("character_primitive_source", [
-  "RACE",
-  "BACKGROUND",
+  "LINEAGE",
+  "UPBRINGING",
   "PERSONAL",
   "TRAINING",
   "LEVEL_UP",
   "DM",
 ]);
 
-export const templateKindEnum = pgEnum("template_kind", [
-  "RACE",
-  "BACKGROUND",
-  "ARCHETYPE",
+export const heritageKindEnum = pgEnum("heritage_kind", [
+  "LINEAGE",
+  "UPBRINGING",
+  "MANIFEST",
 ]);
 
 export const itemSizeEnum = pgEnum("item_size", [
@@ -87,13 +90,13 @@ export const characters = pgTable(
     userId: text("user_id"),                  // nullable for system/example characters
     name: text("name").notNull(),
     size: characterSizeEnum("size").notNull().default("MEDIUM"),
-    raceName: text("race_name"),
-    raceImageUrl: text("race_image_url"),
-    raceDescription: text("race_description"),
-    backgroundName: text("background_name"),
-    backgroundImageUrl: text("background_image_url"),
-    backgroundDescription: text("background_description"),
-    archetypeName: text("archetype_name"),
+    lineageName: text("lineage_name"),
+    lineageImageUrl: text("lineage_image_url"),
+    lineageDescription: text("lineage_description"),
+    upbringingName: text("upbringing_name"),
+    upbringingImageUrl: text("upbringing_image_url"),
+    upbringingDescription: text("upbringing_description"),
+    manifestName: text("manifest_name"),
     level: integer("level").notNull().default(1),
     attrPhysical: integer("attr_physical").notNull().default(0),
     attrMental: integer("attr_mental").notNull().default(0),
@@ -254,15 +257,15 @@ export const characterCapabilities = pgTable(
 );
 
 // =============================================================================
-// Templates (race / background / archetype — same shape)
+// Heritage (lineage / upbringing / manifest — same shape)
 // =============================================================================
 
-export const templates = pgTable(
-  "templates",
+export const heritage = pgTable(
+  "heritage",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     userId: text("user_id"),
-    kind: templateKindEnum("kind").notNull(),
+    kind: heritageKindEnum("kind").notNull(),
     name: text("name").notNull(),
     imageUrl: text("image_url"),
     description: text("description"),
@@ -271,7 +274,7 @@ export const templates = pgTable(
     sourceOrigin: text("source_origin"),
     contentHash: text("content_hash"),
     // Phase 8: per-entity iconography (see engine.ts primitives for
-    // rationale). Templates share the same icon contract as every
+    // rationale). Heritage rows share the same icon contract as every
     // other entity — single source, single key/url, single color.
     iconSource: iconSourceEnum("icon_source"),
     iconKey: text("icon_key"),
@@ -285,13 +288,13 @@ export const templates = pgTable(
     ...timestamps,
   },
   (table) => [
-    index("templates_user_id_idx").on(table.userId),
-    index("templates_kind_idx").on(table.kind),
-    index("templates_is_public_idx").on(table.isPublic),
-    index("templates_content_hash_idx").on(table.contentHash),
+    index("heritage_user_id_idx").on(table.userId),
+    index("heritage_kind_idx").on(table.kind),
+    index("heritage_is_public_idx").on(table.isPublic),
+    index("heritage_content_hash_idx").on(table.contentHash),
     // (name, user_id) unique, but Postgres treats NULL user_id as distinct
     // so we rely on application-level dedup (like capabilities migration).
-    unique("templates_user_name_kind_unique").on(
+    unique("heritage_user_name_kind_unique").on(
       table.name,
       table.userId,
       table.kind,
@@ -299,12 +302,12 @@ export const templates = pgTable(
   ],
 );
 
-export const templatePrimitives = pgTable(
-  "template_primitives",
+export const heritagePrimitives = pgTable(
+  "heritage_primitives",
   {
     templateId: uuid("template_id")
       .notNull()
-      .references(() => templates.id, { onDelete: "cascade" }),
+      .references(() => heritage.id, { onDelete: "cascade" }),
     primitiveId: integer("primitive_id")
       .notNull()
       .references(() => primitives.id, { onDelete: "restrict" }),
@@ -317,19 +320,19 @@ export const templatePrimitives = pgTable(
   (table) => [
     primaryKey({
       columns: [table.templateId, table.primitiveId],
-      name: "template_primitives_pk",
+      name: "heritage_primitives_pk",
     }),
-    index("template_primitives_template_id_idx").on(table.templateId),
-    index("template_primitives_primitive_id_idx").on(table.primitiveId),
+    index("heritage_primitives_template_id_idx").on(table.templateId),
+    index("heritage_primitives_primitive_id_idx").on(table.primitiveId),
   ],
 );
 
-export const templateCapabilities = pgTable(
-  "template_capabilities",
+export const heritageCapabilities = pgTable(
+  "heritage_capabilities",
   {
     templateId: uuid("template_id")
       .notNull()
-      .references(() => templates.id, { onDelete: "cascade" }),
+      .references(() => heritage.id, { onDelete: "cascade" }),
     capabilityId: uuid("capability_id")
       .notNull()
       .references(() => capabilities.id, { onDelete: "restrict" }),
@@ -338,10 +341,10 @@ export const templateCapabilities = pgTable(
   (table) => [
     primaryKey({
       columns: [table.templateId, table.capabilityId],
-      name: "template_capabilities_pk",
+      name: "heritage_capabilities_pk",
     }),
-    index("template_capabilities_template_id_idx").on(table.templateId),
-    index("template_capabilities_capability_id_idx").on(table.capabilityId),
+    index("heritage_capabilities_template_id_idx").on(table.templateId),
+    index("heritage_capabilities_capability_id_idx").on(table.capabilityId),
   ],
 );
 
@@ -386,7 +389,7 @@ export const characterItems = pgTable(
 );
 
 // =============================================================================
-// Builds (character snapshots + archetype templates)
+// Builds (character snapshots + manifest heritage)
 // =============================================================================
 
 export const builds = pgTable(
@@ -398,13 +401,13 @@ export const builds = pgTable(
     description: text("description"),
     level: integer("level").notNull().default(1),
     startingBu: integer("starting_bu").notNull().default(25),
-    isArchetypeTemplate: boolean("is_archetype_template").notNull().default(false),
+    isManifestTemplate: boolean("is_manifest_template").notNull().default(false),
     // Snapshot fields
-    raceName: text("race_name"),
-    raceDescription: text("race_description"),
-    backgroundName: text("background_name"),
-    backgroundDescription: text("background_description"),
-    archetypeName: text("archetype_name"),
+    lineageName: text("lineage_name"),
+    lineageDescription: text("lineage_description"),
+    upbringingName: text("upbringing_name"),
+    upbringingDescription: text("upbringing_description"),
+    manifestName: text("manifest_name"),
     attrPhysical: integer("attr_physical"),
     attrMental: integer("attr_mental"),
     attrMagical: integer("attr_magical"),
@@ -412,8 +415,8 @@ export const builds = pgTable(
     practiceSlices: jsonb("practice_slices"),
     portraitUrl: text("portrait_url"),
     // Refs to library
-    raceId: uuid("race_id").references(() => templates.id, { onDelete: "set null" }),
-    backgroundId: uuid("background_id").references(() => templates.id, {
+    lineageId: uuid("lineage_id").references(() => heritage.id, { onDelete: "set null" }),
+    upbringingId: uuid("upbringing_id").references(() => heritage.id, {
       onDelete: "set null",
     }),
     isPublic: boolean("is_public").notNull().default(false),
@@ -438,7 +441,7 @@ export const builds = pgTable(
   (table) => [
     index("builds_user_id_idx").on(table.userId),
     index("builds_is_public_idx").on(table.isPublic),
-    index("builds_is_archetype_idx").on(table.isArchetypeTemplate),
+    index("builds_is_manifest_idx").on(table.isManifestTemplate),
     check(
       "builds_level_range_check",
       sql`${table.level} BETWEEN 1 AND 20`,

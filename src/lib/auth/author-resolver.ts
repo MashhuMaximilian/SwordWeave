@@ -1,7 +1,7 @@
 // =============================================================================
 // Resolve library-item authors
 //
-// Phase 4 schemas use `user_id text` on items (primitives/templates) where
+// Phase 4 schemas use `user_id text` on items (primitives/heritage) where
 // the value is actually the Clerk user ID (e.g. `user_2abc...`). Users table
 // stores it as `clerk_user_id` with an internal UUID `id`. This helper
 // bridges the two.

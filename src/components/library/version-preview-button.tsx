@@ -178,11 +178,11 @@ function mapPayloadToPreviewItem(
   }
 
   if (
-    targetType === "RACE_TEMPLATE" ||
-    targetType === "BACKGROUND_TEMPLATE" ||
-    targetType === "ARCHETYPE_TEMPLATE"
+    targetType === "LINEAGE_TEMPLATE" ||
+    targetType === "UPBRINGING_TEMPLATE" ||
+    targetType === "MANIFEST_TEMPLATE"
   ) {
-    const kind = targetType.replace("_TEMPLATE", "") as "RACE" | "BACKGROUND" | "ARCHETYPE";
+    const kind = targetType.replace("_TEMPLATE", "") as "LINEAGE" | "UPBRINGING" | "MANIFEST";
     const primitiveLinks = Array.isArray(payload["primitiveIds"])
       ? (payload["primitiveIds"] as number[]).map((pid) => ({
           primitiveId: pid,
@@ -221,7 +221,7 @@ function mapPayloadToPreviewItem(
       iconUrl: (payload["iconUrl"] as string | null) ?? null,
       iconColor: String(payload["iconColor"] ?? "#ffffff"),
     };
-    return { kind: "template", row };
+    return { kind: "heritage", row };
   }
 
   if (targetType === "ITEM") {

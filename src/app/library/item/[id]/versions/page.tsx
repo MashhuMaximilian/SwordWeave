@@ -49,9 +49,9 @@ function parseCompositeId(raw: string): {
     "CHARACTER",
     "EFFECT",
     "ITEM",
-    "RACE_TEMPLATE",
-    "BACKGROUND_TEMPLATE",
-    "ARCHETYPE_TEMPLATE",
+    "LINEAGE_TEMPLATE",
+    "UPBRINGING_TEMPLATE",
+    "MANIFEST_TEMPLATE",
   ];
   if (!supported.includes(type as VersionTargetType)) return null;
   return { type: type as VersionTargetType, id };
@@ -80,7 +80,7 @@ export default async function VersionHistoryPage({ params }: PageProps) {
         if (Number.isFinite(pid)) referencedPrimitiveIds.add(pid);
       }
     }
-    // primitiveIds (templates + items)
+    // primitiveIds (heritage + items)
     if (Array.isArray(p["primitiveIds"])) {
       for (const pid of p["primitiveIds"] as number[]) {
         if (Number.isFinite(pid)) referencedPrimitiveIds.add(pid);
@@ -92,7 +92,7 @@ export default async function VersionHistoryPage({ params }: PageProps) {
         referencedEffectIds.add(eid);
       }
     }
-    // capabilityIds (templates + items)
+    // capabilityIds (heritage + items)
     if (Array.isArray(p["capabilityIds"])) {
       for (const cid of p["capabilityIds"] as string[]) {
         referencedCapabilityIds.add(cid);
@@ -156,7 +156,7 @@ export default async function VersionHistoryPage({ params }: PageProps) {
     // Build primitive buCost map for preview modal
     for (const r of primRows) primitiveBuCosts[r.id] = r.buCost ?? 0;
 
-    // Compute per-version BU cost for capabilities/effects/templates
+    // Compute per-version BU cost for capabilities/effects/heritage
     // (these don't have a top-level buCost in their payload — it's
     // derived from composed primitives).
     for (const v of result.versions) {
@@ -262,9 +262,9 @@ export default async function VersionHistoryPage({ params }: PageProps) {
             {parsed.type === "PRIMITIVE" ||
             parsed.type === "CAPABILITY" ||
             parsed.type === "CHARACTER" ||
-            parsed.type === "RACE_TEMPLATE" ||
-            parsed.type === "BACKGROUND_TEMPLATE" ||
-            parsed.type === "ARCHETYPE_TEMPLATE" ||
+            parsed.type === "LINEAGE_TEMPLATE" ||
+            parsed.type === "UPBRINGING_TEMPLATE" ||
+            parsed.type === "MANIFEST_TEMPLATE" ||
             parsed.type === "EFFECT" ||
             parsed.type === "ITEM"
               ? "This entry is at its initial published version (v1). A snapshot will be recorded the next time it's edited and republished."
@@ -312,12 +312,12 @@ export default async function VersionHistoryPage({ params }: PageProps) {
 // user can then edit + save — saving creates a new version row.
 //
 // We only support the targets that have a sandbox editor (primitive /
-// effect / capability / templates / items). Items don't have a version
+// effect / capability / heritage / items). Items don't have a version
 // history table yet (deferred to a follow-up sprint).
 
 /**
  * Map the version history's VersionTargetType to the API's restore
- * targetType. The version history splits templates into RACE / BACKGROUND /
+ * targetType. The version history splits heritage into RACE / BACKGROUND /
  * ARCHETYPE; the API accepts them all as TEMPLATE.
  *
  * CHARACTER restore is not supported yet (deferred) — returns null in
@@ -327,9 +327,9 @@ function mapToApiType(
   t: VersionTargetType,
 ): "PRIMITIVE" | "EFFECT" | "CAPABILITY" | "ITEM" | "TEMPLATE" | null {
   if (
-    t === "RACE_TEMPLATE" ||
-    t === "BACKGROUND_TEMPLATE" ||
-    t === "ARCHETYPE_TEMPLATE"
+    t === "LINEAGE_TEMPLATE" ||
+    t === "UPBRINGING_TEMPLATE" ||
+    t === "MANIFEST_TEMPLATE"
   ) {
     return "TEMPLATE";
   }
@@ -349,12 +349,12 @@ function buildSandboxSlotUrl(
       return `/atelier?build=capability&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
     case "CHARACTER":
       return `/sandbox/builds?edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
-    case "RACE_TEMPLATE":
-      return `/atelier?build=template&kind=RACE&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
-    case "BACKGROUND_TEMPLATE":
-      return `/atelier?build=template&kind=BACKGROUND&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
-    case "ARCHETYPE_TEMPLATE":
-      return `/atelier?build=template&kind=ARCHETYPE&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
+    case "LINEAGE_TEMPLATE":
+      return `/atelier?build=heritage&kind=lineage&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
+    case "UPBRINGING_TEMPLATE":
+      return `/atelier?build=heritage&kind=upbringing&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
+    case "MANIFEST_TEMPLATE":
+      return `/atelier?build=heritage&kind=manifest&edit=${encodeURIComponent(targetId)}&version=${versionNumber}`;
     default:
       return null;
   }
@@ -507,7 +507,7 @@ function VersionRow({
  * BuCostBadge — small "N BU" pill extracted from the reconstructed
  * payload. Returns null if the payload has no numeric `buCost` field
  * (e.g. for entity types that don't model cost: characters, items,
- * effects, templates).
+ * effects, heritage).
  */
 function BuCostBadge({
   payload,

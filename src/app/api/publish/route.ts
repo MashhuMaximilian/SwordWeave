@@ -13,7 +13,7 @@ import {
   primitives,
   publishTargetTypeEnum,
   publishVisibilityEnum,
-  templates,
+  heritage,
 } from "@/db/schema";
 import { publishTarget, unpublishTarget } from "@/lib/publishing/publish-service";
 
@@ -140,7 +140,7 @@ async function loadSnapshot(
   }
   if (targetType === "CHARACTER") {
     // characters.userId is text (Clerk ID format) — same shape as
-    // primitives/capabilities/templates/effects/items. The call below
+    // primitives/capabilities/heritage/effects/items. The call below
     // passes the Clerk ID via the authorClerkUserId parameter.
     const row = await db.query.characters.findFirst({
       where: (table, { eq, and }) =>
@@ -157,11 +157,11 @@ async function loadSnapshot(
     };
   }
   if (
-    targetType === "RACE_TEMPLATE" ||
-    targetType === "BACKGROUND_TEMPLATE" ||
-    targetType === "ARCHETYPE_TEMPLATE"
+    targetType === "LINEAGE_TEMPLATE" ||
+    targetType === "UPBRINGING_TEMPLATE" ||
+    targetType === "MANIFEST_TEMPLATE"
   ) {
-    const row = await db.query.templates.findFirst({
+    const row = await db.query.heritage.findFirst({
       where: (table, { eq, and }) =>
         and(
           eq(table.id, targetId),

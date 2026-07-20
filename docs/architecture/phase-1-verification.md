@@ -3,7 +3,7 @@
 > **Status**: ready for Mashu's hands-on validation.
 > **Latest commits**: `48cf451` (Round 8 fixups), `5470958` (Round 7 FAB fixes), `3ef5fd9` (content hashing), `11419e2` (fork save URL swap), `c68bafc` (Phase 1 feature).
 > **Scope**: intent flag + deferred fork UX for **primitives only**.
-> Effects, capabilities, items, templates land in Phase 2.
+> Effects, capabilities, items, heritage land in Phase 2.
 
 ### What changed in Round 7/8 (worth knowing before testing)
 
@@ -331,7 +331,7 @@ gray "Working on X" chip.
 The following behaviours **look related** but ship in later phases.
 Don't report these as bugs:
 
-- **Effects/capabilities/items/templates**: clicking Fork on one of
+- **Effects/capabilities/items/heritage**: clicking Fork on one of
   these navigates correctly, but save still uses the legacy `id`
   path (no fork-on-save yet). That's Phase 2.
 - **No-change message**: saving with zero changes still creates a

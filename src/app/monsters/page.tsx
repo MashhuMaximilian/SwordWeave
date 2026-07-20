@@ -13,7 +13,7 @@ export default function MonstersPage() {
         </h1>
         <p className="mt-4 text-base leading-7 text-muted-foreground">
           Monsters will use compressed sheets, encounter BU weight, quick-action
-          cards, and importable templates.
+          cards, and importable heritage.
         </p>
       </div>
 

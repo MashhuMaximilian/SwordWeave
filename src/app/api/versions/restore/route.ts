@@ -41,16 +41,16 @@ import {
   itemEffects,
   itemPrimitives,
   primitives,
-  templates,
-  templateCapabilities,
-  templatePrimitives,
+  heritage,
+  heritageCapabilities,
+  heritagePrimitives,
 } from "@/db/schema";
 import { recordVersion } from "@/lib/versions/auto-snapshot";
 import {
   effectVersions,
   itemVersions,
   primitiveVersions,
-  templateVersions,
+  heritageVersions,
 } from "@/db/schema";
 import { reconstructVersion, type VersionPayload } from "@/lib/versions/delta";
 import {
@@ -156,8 +156,8 @@ async function loadLiveRowUserId(
     return row ? row.userId : "NOT_FOUND";
   }
   if (type === "TEMPLATE") {
-    const row = await db.query.templates.findFirst({
-      where: eq(templates.id, String(id)),
+    const row = await db.query.heritage.findFirst({
+      where: eq(heritage.id, String(id)),
       columns: { userId: true },
     });
     return row ? row.userId : "NOT_FOUND";
@@ -327,14 +327,14 @@ async function loadRestoredPayload(
   // TEMPLATE
   const rows = await db
     .select({
-      id: templateVersions.id,
-      versionNumber: templateVersions.versionNumber,
-      deltaKind: templateVersions.deltaKind,
-      snapshot: templateVersions.snapshot,
+      id: heritageVersions.id,
+      versionNumber: heritageVersions.versionNumber,
+      deltaKind: heritageVersions.deltaKind,
+      snapshot: heritageVersions.snapshot,
     })
-    .from(templateVersions)
-    .where(eq(templateVersions.templateId, String(id)))
-    .orderBy(templateVersions.versionNumber);
+    .from(heritageVersions)
+    .where(eq(heritageVersions.templateId, String(id)))
+    .orderBy(heritageVersions.versionNumber);
   const target = rows.find((r) => r.versionNumber === versionNumber);
   if (!target) return null;
   // Wrap snapshots in VersionPayload format using deltaKind column
@@ -518,7 +518,7 @@ async function restoreTemplate(
   };
 
   const hash = await computeTemplateContentHash({
-    kind: asString(payload["kind"]) || "RACE",
+    kind: asString(payload["kind"]) || "LINEAGE",
     name: update["name"] as string,
     description: (update["description"] as string) ?? "",
     suggestedTraits: (update["suggestedTraits"] as string) ?? "",
@@ -528,7 +528,7 @@ async function restoreTemplate(
   });
   update["contentHash"] = hash;
 
-  await db.update(templates).set(update).where(eq(templates.id, id));
+  await db.update(heritage).set(update).where(eq(heritage.id, id));
   return hash;
 }
 
@@ -639,10 +639,10 @@ async function rewriteSlotLinks(
     const templateId = String(id);
     const prims = asNumberArray(payload["primitiveIds"]);
     const caps = asStringArray(payload["capabilityIds"]);
-    await db.delete(templatePrimitives).where(eq(templatePrimitives.templateId, templateId));
-    await db.delete(templateCapabilities).where(eq(templateCapabilities.templateId, templateId));
+    await db.delete(heritagePrimitives).where(eq(heritagePrimitives.templateId, templateId));
+    await db.delete(heritageCapabilities).where(eq(heritageCapabilities.templateId, templateId));
     if (prims.length > 0) {
-      await db.insert(templatePrimitives).values(
+      await db.insert(heritagePrimitives).values(
         prims.map((pid, idx) => ({
           templateId,
           primitiveId: pid,
@@ -652,7 +652,7 @@ async function rewriteSlotLinks(
       primitiveSlots = prims.length;
     }
     if (caps.length > 0) {
-      await db.insert(templateCapabilities).values(
+      await db.insert(heritageCapabilities).values(
         caps.map((cid) => ({ templateId, capabilityId: cid })),
       );
       capabilitySlots = caps.length;

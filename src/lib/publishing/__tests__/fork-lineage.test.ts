@@ -71,9 +71,9 @@ describe("parseForkSourceOrigin", () => {
       "EFFECT",
       "ITEM",
       "CHARACTER",
-      "RACE_TEMPLATE",
-      "BACKGROUND_TEMPLATE",
-      "ARCHETYPE_TEMPLATE",
+      "LINEAGE_TEMPLATE",
+      "UPBRINGING_TEMPLATE",
+      "MANIFEST_TEMPLATE",
     ] as const;
     for (const t of types) {
       const result = parseForkSourceOrigin(`fork:${t}:abc`, "PRIMITIVE");

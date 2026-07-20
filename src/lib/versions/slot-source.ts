@@ -37,7 +37,7 @@ import {
   effectVersions,
   itemVersions,
   primitiveVersions,
-  templateVersions,
+  heritageVersions,
 } from "@/db/schema";
 import type { SlotSource } from "@/db/schema/characters";
 
@@ -121,15 +121,15 @@ export async function resolveLatestVersionId(
   }
   if (kind === "template") {
     const rows = (await db
-      .select({ id: templateVersions.id })
-      .from(templateVersions)
+      .select({ id: heritageVersions.id })
+      .from(heritageVersions)
       .where(
         and(
-          eq(templateVersions.templateId, String(entityId)),
-          eq(templateVersions.isLatest, true),
+          eq(heritageVersions.templateId, String(entityId)),
+          eq(heritageVersions.isLatest, true),
         ),
       )
-      .orderBy(desc(templateVersions.versionNumber))
+      .orderBy(desc(heritageVersions.versionNumber))
       .limit(1)) as unknown as Array<{ id: string }>;
     return rows[0]?.id ?? null;
   }

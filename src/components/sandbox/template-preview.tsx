@@ -19,7 +19,7 @@ type CapabilityRow = {
   type: string;
 };
 
-type TemplateRow = {
+type HeritageRow = {
   id: string;
   kind: string;
   name: string;
@@ -37,20 +37,20 @@ type TemplateRow = {
 };
 
 function kindLabel(kind: string): string {
-  if (kind === "RACE") return "Lineage";
-  if (kind === "BACKGROUND") return "Upbringing";
-  if (kind === "ARCHETYPE") return "Manifest";
+  if (kind === "LINEAGE") return "Lineage";
+  if (kind === "UPBRINGING") return "Upbringing";
+  if (kind === "MANIFEST") return "Manifest";
   return kind;
 }
 
-function totalBu(row: TemplateRow): number {
+function totalBu(row: HeritageRow): number {
   return row.primitiveLinks.reduce(
     (sum, link) => sum + (link.primitive?.buCost ?? 0),
     0,
   );
 }
 
-export function TemplatePreview({ row }: { row: TemplateRow }) {
+export function TemplatePreview({ row }: { row: HeritageRow }) {
   const bu = totalBu(row);
   return (
     <div className="space-y-5 p-4">

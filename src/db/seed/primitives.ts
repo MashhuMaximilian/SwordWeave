@@ -3,7 +3,7 @@
 //
 // Phase 3 update: every seed carries a source_origin of
 // "system:phase5-commit-c-library-seed" matching the existing
-// convention on effects/capabilities/items/templates. The unique
+// convention on effects/capabilities/items/heritage. The unique
 // constraint on primitives is now (name, source_origin) so the
 // onConflictDoUpdate target must use that pair — the previous
 // (name, category, user_id) target would fail post-migration.

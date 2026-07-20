@@ -15,7 +15,7 @@ import {
   capabilityVersions,
   characterVersions,
   primitiveVersions,
-  templateVersions,
+  heritageVersions,
 } from "@/db/schema";
 import {
   reconstructVersion,
@@ -26,9 +26,9 @@ export type ReconstructableType =
   | "PRIMITIVE"
   | "CAPABILITY"
   | "CHARACTER"
-  | "RACE_TEMPLATE"
-  | "BACKGROUND_TEMPLATE"
-  | "ARCHETYPE_TEMPLATE";
+  | "LINEAGE_TEMPLATE"
+  | "UPBRINGING_TEMPLATE"
+  | "MANIFEST_TEMPLATE";
 
 export interface ReconstructedVersion {
   versionId: string;
@@ -164,19 +164,19 @@ async function fetchVersionRows(
         .orderBy(characterVersions.versionNumber);
       return rows;
     }
-    case "RACE_TEMPLATE":
-    case "BACKGROUND_TEMPLATE":
-    case "ARCHETYPE_TEMPLATE": {
+    case "LINEAGE_TEMPLATE":
+    case "UPBRINGING_TEMPLATE":
+    case "MANIFEST_TEMPLATE": {
       const rows = await db
         .select({
-          id: templateVersions.id,
-          versionNumber: templateVersions.versionNumber,
-          deltaKind: templateVersions.deltaKind,
-          snapshot: templateVersions.snapshot,
+          id: heritageVersions.id,
+          versionNumber: heritageVersions.versionNumber,
+          deltaKind: heritageVersions.deltaKind,
+          snapshot: heritageVersions.snapshot,
         })
-        .from(templateVersions)
-        .where(eq(templateVersions.templateId, targetId))
-        .orderBy(templateVersions.versionNumber);
+        .from(heritageVersions)
+        .where(eq(heritageVersions.templateId, targetId))
+        .orderBy(heritageVersions.versionNumber);
       return rows;
     }
     default:

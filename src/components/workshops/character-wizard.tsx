@@ -23,7 +23,7 @@ type CapabilityRow = {
   sourceType: string;
 };
 
-type TemplateRow = {
+type HeritageRow = {
   id: string;
   kind: string;
   name: string;
@@ -63,8 +63,8 @@ export function CharacterWizard({
   capabilities,
   items,
 }: {
-  races: TemplateRow[];
-  backgrounds: TemplateRow[];
+  races: HeritageRow[];
+  backgrounds: HeritageRow[];
   capabilities: CapabilityRow[];
   items: ItemRow[];
 }) {
@@ -80,13 +80,13 @@ export function CharacterWizard({
     attrMental: 0,
     attrMagical: 0,
     attrProficient: null as AttrProf | null,
-    raceId: "",
-    raceName: "",
-    raceDescription: "",
-    backgroundId: "",
-    backgroundName: "",
-    backgroundDescription: "",
-    archetypeName: "",
+    lineageId: "",
+    lineageName: "",
+    lineageDescription: "",
+    upbringingId: "",
+    upbringingName: "",
+    upbringingDescription: "",
+    manifestName: "",
     enforceTemplateCaps: false,
   });
   // Track capabilities with their mirrored state (for debt expansion)
@@ -125,12 +125,12 @@ export function CharacterWizard({
     if (race) {
       setForm((f) => ({
         ...f,
-        raceId: id,
-        raceName: race.name,
-        raceDescription: race.description ?? "",
+        lineageId: id,
+        lineageName: race.name,
+        lineageDescription: race.description ?? "",
       }));
     } else {
-      setForm((f) => ({ ...f, raceId: "" }));
+      setForm((f) => ({ ...f, lineageId: "" }));
     }
   }
 
@@ -139,12 +139,12 @@ export function CharacterWizard({
     if (bg) {
       setForm((f) => ({
         ...f,
-        backgroundId: id,
-        backgroundName: bg.name,
-        backgroundDescription: bg.description ?? "",
+        upbringingId: id,
+        upbringingName: bg.name,
+        upbringingDescription: bg.description ?? "",
       }));
     } else {
-      setForm((f) => ({ ...f, backgroundId: "" }));
+      setForm((f) => ({ ...f, upbringingId: "" }));
     }
   }
 
@@ -200,13 +200,13 @@ export function CharacterWizard({
             attrMental: form.attrMental,
             attrMagical: form.attrMagical,
             attrProficient: form.attrProficient,
-            raceName: form.raceName.trim() || null,
-            raceImageUrl: null,
-            raceDescription: form.raceDescription.trim() || null,
-            backgroundName: form.backgroundName.trim() || null,
-            backgroundImageUrl: null,
-            backgroundDescription: form.backgroundDescription.trim() || null,
-            archetypeName: form.archetypeName.trim() || null,
+            lineageName: form.lineageName.trim() || null,
+            lineageImageUrl: null,
+            lineageDescription: form.lineageDescription.trim() || null,
+            upbringingName: form.upbringingName.trim() || null,
+            upbringingImageUrl: null,
+            upbringingDescription: form.upbringingDescription.trim() || null,
+            manifestName: form.manifestName.trim() || null,
             enforceTemplateCaps: form.enforceTemplateCaps,
             practiceSlices: {},
             capabilitySlots: selectedCapabilities,
@@ -498,7 +498,7 @@ export function CharacterWizard({
               <h3 className="text-lg font-semibold">Race</h3>
               <Field label="From Library">
                 <select
-                  value={form.raceId}
+                  value={form.lineageId}
                   onChange={(e) => pickRace(e.target.value)}
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-base"
                 >
@@ -513,17 +513,17 @@ export function CharacterWizard({
               <Field label="Race Name">
                 <input
                   type="text"
-                  value={form.raceName}
-                  onChange={(e) => setForm((f) => ({ ...f, raceName: e.target.value }))}
+                  value={form.lineageName}
+                  onChange={(e) => setForm((f) => ({ ...f, lineageName: e.target.value }))}
                   placeholder="Freeform name"
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-base"
                 />
               </Field>
               <Field label="Race Description">
                 <textarea
-                  value={form.raceDescription}
+                  value={form.lineageDescription}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, raceDescription: e.target.value }))
+                    setForm((f) => ({ ...f, lineageDescription: e.target.value }))
                   }
                   rows={2}
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-base"
@@ -535,7 +535,7 @@ export function CharacterWizard({
               <h3 className="text-lg font-semibold">Background</h3>
               <Field label="From Library">
                 <select
-                  value={form.backgroundId}
+                  value={form.upbringingId}
                   onChange={(e) => pickBackground(e.target.value)}
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-base"
                 >
@@ -550,9 +550,9 @@ export function CharacterWizard({
               <Field label="Background Name">
                 <input
                   type="text"
-                  value={form.backgroundName}
+                  value={form.upbringingName}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, backgroundName: e.target.value }))
+                    setForm((f) => ({ ...f, upbringingName: e.target.value }))
                   }
                   placeholder="Freeform name"
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-base"
@@ -560,11 +560,11 @@ export function CharacterWizard({
               </Field>
               <Field label="Background Description">
                 <textarea
-                  value={form.backgroundDescription}
+                  value={form.upbringingDescription}
                   onChange={(e) =>
                     setForm((f) => ({
                       ...f,
-                      backgroundDescription: e.target.value,
+                      upbringingDescription: e.target.value,
                     }))
                   }
                   rows={2}
@@ -576,9 +576,9 @@ export function CharacterWizard({
             <Field label="Archetype (optional)">
               <input
                 type="text"
-                value={form.archetypeName}
+                value={form.manifestName}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, archetypeName: e.target.value }))
+                  setForm((f) => ({ ...f, manifestName: e.target.value }))
                 }
                 placeholder="e.g. Bladesinger, Hexblade"
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-base"
@@ -711,14 +711,14 @@ export function CharacterWizard({
                 label="Attribute Sum"
                 value={`${attrSum} / 10 ${attrValid ? "✓" : "✗ INVALID"}`}
               />
-              <ReviewBlock label="Lineage" value={form.raceName || "—"} />
+              <ReviewBlock label="Lineage" value={form.lineageName || "—"} />
               <ReviewBlock
                 label="Upbringing"
-                value={form.backgroundName || "—"}
+                value={form.upbringingName || "—"}
               />
               <ReviewBlock
                 label="Manifest"
-                value={form.archetypeName || "—"}
+                value={form.manifestName || "—"}
               />
               <ReviewBlock
                 label="Proficient"

@@ -382,7 +382,7 @@ Domain access + verb permissions.
 
 System: `04-character-creation-flow.md`
 
-Backgrounds and heritage are **templates** (not primitives) — they
+Backgrounds and heritage are **heritage** (not primitives) — they
 slot primitive rows into a template ledger. No new primitive rows
 needed.
 
@@ -407,11 +407,11 @@ Template categories: heritage, archetype, background, item, race.
 
 1. (Done in B.1) ~~Add Cover Tier I-IV rows + Stabilize/Last Breath/Tether-of-Being rows + enum migration 0031.~~
 2. (Done in B.2) ~~Apply `targetScope` to 5 trigger-hook primitive rows currently un-scoped.~~
-3. After primitives locked, redo Capabilities/Effects templates (Phase 7-C, then 7-D).
+3. After primitives locked, redo Capabilities/Effects heritage (Phase 7-C, then 7-D).
 4. (Mirrored UI wiring) — see Q-B below; capability UIs must expose:
    - source-type selector (Physical / Magical / Psychic)
    - mirror toggle (mirrored/normal; budget-neutral at primitive level,
-     budget-positive only in templates)
+     budget-positive only in heritage)
 
 ---
 
@@ -480,7 +480,7 @@ rows untouched (still 5 + 1).
 
 ### TODO follow-ups
 - Phase-7-B.2: scope the 5 trigger-hook rows.
-- Phase-7-C: templates redo.
+- Phase-7-C: heritage redo.
 - Phase-7-D: capabilities/effects redo (with Q-B UI changes).
 
 ---

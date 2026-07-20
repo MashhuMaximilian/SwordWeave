@@ -23,7 +23,7 @@ import {
   primitiveVersions,
   publications,
   publishTargetTypeEnum,
-  templateVersions,
+  heritageVersions,
 } from "@/db/schema";
 import {
   compactSnapshot,
@@ -165,7 +165,7 @@ async function insertVersionRow(
  * - primitiveVersions.primitiveId (integer)  → PRIMITIVE
  * - capabilityVersions.capabilityId (uuid)   → CAPABILITY
  * - characterVersions.characterId (uuid)     → CHARACTER
- * - templateVersions.templateId (uuid)       → RACE/BACKGROUND/ARCHETYPE_TEMPLATE
+ * - heritageVersions.templateId (uuid)       → RACE/BACKGROUND/MANIFEST_TEMPLATE
  * - effectVersions.effectId (uuid)           → EFFECT
  * - itemVersions.itemId (uuid)               → ITEM
  */
@@ -216,17 +216,17 @@ function versionTableFor(targetType: PublishTargetType) {
         deltaKind: characterVersions.deltaKind,
         foreignKey: characterVersions.characterId,
       };
-    case "RACE_TEMPLATE":
-    case "BACKGROUND_TEMPLATE":
-    case "ARCHETYPE_TEMPLATE":
+    case "LINEAGE_TEMPLATE":
+    case "UPBRINGING_TEMPLATE":
+    case "MANIFEST_TEMPLATE":
     case "BUILD_TEMPLATE":
       return {
-        table: templateVersions,
-        id: templateVersions.id,
-        versionNumber: templateVersions.versionNumber,
-        snapshot: templateVersions.snapshot,
-        deltaKind: templateVersions.deltaKind,
-        foreignKey: templateVersions.templateId,
+        table: heritageVersions,
+        id: heritageVersions.id,
+        versionNumber: heritageVersions.versionNumber,
+        snapshot: heritageVersions.snapshot,
+        deltaKind: heritageVersions.deltaKind,
+        foreignKey: heritageVersions.templateId,
       };
     default:
       return null;

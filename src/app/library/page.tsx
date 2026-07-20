@@ -16,7 +16,7 @@ import {
   capabilityPrimitives,
   effects,
   primitives,
-  templates,
+  heritage,
 } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
@@ -42,9 +42,9 @@ export default async function LibraryHubPage() {
         where: (table, { eq }) => eq(table.isPublic, true),
         orderBy: [desc(effects.createdAt), asc(effects.name)],
       }),
-      db.query.templates.findMany({
+      db.query.heritage.findMany({
         where: (table, { eq }) => eq(table.isPublic, true),
-        orderBy: [asc(templates.kind), asc(templates.name)],
+        orderBy: [asc(heritage.kind), asc(heritage.name)],
       }),
     ]);
 
@@ -149,12 +149,12 @@ export default async function LibraryHubPage() {
 
         <Link
           className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
-          href="/library/browse?type=RACE_TEMPLATE"
+          href="/library/browse?type=LINEAGE_TEMPLATE"
         >
           <Shield className="size-5 text-primary" />
           <h2 className="mt-5 text-lg font-semibold">Races</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            {templateCount.get("RACE") ?? 0} public races
+            {templateCount.get("LINEAGE") ?? 0} public races
           </p>
           <span className="mt-4 flex items-center gap-2 pt-3 text-sm font-medium text-primary">
             Browse races
@@ -164,12 +164,12 @@ export default async function LibraryHubPage() {
 
         <Link
           className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
-          href="/library/browse?type=BACKGROUND_TEMPLATE"
+          href="/library/browse?type=UPBRINGING_TEMPLATE"
         >
           <ScrollText className="size-5 text-primary" />
           <h2 className="mt-5 text-lg font-semibold">Backgrounds</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            {templateCount.get("BACKGROUND") ?? 0} public backgrounds
+            {templateCount.get("UPBRINGING") ?? 0} public backgrounds
           </p>
           <span className="mt-4 flex items-center gap-2 pt-3 text-sm font-medium text-primary">
             Browse backgrounds
@@ -179,12 +179,12 @@ export default async function LibraryHubPage() {
 
         <Link
           className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
-          href="/library/browse?type=ARCHETYPE_TEMPLATE"
+          href="/library/browse?type=MANIFEST_TEMPLATE"
         >
           <Wand2 className="size-5 text-primary" />
           <h2 className="mt-5 text-lg font-semibold">Archetypes</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            {templateCount.get("ARCHETYPE") ?? 0} public archetypes
+            {templateCount.get("MANIFEST") ?? 0} public archetypes
           </p>
           <span className="mt-4 flex items-center gap-2 pt-3 text-sm font-medium text-primary">
             Browse archetypes
@@ -203,7 +203,7 @@ export default async function LibraryHubPage() {
           <Crown className="size-5 text-primary" />
           <h2 className="mt-5 text-lg font-semibold">Builds</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Public character builds + archetype templates from the community.
+            Public character builds + archetype heritage from the community.
           </p>
           <span className="mt-4 flex items-center gap-2 pt-3 text-sm font-medium text-primary">
             Browse builds

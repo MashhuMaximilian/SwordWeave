@@ -55,7 +55,7 @@ const BUILD_ICON_COLOR = "#ffffff";
  * SandboxLayout — three-column resizable shell used by every /sandbox/* page.
  *
  * Columns:
- *   - library  (corpus browser — search/filter the available primitives/templates/etc.)
+ *   - library  (corpus browser — search/filter the available primitives/heritage/etc.)
  *   - builder  (the entity composer itself — wraps each <XxxComposer>)
  *   - preview  (live read-only render of the entity being edited)
  *

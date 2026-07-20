@@ -38,7 +38,7 @@ import {
   effectVersions,
   itemVersions,
   primitiveVersions,
-  templateVersions,
+  heritageVersions,
   type versionDeltaKindEnum,
 } from "@/db/schema";
 import { resolveContentVersionId } from "./content-hash";
@@ -127,12 +127,12 @@ function versionTableFor(kind: VersionedEntityKind) {
       };
     case "template":
       return {
-        table: templateVersions,
-        id: templateVersions.id,
-        versionNumber: templateVersions.versionNumber,
-        foreignKey: templateVersions.templateId,
-        isLatest: templateVersions.isLatest,
-        contentHash: templateVersions.snapshot,
+        table: heritageVersions,
+        id: heritageVersions.id,
+        versionNumber: heritageVersions.versionNumber,
+        foreignKey: heritageVersions.templateId,
+        isLatest: heritageVersions.isLatest,
+        contentHash: heritageVersions.snapshot,
       };
   }
 }

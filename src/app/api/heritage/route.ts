@@ -4,9 +4,9 @@ import { asc, desc, eq, inArray, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   primitives,
-  templateCapabilities,
-  templatePrimitives,
-  templates,
+  heritageCapabilities,
+  heritagePrimitives,
+  heritage,
 } from "@/db/schema";
 import {
   buildCanonicalTemplatePayload,
@@ -14,15 +14,17 @@ import {
 } from "@/lib/publishing/hash-content";
 import { recordVersion } from "@/lib/versions/auto-snapshot";
 
-type TemplateKind = "RACE" | "BACKGROUND" | "ARCHETYPE";
+type HeritageKind = "LINEAGE" | "UPBRINGING" | "MANIFEST";
 
-const VALID_KINDS: TemplateKind[] = ["RACE", "BACKGROUND", "ARCHETYPE"];
+const VALID_KINDS: HeritageKind[] = ["LINEAGE", "UPBRINGING", "MANIFEST"];
 
-function parseKind(value: unknown): TemplateKind | null {
+function parseKind(value: unknown): HeritageKind | null {
   if (typeof value !== "string") return null;
-  const upper = value.toUpperCase();
-  if ((VALID_KINDS as string[]).includes(upper)) {
-    return upper as TemplateKind;
+  // URL values are lowercase (?kind=lineage|upbringing|manifest);
+  // normalize before validating.
+  const normalized = value.toUpperCase();
+  if ((VALID_KINDS as string[]).includes(normalized)) {
+    return normalized as HeritageKind;
   }
   return null;
 }
@@ -38,25 +40,25 @@ function parseTags(value: unknown): string[] {
 }
 
 /**
- * GET /api/templates
+ * GET /api/heritage
  *
- * Lists templates. Public + user-owned.
- * Optional filters: ?kind=RACE|BACKGROUND|ARCHETYPE
+ * Lists heritage. Public + user-owned.
+ * Optional filters: ?kind=lineage|upbringing|manifest
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const kindFilter = searchParams.get("kind");
 
   const whereClause = kindFilter && parseKind(kindFilter)
-    ? eq(templates.kind, kindFilter as TemplateKind)
+    ? eq(heritage.kind, kindFilter as HeritageKind)
     : undefined;
 
-  const rows = await db.query.templates.findMany({
+  const rows = await db.query.heritage.findMany({
     where: whereClause,
-    orderBy: [asc(templates.kind), asc(templates.name)],
+    orderBy: [asc(heritage.kind), asc(heritage.name)],
     with: {
       primitiveLinks: {
-        orderBy: [asc(templatePrimitives.sortOrder)],
+        orderBy: [asc(heritagePrimitives.sortOrder)],
         with: {
           primitive: true,
         },
@@ -82,16 +84,16 @@ export async function GET(request: Request) {
     return { ...t, computedBu: bu };
   });
 
-  return NextResponse.json({ templates: enriched });
+  return NextResponse.json({ heritage: enriched });
 }
 
 /**
- * POST /api/templates
+ * POST /api/heritage
  *
  * Create a new template. Requires authentication.
  *
  * Body:
- *   - kind: RACE | BACKGROUND | ARCHETYPE (required)
+ *   - kind: lineage | upbringing | manifest (required)
  *   - name (required)
  *   - imageUrl, description, suggestedTraits (optional)
  *   - isPublic (default false)
@@ -142,7 +144,7 @@ export async function POST(request: Request) {
 
     if (!kind) {
       return NextResponse.json(
-        { error: "kind must be RACE, BACKGROUND, or ARCHETYPE." },
+        { error: "kind must be lineage, upbringing, or manifest." },
         { status: 400 },
       );
     }
@@ -152,7 +154,7 @@ export async function POST(request: Request) {
 
     // Mashu 2026-07-09: removed category restriction. Templates can
     // slot any primitive regardless of kind. The schema-level slot
-    // rules (templates = primitives + capabilities only, no effects)
+    // rules (heritage = primitives + capabilities only, no effects)
     // are the only safety constraints; designers decide what belongs
     // to a race/background/archetype based on intent. The previous
     // HERITAGE_AUGMENT / BACKGROUND_AUGMENT / CHARACTER_SHEET_AUGMENT
@@ -176,7 +178,7 @@ export async function POST(request: Request) {
 
     const result = await db.transaction(async (tx) => {
       const [created] = await tx
-        .insert(templates)
+        .insert(heritage)
         .values({
           kind,
           name,
@@ -196,7 +198,7 @@ export async function POST(request: Request) {
       if (!created) throw new Error("Unable to create template.");
 
       if (validSlots.length > 0) {
-        await tx.insert(templatePrimitives).values(
+        await tx.insert(heritagePrimitives).values(
           validSlots.map((slot, idx) => ({
             templateId: created.id,
             primitiveId: slot.primitiveId,
@@ -208,7 +210,7 @@ export async function POST(request: Request) {
       }
 
       if (capabilityIds.length > 0) {
-        await tx.insert(templateCapabilities).values(
+        await tx.insert(heritageCapabilities).values(
           capabilityIds.map((cid) => ({
             templateId: created.id,
             capabilityId: cid,
@@ -216,8 +218,8 @@ export async function POST(request: Request) {
         );
       }
 
-      return tx.query.templates.findFirst({
-        where: eq(templates.id, created.id),
+      return tx.query.heritage.findFirst({
+        where: eq(heritage.id, created.id),
         with: {
           primitiveLinks: { with: { primitive: true } },
           capabilityLinks: { with: { capability: true } },
@@ -251,9 +253,9 @@ export async function POST(request: Request) {
       capabilityIds,
     });
     await db
-      .update(templates)
+      .update(heritage)
       .set({ contentHash })
-      .where(eq(templates.id, result.id));
+      .where(eq(heritage.id, result.id));
     await recordVersion({
       entityKind: "template",
       entityId: result.id,
@@ -269,9 +271,9 @@ export async function POST(request: Request) {
   }
 }
 
-export function expectedCategoryForKind(kind: TemplateKind): string {
+export function expectedCategoryForKind(kind: HeritageKind): string {
   // Mashu 2026-07-09: deprecated. Category restriction removed across
-  // the system — templates can slot any primitive. Kept exported for
+  // the system — heritage can slot any primitive. Kept exported for
   // backward compat (other code may still import it), but always
   // returns an empty string so the previous guard is a no-op.
   void kind;

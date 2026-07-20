@@ -48,12 +48,12 @@ import {
 // Build modes this library column serves. (Relocated from the now-deleted
 // blueprint-sandbox-client — Atelier owns the build surface; the library
 // column only needs the mode union for its prop types.)
-export type BlueprintBuildMode = "template" | "item" | "monster";
+export type HeritageBuildMode = "heritage" | "item" | "monster";
 
-interface BlueprintLibraryProps {
-  build: BlueprintBuildMode;
+interface HeritageLibraryProps {
+  build: HeritageBuildMode;
   libraryItems: LibraryItem[];
-  templates: SandboxTemplateRow[];
+  heritage: SandboxTemplateRow[];
   items: SandboxItemRow[];
   /** Primitives the blueprint library can preview when a sub-link to a
    *  primitive is clicked inside a template/item body. The grammar
@@ -84,7 +84,7 @@ interface BlueprintLibraryProps {
   /** Current user's resolved profile — creator fallback for fork previews. */
   currentUser: { username: string; displayName: string | null; avatarUrl: string | null } | null;
   editingKey: string | null;
-  onSelect: (kind: "template" | "item", id: string) => void;
+  onSelect: (kind: "heritage" | "item", id: string) => void;
   /** Direct fork handler (Atelier). When set, the preview's Fork button
    *  loads the fork-draft into the build form instead of navigating. */
   onFork?: (targetType: string, targetId: string) => void;
@@ -96,11 +96,11 @@ interface BlueprintLibraryProps {
 // Build mode no longer gates which type chips are visible in the toolbar.
 // The kind filter is a free choice for the user (per the user's spec
 // "we should also be able to view/filter primitives, effects, capabilities
-// in the templates tab"). The sub-kind filter was redundant with the kind
+// in the heritage tab"). The sub-kind filter was redundant with the kind
 // filter — it has been removed.
 // Group chips: "All heritages" resolves to every template sub-kind.
 const TYPE_GROUPS: Record<string, LibraryTargetType[]> = {
-  GROUP_HERITAGES: ["RACE_TEMPLATE", "BACKGROUND_TEMPLATE", "ARCHETYPE_TEMPLATE"],
+  GROUP_HERITAGES: ["LINEAGE_TEMPLATE", "UPBRINGING_TEMPLATE", "MANIFEST_TEMPLATE"],
 };
 
 const ALL_AVAILABLE_TYPES: Array<{
@@ -108,19 +108,19 @@ const ALL_AVAILABLE_TYPES: Array<{
   label: string;
 }> = [
   { key: "ALL", label: "All" },
-  { key: "RACE_TEMPLATE", label: "Lineage" },
-  { key: "BACKGROUND_TEMPLATE", label: "Upbringing" },
-  { key: "ARCHETYPE_TEMPLATE", label: "Manifest" },
+  { key: "LINEAGE_TEMPLATE", label: "Lineage" },
+  { key: "UPBRINGING_TEMPLATE", label: "Upbringing" },
+  { key: "MANIFEST_TEMPLATE", label: "Manifest" },
   { key: "ITEM", label: "Items" },
   { key: "PRIMITIVE", label: "Primitives" },
   { key: "EFFECT", label: "Effects" },
   { key: "CAPABILITY", label: "Capabilities" },
 ];
 
-export function BlueprintLibrary({
+export function HeritageLibrary({
   build,
   libraryItems,
-  templates,
+  heritage,
   items,
   primitives = [],
   capabilities = [],
@@ -133,7 +133,7 @@ export function BlueprintLibrary({
   onSelect,
   onFork,
   versionMap,
-}: BlueprintLibraryProps) {
+}: HeritageLibraryProps) {
   // Default type filter per build mode. The kind filter is exposed in
   // the toolbar. We pick a sensible default that matches the active
   // build's primary entity type:
@@ -145,7 +145,7 @@ export function BlueprintLibrary({
   //     type union yet, so default to all).
   // The user can broaden or narrow via the chip filter.
   const defaultTypeFilter: LibraryTargetType | "ALL" | "GROUP_HERITAGES" =
-    build === "template"
+    build === "heritage"
       ? "GROUP_HERITAGES"
       : build === "item"
         ? "ITEM"
@@ -203,15 +203,15 @@ export function BlueprintLibrary({
   const lookupRow = useMemo(() => {
     return (item: LibraryItem): SandboxPreviewItem | null => {
       if (
-        item.targetType === "RACE_TEMPLATE" ||
-        item.targetType === "BACKGROUND_TEMPLATE" ||
-        item.targetType === "ARCHETYPE_TEMPLATE"
+        item.targetType === "LINEAGE_TEMPLATE" ||
+        item.targetType === "UPBRINGING_TEMPLATE" ||
+        item.targetType === "MANIFEST_TEMPLATE"
       ) {
-        const row = templates.find((t) => t.id === item.targetId);
+        const row = heritage.find((t) => t.id === item.targetId);
         if (!row) return null;
         const vn = versionMap?.[`${item.targetType}:${item.targetId}`] ?? 1;
         return {
-          kind: "template",
+          kind: "heritage",
           row: {
             ...row,
             primitiveLinks: row.primitiveLinks.map((l) => ({
@@ -294,7 +294,7 @@ export function BlueprintLibrary({
       }
       return null;
     };
-  }, [templates, items, primitives, capabilities, effects, versionMap]);
+  }, [heritage, items, primitives, capabilities, effects, versionMap]);
 
   // Filter items by toolbar search/typeFilter. The build-mode gate is
   // removed — the user can see any kind in the blueprint library per the
@@ -404,7 +404,7 @@ export function BlueprintLibrary({
   // the user gets the same modal affordance as clicking from the
   // library list. Blueprint library owns ITEM and TEMPLATE_* kinds;
   // PRIMITIVE / EFFECT / CAPABILITY also handled here for the
-  // blueprint-mode templates that include them.
+  // blueprint-mode heritage that include them.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const handler = (event: Event) => {
@@ -436,7 +436,7 @@ export function BlueprintLibrary({
         return;
       }
       // TEMPLATE_RACE / TEMPLATE_CLASS / TEMPLATE_MONSTER / TEMPLATE_ITEM
-      // share the kind "template" here. We don't currently dispatch
+      // share the kind "heritage" here. We don't currently dispatch
       // those from form previews — handled by the grammar sandbox path
       // for now (TEMPLATE_<kind> items live there).
     };
@@ -460,8 +460,8 @@ export function BlueprintLibrary({
           libraryItem={libraryItem ?? null}
           build={build}
           onLoadIntoBuild={() => {
-            if (item.kind === "template") {
-              onSelect("template", item.row.id);
+            if (item.kind === "heritage") {
+              onSelect("heritage", item.row.id);
             } else {
               onSelect("item", String(item.row.id));
             }
@@ -600,15 +600,15 @@ export function BlueprintLibrary({
             faster, always-visible inline filter scoped to just the
             template sub-kinds (mirrors the side-panel behaviour, only
             quicker, and only in this tab). */}
-        {build === "template" ? (
+        {build === "heritage" ? (
           <div className="-mx-1 mt-2 flex flex-nowrap gap-1.5 overflow-x-auto px-1">
             {(
               [
                 { key: "ALL", label: "All" },
                 { key: "GROUP_HERITAGES", label: "All heritages" },
-                { key: "RACE_TEMPLATE", label: "Lineage" },
-                { key: "BACKGROUND_TEMPLATE", label: "Upbringing" },
-                { key: "ARCHETYPE_TEMPLATE", label: "Manifest" },
+                { key: "LINEAGE_TEMPLATE", label: "Lineage" },
+                { key: "UPBRINGING_TEMPLATE", label: "Upbringing" },
+                { key: "MANIFEST_TEMPLATE", label: "Manifest" },
               ] as Array<{ key: LibraryTargetType | "ALL" | "GROUP_HERITAGES"; label: string }>
             ).map((chip) => {
               const active = toolbarState.typeFilter === chip.key;
@@ -677,7 +677,7 @@ function BlueprintPreviewBody({
 }: {
   item: SandboxPreviewItem;
   libraryItem: LibraryItem | null;
-  build: BlueprintBuildMode;
+  build: HeritageBuildMode;
   onLoadIntoBuild: () => void;
   onSubLinkClick: (link: PreviewSubLink) => void;
   onFork: ((targetType: string, targetId: string) => void) | undefined;
@@ -699,7 +699,7 @@ function BlueprintPreviewBody({
   // Per the user's slot spec, every template (template / item / monster)
   // accepts primitives + effects + capabilities. Only kind==="primitive"
   // gets the "Slot into build" affordance in the BlueprintPreviewBody
-  // because the Blueprint Library only shows items + templates (effects
+  // because the Blueprint Library only shows items + heritage (effects
   // + capabilities are surfaced from the Grammar Library).
   const slottableKinds: Array<"primitive" | "effect" | "capability"> = [
     "primitive",

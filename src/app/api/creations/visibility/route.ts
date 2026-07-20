@@ -20,7 +20,7 @@ import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { publications } from "@/db/schema/engagement";
-import { primitives, effects, capabilities, items, templates } from "@/db/schema";
+import { primitives, effects, capabilities, items, heritage } from "@/db/schema";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import { resolveVirtualVersionId, isUuid } from "@/lib/engagement/version-helpers";
 
@@ -31,9 +31,9 @@ const BodySchema = z.object({
     "CHARACTER",
     "ITEM",
     "EFFECT",
-    "RACE_TEMPLATE",
-    "BACKGROUND_TEMPLATE",
-    "ARCHETYPE_TEMPLATE",
+    "LINEAGE_TEMPLATE",
+    "UPBRINGING_TEMPLATE",
+    "MANIFEST_TEMPLATE",
     "BUILD_TEMPLATE",
   ]),
   targetId: z.string().min(1),
@@ -65,11 +65,11 @@ async function syncIsPublic(
       case "ITEM":
         await db.update(items).set({ isPublic }).where(eq(items.id, targetId));
         break;
-      case "RACE_TEMPLATE":
-      case "BACKGROUND_TEMPLATE":
-      case "ARCHETYPE_TEMPLATE":
+      case "LINEAGE_TEMPLATE":
+      case "UPBRINGING_TEMPLATE":
+      case "MANIFEST_TEMPLATE":
       case "BUILD_TEMPLATE":
-        await db.update(templates).set({ isPublic }).where(eq(templates.id, targetId));
+        await db.update(heritage).set({ isPublic }).where(eq(heritage.id, targetId));
         break;
     }
   } catch (err) {

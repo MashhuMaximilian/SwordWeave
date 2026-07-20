@@ -67,7 +67,7 @@ export default async function BuildDetailPage({ params }: PageProps) {
               <span className="rounded-full border border-border bg-card px-2.5 py-1 font-mono">
                 {build.startingBu} BU
               </span>
-              {build.isArchetypeTemplate && (
+              {build.isManifestTemplate && (
                 <span className="rounded-full bg-primary/10 px-2.5 py-1 font-semibold text-primary">
                   Archetype template
                 </span>
@@ -100,14 +100,14 @@ export default async function BuildDetailPage({ params }: PageProps) {
           <SlotCard
             icon={<Sparkles className="size-4" aria-hidden="true" />}
             label="Lineage"
-            name={build.race?.name}
-            description={build.race?.description}
+            name={build.lineage?.name}
+            description={build.lineage?.description}
           />
           <SlotCard
             icon={<Shield className="size-4" aria-hidden="true" />}
             label="Upbringing"
-            name={build.background?.name}
-            description={build.background?.description}
+            name={build.upbringing?.name}
+            description={build.upbringing?.description}
           />
         </section>
 

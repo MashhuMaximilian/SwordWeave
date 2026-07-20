@@ -8,7 +8,7 @@
 // The user can be unauthenticated; we just return nulls in that case.
 //
 // Query params:
-//   - targetType: PRIMITIVE | CAPABILITY | EFFECT | ITEM | RACE_TEMPLATE | etc.
+//   - targetType: PRIMITIVE | CAPABILITY | EFFECT | ITEM | LINEAGE_TEMPLATE | etc.
 //   - targetId:   the row's id (number-as-string for primitives, UUID for the rest)
 // =============================================================================
 
@@ -25,9 +25,9 @@ const VALID_TARGET_TYPES = [
   "EFFECT",
   "ITEM",
   "CHARACTER",
-  "RACE_TEMPLATE",
-  "BACKGROUND_TEMPLATE",
-  "ARCHETYPE_TEMPLATE",
+  "LINEAGE_TEMPLATE",
+  "UPBRINGING_TEMPLATE",
+  "MANIFEST_TEMPLATE",
   "BUILD_TEMPLATE",
 ] as const;
 

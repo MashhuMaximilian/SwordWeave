@@ -4,9 +4,9 @@ import { eq, inArray, and, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   primitives,
-  templateCapabilities,
-  templatePrimitives,
-  templates,
+  heritageCapabilities,
+  heritagePrimitives,
+  heritage,
 } from "@/db/schema";
 // Mashu 2026-07-09: expectedCategoryForKind import removed — the
 // category restriction is gone.
@@ -25,15 +25,15 @@ import { recordVersion } from "@/lib/versions/auto-snapshot";
 
 const TARGET_TYPE: SaveTargetType = "TEMPLATE";
 
-type TemplateKind = "RACE" | "BACKGROUND" | "ARCHETYPE";
+type HeritageKind = "LINEAGE" | "UPBRINGING" | "MANIFEST";
 
-const VALID_KINDS: TemplateKind[] = ["RACE", "BACKGROUND", "ARCHETYPE"];
+const VALID_KINDS: HeritageKind[] = ["LINEAGE", "UPBRINGING", "MANIFEST"];
 
-function parseKind(value: unknown): TemplateKind | null {
+function parseKind(value: unknown): HeritageKind | null {
   if (typeof value !== "string") return null;
   const upper = value.toUpperCase();
   if ((VALID_KINDS as string[]).includes(upper)) {
-    return upper as TemplateKind;
+    return upper as HeritageKind;
   }
   return null;
 }
@@ -59,7 +59,7 @@ function parseKind(value: unknown): TemplateKind | null {
  */
 async function buildTemplateTakenNamesSet(
   name: string,
-  kind: TemplateKind,
+  kind: HeritageKind,
   userId: string,
 ): Promise<(candidate: string) => boolean> {
   const forkPrefix = `${name} (fork)`;
@@ -67,16 +67,16 @@ async function buildTemplateTakenNamesSet(
   // computeUniqueForkName walker only produces these three shapes, so a
   // prefix LIKE is sufficient.
   const rows = await db
-    .select({ name: templates.name })
-    .from(templates)
+    .select({ name: heritage.name })
+    .from(heritage)
     .where(
       and(
-        eq(templates.kind, kind),
-        eq(templates.userId, userId),
+        eq(heritage.kind, kind),
+        eq(heritage.userId, userId),
         // Drizzle doesn't have a `startsWith` helper; use sql template
         // for the LIKE pattern. Anchor the prefix so "Star" doesn't match
         // "Stardust (fork)".
-        sql`${templates.name} LIKE ${forkPrefix + "%"}`,
+        sql`${heritage.name} LIKE ${forkPrefix + "%"}`,
       ),
     );
   const taken = new Set(rows.map((r) => r.name));
@@ -84,7 +84,7 @@ async function buildTemplateTakenNamesSet(
 }
 
 /**
- * GET /api/templates/[id]
+ * GET /api/heritage/[id]
  */
 export async function GET(
   _request: Request,
@@ -92,8 +92,8 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  const row = await db.query.templates.findFirst({
-    where: eq(templates.id, id),
+  const row = await db.query.heritage.findFirst({
+    where: eq(heritage.id, id),
     with: {
       primitiveLinks: { with: { primitive: true } },
       capabilityLinks: { with: { capability: true } },
@@ -113,7 +113,7 @@ export async function GET(
 }
 
 /**
- * PATCH /api/templates/[id] — Phase 2 deferred-fork entry point.
+ * PATCH /api/heritage/[id] — Phase 2 deferred-fork entry point.
  *
  * Same shape as /api/effects/[id] PATCH:
  *   - intent=load + caller owns source → UPDATE in place (version-update)
@@ -122,7 +122,7 @@ export async function GET(
  *   - no-changes (contentHash matches) → no-op, return user-facing message
  *
  * The (name, user_id, kind) unique constraint is what makes fork-naming
- * tricky for templates. The fork predicate filters by name + kind +
+ * tricky for heritage. The fork predicate filters by name + kind +
  * userId (not name + sourceOrigin like the other entities).
  *
  * Response shape:
@@ -154,8 +154,8 @@ export async function PATCH(
     // the canonical hash envelope). The form re-sends kind for safety,
     // but we treat the existing row's kind as authoritative — the form
     // can't switch a row between RACE / BACKGROUND / ARCHETYPE via PATCH.
-    const current = await db.query.templates.findFirst({
-      where: eq(templates.id, id),
+    const current = await db.query.heritage.findFirst({
+      where: eq(heritage.id, id),
     });
     if (!current) {
       return NextResponse.json({ error: "Template not found." }, { status: 404 });
@@ -218,7 +218,7 @@ export async function PATCH(
     // kind comes from the existing row — it's the row's identity, not a
     // patchable field.
     // -------------------------------------------------------------------
-    const kind: TemplateKind = current.kind;
+    const kind: HeritageKind = current.kind;
     const canonicalPayload = buildCanonicalTemplatePayload({
       kind,
       name,
@@ -297,17 +297,17 @@ export async function PATCH(
 
       const result = await db.transaction(async (tx) => {
         await tx
-          .update(templates)
+          .update(heritage)
           .set(updatePayload)
           .where(
             and(
-              eq(templates.id, id),
-              or(eq(templates.userId, userId), isNull(templates.userId)),
+              eq(heritage.id, id),
+              or(eq(heritage.userId, userId), isNull(heritage.userId)),
             ),
           );
 
         // Replace primitive slot links with the new set.
-        // Mashu 2026-07-09: category restriction removed — templates
+        // Mashu 2026-07-09: category restriction removed — heritage
         // can slot any primitive. The previous HERITAGE_AUGMENT
         // filter is gone; designers decide what makes sense for the
         // race/background/archetype they're composing.
@@ -326,9 +326,9 @@ export async function PATCH(
           );
 
           await tx
-            .delete(templatePrimitives)
-            .where(eq(templatePrimitives.templateId, id));
-          await tx.insert(templatePrimitives).values(
+            .delete(heritagePrimitives)
+            .where(eq(heritagePrimitives.templateId, id));
+          await tx.insert(heritagePrimitives).values(
             validSlots.map((slot, idx) => ({
               templateId: id,
               primitiveId: slot.primitiveId,
@@ -342,10 +342,10 @@ export async function PATCH(
         // Replace capability slot links.
         if ("capabilityIds" in values) {
           await tx
-            .delete(templateCapabilities)
-            .where(eq(templateCapabilities.templateId, id));
+            .delete(heritageCapabilities)
+            .where(eq(heritageCapabilities.templateId, id));
           if (capabilityIds.length > 0) {
-            await tx.insert(templateCapabilities).values(
+            await tx.insert(heritageCapabilities).values(
               capabilityIds.map((cid) => ({
                 templateId: id,
                 capabilityId: cid as string,
@@ -354,8 +354,8 @@ export async function PATCH(
           }
         }
 
-        return tx.query.templates.findFirst({
-          where: eq(templates.id, id),
+        return tx.query.heritage.findFirst({
+          where: eq(heritage.id, id),
           with: {
             primitiveLinks: { with: { primitive: true } },
             capabilityLinks: { with: { capability: true } },
@@ -407,7 +407,7 @@ export async function PATCH(
 
     const created = await db.transaction(async (tx) => {
       const [inserted] = await tx
-        .insert(templates)
+        .insert(heritage)
         .values({
           kind,
           name: baseName,
@@ -438,7 +438,7 @@ export async function PATCH(
           validIdSet.has(s.primitiveId),
         );
 
-        await tx.insert(templatePrimitives).values(
+        await tx.insert(heritagePrimitives).values(
           validSlots.map((slot, idx) => ({
             templateId: inserted.id,
             primitiveId: slot.primitiveId,
@@ -451,7 +451,7 @@ export async function PATCH(
 
       // Insert capability slots.
       if (capabilityIds.length > 0) {
-        await tx.insert(templateCapabilities).values(
+        await tx.insert(heritageCapabilities).values(
           capabilityIds.map((cid) => ({
             templateId: inserted.id,
             capabilityId: cid as string,
@@ -459,8 +459,8 @@ export async function PATCH(
         );
       }
 
-      return tx.query.templates.findFirst({
-        where: eq(templates.id, inserted.id),
+      return tx.query.heritage.findFirst({
+        where: eq(heritage.id, inserted.id),
         with: {
           primitiveLinks: { with: { primitive: true } },
           capabilityLinks: { with: { capability: true } },
@@ -505,7 +505,7 @@ export async function PATCH(
 }
 
 /**
- * DELETE /api/templates/[id]
+ * DELETE /api/heritage/[id]
  */
 export async function DELETE(
   _request: Request,
@@ -516,9 +516,9 @@ export async function DELETE(
     const { id } = await params;
 
     const [deleted] = await db
-      .delete(templates)
-      .where(eq(templates.id, id))
-      .returning({ id: templates.id });
+      .delete(heritage)
+      .where(eq(heritage.id, id))
+      .returning({ id: heritage.id });
 
     if (!deleted) {
       return NextResponse.json({ error: "Template not found." }, { status: 404 });

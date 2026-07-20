@@ -55,7 +55,7 @@ Future schema/UI implication:
 
 ## Import, Export, and AI Pack Notes
 
-- Users should eventually be able to export and import primitives, effects, capabilities, characters, items, monsters, background templates, class/build templates, and whole builds.
+- Users should eventually be able to export and import primitives, effects, capabilities, characters, items, monsters, heritage templates, class/build heritage, and whole builds.
 - JSON is the likely interchange format because it can preserve nested primitive/effect/capability graphs and hard modifier directives.
 - Imports should support both personal/account-owned records and public library records.
 - Imported records need attribution/source metadata and conflict handling for duplicate names, IDs, or incompatible schema versions.

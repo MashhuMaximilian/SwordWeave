@@ -18,7 +18,7 @@
  * Behaviour:
  *   - Returns Map keyed by `${kind}:${id}` → number (1-based).
  *   - Entities with no published version yet are absent from the map.
- *   - Items/templates have their own version tables (`item_versions`,
+ *   - Items/heritage have their own version tables (`item_versions`,
  *     `template_versions`) queried separately. Templates: kind="template"
  *     covers all 3 (RACE/BACKGROUND/ARCHETYPE) — there's one table.
  *   - Single query per kind using `inArray` + `isLatest=true` so it's
@@ -32,7 +32,7 @@ import {
   effectVersions,
   itemVersions,
   primitiveVersions,
-  templateVersions,
+  heritageVersions,
 } from "@/db/schema";
 
 export type VersionNumberKey =
@@ -42,7 +42,7 @@ export type VersionNumberKey =
   | `item:${string}`
   | `template:${string}`;
 
-export type VersionKind = "primitive" | "effect" | "capability" | "item" | "template";
+export type VersionKind = "primitive" | "effect" | "capability" | "item" | "heritage";
 
 export interface VersionRef {
   kind: VersionKind;
@@ -143,21 +143,21 @@ export async function bulkResolveLatestVersionNumbers(
     }
   }
 
-  if (byKind.has("template")) {
-    const ids = byKind.get("template")! as string[];
+  if (byKind.has("heritage")) {
+    const ids = byKind.get("heritage")! as string[];
     const rows = await db
       .select({
-        templateId: templateVersions.templateId,
-        versionNumber: templateVersions.versionNumber,
+        templateId: heritageVersions.templateId,
+        versionNumber: heritageVersions.versionNumber,
       })
-      .from(templateVersions)
+      .from(heritageVersions)
       .where(
         and(
-          inArray(templateVersions.templateId, ids),
-          eq(templateVersions.isLatest, true),
+          inArray(heritageVersions.templateId, ids),
+          eq(heritageVersions.isLatest, true),
         ),
       )
-      .orderBy(desc(templateVersions.versionNumber));
+      .orderBy(desc(heritageVersions.versionNumber));
     for (const r of rows) {
       out.set(`template:${r.templateId}`, r.versionNumber);
     }

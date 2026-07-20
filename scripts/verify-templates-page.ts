@@ -1,7 +1,7 @@
-// Smoke test: visit /sandbox/templates on desktop + mobile and check that:
+// Smoke test: visit /sandbox/heritage on desktop + mobile and check that:
 //  - Desktop: three columns visible (Library / Build / Preview)
 //  - Mobile: three tabs (Library | Build | Preview)
-//  - Library shows the templates list (server-side rendered, so we can't
+//  - Library shows the heritage list (server-side rendered, so we can't
 //    test content without auth — check for the chrome elements instead).
 
 import { chromium } from "playwright";
@@ -17,7 +17,7 @@ async function main() {
 
   // /sandbox/* requires auth — let's just confirm the redirect to /login.
   console.log("== desktop ==");
-  const resp = await page.goto(`${BASE_URL}/sandbox/templates`, {
+  const resp = await page.goto(`${BASE_URL}/sandbox/heritage`, {
     waitUntil: "networkidle",
   });
   console.log(`final URL: ${page.url()}`);
@@ -29,7 +29,7 @@ async function main() {
   const columns = await page.locator("[data-column-chrome]").count();
   console.log(`dev layout test columns: ${columns}`);
   await page.screenshot({
-    path: "/tmp/sandbox-templates-desktop.png",
+    path: "/tmp/sandbox-heritage-desktop.png",
     fullPage: false,
   });
 
@@ -38,7 +38,7 @@ async function main() {
   const tabs = await page.locator('[role="tab"]').count();
   console.log(`dev layout test mobile tabs: ${tabs}`);
   await page.screenshot({
-    path: "/tmp/sandbox-templates-mobile.png",
+    path: "/tmp/sandbox-heritage-mobile.png",
     fullPage: false,
   });
 

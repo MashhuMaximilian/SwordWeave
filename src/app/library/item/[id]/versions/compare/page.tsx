@@ -33,9 +33,9 @@ function parseCompositeId(raw: string): {
     "CHARACTER",
     "EFFECT",
     "ITEM",
-    "RACE_TEMPLATE",
-    "BACKGROUND_TEMPLATE",
-    "ARCHETYPE_TEMPLATE",
+    "LINEAGE_TEMPLATE",
+    "UPBRINGING_TEMPLATE",
+    "MANIFEST_TEMPLATE",
   ];
   if (!supported.includes(type as VersionTargetType)) return null;
   return { type: type as VersionTargetType, id };

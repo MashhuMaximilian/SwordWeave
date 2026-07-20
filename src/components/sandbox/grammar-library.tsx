@@ -129,9 +129,9 @@ const GLOBAL_TYPES: Array<{ key: LibraryTargetType | "ALL"; label: string }> = [
   { key: "PRIMITIVE", label: "Primitives" },
   { key: "EFFECT", label: "Effects" },
   { key: "CAPABILITY", label: "Capabilities" },
-  { key: "RACE_TEMPLATE", label: "Lineage" },
-  { key: "BACKGROUND_TEMPLATE", label: "Upbringing" },
-  { key: "ARCHETYPE_TEMPLATE", label: "Manifest" },
+  { key: "LINEAGE_TEMPLATE", label: "Lineage" },
+  { key: "UPBRINGING_TEMPLATE", label: "Upbringing" },
+  { key: "MANIFEST_TEMPLATE", label: "Manifest" },
   { key: "ITEM", label: "Items" },
 ];
 
@@ -140,7 +140,7 @@ const GLOBAL_TYPES: Array<{ key: LibraryTargetType | "ALL"; label: string }> = [
 // state can hold a group key; TYPE_GROUPS resolves it to concrete types.
 const TYPE_GROUPS: Record<string, LibraryTargetType[]> = {
   GROUP_MECHANICS: ["PRIMITIVE", "EFFECT", "CAPABILITY"],
-  GROUP_HERITAGES: ["RACE_TEMPLATE", "BACKGROUND_TEMPLATE", "ARCHETYPE_TEMPLATE"],
+  GROUP_HERITAGES: ["LINEAGE_TEMPLATE", "UPBRINGING_TEMPLATE", "MANIFEST_TEMPLATE"],
 };
 
 export function GrammarLibrary({

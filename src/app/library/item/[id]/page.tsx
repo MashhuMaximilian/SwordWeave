@@ -1,7 +1,7 @@
 // =============================================================================
 // /library/item/[id] — public detail view for a library item
 // id format: `<type>:<id>` e.g. "PRIMITIVE:42", "CAPABILITY:abc-uuid",
-//            "RACE_TEMPLATE:def-uuid"
+//            "LINEAGE_TEMPLATE:def-uuid"
 //
 // Phase 5: wires up engagement data (likes/dislikes/forks), the current
 // user's reaction state, and the author → follow relationship. Markdown is
@@ -326,9 +326,9 @@ export default async function LibraryItemPage({ params }: PageProps) {
     );
   }
   if (
-    type === "RACE_TEMPLATE" ||
-    type === "BACKGROUND_TEMPLATE" ||
-    type === "ARCHETYPE_TEMPLATE"
+    type === "LINEAGE_TEMPLATE" ||
+    type === "UPBRINGING_TEMPLATE" ||
+    type === "MANIFEST_TEMPLATE"
   ) {
     return (
       <TemplateDetail
@@ -584,9 +584,9 @@ function DetailShell({
                 | "CAPABILITY"
                 | "CHARACTER"
                 | "ITEM"
-                | "RACE_TEMPLATE"
-                | "BACKGROUND_TEMPLATE"
-                | "ARCHETYPE_TEMPLATE"
+                | "LINEAGE_TEMPLATE"
+                | "UPBRINGING_TEMPLATE"
+                | "MANIFEST_TEMPLATE"
             }
             targetId={targetId}
             initialLikes={engagement.likes}
@@ -906,7 +906,7 @@ async function TemplateDetail({
   currentUserId,
   viewerClerkId,
 }: DetailProps & { id: string }) {
-  const row = await db.query.templates.findFirst({
+  const row = await db.query.heritage.findFirst({
     where: (table, { eq }) => eq(table.id, id),
     with: {
       primitiveLinks: { with: { primitive: true } },
@@ -916,11 +916,11 @@ async function TemplateDetail({
   if (!row) notFound();
 
   const targetTypeForVis =
-    row.kind === "RACE"
-      ? "RACE_TEMPLATE"
-      : row.kind === "BACKGROUND"
-        ? "BACKGROUND_TEMPLATE"
-        : "ARCHETYPE_TEMPLATE";
+    row.kind === "LINEAGE"
+      ? "LINEAGE_TEMPLATE"
+      : row.kind === "UPBRINGING"
+        ? "UPBRINGING_TEMPLATE"
+        : "MANIFEST_TEMPLATE";
   const vis = await checkVisibility({
     targetType: targetTypeForVis,
     targetId: id,
@@ -931,20 +931,20 @@ async function TemplateDetail({
   if (!vis.allowed) notFound();
 
   const typeLabel =
-    row.kind === "RACE"
-      ? "RACE"
-      : row.kind === "BACKGROUND"
-        ? "BACKGROUND"
-        : "ARCHETYPE";
+    row.kind === "LINEAGE"
+      ? "LINEAGE"
+      : row.kind === "UPBRINGING"
+        ? "UPBRINGING"
+        : "MANIFEST";
 
   const author = await resolveAuthorByClerkId(row.userId);
 
   const targetTypeForEngagement =
-    row.kind === "RACE"
-      ? "RACE_TEMPLATE"
-      : row.kind === "BACKGROUND"
-        ? "BACKGROUND_TEMPLATE"
-        : "ARCHETYPE_TEMPLATE";
+    row.kind === "LINEAGE"
+      ? "LINEAGE_TEMPLATE"
+      : row.kind === "UPBRINGING"
+        ? "UPBRINGING_TEMPLATE"
+        : "MANIFEST_TEMPLATE";
 
   const engagement = await loadEngagement(
     targetTypeForEngagement,
@@ -956,12 +956,12 @@ async function TemplateDetail({
       loadFlagsAndTags(
         targetTypeForEngagement,
         id,
-        [], // templates don't have a tags column yet
+        [], // heritage don't have a tags column yet
       ),
       loadForkSource(targetTypeForEngagement, id),
       // Resolve latest published version for every composed primitive and
-      // capability. Templates compose templates (no effect link table for
-      // templates), so we only need primitives + capabilities here.
+      // capability. Templates compose heritage (no effect link table for
+      // heritage), so we only need primitives + capabilities here.
       bulkResolveLatestVersionNumbers([
         ...row.primitiveLinks.map((l) => ({
           kind: "primitive" as const,
@@ -990,7 +990,7 @@ async function TemplateDetail({
       description={row.description || null}
       author={author}
       ownerId={row.userId}
-      editHref={`/atelier?build=template&edit=${row.id}`}
+      editHref={`/atelier?build=heritage&edit=${row.id}`}
       targetType={targetTypeForEngagement}
       targetId={id}
       engagement={engagement}

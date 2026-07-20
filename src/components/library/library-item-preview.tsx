@@ -120,7 +120,7 @@ export type SandboxCapabilityRow = {
 
 export type SandboxTemplateRow = {
   id: string;
-  kind: "RACE" | "BACKGROUND" | "ARCHETYPE";
+  kind: "LINEAGE" | "UPBRINGING" | "MANIFEST";
   name: string;
   description: string | null;
   suggestedTraits: string | null;
@@ -206,7 +206,7 @@ export type SandboxPreviewItem =
   | { kind: "primitive"; row: SandboxPrimitiveRow; latestVersionNumber?: number | null }
   | { kind: "effect"; row: SandboxEffectRow; latestVersionNumber?: number | null }
   | { kind: "capability"; row: SandboxCapabilityRow; latestVersionNumber?: number | null }
-  | { kind: "template"; row: SandboxTemplateRow; latestVersionNumber?: number | null }
+  | { kind: "heritage"; row: SandboxTemplateRow; latestVersionNumber?: number | null }
   | { kind: "item"; row: SandboxItemRow; latestVersionNumber?: number | null };
 
 export function libraryCompositeId(item: SandboxPreviewItem): string {
@@ -219,7 +219,7 @@ export function libraryCompositeId(item: SandboxPreviewItem): string {
       return `CAPABILITY:${item.row.id}`;
     case "item":
       return `ITEM:${item.row.id}`;
-    case "template":
+    case "heritage":
       return `${item.row.kind}_TEMPLATE:${item.row.id}`;
   }
 }
@@ -232,7 +232,7 @@ function previewHeadingLabel(item: SandboxPreviewItem): string {
       return "Effect";
     case "capability":
       return `Capability · ${item.row.type}`;
-    case "template":
+    case "heritage":
       return `Template · ${item.row.kind}`;
     case "item":
       return `Item · ${item.row.itemType}`;

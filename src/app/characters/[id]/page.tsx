@@ -128,11 +128,11 @@ export default async function CharacterSheetPage({
       portraitUrl={row.portraitUrl}
       notes={row.notes}
       dmNotes={row.dmNotes}
-      raceName={row.raceName}
-      raceDescription={row.raceDescription}
-      backgroundName={row.backgroundName}
-      backgroundDescription={row.backgroundDescription}
-      archetypeName={row.archetypeName}
+      lineageName={row.lineageName}
+      lineageDescription={row.lineageDescription}
+      upbringingName={row.upbringingName}
+      upbringingDescription={row.upbringingDescription}
+      manifestName={row.manifestName}
       attrPhysical={row.attrPhysical}
       attrMental={row.attrMental}
       attrMagical={row.attrMagical}

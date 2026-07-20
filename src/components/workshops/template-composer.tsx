@@ -7,7 +7,7 @@ import { ToastViewport, useToasts } from "@/components/ui/toast";
 /**
  * Template Composer
  *
- * Unified form for race, background, and archetype templates.
+ * Unified form for race, background, and archetype heritage.
  * Kind switches which primitive category is allowed:
  *   - RACE → HERITAGE_AUGMENT
  *   - BACKGROUND → BACKGROUND_AUGMENT
@@ -37,7 +37,7 @@ type TemplatePrimitiveLink = {
   primitive: PrimitiveRow;
 };
 
-type TemplateRow = {
+type HeritageRow = {
   id: string;
   kind: string;
   name: string;
@@ -49,32 +49,32 @@ type TemplateRow = {
   primitiveLinks: TemplatePrimitiveLink[];
 };
 
-type TemplateKind = "RACE" | "BACKGROUND" | "ARCHETYPE";
+type HeritageKind = "LINEAGE" | "UPBRINGING" | "MANIFEST";
 
-const KIND_VALUES: TemplateKind[] = ["RACE", "BACKGROUND", "ARCHETYPE"];
+const KIND_VALUES: HeritageKind[] = ["LINEAGE", "UPBRINGING", "MANIFEST"];
 
-function expectedCategory(kind: TemplateKind): string {
+function expectedCategory(kind: HeritageKind): string {
   switch (kind) {
-    case "RACE":
+    case "LINEAGE":
       return "HERITAGE_AUGMENT";
-    case "BACKGROUND":
+    case "UPBRINGING":
       return "BACKGROUND_AUGMENT";
-    case "ARCHETYPE":
+    case "MANIFEST":
       return "CHARACTER_SHEET_AUGMENT";
   }
 }
 
-function isValidKind(value: string | null | undefined): value is TemplateKind {
-  return value === "RACE" || value === "BACKGROUND" || value === "ARCHETYPE";
+function isValidKind(value: string | null | undefined): value is HeritageKind {
+  return value === "LINEAGE" || value === "UPBRINGING" || value === "MANIFEST";
 }
 
-function kindSingular(kind: TemplateKind): string {
+function kindSingular(kind: HeritageKind): string {
   switch (kind) {
-    case "RACE":
+    case "LINEAGE":
       return "Lineage";
-    case "BACKGROUND":
+    case "UPBRINGING":
       return "Upbringing";
-    case "ARCHETYPE":
+    case "MANIFEST":
       return "Manifest";
   }
 }
@@ -85,13 +85,13 @@ export function TemplateComposer({
   capabilities,
   editingTemplate,
 }: {
-  initialKind: TemplateKind;
+  initialKind: HeritageKind;
   primitives: PrimitiveRow[];
   capabilities: CapabilityRow[];
-  editingTemplate?: TemplateRow | null;
+  editingTemplate?: HeritageRow | null;
 }) {
   const isEditMode = Boolean(editingTemplate);
-  const [kind, setKind] = useState<TemplateKind>(initialKind);
+  const [kind, setKind] = useState<HeritageKind>(initialKind);
   const allowedCategory = expectedCategory(kind);
 
   // Track primitives with their mirrored state
@@ -201,8 +201,8 @@ export function TemplateComposer({
       try {
         const url =
           isEditMode && editingTemplate
-            ? `/api/templates/${editingTemplate.id}`
-            : "/api/templates";
+            ? `/api/heritage/${editingTemplate.id}`
+            : "/api/heritage";
         const method = isEditMode ? "PATCH" : "POST";
 
         const res = await fetch(url, {
@@ -332,7 +332,7 @@ export function TemplateComposer({
             </button>
             <button
               type="submit"
-              form="template-form"
+              form="heritage-form"
               disabled={isPending}
               className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
@@ -349,7 +349,7 @@ export function TemplateComposer({
       </div>
 
       <form
-        id="template-form"
+        id="heritage-form"
         onSubmit={handleSubmit}
         className="mt-8 grid gap-4 lg:grid-cols-[360px_1fr]"
       >
@@ -364,7 +364,7 @@ export function TemplateComposer({
                 onChange={(e) =>
                   setForm((f) => ({ ...f, name: e.target.value }))
                 }
-                placeholder={`e.g. ${kind === "RACE" ? "High Elf" : kind === "BACKGROUND" ? "Sellsword" : "Glass Cannon Mage"}`}
+                placeholder={`e.g. ${kind === "LINEAGE" ? "High Elf" : kind === "UPBRINGING" ? "Sellsword" : "Glass Cannon Mage"}`}
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                 required
               />

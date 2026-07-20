@@ -230,7 +230,7 @@ async function PublicEntriesSection({
         <Globe className="h-5 w-5 text-sword-accent" /> Public entries
       </h2>
       <p className="mt-2 text-sm text-sword-muted">
-        Primitives, capabilities, characters, items, and templates by{" "}
+        Primitives, capabilities, characters, items, and heritage by{" "}
         @{userRow.username} will appear here once they publish to the Library.
       </p>
 

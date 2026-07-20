@@ -43,7 +43,7 @@ import {
   capabilities,
 } from "@/db/schema/engine";
 import { items } from "@/db/schema/items";
-import { templates, builds } from "@/db/schema/characters";
+import { heritage, builds } from "@/db/schema/characters";
 import iconIndex from "@/lib/icons/game-icons-index.json";
 
 // -----------------------------------------------------------------------------
@@ -312,7 +312,7 @@ const KEYWORD_ICONS: Record<string, string> = {
   root: "delapouite/plant-roots",
   snare: "lorc/snare",
 
-  // Races (templates)
+  // Races (heritage)
   elf: "kier-heyl/elf-helmet",
   human: "lorc/human-ear",
   dwarf: "kier-heyl/dwarf-helmet",
@@ -323,7 +323,7 @@ const KEYWORD_ICONS: Record<string, string> = {
   gnome: "lorc/gnome",
   goblin: "lorc/goblin-head",
 
-  // Backgrounds (templates)
+  // Backgrounds (heritage)
   soldier: "lorc/crossed-swords",
   scholar: "delapouite/scroll-quill",
   criminal: "lorc/plain-dagger",
@@ -637,21 +637,21 @@ async function backfillCapabilities(): Promise<CsvRow[]> {
 }
 
 async function backfillTemplates(): Promise<CsvRow[]> {
-  console.log("Reading templates...");
-  const rows = await db.select().from(templates);
+  console.log("Reading heritage...");
+  const rows = await db.select().from(heritage);
   console.log(`  ${rows.length} rows.`);
   const out: CsvRow[] = [];
   for (const r of rows) {
     const proposal = proposeIcon("template", r.name, r.kind);
     const color = proposeColor("template", r.name, r.kind);
     await db
-      .update(templates)
+      .update(heritage)
       .set({
         iconProposedSource: "GAME_ICONS",
         iconProposedKey: proposal.key,
         iconProposedColor: color.color,
       })
-      .where(eq(templates.id, r.id));
+      .where(eq(heritage.id, r.id));
     out.push({
       type: "template",
       id: r.id,

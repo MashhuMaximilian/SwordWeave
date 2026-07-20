@@ -1,7 +1,7 @@
 # Phase 2 Verification Checklist
 
 > **Scope**: Apply Phase 1's deferred-fork model to **effects**,
-> **capabilities**, **items**, **templates** (race/background/archetype).
+> **capabilities**, **items**, **heritage** (lineage/upbringing/manifest).
 > The same 4-cell matrix that governed primitives in Phase 1 now
 > governs every entity type.
 >
@@ -271,7 +271,7 @@ one test not three.
 4. Load into build on non-owned template, change, save → URL swaps,
    new row.
 
-If templates are broken, check `/api/templates` route's dispatch
+If heritage are broken, check `/api/heritage` route's dispatch
 wiring and confirm the `kind` enum (RACE / BACKGROUND / ARCHETYPE)
 is preserved on fork.
 

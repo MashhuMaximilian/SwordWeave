@@ -36,12 +36,12 @@ import {
   capabilities,
 } from "@/db/schema/engine";
 import { items } from "@/db/schema/items";
-import { templates, builds } from "@/db/schema/characters";
+import { heritage, builds } from "@/db/schema/characters";
 
 // One icon column set is shared across all six tables. The shape of
 // the per-table icon columns is identical; the only thing that varies
 // is which icon-prop the table exposes (icons for primitives/effects/
-// capabilities/templates/items/builds are all the same shape thanks to
+// capabilities/heritage/items/builds are all the same shape thanks to
 // migrations 0027/0028/0029). The minimal type we need for the SELECT
 // and UPDATE is `any` because Drizzle's column-typing is too narrow
 // for a heterogeneous union of six tables.
@@ -218,8 +218,8 @@ async function main() {
   const effectRows = await promoteTable("effect", effects);
   // capabilities use `type` as the category
   const capabilityRows = await promoteTable("capability", capabilities, capabilities.type);
-  // templates use `kind`
-  const templateRows = await promoteTable("template", templates, templates.kind);
+  // heritage use `kind`
+  const templateRows = await promoteTable("template", heritage, heritage.kind);
   // items use `itemType`
   const itemRows = await promoteTable("item", items, items.itemType);
   // builds — no category column, just use the level
@@ -247,7 +247,7 @@ async function main() {
     primitive: await countCommitted(primitives),
     effect: await countCommitted(effects),
     capability: await countCommitted(capabilities),
-    template: await countCommitted(templates),
+    template: await countCommitted(heritage),
     item: await countCommitted(items),
     build: await countCommitted(builds),
   };

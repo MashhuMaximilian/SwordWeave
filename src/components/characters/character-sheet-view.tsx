@@ -115,11 +115,11 @@ export type CharacterSheetProps = {
   portraitUrl: string | null;
   notes: string | null;
   dmNotes: string | null;
-  raceName: string | null;
-  raceDescription: string | null;
-  backgroundName: string | null;
-  backgroundDescription: string | null;
-  archetypeName: string | null;
+  lineageName: string | null;
+  lineageDescription: string | null;
+  upbringingName: string | null;
+  upbringingDescription: string | null;
+  manifestName: string | null;
   attrPhysical: number;
   attrMental: number;
   attrMagical: number;
@@ -252,8 +252,8 @@ export function CharacterSheetView(props: CharacterSheetProps) {
                 L{props.level}
               </span>
               <span>{props.size}</span>
-              {props.raceName && <span>· {props.raceName}</span>}
-              {props.archetypeName && <span>· {props.archetypeName}</span>}
+              {props.lineageName && <span>· {props.lineageName}</span>}
+              {props.manifestName && <span>· {props.manifestName}</span>}
             </div>
           </div>
         </div>
@@ -791,13 +791,13 @@ function OverviewTab({
           Identity
         </h3>
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Field label="Lineage" value={props.raceName ?? "—"} {...(props.raceDescription ? { description: props.raceDescription } : {})} />
+          <Field label="Lineage" value={props.lineageName ?? "—"} {...(props.lineageDescription ? { description: props.lineageDescription } : {})} />
           <Field
             label="Upbringing"
-            value={props.backgroundName ?? "—"}
-            {...(props.backgroundDescription ? { description: props.backgroundDescription } : {})}
+            value={props.upbringingName ?? "—"}
+            {...(props.upbringingDescription ? { description: props.upbringingDescription } : {})}
           />
-          <Field label="Manifest" value={props.archetypeName ?? "—"} />
+          <Field label="Manifest" value={props.manifestName ?? "—"} />
           <Field
             label="Attribute Sum"
             value={`${attrSum} / 10 ${

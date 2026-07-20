@@ -31,12 +31,12 @@ import { EffectForm } from "./effect-form";
 import { EffectFormPreview } from "./effect-form-preview";
 import { CapabilityForm } from "./capability-form";
 import { CapabilityFormPreview } from "./capability-form-preview";
-import { TemplateForm } from "./template-form";
-import { TemplateFormPreview } from "./template-form-preview";
+import { HeritageForm } from "./heritage-form";
+import { HeritageFormPreview } from "./heritage-form-preview";
 import { ItemForm } from "./item-form";
 import { ItemFormPreview } from "./item-form-preview";
 import { GrammarLibrary } from "./grammar-library";
-import { BlueprintLibrary } from "./blueprint-library";
+import { HeritageLibrary } from "./heritage-library";
 import { UnsavedChangesModal } from "./unsaved-changes-modal";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import { EntityPreview } from "@/components/preview/entity-preview";
@@ -50,7 +50,7 @@ import type { ModifierDraft } from "./primitive-form-preview";
 
 export type AtelierTab =
   | "mechanics"
-  | "template"
+  | "heritage"
   | "item"
   | "monster";
 
@@ -60,7 +60,7 @@ export type AtelierEntityKind =
   | "primitive"
   | "effect"
   | "capability"
-  | "template"
+  | "heritage"
   | "item";
 
 // Map a concrete entity kind to its tab (Mechanics groups the three
@@ -83,8 +83,8 @@ function concreteBuildForKind(kind: AtelierEntityKind): string {
       return "effect";
     case "capability":
       return "capability";
-    case "template":
-      return "template";
+    case "heritage":
+      return "heritage";
     case "item":
       return "item";
   }
@@ -169,10 +169,10 @@ type CapabilityRow = {
   iconColor: string;
 };
 
-type TemplateRow = {
+type HeritageRow = {
   id: string;
   userId?: string | null;
-  kind: "RACE" | "BACKGROUND" | "ARCHETYPE";
+  kind: "LINEAGE" | "UPBRINGING" | "MANIFEST";
   name: string;
   imageUrl: string | null;
   description: string | null;
@@ -236,7 +236,7 @@ type EditingState =
   | { kind: "primitive"; row: PrimitiveRow }
   | { kind: "effect"; row: EffectRow }
   | { kind: "capability"; row: CapabilityRow }
-  | { kind: "template"; row: TemplateRow }
+  | { kind: "heritage"; row: HeritageRow }
   | { kind: "item"; row: ItemRow }
   | null;
 
@@ -262,7 +262,7 @@ export function AtelierSandboxClient({
   primitives,
   effects,
   capabilities,
-  templates,
+  heritage,
   items,
   sandboxPrimitives,
   sandboxCapabilities,
@@ -274,7 +274,7 @@ export function AtelierSandboxClient({
   versionMap,
 }: {
   initialBuild: AtelierTab;
-  initialKind?: "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined;
+  initialKind?: "LINEAGE" | "UPBRINGING" | "MANIFEST" | undefined;
   initialEditing: EditingState;
   initialIntent?: SaveIntent | undefined;
   initialSourceId?: string | null | undefined;
@@ -283,7 +283,7 @@ export function AtelierSandboxClient({
   primitives: PrimitiveRow[];
   effects: EffectRow[];
   capabilities: CapabilityRow[];
-  templates: TemplateRow[];
+  heritage: HeritageRow[];
   items: ItemRow[];
   sandboxPrimitives: import("@/components/library/library-item-preview").SandboxPrimitiveRow[];
   sandboxCapabilities: import("@/components/library/library-item-preview").SandboxCapabilityRow[];
@@ -319,8 +319,8 @@ export function AtelierSandboxClient({
   // confirms/cancels it. Using the in-app modal (not window.confirm) keeps
   // the UX consistent with the load-into-build discard prompt.
   const [pendingNav, setPendingNav] = useState<string | null>(null);
-  const [templateKind, setTemplateKind] = useState<
-    "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined
+  const [heritageKind, setHeritageKind] = useState<
+    "LINEAGE" | "UPBRINGING" | "MANIFEST" | undefined
   >(initialKind);
   const [showNewModal, setShowNewModal] = useState(false);
   const [mechanicsDraftKind, setMechanicsDraftKind] = useState<
@@ -333,7 +333,7 @@ export function AtelierSandboxClient({
     editing: EditingState;
     formSnapshot: typeof formSnapshot;
     mechanicsDraftKind: "primitive" | "effect" | "capability";
-    templateKind: "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined;
+    heritageKind: "LINEAGE" | "UPBRINGING" | "MANIFEST" | undefined;
     buildStarted: boolean;
   };
   const [tabCache, setTabCache] = useState<Partial<Record<AtelierTab, TabCacheEntry>>>({});
@@ -478,12 +478,12 @@ export function AtelierSandboxClient({
       const { entityType, id } = action;
       const idStr = String(id);
       // Map to the concrete targetType buildSandboxUrl expects. For
-      // templates, "TEMPLATE" isn't a valid key — resolve the concrete
+      // heritage, "TEMPLATE" isn't a valid key — resolve the concrete
       // sub-kind (RACE/BACKGROUND/ARCHETYPE) from the loaded row.
       let targetType = entityType.toUpperCase();
-      if (entityType === "template") {
-        const row = templates.find((t) => String(t.id) === idStr);
-        targetType = row?.kind ? `${row.kind}_TEMPLATE` : "RACE_TEMPLATE";
+      if (entityType === "heritage") {
+        const row = heritage.find((t) => String(t.id) === idStr);
+        targetType = row?.kind ? `${row.kind}_TEMPLATE` : "LINEAGE_TEMPLATE";
       }
       // Close the preview popup (the pathname stays /atelier, so
       // ModalStackHost's auto-clear won't fire — clear explicitly).
@@ -507,10 +507,10 @@ export function AtelierSandboxClient({
         const row = capabilities.find((c) => String(c.id) === idStr);
         if (!row) return;
         setEditing({ kind: "capability", row });
-      } else if (entityType === "template") {
-        const row = templates.find((t) => String(t.id) === idStr);
+      } else if (entityType === "heritage") {
+        const row = heritage.find((t) => String(t.id) === idStr);
         if (!row) return;
-        setEditing({ kind: "template", row });
+        setEditing({ kind: "heritage", row });
       } else if (entityType === "item") {
         const row = items.find((i) => String(i.id) === idStr);
         if (!row) return;
@@ -558,7 +558,7 @@ export function AtelierSandboxClient({
       primitives,
       effects,
       capabilities,
-      templates,
+      heritage,
       items,
     ],
   );
@@ -577,11 +577,11 @@ export function AtelierSandboxClient({
   // the right editor (Point 3 / Point 5).
   function startNewEntity(choice?: NewEntityChoice) {
     setShowNewModal(false);
-    if (choice?.templateSubKind) setTemplateKind(choice.templateSubKind);
+    if (choice?.heritageSubKind) setHeritageKind(choice.heritageSubKind);
     if (choice?.mechanicsSubKind) setMechanicsDraftKind(choice.mechanicsSubKind);
     // NOTE: deliberately do NOT switch the active tab — the tab is a library
     // filter and the build form renders from the chosen draft kind
-    // (mechanicsDraftKind / templateKind), independent of the tab.
+    // (mechanicsDraftKind / heritageKind), independent of the tab.
     setEditing(null);
     setFormSnapshot(null);
     setFormIsDirty(false);
@@ -652,9 +652,9 @@ export function AtelierSandboxClient({
     // is driven by what's loaded (editing.kind) or, for a blank "new entity"
     // draft, by the chosen draft kind. The active tab is just a library
     // filter and must never switch/reset the form.
-    const formKind: "primitive" | "effect" | "capability" | "template" | "item" | null =
+    const formKind: "primitive" | "effect" | "capability" | "heritage" | "item" | null =
       editing?.kind ??
-      (mechanicsDraftKind ? mechanicsDraftKind : templateKind ? "template" : null);
+      (mechanicsDraftKind ? mechanicsDraftKind : heritageKind ? "heritage" : null);
 
     if (formKind === "primitive") {
       return (
@@ -758,11 +758,11 @@ export function AtelierSandboxClient({
         />
       );
     }
-    if (formKind === "template") {
+    if (formKind === "heritage") {
       return (
-        <TemplateForm
-          initialTemplate={editing?.kind === "template" ? editing.row : null}
-          initialKind={templateKind ?? undefined}
+        <HeritageForm
+          initialTemplate={editing?.kind === "heritage" ? editing.row : null}
+          initialKind={heritageKind ?? undefined}
           availablePrimitives={primitives}
           availableCapabilities={capabilities}
           {...formCommon}
@@ -831,7 +831,7 @@ export function AtelierSandboxClient({
     buildStarted,
     mechanicsDraftKind,
     formSnapshot,
-    templateKind,
+    heritageKind,
     primitives,
     effects,
     capabilities,
@@ -846,9 +846,9 @@ export function AtelierSandboxClient({
   const previewNode = useMemo(() => {
     // Form preview is driven by what's loaded (or the blank draft kind),
     // NOT the active library tab. Same decoupling as builderNode.
-    const formKind: "primitive" | "effect" | "capability" | "template" | "item" | null =
+    const formKind: "primitive" | "effect" | "capability" | "heritage" | "item" | null =
       editing?.kind ??
-      (mechanicsDraftKind ? mechanicsDraftKind : templateKind ? "template" : null);
+      (mechanicsDraftKind ? mechanicsDraftKind : heritageKind ? "heritage" : null);
     if (formKind === "primitive") {
       const snapForm = formSnapshot?.form as
         | {
@@ -1037,10 +1037,10 @@ export function AtelierSandboxClient({
         <CapabilityFormPreview form={formWithDefaults} slots={slots} effects={effectRefs} />
       );
     }
-    if (formKind === "template") {
+    if (formKind === "heritage") {
       const snapForm = formSnapshot?.form as
         | {
-            kind: "RACE" | "BACKGROUND" | "ARCHETYPE";
+            kind: "LINEAGE" | "UPBRINGING" | "MANIFEST";
             name: string;
             imageUrl: string;
             description: string;
@@ -1054,7 +1054,7 @@ export function AtelierSandboxClient({
         | undefined;
       const snapPrimitiveIds = formSnapshot?.primitiveIds as string[] | undefined;
       const snapCapabilityIds = formSnapshot?.capabilityIds as string[] | undefined;
-      const row = editing?.kind === "template" ? editing.row : null;
+      const row = editing?.kind === "heritage" ? editing.row : null;
       if (!snapForm && !row) {
         return emptyPreview("Pick a template from the Library", "Click any template to load it. Or build a new one in the Build form.");
       }
@@ -1083,7 +1083,7 @@ export function AtelierSandboxClient({
             .map((c) => ({ id: c.id, name: c.name, category: c.type, buCost: 0 }))
         : (row ? row.capabilityLinks.map((link) => ({ id: link.capabilityId, name: link.capability.name, category: link.capability.type, buCost: 0 })) : []);
       if (!form) return null;
-      return <TemplateFormPreview form={form} primitives={primitiveSlots} capabilities={capabilitySlots} />;
+      return <HeritageFormPreview form={form} primitives={primitiveSlots} capabilities={capabilitySlots} />;
     }
     if (formKind === "item") {
       const snapForm = formSnapshot?.form as
@@ -1192,10 +1192,10 @@ export function AtelierSandboxClient({
       );
     }
     return (
-      <BlueprintLibrary
-        build={build as "template" | "item" | "monster"}
+      <HeritageLibrary
+        build={build as "heritage" | "item" | "monster"}
         libraryItems={libraryItems}
-        templates={templates}
+        heritage={heritage}
         items={items}
         primitives={sandboxPrimitives}
         capabilities={sandboxCapabilities}
@@ -1210,10 +1210,10 @@ export function AtelierSandboxClient({
         }
         onFork={(targetType, targetId) =>
           guardedLibrarySelect(
-            (targetType === "RACE_TEMPLATE" ||
-            targetType === "BACKGROUND_TEMPLATE" ||
-            targetType === "ARCHETYPE_TEMPLATE"
-              ? "template"
+            (targetType === "LINEAGE_TEMPLATE" ||
+            targetType === "UPBRINGING_TEMPLATE" ||
+            targetType === "MANIFEST_TEMPLATE"
+              ? "heritage"
               : "item") as AtelierEntityKind,
             targetId,
             "fork",
@@ -1228,7 +1228,7 @@ export function AtelierSandboxClient({
     primitives,
     effects,
     capabilities,
-    templates,
+    heritage,
     items,
     sandboxPrimitives,
     sandboxCapabilities,
@@ -1301,7 +1301,7 @@ function emptyPreview(title: string, sub: string) {
 function buildLabel(mode: AtelierTab): string {
   switch (mode) {
     case "mechanics": return "Mechanics";
-    case "template": return "Heritage";
+    case "heritage": return "Heritage";
     case "item": return "Items";
     case "monster": return "Monsters";
   }
@@ -1311,7 +1311,7 @@ function buildLabel(mode: AtelierTab): string {
 
 type NewEntityChoice = {
   tab: AtelierTab;
-  templateSubKind?: "RACE" | "BACKGROUND" | "ARCHETYPE";
+  heritageSubKind?: "LINEAGE" | "UPBRINGING" | "MANIFEST";
   mechanicsSubKind?: "primitive" | "effect" | "capability";
   label: string;
   hint: string;
@@ -1334,9 +1334,9 @@ const NEW_ENTITY_GROUPS: { heading: string; choices: NewEntityChoice[] }[] = [
   {
     heading: "Heritage",
     choices: [
-      { tab: "template", templateSubKind: "RACE", label: "Lineage", hint: "Race template", icon: "lorc/dna2" },
-      { tab: "template", templateSubKind: "BACKGROUND", label: "Upbringing", hint: "Background template", icon: "delapouite/plant-roots" },
-      { tab: "template", templateSubKind: "ARCHETYPE", label: "Manifest", hint: "Archetype template", icon: "caro-asercion/tarot-11-justice" },
+      { tab: "heritage", heritageSubKind: "LINEAGE", label: "Lineage", hint: "Lineage", icon: "lorc/dna2" },
+      { tab: "heritage", heritageSubKind: "UPBRINGING", label: "Upbringing", hint: "Upbringing", icon: "delapouite/plant-roots" },
+      { tab: "heritage", heritageSubKind: "MANIFEST", label: "Manifest", hint: "Manifest", icon: "caro-asercion/tarot-11-justice" },
     ],
   },
   {
@@ -1424,7 +1424,7 @@ function NewEntityModal({
               <div className="grid grid-cols-1 gap-1.5">
                 {group.choices.map((choice) => (
                   <button
-                    key={choice.label + (choice.templateSubKind ?? "")}
+                    key={choice.label + (choice.heritageSubKind ?? "")}
                     type="button"
                     onClick={() => onPick(choice)}
                     className="flex items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-left transition-colors hover:border-primary hover:bg-primary/5"
@@ -1464,7 +1464,7 @@ const ATELIER_TABS: {
   icon: string; // game-icon key
 }[] = [
   { key: "mechanics", label: "Mechanics", icon: "lorc/jigsaw-piece" },
-  { key: "template", label: "Heritage", icon: "caro-asercion/tarot-11-justice" },
+  { key: "heritage", label: "Heritage", icon: "caro-asercion/tarot-11-justice" },
   { key: "item", label: "Items", icon: "lorc/battle-gear" },
   { key: "monster", label: "Monsters", icon: "lorc/gluttonous-smile" },
 ];

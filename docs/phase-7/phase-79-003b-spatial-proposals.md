@@ -1,7 +1,7 @@
 # Phase 7.9.3b — Spatial Modifier Proposals
 
 **Scope:** 14 spatial primitives, batch 2 of verb-like.
-**Pattern:** `add` for numerical penalties, `grant behavior:*` for engine flags (cover tiers, AoE templates, persistence modes).
+**Pattern:** `add` for numerical penalties, `grant behavior:*` for engine flags (cover tiers, AoE heritage, persistence modes).
 
 ## TACTICAL (4) — cover tier primitives
 

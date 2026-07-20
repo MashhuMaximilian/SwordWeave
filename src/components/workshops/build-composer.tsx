@@ -9,14 +9,14 @@ import { IconSlot } from "@/components/icons/icon-slot";
  *
  * Captures a complete character snapshot:
  *   - Identity (name, description, level, BU budget)
- *   - Race/Background (either refs to library templates OR freeform text)
+ *   - Race/Background (either refs to library heritage OR freeform text)
  *   - Archetype (optional snapshot field)
  *   - Attribute allocation (must sum to 10, each in [-1, +5])
  *   - Attribute proficiency (optional)
  *   - Capability grants
  *
- * "Archetype template" builds (isArchetypeTemplate=true) are pre-built
- * character templates — a Use button on the Library creates an instant
+ * "Archetype template" builds (isManifestTemplate=true) are pre-built
+ * character heritage — a Use button on the Library creates an instant
  * playable character from one.
  */
 
@@ -35,7 +35,7 @@ type CapabilityRow = {
   sourceType: string;
 };
 
-type TemplateRow = {
+type HeritageRow = {
   id: string;
   kind: string;
   name: string;
@@ -54,14 +54,14 @@ type BuildRow = {
   description: string | null;
   level: number;
   startingBu: number;
-  isArchetypeTemplate: boolean;
-  raceName: string | null;
-  raceDescription: string | null;
-  raceId: string | null;
-  backgroundName: string | null;
-  backgroundDescription: string | null;
-  backgroundId: string | null;
-  archetypeName: string | null;
+  isManifestTemplate: boolean;
+  lineageName: string | null;
+  lineageDescription: string | null;
+  lineageId: string | null;
+  upbringingName: string | null;
+  upbringingDescription: string | null;
+  upbringingId: string | null;
+  manifestName: string | null;
   attrPhysical: number | null;
   attrMental: number | null;
   attrMagical: number | null;
@@ -94,8 +94,8 @@ export function BuildComposer({
   capabilities,
   editingBuild,
 }: {
-  races: TemplateRow[];
-  backgrounds: TemplateRow[];
+  races: HeritageRow[];
+  backgrounds: HeritageRow[];
   capabilities: CapabilityRow[];
   editingBuild?: BuildRow | null;
 }) {
@@ -107,14 +107,14 @@ export function BuildComposer({
         description: editingBuild.description ?? "",
         level: editingBuild.level,
         startingBu: editingBuild.startingBu,
-        isArchetypeTemplate: editingBuild.isArchetypeTemplate,
-        raceId: editingBuild.raceId ?? "",
-        raceName: editingBuild.raceName ?? "",
-        raceDescription: editingBuild.raceDescription ?? "",
-        backgroundId: editingBuild.backgroundId ?? "",
-        backgroundName: editingBuild.backgroundName ?? "",
-        backgroundDescription: editingBuild.backgroundDescription ?? "",
-        archetypeName: editingBuild.archetypeName ?? "",
+        isManifestTemplate: editingBuild.isManifestTemplate,
+        lineageId: editingBuild.lineageId ?? "",
+        lineageName: editingBuild.lineageName ?? "",
+        lineageDescription: editingBuild.lineageDescription ?? "",
+        upbringingId: editingBuild.upbringingId ?? "",
+        upbringingName: editingBuild.upbringingName ?? "",
+        upbringingDescription: editingBuild.upbringingDescription ?? "",
+        manifestName: editingBuild.manifestName ?? "",
         attrPhysical: editingBuild.attrPhysical ?? 0,
         attrMental: editingBuild.attrMental ?? 0,
         attrMagical: editingBuild.attrMagical ?? 0,
@@ -131,14 +131,14 @@ export function BuildComposer({
         description: "",
         level: 1,
         startingBu: 25,
-        isArchetypeTemplate: false,
-        raceId: "",
-        raceName: "",
-        raceDescription: "",
-        backgroundId: "",
-        backgroundName: "",
-        backgroundDescription: "",
-        archetypeName: "",
+        isManifestTemplate: false,
+        lineageId: "",
+        lineageName: "",
+        lineageDescription: "",
+        upbringingId: "",
+        upbringingName: "",
+        upbringingDescription: "",
+        manifestName: "",
         attrPhysical: 0,
         attrMental: 0,
         attrMagical: 0,
@@ -179,12 +179,12 @@ export function BuildComposer({
     if (race) {
       setForm((f) => ({
         ...f,
-        raceId: id,
-        raceName: race.name,
-        raceDescription: race.description ?? "",
+        lineageId: id,
+        lineageName: race.name,
+        lineageDescription: race.description ?? "",
       }));
     } else {
-      setForm((f) => ({ ...f, raceId: "" }));
+      setForm((f) => ({ ...f, lineageId: "" }));
     }
   }
 
@@ -193,12 +193,12 @@ export function BuildComposer({
     if (bg) {
       setForm((f) => ({
         ...f,
-        backgroundId: id,
-        backgroundName: bg.name,
-        backgroundDescription: bg.description ?? "",
+        upbringingId: id,
+        upbringingName: bg.name,
+        upbringingDescription: bg.description ?? "",
       }));
     } else {
-      setForm((f) => ({ ...f, backgroundId: "" }));
+      setForm((f) => ({ ...f, upbringingId: "" }));
     }
   }
 
@@ -214,14 +214,14 @@ export function BuildComposer({
       description: "",
       level: 1,
       startingBu: 25,
-      isArchetypeTemplate: false,
-      raceId: "",
-      raceName: "",
-      raceDescription: "",
-      backgroundId: "",
-      backgroundName: "",
-      backgroundDescription: "",
-      archetypeName: "",
+      isManifestTemplate: false,
+      lineageId: "",
+      lineageName: "",
+      lineageDescription: "",
+      upbringingId: "",
+      upbringingName: "",
+      upbringingDescription: "",
+      manifestName: "",
       attrPhysical: 0,
       attrMental: 0,
       attrMagical: 0,
@@ -267,14 +267,14 @@ export function BuildComposer({
             description: form.description.trim() || null,
             level: form.level,
             startingBu: form.startingBu,
-            isArchetypeTemplate: form.isArchetypeTemplate,
-            raceId: form.raceId || null,
-            raceName: form.raceName.trim() || null,
-            raceDescription: form.raceDescription.trim() || null,
-            backgroundId: form.backgroundId || null,
-            backgroundName: form.backgroundName.trim() || null,
-            backgroundDescription: form.backgroundDescription.trim() || null,
-            archetypeName: form.archetypeName.trim() || null,
+            isManifestTemplate: form.isManifestTemplate,
+            lineageId: form.lineageId || null,
+            lineageName: form.lineageName.trim() || null,
+            lineageDescription: form.lineageDescription.trim() || null,
+            upbringingId: form.upbringingId || null,
+            upbringingName: form.upbringingName.trim() || null,
+            upbringingDescription: form.upbringingDescription.trim() || null,
+            manifestName: form.manifestName.trim() || null,
             attrPhysical: form.attrPhysical,
             attrMental: form.attrMental,
             attrMagical: form.attrMagical,
@@ -315,7 +315,7 @@ export function BuildComposer({
           Build Composer
         </p>
         <h1 className="mt-3 text-4xl font-semibold">
-          {form.isArchetypeTemplate ? "Forge an archetype." : "Capture a character."}
+          {form.isManifestTemplate ? "Forge an archetype." : "Capture a character."}
         </h1>
         <p className="mt-4 text-base leading-7 text-muted-foreground">
           Builds are snapshots of a complete character. Toggle{" "}
@@ -376,7 +376,7 @@ export function BuildComposer({
                 {isEditMode ? "Editing" : "New"}
               </span>
             </div>
-            {form.isArchetypeTemplate && (
+            {form.isManifestTemplate && (
               <span className="rounded-full bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-700 dark:text-purple-300">
                 Archetype
               </span>
@@ -506,9 +506,9 @@ export function BuildComposer({
               <div className="pt-2 space-y-1.5">
                 <Checkbox
                   label="Archetype template (others can fork / use this)"
-                  checked={form.isArchetypeTemplate}
+                  checked={form.isManifestTemplate}
                   onChange={(v) =>
-                    setForm((f) => ({ ...f, isArchetypeTemplate: v }))
+                    setForm((f) => ({ ...f, isManifestTemplate: v }))
                   }
                 />
                 <Checkbox
@@ -573,7 +573,7 @@ export function BuildComposer({
             <div className="mt-4 space-y-3">
               <Field label="From Library (optional)">
                 <select
-                  value={form.raceId}
+                  value={form.lineageId}
                   onChange={(e) => pickRace(e.target.value)}
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                 >
@@ -588,9 +588,9 @@ export function BuildComposer({
               <Field label="Race Name">
                 <input
                   type="text"
-                  value={form.raceName}
+                  value={form.lineageName}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, raceName: e.target.value }))
+                    setForm((f) => ({ ...f, lineageName: e.target.value }))
                   }
                   placeholder="Freeform name if not using library"
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
@@ -598,9 +598,9 @@ export function BuildComposer({
               </Field>
               <Field label="Race Description">
                 <textarea
-                  value={form.raceDescription}
+                  value={form.lineageDescription}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, raceDescription: e.target.value }))
+                    setForm((f) => ({ ...f, lineageDescription: e.target.value }))
                   }
                   rows={2}
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
@@ -614,7 +614,7 @@ export function BuildComposer({
             <div className="mt-4 space-y-3">
               <Field label="From Library (optional)">
                 <select
-                  value={form.backgroundId}
+                  value={form.upbringingId}
                   onChange={(e) => pickBackground(e.target.value)}
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                 >
@@ -629,9 +629,9 @@ export function BuildComposer({
               <Field label="Background Name">
                 <input
                   type="text"
-                  value={form.backgroundName}
+                  value={form.upbringingName}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, backgroundName: e.target.value }))
+                    setForm((f) => ({ ...f, upbringingName: e.target.value }))
                   }
                   placeholder="Freeform name if not using library"
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
@@ -639,11 +639,11 @@ export function BuildComposer({
               </Field>
               <Field label="Background Description">
                 <textarea
-                  value={form.backgroundDescription}
+                  value={form.upbringingDescription}
                   onChange={(e) =>
                     setForm((f) => ({
                       ...f,
-                      backgroundDescription: e.target.value,
+                      upbringingDescription: e.target.value,
                     }))
                   }
                   rows={2}
@@ -658,9 +658,9 @@ export function BuildComposer({
             <Field label="Archetype Name">
               <input
                 type="text"
-                value={form.archetypeName}
+                value={form.manifestName}
                 onChange={(e) =>
-                  setForm((f) => ({ ...f, archetypeName: e.target.value }))
+                  setForm((f) => ({ ...f, manifestName: e.target.value }))
                 }
                 placeholder="e.g. Bladesinger, Hexblade, Lorekeeper"
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"

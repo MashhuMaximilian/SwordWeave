@@ -21,7 +21,7 @@ This page defines the **player-facing character creation system** built on the B
 
 Players can create a functional character in ~10–20 minutes using either:
 
-- Library templates (fast mode)
+- Library heritage (fast mode)
 - Full custom grammar construction (advanced mode)
 
 The system remains modular, intuitive, and BU-driven.
@@ -58,7 +58,7 @@ No mechanics yet.
 
 # ⚔️ STEP 2 — BASE FRAME (DBP)
 
-If using templates:
+If using heritage:
 
 - Race-like traits
 - Background traits
@@ -133,7 +133,7 @@ BU is used to:
 - upgrade vitality
 - enable utilities
 
-Library templates auto-spend BU internally if selected.
+Library heritage auto-spend BU internally if selected.
 
 ---
 
@@ -161,7 +161,7 @@ Example:
 
 Capabilities may also come from:
 
-- Library templates
+- Library heritage
 - Custom construction
 
 ---

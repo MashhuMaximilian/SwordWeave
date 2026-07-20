@@ -4,7 +4,7 @@
 //
 // Body: { targetType, targetId, versionId?, kind: "LIKE" | "DISLIKE" }
 //
-// Note: For unversioned library targets (existing primitives/templates that
+// Note: For unversioned library targets (existing primitives/heritage that
 // haven't been published via Phase 5), we synthesize a stable "current"
 // versionId from the targetId. Real versioned targets pass versionId
 // from the publication.
@@ -28,9 +28,9 @@ const TargetTypeSchema = z.enum([
   "CAPABILITY",
   "CHARACTER",
   "ITEM",
-  "RACE_TEMPLATE",
-  "BACKGROUND_TEMPLATE",
-  "ARCHETYPE_TEMPLATE",
+  "LINEAGE_TEMPLATE",
+  "UPBRINGING_TEMPLATE",
+  "MANIFEST_TEMPLATE",
   "BUILD_TEMPLATE",
 ]);
 

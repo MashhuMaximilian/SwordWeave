@@ -3,13 +3,13 @@ import { auth } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
-  templateCapabilities,
-  templatePrimitives,
-  templates,
+  heritageCapabilities,
+  heritagePrimitives,
+  heritage,
 } from "@/db/schema";
 
 /**
- * POST /api/templates/[id]/clone
+ * POST /api/heritage/[id]/clone
  *
  * Deep copies a template. Caller becomes the new owner.
  */
@@ -21,8 +21,8 @@ export async function POST(
     const { userId } = await auth.protect();
     const { id } = await params;
 
-    const source = await db.query.templates.findFirst({
-      where: eq(templates.id, id),
+    const source = await db.query.heritage.findFirst({
+      where: eq(heritage.id, id),
       with: {
         primitiveLinks: true,
         capabilityLinks: true,
@@ -37,7 +37,7 @@ export async function POST(
       const newName = uniqueCloneName(source.name);
 
       const [created] = await tx
-        .insert(templates)
+        .insert(heritage)
         .values({
           userId,
           kind: source.kind,
@@ -53,7 +53,7 @@ export async function POST(
       if (!created) throw new Error("Unable to clone template.");
 
       if (source.primitiveLinks.length > 0) {
-        await tx.insert(templatePrimitives).values(
+        await tx.insert(heritagePrimitives).values(
           source.primitiveLinks.map((p) => ({
             templateId: created.id,
             primitiveId: p.primitiveId,
@@ -64,7 +64,7 @@ export async function POST(
       }
 
       if (source.capabilityLinks.length > 0) {
-        await tx.insert(templateCapabilities).values(
+        await tx.insert(heritageCapabilities).values(
           source.capabilityLinks.map((c) => ({
             templateId: created.id,
             capabilityId: c.capabilityId,
@@ -72,8 +72,8 @@ export async function POST(
         );
       }
 
-      return tx.query.templates.findFirst({
-        where: eq(templates.id, created.id),
+      return tx.query.heritage.findFirst({
+        where: eq(heritage.id, created.id),
         with: {
           primitiveLinks: { with: { primitive: true } },
           capabilityLinks: { with: { capability: true } },

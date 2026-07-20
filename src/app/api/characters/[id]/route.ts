@@ -223,13 +223,13 @@ export async function PATCH(
       updatePayload["enforceTemplateCaps"] = Boolean(values["enforceTemplateCaps"]);
     }
     if ("isPublic" in values) updatePayload["isPublic"] = Boolean(values["isPublic"]);
-    if ("raceName" in values) updatePayload["raceName"] = emptyToNull(values["raceName"]);
-    if ("raceImageUrl" in values) updatePayload["raceImageUrl"] = emptyToNull(values["raceImageUrl"]);
-    if ("raceDescription" in values) updatePayload["raceDescription"] = emptyToNull(values["raceDescription"]);
-    if ("backgroundName" in values) updatePayload["backgroundName"] = emptyToNull(values["backgroundName"]);
-    if ("backgroundImageUrl" in values) updatePayload["backgroundImageUrl"] = emptyToNull(values["backgroundImageUrl"]);
-    if ("backgroundDescription" in values) updatePayload["backgroundDescription"] = emptyToNull(values["backgroundDescription"]);
-    if ("archetypeName" in values) updatePayload["archetypeName"] = emptyToNull(values["archetypeName"]);
+    if ("lineageName" in values) updatePayload["lineageName"] = emptyToNull(values["lineageName"]);
+    if ("lineageImageUrl" in values) updatePayload["lineageImageUrl"] = emptyToNull(values["lineageImageUrl"]);
+    if ("lineageDescription" in values) updatePayload["lineageDescription"] = emptyToNull(values["lineageDescription"]);
+    if ("upbringingName" in values) updatePayload["upbringingName"] = emptyToNull(values["upbringingName"]);
+    if ("upbringingImageUrl" in values) updatePayload["upbringingImageUrl"] = emptyToNull(values["upbringingImageUrl"]);
+    if ("upbringingDescription" in values) updatePayload["upbringingDescription"] = emptyToNull(values["upbringingDescription"]);
+    if ("manifestName" in values) updatePayload["manifestName"] = emptyToNull(values["manifestName"]);
     if ("notes" in values) updatePayload["notes"] = emptyToNull(values["notes"]);
     if ("dmNotes" in values) updatePayload["dmNotes"] = emptyToNull(values["dmNotes"]);
     if ("portraitUrl" in values) updatePayload["portraitUrl"] = emptyToNull(values["portraitUrl"]);

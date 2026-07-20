@@ -7,8 +7,8 @@
 // Schema notes (Phase 4/5 actual shapes):
 // - primitives.id is serial (integer), userId is text (Clerk ID format)
 // - capabilities.id is uuid, has metadata jsonb + tags text[]
-// - templates.id is uuid, NO metadata column (just description + suggestedTraits)
-// - templatePrimitives: templateId (uuid), primitiveId (integer), sortOrder, notes
+// - heritage.id is uuid, NO metadata column (just description + suggestedTraits)
+// - heritagePrimitives: templateId (uuid), primitiveId (integer), sortOrder, notes
 // - capabilityPrimitives: capabilityId (uuid), primitiveId (integer), role, quantity, sortOrder, slotLabel, notes
 //
 // Source IDs may be either integer (primitives) or UUID (everything else).
@@ -38,8 +38,8 @@ import {
   itemPrimitives,
   items,
   primitives,
-  templates,
-  templatePrimitives,
+  heritage,
+  heritagePrimitives,
   userStats,
 } from "@/db/schema";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
@@ -77,9 +77,9 @@ const ForkSchema = z.object({
     "PRIMITIVE",
     "CAPABILITY",
     "EFFECT",
-    "RACE_TEMPLATE",
-    "BACKGROUND_TEMPLATE",
-    "ARCHETYPE_TEMPLATE",
+    "LINEAGE_TEMPLATE",
+    "UPBRINGING_TEMPLATE",
+    "MANIFEST_TEMPLATE",
     "BUILD_TEMPLATE",
     "ITEM",
     "CHARACTER",
@@ -145,9 +145,9 @@ export async function POST(req: NextRequest) {
             forkerInternalId: user.id,
           })),
         });
-      case "RACE_TEMPLATE":
-      case "BACKGROUND_TEMPLATE":
-      case "ARCHETYPE_TEMPLATE":
+      case "LINEAGE_TEMPLATE":
+      case "UPBRINGING_TEMPLATE":
+      case "MANIFEST_TEMPLATE":
       case "BUILD_TEMPLATE":
         return NextResponse.json({
           ok: true,
@@ -440,9 +440,9 @@ async function forkCapability(input: {
 
 // ---------------------------------------------------------------------------
 // Fork a template (race/background/archetype/build) + bundled primitives.
-// templates.id is uuid; templates.userId is text (Clerk ID format).
-// templatePrimitives has: templateId (uuid), primitiveId (integer), sortOrder, notes
-// templates has NO metadata column — use suggestedTraits/description for fork info.
+// heritage.id is uuid; heritage.userId is text (Clerk ID format).
+// heritagePrimitives has: templateId (uuid), primitiveId (integer), sortOrder, notes
+// heritage has NO metadata column — use suggestedTraits/description for fork info.
 // ---------------------------------------------------------------------------
 
 async function forkTemplate(input: {
@@ -452,7 +452,7 @@ async function forkTemplate(input: {
 }) {
   const { targetId, forkerClerkUserId, forkerInternalId } = input;
 
-  const source = await db.query.templates.findFirst({
+  const source = await db.query.heritage.findFirst({
     where: (table, { eq }) => eq(table.id, targetId),
     with: { primitiveLinks: true },
   });
@@ -468,7 +468,7 @@ async function forkTemplate(input: {
   // user re-forking the same source produces a collision on the base name
   // — append a numeric suffix.
   const nameExists = async (candidate: string) => {
-    const found = await db.query.templates.findFirst({
+    const found = await db.query.heritage.findFirst({
       where: (t, { and, eq }) =>
         and(
           eq(t.name, candidate),
@@ -482,7 +482,7 @@ async function forkTemplate(input: {
   const forkName = await computeUniqueForkName(source.name, nameExists);
 
   const [forked] = await db
-    .insert(templates)
+    .insert(heritage)
     .values({
       name: forkName,
       kind: source.kind,
@@ -493,13 +493,13 @@ async function forkTemplate(input: {
       sourceOrigin: `fork:${source.id}`,
       userId: forkerClerkUserId,
     })
-    .returning({ id: templates.id });
+    .returning({ id: heritage.id });
   if (!forked) {
     throw new Error("Failed to insert forked template");
   }
 
   if (source.primitiveLinks.length > 0) {
-    await db.insert(templatePrimitives).values(
+    await db.insert(heritagePrimitives).values(
       source.primitiveLinks.map((link) => ({
         templateId: forked.id,
         primitiveId: link.primitiveId,
@@ -511,14 +511,14 @@ async function forkTemplate(input: {
 
   const targetType = (() => {
     switch (source.kind) {
-      case "RACE":
-        return "RACE_TEMPLATE" as const;
-      case "BACKGROUND":
-        return "BACKGROUND_TEMPLATE" as const;
-      case "ARCHETYPE":
-        return "ARCHETYPE_TEMPLATE" as const;
+      case "LINEAGE":
+        return "LINEAGE_TEMPLATE" as const;
+      case "UPBRINGING":
+        return "UPBRINGING_TEMPLATE" as const;
+      case "MANIFEST":
+        return "MANIFEST_TEMPLATE" as const;
       default:
-        // Note: templateKindEnum doesn't include BUILD as of Phase 4/5 —
+        // Note: heritageKindEnum doesn't include BUILD as of Phase 4/5 —
         // builds live in a separate `builds` table. If source.kind becomes
         // "BUILD" in a future migration, add the case above.
         return "BUILD_TEMPLATE" as const;

@@ -2,7 +2,7 @@
 // Sandbox row → LibraryItem mapper
 //
 // The sandbox build forms consume full row types (PrimitiveRow, EffectRow,
-// CapabilityRow, TemplateRow, ItemRow). The Library column renders the same
+// CapabilityRow, HeritageRow, ItemRow). The Library column renders the same
 // rows through the shared LibraryTable which expects the unified LibraryItem
 // shape produced by queryLibrary().
 //
@@ -86,7 +86,7 @@ type SandboxCapability = {
 
 type SandboxTemplate = {
   id: string;
-  kind: "RACE" | "BACKGROUND" | "ARCHETYPE";
+  kind: "LINEAGE" | "UPBRINGING" | "MANIFEST";
   name: string;
   description: string | null;
   suggestedTraits: string | null;
@@ -96,7 +96,7 @@ type SandboxTemplate = {
   iconUrl: string | null;
   iconColor: string | null;
   /** Composed primitive links — used to derive the template's BU cost
-   *  (sum of slotted primitive costs, mirroring template-form.tsx). */
+   *  (sum of slotted primitive costs, mirroring heritage-form.tsx). */
   primitiveLinks?: Array<{ primitive: { buCost: number }; quantity: number }>;
 };
 
@@ -236,17 +236,17 @@ export function capabilityToLibraryItem(
   };
 }
 
-export function templateToLibraryItem(
+export function heritageToLibraryItem(
   row: SandboxTemplate,
   visibility: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC" = "PRIVATE",
 ): LibraryItem {
   // Map kind to one of the three target types so the chip filter can match.
   const targetType =
-    row.kind === "RACE"
-      ? "RACE_TEMPLATE"
-      : row.kind === "BACKGROUND"
-        ? "BACKGROUND_TEMPLATE"
-        : "ARCHETYPE_TEMPLATE";
+    row.kind === "LINEAGE"
+      ? "LINEAGE_TEMPLATE"
+      : row.kind === "UPBRINGING"
+        ? "UPBRINGING_TEMPLATE"
+        : "MANIFEST_TEMPLATE";
   const buCost = computeComposedBu(row.primitiveLinks);
   return {
     id: `${targetType}:${row.id}`,

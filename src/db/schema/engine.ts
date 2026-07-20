@@ -54,7 +54,7 @@ export const primitives = pgTable(
      * Public-identity column (Phase 3 / migration 0020). The single
      * piece of metadata that, together with `name`, uniquely identifies
      * a primitive row in the public library. Same convention as
-     * effects/capabilities/items/templates (see §6.5 of edit-creates-fork.md).
+     * effects/capabilities/items/heritage (see §6.5 of edit-creates-fork.md).
      *
      * Values:
      *   - system content → "system:<seed-name>"
@@ -72,7 +72,7 @@ export const primitives = pgTable(
     sourceOrigin: text("source_origin"),
     /**
      * Free-form tags (Phase 9). One chip each in the unified preview.
-     * Stored as a text array, mirroring effects/capabilities/items/templates.
+     * Stored as a text array, mirroring effects/capabilities/items/heritage.
      */
     tags: text("tags")
       .array()

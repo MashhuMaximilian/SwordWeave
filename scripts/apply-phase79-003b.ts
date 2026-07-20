@@ -4,7 +4,7 @@
  *   TACTICAL (4) — cover tier primitives
  *   TARGETING_AOE (10) — area effect primitives
  *
- * Pattern: 12 of 14 use `grant behavior:*` (cover tiers, AoE templates,
+ * Pattern: 12 of 14 use `grant behavior:*` (cover tiers, AoE heritage,
  * zone modes, chain behavior, etc.). 2 use `add` (Cover I/II impose
  * numerical accuracy penalties, Volume Scaling I upgrades areaSize).
  *

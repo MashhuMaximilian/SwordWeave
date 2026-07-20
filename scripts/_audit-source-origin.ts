@@ -22,7 +22,7 @@ async function main() {
       "capabilities",
       "effects",
       "items",
-      "templates",
+      "heritage",
     ];
     for (const t of tables) {
       const r = await pool.query(

@@ -286,7 +286,7 @@ describe("buildCanonicalTemplatePayload (Phase 7 Q-M-UX)", () => {
     const { buildCanonicalTemplatePayload, computeTemplateContentHash } =
       await import("@/lib/publishing/hash-content");
     const payload = buildCanonicalTemplatePayload({
-      kind: "RACE",
+      kind: "LINEAGE",
       name: "Elf",
       description: "",
       suggestedTraits: "",
@@ -307,7 +307,7 @@ describe("buildCanonicalTemplatePayload (Phase 7 Q-M-UX)", () => {
     const { buildCanonicalTemplatePayload, computeTemplateContentHash } =
       await import("@/lib/publishing/hash-content");
     const payload = buildCanonicalTemplatePayload({
-      kind: "RACE",
+      kind: "LINEAGE",
       name: "Elf",
       description: "",
       suggestedTraits: "",
@@ -325,7 +325,7 @@ describe("buildCanonicalTemplatePayload (Phase 7 Q-M-UX)", () => {
     ]);
     // Hash differs from the non-mirrored version of the same template.
     const mirroredHash = await computeTemplateContentHash({
-      kind: "RACE",
+      kind: "LINEAGE",
       name: "Elf",
       description: "",
       suggestedTraits: "",
@@ -338,7 +338,7 @@ describe("buildCanonicalTemplatePayload (Phase 7 Q-M-UX)", () => {
       capabilityIds: [],
     });
     const plainHash = await computeTemplateContentHash({
-      kind: "RACE",
+      kind: "LINEAGE",
       name: "Elf",
       description: "",
       suggestedTraits: "",

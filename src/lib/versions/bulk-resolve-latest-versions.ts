@@ -18,13 +18,13 @@ import {
   effectVersions,
   itemVersions,
   primitiveVersions,
-  templateVersions,
+  heritageVersions,
 } from "@/db/schema";
 
-export type VersionKey = `${"primitive" | "effect" | "capability" | "item" | "template"}:${string | number}`;
+export type VersionKey = `${"primitive" | "effect" | "capability" | "item" | "heritage"}:${string | number}`;
 
 export function makeKey(
-  kind: "primitive" | "effect" | "capability" | "item" | "template",
+  kind: "primitive" | "effect" | "capability" | "item" | "heritage",
   id: string | number,
 ): VersionKey {
   return `${kind}:${id}` as VersionKey;
@@ -32,7 +32,7 @@ export function makeKey(
 
 export async function bulkResolveLatestVersions(
   pairs: ReadonlyArray<{
-    kind: "primitive" | "effect" | "capability" | "item" | "template";
+    kind: "primitive" | "effect" | "capability" | "item" | "heritage";
     id: string | number;
   }>,
 ): Promise<Map<VersionKey, string>> {
@@ -127,23 +127,23 @@ export async function bulkResolveLatestVersions(
     }
   }
 
-  if (byKind.has("template")) {
-    const ids = byKind.get("template")! as string[];
+  if (byKind.has("heritage")) {
+    const ids = byKind.get("heritage")! as string[];
     const rows = await db
       .select({
-        templateId: templateVersions.templateId,
-        id: templateVersions.id,
+        templateId: heritageVersions.templateId,
+        id: heritageVersions.id,
       })
-      .from(templateVersions)
+      .from(heritageVersions)
       .where(
         and(
-          inArray(templateVersions.templateId, ids),
-          eq(templateVersions.isLatest, true),
+          inArray(heritageVersions.templateId, ids),
+          eq(heritageVersions.isLatest, true),
         ),
       )
-      .orderBy(desc(templateVersions.versionNumber));
+      .orderBy(desc(heritageVersions.versionNumber));
     for (const r of rows) {
-      out.set(makeKey("template", r.templateId), r.id);
+      out.set(makeKey("heritage", r.templateId), r.id);
     }
   }
 

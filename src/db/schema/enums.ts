@@ -66,8 +66,8 @@ export const sourceTypeEnum = pgEnum("source_type", [
 export const entityTypeEnum = pgEnum("entity_type", [
   "PLAYER",
   "MONSTER",
-  "RACE_TEMPLATE",
-  "BACKGROUND_TEMPLATE",
+  "LINEAGE_TEMPLATE",
+  "UPBRINGING_TEMPLATE",
   "BUILD_TEMPLATE",
 ]);
 

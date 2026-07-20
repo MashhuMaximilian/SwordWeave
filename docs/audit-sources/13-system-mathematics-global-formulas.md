@@ -24,7 +24,7 @@ Determines the cumulative total of progression currency a character receives to 
 $$\text{Lifetime BU} = 25 \text{ (Level 1 Base)} + \left[10 \times (\text{Level} - 1)\right] + \text{Progression Spikes}$$
 
 - **The Distribution Rule:** The initial 25 BU at Level 1 is distributed across the character's Background, Race, and Core Build. Every subsequent level yields a flat **+10 BU** dedicated exclusively to expanding their library of owned primitives.
-- **The Reusability Rule:** Once a primitive tier license is purchased globally on a character sheet, it is unlocked forever. The player can configure that primitive block into an infinite number of custom capability templates or on-the-fly actions for **0 extra progression cost**.
+- **The Reusability Rule:** Once a primitive tier license is purchased globally on a character sheet, it is unlocked forever. The player can configure that primitive block into an infinite number of custom capability heritage or on-the-fly actions for **0 extra progression cost**.
 
 ## ❤️ 2. Living Metrics & Survival Tracks
 

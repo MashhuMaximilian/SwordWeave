@@ -12,7 +12,7 @@
  *   1. numeric: number | dice (the numeric value of the expression)
  *   2. tags:   string[] (the keyword operands, carried through)
  *   3. warnings: string[] (soft-warns — empty parens, div-by-zero
- *      templates, etc.)
+ *      heritage, etc.)
  *
  * Operator semantics (left-to-right, parens override precedence):
  *

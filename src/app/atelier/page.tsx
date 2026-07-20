@@ -4,7 +4,7 @@
 // page with a 6-tab bottom bar. See atelier-sandbox-client.tsx.
 //
 // ?build=<tab> selects the active tab (defaults to "primitive").
-// ?kind=<RACE|BACKGROUND|ARCHETYPE> only relevant when build=template.
+// ?kind=<lineage|upbringing|manifest> only relevant when build=heritage.
 // ?edit=<id> pre-fills the form with the matching entity.
 // ?intent=<fork|load> (Phase 1) records HOW the user entered the sandbox.
 // ?version=N deep-links a specific published version for pre-fill.
@@ -22,14 +22,14 @@ import {
   effects,
   items,
   primitives,
-  templates,
+  heritage,
 } from "@/db/schema";
 import {
   capabilityToLibraryItem,
   effectToLibraryItem,
   itemToLibraryItem,
   primitiveToLibraryItem,
-  templateToLibraryItem,
+  heritageToLibraryItem,
 } from "@/components/sandbox/sandbox-row-mapper";
 import { resolveAuthorByClerkId } from "@/lib/auth/author-resolver";
 import { listPrimitiveCategories, type LibraryItem } from "@/lib/publishing/library-query";
@@ -49,7 +49,8 @@ export const dynamic = "force-dynamic";
 
 function parseBuild(value: string | undefined): AtelierTab {
   // primitive/effect/capability all collapse into the single Mechanics tab.
-  if (value === "template" || value === "item" || value === "monster") {
+  // Heritage tab is the new name for the old "template" build.
+  if (value === "heritage" || value === "item" || value === "monster") {
     return value;
   }
   return "mechanics";
@@ -57,8 +58,8 @@ function parseBuild(value: string | undefined): AtelierTab {
 
 function parseKind(
   value: string | undefined,
-): "RACE" | "BACKGROUND" | "ARCHETYPE" | undefined {
-  if (value === "RACE" || value === "BACKGROUND" || value === "ARCHETYPE")
+): "LINEAGE" | "UPBRINGING" | "MANIFEST" | undefined {
+  if (value === "LINEAGE" || value === "UPBRINGING" || value === "MANIFEST")
     return value;
   return undefined;
 }
@@ -93,7 +94,7 @@ export default async function AtelierSandboxPage({
   let primitiveRows: unknown[] = [];
   let effectRows: unknown[] = [];
   let capabilityRows: unknown[] = [];
-  let templateRows: unknown[] = [];
+  let heritageRows: unknown[] = [];
   let itemRows: unknown[] = [];
 
   let sandboxViewerId: string | null = null;
@@ -149,19 +150,19 @@ export default async function AtelierSandboxPage({
     console.error("[atelier sandbox] capabilities query failed:", err);
   }
 
-  // TEMPLATES
+  // HERITAGE
   try {
-    const rows = await db.query.templates.findMany({
-      orderBy: [asc(templates.kind), asc(templates.name)],
+    const rows = await db.query.heritage.findMany({
+      orderBy: [asc(heritage.kind), asc(heritage.name)],
       with: {
         primitiveLinks: { with: { primitive: true } },
         capabilityLinks: { with: { capability: { with: { primitiveLinks: { with: { primitive: true } } } } } },
       },
     });
-    templateRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(visFilter) as unknown[];
+    heritageRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(visFilter) as unknown[];
   } catch (err) {
     dataLoadFailed = true;
-    console.error("[atelier sandbox] templates query failed:", err);
+    console.error("[atelier sandbox] heritage query failed:", err);
   }
 
   // ITEMS
@@ -185,7 +186,7 @@ export default async function AtelierSandboxPage({
     | { kind: "primitive"; row: { id: number } }
     | { kind: "effect"; row: { id: string } }
     | { kind: "capability"; row: { id: string } }
-    | { kind: "template"; row: { id: string } }
+    | { kind: "heritage"; row: { id: string } }
     | { kind: "item"; row: { id: string } }
     | null = null;
 
@@ -216,15 +217,15 @@ export default async function AtelierSandboxPage({
     } else if (rawBuild === "capability") {
       const row = capabilityRows.find((c) => (c as { id: string }).id === editId);
       if (row) initialEditing = { kind: "capability", row: row as { id: string } };
-    } else if (build === "template") {
+    } else if (build === "heritage") {
       let baseRow: Record<string, unknown> | null = null;
       if (Number.isFinite(versionNumber)) {
         const targetType =
-          kind === "BACKGROUND"
-            ? "BACKGROUND_TEMPLATE"
-            : kind === "ARCHETYPE"
-              ? "ARCHETYPE_TEMPLATE"
-              : "RACE_TEMPLATE";
+          kind === "UPBRINGING"
+            ? "UPBRINGING_TEMPLATE"
+            : kind === "MANIFEST"
+              ? "MANIFEST_TEMPLATE"
+              : "LINEAGE_TEMPLATE";
         try {
           const ver = await getVersionPayload(targetType, editId, versionNumber);
           if (ver) baseRow = ver.payload;
@@ -232,10 +233,10 @@ export default async function AtelierSandboxPage({
           console.error("[atelier sandbox] version load failed:", err);
         }
       }
-      const row = templateRows.find((t) => (t as { id: string }).id === editId) as { id: string } | undefined;
+      const row = heritageRows.find((t) => (t as { id: string }).id === editId) as { id: string } | undefined;
       if (row) {
         const merged = baseRow ? ({ ...row, ...baseRow } as { id: string }) : row;
-        initialEditing = { kind: "template", row: merged };
+        initialEditing = { kind: "heritage", row: merged };
       }
     } else if (build === "item") {
       const row = itemRows.find((i) => (i as { id: string }).id === editId) as { id: string } | undefined;
@@ -276,7 +277,7 @@ export default async function AtelierSandboxPage({
 
   // Unified LibraryItem[] for the left column.
   const baseItems: LibraryItem[] = [
-    ...(templateRows as never[]).map((r) => templateToLibraryItem(r)),
+    ...(heritageRows as never[]).map((r) => heritageToLibraryItem(r)),
     ...(itemRows as never[]).map((r) => itemToLibraryItem(r)),
     ...(primitiveRows as never[]).map((r) => primitiveToLibraryItem(r)),
     ...(effectRows as never[]).map((r) => effectToLibraryItem(r)),
@@ -307,7 +308,7 @@ export default async function AtelierSandboxPage({
         ...primitiveRows.map((p) => ({ kind: "primitive" as const, id: (p as { id: number }).id })),
         ...effectRows.map((e) => ({ kind: "effect" as const, id: (e as { id: string }).id })),
         ...capabilityRows.map((c) => ({ kind: "capability" as const, id: (c as { id: string }).id })),
-        ...templateRows.map((t) => ({ kind: "template" as const, id: (t as { id: string }).id })),
+        ...heritageRows.map((t) => ({ kind: "heritage" as const, id: (t as { id: string }).id })),
         ...itemRows.map((i) => ({ kind: "item" as const, id: (i as { id: string }).id })),
       ]);
     } catch (err) {
@@ -529,7 +530,7 @@ export default async function AtelierSandboxPage({
           }),
         };
       })}
-      templates={templateRows as never}
+      heritage={heritageRows as never}
       items={itemRows as never}
       sandboxPrimitives={(primitiveRows as never[]).map((p) => {
         const row = p as {

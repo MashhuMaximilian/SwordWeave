@@ -69,9 +69,9 @@ const TARGET_TYPE_MAP: Record<string, TypeFilter> = {
   PRIMITIVE: "primitive",
   EFFECT: "effect",
   CAPABILITY: "capability",
-  RACE_TEMPLATE: "template",
-  BACKGROUND_TEMPLATE: "template",
-  ARCHETYPE_TEMPLATE: "template",
+  LINEAGE_TEMPLATE: "template",
+  UPBRINGING_TEMPLATE: "template",
+  MANIFEST_TEMPLATE: "template",
   ITEM: "item",
   CHARACTER: "character",
   MONSTER: "character",
@@ -348,12 +348,12 @@ export function CreationsClient({
                           `/atelier?build=item&edit=${item.targetId}&intent=load`,
                         );
                       else if (
-                        targetType === "RACE_TEMPLATE" ||
-                        targetType === "BACKGROUND_TEMPLATE" ||
-                        targetType === "ARCHETYPE_TEMPLATE"
+                        targetType === "LINEAGE_TEMPLATE" ||
+                        targetType === "UPBRINGING_TEMPLATE" ||
+                        targetType === "MANIFEST_TEMPLATE"
                       ) {
                         router.push(
-                          `/atelier?build=template&edit=${item.targetId}&intent=load`,
+                          `/atelier?build=heritage&edit=${item.targetId}&intent=load`,
                         );
                       } else if (targetType === "CHARACTER") {
                         router.push(
@@ -362,7 +362,7 @@ export function CreationsClient({
                       } else if (targetType === "BUILD_TEMPLATE") {
                         // Builds have their own sandbox route at
                         // /sandbox/builds (not /sandbox/blueprint — that
-                        // route is for templates/items/monsters). Builds
+                        // route is for heritage/items/monsters). Builds
                         // are a separate table (see db/schema/characters.ts)
                         // keyed by uuid; ?edit=<id> makes the page load
                         // the row into the BuildComposer with full

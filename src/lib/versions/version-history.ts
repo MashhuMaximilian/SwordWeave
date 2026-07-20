@@ -14,7 +14,7 @@ import {
   capabilityVersions,
   characterVersions,
   primitiveVersions,
-  templateVersions,
+  heritageVersions,
   effectVersions,
   itemVersions,
   users,
@@ -30,9 +30,9 @@ export type VersionTargetType =
   | "CHARACTER"
   | "EFFECT"
   | "ITEM"
-  | "RACE_TEMPLATE"
-  | "BACKGROUND_TEMPLATE"
-  | "ARCHETYPE_TEMPLATE";
+  | "LINEAGE_TEMPLATE"
+  | "UPBRINGING_TEMPLATE"
+  | "MANIFEST_TEMPLATE";
 
 export interface VersionEntry {
   id: string;
@@ -297,31 +297,31 @@ async function fetchVersionRows(
   }
 
   if (
-    type === "RACE_TEMPLATE" ||
-    type === "BACKGROUND_TEMPLATE" ||
-    type === "ARCHETYPE_TEMPLATE"
+    type === "LINEAGE_TEMPLATE" ||
+    type === "UPBRINGING_TEMPLATE" ||
+    type === "MANIFEST_TEMPLATE"
   ) {
     // template_versions.templateId is a uuid; the kind discriminator lives on
-    // the templates table, not the version table. Since uuid PKs are globally
+    // the heritage table, not the version table. Since uuid PKs are globally
     // unique, filtering by templateId alone is sufficient — the URL parameter
     // already encodes the kind.
     return db
       .select({
-        id: templateVersions.id,
-        versionNumber: templateVersions.versionNumber,
-        deltaKind: templateVersions.deltaKind,
-        snapshot: templateVersions.snapshot,
-        publishedAt: templateVersions.publishedAt,
-        publishedByUserId: templateVersions.publishedByUserId,
+        id: heritageVersions.id,
+        versionNumber: heritageVersions.versionNumber,
+        deltaKind: heritageVersions.deltaKind,
+        snapshot: heritageVersions.snapshot,
+        publishedAt: heritageVersions.publishedAt,
+        publishedByUserId: heritageVersions.publishedByUserId,
         publisherUsername: users.username,
         publisherDisplayName: users.displayName,
         publisherIsAnonymized: users.isAnonymized,
         publisherDeletedAt: users.deletedAt,
       })
-      .from(templateVersions)
-      .leftJoin(users, eq(users.id, templateVersions.publishedByUserId))
-      .where(eq(templateVersions.templateId, String(targetId)))
-      .orderBy(asc(templateVersions.versionNumber))
+      .from(heritageVersions)
+      .leftJoin(users, eq(users.id, heritageVersions.publishedByUserId))
+      .where(eq(heritageVersions.templateId, String(targetId)))
+      .orderBy(asc(heritageVersions.versionNumber))
       .then((rs) => rs as RawVersionRow[]);
   }
 
@@ -342,7 +342,7 @@ async function resolveTargetName(
     primitives,
     capabilities,
     characters,
-    templates,
+    heritage,
     effects,
     items,
   } = await import("@/db/schema");
@@ -436,12 +436,12 @@ async function resolveTargetName(
     };
   }
   if (
-    type === "RACE_TEMPLATE" ||
-    type === "BACKGROUND_TEMPLATE" ||
-    type === "ARCHETYPE_TEMPLATE"
+    type === "LINEAGE_TEMPLATE" ||
+    type === "UPBRINGING_TEMPLATE" ||
+    type === "MANIFEST_TEMPLATE"
   ) {
-    const tplKind = type.replace(/_TEMPLATE$/, "") as "RACE" | "BACKGROUND" | "ARCHETYPE";
-    const row = await db.query.templates.findFirst({
+    const tplKind = type.replace(/_TEMPLATE$/, "") as "LINEAGE" | "UPBRINGING" | "MANIFEST";
+    const row = await db.query.heritage.findFirst({
       where: (table, { and, eq }) =>
         and(eq(table.kind, tplKind), eq(table.id, String(id))),
       columns: { name: true, ...iconCols },

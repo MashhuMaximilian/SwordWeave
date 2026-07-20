@@ -25,9 +25,9 @@ export const publishTargetTypeEnum = pgEnum("publish_target_type", [
   "CHARACTER",
   "ITEM",
   "EFFECT",
-  "RACE_TEMPLATE",
-  "BACKGROUND_TEMPLATE",
-  "ARCHETYPE_TEMPLATE",
+  "LINEAGE_TEMPLATE",
+  "UPBRINGING_TEMPLATE",
+  "MANIFEST_TEMPLATE",
   "BUILD_TEMPLATE",
 ]);
 

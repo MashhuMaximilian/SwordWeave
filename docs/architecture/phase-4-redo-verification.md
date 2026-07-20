@@ -78,7 +78,7 @@ src/app/api/capabilities/route.ts                                 (T4.3: + recor
 src/app/api/capabilities/[id]/route.ts                            (T4.3: + 2 call sites)
 src/app/api/items/route.ts                                        (T4.3: + recordVersion)
 src/app/api/items/[id]/route.ts                                  (T4.3: + 2 call sites)
-src/app/api/templates/route.ts                                   (T4.3: + recordVersion)
-src/app/api/templates/[id]/route.ts                              (T4.3: + 2 call sites)
+src/app/api/heritage/route.ts                                   (T4.3: + recordVersion)
+src/app/api/heritage/[id]/route.ts                              (T4.3: + 2 call sites)
 src/app/api/primitives/route.ts                                   (T4.3: + 2 call sites)
 ```

@@ -154,11 +154,11 @@ export const primitiveAdoptions = pgTable(
 );
 
 // =============================================================================
-// Template versions (races, backgrounds, archetypes, builds) — share pattern
+// Heritage versions (lineages, upbringings, manifests, builds) — share pattern
 // =============================================================================
 
-export const templateVersions = pgTable(
-  "template_versions",
+export const heritageVersions = pgTable(
+  "heritage_versions",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     templateId: uuid("template_id").notNull(),
@@ -174,12 +174,12 @@ export const templateVersions = pgTable(
     ...timestamps,
   },
   (table) => [
-    uniqueIndex("template_versions_id_version_unique_idx").on(
+    uniqueIndex("heritage_versions_id_version_unique_idx").on(
       table.templateId,
       table.versionNumber,
     ),
-    index("template_versions_template_id_idx").on(table.templateId),
-    index("template_versions_is_latest_idx").on(table.isLatest),
+    index("heritage_versions_template_id_idx").on(table.templateId),
+    index("heritage_versions_is_latest_idx").on(table.isLatest),
   ],
 );
 

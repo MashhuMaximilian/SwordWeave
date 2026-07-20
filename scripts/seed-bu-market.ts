@@ -412,7 +412,7 @@ const SEED: SeedRow[] = [
     narrativeRule: "Operative projection that bounces through adjacent profiles." },
   { name: "Collateral Buffer", category: "TARGETING_AOE", buCost: 4,
     costTier: "Tier 1 — Minor (4 BU anchor)",
-    mechanicalOutputText: "Friendly Fire Immunity inside AoE templates.",
+    mechanicalOutputText: "Friendly Fire Immunity inside AoE heritage.",
     narrativeRule: "Filters AoE output. Allies inside the footprint are automatically bypassed." },
   { name: "Selective Focus", category: "TARGETING_AOE", buCost: 6,
     costTier: "Tier 2 — Standard (6 BU anchor)",
@@ -642,7 +642,7 @@ const SEED: SeedRow[] = [
     mechanicalOutputText: "",
     narrativeRule: "Fundamental / reality-defining domains (existence, non-existence, reality, causality global, time absolute, space global, etc.)" },
 
-  // SIZING / Structure tiers (4) — spatial templates, no scope
+  // SIZING / Structure tiers (4) — spatial heritage, no scope
   { name: "Structure Tier I", category: "SIZING", buCost: 4,
     costTier: "Tier 1 — Minor (4 BU anchor)",
     mechanicalOutputText: "",

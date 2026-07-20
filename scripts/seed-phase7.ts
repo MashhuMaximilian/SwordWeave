@@ -10,9 +10,9 @@ import {
   effectPrimitives,
   capabilities,
   capabilityPrimitives,
-  templates,
-  templatePrimitives,
-  templateCapabilities,
+  heritage,
+  heritagePrimitives,
+  heritageCapabilities,
   items,
   itemPrimitives,
   itemCapabilities,
@@ -522,7 +522,7 @@ const capabilitySeeds: Array<{
 // =============================================================================
 
 const templateSeeds: Array<{
-  kind: "RACE" | "BACKGROUND" | "ARCHETYPE";
+  kind: "LINEAGE" | "UPBRINGING" | "MANIFEST";
   name: string;
   description: string;
   suggestedTraits?: string;
@@ -532,7 +532,7 @@ const templateSeeds: Array<{
 }> = [
   // RACES
   {
-    kind: "RACE", name: "Human",
+    kind: "LINEAGE", name: "Human",
     description: "Versatile and ambitious. Single Attribute Increment + Broad Familiarity — any build path without penalty.",
     suggestedTraits: "+1 to any Attribute; resilient to environmental change.",
     primitiveSlots: [
@@ -542,7 +542,7 @@ const templateSeeds: Array<{
     capabilitySlots: [],
   },
   {
-    kind: "RACE", name: "Mountainfolk",
+    kind: "LINEAGE", name: "Mountainfolk",
     description: "Built for altitude and endurance. +5 Vitality baseline, Cold resistance, Focus advantage on Prowess on vertical terrain.",
     suggestedTraits: "Stocky frame; pale skin; thick accents.",
     primitiveSlots: [
@@ -553,7 +553,7 @@ const templateSeeds: Array<{
     capabilitySlots: [],
   },
   {
-    kind: "RACE", name: "Forestkind",
+    kind: "LINEAGE", name: "Forestkind",
     description: "Cousin to the trees. Darkvision 60ft, Fieldcraft Proficiency, +10ft movement through overgrown terrain.",
     suggestedTraits: "Tall and thin; bark-patterned skin; leaf-fall hair.",
     primitiveSlots: [
@@ -564,7 +564,7 @@ const templateSeeds: Array<{
     capabilitySlots: [],
   },
   {
-    kind: "RACE", name: "Ironborn",
+    kind: "LINEAGE", name: "Ironborn",
     description: "Forged in volcanic crucibles. Heavy Die Block on unarmed strikes, +1 Physical Defense, fire resistance.",
     suggestedTraits: "Slightly metallic tint; warmth radiating from hands.",
     primitiveSlots: [
@@ -575,7 +575,7 @@ const templateSeeds: Array<{
     capabilitySlots: [],
   },
   {
-    kind: "RACE", name: "Skyborn",
+    kind: "LINEAGE", name: "Skyborn",
     description: "Born of migratory winds. Aero Unlock (Fly = land speed), Perception advantage against aerial threats.",
     suggestedTraits: "Tall, hollow-boned; faint whisper when speaking.",
     primitiveSlots: [
@@ -586,7 +586,7 @@ const templateSeeds: Array<{
     capabilitySlots: [],
   },
   {
-    kind: "RACE", name: "Tidekin",
+    kind: "LINEAGE", name: "Tidekin",
     description: "Amphibious breathers. Aquatic Unlock, Substrate Echo 30ft, pressure resistance.",
     suggestedTraits: "Webbed fingers; gill slits at neck; pale eyes.",
     primitiveSlots: [
@@ -599,7 +599,7 @@ const templateSeeds: Array<{
 
   // BACKGROUNDS
   {
-    kind: "BACKGROUND", name: "Scholar",
+    kind: "UPBRINGING", name: "Scholar",
     description: "Years of academic dedication. Proficient in Knowledge + Reason + Focus advantage on area of study.",
     suggestedTraits: "Slight stoop; ink-stained fingers; always carries a journal.",
     primitiveSlots: [
@@ -610,7 +610,7 @@ const templateSeeds: Array<{
     capabilitySlots: [],
   },
   {
-    kind: "BACKGROUND", name: "Soldier",
+    kind: "UPBRINGING", name: "Soldier",
     description: "Frontline training. Proficient in Prowess + Influence (Intimidation), +1 Physical Defense.",
     suggestedTraits: "Battle scars; straight posture; militant vocabulary.",
     primitiveSlots: [
@@ -621,7 +621,7 @@ const templateSeeds: Array<{
     capabilitySlots: [],
   },
   {
-    kind: "BACKGROUND", name: "Wanderer",
+    kind: "UPBRINGING", name: "Wanderer",
     description: "Endless roads underfoot. Fieldcraft Proficiency + +10ft movement + weather resistance.",
     suggestedTraits: "Tanned skin; patched gear; stories for any season.",
     primitiveSlots: [
@@ -632,7 +632,7 @@ const templateSeeds: Array<{
     capabilitySlots: [],
   },
   {
-    kind: "BACKGROUND", name: "Courtier",
+    kind: "UPBRINGING", name: "Courtier",
     description: "Bred in salons and parlors. Influence + Awareness Proficiency + deception-detection focus.",
     suggestedTraits: "Plumage-conscious dress; precise vocabulary; refined palate.",
     primitiveSlots: [
@@ -643,7 +643,7 @@ const templateSeeds: Array<{
     capabilitySlots: [],
   },
   {
-    kind: "BACKGROUND", name: "Tinkerer",
+    kind: "UPBRINGING", name: "Tinkerer",
     description: "Hands forever smudged with soot. Reason Proficiency + Mechanical Finesse.",
     suggestedTraits: "Burns on fingers; pockets full of gears; takes things apart.",
     primitiveSlots: [
@@ -656,7 +656,7 @@ const templateSeeds: Array<{
 
   // ARCHETYPES
   {
-    kind: "ARCHETYPE", name: "Striker",
+    kind: "MANIFEST", name: "Striker",
     description: "Martial damage dealer. +1 Attack Bonus + Heavy Die Block on basic attacks + Strike capability.",
     suggestedTraits: "Damage-focused; trusts their weapon; lives for the next hit.",
     isArchetypeTemplate: true,
@@ -667,7 +667,7 @@ const templateSeeds: Array<{
     capabilitySlots: ["Strike", "Rusting Strike"],
   },
   {
-    kind: "ARCHETYPE", name: "Guardian",
+    kind: "MANIFEST", name: "Guardian",
     description: "Defensive backbone. +2 Physical Defense + +1 Mental Defense + Aegis Shield capability.",
     suggestedTraits: "Patient; stubborn; stands between allies and harm.",
     isArchetypeTemplate: true,
@@ -679,7 +679,7 @@ const templateSeeds: Array<{
     capabilitySlots: ["Aegis Shield"],
   },
   {
-    kind: "ARCHETYPE", name: "Mystic",
+    kind: "MANIFEST", name: "Mystic",
     description: "Spell-flinger. Domain Tier II license + Fast Execution baseline + 2 spell capabilities.",
     suggestedTraits: "Quiet; bookish; unsettling certainty about the universe.",
     isArchetypeTemplate: true,
@@ -691,7 +691,7 @@ const templateSeeds: Array<{
     capabilitySlots: ["Greater Invisibility", "Spell Counter-Disruption Shield"],
   },
   {
-    kind: "ARCHETYPE", name: "Skirmisher",
+    kind: "MANIFEST", name: "Skirmisher",
     description: "Hit-and-run. +10ft movement, Reaction Pulse expansion, Ghost Walk capability.",
     suggestedTraits: "Quick; prefers to strike first; never stays in one place.",
     isArchetypeTemplate: true,
@@ -703,7 +703,7 @@ const templateSeeds: Array<{
     capabilitySlots: ["Ghost Walk"],
   },
   {
-    kind: "ARCHETYPE", name: "Artificer",
+    kind: "MANIFEST", name: "Artificer",
     description: "Engineer of magical devices. Reason Expertise + Substrate Echo perception + item-attunement framework.",
     suggestedTraits: "Workshop-stained; metal-and-glass vocabulary; knows every gear.",
     isArchetypeTemplate: true,
@@ -799,7 +799,7 @@ async function seed() {
   await db.execute(sql`DELETE FROM items`);
   await db.execute(sql`DELETE FROM template_capabilities`);
   await db.execute(sql`DELETE FROM template_primitives`);
-  await db.execute(sql`DELETE FROM templates`);
+  await db.execute(sql`DELETE FROM heritage`);
   await db.execute(sql`DELETE FROM capability_primitives`);
   await db.execute(sql`DELETE FROM capabilities`);
   await db.execute(sql`DELETE FROM effect_primitives`);
@@ -862,16 +862,16 @@ async function seed() {
   }
 
   // 3. Templates
-  console.log("\n[3/4] Seeding " + templateSeeds.length + " templates...");
+  console.log("\n[3/4] Seeding " + templateSeeds.length + " heritage...");
   for (const t of templateSeeds) {
-    const [row] = await db.insert(templates).values({
+    const [row] = await db.insert(heritage).values({
       kind: t.kind,
       name: t.name,
       description: t.description,
       suggestedTraits: t.suggestedTraits ?? null,
       sourceOrigin: "system",
       isPublic: true,
-    }).returning({ id: templates.id });
+    }).returning({ id: heritage.id });
     if (!row) throw new Error("Failed to insert template " + t.name);
 
     // Dedupe primitives by primitiveId (PK = templateId+primitiveId).
@@ -886,7 +886,7 @@ async function seed() {
     let sortOrder = 0;
     for (const [primitiveId, notesList] of seenPrims) {
       const mergedNotes = notesList.filter(n => n.length > 0).join(" | ");
-      await db.insert(templatePrimitives).values({
+      await db.insert(heritagePrimitives).values({
         templateId: row.id,
         primitiveId,
         sortOrder: sortOrder++,
@@ -900,7 +900,7 @@ async function seed() {
           console.warn("    ! capability '" + capName + "' not found for " + t.name);
           continue;
         }
-        await db.insert(templateCapabilities).values({
+        await db.insert(heritageCapabilities).values({
           templateId: row.id,
           capabilityId: capId,
         });

@@ -12,7 +12,7 @@
 //
 // "Edit in sandbox" routes through the existing ?edit=<id> flow. The
 // right sandbox path depends on the entity type (grammar for primitives/
-// effects/capabilities, blueprint for templates/items). We compute the
+// effects/capabilities, blueprint for heritage/items). We compute the
 // destination via the same helper used by the version-history page.
 //
 // Visibility: not used for self-fork (no-op; like-fork-bar disables the
@@ -44,9 +44,9 @@ export type ForkSuccessModalTargetType =
   | "EFFECT"
   | "ITEM"
   | "CHARACTER"
-  | "RACE_TEMPLATE"
-  | "BACKGROUND_TEMPLATE"
-  | "ARCHETYPE_TEMPLATE"
+  | "LINEAGE_TEMPLATE"
+  | "UPBRINGING_TEMPLATE"
+  | "MANIFEST_TEMPLATE"
   | "BUILD_TEMPLATE";
 
 export interface ForkSuccessModalProps {
@@ -198,16 +198,16 @@ function buildSandboxEditUrl(r: ForkResult): string {
       return `/atelier?build=capability&edit=${editId}`;
     case "ITEM":
       return `/atelier?build=item&edit=${editId}`;
-    case "RACE_TEMPLATE":
-      return `/atelier?build=template&kind=RACE&edit=${editId}`;
-    case "BACKGROUND_TEMPLATE":
-      return `/atelier?build=template&kind=BACKGROUND&edit=${editId}`;
-    case "ARCHETYPE_TEMPLATE":
-      return `/atelier?build=template&kind=ARCHETYPE&edit=${editId}`;
+    case "LINEAGE_TEMPLATE":
+      return `/atelier?build=heritage&kind=lineage&edit=${editId}`;
+    case "UPBRINGING_TEMPLATE":
+      return `/atelier?build=heritage&kind=upbringing&edit=${editId}`;
+    case "MANIFEST_TEMPLATE":
+      return `/atelier?build=heritage&kind=manifest&edit=${editId}`;
     case "CHARACTER":
       return `/sandbox/builds?edit=${editId}`;
     case "BUILD_TEMPLATE":
-      return `/atelier?build=template&edit=${editId}`;
+      return `/atelier?build=heritage&edit=${editId}`;
     default:
       // Defensive fallback — should never happen if the schema enums stay
       // in sync with this switch.

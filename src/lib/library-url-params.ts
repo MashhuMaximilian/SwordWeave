@@ -38,9 +38,9 @@ export function parseType(value: string | undefined | null): LibraryTargetType |
     value === "EFFECT" ||
     value === "CHARACTER" ||
     value === "ITEM" ||
-    value === "RACE_TEMPLATE" ||
-    value === "BACKGROUND_TEMPLATE" ||
-    value === "ARCHETYPE_TEMPLATE" ||
+    value === "LINEAGE_TEMPLATE" ||
+    value === "UPBRINGING_TEMPLATE" ||
+    value === "MANIFEST_TEMPLATE" ||
     // Mashu 2026-07-09: builds now exposed via the library browse URL
     // `?type=BUILD_TEMPLATE`. The display label is "Builds" — see
     // library-toolbar.tsx for the chip.

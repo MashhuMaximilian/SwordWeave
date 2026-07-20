@@ -6,7 +6,7 @@
 // Sources:
 // - PRIMITIVE: primitives WHERE is_public = true OR user_id IS NULL
 // - CAPABILITY: capabilities WHERE is_public = true
-// - RACE/BACKGROUND/ARCHETYPE_TEMPLATE: templates WHERE is_public = true
+// - RACE/BACKGROUND/MANIFEST_TEMPLATE: heritage WHERE is_public = true
 // - CHARACTER: characters (user-owned or public)
 //
 // Engagement metrics are joined from reaction_aggregates / fork_aggregates
@@ -20,8 +20,8 @@
 // - ALPHABETICAL: by LOWER(name) ASC
 //
 // Filters:
-// - targetType: PRIMITIVE | CAPABILITY | RACE_TEMPLATE | BACKGROUND_TEMPLATE
-//              | ARCHETYPE_TEMPLATE | CHARACTER | ITEM
+// - targetType: PRIMITIVE | CAPABILITY | LINEAGE_TEMPLATE | UPBRINGING_TEMPLATE
+//              | MANIFEST_TEMPLATE | CHARACTER | ITEM
 // - category: primitive category (PRIMITIVE type only)
 // - search: ILIKE on name (across all types)
 // - authorUsername: filter by user.username (CHARACTER, TEMPLATE only —
@@ -43,7 +43,7 @@ import {
   items,
   primitives,
   publications,
-  templates,
+  heritage,
 } from "@/db/schema";
 import { resolveEngagementMap as sharedResolveEngagementMap } from "@/lib/engagement/engagement-aggregates";
 
@@ -60,9 +60,9 @@ export type LibraryTargetType =
   | "EFFECT"
   | "CHARACTER"
   | "ITEM"
-  | "RACE_TEMPLATE"
-  | "BACKGROUND_TEMPLATE"
-  | "ARCHETYPE_TEMPLATE"
+  | "LINEAGE_TEMPLATE"
+  | "UPBRINGING_TEMPLATE"
+  | "MANIFEST_TEMPLATE"
   // Mashu 2026-07-09: builds now browse-able in the public library.
   // Matches the engagement enum (`publishTargetTypeEnum.BUILD_TEMPLATE`)
   // so reactions + forks join cleanly via the standard composite-id
@@ -199,7 +199,7 @@ export interface LibraryResult {
 
 /**
  * Query the public library: union of public primitives + capabilities +
- * templates + characters, with engagement metrics and sort/filter/pagination.
+ * heritage + characters, with engagement metrics and sort/filter/pagination.
  */
 export async function queryLibrary(q: LibraryQuery): Promise<LibraryResult> {
   const limit = Math.min(q.limit ?? 24, 100);
@@ -231,9 +231,9 @@ export async function queryLibrary(q: LibraryQuery): Promise<LibraryResult> {
   }
   if (
     wantAll ||
-    q.targetType === "RACE_TEMPLATE" ||
-    q.targetType === "BACKGROUND_TEMPLATE" ||
-    q.targetType === "ARCHETYPE_TEMPLATE"
+    q.targetType === "LINEAGE_TEMPLATE" ||
+    q.targetType === "UPBRINGING_TEMPLATE" ||
+    q.targetType === "MANIFEST_TEMPLATE"
   ) {
     fetchJobs.push(fetchTemplates(q));
   }
@@ -697,21 +697,21 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
 }
 
 async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
-  const conditions = [eq(templates.isPublic, true), notUnpublished("RACE_TEMPLATE", sql`${templates.id}`)];
+  const conditions = [eq(heritage.isPublic, true), notUnpublished("LINEAGE_TEMPLATE", sql`${heritage.id}`)];
 
-  if (q.targetType === "RACE_TEMPLATE") {
-    conditions.push(eq(templates.kind, "RACE"));
-  } else if (q.targetType === "BACKGROUND_TEMPLATE") {
-    conditions.push(eq(templates.kind, "BACKGROUND"));
-  } else if (q.targetType === "ARCHETYPE_TEMPLATE") {
-    conditions.push(eq(templates.kind, "ARCHETYPE"));
+  if (q.targetType === "LINEAGE_TEMPLATE") {
+    conditions.push(eq(heritage.kind, "LINEAGE"));
+  } else if (q.targetType === "UPBRINGING_TEMPLATE") {
+    conditions.push(eq(heritage.kind, "UPBRINGING"));
+  } else if (q.targetType === "MANIFEST_TEMPLATE") {
+    conditions.push(eq(heritage.kind, "MANIFEST"));
   }
 
   if (q.search) {
     conditions.push(
       or(
-        ilike(templates.name, `%${q.search}%`),
-        ilike(templates.description, `%${q.search}%`),
+        ilike(heritage.name, `%${q.search}%`),
+        ilike(heritage.description, `%${q.search}%`),
       )!,
     );
   }
@@ -719,7 +719,7 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
     conditions.push(
       sql`EXISTS (
         SELECT 1 FROM users
-        WHERE users.id::text = ${templates.userId}
+        WHERE users.id::text = ${heritage.userId}
           AND LOWER(users.username) = LOWER(${q.authorUsername})
       )`,
     );
@@ -727,24 +727,24 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
 
   const rows = await db
     .select({
-      id: templates.id,
-      name: templates.name,
-      kind: templates.kind,
-      description: templates.description,
-      imageUrl: templates.imageUrl,
-      userId: templates.userId,
-      createdAt: templates.createdAt,
+      id: heritage.id,
+      name: heritage.name,
+      kind: heritage.kind,
+      description: heritage.description,
+      imageUrl: heritage.imageUrl,
+      userId: heritage.userId,
+      createdAt: heritage.createdAt,
       // Phase 8: per-entity iconography (live + proposed for resolveIcon)
-      iconSource: templates.iconSource,
-      iconKey: templates.iconKey,
-      iconUrl: templates.iconUrl,
-      iconColor: templates.iconColor,
-      iconProposedSource: templates.iconProposedSource,
-      iconProposedKey: templates.iconProposedKey,
-      iconProposedUrl: templates.iconProposedUrl,
-      iconProposedColor: templates.iconProposedColor,
+      iconSource: heritage.iconSource,
+      iconKey: heritage.iconKey,
+      iconUrl: heritage.iconUrl,
+      iconColor: heritage.iconColor,
+      iconProposedSource: heritage.iconProposedSource,
+      iconProposedKey: heritage.iconProposedKey,
+      iconProposedUrl: heritage.iconProposedUrl,
+      iconProposedColor: heritage.iconProposedColor,
     })
-    .from(templates)
+    .from(heritage)
     .where(and(...conditions))
     .limit(500);
 
@@ -752,26 +752,26 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
 
   // Map template kinds → composite IDs for engagement lookup
   const targetTypeByKind: Record<string, LibraryTargetType> = {
-    RACE: "RACE_TEMPLATE",
-    BACKGROUND: "BACKGROUND_TEMPLATE",
-    ARCHETYPE: "ARCHETYPE_TEMPLATE",
+    RACE: "LINEAGE_TEMPLATE",
+    BACKGROUND: "UPBRINGING_TEMPLATE",
+    ARCHETYPE: "MANIFEST_TEMPLATE",
   };
   const engagementMap = await resolveEngagementMap(
-    rows.map((r) => `${targetTypeByKind[r.kind] ?? "RACE_TEMPLATE"}:${r.id}`),
+    rows.map((r) => `${targetTypeByKind[r.kind] ?? "LINEAGE_TEMPLATE"}:${r.id}`),
   );
 
   return rows.map((r) => {
     const author = r.userId ? authorMap.get(r.userId) : null;
     const targetType = (() => {
       switch (r.kind) {
-        case "RACE":
-          return "RACE_TEMPLATE" as const;
-        case "BACKGROUND":
-          return "BACKGROUND_TEMPLATE" as const;
-        case "ARCHETYPE":
-          return "ARCHETYPE_TEMPLATE" as const;
+        case "LINEAGE":
+          return "LINEAGE_TEMPLATE" as const;
+        case "UPBRINGING":
+          return "UPBRINGING_TEMPLATE" as const;
+        case "MANIFEST":
+          return "MANIFEST_TEMPLATE" as const;
         default:
-          return "RACE_TEMPLATE" as const;
+          return "LINEAGE_TEMPLATE" as const;
       }
     })();
     const compositeId = `${targetType}:${r.id}`;
@@ -809,7 +809,7 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
 }
 
 // =============================================================================
-// Builds — character snapshots + archetype templates.
+// Builds — character snapshots + archetype heritage.
 //
 // Mashu 2026-07-09: builds were previously only visible on the owner's
 // Creations page. Surfacing them in the public library gives the corpus
@@ -837,8 +837,8 @@ async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
       or(
         ilike(builds.name, `%${q.search}%`),
         ilike(builds.description, `%${q.search}%`),
-        ilike(builds.raceName, `%${q.search}%`),
-        ilike(builds.backgroundName, `%${q.search}%`),
+        ilike(builds.lineageName, `%${q.search}%`),
+        ilike(builds.upbringingName, `%${q.search}%`),
       )!,
     );
   }
@@ -854,7 +854,7 @@ async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
       description: builds.description,
       level: builds.level,
       startingBu: builds.startingBu,
-      isArchetypeTemplate: builds.isArchetypeTemplate,
+      isManifestTemplate: builds.isManifestTemplate,
       userId: builds.userId,
       createdAt: builds.createdAt,
       // Phase 8: per-entity iconography (live + proposed for resolveIcon)
@@ -896,9 +896,9 @@ async function fetchBuilds(q: LibraryQuery): Promise<LibraryItem[]> {
       name: r.name,
       // Surface level + archetype as the chip suffix so the card reads
       // "L1 · Archetype" / "L3 · Build" — distinguishes archetype
-      // templates from character snapshots at a glance.
+      // heritage from character snapshots at a glance.
       description: r.description || null,
-      category: r.isArchetypeTemplate ? "Archetype" : `Level ${r.level}`,
+      category: r.isManifestTemplate ? "Archetype" : `Level ${r.level}`,
       buCost: r.startingBu,
       authorId: r.userId ?? null,
       authorUsername: author?.username ?? null,

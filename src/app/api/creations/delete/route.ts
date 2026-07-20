@@ -22,7 +22,7 @@
 //     currently slotting will fail with a FK constraint error. We surface
 //     a 409 with a clear "in use by N entities" message so the user
 //     knows what to fix.
-//   - templates: builds.race_id / builds.background_id SET NULL — safe to
+//   - heritage: builds.race_id / builds.background_id SET NULL — safe to
 //     delete; orphan builds just clear their race/background reference.
 //     template_capabilities RESTRICT — fails if any template currently
 //     composes a capability.
@@ -58,9 +58,9 @@ import {
   items,
   itemPrimitives,
   primitives,
-  templateCapabilities,
-  templatePrimitives,
-  templates,
+  heritageCapabilities,
+  heritagePrimitives,
+  heritage,
 } from "@/db/schema";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 
@@ -70,9 +70,9 @@ const BodySchema = z.object({
     "CAPABILITY",
     "EFFECT",
     "ITEM",
-    "RACE_TEMPLATE",
-    "BACKGROUND_TEMPLATE",
-    "ARCHETYPE_TEMPLATE",
+    "LINEAGE_TEMPLATE",
+    "UPBRINGING_TEMPLATE",
+    "MANIFEST_TEMPLATE",
     "CHARACTER",
   ]),
   targetId: z.string().min(1),
@@ -97,7 +97,7 @@ async function findForeignKeyBlockers(
     const blockers: Array<{ table: string; n: number }> = [];
     for (const table of [
       { name: "character_primitives", q: characterPrimitives },
-      { name: "template_primitives", q: templatePrimitives },
+      { name: "template_primitives", q: heritagePrimitives },
       { name: "item_primitives", q: itemPrimitives },
     ]) {
       const r = await db
@@ -114,15 +114,15 @@ async function findForeignKeyBlockers(
   }
 
   if (
-    targetType === "RACE_TEMPLATE" ||
-    targetType === "BACKGROUND_TEMPLATE" ||
-    targetType === "ARCHETYPE_TEMPLATE"
+    targetType === "LINEAGE_TEMPLATE" ||
+    targetType === "UPBRINGING_TEMPLATE" ||
+    targetType === "MANIFEST_TEMPLATE"
   ) {
     const blockers: Array<{ table: string; n: number }> = [];
     const r = await db
       .select({ c: sql<number>`COUNT(*)::int` })
-      .from(templateCapabilities)
-      .where(eq(templateCapabilities.templateId, targetId));
+      .from(heritageCapabilities)
+      .where(eq(heritageCapabilities.templateId, targetId));
     const count = Number(r[0]?.c ?? 0);
     if (count > 0) blockers.push({ table: "template_capabilities", n: count });
     if (blockers.length === 0) return null;
@@ -135,7 +135,7 @@ async function findForeignKeyBlockers(
     const blockers: Array<{ table: string; n: number }> = [];
     for (const table of [
       { name: "character_capabilities", q: characterCapabilities },
-      { name: "template_capabilities", q: templateCapabilities },
+      { name: "template_capabilities", q: heritageCapabilities },
     ]) {
       const r = await db
         .select({ c: sql<number>`COUNT(*)::int` })
@@ -281,11 +281,11 @@ export async function POST(req: NextRequest) {
       ownerCheck = row;
       break;
     }
-    case "RACE_TEMPLATE":
-    case "BACKGROUND_TEMPLATE":
-    case "ARCHETYPE_TEMPLATE": {
-      const row = await db.query.templates.findFirst({
-        where: eq(templates.id, targetId),
+    case "LINEAGE_TEMPLATE":
+    case "UPBRINGING_TEMPLATE":
+    case "MANIFEST_TEMPLATE": {
+      const row = await db.query.heritage.findFirst({
+        where: eq(heritage.id, targetId),
         columns: { userId: true },
       });
       ownerCheck = row;
@@ -336,10 +336,10 @@ export async function POST(req: NextRequest) {
       case "ITEM":
         await db.delete(items).where(eq(items.id, targetId));
         break;
-      case "RACE_TEMPLATE":
-      case "BACKGROUND_TEMPLATE":
-      case "ARCHETYPE_TEMPLATE":
-        await db.delete(templates).where(eq(templates.id, targetId));
+      case "LINEAGE_TEMPLATE":
+      case "UPBRINGING_TEMPLATE":
+      case "MANIFEST_TEMPLATE":
+        await db.delete(heritage).where(eq(heritage.id, targetId));
         break;
       case "CHARACTER":
         await db.delete(characters).where(eq(characters.id, targetId));

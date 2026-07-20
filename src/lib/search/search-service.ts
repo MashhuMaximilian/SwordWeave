@@ -18,7 +18,7 @@ import {
   effects,
   items,
   primitives,
-  templates,
+  heritage,
 } from "@/db/schema";
 
 export type SearchTargetType =
@@ -27,9 +27,9 @@ export type SearchTargetType =
   | "EFFECT"
   | "CHARACTER"
   | "ITEM"
-  | "RACE_TEMPLATE"
-  | "BACKGROUND_TEMPLATE"
-  | "ARCHETYPE_TEMPLATE";
+  | "LINEAGE_TEMPLATE"
+  | "UPBRINGING_TEMPLATE"
+  | "MANIFEST_TEMPLATE";
 
 export interface SearchHit {
   id: string;
@@ -242,36 +242,36 @@ export async function searchLibrary({
   }
 
   if (
-    wants("RACE_TEMPLATE") ||
-    wants("BACKGROUND_TEMPLATE") ||
-    wants("ARCHETYPE_TEMPLATE")
+    wants("LINEAGE_TEMPLATE") ||
+    wants("UPBRINGING_TEMPLATE") ||
+    wants("MANIFEST_TEMPLATE")
   ) {
     const wantedKinds: string[] = [];
-    if (wants("RACE_TEMPLATE")) wantedKinds.push("RACE");
-    if (wants("BACKGROUND_TEMPLATE")) wantedKinds.push("BACKGROUND");
-    if (wants("ARCHETYPE_TEMPLATE")) wantedKinds.push("ARCHETYPE");
+    if (wants("LINEAGE_TEMPLATE")) wantedKinds.push("LINEAGE");
+    if (wants("UPBRINGING_TEMPLATE")) wantedKinds.push("UPBRINGING");
+    if (wants("MANIFEST_TEMPLATE")) wantedKinds.push("MANIFEST");
     const nameOrBody = or(
-      ilike(templates.name, pattern),
-      ilike(templates.description, pattern),
+      ilike(heritage.name, pattern),
+      ilike(heritage.description, pattern),
     );
     const rows = await db
       .select({
-        id: templates.id,
-        kind: templates.kind,
-        name: templates.name,
-        body: templates.description,
+        id: heritage.id,
+        kind: heritage.kind,
+        name: heritage.name,
+        body: heritage.description,
         authorUsername: sql<string | null>`NULL`,
-        score: scoreExpr(templates.name, templates.description),
+        score: scoreExpr(heritage.name, heritage.description),
       })
-      .from(templates)
+      .from(heritage)
       .where(
         and(
-          eq(templates.isPublic, true),
-          inArray(templates.kind, wantedKinds as never),
+          eq(heritage.isPublic, true),
+          inArray(heritage.kind, wantedKinds as never),
           nameOrBody,
         ),
       )
-      .orderBy(sql`score DESC`, sql`${templates.name} ASC`)
+      .orderBy(sql`score DESC`, sql`${heritage.name} ASC`)
       .limit(perTypeLimit)
       .offset(offset);
     for (const r of rows) {

@@ -2,7 +2,7 @@
 // Build query service — Phase 6.5 #17
 //
 // Loads public-facing build data for the /library/builds/[id] page.
-// Builds are characters-in-progress: they have race, background, archetype,
+// Builds are characters-in-progress: they have lineage, upbringing, manifest,
 // attribute distribution, and capability links but no level-up history.
 //
 // Returns null if the build doesn't exist or isn't public (unless viewer is
@@ -15,7 +15,7 @@ import {
   buildCapabilities,
   builds,
   capabilities,
-  templates,
+  heritage,
   users,
 } from "@/db/schema";
 
@@ -25,9 +25,9 @@ export interface PublicBuild {
   description: string | null;
   level: number;
   startingBu: number;
-  isArchetypeTemplate: boolean;
-  race: { id: string; name: string; description: string | null } | null;
-  background: { id: string; name: string; description: string | null } | null;
+  isManifestTemplate: boolean;
+  lineage: { id: string; name: string; description: string | null } | null;
+  upbringing: { id: string; name: string; description: string | null } | null;
   archetype: { id: string; name: string; description: string | null } | null;
   attributes: {
     physical: number;
@@ -68,8 +68,8 @@ export async function loadPublicBuild(
   const row = await db.query.builds.findFirst({
     where: eq(builds.id, id),
     with: {
-      race: true,
-      background: true,
+      lineage: true,
+      upbringing: true,
       capabilityLinks: {
         with: { capability: true },
       },
@@ -107,13 +107,13 @@ export async function loadPublicBuild(
   }
 
   // Resolve archetype: looks up the template referenced by the linked
-  // archetype capability (builds.archetypeName is a snapshot, but the
-  // canonical template lives in the templates table).
+  // archetype capability (builds.manifestName is a snapshot, but the
+  // canonical template lives in the heritage table).
   let archetype: PublicBuild["archetype"] = null;
   // For now, archetypes aren't linked via FK on builds — derive from
   // capabilityLinks where capability.type = 'ARCHETYPE'. We don't have
   // that enum value guaranteed here, so leave null unless we find one.
-  // Future: link builds.archetypeId -> templates.id.
+  // Future: link builds.archetypeId -> heritage.id.
 
   // Hydrate capabilityLinks → capability rows
   const caps = (row.capabilityLinks ?? [])
@@ -136,19 +136,19 @@ export async function loadPublicBuild(
     description: row.description,
     level: row.level,
     startingBu: row.startingBu,
-    isArchetypeTemplate: row.isArchetypeTemplate,
-    race: row.race
+    isManifestTemplate: row.isManifestTemplate,
+    lineage: row.lineage
       ? {
-          id: row.race.id,
-          name: row.race.name,
-          description: row.race.description,
+          id: row.lineage.id,
+          name: row.lineage.name,
+          description: row.lineage.description,
         }
       : null,
-    background: row.background
+    upbringing: row.upbringing
       ? {
-          id: row.background.id,
-          name: row.background.name,
-          description: row.background.description,
+          id: row.upbringing.id,
+          name: row.upbringing.name,
+          description: row.upbringing.description,
         }
       : null,
     archetype,

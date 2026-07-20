@@ -9,13 +9,13 @@
 // We bridge this with a custom event:
 //   - Library row click in the SandboxPreviewBody dispatches
 //     `sw-sandbox-slot` with { kind, id, label }.
-//   - The active form (EffectForm / CapabilityForm / TemplateForm / ItemForm)
+//   - The active form (EffectForm / CapabilityForm / HeritageForm / ItemForm)
 //     listens for the event and forwards it to the appropriate add-function.
 //
 // Forms filter by `kind` (primitive, effect) — the user said:
-//   - Primitives slot into effects, capabilities, templates, items.
-//   - Effects slot into capabilities, templates.
-//   - Capabilities slot into templates.
+//   - Primitives slot into effects, capabilities, heritage, items.
+//   - Effects slot into capabilities, heritage.
+//   - Capabilities slot into heritage.
 // =============================================================================
 
 export type SlotKind = "primitive" | "effect" | "capability";
@@ -45,7 +45,7 @@ export function dispatchSlot(event: SlotEvent) {
 // preview modal — same affordance as clicking from the library list. We
 // bridge this with a custom event so the form previews don't need to know
 // anything about the modal-stack plumbing that lives in grammar-library /
-// blueprint-library:
+// heritage-library:
 //
 //   - Form preview click on a slotted item dispatches
 //     `sw-sandbox-open-preview` with { targetType, targetId, label }.

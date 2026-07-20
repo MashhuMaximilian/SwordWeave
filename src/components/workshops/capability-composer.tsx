@@ -7,7 +7,7 @@ import { ToastViewport, useToasts } from "@/components/ui/toast";
 /**
  * Capability Composer
  *
- * UI for composing capability templates from primitives.
+ * UI for composing capability heritage from primitives.
  * Follows the LEGO-feel pattern from UX-WORKFLOW-SPEC.md:
  *   - Pick primitives by category (verb/domain/range/targeting/duration/etc.)
  *   - Drag primitives into slots

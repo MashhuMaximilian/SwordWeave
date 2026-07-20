@@ -1,6 +1,6 @@
 // =============================================================================
 // /search — global search across primitives, capabilities, effects, items,
-// characters, and templates.
+// characters, and heritage.
 //
 // URL: /search?q=<query>&type=<LibraryTargetType>
 // =============================================================================
@@ -24,9 +24,9 @@ const VALID_TYPES = new Set([
   "EFFECT",
   "CHARACTER",
   "ITEM",
-  "RACE_TEMPLATE",
-  "BACKGROUND_TEMPLATE",
-  "ARCHETYPE_TEMPLATE",
+  "LINEAGE_TEMPLATE",
+  "UPBRINGING_TEMPLATE",
+  "MANIFEST_TEMPLATE",
 ]);
 
 export const dynamic = "force-dynamic";

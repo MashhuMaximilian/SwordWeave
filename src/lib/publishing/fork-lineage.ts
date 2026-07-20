@@ -194,18 +194,18 @@ async function resolveForkSourceFromEntity(
       entity = rows[0] ?? null;
       break;
     }
-    case "RACE_TEMPLATE":
-    case "BACKGROUND_TEMPLATE":
-    case "ARCHETYPE_TEMPLATE": {
+    case "LINEAGE_TEMPLATE":
+    case "UPBRINGING_TEMPLATE":
+    case "MANIFEST_TEMPLATE": {
       const kind = targetType.replace(/_TEMPLATE$/, "");
       const rows = await db
         .select({
-          sourceOrigin: schema.templates.sourceOrigin,
-          userId: schema.templates.userId,
+          sourceOrigin: schema.heritage.sourceOrigin,
+          userId: schema.heritage.userId,
         })
-        .from(schema.templates)
+        .from(schema.heritage)
         .where(
-          sql`${schema.templates.kind} = ${kind} AND ${schema.templates.id} = ${targetId}`,
+          sql`${schema.heritage.kind} = ${kind} AND ${schema.heritage.id} = ${targetId}`,
         )
         .limit(1);
       entity = rows[0] ?? null;
@@ -275,9 +275,9 @@ function parseForkSourceOrigin(
     "EFFECT",
     "ITEM",
     "CHARACTER",
-    "RACE_TEMPLATE",
-    "BACKGROUND_TEMPLATE",
-    "ARCHETYPE_TEMPLATE",
+    "LINEAGE_TEMPLATE",
+    "UPBRINGING_TEMPLATE",
+    "MANIFEST_TEMPLATE",
   ];
   if (parts.length >= 2 && knownTypes.includes(parts[0] as ForkTargetType)) {
     return { type: parts[0] as ForkTargetType, id: parts[1] ?? "" };
@@ -422,17 +422,17 @@ async function readUserIdForTarget(
         .limit(1);
       return (rows[0]?.userId as string | null) ?? null;
     }
-    case "RACE_TEMPLATE":
-    case "BACKGROUND_TEMPLATE":
-    case "ARCHETYPE_TEMPLATE": {
+    case "LINEAGE_TEMPLATE":
+    case "UPBRINGING_TEMPLATE":
+    case "MANIFEST_TEMPLATE": {
       const kind = targetType.replace(/_TEMPLATE$/, "");
       const rows = await db
-        .select({ userId: schema.templates.userId })
-        .from(schema.templates)
+        .select({ userId: schema.heritage.userId })
+        .from(schema.heritage)
         .where(
           and(
-            eq(schema.templates.kind, kind as never),
-            eq(schema.templates.id, targetId),
+            eq(schema.heritage.kind, kind as never),
+            eq(schema.heritage.id, targetId),
           ),
         )
         .limit(1);
@@ -489,17 +489,17 @@ async function readNameForTarget(
         .limit(1);
       return rows[0]?.name ?? null;
     }
-    case "RACE_TEMPLATE":
-    case "BACKGROUND_TEMPLATE":
-    case "ARCHETYPE_TEMPLATE": {
+    case "LINEAGE_TEMPLATE":
+    case "UPBRINGING_TEMPLATE":
+    case "MANIFEST_TEMPLATE": {
       const kind = targetType.replace(/_TEMPLATE$/, "");
       const rows = await db
-        .select({ name: schema.templates.name })
-        .from(schema.templates)
+        .select({ name: schema.heritage.name })
+        .from(schema.heritage)
         .where(
           and(
-            eq(schema.templates.kind, kind as never),
-            eq(schema.templates.id, targetId),
+            eq(schema.heritage.kind, kind as never),
+            eq(schema.heritage.id, targetId),
           ),
         )
         .limit(1);

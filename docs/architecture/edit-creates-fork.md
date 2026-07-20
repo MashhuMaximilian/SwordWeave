@@ -55,7 +55,7 @@ In plain words:
 
 | Need | Today | What's missing |
 |---|---|---|
-| Source-row identity for primitives | `(name, category, user_id)` unique. NULL user_id = distinct (so system + user can collide on name). | `primitives.source_origin` column (capabilities/effects/items/templates already have it). Need to add for consistency. |
+| Source-row identity for primitives | `(name, category, user_id)` unique. NULL user_id = distinct (so system + user can collide on name). | `primitives.source_origin` column (capabilities/effects/items/heritage already have it). Need to add for consistency. |
 | Version rows | `primitive_versions`, `capability_versions`, `effect_versions`, `item_versions`, `character_versions`, `template_versions` exist. Populated only by `/api/publish`. | Auto-populated on save. |
 | Version pinning in builds | `character_primitives`, `character_capabilities`, `character_items` reference entity IDs only. | Add `version_id` column to each. Update slot flow to capture. |
 | Content addressing | `resolveVirtualVersionId(type, id)` hashes `(type, id)`. | `resolveContentVersionId(type, content)` hashes the actual content payload. |
@@ -74,7 +74,7 @@ In plain words:
 Per the existing `characters.ts` doc-block:
 > "All support soft identity: (name, user_id) is unique; (name, source_origin) is public identity."
 
-This principle is half-implemented (only `source_origin` exists on capabilities/effects/items/templates, not on primitives). Edit-creates-fork needs it everywhere.
+This principle is half-implemented (only `source_origin` exists on capabilities/effects/items/heritage, not on primitives). Edit-creates-fork needs it everywhere.
 
 ---
 
@@ -274,7 +274,7 @@ FROM primitives;
    - If `editingId` belongs to caller → UPDATE row, snapshot new version, bump version_number.
    - Else if `editingId` belongs to someone else → 403.
    - Else → INSERT new row, snapshot version #1.
-2. Same refactor for `/api/capabilities`, `/api/effects`, `/api/items`, `/api/templates`.
+2. Same refactor for `/api/capabilities`, `/api/effects`, `/api/items`, `/api/heritage`.
 3. Helper `src/lib/versions/auto-snapshot.ts` — `recordVersion(targetType, row)` to be called from each save handler.
 4. Tests: same content twice = one version row; different content = two version rows; version_number increments; is_latest is correctly toggled.
 
@@ -370,7 +370,7 @@ Reaction aggregates key on `(target_type, target_id, version_id)`. When a row's 
 
 ## 6.5 Universal `source_origin` + `version_id` (Mashu, round 6)
 
-> "We need version id for templates too like race and background and archetype. I can fork them too and add new things to them... So basically everything should have source origin and version id whether a primitive capability effect race background archetype item monster character/build whatever."
+> "We need version id for heritage too like race and background and archetype. I can fork them too and add new things to them... So basically everything should have source origin and version id whether a primitive capability effect race background archetype item monster character/build whatever."
 
 ### Inventory by entity type
 
@@ -380,7 +380,7 @@ Reaction aggregates key on `(target_type, target_id, version_id)`. When a row's 
 | `capabilities` | ✅ | ❌ virtual only | Version | Migration 0021 — add content-hash versionId; existing rows get a virtual versionId backfilled from current content. |
 | `effects` | ✅ | ❌ virtual only | Version | Same as capabilities. |
 | `items` | ✅ | ❌ virtual only | Version | Same. |
-| `templates` (race/background/archetype/build) | ✅ | ❌ virtual only | Version | Same. |
+| `heritage` (race/background/archetype/build) | ✅ | ❌ virtual only | Version | Same. |
 | `monsters` | — table doesn't exist in current schema | — | Skip | Add to backlog; no current code touches a monsters table. |
 | `characters` | ❌ (no `source_origin`) | ❌ virtual only | Both | Migration 0022 — add `source_origin` to characters + character_versions table. |
 | `builds` | ❌ (no `source_origin`; 0 rows today) | ❌ | Both | Migration 0023 — add `source_origin` + versionId; only kicks in once the build system actually starts saving builds. |
@@ -401,8 +401,8 @@ Per Mashu: "everything should have source origin and version id." The point is c
 
 ```
 [User clicks Fork on Race Template "Forestkind"]
-  → /api/fork with targetType=RACE_TEMPLATE
-    → INSERT templates (new row, user_id=me, source_origin="fork:<source_id>")
+  → /api/fork with targetType=LINEAGE_TEMPLATE
+    → INSERT heritage (new row, user_id=me, source_origin="fork:<source_id>")
     → INSERT template_versions (version_number=1, content_hash=hash(source_content), is_latest=true, delta_kind=FULL)
     → INSERT forks (source_target_id=<source>, forked_target_id=<new fork>, source_version_id=<source's current>, forked_version_id=<new fork's v1>)
   → Modal: "Forestkind (fork) saved to sandbox. [Edit in sandbox] [View source page]"
@@ -607,7 +607,7 @@ Two pre-existing bugs were fixed while prototyping this model — they would blo
 
 ### Servers affected by the deferred-fork model
 
-Every entity save endpoint (`POST /api/primitives`, `/api/effects`, `/api/capabilities`, `/api/items`, `/api/templates`) becomes dual-purpose:
+Every entity save endpoint (`POST /api/primitives`, `/api/effects`, `/api/capabilities`, `/api/items`, `/api/heritage`) becomes dual-purpose:
 
 - **No `intent` (legacy callers, e.g. /sandbox direct-create)**: behaves as INSERT (new from scratch) or UPDATE in place if `editingId` is owned by caller. Same as today.
 - **`intent=load`**: caller-owns-editingId → UPDATE + new version row. Caller-doesn't-own → INSERT new fork row (same as intent=fork for non-owners — there's no "you tried to update someone else's row" 403 in the load path, since load is by definition an "I want to work with this" gesture).
@@ -696,7 +696,7 @@ Build slots Strike v1. Library page shows Strike v3 (latest). Build preview show
 | 2026-07-07 | Plan-first, not code-first | This is a multi-week cross-cutting change. Design doc prevents wasted code. |
 | 2026-07-07 | Soft-delete (tombstone) for source row deletion (OQ1 answered by Mashu) | Deleted source rows stay as tombstones so forked descendants' version history still resolves. The version row is preserved; only the entity row is removed. |
 | 2026-07-07 | Stale-version indicator in build preview (OQ2 answered by Mashu) | New builds don't hit this; only when looking at history. UI shows "version N of M" + "Update available: v5 →". |
-| 2026-07-07 | Universal `source_origin` + `version_id` on ALL entity types (Mashu round 6) | Primitives, capabilities, effects, items, templates, characters, builds — same fork + version model everywhere. |
+| 2026-07-07 | Universal `source_origin` + `version_id` on ALL entity types (Mashu round 6) | Primitives, capabilities, effects, items, heritage, characters, builds — same fork + version model everywhere. |
 | 2026-07-07 | Three slot-source enum: OWNED / FORKED / PINNED (Mashu round 6) | "I can fork and modify, shouldn't update; I can author and update from source; library-taken can be updated transitively." One enum captures all three. |
 | 2026-07-07 | Transitive dependency update walks capability → primitive_links + effect_links → effect.primitive_links | Mashu's example: "I took from library... updated (directly or children aka effects and primitives and primitives in effects)". |
 | 2026-07-07 | FORKED slots are frozen; no source update | Mashu: "I can fork something and modify it, I shouldn't be able to update bc it's a new thing." |
@@ -729,7 +729,7 @@ Please review and either ✅ or ✏️ each section:
 - [ ] **§9 Decision log** — anything else worth recording before code starts?
 
 ### Round 6 (universal source_origin + transitive update)
-- [ ] **§6.5 Inventory table** — primitives / capabilities / effects / items / templates / characters / builds all get source_origin + version_id. Monsters skipped because no DB table exists. Confirm?
+- [ ] **§6.5 Inventory table** — primitives / capabilities / effects / items / heritage / characters / builds all get source_origin + version_id. Monsters skipped because no DB table exists. Confirm?
 - [ ] **§6.5 Content-addressed versionId** — md5(json_canonicalize(content)) formatted as UUID. Hash choice + serialization acceptable?
 - [ ] **§6.6 Three slot-source enum (OWNED / FORKED / PINNED)** — captures your three examples correctly?
   - "I created a capability and update from source" = OWNED
@@ -748,7 +748,7 @@ Please review and either ✅ or ✏️ each section:
 - [x] **§6.7 OQ4 closed** — URL `?intent=fork|load` query param. Mashu: "url works fine I guess as you said." ✅
 - [x] **§6.7 OQ5 closed** — no-op on no-change with user-facing message. Mashu: "you can't save something you are not the owner of. Try slotting it into another build instead." ✅
 - [ ] **§6.7 Sandbox UX chips** — "Forking X" / "Working on X" / "Continue editing" buttons. Phrasing OK?
-- [ ] **§6.7 Server endpoints** — every save endpoint reads `intent` from body. Five endpoints to refactor (`/api/primitives`, `/api/effects`, `/api/capabilities`, `/api/items`, `/api/templates`). OK with the cross-cutting refactor?
+- [ ] **§6.7 Server endpoints** — every save endpoint reads `intent` from body. Five endpoints to refactor (`/api/primitives`, `/api/effects`, `/api/capabilities`, `/api/items`, `/api/heritage`). OK with the cross-cutting refactor?
 - [ ] **§6.7 Phase D-bis split** — ship UX first (Phase D: intent plumbing + deferred fork), then schema (Phase D-bis: full content hashing + version rows). Acceptable sequencing?
 - [ ] **§D2 Dispatch pseudocode** — `dispatchSave({ intent, ownership, contentHash })` with the no-op shortcut — captures the matrix correctly?
 - [ ] **§1 Problem statement** — opening editor is a navigation gesture, save is the moment of truth. Captures the new mental model?
@@ -756,7 +756,7 @@ Please review and either ✅ or ✏️ each section:
 ### Implementation order adjustments needed?
 
 The original plan (§5) covers primitives + junctions. With universal source_origin + slot-source enum, the plan needs:
-- **New phase**: migrations 0021–0024 for capabilities/effects/items/templates/characters/builds + slot_source column.
+- **New phase**: migrations 0021–0024 for capabilities/effects/items/heritage/characters/builds + slot_source column.
 - **New endpoint**: `/api/entities/update-from-source` (transitive walk).
 - **New UI**: slot-source badge in build preview + "Update available →" action.
 
@@ -789,14 +789,14 @@ The minimum-viable deferred-fork model. No new schema. No content hashing. Just 
 
 ### Phase 2 — Universal intent support across all entity types (Days 6–10)
 
-Apply Phase 1's deferred-fork model to effects, capabilities, items, templates. Same dispatch logic.
+Apply Phase 1's deferred-fork model to effects, capabilities, items, heritage. Same dispatch logic.
 
 | Task | Files | Days |
 |---|---|---|
 | T2.1 Wire `dispatchSave` into `/api/effects` POST | `src/app/api/effects/route.ts` | 0.5 |
 | T2.2 Wire `dispatchSave` into `/api/capabilities` POST | `src/app/api/capabilities/route.ts` | 1 |
 | T2.3 Wire `dispatchSave` into `/api/items` POST | `src/app/api/items/route.ts` | 1 |
-| T2.4 Wire `dispatchSave` into `/api/templates` POST | `src/app/api/templates/route.ts` | 1 |
+| T2.4 Wire `dispatchSave` into `/api/heritage` POST | `src/app/api/heritage/route.ts` | 1 |
 | T2.5 Update `FlagAndForkFooter` Fork button → same intent=fork URL pattern | `src/components/engagement/flag-and-fork-footer.tsx` | 0.5 |
 | T2.6 Update `CreationPreview` Edit-in-sandbox button → append `&intent=load` | `src/components/creations/creations-client.tsx` | 0.5 |
 | T2.7 Update `sandbox/grammar/menu` and `sandbox/blueprint/menu` to thread intent | `src/components/sandbox/*-menu.tsx` | 0.5 |

@@ -1,5 +1,5 @@
 /**
- * Check source_origin breakdown for capabilities, effects, items, templates.
+ * Check source_origin breakdown for capabilities, effects, items, heritage.
  * Run: pnpm exec tsx scripts/_check-source-caps.ts
  */
 import { neon } from "@neondatabase/serverless";
@@ -32,7 +32,7 @@ async function main() {
   await dump("capabilities", "capabilities");
   await dump("effects", "effects");
   await dump("items", "items");
-  await dump("templates", "templates");
+  await dump("heritage", "heritage");
 }
 
 main().catch((e) => {

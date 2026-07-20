@@ -163,9 +163,9 @@ async function CharacterCard({
               L{character.level}
             </span>
             <span>{character.size}</span>
-            {character.raceName && <span>· {character.raceName}</span>}
-            {character.archetypeName && (
-              <span>· {character.archetypeName}</span>
+            {character.lineageName && <span>· {character.lineageName}</span>}
+            {character.manifestName && (
+              <span>· {character.manifestName}</span>
             )}
           </div>
         </div>
