@@ -486,28 +486,11 @@ export function EntityPreview({
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         {resolvedOwner ? <OwnerBar owner={resolvedOwner} /> : null}
         {body}
-        {/* Bottom-of-body creator line (moved out of per-Body components
-            so it has access to `callbacks.engagement` — the only place
-            we know the Clerk user-id → username mapping). When the row
-            was authored by a Clerk user, render the username as a
-            profile link; for system / fork / unknown origins, render a
-            small italic tag with the raw origin. User-reported (Phase 9
-            review): the legacy "Source: user:user_xxx" line was
-            unreadable and not navigable. */}
-        {callbacks?.engagement?.authorUsername ? (
-          <p className="mt-4 text-xs text-muted-foreground">
-            By{" "}
-            <a
-              href={`/u/${callbacks.engagement.authorUsername}`}
-              className="font-semibold text-foreground hover:underline"
-            >
-              @{callbacks.engagement.authorUsername}
-            </a>
-            <span className="ml-2 text-[10px] uppercase tracking-wide">
-              (creator)
-            </span>
-          </p>
-        ) : null}
+        {/* Bottom-of-body "By @username (creator)" line REMOVED.
+            The OwnerBar at the top of the body already shows the creator
+            (avatar + name + @handle + profile link) — having a second
+            copy at the bottom was redundant and the user explicitly
+            asked to keep only the top bar (Phase 9 review). */}
       </div>
       {footer}
     </div>
@@ -516,18 +499,28 @@ export function EntityPreview({
 // ---- owner + action bars (identical across every surface) -----------------
 
 function OwnerBar({ owner }: { owner: NonNullable<EntityPreviewProps["owner"]> }) {
-  const display = owner.authorDisplayName || owner.authorUsername || "unknown";
+  // Phase 9 user-feedback: when there's no Clerk user attached (system-
+  // authored content like the stock "Verb Access Tier I" or "Domain of
+  // Storm" primitives) render "by System" instead of returning null —
+  // the user wants to see the creator tag even when it's the system, not
+  // a hidden gap.
+  const hasAuthor =
+    !!owner.authorUsername || !!owner.authorDisplayName;
+  const display = hasAuthor
+    ? owner.authorDisplayName || owner.authorUsername || "unknown"
+    : "System";
   // Profile usernames are handles (e.g. "mashu"). If a Clerk-style ID
   // ever slips in, don't render it as the handle — show the display name
   // and only build a profile link from a real-looking username.
   const isId = !!owner.authorUsername && /^user_|usr_/i.test(owner.authorUsername);
-  const handle = isId ? null : owner.authorUsername;
+  const handle = !hasAuthor ? null : isId ? null : owner.authorUsername;
   const profileHref = handle ? `/u/${handle}` : null;
-  if (!handle && !owner.authorDisplayName) return null;
-  // Generated avatar fallback when no uploaded picture exists.
-  const fallbackAvatar = `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(
-    display,
-  )}&backgroundType=gradientLinear&radius=50`;
+  // Generated avatar fallback when no uploaded picture exists. For system
+  // entries we use a neutral seed so the avatar is consistent across
+  // every system-authored row (instead of "unknown" / random initials).
+  const fallbackAvatar = hasAuthor
+    ? `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(display)}&backgroundType=gradientLinear&radius=50`
+    : `https://api.dicebear.com/9.x/initials/svg?seed=SwordWeave%20System&backgroundType=gradientLinear&radius=50`;
   const avatar = owner.authorAvatarUrl || fallbackAvatar;
   const inner = (
     <>

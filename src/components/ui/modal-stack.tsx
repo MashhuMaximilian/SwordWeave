@@ -237,14 +237,21 @@ function renderModalBody(
 ) {
   return (
     <>
-      <header className="sticky top-0 z-10 flex flex-col gap-1 border-b border-border bg-card px-4 py-3">
-        {/* Breadcrumb row — hidden when the top entry's category is the
-            only meaningful label (the body already shows the entity's own
-            type + chips in <Header />). User-reported (Phase 9 review):
-            showing the entity name in the breadcrumb AND below in the
-            body header was redundant — drop the breadcrumb entirely for
-            single-entry previews and keep it only for nested drilldowns
-            where context matters. */}
+      {/* Slim modal header: category label on the left, close button on the
+          right. Phase 9 user-feedback: the previous 3-row layout (breadcrumb
+          + category + label fallback) wasted vertical space when the body's
+          own <Header /> already shows the entity type. One row, ~40px tall. */}
+      <header className="sticky top-0 z-10 flex h-10 items-center justify-between gap-2 border-b border-border bg-card px-4">
+        <div className="min-w-0 flex-1">
+          {entry.category ? (
+            <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {entry.category}
+            </p>
+          ) : null}
+        </div>
+        {/* Nested drilldown breadcrumb — only when stack depth > 1. Compact:
+            single line with chevron separators, sits on the LEFT so it
+            doesn't fight the close button for vertical space. */}
         {stack.length > 1 ? (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             {stack.slice(0, idx + 1).map((crumb, i) => {
@@ -270,34 +277,24 @@ function renderModalBody(
             })}
           </div>
         ) : null}
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            {entry.category ? (
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {entry.category}
-              </p>
-            ) : null}
-          </div>
-          {isTop ? (
-            <button
-              type="button"
-              onClick={pop}
-              aria-label="Close"
-              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
-              <X className="size-4" />
-            </button>
-          ) : null}
-        </div>
-        {!isTop ? (
+        {isTop ? (
           <button
             type="button"
             onClick={pop}
-            className="self-start text-xs text-primary hover:underline"
+            aria-label="Close"
+            className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={pop}
+            className="shrink-0 text-xs text-primary hover:underline"
           >
             ← Back
           </button>
-        ) : null}
+        )}
       </header>
       {/* Mashu 2026-07-09: modal body baseline font set to text-sm so
           the inherited text size matches the source-page preview's

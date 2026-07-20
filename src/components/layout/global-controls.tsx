@@ -151,7 +151,10 @@ const STORAGE_KEY_SPLIT = "sw-sandbox-mobile-split";
 export function GlobalControls({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const isSandboxRoute = pathname?.startsWith("/sandbox") ?? false;
+  const isSandboxRoute =
+    pathname?.startsWith("/sandbox") ||
+    pathname?.startsWith("/atelier") ||
+    false;
   const isMobile = useIsMobile();
   const isDark = useIsDark();
   const { user, isSignedIn, isLoaded } = useUser();
@@ -480,11 +483,11 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         // above the tab bar so the two don't collide. 80px = 16px
         // (default gap) + 48px (tab bar visible height) + ~16px extra
         // buffer so the FAB also clears any half-collapsed sidebar
-        // chrome (user-reported: FAB was sitting on top of the
-        // collapsed Codex/Preview strip + the bottom tab bar — bump
-        // well above the tab strip and add a generous margin so it
-        // also clears the last list row on mobile).
-        bottomOffset={isSandboxRoute ? 160 : 16}
+        // chrome (user-reported through Phase 9: FAB at 64/80/128/160 was
+        // still sitting on top of the bottom AtelierTabBar — push it well
+        // above the ~48px tab strip + a generous margin so the FAB also
+        // clears the last list row on mobile).
+        bottomOffset={isSandboxRoute ? 200 : 16}
       />
       <RightFilterPanel />
       {isMobile ? <BuildPreviewDrawer /> : null}
