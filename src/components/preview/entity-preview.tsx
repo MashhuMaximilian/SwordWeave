@@ -494,23 +494,26 @@ export function EntityPreview({
 // ---- owner + action bars (identical across every surface) -----------------
 
 function OwnerBar({ owner }: { owner: NonNullable<EntityPreviewProps["owner"]> }) {
-  if (!owner.authorUsername && !owner.authorDisplayName) return null;
-  const name = owner.authorDisplayName || owner.authorUsername || "unknown";
-  const atName = owner.authorUsername ? `@${owner.authorUsername}` : name;
+  const display = owner.authorDisplayName || owner.authorUsername || "unknown";
+  // Profile usernames are handles (e.g. "mashu"). If a Clerk-style ID
+  // ever slips in, don't render it as the handle — show the display name
+  // and only build a profile link from a real-looking username.
+  const isId = !!owner.authorUsername && /^user_|usr_/i.test(owner.authorUsername);
+  const handle = isId ? null : owner.authorUsername;
+  const profileHref = handle ? `/u/${handle}` : null;
+  if (!handle && !owner.authorDisplayName) return null;
+  // Generated avatar fallback when no uploaded picture exists.
+  const fallbackAvatar = `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(
+    display,
+  )}&backgroundType=gradientLinear&radius=50`;
+  const avatar = owner.authorAvatarUrl || fallbackAvatar;
   const inner = (
     <>
-      {owner.authorAvatarUrl ? (
-        <img src={owner.authorAvatarUrl} alt="" className="size-5 rounded-full" />
-      ) : (
-        <span className="flex size-5 items-center justify-center rounded-full bg-muted text-[10px] font-semibold uppercase">
-          {name.slice(0, 1)}
-        </span>
-      )}
+      <img src={avatar} alt="" className="size-5 rounded-full" />
       <span>
         by{" "}
-        <span className="font-semibold text-foreground">
-          {atName}
-        </span>
+        <span className="font-semibold text-foreground">{display}</span>
+        {handle ? <span className="ml-1 text-muted-foreground">@{handle}</span> : null}
       </span>
       {owner.isOwner ? (
         <span className="rounded-full bg-primary/10 px-1.5 py-0.5 font-semibold text-primary">
@@ -521,8 +524,8 @@ function OwnerBar({ owner }: { owner: NonNullable<EntityPreviewProps["owner"]> }
   );
   return (
     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-      {owner.profileHref ? (
-        <a href={owner.profileHref} className="flex items-center gap-2 hover:underline">
+      {profileHref ? (
+        <a href={profileHref} className="flex items-center gap-2 hover:underline">
           {inner}
         </a>
       ) : (
@@ -966,7 +969,7 @@ function Header({
         <span className="w-full text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
           {label}
         </span>
-        <span className="text-base font-semibold leading-tight">{name}</span>
+        <span className="text-sm font-semibold leading-tight">{name}</span>
         <span className="flex flex-wrap items-center gap-2">{chips}</span>
       </div>
     </div>
