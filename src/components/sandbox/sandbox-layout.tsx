@@ -68,9 +68,10 @@ const BUILD_ICON_COLOR = "#ffffff";
  *   - Panel state is dumb chrome — it does not own the entity being edited. Composers do.
  */
 
-const COLLAPSED_STRIP_PX = 6; // % of group width — 6% is roughly 60-75px on desktop, wide
-                             // enough for the column icon + a touch target. User-reported:
-                             // 4% felt cramped.
+const COLLAPSED_STRIP_PX = 25; // % of group width — 25% gives two collapsed columns
+                              // 25% each while the open column keeps 50%. User-reported:
+                              // 6% was still cramped and made tab labels unreadable.
+                              // (Spec: open = 50%, collapsed = other half split evenly.)
 const HIDDEN_PX = 0;
 const STORAGE_PREFIX = "sandbox:layout:";
 const MOBILE_BREAKPOINT_PX = 768; // <768 = mobile (tabs)

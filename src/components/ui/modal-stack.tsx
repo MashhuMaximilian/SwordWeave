@@ -238,39 +238,45 @@ function renderModalBody(
   return (
     <>
       <header className="sticky top-0 z-10 flex flex-col gap-1 border-b border-border bg-card px-4 py-3">
-        {/* Breadcrumb row */}
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          {stack.slice(0, idx + 1).map((crumb, i) => {
-            const isLast = i === idx;
-            return (
-              <span key={crumb.key} className="flex items-center gap-1">
-                {i > 0 ? (
-                  <ChevronRight className="size-3 shrink-0" />
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => popTo(i)}
-                  className={cn(
-                    "truncate rounded px-1 transition-colors hover:bg-accent",
-                    isLast && "text-foreground",
-                  )}
-                  title={crumb.label}
-                >
-                  {crumb.label}
-                </button>
-              </span>
-            );
-          })}
-        </div>
+        {/* Breadcrumb row — hidden when the top entry's category is the
+            only meaningful label (the body already shows the entity's own
+            type + chips in <Header />). User-reported (Phase 9 review):
+            showing the entity name in the breadcrumb AND below in the
+            body header was redundant — drop the breadcrumb entirely for
+            single-entry previews and keep it only for nested drilldowns
+            where context matters. */}
+        {stack.length > 1 ? (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            {stack.slice(0, idx + 1).map((crumb, i) => {
+              const isLast = i === idx;
+              return (
+                <span key={crumb.key} className="flex items-center gap-1">
+                  {i > 0 ? (
+                    <ChevronRight className="size-3 shrink-0" />
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => popTo(i)}
+                    className={cn(
+                      "truncate rounded px-1 transition-colors hover:bg-accent",
+                      isLast && "text-foreground",
+                    )}
+                    title={crumb.label}
+                  >
+                    {crumb.label}
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+        ) : null}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             {entry.category ? (
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {entry.category}
               </p>
-            ) : (
-              <p className="truncate text-sm font-medium">{entry.label}</p>
-            )}
+            ) : null}
           </div>
           {isTop ? (
             <button
