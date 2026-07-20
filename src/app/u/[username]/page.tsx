@@ -71,8 +71,7 @@ export default async function ProfilePage({
     ? await queryLibrary({
         authorClerkId: userClerkId,
         ...(kindFilter && { kind: kindFilter }),
-        ...(visibilityFilter && { visibility: visibilityFilter }),
-        limit: 100,
+        limit: 200,
       })
     : { items: [] as Array<Record<string, unknown>> };
 
@@ -83,9 +82,36 @@ export default async function ProfilePage({
     visibility?: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC";
     sourceOrigin: string | null;
   }>;
-  const forkCount = items.filter((it) => it.sourceOrigin?.startsWith("fork:"))
+
+  // Phase 9 follow-up: visibility filter applied post-fetch (LibraryQuery
+  // doesn't yet accept a visibility filter; the entity tables carry
+  // isPublic but the canonical visibility tier lives in publications).
+  // PRIVATE is the implicit default for unpublished rows — same rule
+  // My Creations uses — so a row with no visibility is treated as
+  // PRIVATE when the user clicks the Private-only chip. The viewer is
+  // also considered: when the profile belongs to someone ELSE we hide
+  // their PRIVATE rows entirely (privacy boundary), but the filter
+  // itself still works when viewing your own profile.
+  const isOwner = profile.isOwner === true;
+  const filteredItems = items.filter((it) => {
+    if (visibilityFilter) {
+      if (!isOwner) {
+        // Non-owner: only PUBLIC and FOLLOWERS_ONLY rows are visible
+        // at all. PRIVATE rows are filtered out before the chip even
+        // runs — keeps the privacy boundary intact.
+        if (it.visibility === "PRIVATE") return false;
+        if (it.visibility !== visibilityFilter) return false;
+      } else {
+        const itemVis = it.visibility ?? "PRIVATE";
+        if (itemVis !== visibilityFilter) return false;
+      }
+    }
+    return true;
+  });
+
+  const forkCount = filteredItems.filter((it) => it.sourceOrigin?.startsWith("fork:"))
     .length;
-  const creationCount = items.length - forkCount;
+  const creationCount = filteredItems.length - forkCount;
 
   return (
     <div className="mx-auto w-full max-w-4xl px-5 py-8">
@@ -172,7 +198,9 @@ export default async function ProfilePage({
       <ProfileEntriesSection
         userId={profile.id}
         clerkUserId={profile.clerkUserId ?? null}
-        items={items}
+        items={filteredItems}
+        kind={kindFilter ? (kindFilter as "fork" | "creation") : "all"}
+        visibility={visibilityFilter ? (visibilityFilter === "FOLLOWERS_ONLY" ? "followers" : visibilityFilter === "PUBLIC" ? "public" : "private") : "all"}
       />
     </div>
   );
@@ -254,6 +282,8 @@ function Stat({ label, value }: { label: string; value: number }) {
 async function ProfileEntriesSection({
   userId,
   items,
+  kind,
+  visibility,
 }: {
   userId: string;
   clerkUserId: string | null;
@@ -264,6 +294,8 @@ async function ProfileEntriesSection({
     visibility?: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC";
     sourceOrigin: string | null;
   }>;
+  kind: "all" | "fork" | "creation";
+  visibility: "all" | "public" | "followers" | "private";
 }) {
   // Look up the username to render the empty-state copy.
   const userRow = await db.query.users.findFirst({
@@ -284,8 +316,8 @@ async function ProfileEntriesSection({
       </div>
       <ProfileFilterChips
         basePath={`/u/${userRow.username}`}
-        kind="all"
-        visibility="all"
+        kind={kind}
+        visibility={visibility}
       />
 
       {items.length > 0 ? (

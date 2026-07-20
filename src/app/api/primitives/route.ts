@@ -15,6 +15,7 @@ import {
   type DispatchOutcome,
 } from "@/lib/publishing/dispatch-save";
 import { parseSaveIntent, type SaveIntent } from "@/lib/publishing/save-intent";
+import { getCallerIsAdmin } from "@/lib/auth/author-resolver";
 import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
 import {
   buildCanonicalPrimitivePayload,
@@ -335,10 +336,19 @@ export async function POST(request: Request) {
       ? await loadPrimitiveOwner(effectiveSourceId)
       : null;
 
+    // Phase 9 follow-up: resolve callerIsAdmin once so the admin
+    // canon-edit exception can fire for primitives (the other 4 entity
+    // types route through dispatchEntitySave which already wires this;
+    // primitives uses the lower-level decideSaveOutcome() directly
+    // because of its onConflictDoUpdate INSERT path, so we have to
+    // pass the flag in explicitly here).
+    const callerIsAdmin = await getCallerIsAdmin(userId);
+
     const outcome: DispatchOutcome = decideSaveOutcome({
       intent,
       source,
       callerUserId: userId,
+      callerIsAdmin,
       draftHash: clientDraftHash,
       draftIsEmpty,
     });

@@ -51,7 +51,7 @@ type KindFilter = "all" | "fork" | "creation";
 // Phase 9 follow-up: visibility filter at the canonical level.
 // Mirrors the publications.visibility enum so users can slice their
 // creations by audience.
-type VisibilityFilter = "all" | "public" | "followers";
+type VisibilityFilter = "all" | "public" | "followers" | "private";
 
 interface CreationsClientProps {
   items: LibraryItem[];
@@ -286,6 +286,7 @@ export function CreationsClient({
                 { key: "all", label: "All" },
                 { key: "public", label: "Public" },
                 { key: "followers", label: "Followers only" },
+                { key: "private", label: "Private only" },
               ] as const
             ).map((c) => {
               const active = visibility === c.key;
@@ -333,9 +334,15 @@ export function CreationsClient({
       // Phase 9 follow-up: Visibility filter. visibility comes from the
       // publications table joined at page-load time; `visibilityById`
       // overrides it for optimistic UI updates from the preview modal.
-      if (visibility !== "all" && item.visibility) {
-        if (visibility === "public" && item.visibility !== "PUBLIC") return false;
-        if (visibility === "followers" && item.visibility !== "FOLLOWERS_ONLY") return false;
+      // PRIVATE is the default for unpublished rows (no publications
+      // row) — we treat missing/null visibility as PRIVATE here so the
+      // "Private only" chip correctly captures both explicit and
+      // implicit private states.
+      if (visibility !== "all") {
+        const itemVis = item.visibility ?? "PRIVATE";
+        if (visibility === "public" && itemVis !== "PUBLIC") return false;
+        if (visibility === "followers" && itemVis !== "FOLLOWERS_ONLY") return false;
+        if (visibility === "private" && itemVis !== "PRIVATE") return false;
       }
       if (q && !item.name.toLowerCase().includes(q)) return false;
       return true;

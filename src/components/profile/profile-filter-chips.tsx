@@ -20,7 +20,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 export type KindFilter = "all" | "fork" | "creation";
-export type VisibilityFilter = "all" | "public" | "followers";
+export type VisibilityFilter = "all" | "public" | "followers" | "private";
 
 interface ProfileFilterChipsProps {
   basePath: string;
@@ -38,6 +38,7 @@ const VISIBILITY_CHIPS: Array<{ key: VisibilityFilter; label: string }> = [
   { key: "all", label: "All" },
   { key: "public", label: "Public" },
   { key: "followers", label: "Followers only" },
+  { key: "private", label: "Private only" },
 ];
 
 export function ProfileFilterChips({
