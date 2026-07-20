@@ -484,14 +484,15 @@ export function EntityPreview({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-        {resolvedOwner ? <OwnerBar owner={resolvedOwner} /> : null}
         {body}
-        {/* Bottom-of-body "By @username (creator)" line REMOVED.
-            The OwnerBar at the top of the body already shows the creator
-            (avatar + name + @handle + profile link) — having a second
-            copy at the bottom was redundant and the user explicitly
-            asked to keep only the top bar (Phase 9 review). */}
+        {/* OwnerBar MOVED OUT of the body area — it now lives between the
+            scrollable content and the footer (just above the like bar)
+            so the entity name + creator tag sit immediately above the
+            engagement metrics. Phase 9 user-feedback: 'you need to move
+            the user in preview to be lower not above the picture, low,
+            above the like for bar'. */}
       </div>
+      {resolvedOwner ? <OwnerBar owner={resolvedOwner} /> : null}
       {footer}
     </div>
   );
