@@ -13,6 +13,8 @@ import {
   computeTemplateContentHash,
 } from "@/lib/publishing/hash-content";
 import { recordVersion } from "@/lib/versions/auto-snapshot";
+import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
+import { autoPublishOnCreate } from "@/lib/publishing/auto-publish";
 
 type HeritageKind = "LINEAGE" | "UPBRINGING" | "MANIFEST";
 
@@ -229,6 +231,37 @@ export async function POST(request: Request) {
 
     if (!result) {
       throw new Error("Unable to create template.");
+    }
+
+    // Phase 9 round 8: auto-publish when isPublic=true so the
+    // library visibility filter (publications-table-driven) treats
+    // the new template as public immediately.
+    //
+    // `result.kind` is one of LINEAGE / UPBRINGING / MANIFEST — we
+    // map to the matching publications target_type so the row
+    // appears in the right library tab.
+    if (result.isPublic) {
+      try {
+        const authorUuid = await resolveUserIdByClerkId(userId);
+        if (authorUuid) {
+          const targetType =
+            result.kind === "LINEAGE"
+              ? "LINEAGE_TEMPLATE"
+              : result.kind === "UPBRINGING"
+                ? "UPBRINGING_TEMPLATE"
+                : result.kind === "MANIFEST"
+                  ? "MANIFEST_TEMPLATE"
+                  : "BUILD_TEMPLATE";
+          await autoPublishOnCreate({
+            targetType,
+            targetId: result.id,
+            authorId: authorUuid,
+            isPublic: true,
+          });
+        }
+      } catch (err) {
+        console.error("[heritage POST] auto-publish failed:", err);
+      }
     }
 
     // Phase 4: compute content hash + auto-snapshot.

@@ -24,6 +24,8 @@ import {
   computeCapabilityContentHash,
 } from "@/lib/publishing/hash-content";
 import { recordVersion } from "@/lib/versions/auto-snapshot";
+import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
+import { autoPublishOnCreate } from "@/lib/publishing/auto-publish";
 
 /**
  * GET /api/capabilities
@@ -259,6 +261,25 @@ export async function POST(request: Request) {
 
     if (!result) {
       throw new Error("Unable to create capability.");
+    }
+
+    // Phase 9 round 8: auto-publish when isPublic=true so the
+    // library visibility filter (publications-table-driven) treats
+    // the new capability as public immediately.
+    if (result.isPublic) {
+      try {
+        const authorUuid = await resolveUserIdByClerkId(userId);
+        if (authorUuid) {
+          await autoPublishOnCreate({
+            targetType: "CAPABILITY",
+            targetId: result.id,
+            authorId: authorUuid,
+            isPublic: true,
+          });
+        }
+      } catch (err) {
+        console.error("[capabilities POST] auto-publish failed:", err);
+      }
     }
 
     // Phase 4: compute content hash + auto-snapshot.

@@ -47,6 +47,7 @@ import { createPortal } from "react-dom";
 import { Filter, Search, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconDisplay, type IconSource } from "./icon-display";
+import { PickerErrorBoundary } from "./picker-error-boundary";
 import {
   Button as RAButton,
   ColorArea,
@@ -165,7 +166,7 @@ export function IconPicker({
   const [index, setIndex] = useState<IconIndex | null>(_indexCache);
   // Phase 8: Color state is a hex string. The ColorPicker control
   // operates on a Color object internally; we sync via parseColor.
-  const [color, setColor] = useState<string>(currentColor ?? "#ffffff");
+  const [color, setColor] = useState<string>(normalizeColor(currentColor ?? ""));
   // Phase 8: bucket is now a Set so the filters modal can multi-select.
   // Empty set = "All". The horizontal tab strip is hidden — the
   // filters button shows the count of active buckets.
@@ -930,6 +931,21 @@ function ColorTrigger({
                   Done
                 </button>
               </div>
+              <PickerErrorBoundary
+                fallback={(_err, _reset) => (
+                  <div className="rounded-md border border-border bg-background p-3 text-xs">
+                    <div className="font-medium text-destructive">
+                      Color picker crashed
+                    </div>
+                    <div className="mt-1 font-mono text-muted-foreground">
+                      Current: {color}
+                    </div>
+                    <p className="mt-2 text-muted-foreground">
+                      Close this popover and reopen it. The hex value is preserved.
+                    </p>
+                  </div>
+                )}
+              >
               <ColorPicker
                 value={colorValue}
                 onChange={(c) => onChange(c.toString("hex"))}
@@ -1030,6 +1046,7 @@ function ColorTrigger({
                   ))}
                 </ColorSwatchPicker>
               </ColorPicker>
+              </PickerErrorBoundary>
             </div>
           </div>,
           document.body,

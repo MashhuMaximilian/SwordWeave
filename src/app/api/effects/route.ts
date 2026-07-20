@@ -9,6 +9,8 @@ import {
   computeEffectContentHash,
 } from "@/lib/publishing/hash-content";
 import { recordVersion } from "@/lib/versions/auto-snapshot";
+import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
+import { autoPublishOnCreate } from "@/lib/publishing/auto-publish";
 
 type PrimitiveSlotInput = {
   primitiveId: number;
@@ -210,6 +212,27 @@ export async function POST(request: Request) {
 
     if (!created) {
       throw new Error("Unable to create effect.");
+    }
+
+    // Phase 9 round 8: auto-publish when isPublic=true so the
+    // library visibility filter (publications-table-driven) treats
+    // the new effect as public immediately. Without this, the user
+    // would have to ALSO toggle visibility on /creations to make
+    // the effect visible in the library.
+    if (isPublic) {
+      try {
+        const authorUuid = await resolveUserIdByClerkId(userId);
+        if (authorUuid) {
+          await autoPublishOnCreate({
+            targetType: "EFFECT",
+            targetId: created.id,
+            authorId: authorUuid,
+            isPublic: true,
+          });
+        }
+      } catch (err) {
+        console.error("[effects POST] auto-publish failed:", err);
+      }
     }
 
     await db.insert(effectPrimitives).values(

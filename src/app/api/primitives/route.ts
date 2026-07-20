@@ -15,7 +15,8 @@ import {
   type DispatchOutcome,
 } from "@/lib/publishing/dispatch-save";
 import { parseSaveIntent, type SaveIntent } from "@/lib/publishing/save-intent";
-import { getCallerIsAdmin } from "@/lib/auth/author-resolver";
+import { getCallerIsAdmin, resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
+import { autoPublishOnCreate } from "@/lib/publishing/auto-publish";
 import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
 import {
   buildCanonicalPrimitivePayload,
@@ -563,6 +564,30 @@ export async function POST(request: Request) {
         { error: "Failed to create primitive." },
         { status: 500 },
       );
+    }
+
+    // Phase 9 round 8: when the user saved with isPublic=true, also
+    // create a publications row so the library visibility filter
+    // (which checks publications FIRST) treats the new primitive as
+    // public. Before this, the user had to toggle visibility on
+    // /creations AFTER saving — easy to miss, easy to confuse
+    // "saved as private regardless of what I chose".
+    if (isPublic) {
+      try {
+        const authorUuid = await resolveUserIdByClerkId(userId);
+        if (authorUuid) {
+          await autoPublishOnCreate({
+            targetType: "PRIMITIVE",
+            targetId: String(created.id),
+            authorId: authorUuid,
+            isPublic: true,
+          });
+        }
+      } catch (err) {
+        // Don't fail the save if auto-publish fails — the user can
+        // still toggle visibility from /creations. Log for ops.
+        console.error("[primitives POST] auto-publish failed:", err);
+      }
     }
 
     // Phase 4: auto-snapshot the new fork.
