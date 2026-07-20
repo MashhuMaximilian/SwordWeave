@@ -50,17 +50,10 @@ import { IconDisplay, type IconSource } from "./icon-display";
 import { PickerErrorBoundary } from "./picker-error-boundary";
 import {
   Button as RAButton,
-  ColorArea,
-  ColorField,
-  ColorPicker,
-  ColorSlider,
-  ColorSwatch,
-  ColorSwatchPicker,
-  ColorSwatchPickerItem,
-  ColorThumb,
-  Input,
-  SliderTrack,
-  parseColor,
+  Dialog,
+  DialogTrigger,
+  Modal,
+  SearchField,
 } from "react-aria-components";
 
 // =============================================================================
@@ -860,16 +853,10 @@ function ColorTrigger({
   color: string;
   onChange: (next: string) => void;
 }) {
-  // parseColor needs a valid 6-digit hex; the value comes from the
-  // picker's normalizeColor (always 6-digit) so this is safe.
-  const colorValue = useMemo(() => {
-    try {
-      return parseColor(color);
-    } catch {
-      return parseColor("#ffffff");
-    }
-  }, [color]);
-
+  // Round 9: react-aria's <ColorPicker> is gone — we render native HTML
+  // controls inside the popover, so we don't need to parse the color
+  // back into a react-aria Color object. Hex string flows directly.
+  void color; // prop retained for parity with future revisions
   const [open, setOpen] = useState(false);
 
   // ESC closes the color picker.
@@ -932,120 +919,100 @@ function ColorTrigger({
                 </button>
               </div>
               <PickerErrorBoundary
-                fallback={(_err, _reset) => (
-                  <div className="rounded-md border border-border bg-background p-3 text-xs">
+                fallback={(err, reset) => (
+                  <div className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs">
                     <div className="font-medium text-destructive">
                       Color picker crashed
                     </div>
-                    <div className="mt-1 font-mono text-muted-foreground">
+                    <div className="font-mono text-muted-foreground">
                       Current: {color}
                     </div>
-                    <p className="mt-2 text-muted-foreground">
-                      Close this popover and reopen it. The hex value is preserved.
+                    <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-all rounded bg-background/50 p-2 font-mono text-[10px] text-foreground/80">
+                      {String(err?.message ?? err)}
+                    </pre>
+                    <p className="text-muted-foreground">
+                      Close and reopen the popover. Tap retry to recover.
                     </p>
+                    <button
+                      type="button"
+                      onClick={reset}
+                      className="rounded border border-border bg-background px-2 py-1 text-xs hover:bg-accent"
+                    >
+                      Retry
+                    </button>
                   </div>
                 )}
               >
-              <ColorPicker
-                value={colorValue}
-                onChange={(c) => onChange(c.toString("hex"))}
-              >
-                {/* Row 1 — HSB square + hue slider. The 2D area is
-                    sized 160px (size-40) to match the slider height
-                    (h-40). Mobile users can drag the thumb or tap
-                    the gradient directly to set hue+sat. */}
-                <div className="flex items-center gap-3">
-                  <ColorArea
-                    colorSpace="hsb"
-                    xChannel="saturation"
-                    yChannel="brightness"
-                    className="relative size-40 rounded-md"
-                    style={{
-                      backgroundColor: `hsl(${colorValue.toString("hsl").split(" ")[0]}, 100%, 50%)`,
-                    }}
+                {/*
+                 * Round 9: replaced react-aria's <ColorPicker>/<ColorArea>/
+                 * <ColorSlider> with native HTML controls. The react-aria
+                 * color picker crashed the popover on mobile after a swatch
+                 * was picked and the picker was re-opened (rounds 4, 5, 7).
+                 * The native fallback can't throw on render.
+                 *
+                 * Two controls:
+                 *   - native <input type="color"> for picking any color
+                 *   - hex <input type="text"> for precise entry
+                 * Plus the swatch grid below. State is still `color`
+                 * (hex string); both controls write back through onChange.
+                 */}
+                <div className="flex items-center gap-2">
+                  <label
+                    className="relative block size-12 cursor-pointer overflow-hidden rounded-md border-2 border-border"
+                    style={{ backgroundColor: color }}
+                    aria-label="Pick custom color"
                   >
-                    {/* Simple inline callout: a small rounded square
-                        above the thumb. We removed the custom SVG
-                        drop callout (it crashed on first render in
-                        rounds 4-5 because the .color-callout CSS was
-                        missing). React renderProps pipes the live
-                        color to the callout via inline style. */}
-                    <ColorThumb className="color-thumb">
-                      {({ color: c }) => (
-                        <span
-                          aria-hidden
-                          className="color-callout"
-                          style={{ backgroundColor: c.toString("css") }}
-                        />
-                      )}
-                    </ColorThumb>
-                  </ColorArea>
-                  <ColorSlider
-                    colorSpace="hsb"
-                    channel="hue"
-                    orientation="vertical"
-                    className="relative h-40 w-8 rounded-md"
-                    style={{
-                      background:
-                        "linear-gradient(to bottom, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)",
+                    <input
+                      type="color"
+                      value={normalizeColor(color)}
+                      onChange={(e) => onChange(e.target.value)}
+                      className="absolute inset-0 cursor-pointer opacity-0"
+                      aria-label="Color picker"
+                    />
+                  </label>
+                  <input
+                    type="text"
+                    value={color}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      // Accept partial input as the user types; only
+                      // commit valid 6-digit hex to parent state.
+                      const norm = normalizeColor(v);
+                      if (norm !== "#ffffff" || /^#?[0-9a-fA-F]{0,6}$/.test(v)) {
+                        onChange(v.startsWith("#") ? v : `#${v}`);
+                      }
                     }}
-                  >
-                    {/* <SliderTrack> child is REQUIRED: ColorSlider
-                        publishes trackProps via context, and only
-                        <SliderTrack> consumes them to attach the
-                        onPointerDown handler (click-to-set on the
-                        empty bar). Without it, only the thumb is
-                        clickable. */}
-                    <SliderTrack className="h-full w-full">
-                      <ColorThumb className="color-thumb">
-                        {({ color: c }) => (
-                          <span
-                            aria-hidden
-                            className="color-callout"
-                            style={{ backgroundColor: c.toString("css") }}
-                          />
-                        )}
-                      </ColorThumb>
-                    </SliderTrack>
-                  </ColorSlider>
+                    onBlur={(e) => onChange(normalizeColor(e.target.value))}
+                    spellCheck={false}
+                    maxLength={7}
+                    placeholder="#a78bfa"
+                    aria-label="Icon color hex"
+                    className="w-28 rounded border border-border bg-background px-2 py-1.5 font-mono text-xs"
+                  />
                 </div>
 
-                {/* Row 2 — hex text input. Uses <Input> slot from
-                    react-aria-components (NOT a bare <input>) — the
-                    slot binds to ColorField's inputProps so hex
-                    edits update the live color and the field stays
-                    in sync with swatch/slider picks. */}
-                <ColorField
-                  aria-label="Hex color"
-                  className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-                >
-                  <Input
-                    className="w-24 rounded border border-border bg-background px-2 py-1 font-mono text-xs"
-                    maxLength={9}
-                    spellCheck={false}
-                    aria-label="Icon color hex"
-                  />
-                  <span className="ml-auto font-mono text-xs text-muted-foreground">
-                    {color}
-                  </span>
-                </ColorField>
-
-                {/* Row 3 — 24 curated swatches (6 cols × 4 rows).
-                    ColorSwatchPicker binds to ColorPicker state so
-                    clicks update the live color and mark the
-                    selected swatch automatically. */}
-                <ColorSwatchPicker className="grid grid-cols-6 gap-1.5">
-                  {COLOR_PRESETS.map((hex) => (
-                    <ColorSwatchPickerItem
-                      key={hex}
-                      color={hex}
-                      className="aspect-square cursor-pointer rounded border-2 border-border transition-transform hover:scale-110"
-                    >
-                      <ColorSwatch className="size-full rounded-sm" />
-                    </ColorSwatchPickerItem>
-                  ))}
-                </ColorSwatchPicker>
-              </ColorPicker>
+                {/* Row — 24 curated swatches (6 cols × 4 rows).
+                    Plain buttons — clicking calls onChange directly,
+                    no react-aria state plumbing needed. */}
+                <div className="grid grid-cols-6 gap-1.5">
+                  {COLOR_PRESETS.map((hex) => {
+                    const selected = normalizeColor(color).toLowerCase() === hex.toLowerCase();
+                    return (
+                      <button
+                        key={hex}
+                        type="button"
+                        aria-label={`Color ${hex}`}
+                        aria-pressed={selected}
+                        onClick={() => onChange(hex)}
+                        className={cn(
+                          "aspect-square cursor-pointer rounded border-2 transition-transform hover:scale-110",
+                          selected ? "border-primary ring-2 ring-primary/40" : "border-border",
+                        )}
+                        style={{ backgroundColor: hex }}
+                      />
+                    );
+                  })}
+                </div>
               </PickerErrorBoundary>
             </div>
           </div>,
