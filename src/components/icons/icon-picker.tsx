@@ -48,14 +48,10 @@ import { Filter, Search, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconDisplay, type IconSource } from "./icon-display";
 import {
-  Button as RAButton,
   ColorArea,
   ColorField,
   ColorPicker,
   ColorSlider,
-  ColorSwatch,
-  ColorSwatchPicker,
-  ColorSwatchPickerItem,
   ColorThumb,
   SliderTrack,
   parseColor,
@@ -1049,17 +1045,35 @@ function ColorTrigger({
                       aria-label="Icon color hex"
                     />
                   </ColorField>
-                  <ColorSwatchPicker className="grid grid-cols-9 gap-1">
+                  {/* Plain <button> swatches, NOT <ColorSwatchPicker>.
+                      <ColorSwatchPicker> from react-aria-components wraps
+                      <ListBox>, which uses react-aria's Collection
+                      infrastructure. Each render of the picker allocates a
+                      new `selectedKeys` array literal
+                      ([state.color.toString('hexa')]) — Collection sees
+                      the array reference change, schedules setProps on
+                      every item, each setProps calls queueUpdate, which
+                      triggers another render, which allocates a new
+                      selectedKeys, which loops. The infinite setState
+                      cascade reaches React's max-update-depth limit and
+                      React error #185 fires. Plain <button>s don't have
+                      that machinery, so the loop never starts. The visual
+                      result is the same — 17 colored swatches in a grid
+                      — but the rendering path is one-way: click → onChange
+                      → parent state updates → picker re-renders once. */}
+                  <div className="grid grid-cols-9 gap-1">
                     {COLOR_PRESETS.map((hex) => (
-                      <ColorSwatchPickerItem
+                      <button
                         key={hex}
-                        color={hex}
-                        className="size-6 cursor-pointer rounded border border-border transition-transform hover:scale-110"
-                      >
-                        <ColorSwatch />
-                      </ColorSwatchPickerItem>
+                        type="button"
+                        onClick={() => onChange(hex)}
+                        aria-label={hex}
+                        aria-pressed={normalizeColor(color) === hex}
+                        className="size-6 cursor-pointer rounded border border-border transition-transform hover:scale-110 aria-pressed:ring-2 aria-pressed:ring-primary"
+                        style={{ backgroundColor: hex }}
+                      />
                     ))}
-                  </ColorSwatchPicker>
+                  </div>
                 </div>
               </ColorPicker>
             </div>
