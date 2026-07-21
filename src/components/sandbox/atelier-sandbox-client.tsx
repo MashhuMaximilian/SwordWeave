@@ -579,9 +579,22 @@ export function AtelierSandboxClient({
     setShowNewModal(false);
     if (choice?.heritageSubKind) setHeritageKind(choice.heritageSubKind);
     if (choice?.mechanicsSubKind) setMechanicsDraftKind(choice.mechanicsSubKind);
-    // NOTE: deliberately do NOT switch the active tab — the tab is a library
-    // filter and the build form renders from the chosen draft kind
-    // (mechanicsDraftKind / heritageKind), independent of the tab.
+    // Phase 8 rev 6: sync the active tab to the chosen kind. The previous
+    // behavior was "deliberately do NOT switch the active tab — the build
+    // form renders from the chosen draft kind, independent of the tab."
+    // That left the user in a broken state after picking heritage or item:
+    // heritageKind/item was set so the HeritageForm / ItemForm rendered on
+    // the right, but the URL had no build param and parseBuild(undefined)
+    // fell back to "mechanics", so GrammarLibrary rendered on the left with
+    // canSlot=false — the "Slot into build" button vanished.
+    //
+    // The fix: set build to choice.tab so the library switches to match.
+    // For mechanics kinds this is a no-op when already on mechanics; for
+    // heritage and item kinds it correctly switches to HeritageLibrary /
+    // ItemLibrary.
+    if (choice?.tab) {
+      setBuild(choice.tab);
+    }
     setEditing(null);
     setFormSnapshot(null);
     setFormIsDirty(false);
@@ -601,9 +614,16 @@ export function AtelierSandboxClient({
     // initialEditing, which can throw during the editing -> null transition
     // (the "reload page" error). replaceState updates the bar + deep-link
     // state without a server re-render.
-    nextParams.delete("build");
+    //
+    // Phase 8 rev 6: set build to match choice.tab instead of stripping
+    // it. The chooser knows which tab to switch to; we honor it.
     nextParams.delete("edit");
     nextParams.delete("intent");
+    if (choice?.tab) {
+      nextParams.set("build", choice.tab);
+    } else {
+      nextParams.delete("build");
+    }
     const clearedUrl = nextParams.toString()
       ? `${pathname}?${nextParams.toString()}`
       : pathname;
