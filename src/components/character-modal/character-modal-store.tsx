@@ -113,6 +113,17 @@ export type PendingSlot = {
       /** Always equals the activeStep at queue time (snapshot). */
       tab: CharacterTabId;
       name: string;
+      /**
+       * Phase 8.1 batch 10: mirror metadata captured at queue time so
+       * the slot receiver can render the mirror toggle without
+       * refetching. isMirrorable=false means the mirror toggle is
+       * hidden. mirrorBuCredit is the negative-BU contribution when
+       * mirrored (typically == buCost but the canon allows DM override
+       * to set it lower).
+       */
+      isMirrorable?: boolean;
+      mirrorBuCredit?: number;
+      buCost?: number;
     }
   | {
       kind: "capability";

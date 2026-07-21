@@ -67,7 +67,7 @@ export function SlotReceiverTab({
   ctaPrimary,
   ctaSecondary,
 }: SlotReceiverTabProps) {
-  const { pendingSlots, removeSlot } = useCharacterModal();
+  const { pendingSlots, removeSlot, setSlotMirror } = useCharacterModal();
   const slots = pendingSlots[tabId];
 
   const heritageSlots = useMemo(
@@ -92,15 +92,20 @@ export function SlotReceiverTab({
           {slots.map((slot, idx) =>
             slot.kind === "heritage" ? (
               <HeritageSlotCard
-                key={`heritage-${slot.heritageId}`}
+                key={slot.slotId ?? `heritage-${slot.heritageId}-${idx}`}
                 slot={slot}
                 onRemove={() => removeSlot(tabId, idx)}
               />
             ) : (
               <MechanicSlotRow
-                key={`${slot.kind}-${idx}`}
+                key={slot.slotId ?? `${slot.kind}-${idx}`}
                 slot={slot}
                 onRemove={() => removeSlot(tabId, idx)}
+                onToggleMirror={
+                  slot.kind === "primitive" && slot.isMirrorable
+                    ? (mirror: boolean) => setSlotMirror(slot.slotId ?? "", mirror)
+                    : undefined
+                }
               />
             ),
           )}
@@ -117,25 +122,78 @@ export function SlotReceiverTab({
 function MechanicSlotRow({
   slot,
   onRemove,
+  onToggleMirror,
 }: {
   slot: PendingSlot;
   onRemove: () => void;
+  onToggleMirror?: ((mirror: boolean) => void) | undefined;
 }) {
   const label = slotLabel(slot);
   const kindLabel = slotKindLabel(slot);
+  const isMirrorablePrimitive =
+    slot.kind === "primitive" && slot.isMirrorable === true;
+  const mirrored = isMirrorablePrimitive && slot.mirror === true;
+  const buCost = slot.kind === "primitive" ? (slot.buCost ?? 0) : 0;
   return (
-    <li className="flex items-center justify-between gap-2 rounded-md border border-border p-3 text-sm">
-      <div className="min-w-0 flex-1">
-        <div className="font-medium text-foreground">{label}</div>
-        <div className="text-xs text-muted-foreground">{kindLabel}</div>
+    <li className="space-y-2 rounded-md border border-border p-3 text-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-foreground">{label}</span>
+            {isMirrorablePrimitive ? (
+              <span
+                className={
+                  "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase " +
+                  (mirrored
+                    ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                    : "bg-secondary text-secondary-foreground")
+                }
+              >
+                {mirrored ? "Mirrored" : "Mirrorable"}
+              </span>
+            ) : null}
+          </div>
+          <div className="text-xs text-muted-foreground">{kindLabel}</div>
+          {isMirrorablePrimitive ? (
+            <div className="mt-1 text-xs text-muted-foreground">
+              <span className="font-mono">{buCost} BU</span>
+              {mirrored ? (
+                <>
+                  {" "}
+                  →{" "}
+                  <span className="font-mono text-amber-700 dark:text-amber-300">
+                    −{slot.mirrorBuCredit ?? buCost} BU (debt)
+                  </span>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="shrink-0 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-destructive hover:text-destructive"
+        >
+          Remove
+        </button>
       </div>
-      <button
-        type="button"
-        onClick={onRemove}
-        className="shrink-0 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-destructive hover:text-destructive"
-      >
-        Remove
-      </button>
+      {isMirrorablePrimitive && onToggleMirror ? (
+        <label className="flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={mirrored}
+            onChange={(e) => onToggleMirror(e.target.checked)}
+            className="size-4 rounded border-border text-primary focus:ring-primary"
+          />
+          <span className="text-muted-foreground">
+            Mirror this primitive (BU debt of{" "}
+            <span className="font-mono">
+              −{slot.mirrorBuCredit ?? buCost}
+            </span>
+            )
+          </span>
+        </label>
+      ) : null}
     </li>
   );
 }

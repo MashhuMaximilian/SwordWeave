@@ -747,11 +747,17 @@ function SandboxPreviewBody({
       return;
     const tab = characterModal.activeStep;
     if (item.kind === "primitive") {
+      // Phase 8.1 batch 10: capture mirror metadata so the slot
+      // receiver can render the mirror toggle without re-fetching.
+      const row = item.row;
       characterModal.queueSlot({
         kind: "primitive",
-        primitiveId: item.row.id,
+        primitiveId: row.id,
         tab,
-        name: item.row.name,
+        name: row.name,
+        isMirrorable: row.isMirrorable,
+        mirrorBuCredit: row.mirrorBuCredit,
+        buCost: row.buCost,
       });
     } else if (item.kind === "capability") {
       characterModal.queueSlot({
