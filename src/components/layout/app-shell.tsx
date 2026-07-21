@@ -13,6 +13,10 @@
 
 import { GlobalControls } from "./global-controls";
 import { ModalStackHost } from "@/components/ui/modal-stack";
+import {
+  CharacterModalProvider,
+} from "@/components/character-modal/character-modal-store";
+import { CharacterModal } from "@/components/character-modal/character-modal";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   // ModalStackHost MUST be the outermost provider so that GlobalControls
@@ -29,32 +33,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // GlobalControls provider is a parent of the modal renderer.
   return (
     <ModalStackHost>
-      <GlobalControls>
-        <main className="min-w-0 pb-2">{children}</main>
-        <footer className="border-t border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">
-            <span>
-              SwordWeave · Open-source TTRPG engine
-            </span>
-            <div className="flex items-center gap-4">
-              <a
-                href="/attributions"
-                className="hover:text-foreground hover:underline"
-              >
-                Attributions
-              </a>
-              <a
-                href="https://github.com/MashhuMaximilian/SwordWeave"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-foreground hover:underline"
-              >
-                GitHub
-              </a>
+      <CharacterModalProvider>
+        <GlobalControls>
+          <main className="min-w-0 pb-2">{children}</main>
+          <footer className="border-t border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+            <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">
+              <span>
+                SwordWeave · Open-source TTRPG engine
+              </span>
+              <div className="flex items-center gap-4">
+                <a
+                  href="/attributions"
+                  className="hover:text-foreground hover:underline"
+                >
+                  Attributions
+                </a>
+                <a
+                  href="https://github.com/MashhuMaximilian/SwordWeave"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-foreground hover:underline"
+                >
+                  GitHub
+                </a>
+              </div>
             </div>
-          </div>
-        </footer>
-      </GlobalControls>
+          </footer>
+          {/* Character creation modal (Phase 8.1) — persistent overlay.
+              Lives inside CharacterModalProvider so the FAB onClick in
+              GlobalControls can read the same store. Renders nothing
+              when closed. */}
+          <CharacterModal />
+        </GlobalControls>
+      </CharacterModalProvider>
     </ModalStackHost>
   );
 }

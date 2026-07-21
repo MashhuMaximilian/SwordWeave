@@ -33,6 +33,7 @@ import { RightFilterPanel } from "./right-filter-panel";
 import { BuildPreviewDrawer } from "./build-preview-drawer";
 import { usePathname, useRouter } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
+import { useCharacterModal } from "@/components/character-modal/character-modal-store";
 import {
   Columns2,
   LogOut,
@@ -156,6 +157,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
   const { user, isSignedIn, isLoaded } = useUser();
   const { signOut, openUserProfile } = useClerk();
   const stack = useModalStack();
+  const characterModal = useCharacterModal();
 
   // Profile data from Clerk — used by the FAB's user-menu button to show
   // the avatar + display name. The full user menu body is rendered as a
@@ -391,12 +393,10 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
       // Phase 8 rev 10: replace the filters FAB icon with a Character
       // button (Mona Lisa icon). Filters were redundant — the page
       // already exposes a Filters button on filterable routes, and
-      // the FAB grid is too small to host both. Character is a
-      // placeholder for the future character modal — the actual
-      // modal-launching logic lands with the 8.1 work
-      // (character-modal-store + CharacterModal + provider). For
-      // now the button is in the grid but a no-op, so the user can
-      // place it where they want before the implementation lands.
+      // the FAB grid is too small to host both.
+      // Phase 8.1 batch 1: wire the Character FAB to the persistent
+      // character modal. toggle() opens if closed, closes if open.
+      // (Replaces the previous no-op that rev 10 left as a placeholder.)
       {
       kind: "action" as const,
       key: "character",
@@ -411,7 +411,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         />
       ),
       onClick: () => {
-        // Intentionally empty — see the comment above.
+        characterModal.toggle();
       },
     },
       {
