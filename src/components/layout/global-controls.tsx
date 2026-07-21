@@ -486,6 +486,13 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         onUserMenu={openUserMenu}
         currentUser={currentUser}
         buildStashCount={sandboxFormDirty ? 1 : 0}
+        actionBadgeCounts={{
+          // Phase 8.1 batch 2: notification dot on Character FAB when
+          // the modal's draft is dirty. Matches the Build FAB dot so
+          // the user can tell at a glance whether the modal has
+          // in-progress content before opening it.
+          character: characterModal.isDirty ? 1 : 0,
+        }}
         // On sandbox routes a bottom tab bar (~50px tall + safe-area)
         // is fixed to the viewport bottom. The default FAB bottom
         // offset (16px) puts the FAB ON TOP of the tab bar's

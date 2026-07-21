@@ -33,7 +33,7 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -115,8 +115,18 @@ interface FabSpeedDialProps {
    * button in the bottom 2x3 grid. > 0 = show the dot. The build stash
    * is the in-progress sandbox form; a dot means "you have unsaved
    * changes — open the sheet to continue."
+   *
+   * Phase 8.1 batch 2: superseded by `actionBadgeCounts` for any action
+   * key (Character FAB needs the same dot). Kept for back-compat — when
+   * provided, merged into `actionBadgeCounts` under the "build" key.
    */
   buildStashCount?: number;
+  /**
+   * Per-action notification dot count, keyed by `FabItem.key`. > 0 shows
+   * a small badge on the action button. Replaces the build-only
+   * `buildStashCount` prop; both can be supplied and will merge.
+   */
+  actionBadgeCounts?: Record<string, number>;
 }
 
 export function FabSpeedDial({
@@ -127,7 +137,18 @@ export function FabSpeedDial({
   onUserMenu,
   currentUser,
   buildStashCount = 0,
+  actionBadgeCounts,
 }: FabSpeedDialProps) {
+  // Merge the legacy buildStashCount into the per-action map so callers
+  // that still pass the old prop keep their dot, and callers that pass
+  // the new map get per-key badges.
+  const badgeCounts: Record<string, number> = useMemo(
+    () => ({
+      ...(buildStashCount > 0 ? { build: buildStashCount } : {}),
+      ...(actionBadgeCounts ?? {}),
+    }),
+    [buildStashCount, actionBadgeCounts],
+  );
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const isDark = useIsDark();
@@ -347,14 +368,18 @@ export function FabSpeedDial({
                 )}
               >
                 {action.icon}
-                {action.key === "build" && buildStashCount > 0 ? (
-                  <span
-                    className="pointer-events-none absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground ring-2 ring-background"
-                    aria-label={`${buildStashCount} unsaved build change${buildStashCount === 1 ? "" : "s"}`}
-                  >
-                    {buildStashCount > 9 ? "9+" : buildStashCount}
-                  </span>
-                ) : null}
+                {(() => {
+                  const count = badgeCounts[action.key] ?? 0;
+                  if (count <= 0) return null;
+                  return (
+                    <span
+                      className="pointer-events-none absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground ring-2 ring-background"
+                      aria-label={`${count} unsaved ${action.label.toLowerCase()} change${count === 1 ? "" : "s"}`}
+                    >
+                      {count > 9 ? "9+" : count}
+                    </span>
+                  );
+                })()}
               </button>
             ))}
           </div>
