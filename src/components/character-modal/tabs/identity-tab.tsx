@@ -9,9 +9,11 @@
 //   - size        (TINY | SMALL | MEDIUM | LARGE | HUGE | GARGANTUAN)
 //   - notes       (optional, freeform)
 //
-// Persistence: localStorage key
-//   swordweave:character-modal:draft:identity
-// Cleared on successful create (TabbedCharacterForm's onCreated).
+// === Phase 8.1 fix-up: controlled when state/onChange provided ===
+// Originally this tab owned its state and persisted via localStorage.
+// Parent (TabbedCharacterForm) now owns the state for the same reason
+// as AttributesTab — the modal's footer reads from parent state, so
+// the tab's local state was orphaned from the rest of the modal.
 // =============================================================================
 
 import { useCallback, useEffect, useState } from "react";
@@ -19,65 +21,80 @@ import { useCallback, useEffect, useState } from "react";
 const STORAGE_KEY = "swordweave:character-modal:draft:identity";
 const SIZES = ["TINY", "SMALL", "MEDIUM", "LARGE", "HUGE", "GARGANTUAN"] as const;
 
-type IdentityState = {
+export type IdentityState = {
   name: string;
   portraitUrl: string;
   size: (typeof SIZES)[number];
   notes: string;
 };
 
-const EMPTY: IdentityState = {
+export const IDENTITY_EMPTY: IdentityState = {
   name: "",
   portraitUrl: "",
   size: "MEDIUM",
   notes: "",
 };
 
+export const IDENTITY_STORAGE_KEY = STORAGE_KEY;
+
 function load(): IdentityState {
-  if (typeof window === "undefined") return EMPTY;
+  if (typeof window === "undefined") return IDENTITY_EMPTY;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return EMPTY;
+    if (!raw) return IDENTITY_EMPTY;
     const parsed = JSON.parse(raw) as Partial<IdentityState>;
     return {
-      ...EMPTY,
+      ...IDENTITY_EMPTY,
       ...parsed,
       size: (SIZES as readonly string[]).includes(parsed.size ?? "")
         ? (parsed.size as IdentityState["size"])
         : "MEDIUM",
     };
   } catch {
-    return EMPTY;
+    return IDENTITY_EMPTY;
   }
 }
 
-export function IdentityTab() {
-  const [state, setState] = useState<IdentityState>(EMPTY);
+interface IdentityTabProps {
+  state?: IdentityState;
+  onChange?: (next: IdentityState) => void;
+}
+
+export function IdentityTab({ state: controlled, onChange }: IdentityTabProps = {}) {
+  const [internal, setInternal] = useState<IdentityState>(IDENTITY_EMPTY);
   const [hydrated, setHydrated] = useState(false);
+  const isControlled = controlled !== undefined && onChange !== undefined;
+  const state = isControlled ? (controlled as IdentityState) : internal;
 
   useEffect(() => {
-    setState(load());
+    setInternal(load());
     setHydrated(true);
   }, []);
 
-  // Debounced write to localStorage.
+  // Debounced write to localStorage — only when uncontrolled. When
+  // controlled, the parent owns persistence.
   useEffect(() => {
-    if (!hydrated) return;
+    if (isControlled || !hydrated) return;
     const t = window.setTimeout(() => {
       try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(internal));
       } catch {
         // ignore
       }
     }, 500);
     return () => window.clearTimeout(t);
-  }, [state, hydrated]);
+  }, [internal, hydrated, isControlled]);
 
   const setField = useCallback(
     <K extends keyof IdentityState>(key: K, value: IdentityState[K]) => {
-      setState((current) => ({ ...current, [key]: value }));
+      const next = { ...state, [key]: value };
+      if (isControlled) {
+        onChange!(next);
+      } else {
+        setInternal(next);
+      }
     },
-    [],
+    [state, isControlled, onChange],
   );
 
   if (!hydrated) {
@@ -166,7 +183,3 @@ export function IdentityTab() {
     </div>
   );
 }
-
-export const IDENTITY_EMPTY = EMPTY;
-export const IDENTITY_STORAGE_KEY = STORAGE_KEY;
-export type { IdentityState };

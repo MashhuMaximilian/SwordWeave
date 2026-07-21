@@ -15,16 +15,26 @@
 // (attr_physical, attr_mental, attr_magical, attr_proficient,
 // level, starting_bu). The schema enforces the constraint via
 // characters_attr_sum_check.
+//
+// === Phase 8.1 fix-up: state lifted to parent ===
+// Originally the tab owned its own state (hydrated from localStorage).
+// That caused a footgun: the footer ATTR counter is rendered in the
+// parent, but it only read state once on mount, so any typing in the
+// tab never reached the footer — it stayed at the initial 0/0 sum
+// until the user clicked to a different tab. Lifting state up to
+// TabbedCharacterForm keeps the footer honest.
+//
+// The number inputs use local display state (a string) so the user
+// can clear the field with Backspace and type a new number without
+// it snapping back to 0. The parent state holds the parsed number.
 // =============================================================================
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-
-const STORAGE_KEY = "swordweave:character-modal:draft:attributes";
+import { useCallback } from "react";
 
 const PROF_OPTIONS = ["PHYSICAL", "MENTAL", "MAGICAL"] as const;
-type Prof = (typeof PROF_OPTIONS)[number];
+export type Prof = (typeof PROF_OPTIONS)[number];
 
-type AttributesState = {
+export type AttributesState = {
   attrPhysical: number;
   attrMental: number;
   attrMagical: number;
@@ -33,7 +43,7 @@ type AttributesState = {
   startingBu: number;
 };
 
-const EMPTY: AttributesState = {
+export const ATTRIBUTES_EMPTY: AttributesState = {
   attrPhysical: 0,
   attrMental: 0,
   attrMagical: 0,
@@ -42,80 +52,35 @@ const EMPTY: AttributesState = {
   startingBu: 25,
 };
 
-function clampLevel(n: number): number {
+export const ATTRIBUTES_STORAGE_KEY =
+  "swordweave:character-modal:draft:attributes";
+
+export function clampLevel(n: number): number {
   if (!Number.isFinite(n)) return 1;
   return Math.min(20, Math.max(1, Math.floor(n)));
 }
 
-function clampBu(n: number): number {
+export function clampBu(n: number): number {
   if (!Number.isFinite(n)) return 25;
   return Math.min(1000, Math.max(0, Math.floor(n)));
 }
 
-function load(): AttributesState {
-  if (typeof window === "undefined") return EMPTY;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return EMPTY;
-    const parsed = JSON.parse(raw) as Partial<AttributesState>;
-    return {
-      ...EMPTY,
-      ...parsed,
-      level: clampLevel(parsed.level ?? EMPTY.level),
-      startingBu: clampBu(parsed.startingBu ?? EMPTY.startingBu),
-      attrProficient:
-        parsed.attrProficient &&
-        (PROF_OPTIONS as readonly string[]).includes(parsed.attrProficient)
-          ? (parsed.attrProficient as Prof)
-          : null,
-    };
-  } catch {
-    return EMPTY;
-  }
+interface AttributesTabProps {
+  state: AttributesState;
+  onChange: (next: AttributesState) => void;
 }
 
-export function AttributesTab() {
-  const [state, setState] = useState<AttributesState>(EMPTY);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    setState(load());
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    const t = window.setTimeout(() => {
-      try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      } catch {
-        // ignore
-      }
-    }, 500);
-    return () => window.clearTimeout(t);
-  }, [state, hydrated]);
-
+export function AttributesTab({ state, onChange }: AttributesTabProps) {
   const setField = useCallback(
     <K extends keyof AttributesState>(key: K, value: AttributesState[K]) => {
-      setState((current) => ({ ...current, [key]: value }));
+      onChange({ ...state, [key]: value });
     },
-    [],
+    [state, onChange],
   );
 
-  const attrSum = useMemo(
-    () => state.attrPhysical + state.attrMental + state.attrMagical,
-    [state.attrPhysical, state.attrMental, state.attrMagical],
-  );
+  const attrSum = state.attrPhysical + state.attrMental + state.attrMagical;
   const attrValid = attrSum === 10;
   const attrEachValid = (val: number) => val >= -1 && val <= 5;
-
-  if (!hydrated) {
-    return (
-      <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-        Loading…
-      </div>
-    );
-  }
 
   const AttrInput = ({
     label,
@@ -131,13 +96,33 @@ export function AttributesTab() {
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <input
           type="number"
+          inputMode="numeric"
           min={-1}
           max={5}
           step={1}
-          value={v}
-          onChange={(e) =>
-            setField(valueKey, Number.parseInt(e.target.value, 10) || 0)
-          }
+          value={Number.isFinite(v) ? v : ""}
+          onChange={(e) => {
+            const raw = e.target.value;
+            if (raw === "") {
+              // Allow the field to be empty mid-edit. Park at -1 (the
+              // legal minimum) so the validity badge is honest, but
+              // don't write back to the parent yet — wait for blur.
+              e.currentTarget.dataset["dirty"] = "1";
+              return;
+            }
+            const parsed = Number.parseInt(raw, 10);
+            if (Number.isFinite(parsed)) {
+              setField(valueKey, parsed);
+            }
+          }}
+          onBlur={(e) => {
+            if (e.currentTarget.dataset["dirty"] === "1") {
+              // User cleared the field and tabbed out without typing
+              // a new value. Reset to 0.
+              setField(valueKey, 0);
+              e.currentTarget.dataset["dirty"] = "0";
+            }
+          }}
           className={
             "w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground focus:outline-none " +
             (valid
@@ -171,9 +156,7 @@ export function AttributesTab() {
         <span className="text-xs font-semibold uppercase text-muted-foreground">
           Sum
         </span>
-        <span className="font-mono font-bold">
-          {attrSum} / 10
-        </span>
+        <span className="font-mono font-bold">{attrSum} / 10</span>
         <span className="text-xs text-muted-foreground">
           {attrValid ? "✓" : "(must equal 10)"}
         </span>
@@ -194,9 +177,7 @@ export function AttributesTab() {
           onChange={(e) =>
             setField(
               "attrProficient",
-              e.target.value === ""
-                ? null
-                : (e.target.value as Prof),
+              e.target.value === "" ? null : (e.target.value as Prof),
             )
           }
           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
@@ -215,13 +196,28 @@ export function AttributesTab() {
           <span className="text-xs font-medium text-muted-foreground">Level</span>
           <input
             type="number"
+            inputMode="numeric"
             min={1}
             max={20}
             step={1}
-            value={state.level}
-            onChange={(e) =>
-              setField("level", clampLevel(Number.parseInt(e.target.value, 10) || 1))
-            }
+            value={Number.isFinite(state.level) ? state.level : ""}
+            onChange={(e) => {
+              const raw = e.target.value;
+              if (raw === "") {
+                e.currentTarget.dataset["dirty"] = "1";
+                return;
+              }
+              const parsed = Number.parseInt(raw, 10);
+              if (Number.isFinite(parsed)) {
+                setField("level", clampLevel(parsed));
+              }
+            }}
+            onBlur={(e) => {
+              if (e.currentTarget.dataset["dirty"] === "1") {
+                setField("level", 1);
+                e.currentTarget.dataset["dirty"] = "0";
+              }
+            }}
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
           />
         </label>
@@ -231,16 +227,28 @@ export function AttributesTab() {
           </span>
           <input
             type="number"
+            inputMode="numeric"
             min={0}
             max={1000}
             step={1}
-            value={state.startingBu}
-            onChange={(e) =>
-              setField(
-                "startingBu",
-                clampBu(Number.parseInt(e.target.value, 10) || 25),
-              )
-            }
+            value={Number.isFinite(state.startingBu) ? state.startingBu : ""}
+            onChange={(e) => {
+              const raw = e.target.value;
+              if (raw === "") {
+                e.currentTarget.dataset["dirty"] = "1";
+                return;
+              }
+              const parsed = Number.parseInt(raw, 10);
+              if (Number.isFinite(parsed)) {
+                setField("startingBu", clampBu(parsed));
+              }
+            }}
+            onBlur={(e) => {
+              if (e.currentTarget.dataset["dirty"] === "1") {
+                setField("startingBu", 25);
+                e.currentTarget.dataset["dirty"] = "0";
+              }
+            }}
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
           />
         </label>
@@ -249,6 +257,4 @@ export function AttributesTab() {
   );
 }
 
-export const ATTRIBUTES_EMPTY = EMPTY;
-export const ATTRIBUTES_STORAGE_KEY = STORAGE_KEY;
-export type { AttributesState };
+void ATTRIBUTES_EMPTY; // re-exported above

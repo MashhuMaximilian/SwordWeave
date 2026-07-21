@@ -9,37 +9,38 @@
 //   - Ties & Allies         (people who matter)
 //   - Flaw & Conflict       (internal/external friction)
 //
-// All four persist to a single JSONB column on save
-// (characters.backstory). On the client side, each field gets its
-// own localStorage slot so drafts survive reload.
+// === Phase 8.1 fix-up: controlled when state/onChange provided ===
+// Same lift as IdentityTab and AttributesTab.
 // =============================================================================
 
 import { useCallback, useEffect, useState } from "react";
 
 const STORAGE_KEY = "swordweave:character-modal:draft:backstory";
 
-type BackstoryState = {
+export type BackstoryState = {
   origin: string;
   motivation: string;
   ties: string;
   flaw: string;
 };
 
-const EMPTY: BackstoryState = {
+export const BACKSTORY_EMPTY: BackstoryState = {
   origin: "",
   motivation: "",
   ties: "",
   flaw: "",
 };
 
+export const BACKSTORY_STORAGE_KEY = STORAGE_KEY;
+
 function load(): BackstoryState {
-  if (typeof window === "undefined") return EMPTY;
+  if (typeof window === "undefined") return BACKSTORY_EMPTY;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return EMPTY;
-    return { ...EMPTY, ...(JSON.parse(raw) as Partial<BackstoryState>) };
+    if (!raw) return BACKSTORY_EMPTY;
+    return { ...BACKSTORY_EMPTY, ...(JSON.parse(raw) as Partial<BackstoryState>) };
   } catch {
-    return EMPTY;
+    return BACKSTORY_EMPTY;
   }
 }
 
@@ -75,32 +76,47 @@ const FIELDS: Array<{
   },
 ];
 
-export function BackstoryTab() {
-  const [state, setState] = useState<BackstoryState>(EMPTY);
+interface BackstoryTabProps {
+  state?: BackstoryState;
+  onChange?: (next: BackstoryState) => void;
+}
+
+export function BackstoryTab({
+  state: controlled,
+  onChange,
+}: BackstoryTabProps = {}) {
+  const [internal, setInternal] = useState<BackstoryState>(BACKSTORY_EMPTY);
   const [hydrated, setHydrated] = useState(false);
+  const isControlled = controlled !== undefined && onChange !== undefined;
+  const state = isControlled ? (controlled as BackstoryState) : internal;
 
   useEffect(() => {
-    setState(load());
+    setInternal(load());
     setHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (isControlled || !hydrated) return;
     const t = window.setTimeout(() => {
       try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(internal));
       } catch {
         // ignore
       }
     }, 500);
     return () => window.clearTimeout(t);
-  }, [state, hydrated]);
+  }, [internal, hydrated, isControlled]);
 
   const setField = useCallback(
     <K extends keyof BackstoryState>(key: K, value: BackstoryState[K]) => {
-      setState((current) => ({ ...current, [key]: value }));
+      const next = { ...state, [key]: value };
+      if (isControlled) {
+        onChange!(next);
+      } else {
+        setInternal(next);
+      }
     },
-    [],
+    [state, isControlled, onChange],
   );
 
   if (!hydrated) {
@@ -141,7 +157,3 @@ export function BackstoryTab() {
     </div>
   );
 }
-
-export const BACKSTORY_EMPTY = EMPTY;
-export const BACKSTORY_STORAGE_KEY = STORAGE_KEY;
-export type { BackstoryState };

@@ -726,10 +726,12 @@ function SandboxPreviewBody({
     }
   }
 
-  // Phase 8.1 batch 8: queue the slot into the character modal. The
-  // store routes heritage by its own kind; primitives/caps/effects go
-  // to the activeStep. Opens the modal if it's closed so the user
-  // sees their slot land immediately.
+  // Phase 8.1 batch 8 + 8.1 fix-up: queue the slot into the character
+  // modal. The store routes heritage by its own kind; primitives/caps/
+  // effects go to the activeStep. Also switches the modal to the
+  // destination tab (and opens the modal if it was closed) so the
+  // user sees the slot land — without this, slotting from a closed
+  // modal or the wrong tab left the slot invisible.
   function slotIntoCharacter() {
     if (
       item.kind !== "primitive" &&
@@ -737,18 +739,19 @@ function SandboxPreviewBody({
       item.kind !== "capability"
     )
       return;
+    const tab = characterModal.activeStep;
     if (item.kind === "primitive") {
       characterModal.queueSlot({
         kind: "primitive",
         primitiveId: item.row.id,
-        tab: characterModal.activeStep,
+        tab,
         name: item.row.name,
       });
     } else if (item.kind === "capability") {
       characterModal.queueSlot({
         kind: "capability",
         capabilityId: item.row.id,
-        tab: characterModal.activeStep,
+        tab,
         name: item.row.name,
       });
     } else {
@@ -756,10 +759,11 @@ function SandboxPreviewBody({
       characterModal.queueSlot({
         kind: "effect",
         effectId: item.row.id,
-        tab: characterModal.activeStep,
+        tab,
         name: item.row.name,
       });
     }
+    characterModal.setActiveStep(tab);
     if (!characterModal.isOpen) {
       characterModal.open();
     }

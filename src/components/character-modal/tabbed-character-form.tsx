@@ -39,15 +39,22 @@ import {
   CHARACTER_TAB_LABELS,
   type CharacterTabId,
 } from "./character-modal-store";
-import { IdentityTab, IDENTITY_STORAGE_KEY, type IdentityState } from "./tabs/identity-tab";
+import {
+  IdentityTab,
+  IDENTITY_STORAGE_KEY,
+  IDENTITY_EMPTY,
+  type IdentityState,
+} from "./tabs/identity-tab";
 import {
   BackstoryTab,
   BACKSTORY_STORAGE_KEY,
+  BACKSTORY_EMPTY,
   type BackstoryState,
 } from "./tabs/backstory-tab";
 import {
   AttributesTab,
   ATTRIBUTES_STORAGE_KEY,
+  ATTRIBUTES_EMPTY,
   type AttributesState,
 } from "./tabs/attributes-tab";
 import { SlotReceiverTab } from "./tabs/slot-receiver-tab";
@@ -122,9 +129,13 @@ export function TabbedCharacterForm() {
   const { toasts, showToast, dismissToast } = useToasts();
 
   const [isPending, setIsPending] = useState(false);
-  const [identity, setIdentity] = useState<IdentityState | null>(null);
-  const [backstory, setBackstory] = useState<BackstoryState | null>(null);
-  const [attributes, setAttributes] = useState<AttributesState | null>(null);
+  // Form state — owned here, lifted from the per-tab components so
+  // the footer's ATTR counter stays in sync as the user types. The
+  // per-tab components are now controlled; localStorage persistence
+  // is handled here with debounced writes.
+  const [identity, setIdentity] = useState<IdentityState>(IDENTITY_EMPTY);
+  const [backstory, setBackstory] = useState<BackstoryState>(BACKSTORY_EMPTY);
+  const [attributes, setAttributes] = useState<AttributesState>(ATTRIBUTES_EMPTY);
   const [hydrated, setHydrated] = useState(false);
 
   // Mark dirty on mount; keep dot on until resetDraft clears it.
@@ -133,31 +144,58 @@ export function TabbedCharacterForm() {
   }, [setDirty]);
 
   // Hydrate form data from localStorage on mount. We do this once and
-  // pass the snapshot to Create — the per-tab components keep their
-  // own live state from there.
+  // pass the snapshot to Create.
   useEffect(() => {
-    setIdentity(readLocalStorage<IdentityState>(IDENTITY_STORAGE_KEY, {
-      name: "",
-      portraitUrl: "",
-      size: "MEDIUM",
-      notes: "",
-    }));
-    setBackstory(readLocalStorage<BackstoryState>(BACKSTORY_STORAGE_KEY, {
-      origin: "",
-      motivation: "",
-      ties: "",
-      flaw: "",
-    }));
-    setAttributes(readLocalStorage<AttributesState>(ATTRIBUTES_STORAGE_KEY, {
-      attrPhysical: 0,
-      attrMental: 0,
-      attrMagical: 0,
-      attrProficient: null,
-      level: 1,
-      startingBu: 25,
-    }));
+    setIdentity(
+      readLocalStorage<IdentityState>(IDENTITY_STORAGE_KEY, IDENTITY_EMPTY),
+    );
+    setBackstory(
+      readLocalStorage<BackstoryState>(BACKSTORY_STORAGE_KEY, BACKSTORY_EMPTY),
+    );
+    setAttributes(
+      readLocalStorage<AttributesState>(ATTRIBUTES_STORAGE_KEY, ATTRIBUTES_EMPTY),
+    );
     setHydrated(true);
   }, []);
+
+  // Debounced persistence for each tab's state. Each setter triggers
+  // a 500ms-debounced write to its own localStorage slot so a reload
+  // restores the user mid-edit.
+  useEffect(() => {
+    if (!hydrated) return;
+    const t = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(IDENTITY_STORAGE_KEY, JSON.stringify(identity));
+      } catch {
+        // ignore
+      }
+    }, 500);
+    return () => window.clearTimeout(t);
+  }, [identity, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const t = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(BACKSTORY_STORAGE_KEY, JSON.stringify(backstory));
+      } catch {
+        // ignore
+      }
+    }, 500);
+    return () => window.clearTimeout(t);
+  }, [backstory, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const t = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(ATTRIBUTES_STORAGE_KEY, JSON.stringify(attributes));
+      } catch {
+        // ignore
+      }
+    }, 500);
+    return () => window.clearTimeout(t);
+  }, [attributes, hydrated]);
 
   const totalSlotsCount = useMemo(
     () =>
@@ -165,16 +203,12 @@ export function TabbedCharacterForm() {
     [pendingSlots],
   );
 
-  const attrSum = useMemo(() => {
-    if (!attributes) return 0;
-    return attributes.attrPhysical + attributes.attrMental + attributes.attrMagical;
-  }, [attributes]);
+  const nameValid = identity.name.trim().length > 0;
+  const attrSum = attributes.attrPhysical + attributes.attrMental + attributes.attrMagical;
   const attrValid = attrSum === 10;
-  const nameValid = (identity?.name ?? "").trim().length > 0;
   const canCreate = nameValid && attrValid && !isPending;
 
   const handleCreate = useCallback(async () => {
-    if (!identity || !attributes) return;
     if (!nameValid) {
       showToast("Name is required.", "error");
       setActiveStep("identity");
@@ -304,7 +338,7 @@ export function TabbedCharacterForm() {
     resetDraft,
   ]);
 
-  if (!hydrated || !identity || !backstory || !attributes) {
+  if (!hydrated) {
     return (
       <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
         Loading…
@@ -357,9 +391,15 @@ export function TabbedCharacterForm() {
 
       {/* Tab body */}
       <div className="px-1">
-        {activeStep === "identity" && <IdentityTab />}
-        {activeStep === "backstory" && <BackstoryTab />}
-        {activeStep === "attributes" && <AttributesTab />}
+        {activeStep === "identity" && (
+          <IdentityTab state={identity} onChange={setIdentity} />
+        )}
+        {activeStep === "backstory" && (
+          <BackstoryTab state={backstory} onChange={setBackstory} />
+        )}
+        {activeStep === "attributes" && (
+          <AttributesTab state={attributes} onChange={setAttributes} />
+        )}
         {activeStep === "lineage" && (
           <SlotReceiverTab
             tabId="lineage"

@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import { useModalStack } from "@/components/ui/modal-stack";
-import { useCharacterModal } from "@/components/character-modal/character-modal-store";
+import { useCharacterModal, tabLabelForActiveStep } from "@/components/character-modal/character-modal-store";
 import {
   previewHeadingLabel,
   libraryCompositeId,
@@ -759,10 +759,16 @@ function BlueprintPreviewBody({
     }
   }
 
-  // Phase 8.1 batch 8: queue heritage / item into the character modal.
-  // The heritage's own `kind` column carries LINEAGE / UPBRINGING /
-  // MANIFEST — the modal's queueSlot() routes it to the matching tab.
-  // Items go to the items tab.
+  // Phase 8.1 batch 8 + fix-up: queue heritage / item / mechanic into
+  // the character modal. Heritage routes by its own LINEAGE/UPBRINGING/
+  // MANIFEST kind. Items go to items. Mechanics (primitives / effects
+  // / capabilities shown on this page when filtered) go to the modal's
+  // currently-active tab.
+  //
+  // After queueing we switch the modal's activeStep to the slot's
+  // destination tab and open the modal if closed. Without this, the
+  // slot landed silently — the user might still be on Identity tab
+  // (the reset default) and the slot would never become visible.
   const characterModal = useCharacterModal();
   function slotIntoCharacter() {
     if (item.kind === "heritage") {
@@ -774,6 +780,13 @@ function BlueprintPreviewBody({
         heritageKind,
         name: row.name,
       });
+      characterModal.setActiveStep(
+        heritageKind === "LINEAGE"
+          ? "lineage"
+          : heritageKind === "UPBRINGING"
+            ? "upbringing"
+            : "manifest",
+      );
       if (!characterModal.isOpen) {
         characterModal.open();
       }
@@ -786,6 +799,44 @@ function BlueprintPreviewBody({
         tab: "items",
         name: row.name,
       });
+      characterModal.setActiveStep("items");
+      if (!characterModal.isOpen) {
+        characterModal.open();
+      }
+      window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
+    } else if (
+      item.kind === "primitive" ||
+      item.kind === "effect" ||
+      item.kind === "capability"
+    ) {
+      // Heritage-library also previews primitives/effects/caps when
+      // the filter on the heritage-library tab is set to those kinds.
+      // Per Mashu 2026-07-21: the user can be in the heritages tab
+      // filtered by primitives and still slot into character.
+      const tab = characterModal.activeStep;
+      if (item.kind === "primitive") {
+        characterModal.queueSlot({
+          kind: "primitive",
+          primitiveId: item.row.id,
+          tab,
+          name: item.row.name,
+        });
+      } else if (item.kind === "capability") {
+        characterModal.queueSlot({
+          kind: "capability",
+          capabilityId: item.row.id,
+          tab,
+          name: item.row.name,
+        });
+      } else {
+        characterModal.queueSlot({
+          kind: "effect",
+          effectId: item.row.id,
+          tab,
+          name: item.row.name,
+        });
+      }
+      characterModal.setActiveStep(tab);
       if (!characterModal.isOpen) {
         characterModal.open();
       }
@@ -870,9 +921,13 @@ function BlueprintPreviewBody({
   const actionBar: PreviewActionProps = {
     loadIntoBuild: { label: "Load into build", onClick: loadAndPreview },
     ...(canSlot ? { primarySecondary: { label: "Slot into build", onClick: slotIntoBuild } } : {}),
-    // Phase 8.1 batch 8: heritage / item slots into the character modal.
-    // Heritage routes by its own LINEAGE/UPBRINGING/MANIFEST kind.
-    // Items go to the items tab.
+    // Phase 8.1 batch 8 + fix-up: every entity kind the character modal
+    // accepts shows a "Slot into character" CTA. Heritage routes by
+    // its own LINEAGE/UPBRINGING/MANIFEST kind so its label stays
+    // fixed (heritage itself decides which tab it lands in). Items
+    // always go to items tab — same — fixed label. Mechanics (prim /
+    // effect / capability) shown on this page go to activeStep, so
+    // their label is context-aware.
     ...(item.kind === "heritage" || item.kind === "item"
       ? {
           primaryTertiary: {
@@ -880,7 +935,16 @@ function BlueprintPreviewBody({
             onClick: slotIntoCharacter,
           },
         }
-      : {}),
+      : item.kind === "primitive" ||
+          item.kind === "effect" ||
+          item.kind === "capability"
+        ? {
+            primaryTertiary: {
+              label: `Slot into ${tabLabelForActiveStep(characterModal.activeStep, characterModal.isOpen)}`,
+              onClick: slotIntoCharacter,
+            },
+          }
+        : {}),
     ...(isOwner
       ? {
           onEdit: () =>
