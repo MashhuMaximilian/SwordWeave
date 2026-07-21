@@ -50,35 +50,33 @@ describe("validateMirrorSet — BU Market volatility ceiling", () => {
     mockSelect.mockReset();
   });
 
-  it("allows mirror set at exactly the ceiling (L1, -8 BU)", async () => {
+  it("allows mirror set at exactly the ceiling (L1, -4 BU)", async () => {
     mockPrimitives([
       { id: 1, name: "Vital Penalty", isMirrorable: true, mirrorBuCredit: 4 },
-      { id: 2, name: "Awkward Frame", isMirrorable: true, mirrorBuCredit: 4 },
     ]);
-    const result = await validateMirrorSet(1, [1, 2], [1, 2]);
+    const result = await validateMirrorSet(1, [1], [1]);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.rating).toBe(8);
-      expect(result.ceiling).toBe(8);
-      expect(result.bracket).toBe("1-4");
+      expect(result.rating).toBe(4);
+      expect(result.ceiling).toBe(4);
+      expect(result.bracket).toBe("1");
     }
   });
 
-  it("rejects mirror set that exceeds ceiling (L1, attempting -12 BU)", async () => {
+  it("rejects mirror set that exceeds ceiling (L1, attempting -8 BU)", async () => {
     mockPrimitives([
       { id: 1, name: "Penalty A", isMirrorable: true, mirrorBuCredit: 4 },
       { id: 2, name: "Penalty B", isMirrorable: true, mirrorBuCredit: 4 },
-      { id: 3, name: "Penalty C", isMirrorable: true, mirrorBuCredit: 4 },
     ]);
-    const result = await validateMirrorSet(1, [1, 2, 3], [1, 2, 3]);
+    const result = await validateMirrorSet(1, [1, 2], [1, 2]);
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.ceiling).toBe(8);
-      expect(result.rating).toBe(12);
+      expect(result.ceiling).toBe(4);
+      expect(result.rating).toBe(8);
       expect(result.status).toBe(422);
-      expect(result.offendingPrimitiveId).toBe(3);
-      expect(result.offendingPrimitiveName).toBe("Penalty C");
-      expect(result.error).toMatch(/exceeding level 1 ceiling of 8 BU/);
+      expect(result.offendingPrimitiveId).toBe(2);
+      expect(result.offendingPrimitiveName).toBe("Penalty B");
+      expect(result.error).toMatch(/exceeding level 1 ceiling of 4 BU/);
     }
   });
 

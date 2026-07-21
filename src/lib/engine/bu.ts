@@ -61,7 +61,7 @@ export interface EffectInput {
  * Source: BU Market — Mirror-Vector Architecture, Tier-Matched Volatility Ceiling.
  */
 export type VolatilityCeiling = {
-  readonly levelBracket: "1-4" | "5-10" | "11-15" | "16+";
+  readonly levelBracket: "1" | "2-4" | "5-10" | "11-15" | "16+";
   readonly maxNegativeBu: number;
   readonly accessibleTier: string;
 };
@@ -95,77 +95,148 @@ export interface BuLedger {
 // ============================================================================
 
 /**
- * Per the BU Market canon (Notion):
- * - Levels 1-4: Tier I & II (Minor / Standard), Max Volatility -8 BU
- * - Levels 5-10: Tier III (Major), Max Volatility -12 BU
- * - Levels 11-15: Tier IV (Core Axes), Max Volatility -16 BU
- * - Levels 16+: Tier IV+ (Apex), Max Volatility -24 BU
+ * Max BU debt per character level, per the Leveling & Progression
+ * Canon v1 (Notion page 37fed847-9ccd-80fb-a08b-c88bb715658a).
+ *
+ * Level 1 is the special case (-4 BU); all other levels fall into
+ * one of four broader brackets. These are PER-LEVEL, not per-bracket.
  */
-export function getVolatilityCeiling(level: number): VolatilityCeiling {
-  if (level >= 16) {
-    return {
-      levelBracket: "16+",
-      maxNegativeBu: 24,
-      accessibleTier: "Tier IV+ (Apex)",
-    };
-  }
-  if (level >= 11) {
-    return {
-      levelBracket: "11-15",
-      maxNegativeBu: 16,
-      accessibleTier: "Tier IV (Core Axes)",
-    };
-  }
-  if (level >= 5) {
-    return {
-      levelBracket: "5-10",
-      maxNegativeBu: 12,
-      accessibleTier: "Tier III (Major)",
-    };
-  }
-  return {
-    levelBracket: "1-4",
-    maxNegativeBu: 8,
-    accessibleTier: "Tier I & II (Minor / Standard)",
-  };
-}
-
-// ============================================================================
-// Character BU Budget
-// ============================================================================
+const MAX_DEBT_PER_LEVEL: ReadonlyArray<number> = [
+  4, //  L1 — special case per canon
+  8, 8, 8, //  L2 / L3 / L4
+  12, 12, 12, 12, 12, 12, //  L5-L10
+  16, 16, 16, 16, 16, //  L11-L15
+  24, 24, 24, 24, 24, //  L16-L20
+];
 
 /**
- * Calculate a character's total BU budget from level.
+ * Cumulative BU budget per character level (the total pool of BU a
+ * character of that level should have access to). Straight lookup
+ * from the canon table. The formula previously encoded in this file
+ * (25 + 10*(L-1) + spike) does NOT match the canon exactly — the
+ * canon bakes progression spikes into specific levels (L4, L8, L12,
+ * L16, L20) but uses an offset pattern that differs from "applied
+ * at the level it's listed" (e.g. L13 = 169 = L12 + 10 + 12-spike).
+ * Rather than reproduce the offset math we use the canon table
+ * directly — it's the source of truth.
+ */
+const CUMULATIVE_BU_PER_LEVEL: ReadonlyArray<number> = [
+  25,   //  L1
+  35,   //  L2
+  45,   //  L3
+  55,   //  L4
+  69,   //  L5
+  79,   //  L6
+  89,   //  L7
+  99,   //  L8
+  117,  //  L9
+  127,  //  L10
+  137,  //  L11
+  147,  //  L12
+  169,  //  L13
+  179,  //  L14
+  189,  //  L15
+  199,  //  L16
+  225,  //  L17
+  235,  //  L18
+  245,  //  L19
+  255,  //  L20
+];
+
+/** Maximum allowed character level (matches the canon table length). */
+export const MAX_CHARACTER_LEVEL = 20;
+
+/**
+ * Look up the maximum allowed negative BU (volatility / debt) for a
+ * given character level. Negative number — e.g. level 1 returns 4
+ * (meaning the character can carry up to -4 BU debt).
+ */
+export function maxBuDebtForLevel(level: number): number {
+  if (!Number.isFinite(level)) return 0;
+  if (level < 1) return 0;
+  const v =
+    level > MAX_CHARACTER_LEVEL
+      ? MAX_DEBT_PER_LEVEL[MAX_CHARACTER_LEVEL - 1]
+      : MAX_DEBT_PER_LEVEL[level - 1];
+  return v ?? 0;
+}
+
+/**
+ * Look up the cumulative BU threshold for a given character level —
+ * the total pool of BU a character of that level should have access
+ * to (per canon). Mirroring (negative BU) draws from the debt
+ * capacity, NOT from this pool.
+ */
+export function cumulativeBuForLevel(level: number): number {
+  if (!Number.isFinite(level)) return 25;
+  if (level < 1) return 25;
+  const v =
+    level > MAX_CHARACTER_LEVEL
+      ? CUMULATIVE_BU_PER_LEVEL[MAX_CHARACTER_LEVEL - 1]
+      : CUMULATIVE_BU_PER_LEVEL[level - 1];
+  return v ?? 25;
+}
+
+/**
+ * Given a custom BU budget (set explicitly by the user, bypassing
+ * level), return the implied level bracket — useful for telling the
+ * user "this budget corresponds to roughly level N". Best-effort;
+ * returns null if no level matches.
+ */
+export function levelForBuBudget(budget: number): number | null {
+  if (!Number.isFinite(budget)) return null;
+  for (let i = 0; i < CUMULATIVE_BU_PER_LEVEL.length; i++) {
+    if (CUMULATIVE_BU_PER_LEVEL[i] === budget) return i + 1;
+  }
+  return null;
+}
+
+/**
+ * Per the BU Market canon (Notion):
+ * - Level 1: -4 BU debt (special case)
+ * - Levels 2-4: -8 BU debt
+ * - Levels 5-10: -12 BU debt
+ * - Levels 11-15: -16 BU debt
+ * - Levels 16+: -24 BU debt
  *
- * Formula (from System Mathematics + Leveling Canon v1):
- *   Total BU = 25 (at L1) + [10 × (L-1)] + Progression Spikes
+ * Returns the maximum negative BU the character can run. Kept for
+ * backwards compatibility with code that consumes
+ * `getVolatilityCeiling` — now derived from maxBuDebtForLevel.
+ */
+export function getVolatilityCeiling(level: number): VolatilityCeiling {
+  const maxNegativeBu = maxBuDebtForLevel(level);
+  let levelBracket: VolatilityCeiling["levelBracket"];
+  let accessibleTier: string;
+  if (level >= 16) {
+    levelBracket = "16+";
+    accessibleTier = "Tier IV+ (Apex)";
+  } else if (level >= 11) {
+    levelBracket = "11-15";
+    accessibleTier = "Tier IV (Core Axes)";
+  } else if (level >= 5) {
+    levelBracket = "5-10";
+    accessibleTier = "Tier III (Major)";
+  } else if (level === 1) {
+    levelBracket = "1";
+    accessibleTier = "Tier I (Minor, special debt -4)";
+  } else {
+    levelBracket = "2-4";
+    accessibleTier = "Tier I & II (Minor / Standard)";
+  }
+  return { levelBracket, maxNegativeBu, accessibleTier };
+}
+
+/**
+ * Backwards-compatible alias for `cumulativeBuForLevel`. Older code
+ * (and tests) used this name to mean "the character's total BU
+ * pool, derived from level". Re-exports the new canonical function
+ * so existing call sites keep working without churn.
  *
- * Progression Spikes (from Notion, applied at L4/8/12/16/20):
- *   L4  → +4 BU
- *   L8  → +8 BU
- *   L12 → +12 BU
- *   L16 → +16 BU
- *   L20 → +20 BU
- *
- * @param level - Character level (1-20 typically)
- * @returns Total BU budget for that level
+ * NOTE: this is the CUMULATIVE budget (positive pool). For debt
+ * ceiling, use `maxBuDebtForLevel(level)` instead.
  */
 export function calculateBuBudget(level: number): number {
-  if (level < 1) {
-    return 0;
-  }
-
-  const base = 25 + 10 * (level - 1);
-
-  // Progression spikes
-  let spikes = 0;
-  if (level >= 4) spikes += 4;
-  if (level >= 8) spikes += 8;
-  if (level >= 12) spikes += 12;
-  if (level >= 16) spikes += 16;
-  if (level >= 20) spikes += 20;
-
-  return base + spikes;
+  return cumulativeBuForLevel(level);
 }
 
 // ============================================================================

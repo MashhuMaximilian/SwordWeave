@@ -162,7 +162,7 @@ export type CharacterSheetProps = {
   volatility: {
     rating: number;
     ceiling: number;
-    levelBracket: "1-4" | "5-10" | "11-15" | "16+";
+    levelBracket: "1" | "2-4" | "5-10" | "11-15" | "16+";
     remaining: number;
     exceeded: boolean;
     mirroredPrimitives: ReadonlyArray<{
@@ -584,7 +584,7 @@ function VolatilityPanel({
 }: {
   rating: number;
   ceiling: number;
-  levelBracket: "1-4" | "5-10" | "11-15" | "16+";
+  levelBracket: "1" | "2-4" | "5-10" | "11-15" | "16+";
   remaining: number;
   exceeded: boolean;
   mirroredPrimitives: ReadonlyArray<{

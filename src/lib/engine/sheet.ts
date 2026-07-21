@@ -108,7 +108,7 @@ export type CharacterSheet = {
   readonly volatility: {
     readonly rating: number;
     readonly ceiling: number;
-    readonly levelBracket: "1-4" | "5-10" | "11-15" | "16+";
+    readonly levelBracket: "1" | "2-4" | "5-10" | "11-15" | "16+";
     readonly remaining: number;
     readonly exceeded: boolean;
     /** Mirror primitives grouped for display: each entry contributes its credit to rating */

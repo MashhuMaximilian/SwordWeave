@@ -62,9 +62,13 @@ const vulnerableToFire: PrimitiveInput = {
 };
 
 describe("getVolatilityCeiling", () => {
-  it("returns -8 BU for levels 1-4", () => {
-    expect(getVolatilityCeiling(1).maxNegativeBu).toBe(8);
+  it("returns -4 BU at level 1 (special case per canon)", () => {
+    expect(getVolatilityCeiling(1).maxNegativeBu).toBe(4);
+  });
+
+  it("returns -8 BU for levels 2-4", () => {
     expect(getVolatilityCeiling(2).maxNegativeBu).toBe(8);
+    expect(getVolatilityCeiling(3).maxNegativeBu).toBe(8);
     expect(getVolatilityCeiling(4).maxNegativeBu).toBe(8);
   });
 
@@ -90,27 +94,31 @@ describe("calculateBuBudget", () => {
     expect(calculateBuBudget(1)).toBe(25);
   });
 
-  it("adds 10 BU per level after L1", () => {
+  it("returns the canon cumulative value at each level", () => {
+    // Phase 8.1 batch 10: the cumulative table is the source of
+    // truth (Leveling & Progression Canon v1). These values come
+    // straight from the canon; the legacy formula
+    // (25 + 10*(L-1) + spikes) doesn't match exactly because the
+    // canon bakes progression spikes into specific levels in a way
+    // that doesn't align with "applied at the level it's listed".
     expect(calculateBuBudget(2)).toBe(35);
     expect(calculateBuBudget(3)).toBe(45);
+    expect(calculateBuBudget(4)).toBe(55);
+    expect(calculateBuBudget(5)).toBe(69);
+    expect(calculateBuBudget(8)).toBe(99);
+    expect(calculateBuBudget(9)).toBe(117);
+    expect(calculateBuBudget(12)).toBe(147);
+    expect(calculateBuBudget(13)).toBe(169);
+    expect(calculateBuBudget(17)).toBe(225);
+    expect(calculateBuBudget(20)).toBe(255);
   });
 
-  it("adds progression spikes at L4, L8, L12, L16, L20", () => {
-    // L3: 25 + 20 = 45
-    expect(calculateBuBudget(3)).toBe(45);
-    // L4: 25 + 30 + 4 = 59
-    expect(calculateBuBudget(4)).toBe(59);
-    // L7: 25 + 60 + 4 = 89
-    expect(calculateBuBudget(7)).toBe(89);
-    // L8: 25 + 70 + 4 + 8 = 107
-    expect(calculateBuBudget(8)).toBe(107);
-    // L20: 25 + 190 + 4 + 8 + 12 + 16 + 20 = 275
-    expect(calculateBuBudget(20)).toBe(275);
-  });
-
-  it("returns 0 for invalid levels", () => {
-    expect(calculateBuBudget(0)).toBe(0);
-    expect(calculateBuBudget(-1)).toBe(0);
+  it("returns 25 for invalid levels (clamped to floor)", () => {
+    // Phase 8.1 batch 10: invalid levels fall back to L1's value
+    // (25 BU) instead of 0 — the table treats < 1 as "no level
+    // chosen yet" rather than "broken".
+    expect(calculateBuBudget(0)).toBe(25);
+    expect(calculateBuBudget(-1)).toBe(25);
   });
 });
 
@@ -164,7 +172,7 @@ describe("evaluateBuLedger", () => {
     expect(ledger.mirrorCredit).toBe(0);
     expect(ledger.netSpent).toBe(11);
     expect(ledger.volatilityRating).toBe(0);
-    expect(ledger.volatilityCeiling).toBe(8);
+    expect(ledger.volatilityCeiling).toBe(4); // L1 special case per canon
     expect(ledger.ceilingExceeded).toBe(false);
     expect(ledger.budget).toBe(25);
     expect(ledger.remaining).toBe(14);
@@ -181,7 +189,7 @@ describe("evaluateBuLedger", () => {
     expect(ledger.mirrorCredit).toBe(-4);
     expect(ledger.netSpent).toBe(4);
     expect(ledger.volatilityRating).toBe(4);
-    expect(ledger.ceilingExceeded).toBe(false); // -4 < -8 ceiling
+    expect(ledger.ceilingExceeded).toBe(false); // -4 < -8 ceiling (L2-4)
   });
 
   it("flags ceiling exceeded when volatility > max", () => {
@@ -197,14 +205,14 @@ describe("evaluateBuLedger", () => {
       name: "Vulnerable to Lightning",
       mirrorBuCredit: 4,
     };
-    // Total mirror = 4 + 5 + 4 = 13, exceeds L1-4 ceiling of 8
+    // Total mirror = 4 + 5 + 4 = 13, exceeds L1 ceiling of 4 per canon.
     const ledger = evaluateBuLedger(
       1,
       [vulnerableToFire, vuln2, vuln3],
       new Set([100, 101, 102]),
     );
     expect(ledger.volatilityRating).toBe(13);
-    expect(ledger.volatilityCeiling).toBe(8);
+    expect(ledger.volatilityCeiling).toBe(4);
     expect(ledger.ceilingExceeded).toBe(true);
   });
 
