@@ -47,7 +47,6 @@ import { createPortal } from "react-dom";
 import { Filter, Search, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconDisplay, type IconSource } from "./icon-display";
-import { PickerErrorBoundary } from "./picker-error-boundary";
 import {
   Button as RAButton,
   ColorArea,
@@ -58,11 +57,6 @@ import {
   ColorSwatchPicker,
   ColorSwatchPickerItem,
   ColorThumb,
-  Dialog,
-  DialogTrigger,
-  Input,
-  Modal,
-  SearchField,
   SliderTrack,
   parseColor,
 } from "react-aria-components";
@@ -879,8 +873,6 @@ function ColorTrigger({
 }) {
   // parseColor needs a valid 6-digit hex; the value comes from the
   // picker's normalizeColor (always 6-digit) so this is safe.
-  // useMemo (not useState + useEffect) — round 10's sync loop was
-  // the most likely cause of prod React #185.
   const colorValue = useMemo(() => {
     try {
       return parseColor(color);
@@ -927,20 +919,20 @@ function ColorTrigger({
             role="dialog"
             aria-modal="true"
             aria-label="Choose icon color"
-            // Portal to body at z-[11000] so the picker is never
-            // clipped by IconSlot's overflow-hidden inner card or
-            // any ancestor stacking context. Backdrop click closes;
-            // inner card stops propagation.
+            // Phase 12: portal to body at z-[11000] so the picker is
+            // never clipped by IconSlot's overflow-hidden inner card
+            // or any ancestor stacking context. Backdrop click
+            // closes; inner card stops propagation.
             className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/60 p-4"
             onClick={(e) => {
               if (e.target === e.currentTarget) setOpen(false);
             }}
           >
             <div
-              className="flex max-h-[calc(100vh-2rem)] w-full max-w-sm flex-col gap-3 overflow-y-auto rounded-xl border border-border bg-card p-3 shadow-2xl"
+              className="flex w-full max-w-sm flex-col gap-2 rounded-xl border border-border bg-card p-3 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="sticky top-0 z-10 -mx-3 flex items-center justify-between bg-card px-3 pb-2 pt-1">
+              <div className="mb-2 flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Color</h3>
                 <button
                   type="button"
@@ -950,90 +942,55 @@ function ColorTrigger({
                   Done
                 </button>
               </div>
-              <PickerErrorBoundary
-                fallback={(err, reset) => (
-                  <div className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs">
-                    <div className="font-medium text-destructive">
-                      Color picker crashed
-                    </div>
-                    <div className="font-mono text-muted-foreground">
-                      Current: {colorValue.toString("hex")}
-                    </div>
-                    <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-all rounded bg-background/50 p-2 font-mono text-[10px] text-foreground/80">
-                      {String(err?.message ?? err)}
-                    </pre>
-                    <p className="text-muted-foreground">
-                      Close and reopen the popover. Tap retry to recover.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={reset}
-                      className="rounded border border-border bg-background px-2 py-1 text-xs hover:bg-accent"
-                    >
-                      Retry
-                    </button>
-                  </div>
-                )}
+              <ColorPicker
+                value={colorValue}
+                // ColorTrigger receives color as a prop and the
+                // onChange handler reaches our local setColor in
+                // IconPicker — so the full state-sync loop works
+                // regardless of whether `color` was originally set
+                // by a swatch click, a slider drag, or a hex
+                // input edit.
+                onChange={(c) => onChange(c.toString("hex"))}
               >
-                {/*
-                 * Round 11: exact port of round 7's working ColorPicker
-                 * tree. The renderProps children inside <ColorThumb>
-                 * are NOT the bug — round 7 shipped with them and the
-                 * picker worked in production. The bug was in MY round 10
-                 * changes (sync loop, subpath import, bare input).
-                 *
-                 * The renderProps pipe the live color from react-aria's
-                 * internal state into a small inline callout (the
-                 * teardrop above the thumb). c.toString('css') is safe
-                 * because react-aria guarantees color is always defined
-                 * when the picker is in a working state.
-                 */}
-                {/* Phase 9 round-12: switch from CONTROLLED (value/onChange) to
-                    UNCONTROLLED (defaultValue + key) — controlled ColorPicker in
-                    production React 19 + react-aria-components 1.19 was firing
-                    setValue inside useControlledState every render because the
-                    parent-stored hex string ("#FDE047") and react-aria's internal
-                    Color object reference differ on identity. Object.is(newColor,
-                    valueRef.current) is false on every render → forceUpdate loop →
-                    React error #185 in production (caught by PickerErrorBoundary
-                    and shown as "Color picker crashed" in the round 11 screenshot).
-
-                    Uncontrolled mode keeps color state inside react-aria. We pass
-                    `key={color}` so when the parent's color prop changes
-                    (e.g. opening the picker on an entity that already has a saved
-                    color, or another tab updates the entity), the ColorPicker
-                    remounts with that initial color. The component's onChange still
-                    fires on every user drag/swatch click — we just trust react-aria
-                    to manage its own state until the next remount. */}
-                <ColorPicker
-                  key={color}
-                  defaultValue={color}
-                  onChange={(c) => onChange(c.toString("hex"))}
-                >
-                  {/* Row 1 — HSB square + hue slider. The 2D area is
-                      sized 160px (size-40) to match the slider height
-                      (h-40). Mobile users can drag the thumb or tap
-                      the gradient directly to set hue+sat. */}
+                <div className="flex flex-col gap-3">
                   <div className="flex items-center gap-3">
                     <ColorArea
                       colorSpace="hsb"
                       xChannel="saturation"
                       yChannel="brightness"
+                      // positioning context + visible gradient.
                       className="relative size-40 rounded-md"
                       style={{
                         backgroundColor: `hsl(${colorValue.toString("hsl").split(" ")[0]}, 100%, 50%)`,
                       }}
                     >
-                      {/* Simple inline callout: a small rounded square
-                          above the thumb. Round 7 used this exact
-                          pattern (no SVG) and it worked. */}
+                      {/* Phase 12: <ColorThumb /> is required inside
+                          <ColorArea> to render the draggable dot +
+                          selected-shade callout. Without it the
+                          gradient renders empty. (See
+                          https://react-aria.adobe.com/ColorArea — the
+                          default className is react-aria-ColorThumb.)
+
+                          Phase 16 + 17: the callout is now an inline
+                          <svg> rendered via <ColorThumb>'s
+                          children-as-function render-prop. <svg>
+                          inheritance is resolved normally (the fill
+                          comes from React), and the <path stroke>
+                          uses native SVG stroke so the white outline
+                          traces the teardrop curve exactly — no
+                          clip-path+box-shadow tricks. Earlier
+                          attempts hit:
+                            - ::after SVG via background-image:url:
+                              fill=currentColor doesn't resolve
+                              across data: URL boundary.
+                            - ::after clip-path + box-shadow white
+                              halo: box-shadow renders around the
+                              unclipped rectangle, not the
+                              polygon — outline looked square.
+                      */}
                       <ColorThumb className="color-thumb">
-                        {({ color: c }) => (
-                          <span
-                            aria-hidden
-                            className="color-callout"
-                            style={{ backgroundColor: c.toString("css") }}
-                          />
+                        {({ color }) => (
+                          <ColorCallout color={color.toString("css")} />
                         )}
                       </ColorThumb>
                     </ColorArea>
@@ -1041,69 +998,61 @@ function ColorTrigger({
                       colorSpace="hsb"
                       channel="hue"
                       orientation="vertical"
+                      // Wrapper-positioning context for the thumb. Use
+                      // w-8 so the slider is fat enough to hit with
+                      // a thumb on mobile; the hue bar is the only way
+                      // to select hue in HSB space without going via
+                      // swatches.
+                      //
+                      // IMPORTANT: <SliderTrack> child is required —
+                      // ColorSlider publishes trackProps via context,
+                      // and only <SliderTrack> consumes them to attach
+                      // the onPointerDown handler (the click-to-set
+                      // behavior). Without it, the user can only
+                      // drag the thumb itself; clicks on the empty
+                      // track do nothing. See Phase 14 notes in
+                      // globals.css.
                       className="relative h-40 w-8 rounded-md"
                       style={{
                         background:
                           "linear-gradient(to bottom, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)",
                       }}
                     >
-                      {/* <SliderTrack> child is REQUIRED: ColorSlider
-                          publishes trackProps via context, and only
-                          <SliderTrack> consumes them to attach the
-                          onPointerDown handler (click-to-set on the
-                          empty bar). Without it, only the thumb is
-                          clickable. */}
                       <SliderTrack className="h-full w-full">
                         <ColorThumb className="color-thumb">
-                          {({ color: c }) => (
-                            <span
-                              aria-hidden
-                              className="color-callout"
-                              style={{ backgroundColor: c.toString("css") }}
-                            />
+                          {({ color }) => (
+                            <ColorCallout color={color.toString("css")} />
                           )}
                         </ColorThumb>
                       </SliderTrack>
                     </ColorSlider>
                   </div>
-
-                  {/* Row 2 — hex text input. Uses <Input> slot from
-                      react-aria-components (NOT a bare <input>) — the
-                      slot binds to ColorField's inputProps so hex
-                      edits update the live color and the field stays
-                      in sync with swatch/slider picks. */}
                   <ColorField
                     aria-label="Hex color"
                     className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-sm"
                   >
-                    <Input
+                    <input
                       className="w-24 rounded border border-border bg-background px-2 py-1 font-mono text-xs"
                       maxLength={9}
+                      value={color}
+                      onChange={(e) => onChange(e.target.value)}
                       spellCheck={false}
                       aria-label="Icon color hex"
                     />
-                    <span className="ml-auto font-mono text-xs text-muted-foreground">
-                      {color}
-                    </span>
                   </ColorField>
-
-                  {/* Row 3 — 24 curated swatches (6 cols × 4 rows).
-                      ColorSwatchPicker binds to ColorPicker state so
-                      clicks update the live color and mark the
-                      selected swatch automatically. */}
-                  <ColorSwatchPicker className="grid grid-cols-6 gap-1.5">
+                  <ColorSwatchPicker className="grid grid-cols-9 gap-1">
                     {COLOR_PRESETS.map((hex) => (
                       <ColorSwatchPickerItem
                         key={hex}
                         color={hex}
-                        className="aspect-square cursor-pointer rounded border-2 border-border transition-transform hover:scale-110"
+                        className="size-6 cursor-pointer rounded border border-border transition-transform hover:scale-110"
                       >
-                        <ColorSwatch className="size-full rounded-sm" />
+                        <ColorSwatch />
                       </ColorSwatchPickerItem>
                     ))}
                   </ColorSwatchPicker>
-                </ColorPicker>
-              </PickerErrorBoundary>
+                </div>
+              </ColorPicker>
             </div>
           </div>,
           document.body,
@@ -1112,8 +1061,56 @@ function ColorTrigger({
   );
 }
 
-
-
+// ColorCallout — drop-shaped indicator rendered inside <ColorThumb>'s
+// children-as-function render-prop. Two stacked <path>s share the same
+// shape: a dark stroke first for contrast on white callouts, then a
+// white stroke on top so the outline reads cleanly against any dark
+// background. SVG strokes layer sequentially, so the white stroke
+// covers the dark one on top while the dark peeks out at the very
+// edge — the result reads as a 2.5px white outline with a hairline
+// dark border around it. CSS controls the on-screen pixel size
+// separately from the viewBox (see globals.css .color-callout).
+//
+// Round 13: this is the indicator the user said was perfect in
+// commit a577358 — the teardrop above the thumb shows the picked
+// shade with a white halo. The round 11/12 inline <span> replacement
+// was a working fallback but lost this look; user asked us to bring
+// the SVG callout back. See commit c55528a for the original
+// implementation we copied from.
+function ColorCallout({ color }: { color: string }) {
+  return (
+    <svg
+      aria-hidden
+      className="color-callout"
+      viewBox="0 0 28 30"
+      xmlns="http://www.w3.org/2000/svg"
+      // Larger SVG so the stroke doesn't dominate; CSS controls
+      // the on-screen pixel size separately from the viewBox.
+      width="28"
+      height="30"
+    >
+      <path
+        d="M 14 1 C 21.5 1, 27 6.5, 27 14 C 27 19.5, 23.5 23.5, 18 25.5 C 16 26.4, 14 29, 14 29 C 14 29, 12 26.4, 10 25.5 C 4.5 23.5, 1 19.5, 1 14 C 1 6.5, 6.5 1, 14 1 Z"
+        fill={color}
+        // 1px dark stroke first for contrast on white callouts,
+        // 2.5px white stroke on top so the outline reads cleanly
+        // against any dark background. SVG strokes layer
+        // sequentially, so the white stroke covers the dark one on
+        // top while the dark peeks out at the very edge.
+        stroke="#000"
+        strokeWidth="3"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M 14 1 C 21.5 1, 27 6.5, 27 14 C 27 19.5, 23.5 23.5, 18 25.5 C 16 26.4, 14 29, 14 29 C 14 29, 12 26.4, 10 25.5 C 4.5 23.5, 1 19.5, 1 14 C 1 6.5, 6.5 1, 14 1 Z"
+        fill={color}
+        stroke="#fff"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 // normalizeColor ensures the native <input type="color"> always has a
 // 6-digit hex (it rejects 3-digit). If the current color is invalid,
