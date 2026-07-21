@@ -496,18 +496,18 @@ export function HeritageForm({
           })()}
         </div>
         <div className="flex items-center gap-2">
+          {/* Phase 8 rev 8: replaced the legacy <select> with a read-only
+              badge. The dropdown was redundant (the kind is already set by
+              heritageKind from the + New entity chooser, and the form
+              won't even render without one), and the option labels used
+              the OLD taxonomy (Race / Background / Archetype) that no
+              longer matches the rename to Lineage / Upbringing / Manifest.
+              A read-only badge is both clearer and prevents the user from
+              picking a kind that doesn't match the URL/chooser selection. */}
           {!initialTemplate ? (
-            <select
-              value={form.kind}
-              onChange={(e) =>
-                updateForm("kind", e.target.value as HeritageFormState["kind"])
-              }
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="LINEAGE">Race</option>
-              <option value="UPBRINGING">Background</option>
-              <option value="MANIFEST">Archetype</option>
-            </select>
+            <span className="inline-flex h-9 items-center rounded-md border border-border bg-muted/40 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {kindSingular(form.kind)}
+            </span>
           ) : null}
           <button
             type="button"
