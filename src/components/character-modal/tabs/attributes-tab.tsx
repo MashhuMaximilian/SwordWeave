@@ -30,26 +30,43 @@
 // =============================================================================
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  cumulativeBuForLevel,
+  levelForBuBudget,
+  maxBuDebtForLevel,
+} from "@/lib/engine/bu";
 
 const PROF_OPTIONS = ["PHYSICAL", "MENTAL", "MAGICAL"] as const;
 export type Prof = (typeof PROF_OPTIONS)[number];
 
-export type AttributesState = {
+export interface AttributesState {
   attrPhysical: number;
   attrMental: number;
   attrMagical: number;
   attrProficient: Prof | null;
+  /** Phase 8.1 batch 10: how the user is sizing their build.
+   *  - "level": drives the BU budget via cumulativeBuForLevel()
+   *  - "buBudget": user types a custom BU pool directly (level is
+   *    derived for display only via levelForBuBudget()). */
+  mode: "level" | "buBudget";
+  /** Always present, even when mode="buBudget" — used to derive level
+   * for debt ceiling + display ("≈ level 10"). Mutually consistent
+   * with buBudget: changing one updates the other on commit. */
   level: number;
-  startingBu: number;
-};
+  /** Custom BU budget (only meaningful when mode="buBudget"). Always
+   * 25 when mode="level" because the canon fixes starting BU at 25
+   * and level drives the cumulative pool. */
+  buBudget: number;
+}
 
 export const ATTRIBUTES_EMPTY: AttributesState = {
   attrPhysical: 0,
   attrMental: 0,
   attrMagical: 0,
   attrProficient: null,
+  mode: "level",
   level: 1,
-  startingBu: 25,
+  buBudget: 25,
 };
 
 export const ATTRIBUTES_STORAGE_KEY =
@@ -63,6 +80,15 @@ export function clampLevel(n: number): number {
 export function clampBu(n: number): number {
   if (!Number.isFinite(n)) return 25;
   return Math.min(1000, Math.max(0, Math.floor(n)));
+}
+
+/** Resolve the active BU budget for the current attributes state.
+ *  Returns 0 if neither mode has a meaningful value yet. */
+export function activeBuBudget(state: AttributesState): number {
+  if (state.mode === "buBudget") {
+    return clampBu(state.buBudget);
+  }
+  return cumulativeBuForLevel(clampLevel(state.level));
 }
 
 interface AttributesTabProps {
@@ -169,32 +195,139 @@ export function AttributesTab({ state, onChange }: AttributesTabProps) {
         </select>
       </label>
 
-      <div className="grid grid-cols-2 gap-3">
+      <BuildSizingControl state={state} setField={setField} />
+    </div>
+  );
+}
+
+/**
+ * Build sizing control (Phase 8.1 batch 10): lets the user size
+ * their build via EITHER character level OR a custom BU budget. The
+ * two fields stay mutually consistent:
+ *
+ *   - Switching to "level" mode shows Level 1..20. The displayed BU
+ *     budget derives from cumulativeBuForLevel(level).
+ *   - Switching to "buBudget" mode shows a free integer BU pool.
+ *     A "≈ level N" hint appears when the budget matches a canon
+ *     threshold exactly.
+ *
+ * Level is still kept in state when in buBudget mode (it's derived
+ * for display + debt ceiling computation). Starting BU is no longer
+ * a user-editable field — per Mashu 2026-07-21 it's canonically fixed
+ * at 25; the cumulative pool grows via level.
+ */
+function BuildSizingControl({
+  state,
+  setField,
+}: {
+  state: AttributesState;
+  setField: <K extends keyof AttributesState>(
+    key: K,
+    value: AttributesState[K],
+  ) => void;
+}) {
+  const derivedLevel =
+    state.mode === "buBudget" ? levelForBuBudget(state.buBudget) : null;
+  const derivedBudget =
+    state.mode === "level" ? cumulativeBuForLevel(state.level) : null;
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium text-muted-foreground">
+          Size by
+        </span>
+        <div
+          role="tablist"
+          aria-label="Build sizing mode"
+          className="inline-flex overflow-hidden rounded-md border border-border bg-card text-xs"
+        >
+          {(["level", "buBudget"] as const).map((m) => {
+            const active = state.mode === m;
+            return (
+              <button
+                key={m}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setField("mode", m)}
+                className={
+                  "px-3 py-1.5 font-medium transition-colors " +
+                  (active
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted")
+                }
+              >
+                {m === "level" ? "By Level" : "By BU"}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {state.mode === "level" ? (
         <label className="block space-y-1">
-          <span className="text-xs font-medium text-muted-foreground">Level</span>
+          <span className="text-xs font-medium text-muted-foreground">
+            Level (1-20)
+          </span>
           <IntegerField
             state={state.level}
-            setState={(v) => setField("level", clampLevel(v))}
+            setState={(v) => {
+              const next = clampLevel(v);
+              setField("level", next);
+              setField("buBudget", cumulativeBuForLevel(next));
+            }}
             commitDefault={1}
             min={1}
             max={20}
             maxLength={2}
           />
+          <span className="block text-xs text-muted-foreground">
+            BU budget:{" "}
+            <span className="font-mono font-semibold text-foreground">
+              {derivedBudget}
+            </span>
+            {derivedBudget != null &&
+              ` (debt ceiling −${maxBuDebtForLevel(state.level)})`}
+          </span>
         </label>
+      ) : (
         <label className="block space-y-1">
           <span className="text-xs font-medium text-muted-foreground">
-            Starting BU
+            BU budget
           </span>
           <IntegerField
-            state={state.startingBu}
-            setState={(v) => setField("startingBu", clampBu(v))}
+            state={state.buBudget}
+            setState={(v) => {
+              const next = clampBu(v);
+              setField("buBudget", next);
+              // Keep level in sync via reverse-lookup so the debt
+              // ceiling + display stay accurate. When the budget
+              // doesn't match a canon threshold exactly, keep the
+              // previous level (the field is informational only in
+              // buBudget mode).
+              const implied = levelForBuBudget(next);
+              if (implied != null) setField("level", implied);
+            }}
             commitDefault={25}
             min={0}
             max={1000}
             maxLength={4}
           />
+          <span className="block text-xs text-muted-foreground">
+            {derivedLevel != null
+              ? `Matches level ${derivedLevel} (debt ceiling −${maxBuDebtForLevel(derivedLevel)})`
+              : "Between canon thresholds — debt ceiling follows the closest matching level"}
+            {derivedLevel == null && state.level > 0 && (
+              <>
+                {" "}
+                <span className="font-mono">
+                  (using level {state.level}: ceiling −{maxBuDebtForLevel(state.level)})
+                </span>
+              </>
+            )}
+          </span>
         </label>
-      </div>
+      )}
     </div>
   );
 }

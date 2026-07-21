@@ -55,6 +55,7 @@ import {
   AttributesTab,
   ATTRIBUTES_STORAGE_KEY,
   ATTRIBUTES_EMPTY,
+  activeBuBudget,
   type AttributesState,
 } from "./tabs/attributes-tab";
 import { SlotReceiverTab } from "./tabs/slot-receiver-tab";
@@ -108,6 +109,35 @@ function readLocalStorage<T>(key: string, fallback: T): T {
   }
 }
 
+/**
+ * Phase 8.1 batch 10: migrate legacy AttributesState (which had
+ * `startingBu: number`) into the new shape with `mode` +
+ * `buBudget`. Old drafts hydrate cleanly so users don't lose
+ * partial progress.
+ */
+function migrateAttributesState(input: unknown): AttributesState {
+  if (input == null || typeof input !== "object") return ATTRIBUTES_EMPTY;
+  const obj = input as Record<string, unknown>;
+  // New shape — pass through.
+  if (typeof obj["mode"] === "string" && "buBudget" in obj) {
+    return obj as unknown as AttributesState;
+  }
+  // Legacy: startingBu. Derive mode from it: anything other than 25
+  // means the user was customising; default to "buBudget" mode.
+  const legacyStart = Number(obj["startingBu"] ?? 25);
+  const mode: AttributesState["mode"] = legacyStart === 25 ? "level" : "buBudget";
+  return {
+    attrPhysical: Number(obj["attrPhysical"] ?? 0),
+    attrMental: Number(obj["attrMental"] ?? 0),
+    attrMagical: Number(obj["attrMagical"] ?? 0),
+    attrProficient:
+      (obj["attrProficient"] as AttributesState["attrProficient"]) ?? null,
+    mode,
+    level: Number(obj["level"] ?? 1) || 1,
+    buBudget: mode === "buBudget" ? legacyStart : 25,
+  };
+}
+
 function clearAllDraftStorage() {
   try {
     window.localStorage.removeItem(IDENTITY_STORAGE_KEY);
@@ -153,7 +183,9 @@ export function TabbedCharacterForm() {
       readLocalStorage<BackstoryState>(BACKSTORY_STORAGE_KEY, BACKSTORY_EMPTY),
     );
     setAttributes(
-      readLocalStorage<AttributesState>(ATTRIBUTES_STORAGE_KEY, ATTRIBUTES_EMPTY),
+      migrateAttributesState(
+        readLocalStorage<unknown>(ATTRIBUTES_STORAGE_KEY, ATTRIBUTES_EMPTY),
+      ),
     );
     setHydrated(true);
   }, []);
@@ -273,7 +305,10 @@ export function TabbedCharacterForm() {
           portraitUrl: identity.portraitUrl.trim() || null,
           notes: identity.notes.trim() || null,
           level: attributes.level,
-          startingBu: attributes.startingBu,
+          // Phase 8.1 batch 10: startingBu is canonically fixed at 25;
+          // the cumulative pool is driven by attributes.level (or
+          // attributes.buBudget in buBudget mode — the API resolves it).
+          startingBu: 25,
           attrPhysical: attributes.attrPhysical,
           attrMental: attributes.attrMental,
           attrMagical: attributes.attrMagical,
@@ -450,7 +485,7 @@ export function TabbedCharacterForm() {
           <FooterStat label="Lvl" value={String(attributes.level)} />
           <FooterStat
             label="BU"
-            value={`${totalSlotsCount}/${attributes.startingBu + (attributes.level - 1) * 5}`}
+            value={`${totalSlotsCount}/${activeBuBudget(attributes)}`}
           />
         </div>
         <button

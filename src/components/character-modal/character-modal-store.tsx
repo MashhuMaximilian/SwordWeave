@@ -78,8 +78,28 @@ export const CHARACTER_TAB_LABELS: Record<CharacterTabId, string> = {
 /**
  * One pending slot — the user clicked "Slot into [step]" on a library
  * preview. Discriminated union so each kind carries the right shape.
+ *
+ * Phase 8.1 batch 10: every slot carries a stable `slotId` (assigned
+ * at queue time) and an optional `mirror` flag. The mirror flag is
+ * only meaningful for primitive slots whose primitive has
+ * `isMirrorable = true` — when true, the primitive's `mirrorBuCredit`
+ * contributes negative BU to the character's volatility rating and
+ * counts against `maxBuDebtForLevel(level)`. Mirror state lives on
+ * the slot (not on the primitive itself) because the same primitive
+ * can appear multiple times in different slots and the user toggles
+ * each independently.
  */
-export type PendingSlot =
+export type PendingSlot = {
+  /** Stable id assigned when the slot was queued. Used as React key
+   * and as the lookup key for mirror toggles. The store stamps this
+   * automatically when it's missing, so call sites don't need to
+   * supply one — but it's always populated after queueSlot. */
+  slotId?: string;
+  /** True if this slot's primitive is mirrored (BU debt). Only
+   * meaningful for kind="primitive" where the primitive's
+   * isMirrorable is true. False / ignored for other kinds. */
+  mirror?: boolean;
+} & (
   | {
       kind: "heritage";
       heritageId: string;
@@ -112,7 +132,8 @@ export type PendingSlot =
       /** Always "items". Kept as CharacterTabId for uniform shape. */
       tab: "items";
       name: string;
-    };
+    }
+);
 
 /** Pending slots bucketed by tab — makes per-tab rendering trivial. */
 export type PendingSlotsByTab = Record<CharacterTabId, PendingSlot[]>;
@@ -128,6 +149,21 @@ const EMPTY_PENDING: PendingSlotsByTab = {
 };
 
 const ACTIVE_STEP_STORAGE_KEY = "swordweave:character-modal:active-step";
+
+// Phase 8.1 batch 10: stable slot ids. We assign a fresh id per
+// queueSlot() call so the mirror toggle (and any future per-slot
+// edits) has a stable handle. Counter + timestamp keeps ids
+// monotonic across the session; crypto.randomUUID() provides the
+// uniqueness across tabs.
+let _slotCounter = 0;
+function makeSlotId(): string {
+  _slotCounter += 1;
+  const uuid =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `slot-${_slotCounter}-${uuid}`;
+}
 
 function loadActiveStep(): CharacterTabId {
   if (typeof window === "undefined") return "identity";
@@ -177,6 +213,12 @@ interface CharacterModalState {
    * derives isDirty from pendingSlots.
    */
   setDirty: (dirty: boolean) => void;
+  /**
+   * Phase 8.1 batch 10: toggle the mirror flag on a specific slot.
+   * Mirror only applies to primitive slots whose primitive has
+   * isMirrorable=true; calling on other slot kinds is a no-op.
+   */
+  setSlotMirror: (slotId: string, mirror: boolean) => void;
 }
 
 const CharacterModalCtx = createContext<CharacterModalState | null>(null);
@@ -242,9 +284,44 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
       } else {
         tab = slot.tab;
       }
-      return { ...current, [tab]: [...current[tab], slot] };
+      // Assign a stable slotId if the caller didn't supply one (it
+      // shouldn't, but we guard so old call sites don't break).
+      const stamped: PendingSlot = { ...slot, slotId: makeSlotId() };
+      return { ...current, [tab]: [...current[tab], stamped] };
     });
   }, []);
+
+  // Phase 8.1 batch 10: toggle the mirror flag on a specific slot.
+  // Mirror only applies to primitive slots whose primitive is
+  // mirrorable; calling this on other kinds is a no-op.
+  const setSlotMirror = useCallback(
+    (slotId: string, mirror: boolean) => {
+      setPendingSlots((current) => {
+        const next: PendingSlotsByTab = { ...current };
+        for (const tab of CHARACTER_TABS) {
+          const idx = next[tab].findIndex((s) => s.slotId === slotId);
+          if (idx === -1) continue;
+          const target = next[tab][idx]!;
+          if (target.kind !== "primitive") {
+            // Mirror only meaningful for primitives.
+            return current;
+          }
+          const updated: PendingSlot =
+            mirror === target.mirror
+              ? target
+              : { ...target, mirror };
+          next[tab] = [
+            ...next[tab].slice(0, idx),
+            updated,
+            ...next[tab].slice(idx + 1),
+          ];
+          return next;
+        }
+        return current;
+      });
+    },
+    [],
+  );
 
   const removeSlot = useCallback((tab: CharacterTabId, index: number) => {
     setPendingSlots((current) => ({
@@ -285,6 +362,7 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
       clearSlots,
       resetDraft,
       setDirty,
+      setSlotMirror,
     }),
     [
       isOpen,
@@ -325,6 +403,7 @@ export function useCharacterModal(): CharacterModalState {
       clearSlots: () => {},
       resetDraft: () => {},
       setDirty: () => {},
+      setSlotMirror: () => {},
     };
   }
   return ctx;
