@@ -594,12 +594,14 @@ function OwnerBar({ owner }: { owner: NonNullable<EntityPreviewProps["owner"]> }
     // is set, a small "Source: <origin>" pill renders on the right so
     // the user can see which world/book the entity comes from at a
     // glance — same data as the build-edit "Source origin" field.
-    // Phase 9 round-11: user reported 'in preview in atelier we need
-    // just a bit of margin top above where the creator is. The border
-    // top or whatever that is is too close to the thing above it'.
-    // pt-2 → pt-4 for one more breath between the body content and
-    // the creator tag.
-    <div className="flex items-center justify-between gap-2 border-t border-border pt-4 text-xs text-muted-foreground">
+    // Phase 9 round-12: user came back — 'In preview it's ok but that
+    // horizontal line is still too close to what's above it. Idk
+    // exactly what it is.' The border-top is still hugging the body
+    // content above it. pt-4 → pt-6 + add a subtle top margin via
+    // a containing wrapper class so the gap is unambiguous. The
+    // mb on the previous section was implicit; making it pt-6 +
+    // mt-3 leaves room between the last content line and the rule.
+    <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-6 text-xs text-muted-foreground">
       {profileHref ? (
         <a href={profileHref} className="flex items-center gap-2 hover:underline">
           {inner}

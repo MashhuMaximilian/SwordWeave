@@ -988,8 +988,26 @@ function ColorTrigger({
                  * because react-aria guarantees color is always defined
                  * when the picker is in a working state.
                  */}
+                {/* Phase 9 round-12: switch from CONTROLLED (value/onChange) to
+                    UNCONTROLLED (defaultValue + key) — controlled ColorPicker in
+                    production React 19 + react-aria-components 1.19 was firing
+                    setValue inside useControlledState every render because the
+                    parent-stored hex string ("#FDE047") and react-aria's internal
+                    Color object reference differ on identity. Object.is(newColor,
+                    valueRef.current) is false on every render → forceUpdate loop →
+                    React error #185 in production (caught by PickerErrorBoundary
+                    and shown as "Color picker crashed" in the round 11 screenshot).
+
+                    Uncontrolled mode keeps color state inside react-aria. We pass
+                    `key={color}` so when the parent's color prop changes
+                    (e.g. opening the picker on an entity that already has a saved
+                    color, or another tab updates the entity), the ColorPicker
+                    remounts with that initial color. The component's onChange still
+                    fires on every user drag/swatch click — we just trust react-aria
+                    to manage its own state until the next remount. */}
                 <ColorPicker
-                  value={colorValue}
+                  key={color}
+                  defaultValue={color}
                   onChange={(c) => onChange(c.toString("hex"))}
                 >
                   {/* Row 1 — HSB square + hue slider. The 2D area is

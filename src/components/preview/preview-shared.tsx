@@ -182,7 +182,16 @@ export function mirrorSummary(op: ModifierOperation): { mirrorable: boolean; lab
 // shown — it is kept only in the DB for content-hash stability.
 //   - mirrorable op  -> "Mirrors to SUBTRACT" (+ sign-flip / inversion note)
 //   - Set To / non-mirrorable -> "Not mirrorable"
-
+//
+// Round 12: notes are also filtered to drop the legacy
+// "Mirrorable - VARIABLE_VECTOR" line that some seeded system
+// primitives had stored in mirrorEligibilityNotes. The proper
+// mirror UI above already conveys the same information (and more
+// — it shows the actual inverse operation + sign-flip behaviour).
+// The legacy text was left over from the pre-OP_SPECS era when the
+// preview had no structured mirror UI. (User: 'we need to deter
+// mirrorable - variable vector since we have a proper mirroring
+// just above it'.)
 export function MirrorPanel({
   op,
   buCredit,
@@ -194,6 +203,21 @@ export function MirrorPanel({
 }) {
   const spec = OP_SPECS[op];
   const mirrorable = Boolean(spec?.mirrorable) && Boolean(spec?.mirrorOp);
+  // Strip the legacy "Mirrorable - VARIABLE_VECTOR" / "Mirrorable:
+  // VARIABLE_VECTOR" / "Mirrorable — VARIABLE_VECTOR" line from
+  // notes. Accepts common separators (-, :, —). Case-insensitive.
+  const cleanedNotes = notes
+    ? notes
+        .split(/\r?\n/)
+        .filter(
+          (line) =>
+            !/^\s*mirrorable\s*[-:—]\s*(standard_only|variable_vector|structural_fault|cost_instability)\s*$/i.test(
+              line,
+            ),
+        )
+        .join("\n")
+        .trim()
+    : null;
   return (
     <Section heading="Mirror">
       {mirrorable ? (
@@ -219,8 +243,8 @@ export function MirrorPanel({
       ) : (
         <p className="text-sm text-muted-foreground">Not mirrorable.</p>
       )}
-      {notes ? (
-        <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">{notes}</p>
+      {cleanedNotes ? (
+        <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">{cleanedNotes}</p>
       ) : null}
     </Section>
   );
