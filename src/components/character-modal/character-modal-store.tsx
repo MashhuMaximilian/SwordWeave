@@ -337,9 +337,13 @@ export function useCharacterModal(): CharacterModalState {
  */
 export function tabLabelForActiveStep(
   activeStep: CharacterTabId,
-  isOpen: boolean,
+  _isOpen: boolean,
 ): string {
-  if (!isOpen) return "Character";
+  // Phase 8.1 fix-up (round 2): always return the tab label.
+  // Previously we returned "Character" when the modal was closed,
+  // but Mashu 2026-07-21 wants the slot button to read "Slot into
+  // [step]" everywhere — the modal's last activeStep is still the
+  // destination, so advertising it is more informative.
   return CHARACTER_TAB_LABELS[activeStep];
 }
 

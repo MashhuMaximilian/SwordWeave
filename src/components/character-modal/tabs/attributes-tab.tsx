@@ -95,19 +95,27 @@ export function AttributesTab({ state, onChange }: AttributesTabProps) {
       <label className="block space-y-1">
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <input
-          type="number"
+          // type="text" + inputMode="numeric" gives us a numeric keypad
+          // on mobile without the quirks of type="number" (which can
+          // suppress onChange on certain mobile browsers, leaving the
+          // footer stale even as the input updates). The pattern="-?\d*"
+          // attribute further constrains the input on iOS Safari.
+          type="text"
           inputMode="numeric"
-          min={-1}
-          max={5}
-          step={1}
-          value={Number.isFinite(v) ? v : ""}
+          pattern="-?\d*"
+          maxLength={2}
+          value={Number.isFinite(v) ? String(v) : ""}
           onChange={(e) => {
             const raw = e.target.value;
-            if (raw === "") {
-              // Allow the field to be empty mid-edit. Park at -1 (the
-              // legal minimum) so the validity badge is honest, but
-              // don't write back to the parent yet — wait for blur.
+            if (raw === "" || raw === "-") {
+              // Allow the field to be empty mid-edit. Defer parse
+              // until blur.
               e.currentTarget.dataset["dirty"] = "1";
+              return;
+            }
+            // Allow negative sign only at start, otherwise it's a digit.
+            if (!/^-?\d*$/.test(raw)) {
+              e.target.value = String(v);
               return;
             }
             const parsed = Number.parseInt(raw, 10);
@@ -117,8 +125,6 @@ export function AttributesTab({ state, onChange }: AttributesTabProps) {
           }}
           onBlur={(e) => {
             if (e.currentTarget.dataset["dirty"] === "1") {
-              // User cleared the field and tabbed out without typing
-              // a new value. Reset to 0.
               setField(valueKey, 0);
               e.currentTarget.dataset["dirty"] = "0";
             }
@@ -195,16 +201,19 @@ export function AttributesTab({ state, onChange }: AttributesTabProps) {
         <label className="block space-y-1">
           <span className="text-xs font-medium text-muted-foreground">Level</span>
           <input
-            type="number"
+            type="text"
             inputMode="numeric"
-            min={1}
-            max={20}
-            step={1}
-            value={Number.isFinite(state.level) ? state.level : ""}
+            pattern="\d*"
+            maxLength={2}
+            value={Number.isFinite(state.level) ? String(state.level) : ""}
             onChange={(e) => {
               const raw = e.target.value;
               if (raw === "") {
                 e.currentTarget.dataset["dirty"] = "1";
+                return;
+              }
+              if (!/^\d*$/.test(raw)) {
+                e.target.value = String(state.level);
                 return;
               }
               const parsed = Number.parseInt(raw, 10);
@@ -226,16 +235,19 @@ export function AttributesTab({ state, onChange }: AttributesTabProps) {
             Starting BU
           </span>
           <input
-            type="number"
+            type="text"
             inputMode="numeric"
-            min={0}
-            max={1000}
-            step={1}
-            value={Number.isFinite(state.startingBu) ? state.startingBu : ""}
+            pattern="\d*"
+            maxLength={4}
+            value={Number.isFinite(state.startingBu) ? String(state.startingBu) : ""}
             onChange={(e) => {
               const raw = e.target.value;
               if (raw === "") {
                 e.currentTarget.dataset["dirty"] = "1";
+                return;
+              }
+              if (!/^\d*$/.test(raw)) {
+                e.target.value = String(state.startingBu);
                 return;
               }
               const parsed = Number.parseInt(raw, 10);

@@ -19,21 +19,23 @@ import {
 import { CharacterModal } from "@/components/character-modal/character-modal";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  // ModalStackHost MUST be the outermost provider so that GlobalControls
-  // (which is rendered inside) can call useModalStack() and get the real
-  // stack — not the no-op default. The previous order (GlobalControls
-  // outermost, ModalStackHost inner) meant useModalStack() inside
-  // GlobalControls ran before the provider existed in the tree, so the
-  // FAB's Account button and any other caller of openUserMenu() was
-  // pushing to a no-op stack. The modal never rendered.
+  // Provider order matters. The modal-stack portalling target must
+  // sit INSIDE the CharacterModalProvider so that SandboxPreviewBody
+  // (rendered via ModalStackRenderer → createPortal → document.body)
+  // can call useCharacterModal() and reach the live store. Previously
+  // the order was ModalStackHost outermost, CharacterModalProvider
+  // inside — that meant the portal rendered content outside the
+  // character modal's context, so queueSlot() / open() from the
+  // library preview were silent no-ops. See phase-8.1 round-2
+  // bug-fix commit for the regression report.
   //
-  // Modal content rendered by ModalStackRenderer (a sibling of children
-  // inside ModalStackHost) can still call useGlobalControls() because
-  // GlobalControls is rendered as a child of ModalStackHost — the
-  // GlobalControls provider is a parent of the modal renderer.
+  // ModalStackHost still wraps GlobalControls so that GlobalControls'
+  // own useModalStack() resolves to the real stack (not a no-op).
+  // CharacterModal still lives inside CharacterModalProvider so the
+  // FAB + portal modal see the same store.
   return (
-    <ModalStackHost>
-      <CharacterModalProvider>
+    <CharacterModalProvider>
+      <ModalStackHost>
         <GlobalControls>
           <main className="min-w-0 pb-2">{children}</main>
           <footer className="border-t border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
@@ -65,7 +67,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               when closed. */}
           <CharacterModal />
         </GlobalControls>
-      </CharacterModalProvider>
-    </ModalStackHost>
+      </ModalStackHost>
+    </CharacterModalProvider>
   );
 }
