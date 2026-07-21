@@ -218,6 +218,21 @@ export function HeritageForm({
     );
   }, [initialTemplate]);
 
+  // Phase 8 rev 9: re-sync form.kind when initialKind changes. Previously
+  // the form only read initialKind in useState(), so a re-pick of "+ New
+  // entity → Upbringing" while a Lineage form was already mounted left
+  // the header showing "Lineage" until the user clicked Reset. Reset
+  // re-reads initialKind (it does `setForm({ ...blankForm, kind:
+  // initialKind ?? "LINEAGE" })`) which is why Reset "fixed" the bug —
+  // it forced the re-sync by hand. Now we re-sync automatically whenever
+  // the parent's initialKind changes AND we're not editing an existing
+  // template (edits must preserve the loaded template's kind).
+  useEffect(() => {
+    if (initialTemplate) return; // editing — don't override loaded kind
+    const targetKind = initialKind ?? "LINEAGE";
+    setForm((f) => (f.kind === targetKind ? f : { ...f, kind: targetKind }));
+  }, [initialKind, initialTemplate]);
+
   // Save draft on unmount — when the form unmounts in the panel (split
   // mode exit) or in the drawer, save the current primitiveIds/capabilityIds
   // so the other instance can restore them on mount.

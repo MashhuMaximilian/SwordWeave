@@ -326,6 +326,12 @@ export function AtelierSandboxClient({
   const [mechanicsDraftKind, setMechanicsDraftKind] = useState<
     "primitive" | "effect" | "capability" | null
   >(initialMechanicsKind ?? null);
+  // Phase 8 rev 9: + New entity → Item now needs a "the user wants to
+  // author a new item" sentinel so formKind can resolve to "item" and the
+  // ItemForm actually renders. Without this, picking Item leaves formKind
+  // null (only editing.kind, mechanicsDraftKind, heritageKind had
+  // resolution paths) and the build column silently shows nothing.
+  const [itemDraftStarted, setItemDraftStarted] = useState(false);
   // Per-tab form-state cache so switching tabs never discards what you
   // were building (Point 5). Keyed by tab; each entry snapshots the
   // editing state + draft-kind selectors for that tab.
@@ -334,6 +340,7 @@ export function AtelierSandboxClient({
     formSnapshot: typeof formSnapshot;
     mechanicsDraftKind: "primitive" | "effect" | "capability" | null;
     heritageKind: "LINEAGE" | "UPBRINGING" | "MANIFEST" | undefined;
+    itemDraftStarted: boolean;
     buildStarted: boolean;
   };
   const [tabCache, setTabCache] = useState<Partial<Record<AtelierTab, TabCacheEntry>>>({});
@@ -585,12 +592,28 @@ export function AtelierSandboxClient({
       // and the formKind computation at line 675 returns "capability"
       // because it prioritizes mechanicsDraftKind over heritageKind.
       setMechanicsDraftKind(null);
+      // Phase 8 rev 9: clear itemDraftStarted too — same stale-state risk
+      // as mechanicsDraftKind. If the user picked Item previously and
+      // then picks Lineage, formKind would resolve to "item" because
+      // itemDraftStarted was still true.
+      setItemDraftStarted(false);
     }
     if (choice?.mechanicsSubKind) {
       setMechanicsDraftKind(choice.mechanicsSubKind);
       // Phase 8 rev 7: clear stale heritageKind so formKind doesn't
       // resolve to a heritage form when picking a mechanics kind.
       setHeritageKind(undefined);
+      // Phase 8 rev 9: clear itemDraftStarted too.
+      setItemDraftStarted(false);
+    }
+    if (choice?.tab === "item") {
+      // Phase 8 rev 9: Item doesn't have a sub-kind (items use itemType,
+      // not a heritage-style sub-kind), but it needs a sentinel so
+      // formKind can resolve to "item". Without this, picking Item left
+      // formKind null and the build column showed nothing.
+      setItemDraftStarted(true);
+      setHeritageKind(undefined);
+      setMechanicsDraftKind(null);
     }
     // Phase 8 rev 6: sync the active tab to the chosen kind. The previous
     // behavior was "deliberately do NOT switch the active tab — the build
@@ -685,9 +708,20 @@ export function AtelierSandboxClient({
     // is driven by what's loaded (editing.kind) or, for a blank "new entity"
     // draft, by the chosen draft kind. The active tab is just a library
     // filter and must never switch/reset the form.
+    //
+    // Phase 8 rev 9: added itemDraftStarted as a fourth draft-kind resolver
+    // so picking Item from + New entity renders the ItemForm. Previously
+    // formKind only knew about primitive/effect/capability/heritage, so
+    // Item left formKind null and ItemForm never rendered.
     const formKind: "primitive" | "effect" | "capability" | "heritage" | "item" | null =
       editing?.kind ??
-      (mechanicsDraftKind ? mechanicsDraftKind : heritageKind ? "heritage" : null);
+      (mechanicsDraftKind
+        ? mechanicsDraftKind
+        : heritageKind
+          ? "heritage"
+          : itemDraftStarted
+            ? "item"
+            : null);
 
     if (formKind === "primitive") {
       return (
@@ -879,9 +913,17 @@ export function AtelierSandboxClient({
   const previewNode = useMemo(() => {
     // Form preview is driven by what's loaded (or the blank draft kind),
     // NOT the active library tab. Same decoupling as builderNode.
+    //
+    // Phase 8 rev 9: same itemDraftStarted resolver as builderNode above.
     const formKind: "primitive" | "effect" | "capability" | "heritage" | "item" | null =
       editing?.kind ??
-      (mechanicsDraftKind ? mechanicsDraftKind : heritageKind ? "heritage" : null);
+      (mechanicsDraftKind
+        ? mechanicsDraftKind
+        : heritageKind
+          ? "heritage"
+          : itemDraftStarted
+            ? "item"
+            : null);
     if (formKind === "primitive") {
       const snapForm = formSnapshot?.form as
         | {
@@ -1191,10 +1233,30 @@ export function AtelierSandboxClient({
     const editingKey = editing
       ? `${editing.kind}:${editing.row.id}`
       : null;
+    // Phase 8 rev 9: pass the loaded build form's kind to the libraries
+    // so their "Slot into build" button visibility follows what's
+    // actually in the build column, not the URL tab. Per the user's spec:
+    //   - buildKind=primitive  → no slot (you're authoring a primitive)
+    //   - buildKind=effect     → slot on primitive previews
+    //   - buildKind=capability → slot on primitive + effect previews
+    //   - buildKind=heritage   → slot on primitive + capability previews
+    //   - buildKind=item       → slot on primitive + effect + capability
+    // editing.kind wins (loaded entity always counts); otherwise the
+    // draft-kind sentinel drives it.
+    const buildFormKind: "primitive" | "effect" | "capability" | "heritage" | "item" | null =
+      editing?.kind ??
+      (mechanicsDraftKind
+        ? mechanicsDraftKind
+        : heritageKind
+          ? "heritage"
+          : itemDraftStarted
+            ? "item"
+            : null);
     if (isMechanics) {
       return (
         <GrammarLibrary
           build={build as "mechanics"}
+          buildFormKind={buildFormKind}
           libraryItems={libraryItems}
           primitives={primitives}
           effects={effects}
@@ -1227,6 +1289,7 @@ export function AtelierSandboxClient({
     return (
       <HeritageLibrary
         build={build as "heritage" | "item" | "monster"}
+        buildFormKind={buildFormKind}
         libraryItems={libraryItems}
         heritage={heritage}
         items={items}
@@ -1270,6 +1333,12 @@ export function AtelierSandboxClient({
     currentUserInternalId,
     versionMap,
     editing,
+    // buildFormKind depends on these — must be in deps so the library
+    // re-renders (and re-derives canSlot) when the user picks a different
+    // kind from + New entity.
+    mechanicsDraftKind,
+    heritageKind,
+    itemDraftStarted,
     guardedLibrarySelect,
   ]);
 

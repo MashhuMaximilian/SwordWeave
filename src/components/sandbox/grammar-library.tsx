@@ -51,8 +51,48 @@ import { cn } from "@/lib/utils";
 // but the build mode "mechanics" shows all three together by default.
 type MechanicsBuildMode = "primitive" | "effect" | "capability" | "mechanics";
 
+// The kinds a preview can be. The library only ever surfaces these three
+// from the mechanics tab, but slot rules can also reference heritage/item
+// (used by the BlueprintPreviewBody for items+heritages), so this is
+// the full five-kind union.
+type PreviewKind = "primitive" | "effect" | "capability" | "heritage" | "item";
+
+// Phase 8 rev 9: per the user's slot spec, the slot button visibility
+// follows what's currently loaded into the build form, NOT the URL tab.
+//   buildKind=primitive  → no slot (you're authoring a primitive from scratch)
+//   buildKind=effect     → slot on primitive previews
+//   buildKind=capability → slot on primitive + effect previews
+//   buildKind=heritage   → slot on primitive + capability previews
+//   buildKind=item       → slot on primitive + effect + capability previews
+// The heritage/item previews in the Blueprint Library don't show slot
+// buttons (they're leaf entities — slotting a heritage/item into another
+// form is meaningless), so this helper returning false for those preview
+// kinds is intentional. We still type PreviewKind as the full union so
+// the same helper can be called from BlueprintPreviewBody if it ever
+// needs to (today it does not — it has its own much simpler logic).
+export function canSlotFromBuild(
+  buildKind: "primitive" | "effect" | "capability" | "heritage" | "item" | null,
+  previewKind: PreviewKind,
+): boolean {
+  if (buildKind === null) return false;
+  if (buildKind === "primitive") return false;
+  if (buildKind === "effect") return previewKind === "primitive";
+  if (buildKind === "capability") return previewKind === "primitive" || previewKind === "effect";
+  if (buildKind === "heritage") return previewKind === "primitive" || previewKind === "capability";
+  if (buildKind === "item") return previewKind === "primitive" || previewKind === "effect" || previewKind === "capability";
+  return false;
+}
+
 interface GrammarLibraryProps {
   build: MechanicsBuildMode;
+  /**
+   * Phase 8 rev 9: the kind currently loaded into the build column (or
+   * the draft-kind sentinel when the user just picked + New entity). The
+   * "Slot into build" button in previews only shows when canSlotFromBuild
+   * says this preview can slot into what's loaded. Pass `null` when the
+   * build column is empty.
+   */
+  buildFormKind: "primitive" | "effect" | "capability" | "heritage" | "item" | null;
   libraryItems: LibraryItem[];
   /**
    * Full typed rows used to render the modal preview. Kept here so the
@@ -149,6 +189,7 @@ const TYPE_GROUPS: Record<string, LibraryTargetType[]> = {
 
 export function GrammarLibrary({
   build,
+  buildFormKind,
   libraryItems,
   primitives,
   effects,
@@ -471,6 +512,7 @@ export function GrammarLibrary({
           item={item}
           libraryItem={libraryItem ?? null}
           build={build}
+          buildFormKind={buildFormKind}
           onLoadIntoBuild={() => {
             if (item.kind === "primitive") {
               onSelect("primitive", item.row.id);
@@ -598,6 +640,7 @@ function SandboxPreviewBody({
   item,
   libraryItem,
   build,
+  buildFormKind,
   onLoadIntoBuild,
   onSubLinkClick,
   onFork,
@@ -606,6 +649,12 @@ function SandboxPreviewBody({
   item: SandboxPreviewItem;
   libraryItem: LibraryItem | null;
   build: MechanicsBuildMode;
+  /**
+   * Phase 8 rev 9: the kind currently loaded into the build column. Used
+   * to derive canSlot via canSlotFromBuild — replaces the old logic that
+   * derived slottableKinds from the URL `build` tab.
+   */
+  buildFormKind: "primitive" | "effect" | "capability" | "heritage" | "item" | null;
   onLoadIntoBuild: () => void;
   onSubLinkClick: (link: PreviewSubLink) => void;
   onFork: ((targetType: string, targetId: string) => void) | undefined;
@@ -627,23 +676,10 @@ function SandboxPreviewBody({
     setSandboxBottomTab,
   } = useGlobalControls();
   const stack = useModalStack();
-  // "Slot into build" is only valid for kinds the current build mode
-  // can accept. Per the user's spec:
-  //   - Primitive mode:  nothing can be slotted (you're authoring a new
-  //     primitive from scratch).
-  //   - Effect mode:     accepts primitives only.
-  //   - Capability mode: accepts primitives + effects.
-  const slottableKinds: Array<"primitive" | "effect"> =
-    build === "capability"
-      ? ["primitive", "effect"]
-      : build === "effect"
-        ? ["primitive"]
-        : [];
-
-  const canSlot =
-    slottableKinds.length > 0 &&
-    ((item.kind === "primitive" && slottableKinds.includes("primitive")) ||
-      (item.kind === "effect" && slottableKinds.includes("effect")));
+  // Phase 8 rev 9: slot button visibility follows what's loaded in the
+  // build column (buildFormKind), NOT the URL tab (build). See
+  // canSlotFromBuild for the rules — they match the user's spec exactly.
+  const canSlot = canSlotFromBuild(buildFormKind, item.kind);
 
   // Engagement snapshot for the LikeForkBar + version-history link. The
   // hook fetches the user's existing reaction (so the bar shows the right
@@ -653,7 +689,11 @@ function SandboxPreviewBody({
   const { engagement } = useSandboxEngagement(libraryItem);
 
   function slotIntoBuild() {
-    if (item.kind !== "primitive" && item.kind !== "effect") return;
+    // Phase 8 rev 9: capabilities can also slot into build (per the
+    // user's spec, slot button shows on capability previews when the
+    // loaded build is a heritage or item). Previously this guard
+    // rejected capabilities, which silently no-op'd the slot.
+    if (item.kind !== "primitive" && item.kind !== "effect" && item.kind !== "capability") return;
     const event: SlotEvent = {
       kind: item.kind,
       id: item.row.id,

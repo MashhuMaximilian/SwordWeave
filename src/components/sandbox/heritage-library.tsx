@@ -56,6 +56,15 @@ export type HeritageBuildMode = "heritage" | "item" | "monster";
 
 interface HeritageLibraryProps {
   build: HeritageBuildMode;
+  /**
+   * Phase 8 rev 9: the kind currently loaded into the build column (or
+   * the draft-kind sentinel when the user just picked + New entity). The
+   * "Slot into build" button in previews only shows when the previewed
+   * kind can slot into what's loaded. See canSlotFromBuild in
+   * grammar-library.tsx for the rules — this library reuses the same
+   * helper. Pass `null` when the build column is empty.
+   */
+  buildFormKind: "primitive" | "effect" | "capability" | "heritage" | "item" | null;
   libraryItems: LibraryItem[];
   heritage: SandboxTemplateRow[];
   items: SandboxItemRow[];
@@ -123,6 +132,7 @@ const ALL_AVAILABLE_TYPES: Array<{
 
 export function HeritageLibrary({
   build,
+  buildFormKind,
   libraryItems,
   heritage,
   items,
@@ -463,6 +473,7 @@ export function HeritageLibrary({
           item={item}
           libraryItem={libraryItem ?? null}
           build={build}
+          buildFormKind={buildFormKind}
           onLoadIntoBuild={() => {
             if (item.kind === "heritage") {
               onSelect("heritage", item.row.id);
@@ -674,6 +685,7 @@ function BlueprintPreviewBody({
   item,
   libraryItem,
   build,
+  buildFormKind,
   onLoadIntoBuild,
   onSubLinkClick,
   onFork,
@@ -682,6 +694,18 @@ function BlueprintPreviewBody({
   item: SandboxPreviewItem;
   libraryItem: LibraryItem | null;
   build: HeritageBuildMode;
+  /**
+   * Phase 8 rev 9: the kind currently loaded into the build column. The
+   * BlueprintPreviewBody previews heritage/item entities (NOT
+   * primitives/effects/capabilities — those come from the Grammar
+   * Library). Since you can't slot a heritage/item into anything (they
+   * are leaf entities), the slot button is suppressed here regardless
+   * of buildFormKind. The prop is accepted for symmetry with the
+   * SandboxPreviewBody in grammar-library.tsx but currently has no
+   * effect — left wired so future "slot into item" features have a
+   * hook to extend cleanly.
+   */
+  buildFormKind: "primitive" | "effect" | "capability" | "heritage" | "item" | null;
   onLoadIntoBuild: () => void;
   onSubLinkClick: (link: PreviewSubLink) => void;
   onFork: ((targetType: string, targetId: string) => void) | undefined;
@@ -700,19 +724,15 @@ function BlueprintPreviewBody({
     sandboxSplit,
     setSandboxBottomTab,
   } = useGlobalControls();
-  // Per the user's slot spec, every template (template / item / monster)
-  // accepts primitives + effects + capabilities. Only kind==="primitive"
-  // gets the "Slot into build" affordance in the BlueprintPreviewBody
-  // because the Blueprint Library only shows items + heritage (effects
-  // + capabilities are surfaced from the Grammar Library).
-  const slottableKinds: Array<"primitive" | "effect" | "capability"> = [
-    "primitive",
-    "effect",
-    "capability",
-  ];
-  const canSlot =
-    slottableKinds.length > 0 &&
-    (slottableKinds as string[]).includes(item.kind);
+  // Phase 8 rev 9: BlueprintPreviewBody previews heritage/item entities
+  // (NOT primitives/effects/capabilities — those come from the Grammar
+  // Library). Heritage and item are leaf entities — you can't slot one
+  // into another. So the slot button is always suppressed here. The
+  // buildFormKind prop is accepted for symmetry with grammar-library's
+  // SandboxPreviewBody but is intentionally unused. If the user later
+  // wants "slot an item into another item" or "nest heritage", this is
+  // where the rule would go.
+  const canSlot = false;
 
   const router = useRouter();
   const stack = useModalStack();
