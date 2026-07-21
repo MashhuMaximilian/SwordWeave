@@ -257,7 +257,6 @@ export function IconSlot({
                 currentUrl={iconUrl ?? null}
                 currentColor={iconColor ?? "#ffffff"}
                 onSelect={handleSelect}
-                onCancel={() => setOpen(false)}
               />
             </div>
           </div>

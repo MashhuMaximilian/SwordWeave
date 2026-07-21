@@ -135,8 +135,6 @@ export interface IconPickerProps {
     url?: string;
     color: string;
   }) => void;
-  /** Called when the user dismisses without selecting (close button). */
-  onCancel?: () => void;
 }
 
 const ROW_BUFFER = 4;
@@ -149,7 +147,6 @@ export function IconPicker({
   currentUrl,
   currentColor,
   onSelect,
-  onCancel,
 }: IconPickerProps) {
   // Phase 11: IconPicker no longer touches the modal stack. Previously
   // FiltersTrigger pushed a 'Filters' modal into useModalStack and the
@@ -324,43 +321,10 @@ export function IconPicker({
     [color, onSelect],
   );
 
-  const handleClose = useCallback(() => {
-    onCancel?.();
-    // Phase 11: IconSlot owns close state.
-  }, [onCancel]);
-
   return (
     <div
-      role="dialog"
-      aria-label="Choose icon"
-      // h-full resolves against IconSlot's h-[80vh] container, so
-      // the picker's flex column gets a real height and the inner
-      // grid scrolls correctly. min-h-0 lets the inner grid shrink
-      // below its content's intrinsic height (otherwise the flex
-      // container grows past the 80vh cap and the search input +
-      // grid both end up cropped or the search stops filtering
-      // because the grid is rendered at 0 height). The previous
-      // shape used `h-full max-h-[80vh]` which collapsed to ~0
-      // when the IconSlot wrapper passed through a wrapper with no
-      // explicit height — search would update the filter but the
-      // grid would still render the first icons in the catalog.
-      className="flex min-h-0 h-full max-h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-card shadow-2xl"
+      className="flex min-h-0 h-full w-full flex-col overflow-hidden"
     >
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <h2 className="text-lg font-semibold">Choose an icon</h2>
-        <button
-          type="button"
-          onClick={handleClose}
-          aria-label="Close"
-          className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <X className="size-4" />
-        </button>
-      </div>
-
-      {/* The toolbar (Filters / Search / Color / Upload) is rendered above the grid below. */}
-
       {uploadError && (
         <div className="border-b border-border bg-destructive/10 px-4 py-2 text-sm text-destructive">
           {uploadError}
