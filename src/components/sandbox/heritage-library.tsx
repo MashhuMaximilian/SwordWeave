@@ -770,6 +770,18 @@ function BlueprintPreviewBody({
   // slot landed silently — the user might still be on Identity tab
   // (the reset default) and the slot would never become visible.
   const characterModal = useCharacterModal();
+
+  // Phase 8.1 round 3: heritage label needs the destination tab name,
+  // not the modal's activeStep. LINEAGE → "Lineage", UPBRINGING →
+  // "Upbringing", MANIFEST → "Manifest". Anything else falls back
+  // to "Character" so the button label never says "Slot into undefined".
+  function heritageTabLabel(row: { kind: string }): string {
+    if (row.kind === "LINEAGE") return "Lineage";
+    if (row.kind === "UPBRINGING") return "Upbringing";
+    if (row.kind === "MANIFEST") return "Manifest";
+    return "Character";
+  }
+
   function slotIntoCharacter() {
     if (item.kind === "heritage") {
       const row = item.row as { id: string; name: string; kind: string };
@@ -806,13 +818,15 @@ function BlueprintPreviewBody({
       window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
     } else if (
       item.kind === "primitive" ||
-      item.kind === "effect" ||
       item.kind === "capability"
     ) {
-      // Heritage-library also previews primitives/effects/caps when
+      // Heritage-library also previews primitives / capabilities when
       // the filter on the heritage-library tab is set to those kinds.
       // Per Mashu 2026-07-21: the user can be in the heritages tab
-      // filtered by primitives and still slot into character.
+      // filtered by primitives and still slot into character. Effects
+      // intentionally do NOT get a slot-into-character button — they
+      // slot implicitly via their parent capability, or via the build
+      // column for free-standing effects.
       const tab = characterModal.activeStep;
       if (item.kind === "primitive") {
         characterModal.queueSlot({
@@ -821,17 +835,10 @@ function BlueprintPreviewBody({
           tab,
           name: item.row.name,
         });
-      } else if (item.kind === "capability") {
+      } else {
         characterModal.queueSlot({
           kind: "capability",
           capabilityId: item.row.id,
-          tab,
-          name: item.row.name,
-        });
-      } else {
-        characterModal.queueSlot({
-          kind: "effect",
-          effectId: item.row.id,
           tab,
           name: item.row.name,
         });
@@ -921,30 +928,41 @@ function BlueprintPreviewBody({
   const actionBar: PreviewActionProps = {
     loadIntoBuild: { label: "Load into build", onClick: loadAndPreview },
     ...(canSlot ? { primarySecondary: { label: "Slot into build", onClick: slotIntoBuild } } : {}),
-    // Phase 8.1 batch 8 + fix-up: every entity kind the character modal
-    // accepts shows a "Slot into character" CTA. Heritage routes by
-    // its own LINEAGE/UPBRINGING/MANIFEST kind so its label stays
-    // fixed (heritage itself decides which tab it lands in). Items
-    // always go to items tab — same — fixed label. Mechanics (prim /
-    // effect / capability) shown on this page go to activeStep, so
-    // their label is context-aware.
-    ...(item.kind === "heritage" || item.kind === "item"
+    // Phase 8.1 batch 8 + fix-up + round 3: every entity kind the
+    // character modal accepts shows a "Slot into [step]" CTA. The
+    // label is always the destination tab:
+    //   - heritage LINEAGE → "Lineage"
+    //   - heritage UPBRINGING → "Upbringing"
+    //   - heritage MANIFEST → "Manifest"
+    //   - item → "Items"
+    //   - primitive / capability → modal's activeStep tab
+    //   - effect → no slot button at all (effects slot via their
+    //     parent capability, or via "Slot into build" if the open
+    //     build is capability or item)
+    ...(item.kind === "heritage"
       ? {
           primaryTertiary: {
-            label: "Slot into character",
+            label: `Slot into ${heritageTabLabel(item.row as { kind: string })}`,
             onClick: slotIntoCharacter,
           },
         }
-      : item.kind === "primitive" ||
-          item.kind === "effect" ||
-          item.kind === "capability"
+      : item.kind === "item"
         ? {
             primaryTertiary: {
-              label: `Slot into ${tabLabelForActiveStep(characterModal.activeStep, characterModal.isOpen)}`,
+              label: "Slot into Items",
               onClick: slotIntoCharacter,
             },
           }
-        : {}),
+        : item.kind === "primitive" ||
+            item.kind === "effect" ||
+            item.kind === "capability"
+          ? {
+              primaryTertiary: {
+                label: `Slot into ${tabLabelForActiveStep(characterModal.activeStep, characterModal.isOpen)}`,
+                onClick: slotIntoCharacter,
+              },
+            }
+          : {}),
     ...(isOwner
       ? {
           onEdit: () =>

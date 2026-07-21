@@ -689,11 +689,17 @@ function SandboxPreviewBody({
   // build column (buildFormKind), NOT the URL tab (build). See
   // canSlotFromBuild for the rules — they match the user's spec exactly.
   const canSlot = canSlotFromBuild(buildFormKind, item.kind);
-  // Phase 8.1 batch 8: primitives / effects / capabilities can all
-  // slot into the character modal. Heritage itself is slotted from
-  // the heritage library (different file). Items slot from the
-  // item-form / blueprint library (different file).
-  const canSlotIntoCharacter = item.kind === "primitive" || item.kind === "effect" || item.kind === "capability";
+  // Phase 8.1 batch 8 + round 3: effects no longer slot into the
+  // character modal — effects are slotted implicitly when the user
+  // slots the capability that contains them (or via the build column
+  // for free-standing effects). The character modal's queueSlot()
+  // also doesn't have a separate effect-id routing yet (effects
+  // would land in the same slot as their parent primitive), so
+  // showing the button was confusing Mashu 2026-07-21 — clicking
+  // it did nothing visible. Only primitives + capabilities can
+  // route through the modal's queue directly.
+  const canSlotIntoCharacter =
+    item.kind === "primitive" || item.kind === "capability";
 
   // Engagement snapshot for the LikeForkBar + version-history link. The
   // hook fetches the user's existing reaction (so the bar shows the right

@@ -29,7 +29,7 @@
 // it snapping back to 0. The parent state holds the parsed number.
 // =============================================================================
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const PROF_OPTIONS = ["PHYSICAL", "MENTAL", "MAGICAL"] as const;
 export type Prof = (typeof PROF_OPTIONS)[number];
@@ -94,46 +94,18 @@ export function AttributesTab({ state, onChange }: AttributesTabProps) {
     return (
       <label className="block space-y-1">
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
-        <input
-          // type="text" + inputMode="numeric" gives us a numeric keypad
-          // on mobile without the quirks of type="number" (which can
-          // suppress onChange on certain mobile browsers, leaving the
-          // footer stale even as the input updates). The pattern="-?\d*"
-          // attribute further constrains the input on iOS Safari.
-          type="text"
-          inputMode="numeric"
-          pattern="-?\d*"
+        <IntegerField
+          state={v}
+          setState={(n) => setField(valueKey, n)}
+          commitDefault={0}
+          min={-1}
+          max={5}
           maxLength={2}
-          value={Number.isFinite(v) ? String(v) : ""}
-          onChange={(e) => {
-            const raw = e.target.value;
-            if (raw === "" || raw === "-") {
-              // Allow the field to be empty mid-edit. Defer parse
-              // until blur.
-              e.currentTarget.dataset["dirty"] = "1";
-              return;
-            }
-            // Allow negative sign only at start, otherwise it's a digit.
-            if (!/^-?\d*$/.test(raw)) {
-              e.target.value = String(v);
-              return;
-            }
-            const parsed = Number.parseInt(raw, 10);
-            if (Number.isFinite(parsed)) {
-              setField(valueKey, parsed);
-            }
-          }}
-          onBlur={(e) => {
-            if (e.currentTarget.dataset["dirty"] === "1") {
-              setField(valueKey, 0);
-              e.currentTarget.dataset["dirty"] = "0";
-            }
-          }}
+          allowNegative
           className={
-            "w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground focus:outline-none " +
-            (valid
-              ? "border-border focus:border-primary"
-              : "border-destructive text-destructive")
+            valid
+              ? "w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground focus:outline-none border-border focus:border-primary"
+              : "w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground focus:outline-none border-destructive text-destructive"
           }
         />
       </label>
@@ -200,68 +172,26 @@ export function AttributesTab({ state, onChange }: AttributesTabProps) {
       <div className="grid grid-cols-2 gap-3">
         <label className="block space-y-1">
           <span className="text-xs font-medium text-muted-foreground">Level</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            pattern="\d*"
+          <IntegerField
+            state={state.level}
+            setState={(v) => setField("level", clampLevel(v))}
+            commitDefault={1}
+            min={1}
+            max={20}
             maxLength={2}
-            value={Number.isFinite(state.level) ? String(state.level) : ""}
-            onChange={(e) => {
-              const raw = e.target.value;
-              if (raw === "") {
-                e.currentTarget.dataset["dirty"] = "1";
-                return;
-              }
-              if (!/^\d*$/.test(raw)) {
-                e.target.value = String(state.level);
-                return;
-              }
-              const parsed = Number.parseInt(raw, 10);
-              if (Number.isFinite(parsed)) {
-                setField("level", clampLevel(parsed));
-              }
-            }}
-            onBlur={(e) => {
-              if (e.currentTarget.dataset["dirty"] === "1") {
-                setField("level", 1);
-                e.currentTarget.dataset["dirty"] = "0";
-              }
-            }}
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
           />
         </label>
         <label className="block space-y-1">
           <span className="text-xs font-medium text-muted-foreground">
             Starting BU
           </span>
-          <input
-            type="text"
-            inputMode="numeric"
-            pattern="\d*"
+          <IntegerField
+            state={state.startingBu}
+            setState={(v) => setField("startingBu", clampBu(v))}
+            commitDefault={25}
+            min={0}
+            max={1000}
             maxLength={4}
-            value={Number.isFinite(state.startingBu) ? String(state.startingBu) : ""}
-            onChange={(e) => {
-              const raw = e.target.value;
-              if (raw === "") {
-                e.currentTarget.dataset["dirty"] = "1";
-                return;
-              }
-              if (!/^\d*$/.test(raw)) {
-                e.target.value = String(state.startingBu);
-                return;
-              }
-              const parsed = Number.parseInt(raw, 10);
-              if (Number.isFinite(parsed)) {
-                setField("startingBu", clampBu(parsed));
-              }
-            }}
-            onBlur={(e) => {
-              if (e.currentTarget.dataset["dirty"] === "1") {
-                setField("startingBu", 25);
-                e.currentTarget.dataset["dirty"] = "0";
-              }
-            }}
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
           />
         </label>
       </div>
@@ -270,3 +200,96 @@ export function AttributesTab({ state, onChange }: AttributesTabProps) {
 }
 
 void ATTRIBUTES_EMPTY; // re-exported above
+
+// =============================================================================
+// IntegerField — shared numeric input used by Level + Starting BU.
+// Behavior:
+//   - Uncontrolled display: the input holds its own `draft` string so
+//     the user can freely backspace / clear / type without React
+//     fighting them. Parent state is updated on every keystroke for
+//     live footer mirrors, but the visible text is the user's literal
+//     input until blur (where parse + normalize happens).
+//   - On blur: empty / partial → reset to commitDefault. Non-digit
+//     input is filtered out by the regex during typing.
+// =============================================================================
+
+interface IntegerFieldProps {
+  state: number;
+  setState: (v: number) => void;
+  commitDefault: number;
+  min: number;
+  max: number;
+  maxLength: number;
+  /** Allow leading minus sign (used for attributes which can be -1). */
+  allowNegative?: boolean;
+  className?: string;
+}
+
+function IntegerField({
+  state,
+  setState,
+  commitDefault,
+  min,
+  max,
+  maxLength,
+  allowNegative = false,
+  className,
+}: IntegerFieldProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [draft, setDraft] = useState<string>(
+    Number.isFinite(state) ? String(state) : "",
+  );
+  // Re-sync when parent state changes from outside (localStorage
+  // hydration, tab reset). Skipped while the input has focus.
+  useEffect(() => {
+    if (document.activeElement === inputRef.current) return;
+    setDraft(Number.isFinite(state) ? String(state) : "");
+  }, [state]);
+  const pattern = allowNegative ? /^-?\d*$/ : /^\d*$/;
+  const defaultClass =
+    "w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground focus:outline-none";
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      inputMode="numeric"
+      pattern={allowNegative ? "-?\\d*" : "\\d*"}
+      maxLength={maxLength}
+      value={draft}
+      onChange={(e) => {
+        const raw = e.target.value;
+        if (!pattern.test(raw)) return;
+        setDraft(raw);
+        if (raw === "" || raw === "-") {
+          // mid-edit empty / lone-minus — don't commit a number yet.
+          return;
+        }
+        const parsed = Number.parseInt(raw, 10);
+        if (Number.isFinite(parsed)) {
+          setState(Math.min(max, Math.max(min, parsed)));
+        }
+      }}
+      onBlur={(e) => {
+        const raw = e.target.value.trim();
+        if (raw === "" || raw === "-") {
+          setState(commitDefault);
+          setDraft(String(commitDefault));
+          e.target.value = String(commitDefault);
+          return;
+        }
+        const parsed = Number.parseInt(raw, 10);
+        if (Number.isFinite(parsed)) {
+          const clamped = Math.min(max, Math.max(min, parsed));
+          setState(clamped);
+          setDraft(String(clamped));
+          e.target.value = String(clamped);
+        } else {
+          setState(commitDefault);
+          setDraft(String(commitDefault));
+          e.target.value = String(commitDefault);
+        }
+      }}
+      className={className ?? defaultClass}
+    />
+  );
+}
