@@ -402,6 +402,12 @@ export type PreviewActionProps = {
   /** Optional secondary primary CTA (e.g. Slot into build) shown full-width
    *  above the grid, after `primary`. */
   primarySecondary?: { label: string; onClick?: () => void; href?: string };
+  /**
+   * Phase 8.1 batch 8: optional tertiary CTA (e.g. "Slot into Lineage").
+   * Context-aware: label changes based on the character modal's
+   * activeStep. Only shown when provided.
+   */
+  primaryTertiary?: { label: string; onClick?: () => void; href?: string };
   /** Optional 4th grid button rendered on the SAME row as Edit/Source/Versions
    *  (e.g. "Load into build"). When present the grid becomes 4 columns and
    *  the row is pinned to the bottom of the modal. */
@@ -423,6 +429,7 @@ export function PreviewActions(props: PreviewActionProps) {
   const {
     primary,
     primarySecondary,
+    primaryTertiary,
     loadIntoBuild,
     onEdit,
     openSourceHref,
@@ -495,6 +502,28 @@ export function PreviewActions(props: PreviewActionProps) {
             className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
           >
             {primarySecondary.label}
+          </button>
+        )
+      ) : null}
+
+      {/* Phase 8.1 batch 8: tertiary CTA — context-aware "Slot into
+          [step]" for the character modal. Same shape as primarySecondary
+          but rendered after it. */}
+      {primaryTertiary ? (
+        primaryTertiary.href ? (
+          <a
+            href={primaryTertiary.href}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+          >
+            {primaryTertiary.label}
+          </a>
+        ) : (
+          <button
+            type="button"
+            onClick={primaryTertiary.onClick}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+          >
+            {primaryTertiary.label}
           </button>
         )
       ) : null}

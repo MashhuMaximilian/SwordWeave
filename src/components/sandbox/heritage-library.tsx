@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import { useModalStack } from "@/components/ui/modal-stack";
+import { useCharacterModal } from "@/components/character-modal/character-modal-store";
 import {
   previewHeadingLabel,
   libraryCompositeId,
@@ -758,6 +759,40 @@ function BlueprintPreviewBody({
     }
   }
 
+  // Phase 8.1 batch 8: queue heritage / item into the character modal.
+  // The heritage's own `kind` column carries LINEAGE / UPBRINGING /
+  // MANIFEST — the modal's queueSlot() routes it to the matching tab.
+  // Items go to the items tab.
+  const characterModal = useCharacterModal();
+  function slotIntoCharacter() {
+    if (item.kind === "heritage") {
+      const row = item.row as { id: string; name: string; kind: string };
+      const heritageKind = row.kind as "LINEAGE" | "UPBRINGING" | "MANIFEST";
+      characterModal.queueSlot({
+        kind: "heritage",
+        heritageId: row.id,
+        heritageKind,
+        name: row.name,
+      });
+      if (!characterModal.isOpen) {
+        characterModal.open();
+      }
+      window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
+    } else if (item.kind === "item") {
+      const row = item.row as { id: string; name: string };
+      characterModal.queueSlot({
+        kind: "item",
+        itemId: row.id,
+        tab: "items",
+        name: row.name,
+      });
+      if (!characterModal.isOpen) {
+        characterModal.open();
+      }
+      window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
+    }
+  }
+
   function loadAndPreview() {
     onLoadIntoBuild();
     if (sandboxSplit) {
@@ -835,6 +870,17 @@ function BlueprintPreviewBody({
   const actionBar: PreviewActionProps = {
     loadIntoBuild: { label: "Load into build", onClick: loadAndPreview },
     ...(canSlot ? { primarySecondary: { label: "Slot into build", onClick: slotIntoBuild } } : {}),
+    // Phase 8.1 batch 8: heritage / item slots into the character modal.
+    // Heritage routes by its own LINEAGE/UPBRINGING/MANIFEST kind.
+    // Items go to the items tab.
+    ...(item.kind === "heritage" || item.kind === "item"
+      ? {
+          primaryTertiary: {
+            label: "Slot into character",
+            onClick: slotIntoCharacter,
+          },
+        }
+      : {}),
     ...(isOwner
       ? {
           onEdit: () =>

@@ -29,6 +29,10 @@ import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import { useModalStack } from "@/components/ui/modal-stack";
 import {
+  useCharacterModal,
+  tabLabelForActiveStep,
+} from "@/components/character-modal/character-modal-store";
+import {
   previewHeadingLabel,
   libraryCompositeId,
   type SandboxPreviewItem,
@@ -676,10 +680,20 @@ function SandboxPreviewBody({
     setSandboxBottomTab,
   } = useGlobalControls();
   const stack = useModalStack();
+  // Phase 8.1 batch 8: character modal integration. Read the activeStep
+  // to drive the "Slot into [step]" button label. Heritage library
+  // routes the slot via heritage.kind (LINEAGE/UPBRINGING/MANIFEST);
+  // primitives/caps slot into the modal's currently-open tab.
+  const characterModal = useCharacterModal();
   // Phase 8 rev 9: slot button visibility follows what's loaded in the
   // build column (buildFormKind), NOT the URL tab (build). See
   // canSlotFromBuild for the rules — they match the user's spec exactly.
   const canSlot = canSlotFromBuild(buildFormKind, item.kind);
+  // Phase 8.1 batch 8: primitives / effects / capabilities can all
+  // slot into the character modal. Heritage itself is slotted from
+  // the heritage library (different file). Items slot from the
+  // item-form / blueprint library (different file).
+  const canSlotIntoCharacter = item.kind === "primitive" || item.kind === "effect" || item.kind === "capability";
 
   // Engagement snapshot for the LikeForkBar + version-history link. The
   // hook fetches the user's existing reaction (so the bar shows the right
@@ -710,6 +724,46 @@ function SandboxPreviewBody({
         openDrawer("build");
       }
     }
+  }
+
+  // Phase 8.1 batch 8: queue the slot into the character modal. The
+  // store routes heritage by its own kind; primitives/caps/effects go
+  // to the activeStep. Opens the modal if it's closed so the user
+  // sees their slot land immediately.
+  function slotIntoCharacter() {
+    if (
+      item.kind !== "primitive" &&
+      item.kind !== "effect" &&
+      item.kind !== "capability"
+    )
+      return;
+    if (item.kind === "primitive") {
+      characterModal.queueSlot({
+        kind: "primitive",
+        primitiveId: item.row.id,
+        tab: characterModal.activeStep,
+        name: item.row.name,
+      });
+    } else if (item.kind === "capability") {
+      characterModal.queueSlot({
+        kind: "capability",
+        capabilityId: item.row.id,
+        tab: characterModal.activeStep,
+        name: item.row.name,
+      });
+    } else {
+      // effect
+      characterModal.queueSlot({
+        kind: "effect",
+        effectId: item.row.id,
+        tab: characterModal.activeStep,
+        name: item.row.name,
+      });
+    }
+    if (!characterModal.isOpen) {
+      characterModal.open();
+    }
+    window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
   }
 
   // Ownership + visibility drive the unified action bar. The bar is the
@@ -785,6 +839,17 @@ function SandboxPreviewBody({
   const actionBar: PreviewActionProps = {
     loadIntoBuild: { label: "Load into build", onClick: onLoadIntoBuild },
     ...(canSlot ? { primarySecondary: { label: "Slot into build", onClick: slotIntoBuild } } : {}),
+    // Phase 8.1 batch 8: context-aware "Slot into [step]" for the
+    // character modal. Label driven by activeStep. Only shown for
+    // entity kinds the modal accepts (primitives/effects/caps).
+    ...(canSlotIntoCharacter
+      ? {
+          primaryTertiary: {
+            label: `Slot into ${tabLabelForActiveStep(characterModal.activeStep, characterModal.isOpen)}`,
+            onClick: slotIntoCharacter,
+          },
+        }
+      : {}),
     ...(isOwner
       ? {
           onEdit: () =>
