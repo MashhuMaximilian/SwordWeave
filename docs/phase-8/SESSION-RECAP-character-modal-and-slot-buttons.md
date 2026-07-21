@@ -103,18 +103,46 @@ if (choice?.mechanicsSubKind) {
 
 Updated `TabCacheEntry.mechanicsDraftKind` type to allow null. Typecheck + tests pass (1704/1706). Pushed to `origin/main`.
 
-### (B.5) Slot-into-build button STILL missing — needs deeper investigation
+**Round 8 — Legacy heritage kind dropdown removed:**
 
-After rev 6 + rev 7 fixes, user reports: "I loaded a lineage and when I open a preview of a primitive I see no slot into build option."
+User reported: "the new entity for heritages does not work, adds a field to select archetype race or background which is bad and old and not useful".
 
-Code analysis: `BlueprintPreviewBody.canSlot` (`heritage-library.tsx:713-715`) correctly returns `true` for primitive previews when `slottableKinds = ["primitive","effect","capability"]` and `item.kind === "primitive"`. The `actionBar` object construction (line 815-841) conditionally spreads `primarySecondary` when `canSlot` is true. So the button SHOULD render.
+Found at `src/components/sandbox/heritage-form.tsx:499-511`:
 
-Possible causes to investigate:
-1. **Vercel deployment not live yet** — the patch may not be on production. Need to verify by inspecting deployed chunks.
-2. **`item.kind` is something other than `"primitive"` at runtime** — need to add console.log to verify.
-3. **Different code path renders the preview** — maybe the user is on `?build=mechanics` (not `?build=heritage`), so GrammarLibrary handles the preview, and GrammarLibrary has `canSlot = false` when `build === "mechanics"`. If user didn't pick a heritage kind via the new-entity modal (or my rev 6 patch didn't take effect), `build` might still be `"mechanics"`.
+```tsx
+{!initialTemplate ? (
+  <select value={form.kind} onChange={...}>
+    <option value="LINEAGE">Race</option>
+    <option value="UPBRINGING">Background</option>
+    <option value="MANIFEST">Archetype</option>
+  </select>
+) : null}
+```
 
-Most likely: combination of (1) — Vercel cache, similar to round 17 force-redeploy needed — and (3) — the user's `build` URL param might be wrong because the rev 6 patch wasn't deployed when they tested.
+The dropdown used OLD taxonomy (Race / Background / Archetype) instead of the renamed names (Lineage / Upbringing / Manifest). It was also redundant — the form won't even render without `heritageKind` already being set via the + New entity chooser.
+
+**Fix (commit `dd86047` + force-redeploy `2bc29fb`):** Replaced `<select>` with a read-only `<span>` badge showing `kindSingular(form.kind)` (which already returns the renamed "Lineage" / "Upbringing" / "Manifest" strings).
+
+**Verified on production:** Picked "+ New entity → Lineage", the badge in the build form header now shows **"LINEAGE"** instead of "Race". Vercel redeploy via empty commit was required because the new chunk was stuck behind the cached chunk hash (same pattern as round 17 icon picker fix).
+
+### End-to-end verification — round 8 (browser-tested)
+
+Signed in to production via Clerk, reproduced the user's flow:
+
+1. **Navigate to `/atelier?build=heritage`** — library shows heritages (Forestkind, Human, etc.). ✓
+2. **Click "+ New entity"** — modal opens with all 8 choices. ✓
+3. **Click "Lineage"** — URL becomes `?build=heritage&kind=LINEAGE`, HeritageForm renders with **"LINEAGE"** badge (no Race dropdown). ✓
+4. **Click Forestkind in library → Load into build** — HeritageForm loads Forestkind, Bundle primitives shown. ✓
+5. **Click a primitive sub-link (Umbral Sight I) in the bundle** — preview opens, **"Slot into build"** button is visible (full-width CTA above Source/Versions/Load into build). ✓
+6. **Click "+ New entity → Lineage" again** — empty heritage form with LINEAGE badge, no Race dropdown. ✓
+
+All four user-reported bugs are now fixed.
+
+### Known remaining limitations (NOT this round's scope)
+
+1. **Slot into build on PrimitiveForm is a no-op.** PrimitiveForm doesn't have a `sw-sandbox-slot` listener because primitives don't have sub-slots. The slot button shows but clicking does nothing if the active build form is a PrimitiveForm. Future work: hide the slot button when the active build form can't accept the slot.
+
+2. **Mechanics kinds (Primitive/Effect/Capability) don't have a similar dropdown bug** — the dropdown only existed in HeritageForm.
 
 ### (B) Add "Slot into character" button — alongside "Slot into build"
 
