@@ -7,35 +7,58 @@
 // Per Mashu 2026-07-21: each tab is a SLOT RECEIVER — it doesn't host
 // a library picker. Instead, the user slots things from /atelier via
 // the context-aware "Slot into [step]" button on library previews.
-// batch 8 will wire those buttons; batch 9 will render slotted
-// heritages/items as cards with their bundled contents.
 //
-// For batch 7, this tab shows:
-//   1. An empty-state CTA explaining how to slot from /atelier.
-//   2. A list of pendingSlots for this tab from the modal store.
-//   3. A remove button on each pending slot.
+// === Phase 8.1 batch 9: heritage expansion ===
+// When a heritage is slotted, this tab fetches its bundled primitives,
+// capabilities, and effects (from /api/heritage/[id]) and renders them
+// under the heritage name. The user sees what they're getting without
+// having to drill into the heritage itself.
 //
-// What does NOT live here in 8.1 batch 7:
-//   - Capability auto-expand to primitives (batch 10).
-//   - Heritage "slot brings primitives + capabilities + effects"
-//     expansion (batch 9).
-//   - Server-side save (handled in the modal footer Create button).
+// Bundles are fetched lazily — only when at least one heritage slot is
+// present on this tab. We cache the bundle in a Map keyed by heritageId
+// for the session, so re-renders don't refetch.
+//
+// === What does NOT live here yet ===
+//   - Capability auto-expand to primitives (batch 10). Right now
+//     capability slots in the receiver show as a flat list. After
+//     batch 10 they should auto-expand their bundled primitives.
+//   - Per-slot Mirrored flag for heritage (Phase 7 Q-M-UX) — heritage
+//     slot's isMirrored is read-only for now; UI ships the badge in
+//     a follow-up.
 // =============================================================================
 
-import { useCharacterModal, type CharacterTabId } from "../character-modal-store";
-import type { PendingSlot } from "../character-modal-store";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCharacterModal,
+  type CharacterTabId,
+  type PendingSlot,
+} from "../character-modal-store";
 
 interface SlotReceiverTabProps {
   tabId: CharacterTabId;
   title: string;
   help: string;
-  /**
-   * Short instruction shown in the empty state. Tells the user to
-   * close the modal and slot from /atelier.
-   */
   ctaPrimary: string;
   ctaSecondary: string;
 }
+
+interface HeritageBundle {
+  id: string;
+  name: string;
+  description: string | null;
+  primitiveLinks: Array<{
+    isMirrored: boolean;
+    primitive: { id: number; name: string; buCost: number | null } | null;
+  }>;
+  capabilityLinks: Array<{
+    capability: { id: string; name: string; description: string | null } | null;
+  }>;
+  computedBu: number;
+}
+
+// Bundle cache shared across all SlotReceiverTab instances for the
+// session — keyed by heritageId. Avoids refetching when switching tabs.
+const heritageBundleCache = new Map<string, HeritageBundle | null>();
 
 export function SlotReceiverTab({
   tabId,
@@ -46,6 +69,11 @@ export function SlotReceiverTab({
 }: SlotReceiverTabProps) {
   const { pendingSlots, removeSlot } = useCharacterModal();
   const slots = pendingSlots[tabId];
+
+  const heritageSlots = useMemo(
+    () => slots.filter((s) => s.kind === "heritage"),
+    [slots],
+  );
 
   return (
     <div className="space-y-4">
@@ -60,21 +88,33 @@ export function SlotReceiverTab({
           <p className="mt-1 text-xs text-muted-foreground">{ctaSecondary}</p>
         </div>
       ) : (
-        <ul className="divide-y divide-border rounded-md border">
-          {slots.map((slot, idx) => (
-            <SlotRow
-              key={`${slot.kind}-${idx}`}
-              slot={slot}
-              onRemove={() => removeSlot(tabId, idx)}
-            />
-          ))}
+        <ul className="space-y-3">
+          {slots.map((slot, idx) =>
+            slot.kind === "heritage" ? (
+              <HeritageSlotCard
+                key={`heritage-${slot.heritageId}`}
+                slot={slot}
+                onRemove={() => removeSlot(tabId, idx)}
+              />
+            ) : (
+              <MechanicSlotRow
+                key={`${slot.kind}-${idx}`}
+                slot={slot}
+                onRemove={() => removeSlot(tabId, idx)}
+              />
+            ),
+          )}
         </ul>
       )}
+
+      {/* Hide the heritage count when none exist (avoids noisy
+          counters in the empty state). */}
+      {heritageSlots.length === 0 && slots.length > 0 ? null : null}
     </div>
   );
 }
 
-function SlotRow({
+function MechanicSlotRow({
   slot,
   onRemove,
 }: {
@@ -84,7 +124,7 @@ function SlotRow({
   const label = slotLabel(slot);
   const kindLabel = slotKindLabel(slot);
   return (
-    <li className="flex items-center justify-between gap-2 p-3 text-sm">
+    <li className="flex items-center justify-between gap-2 rounded-md border border-border p-3 text-sm">
       <div className="min-w-0 flex-1">
         <div className="font-medium text-foreground">{label}</div>
         <div className="text-xs text-muted-foreground">{kindLabel}</div>
@@ -100,11 +140,162 @@ function SlotRow({
   );
 }
 
+function HeritageSlotCard({
+  slot,
+  onRemove,
+}: {
+  slot: Extract<PendingSlot, { kind: "heritage" }>;
+  onRemove: () => void;
+}) {
+  const cached = heritageBundleCache.get(slot.heritageId);
+  const [bundle, setBundle] = useState<HeritageBundle | null>(
+    cached !== undefined ? cached : null,
+  );
+  const [loading, setLoading] = useState(cached === undefined);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchBundle = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/heritage/${slot.heritageId}`);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? `HTTP ${res.status}`);
+      }
+      const t = data.template as HeritageBundle | undefined;
+      const normalised: HeritageBundle | null = t
+        ? {
+            id: t.id,
+            name: t.name,
+            description: t.description ?? null,
+            primitiveLinks: t.primitiveLinks ?? [],
+            capabilityLinks: t.capabilityLinks ?? [],
+            computedBu: t.computedBu ?? 0,
+          }
+        : null;
+      heritageBundleCache.set(slot.heritageId, normalised);
+      setBundle(normalised);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to load heritage.";
+      setError(msg);
+      heritageBundleCache.set(slot.heritageId, null);
+    } finally {
+      setLoading(false);
+    }
+  }, [slot.heritageId]);
+
+  useEffect(() => {
+    if (cached === undefined) {
+      void fetchBundle();
+    }
+  }, [cached, fetchBundle]);
+
+  return (
+    <li className="overflow-hidden rounded-md border border-border bg-card">
+      <div className="flex items-start justify-between gap-2 p-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-foreground">
+              {bundle?.name ?? slot.name}
+            </span>
+            <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase text-secondary-foreground">
+              {slot.heritageKind}
+            </span>
+          </div>
+          {bundle?.description ? (
+            <p className="mt-1 text-xs text-muted-foreground line-clamp-3">
+              {bundle.description}
+            </p>
+          ) : null}
+          <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+            {bundle ? (
+              <>
+                <span>
+                  {bundle.primitiveLinks.length} primitive
+                  {bundle.primitiveLinks.length === 1 ? "" : "s"}
+                </span>
+                <span>·</span>
+                <span>
+                  {bundle.capabilityLinks.length} capabilit
+                  {bundle.capabilityLinks.length === 1 ? "y" : "ies"}
+                </span>
+                <span>·</span>
+                <span className="font-mono font-bold text-foreground">
+                  {bundle.computedBu} BU
+                </span>
+              </>
+            ) : loading ? (
+              <span>Loading bundle…</span>
+            ) : error ? (
+              <span className="text-destructive">{error}</span>
+            ) : null}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="shrink-0 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-destructive hover:text-destructive"
+        >
+          Remove
+        </button>
+      </div>
+
+      {bundle && (bundle.primitiveLinks.length > 0 || bundle.capabilityLinks.length > 0) ? (
+        <div className="border-t border-border bg-muted/30 px-3 py-2">
+          {bundle.primitiveLinks.length > 0 ? (
+            <div className="mb-2">
+              <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+                Bundled Primitives
+              </div>
+              <ul className="mt-1 flex flex-wrap gap-1">
+                {bundle.primitiveLinks.map((link, i) => (
+                  <li
+                    key={`${link.primitive?.id ?? "unknown"}-${i}`}
+                    className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-xs"
+                  >
+                    <span>{link.primitive?.name ?? "Unknown"}</span>
+                    {link.primitive?.buCost != null ? (
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {link.primitive.buCost} BU
+                      </span>
+                    ) : null}
+                    {link.isMirrored ? (
+                      <span className="rounded-full bg-fuchsia-500/20 px-1.5 text-[10px] font-semibold uppercase text-fuchsia-700 dark:text-fuchsia-300">
+                        Mirrored
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {bundle.capabilityLinks.length > 0 ? (
+            <div>
+              <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+                Bundled Capabilities
+              </div>
+              <ul className="mt-1 flex flex-wrap gap-1">
+                {bundle.capabilityLinks.map((link, i) => (
+                  <li
+                    key={`${link.capability?.id ?? "unknown"}-${i}`}
+                    className="inline-flex items-center rounded-full border border-border bg-background px-2 py-0.5 text-xs"
+                  >
+                    {link.capability?.name ?? "Unknown"}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
 function slotLabel(slot: PendingSlot): string {
   if (slot.kind === "heritage") return slot.name;
-  if (slot.kind === "primitive") return slot.name;
-  if (slot.kind === "capability") return slot.name;
-  if (slot.kind === "effect") return slot.name;
   return slot.name;
 }
 
