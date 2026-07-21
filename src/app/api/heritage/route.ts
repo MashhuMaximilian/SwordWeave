@@ -118,6 +118,19 @@ export async function POST(request: Request) {
     const description = String(values["description"] ?? "").trim() || null;
     const suggestedTraits = String(values["suggestedTraits"] ?? "").trim() || null;
     const isPublic = Boolean(values["isPublic"]);
+    // Phase 8 rev 10: heritage parity — accept sourceOrigin + tags from
+    // the client (matching item-form submit at
+    // app/api/items/route.ts). sourceOrigin now accepts whatever the
+    // client sends; the legacy hard-coded `manual:${kind}` is used as a
+    // fallback only when the client didn't supply one. Tags are coerced
+    // to a string[] (the form sends them already-split as string[]).
+    const clientSourceOrigin = pickStringOrNull(values["sourceOrigin"]);
+    const tagsInput = values["tags"];
+    const tags: string[] = Array.isArray(tagsInput)
+      ? (tagsInput as unknown[])
+          .filter((t): t is string => typeof t === "string" && t.trim().length > 0)
+          .map((t) => t.trim())
+      : [];
     // Phase 7 Q-M-UX: accept primitiveSlots ({primitiveId, isMirrored}[])
     // for new clients. Fall back to primitiveIds (number[]) for legacy
     // payloads — those parse as non-mirrored (the safe default).
@@ -188,7 +201,12 @@ export async function POST(request: Request) {
           description,
           suggestedTraits,
           isPublic,
-          sourceOrigin: `manual:${kind.toLowerCase()}`,
+          // Phase 8 rev 10: heritage parity — prefer client-supplied
+          // sourceOrigin; fall back to `manual:<kind>` for legacy clients
+          // that didn't send the field (matches pre-rev-10 behavior).
+          sourceOrigin:
+            clientSourceOrigin ?? `manual:${kind.toLowerCase()}`,
+          tags,
           // Phase 8: per-entity iconography
           iconSource: pickIconSource(values["iconSource"]),
           iconKey: pickStringOrNull(values["iconKey"]),

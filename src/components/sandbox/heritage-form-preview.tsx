@@ -12,6 +12,12 @@ export type HeritageFormState = {
   description: string;
   suggestedTraits: string;
   isPublic: boolean;
+  // Phase 8 rev 10: heritage parity — items/capabilities/effects already
+  // carry `tags` and `sourceOrigin`; heritage was the last holdout.
+  // Stored as a comma-separated string in the form (matches the
+  // item-form pattern at item-form.tsx:643) and split on submit.
+  sourceOrigin: string;
+  tags: string;
   // Phase 8: per-entity iconography
   iconSource: string | null;
   iconKey: string | null;

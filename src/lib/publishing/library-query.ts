@@ -1024,6 +1024,11 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
       createdAt: heritage.createdAt,
       // Phase 9 follow-up: needed for My Creations "Kind" filter.
       sourceOrigin: heritage.sourceOrigin,
+      // Phase 8 rev 10: heritage parity — every entity kind carries
+      // `tags` now; surface it so the unified Library preview shows
+      // the tag chips (matches items/capabilities/effects at this
+      // same code shape).
+      tags: heritage.tags,
       // Phase 8: per-entity iconography (live + proposed for resolveIcon)
       iconSource: heritage.iconSource,
       iconKey: heritage.iconKey,
@@ -1094,7 +1099,10 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
       dislikesCount: eng.dislikes,
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
-      tags: [],
+      // Phase 8 rev 10: heritage parity — was hardcoded to []. Now
+      // surfaces the real tags from the DB (added in migration 0038).
+      // Same pattern as the items/capabilities/effects fetchers above.
+      tags: r.tags ?? [],
       sourceOrigin: r.sourceOrigin ?? null,
       // Phase 8: per-entity iconography (resolved — live or proposed)
       iconSource: icon.iconSource,

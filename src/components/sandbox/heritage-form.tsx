@@ -31,6 +31,11 @@ type HeritageRow = {
   description: string | null;
   suggestedTraits: string | null;
   isPublic: boolean;
+  // Phase 8 rev 10: heritage parity — items/capabilities/effects carry
+  // these fields. Heritage was missing tags (sourceOrigin was on the
+  // schema but absent here). Both are now properly typed.
+  sourceOrigin?: string | null;
+  tags?: string[] | null;
   primitiveLinks: Array<{
     primitiveId: number;
     /**
@@ -58,6 +63,9 @@ const blankForm: HeritageFormState = {
   description: "",
   suggestedTraits: "",
   isPublic: false,
+  // Phase 8 rev 10: heritage parity — see HeritageFormState above.
+  sourceOrigin: "",
+  tags: "",
   // Phase 8: per-entity iconography
   iconSource: null,
   iconKey: null,
@@ -171,6 +179,11 @@ export function HeritageForm({
       description: initialTemplate.description ?? "",
       suggestedTraits: initialTemplate.suggestedTraits ?? "",
       isPublic: initialTemplate.isPublic,
+      // Phase 8 rev 10: heritage parity — pull sourceOrigin + tags from
+      // the loaded template so editing an existing heritage shows its
+      // current values (matching item-form.tsx:185-186).
+      sourceOrigin: initialTemplate.sourceOrigin ?? "",
+      tags: (initialTemplate.tags ?? []).join(", "),
       // Phase 8: per-entity iconography
       iconSource: initialTemplate.iconSource,
       iconKey: initialTemplate.iconKey,
@@ -395,6 +408,15 @@ export function HeritageForm({
       description: form.description.trim() || null,
       suggestedTraits: form.suggestedTraits.trim() || null,
       isPublic: form.isPublic,
+      // Phase 8 rev 10: heritage parity — items/capabilities/effects
+      // already POST sourceOrigin + tags. Heritage was missing both;
+      // adding them here + on the server closes the gap. Tags are
+      // comma-separated in the form; split into string[] for the DB.
+      sourceOrigin: form.sourceOrigin.trim() || null,
+      tags: form.tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean),
       primitiveIds,
       // Phase 7 Q-M-UX: also send primitiveSlots for clients that support
       // the new schema. Server accepts either primitiveIds or
@@ -595,6 +617,32 @@ export function HeritageForm({
           onChange={(e) => updateForm("suggestedTraits", e.target.value)}
           placeholder="Personality traits, hooks, suggested names..."
           rows={3}
+        />
+      </label>
+
+      {/* Phase 8 rev 10: heritage parity — sourceOrigin + tags inputs.
+          These were missing from the form (the columns exist in the DB
+          schema but the form never exposed them). Now heritage has the
+          same metadata shape as items/capabilities/effects. Tags are
+          comma-separated in the form and split into a string[] on save
+          (matches item-form.tsx:639-645). */}
+      <label className="block text-sm font-medium">
+        Tags (comma separated)
+        <input
+          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+          value={form.tags}
+          onChange={(e) => updateForm("tags", e.target.value)}
+          placeholder="fire, knight, focus"
+        />
+      </label>
+
+      <label className="block text-sm font-medium">
+        Source origin
+        <input
+          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+          value={form.sourceOrigin}
+          onChange={(e) => updateForm("sourceOrigin", e.target.value)}
+          placeholder="manual | build:<id> | ..."
         />
       </label>
 

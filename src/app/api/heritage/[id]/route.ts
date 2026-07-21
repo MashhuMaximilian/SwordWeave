@@ -182,6 +182,24 @@ export async function PATCH(
     const isPublic = "isPublic" in values
       ? Boolean(values["isPublic"])
       : current.isPublic;
+    // Phase 8 rev 10: heritage parity — PATCH route now also reads
+    // sourceOrigin + tags (POST did this already in the [base] route).
+    // Preserves the existing values when the field is missing from the
+    // patch body, matching the suggestedTraits pattern above.
+    const sourceOrigin =
+      "sourceOrigin" in values
+        ? pickStringOrNull(values["sourceOrigin"])
+        : current.sourceOrigin;
+    const tagsInput = values["tags"];
+    const tags: string[] = "tags" in values
+      ? Array.isArray(tagsInput)
+        ? (tagsInput as unknown[])
+            .filter(
+              (t): t is string => typeof t === "string" && t.trim().length > 0,
+            )
+            .map((t) => t.trim())
+        : []
+      : (current.tags ?? []);
 
     // Phase 7 Q-M-UX: accept primitiveSlots ({primitiveId, isMirrored}[])
     // for new clients. Fall back to primitiveIds (number[]) for legacy
@@ -291,7 +309,12 @@ export async function PATCH(
         description,
         suggestedTraits,
         isPublic,
-        sourceOrigin: current.sourceOrigin, // preserve
+        // Phase 8 rev 10: heritage parity — sourceOrigin + tags now flow
+        // through PATCH. sourceOrigin preserves the existing value unless
+        // the client explicitly sent one; tags overwrite with what the
+        // client sent (or keep current if the field is absent).
+        sourceOrigin: sourceOrigin ?? current.sourceOrigin,
+        tags,
         contentHash: draftHash,
         updatedAt: new Date(),
         // Phase 8: per-entity iconography
@@ -423,6 +446,12 @@ export async function PATCH(
           isPublic,
           userId,
           sourceOrigin: finalSourceOrigin,
+          // Phase 8 rev 10: heritage parity — tags carry over on fork.
+          // sourceOrigin is intentionally `fork:<source>` regardless of
+          // what the client sent (the fork marker is the metadata of
+          // record; we don't want a user-supplied source origin
+          // overriding it).
+          tags,
           contentHash: draftHash,
         })
         .returning();

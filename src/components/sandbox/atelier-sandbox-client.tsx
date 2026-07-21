@@ -178,6 +178,10 @@ type HeritageRow = {
   description: string | null;
   suggestedTraits: string | null;
   isPublic: boolean;
+  // Phase 8 rev 10: heritage parity — see the matching HeritageRow type
+  // in heritage-form.tsx and the schema column in characters.ts.
+  sourceOrigin?: string | null;
+  tags?: string[] | null;
   primitiveLinks: Array<{
     primitiveId: number;
     primitive: { id: number; name: string; category: string; buCost: number };
@@ -1121,6 +1125,12 @@ export function AtelierSandboxClient({
             description: string;
             suggestedTraits: string;
             isPublic: boolean;
+            // Phase 8 rev 10: heritage parity — sourceOrigin + tags now
+            // flow through formSnapshot too. They were missing from the
+            // heritage preview's snapForm type (and from HeritageFormState
+            // before this round) so tags chips couldn't render in preview.
+            sourceOrigin: string;
+            tags: string;
             iconSource: string | null;
             iconKey: string | null;
             iconUrl: string | null;
@@ -1140,6 +1150,10 @@ export function AtelierSandboxClient({
         description: row.description ?? "",
         suggestedTraits: row.suggestedTraits ?? "",
         isPublic: row.isPublic,
+        // Phase 8 rev 10: heritage parity — surface sourceOrigin + tags
+        // into the preview pane (matches item preview at line 1199).
+        sourceOrigin: row.sourceOrigin ?? "",
+        tags: (row.tags ?? []).join(", "),
         iconSource: row.iconSource,
         iconKey: row.iconKey,
         iconUrl: row.iconUrl,

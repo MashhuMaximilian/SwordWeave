@@ -246,6 +246,13 @@
       "when": 1784900000000,
       "tag": "0037_heritage_rename",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1785000000000,
+      "tag": "0038_heritage_tags",
+      "breakpoints": true
     }
   ]
 }

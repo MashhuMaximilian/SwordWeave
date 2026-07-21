@@ -272,6 +272,14 @@ export const heritage = pgTable(
     suggestedTraits: text("suggested_traits"), // markdown
     isPublic: boolean("is_public").notNull().default(false),
     sourceOrigin: text("source_origin"),
+    // Phase 8 rev 10: heritage parity with primitives/capabilities/effects/
+    // items — every entity kind now carries a `tags text[]` column for
+    // free-form tag chips in the unified preview. Migration:
+    // `src/db/migrations/0038_heritage_tags.sql`.
+    tags: text("tags")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
     contentHash: text("content_hash"),
     // Phase 8: per-entity iconography (see engine.ts primitives for
     // rationale). Heritage rows share the same icon contract as every
@@ -292,6 +300,10 @@ export const heritage = pgTable(
     index("heritage_kind_idx").on(table.kind),
     index("heritage_is_public_idx").on(table.isPublic),
     index("heritage_content_hash_idx").on(table.contentHash),
+    // Phase 8 rev 10: tags GIN index — matches items/capabilities/effects
+    // (created via `CREATE INDEX ... USING gin ("tags")`). Drizzle generates
+    // the migration SQL for this via `db:generate`.
+    index("heritage_tags_idx").using("gin", table.tags),
     // (name, user_id) unique, but Postgres treats NULL user_id as distinct
     // so we rely on application-level dedup (like capabilities migration).
     unique("heritage_user_name_kind_unique").on(
