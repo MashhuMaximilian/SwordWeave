@@ -52,7 +52,31 @@ The slot-into-build button disappeared because the library tab and the build for
 - `PreviewActions` (`preview-shared.tsx:483-499`) renders `primarySecondary` when provided.
 - The actionBar construction in both libraries conditionally spreads `primarySecondary` when `canSlot` is true.
 
-**Fix:** Sync `build` to the chosen draft kind in `startNewEntity` so library + form are always in sync.
+**Fix applied (commit `0effb64`):** `startNewEntity` now calls `setBuild(choice.tab)` and writes `build=<tab>` to the URL instead of stripping it. Library switches to match the form being authored.
+
+```ts
+// atelier-sandbox-client.tsx:578-633
+function startNewEntity(choice?: NewEntityChoice) {
+  setShowNewModal(false);
+  if (choice?.heritageSubKind) setHeritageKind(choice.heritageSubKind);
+  if (choice?.mechanicsSubKind) setMechanicsDraftKind(choice.mechanicsSubKind);
+  // Phase 8 rev 6: sync the active tab to the chosen kind
+  if (choice?.tab) {
+    setBuild(choice.tab);
+  }
+  // ... existing reset logic ...
+  if (choice?.tab) {
+    nextParams.set("build", choice.tab);
+  } else {
+    nextParams.delete("build");
+  }
+  // ... rest unchanged ...
+}
+```
+
+**Verification:** `tsc --noEmit` clean, `vitest run` 1704/1706 passing (2 pre-existing Notion-migration failures unrelated to this change), pushed to `origin/main` at commit `0effb64`.
+
+**Known secondary confirmation from user:** "primitive, effect, capability works, but the heritages (upbringings, manifests, lineages), and items do not" — this is the same bug, the mechanics kinds look fine only because `parseBuild(undefined) === "mechanics"` happens to be the correct fallback for them. Heritage and item kinds fall back to `"mechanics"` which is WRONG. Same fix applies to all of them.
 
 ### (B) Add "Slot into character" button — alongside "Slot into build"
 
