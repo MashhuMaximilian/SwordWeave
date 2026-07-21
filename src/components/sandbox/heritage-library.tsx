@@ -953,9 +953,7 @@ function BlueprintPreviewBody({
               onClick: slotIntoCharacter,
             },
           }
-        : item.kind === "primitive" ||
-            item.kind === "effect" ||
-            item.kind === "capability"
+        : item.kind === "primitive" || item.kind === "capability"
           ? {
               primaryTertiary: {
                 label: `Slot into ${tabLabelForActiveStep(characterModal.activeStep, characterModal.isOpen)}`,
