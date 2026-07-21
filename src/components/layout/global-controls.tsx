@@ -35,7 +35,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
 import {
   Columns2,
-  Filter,
   LogOut,
   Maximize2,
   Minimize2,
@@ -389,18 +388,32 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
       // and previously showed a non-functional Filters FAB icon. The
       // explicit list keeps the button visible only where the panel
       // is wired up.
-      ...(isFilterableRoute
-        ? [
-            {
-              kind: "action" as const,
-              key: "filters",
-              label: filterPanelOpen ? "Hide Filters" : "Show Filters",
-              icon: <Filter className="size-4" />,
-              onClick: () => setFilterPanelOpen((v) => !v),
-              active: filterPanelOpen,
-            },
-          ]
-        : []),
+      // Phase 8 rev 10: replace the filters FAB icon with a Character
+      // button (Mona Lisa icon). Filters were redundant — the page
+      // already exposes a Filters button on filterable routes, and
+      // the FAB grid is too small to host both. Character is a
+      // placeholder for the future character modal — the actual
+      // modal-launching logic lands with the 8.1 work
+      // (character-modal-store + CharacterModal + provider). For
+      // now the button is in the grid but a no-op, so the user can
+      // place it where they want before the implementation lands.
+      {
+      kind: "action" as const,
+      key: "character",
+      label: "Character",
+      icon: (
+        <IconDisplay
+          iconSource="GAME_ICONS"
+          iconKey="delapouite/mona-lisa"
+          iconColor={isDark ? FAB_ICON_COLOR_DARK : FAB_ICON_COLOR_LIGHT}
+          size={22}
+          alt="Character"
+        />
+      ),
+      onClick: () => {
+        // Intentionally empty — see the comment above.
+      },
+    },
       {
         kind: "action",
         key: "fullscreen",

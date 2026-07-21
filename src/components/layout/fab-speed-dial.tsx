@@ -11,7 +11,7 @@
 //   1. Section: "Navigate" — Home + page links (Library, My Creations, Grammar, Templates, Builds)
 //   2. Section: "Quick toggles" — small icon-only grid of state toggles
 //                                (Split / Fullscreen / Dark mode)
-//   3. Section: "Actions" — Build & Preview, Show Filters
+//   3. Section: "Actions" — Build & Preview, Character (Mona Lisa placeholder for 8.1)
 //   4. Section: "Account"  — Profile row that opens the user menu modal
 //                            (avatar + view profile / edit / sign out)
 //
@@ -24,7 +24,6 @@
 
 import {
   Columns2,
-  Filter,
   Maximize2,
   Menu,
   Minimize2,
@@ -183,15 +182,15 @@ export function FabSpeedDial({
               return null;
             }
             if (
-              item.kind === "action" &&
-              (item.key === "split" ||
-                item.key === "fullscreen" ||
-                item.key === "dark" ||
-                item.key === "build" ||
-                item.key === "filters")
-            ) {
-              return null;
-            }
+            item.kind === "action" &&
+            (item.key === "split" ||
+              item.key === "fullscreen" ||
+              item.key === "dark" ||
+              item.key === "build" ||
+              item.key === "character")
+          ) {
+            return null;
+          }
             // The Account row is also rendered in the icon grid below.
             if (item.kind === "divider" && item.key === "div-account") {
               return null;
@@ -246,7 +245,7 @@ export function FabSpeedDial({
               );
             }
             // FabAction — action button (with optional active state).
-            // Used for Build & Preview and Show Filters in the action row.
+            // Used for Build and Preview in the action row.
             return (
               <button
                 key={item.key}
@@ -291,7 +290,7 @@ export function FabSpeedDial({
 
           {/* Compact icon grid — 2x3 of small icon-only buttons, fill width.
               Row 1: split, dark, fullscreen toggles.
-              Row 2: account (opens user menu), build&preview, show filters. */}
+              Row 2: account (opens user menu), build and preview, character (Mona Lisa). */}
           <div
             className="mt-1 grid grid-cols-3 gap-1 rounded-lg border border-border/60 bg-card/40 p-1"
             style={{
@@ -328,7 +327,7 @@ export function FabSpeedDial({
                 ...items.filter(
                   (i): i is FabAction =>
                     i.kind === "action" &&
-                    (i.key === "build" || i.key === "filters"),
+                    (i.key === "build" || i.key === "character"),
                 ),
               ] as FabAction[]
             ).map((action) => (
@@ -493,7 +492,6 @@ export const ACCOUNT_LINKS: FabItem[] = [
 // Re-export icons for convenience.
 export const FabIcons = {
   Columns2,
-  Filter,
   Maximize2,
   Menu,
   Minimize2,
