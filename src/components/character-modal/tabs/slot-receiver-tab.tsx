@@ -60,6 +60,20 @@ interface HeritageBundle {
 // session — keyed by heritageId. Avoids refetching when switching tabs.
 const heritageBundleCache = new Map<string, HeritageBundle | null>();
 
+/**
+ * Phase 8.1 batch 10: parent components (footer) need a quick lookup
+ * of "how much BU does this heritage bundle cost?" for live BU
+ * accounting. Exported as a Map view; populated lazily by the
+ * HeritageSlotCard fetch on mount.
+ */
+export function getHeritageBundleBuMap(): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const [id, bundle] of heritageBundleCache.entries()) {
+    if (bundle != null) out.set(id, bundle.computedBu);
+  }
+  return out;
+}
+
 export function SlotReceiverTab({
   tabId,
   title,

@@ -30,7 +30,7 @@
 //   - "Slot into [step]" library buttons (batch 8).
 // =============================================================================
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -38,7 +38,11 @@ import {
   CHARACTER_TABS,
   CHARACTER_TAB_LABELS,
   type CharacterTabId,
+  type PendingSlot,
+  summarizeSlotBu,
 } from "./character-modal-store";
+import { getHeritageBundleBuMap } from "./tabs/slot-receiver-tab";
+import { maxBuDebtForLevel } from "@/lib/engine/bu";
 import {
   IdentityTab,
   IDENTITY_STORAGE_KEY,
@@ -229,16 +233,42 @@ export function TabbedCharacterForm() {
     return () => window.clearTimeout(t);
   }, [attributes, hydrated]);
 
-  const totalSlotsCount = useMemo(
-    () =>
-      CHARACTER_TABS.reduce((acc, t) => acc + pendingSlots[t].length, 0),
+  // Phase 8.1 batch 10: live BU summary for the footer. The summary
+  // flattens every pending slot across all tabs and asks
+  // summarizeSlotBu() for positiveSpent / mirrorCredit / debt /
+  // netSpent. Heritage bundles are pulled from the session cache in
+  // slot-receiver-tab via getHeritageBundleBuMap().
+  const allSlots = useMemo(
+    () => CHARACTER_TABS.flatMap((t) => pendingSlots[t]),
     [pendingSlots],
   );
+  // Tick once a second so newly-fetched heritage bundles refresh the
+  // footer without requiring the user to add/remove a slot.
+  const [, bumpTick] = useReducer((x: number) => x + 1, 0);
+  useEffect(() => {
+    const t = window.setInterval(() => bumpTick(), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+  const buSummary = useMemo(
+    () => summarizeSlotBu(allSlots, getHeritageBundleBuMap()),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allSlots, pendingSlots],
+  );
+  const budget = activeBuBudget(attributes);
+  const debtCeiling = maxBuDebtForLevel(attributes.level);
+  const remaining = budget - buSummary.positiveSpent;
+  const overBudget = buSummary.positiveSpent > budget;
+  const debtExceeded = buSummary.debtUsed > debtCeiling;
 
   const nameValid = identity.name.trim().length > 0;
   const attrSum = attributes.attrPhysical + attributes.attrMental + attributes.attrMagical;
   const attrValid = attrSum === 10;
-  const canCreate = nameValid && attrValid && !isPending;
+  // Phase 8.1 batch 10: block Create when BU accounting is invalid
+  // (over budget or debt ceiling exceeded). Server-side validation
+  // is authoritative — this is a UX guardrail so the user sees the
+  // problem before submitting.
+  const canCreate =
+    nameValid && attrValid && !isPending && !overBudget && !debtExceeded;
 
   const handleCreate = useCallback(async () => {
     if (!nameValid) {
@@ -485,8 +515,21 @@ export function TabbedCharacterForm() {
           <FooterStat label="Lvl" value={String(attributes.level)} />
           <FooterStat
             label="BU"
-            value={`${totalSlotsCount}/${activeBuBudget(attributes)}`}
+            value={`${buSummary.positiveSpent}/${budget}`}
+            tone={overBudget ? "warn" : "default"}
           />
+          <FooterStat
+            label="Rem"
+            value={String(remaining)}
+            tone={overBudget ? "warn" : "ok"}
+          />
+          {buSummary.debtUsed > 0 || debtCeiling > 0 ? (
+            <FooterStat
+              label="Debt"
+              value={`${buSummary.debtUsed}/${debtCeiling}`}
+              tone={debtExceeded ? "warn" : "default"}
+            />
+          ) : null}
         </div>
         <button
           type="button"

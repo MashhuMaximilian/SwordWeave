@@ -437,4 +437,63 @@ export function tabLabelForActiveStep(
   return CHARACTER_TAB_LABELS[activeStep];
 }
 
+/**
+ * Phase 8.1 batch 10: BU accounting for the in-progress character.
+ * Sums up the BU cost of every queued slot and reports:
+ *   - positiveSpent: sum of positive BU (non-mirrored primitives +
+ *     capability / effect / heritage / item bundle costs)
+ *   - mirrorCredit:  sum of negative BU from mirrored primitives
+ *     (always <= 0)
+ *   - debtUsed:      absolute value of mirrorCredit
+ *   - netSpent:      positiveSpent + mirrorCredit (can be negative)
+ *
+ * Caveats (intentional, called out in code comments):
+ *   - The modal store doesn't currently fetch primitive buCost
+ *     metadata for capability/effect slots — those slots land in the
+ *     API as `{ capabilityId, ... }` and the API resolves the bundle.
+ *     Here we count them as 0 (caller treats BU > budget via the API
+ *     response). Heritage cards display their bundle's computedBu in
+ *     the receiver UI; we add those when present in batch 10f.
+ *   - This helper is for live preview only. The authoritative BU
+ *     accounting happens server-side at character-create time via
+ *     the validateMirrorSet / evaluateBuLedger pipeline.
+ */
+export interface SlotBuSummary {
+  positiveSpent: number;
+  mirrorCredit: number;
+  debtUsed: number;
+  netSpent: number;
+}
+
+export function summarizeSlotBu(
+  slots: PendingSlot[],
+  heritageBundleBu?: Map<string, number>,
+): SlotBuSummary {
+  let positiveSpent = 0;
+  let mirrorCredit = 0;
+  for (const slot of slots) {
+    if (slot.kind === "primitive") {
+      if (slot.mirror === true) {
+        mirrorCredit -= slot.mirrorBuCredit ?? slot.buCost ?? 0;
+      } else {
+        positiveSpent += slot.buCost ?? 0;
+      }
+    } else if (slot.kind === "heritage") {
+      // Heritage bundles contribute their computedBu as positive
+      // cost. Caller passes a map of heritageId → computedBu (the
+      // SlotReceiverTab keeps this map in session cache). If the
+      // bundle hasn't been fetched yet, we treat it as 0 to avoid
+      // double-counting or hanging the UI on stale values.
+      const bu = heritageBundleBu?.get(slot.heritageId) ?? 0;
+      positiveSpent += bu;
+    }
+    // capability / effect / item: bundle cost is resolved
+    // server-side; we don't double-count here. The footer shows
+    // the count as a separate stat (slot count) for visibility.
+  }
+  const debtUsed = -mirrorCredit; // mirrorCredit <= 0
+  const netSpent = positiveSpent + mirrorCredit;
+  return { positiveSpent, mirrorCredit, debtUsed, netSpent };
+}
+
 void isSlotTab; // currently unused — exported for future helpers
