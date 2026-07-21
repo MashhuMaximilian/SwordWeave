@@ -139,6 +139,8 @@ export function SteppedWizardMode() {
   return (
     <CharacterWizard
       {...data}
+      enablePersistence
+      persistenceKey="swordweave:character-modal:draft"
       onCreated={(characterId) => {
         // Per spec: preview opens in a new tab. Close the modal and
         // reset the draft store so the FAB dot clears.

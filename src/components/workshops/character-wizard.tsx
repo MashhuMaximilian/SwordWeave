@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
 
 /**
@@ -57,6 +57,70 @@ const STEPS = [
   { id: 5, title: "Review", description: "Confirm and create" },
 ] as const;
 
+/**
+ * usePersistedState — useState that mirrors to localStorage on change.
+ *
+ * Phase 8.1 batch 4: gated behind `enabled`. When disabled (the legacy
+ * /sandbox/characters page), this hook is a pass-through to useState.
+ * When enabled (the character modal), reads localStorage on first
+ * render and writes (debounced 500ms) on every change. Successful
+ * create clears the localStorage key.
+ *
+ * The wizard uses three persisted slots: form (the 14-field object),
+ * selectedCapabilities, selectedItemIds. Step is intentionally NOT
+ * persisted — re-opening starts at step 1, which is less jarring than
+ * re-opening mid-step with stale UI.
+ */
+function usePersistedState<T>(
+  key: string | undefined,
+  initial: T,
+  enabled: boolean,
+): [T, (v: T | ((prev: T) => T)) => void, () => void] {
+  const [value, setValue] = useState<T>(() => {
+    if (!enabled || !key) return initial;
+    if (typeof window === "undefined") return initial;
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (raw === null) return initial;
+      return JSON.parse(raw) as T;
+    } catch {
+      return initial;
+    }
+  });
+  const writeTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!enabled || !key) return;
+    if (writeTimer.current !== null) {
+      window.clearTimeout(writeTimer.current);
+    }
+    writeTimer.current = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(key, JSON.stringify(value));
+      } catch {
+        // localStorage full / disabled — silent failure, the wizard
+        // still works in-memory.
+      }
+    }, 500);
+    return () => {
+      if (writeTimer.current !== null) {
+        window.clearTimeout(writeTimer.current);
+      }
+    };
+  }, [enabled, key, value]);
+
+  const clear = useCallback(() => {
+    if (!key) return;
+    try {
+      window.localStorage.removeItem(key);
+    } catch {
+      // ignore
+    }
+  }, [key]);
+
+  return [value, setValue, clear];
+}
+
 export function CharacterWizard({
   races,
   backgrounds,
@@ -71,38 +135,70 @@ export function CharacterWizard({
    * "preview should always open in a new tab").
    */
   onCreated,
+  /**
+   * Phase 8.1 batch 4: when true, the wizard's form state is mirrored
+   * to localStorage and restored on mount. Lets the user close the
+   * modal mid-wizard and find their progress on re-open. The modal
+   * passes true; the legacy /sandbox/characters page omits this and
+   * gets the original useState-only behavior.
+   *
+   * Successful create clears the localStorage key. The legacy page
+   * never sets this prop and never touches localStorage.
+   */
+  enablePersistence,
+  /**
+   * Phase 8.1 batch 4: storage key prefix. Lets the modal use a
+   * character-modal-specific key so it can't collide with anything
+   * else. Defaults to a no-op when persistence is disabled.
+   */
+  persistenceKey,
 }: {
   races: HeritageRow[];
   backgrounds: HeritageRow[];
   capabilities: CapabilityRow[];
   items: ItemRow[];
   onCreated?: (characterId: string, characterName: string) => void;
+  enablePersistence?: boolean;
+  persistenceKey?: string;
 }) {
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState({
-    name: "",
-    size: "MEDIUM" as (typeof SIZES)[number],
-    portraitUrl: "",
-    notes: "",
-    level: 1,
-    startingBu: 25,
-    attrPhysical: 0,
-    attrMental: 0,
-    attrMagical: 0,
-    attrProficient: null as AttrProf | null,
-    lineageId: "",
-    lineageName: "",
-    lineageDescription: "",
-    upbringingId: "",
-    upbringingName: "",
-    upbringingDescription: "",
-    manifestName: "",
-    enforceTemplateCaps: false,
-  });
+  const [form, setForm, clearForm] = usePersistedState(
+    persistenceKey ? `${persistenceKey}:form` : undefined,
+    {
+      name: "",
+      size: "MEDIUM" as (typeof SIZES)[number],
+      portraitUrl: "",
+      notes: "",
+      level: 1,
+      startingBu: 25,
+      attrPhysical: 0,
+      attrMental: 0,
+      attrMagical: 0,
+      attrProficient: null as AttrProf | null,
+      lineageId: "",
+      lineageName: "",
+      lineageDescription: "",
+      upbringingId: "",
+      upbringingName: "",
+      upbringingDescription: "",
+      manifestName: "",
+      enforceTemplateCaps: false,
+    },
+    enablePersistence === true,
+  );
   // Track capabilities with their mirrored state (for debt expansion)
   type SelectedCapability = { id: string; is_mirrored: boolean };
-  const [selectedCapabilities, setSelectedCapabilities] = useState<SelectedCapability[]>([]);
-  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+  const [selectedCapabilities, setSelectedCapabilities, clearCaps] =
+    usePersistedState<SelectedCapability[]>(
+      persistenceKey ? `${persistenceKey}:capabilities` : undefined,
+      [],
+      enablePersistence === true,
+    );
+  const [selectedItemIds, setSelectedItemIds, clearItems] = usePersistedState<string[]>(
+    persistenceKey ? `${persistenceKey}:items` : undefined,
+    [],
+    enablePersistence === true,
+  );
   const [isPending, startTransition] = useTransition();
   const { toasts, showToast, dismissToast } = useToasts();
 
@@ -245,6 +341,12 @@ export function CharacterWizard({
           // redirect to the new sheet.
           window.location.href = `/characters/${createdId}`;
         }
+        // Phase 8.1 batch 4: clear persisted draft so the next open
+        // starts fresh. Only meaningful when persistence is enabled;
+        // no-op otherwise (clearForm etc. guard on key existence).
+        clearForm();
+        clearCaps();
+        clearItems();
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : "Unknown error.";
         showToast(errMsg, "error");
