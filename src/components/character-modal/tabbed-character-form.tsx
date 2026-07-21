@@ -309,7 +309,14 @@ export function TabbedCharacterForm() {
             heritages.push({ id: slot.heritageId, isMirrored: false });
           } else if (slot.kind === "primitive") {
             const src = sourceFromTab(tab);
-            primBySource[src]?.push({ id: slot.primitiveId, isMirrored: false });
+            // Phase 8.1 batch 10: the per-slot mirror flag is
+            // propagated to the create call so the server-side
+            // validateMirrorSet / evaluateBuLedger can include it
+            // in the volatility rating.
+            primBySource[src]?.push({
+              id: slot.primitiveId,
+              isMirrored: slot.mirror === true,
+            });
           } else if (slot.kind === "capability") {
             const src = sourceFromTab(tab);
             capsBySource[src]?.push({ id: slot.capabilityId, isMirrored: false });
@@ -339,6 +346,11 @@ export function TabbedCharacterForm() {
           // the cumulative pool is driven by attributes.level (or
           // attributes.buBudget in buBudget mode — the API resolves it).
           startingBu: 25,
+          // Custom BU budget (only meaningful when mode === "buBudget";
+          // ignored by the API otherwise). Lets the user size the
+          // build by an explicit BU pool instead of a level bracket.
+          buBudget:
+            attributes.mode === "buBudget" ? attributes.buBudget : null,
           attrPhysical: attributes.attrPhysical,
           attrMental: attributes.attrMental,
           attrMagical: attributes.attrMagical,
