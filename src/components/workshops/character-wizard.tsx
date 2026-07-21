@@ -62,11 +62,21 @@ export function CharacterWizard({
   backgrounds,
   capabilities,
   items,
+  /**
+   * Phase 8.1 batch 3: optional override for what happens after a
+   * successful create. The default (when not provided, e.g. on the
+   * legacy /sandbox/characters page) is `window.location.href` to the
+   * new character sheet. The character modal passes a handler that
+   * closes the modal + opens the preview in a new tab (per spec:
+   * "preview should always open in a new tab").
+   */
+  onCreated,
 }: {
   races: HeritageRow[];
   backgrounds: HeritageRow[];
   capabilities: CapabilityRow[];
   items: ItemRow[];
+  onCreated?: (characterId: string, characterName: string) => void;
 }) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
@@ -222,8 +232,19 @@ export function CharacterWizard({
         }
 
         showToast(`Created character "${data.character?.name}"!`, "success");
-        // Redirect handled by caller — here just acknowledge
-        window.location.href = `/characters/${data.character.id}`;
+        const createdId = data.character?.id as string | undefined;
+        const createdName = (data.character?.name as string | undefined) ?? form.name.trim();
+        if (!createdId) {
+          showToast("Character created but no id returned.", "error");
+          return;
+        }
+        if (onCreated) {
+          onCreated(createdId, createdName);
+        } else {
+          // Default legacy behavior for /sandbox/characters — same-tab
+          // redirect to the new sheet.
+          window.location.href = `/characters/${createdId}`;
+        }
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : "Unknown error.";
         showToast(errMsg, "error");

@@ -59,6 +59,14 @@ interface CharacterModalState {
   close: () => void;
   toggle: () => void;
   setField: <K extends keyof CharacterDraft>(key: K, value: CharacterDraft[K]) => void;
+  /**
+   * Set the dirty flag explicitly. Used by the stepped wizard (which
+   * holds its own internal form state) to signal "there's stuff in
+   * here" so the FAB dot and the modal's Unsaved badge can react. The
+   * dot is the user-visible cue — without it, closing the modal and
+   * reopening feels indistinguishable from a fresh open.
+   */
+  setDirty: (dirty: boolean) => void;
   resetDraft: () => void;
 }
 
@@ -67,6 +75,12 @@ const CharacterModalCtx = createContext<CharacterModalState | null>(null);
 export function CharacterModalProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState<CharacterDraft>(EMPTY_DRAFT);
+  // Phase 8.1 batch 3: explicit dirty flag driven by the stepped wizard.
+  // The wizard holds its own internal state for ~30+ fields; mirroring
+  // each one into `draft` would be a lot of plumbing for no payoff.
+  // Instead the wizard calls setDirty(true) on any field change and
+  // setDirty(false) on resetDraft(). The FAB dot reads isDirty.
+  const [isDirty, setIsDirty] = useState(false);
 
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
@@ -79,23 +93,26 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const resetDraft = useCallback(() => setDraft(EMPTY_DRAFT), []);
+  const setDirty = useCallback((dirty: boolean) => setIsDirty(dirty), []);
+
+  const resetDraft = useCallback(() => {
+    setDraft(EMPTY_DRAFT);
+    setIsDirty(false);
+  }, []);
 
   const value = useMemo<CharacterModalState>(
     () => ({
       isOpen,
       draft,
-      // A draft is dirty if any field differs from the empty default.
-      // Sufficient for batch 1's scaffold; batch 2 will compute it
-      // against the last-saved snapshot for accuracy.
-      isDirty: draft.name !== "" || draft.notes !== "",
+      isDirty,
       open,
       close,
       toggle,
       setField,
+      setDirty,
       resetDraft,
     }),
-    [isOpen, draft, open, close, toggle, setField, resetDraft],
+    [isOpen, draft, isDirty, open, close, toggle, setField, setDirty, resetDraft],
   );
 
   return (
@@ -118,6 +135,7 @@ export function useCharacterModal(): CharacterModalState {
       close: () => {},
       toggle: () => {},
       setField: () => {},
+      setDirty: () => {},
       resetDraft: () => {},
     };
   }

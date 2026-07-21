@@ -34,6 +34,7 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCharacterModal } from "./character-modal-store";
+import { SteppedWizardMode } from "./stepped-wizard-mode";
 
 export interface CharacterModalProps {
   /**
@@ -45,7 +46,7 @@ export interface CharacterModalProps {
 }
 
 export function CharacterModal({ children }: CharacterModalProps) {
-  const { isOpen, close, draft, setField, isDirty } = useCharacterModal();
+  const { isOpen, close, isDirty } = useCharacterModal();
   const [isDesktop, setIsDesktop] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -122,7 +123,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
           </header>
 
           <div className="p-4">
-            {children ?? <CharacterModalScaffold draft={draft} setField={setField} />}
+            {children ?? <SteppedWizardMode />}
           </div>
         </div>
       </div>
@@ -131,57 +132,3 @@ export function CharacterModal({ children }: CharacterModalProps) {
   );
 }
 
-/**
- * Placeholder scaffold body. Confirms the architecture works end-to-end
- * (open via FAB, type into a field, see the dirty badge flip, close via
- * X / ESC / backdrop) before batch 2 wires in the real wizard.
- */
-function CharacterModalScaffold({
-  draft,
-  setField,
-}: {
-  draft: ReturnType<typeof useCharacterModal>["draft"];
-  setField: ReturnType<typeof useCharacterModal>["setField"];
-}) {
-  return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold text-foreground">Character Builder</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Phase 8.1 scaffold — the stepped wizard lands in the next batch.
-          For now, confirm the modal opens, persists across atelier tab
-          navigation, and closes via X / ESC / backdrop.
-        </p>
-      </div>
-
-      <label className="block space-y-1">
-        <span className="text-xs font-medium text-muted-foreground">Name</span>
-        <input
-          type="text"
-          value={draft.name}
-          onChange={(e) => setField("name", e.target.value)}
-          placeholder="Unnamed hero"
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-        />
-      </label>
-
-      <label className="block space-y-1">
-        <span className="text-xs font-medium text-muted-foreground">Notes</span>
-        <textarea
-          value={draft.notes}
-          onChange={(e) => setField("notes", e.target.value)}
-          rows={3}
-          placeholder="Backstory, hooks, anything you want to remember."
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
-        />
-      </label>
-
-      <p className="rounded-md border border-dashed border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-        Batch 2 will replace this scaffold with the 5-step wizard
-        (Identity → Attributes → Lineage/Upbringing → Capabilities/Items
-        → Review) extracted from the existing
-        <code className="mx-1 rounded bg-muted px-1 py-0.5">CharacterWizard</code>.
-      </p>
-    </div>
-  );
-}
