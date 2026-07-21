@@ -28,15 +28,31 @@ Two things, in order:
 
 ### (B) Fix / restore the missing "Slot into build" buttons in atelier previews
 
-The slot-into-build buttons are partially broken or missing in the atelier preview modal. Per Mashu's report:
+**ROOT CAUSE FOUND (2026-07-21 audit + screenshot):**
 
-- Should appear for **primitives into effects and capabilities loaded in build**, and **effects into capability that is already loaded** — i.e. the bundling-hierarchy rule.
-- Should appear on **heritages** (slot primitives + capabilities into heritage loaded in build).
-- Should appear on **items** (slot primitives + capabilities + effects into item loaded in build).
+The slot-into-build button disappeared because the library tab and the build form run on **decoupled state axes**. When the user picks a kind via "+ New entity":
 
-**Current bug observed:** the button has disappeared in the atelier preview. Infrastructure is intact (functions + slot event + dispatch logic still wired in `grammar-library.tsx` / `heritage-library.tsx`), but the button no longer renders.
+1. `startNewEntity({ heritageSubKind: "LINEAGE" })` runs (`atelier-sandbox-client.tsx:578-611`).
+2. It calls `setHeritageKind("LINEAGE")` (line 580).
+3. It calls `nextParams.delete("build")` (line 604) — **strips `build` from the URL**.
+4. URL becomes `/atelier` (no params).
+5. Server re-renders, `parseBuild(undefined)` returns `"mechanics"` (default fallback at `app/atelier/page.tsx:60`).
+6. `build = "mechanics"` → library = `GrammarLibrary` → `slottableKinds = []` → `canSlot = false`.
+7. `heritageKind = "LINEAGE"` → formKind = `"heritage"` → HeritageForm renders on the right.
+8. User is in a broken state: heritage form on right, mechanics library on left.
+9. Primitive preview shows but **no "Slot into build"** because mechanics mode says "you're authoring a primitive, nothing slots in".
 
-Likely root cause (to verify once code begins): the `canSlot` checks only consider `slottableKinds` against `build` mode. When `build === "heritage"` or `build === "item"`, the heritage-library hardcodes `slottableKinds = ["primitive","effect","capability"]` which is correct, BUT we also need to make sure the preview body actually renders the `primarySecondary` button when the *previewed item* matches one of those kinds.
+**Screenshot evidence:** user opened a heritage build form, library shows a primitive preview with `Load into build` (loadIntoBuild grid slot) but **no** `primary` CTA and **no** `primarySecondary` CTA — confirming `canSlot === false`.
+
+**Comment in code that confirms this is intentional:** `atelier-sandbox-client.tsx:582-583` — "the build form renders from the chosen draft kind, independent of the tab." But this produces the UX contradiction.
+
+**The slot-into-build infrastructure is fully wired:**
+- All four forms (`heritage-form.tsx:314`, `capability-form.tsx:307`, `item-form.tsx:322`, `effect-form.tsx:204`) listen for `sw-sandbox-slot` events.
+- All four library preview bodies (`grammar-library.tsx:655`, `heritage-library.tsx:721`, etc.) dispatch the event with `{ kind, id, label }`.
+- `PreviewActions` (`preview-shared.tsx:483-499`) renders `primarySecondary` when provided.
+- The actionBar construction in both libraries conditionally spreads `primarySecondary` when `canSlot` is true.
+
+**Fix:** Sync `build` to the chosen draft kind in `startNewEntity` so library + form are always in sync.
 
 ### (B) Add "Slot into character" button — alongside "Slot into build"
 
