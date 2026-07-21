@@ -34,7 +34,7 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCharacterModal } from "./character-modal-store";
-import { SteppedWizardMode } from "./stepped-wizard-mode";
+import { TabbedCharacterForm } from "./tabbed-character-form";
 
 export interface CharacterModalProps {
   /**
@@ -123,7 +123,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
           </header>
 
           <div className="p-4">
-            {children ?? <SteppedWizardMode />}
+            {children ?? <TabbedCharacterForm />}
           </div>
         </div>
       </div>
