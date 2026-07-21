@@ -871,15 +871,17 @@ function ColorTrigger({
   color: string;
   onChange: (next: string) => void;
 }) {
-  // parseColor needs a valid 6-digit hex; the value comes from the
-  // picker's normalizeColor (always 6-digit) so this is safe.
-  const colorValue = useMemo(() => {
-    try {
-      return parseColor(color);
-    } catch {
-      return parseColor("#ffffff");
-    }
-  }, [color]);
+  // ColorTrigger no longer pre-parses color into a Color object. We pass
+  // the hex STRING to <ColorPicker value={color}>. react-aria's
+  // useControlledState uses Object.is to compare refs; two Color
+  // objects representing the same color are not Object.is-equal even
+  // when they're memoized, because useColorAreaState / useColorSliderState
+  // call .toFormat(colorSpace) which returns a NEW object on every
+  // render. A string value short-circuits the equality check via ===
+  // inside react-aria's string branch — the value-ref-reset path —
+  // and the picker settles into a stable state. The picker's onChange
+  // still fires with a fresh Color object; we just don't feed one back
+  // in as the controlled value.
 
   const [open, setOpen] = useState(false);
 
@@ -943,13 +945,20 @@ function ColorTrigger({
                 </button>
               </div>
               <ColorPicker
-                value={colorValue}
-                // ColorTrigger receives color as a prop and the
-                // onChange handler reaches our local setColor in
-                // IconPicker — so the full state-sync loop works
-                // regardless of whether `color` was originally set
-                // by a swatch click, a slider drag, or a hex
-                // input edit.
+                value={color}
+                // Pass color as a STRING instead of a memoized Color
+                // object. react-aria's useColorPickerState calls
+                // useControlledState(value, ...) which uses Object.is
+                // to detect changes. Every render of a memoized Color
+                // returns a fresh object on toFormat(...) inside
+                // useColorAreaState / useColorSliderState, so
+                // Object.is(valueRef.current, newValue) is false on
+                // every render → setState → forceUpdate → re-render →
+                // loop. A string value triggers the value-ref-reset
+                // path in useControlledState which compares with ===
+                // and short-circuits when the string hasn't changed.
+                // The picker's onChange still fires with a fresh
+                // Color object — we just don't feed one back in.
                 onChange={(c) => onChange(c.toString("hex"))}
               >
                 <div className="flex flex-col gap-3">
@@ -961,7 +970,7 @@ function ColorTrigger({
                       // positioning context + visible gradient.
                       className="relative size-40 rounded-md"
                       style={{
-                        backgroundColor: `hsl(${colorValue.toString("hsl").split(" ")[0]}, 100%, 50%)`,
+                        backgroundColor: `hsl(${parseHueFromHex(color)}, 100%, 50%)`,
                       }}
                     >
                       {/* Phase 12: <ColorThumb /> is required inside
@@ -1110,6 +1119,32 @@ function ColorCallout({ color }: { color: string }) {
       />
     </svg>
   );
+}
+
+// parseHueFromHex returns just the hue number from a 6-digit hex
+// color, formatted for the HSL `backgroundColor` of the ColorArea.
+// Used to size the gradient behind the thumb. ColorTrigger used to
+// derive this from a memoized Color object; we now derive it from the
+// raw hex string so the picker no longer needs a Color reference,
+// breaking the useColorAreaState Object.is loop. The hex->RGB->HSL
+// math here is the standard inversion.
+function parseHueFromHex(hex: string): number {
+  const h = hex.startsWith("#") ? hex.slice(1) : hex;
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return 0;
+  const r = parseInt(h.slice(0, 2), 16) / 255;
+  const g = parseInt(h.slice(2, 4), 16) / 255;
+  const b = parseInt(h.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  if (d === 0) return 0;
+  let hue: number;
+  if (max === r) hue = ((g - b) / d) % 6;
+  else if (max === g) hue = (b - r) / d + 2;
+  else hue = (r - g) / d + 4;
+  hue = Math.round(hue * 60);
+  if (hue < 0) hue += 360;
+  return hue;
 }
 
 // normalizeColor ensures the native <input type="color"> always has a
