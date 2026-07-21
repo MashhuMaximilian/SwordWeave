@@ -62,6 +62,11 @@ export const characterPrimitiveSourceEnum = pgEnum("character_primitive_source",
   "TRAINING",
   "LEVEL_UP",
   "DM",
+  // Phase 8.1 batch 5 (rework): the modal's Manifest tab needs its
+  // own slot source so primitives slotted into the Manifest tab from
+  // /atelier can be tracked separately from LINEAGE / UPBRINGING /
+  // PERSONAL. Migration: 0040_character_primitive_source_manifest.sql.
+  "MANIFEST",
 ]);
 
 export const heritageKindEnum = pgEnum("heritage_kind", [
@@ -114,6 +119,14 @@ export const characters = pgTable(
     portraitUrl: text("portrait_url"),
     isPublic: boolean("is_public").notNull().default(false),
     sourceOrigin: text("source_origin"), // "build:<id>" | "manual" | etc.
+    // Phase 8.1 batch 5 (rework): freeform backstory fields held by
+    // the modal's Backstory tab. JSONB for flexibility per Mashu
+    // 2026-07-21 — new fields can be added without schema migrations.
+    // Shape: { origin: string, motivation: string, ties: string,
+    //         flaw: string }. See CharacterBackstory in
+    // src/components/character-modal/character-modal-store.tsx.
+    // Migration: 0039_characters_backstory.sql.
+    backstory: jsonb("backstory").notNull().default(sql`'{}'::jsonb`),
     ...timestamps,
   },
   (table) => [
@@ -365,6 +378,49 @@ export const heritageCapabilities = pgTable(
 // =============================================================================
 // items, itemCapabilities, itemPrimitives live in items.ts to keep item tables
 // together. Re-exported via schema/index.ts.
+
+// =============================================================================
+// Character <-> Heritage (Phase 8.1 batch 5)
+//
+// Per Mashu 2026-07-21, when the user slots a heritage from /atelier
+// into the character modal's Lineage / Upbringing / Manifest tab, the
+// ENTIRE heritage comes as one unit — all bundled primitives +
+// capabilities + effects. This junction tracks that whole-heritage
+// slot. The heritage's own `kind` column carries the LINEAGE /
+// UPBRINGING / MANIFEST semantics, so we don't need a separate
+// `source` column here.
+//
+// Per-slot fields mirror characterPrimitives: acquiredAtLevel,
+// isMirrored (Phase 7 Q-M-UX — mirror-flagged slot has inverted BU
+// contribution), versionId (Phase 3+), slotSource (Phase 3+ fork
+// tracking), notes, timestamps.
+// =============================================================================
+export const characterHeritages = pgTable(
+  "character_heritages",
+  {
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    heritageId: uuid("heritage_id")
+      .notNull()
+      .references(() => heritage.id, { onDelete: "restrict" }),
+    acquiredAtLevel: integer("acquired_at_level").notNull().default(1),
+    isMirrored: boolean("is_mirrored").notNull().default(false),
+    versionId: uuid("version_id"),
+    slotSource: slotSourceEnum("slot_source").notNull().default("PINNED"),
+    notes: text("notes"),
+    ...timestamps,
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.characterId, table.heritageId],
+      name: "character_heritages_pk",
+    }),
+    index("character_heritages_character_id_idx").on(table.characterId),
+    index("character_heritages_heritage_id_idx").on(table.heritageId),
+    index("character_heritages_version_id_idx").on(table.versionId),
+  ],
+);
 
 export const characterItems = pgTable(
   "character_items",

@@ -253,6 +253,27 @@
       "when": 1785000000000,
       "tag": "0038_heritage_tags",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1785100000000,
+      "tag": "0039_characters_backstory",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1785200000000,
+      "tag": "0040_character_primitive_source_manifest",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1785300000000,
+      "tag": "0041_character_heritages",
+      "breakpoints": true
     }
   ]
 }

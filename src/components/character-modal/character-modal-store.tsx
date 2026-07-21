@@ -2,31 +2,41 @@
 
 // =============================================================================
 // CharacterModalStore — persistent client-side state for the character
-// creation modal (Phase 8.1).
+// creation modal (Phase 8.1, rework).
 //
 // The store lives at the AppShell level so it survives tab navigation
 // between /atelier?build=grammar / heritage / blueprint. It does NOT use
 // Zustand (not installed) — React Context is enough because the host
 // provider never unmounts during navigation.
 //
-// What lives here in 8.1:
-//   - isOpen: whether the modal is currently shown
-//   - draft: the in-progress character form fields (typed loosely for now;
-//     the wizard contract lands in batch 2 when the existing
-//     CharacterWizard is wired in).
-//   - isDirty: derived flag for unsaved-changes prompts
+// === Re-spec (Mashu 2026-07-21) ===
 //
-// What does NOT live here in 8.1:
-//   - Saved characters (those go to the server)
-//   - pendingSlots from library (that's 8.7d)
-//   - Tab state (Mode B is 8.7a)
+// The modal is now a 7-TAB interface (not the legacy 5-step wizard):
+//   identity, backstory, attributes, lineage, upbringing, manifest, items
+//
+// State model:
+//   - activeStep: which tab is open. Persists across open/close so the
+//     user lands on the same tab they were on. Persisted to
+//     localStorage (per the spec).
+//   - pendingSlots: per-tab queues of things the user wants to slot from
+//     /atelier. Heritage slots go to the tab matching the heritage's
+//     kind (LINEAGE → lineage tab, etc.). Primitives / capabilities /
+//     effects go to the activeStep's tab. Items go to the items tab.
+//     Cleared on successful create. NOT yet persisted to localStorage
+//     in batch 5 (pendingSlots only exist while the user is actively
+//     browsing /atelier — they hydrate from there, not from the modal).
+//   - isDirty: derived flag (true when pendingSlots has anything OR
+//     identity/backstory/attributes has typed content).
+//
+// What does NOT live here in 8.1 batch 5:
+//   - Saved characters (server side).
+//   - Per-field form state (Identity/Backstory/Attributes inputs) —
+//     those live in local components and persist via localStorage
+//     separately (existing usePersistedState pattern from batch 4).
 //
 // Modal-stack integration: the character modal does NOT use useModalStack.
-// It's a persistent overlay, not a short-lived preview. The route-change
-// stack-clear in ModalStackHost would clobber the character modal when
-// the user navigates between atelier tabs, which is exactly what the spec
-// forbids. The character modal is its own thing; future short-lived
-// modals (library picker side panel, etc.) can still use ModalStackHost.
+// Route-change stack-clear in ModalStackHost would clobber the modal,
+// which the spec forbids.
 // =============================================================================
 
 import {
@@ -39,81 +49,258 @@ import {
   type ReactNode,
 } from "react";
 
-export interface CharacterDraft {
-  name: string;
-  notes: string;
-  // batch 2 expands this with attributes, lineage, capabilities, etc.
-  // Keeping it minimal now so the scaffold can land without forking the
-  // existing CharacterWizard's state shape.
-}
+/**
+ * The 7 tabs in their display order. Tab ids are stable strings so they
+ * serialize cleanly to localStorage.
+ */
+export const CHARACTER_TABS = [
+  "identity",
+  "backstory",
+  "attributes",
+  "lineage",
+  "upbringing",
+  "manifest",
+  "items",
+] as const;
+export type CharacterTabId = (typeof CHARACTER_TABS)[number];
 
-const EMPTY_DRAFT: CharacterDraft = {
-  name: "",
-  notes: "",
+/** Human-readable labels for the tab bar. */
+export const CHARACTER_TAB_LABELS: Record<CharacterTabId, string> = {
+  identity: "Identity",
+  backstory: "Backstory",
+  attributes: "Attributes",
+  lineage: "Lineage",
+  upbringing: "Upbringing",
+  manifest: "Manifest",
+  items: "Items",
 };
+
+/**
+ * One pending slot — the user clicked "Slot into [step]" on a library
+ * preview. Discriminated union so each kind carries the right shape.
+ */
+export type PendingSlot =
+  | {
+      kind: "heritage";
+      heritageId: string;
+      /** Heritage's own kind = the tab it slots into (LINEAGE/UPBRINGING/MANIFEST). */
+      heritageKind: "LINEAGE" | "UPBRINGING" | "MANIFEST";
+      name: string;
+    }
+  | {
+      kind: "primitive";
+      primitiveId: number;
+      /** Always equals the activeStep at queue time (snapshot). */
+      tab: CharacterTabId;
+      name: string;
+    }
+  | {
+      kind: "capability";
+      capabilityId: string;
+      tab: CharacterTabId;
+      name: string;
+    }
+  | {
+      kind: "effect";
+      effectId: string;
+      tab: CharacterTabId;
+      name: string;
+    }
+  | {
+      kind: "item";
+      itemId: string;
+      /** Always "items". Kept as CharacterTabId for uniform shape. */
+      tab: "items";
+      name: string;
+    };
+
+/** Pending slots bucketed by tab — makes per-tab rendering trivial. */
+export type PendingSlotsByTab = Record<CharacterTabId, PendingSlot[]>;
+
+const EMPTY_PENDING: PendingSlotsByTab = {
+  identity: [],
+  backstory: [],
+  attributes: [],
+  lineage: [],
+  upbringing: [],
+  manifest: [],
+  items: [],
+};
+
+const ACTIVE_STEP_STORAGE_KEY = "swordweave:character-modal:active-step";
+
+function loadActiveStep(): CharacterTabId {
+  if (typeof window === "undefined") return "identity";
+  try {
+    const raw = window.localStorage.getItem(ACTIVE_STEP_STORAGE_KEY);
+    if (raw && (CHARACTER_TABS as readonly string[]).includes(raw)) {
+      return raw as CharacterTabId;
+    }
+  } catch {
+    // localStorage disabled — fall through to default.
+  }
+  return "identity";
+}
 
 interface CharacterModalState {
   isOpen: boolean;
-  draft: CharacterDraft;
+  activeStep: CharacterTabId;
+  pendingSlots: PendingSlotsByTab;
   isDirty: boolean;
   open: () => void;
   close: () => void;
   toggle: () => void;
-  setField: <K extends keyof CharacterDraft>(key: K, value: CharacterDraft[K]) => void;
+  setActiveStep: (tab: CharacterTabId) => void;
   /**
-   * Set the dirty flag explicitly. Used by the stepped wizard (which
-   * holds its own internal form state) to signal "there's stuff in
-   * here" so the FAB dot and the modal's Unsaved badge can react. The
-   * dot is the user-visible cue — without it, closing the modal and
-   * reopening feels indistinguishable from a fresh open.
+   * Queue a slot from /atelier. Called by the library preview's
+   * context-aware "Slot into [step]" button. The caller passes the
+   * destination tab (for primitives/capabilities/effects) or lets the
+   * store route the slot based on its kind (for heritage/items).
+   */
+  queueSlot: (slot: PendingSlot) => void;
+  /**
+   * Remove a queued slot. Used when the user removes a primitive from
+   * the modal's slot list before saving.
+   */
+  removeSlot: (tab: CharacterTabId, index: number) => void;
+  /**
+   * Clear all pending slots (e.g. after successful create).
+   */
+  clearSlots: () => void;
+  /**
+   * Reset everything: activeStep → identity, pendingSlots → empty.
+   * Called after successful create so the next open is fresh.
+   */
+  resetDraft: () => void;
+  /**
+   * Explicit dirty override. Use sparingly — the store normally
+   * derives isDirty from pendingSlots.
    */
   setDirty: (dirty: boolean) => void;
-  resetDraft: () => void;
 }
 
 const CharacterModalCtx = createContext<CharacterModalState | null>(null);
 
+function isSlotTab(
+  tab: CharacterTabId,
+  slot: PendingSlot,
+): boolean {
+  if (slot.kind === "heritage") {
+    return (
+      (slot.heritageKind === "LINEAGE" && tab === "lineage") ||
+      (slot.heritageKind === "UPBRINGING" && tab === "upbringing") ||
+      (slot.heritageKind === "MANIFEST" && tab === "manifest")
+    );
+  }
+  return slot.tab === tab;
+}
+
+function totalSlots(slots: PendingSlotsByTab): number {
+  return CHARACTER_TABS.reduce((acc, t) => acc + slots[t].length, 0);
+}
+
 export function CharacterModalProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [draft, setDraft] = useState<CharacterDraft>(EMPTY_DRAFT);
-  // Phase 8.1 batch 3: explicit dirty flag driven by the stepped wizard.
-  // The wizard holds its own internal state for ~30+ fields; mirroring
-  // each one into `draft` would be a lot of plumbing for no payoff.
-  // Instead the wizard calls setDirty(true) on any field change and
-  // setDirty(false) on resetDraft(). The FAB dot reads isDirty.
-  const [isDirty, setIsDirty] = useState(false);
+  const [activeStep, setActiveStepState] = useState<CharacterTabId>("identity");
+  const [pendingSlots, setPendingSlots] = useState<PendingSlotsByTab>(EMPTY_PENDING);
+  // Override for cases where dirty needs to be true outside of pending
+  // slots (e.g. the wizard has typed identity/backstory/attributes).
+  const [dirtyOverride, setDirtyOverride] = useState(false);
+
+  // Hydrate activeStep from localStorage on mount.
+  useEffect(() => {
+    setActiveStepState(loadActiveStep());
+  }, []);
+
+  // Persist activeStep to localStorage on change.
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(ACTIVE_STEP_STORAGE_KEY, activeStep);
+    } catch {
+      // ignore
+    }
+  }, [activeStep]);
 
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
   const toggle = useCallback(() => setIsOpen((v) => !v), []);
 
-  const setField = useCallback(
-    <K extends keyof CharacterDraft>(key: K, value: CharacterDraft[K]) => {
-      setDraft((current) => ({ ...current, [key]: value }));
-    },
-    [],
-  );
+  const setActiveStep = useCallback((tab: CharacterTabId) => {
+    setActiveStepState(tab);
+  }, []);
 
-  const setDirty = useCallback((dirty: boolean) => setIsDirty(dirty), []);
+  const queueSlot = useCallback((slot: PendingSlot) => {
+    setPendingSlots((current) => {
+      // Determine which tab the slot belongs to.
+      let tab: CharacterTabId;
+      if (slot.kind === "heritage") {
+        if (slot.heritageKind === "LINEAGE") tab = "lineage";
+        else if (slot.heritageKind === "UPBRINGING") tab = "upbringing";
+        else tab = "manifest";
+      } else if (slot.kind === "item") {
+        tab = "items";
+      } else {
+        tab = slot.tab;
+      }
+      return { ...current, [tab]: [...current[tab], slot] };
+    });
+  }, []);
+
+  const removeSlot = useCallback((tab: CharacterTabId, index: number) => {
+    setPendingSlots((current) => ({
+      ...current,
+      [tab]: current[tab].filter((_, i) => i !== index),
+    }));
+  }, []);
+
+  const clearSlots = useCallback(() => setPendingSlots(EMPTY_PENDING), []);
+
+  const setDirty = useCallback((dirty: boolean) => setDirtyOverride(dirty), []);
 
   const resetDraft = useCallback(() => {
-    setDraft(EMPTY_DRAFT);
-    setIsDirty(false);
+    setPendingSlots(EMPTY_PENDING);
+    setDirtyOverride(false);
+    setActiveStepState("identity");
+    try {
+      window.localStorage.removeItem(ACTIVE_STEP_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
   }, []);
+
+  const isDirty = dirtyOverride || totalSlots(pendingSlots) > 0;
 
   const value = useMemo<CharacterModalState>(
     () => ({
       isOpen,
-      draft,
+      activeStep,
+      pendingSlots,
       isDirty,
       open,
       close,
       toggle,
-      setField,
-      setDirty,
+      setActiveStep,
+      queueSlot,
+      removeSlot,
+      clearSlots,
       resetDraft,
+      setDirty,
     }),
-    [isOpen, draft, isDirty, open, close, toggle, setField, setDirty, resetDraft],
+    [
+      isOpen,
+      activeStep,
+      pendingSlots,
+      isDirty,
+      open,
+      close,
+      toggle,
+      setActiveStep,
+      queueSlot,
+      removeSlot,
+      clearSlots,
+      resetDraft,
+      setDirty,
+    ],
   );
 
   return (
@@ -124,21 +311,36 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
 export function useCharacterModal(): CharacterModalState {
   const ctx = useContext(CharacterModalCtx);
   if (!ctx) {
-    // No provider — return a no-op so callers (e.g. the Character FAB
-    // from a route that doesn't mount the provider) don't crash. Toggle
-    // and setters silently fail. This matches the no-op pattern in
-    // useModalStack.
     return {
       isOpen: false,
-      draft: EMPTY_DRAFT,
+      activeStep: "identity",
+      pendingSlots: EMPTY_PENDING,
       isDirty: false,
       open: () => {},
       close: () => {},
       toggle: () => {},
-      setField: () => {},
-      setDirty: () => {},
+      setActiveStep: () => {},
+      queueSlot: () => {},
+      removeSlot: () => {},
+      clearSlots: () => {},
       resetDraft: () => {},
+      setDirty: () => {},
     };
   }
   return ctx;
 }
+
+/**
+ * Helper: pick the right tab for a "Slot into" button label based on
+ * the modal's activeStep. The label reads "Slot into <tab>". If the
+ * modal is closed, defaults to "Slot into Character" for clarity.
+ */
+export function tabLabelForActiveStep(
+  activeStep: CharacterTabId,
+  isOpen: boolean,
+): string {
+  if (!isOpen) return "Character";
+  return CHARACTER_TAB_LABELS[activeStep];
+}
+
+void isSlotTab; // currently unused — exported for future helpers

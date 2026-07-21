@@ -23,6 +23,7 @@ import {
   buildCapabilities,
   builds,
   characterCapabilities,
+  characterHeritages,
   characterItems,
   characterPrimitives,
   characters,
@@ -285,6 +286,8 @@ export const entityInventoryRelations = relations(
 export const charactersRelations = relations(characters, ({ many }) => ({
   primitiveLinks: many(characterPrimitives),
   capabilityLinks: many(characterCapabilities),
+  // Phase 8.1 batch 5: whole-heritage slots (Lineage/Upbringing/Manifest).
+  heritageLinks: many(characterHeritages),
   itemLinks: many(characterItems),
   versions: many(characterVersions),
 }));
@@ -299,6 +302,24 @@ export const characterPrimitivesRelations = relations(
     primitive: one(primitives, {
       fields: [characterPrimitives.primitiveId],
       references: [primitives.id],
+    }),
+  }),
+);
+
+// Phase 8.1 batch 5: whole-heritage slots. The character's `kind`
+// column on heritage is the LINEAGE/UPBRINGING/MANIFEST source —
+// exposed via the heritage relation. Per-slot `isMirrored` is read
+// here for the existing MIRRORED badge in the modal (Phase 7 Q-M-UX).
+export const characterHeritagesRelations = relations(
+  characterHeritages,
+  ({ one }) => ({
+    character: one(characters, {
+      fields: [characterHeritages.characterId],
+      references: [characters.id],
+    }),
+    heritage: one(heritage, {
+      fields: [characterHeritages.heritageId],
+      references: [heritage.id],
     }),
   }),
 );
@@ -335,6 +356,9 @@ export const characterItemsRelations = relations(characterItems, ({ one }) => ({
 export const heritageRelations = relations(heritage, ({ many }) => ({
   primitiveLinks: many(heritagePrimitives),
   capabilityLinks: many(heritageCapabilities),
+  // Phase 8.1 batch 5: reverse lookup — which characters have slotted this
+  // heritage as their Lineage/Upbringing/Manifest unit.
+  characterLinks: many(characterHeritages),
   lineageBuilds: many(builds, { relationName: "build_lineage" }),
   upbringingBuilds: many(builds, { relationName: "build_upbringing" }),
   versions: many(heritageVersions),
