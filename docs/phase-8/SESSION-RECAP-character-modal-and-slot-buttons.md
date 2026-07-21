@@ -78,6 +78,44 @@ function startNewEntity(choice?: NewEntityChoice) {
 
 **Known secondary confirmation from user:** "primitive, effect, capability works, but the heritages (upbringings, manifests, lineages), and items do not" — this is the same bug, the mechanics kinds look fine only because `parseBuild(undefined) === "mechanics"` happens to be the correct fallback for them. Heritage and item kinds fall back to `"mechanics"` which is WRONG. Same fix applies to all of them.
 
+**Round 7 — New-entity modal bug (separate root cause):**
+
+After rev 6 patch, user reported that picking "+ New entity → Lineage / Upbringing / Manifest / Item" still opens the **capability form** instead of the heritage / item form. Root cause at `atelier-sandbox-client.tsx:675-677`:
+
+```ts
+const formKind = (mechanicsDraftKind ? mechanicsDraftKind : heritageKind ? "heritage" : null);
+```
+
+This prioritizes `mechanicsDraftKind` over `heritageKind`. If user previously picked "+ New entity → Capability" (`mechanicsDraftKind = "capability"`), then picks "Lineage", `heritageKind` is set but `mechanicsDraftKind` is stale and wins. The CapabilityForm renders.
+
+**Fix (commit `96ea07b`):** In `startNewEntity`, clear the opposite kind's state when picking either kind. Made `mechanicsDraftKind` nullable (`"primitive" | "effect" | "capability" | null`) to support clearing.
+
+```ts
+if (choice?.heritageSubKind) {
+  setHeritageKind(choice.heritageSubKind);
+  setMechanicsDraftKind(null);  // ← NEW: clear stale state
+}
+if (choice?.mechanicsSubKind) {
+  setMechanicsDraftKind(choice.mechanicsSubKind);
+  setHeritageKind(undefined);   // ← NEW: clear stale state
+}
+```
+
+Updated `TabCacheEntry.mechanicsDraftKind` type to allow null. Typecheck + tests pass (1704/1706). Pushed to `origin/main`.
+
+### (B.5) Slot-into-build button STILL missing — needs deeper investigation
+
+After rev 6 + rev 7 fixes, user reports: "I loaded a lineage and when I open a preview of a primitive I see no slot into build option."
+
+Code analysis: `BlueprintPreviewBody.canSlot` (`heritage-library.tsx:713-715`) correctly returns `true` for primitive previews when `slottableKinds = ["primitive","effect","capability"]` and `item.kind === "primitive"`. The `actionBar` object construction (line 815-841) conditionally spreads `primarySecondary` when `canSlot` is true. So the button SHOULD render.
+
+Possible causes to investigate:
+1. **Vercel deployment not live yet** — the patch may not be on production. Need to verify by inspecting deployed chunks.
+2. **`item.kind` is something other than `"primitive"` at runtime** — need to add console.log to verify.
+3. **Different code path renders the preview** — maybe the user is on `?build=mechanics` (not `?build=heritage`), so GrammarLibrary handles the preview, and GrammarLibrary has `canSlot = false` when `build === "mechanics"`. If user didn't pick a heritage kind via the new-entity modal (or my rev 6 patch didn't take effect), `build` might still be `"mechanics"`.
+
+Most likely: combination of (1) — Vercel cache, similar to round 17 force-redeploy needed — and (3) — the user's `build` URL param might be wrong because the rev 6 patch wasn't deployed when they tested.
+
 ### (B) Add "Slot into character" button — alongside "Slot into build"
 
 Same preview modal, one more button below "Slot into build". Toggles the character modal and stages the item for slotting.
