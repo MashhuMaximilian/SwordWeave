@@ -324,15 +324,15 @@ export function AtelierSandboxClient({
   >(initialKind);
   const [showNewModal, setShowNewModal] = useState(false);
   const [mechanicsDraftKind, setMechanicsDraftKind] = useState<
-    "primitive" | "effect" | "capability"
-  >(initialMechanicsKind);
+    "primitive" | "effect" | "capability" | null
+  >(initialMechanicsKind ?? null);
   // Per-tab form-state cache so switching tabs never discards what you
   // were building (Point 5). Keyed by tab; each entry snapshots the
   // editing state + draft-kind selectors for that tab.
   type TabCacheEntry = {
     editing: EditingState;
     formSnapshot: typeof formSnapshot;
-    mechanicsDraftKind: "primitive" | "effect" | "capability";
+    mechanicsDraftKind: "primitive" | "effect" | "capability" | null;
     heritageKind: "LINEAGE" | "UPBRINGING" | "MANIFEST" | undefined;
     buildStarted: boolean;
   };
@@ -577,8 +577,21 @@ export function AtelierSandboxClient({
   // the right editor (Point 3 / Point 5).
   function startNewEntity(choice?: NewEntityChoice) {
     setShowNewModal(false);
-    if (choice?.heritageSubKind) setHeritageKind(choice.heritageSubKind);
-    if (choice?.mechanicsSubKind) setMechanicsDraftKind(choice.mechanicsSubKind);
+    if (choice?.heritageSubKind) {
+      setHeritageKind(choice.heritageSubKind);
+      // Phase 8 rev 7: clear stale mechanicsDraftKind so formKind doesn't
+      // resolve to a capability form. Without this, picking Lineage after
+      // a previous Capability pick leaves mechanicsDraftKind="capability",
+      // and the formKind computation at line 675 returns "capability"
+      // because it prioritizes mechanicsDraftKind over heritageKind.
+      setMechanicsDraftKind(null);
+    }
+    if (choice?.mechanicsSubKind) {
+      setMechanicsDraftKind(choice.mechanicsSubKind);
+      // Phase 8 rev 7: clear stale heritageKind so formKind doesn't
+      // resolve to a heritage form when picking a mechanics kind.
+      setHeritageKind(undefined);
+    }
     // Phase 8 rev 6: sync the active tab to the chosen kind. The previous
     // behavior was "deliberately do NOT switch the active tab — the build
     // form renders from the chosen draft kind, independent of the tab."
