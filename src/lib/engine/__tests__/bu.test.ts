@@ -5,6 +5,7 @@ import {
   canAcceptMirror,
   evaluateBuLedger,
   getVolatilityCeiling,
+  impliedLevelForBudget,
   maxBuDebtForLevel,
   sumPrimitiveBu,
   validateBuValue,
@@ -194,6 +195,36 @@ describe("maxBuDebtForLevel", () => {
     expect(maxBuDebtForLevel(24)).toBe(24);
     expect(maxBuDebtForLevel(28)).toBe(28);
     expect(maxBuDebtForLevel(100)).toBe(100);
+  });
+});
+
+describe("impliedLevelForBudget", () => {
+  // Phase 8.1 batch 11 (Mashu 2026-07-22): when the typed budget
+  // doesn't exactly match a canon threshold, return the highest L
+  // whose cumulative budget is <= the typed budget.
+  //   25   → L1  (exact match)
+  //   100  → L8  (since cumulative(8) = 107, cumulative(7) = 89)
+  //   127  → L10 (exact match)
+  //   133  → L10 (between L10's 127 and L11's 137)
+  //   200  → L15 (between L15's 189 and L16's 209)
+  it("returns exact-match level when budget matches a canon threshold", () => {
+    expect(impliedLevelForBudget(25)).toBe(1);
+    expect(impliedLevelForBudget(127)).toBe(10);
+    expect(impliedLevelForBudget(275)).toBe(20);
+  });
+
+  it("returns lower bracket level when budget is between thresholds", () => {
+    // 133 BU: cumulative(10) = 127, cumulative(11) = 137. Implied = 10.
+    expect(impliedLevelForBudget(133)).toBe(10);
+    // 100 BU: cumulative(7) = 89, cumulative(8) = 107. Implied = 7.
+    expect(impliedLevelForBudget(100)).toBe(7);
+    // 200 BU: cumulative(15) = 189, cumulative(16) = 209. Implied = 15.
+    expect(impliedLevelForBudget(200)).toBe(15);
+  });
+
+  it("returns 1 for budgets below the L1 minimum", () => {
+    expect(impliedLevelForBudget(24)).toBe(1);
+    expect(impliedLevelForBudget(0)).toBe(1);
   });
 });
 

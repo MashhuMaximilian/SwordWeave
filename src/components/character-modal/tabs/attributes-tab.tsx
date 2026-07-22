@@ -32,6 +32,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   cumulativeBuForLevel,
+  impliedLevelForBudget,
   levelForBuBudget,
   maxBuDebtForLevel,
 } from "@/lib/engine/bu";
@@ -311,11 +312,16 @@ function BuildSizingControl({
               const next = clampBu(v);
               // Same atomic-update fix as the level field above.
               // Single onChange call merges level + buBudget.
-              const implied = levelForBuBudget(next);
+              // Phase 8.1 batch 11: in BU mode the footer reads
+              // attributes.level directly, so we need to update it
+              // to the IMPLIED level (highest L where cumulative
+              // budget <= typed budget). For budgets that exactly
+              // match a canon threshold both are the same value.
+              const implied = impliedLevelForBudget(next);
               onChange({
                 ...state,
                 buBudget: next,
-                level: implied ?? state.level,
+                level: implied,
               });
             }}
             commitDefault={25}
@@ -325,15 +331,7 @@ function BuildSizingControl({
           <span className="block text-xs text-muted-foreground">
             {derivedLevel != null
               ? `Matches level ${derivedLevel} (debt ceiling −${maxBuDebtForLevel(derivedLevel)})`
-              : "Between canon thresholds — debt ceiling follows the closest matching level"}
-            {derivedLevel == null && state.level > 0 && (
-              <>
-                {" "}
-                <span className="font-mono">
-                  (using level {state.level}: ceiling −{maxBuDebtForLevel(state.level)})
-                </span>
-              </>
-            )}
+              : `Between canon thresholds — using implied level ${state.level} (debt ceiling −${maxBuDebtForLevel(state.level)})`}
           </span>
         </label>
       )}

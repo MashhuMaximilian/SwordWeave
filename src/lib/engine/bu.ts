@@ -200,18 +200,20 @@ export function maxBuDebtForLevel(level: number): number {
 
 /**
  * Given a custom BU budget (set explicitly by the user, bypassing
- * level), find the lowest level L whose cumulative budget equals
+ * level), find the LOWEST level L whose cumulative budget equals
  * exactly this value. Returns null when no exact match exists —
  * useful for telling the user "this budget matches level N".
+ *
+ * For budgets that DON'T exactly match (e.g. 133 between L10's 127
+ * and L11's 137), use `impliedLevelForBudget` instead — that one
+ * returns the highest level whose cumulative budget is <= the
+ * typed budget, i.e. "this budget is at least as much as level N".
  *
  * Note: this is intentionally a search rather than a closed-form
  * solve because the spike pattern (every 4 levels) makes a closed
  * form awkward. The search is bounded by the level the user
  * actually typed; for arbitrary BU values we use the canonical
- * formula in reverse:
- *
- *   Given budget B, try L = 1, 2, 3, ... and find the first
- *   L where cumulativeBuForLevel(L) === B.
+ * formula in reverse.
  */
 export function levelForBuBudget(budget: number): number | null {
   if (!Number.isFinite(budget)) return null;
@@ -225,6 +227,32 @@ export function levelForBuBudget(budget: number): number | null {
     if (cumulativeBuForLevel(l) > budget) break;
   }
   return null;
+}
+
+/**
+ * Phase 8.1 batch 11 (Mashu 2026-07-22): "implied" level for a
+ * budget — the highest level L such that cumulativeBuForLevel(L)
+ * is <= the typed budget. When the budget doesn't exactly match
+ * a canon threshold, this gives the bracket the character would
+ * slot into (e.g. 133 BU → L10, since 133 > 127 = L10 but < 137
+ * = L11). Used by the footer so the Lvl pill doesn't get stuck
+ * when the user is in "By BU" mode and types a non-canon value.
+ *
+ * Returns 1 for budgets below 25 (treats any valid budget as
+ * "at least L1"). Caps at level 200 to match levelForBuBudget.
+ */
+export function impliedLevelForBudget(budget: number): number {
+  if (!Number.isFinite(budget)) return 1;
+  if (budget < 25) return 1;
+  let best = 1;
+  for (let l = 1; l <= 200; l++) {
+    if (cumulativeBuForLevel(l) <= budget) {
+      best = l;
+    } else {
+      break;
+    }
+  }
+  return best;
 }
 
 /**
