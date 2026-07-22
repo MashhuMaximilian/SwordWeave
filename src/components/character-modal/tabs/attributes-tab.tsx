@@ -74,12 +74,14 @@ export const ATTRIBUTES_STORAGE_KEY =
 
 export function clampLevel(n: number): number {
   if (!Number.isFinite(n)) return 1;
-  return Math.min(20, Math.max(1, Math.floor(n)));
+  // Phase 8.1 batch 11: no upper cap. Levels continue indefinitely
+  // and the BU formula extrapolates (L100 = 2315 BU).
+  return Math.max(1, Math.floor(n));
 }
 
 export function clampBu(n: number): number {
   if (!Number.isFinite(n)) return 25;
-  return Math.min(1000, Math.max(0, Math.floor(n)));
+  return Math.min(100000, Math.max(0, Math.floor(n)));
 }
 
 /** Resolve the active BU budget for the current attributes state.
@@ -195,7 +197,10 @@ export function AttributesTab({ state, onChange }: AttributesTabProps) {
         </select>
       </label>
 
-      <BuildSizingControl state={state} setField={setField} />
+      <BuildSizingControl
+          state={state}
+          onChange={onChange}
+        />
     </div>
   );
 }
@@ -218,13 +223,10 @@ export function AttributesTab({ state, onChange }: AttributesTabProps) {
  */
 function BuildSizingControl({
   state,
-  setField,
+  onChange,
 }: {
   state: AttributesState;
-  setField: <K extends keyof AttributesState>(
-    key: K,
-    value: AttributesState[K],
-  ) => void;
+  onChange: (next: AttributesState) => void;
 }) {
   const derivedLevel =
     state.mode === "buBudget" ? levelForBuBudget(state.buBudget) : null;
@@ -249,7 +251,7 @@ function BuildSizingControl({
                 type="button"
                 role="tab"
                 aria-selected={active}
-                onClick={() => setField("mode", m)}
+                onClick={() => onChange({ ...state, mode: m })}
                 className={
                   "px-3 py-1.5 font-medium transition-colors " +
                   (active
@@ -267,19 +269,27 @@ function BuildSizingControl({
       {state.mode === "level" ? (
         <label className="block space-y-1">
           <span className="text-xs font-medium text-muted-foreground">
-            Level (1-20)
+            Level (no upper cap)
           </span>
           <IntegerField
             state={state.level}
             setState={(v) => {
               const next = clampLevel(v);
-              setField("level", next);
-              setField("buBudget", cumulativeBuForLevel(next));
+              // Phase 8.1 batch 11 fix: a single onChange call must
+              // mutate BOTH level AND buBudget atomically. Calling
+              // setField twice in sequence overwrites the first
+              // update because each setField spreads the same stale
+              // `state` closure. The fix is to compute the merged
+              // state once and call onChange exactly once.
+              onChange({
+                ...state,
+                level: next,
+                buBudget: cumulativeBuForLevel(next),
+              });
             }}
             commitDefault={1}
             min={1}
-            max={20}
-            maxLength={2}
+            maxLength={4}
           />
           <span className="block text-xs text-muted-foreground">
             BU budget:{" "}
@@ -299,19 +309,18 @@ function BuildSizingControl({
             state={state.buBudget}
             setState={(v) => {
               const next = clampBu(v);
-              setField("buBudget", next);
-              // Keep level in sync via reverse-lookup so the debt
-              // ceiling + display stay accurate. When the budget
-              // doesn't match a canon threshold exactly, keep the
-              // previous level (the field is informational only in
-              // buBudget mode).
+              // Same atomic-update fix as the level field above.
+              // Single onChange call merges level + buBudget.
               const implied = levelForBuBudget(next);
-              if (implied != null) setField("level", implied);
+              onChange({
+                ...state,
+                buBudget: next,
+                level: implied ?? state.level,
+              });
             }}
             commitDefault={25}
             min={0}
-            max={1000}
-            maxLength={4}
+            maxLength={6}
           />
           <span className="block text-xs text-muted-foreground">
             {derivedLevel != null
@@ -351,7 +360,11 @@ interface IntegerFieldProps {
   setState: (v: number) => void;
   commitDefault: number;
   min: number;
-  max: number;
+  /**
+   * Maximum allowed value. Optional — omit when there's no upper
+   * cap (Phase 8.1 batch 11 made the level field unbounded).
+   */
+  max?: number;
   maxLength: number;
   /** Allow leading minus sign (used for attributes which can be -1). */
   allowNegative?: boolean;
@@ -399,7 +412,11 @@ function IntegerField({
         }
         const parsed = Number.parseInt(raw, 10);
         if (Number.isFinite(parsed)) {
-          setState(Math.min(max, Math.max(min, parsed)));
+          const clamped =
+            max != null
+              ? Math.min(max, Math.max(min, parsed))
+              : Math.max(min, parsed);
+          setState(clamped);
         }
       }}
       onBlur={(e) => {
@@ -412,7 +429,12 @@ function IntegerField({
         }
         const parsed = Number.parseInt(raw, 10);
         if (Number.isFinite(parsed)) {
-          const clamped = Math.min(max, Math.max(min, parsed));
+          // Phase 8.1 batch 11: max is optional. When omitted, only
+          // the min clamp applies (used for level which has no cap).
+          const clamped =
+            max != null
+              ? Math.min(max, Math.max(min, parsed))
+              : Math.max(min, parsed);
           setState(clamped);
           setDraft(String(clamped));
           e.target.value = String(clamped);
