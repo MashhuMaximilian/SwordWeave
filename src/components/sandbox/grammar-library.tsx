@@ -894,13 +894,17 @@ function SandboxPreviewBody({
   const actionBar: PreviewActionProps = {
     loadIntoBuild: { label: "Load into build", onClick: onLoadIntoBuild },
     ...(canSlot ? { primarySecondary: { label: "Slot into build", onClick: slotIntoBuild } } : {}),
-    // Phase 8.1 batch 8: context-aware "Slot into [step]" for the
-    // character modal. Label driven by activeStep. Only shown for
-    // entity kinds the modal accepts (primitives/effects/caps).
+    // Phase 8.1 batch 8 + batch 11: context-aware "Slot into [step]"
+    // for the character modal. Label driven by the RESOLVED
+    // destination tab (resolveSlotDestination), not the raw active
+    // tab, so identity/backstory/attributes correctly read "Slot
+    // into Manifest" instead of "Slot into [Info tab name]". Only
+    // shown for entity kinds the modal accepts (primitives/caps);
+    // items tab is filtered out by canSlotIntoCharacter.
     ...(canSlotIntoCharacter
       ? {
           primaryTertiary: {
-            label: `Slot into ${tabLabelForActiveStep(characterModal.activeStep, characterModal.isOpen)}`,
+            label: `Slot into ${tabLabelForActiveStep(resolveSlotDestination(characterModal.activeStep), characterModal.isOpen)}`,
             onClick: slotIntoCharacter,
           },
         }
