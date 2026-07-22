@@ -16,6 +16,7 @@
 // All filtering, sorting, and view-mode is owned by the LibraryToolbar.
 
 import { useEffect, useMemo, useState } from "react";
+import { useSandboxSaveHandler } from "./use-sandbox-save-handler";
 import { useRouter } from "next/navigation";
 import { LibraryToolbar, type LibraryToolbarState } from "@/components/library/library-toolbar";
 import { LibraryTable } from "@/components/library/library-table";
@@ -333,11 +334,53 @@ export function HeritageLibrary({
     };
   }, [heritage, items, primitives, capabilities, effects, versionMap]);
 
+  // Phase 8.1 batch 13.6 follow-up: subscribe to save events
+  // ONCE up here (before the optimistic-prepend useMemo uses the
+  // state). The hook owns the optimisticItems list + the sw-sandbox-
+  // saved event listener. The subscribe() callback lower down
+  // adds the UI side effects (filter reset, scroll, flash).
+  const { optimisticItems, flushOptimisticIfMatched, subscribe } =
+    useSandboxSaveHandler();
+
+  // Phase 8.1 batch 13.6 follow-up: prepend optimistic items to the
+  // filter source so the user sees the just-saved row instantly.
+  // The optimistic list lives in useSandboxSaveHandler; we drop
+  // entries once libraryItems updates with the real row.
+  const combinedItems = useMemo<LibraryItem[]>(() => {
+    if (optimisticItems.length === 0) return libraryItems;
+    const seen = new Set<string>();
+    const out: LibraryItem[] = [];
+    for (const it of optimisticItems) {
+      const id = String(it.id);
+      if (seen.has(id)) continue;
+      seen.add(id);
+      out.push(it);
+    }
+    for (const it of libraryItems) {
+      const id = String(it.id);
+      if (seen.has(id)) continue;
+      seen.add(id);
+      out.push(it);
+    }
+    return out;
+  }, [libraryItems, optimisticItems]);
+
+  // Drop optimistic entries whose id is now in real libraryItems.
+  useEffect(() => {
+    if (optimisticItems.length === 0) return;
+    const realIds = new Set(libraryItems.map((it) => String(it.id)));
+    for (const it of optimisticItems) {
+      if (realIds.has(String(it.id))) {
+        flushOptimisticIfMatched(String(it.id));
+      }
+    }
+  }, [libraryItems, optimisticItems, flushOptimisticIfMatched]);
+
   // Filter items by toolbar search/typeFilter. The build-mode gate is
   // removed — the user can see any kind in the blueprint library per the
   // user's spec.
   const filteredItems = useMemo(() => {
-    let items = libraryItems;
+    let items = combinedItems;
 
     // Toolbar text search.
     if (toolbarState.search) {
@@ -418,7 +461,7 @@ export function HeritageLibrary({
     }
 
     return sortLibraryItems(items, toolbarState.sort);
-  }, [build, libraryItems, toolbarState]);
+  }, [build, combinedItems, toolbarState]);
 
   // Card click → push to modal stack. The "Load into build" action still
   // calls the parent's onSelect; we pop the stack afterwards. Sub-entity
@@ -436,34 +479,26 @@ export function HeritageLibrary({
     return () => window.removeEventListener("sw-sandbox-close-preview", handler);
   }, [stack]);
 
-  // Phase 8.1 batch 13.4 follow-up: when a form saves an entity, the
-  // atelier fires `sw-sandbox-saved` with { kind, id }. We use this
-  // to:
-  //   1. Force the type filter back to the default for that kind so
-  //      the new entity isn't hidden behind a stale filter.
-  //   2. Scroll the row into view + flash a brief highlight so the
-  //      user can see the save landed without a manual page refresh.
-  // Mashu 2026-07-22: "if I edit/fork something in atelier ... I
-  // have to refresh the page to find it in list." Follow-up:
-  // "I search without refreshing, still can't find it without
-  // refresh."
+  // Phase 8.1 batch 13.6 follow-up: when a form saves an entity, the
+  // atelier fires `sw-sandbox-saved` with { kind, id, row }. We use
+  // the shared `useSandboxSaveHandler()` hook (see
+  // ./use-sandbox-save-handler.ts) to:
+  //   1. Optimistically prepend the saved row to the visible list
+  //      so the user sees it INSTANTLY, without waiting for the
+  //      router.refresh() round-trip.
+  //   2. Reset toolbarState filters so the new entity isn't hidden.
+  //   3. Scroll + flash the new row.
   //
-  // We retry the find for up to ~1.5s — the server's router.refresh
-  // round-trip can land AFTER the event fires (Next.js re-renders
-  // asynchronously), so a single DOM lookup often misses. Retry
-  // with exponential backoff until the row appears or we give up.
+  // Mashu 2026-07-22: "Soninfork idk a domain, I save, and I cannot
+  // see in list or search and find the new fork unless I refresh
+  // page." Optimistic prepend eliminates the wait entirely; the
+  // optimistic copy is dropped once libraryItems updates with the
+  // real row. (subscribe + optimisticItems come from the hook call
+  // at the top of the component — see above.)
+
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const handler = (event: Event) => {
-      const e = event as CustomEvent<{
-        kind: "primitive" | "effect" | "capability" | "heritage" | "item";
-        id: string;
-      }>;
-      if (!e.detail?.id) return;
-      // Reset the toolbar filter to the default for the saved kind.
-      // The user may have narrowed by an attribute that the new entity
-      // doesn't carry — without this reset the row would stay hidden.
-      const kind = e.detail.kind;
+    const unsub = subscribe((detail) => {
+      const kind = detail.kind;
       const kindToFilter: Record<typeof kind, string> = {
         primitive: "PRIMITIVE",
         effect: "EFFECT",
@@ -480,13 +515,10 @@ export function HeritageLibrary({
         minLikes: "",
         hasForks: false,
       }));
-      // Retry the DOM find until the row appears or we time out.
-      // This handles the race where router.refresh() hasn't landed
-      // yet (the SC round-trip is async; we get the event from the
-      // form's onSaved BEFORE Next.js re-renders the parent with
-      // new libraryItems).
-      const id = e.detail.id;
-      const attempts: number[] = [0, 80, 200, 400, 700, 1100, 1500];
+      // Bumped retry window (was 1.5s) because optimistic prepend
+      // usually wins; the loop is just a polish for the scroll/flash.
+      const id = detail.id;
+      const attempts: number[] = [0, 100, 300, 600, 1000, 1500, 2200, 3000, 3500];
       for (const delay of attempts) {
         window.setTimeout(() => {
           const el = document.querySelector<HTMLElement>(
@@ -500,10 +532,9 @@ export function HeritageLibrary({
           }, 2200);
         }, delay);
       }
-    };
-    window.addEventListener("sw-sandbox-saved", handler);
-    return () => window.removeEventListener("sw-sandbox-saved", handler);
-  }, []);
+    });
+    return unsub;
+  }, [subscribe]);
 
   // Phase 7 Q-B UX: form-preview clicks on slotted sub-entities
   // dispatch `sw-sandbox-open-preview`. Translate to pushPreview() so

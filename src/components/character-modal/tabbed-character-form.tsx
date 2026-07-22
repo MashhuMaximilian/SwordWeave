@@ -30,7 +30,7 @@
 //   - "Slot into [step]" library buttons (batch 8).
 // =============================================================================
 
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -248,12 +248,31 @@ export function TabbedCharacterForm() {
     () => CHARACTER_TABS.flatMap((t) => pendingSlots[t]),
     [pendingSlots],
   );
-  // Tick once a second so newly-fetched heritage/capability bundles
-  // refresh the footer without requiring the user to add/remove a slot.
-  const [, bumpTick] = useReducer((x: number) => x + 1, 0);
+  // Phase 8.1 batch 13.6 follow-up (Mashu 2026-07-22):
+  // "if I add anything else into character first, it won't
+  // calculate until I add a primitive in the character."
+  //
+  // Bug: buSummary was a useMemo with deps [allSlots, pendingSlots].
+  // When the user adds a heritage or capability first (no primitive),
+  // pendingSlots doesn't change when the bundle finishes fetching, so
+  // the useMemo returned the cached result (0 BU). Adding a primitive
+  // later would change pendingSlots, invalidate the cache, and the
+  // count would "snap" into place.
+  //
+  // Fix: bump a `bundleVersion` counter when any slot card finishes
+  // fetching its bundle (HeritageSlotCard + CapabilitySlotCard
+  // dispatch `sw-character-bundle-loaded`). The counter is read inside
+  // the summary computation, which depends on it through the
+  // useMemo dep list. We still useMemo here — the maps are
+  // module-level mutable, so reading them without a signal would
+  // miss updates.
+  const [bundleVersion, setBundleVersion] = useState(0);
   useEffect(() => {
-    const t = window.setInterval(() => bumpTick(), 1000);
-    return () => window.clearInterval(t);
+    if (typeof window === "undefined") return;
+    const handler = () => setBundleVersion((v) => v + 1);
+    window.addEventListener("sw-character-bundle-loaded", handler);
+    return () =>
+      window.removeEventListener("sw-character-bundle-loaded", handler);
   }, []);
   const buSummary = useMemo(
     () =>
@@ -262,8 +281,7 @@ export function TabbedCharacterForm() {
         getHeritageBundleBuMap(),
         getCapabilityBundleBuMap(),
       ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allSlots, pendingSlots],
+    [allSlots, pendingSlots, bundleVersion],
   );
   const budget = activeBuBudget(attributes);
   const debtCeiling = maxBuDebtForLevel(attributes.level);

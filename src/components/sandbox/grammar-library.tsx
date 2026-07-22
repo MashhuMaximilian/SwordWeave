@@ -15,6 +15,7 @@
 // Dirty mode: parent's guardedLibrarySelect opens the unsaved modal.
 
 import { useEffect, useMemo, useState } from "react";
+import { useSandboxSaveHandler } from "./use-sandbox-save-handler";
 import { useRouter } from "next/navigation";
 import { LibraryToolbar, type LibraryToolbarState } from "@/components/library/library-toolbar";
 import { LibraryTable } from "@/components/library/library-table";
@@ -284,36 +285,27 @@ export function GrammarLibrary({
   }, []);
 
   // Phase 8.1 batch 13.6 follow-up (Mashu 2026-07-22):
-  // "I load into build (not character) so I fork something. On save
-  // when fork is created atelier should list the new entry without
-  // me refreshing page."
+  // "Soninfork idk a domain, I save, and I cannot see in list or
+  // search and find the new fork unless I refresh page."
   //
-  // The parent (atelier-sandbox-client.tsx) fires `sw-sandbox-saved`
-  // after every form save and also calls router.refresh(). BUT the
-  // parent form (e.g. PrimitiveForm) ALREADY calls router.refresh()
-  // internally. The parent's refresh DOES re-fetch server data, but
-  // it does NOT reset our toolbarState filter — if the user has
-  // narrowed to a category the new entity doesn't have, the new
-  // entity stays hidden.
-  //
-  // HeritageSlotCard already has this listener; grammar-library
-  // didn't, so primitive/effect/capability saves never got the
-  // "reset filter + scroll + flash" UX. Mirror the same handler
-  // here.
+  // Two pieces:
+  //   1. `useSandboxSaveHandler()` keeps an `optimisticItems` list
+  //      that prepends the just-saved row to the visible library.
+  //      The user sees the new entity INSTANTLY, without waiting
+  //      for router.refresh() to round-trip the SC. The optimistic
+  //      row is dropped automatically when libraryItems updates
+  //      with the real entity (no duplicate row).
+  //   2. The subscribe() callback resets toolbarState filters and
+  //      scrolls/flashes the new row. Heritage-library uses the
+  //      same hook (see heritage-library.tsx).
+  const { optimisticItems, flushOptimisticIfMatched, subscribe } =
+    useSandboxSaveHandler();
+
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const handler = (event: Event) => {
-      const e = event as CustomEvent<{
-        kind: "primitive" | "effect" | "capability" | "heritage" | "item";
-        id: string;
-      }>;
-      if (!e.detail?.id) return;
-      const kind = e.detail.kind;
-      // Map save kind to the typeFilter value for this library.
-      // Items/heritage don't appear in the grammar library — when
-      // those saves fire, we just clear filters without changing
-      // typeFilter (the parent will handle the cross-tab nav).
-      const kindToFilter: Record<typeof kind, string> = {
+    const unsub = subscribe((detail) => {
+      // Reset filter so the new entity isn't hidden behind a stale
+      // search/category/type. Same kind→filter map as before.
+      const kindToFilter: Record<typeof detail.kind, string> = {
         primitive: "PRIMITIVE",
         effect: "EFFECT",
         capability: "CAPABILITY",
@@ -323,7 +315,7 @@ export function GrammarLibrary({
       setToolbarState((prev) => ({
         ...prev,
         search: "",
-        typeFilter: kindToFilter[kind] as typeof prev.typeFilter,
+        typeFilter: kindToFilter[detail.kind] as typeof prev.typeFilter,
         category: "",
         author: "",
         minLikes: "",
@@ -333,11 +325,12 @@ export function GrammarLibrary({
         subKinds: [],
         hasForks: false,
       }));
-      // Retry the DOM find until the row appears or we time out.
-      // Same backoff schedule as HeritageSlotCard. router.refresh()
-      // is async — the new row may not have arrived yet.
-      const id = e.detail.id;
-      const attempts: number[] = [0, 80, 200, 400, 700, 1100, 1500];
+      // Scroll + flash the new row. Even with optimistic prepend,
+      // the row's data-library-row-id attribute may not be set
+      // until React commits the new list. The retry loop covers
+      // the gap; bumped to 3.5s to handle slower dev refreshes.
+      const id = detail.id;
+      const attempts: number[] = [0, 100, 300, 600, 1000, 1500, 2200, 3000, 3500];
       for (const delay of attempts) {
         window.setTimeout(() => {
           const el = document.querySelector<HTMLElement>(
@@ -351,10 +344,9 @@ export function GrammarLibrary({
           }, 2200);
         }, delay);
       }
-    };
-    window.addEventListener("sw-sandbox-saved", handler);
-    return () => window.removeEventListener("sw-sandbox-saved", handler);
-  }, []);
+    });
+    return unsub;
+  }, [subscribe]);
 
   // When the build mode changes, reset the type filter to the new default
   // and clear other filters so the user sees the right subset immediately.
@@ -428,8 +420,51 @@ export function GrammarLibrary({
   // "live" (the chips were clickable) but the result set never updated.
   // We now apply every toolbar state field that the result set can
   // meaningfully filter on.
+  // Apply toolbar filters to libraryItems + optimisticItems. The
+  // optimistic list prepends just-saved rows so the user sees them
+  // instantly, before router.refresh() lands. Once the server-side
+  // libraryItems updates (useEffect below), we drop the matching
+  // optimistic row.
+  const combinedItems = useMemo<LibraryItem[]>(() => {
+    if (optimisticItems.length === 0) return libraryItems;
+    // Optimistic items come first so they show at the top of the
+    // list. Dedupe by id against libraryItems (in case the server
+    // data has already arrived but the optimistic copy is still in
+    // state).
+    const seen = new Set<string>();
+    const out: LibraryItem[] = [];
+    for (const it of optimisticItems) {
+      const id = String(it.id);
+      if (seen.has(id)) continue;
+      seen.add(id);
+      out.push(it);
+    }
+    for (const it of libraryItems) {
+      const id = String(it.id);
+      if (seen.has(id)) continue;
+      seen.add(id);
+      out.push(it);
+    }
+    return out;
+  }, [libraryItems, optimisticItems]);
+
+  // Phase 8.1 batch 13.6 follow-up: drop optimistic entries whose
+  // id is now present in the real libraryItems. This happens
+  // after router.refresh() lands and the SC re-fetches. We dedupe
+  // by id (already done in combinedItems) so the user just sees
+  // the real row.
+  useEffect(() => {
+    if (optimisticItems.length === 0) return;
+    const realIds = new Set(libraryItems.map((it) => String(it.id)));
+    for (const it of optimisticItems) {
+      if (realIds.has(String(it.id))) {
+        flushOptimisticIfMatched(String(it.id));
+      }
+    }
+  }, [libraryItems, optimisticItems, flushOptimisticIfMatched]);
+
   const filteredItems = useMemo(() => {
-    const filtered = libraryItems.filter((item) => {
+    const filtered = combinedItems.filter((item) => {
       // Only show items of the types available in this build mode.
       const allowedKeys = availableTypes.map((t) => t.key);
       if (!allowedKeys.includes(item.targetType) && !allowedKeys.includes("ALL")) {
@@ -506,7 +541,7 @@ export function GrammarLibrary({
       return true;
     });
     return sortLibraryItems(filtered, toolbarState.sort);
-  }, [libraryItems, availableTypes, toolbarState]);
+  }, [combinedItems, availableTypes, toolbarState]);
 
   // Right-side filter panel slot: render the full toolbar inside it.
   // The search bar is duplicated in the column header for quick access.

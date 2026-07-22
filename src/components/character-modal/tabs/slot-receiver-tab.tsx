@@ -384,6 +384,17 @@ function HeritageSlotCard({
           }
         : null;
       heritageBundleCache.set(slot.heritageId, normalised);
+      // Phase 8.1 batch 13.6 follow-up: notify the footer so its
+      // buSummary recomputes. Without this, the footer stays at the
+      // stale cached value until something else (e.g. a primitive
+      // add) forces a re-render.
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("sw-character-bundle-loaded", {
+            detail: { kind: "heritage", id: slot.heritageId },
+          }),
+        );
+      }
       setBundle(normalised);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to load heritage.";
@@ -724,6 +735,15 @@ function CapabilitySlotCard({
           })()
         : null;
       capabilityBundleCache.set(slot.capabilityId, normalised);
+      // Phase 8.1 batch 13.6 follow-up: notify the footer so its
+      // buSummary recomputes. See HeritageSlotCard for the same fix.
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("sw-character-bundle-loaded", {
+            detail: { kind: "capability", id: slot.capabilityId },
+          }),
+        );
+      }
       setBundle(normalised);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to load capability.";
