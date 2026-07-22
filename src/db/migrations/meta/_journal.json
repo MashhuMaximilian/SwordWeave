@@ -295,6 +295,13 @@
       "when": 1785600000000,
       "tag": "0044_cascade_capability_deletion",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1784753204935,
+      "tag": "0045_character_log",
+      "breakpoints": true
     }
   ]
 }

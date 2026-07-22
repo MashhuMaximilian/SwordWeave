@@ -25,6 +25,7 @@ import {
   characterCapabilities,
   characterHeritages,
   characterItems,
+  characterLog,
   characterPrimitives,
   characters,
   heritageCapabilities,
@@ -290,6 +291,10 @@ export const charactersRelations = relations(characters, ({ many }) => ({
   heritageLinks: many(characterHeritages),
   itemLinks: many(characterItems),
   versions: many(characterVersions),
+  // Phase 8.2 batch 1: per-character runtime event log
+  // (vitality changes, rests, level-ups, capability triggers,
+  // item equip/unequip). Read by the sheet's history panel.
+  logEntries: many(characterLog),
 }));
 
 export const characterPrimitivesRelations = relations(

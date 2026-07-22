@@ -13,6 +13,7 @@
  * archetype→manifest. See docs/phase-8/HERITAGE-RENAME-PLAN.md.
  */
 import {
+  bigserial,
   boolean,
   check,
   index,
@@ -22,6 +23,7 @@ import {
   pgTable,
   primaryKey,
   text,
+  timestamp,
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -522,6 +524,55 @@ export const characterItems = pgTable(
     index("character_items_item_id_idx").on(table.itemId),
     index("character_items_version_id_idx").on(table.versionId),
     index("character_items_slot_source_idx").on(table.slotSource),
+  ],
+);
+
+// =============================================================================
+// Character Log (Phase 8.2 batch 1)
+// =============================================================================
+//
+// Append-only per-character runtime event log. Captures vitality changes,
+// rests, level-ups, capability trigger/toggle, item equip/unequip. Read
+// by the sheet's history panel so players can reconstruct what
+// happened between sessions (Mashu 2026-07-22: "sometimes it takes
+// weeks between sessions and I can forget").
+//
+// Convention: app code only ever INSERTs. Updates and deletes are
+// not part of the API. Cascade on character delete cleans the log
+// automatically.
+// =============================================================================
+
+export const characterLogKindEnum = pgEnum("character_log_kind", [
+  "vitality_change",
+  "rest",
+  "level_up",
+  "capability_trigger",
+  "capability_toggle",
+  "item_equip",
+  "item_unequip",
+]);
+
+export type CharacterLogKind = (typeof characterLogKindEnum.enumValues)[number];
+
+export const characterLog = pgTable(
+  "character_log",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    kind: characterLogKindEnum("kind").notNull(),
+    payload: jsonb("payload").notNull().default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("character_log_character_created_idx").on(
+      table.characterId,
+      table.createdAt.desc(),
+    ),
+    index("character_log_kind_idx").on(table.kind),
   ],
 );
 
