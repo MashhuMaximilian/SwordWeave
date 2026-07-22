@@ -20,6 +20,7 @@ import { DetailModal } from "@/components/ui/detail-modal";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
 import { OriginBadge } from "@/components/characters/origin-badge";
+import { VitalityTracker } from "@/components/characters/vitality-tracker";
 
 // Re-use the same SlotSource type the badge component accepts.
 type SlotSource = "OWNED" | "FORKED" | "PINNED";
@@ -780,10 +781,10 @@ function OverviewTab({
           Vitality & Defenses
         </h3>
         <div className="mt-4 grid grid-cols-2 gap-3">
-          <VitalityCard
+          <VitalityTracker
+            characterId={props.id}
             max={props.vitality.max}
-            current={props.vitality.current}
-            percent={props.vitality.percent}
+            current={props.vitality.current ?? 0}
           />
           <div>
             <p className="text-xs font-semibold uppercase text-muted-foreground">
