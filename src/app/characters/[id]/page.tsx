@@ -30,6 +30,9 @@ export default async function CharacterSheetPage({
       primitiveLinks: { with: { primitive: true } },
       capabilityLinks: { with: { capability: true } },
       itemLinks: { with: { item: true } },
+      // Phase 8.1 batch 13.1: include heritage slots for the origin
+      // chain badges on the sheet.
+      heritageLinks: { with: { heritage: true } },
     },
   });
 
@@ -72,6 +75,12 @@ export default async function CharacterSheetPage({
       versionId: l.versionId,
       slotSource: l.slotSource,
       latestVersionId: latestVersions.get(makeKey("primitive", l.primitiveId)) ?? null,
+      // Phase 8.1 batch 13.1: bundle-origin tracking — passed through
+      // to SheetPrimitiveLink so the sheet can show "from Lineage 'Elf'"
+      // / "from capability 'Fireball'" breadcrumbs.
+      originHeritageId: l.originHeritageId ?? null,
+      originCapabilityId: l.originCapabilityId ?? null,
+      originEffectId: l.originEffectId ?? null,
       primitive: {
         id: l.primitive.id,
         name: l.primitive.name,
@@ -89,6 +98,9 @@ export default async function CharacterSheetPage({
       versionId: l.versionId,
       slotSource: l.slotSource,
       latestVersionId: latestVersions.get(makeKey("capability", l.capabilityId)) ?? null,
+      // Phase 8.1 batch 13.1: capability origin (the heritage that
+      // brought it in, if any).
+      originHeritageId: l.originHeritageId ?? null,
       capability: {
         id: l.capability.id,
         name: l.capability.name,
@@ -178,6 +190,10 @@ export default async function CharacterSheetPage({
         versionId: l.versionId,
         slotSource: l.slotSource,
         latestVersionId: latestVersions.get(makeKey("primitive", l.primitiveId)) ?? null,
+        // Phase 8.1 batch 13.1: origin tracking for bundle-expanded primitives.
+        originHeritageId: l.originHeritageId ?? null,
+        originCapabilityId: l.originCapabilityId ?? null,
+        originEffectId: l.originEffectId ?? null,
         primitive: {
           id: l.primitive.id,
           name: l.primitive.name,
@@ -195,6 +211,9 @@ export default async function CharacterSheetPage({
         versionId: l.versionId,
         slotSource: l.slotSource,
         latestVersionId: latestVersions.get(makeKey("capability", l.capabilityId)) ?? null,
+        // Phase 8.1 batch 13.1: capability origin (the heritage that
+        // brought it in, if any).
+        originHeritageId: l.originHeritageId ?? null,
         capability: {
           id: l.capability.id,
           name: l.capability.name,
@@ -221,6 +240,28 @@ export default async function CharacterSheetPage({
           slotCost: l.item.slotCost,
           isTwoHanded: l.item.isTwoHanded,
           isConsumable: l.item.isConsumable,
+        },
+      }))}
+      // Phase 8.1 batch 13.1: pass heritageLinks so the sheet can
+      // resolve "from Lineage 'Elf'" badges on capabilities/primitives
+      // that came in via a heritage. The GET endpoint already
+      // includes heritageLinks in its `with` clause.
+      heritageLinks={(
+        (row as unknown as { heritageLinks?: Array<{
+          heritageId: string;
+          acquiredAtLevel: number;
+          isMirrored: boolean | null;
+          heritage: { id: string; name: string; kind: string; description: string | null };
+        }> }).heritageLinks ?? []
+      ).map((l) => ({
+        heritageId: l.heritageId,
+        acquiredAtLevel: l.acquiredAtLevel,
+        isMirrored: l.isMirrored ?? false,
+        heritage: {
+          id: l.heritage.id,
+          name: l.heritage.name,
+          kind: l.heritage.kind,
+          description: l.heritage.description,
         },
       }))}
       initialEditMode={sp.edit === "1"}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   ArrowUp,
@@ -19,6 +19,7 @@ import {
 import { DetailModal } from "@/components/ui/detail-modal";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
+import { OriginBadge } from "@/components/characters/origin-badge";
 
 // Re-use the same SlotSource type the badge component accepts.
 type SlotSource = "OWNED" | "FORKED" | "PINNED";
@@ -44,6 +45,15 @@ type SheetPrimitiveLink = {
   versionId: string | null;
   slotSource: SlotSource | null;
   latestVersionId: string | null;
+  // Phase 8.1 batch 13.1: bundle-origin tracking. When a
+  // primitive is brought in via a heritage → capability → effect
+  // chain, these columns tell the sheet where it came from so we
+  // can render "from Lineage 'Elf'" / "from capability 'Fireball'"
+  // / "from effect 'Explosion'" breadcrumbs. Nullable: directly
+  // slotted primitives have all nulls.
+  originHeritageId: string | null;
+  originCapabilityId: string | null;
+  originEffectId: string | null;
   primitive: {
     id: number;
     name: string;
@@ -62,6 +72,9 @@ type SheetCapabilityLink = {
   versionId: string | null;
   slotSource: SlotSource | null;
   latestVersionId: string | null;
+  // Phase 8.1 batch 13.1: capability origin (the heritage that
+  // brought it in, if any). Direct slots have null.
+  originHeritageId: string | null;
   capability: {
     id: string;
     name: string;
@@ -183,6 +196,19 @@ export type CharacterSheetProps = {
   primitiveLinks: SheetPrimitiveLink[];
   capabilityLinks: SheetCapabilityLink[];
   itemLinks: SheetItemLink[];
+  // Phase 8.1 batch 13.1: heritage slots (lineage/upbringing/manifest)
+  // so the sheet can show "from Lineage 'Elf'" origin badges.
+  heritageLinks: Array<{
+    heritageId: string;
+    acquiredAtLevel: number;
+    isMirrored: boolean;
+    heritage: {
+      id: string;
+      name: string;
+      kind: string;
+      description: string | null;
+    };
+  }>;
   initialEditMode: boolean;
 };
 
@@ -206,6 +232,33 @@ export function CharacterSheetView(props: CharacterSheetProps) {
 
   const attrSum = props.attrPhysical + props.attrMental + props.attrMagical;
   const attrValid = attrSum === 10;
+
+  // Phase 8.1 batch 13.1: lookup maps for resolving the origin chain
+  // shown in OriginBadge. heritageById is built from props.heritageLinks
+  // (now wired through the page); capabilityById and effectById are
+  // built from the same data so the badge can show the full chain
+  // (heritage → capability → effect).
+  const heritageById = useMemo(() => {
+    const m = new Map<string, { name: string; kind: string }>();
+    for (const l of props.heritageLinks) {
+      m.set(l.heritageId, { name: l.heritage.name, kind: l.heritage.kind });
+    }
+    return m;
+  }, [props.heritageLinks]);
+  const capabilityById = useMemo(() => {
+    const m = new Map<string, { name: string }>();
+    for (const l of props.capabilityLinks) {
+      m.set(l.capabilityId, { name: l.capability.name });
+    }
+    return m;
+  }, [props.capabilityLinks]);
+  const effectById = useMemo(() => {
+    const m = new Map<string, { name: string }>();
+    // Effects aren't yet loaded into props; this map stays empty for
+    // now. Future batches will populate it once effects are joined
+    // onto capability links.
+    return m;
+  }, []);
 
   async function handleLevelUp() {
     startTransition(async () => {
@@ -380,7 +433,13 @@ export function CharacterSheetView(props: CharacterSheetProps) {
               versionId: l.versionId,
               slotSource: l.slotSource,
               latestVersionId: l.latestVersionId,
+              // Phase 8.1 batch 13.1: pass through origin for the badge.
+              originHeritageId: l.originHeritageId,
             }))}
+            // Phase 8.1 batch 13.1: lookup maps for origin chain.
+            heritageById={heritageById}
+            capabilityById={capabilityById}
+            effectById={effectById}
           />
         )}
         {tab === "items" && (
@@ -1367,6 +1426,9 @@ function BreakdownRow({
 
 function CapabilitiesTab({
   capabilities,
+  heritageById,
+  capabilityById,
+  effectById,
 }: {
   capabilities: Array<{
     id: string;
@@ -1379,7 +1441,15 @@ function CapabilitiesTab({
     versionId: string | null;
     slotSource: SlotSource | null;
     latestVersionId: string | null;
+    // Phase 8.1 batch 13.1: origin (heritage that brought this
+    // capability in). Direct slots have null.
+    originHeritageId: string | null;
   }>;
+  // Phase 8.1 batch 13.1: lookup maps for displaying the origin
+  // chain (heritage name → "from Lineage 'Elf'", etc.).
+  heritageById: Map<string, { name: string; kind: string }>;
+  capabilityById: Map<string, { name: string }>;
+  effectById: Map<string, { name: string }>;
 }) {
   if (capabilities.length === 0) {
     return (
@@ -1394,39 +1464,60 @@ function CapabilitiesTab({
   }
   return (
     <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {capabilities.map((c) => (
-        <li
-          key={c.id}
-          className="rounded-md border border-border bg-card p-4"
-        >
-          <div className="flex items-start justify-between gap-2">
-            <h4 className="font-semibold">{c.name}</h4>
-            <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
-              {c.type}
-            </span>
-          </div>
-          <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{c.sourceType}</span>
-            <span>·</span>
-            <span>Acquired L{c.acquiredAtLevel}</span>
-          </div>
-          {/* Phase 5 (T5.C.3): render the slot-source badge so the user
-              can tell at a glance whether this capability is theirs, a
-              fork, or pinned to someone else's version. */}
-          <div className="mt-2">
-            <SlotSourceBadge
-              slotSource={c.slotSource}
-              versionId={c.versionId}
-              latestVersionId={c.latestVersionId}
-            />
-          </div>
-          {c.verboseDescription && (
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-3">
-              {c.verboseDescription}
-            </p>
-          )}
-        </li>
-      ))}
+      {capabilities.map((c) => {
+        // Phase 8.1 batch 13.1: build the origin chain (heritage only
+        // for capabilities — capabilities don't bubble through effects,
+        // they contain effects).
+        const originChain: Array<{
+          kind: "heritage" | "capability" | "effect";
+          name: string;
+        }> = [];
+        if (c.originHeritageId) {
+          const h = heritageById.get(c.originHeritageId);
+          if (h) {
+            originChain.push({
+              kind: "heritage",
+              name: `${h.kind === "LINEAGE" ? "Lineage" : h.kind === "UPBRINGING" ? "Upbringing" : "Manifest"}: ${h.name}`,
+            });
+          }
+        }
+        return (
+          <li
+            key={c.id}
+            className="rounded-md border border-border bg-card p-4"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <h4 className="font-semibold">{c.name}</h4>
+              <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
+                {c.type}
+              </span>
+            </div>
+            <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+              <span>{c.sourceType}</span>
+              <span>·</span>
+              <span>Acquired L{c.acquiredAtLevel}</span>
+            </div>
+            {/* Phase 5 (T5.C.3): render the slot-source badge so the user
+                can tell at a glance whether this capability is theirs, a
+                fork, or pinned to someone else's version. */}
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <SlotSourceBadge
+                slotSource={c.slotSource}
+                versionId={c.versionId}
+                latestVersionId={c.latestVersionId}
+              />
+              {originChain.length > 0 ? (
+                <OriginBadge chain={originChain} />
+              ) : null}
+            </div>
+            {c.verboseDescription && (
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-3">
+                {c.verboseDescription}
+              </p>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }

@@ -33,6 +33,7 @@ import { items } from "./items";
 import {
   capabilities,
   capabilityPrimitives,
+  effects,
   primitives,
 } from "./engine";
 
@@ -238,6 +239,29 @@ export const characterPrimitives = pgTable(
      * pre-Phase-3 slots are functionally a pin on the live row.
      */
     slotSource: slotSourceEnum("slot_source").notNull().default("PINNED"),
+    // Phase 8.1 batch 13.1: bundle-origin tracking. When a primitive
+    // is brought into the character via a heritage → capability →
+    // effect chain, these columns record the topmost container that
+    // shipped it (so the character sheet can show "from Lineage
+    // 'Elf'" / "from capability 'Fireball'" / "from effect
+    // 'Explosion'" with clickable breadcrumbs).
+    //
+    // Nullable because pre-batch-13.1 rows have all nulls (treated
+    // as "directly slotted, origin unknown"). A primitive's chain
+    // can have multiple of these set (heritage + capability + effect
+    // if it bubbled up through all three) — the UI uses the most
+    // specific for breadcrumbs.
+    originHeritageId: uuid("origin_heritage_id").references(
+      () => heritage.id,
+      { onDelete: "set null" },
+    ),
+    originCapabilityId: uuid("origin_capability_id").references(
+      () => capabilities.id,
+      { onDelete: "set null" },
+    ),
+    originEffectId: uuid("origin_effect_id").references(() => effects.id, {
+      onDelete: "set null",
+    }),
     notes: text("notes"),
     ...timestamps,
   },
@@ -250,6 +274,11 @@ export const characterPrimitives = pgTable(
     index("character_primitives_primitive_id_idx").on(table.primitiveId),
     index("character_primitives_version_id_idx").on(table.versionId),
     index("character_primitives_slot_source_idx").on(table.slotSource),
+    index("character_primitives_origin_heritage_idx").on(table.originHeritageId),
+    index("character_primitives_origin_capability_idx").on(
+      table.originCapabilityId,
+    ),
+    index("character_primitives_origin_effect_idx").on(table.originEffectId),
   ],
 );
 
@@ -273,6 +302,14 @@ export const characterCapabilities = pgTable(
      * Phase 3: slot-source enum. See character_primitives.slotSource.
      */
     slotSource: slotSourceEnum("slot_source").notNull().default("PINNED"),
+    // Phase 8.1 batch 13.1: a capability can be brought in via a
+    // heritage (lineage/upbringing/manifest). When that happens, the
+    // capability row gets originHeritageId set so the sheet can show
+    // "from Lineage 'Elf'" breadcrumbs. Direct slots have null.
+    originHeritageId: uuid("origin_heritage_id").references(
+      () => heritage.id,
+      { onDelete: "set null" },
+    ),
     notes: text("notes"),
     ...timestamps,
   },
@@ -285,6 +322,9 @@ export const characterCapabilities = pgTable(
     index("character_capabilities_capability_id_idx").on(table.capabilityId),
     index("character_capabilities_version_id_idx").on(table.versionId),
     index("character_capabilities_slot_source_idx").on(table.slotSource),
+    index("character_capabilities_origin_heritage_idx").on(
+      table.originHeritageId,
+    ),
   ],
 );
 

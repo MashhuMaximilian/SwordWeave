@@ -81,6 +81,10 @@ export async function GET(
       primitiveLinks: { with: { primitive: true } },
       capabilityLinks: { with: { capability: true } },
       itemLinks: { with: { item: true } },
+      // Phase 8.1 batch 13.1: include heritage slots so the sheet can
+      // show "from Lineage 'Elf'" / "from Upbringing 'Scholar'"
+      // breadcrumbs alongside the bundle-expanded primitives.
+      heritageLinks: { with: { heritage: true } },
     },
   });
 

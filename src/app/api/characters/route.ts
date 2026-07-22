@@ -1,12 +1,20 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
+  capabilityEffects,
+  capabilityPrimitives,
   characterCapabilities,
+  characterHeritages,
   characterItems,
   characterPrimitives,
   characters,
+  effectPrimitives,
+  effects,
+  heritage,
+  heritageCapabilities,
+  heritagePrimitives,
   primitives,
   capabilities,
   items,
@@ -14,6 +22,11 @@ import {
 import { validateAttributes, type Attribute } from "@/lib/engine/practices";
 import { validateMirrorSet } from "@/lib/api/volatility";
 import { cumulativeBuForLevel } from "@/lib/engine/bu";
+import {
+  expandBundles,
+  type BundleExpansionInput,
+  type CharacterPrimitiveSource,
+} from "@/lib/engine/bundle-expander";
 import {
   resolveLatestVersionId,
   resolveSlotSource,
@@ -104,7 +117,7 @@ export async function GET(request: Request) {
  *
  * Create a new character. Requires authentication.
  *
- * Body:
+ * Body (Phase 8.1 batch 13.1 — expanded for bundle expansion):
  *   - name (required)
  *   - size (default MEDIUM)
  *   - level (>= 1, default 1, no upper cap)
@@ -123,10 +136,22 @@ export async function GET(request: Request) {
  *   - dmBonusBu (default 0)
  *   - enforceTemplateCaps (default false)
  *   - isPublic (default false)
- *   - primitiveIds (with source/acquiredAtLevel/notes per primitive, optional)
- *   - capabilityIds (optional)
- *   - itemIds (optional)
- *   - notes, dmNotes, portraitUrl (optional)
+ *   - primitiveIds, capabilityIds, itemIds (legacy flat arrays, optional)
+ *     OR
+ *   - primitivesBySource: { LINEAGE: [{id, isMirrored}], UPBRINGING: [...],
+ *     MANIFEST: [...], PERSONAL: [...] } (preferred)
+ *   - capabilitiesBySource: same shape
+ *   - itemsBySource: { PERSONAL: [{id, quantity}] }
+ *   - heritages: [{id, isMirrored}] (lineage/upbringing/manifest slots)
+ *
+ * Bundle expansion: every slotted heritage expands its bundled
+ * primitives + capabilities + capability effects into
+ * `character_primitives` rows. Every direct capability expands its
+ * primitives + effects. Every direct effect expands its primitives.
+ * Dedupe is by primitive_id (one row per primitive per character).
+ *
+ * Item BU is tracked SEPARATELY — items don't contribute to the
+ * progression pool (see docs/phase-8/CREATION-MODAL-FLOW.md).
  */
 export async function POST(request: Request) {
   try {
@@ -228,19 +253,324 @@ export async function POST(request: Request) {
     const capabilityIds = parseUuidArray(values["capabilityIds"]);
     const itemIds = parseUuidArray(values["itemIds"]);
 
-    // Mirrored primitive IDs (subset of primitiveIds) — acquires each as a
-    // mirror vector (negative BU). Subject to level-based volatility ceiling
-    // enforced by validateMirrorSet() below. See BU Market canon, Section
-    // "Tier-Matched Volatility Ceiling".
-    const mirroredPrimitiveIds = parseStringArray(
-      values["mirroredPrimitiveIds"],
-    ).filter((id) => primitiveIds.includes(id)); // sanity: mirrors must be in the primitive set
+    // Phase 8.1 batch 13.1: read source-keyed shapes too. Modal
+    // sends primitivesBySource / capabilitiesBySource / itemsBySource
+    // / heritages. If those are present, prefer them over the flat
+    // arrays (they carry per-slot mirror + source info).
+    const rawPrimBySource =
+      (values["primitivesBySource"] as Record<string, unknown> | undefined) ??
+      {};
+    const rawCapsBySource =
+      (values["capabilitiesBySource"] as Record<string, unknown> | undefined) ??
+      {};
+    const rawItemsBySource =
+      (values["itemsBySource"] as Record<string, unknown> | undefined) ?? {};
+    const rawHeritages = parseUuidArray(
+      (values["heritages"] as unknown[] | undefined)?.map((h) =>
+        typeof h === "object" && h !== null
+          ? (h as Record<string, unknown>)["id"]
+          : h,
+      ),
+    );
+
+    // Build the BundleExpansionInput. Walk each source tab in
+    // primitivesBySource / capabilitiesBySource; tag each slot with
+    // its source. Items don't expand into primitives — they only
+    // get written to character_items. Heritages get their bundle
+    // fetched fresh from the DB.
+    const expansionInput: BundleExpansionInput = {
+      heritages: [], // populated below after bundle fetch
+      capabilities: [],
+      effects: [],
+      primitives: [],
+    };
+
+    // Direct primitive slots (from primitivesBySource).
+    for (const [source, list] of Object.entries(rawPrimBySource)) {
+      if (!Array.isArray(list)) continue;
+      for (const entry of list) {
+        if (typeof entry !== "object" || entry === null) continue;
+        const e = entry as Record<string, unknown>;
+        const id = Number(e["id"]);
+        if (!Number.isInteger(id) || id <= 0) continue;
+        expansionInput.primitives.push({
+          primitiveId: id,
+          source: source as CharacterPrimitiveSource,
+          isMirrored: Boolean(e["isMirrored"]),
+        });
+      }
+    }
+    // Direct capability slots (from capabilitiesBySource).
+    const directCapabilityIdsBySource: Array<{
+      id: string;
+      source: CharacterPrimitiveSource;
+    }> = [];
+    for (const [source, list] of Object.entries(rawCapsBySource)) {
+      if (!Array.isArray(list)) continue;
+      for (const entry of list) {
+        if (typeof entry !== "object" || entry === null) continue;
+        const e = entry as Record<string, unknown>;
+        const id = String(e["id"]);
+        if (!id) continue;
+        directCapabilityIdsBySource.push({
+          id,
+          source: source as CharacterPrimitiveSource,
+        });
+      }
+    }
+
+    // Mirrored primitive IDs (subset of primitiveIds) — legacy
+    // shape. The source-keyed shape carries isMirrored per slot,
+    // so we don't need to extract mirrors here.
+    const mirroredPrimitiveIds = primitiveIds;
+
+    // === Phase 8.1 batch 13.1: bundle expansion ===
+    // Fetch heritage bundles (kind + primitiveLinks + capabilityLinks
+    // with their own primitiveLinks + effectLinks with primitiveLinks).
+    // Fetch direct capability bundles the same way. Direct effect
+    // bundles for effects that are slotted standalone (no path in the
+    // modal today, but the schema + expander support it).
+
+    // Heritages
+    if (rawHeritages.length > 0) {
+      const heritageRows = await db
+        .select({ id: heritage.id, kind: heritage.kind })
+        .from(heritage)
+        .where(inArray(heritage.id, rawHeritages));
+      const primLinksByHeritage = new Map<
+        string,
+        Array<{ primitiveId: number; isMirrored: boolean }>
+      >();
+      const capLinksByHeritage = new Map<
+        string,
+        Array<{ capabilityId: string }>
+      >();
+      const hpRows = await db
+        .select({
+          templateId: heritagePrimitives.templateId,
+          primitiveId: heritagePrimitives.primitiveId,
+          isMirrored: heritagePrimitives.isMirrored,
+        })
+        .from(heritagePrimitives)
+        .where(inArray(heritagePrimitives.templateId, rawHeritages));
+      for (const r of hpRows) {
+        const list = primLinksByHeritage.get(r.templateId) ?? [];
+        list.push({ primitiveId: r.primitiveId, isMirrored: r.isMirrored });
+        primLinksByHeritage.set(r.templateId, list);
+      }
+      const hcRows = await db
+        .select({
+          templateId: heritageCapabilities.templateId,
+          capabilityId: heritageCapabilities.capabilityId,
+        })
+        .from(heritageCapabilities)
+        .where(inArray(heritageCapabilities.templateId, rawHeritages));
+      for (const r of hcRows) {
+        const list = capLinksByHeritage.get(r.templateId) ?? [];
+        list.push({ capabilityId: r.capabilityId });
+        capLinksByHeritage.set(r.templateId, list);
+      }
+
+      // Capability bundles within heritages
+      const allHeritageCapabilityIds = Array.from(
+        new Set(hcRows.map((r) => r.capabilityId)),
+      );
+      const capPrimLinksByCap = new Map<
+        string,
+        Array<{ primitiveId: number; isMirrored: boolean }>
+      >();
+      const capEffLinksByCap = new Map<string, Array<{ effectId: string }>>();
+      if (allHeritageCapabilityIds.length > 0) {
+        const cpRows = await db
+          .select({
+            capabilityId: capabilityPrimitives.capabilityId,
+            primitiveId: capabilityPrimitives.primitiveId,
+            isMirrored: capabilityPrimitives.isMirrored,
+          })
+          .from(capabilityPrimitives)
+          .where(inArray(capabilityPrimitives.capabilityId, allHeritageCapabilityIds));
+        for (const r of cpRows) {
+          const list = capPrimLinksByCap.get(r.capabilityId) ?? [];
+          list.push({ primitiveId: r.primitiveId, isMirrored: r.isMirrored });
+          capPrimLinksByCap.set(r.capabilityId, list);
+        }
+        const ceRows = await db
+          .select({
+            capabilityId: capabilityEffects.capabilityId,
+            effectId: capabilityEffects.effectId,
+          })
+          .from(capabilityEffects)
+          .where(inArray(capabilityEffects.capabilityId, allHeritageCapabilityIds));
+        for (const r of ceRows) {
+          const list = capEffLinksByCap.get(r.capabilityId) ?? [];
+          list.push({ effectId: r.effectId });
+          capEffLinksByCap.set(r.capabilityId, list);
+        }
+      }
+      // Effect primitive links
+      const allEffectIds = Array.from(
+        new Set(
+          Array.from(capEffLinksByCap.values()).flatMap((l) =>
+            l.map((x) => x.effectId),
+          ),
+        ),
+      );
+      const effectPrimLinksByEffect = new Map<
+        string,
+        Array<{ primitiveId: number; isMirrored: boolean }>
+      >();
+      if (allEffectIds.length > 0) {
+        const epRows = await db
+          .select({
+            effectId: effectPrimitives.effectId,
+            primitiveId: effectPrimitives.primitiveId,
+            isMirrored: effectPrimitives.isMirrored,
+          })
+          .from(effectPrimitives)
+          .where(inArray(effectPrimitives.effectId, allEffectIds));
+        for (const r of epRows) {
+          const list = effectPrimLinksByEffect.get(r.effectId) ?? [];
+          list.push({ primitiveId: r.primitiveId, isMirrored: r.isMirrored });
+          effectPrimLinksByEffect.set(r.effectId, list);
+        }
+      }
+
+      for (const row of heritageRows) {
+        expansionInput.heritages.push({
+          id: row.id,
+          kind: row.kind,
+          primitiveLinks: (primLinksByHeritage.get(row.id) ?? []).map((p) => ({
+            primitiveId: p.primitiveId,
+            isMirrored: p.isMirrored,
+          })),
+          capabilityLinks: (capLinksByHeritage.get(row.id) ?? []).map(
+            (c) => ({
+              capabilityId: c.capabilityId,
+              primitiveLinks: (capPrimLinksByCap.get(c.capabilityId) ?? []).map(
+                (p) => ({
+                  primitiveId: p.primitiveId,
+                  isMirrored: p.isMirrored,
+                }),
+              ),
+              effectLinks: (capEffLinksByCap.get(c.capabilityId) ?? []).map(
+                (e) => ({
+                  effectId: e.effectId,
+                  primitiveLinks: (
+                    effectPrimLinksByEffect.get(e.effectId) ?? []
+                  ).map((p) => ({
+                    primitiveId: p.primitiveId,
+                    isMirrored: p.isMirrored,
+                  })),
+                }),
+              ),
+            }),
+          ),
+        });
+      }
+    }
+
+    // Direct capability bundles (those not inside a heritage)
+    const directCapsOnly = directCapabilityIdsBySource.filter(
+      (c) =>
+        !expansionInput.heritages.some((h) =>
+          h.capabilityLinks.some((cl) => cl.capabilityId === c.id),
+        ),
+    );
+    if (directCapsOnly.length > 0) {
+      const directCapIds = directCapsOnly.map((c) => c.id);
+      const cpRows = await db
+        .select({
+          capabilityId: capabilityPrimitives.capabilityId,
+          primitiveId: capabilityPrimitives.primitiveId,
+          isMirrored: capabilityPrimitives.isMirrored,
+        })
+        .from(capabilityPrimitives)
+        .where(inArray(capabilityPrimitives.capabilityId, directCapIds));
+      const directCapPrimLinks = new Map<
+        string,
+        Array<{ primitiveId: number; isMirrored: boolean }>
+      >();
+      for (const r of cpRows) {
+        const list = directCapPrimLinks.get(r.capabilityId) ?? [];
+        list.push({ primitiveId: r.primitiveId, isMirrored: r.isMirrored });
+        directCapPrimLinks.set(r.capabilityId, list);
+      }
+      const ceRows = await db
+        .select({
+          capabilityId: capabilityEffects.capabilityId,
+          effectId: capabilityEffects.effectId,
+        })
+        .from(capabilityEffects)
+        .where(inArray(capabilityEffects.capabilityId, directCapIds));
+      const directCapEffLinks = new Map<string, Array<{ effectId: string }>>();
+      for (const r of ceRows) {
+        const list = directCapEffLinks.get(r.capabilityId) ?? [];
+        list.push({ effectId: r.effectId });
+        directCapEffLinks.set(r.capabilityId, list);
+      }
+      const directEffectIds = Array.from(
+        new Set(
+          Array.from(directCapEffLinks.values()).flatMap((l) =>
+            l.map((x) => x.effectId),
+          ),
+        ),
+      );
+      const directEffPrimLinks = new Map<
+        string,
+        Array<{ primitiveId: number; isMirrored: boolean }>
+      >();
+      if (directEffectIds.length > 0) {
+        const epRows = await db
+          .select({
+            effectId: effectPrimitives.effectId,
+            primitiveId: effectPrimitives.primitiveId,
+            isMirrored: effectPrimitives.isMirrored,
+          })
+          .from(effectPrimitives)
+          .where(inArray(effectPrimitives.effectId, directEffectIds));
+        for (const r of epRows) {
+          const list = directEffPrimLinks.get(r.effectId) ?? [];
+          list.push({ primitiveId: r.primitiveId, isMirrored: r.isMirrored });
+          directEffPrimLinks.set(r.effectId, list);
+        }
+      }
+      for (const c of directCapsOnly) {
+        expansionInput.capabilities.push({
+          id: c.id,
+          source: c.source,
+          primitiveLinks: (directCapPrimLinks.get(c.id) ?? []).map((p) => ({
+            primitiveId: p.primitiveId,
+            isMirrored: p.isMirrored,
+          })),
+          effectLinks: (directCapEffLinks.get(c.id) ?? []).map((e) => ({
+            effectId: e.effectId,
+            primitiveLinks: (directEffPrimLinks.get(e.effectId) ?? []).map(
+              (p) => ({
+                primitiveId: p.primitiveId,
+                isMirrored: p.isMirrored,
+              }),
+            ),
+          })),
+        });
+      }
+    }
+
+    // Run the expander.
+    const expansion = expandBundles(expansionInput);
+    const expandedPrimitiveIds = expansion.primitives.map(
+      (p) => p.primitiveId,
+    );
+    const expandedCapabilityIds = expansion.capabilities.map(
+      (c) => c.capabilityId,
+    );
 
     // Validate volatility ceiling BEFORE writing (fail fast).
+    // We validate against the EXPANDED primitive set so any
+    // mirror-vector primitive in a bundle counts toward the ceiling.
     const volCheck = await validateMirrorSet(
       level,
-      mirroredPrimitiveIds,
-      primitiveIds,
+      expansion.primitives.filter((p) => p.isMirrored).map((p) => p.primitiveId),
+      expandedPrimitiveIds,
     );
     if (!volCheck.ok) {
       return NextResponse.json(
@@ -289,27 +619,30 @@ export async function POST(request: Request) {
 
       if (!created) throw new Error("Unable to create character.");
 
-      if (primitiveIds.length > 0) {
-        const mirrorSet = new Set(mirroredPrimitiveIds);
-        // Phase 5: load entity rows to compute version_id + slot_source.
-        // Both are derived from the entity at slot-add time, then frozen
-        // on the junction row. The slot then points to a specific
-        // content-addressed version, not the entity by id.
-        const primRows = primitiveIds.length > 0
-          ? await db
-              .select({
-                id: primitives.id,
-                userId: primitives.userId,
-                sourceOrigin: primitives.sourceOrigin,
-              })
-              .from(primitives)
-              .where(inArray(primitives.id, primitiveIds))
-          : [];
+      // === Phase 8.1 batch 13.1: write expanded primitives with origin ===
+      if (expansion.primitives.length > 0) {
+        // Fetch version_id + slot_source for each primitive row.
+        // We need to do this even for bundle-expanded primitives
+        // because they are still content-addressed at the time of
+        // character creation (per Phase 5 wire-up).
+        const primRows = await tx
+          .select({
+            id: primitives.id,
+            userId: primitives.userId,
+            sourceOrigin: primitives.sourceOrigin,
+          })
+          .from(primitives)
+          .where(
+            inArray(primitives.id, expansion.primitives.map((p) => p.primitiveId)),
+          );
         const primMap = new Map(primRows.map((r) => [r.id, r]));
         const slotsWithVersion = await Promise.all(
-          primitiveIds.map(async (pid) => {
-            const prim = primMap.get(pid);
-            const versionId = await resolveLatestVersionId("primitive", pid);
+          expansion.primitives.map(async (p) => {
+            const prim = primMap.get(p.primitiveId);
+            const versionId = await resolveLatestVersionId(
+              "primitive",
+              p.primitiveId,
+            );
             const slotSource = prim
               ? resolveSlotSource({
                   entity: prim,
@@ -318,32 +651,39 @@ export async function POST(request: Request) {
               : "PINNED";
             return {
               characterId: created.id,
-              primitiveId: pid,
-              source: "PERSONAL" as const,
+              primitiveId: p.primitiveId,
+              source: p.source,
               acquiredAtLevel: level,
-              isMirrored: mirrorSet.has(pid),
+              isMirrored: p.isMirrored,
               versionId,
               slotSource,
+              originHeritageId: p.originHeritageId,
+              originCapabilityId: p.originCapabilityId,
+              originEffectId: p.originEffectId,
             };
           }),
         );
         await tx.insert(characterPrimitives).values(slotsWithVersion);
       }
-      if (capabilityIds.length > 0) {
-        // Phase 5: same wire-up for capabilities.
-        const capRows = await db
+
+      // === Phase 8.1 batch 13.1: write expanded capabilities with origin ===
+      if (expansion.capabilities.length > 0) {
+        const capRows = await tx
           .select({
             id: capabilities.id,
             userId: capabilities.userId,
             sourceOrigin: capabilities.sourceOrigin,
           })
           .from(capabilities)
-          .where(inArray(capabilities.id, capabilityIds));
+          .where(inArray(capabilities.id, expandedCapabilityIds));
         const capMap = new Map(capRows.map((r) => [r.id, r]));
         const slotsWithVersion = await Promise.all(
-          capabilityIds.map(async (cid) => {
-            const cap = capMap.get(cid);
-            const versionId = await resolveLatestVersionId("capability", cid);
+          expansion.capabilities.map(async (c) => {
+            const cap = capMap.get(c.capabilityId);
+            const versionId = await resolveLatestVersionId(
+              "capability",
+              c.capabilityId,
+            );
             const slotSource = cap
               ? resolveSlotSource({
                   entity: cap,
@@ -352,28 +692,79 @@ export async function POST(request: Request) {
               : "PINNED";
             return {
               characterId: created.id,
-              capabilityId: cid,
+              capabilityId: c.capabilityId,
               acquiredAtLevel: level,
               versionId,
               slotSource,
+              // Capabilities slotted through a heritage carry the
+              // heritage's id as their origin. Direct slots have
+              // origin null.
+              originHeritageId: c.originHeritageId,
             };
           }),
         );
         await tx.insert(characterCapabilities).values(slotsWithVersion);
       }
-      if (itemIds.length > 0) {
-        // Phase 5: same wire-up for items.
-        const itemRows = await db
+
+      // === Phase 8.1 batch 13.1: write heritages ===
+      if (expansion.heritages.length > 0) {
+        const heritageRowsData = await Promise.all(
+          expansion.heritages.map(async (h) => {
+            // heritage uses "template" as its version entity kind
+            // (heritageVersions table is keyed by templateId).
+            const versionId = await resolveLatestVersionId(
+              "template",
+              h.heritageId,
+            );
+            return {
+              characterId: created.id,
+              heritageId: h.heritageId,
+              acquiredAtLevel: level,
+              isMirrored: h.isMirrored,
+              versionId,
+              slotSource: "PINNED" as const,
+            };
+          }),
+        );
+        await tx.insert(characterHeritages).values(heritageRowsData);
+      }
+
+      // === Items: separate from primitive expansion (item BU doesn't count) ===
+      // ItemsBySource shape: { PERSONAL: [{id, quantity}] }.
+      const expandedItemIds: Array<{ id: string; quantity: number }> = [];
+      for (const [, list] of Object.entries(rawItemsBySource)) {
+        if (!Array.isArray(list)) continue;
+        for (const entry of list) {
+          if (typeof entry !== "object" || entry === null) continue;
+          const e = entry as Record<string, unknown>;
+          const id = String(e["id"]);
+          if (!id) continue;
+          const q = Number(e["quantity"] ?? 1);
+          expandedItemIds.push({
+            id,
+            quantity: Number.isInteger(q) && q > 0 ? q : 1,
+          });
+        }
+      }
+      // Also keep legacy itemIds for back-compat
+      const allItemIds = Array.from(
+        new Set([...itemIds, ...expandedItemIds.map((i) => i.id)]),
+      );
+      const itemQtyById = new Map(
+        expandedItemIds.map((i) => [i.id, i.quantity]),
+      );
+      if (allItemIds.length > 0) {
+        const itemRows = await tx
           .select({
             id: items.id,
             userId: items.userId,
             sourceOrigin: items.sourceOrigin,
           })
           .from(items)
-          .where(inArray(items.id, itemIds));
+          .where(inArray(items.id, allItemIds));
         const itemMap = new Map(itemRows.map((r) => [r.id, r]));
         const slotsWithVersion = await Promise.all(
-          itemIds.map(async (iid) => {
+          allItemIds.map(async (iid) => {
             const item = itemMap.get(iid);
             const versionId = await resolveLatestVersionId("item", iid);
             const slotSource = item
@@ -385,6 +776,7 @@ export async function POST(request: Request) {
             return {
               characterId: created.id,
               itemId: iid,
+              quantity: itemQtyById.get(iid) ?? 1,
               versionId,
               slotSource,
             };
