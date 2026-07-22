@@ -41,7 +41,10 @@ import {
   type PendingSlot,
   summarizeSlotBu,
 } from "./character-modal-store";
-import { getHeritageBundleBuMap } from "./tabs/slot-receiver-tab";
+import {
+  getCapabilityBundleBuMap,
+  getHeritageBundleBuMap,
+} from "./tabs/slot-receiver-tab";
 import { maxBuDebtForLevel } from "@/lib/engine/bu";
 import {
   IdentityTab,
@@ -237,20 +240,28 @@ export function TabbedCharacterForm() {
   // flattens every pending slot across all tabs and asks
   // summarizeSlotBu() for positiveSpent / mirrorCredit / debt /
   // netSpent. Heritage bundles are pulled from the session cache in
-  // slot-receiver-tab via getHeritageBundleBuMap().
+  // slot-receiver-tab via getHeritageBundleBuMap(). Capability bundles
+  // use the parallel getCapabilityBundleBuMap() (batch 13.6 follow-up —
+  // Mashu 2026-07-22: "if I slot into anything primitives capabilities
+  // or heritages the BU budget does not update").
   const allSlots = useMemo(
     () => CHARACTER_TABS.flatMap((t) => pendingSlots[t]),
     [pendingSlots],
   );
-  // Tick once a second so newly-fetched heritage bundles refresh the
-  // footer without requiring the user to add/remove a slot.
+  // Tick once a second so newly-fetched heritage/capability bundles
+  // refresh the footer without requiring the user to add/remove a slot.
   const [, bumpTick] = useReducer((x: number) => x + 1, 0);
   useEffect(() => {
     const t = window.setInterval(() => bumpTick(), 1000);
     return () => window.clearInterval(t);
   }, []);
   const buSummary = useMemo(
-    () => summarizeSlotBu(allSlots, getHeritageBundleBuMap()),
+    () =>
+      summarizeSlotBu(
+        allSlots,
+        getHeritageBundleBuMap(),
+        getCapabilityBundleBuMap(),
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [allSlots, pendingSlots],
   );
@@ -262,12 +273,16 @@ export function TabbedCharacterForm() {
   const nameValid = identity.name.trim().length > 0;
   const attrSum = attributes.attrPhysical + attributes.attrMental + attributes.attrMagical;
   const attrValid = attrSum === 10;
-  // Phase 8.1 batch 10: block Create when BU accounting is invalid
-  // (over budget or debt ceiling exceeded). Server-side validation
-  // is authoritative — this is a UX guardrail so the user sees the
-  // problem before submitting.
-  const canCreate =
-    nameValid && attrValid && !isPending && !overBudget && !debtExceeded;
+  // Phase 8.1 batch 13.6 follow-up (Mashu 2026-07-22):
+  // "When a player is above budget soft warning only."
+  //
+  // `overBudget` no longer blocks Create — the footer just renders
+  // it in warn tone (red). The debt ceiling is still a hard block
+  // because exceeding it breaks the canon (see maxBuDebtForLevel).
+  // Server-side `buSpent > progressionPool` validation still exists
+  // as a safety net; the server returns 400 if the user somehow
+  // tries to save an over-budget build (shouldn't happen via UI now).
+  const canCreate = nameValid && attrValid && !isPending && !debtExceeded;
 
   const handleCreate = useCallback(async () => {
     if (!nameValid) {

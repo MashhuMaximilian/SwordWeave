@@ -124,6 +124,21 @@ export function getHeritageBundleBuMap(): Map<string, number> {
   return out;
 }
 
+/**
+ * Phase 8.1 batch 13.6 follow-up: same shape as
+ * getHeritageBundleBuMap() but for direct capability slots. Used by
+ * the footer BU summary to reflect capability cost while editing.
+ * Mashu 2026-07-22: "if I slot into anything primitives capabilities
+ * or heritages the BU budget does not update."
+ */
+export function getCapabilityBundleBuMap(): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const [id, bundle] of capabilityBundleCache.entries()) {
+    if (bundle != null) out.set(id, bundle.computedBu);
+  }
+  return out;
+}
+
 export function SlotReceiverTab({
   tabId,
   title,

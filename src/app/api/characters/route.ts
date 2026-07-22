@@ -220,12 +220,18 @@ export async function POST(request: Request) {
     // wins when it exceeds canon for that implied level).
     const progressionPool =
       Math.max(startingBu, cumulativeBuForLevel(level)) + dmBonusBu;
+    // Phase 8.1 batch 13.6 follow-up (Mashu 2026-07-22):
+    // "When a player is above budget soft warning only."
+    //
+    // The server used to hard-reject over-budget saves with 400.
+    // Now we accept them — the client surfaces a soft warning
+    // (red BU footer) and lets the user decide. The debt ceiling
+    // is still enforced hard because that breaks canon mechanics
+    // (see maxBuDebtForLevel on the client + server).
+    // We log the overage in dev so we can spot bad builds later.
     if (buSpent > progressionPool) {
-      return NextResponse.json(
-        {
-          error: `BU spent (${buSpent}) exceeds progression cap (${progressionPool})`,
-        },
-        { status: 400 },
+      console.warn(
+        `[characters POST] soft warning: buSpent=${buSpent} > progressionPool=${progressionPool} (character "${name}")`,
       );
     }
 

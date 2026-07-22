@@ -468,6 +468,7 @@ export interface SlotBuSummary {
 export function summarizeSlotBu(
   slots: PendingSlot[],
   heritageBundleBu?: Map<string, number>,
+  capabilityBundleBu?: Map<string, number>,
 ): SlotBuSummary {
   let positiveSpent = 0;
   let mirrorCredit = 0;
@@ -486,10 +487,23 @@ export function summarizeSlotBu(
       // double-counting or hanging the UI on stale values.
       const bu = heritageBundleBu?.get(slot.heritageId) ?? 0;
       positiveSpent += bu;
+    } else if (slot.kind === "capability") {
+      // Phase 8.1 batch 13.6 follow-up: capability bundles also
+      // contribute their computedBu as positive cost. Same caching
+      // pattern as heritages — see getCapabilityBundleBuMap().
+      // Mashu 2026-07-22: "if I slot into anything primitives
+      // capabilities or heritages the BU budget does not update."
+      const bu = capabilityBundleBu?.get(slot.capabilityId) ?? 0;
+      positiveSpent += bu;
+    } else if (slot.kind === "effect") {
+      // Effects aren't slotted standalone in v1 (see tabbed-character-form
+      // line ~322). If/when they are, the same cache pattern applies —
+      // we'd add an effectBundleBu map here. Today this branch never
+      // executes; we keep it for forward-compat.
     }
-    // capability / effect / item: bundle cost is resolved
-    // server-side; we don't double-count here. The footer shows
-    // the count as a separate stat (slot count) for visibility.
+    // item: bundle cost is tracked separately. Items don't
+    // contribute to the progression pool per the canonical spec
+    // (see src/app/api/characters/route.ts comment line 153).
   }
   const debtUsed = -mirrorCredit; // mirrorCredit <= 0
   const netSpent = positiveSpent + mirrorCredit;

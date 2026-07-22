@@ -283,6 +283,79 @@ export function GrammarLibrary({
     return () => mql.removeEventListener("change", apply);
   }, []);
 
+  // Phase 8.1 batch 13.6 follow-up (Mashu 2026-07-22):
+  // "I load into build (not character) so I fork something. On save
+  // when fork is created atelier should list the new entry without
+  // me refreshing page."
+  //
+  // The parent (atelier-sandbox-client.tsx) fires `sw-sandbox-saved`
+  // after every form save and also calls router.refresh(). BUT the
+  // parent form (e.g. PrimitiveForm) ALREADY calls router.refresh()
+  // internally. The parent's refresh DOES re-fetch server data, but
+  // it does NOT reset our toolbarState filter — if the user has
+  // narrowed to a category the new entity doesn't have, the new
+  // entity stays hidden.
+  //
+  // HeritageSlotCard already has this listener; grammar-library
+  // didn't, so primitive/effect/capability saves never got the
+  // "reset filter + scroll + flash" UX. Mirror the same handler
+  // here.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const e = event as CustomEvent<{
+        kind: "primitive" | "effect" | "capability" | "heritage" | "item";
+        id: string;
+      }>;
+      if (!e.detail?.id) return;
+      const kind = e.detail.kind;
+      // Map save kind to the typeFilter value for this library.
+      // Items/heritage don't appear in the grammar library — when
+      // those saves fire, we just clear filters without changing
+      // typeFilter (the parent will handle the cross-tab nav).
+      const kindToFilter: Record<typeof kind, string> = {
+        primitive: "PRIMITIVE",
+        effect: "EFFECT",
+        capability: "CAPABILITY",
+        heritage: defaultTypeFilter,
+        item: defaultTypeFilter,
+      };
+      setToolbarState((prev) => ({
+        ...prev,
+        search: "",
+        typeFilter: kindToFilter[kind] as typeof prev.typeFilter,
+        category: "",
+        author: "",
+        minLikes: "",
+        minForks: "",
+        minBu: "",
+        maxBu: "",
+        subKinds: [],
+        hasForks: false,
+      }));
+      // Retry the DOM find until the row appears or we time out.
+      // Same backoff schedule as HeritageSlotCard. router.refresh()
+      // is async — the new row may not have arrived yet.
+      const id = e.detail.id;
+      const attempts: number[] = [0, 80, 200, 400, 700, 1100, 1500];
+      for (const delay of attempts) {
+        window.setTimeout(() => {
+          const el = document.querySelector<HTMLElement>(
+            `[data-library-row-id="${CSS.escape(id)}"]`,
+          );
+          if (!el) return;
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.add("sw-saved-flash");
+          window.setTimeout(() => {
+            el.classList.remove("sw-saved-flash");
+          }, 2200);
+        }, delay);
+      }
+    };
+    window.addEventListener("sw-sandbox-saved", handler);
+    return () => window.removeEventListener("sw-sandbox-saved", handler);
+  }, []);
+
   // When the build mode changes, reset the type filter to the new default
   // and clear other filters so the user sees the right subset immediately.
   // (Fix for "filters don't auto-apply when switching tabs".)
