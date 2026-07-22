@@ -95,98 +95,117 @@ export interface BuLedger {
 // ============================================================================
 
 /**
- * Max BU debt per character level, per the Leveling & Progression
- * Canon v1 (Notion page 37fed847-9ccd-80fb-a08b-c88bb715658a).
+ * Phase 8.1 batch 11 (Mashu 2026-07-22): The canon formula is the
+ * source of truth, and there is NO upper level cap. The rules are:
  *
- * Level 1 is the special case (-4 BU); all other levels fall into
- * one of four broader brackets. These are PER-LEVEL, not per-bracket.
+ *   - Each level grants +10 BU (linear growth from L1's 25).
+ *   - Every 4 levels (L4, L8, L12, L16, L20, L24, ...) grants an
+ *     additional +level BU spike (so L4 = +4, L8 = +8, L12 = +12,
+ *     L16 = +16, L20 = +20, L24 = +24, ...).
+ *   - These rules continue past L20 — a level-100 character simply
+ *     keeps accumulating. There is no max.
+ *
+ *   cumulative(L) = 25 + 10*(L-1) + sum(spikes)
+ *   where spike is awarded at L = 4k for k = 1..floor(L/4),
+ *   spike value at level L = 4k is L itself (== 4k).
+ *
+ * The debt ceiling also has no upper cap. It follows the same
+ * brackets used for levels 1-20 (L1 = 4, L2-4 = 8, L5-10 = 12,
+ * L11-15 = 16, L16+ = 24) and stays at 24 for L16 and above.
+ *
+ * Earlier in batch 10 we tried to encode this as a static table,
+ * but that required the table to be infinite and we capped at L20.
+ * The formula is cleaner and matches the canon at every level.
  */
-const MAX_DEBT_PER_LEVEL: ReadonlyArray<number> = [
-  4, //  L1 — special case per canon
-  8, 8, 8, //  L2 / L3 / L4
-  12, 12, 12, 12, 12, 12, //  L5-L10
-  16, 16, 16, 16, 16, //  L11-L15
-  24, 24, 24, 24, 24, //  L16-L20
-];
 
 /**
- * Cumulative BU budget per character level (the total pool of BU a
- * character of that level should have access to). Straight lookup
- * from the canon table. The formula previously encoded in this file
- * (25 + 10*(L-1) + spike) does NOT match the canon exactly — the
- * canon bakes progression spikes into specific levels (L4, L8, L12,
- * L16, L20) but uses an offset pattern that differs from "applied
- * at the level it's listed" (e.g. L13 = 169 = L12 + 10 + 12-spike).
- * Rather than reproduce the offset math we use the canon table
- * directly — it's the source of truth.
+ * Sum of progression spikes awarded at every 4th level up to and
+ * including `level`. At L4k, the spike value equals 4k.
+ *
+ * Examples:
+ *   spikesUpTo(3)  = 0   (no spikes yet)
+ *   spikesUpTo(4)  = 4   (one spike of 4)
+ *   spikesUpTo(8)  = 12  (4 + 8)
+ *   spikesUpTo(12) = 24  (4 + 8 + 12)
+ *   spikesUpTo(20) = 60  (4 + 8 + 12 + 16 + 20)
+ *   spikesUpTo(24) = 84  (+ 24)
  */
-const CUMULATIVE_BU_PER_LEVEL: ReadonlyArray<number> = [
-  25,   //  L1
-  35,   //  L2
-  45,   //  L3
-  55,   //  L4
-  69,   //  L5
-  79,   //  L6
-  89,   //  L7
-  99,   //  L8
-  117,  //  L9
-  127,  //  L10
-  137,  //  L11
-  147,  //  L12
-  169,  //  L13
-  179,  //  L14
-  189,  //  L15
-  199,  //  L16
-  225,  //  L17
-  235,  //  L18
-  245,  //  L19
-  255,  //  L20
-];
-
-/** Maximum allowed character level (matches the canon table length). */
-export const MAX_CHARACTER_LEVEL = 20;
-
-/**
- * Look up the maximum allowed negative BU (volatility / debt) for a
- * given character level. Negative number — e.g. level 1 returns 4
- * (meaning the character can carry up to -4 BU debt).
- */
-export function maxBuDebtForLevel(level: number): number {
-  if (!Number.isFinite(level)) return 0;
-  if (level < 1) return 0;
-  const v =
-    level > MAX_CHARACTER_LEVEL
-      ? MAX_DEBT_PER_LEVEL[MAX_CHARACTER_LEVEL - 1]
-      : MAX_DEBT_PER_LEVEL[level - 1];
-  return v ?? 0;
+function spikesUpTo(level: number): number {
+  if (level < 4) return 0;
+  // Sum of arithmetic progression 4, 8, 12, ..., 4*floor(L/4)
+  // = 4 * sum(1..floor(L/4)) = 4 * k*(k+1)/2 where k = floor(L/4)
+  const k = Math.floor(level / 4);
+  return 4 * (k * (k + 1)) / 2;
 }
 
 /**
- * Look up the cumulative BU threshold for a given character level —
- * the total pool of BU a character of that level should have access
- * to (per canon). Mirroring (negative BU) draws from the debt
- * capacity, NOT from this pool.
+ * Compute the cumulative BU budget for a given character level.
+ * No upper bound — works for any L >= 1.
+ *
+ * Examples:
+ *   L1 = 25
+ *   L2 = 35  (25 + 10)
+ *   L4 = 59  (25 + 30 + 4 spike)
+ *   L5 = 69
+ *   L8 = 107 (25 + 70 + 4 + 8 spikes)
+ *   L20 = 275
+ *   L21 = 285
+ *   L24 = 319 (25 + 230 + 4 + 8 + 12 + 16 + 20 + 24)
  */
 export function cumulativeBuForLevel(level: number): number {
   if (!Number.isFinite(level)) return 25;
   if (level < 1) return 25;
-  const v =
-    level > MAX_CHARACTER_LEVEL
-      ? CUMULATIVE_BU_PER_LEVEL[MAX_CHARACTER_LEVEL - 1]
-      : CUMULATIVE_BU_PER_LEVEL[level - 1];
-  return v ?? 25;
+  return 25 + 10 * (level - 1) + spikesUpTo(level);
+}
+
+/**
+ * Compute the maximum BU debt (volatility ceiling) for a given
+ * character level. Per canon:
+ *
+ *   L1       = 4  (special case — mirror-vector apprentices are limited)
+ *   L2..L4   = 8
+ *   L5..L10  = 12
+ *   L11..L15 = 16
+ *   L16..∞   = 24 (stays at 24; canon doesn't define higher brackets)
+ *
+ * Returns a positive number representing the absolute debt limit
+ * (caller formats as `-N BU` in the UI).
+ */
+export function maxBuDebtForLevel(level: number): number {
+  if (!Number.isFinite(level)) return 0;
+  if (level <= 0) return 0;
+  if (level === 1) return 4;
+  if (level <= 4) return 8;
+  if (level <= 10) return 12;
+  if (level <= 15) return 16;
+  return 24;
 }
 
 /**
  * Given a custom BU budget (set explicitly by the user, bypassing
- * level), return the implied level bracket — useful for telling the
- * user "this budget corresponds to roughly level N". Best-effort;
- * returns null if no level matches.
+ * level), find the lowest level L whose cumulative budget equals
+ * exactly this value. Returns null when no exact match exists —
+ * useful for telling the user "this budget matches level N".
+ *
+ * Note: this is intentionally a search rather than a closed-form
+ * solve because the spike pattern (every 4 levels) makes a closed
+ * form awkward. The search is bounded by the level the user
+ * actually typed; for arbitrary BU values we use the canonical
+ * formula in reverse:
+ *
+ *   Given budget B, try L = 1, 2, 3, ... and find the first
+ *   L where cumulativeBuForLevel(L) === B.
  */
 export function levelForBuBudget(budget: number): number | null {
   if (!Number.isFinite(budget)) return null;
-  for (let i = 0; i < CUMULATIVE_BU_PER_LEVEL.length; i++) {
-    if (CUMULATIVE_BU_PER_LEVEL[i] === budget) return i + 1;
+  if (budget < 25) return null;
+  // Binary-search-like: try levels up to a reasonable cap. For very
+  // large budgets we still find the answer because cumulative is
+  // strictly monotonic. Cap at level 200 (~12.5k BU); beyond that
+  // the search is pointless for UX feedback.
+  for (let l = 1; l <= 200; l++) {
+    if (cumulativeBuForLevel(l) === budget) return l;
+    if (cumulativeBuForLevel(l) > budget) break;
   }
   return null;
 }

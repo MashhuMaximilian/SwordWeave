@@ -5,6 +5,7 @@ import {
   canAcceptMirror,
   evaluateBuLedger,
   getVolatilityCeiling,
+  maxBuDebtForLevel,
   sumPrimitiveBu,
   validateBuValue,
 } from "../bu";
@@ -94,31 +95,70 @@ describe("calculateBuBudget", () => {
     expect(calculateBuBudget(1)).toBe(25);
   });
 
-  it("returns the canon cumulative value at each level", () => {
-    // Phase 8.1 batch 10: the cumulative table is the source of
-    // truth (Leveling & Progression Canon v1). These values come
-    // straight from the canon; the legacy formula
-    // (25 + 10*(L-1) + spikes) doesn't match exactly because the
-    // canon bakes progression spikes into specific levels in a way
-    // that doesn't align with "applied at the level it's listed".
+  it("follows the +10 per level + every-4-level spike formula", () => {
+    // Phase 8.1 batch 11: cumulative(L) = 25 + 10*(L-1) + spike(L)
+    // where spike(L) = sum of (4, 8, 12, ..., 4*floor(L/4)).
+    // Examples:
+    //   L2 = 35 (25 + 10, no spike)
+    //   L4 = 59 (25 + 30 + 4 spike)
+    //   L8 = 107 (25 + 70 + 4 + 8 spikes)
+    //   L12 = 159 (25 + 110 + 4 + 8 + 12 spikes)
+    //   L20 = 275 (25 + 190 + 4 + 8 + 12 + 16 + 20 spikes)
     expect(calculateBuBudget(2)).toBe(35);
     expect(calculateBuBudget(3)).toBe(45);
-    expect(calculateBuBudget(4)).toBe(55);
+    expect(calculateBuBudget(4)).toBe(59);
     expect(calculateBuBudget(5)).toBe(69);
-    expect(calculateBuBudget(8)).toBe(99);
+    expect(calculateBuBudget(8)).toBe(107);
     expect(calculateBuBudget(9)).toBe(117);
-    expect(calculateBuBudget(12)).toBe(147);
+    expect(calculateBuBudget(12)).toBe(159);
     expect(calculateBuBudget(13)).toBe(169);
     expect(calculateBuBudget(17)).toBe(225);
-    expect(calculateBuBudget(20)).toBe(255);
+    expect(calculateBuBudget(20)).toBe(275);
+  });
+
+  it("continues past level 20 with no upper cap", () => {
+    // Phase 8.1 batch 11: no MAX_CHARACTER_LEVEL. Spikes continue
+    // every 4 levels indefinitely.
+    expect(calculateBuBudget(21)).toBe(285);
+    expect(calculateBuBudget(24)).toBe(339);
+    expect(calculateBuBudget(40)).toBe(635);
+    expect(calculateBuBudget(100)).toBe(2315);
   });
 
   it("returns 25 for invalid levels (clamped to floor)", () => {
     // Phase 8.1 batch 10: invalid levels fall back to L1's value
-    // (25 BU) instead of 0 — the table treats < 1 as "no level
+    // (25 BU) instead of 0 — the formula treats < 1 as "no level
     // chosen yet" rather than "broken".
     expect(calculateBuBudget(0)).toBe(25);
     expect(calculateBuBudget(-1)).toBe(25);
+  });
+});
+
+describe("maxBuDebtForLevel", () => {
+  it("returns 4 BU at level 1 (special case per canon)", () => {
+    expect(maxBuDebtForLevel(1)).toBe(4);
+  });
+
+  it("returns 8 BU for levels 2-4", () => {
+    expect(maxBuDebtForLevel(2)).toBe(8);
+    expect(maxBuDebtForLevel(3)).toBe(8);
+    expect(maxBuDebtForLevel(4)).toBe(8);
+  });
+
+  it("returns 12 BU for levels 5-10", () => {
+    expect(maxBuDebtForLevel(5)).toBe(12);
+    expect(maxBuDebtForLevel(10)).toBe(12);
+  });
+
+  it("returns 16 BU for levels 11-15", () => {
+    expect(maxBuDebtForLevel(11)).toBe(16);
+    expect(maxBuDebtForLevel(15)).toBe(16);
+  });
+
+  it("returns 24 BU for level 16 and beyond (stays at 24)", () => {
+    expect(maxBuDebtForLevel(16)).toBe(24);
+    expect(maxBuDebtForLevel(20)).toBe(24);
+    expect(maxBuDebtForLevel(100)).toBe(24);
   });
 });
 
