@@ -954,6 +954,13 @@ function CapabilityBody({
           versionNumber: l.versionNumber,
           note: l.effect.narrativeDescription ?? null,
           subText: l.slotLabel ? <span className="italic">"{l.slotLabel}"</span> : undefined,
+          // Phase 8.1 batch 13.4 follow-up: open the effect preview
+          // when the user clicks this row. The default (PRIMITIVE)
+          // routes the click to the wrong endpoint. Mashu 2026-07-22:
+          // "now capabilities view doesn't open effects anymore in
+          // new modal." Regressed when batch 13.1 follow-up added
+          // per-item targetType but missed the CapabilityBody case.
+          targetType: "EFFECT" as const,
         }))}
       />
     </div>
@@ -1170,6 +1177,9 @@ function ItemBody({
           bu: (l.effect.primitiveLinks ?? []).reduce((s, x) => s + Math.abs(x.primitive.buCost * x.quantity), 0),
           versionNumber: l.versionNumber,
           note: l.effect.narrativeDescription ?? null,
+          // Phase 8.1 batch 13.4 follow-up: open the effect preview
+          // when this row is clicked (default would be PRIMITIVE).
+          targetType: "EFFECT" as const,
         }))}
       />
       <ComposedList
@@ -1180,6 +1190,9 @@ function ItemBody({
           name: l.capability.name,
           bu: (l.capability.primitiveLinks ?? []).reduce((s, x) => s + Math.abs(x.primitive.buCost), 0),
           versionNumber: l.versionNumber,
+          // Phase 8.1 batch 13.4 follow-up: open the capability
+          // preview when this row is clicked.
+          targetType: "CAPABILITY" as const,
         }))}
       />
     </div>

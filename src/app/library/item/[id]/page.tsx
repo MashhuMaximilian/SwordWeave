@@ -1228,6 +1228,35 @@ async function TemplateDetail({
     .map((l) => l.capabilityId);
   const { capPrimMap, capEffectMap } = await fetchCapabilityTransitive(capabilityIds);
 
+  // Phase 8.1 batch 13.4 follow-up: compute transitive BU so the header
+  // shows the same total the modal preview shows (direct primitives +
+  // primitives from capabilities + primitives from effects of capabilities).
+  // Mashu 2026-07-22: "primitives from effects of capabilities ... should
+  // also be shown and calculated towards total BU."
+  const transitiveBu = computeTransitiveBu({
+    primitiveLinks: row.primitiveLinks.map((l) => ({
+      primitiveId: l.primitiveId,
+      quantity: 1,
+      primitive: { id: l.primitiveId, buCost: l.primitive.buCost },
+    })),
+    capabilityLinks: capabilityIds.map((cid) => ({
+      capabilityId: cid,
+      primitiveLinks: (capPrimMap.get(cid) ?? []).map((p) => ({
+        primitiveId: p.primitiveId,
+        quantity: p.quantity,
+        primitive: { id: p.primitiveId, buCost: p.primitive.buCost },
+      })),
+      effectLinks: (capEffectMap.get(cid) ?? []).map((e) => ({
+        effectId: e.effectId,
+        primitiveLinks: e.primitiveLinks.map((p) => ({
+          primitiveId: p.primitiveId,
+          quantity: p.quantity,
+          primitive: { id: p.primitiveId, buCost: p.primitive.buCost },
+        })),
+      })),
+    })),
+  });
+
   const [{ flagDistribution, flagNotes }, forkSource, versionMap, capabilityBuMap] =
     await Promise.all([
       loadFlagsAndTags(
@@ -1262,7 +1291,11 @@ async function TemplateDetail({
       backHref={`/library/browse?type=${typeLabel}_TEMPLATE`}
       typeLabel={`${typeLabel} TEMPLATE`}
       name={row.name}
-      buCost={null}
+      // Phase 8.1 batch 13.4 follow-up: show the transitive BU in the
+      // header chip (was previously null). Matches the atelier preview
+      // header — direct primitives + primitives from capabilities +
+      // primitives from effects of capabilities.
+      buCost={Math.abs(transitiveBu.transitiveBu) || null}
       category={row.kind}
       description={row.description || null}
       author={author}

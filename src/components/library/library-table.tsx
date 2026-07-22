@@ -274,6 +274,11 @@ function ListItem({
       <button
         type="button"
         onClick={() => onSelect(item)}
+        // Phase 8.1 batch 13.4 follow-up: data attribute so the saved-
+        // highlight handler in heritage-library can scroll/focus this
+        // row after a save. Mashu 2026-07-22: "I have to refresh the
+        // page to find it in list."
+        data-library-row-id={item.id}
         className={cn(baseClass, "w-full text-left")}
       >
         {inner}
@@ -281,7 +286,11 @@ function ListItem({
     );
   }
   return (
-    <Link href={`/library/item/${item.id}`} className={baseClass}>
+    <Link
+      href={`/library/item/${item.id}`}
+      data-library-row-id={item.id}
+      className={baseClass}
+    >
       {inner}
     </Link>
   );
@@ -440,6 +449,10 @@ function GridCard({
             onSelect(item);
           }
         }}
+        // Phase 8.1 batch 13.4 follow-up: data attribute so the saved-
+        // highlight handler in heritage-library can scroll/focus this
+        // row after a save.
+        data-library-row-id={item.id}
         className={cn(
           "flex h-full min-h-[7rem] flex-col rounded-md border bg-card p-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary md:p-2.5",
           selected
@@ -454,6 +467,7 @@ function GridCard({
 
   return (
     <article
+      data-library-row-id={item.id}
       className={cn(
         "flex h-full min-h-[7rem] flex-col rounded-md border bg-card p-2 transition-colors md:p-2.5",
         selected

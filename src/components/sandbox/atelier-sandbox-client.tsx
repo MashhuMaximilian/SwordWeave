@@ -762,6 +762,23 @@ export function AtelierSandboxClient({
               setEditing({ kind: "primitive", row: newRow as never });
               setFormIsDirty(false);
             }
+            // Phase 8.1 batch 13.4 follow-up: tell the library list a
+            // primitive just saved so it can scroll/highlight the
+            // new row without a full page refresh. Mashu 2026-07-22:
+            // "I have to refresh the page to find it in list."
+            window.dispatchEvent(
+              new CustomEvent("sw-sandbox-saved", {
+                detail: {
+                  kind: "primitive",
+                  id: String(
+                    (saved as { id?: number }).id ??
+                      outcome?.newId ??
+                      "",
+                  ),
+                },
+              }),
+            );
+            router.refresh();
           }}
           onReset={startNewEntity}
         />
@@ -793,7 +810,23 @@ export function AtelierSandboxClient({
               modifiers: [],
             });
           }}
-          onSaved={() => {}}
+          // Phase 8.1 batch 13.4 follow-up: tell the library list an
+          // effect just saved so it can scroll/highlight the new
+          // row. Mashu 2026-07-22: "I have to refresh the page to
+          // find it in list." The form internally calls router.refresh
+          // already; this fires the event so the list can do a soft
+          // scroll/highlight on top of that.
+          onSaved={(saved) => {
+            window.dispatchEvent(
+              new CustomEvent("sw-sandbox-saved", {
+                detail: {
+                  kind: "effect",
+                  id: String((saved as { id?: string }).id ?? ""),
+                },
+              }),
+            );
+            router.refresh();
+          }}
           onReset={startNewEntity}
         />
       );
@@ -824,7 +857,20 @@ export function AtelierSandboxClient({
               modifiers: [],
             });
           }}
-          onSaved={() => {}}
+          // Phase 8.1 batch 13.4 follow-up: tell the library list a
+          // capability just saved so it can scroll/highlight the new
+          // row. See effect branch for the rationale.
+          onSaved={(saved) => {
+            window.dispatchEvent(
+              new CustomEvent("sw-sandbox-saved", {
+                detail: {
+                  kind: "capability",
+                  id: String((saved as { id?: string }).id ?? ""),
+                },
+              }),
+            );
+            router.refresh();
+          }}
           onReset={startNewEntity}
         />
       );
@@ -849,7 +895,19 @@ export function AtelierSandboxClient({
               modifiers: [],
             });
           }}
-          onSaved={() => {}}
+          // Phase 8.1 batch 13.4 follow-up: dispatch sw-sandbox-saved so the
+          // library list scrolls to the newly saved template.
+          onSaved={(saved) => {
+            window.dispatchEvent(
+              new CustomEvent("sw-sandbox-saved", {
+                detail: {
+                  kind: "heritage",
+                  id: String((saved as { id?: string }).id ?? ""),
+                },
+              }),
+            );
+            router.refresh();
+          }}
           onReset={startNewEntity}
         />
       );
@@ -876,7 +934,19 @@ export function AtelierSandboxClient({
               modifiers: [],
             });
           }}
-          onSaved={() => {}}
+          // Phase 8.1 batch 13.4 follow-up: dispatch sw-sandbox-saved so the
+          // library list scrolls to the newly saved item.
+          onSaved={(saved) => {
+            window.dispatchEvent(
+              new CustomEvent("sw-sandbox-saved", {
+                detail: {
+                  kind: "item",
+                  id: String((saved as { id?: string }).id ?? ""),
+                },
+              }),
+            );
+            router.refresh();
+          }}
           onReset={startNewEntity}
         />
       );

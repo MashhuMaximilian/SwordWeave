@@ -293,3 +293,32 @@ body {
   outline: 2px solid var(--ring, #008ca3);
   outline-offset: 2px;
 }
+
+/* Phase 8.1 batch 13.4 follow-up: brief highlight applied to a
+   library row immediately after a sandbox save. The
+   heritage-library handler toggles `.sw-saved-flash` for 2.2s and
+   scrolls the row into view, so the user can see the new entity
+   without doing a manual page refresh. The flash uses a 2-stop
+   keyframe so the row fades in then out — the row stays interactive
+   the whole time. */
+.sw-saved-flash {
+  animation: sw-saved-flash-keyframes 2.2s ease-out;
+  outline: 2px solid var(--ring, #008ca3);
+  outline-offset: 2px;
+  border-color: var(--ring, #008ca3);
+}
+
+@keyframes sw-saved-flash-keyframes {
+  0% {
+    background-color: rgb(8 145 178 / 0.45);
+    outline-color: rgb(8 145 178 / 1);
+  }
+  60% {
+    background-color: rgb(8 145 178 / 0.18);
+    outline-color: rgb(8 145 178 / 0.6);
+  }
+  100% {
+    background-color: transparent;
+    outline-color: rgb(8 145 178 / 0);
+  }
+}

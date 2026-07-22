@@ -436,6 +436,63 @@ export function HeritageLibrary({
     return () => window.removeEventListener("sw-sandbox-close-preview", handler);
   }, [stack]);
 
+  // Phase 8.1 batch 13.4 follow-up: when a form saves an entity, the
+  // atelier fires `sw-sandbox-saved` with { kind, id }. We use this
+  // to:
+  //   1. Force the type filter back to the default for that kind so
+  //      the new entity isn't hidden behind a stale filter.
+  //   2. Scroll the row into view + flash a brief highlight so the
+  //      user can see the save landed without a manual page refresh.
+  // Mashu 2026-07-22: "if I edit/fork something in atelier ... I
+  // have to refresh the page to find it in list."
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const e = event as CustomEvent<{
+        kind: "primitive" | "effect" | "capability" | "heritage" | "item";
+        id: string;
+      }>;
+      if (!e.detail?.id) return;
+      // Reset the toolbar filter to the default for the saved kind.
+      // The user may have narrowed by an attribute that the new entity
+      // doesn't carry — without this reset the row would stay hidden.
+      const kind = e.detail.kind;
+      const kindToFilter: Record<typeof kind, string> = {
+        primitive: "PRIMITIVE",
+        effect: "EFFECT",
+        capability: "CAPABILITY",
+        heritage: "GROUP_HERITAGES",
+        item: "ITEM",
+      };
+      setToolbarState((prev) => ({
+        ...prev,
+        search: "",
+        typeFilter: kindToFilter[kind] as typeof prev.typeFilter,
+        category: "",
+        author: "",
+        minLikes: "",
+        hasForks: false,
+      }));
+      // Wait one frame for the filtered list to re-render, then scroll
+      // the row into view. The scroll uses requestAnimationFrame so we
+      // don't race the React commit phase.
+      const id = e.detail.id;
+      requestAnimationFrame(() => {
+        const el = document.querySelector<HTMLElement>(
+          `[data-library-row-id="${CSS.escape(id)}"]`,
+        );
+        if (!el) return;
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("sw-saved-flash");
+        window.setTimeout(() => {
+          el.classList.remove("sw-saved-flash");
+        }, 2200);
+      });
+    };
+    window.addEventListener("sw-sandbox-saved", handler);
+    return () => window.removeEventListener("sw-sandbox-saved", handler);
+  }, []);
+
   // Phase 7 Q-B UX: form-preview clicks on slotted sub-entities
   // dispatch `sw-sandbox-open-preview`. Translate to pushPreview() so
   // the user gets the same modal affordance as clicking from the
