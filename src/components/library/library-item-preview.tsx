@@ -139,6 +139,19 @@ export type SandboxTemplateRow = {
         primitiveId: number;
         primitive: { id: number; name: string; category: string; buCost: number };
       }>;
+      // Phase 8.1 batch 13.5 follow-up: capability rows now carry
+      // their effect links so the preview can compute the
+      // transitive BU per capability (effects contribute
+      // primitives, and primitives are what costs BU per Mashu).
+      // The /api/heritage/[id] etc endpoints attach this data.
+      effectLinks?: Array<{
+        effectId: string;
+        effect: { id: string; name: string };
+        primitiveLinks?: Array<{
+          primitiveId: number;
+          primitive: { id: number; name: string; category: string; buCost: number };
+        }>;
+      }>;
     };
   } & WithVersion>;
   iconSource: string | null;
@@ -193,6 +206,17 @@ export type SandboxItemRow = {
       primitiveLinks?: Array<{
         primitiveId: number;
         primitive: { id: number; name: string; category: string; buCost: number };
+      }>;
+      // Phase 8.1 batch 13.5 follow-up: capability rows now carry
+      // their effect links so the preview can compute transitive
+      // BU per capability. See SandboxTemplateRow for full context.
+      effectLinks?: Array<{
+        effectId: string;
+        effect: { id: string; name: string };
+        primitiveLinks?: Array<{
+          primitiveId: number;
+          primitive: { id: number; name: string; category: string; buCost: number };
+        }>;
       }>;
     };
   } & WithVersion>;

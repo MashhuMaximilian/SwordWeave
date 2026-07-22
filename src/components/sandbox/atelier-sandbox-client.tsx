@@ -766,6 +766,15 @@ export function AtelierSandboxClient({
             // primitive just saved so it can scroll/highlight the
             // new row without a full page refresh. Mashu 2026-07-22:
             // "I have to refresh the page to find it in list."
+            //
+            // We pass the saved row in the event detail so the
+            // library can prepend it optimistically — that way the
+            // user sees the new entity land BEFORE the server-side
+            // router.refresh() round-trip completes. Mashu 2026-07-22
+            // follow-up: "I search without refreshing, still can't
+            // find it without refresh." So we also accept the row in
+            // the detail and let the library inject it into its
+            // toolbarState-reset list synchronously.
             window.dispatchEvent(
               new CustomEvent("sw-sandbox-saved", {
                 detail: {
@@ -775,6 +784,7 @@ export function AtelierSandboxClient({
                       outcome?.newId ??
                       "",
                   ),
+                  row: saved,
                 },
               }),
             );

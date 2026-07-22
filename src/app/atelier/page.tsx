@@ -192,7 +192,32 @@ export default async function AtelierSandboxPage({
       orderBy: [asc(heritage.kind), asc(heritage.name)],
       with: {
         primitiveLinks: { with: { primitive: true } },
-        capabilityLinks: { with: { capability: { with: { primitiveLinks: { with: { primitive: true } } } } } },
+        // Phase 8.1 batch 13.5 follow-up: deep-join the capability's
+        // primitiveLinks AND its effect → primitiveLinks so the
+        // lineage preview can compute the transitive BU per bundled
+        // capability. Mashu 2026-07-22: "I have a lineage with
+        // capability X. Capability X has cost 13 BU for example, but
+        // it still shows 3 BU in lineage preview where capability X
+        // is shown bc it either doesn't take the cost from the mother
+        // component or doesn't calculate it properly."
+        capabilityLinks: {
+          with: {
+            capability: {
+              with: {
+                primitiveLinks: { with: { primitive: true } },
+                effectLinks: {
+                  with: {
+                    effect: {
+                      with: {
+                        primitiveLinks: { with: { primitive: true } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
     heritageRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(visFilter) as unknown[];
@@ -208,7 +233,27 @@ export default async function AtelierSandboxPage({
       with: {
         primitiveLinks: { with: { primitive: true } },
         effectLinks: { with: { effect: { with: { primitiveLinks: { with: { primitive: true } } } } } },
-        capabilityLinks: { with: { capability: { with: { primitiveLinks: { with: { primitive: true } } } } } },
+        // Phase 8.1 batch 13.5 follow-up: deep-join capability
+        // primitiveLinks AND its effect → primitiveLinks so item
+        // preview can compute transitive BU per bundled capability.
+        capabilityLinks: {
+          with: {
+            capability: {
+              with: {
+                primitiveLinks: { with: { primitive: true } },
+                effectLinks: {
+                  with: {
+                    effect: {
+                      with: {
+                        primitiveLinks: { with: { primitive: true } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
     itemRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(visFilter) as unknown[];

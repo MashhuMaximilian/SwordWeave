@@ -285,16 +285,51 @@ function HeritageSlotCard({
             // flows through (the /api/heritage/[id] endpoint was
             // extended in this batch to deep-join capabilities →
             // primitives + effects → primitives).
-            capabilityLinks: (t.capabilityLinks ?? []).map((cl) => ({
-              capabilityId: cl.capabilityId ?? cl.capability?.id ?? "",
-              capability: cl.capability,
-              primitiveLinks: cl.primitiveLinks ?? [],
-              effectLinks: (cl.effectLinks ?? []).map((el) => ({
-                effectId: el.effectId ?? el.effect?.id ?? "",
-                effect: el.effect,
-                primitiveLinks: el.primitiveLinks ?? [],
-              })),
-            })),
+            capabilityLinks: (t.capabilityLinks ?? []).map((cl) => {
+              // Phase 8.1 batch 13.5 follow-up: the /api/heritage/[id]
+              // response puts the deep-joined primitives + effects
+              // UNDER `cl.capability` (the capability row carries
+              // them after the batch 13.1 follow-up server attach).
+              // Previously this normalizer read `cl.primitiveLinks`
+              // which never existed on the link row, so both
+              // "Primitives from Capabilities" and "Primitives from
+              // Effects" sections silently rendered empty even when
+              // the heritage had bundled caps with effects.
+              //
+              // Mashu 2026-07-22: "I still don't see the expanded
+              // list of primitives if I slot in for example a
+              // lineage that has capabilities with effects or a
+              // heritage that has primitives, and capabilities with
+              // effects."
+              const capRow = cl.capability as typeof cl.capability & {
+                primitiveLinks?: Array<{
+                  primitiveId: number;
+                  quantity: number;
+                  isMirrored?: boolean;
+                  primitive: { id: number; name: string; buCost: number | null } | null;
+                }>;
+                effectLinks?: Array<{
+                  effectId?: string;
+                  effect: { id: string; name: string; description: string | null };
+                  primitiveLinks?: Array<{
+                    primitiveId: number;
+                    quantity: number;
+                    isMirrored?: boolean;
+                    primitive: { id: number; name: string; buCost: number | null } | null;
+                  }>;
+                }>;
+              };
+              return {
+                capabilityId: cl.capabilityId ?? cl.capability?.id ?? "",
+                capability: cl.capability,
+                primitiveLinks: capRow.primitiveLinks ?? [],
+                effectLinks: (capRow.effectLinks ?? []).map((el) => ({
+                  effectId: el.effectId ?? el.effect?.id ?? "",
+                  effect: el.effect,
+                  primitiveLinks: el.primitiveLinks ?? [],
+                })),
+              };
+            }),
             computedBu: t.computedBu ?? 0,
           }
         : null;

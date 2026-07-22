@@ -444,7 +444,14 @@ export function HeritageLibrary({
   //   2. Scroll the row into view + flash a brief highlight so the
   //      user can see the save landed without a manual page refresh.
   // Mashu 2026-07-22: "if I edit/fork something in atelier ... I
-  // have to refresh the page to find it in list."
+  // have to refresh the page to find it in list." Follow-up:
+  // "I search without refreshing, still can't find it without
+  // refresh."
+  //
+  // We retry the find for up to ~1.5s — the server's router.refresh
+  // round-trip can land AFTER the event fires (Next.js re-renders
+  // asynchronously), so a single DOM lookup often misses. Retry
+  // with exponential backoff until the row appears or we give up.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const handler = (event: Event) => {
@@ -473,21 +480,26 @@ export function HeritageLibrary({
         minLikes: "",
         hasForks: false,
       }));
-      // Wait one frame for the filtered list to re-render, then scroll
-      // the row into view. The scroll uses requestAnimationFrame so we
-      // don't race the React commit phase.
+      // Retry the DOM find until the row appears or we time out.
+      // This handles the race where router.refresh() hasn't landed
+      // yet (the SC round-trip is async; we get the event from the
+      // form's onSaved BEFORE Next.js re-renders the parent with
+      // new libraryItems).
       const id = e.detail.id;
-      requestAnimationFrame(() => {
-        const el = document.querySelector<HTMLElement>(
-          `[data-library-row-id="${CSS.escape(id)}"]`,
-        );
-        if (!el) return;
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.classList.add("sw-saved-flash");
+      const attempts: number[] = [0, 80, 200, 400, 700, 1100, 1500];
+      for (const delay of attempts) {
         window.setTimeout(() => {
-          el.classList.remove("sw-saved-flash");
-        }, 2200);
-      });
+          const el = document.querySelector<HTMLElement>(
+            `[data-library-row-id="${CSS.escape(id)}"]`,
+          );
+          if (!el) return;
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.add("sw-saved-flash");
+          window.setTimeout(() => {
+            el.classList.remove("sw-saved-flash");
+          }, 2200);
+        }, delay);
+      }
     };
     window.addEventListener("sw-sandbox-saved", handler);
     return () => window.removeEventListener("sw-sandbox-saved", handler);

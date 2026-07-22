@@ -1097,7 +1097,20 @@ function TemplateBody({
         items={row.capabilityLinks.map((l) => ({
           id: l.capability.id,
           name: l.capability.name,
-          bu: (l.capability.primitiveLinks ?? []).reduce((s, x) => s + Math.abs(x.primitive.buCost), 0),
+          // Phase 8.1 batch 13.5 follow-up: per-capability BU must
+          // include primitives from the capability's effects, not just
+          // its direct primitiveLinks. Mashu 2026-07-22: "Capability X
+          // has cost 13 BU for example, but it still shows 3 BU in
+          // lineage preview where capability X is shown." Same bug
+          // that bit `bulkComputeCapabilityBuCost` server-side — the
+          // preview is showing the same wrong number because both
+          // call-sites only summed direct primitives.
+          bu: Math.abs(
+            computeTransitiveBu({
+              primitiveLinks: l.capability.primitiveLinks ?? [],
+              effectLinks: l.capability.effectLinks ?? [],
+            }).transitiveBu,
+          ),
           versionNumber: l.versionNumber,
           // Phase 8.1 batch 13.2 follow-up: open the capability
           // preview when the user clicks this row. The default
@@ -1188,7 +1201,15 @@ function ItemBody({
         items={row.capabilityLinks.map((l) => ({
           id: l.capabilityId,
           name: l.capability.name,
-          bu: (l.capability.primitiveLinks ?? []).reduce((s, x) => s + Math.abs(x.primitive.buCost), 0),
+          // Phase 8.1 batch 13.5 follow-up: per-capability BU must
+          // include the capability's effect primitives. See the
+          // matching fix in TemplateBody above for rationale.
+          bu: Math.abs(
+            computeTransitiveBu({
+              primitiveLinks: l.capability.primitiveLinks ?? [],
+              effectLinks: l.capability.effectLinks ?? [],
+            }).transitiveBu,
+          ),
           versionNumber: l.versionNumber,
           // Phase 8.1 batch 13.4 follow-up: open the capability
           // preview when this row is clicked.
