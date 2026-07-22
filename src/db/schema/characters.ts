@@ -419,7 +419,17 @@ export const heritageCapabilities = pgTable(
       .references(() => heritage.id, { onDelete: "cascade" }),
     capabilityId: uuid("capability_id")
       .notNull()
-      .references(() => capabilities.id, { onDelete: "restrict" }),
+      // Phase 8.1 batch 13.1 follow-up: change from `restrict` to
+      // `cascade`. Mashu 2026-07-22: deleting a capability that
+      // other heritages reference was blocked. The user wants:
+      // "if I created a character or a heritage of sorts or
+      // capability, and I delete it, I only delete that
+      // compilation, not its components too." So when a cap is
+      // deleted, its link rows in heritage_capabilities are
+      // cleaned up automatically; the heritages that referenced
+      // it are unaffected (the cap slot just becomes empty in
+      // their bundle).
+      .references(() => capabilities.id, { onDelete: "cascade" }),
     ...timestamps,
   },
   (table) => [
@@ -584,7 +594,11 @@ export const buildCapabilities = pgTable(
       .references(() => builds.id, { onDelete: "cascade" }),
     capabilityId: uuid("capability_id")
       .notNull()
-      .references(() => capabilities.id, { onDelete: "restrict" }),
+      // Phase 8.1 batch 13.1 follow-up: change from `restrict` to
+      // `cascade` so deleting a capability auto-cleans the build's
+      // capability slots (matches the heritage cascade behavior
+      // and the user's mental model in Mashu 2026-07-22).
+      .references(() => capabilities.id, { onDelete: "cascade" }),
     acquiredAtLevel: integer("acquired_at_level").notNull().default(1),
     ...timestamps,
   },

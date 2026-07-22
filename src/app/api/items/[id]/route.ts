@@ -8,6 +8,10 @@ import {
   itemPrimitives,
   items,
   primitives,
+  capabilityPrimitives,
+  capabilityEffects,
+  effectPrimitives,
+  effects,
 } from "@/db/schema";
 import { ITEM_PRIMITIVE_CATEGORY } from "../route";
 import {
@@ -112,36 +116,8 @@ export async function GET(
     where: eq(items.id, id),
     with: {
       primitiveLinks: { with: { primitive: true } },
-      // Phase 8.1 batch 13.1 follow-up: deep-join so the returned
-      // item carries the full transitive closure (capability
-      // primitives + effect primitives + capability effect
-      // primitives). Per Mashu 2026-07-22: "only primitives cost
-      // BU. Capabilities, effects, heritages, and items are ways
-      // to organize primitives for runtime use — they NEVER debit
-      // BU on their own."
-      capabilityLinks: {
-        with: {
-          capability: {
-            with: {
-              primitiveLinks: { with: { primitive: true } },
-              effectLinks: {
-                with: {
-                  effect: { with: { primitiveLinks: { with: { primitive: true } } } },
-                },
-              },
-            },
-          },
-        },
-      },
-      effectLinks: {
-        with: {
-          effect: {
-            with: {
-              primitiveLinks: { with: { primitive: true } },
-            },
-          },
-        },
-      },
+      capabilityLinks: { with: { capability: true } },
+      effectLinks: { with: { effect: true } },
     },
   });
 
@@ -149,23 +125,193 @@ export async function GET(
     return NextResponse.json({ error: "Item not found." }, { status: 404 });
   }
 
-  // Phase 8.1 batch 13.1 follow-up: attach computedBu so the
-  // library list filter / character-modal bundle display
-  // reflect the full transitive closure.
+  // Phase 8.1 batch 13.1 follow-up: attach computedBu + capability
+  // primitives + effect primitives via flat queries (avoids the
+  // depth-3 Drizzle `with:` join that triggers Postgres's lateral
+  // scoping error — see /api/heritage/[id] for the same fix).
+  const capabilityIds = row.capabilityLinks.map((cl) => cl.capabilityId);
+  const effectIds = [
+    ...row.effectLinks.map((el) => el.effectId),
+  ];
+
+  let capPrimMap = new Map<string, Array<{
+    primitiveId: number;
+    quantity: number;
+    primitive: { id: number; name: string; buCost: number | null };
+  }>>();
+  let capEffPrimMap = new Map<string, Array<{
+    effectId: string;
+    effect: { id: string; name: string; description: string | null };
+    primitiveLinks: Array<{
+      primitiveId: number;
+      quantity: number;
+      primitive: { id: number; name: string; buCost: number | null };
+    }>;
+  }>>();
+  let directEffPrimMap = new Map<string, Array<{
+    primitiveId: number;
+    quantity: number;
+    primitive: { id: number; name: string; buCost: number | null };
+  }>>();
+
+  if (capabilityIds.length > 0) {
+    // Capability primitives
+    const capPrimRows = await db
+      .select({
+        capabilityId: capabilityPrimitives.capabilityId,
+        primitiveId: capabilityPrimitives.primitiveId,
+        quantity: capabilityPrimitives.quantity,
+        name: primitives.name,
+        buCost: primitives.buCost,
+      })
+      .from(capabilityPrimitives)
+      .innerJoin(primitives, eq(primitives.id, capabilityPrimitives.primitiveId))
+      .where(inArray(capabilityPrimitives.capabilityId, capabilityIds));
+    for (const r of capPrimRows) {
+      const arr = capPrimMap.get(r.capabilityId) ?? [];
+      arr.push({
+        primitiveId: r.primitiveId,
+        quantity: r.quantity,
+        primitive: { id: r.primitiveId, name: r.name, buCost: r.buCost },
+      });
+      capPrimMap.set(r.capabilityId, arr);
+    }
+    // Capability effect primitives (effects of those capabilities)
+    const capEffPrimRows = await db
+      .select({
+        capabilityId: capabilityEffects.capabilityId,
+        effectId: capabilityEffects.effectId,
+        primitiveId: effectPrimitives.primitiveId,
+        quantity: effectPrimitives.quantity,
+        name: primitives.name,
+        buCost: primitives.buCost,
+        effectName: effects.name,
+        effectDescription: effects.narrativeDescription,
+      })
+      .from(capabilityEffects)
+      .innerJoin(effects, eq(effects.id, capabilityEffects.effectId))
+      .innerJoin(effectPrimitives, eq(effectPrimitives.effectId, capabilityEffects.effectId))
+      .innerJoin(primitives, eq(primitives.id, effectPrimitives.primitiveId))
+      .where(inArray(capabilityEffects.capabilityId, capabilityIds));
+    for (const r of capEffPrimRows) {
+      const capArr = capEffPrimMap.get(r.capabilityId) ?? [];
+      let effEntry = capArr.find((e) => e.effectId === r.effectId);
+      if (!effEntry) {
+        effEntry = {
+          effectId: r.effectId,
+          effect: { id: r.effectId, name: r.effectName, description: r.effectDescription },
+          primitiveLinks: [],
+        };
+        capArr.push(effEntry);
+        capEffPrimMap.set(r.capabilityId, capArr);
+      }
+      effEntry.primitiveLinks.push({
+        primitiveId: r.primitiveId,
+        quantity: r.quantity,
+        primitive: { id: r.primitiveId, name: r.name, buCost: r.buCost },
+      });
+    }
+  }
+
+  if (effectIds.length > 0) {
+    // Direct effect primitives (effects on the item itself)
+    const directEffPrimRows = await db
+      .select({
+        effectId: effectPrimitives.effectId,
+        primitiveId: effectPrimitives.primitiveId,
+        quantity: effectPrimitives.quantity,
+        name: primitives.name,
+        buCost: primitives.buCost,
+      })
+      .from(effectPrimitives)
+      .innerJoin(primitives, eq(primitives.id, effectPrimitives.primitiveId))
+      .where(inArray(effectPrimitives.effectId, effectIds));
+    for (const r of directEffPrimRows) {
+      const arr = directEffPrimMap.get(r.effectId) ?? [];
+      arr.push({
+        primitiveId: r.primitiveId,
+        quantity: r.quantity,
+        primitive: { id: r.primitiveId, name: r.name, buCost: r.buCost },
+      });
+      directEffPrimMap.set(r.effectId, arr);
+    }
+  }
+
+  // Attach flat-query data onto the row's nested shape so callers
+  // get the same response structure as before.
+  for (const cl of row.capabilityLinks) {
+    const cap = cl.capability as typeof cl.capability & {
+      primitiveLinks: Array<{
+        primitiveId: number;
+        quantity: number;
+        primitive: { id: number; name: string; buCost: number | null };
+      }>;
+      effectLinks: Array<{
+        effectId: string;
+        effect: { id: string; name: string; description: string | null };
+        primitiveLinks: Array<{
+          primitiveId: number;
+          quantity: number;
+          primitive: { id: number; name: string; buCost: number | null };
+        }>;
+      }>;
+    };
+    cap.primitiveLinks = capPrimMap.get(cl.capabilityId) ?? [];
+    cap.effectLinks = (capEffPrimMap.get(cl.capabilityId) ?? []).map((e) => ({
+      effectId: e.effectId,
+      effect: e.effect,
+      primitiveLinks: e.primitiveLinks,
+    }));
+  }
+  for (const el of row.effectLinks) {
+    const eff = el.effect as typeof el.effect & {
+      primitiveLinks: Array<{
+        primitiveId: number;
+        quantity: number;
+        primitive: { id: number; name: string; buCost: number | null };
+      }>;
+    };
+    eff.primitiveLinks = directEffPrimMap.get(el.effectId) ?? [];
+  }
+
   const computedBu = computeTransitiveBu({
     primitiveLinks: row.primitiveLinks,
-    capabilityLinks: row.capabilityLinks.map((cl) => ({
-      capabilityId: cl.capabilityId,
-      primitiveLinks: cl.capability.primitiveLinks,
-      effectLinks: cl.capability.effectLinks?.map((el) => ({
+    capabilityLinks: row.capabilityLinks.map((cl) => {
+      const cap = cl.capability as typeof cl.capability & {
+        primitiveLinks: Array<{
+          primitiveId: number;
+          quantity: number;
+          primitive: { id: number; name: string; buCost: number | null };
+        }>;
+        effectLinks: Array<{
+          effectId: string;
+          effect: { id: string; name: string; description: string | null };
+          primitiveLinks: Array<{
+            primitiveId: number;
+            quantity: number;
+            primitive: { id: number; name: string; buCost: number | null };
+          }>;
+        }>;
+      };
+      return {
+        capabilityId: cl.capabilityId,
+        primitiveLinks: cap.primitiveLinks,
+        effectLinks: cap.effectLinks,
+      };
+    }),
+    effectLinks: row.effectLinks.map((el) => {
+      const eff = el.effect as typeof el.effect & {
+        primitiveLinks: Array<{
+          primitiveId: number;
+          quantity: number;
+          primitive: { id: number; name: string; buCost: number | null };
+        }>;
+      };
+      return {
         effectId: el.effectId,
-        primitiveLinks: el.effect.primitiveLinks,
-      })),
-    })),
-    effectLinks: row.effectLinks.map((el) => ({
-      effectId: el.effectId,
-      primitiveLinks: el.effect.primitiveLinks,
-    })),
+        primitiveLinks: eff.primitiveLinks,
+      };
+    }),
   }).transitiveBu;
 
   return NextResponse.json({ item: { ...row, computedBu } });

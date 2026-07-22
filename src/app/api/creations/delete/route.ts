@@ -118,17 +118,29 @@ async function findForeignKeyBlockers(
     targetType === "UPBRINGING_TEMPLATE" ||
     targetType === "MANIFEST_TEMPLATE"
   ) {
-    const blockers: Array<{ table: string; n: number }> = [];
-    const r = await db
-      .select({ c: sql<number>`COUNT(*)::int` })
-      .from(heritageCapabilities)
-      .where(eq(heritageCapabilities.templateId, targetId));
-    const count = Number(r[0]?.c ?? 0);
-    if (count > 0) blockers.push({ table: "template_capabilities", n: count });
-    if (blockers.length === 0) return null;
-    return `Cannot delete: template composes ${blockers
-      .map((b) => `${b.n} ${b.table.replace(/_/g, " ")}`)
-      .join(", ")}. Remove these first.`;
+    // Phase 8.1 batch 13.1 follow-up: heritage template deletion is
+    // now UNBLOCKED even when the template bundles capabilities or
+    // primitives. The schema already cascades:
+    //   - heritage.id → heritage_primitives, heritage_capabilities,
+    //     heritage_versions (all ON DELETE CASCADE on templateId)
+    //   - capability.id → capability_primitives, capability_effects
+    //     (capability's own children cascade when the cap is deleted)
+    // So deleting the template removes its bundle links in one shot
+    // WITHOUT deleting the bundled primitives/capabilities (those
+    // remain as independent entities).
+    //
+    // Mashu 2026-07-22: "If I forked something and then when I try
+    // to delete it it tells me i cannot bc it has 2 templates
+    // capabilities or whatever...which is weird. If I created a
+    // character or a heritage of sorts or capability, and I delete
+    // it, I only delete that compilation, not its components too."
+    //
+    // Previously this function returned a blocker error here, forcing
+    // the user to manually clear every bundled slot before deleting.
+    // That was redundant (the cascade already handles it) and
+    // annoying. We now skip the check and let Postgres do the
+    // cascade.
+    return null;
   }
 
   if (targetType === "CAPABILITY") {

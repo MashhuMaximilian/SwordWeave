@@ -7,6 +7,10 @@ import {
   heritageCapabilities,
   heritagePrimitives,
   heritage,
+  capabilityPrimitives,
+  capabilityEffects,
+  effectPrimitives,
+  effects,
 } from "@/db/schema";
 // Mashu 2026-07-09: expectedCategoryForKind import removed — the
 // category restriction is gone.
@@ -99,26 +103,7 @@ export async function GET(
     where: eq(heritage.id, id),
     with: {
       primitiveLinks: { with: { primitive: true } },
-      // Phase 8.1 batch 13.1 follow-up: extend the capability join so
-      // we can compute the full transitive BU (direct primitives +
-      // primitives from each bundled capability + primitives from
-      // each capability's effects). The previous join only loaded
-      // `capability` without its primitives, so computedBu silently
-      // under-counted the heritage's real cost.
-      capabilityLinks: {
-        with: {
-          capability: {
-            with: {
-              primitiveLinks: { with: { primitive: true } },
-              effectLinks: {
-                with: {
-                  effect: { with: { primitiveLinks: { with: { primitive: true } } } },
-                },
-              },
-            },
-          },
-        },
-      },
+      capabilityLinks: { with: { capability: true } },
     },
   });
 
@@ -126,25 +111,178 @@ export async function GET(
     return NextResponse.json({ error: "Template not found." }, { status: 404 });
   }
 
-  // Phase 8.1 batch 13.1 follow-up: use the shared helper so the
-  // server-side computedBu matches what the character-creation
-  // expander will charge the player. Per Mashu 2026-07-22: "only
-  // primitives cost BU. Capabilities, effects, heritages, and items
-  // are ways to organize primitives for runtime use — they NEVER
-  // debit BU on their own."
-  const bu = computeTransitiveBu({
+  // Phase 8.1 batch 13.1 follow-up: returned `template` shape needs
+  // `capabilityLinks[].capability.primitiveLinks[]` and
+  // `capabilityLinks[].capability.effectLinks[].effect.primitiveLinks[]`
+  // populated so the character-creation modal's HeritageSlotCard can
+  // render the exploded "Primitives from Capabilities" /
+  // "Primitives from Effects" sections (see Mashu 2026-07-22:
+  // "we should also list primitives from capabilities").
+  //
+  // We deliberately avoid a 3-level deep Drizzle `with:` join — those
+  // generate LEFT JOIN LATERAL queries that get mis-scoped at depth
+  // > 2 (Postgres returns `column ... does not exist` because the
+  // subquery can't reference outer columns without a LATERAL marker).
+  //
+  // Instead we issue 2 small, simple, definite-shape queries and
+  // attach the results to the row in JS:
+  //
+  //   Query A: SELECT capability primitives for the heritage's caps
+  //   Query B: SELECT effect primitives for those caps' effects
+  //
+  // This keeps the SQL unambiguous (no nesting) AND gives the modal
+  // the data it needs. See test in
+  //   src/db/__tests__/drizzle-lateral.test.ts (Phase 8.1 batch 13.1
+  //   follow-up) for the failure case we're working around.
+  const capabilityIds = row.capabilityLinks.map((cl) => cl.capabilityId);
+
+  let capPrimMap: Map<string, Array<{
+    primitiveId: number;
+    quantity: number;
+    primitive: { id: number; name: string; buCost: number | null };
+  }>> = new Map();
+  let effectPrimMap: Map<string, Array<{
+    effectId: string;
+    effect: { id: string; name: string; description: string | null };
+    primitiveLinks: Array<{
+      primitiveId: number;
+      quantity: number;
+      primitive: { id: number; name: string; buCost: number | null };
+    }>;
+  }>> = new Map();
+
+  if (capabilityIds.length > 0) {
+    // Query A: capability primitives + their primitive (name+cost).
+    const capPrimRows = await db
+      .select({
+        capabilityId: capabilityPrimitives.capabilityId,
+        primitiveId: capabilityPrimitives.primitiveId,
+        quantity: capabilityPrimitives.quantity,
+        name: primitives.name,
+        buCost: primitives.buCost,
+      })
+      .from(capabilityPrimitives)
+      .innerJoin(primitives, eq(primitives.id, capabilityPrimitives.primitiveId))
+      .where(inArray(capabilityPrimitives.capabilityId, capabilityIds));
+
+    for (const r of capPrimRows) {
+      const arr = capPrimMap.get(r.capabilityId) ?? [];
+      arr.push({
+        primitiveId: r.primitiveId,
+        quantity: r.quantity,
+        primitive: { id: r.primitiveId, name: r.name, buCost: r.buCost },
+      });
+      capPrimMap.set(r.capabilityId, arr);
+    }
+
+    // Query B: effect primitives for effects of those capabilities.
+    const effectPrimRows = await db
+      .select({
+        capabilityId: capabilityEffects.capabilityId,
+        effectId: capabilityEffects.effectId,
+        primitiveId: effectPrimitives.primitiveId,
+        quantity: effectPrimitives.quantity,
+        name: primitives.name,
+        buCost: primitives.buCost,
+        effectName: effects.name,
+        effectDescription: effects.narrativeDescription,
+      })
+      .from(capabilityEffects)
+      .innerJoin(effects, eq(effects.id, capabilityEffects.effectId))
+      .innerJoin(
+        effectPrimitives,
+        eq(effectPrimitives.effectId, capabilityEffects.effectId),
+      )
+      .innerJoin(primitives, eq(primitives.id, effectPrimitives.primitiveId))
+      .where(inArray(capabilityEffects.capabilityId, capabilityIds));
+
+    for (const r of effectPrimRows) {
+      const capArr = effectPrimMap.get(r.capabilityId) ?? [];
+      // Group by effectId
+      let effEntry = capArr.find((e) => e.effectId === r.effectId);
+      if (!effEntry) {
+        effEntry = {
+          effectId: r.effectId,
+          effect: {
+            id: r.effectId,
+            name: r.effectName,
+            description: r.effectDescription,
+          },
+          primitiveLinks: [],
+        };
+        capArr.push(effEntry);
+        effectPrimMap.set(r.capabilityId, capArr);
+      }
+      effEntry.primitiveLinks.push({
+        primitiveId: r.primitiveId,
+        quantity: r.quantity,
+        primitive: { id: r.primitiveId, name: r.name, buCost: r.buCost },
+      });
+    }
+  }
+
+  // Attach the data to each capabilityLinks row so the response
+  // carries the same shape the modal expects. We cast to a wider
+  // record so we can attach the deep fields without TS complaining.
+  for (const cl of row.capabilityLinks) {
+    const cap = cl.capability as typeof cl.capability & {
+      primitiveLinks: Array<{
+        primitiveId: number;
+        quantity: number;
+        primitive: { id: number; name: string; buCost: number | null };
+      }>;
+      effectLinks: Array<{
+        effectId: string;
+        effect: { id: string; name: string; description: string | null };
+        primitiveLinks: Array<{
+          primitiveId: number;
+          quantity: number;
+          primitive: { id: number; name: string; buCost: number | null };
+        }>;
+      }>;
+    };
+    cap.primitiveLinks = capPrimMap.get(cl.capabilityId) ?? [];
+    cap.effectLinks = (effectPrimMap.get(cl.capabilityId) ?? []).map((e) => ({
+      effectId: e.effectId,
+      effect: e.effect,
+      primitiveLinks: e.primitiveLinks,
+    }));
+  }
+
+  // Phase 8.1 batch 13.1 follow-up: computedBu = transitive closure.
+  // Per Mashu 2026-07-22: "only primitives cost BU."
+  const computedBu = computeTransitiveBu({
     primitiveLinks: row.primitiveLinks,
-    capabilityLinks: row.capabilityLinks.map((cl) => ({
-      capabilityId: cl.capabilityId,
-      primitiveLinks: cl.capability.primitiveLinks,
-      effectLinks: cl.capability.effectLinks?.map((el) => ({
-        effectId: el.effectId,
-        primitiveLinks: el.effect.primitiveLinks,
-      })),
-    })),
+    capabilityLinks: row.capabilityLinks.map((cl) => {
+      // Cast capability row to include the attached primitive/effect
+      // data (added in the loop above). TS's row type is based on
+      // the simple join (capability only, no nested primitiveLinks),
+      // so we widen it here.
+      const cap = cl.capability as typeof cl.capability & {
+        primitiveLinks: Array<{
+          primitiveId: number;
+          quantity: number;
+          primitive: { id: number; name: string; buCost: number | null };
+        }>;
+        effectLinks: Array<{
+          effectId: string;
+          effect: { id: string; name: string; description: string | null };
+          primitiveLinks: Array<{
+            primitiveId: number;
+            quantity: number;
+            primitive: { id: number; name: string; buCost: number | null };
+          }>;
+        }>;
+      };
+      return {
+        capabilityId: cl.capabilityId,
+        primitiveLinks: cap.primitiveLinks,
+        effectLinks: cap.effectLinks,
+      };
+    }),
   }).transitiveBu;
 
-  return NextResponse.json({ template: { ...row, computedBu: bu } });
+  return NextResponse.json({ template: { ...row, computedBu } });
 }
 
 /**
@@ -420,23 +558,7 @@ export async function PATCH(
           where: eq(heritage.id, id),
           with: {
             primitiveLinks: { with: { primitive: true } },
-            // Phase 8.1 batch 13.1 follow-up: same deep join as
-            // GET so computedBu includes capability + effect
-            // primitives in the transitive closure.
-            capabilityLinks: {
-              with: {
-                capability: {
-                  with: {
-                    primitiveLinks: { with: { primitive: true } },
-                    effectLinks: {
-                      with: {
-                        effect: { with: { primitiveLinks: { with: { primitive: true } } } },
-                      },
-                    },
-                  },
-                },
-              },
-            },
+            capabilityLinks: { with: { capability: true } },
           },
         });
       });
@@ -453,19 +575,51 @@ export async function PATCH(
       }
 
       if (result) {
-        // Phase 8.1 batch 13.1 follow-up: transitive BU computation
-        // (matches GET endpoint above).
-        const bu = computeTransitiveBu({
-          primitiveLinks: result.primitiveLinks,
-          capabilityLinks: result.capabilityLinks.map((cl) => ({
-            capabilityId: cl.capabilityId,
-            primitiveLinks: cl.capability.primitiveLinks,
-            effectLinks: cl.capability.effectLinks?.map((el) => ({
-              effectId: el.effectId,
-              primitiveLinks: el.effect.primitiveLinks,
-            })),
-          })),
-        }).transitiveBu;
+        // Phase 8.1 batch 13.1 follow-up: compute transitive BU
+        // from the same flat shape as GET. Reuse the helper logic
+        // inline since the query result here only carries the
+        // simple join (capability rows without nested primitives).
+        const capIds = result.capabilityLinks.map((cl) => cl.capabilityId);
+        let capPrimRows: Array<{ primitiveId: number; quantity: number; buCost: number | null }> = [];
+        let capEffPrimRows: Array<{ primitiveId: number; quantity: number; buCost: number | null }> = [];
+        if (capIds.length > 0) {
+          capPrimRows = await db
+            .select({
+              primitiveId: capabilityPrimitives.primitiveId,
+              quantity: capabilityPrimitives.quantity,
+              buCost: primitives.buCost,
+            })
+            .from(capabilityPrimitives)
+            .innerJoin(primitives, eq(primitives.id, capabilityPrimitives.primitiveId))
+            .where(inArray(capabilityPrimitives.capabilityId, capIds));
+          capEffPrimRows = await db
+            .select({
+              primitiveId: effectPrimitives.primitiveId,
+              quantity: effectPrimitives.quantity,
+              buCost: primitives.buCost,
+            })
+            .from(capabilityEffects)
+            .innerJoin(effectPrimitives, eq(effectPrimitives.effectId, capabilityEffects.effectId))
+            .innerJoin(primitives, eq(primitives.id, effectPrimitives.primitiveId))
+            .where(inArray(capabilityEffects.capabilityId, capIds));
+        }
+        const seen = new Set<number>();
+        let bu = result.primitiveLinks.reduce((t, l) => t + (l.primitive?.buCost ?? 0), 0);
+        for (const l of result.primitiveLinks) {
+          if (l.primitive?.id) seen.add(l.primitive.id);
+        }
+        for (const cp of capPrimRows) {
+          if (!seen.has(cp.primitiveId)) {
+            seen.add(cp.primitiveId);
+            bu += (cp.buCost ?? 0) * (cp.quantity ?? 1);
+          }
+        }
+        for (const ep of capEffPrimRows) {
+          if (!seen.has(ep.primitiveId)) {
+            seen.add(ep.primitiveId);
+            bu += (ep.buCost ?? 0) * (ep.quantity ?? 1);
+          }
+        }
         return NextResponse.json(
           {
             template: { ...result, computedBu: bu },
@@ -562,20 +716,7 @@ export async function PATCH(
         where: eq(heritage.id, inserted.id),
         with: {
           primitiveLinks: { with: { primitive: true } },
-          capabilityLinks: {
-            with: {
-              capability: {
-                with: {
-                  primitiveLinks: { with: { primitive: true } },
-                  effectLinks: {
-                    with: {
-                      effect: { with: { primitiveLinks: { with: { primitive: true } } } },
-                    },
-                  },
-                },
-              },
-            },
-          },
+          capabilityLinks: { with: { capability: true } },
         },
       });
       return createdFromTx;
@@ -622,19 +763,49 @@ export async function PATCH(
       }
     }
 
-    // Phase 8.1 batch 13.1 follow-up: transitive BU computation
-    // (matches GET endpoint above).
-    const bu = computeTransitiveBu({
-      primitiveLinks: created.primitiveLinks,
-      capabilityLinks: created.capabilityLinks.map((cl) => ({
-        capabilityId: cl.capabilityId,
-        primitiveLinks: cl.capability.primitiveLinks,
-        effectLinks: cl.capability.effectLinks?.map((el) => ({
-          effectId: el.effectId,
-          primitiveLinks: el.effect.primitiveLinks,
-        })),
-      })),
-    }).transitiveBu;
+    // Phase 8.1 batch 13.1 follow-up: compute transitive BU using the
+    // same flat-query approach as PATCH above.
+    const capIds = created.capabilityLinks.map((cl) => cl.capabilityId);
+    let capPrimRows: Array<{ primitiveId: number; quantity: number; buCost: number | null }> = [];
+    let capEffPrimRows: Array<{ primitiveId: number; quantity: number; buCost: number | null }> = [];
+    if (capIds.length > 0) {
+      capPrimRows = await db
+        .select({
+          primitiveId: capabilityPrimitives.primitiveId,
+          quantity: capabilityPrimitives.quantity,
+          buCost: primitives.buCost,
+        })
+        .from(capabilityPrimitives)
+        .innerJoin(primitives, eq(primitives.id, capabilityPrimitives.primitiveId))
+        .where(inArray(capabilityPrimitives.capabilityId, capIds));
+      capEffPrimRows = await db
+        .select({
+          primitiveId: effectPrimitives.primitiveId,
+          quantity: effectPrimitives.quantity,
+          buCost: primitives.buCost,
+        })
+        .from(capabilityEffects)
+        .innerJoin(effectPrimitives, eq(effectPrimitives.effectId, capabilityEffects.effectId))
+        .innerJoin(primitives, eq(primitives.id, effectPrimitives.primitiveId))
+        .where(inArray(capabilityEffects.capabilityId, capIds));
+    }
+    const seen = new Set<number>();
+    let bu = created.primitiveLinks.reduce((t, l) => t + (l.primitive?.buCost ?? 0), 0);
+    for (const l of created.primitiveLinks) {
+      if (l.primitive?.id) seen.add(l.primitive.id);
+    }
+    for (const cp of capPrimRows) {
+      if (!seen.has(cp.primitiveId)) {
+        seen.add(cp.primitiveId);
+        bu += (cp.buCost ?? 0) * (cp.quantity ?? 1);
+      }
+    }
+    for (const ep of capEffPrimRows) {
+      if (!seen.has(ep.primitiveId)) {
+        seen.add(ep.primitiveId);
+        bu += (ep.buCost ?? 0) * (ep.quantity ?? 1);
+      }
+    }
 
     return NextResponse.json(
       {

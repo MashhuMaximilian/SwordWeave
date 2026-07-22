@@ -192,6 +192,16 @@ function ComposedList({
     versionNumber?: number | null | undefined;
     subText?: ReactNode;
     note?: string | null;
+    // Phase 8.1 batch 13.2 follow-up: per-item targetType so the
+    // preview modal knows whether to fetch a primitive, capability,
+    // effect, or item when the user clicks the row. Previously the
+    // component always fired `targetType: "PRIMITIVE"`, which meant
+    // clicking a bundled capability from a heritage preview did
+    // nothing useful (the modal opened with the wrong targetType).
+    // Mashu 2026-07-22: "in view atelier if i click on a bundled
+    // capability, it does not open the preview modal for that like
+    // it does for effects or primitives."
+    targetType?: "PRIMITIVE" | "CAPABILITY" | "EFFECT" | "ITEM";
   }>;
   onSubLink?: (link: PreviewSubLink) => void;
 }) {
@@ -208,7 +218,7 @@ function ComposedList({
               onSubLink
                 ? () =>
                     onSubLink({
-                      targetType: "PRIMITIVE",
+                      targetType: it.targetType ?? "PRIMITIVE",
                       targetId: it.id,
                       label: it.name,
                     })
@@ -219,7 +229,11 @@ function ComposedList({
                 ? (e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      onSubLink!({ targetType: "PRIMITIVE", targetId: it.id, label: it.name });
+                      onSubLink!({
+                        targetType: it.targetType ?? "PRIMITIVE",
+                        targetId: it.id,
+                        label: it.name,
+                      });
                     }
                   }
                 : undefined
@@ -1078,6 +1092,14 @@ function TemplateBody({
           name: l.capability.name,
           bu: (l.capability.primitiveLinks ?? []).reduce((s, x) => s + Math.abs(x.primitive.buCost), 0),
           versionNumber: l.versionNumber,
+          // Phase 8.1 batch 13.2 follow-up: open the capability
+          // preview when the user clicks this row. The default
+          // (PRIMITIVE) would route the click to the wrong
+          // endpoint. Mashu 2026-07-22: "in view atelier if i
+          // click on a bundled capability, it does not open the
+          // preview modal for that like it does for effects or
+          // primitives."
+          targetType: "CAPABILITY" as const,
         }))}
       />
     </div>

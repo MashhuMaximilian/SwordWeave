@@ -288,6 +288,13 @@
       "when": 1785500000000,
       "tag": "0043_character_primitive_origins",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1785600000000,
+      "tag": "0044_cascade_capability_deletion",
+      "breakpoints": true
     }
   ]
 }

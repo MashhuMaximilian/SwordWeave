@@ -49,6 +49,16 @@ type HeritageRow = {
       buCost: number;
     };
   }>;
+  // Phase 8.1 batch 13.1 follow-up: heritage can bundle capabilities
+  // (and via them, effects). The atelier-sandbox-client's HeritageRow
+  // already had this field — the form was missing it, which is why
+  // editing an existing template showed no capability slots. Adding
+  // it here so the form's effect can hydrate capabilityIds from the
+  // loaded row (see useEffect at the bottom of the form).
+  capabilityLinks?: Array<{
+    capabilityId: string;
+    capability: { id: string; name: string };
+  }>;
   // Phase 8: per-entity iconography
   iconSource: string | null;
   iconKey: string | null;
@@ -212,7 +222,16 @@ export function HeritageForm({
       return;
     }
     setPrimitiveIds(initialTemplate.primitiveLinks.map((l) => l.primitiveId));
-    setCapabilityIds([]);
+    // Phase 8.1 batch 13.1 follow-up: hydrate capability slots from
+    // the loaded row. Previously this was `[]` (overwriting any
+    // bundled capabilities on edit, which silently dropped them on
+    // save). Mashu 2026-07-22: "if I go to my creations and edit
+    // something, it gets me to atelier, opens build modal, but i do
+    // not see the capabilities and/or effects I slotted in which is
+    // bad."
+    setCapabilityIds(
+      (initialTemplate.capabilityLinks ?? []).map((cl) => cl.capabilityId),
+    );
     // Phase 7 Q-M-UX: restore the per-slot Mirrored flags from the
     // saved row. The DB column was added in migration 0034; legacy
     // rows simply get an empty set (all slots non-mirrored).
