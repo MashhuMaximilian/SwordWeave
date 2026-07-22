@@ -10,6 +10,7 @@ import {
   makeKey,
   type VersionKey,
 } from "@/lib/versions/bulk-resolve-latest-versions";
+import { parseBackstory } from "@/lib/character/character-backstory";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,12 @@ export default async function CharacterSheetPage({
       // Phase 8.1 batch 13.1: include heritage slots for the origin
       // chain badges on the sheet.
       heritageLinks: { with: { heritage: true } },
+      // Phase 8.2 batch 3: include the character's event log so the
+      // History tab can render a timeline. Order newest-first.
+      logEntries: {
+        orderBy: (l, { desc }) => [desc(l.createdAt)],
+        limit: 500,
+      },
     },
   });
 
@@ -265,6 +272,32 @@ export default async function CharacterSheetPage({
         },
       }))}
       initialEditMode={sp.edit === "1"}
+      // Phase 8.2 batch 3: pass logEntries to the view for the
+      // History tab. The shape matches what aggregateCharacterSheet
+      // has historically logged on the character row; here we just
+      // forward the raw log rows from the join.
+      logEntries={(
+        (row as unknown as { logEntries?: Array<{
+          id: number;
+          characterId: string;
+          kind: string;
+          payload: unknown;
+          createdAt: Date;
+        }> }).logEntries ?? []
+      ).map((l) => ({
+        id: l.id,
+        kind: l.kind,
+        payload: (l.payload ?? {}) as Record<string, unknown>,
+        createdAt:
+          l.createdAt instanceof Date
+            ? l.createdAt.toISOString()
+            : new Date(l.createdAt as unknown as string).toISOString(),
+      }))}
+      // Phase 8.2 batch 3: parse the backstory jsonb column once
+      // here so the view doesn't need to know the raw shape.
+      backstory={parseBackstory(
+        (row as unknown as { backstory?: unknown }).backstory,
+      )}
     />
   );
 }

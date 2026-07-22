@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowUp,
+  ChevronDown,
   ChevronRight,
   Edit,
   Heart,
@@ -15,12 +16,30 @@ import {
   Sparkles,
   Swords,
   X,
+  Activity,
+  Clock,
+  Users,
+  Flame,
+  AlertTriangle,
+  BookOpen,
+  History,
+  Check,
+  Trash2,
 } from "lucide-react";
 import { DetailModal } from "@/components/ui/detail-modal";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
 import { OriginBadge } from "@/components/characters/origin-badge";
 import { VitalityTracker } from "@/components/characters/vitality-tracker";
+import {
+  BACKSTORY_FIELDS,
+  isBackstoryEmpty,
+  parseBackstory,
+  sanitizeBackstory,
+  type BackstoryFieldMeta,
+  type BackstoryKey,
+  type CharacterBackstory,
+} from "@/lib/character/character-backstory";
 
 // Re-use the same SlotSource type the badge component accepts.
 type SlotSource = "OWNED" | "FORKED" | "PINNED";
@@ -28,13 +47,19 @@ type SlotSource = "OWNED" | "FORKED" | "PINNED";
 /**
  * Character Sheet UI
  *
- * 5 tabs: Overview · Practices · Capabilities · Items · Notes
- * Mobile: bottom tabs. Desktop: top tabs.
+ * 6 tabs: Overview · Capabilities · Items · Backstory · Notes · History
+ * Mobile: bottom tabs (horizontally scrollable). Desktop: top tabs.
  *
- * Sticky BU bar always visible: spent/remaining + level + total + separate item BU.
+ * Phase 8.2 batch 3: Tab restructure per Mashu 2026-07-22.
+ *   - Overview merges practices (compact attribute columns inline)
+ *   - Backstory is a dedicated tab (read-only on sheet; modal edits)
+ *   - History shows the character's event log (capability toggles,
+ *     rests, vitality changes, level-ups, item equips)
+ *   - Notes: inline edit always (no editMode gate, no modal)
+ *   - Capabilities accordions are scheduled for batch 8.2.4
  *
- * Edit mode toggles inline fields (level, attributes, BU, items, notes).
- * Level-up button in header with confirm dialog (resets DM bonus).
+ * Edit mode still gates the "character mechanics" panel (level,
+ * attributes, BU, vitality). Notes no longer depends on it.
  */
 
 type SheetPrimitiveLink = {
@@ -211,23 +236,36 @@ export type CharacterSheetProps = {
     };
   }>;
   initialEditMode: boolean;
+  // Phase 8.2 batch 3: freeform backstory. The DB column is
+  // `backstory jsonb`; we forward the parsed shape so the tab
+  // can render labels directly without re-parsing.
+  backstory: CharacterBackstory;
+  // Phase 8.2 batch 3: the character's event log. Ordered
+  // newest-first by the page SC. ISO string for createdAt so
+  // it serializes cleanly through the Server→Client boundary.
+  logEntries: Array<{
+    id: number;
+    kind: string;
+    payload: Record<string, unknown>;
+    createdAt: string;
+  }>;
 };
 
-type Tab = "overview" | "practices" | "capabilities" | "items" | "notes";
+type Tab = "overview" | "capabilities" | "items" | "backstory" | "notes" | "history";
 
 const TABS: Array<{ id: Tab; label: string; icon: typeof Edit }> = [
   { id: "overview", label: "Overview", icon: Shield },
-  { id: "practices", label: "Practices", icon: Sparkles },
   { id: "capabilities", label: "Capabilities", icon: Swords },
   { id: "items", label: "Items", icon: Package },
+  { id: "backstory", label: "Backstory", icon: BookOpen },
   { id: "notes", label: "Notes", icon: ScrollText },
+  { id: "history", label: "History", icon: History },
 ];
 
 export function CharacterSheetView(props: CharacterSheetProps) {
   const [tab, setTab] = useState<Tab>("overview");
   const [editMode, setEditMode] = useState(props.initialEditMode);
   const [levelUpConfirm, setLevelUpConfirm] = useState(false);
-  const [expandedPractice, setExpandedPractice] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toasts, showToast, dismissToast } = useToasts();
 
@@ -416,15 +454,6 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         {tab === "overview" && (
           <OverviewTab props={props} editMode={editMode} onSaved={() => window.location.reload()} showToast={showToast} />
         )}
-        {tab === "practices" && (
-          <PracticesTab
-            practices={props.practices}
-            defensiveDCs={props.defensiveDCs}
-            attrProficient={props.attrProficient}
-            expandedPractice={expandedPractice}
-            setExpandedPractice={setExpandedPractice}
-          />
-        )}
         {tab === "capabilities" && (
           <CapabilitiesTab
             capabilities={props.capabilityLinks.map((l) => ({
@@ -462,15 +491,24 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             id={props.id}
             initialNotes={props.notes ?? ""}
             initialDmNotes={props.dmNotes ?? ""}
-            editMode={editMode}
             showToast={showToast}
           />
         )}
+        {tab === "backstory" && (
+          <BackstoryTab
+            id={props.id}
+            initial={props.backstory}
+            showToast={showToast}
+          />
+        )}
+        {tab === "history" && (
+          <HistoryTab logEntries={props.logEntries} />
+        )}
       </div>
 
-      {/* Mobile bottom tabs */}
+      {/* Mobile bottom tabs — Phase 8.2 batch 3: scrollable for 6 tabs */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-background/95 backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 flex overflow-x-auto border-t border-border bg-background/95 backdrop-blur md:hidden"
         aria-label="Sheet tabs (mobile)"
       >
         {TABS.map((t) => {
@@ -480,14 +518,14 @@ export function CharacterSheetView(props: CharacterSheetProps) {
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
-              className={`flex flex-col items-center gap-1 py-2 text-xs ${
+              className={`flex min-w-[68px] shrink-0 flex-col items-center gap-0.5 px-2 py-2 text-[10px] font-medium transition-colors ${
                 tab === t.id
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Icon className="size-5" />
-              {t.label}
+              <Icon className="size-4" />
+              <span className="whitespace-nowrap">{t.label}</span>
             </button>
           );
         })}
@@ -758,6 +796,21 @@ function VolatilityPanel({
 // =============================================================================
 // Overview Tab
 // =============================================================================
+//
+// Phase 8.2 batch 3 redesign per Mashu 2026-07-22:
+//   - Vitality tracker sits at the top, full width, with action
+//     buttons inline (no internal card grid splitting it from Defenses).
+//   - Defenses moved to a small 3-cell row below vitality (saves
+//     vertical space and avoids duplicating info already in Practices).
+//   - Load + Equip slots collapsed into a single dense row.
+//   - Identity strip below: 4 columns on md+, 2 on sm, 1 on xs.
+//   - Practices merged in: three compact columns with attribute totals,
+//     each practice row is a one-line pill with inline expansion.
+//   - No bulky h3 icons; rely on a 3px top accent stripe per card to
+//     identify the section at a glance.
+//
+// The Practices sub-component manages its own expanded-state, so the
+// parent doesn't need to thread state through.
 
 function OverviewTab({
   props,
@@ -773,116 +826,126 @@ function OverviewTab({
   const attrSum = props.attrPhysical + props.attrMental + props.attrMagical;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      {/* Vitality + Defensive DC */}
-      <div className="rounded-md border border-border bg-card p-5">
-        <h3 className="flex items-center gap-2 text-lg font-semibold">
-          <Heart className="size-5 text-rose-500" />
-          Vitality & Defenses
-        </h3>
-        <div className="mt-4 grid grid-cols-2 gap-3">
+    <div className="space-y-4">
+      {/* ---- Identity strip (compact, full-width) ---- */}
+      <section
+        aria-label="Identity"
+        className="relative overflow-hidden rounded-md border border-border bg-card"
+      >
+        <span className="absolute inset-x-0 top-0 h-0.5 bg-primary" />
+        <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
+          <IdentityCell
+            label="Lineage"
+            value={props.lineageName ?? "—"}
+            note={props.lineageDescription ?? null}
+          />
+          <IdentityCell
+            label="Upbringing"
+            value={props.upbringingName ?? "—"}
+            note={props.upbringingDescription ?? null}
+          />
+          <IdentityCell label="Manifest" value={props.manifestName ?? "—"} />
+          <IdentityCell
+            label="Attributes"
+            value={`${attrSum} / 10`}
+            tone={attrSum === 10 ? "ok" : "bad"}
+            note={attrSum === 10 ? "✓ valid" : `✗ off by ${attrSum - 10}`}
+          />
+        </div>
+      </section>
+
+      {/* ---- Vitality + Defenses (single dense band) ---- */}
+      <section
+        aria-label="Vitality and defenses"
+        className="relative overflow-hidden rounded-md border border-border bg-card"
+      >
+        <span className="absolute inset-x-0 top-0 h-0.5 bg-rose-500" />
+        <div className="grid gap-4 p-4 md:grid-cols-[1fr_auto] md:items-start md:gap-6">
           <VitalityTracker
             characterId={props.id}
             max={props.vitality.max}
             current={props.vitality.current ?? 0}
           />
-          <div>
-            <p className="text-xs font-semibold uppercase text-muted-foreground">
-              Defensive DCs
+          {/* Defensive DCs as a compact horizontal row (NOT a card) */}
+          <div className="flex flex-row gap-2 md:flex-col md:gap-1 md:border-l md:border-border md:pl-6">
+            <p className="hidden text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:block">
+              Defenses
             </p>
-            <ul className="mt-2 space-y-1">
-              {props.defensiveDCs.map((d) => (
-                <li
-                  key={d.attribute}
-                  className="flex items-center justify-between text-sm"
-                >
-                  <span className="text-muted-foreground">{d.attribute}</span>
-                  <span className="font-mono font-bold">{d.dc}</span>
-                </li>
-              ))}
-            </ul>
+            {props.defensiveDCs.map((d) => (
+              <div
+                key={d.attribute}
+                className="flex items-baseline gap-2 rounded-md border border-border bg-background px-3 py-1.5 md:min-w-[110px]"
+              >
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {d.attribute.slice(0, 4)}
+                </span>
+                <span className="font-mono text-base font-bold tabular-nums">
+                  {d.dc}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Encumbrance */}
-      <div className="rounded-md border border-border bg-card p-5">
-        <h3 className="flex items-center gap-2 text-lg font-semibold">
-          <Package className="size-5 text-amber-500" />
-          Encumbrance
-        </h3>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase text-muted-foreground">
-              Load
-            </p>
-            <p
-              className={`mt-1 font-mono text-2xl font-bold ${
-                props.encumbrance.encumbered ? "text-destructive" : ""
-              }`}
-            >
-              {props.encumbrance.load}
-              <span className="text-muted-foreground text-sm">
-                {" "}
-                / {props.encumbrance.capacity}
+      {/* ---- Load + Equip slots (one-row stat band) ---- */}
+      <section
+        aria-label="Load and equip slots"
+        className="relative overflow-hidden rounded-md border border-border bg-card"
+      >
+        <span className="absolute inset-x-0 top-0 h-0.5 bg-amber-500" />
+        <div className="grid grid-cols-2 divide-x divide-border md:grid-cols-2">
+          <StatCell
+            label="Load"
+            primary={`${props.encumbrance.load}`}
+            secondary={`/ ${props.encumbrance.capacity}`}
+            bar={{
+              percent: Math.min(100, props.encumbrance.percentOfCapacity),
+              tone:
+                props.encumbrance.encumbered
+                  ? "destructive"
+                  : props.encumbrance.percentOfCapacity > 90
+                    ? "warning"
+                    : "ok",
+            }}
+            alert={
+              props.encumbrance.encumbered ? "Encumbered!" : null
+            }
+          />
+          <StatCell
+            label="Equip Slots"
+            primary={`${props.encumbrance.equipSlotsUsed}`}
+            secondary={`/ ${props.encumbrance.equipSlotsAvailable}`}
+          />
+        </div>
+      </section>
+
+      {/* ---- Practices (compact three-column, merged from old PracticesTab) ---- */}
+      <section
+        aria-label="Practices"
+        className="relative overflow-hidden rounded-md border border-border bg-card"
+      >
+        <span className="absolute inset-x-0 top-0 h-0.5 bg-blue-500" />
+        <div className="px-4 pt-3 pb-2">
+          <div className="flex items-baseline justify-between">
+            <h3 className="text-sm font-semibold">Practices</h3>
+            {props.attrProficient && (
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-primary">
+                Proficient: {props.attrProficient}
               </span>
-            </p>
-            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-secondary">
-              <div
-                className={`h-full rounded-full ${
-                  props.encumbrance.encumbered
-                    ? "bg-destructive"
-                    : props.encumbrance.percentOfCapacity > 90
-                      ? "bg-amber-500"
-                      : "bg-primary"
-                }`}
-                style={{
-                  width: `${Math.min(100, props.encumbrance.percentOfCapacity)}%`,
-                }}
-              />
-            </div>
-            {props.encumbrance.encumbered && (
-              <p className="mt-2 text-xs text-destructive">Encumbered!</p>
             )}
           </div>
-          <div>
-            <p className="text-xs font-semibold uppercase text-muted-foreground">
-              Equip Slots
-            </p>
-            <p className="mt-1 font-mono text-2xl font-bold">
-              {props.encumbrance.equipSlotsUsed}
-              <span className="text-muted-foreground text-sm">
-                {" "}
-                / {props.encumbrance.equipSlotsAvailable}
-              </span>
-            </p>
-          </div>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            Roll modifier = attribute slice + PB (if proficient) + primitive bonuses.
+          </p>
         </div>
-      </div>
+        <PracticesPanel
+          practices={props.practices}
+          attrProficient={props.attrProficient}
+        />
+      </section>
 
-      {/* Identity / Race / BG / Archetype */}
-      <div className="rounded-md border border-border bg-card p-5 lg:col-span-2">
-        <h3 className="flex items-center gap-2 text-lg font-semibold">
-          <Shield className="size-5 text-primary" />
-          Identity
-        </h3>
-        <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Field label="Lineage" value={props.lineageName ?? "—"} {...(props.lineageDescription ? { description: props.lineageDescription } : {})} />
-          <Field
-            label="Upbringing"
-            value={props.upbringingName ?? "—"}
-            {...(props.upbringingDescription ? { description: props.upbringingDescription } : {})}
-          />
-          <Field label="Manifest" value={props.manifestName ?? "—"} />
-          <Field
-            label="Attribute Sum"
-            value={`${attrSum} / 10 ${
-              attrSum === 10 ? "✓" : "✗ INVALID"
-            }`}
-          />
-        </dl>
-      </div>
-
+      {/* ---- Edit panel (collapsed by default — kept for backward compat) ---- */}
       {editMode && (
         <QuickEditPanel
           props={props}
@@ -890,6 +953,95 @@ function OverviewTab({
           onSaved={onSaved}
           showToast={showToast}
         />
+      )}
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Dense atomic cells used by OverviewTab
+// -----------------------------------------------------------------------------
+
+function IdentityCell({
+  label,
+  value,
+  note,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  note?: string | null;
+  tone?: "default" | "ok" | "bad";
+}) {
+  return (
+    <div className="bg-card p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <p
+        className={`mt-1 truncate font-medium ${
+          tone === "ok"
+            ? "text-green-600 dark:text-green-400"
+            : tone === "bad"
+              ? "text-destructive"
+              : ""
+        }`}
+      >
+        {value}
+      </p>
+      {note && (
+        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+          {note}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function StatCell({
+  label,
+  primary,
+  secondary,
+  bar,
+  alert,
+}: {
+  label: string;
+  primary: string;
+  secondary?: string;
+  bar?: { percent: number; tone: "ok" | "warning" | "destructive" };
+  alert?: string | null;
+}) {
+  return (
+    <div className="bg-card p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1 font-mono text-2xl font-bold tabular-nums">
+        {primary}
+        {secondary && (
+          <span className="ml-1 text-sm font-normal text-muted-foreground">
+            {secondary}
+          </span>
+        )}
+      </p>
+      {bar && (
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
+          <div
+            className={`h-full rounded-full transition-all ${
+              bar.tone === "destructive"
+                ? "bg-destructive"
+                : bar.tone === "warning"
+                  ? "bg-amber-500"
+                  : "bg-primary"
+            }`}
+            style={{ width: `${bar.percent}%` }}
+          />
+        </div>
+      )}
+      {alert && (
+        <p className="mt-1 text-[11px] font-semibold text-destructive">
+          {alert}
+        </p>
       )}
     </div>
   );
@@ -1237,22 +1389,24 @@ function NumField({
 }
 
 // =============================================================================
-// Practices Tab
+// Practices Panel (compact, used inside OverviewTab)
 // =============================================================================
+//
+// Phase 8.2 batch 3 redesign: instead of a separate Practices tab,
+// this panel is embedded in Overview. Each attribute is a column;
+// each practice is a one-line row that expands inline (no modal).
+// Click a row to toggle the breakdown — same data the modal used
+// to show, but right under the row it came from. Mobile-friendly
+// because there's no extra navigation.
 
-function PracticesTab({
+function PracticesPanel({
   practices,
-  defensiveDCs,
   attrProficient,
-  expandedPractice,
-  setExpandedPractice,
 }: {
   practices: PracticeRow[];
-  defensiveDCs: DefensiveDC[];
   attrProficient: string | null;
-  expandedPractice: string | null;
-  setExpandedPractice: (s: string | null) => void;
 }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
   const byAttr: Record<string, PracticeRow[]> = {
     PHYSICAL: [],
     MENTAL: [],
@@ -1262,121 +1416,108 @@ function PracticesTab({
     byAttr[p.attribute]?.push(p);
   }
 
+  // Sort practices within each attribute: highest modifier first so
+  // the player's best skills are at the top of each column.
+  const sortByTotal = (rows: PracticeRow[]) =>
+    [...rows].sort((a, b) => b.total - a.total);
+
   return (
-    <div>
-      <p className="text-sm text-muted-foreground">
-        Roll modifier for each practice: slice (from attribute distribution) +
-        PB (if proficient in that attribute) + primitive bonuses.
-        {attrProficient && (
-          <>
-            {" "}
-            You are proficient in <strong>{attrProficient}</strong> — all
-            practices under it receive PB.
-          </>
-        )}
-      </p>
-
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
-        {(["PHYSICAL", "MENTAL", "MAGICAL"] as const).map((attr) => (
-          <section
-            key={attr}
-            className="rounded-md border border-border bg-card p-4"
-          >
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              {attr}
-            </h3>
-            <ul className="mt-3 space-y-1">
-              {byAttr[attr]?.map((p) => (
-                <li key={p.practice}>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExpandedPractice(
-                        expandedPractice === p.practice ? null : p.practice,
-                      )
-                    }
-                    className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left transition-colors ${
-                      expandedPractice === p.practice
-                        ? "border-primary bg-primary/10"
-                        : "border-border bg-background hover:border-primary/50"
-                    }`}
+    <div className="grid divide-y divide-border border-t border-border md:grid-cols-3 md:divide-x md:divide-y-0">
+      {(["PHYSICAL", "MENTAL", "MAGICAL"] as const).map((attr) => {
+        const rows = sortByTotal(byAttr[attr] ?? []);
+        const proficient = attrProficient === attr;
+        const bestTotal = rows[0]?.total ?? 0;
+        return (
+          <div key={attr} className="bg-card p-2">
+            <div className="flex items-baseline justify-between px-2 pb-1">
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {attr}
+                {proficient && (
+                  <span
+                    aria-label="Proficient"
+                    title="Proficient — gains PB on all practices"
+                    className="rounded bg-primary/15 px-1 text-[9px] font-bold text-primary"
                   >
-                    <span className="font-medium capitalize">
-                      {p.practice}
-                    </span>
-                    <span className="font-mono font-bold">
-                      {p.total >= 0 ? "+" : ""}
-                      {p.total}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
-      </div>
-
-      <DetailModal
-        isOpen={expandedPractice !== null}
-        onClose={() => setExpandedPractice(null)}
-        title={
-          expandedPractice
-            ? `${expandedPractice.charAt(0).toUpperCase() + expandedPractice.slice(1)} breakdown`
-            : ""
-        }
-      >
-        {expandedPractice && (
-          <BreakdownView
-            practice={
-              practices.find((p) => p.practice === expandedPractice)!
-            }
-          />
-        )}
-      </DetailModal>
-
-      <div className="mt-6 rounded-md border border-border bg-card p-5">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Defensive DCs
-        </h3>
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          {defensiveDCs.map((d) => (
-            <div
-              key={d.attribute}
-              className="rounded-md border border-border bg-background px-3 py-2 text-center"
-            >
-              <div className="text-xs font-semibold uppercase text-muted-foreground">
-                {d.attribute}
-              </div>
-              <div className="mt-1 font-mono text-2xl font-bold">{d.dc}</div>
+                    PROF
+                  </span>
+                )}
+              </span>
+              <span className="font-mono text-xs font-bold text-muted-foreground tabular-nums">
+                {rows.length > 0 ? `${bestTotal >= 0 ? "+" : ""}${bestTotal}` : "—"}
+              </span>
             </div>
-          ))}
-        </div>
-      </div>
+            {rows.length === 0 ? (
+              <p className="px-2 py-2 text-[11px] text-muted-foreground">
+                No practices.
+              </p>
+            ) : (
+              <ul className="space-y-0.5">
+                {rows.map((p) => {
+                  const isOpen = expanded === p.practice;
+                  return (
+                    <li key={p.practice}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpanded(isOpen ? null : p.practice)
+                        }
+                        aria-expanded={isOpen}
+                        className={`flex w-full items-center justify-between rounded px-2 py-1 text-left text-sm transition-colors ${
+                          isOpen
+                            ? "bg-primary/10"
+                            : "hover:bg-secondary"
+                        }`}
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <ChevronRight
+                            className={`size-3 text-muted-foreground transition-transform ${
+                              isOpen ? "rotate-90" : ""
+                            }`}
+                          />
+                          <span className="capitalize">{p.practice}</span>
+                        </span>
+                        <span className="font-mono text-sm font-bold tabular-nums">
+                          {p.total >= 0 ? "+" : ""}
+                          {p.total}
+                        </span>
+                      </button>
+                      {isOpen && (
+                        <div className="border-l-2 border-primary/40 bg-secondary/30 px-3 py-2 text-xs">
+                          <BreakdownView practice={p} />
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 function BreakdownView({ practice }: { practice: PracticeRow }) {
   return (
-    <div className="space-y-3 text-sm">
-      <div className="flex items-center justify-between text-base">
+    <div className="space-y-1.5 text-xs">
+      <div className="flex items-center justify-between text-sm">
         <span className="font-semibold capitalize">{practice.practice}</span>
-        <span className="font-mono text-2xl font-bold">
+        <span className="font-mono text-base font-bold tabular-nums">
           {practice.total >= 0 ? "+" : ""}
           {practice.total}
         </span>
       </div>
-      <hr className="border-border" />
-      <BreakdownRow label="Slice (from attribute)" value={practice.slice} />
+      <BreakdownRow label="Slice (attr)" value={practice.slice} />
       <BreakdownRow
-        label="Proficiency Bonus"
+        label="Proficiency"
         value={practice.pbContribution}
         subdued={practice.pbContribution === 0}
       />
       {practice.primitiveContributions.length > 0 && (
-        <>
-          <p className="text-xs font-semibold uppercase text-muted-foreground">
-            Primitive bonuses
+        <div className="mt-1 space-y-0.5 border-t border-border/50 pt-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Primitives
           </p>
           {practice.primitiveContributions.map((p) => (
             <BreakdownRow
@@ -1385,12 +1526,12 @@ function BreakdownView({ practice }: { practice: PracticeRow }) {
               value={p.bonus}
             />
           ))}
-        </>
+        </div>
       )}
       {practice.primitiveContributions.length === 0 &&
         practice.pbContribution === 0 && (
-          <p className="text-xs text-muted-foreground">
-            No PB or primitive bonuses. Only slice contributes.
+          <p className="text-[10px] italic text-muted-foreground">
+            Pure attribute slice.
           </p>
         )}
     </div>
@@ -1616,27 +1757,55 @@ function ItemsTab({
 }
 
 // =============================================================================
-// Notes Tab
+// Notes Tab — inline edit always (Phase 8.2 batch 3)
 // =============================================================================
+//
+// Per Mashu 2026-07-22 mid-batch: "in notes tab I need to be able to
+// edit and save inline. The rest as established, but in notes I need
+// to be able to edit those without going to modal."
+//
+// Notes is no longer gated by the global editMode toggle. Both
+// the player-visible notes and DM notes are inline-editable
+// always. Dirty state is tracked per-field; Save persists both
+// fields together; debounced auto-save is a stretch goal.
+//
+// We track `lastSavedAt` so the user sees "Saved 2s ago" instead
+// of guessing whether the click took effect.
 
 function NotesTab({
   id,
   initialNotes,
   initialDmNotes,
-  editMode,
   showToast,
 }: {
   id: string;
   initialNotes: string;
   initialDmNotes: string;
-  editMode: boolean;
   showToast: (msg: string, type: "success" | "error") => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [notes, setNotes] = useState(initialNotes);
   const [dmNotes, setDmNotes] = useState(initialDmNotes);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+
+  const notesDirty = notes !== initialNotes;
+  const dmDirty = dmNotes !== initialDmNotes;
+  const dirty = notesDirty || dmDirty;
+
+  // Reset baseline when props change (server refresh after a save).
+  // The trick: only sync local state if the incoming initial* differs
+  // from our local state by more than the user's pending edit, OR
+  // the user has no pending edits and the server has fresh data.
+  useEffect(() => {
+    if (!dirty) {
+      setNotes(initialNotes);
+      setDmNotes(initialDmNotes);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialNotes, initialDmNotes]);
 
   async function save() {
+    if (!dirty || isPending) return;
     startTransition(async () => {
       try {
         const res = await fetch(`/api/characters/${id}`, {
@@ -1652,6 +1821,9 @@ function NotesTab({
           showToast(data.error ?? "Save failed.", "error");
           return;
         }
+        // Update baselines so dirty → false
+        // (the parent will eventually re-render with fresh props too).
+        setLastSavedAt(new Date());
         showToast("Notes saved.", "success");
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : "Unknown error.";
@@ -1660,66 +1832,666 @@ function NotesTab({
     });
   }
 
+  function discard() {
+    setNotes(initialNotes);
+    setDmNotes(initialDmNotes);
+  }
+
+  const savedLabel = lastSavedAt
+    ? `Saved ${formatRelative(lastSavedAt)}`
+    : dirty
+      ? "Unsaved changes"
+      : "Up to date";
+
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <div className="rounded-md border border-border bg-card p-5">
-        <h3 className="text-lg font-semibold">Notes</h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Visible to everyone. Personality, backstory, hooks.
-        </p>
-        {editMode ? (
+    <div className="space-y-4">
+      {/* ---- Player-visible notes (always editable) ---- */}
+      <section
+        aria-label="Character notes"
+        className="relative overflow-hidden rounded-md border border-border bg-card"
+      >
+        <span className="absolute inset-x-0 top-0 h-0.5 bg-primary" />
+        <div className="p-4">
+          <div className="flex items-baseline justify-between">
+            <h3 className="text-sm font-semibold">Notes</h3>
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Public · everyone can read
+            </span>
+          </div>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            rows={12}
-            className="mt-3 w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono"
-            placeholder="Lore, traits, hooks..."
+            rows={10}
+            placeholder="Personality, backstory hooks, ties, voice…"
+            className="mt-3 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
-        ) : (
-          <p className="mt-3 whitespace-pre-wrap text-sm text-foreground">
-            {notes || <span className="text-muted-foreground">—</span>}
-          </p>
-        )}
-      </div>
+          <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+            <span>{notes.length} chars</span>
+            {notesDirty && (
+              <span className="font-semibold text-amber-600">Unsaved</span>
+            )}
+          </div>
+        </div>
+      </section>
 
-      <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-5">
-        <h3 className="flex items-center gap-2 text-lg font-semibold">
-          <ScrollText className="size-5 text-amber-500" />
-          DM Notes
-        </h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Private to the DM. Plot hooks, secrets, triggers.
-        </p>
-        {editMode ? (
-          <>
-            <textarea
-              value={dmNotes}
-              onChange={(e) => setDmNotes(e.target.value)}
-              rows={12}
-              className="mt-3 w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono"
-              placeholder="DM-only secrets..."
-            />
+      {/* ---- DM-only notes ---- */}
+      <section
+        aria-label="DM notes"
+        className="relative overflow-hidden rounded-md border border-amber-500/40 bg-amber-500/5"
+      >
+        <span className="absolute inset-x-0 top-0 h-0.5 bg-amber-500" />
+        <div className="p-4">
+          <div className="flex items-baseline justify-between">
+            <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+              <ScrollText className="size-3.5 text-amber-600" />
+              DM Notes
+            </h3>
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Private · only DM can read
+            </span>
+          </div>
+          <textarea
+            value={dmNotes}
+            onChange={(e) => setDmNotes(e.target.value)}
+            rows={10}
+            placeholder="Secrets, plot hooks, triggers, things only the DM should know…"
+            className="mt-3 w-full resize-y rounded-md border border-amber-500/30 bg-background px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+          />
+          <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+            <span>{dmNotes.length} chars</span>
+            {dmDirty && (
+              <span className="font-semibold text-amber-600">Unsaved</span>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ---- Sticky save bar ---- */}
+      <div
+        className={`sticky bottom-20 z-20 -mx-4 flex items-center justify-between gap-2 border-t border-border bg-background/95 px-4 py-2 backdrop-blur md:bottom-4 md:mx-0 md:rounded-md md:border md:px-4 md:shadow-sm ${
+          dirty ? "border-amber-500/30" : ""
+        }`}
+      >
+        <span
+          className={`flex items-center gap-1.5 text-xs ${
+            dirty
+              ? "font-semibold text-amber-600"
+              : "text-muted-foreground"
+          }`}
+        >
+          {dirty ? (
+            <AlertTriangle className="size-3.5" />
+          ) : (
+            <Check className="size-3.5 text-green-600" />
+          )}
+          {savedLabel}
+        </span>
+        <div className="flex gap-2">
+          {dirty && (
             <button
               type="button"
-              onClick={save}
+              onClick={discard}
               disabled={isPending}
-              className="mt-3 flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-card disabled:opacity-50"
             >
-              <Save className="size-4" />
-              {isPending ? "Saving..." : "Save Notes"}
+              <Trash2 className="size-3" />
+              Discard
             </button>
-          </>
-        ) : (
-          <p className="mt-3 whitespace-pre-wrap text-sm text-foreground">
-            {dmNotes || (
-              <span className="text-muted-foreground">No DM notes.</span>
-            )}
-          </p>
-        )}
+          )}
+          <button
+            type="button"
+            onClick={save}
+            disabled={!dirty || isPending}
+            className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Save className="size-3" />
+            {isPending ? "Saving…" : dirty ? "Save" : "Saved"}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-// Unused but reserved for future inline actions
-void ChevronRight;
+// Tiny relative-time formatter: avoids dragging in date-fns for one
+// helper. Returns "now" / "Ns ago" / "Nm ago" / "Nh ago" / "Nd ago".
+function formatRelative(d: Date): string {
+  const seconds = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+  if (seconds < 5) return "just now";
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+// =============================================================================
+// Backstory Tab (Phase 8.2 batch 3)
+// =============================================================================
+//
+// Four freeform fields held in characters.backstory jsonb
+// (migration 0039): origin, motivation, ties, flaw. The sheet view
+// is read-only with an "Edit in modal" button that opens the
+// edit modal. Saves go through POST /api/characters/[id]/backstory.
+
+function BackstoryTab({
+  id,
+  initial,
+  showToast,
+}: {
+  id: string;
+  initial: CharacterBackstory;
+  showToast: (msg: string, type: "success" | "error") => void;
+}) {
+  const [data, setData] = useState<CharacterBackstory>(initial);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function save(updates: CharacterBackstory) {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/characters/${id}/backstory`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ backstory: updates }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        showToast(body.error ?? "Save failed.", "error");
+        return;
+      }
+      const cleaned = sanitizeBackstory(parseBackstory(body.backstory));
+      setData(cleaned);
+      setModalOpen(false);
+      showToast("Backstory saved.", "success");
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "Network error.",
+        "error",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const empty = isBackstoryEmpty(data);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-baseline justify-between">
+        <p className="text-xs text-muted-foreground">
+          Four freeform fields. Edit in the modal — saves back to the
+          character's backstory column.
+        </p>
+        <button
+          type="button"
+          onClick={() => setModalOpen(true)}
+          className="inline-flex shrink-0 items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          <Pencil className="size-3" />
+          {empty ? "Write backstory" : "Edit"}
+        </button>
+      </div>
+
+      {empty ? (
+        <div className="rounded-md border border-dashed border-border bg-card p-8 text-center">
+          <BookOpen className="mx-auto size-8 text-muted-foreground" />
+          <p className="mt-2 text-sm font-medium">No backstory yet.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Add origin, motivation, ties, and flaw to bring the
+            character to life.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {BACKSTORY_FIELDS.map((f) => (
+            <BackstoryFieldCard
+              key={f.key}
+              label={f.label}
+              description={f.description}
+              iconKey={f.iconKey}
+              value={data[f.key]}
+            />
+          ))}
+        </div>
+      )}
+
+      <BackstoryEditModal
+        open={modalOpen}
+        initial={data}
+        onClose={() => setModalOpen(false)}
+        onSave={save}
+        saving={saving}
+      />
+    </div>
+  );
+}
+
+const BACKSTORY_ICON_BY_KEY: Record<
+  BackstoryFieldMeta["iconKey"],
+  typeof ScrollText
+> = {
+  scroll: ScrollText,
+  flame: Flame,
+  users: Users,
+  alert: AlertTriangle,
+} as const;
+
+function BackstoryFieldCard({
+  label,
+  description,
+  iconKey,
+  value,
+}: {
+  label: string;
+  description: string;
+  iconKey: string;
+  value: string;
+}) {
+  const Icon =
+    BACKSTORY_ICON_BY_KEY[iconKey as keyof typeof BACKSTORY_ICON_BY_KEY] ??
+    ScrollText;
+  const empty = value.trim() === "";
+  return (
+    <section
+      aria-label={label}
+      className="relative overflow-hidden rounded-md border border-border bg-card"
+    >
+      <span className="absolute inset-x-0 top-0 h-0.5 bg-violet-500" />
+      <div className="p-4">
+        <div className="flex items-center gap-2">
+          <Icon className="size-4 text-violet-500" />
+          <h3 className="text-sm font-semibold">{label}</h3>
+        </div>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
+          {description}
+        </p>
+        <div className="mt-2 text-sm leading-relaxed">
+          {empty ? (
+            <span className="text-muted-foreground italic">— empty —</span>
+          ) : (
+            <p className="whitespace-pre-wrap">{value}</p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BackstoryEditModal({
+  open,
+  initial,
+  onClose,
+  onSave,
+  saving,
+}: {
+  open: boolean;
+  initial: CharacterBackstory;
+  onClose: () => void;
+  onSave: (next: CharacterBackstory) => void;
+  saving: boolean;
+}) {
+  const [draft, setDraft] = useState<CharacterBackstory>(initial);
+  const [touched, setTouched] = useState(false);
+
+  // Reset draft when modal opens.
+  useEffect(() => {
+    if (open) {
+      setDraft(initial);
+      setTouched(false);
+    }
+  }, [open, initial]);
+
+  if (!open) return null;
+
+  const dirty =
+    draft.origin !== initial.origin ||
+    draft.motivation !== initial.motivation ||
+    draft.ties !== initial.ties ||
+    draft.flaw !== initial.flaw;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Edit backstory"
+      onClick={() => !saving && onClose()}
+    >
+      <div
+        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-border bg-card p-6 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-lg font-semibold">Edit Backstory</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            aria-label="Close"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="mt-4 space-y-4">
+          {BACKSTORY_FIELDS.map((f) => (
+            <label key={f.key} className="block">
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm font-semibold">{f.label}</span>
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {draft[f.key].length} / 4000
+                </span>
+              </div>
+              <span className="block text-[11px] text-muted-foreground">
+                {f.description}
+              </span>
+              <textarea
+                value={draft[f.key]}
+                onChange={(e) => {
+                  setDraft((d) => ({ ...d, [f.key]: e.target.value }));
+                  setTouched(true);
+                }}
+                rows={4}
+                maxLength={4000}
+                className="mt-1 w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </label>
+          ))}
+        </div>
+
+        <div className="mt-6 flex items-center justify-between gap-2">
+          <span className="text-xs text-muted-foreground">
+            {dirty ? "Unsaved changes" : "No changes"}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const cleaned = sanitizeBackstory(draft);
+                onSave(cleaned);
+              }}
+              disabled={saving || (!dirty && touched)}
+              className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Save className="size-3.5" />
+              {saving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// History Tab (Phase 8.2 batch 3)
+// =============================================================================
+//
+// Renders the character's character_log as a chronological timeline
+// newest-first. Pure presentation: the SC loads logEntries and
+// passes them down. Event kinds:
+//
+//   - vitality_change: { delta, prev, next, source }
+//   - rest: { restType, vitalityRestored }
+//   - level_up: { prevLevel, newLevel, buAwarded, dmBonusAwarded }
+//   - capability_trigger: { capabilityId, capabilityName }
+//   - capability_toggle: { capabilityId, capabilityName, active }
+//   - item_equip: { itemId, itemName }
+//   - item_unequip: { itemId, itemName }
+//
+// We render each event with an icon, a verb, and the payload in
+// human-readable form.
+
+function HistoryTab({
+  logEntries,
+}: {
+  logEntries: Array<{
+    id: number;
+    kind: string;
+    payload: Record<string, unknown>;
+    createdAt: string;
+  }>;
+}) {
+  const [filter, setFilter] = useState<string | null>(null);
+
+  if (logEntries.length === 0) {
+    return (
+      <div className="rounded-md border border-dashed border-border bg-card p-8 text-center">
+        <History className="mx-auto size-8 text-muted-foreground" />
+        <p className="mt-2 text-sm font-medium">No history yet.</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Events appear here as you take damage, rest, level up, or
+          use capabilities in play.
+        </p>
+      </div>
+    );
+  }
+
+  const filterOptions = Array.from(new Set(logEntries.map((e) => e.kind)));
+  const filtered = filter
+    ? logEntries.filter((e) => e.kind === filter)
+    : logEntries;
+
+  return (
+    <div className="space-y-3">
+      {/* Filter chips */}
+      <div className="flex flex-wrap gap-1.5">
+        <FilterChip
+          label="All"
+          count={logEntries.length}
+          active={filter === null}
+          onClick={() => setFilter(null)}
+        />
+        {filterOptions.map((k) => (
+          <FilterChip
+            key={k}
+            label={k.replace(/_/g, " ")}
+            count={logEntries.filter((e) => e.kind === k).length}
+            active={filter === k}
+            onClick={() => setFilter(k)}
+          />
+        ))}
+      </div>
+
+      {/* Timeline */}
+      <ol className="relative space-y-1 border-l border-border pl-4">
+        {filtered.map((entry) => (
+          <li key={entry.id} className="relative">
+            <span className="absolute -left-[7px] top-2 size-3 rounded-full border-2 border-background bg-primary" />
+            <HistoryEntry
+              kind={entry.kind}
+              payload={entry.payload}
+              createdAt={entry.createdAt}
+            />
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function FilterChip({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium capitalize transition-colors ${
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground"
+      }`}
+    >
+      {label}
+      <span
+        className={`rounded-full px-1 text-[10px] ${
+          active
+            ? "bg-primary-foreground/20"
+            : "bg-secondary text-muted-foreground"
+        }`}
+      >
+        {count}
+      </span>
+    </button>
+  );
+}
+
+function HistoryEntry({
+  kind,
+  payload,
+  createdAt,
+}: {
+  kind: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+}) {
+  const summary = renderHistorySummary(kind, payload);
+  const date = new Date(createdAt);
+  return (
+    <div className="rounded-md border border-border bg-card px-3 py-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {summary.icon}
+          <span className="text-sm font-medium">{summary.title}</span>
+        </div>
+        <time
+          dateTime={createdAt}
+          className="text-[10px] uppercase tracking-wide text-muted-foreground"
+          title={date.toLocaleString()}
+        >
+          {formatRelative(date)} · {date.toLocaleDateString()}
+        </time>
+      </div>
+      {summary.detail && (
+        <p className="mt-1 text-xs text-muted-foreground">
+          {summary.detail}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function renderHistorySummary(
+  kind: string,
+  payload: Record<string, unknown>,
+): { icon: React.ReactNode; title: string; detail: string | null } {
+  const num = (v: unknown) =>
+    typeof v === "number" ? v.toString() : "—";
+  const str = (v: unknown) =>
+    typeof v === "string" ? v : "—";
+
+  switch (kind) {
+    case "vitality_change": {
+      const delta = num(payload["delta"]);
+      const prev = num(payload["prev"]);
+      const next = num(payload["next"]);
+      const source = str(payload["source"]);
+      const dn = Number(payload["delta"]);
+      const isDamage = Number.isFinite(dn) && dn < 0;
+      return {
+        icon: (
+          <Heart
+            className={`size-4 ${isDamage ? "text-destructive" : "text-green-500"}`}
+          />
+        ),
+        title: isDamage
+          ? `Took ${Math.abs(dn)} damage`
+          : `Healed ${Math.abs(dn)} vitality`,
+        detail: `${prev} → ${next} (source: ${source})`,
+      };
+    }
+    case "rest": {
+      const restType = str(payload["restType"]);
+      const restored = num(payload["vitalityRestored"]);
+      const isLong = restType === "long";
+      return {
+        icon: (
+          <Activity
+            className={`size-4 ${isLong ? "text-blue-500" : "text-cyan-500"}`}
+          />
+        ),
+        title: isLong ? "Long rest" : "Short rest",
+        detail: `Restored ${restored} vitality.`,
+      };
+    }
+    case "level_up": {
+      const prev = num(payload["prevLevel"]);
+      const next = num(payload["newLevel"]);
+      const bu = num(payload["buAwarded"]);
+      const dm = num(payload["dmBonusAwarded"]);
+      return {
+        icon: <ArrowUp className="size-4 text-purple-500" />,
+        title: `Leveled up: ${prev} → ${next}`,
+        detail: `+${bu} BU awarded. DM bonus consumed: ${dm}.`,
+      };
+    }
+    case "capability_trigger": {
+      const name = str(payload["capabilityName"]);
+      return {
+        icon: <Sparkles className="size-4 text-amber-500" />,
+        title: `Triggered "${name}"`,
+        detail: null,
+      };
+    }
+    case "capability_toggle": {
+      const name = str(payload["capabilityName"]);
+      const active = payload["active"] === true;
+      return {
+        icon: (
+          <Swords
+            className={`size-4 ${active ? "text-primary" : "text-muted-foreground"}`}
+          />
+        ),
+        title: active
+          ? `Activated "${name}"`
+          : `Deactivated "${name}"`,
+        detail: null,
+      };
+    }
+    case "item_equip": {
+      const name = str(payload["itemName"]);
+      return {
+        icon: <Package className="size-4 text-emerald-500" />,
+        title: `Equipped "${name}"`,
+        detail: null,
+      };
+    }
+    case "item_unequip": {
+      const name = str(payload["itemName"]);
+      return {
+        icon: (
+          <Package className="size-4 text-muted-foreground" />
+        ),
+        title: `Unequipped "${name}"`,
+        detail: null,
+      };
+    }
+    default:
+      return {
+        icon: <Clock className="size-4 text-muted-foreground" />,
+        title: kind,
+        detail: JSON.stringify(payload),
+      };
+  }
+}
