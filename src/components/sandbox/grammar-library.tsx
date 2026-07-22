@@ -31,6 +31,7 @@ import { useModalStack } from "@/components/ui/modal-stack";
 import {
   useCharacterModal,
   tabLabelForActiveStep,
+  type CharacterTabId,
 } from "@/components/character-modal/character-modal-store";
 import {
   previewHeadingLabel,
@@ -190,6 +191,31 @@ const TYPE_GROUPS: Record<string, LibraryTargetType[]> = {
   GROUP_MECHANICS: ["PRIMITIVE", "EFFECT", "CAPABILITY"],
   GROUP_HERITAGES: ["LINEAGE_TEMPLATE", "UPBRINGING_TEMPLATE", "MANIFEST_TEMPLATE"],
 };
+
+/**
+ * Phase 8.1 batch 11 (Mashu 2026-07-22): decide which character
+ * modal tab a slot should land in based on the tab the user is
+ * currently viewing when they click "Slot into [step]".
+ *
+ *   - lineage / upbringing / manifest pass through (those tabs are
+ *     the natural destination for primitives / capabilities / effects)
+ *   - identity / backstory / attributes default to manifest — these
+ *     tabs are informational, and slotting from them means "I want
+ *     this primitive on my character, drop it somewhere reasonable"
+ *   - items is filtered out at the canSlotIntoCharacter level so
+ *     slotIntoCharacter never runs for the items tab; but defensively
+ *     we still resolve to manifest here.
+ */
+function resolveSlotDestination(activeStep: CharacterTabId): CharacterTabId {
+  if (
+    activeStep === "lineage" ||
+    activeStep === "upbringing" ||
+    activeStep === "manifest"
+  ) {
+    return activeStep;
+  }
+  return "manifest";
+}
 
 export function GrammarLibrary({
   build,
@@ -698,8 +724,14 @@ function SandboxPreviewBody({
   // showing the button was confusing Mashu 2026-07-21 — clicking
   // it did nothing visible. Only primitives + capabilities can
   // route through the modal's queue directly.
+  // Phase 8.1 batch 11 (Mashu 2026-07-22): slot-into-character is
+  // only valid on the three mechanic tabs (lineage, upbringing,
+  // manifest) AND on identity/backstory/attributes where it defaults
+  // to manifest. It's hidden entirely on the items tab — items have
+  // their own slot button ("Slot into character [Items]").
   const canSlotIntoCharacter =
-    item.kind === "primitive" || item.kind === "capability";
+    (item.kind === "primitive" || item.kind === "capability") &&
+    characterModal.activeStep !== "items";
 
   // Engagement snapshot for the LikeForkBar + version-history link. The
   // hook fetches the user's existing reaction (so the bar shows the right
@@ -745,7 +777,14 @@ function SandboxPreviewBody({
       item.kind !== "capability"
     )
       return;
-    const tab = characterModal.activeStep;
+    // Phase 8.1 batch 11 (Mashu 2026-07-22): the user can ONLY slot
+    // primitives/capabilities/effects into lineage, manifest, and
+    // upbringing. When the user is currently on identity / backstory
+    // / attributes, the slot button should default to manifest (we
+    // treat those tabs as informational only — mechanics live in the
+    // other three). On the items tab the slot-into-character button
+    // is hidden entirely (see canSlotIntoCharacter below).
+    const tab = resolveSlotDestination(characterModal.activeStep);
     if (item.kind === "primitive") {
       // Phase 8.1 batch 10: capture mirror metadata so the slot
       // receiver can render the mirror toggle without re-fetching.

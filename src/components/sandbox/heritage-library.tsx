@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import { useModalStack } from "@/components/ui/modal-stack";
-import { useCharacterModal, tabLabelForActiveStep } from "@/components/character-modal/character-modal-store";
+import { useCharacterModal, tabLabelForActiveStep, type CharacterTabId } from "@/components/character-modal/character-modal-store";
 import {
   previewHeadingLabel,
   libraryCompositeId,
@@ -130,6 +130,28 @@ const ALL_AVAILABLE_TYPES: Array<{
   { key: "EFFECT", label: "Effects" },
   { key: "CAPABILITY", label: "Capabilities" },
 ];
+
+/**
+ * Phase 8.1 batch 11 (Mashu 2026-07-22): same routing rule as
+ * grammar-library. When the user is on identity/backstory/attributes
+ * and clicks 'Slot into [step]' on a primitive/capability preview
+ * surfaced from the heritage-library, we default to manifest. The
+ * three mechanic tabs (lineage/upbringing/manifest) pass through.
+ * The items tab is filtered out at the action-bar level so this
+ * function never returns 'items' from a slot-into-character path.
+ */
+function resolveHeritageSlotDestination(
+  activeStep: CharacterTabId,
+): CharacterTabId {
+  if (
+    activeStep === "lineage" ||
+    activeStep === "upbringing" ||
+    activeStep === "manifest"
+  ) {
+    return activeStep;
+  }
+  return "manifest";
+}
 
 export function HeritageLibrary({
   build,
@@ -827,7 +849,11 @@ function BlueprintPreviewBody({
       // intentionally do NOT get a slot-into-character button — they
       // slot implicitly via their parent capability, or via the build
       // column for free-standing effects.
-      const tab = characterModal.activeStep;
+      // Phase 8.1 batch 11 (Mashu 2026-07-22): same routing rule as
+      // grammar-library — info tabs (identity/backstory/attributes)
+      // default to manifest, mechanic tabs pass through, items tab is
+      // filtered out by canSlotIntoCharacter at the action-bar level.
+      const tab = resolveHeritageSlotDestination(characterModal.activeStep);
       if (item.kind === "primitive") {
         // Phase 8.1 batch 10: capture mirror metadata so the slot
         // receiver can render the mirror toggle without re-fetching.
@@ -960,12 +986,20 @@ function BlueprintPreviewBody({
             },
           }
         : item.kind === "primitive" || item.kind === "capability"
-          ? {
-              primaryTertiary: {
-                label: `Slot into ${tabLabelForActiveStep(characterModal.activeStep, characterModal.isOpen)}`,
-                onClick: slotIntoCharacter,
-              },
-            }
+          ? characterModal.activeStep !== "items"
+            ? {
+                // Phase 8.1 batch 11 (Mashu 2026-07-22): the label
+                // shows the resolved destination tab (not the active
+                // tab), so when the user is on identity/backstory/
+                // attributes the button reads 'Slot into Manifest'.
+                // Items tab is hidden entirely here (canSlot is also
+                // gated via the canSlotIntoCharacter below).
+                primaryTertiary: {
+                  label: `Slot into ${tabLabelForActiveStep(resolveHeritageSlotDestination(characterModal.activeStep), characterModal.isOpen)}`,
+                  onClick: slotIntoCharacter,
+                },
+              }
+            : {}
           : {}),
     ...(isOwner
       ? {
