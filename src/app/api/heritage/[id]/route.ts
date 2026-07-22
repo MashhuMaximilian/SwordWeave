@@ -18,6 +18,7 @@ import { parseSaveIntent } from "@/lib/publishing/save-intent";
 import { getCallerIsAdmin, resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import { recordForkAttribution } from "@/lib/publishing/fork-attribution";
 import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
+import { computeTransitiveBu } from "@/lib/engine/transitive-bu";
 import {
   buildCanonicalTemplatePayload,
   isTemplateDraftEmpty,
@@ -98,7 +99,26 @@ export async function GET(
     where: eq(heritage.id, id),
     with: {
       primitiveLinks: { with: { primitive: true } },
-      capabilityLinks: { with: { capability: true } },
+      // Phase 8.1 batch 13.1 follow-up: extend the capability join so
+      // we can compute the full transitive BU (direct primitives +
+      // primitives from each bundled capability + primitives from
+      // each capability's effects). The previous join only loaded
+      // `capability` without its primitives, so computedBu silently
+      // under-counted the heritage's real cost.
+      capabilityLinks: {
+        with: {
+          capability: {
+            with: {
+              primitiveLinks: { with: { primitive: true } },
+              effectLinks: {
+                with: {
+                  effect: { with: { primitiveLinks: { with: { primitive: true } } } },
+                },
+              },
+            },
+          },
+        },
+      },
     },
   });
 
@@ -106,10 +126,23 @@ export async function GET(
     return NextResponse.json({ error: "Template not found." }, { status: 404 });
   }
 
-  const bu = row.primitiveLinks.reduce(
-    (t, l) => t + (l.primitive?.buCost ?? 0),
-    0,
-  );
+  // Phase 8.1 batch 13.1 follow-up: use the shared helper so the
+  // server-side computedBu matches what the character-creation
+  // expander will charge the player. Per Mashu 2026-07-22: "only
+  // primitives cost BU. Capabilities, effects, heritages, and items
+  // are ways to organize primitives for runtime use — they NEVER
+  // debit BU on their own."
+  const bu = computeTransitiveBu({
+    primitiveLinks: row.primitiveLinks,
+    capabilityLinks: row.capabilityLinks.map((cl) => ({
+      capabilityId: cl.capabilityId,
+      primitiveLinks: cl.capability.primitiveLinks,
+      effectLinks: cl.capability.effectLinks?.map((el) => ({
+        effectId: el.effectId,
+        primitiveLinks: el.effect.primitiveLinks,
+      })),
+    })),
+  }).transitiveBu;
 
   return NextResponse.json({ template: { ...row, computedBu: bu } });
 }
@@ -387,7 +420,23 @@ export async function PATCH(
           where: eq(heritage.id, id),
           with: {
             primitiveLinks: { with: { primitive: true } },
-            capabilityLinks: { with: { capability: true } },
+            // Phase 8.1 batch 13.1 follow-up: same deep join as
+            // GET so computedBu includes capability + effect
+            // primitives in the transitive closure.
+            capabilityLinks: {
+              with: {
+                capability: {
+                  with: {
+                    primitiveLinks: { with: { primitive: true } },
+                    effectLinks: {
+                      with: {
+                        effect: { with: { primitiveLinks: { with: { primitive: true } } } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         });
       });
@@ -404,10 +453,19 @@ export async function PATCH(
       }
 
       if (result) {
-        const bu = result.primitiveLinks.reduce(
-          (t, l) => t + (l.primitive?.buCost ?? 0),
-          0,
-        );
+        // Phase 8.1 batch 13.1 follow-up: transitive BU computation
+        // (matches GET endpoint above).
+        const bu = computeTransitiveBu({
+          primitiveLinks: result.primitiveLinks,
+          capabilityLinks: result.capabilityLinks.map((cl) => ({
+            capabilityId: cl.capabilityId,
+            primitiveLinks: cl.capability.primitiveLinks,
+            effectLinks: cl.capability.effectLinks?.map((el) => ({
+              effectId: el.effectId,
+              primitiveLinks: el.effect.primitiveLinks,
+            })),
+          })),
+        }).transitiveBu;
         return NextResponse.json(
           {
             template: { ...result, computedBu: bu },
@@ -494,13 +552,33 @@ export async function PATCH(
         );
       }
 
-      return tx.query.heritage.findFirst({
+      // Phase 8.1 batch 13.1 follow-up: extend the capability join on POST
+      // so the returned `computedBu` is the full transitive closure
+      // (direct + capability primitives + capability effect primitives).
+      // The query result is RETURNED from the transaction so the
+      // outer `await db.transaction(...)` resolves to it (this is
+      // how the route's `created` variable gets set).
+      const createdFromTx = await tx.query.heritage.findFirst({
         where: eq(heritage.id, inserted.id),
         with: {
           primitiveLinks: { with: { primitive: true } },
-          capabilityLinks: { with: { capability: true } },
+          capabilityLinks: {
+            with: {
+              capability: {
+                with: {
+                  primitiveLinks: { with: { primitive: true } },
+                  effectLinks: {
+                    with: {
+                      effect: { with: { primitiveLinks: { with: { primitive: true } } } },
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       });
+      return createdFromTx;
     });
 
     if (!created) {
@@ -529,8 +607,8 @@ export async function PATCH(
           created.kind === "LINEAGE"
             ? "LINEAGE_TEMPLATE"
             : created.kind === "UPBRINGING"
-              ? "UPBRINGING_TEMPLATE"
-              : "MANIFEST_TEMPLATE";
+            ? "UPBRINGING_TEMPLATE"
+            : "MANIFEST_TEMPLATE";
         await recordForkAttribution({
           forkerInternalId,
           forkerClerkId: userId,
@@ -544,10 +622,19 @@ export async function PATCH(
       }
     }
 
-    const bu = created.primitiveLinks.reduce(
-      (t, l) => t + (l.primitive?.buCost ?? 0),
-      0,
-    );
+    // Phase 8.1 batch 13.1 follow-up: transitive BU computation
+    // (matches GET endpoint above).
+    const bu = computeTransitiveBu({
+      primitiveLinks: created.primitiveLinks,
+      capabilityLinks: created.capabilityLinks.map((cl) => ({
+        capabilityId: cl.capabilityId,
+        primitiveLinks: cl.capability.primitiveLinks,
+        effectLinks: cl.capability.effectLinks?.map((el) => ({
+          effectId: el.effectId,
+          primitiveLinks: el.effect.primitiveLinks,
+        })),
+      })),
+    }).transitiveBu;
 
     return NextResponse.json(
       {

@@ -28,6 +28,7 @@ import { getCallerIsAdmin, resolveUserIdByClerkId } from "@/lib/auth/author-reso
 import { recordForkAttribution } from "@/lib/publishing/fork-attribution";
 import type { ReactionTargetType } from "@/lib/engagement/version-helpers";
 import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
+import { computeTransitiveBu } from "@/lib/engine/transitive-bu";
 import {
   buildCanonicalCapabilityPayload,
   isCapabilityDraftEmpty,
@@ -91,9 +92,20 @@ export async function GET(
           primitive: true,
         },
       },
+      // Phase 8.1 batch 13.1 follow-up: deep-join effects so the
+      // returned capability carries the full transitive closure
+      // (direct primitives + primitives from each effect). The
+      // capability preview / list filter / character-modal bundle
+      // display all use this data to compute computedBu correctly.
       effectLinks: {
         with: {
-          effect: true,
+          effect: {
+            with: {
+              primitiveLinks: {
+                with: { primitive: true },
+              },
+            },
+          },
         },
       },
     },
@@ -103,7 +115,21 @@ export async function GET(
     return NextResponse.json({ error: "Capability not found." }, { status: 404 });
   }
 
-  return NextResponse.json({ capability: row });
+  // Phase 8.1 batch 13.1 follow-up: attach computedBu so the
+  // library list filter (`item.buCost`) and the character-modal
+  // bundle display reflect the full transitive closure. Per Mashu
+  // 2026-07-22: "only primitives cost BU. Capabilities, effects,
+  // heritages, and items are ways to organize primitives for
+  // runtime use — they NEVER debit BU on their own."
+  const computedBu = computeTransitiveBu({
+    primitiveLinks: row.primitiveLinks,
+    effectLinks: row.effectLinks.map((el) => ({
+      effectId: el.effectId,
+      primitiveLinks: el.effect.primitiveLinks,
+    })),
+  }).transitiveBu;
+
+  return NextResponse.json({ capability: { ...row, computedBu } });
 }
 
 /**
@@ -422,9 +448,16 @@ export async function PATCH(
                 primitive: true,
               },
             },
+            // Phase 8.1 batch 13.1 follow-up: deep-join effects so the
+            // returned capability carries the full transitive closure
+            // (matches GET endpoint above).
             effectLinks: {
               with: {
-                effect: true,
+                effect: {
+                  with: {
+                    primitiveLinks: { with: { primitive: true } },
+                  },
+                },
               },
             },
           },
@@ -440,17 +473,34 @@ export async function PATCH(
         publishedByUserId: userId,
       });
 
-      return NextResponse.json(
-        {
-          capability: result,
-          dispatchOutcome: {
-            kind: "version-update" as const,
-            newId: id,
-            sourceId: outcome.sourceId,
-            swapTarget: false as const,
+      if (result) {
+        // Phase 8.1 batch 13.1 follow-up: attach computedBu so
+        // callers see the full transitive closure.
+        const computedBu = computeTransitiveBu({
+          primitiveLinks: result.primitiveLinks,
+          effectLinks: result.effectLinks.map((el) => ({
+            effectId: el.effectId,
+            primitiveLinks: el.effect.primitiveLinks,
+          })),
+        }).transitiveBu;
+        return NextResponse.json(
+          {
+            capability: { ...result, computedBu },
+            dispatchOutcome: {
+              kind: "version-update" as const,
+              newId: id,
+              sourceId: outcome.sourceId,
+              swapTarget: false as const,
+            },
           },
-        },
-        { status: 200 },
+          { status: 200 },
+        );
+      }
+      // If result is null, fall through to the fork path (rare — only
+      // when the load intent succeeded but the row read came back null).
+      return NextResponse.json(
+        { error: "Capability not found after update." },
+        { status: 404 },
       );
     }
 
@@ -588,6 +638,9 @@ export async function PATCH(
       }
 
       // Return full capability with links.
+      // Phase 8.1 batch 13.1 follow-up: deep-join effects so the
+      // returned capability carries the full transitive closure
+      // (matches GET endpoint above).
       return tx.query.capabilities.findFirst({
         where: eq(capabilities.id, inserted.id),
         with: {
@@ -598,7 +651,11 @@ export async function PATCH(
           },
           effectLinks: {
             with: {
-              effect: true,
+              effect: {
+                with: {
+                  primitiveLinks: { with: { primitive: true } },
+                },
+              },
             },
           },
         },
@@ -639,9 +696,19 @@ export async function PATCH(
       }
     }
 
+    // Phase 8.1 batch 13.1 follow-up: attach computedBu so the
+    // caller sees the full transitive closure.
+    const computedBu = computeTransitiveBu({
+      primitiveLinks: created.primitiveLinks,
+      effectLinks: created.effectLinks.map((el) => ({
+        effectId: el.effectId,
+        primitiveLinks: el.effect.primitiveLinks,
+      })),
+    }).transitiveBu;
+
     return NextResponse.json(
       {
-        capability: created,
+        capability: { ...created, computedBu },
         dispatchOutcome: {
           kind: "forked" as const,
           newId: created.id,

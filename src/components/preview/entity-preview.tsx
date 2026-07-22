@@ -24,6 +24,7 @@ import { IconDisplay } from "@/components/icons/icon-display";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 import { ChevronRight, History, Link2 } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
+import { computeTransitiveBu } from "@/lib/engine/transitive-bu";
 import {
   OperationBadge,
   Section,
@@ -757,6 +758,11 @@ function EffectBody({
   row: SandboxEffectRow;
   onSubLink: (link: PreviewSubLink) => void;
 }) {
+  // Phase 8.1 batch 13.1 follow-up: effect previews have no nested
+  // capabilities or effects — their primitives ARE the leaf set —
+  // so the direct sum is correct here. (Keeping the existing
+  // behavior rather than calling computeTransitiveBu since the
+  // helper would be a no-op for an effect row.)
   const totalBu = row.primitiveLinks.reduce((s, l) => s + Math.abs(l.primitive.buCost * l.quantity), 0);
   return (
     <div className="space-y-5">
@@ -813,7 +819,30 @@ function CapabilityBody({
   row: SandboxCapabilityRow;
   onSubLink: (link: PreviewSubLink) => void;
 }) {
-  const totalBu = row.primitiveLinks.reduce((s, l) => s + Math.abs(l.primitive.buCost * l.quantity), 0);
+  // Phase 8.1 batch 13.1 follow-up: a capability's BU cost is the
+  // sum of ALL primitives it brings in — direct + primitives
+  // inherited from each effect. Per Mashu 2026-07-22: "only
+  // primitives cost BU. Capabilities, effects, heritages, and items
+  // are ways to organize primitives for runtime use — they NEVER
+  // debit BU on their own." So the chip on the capability card must
+  // show the full transitive closure.
+  const totalBu = Math.abs(
+    computeTransitiveBu({
+      primitiveLinks: row.primitiveLinks.map((l) => ({
+        primitiveId: l.primitive.id,
+        quantity: l.quantity,
+        primitive: { id: l.primitive.id, buCost: l.primitive.buCost },
+      })),
+      effectLinks: row.effectLinks.map((e) => ({
+        effectId: e.effectId,
+        primitiveLinks: (e.effect.primitiveLinks ?? []).map((pl) => ({
+          primitiveId: pl.primitive.id,
+          quantity: pl.quantity,
+          primitive: { id: pl.primitive.id, buCost: pl.primitive.buCost },
+        })),
+      })),
+    }).transitiveBu,
+  );
   // Phase 8.1 batch 13.2: collect primitives from each effect so the
   // preview shows the full transitive closure. Per Mashu 2026-07-22:
   // "we need in primitives another section 'Primitives from effects'
@@ -924,7 +953,30 @@ function TemplateBody({
   row: SandboxTemplateRow;
   onSubLink: (link: PreviewSubLink) => void;
 }) {
-  const primitiveBu = row.primitiveLinks.reduce((s, l) => s + l.primitive.buCost, 0);
+  // Phase 8.1 batch 13.1 follow-up: a heritage's BU cost is the
+  // full transitive closure — direct primitives + primitives from
+  // each bundled capability + primitives from each capability's
+  // effects. The previous code only summed direct primitives.
+  const transitiveResult = computeTransitiveBu({
+    primitiveLinks: row.primitiveLinks.map((l) => ({
+      primitiveId: l.primitive.id,
+      quantity: 1,
+      primitive: { id: l.primitive.id, buCost: l.primitive.buCost },
+    })),
+    capabilityLinks: row.capabilityLinks.map((cl) => ({
+      capabilityId: cl.capability.id,
+      // NOTE: TemplateRow.capability only carries primitiveLinks
+      // today, not effectLinks. When we extend the type to include
+      // effect-of-capability primitives, the helper will pick
+      // them up automatically — no changes needed here.
+      primitiveLinks: (cl.capability.primitiveLinks ?? []).map((pl) => ({
+        primitiveId: pl.primitive.id,
+        quantity: 1,
+        primitive: { id: pl.primitive.id, buCost: pl.primitive.buCost },
+      })),
+    })),
+  });
+  const primitiveBu = Math.abs(transitiveResult.transitiveBu);
   // Phase 8.1 batch 13.2: collect primitives from each bundled
   // capability. Per Mashu 2026-07-22: "we should also list
   // primitives from capabilities. And if said capability has an
@@ -957,7 +1009,12 @@ function TemplateBody({
         label={row.kind}
         chips={
           <>
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{primitiveBu} BU</span>
+            <span
+              className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary"
+              title={`Transitive total: ${transitiveResult.transitiveCount} primitives (${row.primitiveLinks.length} direct + ${transitiveResult.transitiveCount - row.primitiveLinks.length} via capabilities)`}
+            >
+              {primitiveBu} BU
+            </span>
             <VisibilityPill isPublic={row.isPublic} />
           </>
         }

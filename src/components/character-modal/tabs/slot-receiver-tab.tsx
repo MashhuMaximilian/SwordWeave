@@ -47,11 +47,32 @@ interface HeritageBundle {
   name: string;
   description: string | null;
   primitiveLinks: Array<{
+    primitiveId: number;
     isMirrored: boolean;
     primitive: { id: number; name: string; buCost: number | null } | null;
   }>;
+  // Phase 8.1 batch 13.1 follow-up: capabilities now carry their
+  // primitive + effect join so the modal can show the full
+  // transitive closure ("Primitives from capabilities", "Primitives
+  // from effects"). The endpoint (/api/heritage/[id]) was extended
+  // in the same batch to deep-join these.
   capabilityLinks: Array<{
+    capabilityId: string;
     capability: { id: string; name: string; description: string | null } | null;
+    primitiveLinks: Array<{
+      primitiveId: number;
+      quantity: number;
+      primitive: { id: number; name: string; buCost: number | null } | null;
+    }>;
+    effectLinks: Array<{
+      effectId: string;
+      effect: { id: string; name: string; description: string | null } | null;
+      primitiveLinks: Array<{
+        primitiveId: number;
+        quantity: number;
+        primitive: { id: number; name: string; buCost: number | null } | null;
+      }>;
+    }>;
   }>;
   computedBu: number;
 }
@@ -212,6 +233,24 @@ function MechanicSlotRow({
   );
 }
 
+// =============================================================================
+// HeritageSlotCard — Phase 8.1 batch 13.1 follow-up
+//
+// Renders the exploded view of a slotted heritage in the character
+// creation modal. Per Mashu 2026-07-22: "in character creation modal
+// I don't see exploded or all primitives or whatever in heritages."
+//
+// Shows:
+//   1. Direct primitives (bundled at heritage level)
+//   2. Primitives from each capability (transitive)
+//   3. Primitives from each effect of each capability (transitive)
+//   4. Capabilities (as container labels)
+//
+// Each primitive row carries its buCost so the user can see exactly
+// what they're paying for. The chip on the right shows the total
+// transitive BU (same number the server-side expander will charge).
+// =============================================================================
+
 function HeritageSlotCard({
   slot,
   onRemove,
@@ -242,7 +281,20 @@ function HeritageSlotCard({
             name: t.name,
             description: t.description ?? null,
             primitiveLinks: t.primitiveLinks ?? [],
-            capabilityLinks: t.capabilityLinks ?? [],
+            // Phase 8.1 batch 13.1 follow-up: deep-join data now
+            // flows through (the /api/heritage/[id] endpoint was
+            // extended in this batch to deep-join capabilities →
+            // primitives + effects → primitives).
+            capabilityLinks: (t.capabilityLinks ?? []).map((cl) => ({
+              capabilityId: cl.capabilityId ?? cl.capability?.id ?? "",
+              capability: cl.capability,
+              primitiveLinks: cl.primitiveLinks ?? [],
+              effectLinks: (cl.effectLinks ?? []).map((el) => ({
+                effectId: el.effectId ?? el.effect?.id ?? "",
+                effect: el.effect,
+                primitiveLinks: el.primitiveLinks ?? [],
+              })),
+            })),
             computedBu: t.computedBu ?? 0,
           }
         : null;
@@ -284,8 +336,26 @@ function HeritageSlotCard({
             {bundle ? (
               <>
                 <span>
-                  {bundle.primitiveLinks.length} primitive
-                  {bundle.primitiveLinks.length === 1 ? "" : "s"}
+                  {/* Phase 8.1 batch 13.1 follow-up: transitive
+                      primitive count (direct + via capabilities +
+                      via capability effects), deduped by ID. */}
+                  {(() => {
+                    const seen = new Set<number>();
+                    bundle.primitiveLinks.forEach((l) => {
+                      if (l.primitive?.id) seen.add(l.primitive.id);
+                    });
+                    bundle.capabilityLinks.forEach((cl) => {
+                      cl.primitiveLinks.forEach((l) => {
+                        if (l.primitive?.id) seen.add(l.primitive.id);
+                      });
+                      cl.effectLinks.forEach((el) => {
+                        el.primitiveLinks.forEach((l) => {
+                          if (l.primitive?.id) seen.add(l.primitive.id);
+                        });
+                      });
+                    });
+                    return `${seen.size} primitive${seen.size === 1 ? "" : "s"}`;
+                  })()}
                 </span>
                 <span>·</span>
                 <span>
@@ -318,7 +388,7 @@ function HeritageSlotCard({
           {bundle.primitiveLinks.length > 0 ? (
             <div className="mb-2">
               <div className="text-[10px] font-semibold uppercase text-muted-foreground">
-                Bundled Primitives
+                Bundled Primitives ({bundle.primitiveLinks.length})
               </div>
               <ul className="mt-1 flex flex-wrap gap-1">
                 {bundle.primitiveLinks.map((link, i) => (
@@ -337,6 +407,86 @@ function HeritageSlotCard({
                         Mirrored
                       </span>
                     ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {/* Phase 8.1 batch 13.1 follow-up: NEW section. Primitives
+              that come in via each bundled capability. Per user:
+              "we should also list primitives from capabilities."
+              Each row tagged with the source capability name. */}
+          {bundle.capabilityLinks.flatMap((cl) => cl.primitiveLinks).length > 0 ? (
+            <div className="mb-2">
+              <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+                Primitives from Capabilities (
+                {bundle.capabilityLinks.flatMap((cl) => cl.primitiveLinks).length})
+              </div>
+              <ul className="mt-1 space-y-1">
+                {bundle.capabilityLinks.flatMap((cl) =>
+                  cl.primitiveLinks.map((link) => ({
+                    ...link,
+                    sourceName: cl.capability?.name ?? "Unknown capability",
+                  })),
+                ).map((link, i) => (
+                  <li
+                    key={`cap-${link.primitive?.id ?? "unknown"}-${i}`}
+                    className="inline-flex flex-wrap items-center gap-1 rounded border border-border bg-background px-2 py-0.5 text-xs"
+                  >
+                    <span className="font-medium">{link.primitive?.name ?? "Unknown"}</span>
+                    {link.primitive?.buCost != null ? (
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {link.primitive.buCost} BU
+                      </span>
+                    ) : null}
+                    <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                      via {link.sourceName}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {/* Phase 8.1 batch 13.1 follow-up: NEW section. Primitives
+              that come in via each capability's effect. Per user:
+              "if said capability has an effect, in same section with
+              primitives from capability we should list the primitives
+              from effect of capability too (and for each we should
+              mention source)." */}
+          {bundle.capabilityLinks.flatMap((cl) =>
+            cl.effectLinks.flatMap((el) => el.primitiveLinks),
+          ).length > 0 ? (
+            <div className="mb-2">
+              <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+                Primitives from Effects (
+                {bundle.capabilityLinks.flatMap((cl) =>
+                  cl.effectLinks.flatMap((el) => el.primitiveLinks),
+                ).length})
+              </div>
+              <ul className="mt-1 space-y-1">
+                {bundle.capabilityLinks.flatMap((cl) =>
+                  cl.effectLinks.flatMap((el) =>
+                    el.primitiveLinks.map((link) => ({
+                      ...link,
+                      sourcePath: `${cl.capability?.name ?? "?"} > ${el.effect?.name ?? "?"}`,
+                    })),
+                  ),
+                ).map((link, i) => (
+                  <li
+                    key={`eff-${link.primitive?.id ?? "unknown"}-${i}`}
+                    className="inline-flex flex-wrap items-center gap-1 rounded border border-border bg-background px-2 py-0.5 text-xs"
+                  >
+                    <span className="font-medium">{link.primitive?.name ?? "Unknown"}</span>
+                    {link.primitive?.buCost != null ? (
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {link.primitive.buCost} BU
+                      </span>
+                    ) : null}
+                    <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                      via {link.sourcePath}
+                    </span>
                   </li>
                 ))}
               </ul>

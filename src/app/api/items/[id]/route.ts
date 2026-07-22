@@ -19,6 +19,7 @@ import { getCallerIsAdmin, resolveUserIdByClerkId } from "@/lib/auth/author-reso
 import { recordForkAttribution } from "@/lib/publishing/fork-attribution";
 import type { ReactionTargetType } from "@/lib/engagement/version-helpers";
 import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
+import { computeTransitiveBu } from "@/lib/engine/transitive-bu";
 import {
   buildCanonicalItemPayload,
   isItemDraftEmpty,
@@ -111,8 +112,36 @@ export async function GET(
     where: eq(items.id, id),
     with: {
       primitiveLinks: { with: { primitive: true } },
-      capabilityLinks: { with: { capability: true } },
-      effectLinks: { with: { effect: true } },
+      // Phase 8.1 batch 13.1 follow-up: deep-join so the returned
+      // item carries the full transitive closure (capability
+      // primitives + effect primitives + capability effect
+      // primitives). Per Mashu 2026-07-22: "only primitives cost
+      // BU. Capabilities, effects, heritages, and items are ways
+      // to organize primitives for runtime use — they NEVER debit
+      // BU on their own."
+      capabilityLinks: {
+        with: {
+          capability: {
+            with: {
+              primitiveLinks: { with: { primitive: true } },
+              effectLinks: {
+                with: {
+                  effect: { with: { primitiveLinks: { with: { primitive: true } } } },
+                },
+              },
+            },
+          },
+        },
+      },
+      effectLinks: {
+        with: {
+          effect: {
+            with: {
+              primitiveLinks: { with: { primitive: true } },
+            },
+          },
+        },
+      },
     },
   });
 
@@ -120,7 +149,26 @@ export async function GET(
     return NextResponse.json({ error: "Item not found." }, { status: 404 });
   }
 
-  return NextResponse.json({ item: row });
+  // Phase 8.1 batch 13.1 follow-up: attach computedBu so the
+  // library list filter / character-modal bundle display
+  // reflect the full transitive closure.
+  const computedBu = computeTransitiveBu({
+    primitiveLinks: row.primitiveLinks,
+    capabilityLinks: row.capabilityLinks.map((cl) => ({
+      capabilityId: cl.capabilityId,
+      primitiveLinks: cl.capability.primitiveLinks,
+      effectLinks: cl.capability.effectLinks?.map((el) => ({
+        effectId: el.effectId,
+        primitiveLinks: el.effect.primitiveLinks,
+      })),
+    })),
+    effectLinks: row.effectLinks.map((el) => ({
+      effectId: el.effectId,
+      primitiveLinks: el.effect.primitiveLinks,
+    })),
+  }).transitiveBu;
+
+  return NextResponse.json({ item: { ...row, computedBu } });
 }
 
 /**
