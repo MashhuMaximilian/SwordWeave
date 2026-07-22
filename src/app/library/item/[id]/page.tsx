@@ -12,10 +12,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { ArrowLeft, ChevronRight, Pencil, Shield, User as UserIcon } from "lucide-react";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
+  capabilityEffects,
+  capabilityPrimitives,
+  effectPrimitives,
+  effects,
   forkAggregates,
+  primitives,
   reactionAggregates,
   reactions,
 } from "@/db/schema";
@@ -47,6 +52,149 @@ import {
   bulkComputeEffectBuCost,
   bulkComputeCapabilityBuCost,
 } from "@/lib/versions/bulk-compute-bu-cost";
+import { computeTransitiveBu } from "@/lib/engine/transitive-bu";
+
+// =============================================================================
+// Phase 8.1 batch 13.2 follow-up: helper for the source-page expanded-primitive
+// sections. Same flat-query strategy used in /api/heritage/[id] (commit
+// 8898b88) — Drizzle's `with:` joins at depth > 2 generate LEFT JOIN LATERAL
+// queries that Postgres rejects. We do simple definite-shape SELECTs instead
+// and attach the data to the row in JS.
+//
+//   capabilityPrimitiveMap[capabilityId] = primitive links of that cap
+//   capabilityEffectMap[capabilityId]   = effects of that cap, each with
+//                                         primitiveLinks
+//   effectPrimitiveMap[effectId]        = primitive links of that effect
+//
+// Returns maps keyed by parent id so the page can look up data per row
+// without extra joins.
+// =============================================================================
+
+interface CapPrimitiveRow {
+  primitiveId: number;
+  quantity: number;
+  primitive: { id: number; name: string; buCost: number | null };
+}
+interface CapEffectEntry {
+  effectId: string;
+  effectName: string;
+  primitiveLinks: CapPrimitiveRow[];
+}
+interface EffectPrimitiveRow {
+  effectId: string;
+  primitiveId: number;
+  quantity: number;
+  primitive: { id: number; name: string; buCost: number | null };
+}
+
+/**
+ * Fetch transitive primitive data for a set of capabilities in two flat
+ * queries: (A) the caps' direct primitives, (B) the caps' effects and
+ * each effect's primitives. Avoids Drizzle's depth-3 LATERAL join.
+ */
+async function fetchCapabilityTransitive(capabilityIds: string[]): Promise<{
+  capPrimMap: Map<string, CapPrimitiveRow[]>;
+  capEffectMap: Map<string, CapEffectEntry[]>;
+}> {
+  const capPrimMap = new Map<string, CapPrimitiveRow[]>();
+  const capEffectMap = new Map<string, CapEffectEntry[]>();
+  if (capabilityIds.length === 0) return { capPrimMap, capEffectMap };
+
+  // Query A: capability direct primitives
+  const capPrimRows = await db
+    .select({
+      capabilityId: capabilityPrimitives.capabilityId,
+      primitiveId: capabilityPrimitives.primitiveId,
+      quantity: capabilityPrimitives.quantity,
+      name: primitives.name,
+      buCost: primitives.buCost,
+    })
+    .from(capabilityPrimitives)
+    .innerJoin(primitives, eq(primitives.id, capabilityPrimitives.primitiveId))
+    .where(inArray(capabilityPrimitives.capabilityId, capabilityIds));
+
+  for (const r of capPrimRows) {
+    const arr = capPrimMap.get(r.capabilityId) ?? [];
+    arr.push({
+      primitiveId: r.primitiveId,
+      quantity: r.quantity,
+      primitive: { id: r.primitiveId, name: r.name, buCost: r.buCost },
+    });
+    capPrimMap.set(r.capabilityId, arr);
+  }
+
+  // Query B: effects of those capabilities + each effect's primitives
+  const effectPrimRows = await db
+    .select({
+      capabilityId: capabilityEffects.capabilityId,
+      effectId: capabilityEffects.effectId,
+      primitiveId: effectPrimitives.primitiveId,
+      quantity: effectPrimitives.quantity,
+      name: primitives.name,
+      buCost: primitives.buCost,
+      effectName: effects.name,
+    })
+    .from(capabilityEffects)
+    .innerJoin(effects, eq(effects.id, capabilityEffects.effectId))
+    .innerJoin(effectPrimitives, eq(effectPrimitives.effectId, capabilityEffects.effectId))
+    .innerJoin(primitives, eq(primitives.id, effectPrimitives.primitiveId))
+    .where(inArray(capabilityEffects.capabilityId, capabilityIds));
+
+  for (const r of effectPrimRows) {
+    let entry = capEffectMap.get(r.capabilityId)?.find((e) => e.effectId === r.effectId);
+    if (!entry) {
+      entry = {
+        effectId: r.effectId,
+        effectName: r.effectName,
+        primitiveLinks: [],
+      };
+      const arr = capEffectMap.get(r.capabilityId) ?? [];
+      arr.push(entry);
+      capEffectMap.set(r.capabilityId, arr);
+    }
+    entry.primitiveLinks.push({
+      primitiveId: r.primitiveId,
+      quantity: r.quantity,
+      primitive: { id: r.primitiveId, name: r.name, buCost: r.buCost },
+    });
+  }
+
+  return { capPrimMap, capEffectMap };
+}
+
+/**
+ * Fetch primitive links for a set of effects (for capability / item / heritage
+ * pages that already have `effectLinks[].effect` but no primitiveLinks on those
+ * effects).
+ */
+async function fetchEffectPrimitives(
+  effectIds: string[],
+): Promise<Map<string, EffectPrimitiveRow[]>> {
+  const out = new Map<string, EffectPrimitiveRow[]>();
+  if (effectIds.length === 0) return out;
+  const rows = await db
+    .select({
+      effectId: effectPrimitives.effectId,
+      primitiveId: effectPrimitives.primitiveId,
+      quantity: effectPrimitives.quantity,
+      name: primitives.name,
+      buCost: primitives.buCost,
+    })
+    .from(effectPrimitives)
+    .innerJoin(primitives, eq(primitives.id, effectPrimitives.primitiveId))
+    .where(inArray(effectPrimitives.effectId, effectIds));
+  for (const r of rows) {
+    const arr = out.get(r.effectId) ?? [];
+    arr.push({
+      effectId: r.effectId,
+      primitiveId: r.primitiveId,
+      quantity: r.quantity,
+      primitive: { id: r.primitiveId, name: r.name, buCost: r.buCost },
+    });
+    out.set(r.effectId, arr);
+  }
+  return out;
+}
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -805,11 +953,37 @@ async function CapabilityDetail({
 
   const author = await resolveAuthorByClerkId(row.userId);
 
-  let buTotal = 0;
-  for (const link of row.primitiveLinks) {
-    // Mashu 2026-07-09: Math.abs() per the mirror rule. Defensive.
-    buTotal += Math.abs(link.primitive.buCost * link.quantity);
-  }
+  // Phase 8.1 batch 13.2 follow-up: compute transitive BU (matches the
+  // modal preview) and fetch primitive links for the composed effects so
+  // the source page can render a "Primitives from effects" section like
+  // the atelier does.
+  const effectIds = row.effectLinks.map((l) => l.effectId);
+  const [effectPrimMap, _capabilityEffectPrimMap] = await Promise.all([
+    fetchEffectPrimitives(effectIds),
+    // CapabilityDetail never bundles other capabilities; the second slot
+    // is a placeholder for symmetry with TemplateDetail / ItemDetail.
+    Promise.resolve(new Map<string, CapEffectEntry[]>()),
+  ]);
+  const transitive = computeTransitiveBu({
+    primitiveLinks: row.primitiveLinks.map((l) => ({
+      primitiveId: l.primitiveId,
+      quantity: l.quantity,
+      primitive: { id: l.primitiveId, buCost: l.primitive.buCost },
+    })),
+    effectLinks: row.effectLinks.map((el) => ({
+      effectId: el.effectId,
+      primitiveLinks: (effectPrimMap.get(el.effectId) ?? []).map((p) => ({
+        primitiveId: p.primitiveId,
+        quantity: p.quantity,
+        primitive: { id: p.primitiveId, buCost: p.primitive.buCost },
+      })),
+    })),
+  });
+  const buTotal = Math.abs(transitive.transitiveBu);
+  // Direct primitives count = transitive - primitives only reachable via effects
+  const directPrimitiveCount = row.primitiveLinks.length;
+  const effectPrimitiveCount =
+    transitive.transitiveCount - directPrimitiveCount;
 
   const engagement = await loadEngagement("CAPABILITY", id, currentUserId);
   const [{ flagDistribution, flagNotes }, forkSource, versionMap, effectBuMap] =
@@ -912,6 +1086,41 @@ async function CapabilityDetail({
         </ul>
       </section>
 
+      {/* Phase 8.1 batch 13.2 follow-up: "Primitives from effects" section.
+          Lists every primitive that arrives via the composed effects (deduped
+          against direct primitives). Each row tags the source effect so the
+          chain is traceable. Mirrors the atelier EntityPreview section. */}
+      {effectPrimitiveCount > 0 && (
+        <section className="mt-5">
+          <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+            Primitives from effects ({effectPrimitiveCount})
+          </h2>
+          <ul className="divide-y divide-border rounded-md border border-border">
+            {row.effectLinks.flatMap((link) =>
+              (effectPrimMap.get(link.effectId) ?? []).map((p) => (
+                <li
+                  key={`eff-${link.effectId}-${p.primitiveId}`}
+                  className="flex items-center justify-between gap-2 p-3 text-sm"
+                >
+                  <Link
+                    href={`/library/item/PRIMITIVE:${p.primitiveId}`}
+                    className="min-w-0 flex-1 truncate hover:underline"
+                  >
+                    <span className="font-semibold">{p.primitive.name}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      via effect: {link.effect.name}
+                    </span>
+                  </Link>
+                  <span className="shrink-0 font-mono text-xs">
+                    {p.quantity}× · {Math.abs((p.primitive.buCost ?? 0) * p.quantity)} BU
+                  </span>
+                </li>
+              )),
+            )}
+          </ul>
+        </section>
+      )}
+
       {/* Mashu 2026-07-09: Composed effects section. The modal preview
           already shows this list; the source page was previously
           missing it. Effects contribute their own narrative + can
@@ -1009,6 +1218,16 @@ async function TemplateDetail({
     id,
     currentUserId,
   );
+
+  // Phase 8.1 batch 13.2 follow-up: fetch transitive primitive data for the
+  // heritage's bundled capabilities so the source page can render the same
+  // "Primitives from capabilities" / "Primitives from effects of capabilities"
+  // sections the atelier preview shows.
+  const capabilityIds = row.capabilityLinks
+    .filter((l) => l.capability != null)
+    .map((l) => l.capabilityId);
+  const { capPrimMap, capEffectMap } = await fetchCapabilityTransitive(capabilityIds);
+
   const [{ flagDistribution, flagNotes }, forkSource, versionMap, capabilityBuMap] =
     await Promise.all([
       loadFlagsAndTags(
@@ -1112,6 +1331,101 @@ async function TemplateDetail({
           </ul>
         </section>
       )}
+
+      {/* Phase 8.1 batch 13.2 follow-up: "Primitives from capabilities".
+          Each row tagged with the source capability so the chain is
+          traceable. Same visual shape as the atelier EntityPreview. */}
+      {(() => {
+        const links = row.capabilityLinks.flatMap((link) =>
+          link.capability
+            ? (capPrimMap.get(link.capabilityId) ?? []).map((p) => ({
+                capabilityName: link.capability!.name,
+                primitiveId: p.primitiveId,
+                quantity: p.quantity,
+                name: p.primitive.name,
+                buCost: p.primitive.buCost,
+              }))
+            : [],
+        );
+        if (links.length === 0) return null;
+        return (
+          <section className="mb-5">
+            <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+              Primitives from capabilities ({links.length})
+            </h2>
+            <ul className="divide-y divide-border rounded-md border border-border">
+              {links.map((p) => (
+                <li
+                  key={`cap-${p.capabilityName}-${p.primitiveId}`}
+                  className="flex items-center justify-between gap-2 p-3 text-sm"
+                >
+                  <Link
+                    href={`/library/item/PRIMITIVE:${p.primitiveId}`}
+                    className="min-w-0 flex-1 truncate hover:underline"
+                  >
+                    <span className="font-semibold">{p.name}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      via capability: {p.capabilityName}
+                    </span>
+                  </Link>
+                  <span className="shrink-0 font-mono text-xs">
+                    {p.quantity}× · {Math.abs((p.buCost ?? 0) * p.quantity)} BU
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })()}
+
+      {/* Phase 8.1 batch 13.2 follow-up: "Primitives from effects of
+          capabilities". When a bundled capability itself has effects,
+          this section lists the primitives those effects contribute. */}
+      {(() => {
+        const links = row.capabilityLinks.flatMap((link) =>
+          link.capability
+            ? (capEffectMap.get(link.capabilityId) ?? []).flatMap((eff) =>
+                eff.primitiveLinks.map((p) => ({
+                  capabilityName: link.capability!.name,
+                  effectName: eff.effectName,
+                  primitiveId: p.primitiveId,
+                  quantity: p.quantity,
+                  name: p.primitive.name,
+                  buCost: p.primitive.buCost,
+                })),
+              )
+            : [],
+        );
+        if (links.length === 0) return null;
+        return (
+          <section className="mb-5">
+            <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+              Primitives from effects of capabilities ({links.length})
+            </h2>
+            <ul className="divide-y divide-border rounded-md border border-border">
+              {links.map((p) => (
+                <li
+                  key={`cap-eff-${p.capabilityName}-${p.effectName}-${p.primitiveId}`}
+                  className="flex items-center justify-between gap-2 p-3 text-sm"
+                >
+                  <Link
+                    href={`/library/item/PRIMITIVE:${p.primitiveId}`}
+                    className="min-w-0 flex-1 truncate hover:underline"
+                  >
+                    <span className="font-semibold">{p.name}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      via {p.capabilityName} → effect: {p.effectName}
+                    </span>
+                  </Link>
+                  <span className="shrink-0 font-mono text-xs">
+                    {p.quantity}× · {Math.abs((p.buCost ?? 0) * p.quantity)} BU
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })()}
 
       {row.capabilityLinks.length > 0 && (
         <section>
@@ -1348,6 +1662,52 @@ async function EffectDetail({
         </section>
       )}
 
+      {/* Phase 8.1 batch 13.2 follow-up: "Primitives from nested effects".
+          Effects that nest under this one bring their own primitives —
+          this section lists them so the source page shows the same
+          transitive view as the atelier preview. Each row tags the
+          parent nested effect for traceability. */}
+      {(() => {
+        const links = childEdges.flatMap((edge) =>
+          edge.childEffect.primitiveLinks.map((pl) => ({
+            effectName: edge.childEffect.name,
+            primitiveId: pl.primitiveId,
+            quantity: pl.quantity,
+            name: pl.primitive.name,
+            buCost: pl.primitive.buCost,
+          })),
+        );
+        if (links.length === 0) return null;
+        return (
+          <section className="mb-5">
+            <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+              Primitives from nested effects ({links.length})
+            </h2>
+            <ul className="divide-y divide-border rounded-md border border-border">
+              {links.map((p) => (
+                <li
+                  key={`nest-${p.effectName}-${p.primitiveId}`}
+                  className="flex items-center justify-between gap-2 p-3 text-sm"
+                >
+                  <Link
+                    href={`/library/item/PRIMITIVE:${p.primitiveId}`}
+                    className="min-w-0 flex-1 truncate hover:underline"
+                  >
+                    <span className="font-semibold">{p.name}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      via nested effect: {p.effectName}
+                    </span>
+                  </Link>
+                  <span className="shrink-0 font-mono text-xs">
+                    {p.quantity}× · {Math.abs((p.buCost ?? 0) * p.quantity)} BU
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })()}
+
       {childEffects.length > 0 && (
         <section>
           <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
@@ -1415,14 +1775,20 @@ async function ItemDetail({
     }),
   ]);
 
-  // Compute BU total from composed primitives (same shape as item form).
-  let buTotal = 0;
-  for (const link of primitiveLinks) {
-    buTotal += link.primitive.buCost;
-  }
-
   const author = await resolveAuthorByClerkId(itemRow.userId);
   const engagement = await loadEngagement("ITEM", id, currentUserId);
+
+  // Phase 8.1 batch 13.2 follow-up: fetch transitive primitive data so the
+  // source page can render "Primitives from capabilities" / "Primitives
+  // from effects" / "Primitives from effects of capabilities" sections like
+  // the atelier preview does.
+  const capabilityIds = capabilityLinks.map((l) => l.capabilityId);
+  const effectIds = effectLinks.map((l) => l.effectId);
+  const [{ capPrimMap, capEffectMap }, effectPrimMap] = await Promise.all([
+    fetchCapabilityTransitive(capabilityIds),
+    fetchEffectPrimitives(effectIds),
+  ]);
+
   const [
     { flagDistribution, flagNotes },
     forkSource,
@@ -1450,6 +1816,45 @@ async function ItemDetail({
     bulkComputeCapabilityBuCost(capabilityLinks.map((l) => l.capabilityId)),
   ]);
 
+  // Phase 8.1 batch 13.2 follow-up: transitive BU = direct primitives +
+  // primitives from direct effects + primitives from capabilities (and the
+  // effects of those capabilities). Matches the atelier preview total.
+  const transitive = computeTransitiveBu({
+    primitiveLinks: primitiveLinks.map((l) => ({
+      primitiveId: l.primitiveId,
+      quantity: 1,
+      primitive: { id: l.primitiveId, buCost: l.primitive.buCost },
+    })),
+    effectLinks: effectLinks.map((el) => ({
+      effectId: el.effectId,
+      primitiveLinks: (effectPrimMap.get(el.effectId) ?? []).map((p) => ({
+        primitiveId: p.primitiveId,
+        quantity: p.quantity,
+        primitive: { id: p.primitiveId, buCost: p.primitive.buCost },
+      })),
+    })),
+    capabilityLinks: capabilityIds.map((cid) => ({
+      capabilityId: cid,
+      primitiveLinks: (capPrimMap.get(cid) ?? []).map((p) => ({
+        primitiveId: p.primitiveId,
+        quantity: p.quantity,
+        primitive: { id: p.primitiveId, buCost: p.primitive.buCost },
+      })),
+      effectLinks: (capEffectMap.get(cid) ?? []).map((e) => ({
+        effectId: e.effectId,
+        primitiveLinks: e.primitiveLinks.map((p) => ({
+          primitiveId: p.primitiveId,
+          quantity: p.quantity,
+          primitive: { id: p.primitiveId, buCost: p.primitive.buCost },
+        })),
+      })),
+    })),
+  });
+  const buTotal =
+    Math.abs(transitive.transitiveBu) > 0
+      ? Math.abs(transitive.transitiveBu)
+      : Math.max(itemRow.buCost, 0);
+
   // Rarity class for the chip. itemRarityEnum is the schema enum;
   // we map each value to a tailwind color pair. Cast through string
   // to defeat Drizzle's literal-type narrowing in the chained
@@ -1474,7 +1879,7 @@ async function ItemDetail({
       backHref="/library/browse?type=ITEM"
       typeLabel="ITEM"
       name={itemRow.name}
-      buCost={buTotal > 0 || itemRow.buCost > 0 ? (buTotal || itemRow.buCost) : null}
+      buCost={buTotal > 0 ? buTotal : null}
       category={itemRow.itemType}
       description={itemRow.description || null}
       author={author}
@@ -1635,6 +2040,49 @@ async function ItemDetail({
         </section>
       )}
 
+      {/* Phase 8.1 batch 13.2 follow-up: "Primitives from effects".
+          Lists every primitive that arrives via the item's direct effects. */}
+      {(() => {
+        const links = effectLinks.flatMap((link) =>
+          (effectPrimMap.get(link.effectId) ?? []).map((p) => ({
+            effectName: link.effect.name,
+            primitiveId: p.primitiveId,
+            quantity: p.quantity,
+            name: p.primitive.name,
+            buCost: p.primitive.buCost,
+          })),
+        );
+        if (links.length === 0) return null;
+        return (
+          <section className="mb-5">
+            <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+              Primitives from effects ({links.length})
+            </h2>
+            <ul className="divide-y divide-border rounded-md border border-border">
+              {links.map((p) => (
+                <li
+                  key={`eff-${p.effectName}-${p.primitiveId}`}
+                  className="flex items-center justify-between gap-2 p-3 text-sm"
+                >
+                  <Link
+                    href={`/library/item/PRIMITIVE:${p.primitiveId}`}
+                    className="min-w-0 flex-1 truncate hover:underline"
+                  >
+                    <span className="font-semibold">{p.name}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      via effect: {p.effectName}
+                    </span>
+                  </Link>
+                  <span className="shrink-0 font-mono text-xs">
+                    {p.quantity}× · {Math.abs((p.buCost ?? 0) * p.quantity)} BU
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })()}
+
       {capabilityLinks.length > 0 && (
         <section className="mb-5">
           <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
@@ -1670,6 +2118,94 @@ async function ItemDetail({
           </ul>
         </section>
       )}
+
+      {/* Phase 8.1 batch 13.2 follow-up: "Primitives from capabilities" +
+          "Primitives from effects of capabilities" sections. Same visual
+          shape as the atelier EntityPreview. */}
+      {(() => {
+        const capLinks = capabilityLinks.flatMap((link) =>
+          (capPrimMap.get(link.capabilityId) ?? []).map((p) => ({
+            capabilityName: link.capability.name,
+            primitiveId: p.primitiveId,
+            quantity: p.quantity,
+            name: p.primitive.name,
+            buCost: p.primitive.buCost,
+          })),
+        );
+        const capEffectLinks = capabilityLinks.flatMap((link) =>
+          (capEffectMap.get(link.capabilityId) ?? []).flatMap((eff) =>
+            eff.primitiveLinks.map((p) => ({
+              capabilityName: link.capability.name,
+              effectName: eff.effectName,
+              primitiveId: p.primitiveId,
+              quantity: p.quantity,
+              name: p.primitive.name,
+              buCost: p.primitive.buCost,
+            })),
+          ),
+        );
+        if (capLinks.length === 0 && capEffectLinks.length === 0) return null;
+        return (
+          <>
+            {capLinks.length > 0 && (
+              <section className="mb-5">
+                <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+                  Primitives from capabilities ({capLinks.length})
+                </h2>
+                <ul className="divide-y divide-border rounded-md border border-border">
+                  {capLinks.map((p) => (
+                    <li
+                      key={`cap-${p.capabilityName}-${p.primitiveId}`}
+                      className="flex items-center justify-between gap-2 p-3 text-sm"
+                    >
+                      <Link
+                        href={`/library/item/PRIMITIVE:${p.primitiveId}`}
+                        className="min-w-0 flex-1 truncate hover:underline"
+                      >
+                        <span className="font-semibold">{p.name}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          via capability: {p.capabilityName}
+                        </span>
+                      </Link>
+                      <span className="shrink-0 font-mono text-xs">
+                        {p.quantity}× · {Math.abs((p.buCost ?? 0) * p.quantity)} BU
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {capEffectLinks.length > 0 && (
+              <section className="mb-5">
+                <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
+                  Primitives from effects of capabilities ({capEffectLinks.length})
+                </h2>
+                <ul className="divide-y divide-border rounded-md border border-border">
+                  {capEffectLinks.map((p) => (
+                    <li
+                      key={`cap-eff-${p.capabilityName}-${p.effectName}-${p.primitiveId}`}
+                      className="flex items-center justify-between gap-2 p-3 text-sm"
+                    >
+                      <Link
+                        href={`/library/item/PRIMITIVE:${p.primitiveId}`}
+                        className="min-w-0 flex-1 truncate hover:underline"
+                      >
+                        <span className="font-semibold">{p.name}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          via {p.capabilityName} → effect: {p.effectName}
+                        </span>
+                      </Link>
+                      <span className="shrink-0 font-mono text-xs">
+                        {p.quantity}× · {Math.abs((p.buCost ?? 0) * p.quantity)} BU
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </>
+        );
+      })()}
     </DetailShell>
   );
 }
