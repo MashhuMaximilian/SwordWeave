@@ -262,9 +262,19 @@ function renderModalBody(
           ONE unit so the header sits at the top of the scroll and
           remains reachable even when the content is taller than the
           viewport (user-reported: 'If the thing has a lot of info,
-          the header goes above the max height of the screen thus I
-          cannot close it'). The header uses `sticky top-0` inside the
-          scroll container so it pins when content scrolls under it. */}
+          the header goes above the max height of the screen thus
+          I cannot close it'). The header uses `sticky top-0` inside
+          the scroll container so it pins when content scrolls under it.
+      */}
+      {/* Phase 8.1 batch 13.2 (Mashu 2026-07-22): removed the
+          breadcrumb navigation row in the header. Per user: "instead
+          of opening in same modal with breadcrubs, it should just
+          stack another modal on top." Each modal in the stack now
+          renders as an independent panel with its own close button.
+          The stack depth is still tracked (so we can render up to 4
+          modals side-by-side on desktop), but there's no breadcrumb
+          UI — the user closes each modal independently by clicking
+          its X button. */}
       <div className="min-h-0 flex-1 overflow-y-auto text-sm">
         <header className="sticky top-0 z-20 flex h-10 items-center justify-between gap-2 border-b border-border bg-card px-4">
           {/* Phase 9 round-3: header now shows only the CATEGORY (uppercase
@@ -278,52 +288,18 @@ function renderModalBody(
               </span>
             ) : null}
           </div>
-          {/* Nested drilldown breadcrumb — only when stack depth > 1. Compact:
-              single line with chevron separators, sits on the LEFT so it
-              doesn't fight the close button for vertical space. */}
-          {stack.length > 1 ? (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              {stack.slice(0, idx + 1).map((crumb, i) => {
-                const isLast = i === idx;
-                return (
-                  <span key={crumb.key} className="flex items-center gap-1">
-                    {i > 0 ? (
-                      <ChevronRight className="size-3 shrink-0" />
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={() => popTo(i)}
-                      className={cn(
-                        "truncate rounded px-1 transition-colors hover:bg-accent",
-                        isLast && "text-foreground",
-                      )}
-                      title={crumb.label}
-                    >
-                      {crumb.label}
-                    </button>
-                  </span>
-                );
-              })}
-            </div>
-          ) : null}
-          {isTop ? (
-            <button
-              type="button"
-              onClick={pop}
-              aria-label="Close"
-              className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
-              <X className="size-4" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={pop}
-              className="shrink-0 text-xs text-primary hover:underline"
-            >
-              ← Back
-            </button>
-          )}
+          {/* Every modal in the stack is independently closeable — no
+              breadcrumb row, no "← Back" button. The user closes each
+              modal by clicking its X button (matches the user's stated
+              mental model: stacked panels, not breadcrumb navigation). */}
+          <button
+            type="button"
+            onClick={pop}
+            aria-label="Close"
+            className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
         </header>
         <div className="p-4">
           {/* Phase 9 round-3: entity name rendered INSIDE the body

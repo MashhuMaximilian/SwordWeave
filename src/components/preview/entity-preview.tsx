@@ -814,6 +814,20 @@ function CapabilityBody({
   onSubLink: (link: PreviewSubLink) => void;
 }) {
   const totalBu = row.primitiveLinks.reduce((s, l) => s + Math.abs(l.primitive.buCost * l.quantity), 0);
+  // Phase 8.1 batch 13.2: collect primitives from each effect so the
+  // preview shows the full transitive closure. Per Mashu 2026-07-22:
+  // "we need in primitives another section 'Primitives from effects'
+  // to list the primitives inherited from effect. ... we should also
+  // list primitives from capabilities. And if said capability has
+  // an effect, in same section with primitives from capability we
+  // should list the primitives from effect of capability too (and
+  // for each we should mention source)."
+  const effectPrimitiveLinks = row.effectLinks.flatMap((effectLink) =>
+    (effectLink.effect.primitiveLinks ?? []).map((pl) => ({
+      ...pl,
+      effectName: effectLink.effect.name,
+    })),
+  );
   return (
     <div className="space-y-4">
       <Header
@@ -859,12 +873,37 @@ function CapabilityBody({
               <span className="rounded bg-secondary px-1.5 py-0.5 font-medium">{l.role.replace(/_/g, " ")}</span>
               {l.quantity > 1 ? <span>× {l.quantity}</span> : null}
               {l.slotLabel ? <span className="italic">"{l.slotLabel}"</span> : null}
+              <span className="rounded bg-primary/15 px-1.5 py-0.5 font-medium text-primary">direct</span>
             </>
           ),
         }))}
       />
+      {/* Phase 8.1 batch 13.2: NEW section. Primitives that come in
+          via the capability's effects. Each row tagged with the
+          effect it came from so the player can trace the chain. */}
+      {effectPrimitiveLinks.length > 0 ? (
+        <ComposedList
+          title={`Primitives from effects (${effectPrimitiveLinks.length})`}
+          onSubLink={onSubLink}
+          items={effectPrimitiveLinks.map((pl) => ({
+            id: String(pl.primitive.id),
+            name: pl.primitive.name,
+            bu: Math.abs(pl.primitive.buCost * pl.quantity),
+            subText: (
+              <>
+                <span>{pl.primitive.category}</span>
+                {pl.quantity > 1 ? <span>× {pl.quantity}</span> : null}
+                <span className="rounded bg-primary/15 px-1.5 py-0.5 font-medium text-primary">
+                  via effect: {pl.effectName}
+                </span>
+              </>
+            ),
+          }))}
+        />
+      ) : null}
       <ComposedList
         title={`Composed effects (${row.effectLinks.length})`}
+        onSubLink={onSubLink}
         items={row.effectLinks.map((l) => ({
           id: l.effectId,
           name: l.effect.name,
@@ -886,6 +925,27 @@ function TemplateBody({
   onSubLink: (link: PreviewSubLink) => void;
 }) {
   const primitiveBu = row.primitiveLinks.reduce((s, l) => s + l.primitive.buCost, 0);
+  // Phase 8.1 batch 13.2: collect primitives from each bundled
+  // capability. Per Mashu 2026-07-22: "we should also list
+  // primitives from capabilities. And if said capability has an
+  // effect, in same section with primitives from capability we
+  // should list the primitives from effect of capability too."
+  //
+  // NOTE: TemplateRow.capability currently only carries
+  // primitiveLinks (not effectLinks). To list "primitives from
+  // effects of capabilities" in the heritage preview, the
+  // capability join in the heritage fetch needs to be extended.
+  // Tracked for a follow-up batch — the capability-level preview
+  // already lists "Primitives from effects" because the join is
+  // richer there.
+  const capabilityPrimitiveLinks = row.capabilityLinks.flatMap((cl) =>
+    (cl.capability.primitiveLinks ?? []).map((pl) => ({
+      primitiveId: pl.primitiveId,
+      quantity: 1,
+      primitive: pl.primitive,
+      source: `via capability: ${cl.capability.name}`,
+    })),
+  );
   return (
     <div className="space-y-4">
       <Header
@@ -920,10 +980,42 @@ function TemplateBody({
           name: l.primitive.name,
           bu: l.primitive.buCost,
           versionNumber: l.versionNumber,
+          subText: (
+            <span className="rounded bg-primary/15 px-1.5 py-0.5 font-medium text-primary">
+              direct
+            </span>
+          ),
         }))}
       />
+      {/* Phase 8.1 batch 13.2: NEW section. Primitives that come in
+          via the heritage's bundled capabilities. Each row tagged
+          with the source path so the player can trace the chain.
+          Effect-of-capability primitives will be added in a follow-
+          up batch once TemplateRow.capability grows an effectLinks
+          field. */}
+      {capabilityPrimitiveLinks.length > 0 ? (
+        <ComposedList
+          title={`Primitives from capabilities (${capabilityPrimitiveLinks.length})`}
+          onSubLink={onSubLink}
+          items={capabilityPrimitiveLinks.map((pl) => ({
+            id: String(pl.primitive.id),
+            name: pl.primitive.name,
+            bu: Math.abs(pl.primitive.buCost * pl.quantity),
+            subText: (
+              <>
+                <span>{pl.primitive.category}</span>
+                {pl.quantity > 1 ? <span>× {pl.quantity}</span> : null}
+                <span className="rounded bg-primary/15 px-1.5 py-0.5 font-medium text-primary">
+                  {pl.source}
+                </span>
+              </>
+            ),
+          }))}
+        />
+      ) : null}
       <ComposedList
         title={`Bundled capabilities (${row.capabilityLinks.length})`}
+        onSubLink={onSubLink}
         items={row.capabilityLinks.map((l) => ({
           id: l.capability.id,
           name: l.capability.name,
