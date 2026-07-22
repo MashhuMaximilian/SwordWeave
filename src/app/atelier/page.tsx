@@ -9,7 +9,7 @@
 // ?intent=<fork|load> (Phase 1) records HOW the user entered the sandbox.
 // ?version=N deep-links a specific published version for pre-fill.
 
-import { asc } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 
 import {
@@ -19,6 +19,8 @@ import {
 import { db } from "@/db/client";
 import {
   capabilities,
+  capabilityEffects,
+  effectPrimitives,
   effects,
   items,
   primitives,
@@ -193,27 +195,26 @@ export default async function AtelierSandboxPage({
       with: {
         primitiveLinks: { with: { primitive: true } },
         // Phase 8.1 batch 13.5 follow-up: deep-join the capability's
-        // primitiveLinks AND its effect → primitiveLinks so the
-        // lineage preview can compute the transitive BU per bundled
-        // capability. Mashu 2026-07-22: "I have a lineage with
-        // capability X. Capability X has cost 13 BU for example, but
-        // it still shows 3 BU in lineage preview where capability X
-        // is shown bc it either doesn't take the cost from the mother
-        // component or doesn't calculate it properly."
+        // primitiveLinks so the lineage preview can compute the
+        // transitive BU per bundled capability. Mashu 2026-07-22: "I
+        // have a lineage with capability X. Capability X has cost 13
+        // BU for example, but it still shows 3 BU in lineage preview
+        // where capability X is shown bc it either doesn't take the
+        // cost from the mother component or doesn't calculate it
+        // properly."
+        //
+        // NOTE: we deliberately DO NOT nest `capability.effectLinks
+        // → effect.primitiveLinks` inside `with:`. Depth-3 Drizzle
+        // `with:` joins mis-scope Postgres's LEFT JOIN LATERAL and
+        // return zero rows (see the same workaround in
+        // src/app/api/heritage/[id]/route.ts lines 122-128). Effect
+        // primitive data is attached via a separate flat SELECT
+        // below.
         capabilityLinks: {
           with: {
             capability: {
               with: {
                 primitiveLinks: { with: { primitive: true } },
-                effectLinks: {
-                  with: {
-                    effect: {
-                      with: {
-                        primitiveLinks: { with: { primitive: true } },
-                      },
-                    },
-                  },
-                },
               },
             },
           },
@@ -226,6 +227,103 @@ export default async function AtelierSandboxPage({
     console.error("[atelier sandbox] heritage query failed:", err);
   }
 
+  // Phase 8.1 batch 13.5 follow-up: attach each capability's effect
+  // → primitive links via flat SELECTs (avoids the depth-3 Drizzle
+  // LATERAL mis-scoping bug). We attach the data to
+  // `cl.capability.effectLinks[].effect.primitiveLinks` so the
+  // preview modal can call `computeTransitiveBu` and render
+  // `effectLinks` on the capability row.
+  try {
+    const allCapabilityIds = heritageRows.flatMap((h) =>
+      ((h as { capabilityLinks?: Array<{ capabilityId: string }> }).capabilityLinks ?? []).map(
+        (cl) => cl.capabilityId,
+      ),
+    );
+    if (allCapabilityIds.length > 0) {
+      const effectPrimRows = await db
+        .select({
+          capabilityId: capabilityEffects.capabilityId,
+          effectId: capabilityEffects.effectId,
+          effectName: effects.name,
+          effectDescription: effects.narrativeDescription,
+          primitiveId: effectPrimitives.primitiveId,
+          quantity: effectPrimitives.quantity,
+          primitiveName: primitives.name,
+          buCost: primitives.buCost,
+        })
+        .from(capabilityEffects)
+        .innerJoin(effects, eq(effects.id, capabilityEffects.effectId))
+        .innerJoin(
+          effectPrimitives,
+          eq(effectPrimitives.effectId, capabilityEffects.effectId),
+        )
+        .innerJoin(primitives, eq(primitives.id, effectPrimitives.primitiveId))
+        .where(inArray(capabilityEffects.capabilityId, allCapabilityIds));
+      // effectPrimMap: capabilityId → [{effectId, effect:{...}, primitiveLinks:[...]}]
+      const effectPrimMap = new Map<
+        string,
+        Array<{
+          effectId: string;
+          effect: { id: string; name: string; description: string | null };
+          primitiveLinks: Array<{
+            primitiveId: number;
+            quantity: number;
+            primitive: { id: number; name: string; buCost: number | null };
+          }>;
+        }>
+      >();
+      for (const r of effectPrimRows) {
+        let capArr = effectPrimMap.get(r.capabilityId);
+        if (!capArr) {
+          capArr = [];
+          effectPrimMap.set(r.capabilityId, capArr);
+        }
+        let eff = capArr.find((e) => e.effectId === r.effectId);
+        if (!eff) {
+          eff = {
+            effectId: r.effectId,
+            effect: {
+              id: r.effectId,
+              name: r.effectName,
+              description: r.effectDescription,
+            },
+            primitiveLinks: [],
+          };
+          capArr.push(eff);
+        }
+        eff.primitiveLinks.push({
+          primitiveId: r.primitiveId,
+          quantity: r.quantity,
+          primitive: {
+            id: r.primitiveId,
+            name: r.primitiveName,
+            buCost: r.buCost,
+          },
+        });
+      }
+      for (const h of heritageRows as unknown as Array<{
+        capabilityLinks?: Array<{
+          capabilityId: string;
+          capability: { effectLinks?: unknown[] } & Record<string, unknown>;
+        }>;
+      }>) {
+        for (const cl of h.capabilityLinks ?? []) {
+          const arr = effectPrimMap.get(cl.capabilityId) ?? [];
+          // Empty array when no effects — important so the preview
+          // can flatMap safely.
+          cl.capability.effectLinks = arr.map((e) => ({
+            effectId: e.effectId,
+            effect: e.effect,
+            primitiveLinks: e.primitiveLinks,
+          }));
+        }
+      }
+    }
+  } catch (err) {
+    dataLoadFailed = true;
+    console.error("[atelier sandbox] heritage effect-prim attach failed:", err);
+  }
+
   // ITEMS
   try {
     const rows = await db.query.items.findMany({
@@ -234,22 +332,16 @@ export default async function AtelierSandboxPage({
         primitiveLinks: { with: { primitive: true } },
         effectLinks: { with: { effect: { with: { primitiveLinks: { with: { primitive: true } } } } } },
         // Phase 8.1 batch 13.5 follow-up: deep-join capability
-        // primitiveLinks AND its effect → primitiveLinks so item
-        // preview can compute transitive BU per bundled capability.
+        // primitiveLinks so the item preview can compute transitive
+        // BU per bundled capability. We deliberately avoid nesting
+        // effect → primitiveLinks in `with:` (depth-3 Drizzle
+        // mis-scopes — see the heritage workaround above). That data
+        // is attached via a separate flat SELECT below.
         capabilityLinks: {
           with: {
             capability: {
               with: {
                 primitiveLinks: { with: { primitive: true } },
-                effectLinks: {
-                  with: {
-                    effect: {
-                      with: {
-                        primitiveLinks: { with: { primitive: true } },
-                      },
-                    },
-                  },
-                },
               },
             },
           },
@@ -260,6 +352,99 @@ export default async function AtelierSandboxPage({
   } catch (err) {
     dataLoadFailed = true;
     console.error("[atelier sandbox] items query failed:", err);
+  }
+
+  // Phase 8.1 batch 13.5 follow-up: attach each item's bundled
+  // capability's effect → primitive links via flat SELECTs. Same
+  // pattern as the heritage block above — depth-3 Drizzle would
+  // break the query, so we keep the with: tree shallow and attach
+  // the deeper data in JS.
+  try {
+    const allCapabilityIds = itemRows.flatMap((it) =>
+      ((it as { capabilityLinks?: Array<{ capabilityId: string }> }).capabilityLinks ?? []).map(
+        (cl) => cl.capabilityId,
+      ),
+    );
+    if (allCapabilityIds.length > 0) {
+      const effectPrimRows = await db
+        .select({
+          capabilityId: capabilityEffects.capabilityId,
+          effectId: capabilityEffects.effectId,
+          effectName: effects.name,
+          effectDescription: effects.narrativeDescription,
+          primitiveId: effectPrimitives.primitiveId,
+          quantity: effectPrimitives.quantity,
+          primitiveName: primitives.name,
+          buCost: primitives.buCost,
+        })
+        .from(capabilityEffects)
+        .innerJoin(effects, eq(effects.id, capabilityEffects.effectId))
+        .innerJoin(
+          effectPrimitives,
+          eq(effectPrimitives.effectId, capabilityEffects.effectId),
+        )
+        .innerJoin(primitives, eq(primitives.id, effectPrimitives.primitiveId))
+        .where(inArray(capabilityEffects.capabilityId, allCapabilityIds));
+      const effectPrimMap = new Map<
+        string,
+        Array<{
+          effectId: string;
+          effect: { id: string; name: string; description: string | null };
+          primitiveLinks: Array<{
+            primitiveId: number;
+            quantity: number;
+            primitive: { id: number; name: string; buCost: number | null };
+          }>;
+        }>
+      >();
+      for (const r of effectPrimRows) {
+        let capArr = effectPrimMap.get(r.capabilityId);
+        if (!capArr) {
+          capArr = [];
+          effectPrimMap.set(r.capabilityId, capArr);
+        }
+        let eff = capArr.find((e) => e.effectId === r.effectId);
+        if (!eff) {
+          eff = {
+            effectId: r.effectId,
+            effect: {
+              id: r.effectId,
+              name: r.effectName,
+              description: r.effectDescription,
+            },
+            primitiveLinks: [],
+          };
+          capArr.push(eff);
+        }
+        eff.primitiveLinks.push({
+          primitiveId: r.primitiveId,
+          quantity: r.quantity,
+          primitive: {
+            id: r.primitiveId,
+            name: r.primitiveName,
+            buCost: r.buCost,
+          },
+        });
+      }
+      for (const it of itemRows as unknown as Array<{
+        capabilityLinks?: Array<{
+          capabilityId: string;
+          capability: { effectLinks?: unknown[] } & Record<string, unknown>;
+        }>;
+      }>) {
+        for (const cl of it.capabilityLinks ?? []) {
+          const arr = effectPrimMap.get(cl.capabilityId) ?? [];
+          cl.capability.effectLinks = arr.map((e) => ({
+            effectId: e.effectId,
+            effect: e.effect,
+            primitiveLinks: e.primitiveLinks,
+          }));
+        }
+      }
+    }
+  } catch (err) {
+    dataLoadFailed = true;
+    console.error("[atelier sandbox] item effect-prim attach failed:", err);
   }
 
   // Resolve ?edit=<id> into initial editing row (across all kinds).

@@ -81,6 +81,35 @@ interface HeritageBundle {
 // session — keyed by heritageId. Avoids refetching when switching tabs.
 const heritageBundleCache = new Map<string, HeritageBundle | null>();
 
+// Phase 8.1 batch 13.5 follow-up: same shape as HeritageBundle but for
+// capability slots. The capability slot card (see below) fetches
+// /api/capabilities/[id] on mount and renders the same exploded
+// "Primitives from Capability" / "Primitives from Effects" sections.
+// Mashu 2026-07-22: "in character creation I still don't see all the
+// primitives if I slot in a capability."
+interface CapabilityBundle {
+  id: string;
+  name: string;
+  primitiveLinks: Array<{
+    primitiveId: number;
+    quantity: number;
+    isMirrored: boolean;
+    primitive: { id: number; name: string; buCost: number | null } | null;
+  }>;
+  effectLinks: Array<{
+    effectId: string;
+    effect: { id: string; name: string; description: string | null };
+    primitiveLinks: Array<{
+      primitiveId: number;
+      quantity: number;
+      isMirrored: boolean;
+      primitive: { id: number; name: string; buCost: number | null } | null;
+    }>;
+  }>;
+  computedBu: number;
+}
+const capabilityBundleCache = new Map<string, CapabilityBundle | null>();
+
 /**
  * Phase 8.1 batch 10: parent components (footer) need a quick lookup
  * of "how much BU does this heritage bundle cost?" for live BU
@@ -128,6 +157,12 @@ export function SlotReceiverTab({
             slot.kind === "heritage" ? (
               <HeritageSlotCard
                 key={slot.slotId ?? `heritage-${slot.heritageId}-${idx}`}
+                slot={slot}
+                onRemove={() => removeSlot(tabId, idx)}
+              />
+            ) : slot.kind === "capability" ? (
+              <CapabilitySlotCard
+                key={slot.slotId ?? `capability-${slot.capabilityId}-${idx}`}
                 slot={slot}
                 onRemove={() => removeSlot(tabId, idx)}
               />
@@ -540,6 +575,258 @@ function HeritageSlotCard({
                     className="inline-flex items-center rounded-full border border-border bg-background px-2 py-0.5 text-xs"
                   >
                     {link.capability?.name ?? "Unknown"}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
+// CapabilitySlotCard — Phase 8.1 batch 13.5 follow-up
+//
+// Renders the exploded view of a slotted capability in the character
+// creation modal. Mirrors HeritageSlotCard but for direct capability
+// slots. Mashu 2026-07-22: "in character creation I still don't see
+// all the primitives if I slot in a capability."
+//
+// Shows:
+//   1. Direct primitives (bundled at capability level)
+//   2. Primitives from each effect (transitive)
+//   3. Total transitive BU
+//
+// Each primitive row carries its buCost. The chip on the right shows
+// the total transitive BU (matches the server-side expander).
+function CapabilitySlotCard({
+  slot,
+  onRemove,
+}: {
+  slot: Extract<PendingSlot, { kind: "capability" }>;
+  onRemove: () => void;
+}) {
+  const cached = capabilityBundleCache.get(slot.capabilityId);
+  const [bundle, setBundle] = useState<CapabilityBundle | null>(
+    cached !== undefined ? cached : null,
+  );
+  const [loading, setLoading] = useState(cached === undefined);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchBundle = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/capabilities/${slot.capabilityId}`);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? `HTTP ${res.status}`);
+      }
+      const c = data.capability as
+        | (CapabilityBundle & {
+            computedBu?: number;
+          })
+        | undefined;
+      const normalised: CapabilityBundle | null = c
+        ? (() => {
+            // The /api/capabilities/[id] response puts each effect's
+            // primitiveLinks INSIDE el.effect (after the server-side
+            // attach), so we widen the raw row type to read it. The
+            // heritage API follows the same pattern. CapabilityBundle's
+            // declared shape only needs the slim version.
+            const rawCap = c as typeof c & {
+              effectLinks?: Array<{
+                effectId: string;
+                effect: {
+                  id: string;
+                  name: string;
+                  description?: string | null;
+                  primitiveLinks?: Array<{
+                    primitiveId: number;
+                    quantity: number;
+                    isMirrored?: boolean;
+                    primitive: {
+                      id: number;
+                      name: string;
+                      buCost: number | null;
+                    };
+                  }>;
+                };
+              }>;
+            };
+            return {
+              id: rawCap.id,
+              name: rawCap.name,
+              primitiveLinks: (rawCap.primitiveLinks ?? []).map((pl) => ({
+                primitiveId: pl.primitiveId,
+                quantity: pl.quantity ?? 1,
+                isMirrored: pl.isMirrored ?? false,
+                primitive: pl.primitive,
+              })),
+              effectLinks: (rawCap.effectLinks ?? []).map((el) => {
+                // Widening the response row: el.effect.primitiveLinks
+                // is populated by /api/capabilities/[id] but not part
+                // of CapabilityBundle's slim declared shape. We cast
+                // each el.effect before reading.
+                const eff = el.effect as {
+                  id: string;
+                  name: string;
+                  description?: string | null;
+                  primitiveLinks?: Array<{
+                    primitiveId: number;
+                    quantity: number;
+                    isMirrored?: boolean;
+                    primitive: { id: number; name: string; buCost: number | null };
+                  }>;
+                };
+                return {
+                  effectId: el.effectId ?? eff.id ?? "",
+                  effect: {
+                    id: eff.id ?? "",
+                    name: eff.name ?? "",
+                    description: eff.description ?? null,
+                  },
+                  primitiveLinks: (eff.primitiveLinks ?? []).map(
+                    (pl: {
+                      primitiveId: number;
+                      quantity: number;
+                      isMirrored?: boolean;
+                      primitive: { id: number; name: string; buCost: number | null };
+                    }) => ({
+                      primitiveId: pl.primitiveId,
+                      quantity: pl.quantity ?? 1,
+                      isMirrored: pl.isMirrored ?? false,
+                      primitive: pl.primitive,
+                    }),
+                  ),
+                };
+              }),
+              // Server's computedBu already accounts for both direct
+              // primitive cost AND effect → primitive cost. Trust it.
+              computedBu: rawCap.computedBu ?? 0,
+            };
+          })()
+        : null;
+      capabilityBundleCache.set(slot.capabilityId, normalised);
+      setBundle(normalised);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to load capability.";
+      setError(msg);
+      capabilityBundleCache.set(slot.capabilityId, null);
+    } finally {
+      setLoading(false);
+    }
+  }, [slot.capabilityId]);
+
+  useEffect(() => {
+    if (cached === undefined) {
+      void fetchBundle();
+    }
+  }, [cached, fetchBundle]);
+
+  const label = slot.name;
+  const kindLabel = "Capability";
+
+  return (
+    <li className="space-y-2 rounded-md border border-border p-3 text-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-foreground">{label}</span>
+            {bundle ? (
+              <>
+                <span>·</span>
+                <span className="text-xs text-muted-foreground">
+                  {bundle.primitiveLinks.length} direct primitive
+                  {bundle.primitiveLinks.length === 1 ? "" : "s"}
+                </span>
+                <span>·</span>
+                <span className="text-xs text-muted-foreground">
+                  {bundle.effectLinks.length} effect
+                  {bundle.effectLinks.length === 1 ? "" : "s"}
+                </span>
+                <span>·</span>
+                <span className="font-mono font-bold text-foreground">
+                  {bundle.computedBu} BU
+                </span>
+              </>
+            ) : loading ? (
+              <span className="text-xs text-muted-foreground">
+                Loading bundle…
+              </span>
+            ) : error ? (
+              <span className="text-xs text-destructive">{error}</span>
+            ) : null}
+          </div>
+          <div className="text-xs text-muted-foreground">{kindLabel}</div>
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="shrink-0 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-destructive hover:text-destructive"
+        >
+          Remove
+        </button>
+      </div>
+
+      {bundle ? (
+        <div className="space-y-2 border-t border-border pt-2">
+          {/* Direct primitives bundled at capability level. */}
+          {bundle.primitiveLinks.length > 0 ? (
+            <div>
+              <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+                Bundled Primitives ({bundle.primitiveLinks.length})
+              </div>
+              <ul className="mt-1 flex flex-wrap gap-1">
+                {bundle.primitiveLinks.map((link, i) => (
+                  <li
+                    key={`cap-p-${link.primitive?.id ?? "unknown"}-${i}`}
+                    className="inline-flex flex-wrap items-center gap-1 rounded border border-border bg-background px-2 py-0.5 text-xs"
+                  >
+                    <span className="font-medium">
+                      {link.primitive?.name ?? "Unknown"}
+                    </span>
+                    {link.primitive?.buCost != null ? (
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {link.primitive.buCost} BU
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {/* Primitives from each effect of the capability. */}
+          {bundle.effectLinks.flatMap((el) => el.primitiveLinks).length > 0 ? (
+            <div>
+              <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+                Primitives from Effects (
+                {bundle.effectLinks.flatMap((el) => el.primitiveLinks).length})
+              </div>
+              <ul className="mt-1 flex flex-wrap gap-1">
+                {bundle.effectLinks.flatMap((el) =>
+                  el.primitiveLinks.map((link) => ({
+                    ...link,
+                    sourceName: el.effect?.name ?? "Unknown effect",
+                  })),
+                ).map((link, i) => (
+                  <li
+                    key={`cap-e-${link.primitive?.id ?? "unknown"}-${i}`}
+                    className="inline-flex flex-wrap items-center gap-1 rounded border border-border bg-background px-2 py-0.5 text-xs"
+                  >
+                    <span className="font-medium">
+                      {link.primitive?.name ?? "Unknown"}
+                    </span>
+                    {link.primitive?.buCost != null ? (
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {link.primitive.buCost} BU
+                      </span>
+                    ) : null}
+                    <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                      via {link.sourceName}
+                    </span>
                   </li>
                 ))}
               </ul>
