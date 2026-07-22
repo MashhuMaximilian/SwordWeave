@@ -59,7 +59,7 @@ describe("validateMirrorSet — BU Market volatility ceiling", () => {
     if (result.ok) {
       expect(result.rating).toBe(4);
       expect(result.ceiling).toBe(4);
-      expect(result.bracket).toBe("1");
+      expect(result.bracket).toBe("L1-L4");
     }
   });
 
@@ -80,18 +80,17 @@ describe("validateMirrorSet — BU Market volatility ceiling", () => {
     }
   });
 
-  it("allows larger mirror sets at higher levels (L5 ceiling is -12 BU)", async () => {
+  it("allows larger mirror sets at higher levels (L5 ceiling is -8 BU)", async () => {
     mockPrimitives([
       { id: 1, name: "Penalty A", isMirrorable: true, mirrorBuCredit: 4 },
       { id: 2, name: "Penalty B", isMirrorable: true, mirrorBuCredit: 4 },
-      { id: 3, name: "Penalty C", isMirrorable: true, mirrorBuCredit: 4 },
     ]);
-    const result = await validateMirrorSet(5, [1, 2, 3], [1, 2, 3]);
+    const result = await validateMirrorSet(5, [1, 2], [1, 2]);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.rating).toBe(12);
-      expect(result.ceiling).toBe(12);
-      expect(result.bracket).toBe("5-10");
+      expect(result.rating).toBe(8);
+      expect(result.ceiling).toBe(8);
+      expect(result.bracket).toBe("L5-L8");
     }
   });
 
@@ -117,32 +116,33 @@ describe("validateMirrorSet — BU Market volatility ceiling", () => {
     }
   });
 
-  it("L11 ceiling is -16 BU (Tier IV access)", async () => {
+  it("L11 ceiling is -12 BU (Tier IV access)", async () => {
     mockPrimitives([
-      { id: 1, name: "Penalty A", isMirrorable: true, mirrorBuCredit: 8 },
-      { id: 2, name: "Penalty B", isMirrorable: true, mirrorBuCredit: 8 },
+      { id: 1, name: "Penalty A", isMirrorable: true, mirrorBuCredit: 6 },
+      { id: 2, name: "Penalty B", isMirrorable: true, mirrorBuCredit: 6 },
     ]);
     const result = await validateMirrorSet(11, [1, 2], [1, 2]);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.rating).toBe(16);
-      expect(result.ceiling).toBe(16);
-      expect(result.bracket).toBe("11-15");
+      expect(result.rating).toBe(12);
+      expect(result.ceiling).toBe(12);
+      expect(result.bracket).toBe("L9-L12");
     }
   });
 
-  it("L16 ceiling is -24 BU (Apex)", async () => {
+  it("L17 ceiling is -20 BU (Apex bracket)", async () => {
     mockPrimitives([
-      { id: 1, name: "Penalty A", isMirrorable: true, mirrorBuCredit: 8 },
-      { id: 2, name: "Penalty B", isMirrorable: true, mirrorBuCredit: 8 },
-      { id: 3, name: "Penalty C", isMirrorable: true, mirrorBuCredit: 8 },
+      { id: 1, name: "Penalty A", isMirrorable: true, mirrorBuCredit: 5 },
+      { id: 2, name: "Penalty B", isMirrorable: true, mirrorBuCredit: 5 },
+      { id: 3, name: "Penalty C", isMirrorable: true, mirrorBuCredit: 5 },
+      { id: 4, name: "Penalty D", isMirrorable: true, mirrorBuCredit: 5 },
     ]);
-    const result = await validateMirrorSet(16, [1, 2, 3], [1, 2, 3]);
+    const result = await validateMirrorSet(17, [1, 2, 3, 4], [1, 2, 3, 4]);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.rating).toBe(24);
-      expect(result.ceiling).toBe(24);
-      expect(result.bracket).toBe("16+");
+      expect(result.rating).toBe(20);
+      expect(result.ceiling).toBe(20);
+      expect(result.bracket).toBe("L17-L20");
     }
   });
 

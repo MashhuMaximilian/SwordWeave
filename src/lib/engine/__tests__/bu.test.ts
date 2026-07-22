@@ -63,30 +63,48 @@ const vulnerableToFire: PrimitiveInput = {
 };
 
 describe("getVolatilityCeiling", () => {
-  it("returns -4 BU at level 1 (special case per canon)", () => {
+  // Phase 8.1 batch 11 (Mashu 2026-07-22): brackets are 4-wide with
+  // no L1 special case. ceiling(L) = ceil(L/4) * 4.
+  it("L1-L4 → 4 BU", () => {
     expect(getVolatilityCeiling(1).maxNegativeBu).toBe(4);
+    expect(getVolatilityCeiling(4).maxNegativeBu).toBe(4);
+    expect(getVolatilityCeiling(1).levelBracket).toBe("L1-L4");
   });
 
-  it("returns -8 BU for levels 2-4", () => {
-    expect(getVolatilityCeiling(2).maxNegativeBu).toBe(8);
-    expect(getVolatilityCeiling(3).maxNegativeBu).toBe(8);
-    expect(getVolatilityCeiling(4).maxNegativeBu).toBe(8);
+  it("L5-L8 → 8 BU", () => {
+    expect(getVolatilityCeiling(5).maxNegativeBu).toBe(8);
+    expect(getVolatilityCeiling(8).maxNegativeBu).toBe(8);
+    expect(getVolatilityCeiling(5).levelBracket).toBe("L5-L8");
   });
 
-  it("returns -12 BU for levels 5-10", () => {
-    expect(getVolatilityCeiling(5).maxNegativeBu).toBe(12);
-    expect(getVolatilityCeiling(10).maxNegativeBu).toBe(12);
+  it("L9-L12 → 12 BU", () => {
+    expect(getVolatilityCeiling(9).maxNegativeBu).toBe(12);
+    expect(getVolatilityCeiling(12).maxNegativeBu).toBe(12);
+    expect(getVolatilityCeiling(12).levelBracket).toBe("L9-L12");
   });
 
-  it("returns -16 BU for levels 11-15", () => {
-    expect(getVolatilityCeiling(11).maxNegativeBu).toBe(16);
-    expect(getVolatilityCeiling(15).maxNegativeBu).toBe(16);
+  it("L13-L16 → 16 BU", () => {
+    expect(getVolatilityCeiling(13).maxNegativeBu).toBe(16);
+    expect(getVolatilityCeiling(16).maxNegativeBu).toBe(16);
+    expect(getVolatilityCeiling(16).levelBracket).toBe("L13-L16");
   });
 
-  it("returns -24 BU for levels 16+", () => {
-    expect(getVolatilityCeiling(16).maxNegativeBu).toBe(24);
-    expect(getVolatilityCeiling(20).maxNegativeBu).toBe(24);
-    expect(getVolatilityCeiling(25).maxNegativeBu).toBe(24);
+  it("L17-L20 → 20 BU", () => {
+    expect(getVolatilityCeiling(17).maxNegativeBu).toBe(20);
+    expect(getVolatilityCeiling(20).maxNegativeBu).toBe(20);
+    expect(getVolatilityCeiling(20).levelBracket).toBe("L17-L20");
+  });
+
+  it("continues past L20: L24 → 24, L28 → 28", () => {
+    expect(getVolatilityCeiling(24).maxNegativeBu).toBe(24);
+    expect(getVolatilityCeiling(28).maxNegativeBu).toBe(28);
+    expect(getVolatilityCeiling(28).levelBracket).toBe("L25-L28");
+  });
+
+  it("L29+ → 32+", () => {
+    expect(getVolatilityCeiling(29).maxNegativeBu).toBe(32);
+    expect(getVolatilityCeiling(100).maxNegativeBu).toBe(100);
+    expect(getVolatilityCeiling(29).levelBracket).toBe("L29+");
   });
 });
 
@@ -135,30 +153,47 @@ describe("calculateBuBudget", () => {
 });
 
 describe("maxBuDebtForLevel", () => {
-  it("returns 4 BU at level 1 (special case per canon)", () => {
+  // Phase 8.1 batch 11 (Mashu 2026-07-22): flat 4-wide debt brackets,
+  // no L1 special case. ceiling(L) = ceil(L/4) * 4.
+  //   L1-L4   → 4
+  //   L5-L8   → 8
+  //   L9-L12  → 12
+  //   L13-L16 → 16
+  //   L17-L20 → 20
+  //   L21-L24 → 24
+  //   L25-L28 → 28
+  //   L29-L32 → 32
+  it("L1-L4 → 4 BU debt ceiling", () => {
     expect(maxBuDebtForLevel(1)).toBe(4);
+    expect(maxBuDebtForLevel(2)).toBe(4);
+    expect(maxBuDebtForLevel(3)).toBe(4);
+    expect(maxBuDebtForLevel(4)).toBe(4);
   });
 
-  it("returns 8 BU for levels 2-4", () => {
-    expect(maxBuDebtForLevel(2)).toBe(8);
-    expect(maxBuDebtForLevel(3)).toBe(8);
-    expect(maxBuDebtForLevel(4)).toBe(8);
+  it("L5-L8 → 8 BU debt ceiling", () => {
+    expect(maxBuDebtForLevel(5)).toBe(8);
+    expect(maxBuDebtForLevel(8)).toBe(8);
   });
 
-  it("returns 12 BU for levels 5-10", () => {
-    expect(maxBuDebtForLevel(5)).toBe(12);
-    expect(maxBuDebtForLevel(10)).toBe(12);
+  it("L9-L12 → 12 BU debt ceiling", () => {
+    expect(maxBuDebtForLevel(9)).toBe(12);
+    expect(maxBuDebtForLevel(12)).toBe(12);
   });
 
-  it("returns 16 BU for levels 11-15", () => {
-    expect(maxBuDebtForLevel(11)).toBe(16);
-    expect(maxBuDebtForLevel(15)).toBe(16);
+  it("L13-L16 → 16 BU debt ceiling", () => {
+    expect(maxBuDebtForLevel(13)).toBe(16);
+    expect(maxBuDebtForLevel(16)).toBe(16);
   });
 
-  it("returns 24 BU for level 16 and beyond (stays at 24)", () => {
-    expect(maxBuDebtForLevel(16)).toBe(24);
-    expect(maxBuDebtForLevel(20)).toBe(24);
-    expect(maxBuDebtForLevel(100)).toBe(24);
+  it("L17-L20 → 20 BU debt ceiling", () => {
+    expect(maxBuDebtForLevel(17)).toBe(20);
+    expect(maxBuDebtForLevel(20)).toBe(20);
+  });
+
+  it("continues past L20 — L24 → 24, L28 → 28", () => {
+    expect(maxBuDebtForLevel(24)).toBe(24);
+    expect(maxBuDebtForLevel(28)).toBe(28);
+    expect(maxBuDebtForLevel(100)).toBe(100);
   });
 });
 

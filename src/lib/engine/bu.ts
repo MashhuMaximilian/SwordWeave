@@ -59,9 +59,23 @@ export interface EffectInput {
 /**
  * Character level → max negative BU (volatility) ceiling.
  * Source: BU Market — Mirror-Vector Architecture, Tier-Matched Volatility Ceiling.
+ *
+ * Phase 8.1 batch 11 (Mashu 2026-07-22): the bracket boundaries
+ * moved to 4-wide blocks matching the new debt rule. The string
+ * labels are kept in the same shape ("L1-L4", "L5-L8", ...) so
+ * consumers don't need to change, but the underlying math is now
+ * uniform. The "L1" special case is gone.
  */
 export type VolatilityCeiling = {
-  readonly levelBracket: "1" | "2-4" | "5-10" | "11-15" | "16+";
+  readonly levelBracket:
+    | "L1-L4"
+    | "L5-L8"
+    | "L9-L12"
+    | "L13-L16"
+    | "L17-L20"
+    | "L21-L24"
+    | "L25-L28"
+    | "L29+";
   readonly maxNegativeBu: number;
   readonly accessibleTier: string;
 };
@@ -160,13 +174,20 @@ export function cumulativeBuForLevel(level: number): number {
 
 /**
  * Compute the maximum BU debt (volatility ceiling) for a given
- * character level. Per canon:
+ * character level. Per Mashu 2026-07-22 (clarified from earlier
+ * draft): the rule is "4 BU of debt per 4 levels", with NO L1
+ * special case. The brackets are exactly 4-wide:
  *
- *   L1       = 4  (special case — mirror-vector apprentices are limited)
- *   L2..L4   = 8
- *   L5..L10  = 12
- *   L11..L15 = 16
- *   L16..∞   = 24 (stays at 24; canon doesn't define higher brackets)
+ *   L1..L4   = 4
+ *   L5..L8   = 8
+ *   L9..L12  = 12
+ *   L13..L16 = 16
+ *   L17..L20 = 20
+ *   L21..L24 = 24
+ *   L25..L28 = 28
+ *   ...
+ *
+ * Formula: debt_ceiling = max(1, ceil(L / 4)) * 4
  *
  * Returns a positive number representing the absolute debt limit
  * (caller formats as `-N BU` in the UI).
@@ -174,11 +195,7 @@ export function cumulativeBuForLevel(level: number): number {
 export function maxBuDebtForLevel(level: number): number {
   if (!Number.isFinite(level)) return 0;
   if (level <= 0) return 0;
-  if (level === 1) return 4;
-  if (level <= 4) return 8;
-  if (level <= 10) return 12;
-  if (level <= 15) return 16;
-  return 24;
+  return Math.ceil(level / 4) * 4;
 }
 
 /**
@@ -222,24 +239,48 @@ export function levelForBuBudget(budget: number): number | null {
  * backwards compatibility with code that consumes
  * `getVolatilityCeiling` — now derived from maxBuDebtForLevel.
  */
+/**
+ * Compute the volatility ceiling metadata for a character level:
+ * the maximum negative BU they can carry, the level bracket label
+ * (used by character-sheet-view), and the accessible tier string.
+ *
+ * Bracket boundaries:
+ *   L1-L4   → -4  Tier I & II (Minor / Standard)
+ *   L5-L8   → -8  Tier III (Major)
+ *   L9-L12  → -12 Tier IV (Core Axes)
+ *   L13-L16 → -16 Tier IV+ (Advanced)
+ *   L17-L20 → -20 Tier V (Apex)
+ *   L21-L24 → -24 Tier V+ (Apex+)
+ *   L25-L28 → -28 Tier VI (Mythic)
+ *   L29+    → ceiling grows by 4 per 4 levels (Tier VII+)
+ */
 export function getVolatilityCeiling(level: number): VolatilityCeiling {
   const maxNegativeBu = maxBuDebtForLevel(level);
   let levelBracket: VolatilityCeiling["levelBracket"];
   let accessibleTier: string;
-  if (level >= 16) {
-    levelBracket = "16+";
-    accessibleTier = "Tier IV+ (Apex)";
-  } else if (level >= 11) {
-    levelBracket = "11-15";
+  if (level >= 29) {
+    levelBracket = "L29+";
+    accessibleTier = `Tier VII+ (Mythic+, ceiling −${maxNegativeBu})`;
+  } else if (level >= 25) {
+    levelBracket = "L25-L28";
+    accessibleTier = "Tier VI (Mythic)";
+  } else if (level >= 21) {
+    levelBracket = "L21-L24";
+    accessibleTier = "Tier V+ (Apex+)";
+  } else if (level >= 17) {
+    levelBracket = "L17-L20";
+    accessibleTier = "Tier V (Apex)";
+  } else if (level >= 13) {
+    levelBracket = "L13-L16";
+    accessibleTier = "Tier IV+ (Advanced)";
+  } else if (level >= 9) {
+    levelBracket = "L9-L12";
     accessibleTier = "Tier IV (Core Axes)";
   } else if (level >= 5) {
-    levelBracket = "5-10";
+    levelBracket = "L5-L8";
     accessibleTier = "Tier III (Major)";
-  } else if (level === 1) {
-    levelBracket = "1";
-    accessibleTier = "Tier I (Minor, special debt -4)";
   } else {
-    levelBracket = "2-4";
+    levelBracket = "L1-L4";
     accessibleTier = "Tier I & II (Minor / Standard)";
   }
   return { levelBracket, maxNegativeBu, accessibleTier };
