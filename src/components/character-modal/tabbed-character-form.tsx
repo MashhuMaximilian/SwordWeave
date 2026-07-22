@@ -256,7 +256,6 @@ export function TabbedCharacterForm() {
   );
   const budget = activeBuBudget(attributes);
   const debtCeiling = maxBuDebtForLevel(attributes.level);
-  const remaining = budget - buSummary.positiveSpent;
   const overBudget = buSummary.positiveSpent > budget;
   const debtExceeded = buSummary.debtUsed > debtCeiling;
 
@@ -516,24 +515,18 @@ export function TabbedCharacterForm() {
       </div>
 
       {/* Footer — compact stats + Create button. Pinned to bottom of
-          modal scroll container. */}
+          modal scroll container. Phase 8.1 batch 11 (Mashu
+          2026-07-22): footer now shows just BU and Debt — Attr
+          lives only in the Attributes tab, Rem is dropped because
+          `BU used/budget` already tells the user how much room is
+          left. */}
       <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-2 border-t border-border bg-card px-4 py-2">
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <FooterStat
-            label="Attr"
-            value={`${attrSum}/10`}
-            tone={attrValid ? "ok" : "warn"}
-          />
           <FooterStat label="Lvl" value={String(attributes.level)} />
           <FooterStat
             label="BU"
             value={`${buSummary.positiveSpent}/${budget}`}
             tone={overBudget ? "warn" : "default"}
-          />
-          <FooterStat
-            label="Rem"
-            value={String(remaining)}
-            tone={overBudget ? "warn" : "ok"}
           />
           {buSummary.debtUsed > 0 || debtCeiling > 0 ? (
             <FooterStat
