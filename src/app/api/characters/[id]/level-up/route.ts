@@ -8,20 +8,25 @@ import { getVolatilityCeiling } from "@/lib/engine/bu";
 /**
  * POST /api/characters/[id]/level-up
  *
- * Level up the character by 1 (max 20).
+ * Level up the character by 1. Phase 8.1 batch 10g: no upper cap
+ * (was 20).
  *
  * Effects:
  *   - level += 1
  *   - dm_bonus_bu resets to 0 (per Mashu: DM bonus rolls into next-level progression)
- *   - The progression pool expands by 5 BU automatically (per BU_PER_LEVEL)
- *   - Volatility ceiling expands (level-up only ever grows or holds ceiling,
- *     so existing mirrors can never become invalid — see getVolatilityCeiling)
+ *   - Volatility ceiling expands (level-up only ever grows or holds
+ *     ceiling, so existing mirrors can never become invalid — see
+ *     getVolatilityCeiling)
  *
  * Body (optional):
  *   - newVitality: number — update currentVitality (e.g. on long rest)
  *
- * Note: BU spent does NOT reset. DM bonus grants that haven't been spent carry forward
- * into the new level's progression pool, so we zero it out so it's not double-counted.
+ * Note: BU spent does NOT reset. DM bonus grants that haven't been
+ * spent carry forward into the new level's progression pool, so we
+ * zero it out so it's not double-counted. The DB-level
+ * bu_progression_check uses the cumulative formula
+ * (25 + 10*(L-1) + 4*k*(k+1)/2 where k = floor(L/4)), so the pool
+ * grows correctly at every spike level.
  */
 export async function POST(
   request: Request,
@@ -39,13 +44,9 @@ export async function POST(
       return NextResponse.json({ error: "Character not found." }, { status: 404 });
     }
 
-    if (current.level >= 20) {
-      return NextResponse.json(
-        { error: "Character is already at maximum level (20)." },
-        { status: 400 },
-      );
-    }
-
+    // Phase 8.1 batch 10g: no upper level cap — the cumulative BU
+    // formula extrapolates indefinitely. The only constraint is that
+    // level is >= 1 (which is enforced by the DB-level check).
     const updatePayload: Record<string, unknown> = {
       level: current.level + 1,
       // DM bonus rolls into next-level progression, reset so it's not double-counted

@@ -141,19 +141,38 @@ export const characters = pgTable(
           AND ${table.attrMental} BETWEEN -1 AND 5
           AND ${table.attrMagical} BETWEEN -1 AND 5`,
     ),
-    // Level hard-cap at 20
+    // Level minimum 1 (Phase 8.1 batch 10g: removed the L20 upper
+    // cap — Mashu 2026-07-22 clarified there is no maximum and the
+    // cumulative BU formula extrapolates indefinitely).
     check(
-      "characters_level_range_check",
-      sql`${table.level} BETWEEN 1 AND 20`,
+      "characters_level_min_check",
+      sql`${table.level} >= 1`,
     ),
-    // Total BU progression cap (hard)
+    // Total BU progression cap (Phase 8.1 batch 10g): the canonical
+    // pool is max(startingBu, cumulative(level)) + dmBonusBu.
+    //
+    //   - "By Level" mode (client sends startingBu: 25, level: N):
+    //     max(25, cumulative(N)) = cumulative(N) for any N >= 1.
+    //   - "By BU" mode (client sends startingBu: <user value>,
+    //     level: <implied>): if the user typed a value above the
+    //     canon threshold for that level, max() picks the user's
+    //     value. If below, the canon still wins. Either way the
+    //     user can't over-spend their declared pool.
+    //
+    // cumulative(L) = 25 + 10*(L-1) + 4*k*(k+1)/2 where k = floor(L/4).
+    // Old formula was startingBu + (L-1)*5 which was wrong at every
+    // 4th level (L4 = 40, canon = 59).
     check(
       "characters_bu_progression_check",
-      sql`${table.buSpent} <= ${table.startingBu} + (${table.level} - 1) * 5 + ${table.dmBonusBu}`,
+      sql`${table.buSpent} <=
+          GREATEST(${table.startingBu},
+                   25 + 10 * (${table.level} - 1) +
+                   4 * (${table.level} / 4) * (${table.level} / 4 + 1) / 2
+          ) + ${table.dmBonusBu}`,
     ),
     check(
       "characters_starting_bu_check",
-      sql`${table.startingBu} >= 0 AND ${table.startingBu} <= 1000`,
+      sql`${table.startingBu} >= 0 AND ${table.startingBu} <= 100000`,
     ),
   ],
 );

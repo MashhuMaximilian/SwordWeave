@@ -156,8 +156,8 @@ describe("computeMirrorDebt — full breakdown", () => {
       dmBonusBu: 8,
       slots: [],
     });
-    // 25 + (5-1)*5 + 8 = 53
-    expect(breakdown.basePool).toBe(53);
+    // Phase 8.1 batch 10g: pool = max(25, cumulative(5)=69) + 8 = 77
+    expect(breakdown.basePool).toBe(77);
   });
 });
 

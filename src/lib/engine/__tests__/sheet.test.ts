@@ -144,10 +144,11 @@ describe("aggregateCharacterSheet", () => {
     expect(bonus?.bonus).toBe(4);
   });
 
-  it("L5 progression pool = 25 + 4*5 = 45", () => {
+  it("L5 progression pool = max(25, cumulative(5)) = 69", () => {
+    // Phase 8.1 batch 10g: cumulative(5) = 25 + 4*10 + 4 = 69.
     const sheet = aggregateCharacterSheet(baseInput({ level: 5, buSpent: 30 }));
-    expect(sheet.buBalance.progressionPool).toBe(45);
-    expect(sheet.buBalance.progressionRemaining).toBe(15);
+    expect(sheet.buBalance.progressionPool).toBe(69);
+    expect(sheet.buBalance.progressionRemaining).toBe(39);
   });
 
   it("handles null current vitality (sheet shows max only)", () => {

@@ -13,6 +13,7 @@ import {
 } from "@/db/schema";
 import { validateAttributes, type Attribute } from "@/lib/engine/practices";
 import { validateMirrorSet } from "@/lib/api/volatility";
+import { cumulativeBuForLevel } from "@/lib/engine/bu";
 import {
   resolveLatestVersionId,
   resolveSlotSource,
@@ -106,15 +107,19 @@ export async function GET(request: Request) {
  * Body:
  *   - name (required)
  *   - size (default MEDIUM)
- *   - level (1-20, default 1)
+ *   - level (>= 1, default 1, no upper cap)
  *   - attrPhysical, attrMental, attrMagical (must sum to 10, each in [-1, 5])
  *   - attrProficient (PHYSICAL | MENTAL | MAGICAL, optional)
  *   - practiceSlices (object, optional)
  *   - lineageName, lineageImageUrl, lineageDescription (optional — direct fields)
  *   - upbringingName, upbringingImageUrl, upbringingDescription (optional)
  *   - manifestName (optional)
- *   - startingBu (default 25)
- *   - buSpent (default 0) — must be ≤ starting_bu + (level-1)*5 + dm_bonus_bu
+ *   - startingBu (default 25) — canonically fixed at 25 for level mode
+ *   - buBudget (optional, default null) — when set, used as the
+ *     startingBu override (buBudget mode). Server validates the
+ *     typed value against cumulative(level) and the debt ceiling.
+ *   - buSpent (default 0) — must be <= max(startingBu,
+ *     cumulative(level)) + dm_bonus_bu
  *   - dmBonusBu (default 0)
  *   - enforceTemplateCaps (default false)
  *   - isPublic (default false)
@@ -139,7 +144,10 @@ export async function POST(request: Request) {
     }
 
     const size = parseSize(values["size"]);
-    const level = parseIntInRange(values["level"], 1, 20, 1);
+    // Phase 8.1 batch 10g: no upper level cap. Phase 8.1 batch 11
+    // (Mashu 2026-07-22) made levels 1+ the only constraint; the
+    // cumulative BU formula extrapolates indefinitely (L100 = 2315).
+    const level = parseIntInRange(values["level"], 1, Number.MAX_SAFE_INTEGER, 1);
     const attrPhysical = parseIntInRange(values["attrPhysical"], -1, 5, 0);
     const attrMental = parseIntInRange(values["attrMental"], -1, 5, 0);
     const attrMagical = parseIntInRange(values["attrMagical"], -1, 5, 0);
@@ -164,12 +172,29 @@ export async function POST(request: Request) {
       );
     }
 
-    const startingBu = parseIntInRange(values["startingBu"], 0, 1000, 25);
-    const buSpent = parseIntInRange(values["buSpent"], 0, 10000, 0);
-    const dmBonusBu = parseIntInRange(values["dmBonusBu"], 0, 1000, 0);
+    const startingBuDefault = 25;
+    const rawBuBudget = Number(values["buBudget"]);
+    const buBudgetProvided =
+      Number.isFinite(rawBuBudget) && rawBuBudget >= 0 && rawBuBudget <= 100000;
+    // Phase 8.1 batch 10g: in "By BU" mode the client sends both
+    // level (implied) and buBudget (typed). buBudget becomes the
+    // startingBu override. In "By Level" mode buBudget is null and
+    // startingBu defaults to 25.
+    const startingBu = buBudgetProvided
+      ? Math.floor(rawBuBudget)
+      : parseIntInRange(values["startingBu"], 0, 100000, startingBuDefault);
+    const buSpent = parseIntInRange(values["buSpent"], 0, 100000, 0);
+    const dmBonusBu = parseIntInRange(values["dmBonusBu"], 0, 100000, 0);
 
-    // Validate BU hard cap (server-side enforcement)
-    const progressionPool = startingBu + (level - 1) * 5 + dmBonusBu;
+    // Phase 8.1 batch 10g: progressionPool uses the canon cumulative
+    // formula. Previously this was startingBu + (level-1)*5 + dmBonusBu
+    // which gave 40 at L4 (canon is 59) and was wrong at every spike
+    // level. Now: max(startingBu, cumulative(level)) + dmBonusBu. The
+    // max() handles both "By Level" mode (startingBu=25, canon wins
+    // for L>=1) and "By BU" mode (startingBu=user value, user's value
+    // wins when it exceeds canon for that implied level).
+    const progressionPool =
+      Math.max(startingBu, cumulativeBuForLevel(level)) + dmBonusBu;
     if (buSpent > progressionPool) {
       return NextResponse.json(
         {
