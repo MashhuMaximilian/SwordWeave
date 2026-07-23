@@ -922,7 +922,7 @@ function BlueprintPreviewBody({
             : "manifest",
       );
       if (!characterModal.isOpen) {
-        characterModal.open();
+        characterModal.openForSlot();
       }
       window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
     } else if (item.kind === "item") {
@@ -935,7 +935,7 @@ function BlueprintPreviewBody({
       });
       characterModal.setActiveStep("items");
       if (!characterModal.isOpen) {
-        characterModal.open();
+        characterModal.openForSlot();
       }
       window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
     } else if (
@@ -977,7 +977,7 @@ function BlueprintPreviewBody({
       }
       characterModal.setActiveStep(tab);
       if (!characterModal.isOpen) {
-        characterModal.open();
+        characterModal.openForSlot();
       }
       window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
     }

@@ -92,6 +92,9 @@ export interface CharacterSeed {
   startingBu: number;
   buSpent: number;
   dmBonusBu: number;
+  /** Phase 8.2 batch 8: optional vitality state. Seed loader reads
+   * this from the character row; null on the API means "use max". */
+  currentVitality: number | null;
   attrPhysical: number;
   attrMental: number;
   attrMagical: number;

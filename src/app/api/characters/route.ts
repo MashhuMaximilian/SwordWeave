@@ -244,13 +244,26 @@ export async function POST(request: Request) {
         ? (values["practiceSlices"] as Record<string, unknown>)
         : {};
 
-    const lineageName = String(values["lineageName"] ?? "").trim() || null;
-    const lineageImageUrl = String(values["lineageImageUrl"] ?? "").trim() || null;
-    const lineageDescription = String(values["lineageDescription"] ?? "").trim() || null;
-    const upbringingName = String(values["upbringingName"] ?? "").trim() || null;
-    const upbringingImageUrl = String(values["upbringingImageUrl"] ?? "").trim() || null;
-    const upbringingDescription = String(values["upbringingDescription"] ?? "").trim() || null;
-    const manifestName = String(values["manifestName"] ?? "").trim() || null;
+    // Phase 8.2 batch 8: read currentVitality. The modal sends this on
+    // create (= vitalityMax, "full health") and on edit (= seeded
+    // value, preserve across edits). Missing → null → DB default null.
+    const currentVitalityRaw = values["currentVitality"];
+    const currentVitality =
+      currentVitalityRaw === null || currentVitalityRaw === undefined
+        ? null
+        : (parseIntInRange(currentVitalityRaw, 0, 99999, 0) as number | null);
+
+    // Phase 8.2 batch 8: lineage/upbringing/manifest names start as
+    // whatever the modal sent (typically null — the modal doesn't
+    // send them anymore), and the heritage-derivation block below
+    // overwrites them based on which heritage the user slotted.
+    let lineageName = String(values["lineageName"] ?? "").trim() || null;
+    let lineageImageUrl = String(values["lineageImageUrl"] ?? "").trim() || null;
+    let lineageDescription = String(values["lineageDescription"] ?? "").trim() || null;
+    let upbringingName = String(values["upbringingName"] ?? "").trim() || null;
+    let upbringingImageUrl = String(values["upbringingImageUrl"] ?? "").trim() || null;
+    let upbringingDescription = String(values["upbringingDescription"] ?? "").trim() || null;
+    let manifestName = String(values["manifestName"] ?? "").trim() || null;
     const notes = String(values["notes"] ?? "").trim() || null;
     const dmNotes = String(values["dmNotes"] ?? "").trim() || null;
     const portraitUrl = String(values["portraitUrl"] ?? "").trim() || null;
@@ -339,8 +352,19 @@ export async function POST(request: Request) {
 
     // Heritages
     if (rawHeritages.length > 0) {
+      // Phase 8.2 batch 8: include name/imageUrl/description so the
+      // server can derive lineageName/lineageImageUrl/.../manifestName
+      // from the slotted heritage bundle. The modal no longer sends
+      // those fields itself (sending null would wipe them on every
+      // save — see Phase 8.1 batch 13.6 follow-up).
       const heritageRows = await db
-        .select({ id: heritage.id, kind: heritage.kind })
+        .select({
+          id: heritage.id,
+          kind: heritage.kind,
+          name: heritage.name,
+          imageUrl: heritage.imageUrl,
+          description: heritage.description,
+        })
         .from(heritage)
         .where(inArray(heritage.id, rawHeritages));
       const primLinksByHeritage = new Map<
@@ -472,6 +496,31 @@ export async function POST(request: Request) {
             }),
           ),
         });
+      }
+
+      // Phase 8.2 batch 8: derive the lineage/upbringing/manifest
+      // display fields from whichever heritage the user slotted in
+      // that kind. If the user slots multiple heritages of the same
+      // kind we just use the first match (canonical layout is one
+      // each). These overwrite the empty values from the body — the
+      // modal no longer sends these fields (see Phase 8.1 batch 13.6
+      // follow-up, sending null was wiping them on every save).
+      for (const row of heritageRows) {
+        if (row.kind === "LINEAGE") {
+          if (lineageName === null && row.name) lineageName = row.name;
+          if (lineageImageUrl === null && row.imageUrl)
+            lineageImageUrl = row.imageUrl;
+          if (lineageDescription === null && row.description)
+            lineageDescription = row.description;
+        } else if (row.kind === "UPBRINGING") {
+          if (upbringingName === null && row.name) upbringingName = row.name;
+          if (upbringingImageUrl === null && row.imageUrl)
+            upbringingImageUrl = row.imageUrl;
+          if (upbringingDescription === null && row.description)
+            upbringingDescription = row.description;
+        } else if (row.kind === "MANIFEST") {
+          if (manifestName === null && row.name) manifestName = row.name;
+        }
       }
     }
 
@@ -620,6 +669,7 @@ export async function POST(request: Request) {
           notes,
           dmNotes,
           portraitUrl,
+          currentVitality,
         })
         .returning();
 

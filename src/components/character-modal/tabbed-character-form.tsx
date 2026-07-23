@@ -53,6 +53,7 @@ import {
   getHeritageBundleBuMap,
 } from "./tabs/slot-receiver-tab";
 import { maxBuDebtForLevel } from "@/lib/engine/bu";
+import { computeMaxVitality } from "@/lib/engine/vitality";
 import {
   IdentityTab,
   IDENTITY_STORAGE_KEY,
@@ -341,6 +342,23 @@ export function TabbedCharacterForm() {
   const overBudget = buSummary.positiveSpent > budget;
   const debtExceeded = buSummary.debtUsed > debtCeiling;
 
+  // Phase 8.2 batch 8: vitality max for the new character. The modal
+  // doesn't currently compute vitality_modifiers from slotted primitives
+  // (those are computed by the engine on the server). For the modal-side
+  // initial-value we use the base formula only — the server-side GET /
+  // PATCH path will recompute with full modifiers if/when we wire that.
+  // Phase 8.1 batch 13.6 follow-up Mashu 2026-07-22: "Vitality is 0 not
+  // full (or the amount last set before editing) on creation". So we
+  // initialize currentVitality = vitalityMax on CREATE; on EDIT we keep
+  // the seeded value (see initializeCurrentVitality below).
+  const vitalityMax = computeMaxVitality(attributes.level);
+  const seededCurrentVitality =
+    editCharacterId && seededCharacter ? seededCharacter.currentVitality : null;
+  const initialCurrentVitality =
+    typeof seededCurrentVitality === "number"
+      ? seededCurrentVitality
+      : vitalityMax;
+
   const nameValid = identity.name.trim().length > 0;
   const attrSum = attributes.attrPhysical + attributes.attrMental + attributes.attrMagical;
   const attrValid = attrSum === 10;
@@ -425,15 +443,26 @@ export function TabbedCharacterForm() {
         attrMental: attributes.attrMental,
         attrMagical: attributes.attrMagical,
         attrProficient: attributes.attrProficient,
-        lineageName: null,
-        lineageImageUrl: null,
-        lineageDescription: null,
-        upbringingName: null,
-        upbringingImageUrl: null,
-        upbringingDescription: null,
-        manifestName: null,
+        // Phase 8.2 batch 8: server derives lineageName / lineageImageUrl /
+        // lineageDescription / upbringingName / upbringingImageUrl /
+        // upbringingDescription / manifestName from the slotted heritage
+        // bundle (POST path), or preserves existing values (PATCH path).
+        // Sending null from the client is a footgun that wipes the
+        // values on every save — so we just omit them from the body and
+        // let the server do the right thing.
         enforceTemplateCaps: false,
         practiceSlices: {},
+        // Phase 8.2 batch 8: persist the BU we currently have slotted.
+        // Phase 8.1 batch 13.6 follow-up Mashu 2026-07-22: "BU budget is
+        // 0 not saved from character creation". We send positiveSpent
+        // (the sum of non-mirror slot BU) as buSpent. Mirrored primitives
+        // don't add to buSpent — they're paid out of the debt pool.
+        buSpent: buSummary.positiveSpent,
+        // Phase 8.2 batch 8: dmBonusBu is set on the character row
+        // via /api/characters/[id]/dm-bonus (separate flow). The
+        // modal doesn't edit it — sending 0 here would overwrite the
+        // server-side value on every save, so we OMIT it instead.
+        currentVitality: initialCurrentVitality,
         backstory: {
           origin: backstory?.origin.trim() ?? "",
           motivation: backstory?.motivation.trim() ?? "",

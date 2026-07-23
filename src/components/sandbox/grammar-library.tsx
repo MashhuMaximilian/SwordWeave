@@ -924,7 +924,7 @@ function SandboxPreviewBody({
     }
     characterModal.setActiveStep(tab);
     if (!characterModal.isOpen) {
-      characterModal.open();
+      characterModal.openForSlot();
     }
     window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
   }

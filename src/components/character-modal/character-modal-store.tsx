@@ -250,6 +250,17 @@ interface CharacterModalState {
   seededCharacter: CharacterSeed | null;
   open: () => void;
   /**
+   * Phase 8.2 batch 8: open the modal in a way that's safe to call
+   * from a library's "Slot into character" button when the modal
+   * may already be open in EDIT mode. Plain `open()` resets
+   * editCharacterId to null, which was the cause of the bug
+   * where clicking "Add" on a primitive/heritage in /atelier
+   * silently flipped an active edit session into create mode.
+   * openForSlot does the same thing as `open()` but skips the
+   * state reset when the modal is already open.
+   */
+  openForSlot: () => void;
+  /**
    * Phase 8.2 batch 7 rev 2: open the modal in EDIT mode for an
    * existing character. Persists the edit id in localStorage so
    * it survives the navigation to /atelier, then navigates. The
@@ -411,6 +422,27 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
     setEditSeedError(null);
     setSeededCharacter(null);
     setIsOpen(true);
+  }, []);
+
+  /**
+   * Phase 8.2 batch 8: see interface comment. Library callers
+   * (heritage-library, grammar-library) call this when the user
+   * clicks "Slot into character" from a preview card. If the
+   * modal is already open in EDIT mode we leave editCharacterId
+   * alone — the slot is just appended to the pending slots of the
+   * current edit. Otherwise behave like a fresh open().
+   */
+  const openForSlot = useCallback(() => {
+    setIsOpen((currentOpen) => {
+      if (currentOpen) return currentOpen; // no-op, preserve edit state
+      // Closed: behave like a fresh create-mode open
+      setEditCharacterId(null);
+      setEditCharacterName(null);
+      setIsSeedingEdit(false);
+      setEditSeedError(null);
+      setSeededCharacter(null);
+      return true;
+    });
   }, []);
 
   /**
@@ -605,6 +637,7 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
       editSeedError,
       seededCharacter,
       open,
+      openForSlot,
       openForEdit,
       openForEditFromStore,
       clearPendingEdit,
@@ -631,6 +664,7 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
       editSeedError,
       seededCharacter,
       open,
+      openForSlot,
       openForEdit,
       openForEditFromStore,
       clearPendingEdit,
@@ -666,6 +700,7 @@ export function useCharacterModal(): CharacterModalState {
       editSeedError: null,
       seededCharacter: null,
       open: () => {},
+      openForSlot: () => {},
       openForEdit: async () => {},
       openForEditFromStore: async () => {},
       clearPendingEdit: () => {},
