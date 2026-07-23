@@ -36,7 +36,8 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { Zap, Power, CheckCircle2 } from "lucide-react";
+import { Zap, Power, CheckCircle2, ExternalLink } from "lucide-react";
+import Link from "next/link";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { SlotSource } from "@/db/schema/characters";
@@ -76,7 +77,6 @@ export interface CapabilityCardProps {
       name: string;
     }>;
   };
-  onPreview?: () => void;
 }
 
 function storageKey(characterId: string, capabilityId: string) {
@@ -117,7 +117,6 @@ function writeToggle(
 export function CapabilityCard({
   characterId,
   capability,
-  onPreview,
 }: CapabilityCardProps) {
   const { showToast } = useToasts();
 
@@ -307,15 +306,21 @@ export function CapabilityCard({
           )}
           {triggerFlash ? "Triggered" : triggerPending ? "…" : "Trigger"}
         </button>
-        {onPreview && (
-          <button
-            type="button"
-            onClick={onPreview}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary"
-          >
-            Preview
-          </button>
-        )}
+        {/* Phase 8.2 batch 6: preview link opens the canonical library
+            detail page in a new tab. That page renders the same
+            EntityPreview component the atelier uses, so we get a
+            read-only preview without duplicating any preview plumbing.
+            target="_blank" preserves the sheet's state. */}
+        <Link
+          href={`/library/item/CAPABILITY:${capability.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary"
+          title="Open the canonical preview in a new tab"
+        >
+          <ExternalLink className="size-3" />
+          Preview
+        </Link>
       </div>
 
       {triggerFlash && (

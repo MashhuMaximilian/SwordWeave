@@ -17,7 +17,8 @@
 
 import { useState, useEffect, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Shield, ShieldOff } from "lucide-react";
+import Link from "next/link";
+import { Shield, ShieldOff, ExternalLink } from "lucide-react";
 import { useToasts } from "@/components/ui/toast";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
 import type { SlotSource } from "@/db/schema/characters";
@@ -49,14 +50,12 @@ export interface ItemCardProps {
   };
   /** Whether the character is at or over equip-slot capacity. */
   atCapacity?: boolean;
-  onPreview?: () => void;
 }
 
 export function ItemCard({
   characterId,
   item,
   atCapacity = false,
-  onPreview,
 }: ItemCardProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -195,15 +194,19 @@ export function ItemCard({
               ? "Equipped"
               : "Equip"}
         </button>
-        {onPreview && (
-          <button
-            type="button"
-            onClick={onPreview}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary"
-          >
-            Preview
-          </button>
-        )}
+        {/* Phase 8.2 batch 6: preview link opens the canonical library
+            detail page in a new tab. Same EntityPreview the atelier
+            uses, fully read-only, sheet state preserved. */}
+        <Link
+          href={`/library/item/ITEM:${item.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary"
+          title="Open the canonical preview in a new tab"
+        >
+          <ExternalLink className="size-3" />
+          Preview
+        </Link>
       </div>
     </div>
   );
