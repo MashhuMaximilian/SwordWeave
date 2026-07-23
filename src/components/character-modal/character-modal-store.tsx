@@ -378,6 +378,24 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
           ? (next as (prev: boolean) => boolean)(prev)
           : next;
       isOpenRef.current = resolved;
+      // Phase 8.2 batch 14 (Mashu 2026-07-23, "save changes still flips
+      // to create after I add things"): instrument isOpen transitions
+      // alongside editCharacterId transitions so we can see the FULL
+      // lifecycle, not just the one field that "looks wrong". The
+      // Edit→Create flip happens when editCharacterId goes null, but
+      // that flip is usually a downstream effect of a wider re-open
+      // (open() does setIsOpen(false) → reset → setIsOpen(true) in one
+      // synchronous block). Logging just editCharacterId missed the
+      // isOpen transitions that preceded it.
+      if (prev !== resolved) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          "[character-modal] isOpen changed",
+          JSON.stringify({ from: prev, to: resolved }),
+          "\nStack:",
+          new Error().stack,
+        );
+      }
       return resolved;
     });
   }, []);
