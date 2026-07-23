@@ -209,6 +209,16 @@ export function TabbedCharacterForm() {
   useEffect(() => {
     if (!editCharacterId || !seededCharacter || seededOnce) return;
     if (seededCharacter.id !== editCharacterId) return;
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[character-modal] seed effect running",
+      JSON.stringify({
+        editCharacterId,
+        seededCharacterId: seededCharacter.id,
+        seededOnce,
+        activeStep: activeStep,
+      }),
+    );
     const seeds = buildCharacterSeeds(seededCharacter);
     setIdentity(seeds.identity as IdentityState);
     setBackstory(seeds.backstory as BackstoryState);
