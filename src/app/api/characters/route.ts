@@ -229,19 +229,19 @@ export async function POST(request: Request) {
     const progressionPool =
       Math.max(startingBu, cumulativeBuForLevel(level)) + dmBonusBu;
     // Phase 8.1 batch 13.6 follow-up (Mashu 2026-07-22):
-    // "When a player is above budget soft warning only."
-    //
-    // The server used to hard-reject over-budget saves with 400.
-    // Now we accept them — the client surfaces a soft warning
-    // (red BU footer) and lets the user decide. The debt ceiling
-    // is still enforced hard because that breaks canon mechanics
-    // (see maxBuDebtForLevel on the client + server).
-    // We log the overage in dev so we can spot bad builds later.
-    if (buSpent > progressionPool) {
-      console.warn(
-        `[characters POST] soft warning: buSpent=${buSpent} > progressionPool=${progressionPool} (character "${name}")`,
-      );
-    }
+        // "When a player is above budget soft warning only."
+        //
+        // Migration 0047 dropped the DB CHECK constraint so this soft-warn
+        // path is now the only enforcement. The client renders a red BU
+        // footer when buSpent > progressionPool; the server just logs so
+        // we can spot bad builds in dev. Mirror debt still hard-fails
+        // (see maxBuDebtForLevel on client + server) because that breaks
+        // canon mechanics.
+        if (buSpent > progressionPool) {
+          console.warn(
+            `[characters POST] soft warning: buSpent=${buSpent} > progressionPool=${progressionPool} (character "${name}")`,
+          );
+        }
 
     const enforceTemplateCaps = Boolean(values["enforceTemplateCaps"]);
     const isPublic = Boolean(values["isPublic"]);

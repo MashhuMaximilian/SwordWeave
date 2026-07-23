@@ -302,6 +302,20 @@
       "when": 1784753204935,
       "tag": "0045_character_log",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1785800000000,
+      "tag": "0046_character_primitive_source_rename",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1785900000000,
+      "tag": "0047_drop_bu_progression_check",
+      "breakpoints": true
     }
   ]
 }

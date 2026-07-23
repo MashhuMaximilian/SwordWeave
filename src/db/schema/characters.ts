@@ -165,14 +165,12 @@ export const characters = pgTable(
     // cumulative(L) = 25 + 10*(L-1) + 4*k*(k+1)/2 where k = floor(L/4).
     // Old formula was startingBu + (L-1)*5 which was wrong at every
     // 4th level (L4 = 40, canon = 59).
-    check(
-      "characters_bu_progression_check",
-      sql`${table.buSpent} <=
-          GREATEST(${table.startingBu},
-                   25 + 10 * (${table.level} - 1) +
-                   4 * (${table.level} / 4) * (${table.level} / 4 + 1) / 2
-          ) + ${table.dmBonusBu}`,
-    ),
+    //
+    // Phase 8.2 batch 12: the characters_bu_progression_check DB
+    // constraint was removed (migration 0047) per Mashu's "soft
+    // warning only" directive. The server only soft-warns on
+    // over-budget saves; the client renders the red BU footer.
+    // Mirror debt still hard-fails server-side (see maxBuDebtForLevel).
     check(
       "characters_starting_bu_check",
       sql`${table.startingBu} >= 0 AND ${table.startingBu} <= 100000`,

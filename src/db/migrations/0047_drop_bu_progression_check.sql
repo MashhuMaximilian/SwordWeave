@@ -1,0 +1,22 @@
+-- =============================================================================
+-- Migration 0047: Phase 8.2 batch 12 — drop characters_bu_progression_check
+-- =============================================================================
+-- Per Mashu 2026-07-22 directive ("when a player is above budget soft
+-- warning only"), the server was changed to only soft-warn on over-budget
+-- saves. But the DB CHECK constraint `characters_bu_progression_check`
+-- remained, so the DB itself rejected the INSERT with an opaque "violates
+-- check constraint" error before the server could surface the friendly
+-- warning. The result: users saw a scary pg error message instead of the
+-- red BU footer the soft-warn policy promised.
+--
+-- This migration drops that constraint. Defense-in-depth remains via:
+--   * characters_starting_bu_check (buBudget must be 0..100000)
+--   * characters_attr_sum_check (attributes must sum to 10)
+--   * characters_level_min_check (level >= 1)
+--   * maxBuDebtForLevel in client + server (mirror debt ceiling)
+--
+-- Drop is safe: every check that's lost was already being soft-warned by
+-- the server (or has an equivalent stronger enforcement elsewhere).
+-- =============================================================================
+
+ALTER TABLE "characters" DROP CONSTRAINT IF EXISTS "characters_bu_progression_check";
