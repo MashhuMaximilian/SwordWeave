@@ -4,7 +4,6 @@ import { useMemo, useState, useTransition, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowUp,
-  ChevronDown,
   ChevronRight,
   Edit,
   Heart,

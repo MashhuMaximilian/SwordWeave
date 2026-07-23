@@ -355,6 +355,34 @@ export const characterItemsRelations = relations(characterItems, ({ one }) => ({
 }));
 
 // =============================================================================
+// Phase 8.2 batch 1 — character_log junction relation
+// =============================================================================
+//
+// BUG FIX (Mashu 2026-07-22, "Error: 288417061 cannot open character
+// page from builds"): the `charactersRelations` side declares
+// `logEntries: many(characterLog)`, but without the reverse relation
+// on `characterLogRelations`, drizzle cannot infer the foreign-key
+// direction and throws at query time:
+//
+//   Error: There is not enough information to infer relation
+//   "characters.logEntries"
+//
+// That's the SC crashing on every character page load. Fix: declare
+// the reverse `character` one() with explicit fields/references
+// (same pattern as characterPrimitivesRelations, characterHeritages
+// Relations, characterCapabilitiesRelations, characterItemsRelations).
+//
+// Once this is added, the `logEntries: { orderBy, limit }` query in
+// src/app/characters/[id]/page.tsx works as intended.
+
+export const characterLogRelations = relations(characterLog, ({ one }) => ({
+  character: one(characters, {
+    fields: [characterLog.characterId],
+    references: [characters.id],
+  }),
+}));
+
+// =============================================================================
 // Template relations (Phase 4)
 // =============================================================================
 
