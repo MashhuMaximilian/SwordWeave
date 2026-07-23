@@ -224,6 +224,19 @@ export function CharacterModal({ children }: CharacterModalProps) {
               <button
                 type="button"
                 onClick={() => {
+                  // Phase 8.2 batch 9: confirm before discarding.
+                  // Mashu 2026-07-23: "It still doesn't keep save
+                  // changes button and it changes to create button
+                  // instead after I add some things". The header
+                  // has Unsaved chip + Start fresh + X close all
+                  // close together; on mobile (narrow viewport) it's
+                  // easy to mis-tap. window.confirm is a defensive
+                  // guard against accidental destruction of the
+                  // edit session.
+                  const ok = window.confirm(
+                    "Discard changes to this character and start a new one from scratch?",
+                  );
+                  if (!ok) return;
                   resetDraft();
                   close();
                   // Re-open in fresh CREATE mode after the close.

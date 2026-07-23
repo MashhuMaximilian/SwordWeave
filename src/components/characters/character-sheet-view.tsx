@@ -34,6 +34,7 @@ import { CapabilityCard } from "@/components/characters/capability-card";
 import { ItemCard } from "@/components/characters/item-card";
 import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
 import { CharacterEditButton } from "@/components/characters/character-edit-button";
+import { proficiencyBonus } from "@/lib/engine/practices";
 import {
   BACKSTORY_FIELDS,
   isBackstoryEmpty,
@@ -886,13 +887,18 @@ function OverviewTab({
         </div>
       </section>
 
-      {/* ---- Load + Equip slots (one-row stat band) ---- */}
+      {/* ---- Load + Equip slots + PB (one-row stat band) ---- */}
       <section
-        aria-label="Load and equip slots"
+        aria-label="Load, equip slots, and proficiency bonus"
         className="relative overflow-hidden rounded-md border border-border bg-card"
       >
         <span className="absolute inset-x-0 top-0 h-0.5 bg-amber-500" />
-        <div className="grid grid-cols-2 divide-x divide-border md:grid-cols-2">
+        {/* Phase 8.2 batch 9: 3-cell band — Load / Equip / PB. PB is
+            the level-derived proficiency bonus that scales attack
+            rolls and proficient saves. Mashu 2026-07-23: "when
+            rewriting the tabs in overview we need a card with
+            proficiency bonus too to show it." */}
+        <div className="grid grid-cols-2 divide-x divide-border md:grid-cols-3">
           <StatCell
             label="Load"
             primary={`${props.encumbrance.load}`}
@@ -914,6 +920,11 @@ function OverviewTab({
             label="Equip Slots"
             primary={`${props.encumbrance.equipSlotsUsed}`}
             secondary={`/ ${props.encumbrance.equipSlotsAvailable}`}
+          />
+          <StatCell
+            label={`PB (lvl ${props.level})`}
+            primary={`+${proficiencyBonus(props.level)}`}
+            secondary="proficiency"
           />
         </div>
       </section>

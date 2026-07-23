@@ -31,15 +31,26 @@ export function computeMaxVitality(
  *
  * Each primitive has a hardModifiers array; filter for vitality-affecting ones.
  * This is a simplified version — full version uses modifiers.ts engine.
+ *
+ * Phase 8.2 batch 9: per Mashu 2026-07-23 "if I mirrored a primitive
+ * that gives +10 vitality, the sheet applied +10 instead of treating
+ * the mirror as its own operation". Mirror rule: a mirrored primitive
+ * applies with the *inverted* operation of the base. For "add +10"
+ * that means subtract 10 — the player pays BU debt for the slot but
+ * gets the inverse benefit (high-stakes mirror = big tactical gamble).
+ * So the formula is:
+ *   base:    amount = buCost
+ *   mirror:  amount = -buCost
  */
 export function computeVitalityModifiersFromPrimitives(
   primitives: ReadonlyArray<{
     readonly buCost: number;
     readonly category: string;
     readonly name: string;
+    /** Phase 8.2 batch 9: see doc above. Optional for back-compat. */
+    readonly isMirrored?: boolean;
   }>,
 ): ReadonlyArray<VitalityModifier> {
-  // Heuristic: vitality-boosting primitives have "vitality" in name or category
   return primitives
     .filter(
       (p) =>
@@ -48,8 +59,12 @@ export function computeVitalityModifiersFromPrimitives(
         p.name.toLowerCase().includes("health") ||
         p.name.toLowerCase().includes("tough"),
     )
-    .map((p) => ({
-      source: p.name,
-      amount: p.buCost, // approximation: BU cost ≈ vitality bonus
-    }));
+    .map((p) => {
+      const base = p.buCost; // approximation: BU cost ≈ vitality bonus
+      const amount = p.isMirrored === true ? -base : base;
+      return {
+        source: p.name,
+        amount,
+      };
+    });
 }

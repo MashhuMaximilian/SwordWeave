@@ -203,11 +203,14 @@ export function aggregateCharacterSheet(
   );
 
   // Vitality
+  // Phase 8.2 batch 9: pass isMirrored so the engine can invert the
+  // modifier amount for mirrored slots. See vitality.ts for the rule.
   const vitalityModifiers = computeVitalityModifiersFromPrimitives(
     input.primitiveLinks.map((l) => ({
       name: l.primitive.name,
       category: l.primitive.category,
       buCost: l.primitive.buCost,
+      isMirrored: l.isMirrored === true,
     })),
   );
   const maxVitality = computeMaxVitality(input.level, vitalityModifiers);

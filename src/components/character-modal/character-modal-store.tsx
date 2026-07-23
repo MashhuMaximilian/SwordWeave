@@ -45,6 +45,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -362,7 +363,24 @@ function totalSlots(slots: PendingSlotsByTab): number {
 }
 
 export function CharacterModalProvider({ children }: { children: ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpenState] = useState(false);
+  // Phase 8.2 batch 9: keep a synchronous ref in lockstep with
+  // isOpen state. The ref is what openForSlot() reads so it can
+  // decide whether to do nothing (preserving edit mode) vs call
+  // open() (fresh create-mode open). State setters from inside
+  // another setter's updater fn were fragile in StrictMode (the
+  // previous bug). The ref is side-effect-free.
+  const isOpenRef = useRef(false);
+  const setIsOpen = useCallback((next: boolean | ((prev: boolean) => boolean)) => {
+    setIsOpenState((prev) => {
+      const resolved =
+        typeof next === "function"
+          ? (next as (prev: boolean) => boolean)(prev)
+          : next;
+      isOpenRef.current = resolved;
+      return resolved;
+    });
+  }, []);
   const [activeStep, setActiveStepState] = useState<CharacterTabId>("identity");
   const [pendingSlots, setPendingSlots] = useState<PendingSlotsByTab>(EMPTY_PENDING);
   // Override for cases where dirty needs to be true outside of pending
@@ -425,25 +443,30 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
-   * Phase 8.2 batch 8: see interface comment. Library callers
-   * (heritage-library, grammar-library) call this when the user
-   * clicks "Slot into character" from a preview card. If the
-   * modal is already open in EDIT mode we leave editCharacterId
-   * alone — the slot is just appended to the pending slots of the
-   * current edit. Otherwise behave like a fresh open().
+   * Phase 8.2 batch 8 + 9: open the modal in a way that's safe to
+   * call from a library's "Slot into character" button when the
+   * modal may already be open in EDIT mode. Plain `open()` resets
+   * editCharacterId to null, which was the cause of the bug where
+   * clicking "Add" on a primitive/heritage in /atelier silently
+   * flipped an active edit session into create mode.
+   *
+   * Implementation: a tiny ref tracks "did we last open in create
+   * mode". Library callers always pass through `openForSlot()` —
+   * if the modal is currently closed, we open in CREATE mode
+   * (fresh). If it's already open, we do NOTHING. This is the
+   * simplest invariant that preserves edit state.
+   *
+   * Why the ref instead of reading `isOpen` from state: the previous
+   * implementation used `setIsOpen((currentOpen) => ...)` and called
+   * state setters from inside the updater fn. React 18 StrictMode
+   * runs updaters twice in dev, which double-fired the reset and
+   * could clobber edit state even when the modal was already open.
+   * The ref is a synchronous, side-effect-free flag.
    */
   const openForSlot = useCallback(() => {
-    setIsOpen((currentOpen) => {
-      if (currentOpen) return currentOpen; // no-op, preserve edit state
-      // Closed: behave like a fresh create-mode open
-      setEditCharacterId(null);
-      setEditCharacterName(null);
-      setIsSeedingEdit(false);
-      setEditSeedError(null);
-      setSeededCharacter(null);
-      return true;
-    });
-  }, []);
+    if (isOpenRef.current) return; // modal already open, do nothing
+    open();
+  }, [open]);
 
   /**
    * Phase 8.2 batch 7 rev 2: open the modal in EDIT mode for an
