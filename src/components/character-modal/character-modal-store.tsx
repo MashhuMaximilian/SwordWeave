@@ -8,6 +8,7 @@
 // between /atelier?build=grammar / heritage / blueprint. It does NOT use
 // Zustand (not installed) — React Context is enough because the host
 // provider never unmounts during navigation.
+// =============================================================================
 //
 // === Re-spec (Mashu 2026-07-21) ===
 //
@@ -263,34 +264,33 @@ interface CharacterModalState {
   openForSlot: () => void;
   /**
    * Phase 8.2 batch 7 rev 2: open the modal in EDIT mode for an
-   * existing character. Persists the edit id in localStorage so
-   * it survives the navigation to /atelier, then navigates. The
-   * atelier's client reads pendingEditId from localStorage on mount
-   * and calls openForEditFromStore() to seed the store.
+   * existing character. Writes the id to localStorage so the
+   * /atelier client can pick it up on mount, then navigates to
+   * /atelier. The atelier client calls openForEditFromStore(id)
+   * to do the actual fetch + seed.
    *
-   * Why navigate to /atelier? Because the edit flow only makes
-   * sense from inside the atelier: that's where primitives,
-   * capabilities, heritages, items, and monsters can be browsed
-   * and slotted into the modal. Same UX as creating a character
-   * via the FAB — but instead of the FAB popping the modal in
-   * place, the Edit button goes to /atelier first.
+   * Returns immediately; the fetch + seed happens on the atelier
+   * side. If we were already on /atelier, we still write
+   * localStorage and let the atelier's existing effect pick it up.
    *
-   * Why localStorage? Per Mashu 2026-07-23: atelier URL params
-   * already shift on every build/fork/load, so we can't put
-   * the edit session in the URL.
+   * Per Mashu 2026-07-23: the Edit flow navigates to atelier.
+   * The character modal is the destination — atelier is the
+   * surface where you browse mechanics/heritages/items to slot.
+   * Same UX as clicking the Mona Lisa FAB from elsewhere: the
+   * atelier's bottom bar is where slotting happens.
    */
   openForEdit: (characterId: string) => Promise<void>;
   /**
-   * Internal: open the modal in EDIT mode using a character id
-   * already persisted in the store (via openForEdit's navigation).
-   * Fetches GET /api/characters/[id] and seeds the store. Does NOT
-   * navigate. Called by the /atelier client on mount.
+   * Internal: do the actual fetch + seed for an edit session.
+   * Called by the /atelier client on mount when pendingEditId is
+   * non-null. Also called directly by tests / other entry points
+   * that don't need the navigation step.
    */
   openForEditFromStore: (characterId: string) => Promise<void>;
   /**
    * Phase 8.2 batch 7 rev 2: clear the persisted edit session.
-   * Called on successful save, on explicit discard, and after
-   * the atelier's client has consumed the pending edit id.
+   * Called after the atelier has consumed it, after a successful
+   * save, and on explicit discard.
    */
   clearPendingEdit: () => void;
   close: () => void;
@@ -371,34 +371,48 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
   // another setter's updater fn were fragile in StrictMode (the
   // previous bug). The ref is side-effect-free.
   const isOpenRef = useRef(false);
-  const setIsOpen = useCallback((next: boolean | ((prev: boolean) => boolean)) => {
-    setIsOpenState((prev) => {
+
+  // Phase 8.2 batch 14 fix: update the ref SYNCHRONOUSLY so
+  // openForSlot() sees the correct value immediately, not on the
+  // next render. Previously the ref was updated inside the updater
+  // (which runs during render), creating a race window where
+  // isOpenRef.current was stale between setIsOpen() call and the
+  // next render. If the user clicked "Slot into character" in that
+  // window, openForSlot() would see isOpenRef.current === false
+  // and call open(), which resets editCharacterId → "Save changes → Create" flip.
+  const setIsOpen = useCallback(
+    (next: boolean | ((prev: boolean) => boolean)) => {
       const resolved =
         typeof next === "function"
-          ? (next as (prev: boolean) => boolean)(prev)
+          ? (next as (prev: boolean) => boolean)(isOpenRef.current)
           : next;
       isOpenRef.current = resolved;
-      // Phase 8.2 batch 14 (Mashu 2026-07-23, "save changes still flips
-      // to create after I add things"): instrument isOpen transitions
-      // alongside editCharacterId transitions so we can see the FULL
-      // lifecycle, not just the one field that "looks wrong". The
-      // Edit→Create flip happens when editCharacterId goes null, but
-      // that flip is usually a downstream effect of a wider re-open
-      // (open() does setIsOpen(false) → reset → setIsOpen(true) in one
-      // synchronous block). Logging just editCharacterId missed the
-      // isOpen transitions that preceded it.
-      if (prev !== resolved) {
-        // eslint-disable-next-line no-console
-        console.warn(
-          "[character-modal] isOpen changed",
-          JSON.stringify({ from: prev, to: resolved }),
-          "\nStack:",
-          new Error().stack,
-        );
-      }
-      return resolved;
-    });
-  }, []);
+
+      setIsOpenState((prev) => {
+        // Phase 8.2 batch 14 (Mashu 2026-07-23, "save changes still flips
+        // to create after I add things"): instrument isOpen transitions
+        // alongside editCharacterId transitions so we can see the FULL
+        // lifecycle, not just the one field that "looks wrong". The
+        // Edit→Create flip happens when editCharacterId goes null, but
+        // that flip is usually a downstream effect of a wider re-open
+        // (open() does setIsOpen(false) → reset → setIsOpen(true) in one
+        // synchronous block). Logging just editCharacterId missed the
+        // isOpen transitions that preceded it.
+        if (prev !== resolved) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            "[character-modal] isOpen changed",
+            JSON.stringify({ from: prev, to: resolved }),
+            "\nStack:\n",
+            new Error().stack,
+          );
+        }
+        return resolved;
+      });
+    },
+    [],
+  );
+
   const [activeStep, setActiveStepState] = useState<CharacterTabId>("identity");
   const [pendingSlots, setPendingSlots] = useState<PendingSlotsByTab>(EMPTY_PENDING);
   // Override for cases where dirty needs to be true outside of pending
@@ -427,7 +441,7 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
           console.warn(
             "[character-modal] editCharacterId changed",
             JSON.stringify({ from: prev, to: resolved }),
-            "\nStack:",
+            "\nStack:\n",
             new Error().stack,
           );
         }
@@ -518,9 +532,13 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
    * The ref is a synchronous, side-effect-free flag.
    */
   const openForSlot = useCallback(() => {
+    // If there's an active edit session, the modal is logically "open"
+    // even if isOpenRef/isOpen state hasn't propagated yet (race on mount).
+    // Do NOT call open() — that would reset editCharacterId to null.
+    if (editCharacterId !== null) return;
     if (isOpenRef.current) return; // modal already open, do nothing
     open();
-  }, [open]);
+  }, [open, editCharacterId]);
 
   /**
    * Phase 8.2 batch 7 rev 2: open the modal in EDIT mode for an
