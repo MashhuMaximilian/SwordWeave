@@ -214,6 +214,27 @@ export function CharacterModal({ children }: CharacterModalProps) {
                 loading…
               </span>
             ) : null}
+            {/* Phase 8.2 batch 7 rev 4: "Start fresh" button in edit
+              mode. Discard the seeded state and re-open the modal
+              in CREATE mode so the user can abandon their changes
+              and build a new character from scratch. Hidden in
+              CREATE mode (already fresh). Hidden when not dirty
+              (nothing to discard). */}
+            {editCharacterId && isDirty ? (
+              <button
+                type="button"
+                onClick={() => {
+                  resetDraft();
+                  close();
+                  // Re-open in fresh CREATE mode after the close.
+                  window.setTimeout(() => open(), 0);
+                }}
+                className="shrink-0 rounded-md border border-border bg-background px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground hover:border-primary hover:text-foreground"
+                title="Discard changes to this character and start a new one from scratch"
+              >
+                Start fresh
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={close}

@@ -504,7 +504,11 @@ export function TabbedCharacterForm() {
       const data = await res.json();
       if (!res.ok) {
         const errMsg = data.error ?? "Failed to save character.";
-        showToast(errMsg, "error");
+        // Phase 8.2 batch 7 rev 3: surface the underlying pg
+        // error too — Drizzle wraps FK violations in a generic
+        // "Failed query" message, hiding the actual constraint.
+        const pg = data.pgError as string | undefined;
+        showToast(pg ? `${errMsg}\n\n${pg}` : errMsg, "error");
         return;
       }
 

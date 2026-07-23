@@ -819,7 +819,12 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error: message,
-        cause: cause ? String(cause) : null,
+        // Phase 8.2 batch 7 rev 3: surface the unwrapped pg
+        // error in the response so the toast shows it. Without
+        // this the user only sees "Failed query: insert into
+        // character_primitives ..." which doesn't say *which*
+        // FK (or unique constraint) actually violated.
+        pgError: cause ? String(cause) : null,
       },
       { status: 400 },
     );

@@ -363,23 +363,29 @@ export function AtelierSandboxClient({
   // so we can call its hook here on /atelier and reach the live
   // store from anywhere in the sandbox.
   const characterModal = useCharacterModal();
-  const pendingEditId = characterModal.pendingEditId;
+  // Phase 8.2 batch 7 rev 4: pendingEditId no longer used here.
+// The CharacterEditButton handles the bootstrap directly via
+// openForEditFromStore. We still keep the localStorage hydration
+// in the modal store so old clients (and bookmarks) keep working.
+  // const pendingEditId = characterModal.pendingEditId;
 
   // Wraps openForEditFromStore + clearPendingEdit in one step so
   // the mount effect above can fire-and-forget without depending
   // on the store's identity. The store's hooks are stable, so a
   // direct call would also work — wrapping keeps the intent clear.
-  const bootstrapEditFromStore = useCallback(
-    (characterId: string) => {
-      void characterModal.openForEditFromStore(characterId).then(() => {
-        characterModal.clearPendingEdit();
-      });
-    },
-    [characterModal],
-  );
-  // Tracks the last pendingEditId we bootstrapped so soft-nav
-  // re-renders don't refire the fetch.
-  const consumedEditRef = useRef<string | null>(null);
+  // Phase 8.2 batch 7 rev 4: REMOVED bootstrapEditFromStore and
+  // consumedEditRef — see the now-disabled useEffect below.
+  // The Edit button calls openForEditFromStore directly.
+  //
+  //   const bootstrapEditFromStore = useCallback(
+  //     (characterId: string) => {
+  //       void characterModal.openForEditFromStore(characterId).then(() => {
+  //         characterModal.clearPendingEdit();
+  //       });
+  //     },
+  //     [characterModal],
+  //   );
+  //   const consumedEditRef = useRef<string | null>(null);
 
   // Open the build panel (mobile drawer / split bottom tab). No-op on
   // desktop where the build column is always visible. Declared before the
@@ -428,32 +434,24 @@ export function AtelierSandboxClient({
 //
 // Per Mashu 2026-07-23: editing is the same UX as creating from
 // the FAB. The user clicks Edit → /atelier → modal pre-fills.
-useEffect(() => {
-  if (!pendingEditId) return;
-  if (consumedEditRef.current === pendingEditId) return;
-  consumedEditRef.current = pendingEditId;
-  bootstrapEditFromStore(pendingEditId);
-}, [pendingEditId, bootstrapEditFromStore]);
+//
+// Phase 8.2 batch 7 rev 4: REMOVED. The CharacterEditButton now
+// calls openForEditFromStore directly, which opens the modal in
+// edit mode synchronously. No localStorage dance, no useEffect
+// race. The atelier doesn't need to bootstrap anything — by the
+// time /atelier renders, the modal store already has the
+// editCharacterId set. This effect was the source of the
+// "modal opens in CREATE mode instead of EDIT mode" bug.
+// useEffect(() => {
+//   if (!pendingEditId) return;
+//   if (consumedEditRef.current === pendingEditId) return;
+//   consumedEditRef.current = pendingEditId;
+//   bootstrapEditFromStore(pendingEditId);
+// }, [pendingEditId, bootstrapEditFromStore]);
 
-// Phase 8.2 batch 7 rev 3 — debug log: surface the actual
-// edit-mode state the form sees on every render so the user
-// can verify the wiring. If `editCharacterId` is null while
-// `pendingEditId` is set, the bootstrap is mid-flight (the
-// fetch is happening). If both stay null while the title
-// shows 'Edit: X', the modal store is stale.
-useEffect(() => {
-  if (typeof window === "undefined") return;
-  console.log(
-    "[atelier] pendingEditId=%s editCharacterId=%s seededCharacterId=%s",
-    pendingEditId,
-    characterModal.editCharacterId,
-    characterModal.seededCharacter?.id ?? null,
-  );
-}, [
-  pendingEditId,
-  characterModal.editCharacterId,
-  characterModal.seededCharacter,
-]);
+// Phase 8.2 batch 7 rev 4: removed debug log. The
+// openForEditFromStore direct-call fix means we no longer need
+// to trace state — the modal opens synchronously in edit mode.
 
   // Mirrored from the form's onStateChange. Drives the dirty-check gate.
   useEffect(() => {

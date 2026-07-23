@@ -40,12 +40,22 @@ export function CharacterEditButton({
   title = "Edit in the atelier's character builder modal",
 }: CharacterEditButtonProps) {
   const router = useRouter();
-  const { openForEdit } = useCharacterModal();
+  const { openForEditFromStore } = useCharacterModal();
   return (
     <button
       type="button"
       onClick={() => {
-        void openForEdit(characterId);
+        // Phase 8.2 batch 7 rev 4: open the modal directly in
+        // edit mode instead of relying on the atelier's bootstrap
+        // effect. The bootstrap depended on localStorage + a useEffect
+        // race that frequently failed — the modal would pop open
+        // in CREATE mode because the bootstrap hadn't completed
+        // before the form rendered. Opening directly guarantees
+        // edit mode the moment the modal appears.
+        //
+        // We still navigate to /atelier so the user can browse
+        // primitives/heritages to slot during the edit.
+        void openForEditFromStore(characterId);
         router.push("/atelier");
       }}
       className={
