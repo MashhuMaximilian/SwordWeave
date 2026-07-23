@@ -61,6 +61,21 @@ export interface CapabilityTriggerPayload {
 export interface ItemEquipPayload {
   itemId: string;
   itemName: string;
+  /**
+   * Optional human-readable note (e.g. "no-op (already in target state)"
+   * when the equip toggle was idempotent). Visible in the History tab.
+   */
+  note?: string;
+}
+
+export interface ItemUnequipPayload {
+  itemId: string;
+  itemName: string;
+  /**
+   * Optional human-readable note (e.g. "no-op (already in target state)"
+   * when the unequip toggle was idempotent). Visible in the History tab.
+   */
+  note?: string;
 }
 
 export type CharacterLogPayload =
@@ -69,7 +84,8 @@ export type CharacterLogPayload =
   | LevelUpPayload
   | CapabilityTogglePayload
   | CapabilityTriggerPayload
-  | ItemEquipPayload;
+  | ItemEquipPayload
+  | ItemUnequipPayload;
 
 /**
  * Append an event to the character's log. Fire-and-forget — errors
