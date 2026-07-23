@@ -715,12 +715,16 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
   const applySeed = useCallback((seededSlots: PendingSlotsByTab) => {
     setPendingSlots((current) => {
       // Merge: keep existing slots, add seeded ones (avoid duplicates by slotId)
+      // Also stamp slotId on any seeded slot missing one.
       const merged: PendingSlotsByTab = { ...current };
       for (const tab of CHARACTER_TABS) {
         const existingIds = new Set(current[tab].map((s) => s.slotId).filter(Boolean));
+        const stampedSeeded = seededSlots[tab].map((s) =>
+          s.slotId ? s : { ...s, slotId: makeSlotId() }
+        );
         merged[tab] = [
           ...current[tab],
-          ...seededSlots[tab].filter((s) => !existingIds.has(s.slotId)),
+          ...stampedSeeded.filter((s) => !existingIds.has(s.slotId!)),
         ];
       }
       return merged;
