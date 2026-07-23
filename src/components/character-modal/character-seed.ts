@@ -145,6 +145,15 @@ export interface CharacterSeed {
     primitive: {
       id: number;
       name: string;
+      /**
+       * Phase 8.2 batch 14: surface the primitive's own metadata
+       * (isMirrorable / mirrorBuCredit / buCost) so the seed can
+       * build a PendingSlot that renders correctly in the modal —
+       * mirror badge + actual BU cost + "Mirrorable" toggle.
+       */
+      isMirrorable?: boolean;
+      mirrorBuCredit?: number;
+      buCost?: number;
     };
   }>;
   /**
@@ -320,12 +329,28 @@ function seedPrimitiveSlot(
   // slotting from any non-slot tab, so on edit we mirror that:
   // PERSONAL primitives reappear under "manifest" alongside
   // any capabilities the user slotted directly there.
+  const primitive = link.primitive;
+  // Phase 8.2 batch 14: surface isMirrorable + buCost on the
+  // re-seeded slot so MechanicSlotRow renders the "Mirrorable"
+  // badge and the actual BU cost. Without these the slot would
+  // render as a zero-BU unmirrorable primitive (which was the
+  // bug Mashu hit: 2 of her 3 PERSONAL primitives were mirrored
+  // in the DB but the edit UI showed them as plain primitives).
+  // Conditional spread so we don't write `undefined` keys —
+  // exactOptionalPropertyTypes is on in tsconfig.
   return {
     kind: "primitive",
     primitiveId: link.primitiveId,
     tab: "manifest",
-    name: link.primitive.name,
+    name: primitive.name,
     mirror: link.isMirrored === true,
+    ...(primitive.isMirrorable === true ? { isMirrorable: true } : {}),
+    ...(typeof primitive.mirrorBuCredit === "number"
+      ? { mirrorBuCredit: primitive.mirrorBuCredit }
+      : {}),
+    ...(typeof primitive.buCost === "number"
+      ? { buCost: primitive.buCost }
+      : {}),
   };
 }
 
