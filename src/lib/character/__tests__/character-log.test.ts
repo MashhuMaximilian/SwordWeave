@@ -34,7 +34,7 @@ describe("characterLog table", () => {
     );
   });
 
-  it("kind enum lists all 7 event types", () => {
+  it("kind enum lists all event types (Phase 8.2 through batch 5)", () => {
     expect(characterLogKindEnum.enumValues).toEqual([
       "vitality_change",
       "rest",
@@ -43,6 +43,8 @@ describe("characterLog table", () => {
       "capability_toggle",
       "item_equip",
       "item_unequip",
+      // Phase 8.2 batch 5
+      "dm_bonus_change",
     ]);
   });
 
@@ -55,6 +57,7 @@ describe("characterLog table", () => {
       | "capability_toggle"
       | "item_equip"
       | "item_unequip"
+      | "dm_bonus_change"
     >();
   });
 
@@ -70,6 +73,7 @@ describe("characterLog table", () => {
       | { capabilityId: string; capabilityName: string }
       | { capabilityId: string; capabilityName: string; active: boolean }
       | { itemId: string; itemName: string }
+      | { prev: number; next: number; applied: number }
     >();
   });
 });

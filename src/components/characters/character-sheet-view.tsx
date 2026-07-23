@@ -32,6 +32,7 @@ import { OriginBadge } from "@/components/characters/origin-badge";
 import { VitalityTracker } from "@/components/characters/vitality-tracker";
 import { CapabilityCard } from "@/components/characters/capability-card";
 import { ItemCard } from "@/components/characters/item-card";
+import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
 import {
   BACKSTORY_FIELDS,
   isBackstoryEmpty,
@@ -403,6 +404,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
 
       {/* BU bar — always visible */}
       <BuBar
+        characterId={props.id}
         progressionSpent={props.buBalance.progressionSpent}
         progressionPool={props.buBalance.progressionPool}
         progressionPercent={props.buBalance.progressionPercent}
@@ -595,6 +597,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
 // =============================================================================
 
 function BuBar({
+  characterId,
   progressionSpent,
   progressionPool,
   progressionPercent,
@@ -604,6 +607,7 @@ function BuBar({
   itemBuSpent,
   warning,
 }: {
+  characterId: string;
   progressionSpent: number;
   progressionPool: number;
   progressionPercent: number;
@@ -644,9 +648,14 @@ function BuBar({
             <span className="text-xs font-semibold uppercase text-muted-foreground">
               DM Bonus
             </span>
-            <span className="rounded-full bg-secondary px-3 py-1 text-sm font-medium">
-              {dmBonusBu} BU
-            </span>
+            {/* Phase 8.2 batch 5: inline editor — click the badge to
+                edit. Replaces the previous read-only display. The
+                editor handles its own optimistic state and posts to
+                /api/characters/[id]/dm-bonus. */}
+            <DmBonusEditor
+              characterId={characterId}
+              initialValue={dmBonusBu}
+            />
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold uppercase text-muted-foreground">
@@ -2448,6 +2457,29 @@ function renderHistorySummary(
           <Package className="size-4 text-muted-foreground" />
         ),
         title: `Unequipped "${name}"`,
+        detail: null,
+      };
+    }
+    case "dm_bonus_change": {
+      const prev = Number(payload["prev"] ?? 0);
+      const next = Number(payload["next"] ?? 0);
+      const applied = Number(payload["applied"] ?? 0);
+      const note = str(payload["note"]) || null;
+      const direction = applied > 0 ? "granted" : applied < 0 ? "removed" : "set";
+      const icon =
+        applied > 0 ? (
+          <Sparkles className="size-4 text-amber-500" />
+        ) : applied < 0 ? (
+          <Sparkles className="size-4 text-muted-foreground" />
+        ) : (
+          <Sparkles className="size-4 text-muted-foreground" />
+        );
+      return {
+        icon,
+        title:
+          applied === 0
+            ? `DM bonus BU ${note ? `(${note})` : "unchanged"}`
+            : `DM bonus BU ${direction}: ${prev} → ${next} (${applied >= 0 ? "+" : ""}${applied})`,
         detail: null,
       };
     }

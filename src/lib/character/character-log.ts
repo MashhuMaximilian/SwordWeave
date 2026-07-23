@@ -78,6 +78,23 @@ export interface ItemUnequipPayload {
   note?: string;
 }
 
+/**
+ * Phase 8.2 batch 5 — DM bonus BU inline editor log entry.
+ * Tracks the previous and new value plus the delta, so the audit
+ * trail captures exactly how the bonus pool was adjusted.
+ */
+export interface DmBonusChangePayload {
+  prev: number;
+  next: number;
+  /** Convenience: next - prev. Positive = granted, negative = removed. */
+  applied: number;
+  /**
+   * Optional note (e.g. "no-op (already at target value)" for
+   * idempotent updates). Visible in the History tab.
+   */
+  note?: string;
+}
+
 export type CharacterLogPayload =
   | VitalityChangePayload
   | RestPayload
@@ -85,7 +102,8 @@ export type CharacterLogPayload =
   | CapabilityTogglePayload
   | CapabilityTriggerPayload
   | ItemEquipPayload
-  | ItemUnequipPayload;
+  | ItemUnequipPayload
+  | DmBonusChangePayload;
 
 /**
  * Append an event to the character's log. Fire-and-forget — errors

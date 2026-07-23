@@ -550,6 +550,11 @@ export const characterLogKindEnum = pgEnum("character_log_kind", [
   "capability_toggle",
   "item_equip",
   "item_unequip",
+  // Phase 8.2 batch 5: when a DM-issued bonus BU is added/removed
+  // by the inline editor. Body payload: { prev, next, applied,
+  // note? }. Distinct from 'level_up' (which implicitly zeroes
+  // dmBonusBu — that's a separate event we could add later).
+  "dm_bonus_change",
 ]);
 
 export type CharacterLogKind = (typeof characterLogKindEnum.enumValues)[number];
