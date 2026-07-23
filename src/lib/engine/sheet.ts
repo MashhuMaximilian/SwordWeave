@@ -44,7 +44,6 @@ import {
   type BuLedger,
   type PrimitiveInput,
 } from "./bu";
-import { resolveMirrorEffect } from "./mirror";
 
 export type PrimitiveLinkSnapshot = {
   primitiveId: number;
@@ -59,12 +58,6 @@ export type PrimitiveLinkSnapshot = {
     buCost: number;
     isMirrorable: boolean;
     mirrorBuCredit: number;
-    // Phase 8.2 batch 10: canonical mirror vector per mirror.ts.
-    // "STANDARD_ONLY" by default — primitive has no mirror
-    // variant. Other values: VARIABLE_VECTOR (sign-flip numeric
-    // modifiers), STRUCTURAL_FAULT (defensive → vulnerability),
-    // COST_INSTABILITY (target unchanged, user pays cost).
-    mirrorVector: string;
   };
 };
 
@@ -172,10 +165,16 @@ export function aggregateCharacterSheet(
   // This is a simplified v1 — full primitive→practice modifiers come from
   // hardModifiers (see primitives.ts) when wired in.
   //
-  // Phase 8.2 batch 10: pass isMirrored + mirrorVector to the engine so
-  // each mirror vector applies its canonical rule (sign-flip for
-  // VARIABLE_VECTOR / STRUCTURAL_FAULT; pass-through for STANDARD_ONLY
-  // and COST_INSTABILITY). See mirror.ts for the taxonomy.
+  // Phase 8.2 batch 11: mirror rule. Per Phase 7.5 modifier-rebuild
+  // spec, mirror is per-OPERATION on a modifier (Add↔Subtract sign
+  // flip, Multiply↔Divide reciprocal, Min↔Max, Grant↔Revoke). For
+  // the v1 sheet roll-up using buCost as a proxy (hardModifiers not
+  // yet wired), we model the buCost contribution as an implicit Add
+  // op: mirroring flips the sign. This matches OP_SPECS.add.mirrorOp
+  // = "subtract" + mirrorFlipsSign=true — same rule the form's
+  // Mirror toggle uses in /sandbox/primitive-form.tsx. When
+  // hardModifiers come online, this will be replaced by walking each
+  // primitive's modifier and calling applyMirror() per OP_SPECS.
   const primitiveBonuses = new Map<
     number,
     { name: string; bonus: number }
@@ -190,14 +189,11 @@ export function aggregateCharacterSheet(
     ) {
       const existing = primitiveBonuses.get(p.id);
       if (!existing) {
-        const resolved = resolveMirrorEffect(
-          p.mirrorVector ?? "STANDARD_ONLY",
-          link.isMirrored === true,
-          p.buCost,
-        );
+        const bonus =
+          link.isMirrored === true ? -p.buCost : p.buCost;
         primitiveBonuses.set(p.id, {
           name: p.name,
-          bonus: resolved.targetValue,
+          bonus,
         });
       }
     }
@@ -223,18 +219,22 @@ export function aggregateCharacterSheet(
   );
 
   // Vitality
-  // Phase 8.2 batch 10: pass isMirrored AND mirrorVector so the
-  // engine can apply the right per-vector rule (sign-flip for
-  // VARIABLE_VECTOR / STRUCTURAL_FAULT, pass-through for
-  // STANDARD_ONLY and COST_INSTABILITY). See mirror.ts for the
-  // 4-vector taxonomy.
+  // Phase 8.2 batch 11: mirror rule. Per Phase 7.5 modifier-rebuild
+  // spec, mirror is per-OPERATION on a modifier (Add↔Subtract sign
+  // flip, Multiply↔Divide reciprocal, Min↔Max, Grant↔Revoke). For
+  // the v1 sheet roll-up using buCost as a proxy (hardModifiers not
+  // yet wired), we model the buCost contribution as an implicit Add
+  // op: mirroring flips the sign. This matches OP_SPECS.add.mirrorOp
+  // = "subtract" + mirrorFlipsSign=true — same rule the form's
+  // Mirror toggle uses in /sandbox/primitive-form.tsx. When
+  // hardModifiers come online, this will be replaced by walking each
+  // primitive's modifier and calling applyMirror() per OP_SPECS.
   const vitalityModifiers = computeVitalityModifiersFromPrimitives(
     input.primitiveLinks.map((l) => ({
       name: l.primitive.name,
       category: l.primitive.category,
       buCost: l.primitive.buCost,
       isMirrored: l.isMirrored === true,
-      mirrorVector: l.primitive.mirrorVector,
     })),
   );
   const maxVitality = computeMaxVitality(input.level, vitalityModifiers);

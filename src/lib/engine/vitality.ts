@@ -5,7 +5,6 @@
  */
 
 import { proficiencyBonus } from "./practices";
-import { resolveMirrorEffect } from "./mirror";
 
 export interface VitalityModifier {
   readonly source: string;
@@ -33,38 +32,39 @@ export function computeMaxVitality(
  * Each primitive has a hardModifiers array; filter for vitality-affecting ones.
  * This is a simplified version — full version uses modifiers.ts engine.
  *
- * Phase 8.2 batch 10: per Mashu 2026-07-23 "we already have
+ * Phase 8.2 batch 11: per Mashu 2026-07-23 "we already have
  * somewhere what operations have mirrors and what is the mirror
  * of which operation... something about modifiers in primitives
- * whatever". That source of truth is mirror.ts (the canonical
- * Mirror-Vector Architecture), which defines 4 vectors:
+ * whatever". Per Phase 7.5 modifier-rebuild spec
+ * (docs/phase-7/phase-7.5-modifier-rebuild-spec.md), mirror is
+ * per-OPERATION on a modifier: Add↔Subtract sign-flip,
+ * Multiply↔Divide reciprocal, Min↔Max, Grant↔Revoke. Mirror
+ * toggles swap the op to its chiral pair via applyMirror() in
+ * src/types/modifier.ts.
  *
- *   - STANDARD_ONLY     — pass-through. Mirror = no change.
- *   - VARIABLE_VECTOR   — sign-flip numeric. +10 mirror = -10.
- *   - STRUCTURAL_FAULT  — defensive → vulnerability (same
- *                         magnitude, opposite polarity for
- *                         resistance/damage buckets).
- *   - COST_INSTABILITY  — target unchanged, user pays extra
- *                         (e.g. +1 Strain / cast, 2× vitality).
+ * For the v1 sheet roll-up using buCost as a proxy (hardModifiers
+ * not yet wired), we model the buCost contribution as an implicit
+ * Add op: mirroring flips the sign. This matches
+ * OP_SPECS.add.mirrorOp = "subtract" + mirrorFlipsSign=true — same
+ * rule the form's Mirror toggle uses in /sandbox/primitive-form.tsx.
  *
- * For vitality roll-ups we map these as:
- *   - STANDARD_ONLY     → mirror = no change
- *   - VARIABLE_VECTOR   → mirror = sign-flip (-buCost)
- *   - STRUCTURAL_FAULT  → mirror = sign-flip (resistance becomes
- *                         vulnerability; same magnitude)
- *   - COST_INSTABILITY  → mirror = no change for stat roll-up
- *                         (the cost lands elsewhere — we don't
- *                         try to model Strain in vitality_max)
+ * Mashu 2026-07-23 example: "if I mirrored a primitive that gives
+ * +10 vitality, the sheet applied +10 instead of treating the
+ * mirror as its own operation". With the implicit-Add model,
+ * +10 vitality mirrored → -10 (Subtract). Max = base - 10.
+ *
+ * The older mirror.ts (with mirror_vector column) was the
+ * Phase 7-Q-M design and is now superseded; it remains in the
+ * codebase for legacy callers / historical tests but is not
+ * used by the sheet roll-up.
  */
 export function computeVitalityModifiersFromPrimitives(
   primitives: ReadonlyArray<{
     readonly buCost: number;
     readonly category: string;
     readonly name: string;
-    /** Phase 8.2 batch 10: see doc above. Optional for back-compat. */
+    /** True if this primitive slot is mirrored at the character level. */
     readonly isMirrored?: boolean;
-    /** Phase 8.2 batch 10: mirror vector per mirror.ts. Optional. */
-    readonly mirrorVector?: string;
   }>,
 ): ReadonlyArray<VitalityModifier> {
   return primitives
@@ -77,22 +77,11 @@ export function computeVitalityModifiersFromPrimitives(
     )
     .map((p) => {
       const base = p.buCost; // approximation: BU cost ≈ vitality bonus
-      // Phase 8.2 batch 10: route through the canonical resolver
-      // so each mirror vector is handled correctly. Resolver
-      // returns targetValue which for STANDARD_ONLY =
-      // base; for VARIABLE_VECTOR / STRUCTURAL_FAULT =
-      // -base; for COST_INSTABILITY = base (the cost lands on
-      // the user, not the stat). That replaces the previous
-      // blanket sign-flip which was wrong for STANDARD_ONLY
-      // (mirror would have incorrectly subtracted).
-      const resolved = resolveMirrorEffect(
-        p.mirrorVector ?? "STANDARD_ONLY",
-        p.isMirrored === true,
-        base,
-      );
+      // Implicit Add op: mirror flips sign (Subtract).
+      const amount = p.isMirrored === true ? -base : base;
       return {
         source: p.name,
-        amount: resolved.targetValue,
+        amount,
       };
     });
 }

@@ -92,11 +92,6 @@ export default async function CharacterSheetPage({
         buCost: l.primitive.buCost,
         isMirrorable: l.primitive.isMirrorable,
         mirrorBuCredit: l.primitive.mirrorBuCredit,
-        // Phase 8.2 batch 10: carry the canonical mirror vector so
-        // the engine can apply the right per-vector rule instead
-        // of a blanket sign-flip. mirrorVector lives on the
-        // primitives row (mirror.ts defines the 4-vector taxonomy).
-        mirrorVector: l.primitive.mirrorVector ?? "STANDARD_ONLY",
         narrativeRule: l.primitive.narrativeRule ?? "",
       },
     })),

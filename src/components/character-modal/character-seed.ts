@@ -130,6 +130,18 @@ export interface CharacterSeed {
   primitiveLinks: Array<{
     primitiveId: number;
     isMirrored: boolean | null;
+    // Phase 8.2 batch 11: bundle-origin tracking. A primitive row
+    // with a non-null origin came from a heritage/capability/effect
+    // bundle expansion at create-time — not as a standalone PERSONAL
+    // pick. The seed must skip these from the "attributes" tab queue
+    // because they're already represented by the heritage/capability
+    // slot, and seeding them again would (a) double-count BU in the
+    // footer (each bundle primitive's buCost is already in the
+    // heritage's computedBu), and (b) on save, PATCH would re-insert
+    // them as PERSONAL, severing the origin link.
+    originHeritageId: string | null;
+    originCapabilityId: string | null;
+    originEffectId: string | null;
     primitive: {
       id: number;
       name: string;
@@ -259,14 +271,39 @@ function seedHeritageSlot(
 }
 
 /**
- * Map a primitive slot link to a PendingSlot. The modal doesn't
- * track slot source in v1, so primitives all go into the "attributes"
- * tab queue — same place the create flow puts them when the user
- * picks "PERSONAL" primitives from /atelier.
+ * Map a primitive slot link to a PendingSlot.
+ *
+ * Phase 8.2 batch 11: skip primitives whose origin is set
+ * (originHeritageId / originCapabilityId / originEffectId). Those
+ * primitives came from a heritage or capability bundle expansion
+ * at create-time — they're already represented by the heritage /
+ * capability slot, and the bundled BU is already in the heritage
+ * or capability's computedBu. Seeding them as standalone
+ * "attributes" slots would double-count BU in the footer and, on
+ * save, PATCH would re-insert them as PERSONAL, severing the
+ * origin link.
+ *
+ * Mashu 2026-07-23 symptom: "in attributes should be nothing in
+ * terms of primitives or whatever... each thing should be in its
+ * own tab like we discussed" and "If I edit it it looks like it
+ * places in the tab attributes all primitives or idk what exactly
+ * and calculates things again". Root cause = this seed was
+ * pushing every primitive row regardless of origin into the
+ * attributes tab queue.
  */
 function seedPrimitiveSlot(
   link: CharacterSeed["primitiveLinks"][number],
-): PendingSlot {
+): PendingSlot | null {
+  // Skip bundle-origin primitives — already represented by the
+  // heritage/capability slot in the lineage/upbringing/manifest
+  // (or attributes-as-capability) tab.
+  if (
+    link.originHeritageId ||
+    link.originCapabilityId ||
+    link.originEffectId
+  ) {
+    return null;
+  }
   return {
     kind: "primitive",
     primitiveId: link.primitiveId,
@@ -330,7 +367,12 @@ export function seedPendingSlots(
       out.manifest.push(seedHeritageSlot(h));
   }
   for (const p of character.primitiveLinks) {
-    out.attributes.push(seedPrimitiveSlot(p));
+    // Phase 8.2 batch 11: skip bundle-origin primitives — see
+    // seedPrimitiveSlot for the rationale. Returns null for those
+    // rows; we only push genuine PERSONAL primitives into the
+    // attributes tab queue.
+    const slot = seedPrimitiveSlot(p);
+    if (slot) out.attributes.push(slot);
   }
   for (const c of character.capabilityLinks) {
     out.attributes.push(seedCapabilitySlot(c));
