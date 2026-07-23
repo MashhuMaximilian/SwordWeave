@@ -304,10 +304,17 @@ function seedPrimitiveSlot(
   ) {
     return null;
   }
+  // Phase 8.2 batch 12: PERSONAL primitives were previously
+  // pushed to the "attributes" tab on edit. That tab is the
+  // stat / level / BU-allocation tab — not a slot receiver.
+  // /atelier defaults the slot destination to "manifest" when
+  // slotting from any non-slot tab, so on edit we mirror that:
+  // PERSONAL primitives reappear under "manifest" alongside
+  // any capabilities the user slotted directly there.
   return {
     kind: "primitive",
     primitiveId: link.primitiveId,
-    tab: "attributes",
+    tab: "manifest",
     name: link.primitive.name,
     mirror: link.isMirrored === true,
   };

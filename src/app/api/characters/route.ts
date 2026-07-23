@@ -198,15 +198,23 @@ export async function POST(request: Request) {
     }
 
     const startingBuDefault = 25;
-    const rawBuBudget = Number(values["buBudget"]);
+    // Phase 8.2 batch 12: buBudget is "provided" only when the client
+    // explicitly sends a finite number. `null` (Level mode) and
+    // missing key both mean "use the default startingBu". Treating
+    // null as 0 used to silently cap the progression pool at the
+    // canon minimum and reject any over-canon-spending build.
+    const rawBuBudget = values["buBudget"];
     const buBudgetProvided =
-      Number.isFinite(rawBuBudget) && rawBuBudget >= 0 && rawBuBudget <= 100000;
+      typeof rawBuBudget === "number" &&
+      Number.isFinite(rawBuBudget) &&
+      rawBuBudget >= 0 &&
+      rawBuBudget <= 100000;
     // Phase 8.1 batch 10g: in "By BU" mode the client sends both
     // level (implied) and buBudget (typed). buBudget becomes the
     // startingBu override. In "By Level" mode buBudget is null and
     // startingBu defaults to 25.
     const startingBu = buBudgetProvided
-      ? Math.floor(rawBuBudget)
+      ? Math.floor(rawBuBudget as number)
       : parseIntInRange(values["startingBu"], 0, 100000, startingBuDefault);
     const buSpent = parseIntInRange(values["buSpent"], 0, 100000, 0);
     const dmBonusBu = parseIntInRange(values["dmBonusBu"], 0, 100000, 0);
