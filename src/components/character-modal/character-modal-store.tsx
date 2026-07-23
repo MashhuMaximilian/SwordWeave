@@ -532,9 +532,13 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
    * The ref is a synchronous, side-effect-free flag.
    */
   const openForSlot = useCallback(() => {
-    if (isOpenRef.current) return; // modal already open, do nothing
-    open();
-  }, [open]);
+    // If modal is already open, do nothing.
+    // If closed, open it WITHOUT resetting edit state (unlike open() which
+    // is for "fresh create mode"). This preserves editCharacterId when
+    // the user slots a primitive/heritage while the modal is still opening.
+    if (isOpenRef.current) return;
+    setIsOpen(true);
+  }, [setIsOpen]);
 
   /**
    * Phase 8.2 batch 7 rev 2: open the modal in EDIT mode for an
