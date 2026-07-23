@@ -152,6 +152,15 @@ export interface CharacterSeed {
    */
   capabilityLinks: Array<{
     capabilityId: string;
+    /**
+     * Phase 8.2 batch 12: when a capability came in via a heritage
+     * bundle (lineage/upbringing/manifest), the capability link row
+     * has originHeritageId set. The seed uses this to skip those
+     * rows — they're already represented inside the parent heritage
+     * card, so re-seeding them as standalone slots would double-count
+     * BU and show duplicates the user has to clean up.
+     */
+    originHeritageId: string | null;
     capability: { id: string; name: string };
   }>;
   /**
@@ -322,14 +331,29 @@ function seedPrimitiveSlot(
 
 /**
  * Map a capability slot link to a PendingSlot.
+ *
+ * Phase 8.2 batch 12: bundle-origin capabilities (originHeritageId
+ * set) are skipped — they're already represented inside the parent
+ * heritage's card (which renders the count + transitive primitive
+ * list). Re-seeding them as standalone slots would (a) double-count
+ * BU in the footer (their buCost is part of the heritage's computedBu)
+ * and (b) show duplicates the user would have to manually clean up.
+ *
+ * Direct (originHeritageId null) capabilities slot into "manifest",
+ * matching /atelier's default destination when slotting from a
+ * non-slot tab. They never belong on the "attributes" tab — that's
+ * the stat/level/BU-allocation tab, not a slot receiver.
  */
 function seedCapabilitySlot(
   link: CharacterSeed["capabilityLinks"][number],
-): PendingSlot {
+): PendingSlot | null {
+  if (link.originHeritageId) {
+    return null;
+  }
   return {
     kind: "capability",
     capabilityId: link.capabilityId,
-    tab: "attributes",
+    tab: "manifest",
     name: link.capability.name,
   };
 }
@@ -377,12 +401,16 @@ export function seedPendingSlots(
     // Phase 8.2 batch 11: skip bundle-origin primitives — see
     // seedPrimitiveSlot for the rationale. Returns null for those
     // rows; we only push genuine PERSONAL primitives into the
-    // attributes tab queue.
+    // manifest tab queue.
     const slot = seedPrimitiveSlot(p);
-    if (slot) out.attributes.push(slot);
+    if (slot) out.manifest.push(slot);
   }
   for (const c of character.capabilityLinks) {
-    out.attributes.push(seedCapabilitySlot(c));
+    // Phase 8.2 batch 12: skip bundle-origin capabilities (they're
+    // already represented by the heritage card). Returns null for
+    // those rows; direct capabilities land in manifest.
+    const slot = seedCapabilitySlot(c);
+    if (slot) out.manifest.push(slot);
   }
   for (const i of character.itemLinks) {
     out.items.push(seedItemSlot(i));
