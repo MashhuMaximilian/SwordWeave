@@ -712,8 +712,19 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
 
   const clearSlots = useCallback(() => setPendingSlots(EMPTY_PENDING), []);
 
-  const applySeed = useCallback((slots: PendingSlotsByTab) => {
-    setPendingSlots(slots);
+  const applySeed = useCallback((seededSlots: PendingSlotsByTab) => {
+    setPendingSlots((current) => {
+      // Merge: keep existing slots, add seeded ones (avoid duplicates by slotId)
+      const merged: PendingSlotsByTab = { ...current };
+      for (const tab of CHARACTER_TABS) {
+        const existingIds = new Set(current[tab].map((s) => s.slotId).filter(Boolean));
+        merged[tab] = [
+          ...current[tab],
+          ...seededSlots[tab].filter((s) => !existingIds.has(s.slotId)),
+        ];
+      }
+      return merged;
+    });
     setDirtyOverride(false);
   }, []);
 
