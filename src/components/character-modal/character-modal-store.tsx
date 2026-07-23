@@ -714,17 +714,29 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
 
   const applySeed = useCallback((seededSlots: PendingSlotsByTab) => {
     setPendingSlots((current) => {
-      // Merge: keep existing slots, add seeded ones (avoid duplicates by slotId)
-      // Also stamp slotId on any seeded slot missing one.
+      // Merge: keep existing slots, add seeded ones.
+      // Deduplicate by STABLE entity IDs (not slotId which is regenerated each call).
       const merged: PendingSlotsByTab = { ...current };
       for (const tab of CHARACTER_TABS) {
-        const existingIds = new Set(current[tab].map((s) => s.slotId).filter(Boolean));
+        const existingEntityKeys = new Set<string>();
+        for (const s of current[tab]) {
+          if (s.kind === "heritage") existingEntityKeys.add(`heritage:${s.heritageId}`);
+          else if (s.kind === "primitive") existingEntityKeys.add(`primitive:${s.primitiveId}`);
+          else if (s.kind === "capability") existingEntityKeys.add(`capability:${s.capabilityId}`);
+          else if (s.kind === "item") existingEntityKeys.add(`item:${s.itemId}`);
+        }
         const stampedSeeded = seededSlots[tab].map((s) =>
           s.slotId ? s : { ...s, slotId: makeSlotId() }
         );
         merged[tab] = [
           ...current[tab],
-          ...stampedSeeded.filter((s) => !existingIds.has(s.slotId!)),
+          ...stampedSeeded.filter((s) => {
+            if (s.kind === "heritage") return !existingEntityKeys.has(`heritage:${s.heritageId}`);
+            if (s.kind === "primitive") return !existingEntityKeys.has(`primitive:${s.primitiveId}`);
+            if (s.kind === "capability") return !existingEntityKeys.has(`capability:${s.capabilityId}`);
+            if (s.kind === "item") return !existingEntityKeys.has(`item:${s.itemId}`);
+            return !existingEntityKeys.has(`effect:${s.effectId}`);
+          }),
         ];
       }
       return merged;
