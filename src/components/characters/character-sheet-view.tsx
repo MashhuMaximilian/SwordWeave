@@ -30,6 +30,8 @@ import { ToastViewport, useToasts } from "@/components/ui/toast";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
 import { OriginBadge } from "@/components/characters/origin-badge";
 import { VitalityTracker } from "@/components/characters/vitality-tracker";
+import { CapabilityCard } from "@/components/characters/capability-card";
+import { ItemCard } from "@/components/characters/item-card";
 import {
   BACKSTORY_FIELDS,
   isBackstoryEmpty,
@@ -455,6 +457,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         )}
         {tab === "capabilities" && (
           <CapabilitiesTab
+            characterId={props.id}
             capabilities={props.capabilityLinks.map((l) => ({
               ...l.capability,
               acquiredAtLevel: l.acquiredAtLevel,
@@ -473,6 +476,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         )}
         {tab === "items" && (
           <ItemsTab
+            characterId={props.id}
             items={props.itemLinks.map((l) => ({
               ...l.item,
               equipped: l.equipped,
@@ -1566,11 +1570,13 @@ function BreakdownRow({
 // =============================================================================
 
 function CapabilitiesTab({
+  characterId,
   capabilities,
   heritageById,
   capabilityById,
   effectById,
 }: {
+  characterId: string;
   capabilities: Array<{
     id: string;
     name: string;
@@ -1623,39 +1629,18 @@ function CapabilitiesTab({
           }
         }
         return (
-          <li
-            key={c.id}
-            className="rounded-md border border-border bg-card p-4"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <h4 className="font-semibold">{c.name}</h4>
-              <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
-                {c.type}
-              </span>
-            </div>
-            <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-              <span>{c.sourceType}</span>
-              <span>·</span>
-              <span>Acquired L{c.acquiredAtLevel}</span>
-            </div>
-            {/* Phase 5 (T5.C.3): render the slot-source badge so the user
-                can tell at a glance whether this capability is theirs, a
-                fork, or pinned to someone else's version. */}
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <SlotSourceBadge
-                slotSource={c.slotSource}
-                versionId={c.versionId}
-                latestVersionId={c.latestVersionId}
-              />
-              {originChain.length > 0 ? (
-                <OriginBadge chain={originChain} />
-              ) : null}
-            </div>
-            {c.verboseDescription && (
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-3">
-                {c.verboseDescription}
-              </p>
-            )}
+          <li key={c.id}>
+            {/* Phase 8.2 batch 4: each capability is now an interactive
+                card with toggle + trigger buttons. The static card
+                contents (badges, description) are owned by the card
+                component itself; the tab is just a layout grid. */}
+            <CapabilityCard
+              characterId={characterId}
+              capability={{
+                ...c,
+                originChain,
+              }}
+            />
           </li>
         );
       })}
@@ -1668,9 +1653,11 @@ function CapabilitiesTab({
 // =============================================================================
 
 function ItemsTab({
+  characterId,
   items,
   encumbrance,
 }: {
+  characterId: string;
   items: Array<{
     id: string;
     name: string;
@@ -1701,6 +1688,8 @@ function ItemsTab({
       </div>
     );
   }
+  const atCapacity =
+    encumbrance.equipSlotsUsed >= encumbrance.equipSlotsAvailable;
   return (
     <div>
       <div className="mb-4 rounded-md border border-border bg-card p-3 text-xs">
@@ -1715,39 +1704,15 @@ function ItemsTab({
       </div>
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((i) => (
-          <li
-            key={i.id}
-            className="rounded-md border border-border bg-card p-4"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <h4 className="font-semibold">{i.name}</h4>
-              <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
-                {i.itemType}
-              </span>
-            </div>
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-              <span>{i.rarity}</span>
-              {i.isTwoHanded && <span>· Two-handed</span>}
-              {i.isConsumable && <span>· Consumable</span>}
-              {i.equipped && (
-                <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-300">
-                  Equipped
-                </span>
-              )}
-            </div>
-            {/* Phase 5 (T5.C.3): render the slot-source badge. */}
-            <div className="mt-2">
-              <SlotSourceBadge
-                slotSource={i.slotSource}
-                versionId={i.versionId}
-                latestVersionId={i.latestVersionId}
-              />
-            </div>
-            {i.description && (
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-3">
-                {i.description}
-              </p>
-            )}
+          <li key={i.id}>
+            {/* Phase 8.2 batch 4: each item is now an interactive
+                card with an equip/unequip toggle. The card owns
+                its own optimistic state and dispatches the API. */}
+            <ItemCard
+              characterId={characterId}
+              item={i}
+              atCapacity={atCapacity}
+            />
           </li>
         ))}
       </ul>
