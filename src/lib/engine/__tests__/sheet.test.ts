@@ -129,6 +129,10 @@ describe("aggregateCharacterSheet", () => {
               buCost: 4,
               isMirrorable: false,
               mirrorBuCredit: 0,
+              // Phase 8.2 batch 10: mirror vector per mirror.ts.
+              // Phase 4-era tests default to STANDARD_ONLY (no
+              // mirror effect on stat roll-up).
+              mirrorVector: "STANDARD_ONLY",
             },
           },
         ],

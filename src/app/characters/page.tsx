@@ -91,6 +91,8 @@ async function CharacterCard({
         buCost: number;
         isMirrorable: boolean;
         mirrorBuCredit: number;
+        // Phase 8.2 batch 10: mirror vector for engine roll-up.
+        mirrorVector: string | null;
       };
     }>;
     capabilityLinks: Array<{ capabilityId: string }>;
@@ -115,7 +117,19 @@ async function CharacterCard({
       source: "PERSONAL" as const,
       acquiredAtLevel: 1,
       isMirrored: l.isMirrored ?? false,
-      primitive: l.primitive,
+      // Phase 8.2 batch 10: normalise mirrorVector so the
+      // engine roll-up gets a known value. If the row somehow
+      // has null/undefined, default to STANDARD_ONLY (no
+      // mirror effect on stat roll-up — see mirror.ts).
+      primitive: {
+        id: l.primitive.id,
+        name: l.primitive.name,
+        category: l.primitive.category,
+        buCost: l.primitive.buCost,
+        isMirrorable: l.primitive.isMirrorable,
+        mirrorBuCredit: l.primitive.mirrorBuCredit,
+        mirrorVector: l.primitive.mirrorVector ?? "STANDARD_ONLY",
+      },
     })),
     capabilityLinks: [],
     itemLinks: character.itemLinks.map((l) => ({

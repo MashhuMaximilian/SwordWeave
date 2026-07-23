@@ -44,6 +44,7 @@ import {
   type BuLedger,
   type PrimitiveInput,
 } from "./bu";
+import { resolveMirrorEffect } from "./mirror";
 
 export type PrimitiveLinkSnapshot = {
   primitiveId: number;
@@ -58,6 +59,12 @@ export type PrimitiveLinkSnapshot = {
     buCost: number;
     isMirrorable: boolean;
     mirrorBuCredit: number;
+    // Phase 8.2 batch 10: canonical mirror vector per mirror.ts.
+    // "STANDARD_ONLY" by default — primitive has no mirror
+    // variant. Other values: VARIABLE_VECTOR (sign-flip numeric
+    // modifiers), STRUCTURAL_FAULT (defensive → vulnerability),
+    // COST_INSTABILITY (target unchanged, user pays cost).
+    mirrorVector: string;
   };
 };
 
@@ -164,6 +171,11 @@ export function aggregateCharacterSheet(
   // Heuristic: practice-affecting primitives contribute their buCost as bonus.
   // This is a simplified v1 — full primitive→practice modifiers come from
   // hardModifiers (see primitives.ts) when wired in.
+  //
+  // Phase 8.2 batch 10: pass isMirrored + mirrorVector to the engine so
+  // each mirror vector applies its canonical rule (sign-flip for
+  // VARIABLE_VECTOR / STRUCTURAL_FAULT; pass-through for STANDARD_ONLY
+  // and COST_INSTABILITY). See mirror.ts for the taxonomy.
   const primitiveBonuses = new Map<
     number,
     { name: string; bonus: number }
@@ -178,7 +190,15 @@ export function aggregateCharacterSheet(
     ) {
       const existing = primitiveBonuses.get(p.id);
       if (!existing) {
-        primitiveBonuses.set(p.id, { name: p.name, bonus: p.buCost });
+        const resolved = resolveMirrorEffect(
+          p.mirrorVector ?? "STANDARD_ONLY",
+          link.isMirrored === true,
+          p.buCost,
+        );
+        primitiveBonuses.set(p.id, {
+          name: p.name,
+          bonus: resolved.targetValue,
+        });
       }
     }
   }
@@ -203,14 +223,18 @@ export function aggregateCharacterSheet(
   );
 
   // Vitality
-  // Phase 8.2 batch 9: pass isMirrored so the engine can invert the
-  // modifier amount for mirrored slots. See vitality.ts for the rule.
+  // Phase 8.2 batch 10: pass isMirrored AND mirrorVector so the
+  // engine can apply the right per-vector rule (sign-flip for
+  // VARIABLE_VECTOR / STRUCTURAL_FAULT, pass-through for
+  // STANDARD_ONLY and COST_INSTABILITY). See mirror.ts for the
+  // 4-vector taxonomy.
   const vitalityModifiers = computeVitalityModifiersFromPrimitives(
     input.primitiveLinks.map((l) => ({
       name: l.primitive.name,
       category: l.primitive.category,
       buCost: l.primitive.buCost,
       isMirrored: l.isMirrored === true,
+      mirrorVector: l.primitive.mirrorVector,
     })),
   );
   const maxVitality = computeMaxVitality(input.level, vitalityModifiers);

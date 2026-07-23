@@ -387,7 +387,37 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
   // slots (e.g. the wizard has typed identity/backstory/attributes).
   const [dirtyOverride, setDirtyOverride] = useState(false);
   // Phase 8.2 batch 7: edit-mode state. See CharacterModalState above.
-  const [editCharacterId, setEditCharacterId] = useState<string | null>(null);
+  const [editCharacterId, setEditCharacterIdState] = useState<string | null>(null);
+  // Phase 8.2 batch 10: wrap setEditCharacterId so every transition
+  // logs a stack trace to the browser console. Mashu 2026-07-23:
+  // "It still doesn't keep save changes button and it changes to
+  // create button instead after I add some things but I cannot
+  // exactly describe the behavior or why and how it happens." A
+  // silent flip from "Save changes" → "Create" means something
+  // called setEditCharacterId(null) mid-edit. To find the
+  // offender we log every setter call with its stack — the line
+  // that flipped state will be obvious in the console.
+  const setEditCharacterId = useCallback(
+    (next: string | null | ((prev: string | null) => string | null)) => {
+      setEditCharacterIdState((prev) => {
+        const resolved =
+          typeof next === "function"
+            ? (next as (prev: string | null) => string | null)(prev)
+            : next;
+        if (prev !== resolved) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            "[character-modal] editCharacterId changed",
+            JSON.stringify({ from: prev, to: resolved }),
+            "\nStack:",
+            new Error().stack,
+          );
+        }
+        return resolved;
+      });
+    },
+    [],
+  );
   const [editCharacterName, setEditCharacterName] = useState<string | null>(null);
   const [isSeedingEdit, setIsSeedingEdit] = useState(false);
   const [editSeedError, setEditSeedError] = useState<string | null>(null);
@@ -434,6 +464,12 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
   }, [activeStep]);
 
   const open = useCallback(() => {
+    // Phase 8.2 batch 10: defence in depth against silent
+    // Edit→Create flips. Log every editCharacterId transition
+    // (already wrapped above) AND, here at the only legitimate
+    // "open in fresh CREATE mode" entry point, set isOpen first
+    // so the modal is unambiguously closed when we reset state.
+    setIsOpen(false);
     setEditCharacterId(null);
     setEditCharacterName(null);
     setIsSeedingEdit(false);

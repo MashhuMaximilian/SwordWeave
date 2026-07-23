@@ -51,6 +51,8 @@ import {
 import {
   getCapabilityBundleBuMap,
   getHeritageBundleBuMap,
+  preloadCapabilityBundles,
+  preloadHeritageBundles,
 } from "./tabs/slot-receiver-tab";
 import { maxBuDebtForLevel } from "@/lib/engine/bu";
 import { computeMaxVitality } from "@/lib/engine/vitality";
@@ -213,6 +215,27 @@ export function TabbedCharacterForm() {
     setAttributes(seeds.attributes as AttributesState);
     applySeed(seeds.pendingSlots);
     setSeededOnce(true);
+    // Phase 8.2 batch 10: warm the heritage + capability bundle
+    // caches so the footer BU summary reflects seeded characters
+    // on first render, instead of waiting for the user to click
+    // into each tab (which mounts the slot card, fetches the
+    // bundle, and only then bumps bundleVersion). Mashu 2026-07-23:
+    // "It doesn't calculate budget when i enter edit only if if
+    // go through each tab of builder."
+    void (async () => {
+      const heritageIds: string[] = [];
+      const capabilityIds: string[] = [];
+      for (const h of seededCharacter.heritageLinks ?? []) {
+        if (h.heritageId) heritageIds.push(h.heritageId);
+      }
+      for (const c of seededCharacter.capabilityLinks ?? []) {
+        if (c.capabilityId) capabilityIds.push(c.capabilityId);
+      }
+      await Promise.all([
+        preloadHeritageBundles(heritageIds),
+        preloadCapabilityBundles(capabilityIds),
+      ]);
+    })();
     // We deliberately do NOT mark dirty here — the seeded state
     // is the user's editing starting point, not a change.
   }, [

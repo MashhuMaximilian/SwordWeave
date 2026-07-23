@@ -139,6 +139,154 @@ export function getCapabilityBundleBuMap(): Map<string, number> {
   return out;
 }
 
+/**
+ * Phase 8.2 batch 10: warm the heritage bundle cache for a list of
+ * heritage IDs without rendering a HeritageSlotCard. Used after
+ * applySeed() in the modal form so that seeded characters show
+ * their full BU impact in the footer on first render — without
+ * the user having to click into each tab (which was Mashu's
+ * 2026-07-23 symptom: "It doesn't calculate budget when i enter
+ * edit only if if go through each tab of builder").
+ *
+ * Each fetch hits /api/heritage/[id] (the same endpoint the
+ * HeritageSlotCard uses), caches the normalised bundle into
+ * heritageBundleCache, and dispatches sw-character-bundle-loaded
+ * exactly the way the card does — so the form's bundleVersion
+ * counter bumps and the useMemo recomputes.
+ *
+ * Idempotent: if the cache already has an entry, we skip.
+ */
+export async function preloadHeritageBundles(
+  heritageIds: ReadonlyArray<string>,
+): Promise<void> {
+  const missing = heritageIds.filter(
+    (id) => !heritageBundleCache.has(id),
+  );
+  if (missing.length === 0) return;
+  await Promise.all(missing.map((id) => fetchAndCacheHeritageBundle(id)));
+}
+
+async function fetchAndCacheHeritageBundle(
+  heritageId: string,
+): Promise<void> {
+  try {
+    const res = await fetch(`/api/heritage/${heritageId}`);
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error ?? `HTTP ${res.status}`);
+    }
+    const t = data.template as HeritageBundle | undefined;
+    const normalised: HeritageBundle | null = t
+      ? {
+          id: t.id,
+          name: t.name,
+          description: t.description ?? null,
+          primitiveLinks: t.primitiveLinks ?? [],
+          capabilityLinks: (t.capabilityLinks ?? []).map((cl) => {
+            const capRow = cl.capability as typeof cl.capability & {
+              primitiveLinks?: Array<{
+                primitiveId: number;
+                quantity: number;
+                isMirrored?: boolean;
+                primitive: { id: number; name: string; buCost: number | null } | null;
+              }>;
+              effectLinks?: Array<{
+                effectId?: string;
+                effect: { id: string; name: string; description: string | null };
+                primitiveLinks?: Array<{
+                  primitiveId: number;
+                  quantity: number;
+                  isMirrored?: boolean;
+                  primitive: { id: number; name: string; buCost: number | null } | null;
+                }>;
+              }>;
+            };
+            return {
+              capabilityId: cl.capabilityId ?? cl.capability?.id ?? "",
+              capability: cl.capability,
+              primitiveLinks: capRow.primitiveLinks ?? [],
+              effectLinks: (capRow.effectLinks ?? []).map((el) => ({
+                effectId: el.effectId ?? el.effect?.id ?? "",
+                effect: el.effect,
+                primitiveLinks: el.primitiveLinks ?? [],
+              })),
+            };
+          }),
+          computedBu: t.computedBu ?? 0,
+        }
+      : null;
+    heritageBundleCache.set(heritageId, normalised);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("sw-character-bundle-loaded", {
+          detail: { kind: "heritage", id: heritageId },
+        }),
+      );
+    }
+  } catch {
+    heritageBundleCache.set(heritageId, null);
+  }
+}
+
+/**
+ * Phase 8.2 batch 10: same shape as preloadHeritageBundles() but
+ * for direct capability slots. Capability bundles populate
+ * capabilityBundleCache and dispatch the same custom event so the
+ * footer recomputes.
+ */
+export async function preloadCapabilityBundles(
+  capabilityIds: ReadonlyArray<string>,
+): Promise<void> {
+  const missing = capabilityIds.filter(
+    (id) => !capabilityBundleCache.has(id),
+  );
+  if (missing.length === 0) return;
+  await Promise.all(missing.map((id) => fetchAndCacheCapabilityBundle(id)));
+}
+
+async function fetchAndCacheCapabilityBundle(
+  capabilityId: string,
+): Promise<void> {
+  try {
+    const res = await fetch(`/api/capabilities/${capabilityId}`);
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error ?? `HTTP ${res.status}`);
+    }
+    // Phase 8.2 batch 10: /api/capabilities/[id] returns the
+    // capability under data.capability (not data.template). Match
+    // CapabilitySlotCard's normaliser to keep the cache shape
+    // consistent — including the deep-joined effect→primitive
+    // links the slot card relies on.
+    const c = data.capability as
+      | (CapabilityBundle & { computedBu?: number })
+      | undefined;
+    const normalised: CapabilityBundle | null = c
+      ? {
+          id: c.id,
+          name: c.name,
+          primitiveLinks: c.primitiveLinks ?? [],
+          effectLinks: (c.effectLinks ?? []).map((el) => ({
+            effectId: el.effectId,
+            effect: el.effect,
+            primitiveLinks: el.primitiveLinks ?? [],
+          })),
+          computedBu: c.computedBu ?? 0,
+        }
+      : null;
+    capabilityBundleCache.set(capabilityId, normalised);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("sw-character-bundle-loaded", {
+          detail: { kind: "capability", id: capabilityId },
+        }),
+      );
+    }
+  } catch {
+    capabilityBundleCache.set(capabilityId, null);
+  }
+}
+
 export function SlotReceiverTab({
   tabId,
   title,
