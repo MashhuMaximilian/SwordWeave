@@ -804,6 +804,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ character: result }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";
-    return NextResponse.json({ error: message }, { status: 400 });
+    // Phase 8.2 batch 7 rev 3: surface Drizzle errors with their
+    // cause so the user can see what's actually breaking (e.g.
+    // FK violation vs unique constraint). Drizzle wraps the
+    // underlying pg error in a `cause` property.
+    const cause = error instanceof Error && "cause" in error
+      ? (error as Error & { cause?: unknown }).cause
+      : null;
+    console.error(
+      "[characters POST] failed:",
+      message,
+      cause ? `(cause: ${JSON.stringify(cause)})` : "",
+    );
+    return NextResponse.json(
+      {
+        error: message,
+        cause: cause ? String(cause) : null,
+      },
+      { status: 400 },
+    );
   }
 }

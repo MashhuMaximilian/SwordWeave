@@ -3,6 +3,7 @@ import { asc, eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { Plus, Swords, UserRound } from "lucide-react";
 import { CharacterEditButton } from "@/components/characters/character-edit-button";
+import { NewCharacterButton } from "@/components/characters/new-character-button";
 import { db } from "@/db/client";
 import { characters } from "@/db/schema";
 import { aggregateCharacterSheet } from "@/lib/engine";
@@ -39,13 +40,7 @@ export default async function CharactersPage() {
             the current snapshot.
           </p>
         </div>
-        <Link
-          href="/sandbox/characters"
-          className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          <Plus className="size-4" />
-          New Character
-        </Link>
+        <NewCharacterButton variant="primary" />
       </div>
 
       {rows.length === 0 ? (
