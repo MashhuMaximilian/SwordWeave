@@ -228,6 +228,16 @@ interface CharacterModalState {
    */
   editCharacterId: string | null;
   /**
+   * Tracks whether an EDIT SESSION is active, independent of modal
+   * visibility. This decouples "modal open/closed" from "editing
+   * existing character / creating new one".
+   * - True when openForEditFromStore seeds a character
+   * - False after resetDraft (save success, discard, Start fresh)
+   * Used by openForSlot to open modal WITHOUT resetting edit state
+   * when the edit session is active but modal happens to be closed.
+   */
+  editSessionActive: boolean;
+  /**
    * Cached name of the character being edited, so the modal can
    * show "Edit: <name>" while the fetch is in flight and after the
    * store has been seeded.
@@ -420,6 +430,10 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
   const [dirtyOverride, setDirtyOverride] = useState(false);
   // Phase 8.2 batch 7: edit-mode state. See CharacterModalState above.
   const [editCharacterId, setEditCharacterIdState] = useState<string | null>(null);
+  // Phase 8.2 batch 14 fix: track whether an EDIT SESSION is active
+  // (independent of modal open/close). This prevents openForSlot from
+  // losing the edit session when the modal hasn't fully rendered yet.
+  const [editSessionActive, setEditSessionActive] = useState(false);
   // Phase 8.2 batch 10: wrap setEditCharacterId so every transition
   // logs a stack trace to the browser console. Mashu 2026-07-23:
   // "It still doesn't keep save changes button and it changes to
@@ -444,6 +458,12 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
             "\nStack:\n",
             new Error().stack,
           );
+        }
+        // Track edit session: active when editCharacterId is set, inactive when cleared
+        if (resolved !== null && prev === null) {
+          setEditSessionActive(true);
+        } else if (resolved === null && prev !== null) {
+          setEditSessionActive(false);
         }
         return resolved;
       });
@@ -731,6 +751,7 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
       isSeedingEdit,
       editSeedError,
       seededCharacter,
+      editSessionActive,
       open,
       openForSlot,
       openForEdit,
@@ -758,6 +779,7 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
       isSeedingEdit,
       editSeedError,
       seededCharacter,
+      editSessionActive,
       open,
       openForSlot,
       openForEdit,
@@ -794,6 +816,7 @@ export function useCharacterModal(): CharacterModalState {
       isSeedingEdit: false,
       editSeedError: null,
       seededCharacter: null,
+      editSessionActive: false,
       open: () => {},
       openForSlot: () => {},
       openForEdit: async () => {},
