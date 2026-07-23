@@ -16,13 +16,10 @@ export const dynamic = "force-dynamic";
 
 export default async function CharacterSheetPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ edit?: string }>;
 }) {
   const { id } = await params;
-  const sp = await searchParams;
   const { userId } = await auth();
 
   const row = await db.query.characters.findFirst({
@@ -271,7 +268,6 @@ export default async function CharacterSheetPage({
           description: l.heritage.description,
         },
       }))}
-      initialEditMode={sp.edit === "1"}
       // Phase 8.2 batch 3: pass logEntries to the view for the
       // History tab. The shape matches what aggregateCharacterSheet
       // has historically logged on the character row; here we just

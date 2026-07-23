@@ -46,9 +46,25 @@ export interface CharacterModalProps {
 }
 
 export function CharacterModal({ children }: CharacterModalProps) {
-  const { isOpen, close, isDirty } = useCharacterModal();
+  const {
+    isOpen,
+    close,
+    isDirty,
+    editCharacterId,
+    editCharacterName,
+    resetDraft,
+  } = useCharacterModal();
   const [isDesktop, setIsDesktop] = useState(false);
   const [mounted, setMounted] = useState(false);
+  /**
+   * Phase 8.2 batch 7: dirty-confirm dialog state. When the user
+   * tries to close the modal while in create OR edit mode and the
+   * draft is dirty, we show a Save / Discard / Keep editing
+   * confirm. We hold the requested close in `pendingClose` so we
+   * can finalize it after the user picks a side.
+   */
+  const [showDirtyConfirm, setShowDirtyConfirm] = useState(false);
+  const [pendingClose, setPendingClose] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -66,25 +82,73 @@ export function CharacterModal({ children }: CharacterModalProps) {
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") requestClose();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [isOpen, close]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  /**
+   * Phase 8.2 batch 7: dirty-aware close. If dirty, surface a
+   * confirm dialog (Save / Discard / Keep editing). The Save /
+   * Discard buttons delegate to the TabbedCharacterForm via
+   * imperative DOM events so we don't need to thread callbacks
+   * through the context. The form listens for "character-modal:save"
+   * and "character-modal:discard" and runs the corresponding flow.
+   */
+  function requestClose() {
+    if (!isDirty) {
+      // Clean: just close.
+      resetDraft();
+      setShowDirtyConfirm(false);
+      return;
+    }
+    // Dirty: confirm.
+    setPendingClose(true);
+    setShowDirtyConfirm(true);
+  }
+
+  function confirmDiscard() {
+    setShowDirtyConfirm(false);
+    setPendingClose(false);
+    resetDraft();
+  }
+
+  function confirmKeepEditing() {
+    setShowDirtyConfirm(false);
+    setPendingClose(false);
+  }
+
+  function confirmSave() {
+    // The form listens for this event and dispatches the save flow
+    // itself. After it dispatches, the form will call resetDraft()
+    // on success (which closes the modal via the close() bound in
+    // the store). We just hide our confirm dialog.
+    setShowDirtyConfirm(false);
+    setPendingClose(false);
+    window.dispatchEvent(new CustomEvent("character-modal:save"));
+  }
 
   if (!mounted || !isOpen) return null;
+
+  const titleText = editCharacterId
+    ? editCharacterName
+      ? `Edit: ${editCharacterName}`
+      : "Edit character"
+    : "New Character";
 
   return createPortal(
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Character creation"
+      aria-label={editCharacterId ? "Edit character" : "Character creation"}
       data-character-modal="true"
       className={cn(
         "fixed inset-0 z-[70] flex justify-center bg-black/60 sm:items-center sm:p-4",
       )}
       onClick={(e) => {
-        if (e.target === e.currentTarget) close();
+        if (e.target === e.currentTarget) requestClose();
       }}
     >
       <div
@@ -102,7 +166,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto text-sm">
           <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-4">
             <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              New Character
+              {titleText}
             </span>
             {isDirty ? (
               <span
@@ -114,7 +178,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
             ) : null}
             <button
               type="button"
-              onClick={close}
+              onClick={requestClose}
               aria-label="Close character modal"
               className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
             >
@@ -127,6 +191,65 @@ export function CharacterModal({ children }: CharacterModalProps) {
           </div>
         </div>
       </div>
+
+      {/* Phase 8.2 batch 7: dirty-confirm dialog. Renders on top of
+          the modal chrome so the user has to pick before the modal
+          closes. */}
+      {showDirtyConfirm && (
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="dirty-confirm-title"
+          className="absolute inset-0 z-[80] flex items-center justify-center bg-black/70 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) confirmKeepEditing();
+          }}
+        >
+          <div
+            className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              id="dirty-confirm-title"
+              className="text-base font-semibold"
+            >
+              Unsaved changes
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              You have unsaved changes to{" "}
+              <strong>
+                {editCharacterId
+                  ? editCharacterName ?? "this character"
+                  : "this new character"}
+              </strong>
+              . What would you like to do?
+            </p>
+            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={confirmKeepEditing}
+                className="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium transition-colors hover:bg-secondary"
+              >
+                Keep editing
+              </button>
+              <button
+                type="button"
+                onClick={confirmDiscard}
+                className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
+              >
+                Discard changes
+              </button>
+              <button
+                type="button"
+                onClick={confirmSave}
+                className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Save changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>,
     document.body,
   );

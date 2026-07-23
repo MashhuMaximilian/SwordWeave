@@ -48,6 +48,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { CharacterSeed } from "./character-seed";
 
 /**
  * The 7 tabs in their display order. Tab ids are stable strings so they
@@ -194,7 +195,55 @@ interface CharacterModalState {
   activeStep: CharacterTabId;
   pendingSlots: PendingSlotsByTab;
   isDirty: boolean;
+  /**
+   * Phase 8.2 batch 7: when non-null, the modal is in EDIT mode
+   * (loaded from an existing character). When null, the modal is in
+   * CREATE mode (empty draft). Drives:
+   *   - Title bar: "Edit: <name>" vs "New Character"
+   *   - Save button label: "Save changes" vs "Create"
+   *   - Save endpoint: PATCH /api/characters/[id] vs POST /api/characters
+   *   - Cancel behavior: confirm-if-dirty vs warn-if-dirty (same UX
+   *     for both, per Mashu 2026-07-23)
+   */
+  editCharacterId: string | null;
+  /**
+   * Cached name of the character being edited, so the modal can
+   * show "Edit: <name>" while the fetch is in flight and after the
+   * store has been seeded.
+   */
+  editCharacterName: string | null;
+  /**
+   * True while openForEdit() is fetching + seeding the store. The
+   * modal uses this to render a spinner instead of an empty form.
+   */
+  isSeedingEdit: boolean;
+  /**
+   * Error from the most recent openForEdit() call, if any.
+   * Cleared on the next successful open.
+   */
+  editSeedError: string | null;
+  /**
+   * Internal: the most-recently-fetched character in edit mode.
+   * Exposed so the form can read it via useEffect and seed itself
+   * exactly once per open. Null when not in edit mode or after
+   * resetDraft.
+   */
+  seededCharacter: CharacterSeed | null;
   open: () => void;
+  /**
+   * Phase 8.2 batch 7: open the modal in EDIT mode for an existing
+   * character. Fetches GET /api/characters/[id], seeds the store
+   * with the character's state, and sets editCharacterId. Resolves
+   * with the seeded character on success or null on failure (error
+   * stored in editSeedError).
+   *
+   * Why no URL navigation? Per Mashu 2026-07-23: the atelier's URL
+   * is already in flux (build=primitive, build=heritage, etc.),
+   * so we can't couple character-edit state to ?build=character
+   * without losing the user's navigation. Modal state is the right
+   * home.
+   */
+  openForEdit: (characterId: string) => Promise<void>;
   close: () => void;
   toggle: () => void;
   setActiveStep: (tab: CharacterTabId) => void;
@@ -215,8 +264,20 @@ interface CharacterModalState {
    */
   clearSlots: () => void;
   /**
-   * Reset everything: activeStep → identity, pendingSlots → empty.
-   * Called after successful create so the next open is fresh.
+   * Phase 8.2 batch 7: apply a freshly-fetched character to the
+   * pending slots queue. Called by TabbedCharacterForm in response
+   * to seededCharacter arriving from openForEdit(). Also resets
+   * the dirty override to false (the seeded state is the user's
+   * editing starting point, not a dirty change).
+   *
+   * Does NOT touch activeStep (we want to land on identity, but
+   * the form can override).
+   */
+  applySeed: (slots: PendingSlotsByTab) => void;
+  /**
+   * Reset everything: activeStep → identity, pendingSlots → empty,
+   * editCharacterId → null. Called after successful create OR after
+   * the user discards changes in edit mode.
    */
   resetDraft: () => void;
   /**
@@ -259,6 +320,18 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
   // Override for cases where dirty needs to be true outside of pending
   // slots (e.g. the wizard has typed identity/backstory/attributes).
   const [dirtyOverride, setDirtyOverride] = useState(false);
+  // Phase 8.2 batch 7: edit-mode state. See CharacterModalState above.
+  const [editCharacterId, setEditCharacterId] = useState<string | null>(null);
+  const [editCharacterName, setEditCharacterName] = useState<string | null>(null);
+  const [isSeedingEdit, setIsSeedingEdit] = useState(false);
+  const [editSeedError, setEditSeedError] = useState<string | null>(null);
+  /**
+   * Stash the fetched character payload here so the form can read
+   * it via useEffect when ready to seed. Cleared on close/reset.
+   */
+  const [seededCharacter, setSeededCharacter] = useState<CharacterSeed | null>(
+    null,
+  );
 
   // Hydrate activeStep from localStorage on mount.
   useEffect(() => {
@@ -274,7 +347,63 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
     }
   }, [activeStep]);
 
-  const open = useCallback(() => setIsOpen(true), []);
+  const open = useCallback(() => {
+    setEditCharacterId(null);
+    setEditCharacterName(null);
+    setIsSeedingEdit(false);
+    setEditSeedError(null);
+    setSeededCharacter(null);
+    setIsOpen(true);
+  }, []);
+
+  /**
+   * Phase 8.2 batch 7: open the modal in EDIT mode for an existing
+   * character. Fetches the character, seeds the store, and flips
+   * isOpen. While the fetch is in flight the modal shows a
+   * spinner via isSeedingEdit.
+   *
+   * Error handling: on a 404 / 500, we set editSeedError; the
+   * caller (TabbedCharacterForm) is responsible for closing the
+   * modal and showing a toast in that case.
+   *
+   * Seeding pattern: we stash the fetched character in a private
+   * `seededCharacter` state slot. The TabbedCharacterForm reads
+   * this slot via useEffect when it sees editCharacterId !== null
+   * AND seededCharacter matches the expected id, then calls
+   * `setPendingSlots(seeds)` and resets `dirtyOverride` to false
+   * (since the seeded state is NOT dirty — it's what the user
+   * started editing FROM).
+   */
+  const openForEdit = useCallback(async (characterId: string) => {
+    setIsSeedingEdit(true);
+    setEditSeedError(null);
+    setEditCharacterId(characterId);
+    setEditCharacterName(null);
+    setSeededCharacter(null);
+    setIsOpen(true);
+
+    try {
+      const res = await fetch(`/api/characters/${characterId}`, {
+        method: "GET",
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const msg =
+          (body as { error?: string }).error ?? "Failed to load character.";
+        setEditSeedError(msg);
+        setIsSeedingEdit(false);
+        return;
+      }
+      const data = (await res.json()) as { character: CharacterSeed };
+      setEditCharacterName(data.character.name);
+      setSeededCharacter(data.character);
+      setIsSeedingEdit(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Network error.";
+      setEditSeedError(msg);
+      setIsSeedingEdit(false);
+    }
+  }, []);
   const close = useCallback(() => setIsOpen(false), []);
   const toggle = useCallback(() => setIsOpen((v) => !v), []);
 
@@ -343,12 +472,24 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
 
   const clearSlots = useCallback(() => setPendingSlots(EMPTY_PENDING), []);
 
+  const applySeed = useCallback((slots: PendingSlotsByTab) => {
+    setPendingSlots(slots);
+    setDirtyOverride(false);
+  }, []);
+
   const setDirty = useCallback((dirty: boolean) => setDirtyOverride(dirty), []);
 
   const resetDraft = useCallback(() => {
     setPendingSlots(EMPTY_PENDING);
     setDirtyOverride(false);
     setActiveStepState("identity");
+    // Phase 8.2 batch 7: clearing edit state too, so a subsequent
+    // open() is fully clean.
+    setEditCharacterId(null);
+    setEditCharacterName(null);
+    setIsSeedingEdit(false);
+    setEditSeedError(null);
+    setSeededCharacter(null);
     try {
       window.localStorage.removeItem(ACTIVE_STEP_STORAGE_KEY);
     } catch {
@@ -364,13 +505,20 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
       activeStep,
       pendingSlots,
       isDirty,
+      editCharacterId,
+      editCharacterName,
+      isSeedingEdit,
+      editSeedError,
+      seededCharacter,
       open,
+      openForEdit,
       close,
       toggle,
       setActiveStep,
       queueSlot,
       removeSlot,
       clearSlots,
+      applySeed,
       resetDraft,
       setDirty,
       setSlotMirror,
@@ -380,13 +528,20 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
       activeStep,
       pendingSlots,
       isDirty,
+      editCharacterId,
+      editCharacterName,
+      isSeedingEdit,
+      editSeedError,
+      seededCharacter,
       open,
+      openForEdit,
       close,
       toggle,
       setActiveStep,
       queueSlot,
       removeSlot,
       clearSlots,
+      applySeed,
       resetDraft,
       setDirty,
     ],
@@ -405,13 +560,20 @@ export function useCharacterModal(): CharacterModalState {
       activeStep: "identity",
       pendingSlots: EMPTY_PENDING,
       isDirty: false,
+      editCharacterId: null,
+      editCharacterName: null,
+      isSeedingEdit: false,
+      editSeedError: null,
+      seededCharacter: null,
       open: () => {},
+      openForEdit: async () => {},
       close: () => {},
       toggle: () => {},
       setActiveStep: () => {},
       queueSlot: () => {},
       removeSlot: () => {},
       clearSlots: () => {},
+      applySeed: () => {},
       resetDraft: () => {},
       setDirty: () => {},
       setSlotMirror: () => {},

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
-import { Pencil, Plus, Swords, UserRound } from "lucide-react";
+import { Plus, Swords, UserRound } from "lucide-react";
+import { CharacterEditButton } from "@/components/characters/character-edit-button";
 import { db } from "@/db/client";
 import { characters } from "@/db/schema";
 import { aggregateCharacterSheet } from "@/lib/engine";
@@ -220,14 +221,7 @@ async function CharacterCard({
         >
           Open Sheet
         </Link>
-        <Link
-          href={`/characters/${character.id}?edit=1`}
-          className="flex items-center justify-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-card"
-          title="Quick edit"
-        >
-          <Pencil className="size-3.5" />
-          Edit
-        </Link>
+        <CharacterEditButton characterId={character.id} />
         <Link
           href={`/characters/${character.id}/clone`}
           className="flex items-center justify-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-card"

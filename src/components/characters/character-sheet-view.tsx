@@ -33,6 +33,7 @@ import { VitalityTracker } from "@/components/characters/vitality-tracker";
 import { CapabilityCard } from "@/components/characters/capability-card";
 import { ItemCard } from "@/components/characters/item-card";
 import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
+import { useCharacterModal } from "@/components/character-modal/character-modal-store";
 import {
   BACKSTORY_FIELDS,
   isBackstoryEmpty,
@@ -237,7 +238,6 @@ export type CharacterSheetProps = {
       description: string | null;
     };
   }>;
-  initialEditMode: boolean;
   // Phase 8.2 batch 3: freeform backstory. The DB column is
   // `backstory jsonb`; we forward the parsed shape so the tab
   // can render labels directly without re-parsing.
@@ -266,10 +266,17 @@ const TABS: Array<{ id: Tab; label: string; icon: typeof Edit }> = [
 
 export function CharacterSheetView(props: CharacterSheetProps) {
   const [tab, setTab] = useState<Tab>("overview");
-  const [editMode, setEditMode] = useState(props.initialEditMode);
   const [levelUpConfirm, setLevelUpConfirm] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toasts, showToast, dismissToast } = useToasts();
+  // Phase 8.2 batch 7: opening edit mode triggers the atelier's
+  // character builder modal (pre-filled via openForEdit). Hooks
+  // must be called at the top of the function — not inside an
+  // event handler — so we capture the action once here.
+  const { openForEdit } = useCharacterModal();
+  const onEditClick = () => {
+    void openForEdit(props.id);
+  };
 
   const attrSum = props.attrPhysical + props.attrMental + props.attrMagical;
   const attrValid = attrSum === 10;
@@ -361,36 +368,27 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {editMode ? (
+          {/* Phase 8.2 batch 7: editing now opens the atelier's
+              character builder modal (pre-filled via openForEdit),
+              not an inline QuickEditPanel. QuickEditPanel was
+              removed per Mashu 2026-07-23. */}
+          <button
+            type="button"
+            onClick={onEditClick}
+            className="flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-card"
+          >
+            <Pencil className="size-4" />
+            Edit
+          </button>
+          {props.level < 20 && (
             <button
               type="button"
-              onClick={() => setEditMode(false)}
-              className="flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-card"
+              onClick={() => setLevelUpConfirm(true)}
+              className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              <X className="size-4" />
-              Done
+              <ArrowUp className="size-4" />
+              Level Up
             </button>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => setEditMode(true)}
-                className="flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-card"
-              >
-                <Pencil className="size-4" />
-                Edit
-              </button>
-              {props.level < 20 && (
-                <button
-                  type="button"
-                  onClick={() => setLevelUpConfirm(true)}
-                  className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                >
-                  <ArrowUp className="size-4" />
-                  Level Up
-                </button>
-              )}
-            </>
           )}
           <Link
             href={`/characters/${props.id}/clone`}
@@ -455,7 +453,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
       {/* Content */}
       <div className="mt-6">
         {tab === "overview" && (
-          <OverviewTab props={props} editMode={editMode} onSaved={() => window.location.reload()} showToast={showToast} />
+          <OverviewTab props={props} />
         )}
         {tab === "capabilities" && (
           <CapabilitiesTab
@@ -826,14 +824,8 @@ function VolatilityPanel({
 
 function OverviewTab({
   props,
-  editMode,
-  onSaved,
-  showToast,
 }: {
   props: CharacterSheetProps;
-  editMode: boolean;
-  onSaved: () => void;
-  showToast: (msg: string, type: "success" | "error") => void;
 }) {
   const attrSum = props.attrPhysical + props.attrMental + props.attrMagical;
 
@@ -957,15 +949,9 @@ function OverviewTab({
         />
       </section>
 
-      {/* ---- Edit panel (collapsed by default — kept for backward compat) ---- */}
-      {editMode && (
-        <QuickEditPanel
-          props={props}
-          attrSum={attrSum}
-          onSaved={onSaved}
-          showToast={showToast}
-        />
-      )}
+      {/* Phase 8.2 batch 7: QuickEditPanel removed per Mashu
+          2026-07-23. Editting happens in the atelier's character
+          builder modal, accessed via the header Edit button. */}
     </div>
   );
 }
@@ -1116,227 +1102,6 @@ function Field({
       {description && (
         <dd className="mt-1 text-xs text-muted-foreground">{description}</dd>
       )}
-    </div>
-  );
-}
-
-// =============================================================================
-// Quick edit panel (in Overview when edit mode is on)
-// =============================================================================
-
-function QuickEditPanel({
-  props,
-  attrSum,
-  onSaved,
-  showToast,
-}: {
-  props: CharacterSheetProps;
-  attrSum: number;
-  onSaved: () => void;
-  showToast: (msg: string, type: "success" | "error") => void;
-}) {
-  const [isPending, startTransition] = useTransition();
-  const [form, setForm] = useState({
-    name: props.name,
-    level: props.level,
-    attrPhysical: props.attrPhysical,
-    attrMental: props.attrMental,
-    attrMagical: props.attrMagical,
-    attrProficient: props.attrProficient,
-    startingBu: props.startingBu,
-    buSpent: props.buSpent,
-    dmBonusBu: props.dmBonusBu,
-    currentVitality: props.currentVitality,
-    notes: props.notes ?? "",
-  });
-  const localSum =
-    form.attrPhysical + form.attrMental + form.attrMagical;
-  const localValid = localSum === 10;
-  const localPool = form.startingBu + (form.level - 1) * 5 + form.dmBonusBu;
-  const localValidCap = form.buSpent <= localPool;
-
-  async function save() {
-    if (!localValid) {
-      showToast(`Attributes must sum to 10 (currently ${localSum}).`, "error");
-      return;
-    }
-    if (!localValidCap) {
-      showToast(`BU spent (${form.buSpent}) exceeds cap (${localPool}).`, "error");
-      return;
-    }
-    startTransition(async () => {
-      try {
-        const res = await fetch(`/api/characters/${props.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: form.name.trim(),
-            level: form.level,
-            attrPhysical: form.attrPhysical,
-            attrMental: form.attrMental,
-            attrMagical: form.attrMagical,
-            attrProficient: form.attrProficient,
-            startingBu: form.startingBu,
-            buSpent: form.buSpent,
-            dmBonusBu: form.dmBonusBu,
-            currentVitality: form.currentVitality,
-            notes: form.notes.trim() || null,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          showToast(data.error ?? "Save failed.", "error");
-          return;
-        }
-        showToast("Saved.", "success");
-        onSaved();
-      } catch (err) {
-        const errMsg = err instanceof Error ? err.message : "Unknown error.";
-        showToast(errMsg, "error");
-      }
-    });
-  }
-
-  return (
-    <div className="rounded-md border border-primary/50 bg-primary/5 p-5 lg:col-span-2">
-      <div className="flex items-center justify-between">
-        <h3 className="flex items-center gap-2 text-lg font-semibold">
-          <Edit className="size-5 text-primary" />
-          Edit Mode
-        </h3>
-        <button
-          type="button"
-          onClick={save}
-          disabled={isPending || !localValid || !localValidCap}
-          className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-        >
-          <Save className="size-4" />
-          {isPending ? "Saving..." : "Save"}
-        </button>
-      </div>
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <label className="block">
-          <span className="mb-1 block text-xs font-semibold uppercase text-muted-foreground">
-            Name
-          </span>
-          <input
-            type="text"
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-semibold uppercase text-muted-foreground">
-            Level
-          </span>
-          <input
-            type="number"
-            min={1}
-            max={20}
-            value={form.level}
-            onChange={(e) =>
-              setForm((f) => ({
-                ...f,
-                level: Math.max(1, Math.min(20, Number(e.target.value) || 1)),
-              }))
-            }
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-          />
-        </label>
-
-        <div className="sm:col-span-2">
-          <span className="mb-2 block text-xs font-semibold uppercase text-muted-foreground">
-            Attributes (sum = 10)
-          </span>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <AttrSlider
-              label="Physical"
-              value={form.attrPhysical}
-              onChange={(v) => setForm((f) => ({ ...f, attrPhysical: v }))}
-            />
-            <AttrSlider
-              label="Mental"
-              value={form.attrMental}
-              onChange={(v) => setForm((f) => ({ ...f, attrMental: v }))}
-            />
-            <AttrSlider
-              label="Magical"
-              value={form.attrMagical}
-              onChange={(v) => setForm((f) => ({ ...f, attrMagical: v }))}
-            />
-          </div>
-          <div className="mt-2 flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground">Sum:</span>
-            <span
-              className={`font-mono font-bold ${
-                localValid ? "text-green-600" : "text-destructive"
-              }`}
-            >
-              {localSum} / 10 {localValid ? "✓" : "✗"}
-            </span>
-          </div>
-        </div>
-
-        <label className="block">
-          <span className="mb-1 block text-xs font-semibold uppercase text-muted-foreground">
-            Proficient Attribute
-          </span>
-          <select
-            value={form.attrProficient ?? ""}
-            onChange={(e) =>
-              setForm((f) => ({
-                ...f,
-                attrProficient:
-                  (e.target.value as "PHYSICAL" | "MENTAL" | "MAGICAL") || null,
-              }))
-            }
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-          >
-            <option value="">— None —</option>
-            <option value="PHYSICAL">Physical</option>
-            <option value="MENTAL">Mental</option>
-            <option value="MAGICAL">Magical</option>
-          </select>
-        </label>
-
-        <div />
-
-        <NumField
-          label="Starting BU"
-          value={form.startingBu}
-          onChange={(v) => setForm((f) => ({ ...f, startingBu: v }))}
-        />
-        <NumField
-          label="BU Spent"
-          value={form.buSpent}
-          onChange={(v) => setForm((f) => ({ ...f, buSpent: v }))}
-        />
-        <NumField
-          label="DM Bonus BU"
-          value={form.dmBonusBu}
-          onChange={(v) => setForm((f) => ({ ...f, dmBonusBu: v }))}
-        />
-        <NumField
-          label="Current Vitality"
-          value={form.currentVitality ?? 0}
-          onChange={(v) =>
-            setForm((f) => ({ ...f, currentVitality: v }))
-          }
-          allowNull
-        />
-
-        <div className="sm:col-span-2 rounded-md border border-border bg-background px-3 py-2 text-xs">
-          <span className="text-muted-foreground">Progression pool: </span>
-          <span className="font-mono font-bold">
-            {form.startingBu} + ({form.level} - 1) × 5 + {form.dmBonusBu} = {localPool}
-          </span>
-          {!localValidCap && (
-            <span className="ml-2 text-destructive">exceeded</span>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

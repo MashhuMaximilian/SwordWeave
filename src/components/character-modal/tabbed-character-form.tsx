@@ -31,6 +31,7 @@
 // =============================================================================
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -41,6 +42,12 @@ import {
   type PendingSlot,
   summarizeSlotBu,
 } from "./character-modal-store";
+import {
+  buildCharacterSeeds,
+  type AttributesDraftSeed,
+  type BackstoryDraftSeed,
+  type IdentityDraftSeed,
+} from "./character-seed";
 import {
   getCapabilityBundleBuMap,
   getHeritageBundleBuMap,
@@ -162,8 +169,14 @@ export function TabbedCharacterForm() {
     setActiveStep,
     pendingSlots,
     resetDraft,
+    editCharacterId,
+    seededCharacter,
+    editSeedError,
+    applySeed,
+    isSeedingEdit,
   } = useCharacterModal();
   const { toasts, showToast, dismissToast } = useToasts();
+  const router = useRouter();
 
   const [isPending, setIsPending] = useState(false);
   // Form state — owned here, lifted from the per-tab components so
@@ -174,11 +187,50 @@ export function TabbedCharacterForm() {
   const [backstory, setBackstory] = useState<BackstoryState>(BACKSTORY_EMPTY);
   const [attributes, setAttributes] = useState<AttributesState>(ATTRIBUTES_EMPTY);
   const [hydrated, setHydrated] = useState(false);
+  const [seededOnce, setSeededOnce] = useState(false);
 
   // Mark dirty on mount; keep dot on until resetDraft clears it.
   useEffect(() => {
     setDirty(true);
   }, [setDirty]);
+
+  /**
+   * Phase 8.2 batch 7: apply the fetched character to local form
+   * state exactly once per open. The store stashes the character
+   * in `seededCharacter`; we listen for it, build the seeds,
+   * apply them to the per-tab controlled inputs AND pendingSlots,
+   * then flip `seededOnce` so we don't re-apply on subsequent
+   * store updates.
+   */
+  useEffect(() => {
+    if (!editCharacterId || !seededCharacter || seededOnce) return;
+    if (seededCharacter.id !== editCharacterId) return;
+    const seeds = buildCharacterSeeds(seededCharacter);
+    setIdentity(seeds.identity as IdentityState);
+    setBackstory(seeds.backstory as BackstoryState);
+    setAttributes(seeds.attributes as AttributesState);
+    applySeed(seeds.pendingSlots);
+    setSeededOnce(true);
+    // We deliberately do NOT mark dirty here — the seeded state
+    // is the user's editing starting point, not a change.
+  }, [
+    editCharacterId,
+    seededCharacter,
+    seededOnce,
+  ]);
+
+  // Reset the seeded-once latch whenever the modal closes (so a
+  // re-open for a different character seeds fresh).
+  useEffect(() => {
+    if (!editCharacterId) setSeededOnce(false);
+  }, [editCharacterId]);
+
+  // If seeding failed, surface the error via toast and close.
+  useEffect(() => {
+    if (editSeedError) {
+      showToast(editSeedError, "error");
+    }
+  }, [editSeedError, showToast]);
 
   // Hydrate form data from localStorage on mount. We do this once and
   // pass the snapshot to Create.
@@ -302,7 +354,26 @@ export function TabbedCharacterForm() {
   // tries to save an over-budget build (shouldn't happen via UI now).
   const canCreate = nameValid && attrValid && !isPending && !debtExceeded;
 
-  const handleCreate = useCallback(async () => {
+  /**
+   * Phase 8.2 batch 7: unified submit (was handleCreate).
+   *
+   *   - edit mode (editCharacterId set): PATCH /api/characters/[id]
+   *   - create mode (editCharacterId null): POST /api/characters
+   *
+   * The two endpoints accept different field shapes:
+   *   - POST accepts "primitivesBySource" / "capabilitiesBySource"
+   *     / "heritages" arrays (heritage bundle model)
+   *   - PATCH accepts flat "primitiveIds" / "mirroredPrimitiveIds"
+   *     / "capabilityIds" / "itemIds" arrays (no heritage bundles;
+   *     heritage fields come from the legacy flat columns)
+   *
+   * For now, edit mode only supports the flat arrays. The
+   * heritage bundle expansion lives in the POST handler and is
+   * out of scope for the PATCH path — heritage columns are still
+   * updated via the legacy flat-name fields (lineageName etc.).
+   * That's a known gap; we'll address it in a follow-up.
+   */
+  const handleSubmit = useCallback(async () => {
     if (!nameValid) {
       showToast("Name is required.", "error");
       setActiveStep("identity");
@@ -316,23 +387,13 @@ export function TabbedCharacterForm() {
 
     setIsPending(true);
     try {
-      // Assemble slots by source — primitives/caps split by their
-      // queue tab (which we treat as the source for v1).
-      const primBySource: Record<string, Array<{ id: number; isMirrored: boolean }>> = {
-        LINEAGE: [],
-        UPBRINGING: [],
-        MANIFEST: [],
-        PERSONAL: [],
-      };
-      const capsBySource: Record<string, Array<{ id: string; isMirrored: boolean }>> = {
-        LINEAGE: [],
-        UPBRINGING: [],
-        MANIFEST: [],
-        PERSONAL: [],
-      };
-      const itemsBySource: Record<string, Array<{ id: string; quantity: number }>> = {
-        PERSONAL: [],
-      };
+      // Flatten pendingSlots into the arrays the API endpoints
+      // understand. We extract primitive ids, capability ids,
+      // item ids, and heritage ids separately.
+      const primitiveIds: number[] = [];
+      const mirroredPrimitiveIds: number[] = [];
+      const capabilityIds: string[] = [];
+      const itemIds: string[] = [];
       const heritages: Array<{ id: string; isMirrored: boolean }> = [];
 
       for (const tab of CHARACTER_TABS) {
@@ -340,94 +401,135 @@ export function TabbedCharacterForm() {
           if (slot.kind === "heritage") {
             heritages.push({ id: slot.heritageId, isMirrored: false });
           } else if (slot.kind === "primitive") {
-            const src = sourceFromTab(tab);
-            // Phase 8.1 batch 10: the per-slot mirror flag is
-            // propagated to the create call so the server-side
-            // validateMirrorSet / evaluateBuLedger can include it
-            // in the volatility rating.
-            primBySource[src]?.push({
-              id: slot.primitiveId,
-              isMirrored: slot.mirror === true,
-            });
+            primitiveIds.push(slot.primitiveId);
+            if (slot.mirror === true) {
+              mirroredPrimitiveIds.push(slot.primitiveId);
+            }
           } else if (slot.kind === "capability") {
-            const src = sourceFromTab(tab);
-            capsBySource[src]?.push({ id: slot.capabilityId, isMirrored: false });
-          } else if (slot.kind === "effect") {
-            // Effects aren't slotted separately in v1. Treated as a
-            // primitive slot at the same tab (placeholder — batch 10
-            // handles capability auto-expand properly).
-            const src = sourceFromTab(tab);
-            // No primitive id available — skip for now.
-            void src;
+            capabilityIds.push(slot.capabilityId);
           } else if (slot.kind === "item") {
-            (itemsBySource["PERSONAL"] ??= []).push({ id: slot.itemId, quantity: 1 });
+            itemIds.push(slot.itemId);
           }
+          // effects: not slotted separately in v1 (placeholder)
         }
       }
 
-      const res = await fetch("/api/characters", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: identity.name.trim(),
-          size: identity.size,
-          portraitUrl: identity.portraitUrl.trim() || null,
-          notes: identity.notes.trim() || null,
-          level: attributes.level,
-          // Phase 8.1 batch 10: startingBu is canonically fixed at 25;
-          // the cumulative pool is driven by attributes.level (or
-          // attributes.buBudget in buBudget mode — the API resolves it).
+      const baseBody: Record<string, unknown> = {
+        name: identity.name.trim(),
+        size: identity.size,
+        portraitUrl: identity.portraitUrl.trim() || null,
+        notes: identity.notes.trim() || null,
+        level: attributes.level,
+        attrPhysical: attributes.attrPhysical,
+        attrMental: attributes.attrMental,
+        attrMagical: attributes.attrMagical,
+        attrProficient: attributes.attrProficient,
+        lineageName: null,
+        lineageImageUrl: null,
+        lineageDescription: null,
+        upbringingName: null,
+        upbringingImageUrl: null,
+        upbringingDescription: null,
+        manifestName: null,
+        enforceTemplateCaps: false,
+        practiceSlices: {},
+        backstory: {
+          origin: backstory?.origin.trim() ?? "",
+          motivation: backstory?.motivation.trim() ?? "",
+          ties: backstory?.ties.trim() ?? "",
+          flaw: backstory?.flaw.trim() ?? "",
+        },
+      };
+
+      let url: string;
+      let method: "POST" | "PATCH";
+      let body: Record<string, unknown>;
+
+      if (editCharacterId) {
+        // Edit: PATCH the existing character with flat ids.
+        url = `/api/characters/${editCharacterId}`;
+        method = "PATCH";
+        body = {
+          ...baseBody,
+          primitiveIds,
+          mirroredPrimitiveIds,
+          capabilityIds,
+          itemIds,
+        };
+      } else {
+        // Create: POST with the legacy grouped shape. The POST
+        // route accepts primitivesBySource / capabilitiesBySource
+        // / itemsBySource / heritages arrays — we derive them
+        // from the same flat lists (treat all primitives as
+        // PERSONAL, since v1 doesn't track per-slot source).
+        url = "/api/characters";
+        method = "POST";
+        const primBySource: Record<string, Array<{ id: number; isMirrored: boolean }>> = {
+          LINEAGE: [],
+          UPBRINGING: [],
+          MANIFEST: [],
+          PERSONAL: primitiveIds.map((id) => ({
+            id,
+            isMirrored: mirroredPrimitiveIds.includes(id),
+          })),
+        };
+        const capsBySource: Record<string, Array<{ id: string; isMirrored: boolean }>> = {
+          LINEAGE: [],
+          UPBRINGING: [],
+          MANIFEST: [],
+          PERSONAL: capabilityIds.map((id) => ({ id, isMirrored: false })),
+        };
+        const itemsBySource: Record<string, Array<{ id: string; quantity: number }>> = {
+          PERSONAL: itemIds.map((id) => ({ id, quantity: 1 })),
+        };
+        body = {
+          ...baseBody,
           startingBu: 25,
-          // Custom BU budget (only meaningful when mode === "buBudget";
-          // ignored by the API otherwise). Lets the user size the
-          // build by an explicit BU pool instead of a level bracket.
           buBudget:
             attributes.mode === "buBudget" ? attributes.buBudget : null,
-          attrPhysical: attributes.attrPhysical,
-          attrMental: attributes.attrMental,
-          attrMagical: attributes.attrMagical,
-          attrProficient: attributes.attrProficient,
-          // Legacy freeform fields kept for the existing schema's
-          // columns. New backstory lives in the JSONB column.
-          lineageName: null,
-          lineageImageUrl: null,
-          lineageDescription: null,
-          upbringingName: null,
-          upbringingImageUrl: null,
-          upbringingDescription: null,
-          manifestName: null,
-          enforceTemplateCaps: false,
-          practiceSlices: {},
-          backstory: {
-            origin: backstory?.origin.trim() ?? "",
-            motivation: backstory?.motivation.trim() ?? "",
-            ties: backstory?.ties.trim() ?? "",
-            flaw: backstory?.flaw.trim() ?? "",
-          },
           heritages,
           primitivesBySource: primBySource,
           capabilitiesBySource: capsBySource,
           itemsBySource,
-        }),
+        };
+      }
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        const errMsg = data.error ?? "Failed to create character.";
+        const errMsg = data.error ?? "Failed to save character.";
         showToast(errMsg, "error");
         return;
       }
 
-      const createdId = data.character?.id as string | undefined;
-      const createdName = (data.character?.name as string | undefined) ?? identity.name.trim();
-      if (!createdId) {
-        showToast("Character created but no id returned.", "error");
+      const charId = data.character?.id as string | undefined;
+      const charName =
+        (data.character?.name as string | undefined) ??
+        identity.name.trim();
+      if (!charId) {
+        showToast("Saved but no character id returned.", "error");
         return;
       }
-      showToast(`Created character "${createdName}"!`, "success");
-      clearAllDraftStorage();
-      resetDraft();
-      window.open(`/characters/${createdId}`, "_blank", "noopener,noreferrer");
+
+      if (editCharacterId) {
+        // Edit success — close the modal + refresh the page so the
+        // sheet (if open) reflects the new state.
+        showToast(`Saved changes to "${charName}".`, "success");
+        clearAllDraftStorage();
+        resetDraft();
+        router.refresh();
+      } else {
+        // Create success — open the new sheet in a new tab.
+        showToast(`Created character "${charName}"!`, "success");
+        clearAllDraftStorage();
+        resetDraft();
+        window.open(`/characters/${charId}`, "_blank", "noopener,noreferrer");
+      }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "Unknown error.";
       showToast(errMsg, "error");
@@ -445,12 +547,41 @@ export function TabbedCharacterForm() {
     showToast,
     setActiveStep,
     resetDraft,
+    editCharacterId,
+    router,
   ]);
+
+  /**
+   * Phase 8.2 batch 7: listen for the dirty-confirm's "Save changes"
+   * event. The CharacterModal wrapper dispatches this when the user
+   * clicks Save in the close-confirm dialog; we run the same submit
+   * flow as the explicit Create/Save button.
+   */
+  useEffect(() => {
+    function onSave() {
+      void handleSubmit();
+    }
+    window.addEventListener("character-modal:save", onSave);
+    return () => window.removeEventListener("character-modal:save", onSave);
+  }, [handleSubmit]);
 
   if (!hydrated) {
     return (
       <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
         Loading…
+      </div>
+    );
+  }
+
+  // Phase 8.2 batch 7: while openForEdit() is fetching the
+  // character, the form should show a spinner instead of an empty
+  // create draft. The user clicks Edit → modal pops up → briefly
+  // empty → spinner while GET runs → modal pre-fills.
+  if (isSeedingEdit) {
+    return (
+      <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+        <span className="mr-2 inline-block size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        Loading character…
       </div>
     );
   }
@@ -571,11 +702,18 @@ export function TabbedCharacterForm() {
         </div>
         <button
           type="button"
-          onClick={handleCreate}
+          onClick={() => void handleSubmit()}
           disabled={!canCreate}
           className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isPending ? "Creating…" : "Create"}
+          {/* Phase 8.2 batch 7: button label flips with mode. */}
+          {isPending
+            ? editCharacterId
+              ? "Saving…"
+              : "Creating…"
+            : editCharacterId
+              ? "Save changes"
+              : "Create"}
           <ChevronRight className="size-3.5" />
         </button>
       </div>
@@ -583,13 +721,6 @@ export function TabbedCharacterForm() {
       <ToastViewport toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
-}
-
-function sourceFromTab(tab: CharacterTabId): string {
-  if (tab === "lineage") return "LINEAGE";
-  if (tab === "upbringing") return "UPBRINGING";
-  if (tab === "manifest") return "MANIFEST";
-  return "PERSONAL";
 }
 
 function FooterStat({
