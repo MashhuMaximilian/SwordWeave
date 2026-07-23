@@ -2,7 +2,8 @@
 
 // =============================================================================
 // CharacterModal — the persistent overlay layer for character creation
-// (Phase 8.1).
+// (Phase 8.1). Edit-mode (Phase 8.2 batch 7) rides the same modal — no
+// separate UI surface.
 //
 // Architectural decisions:
 //
@@ -27,6 +28,22 @@
 //
 // 4. **Sticky header INSIDE scroll container** (Phase 9 round-2 lesson):
 //    the close button is always reachable when the content is tall.
+//
+// 5. **Phase 8.2 batch 7 rev 2 — close is non-destructive.** The user
+//    can dismiss the modal at any time without a Save / Discard / Keep
+//    editing prompt. The dirty guard lives on NAVIGATION AWAY FROM
+//    /atelier (and on browser refresh), not on modal close. This
+//    matches the spec from Mashu 2026-07-23: closing the modal lets
+//    the user freely browse the atelier to slot mechanics / heritages
+//    / items, then re-open the modal to keep editing. Wiping state on
+//    close would defeat the entire edit flow.
+//
+// 6. **Edit mode bootstrap.** The /characters Edit button writes the
+//    character id to localStorage and navigates to /atelier. The
+//    AtelierSandboxClient's mount effect reads it, calls
+//    openForEditFromStore() to fetch + seed, and clears the entry. By
+//    the time this component renders with editCharacterId set, the
+//    seed has already happened (the form's effect pulls it).
 // =============================================================================
 
 import { useEffect, useState, type ReactNode } from "react";
@@ -53,18 +70,10 @@ export function CharacterModal({ children }: CharacterModalProps) {
     editCharacterId,
     editCharacterName,
     resetDraft,
+    pendingEditId,
   } = useCharacterModal();
   const [isDesktop, setIsDesktop] = useState(false);
   const [mounted, setMounted] = useState(false);
-  /**
-   * Phase 8.2 batch 7: dirty-confirm dialog state. When the user
-   * tries to close the modal while in create OR edit mode and the
-   * draft is dirty, we show a Save / Discard / Keep editing
-   * confirm. We hold the requested close in `pendingClose` so we
-   * can finalize it after the user picks a side.
-   */
-  const [showDirtyConfirm, setShowDirtyConfirm] = useState(false);
-  const [pendingClose, setPendingClose] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -78,57 +87,80 @@ export function CharacterModal({ children }: CharacterModalProps) {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  // ESC key closes the modal. Standard dialog UX.
+  // ESC key closes the modal. Standard dialog UX. No confirm — see
+  // architectural decision #5 above.
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") requestClose();
+      if (e.key === "Escape") close();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, close]);
 
-  /**
-   * Phase 8.2 batch 7: dirty-aware close. If dirty, surface a
-   * confirm dialog (Save / Discard / Keep editing). The Save /
-   * Discard buttons delegate to the TabbedCharacterForm via
-   * imperative DOM events so we don't need to thread callbacks
-   * through the context. The form listens for "character-modal:save"
-   * and "character-modal:discard" and runs the corresponding flow.
-   */
-  function requestClose() {
-    if (!isDirty) {
-      // Clean: just close.
-      resetDraft();
-      setShowDirtyConfirm(false);
-      return;
-    }
-    // Dirty: confirm.
-    setPendingClose(true);
-    setShowDirtyConfirm(true);
-  }
-
-  function confirmDiscard() {
-    setShowDirtyConfirm(false);
-    setPendingClose(false);
-    resetDraft();
-  }
-
-  function confirmKeepEditing() {
-    setShowDirtyConfirm(false);
-    setPendingClose(false);
-  }
-
-  function confirmSave() {
-    // The form listens for this event and dispatches the save flow
-    // itself. After it dispatches, the form will call resetDraft()
-    // on success (which closes the modal via the close() bound in
-    // the store). We just hide our confirm dialog.
-    setShowDirtyConfirm(false);
-    setPendingClose(false);
-    window.dispatchEvent(new CustomEvent("character-modal:save"));
-  }
+  // Phase 8.2 batch 7 rev 2: navigate-away guard for the modal's
+  // own dirty state. The atelier already guards the build's dirty
+  // state via the AtelierSandboxClient's anchor-interceptor effect,
+  // but the modal's draft is a separate concern — if the user opens
+  // /characters, clicks Edit, lands on /atelier with a pre-filled
+  // modal, edits a few fields, then clicks a header link to
+  // /library, the modal's dirty state would be silently lost.
+  //
+  // We listen for clicks on internal links (any <a> whose href
+  // starts with "/" and doesn't go back to /atelier) and, if the
+  // modal is dirty, fire a Save / Discard / Keep editing dialog
+  // before allowing the navigation. We also hook beforeunload for
+  // browser refresh / tab close.
+  //
+  // Phase 8.2 batch 7 rev 2: this lives at the AppShell level so
+  // it covers ALL pages (the user can open the modal from
+  // /characters too). The guard is idempotent and only fires when
+  // the modal is open AND dirty — outside those conditions it's a
+  // no-op.
+  //
+  // NOTE: We use the "beforeunload" native prompt for tab close /
+  // refresh — there's no way to intercept that with an in-app
+  // dialog. For in-app navigation, the in-app confirm is shown.
+  useEffect(() => {
+    if (!isOpen || !isDirty) return;
+    const onAnchorClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) {
+        return;
+      }
+      const anchor = (e.target as HTMLElement | null)?.closest(
+        "a[href]",
+      ) as HTMLAnchorElement | null;
+      if (!anchor) return;
+      const href = anchor.getAttribute("href") ?? "";
+      if (!href.startsWith("/")) return;
+      // Anchor on /atelier? Modal survives navigation within the
+      // atelier's tab bar (those routes don't reload the page). No
+      // confirm needed — the user is still in the editing context.
+      if (href.startsWith("/atelier")) return;
+      // Same-page hash links (#...) — allow freely.
+      if (href === window.location.pathname + window.location.hash) return;
+      // External / route navigation while dirty — confirm.
+      const ok = window.confirm(
+        `You have unsaved changes to ${
+          editCharacterName ?? "this character"
+        }. Leaving will discard them. Continue?`,
+      );
+      if (!ok) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    document.addEventListener("click", onAnchorClick, true);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      document.removeEventListener("click", onAnchorClick, true);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [isOpen, isDirty, editCharacterName]);
 
   if (!mounted || !isOpen) return null;
 
@@ -148,7 +180,8 @@ export function CharacterModal({ children }: CharacterModalProps) {
         "fixed inset-0 z-[70] flex justify-center bg-black/60 sm:items-center sm:p-4",
       )}
       onClick={(e) => {
-        if (e.target === e.currentTarget) requestClose();
+        // Backdrop click closes the modal — no confirm. See AD #5.
+        if (e.target === e.currentTarget) close();
       }}
     >
       <div
@@ -176,9 +209,14 @@ export function CharacterModal({ children }: CharacterModalProps) {
                 Unsaved
               </span>
             ) : null}
+            {editCharacterId && pendingEditId ? (
+              <span className="hidden shrink-0 text-[10px] text-muted-foreground sm:inline">
+                loading…
+              </span>
+            ) : null}
             <button
               type="button"
-              onClick={requestClose}
+              onClick={close}
               aria-label="Close character modal"
               className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
             >
@@ -191,67 +229,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
           </div>
         </div>
       </div>
-
-      {/* Phase 8.2 batch 7: dirty-confirm dialog. Renders on top of
-          the modal chrome so the user has to pick before the modal
-          closes. */}
-      {showDirtyConfirm && (
-        <div
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="dirty-confirm-title"
-          className="absolute inset-0 z-[80] flex items-center justify-center bg-black/70 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) confirmKeepEditing();
-          }}
-        >
-          <div
-            className="w-full max-w-sm rounded-lg border border-border bg-card p-5 shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2
-              id="dirty-confirm-title"
-              className="text-base font-semibold"
-            >
-              Unsaved changes
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              You have unsaved changes to{" "}
-              <strong>
-                {editCharacterId
-                  ? editCharacterName ?? "this character"
-                  : "this new character"}
-              </strong>
-              . What would you like to do?
-            </p>
-            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={confirmKeepEditing}
-                className="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium transition-colors hover:bg-secondary"
-              >
-                Keep editing
-              </button>
-              <button
-                type="button"
-                onClick={confirmDiscard}
-                className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
-              >
-                Discard changes
-              </button>
-              <button
-                type="button"
-                onClick={confirmSave}
-                className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-              >
-                Save changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>,
     document.body,
   );
 }
-

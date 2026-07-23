@@ -24,6 +24,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useModalStack } from "@/components/ui/modal-stack";
+import { useCharacterModal } from "@/components/character-modal/character-modal-store";
 import { buildSandboxUrl } from "@/lib/publishing/fork-target";
 import { SandboxLayout } from "./sandbox-layout";
 import { PrimitiveForm } from "./primitive-form";
@@ -357,6 +358,29 @@ export function AtelierSandboxClient({
   const isMobile = useIsMobile();
   const isDark = useIsDark();
 
+  // Phase 8.2 batch 7 rev 2: character-edit modal bootstrap.
+  // The modal store is shared via AppShell's CharacterModalProvider,
+  // so we can call its hook here on /atelier and reach the live
+  // store from anywhere in the sandbox.
+  const characterModal = useCharacterModal();
+  const pendingEditId = characterModal.pendingEditId;
+
+  // Wraps openForEditFromStore + clearPendingEdit in one step so
+  // the mount effect above can fire-and-forget without depending
+  // on the store's identity. The store's hooks are stable, so a
+  // direct call would also work — wrapping keeps the intent clear.
+  const bootstrapEditFromStore = useCallback(
+    (characterId: string) => {
+      void characterModal.openForEditFromStore(characterId).then(() => {
+        characterModal.clearPendingEdit();
+      });
+    },
+    [characterModal],
+  );
+  // Tracks the last pendingEditId we bootstrapped so soft-nav
+  // re-renders don't refire the fetch.
+  const consumedEditRef = useRef<string | null>(null);
+
   // Open the build panel (mobile drawer / split bottom tab). No-op on
   // desktop where the build column is always visible. Declared before the
   // effects below so onOpenNew / loadFromLibrary can reference it.
@@ -385,6 +409,31 @@ export function AtelierSandboxClient({
   useEffect(() => {
     setEditing(initialEditing);
   }, [initialEditing]);
+
+  // Phase 8.2 batch 7 rev 2: bootstrap the character-edit modal.
+//
+// Two triggers:
+//   - On mount: read pendingEditId from localStorage. If present,
+//     fetch + seed + clear.
+//   - On pendingEditId change while mounted: re-bootstrap. This
+//     covers SPA navigation: user clicks Edit on Character A from
+//     /characters → /atelier (mount fires). Then opens Character
+//     B from another page while still on /atelier → openForEdit
+//     writes a new id to localStorage and _setPendingEditId,
+//     which re-triggers this effect.
+//
+// We use `consumedRef` to dedupe: track the last id we consumed
+// and ignore re-fires for the same id (e.g. the atelier's own
+// soft-nav re-renders after navigation).
+//
+// Per Mashu 2026-07-23: editing is the same UX as creating from
+// the FAB. The user clicks Edit → /atelier → modal pre-fills.
+useEffect(() => {
+  if (!pendingEditId) return;
+  if (consumedEditRef.current === pendingEditId) return;
+  consumedEditRef.current = pendingEditId;
+  bootstrapEditFromStore(pendingEditId);
+}, [pendingEditId, bootstrapEditFromStore]);
 
   // Mirrored from the form's onStateChange. Drives the dirty-check gate.
   useEffect(() => {

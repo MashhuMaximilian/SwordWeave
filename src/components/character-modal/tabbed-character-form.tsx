@@ -174,6 +174,7 @@ export function TabbedCharacterForm() {
     editSeedError,
     applySeed,
     isSeedingEdit,
+    clearPendingEdit,
   } = useCharacterModal();
   const { toasts, showToast, dismissToast } = useToasts();
   const router = useRouter();
@@ -517,10 +518,12 @@ export function TabbedCharacterForm() {
       }
 
       if (editCharacterId) {
-        // Edit success — close the modal + refresh the page so the
-        // sheet (if open) reflects the new state.
+        // Edit success — close the modal + clear the persisted
+        // edit session + refresh the page so the sheet (if open)
+        // reflects the new state.
         showToast(`Saved changes to "${charName}".`, "success");
         clearAllDraftStorage();
+        clearPendingEdit();
         resetDraft();
         router.refresh();
       } else {
@@ -551,19 +554,11 @@ export function TabbedCharacterForm() {
     router,
   ]);
 
-  /**
-   * Phase 8.2 batch 7: listen for the dirty-confirm's "Save changes"
-   * event. The CharacterModal wrapper dispatches this when the user
-   * clicks Save in the close-confirm dialog; we run the same submit
-   * flow as the explicit Create/Save button.
-   */
-  useEffect(() => {
-    function onSave() {
-      void handleSubmit();
-    }
-    window.addEventListener("character-modal:save", onSave);
-    return () => window.removeEventListener("character-modal:save", onSave);
-  }, [handleSubmit]);
+  // Phase 8.2 batch 7 rev 2: the dirty-confirm dialog has been
+  // removed (closing the modal is now non-destructive). The save
+  // event listener is no longer needed — the user clicks the
+  // explicit Save/Save changes button, which calls handleSubmit
+  // directly.
 
   if (!hydrated) {
     return (

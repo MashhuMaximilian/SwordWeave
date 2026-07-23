@@ -33,7 +33,7 @@ import { VitalityTracker } from "@/components/characters/vitality-tracker";
 import { CapabilityCard } from "@/components/characters/capability-card";
 import { ItemCard } from "@/components/characters/item-card";
 import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
-import { useCharacterModal } from "@/components/character-modal/character-modal-store";
+import { CharacterEditButton } from "@/components/characters/character-edit-button";
 import {
   BACKSTORY_FIELDS,
   isBackstoryEmpty,
@@ -270,13 +270,9 @@ export function CharacterSheetView(props: CharacterSheetProps) {
   const [isPending, startTransition] = useTransition();
   const { toasts, showToast, dismissToast } = useToasts();
   // Phase 8.2 batch 7: opening edit mode triggers the atelier's
-  // character builder modal (pre-filled via openForEdit). Hooks
-  // must be called at the top of the function — not inside an
-  // event handler — so we capture the action once here.
-  const { openForEdit } = useCharacterModal();
-  const onEditClick = () => {
-    void openForEdit(props.id);
-  };
+  // character builder modal (pre-filled via openForEdit).
+  // Phase 8.2 batch 7 rev 2: clicking Edit now navigates to /atelier
+  // and lets the atelier client boot the modal from localStorage.
 
   const attrSum = props.attrPhysical + props.attrMental + props.attrMagical;
   const attrValid = attrSum === 10;
@@ -368,18 +364,16 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Phase 8.2 batch 7: editing now opens the atelier's
-              character builder modal (pre-filled via openForEdit),
-              not an inline QuickEditPanel. QuickEditPanel was
-              removed per Mashu 2026-07-23. */}
-          <button
-            type="button"
-            onClick={onEditClick}
+          {/* Phase 8.2 batch 7 rev 2: editing goes through the
+              atelier's character builder modal, accessed by
+              clicking this button → /atelier (with the edit id
+              in localStorage). QuickEditPanel was removed per
+              Mashu 2026-07-23. */}
+          <CharacterEditButton
+            characterId={props.id}
             className="flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-card"
-          >
-            <Pencil className="size-4" />
-            Edit
-          </button>
+            title="Open in the atelier for editing"
+          />
           {props.level < 20 && (
             <button
               type="button"

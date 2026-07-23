@@ -161,6 +161,12 @@ const EMPTY_PENDING: PendingSlotsByTab = {
 };
 
 const ACTIVE_STEP_STORAGE_KEY = "swordweave:character-modal:active-step";
+/**
+ * Phase 8.2 batch 7 rev 2: persisted edit-session id. The /characters
+ * Edit button writes here, navigates to /atelier, and the atelier
+ * client reads + clears this on mount to seed the modal.
+ */
+const PENDING_EDIT_STORAGE_KEY = "swordweave:character-modal:pending-edit-id";
 
 // Phase 8.1 batch 10: stable slot ids. We assign a fresh id per
 // queueSlot() call so the mirror toggle (and any future per-slot
@@ -196,14 +202,27 @@ interface CharacterModalState {
   pendingSlots: PendingSlotsByTab;
   isDirty: boolean;
   /**
+   * Phase 8.2 batch 7 rev 2: pending edit session. Persisted in
+   * localStorage so it survives the navigation from /characters
+   * to /atelier. When non-null on atelier mount, the client
+   * bootstraps the modal via `openForEditFromStore` to seed the
+   * pre-filled editor.
+   *
+   * Why localStorage and not URL params? Per Mashu 2026-07-23:
+   * the atelier URL is already volatile (build=primitive,
+   * build=heritage, kind=lineage, intent=fork, etc.). Adding
+   * ?edit=<id> on top of those would clash when the user forks
+   * or loads primitives into a build. LocalStorage is the
+   * session-scoped right place.
+   */
+  pendingEditId: string | null;
+  /**
    * Phase 8.2 batch 7: when non-null, the modal is in EDIT mode
    * (loaded from an existing character). When null, the modal is in
    * CREATE mode (empty draft). Drives:
    *   - Title bar: "Edit: <name>" vs "New Character"
    *   - Save button label: "Save changes" vs "Create"
    *   - Save endpoint: PATCH /api/characters/[id] vs POST /api/characters
-   *   - Cancel behavior: confirm-if-dirty vs warn-if-dirty (same UX
-   *     for both, per Mashu 2026-07-23)
    */
   editCharacterId: string | null;
   /**
@@ -231,19 +250,37 @@ interface CharacterModalState {
   seededCharacter: CharacterSeed | null;
   open: () => void;
   /**
-   * Phase 8.2 batch 7: open the modal in EDIT mode for an existing
-   * character. Fetches GET /api/characters/[id], seeds the store
-   * with the character's state, and sets editCharacterId. Resolves
-   * with the seeded character on success or null on failure (error
-   * stored in editSeedError).
+   * Phase 8.2 batch 7 rev 2: open the modal in EDIT mode for an
+   * existing character. Persists the edit id in localStorage so
+   * it survives the navigation to /atelier, then navigates. The
+   * atelier's client reads pendingEditId from localStorage on mount
+   * and calls openForEditFromStore() to seed the store.
    *
-   * Why no URL navigation? Per Mashu 2026-07-23: the atelier's URL
-   * is already in flux (build=primitive, build=heritage, etc.),
-   * so we can't couple character-edit state to ?build=character
-   * without losing the user's navigation. Modal state is the right
-   * home.
+   * Why navigate to /atelier? Because the edit flow only makes
+   * sense from inside the atelier: that's where primitives,
+   * capabilities, heritages, items, and monsters can be browsed
+   * and slotted into the modal. Same UX as creating a character
+   * via the FAB — but instead of the FAB popping the modal in
+   * place, the Edit button goes to /atelier first.
+   *
+   * Why localStorage? Per Mashu 2026-07-23: atelier URL params
+   * already shift on every build/fork/load, so we can't put
+   * the edit session in the URL.
    */
   openForEdit: (characterId: string) => Promise<void>;
+  /**
+   * Internal: open the modal in EDIT mode using a character id
+   * already persisted in the store (via openForEdit's navigation).
+   * Fetches GET /api/characters/[id] and seeds the store. Does NOT
+   * navigate. Called by the /atelier client on mount.
+   */
+  openForEditFromStore: (characterId: string) => Promise<void>;
+  /**
+   * Phase 8.2 batch 7 rev 2: clear the persisted edit session.
+   * Called on successful save, on explicit discard, and after
+   * the atelier's client has consumed the pending edit id.
+   */
+  clearPendingEdit: () => void;
   close: () => void;
   toggle: () => void;
   setActiveStep: (tab: CharacterTabId) => void;
@@ -332,10 +369,30 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
   const [seededCharacter, setSeededCharacter] = useState<CharacterSeed | null>(
     null,
   );
+  /**
+   * Phase 8.2 batch 7 rev 2: persistent pending-edit id from
+   * localStorage. Hydrated on mount. The /atelier client reads
+   * this and calls openForEditFromStore() once to seed the modal.
+   */
+  const [pendingEditId, _setPendingEditId] = useState<string | null>(null);
 
   // Hydrate activeStep from localStorage on mount.
   useEffect(() => {
     setActiveStepState(loadActiveStep());
+  }, []);
+
+  // Phase 8.2 batch 7 rev 2: hydrate pendingEditId from localStorage
+  // on mount. The atelier client uses this to know which character
+  // the user clicked Edit on so it can auto-seed the modal.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(PENDING_EDIT_STORAGE_KEY);
+      if (raw && raw.length > 0) {
+        _setPendingEditId(raw);
+      }
+    } catch {
+      // localStorage disabled — fall through.
+    }
   }, []);
 
   // Persist activeStep to localStorage on change.
@@ -357,24 +414,45 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
-   * Phase 8.2 batch 7: open the modal in EDIT mode for an existing
-   * character. Fetches the character, seeds the store, and flips
-   * isOpen. While the fetch is in flight the modal shows a
-   * spinner via isSeedingEdit.
+   * Phase 8.2 batch 7 rev 2: open the modal in EDIT mode for an
+   * existing character. Writes the id to localStorage so the
+   * /atelier client can pick it up on mount, then navigates to
+   * /atelier. The atelier client calls openForEditFromStore(id)
+   * to do the actual fetch + seed.
    *
-   * Error handling: on a 404 / 500, we set editSeedError; the
-   * caller (TabbedCharacterForm) is responsible for closing the
-   * modal and showing a toast in that case.
+   * Returns immediately; the fetch + seed happens on the atelier
+   * side. If we were already on /atelier, we still write
+   * localStorage and let the atelier's existing effect pick it up.
    *
-   * Seeding pattern: we stash the fetched character in a private
-   * `seededCharacter` state slot. The TabbedCharacterForm reads
-   * this slot via useEffect when it sees editCharacterId !== null
-   * AND seededCharacter matches the expected id, then calls
-   * `setPendingSlots(seeds)` and resets `dirtyOverride` to false
-   * (since the seeded state is NOT dirty — it's what the user
-   * started editing FROM).
+   * Per Mashu 2026-07-23: the Edit flow navigates to atelier.
+   * The character modal is the destination — atelier is the
+   * surface where you browse mechanics/heritages/items to slot.
+   * Same UX as clicking the Mona Lisa FAB from elsewhere: the
+   * atelier's bottom bar is where slotting happens.
    */
   const openForEdit = useCallback(async (characterId: string) => {
+    try {
+      window.localStorage.setItem(PENDING_EDIT_STORAGE_KEY, characterId);
+    } catch {
+      // localStorage disabled — degrade silently; the user will
+      // still see the modal but it won't be pre-filled.
+    }
+    _setPendingEditId(characterId);
+    // Navigate to /atelier. The next-router router has to be
+    // called from a hook context, so the caller (Edit button) is
+    // responsible for routing after this returns.
+    // We import router from next/navigation at the call site and
+    // call router.push('/atelier') there. This avoids forcing
+    // every consumer of openForEdit to also navigate.
+  }, []);
+
+  /**
+   * Internal: do the actual fetch + seed for an edit session.
+   * Called by the /atelier client on mount when pendingEditId is
+   * non-null. Also called directly by tests / other entry points
+   * that don't need the navigation step.
+   */
+  const openForEditFromStore = useCallback(async (characterId: string) => {
     setIsSeedingEdit(true);
     setEditSeedError(null);
     setEditCharacterId(characterId);
@@ -404,6 +482,21 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
       setIsSeedingEdit(false);
     }
   }, []);
+
+  /**
+   * Phase 8.2 batch 7 rev 2: clear the persisted edit id.
+   * Called after the atelier has consumed it, after a successful
+   * save, and on explicit discard.
+   */
+  const clearPendingEdit = useCallback(() => {
+    try {
+      window.localStorage.removeItem(PENDING_EDIT_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+    _setPendingEditId(null);
+  }, []);
+
   const close = useCallback(() => setIsOpen(false), []);
   const toggle = useCallback(() => setIsOpen((v) => !v), []);
 
@@ -505,6 +598,7 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
       activeStep,
       pendingSlots,
       isDirty,
+      pendingEditId,
       editCharacterId,
       editCharacterName,
       isSeedingEdit,
@@ -512,6 +606,8 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
       seededCharacter,
       open,
       openForEdit,
+      openForEditFromStore,
+      clearPendingEdit,
       close,
       toggle,
       setActiveStep,
@@ -528,6 +624,7 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
       activeStep,
       pendingSlots,
       isDirty,
+      pendingEditId,
       editCharacterId,
       editCharacterName,
       isSeedingEdit,
@@ -535,6 +632,8 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
       seededCharacter,
       open,
       openForEdit,
+      openForEditFromStore,
+      clearPendingEdit,
       close,
       toggle,
       setActiveStep,
@@ -560,6 +659,7 @@ export function useCharacterModal(): CharacterModalState {
       activeStep: "identity",
       pendingSlots: EMPTY_PENDING,
       isDirty: false,
+      pendingEditId: null,
       editCharacterId: null,
       editCharacterName: null,
       isSeedingEdit: false,
@@ -567,6 +667,8 @@ export function useCharacterModal(): CharacterModalState {
       seededCharacter: null,
       open: () => {},
       openForEdit: async () => {},
+      openForEditFromStore: async () => {},
+      clearPendingEdit: () => {},
       close: () => {},
       toggle: () => {},
       setActiveStep: () => {},
