@@ -435,6 +435,26 @@ useEffect(() => {
   bootstrapEditFromStore(pendingEditId);
 }, [pendingEditId, bootstrapEditFromStore]);
 
+// Phase 8.2 batch 7 rev 3 — debug log: surface the actual
+// edit-mode state the form sees on every render so the user
+// can verify the wiring. If `editCharacterId` is null while
+// `pendingEditId` is set, the bootstrap is mid-flight (the
+// fetch is happening). If both stay null while the title
+// shows 'Edit: X', the modal store is stale.
+useEffect(() => {
+  if (typeof window === "undefined") return;
+  console.log(
+    "[atelier] pendingEditId=%s editCharacterId=%s seededCharacterId=%s",
+    pendingEditId,
+    characterModal.editCharacterId,
+    characterModal.seededCharacter?.id ?? null,
+  );
+}, [
+  pendingEditId,
+  characterModal.editCharacterId,
+  characterModal.seededCharacter,
+]);
+
   // Mirrored from the form's onStateChange. Drives the dirty-check gate.
   useEffect(() => {
     setSandboxFormDirty(formIsDirty || editing !== null);
