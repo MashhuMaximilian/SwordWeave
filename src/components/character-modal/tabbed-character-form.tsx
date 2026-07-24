@@ -739,45 +739,50 @@ export function TabbedCharacterForm() {
         )}
       </div>
 
-      {/* Footer — compact stats + Create button. Pinned to bottom of
-          modal scroll container. Phase 8.1 batch 11 (Mashu
-          2026-07-22): footer now shows just BU and Debt — Attr
-          lives only in the Attributes tab, Rem is dropped because
-          `BU used/budget` already tells the user how much room is
-          left. */}
-      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-2 border-t border-border bg-card px-4 py-2">
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <FooterStat label="Lvl" value={String(attributes.level)} />
-          <FooterStat
-            label="BU"
-            value={`${buSummary.positiveSpent}/${budget}`}
-            tone={overBudget ? "warn" : "default"}
-          />
-          {buSummary.debtUsed > 0 || debtCeiling > 0 ? (
-            <FooterStat
-              label="Debt"
-              value={`${buSummary.debtUsed}/${debtCeiling}`}
-              tone={debtExceeded ? "warn" : "default"}
-            />
-          ) : null}
-        </div>
-        <button
-          type="button"
-          onClick={() => void handleSubmit()}
-          disabled={!canCreate}
-          className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {/* Phase 8.2 batch 7: button label flips with mode. */}
-          {isPending
-            ? editCharacterId
-              ? "Saving…"
-              : "Creating…"
-            : editCharacterId
-              ? "Save changes"
-              : "Create"}
-          <ChevronRight className="size-3.5" />
-        </button>
-      </div>
+      /* Footer — compact stats + Create button. Pinned to bottom of
+                modal scroll container. Phase 8.1 batch 11 (Mashu
+                2026-07-22): footer now shows just BU and Debt — Attr
+                lives only in the Attributes tab, Rem is dropped because
+                `BU used/budget` already tells the user how much room is
+                left. Unified with character sheet BuBudgetFooter style.
+                Format: Lvl X BU x/y a/b BU debt - c used */
+            <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-2 border-t border-border bg-card px-4 py-2">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <FooterStat label="Lvl" value={String(attributes.level)} />
+                <FooterStat
+                  label="BU"
+                  value={
+                    buSummary.positiveSpent > budget
+                      ? `${buSummary.positiveSpent}/${budget} (+${buSummary.positiveSpent - budget})`
+                      : `${buSummary.positiveSpent}/${budget}`
+                  }
+                  tone={overBudget ? "warn" : "default"}
+                />
+                {buSummary.debtUsed > 0 || debtCeiling > 0 ? (
+                  <FooterStat
+                    label="BU debt"
+                    value={`${buSummary.debtUsed}/${debtCeiling} - ${buSummary.debtUsed} used`}
+                    tone={debtExceeded ? "warn" : "default"}
+                  />
+                ) : null}
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleSubmit()}
+                disabled={!canCreate}
+                className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {/* Phase 8.2 batch 7: button label flips with mode. */}
+                {isPending
+                  ? editCharacterId
+                    ? "Saving…"
+                    : "Creating…"
+                  : editCharacterId
+                  ? "Save changes"
+                  : "Create"}
+                <ChevronRight className="size-3.5" />
+              </button>
+            </div>
 
       <ToastViewport toasts={toasts} onDismiss={dismissToast} />
     </div>
