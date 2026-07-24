@@ -488,7 +488,6 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           <NotesTab
             id={props.id}
             initialNotes={props.notes ?? ""}
-            initialDmNotes={props.dmNotes ?? ""}
             showToast={showToast}
           />
         )}
@@ -1518,22 +1517,18 @@ function ItemsTab({
 function NotesTab({
   id,
   initialNotes,
-  initialDmNotes,
   showToast,
 }: {
   id: string;
   initialNotes: string;
-  initialDmNotes: string;
   showToast: (msg: string, type: "success" | "error") => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [notes, setNotes] = useState(initialNotes);
-  const [dmNotes, setDmNotes] = useState(initialDmNotes);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   const notesDirty = notes !== initialNotes;
-  const dmDirty = dmNotes !== initialDmNotes;
-  const dirty = notesDirty || dmDirty;
+  const dirty = notesDirty;
 
   // Reset baseline when props change (server refresh after a save).
   // The trick: only sync local state if the incoming initial* differs
@@ -1542,10 +1537,9 @@ function NotesTab({
   useEffect(() => {
     if (!dirty) {
       setNotes(initialNotes);
-      setDmNotes(initialDmNotes);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialNotes, initialDmNotes]);
+  }, [initialNotes]);
 
   async function save() {
     if (!dirty || isPending) return;
@@ -1556,7 +1550,6 @@ function NotesTab({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             notes: notes.trim() || null,
-            dmNotes: dmNotes.trim() || null,
           }),
         });
         const data = await res.json();
@@ -1577,7 +1570,6 @@ function NotesTab({
 
   function discard() {
     setNotes(initialNotes);
-    setDmNotes(initialDmNotes);
   }
 
   const savedLabel = lastSavedAt
@@ -1611,38 +1603,6 @@ function NotesTab({
           <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
             <span>{notes.length} chars</span>
             {notesDirty && (
-              <span className="font-semibold text-amber-600">Unsaved</span>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ---- DM-only notes ---- */}
-      <section
-        aria-label="DM notes"
-        className="relative overflow-hidden rounded-md border border-amber-500/40 bg-amber-500/5"
-      >
-        <span className="absolute inset-x-0 top-0 h-0.5 bg-amber-500" />
-        <div className="p-4">
-          <div className="flex items-baseline justify-between">
-            <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-              <ScrollText className="size-3.5 text-amber-600" />
-              DM Notes
-            </h3>
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              Private · only DM can read
-            </span>
-          </div>
-          <textarea
-            value={dmNotes}
-            onChange={(e) => setDmNotes(e.target.value)}
-            rows={10}
-            placeholder="Secrets, plot hooks, triggers, things only the DM should know…"
-            className="mt-3 w-full resize-y rounded-md border border-amber-500/30 bg-background px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-amber-500/40"
-          />
-          <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-            <span>{dmNotes.length} chars</span>
-            {dmDirty && (
               <span className="font-semibold text-amber-600">Unsaved</span>
             )}
           </div>
