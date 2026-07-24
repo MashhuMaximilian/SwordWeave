@@ -148,15 +148,39 @@ export function CharacterModal({ children }: CharacterModalProps) {
         `You have unsaved changes to ${editCharacterName ?? "this character"}. Leaving will discard them. Continue?`;
       setPendingNav(href);
     };
+    const onPopState = (e: PopStateEvent) => {
+      // Browser back/forward navigation while dirty
+      const href = window.location.pathname + window.location.search + window.location.hash;
+      if (href.startsWith("/atelier")) return;
+      if (href === window.location.pathname + window.location.hash) return;
+      window.history.pushState(null, "", window.location.href); // revert
+      modalDescRef.current =
+        `You have unsaved changes to ${editCharacterName ?? "this character"}. Leaving will discard them. Continue?`;
+      setPendingNav(href);
+    };
+    const onNavigateAway = (e: CustomEvent<string>) => {
+      // Custom event for programmatic navigation (FAB, router.push, etc.)
+      const href = e.detail;
+      if (!href.startsWith("/")) return;
+      if (href.startsWith("/atelier")) return;
+      e.preventDefault();
+      modalDescRef.current =
+        `You have unsaved changes to ${editCharacterName ?? "this character"}. Leaving will discard them. Continue?`;
+      setPendingNav(href);
+    };
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "";
     };
     document.addEventListener("click", onAnchorClick, true);
     window.addEventListener("beforeunload", onBeforeUnload);
+    window.addEventListener("popstate", onPopState);
+    window.addEventListener("sw-navigate-away", onNavigateAway as EventListener);
     return () => {
       document.removeEventListener("click", onAnchorClick, true);
       window.removeEventListener("beforeunload", onBeforeUnload);
+      window.removeEventListener("popstate", onPopState);
+      window.removeEventListener("sw-navigate-away", onNavigateAway as EventListener);
     };
   }, [isOpen, isDirty, editCharacterName]);
 

@@ -261,6 +261,19 @@ export async function POST(request: Request) {
         ? null
         : (parseIntInRange(currentVitalityRaw, 0, 99999, 0) as number | null);
 
+    // Phase 8.2 batch 3: backstory freeform fields
+    const rawBackstory = values["backstory"];
+    let backstory: { origin: string; motivation: string; ties: string; flaw: string } | null = null;
+    if (rawBackstory && typeof rawBackstory === "object") {
+      const rb = rawBackstory as Record<string, unknown>;
+      backstory = {
+        origin: typeof rb["origin"] === "string" ? (rb["origin"] as string).trim() : "",
+        motivation: typeof rb["motivation"] === "string" ? (rb["motivation"] as string).trim() : "",
+        ties: typeof rb["ties"] === "string" ? (rb["ties"] as string).trim() : "",
+        flaw: typeof rb["flaw"] === "string" ? (rb["flaw"] as string).trim() : "",
+      };
+    }
+
     // Phase 8.2 batch 8: lineage/upbringing/manifest names start as
     // whatever the modal sent (typically null — the modal doesn't
     // send them anymore), and the heritage-derivation block below
@@ -678,6 +691,7 @@ export async function POST(request: Request) {
           dmNotes,
           portraitUrl,
           currentVitality,
+          backstory,
         })
         .returning();
 

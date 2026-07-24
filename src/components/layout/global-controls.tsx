@@ -370,17 +370,18 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
           />
         ),
         onClick: () => {
-          // Surface the build chooser (the Atelier client listens for
-          // this and opens the new-entity modal when the build is empty;
-          // on desktop the inline column is already visible, so this is
-          // effectively a no-op there beyond opening the chooser). On
-          // mobile, also open the build/preview drawer so the panel is
-          // visible behind the chooser.
-          window.dispatchEvent(new CustomEvent("sw-open-new-entity"));
-          if (isMobile) {
-            openDrawer(sandboxSplit ? "preview" : "build");
-          }
-        },
+                // Surface the build chooser (the Atelier client listens for
+                // this and opens the new-entity modal when the build is empty;
+                // on desktop the inline column is already visible, so this is
+                // effectively a no-op there beyond opening the chooser). On
+                // mobile, also open the build/preview drawer so the panel is
+                // visible behind the chooser.
+                window.dispatchEvent(new CustomEvent("sw-open-new-entity"));
+                window.dispatchEvent(new CustomEvent("sw-navigate-away", { detail: "/atelier" }));
+                if (isMobile) {
+                  openDrawer(sandboxSplit ? "preview" : "build");
+                }
+              },
       },
       // Filters only appear on routes that actually open the filter panel
       // via setFilterPanelOpen: the library browse view and the grammar

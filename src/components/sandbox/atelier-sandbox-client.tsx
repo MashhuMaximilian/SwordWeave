@@ -735,6 +735,7 @@ export function AtelierSandboxClient({
       ? `${pathname}?${nextParams.toString()}`
       : pathname;
     window.history.replaceState(null, "", clearedUrl);
+    window.dispatchEvent(new CustomEvent("sw-navigate-away", { detail: clearedUrl }));
   }
 
   function guardedLibrarySelect(
@@ -818,6 +819,7 @@ export function AtelierSandboxClient({
                 currentSearchParams?.toString() ?? "",
               );
               nextParams.set("edit", String(outcome.newId));
+              window.dispatchEvent(new CustomEvent("sw-navigate-away", { detail: `${pathname}?${nextParams.toString()}` }));
               router.replace(
                 nextParams.toString()
                   ? `${pathname}?${nextParams.toString()}`

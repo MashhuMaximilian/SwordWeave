@@ -18,6 +18,11 @@ import {
   resolveSlotSource,
 } from "@/lib/versions/slot-source";
 import { cumulativeBuForLevel } from "@/lib/engine/bu";
+import {
+  parseBackstory,
+  sanitizeBackstory,
+  type CharacterBackstory,
+} from "@/lib/character/character-backstory";
 
 const VALID_SIZES = [
   "TINY",
@@ -240,6 +245,12 @@ export async function PATCH(
       const v = parseIntInRange(values["currentVitality"], 0, 9999);
       if (v === null) return NextResponse.json({ error: "currentVitality must be a non-negative integer." }, { status: 400 });
       updatePayload["currentVitality"] = v;
+    }
+    if ("backstory" in values) {
+      const rawBackstory = (values as Record<string, unknown>)["backstory"];
+      const parsed: CharacterBackstory = parseBackstory(rawBackstory);
+      const cleaned = sanitizeBackstory(parsed);
+      updatePayload["backstory"] = cleaned;
     }
 
     updatePayload["updatedAt"] = new Date();
