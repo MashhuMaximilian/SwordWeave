@@ -399,12 +399,11 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         </div>
       </header>
 
-      {/* BU bar — always visible */}
-      <BuBar
+      {/* BU Budget Footer — unified budget + debt display */}
+      <BuBudgetFooter
         characterId={props.id}
         progressionSpent={props.buBalance.progressionSpent}
         progressionPool={props.buBalance.progressionPool}
-        progressionPercent={props.buBalance.progressionPercent}
         overBudget={props.buBalance.overBudget}
         level={props.level}
         dmBonusBu={props.buBalance.dmBonusBu}
@@ -412,15 +411,11 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         {...(props.buBalance.warning !== undefined
           ? { warning: props.buBalance.warning }
           : {})}
-      />
-
-      {/* Volatility panel — mirror-vector accounting (always visible) */}
-      <VolatilityPanel
-        rating={props.volatility.rating}
-        ceiling={props.volatility.ceiling}
+        volatilityRating={props.volatility.rating}
+        volatilityCeiling={props.volatility.ceiling}
         levelBracket={props.volatility.levelBracket}
-        remaining={props.volatility.remaining}
-        exceeded={props.volatility.exceeded}
+        volatilityRemaining={props.volatility.remaining}
+        volatilityExceeded={props.volatility.exceeded}
         mirroredPrimitives={props.volatility.mirroredPrimitives}
       />
 
@@ -612,37 +607,87 @@ export function CharacterSheetView(props: CharacterSheetProps) {
 }
 
 // =============================================================================
-// BU Bar
+// BU Budget Footer — unified budget + debt display
+// =============================================================================
+// Replaces the separate BuBar + VolatilityPanel with a single unified footer.
+// Shows:
+//   Budget: X / Y  (with "exceeded by X" if over)
+//   Debt:   Used / Max (e.g., 6/10)  +  Remaining
+//   Visual bars for both, color-coded (green/amber/red for budget, red for debt ceiling)
 // =============================================================================
 
-function BuBar({
+function BuBudgetFooter({
   characterId,
+  // Budget (positive BU)
   progressionSpent,
   progressionPool,
-  progressionPercent,
   overBudget,
   level,
   dmBonusBu,
   itemBuSpent,
   warning,
+  // Debt (mirror/negative BU)
+  volatilityRating,
+  volatilityCeiling,
+  levelBracket,
+  volatilityRemaining,
+  volatilityExceeded,
+  mirroredPrimitives,
 }: {
   characterId: string;
+  // Budget
   progressionSpent: number;
   progressionPool: number;
-  progressionPercent: number;
   overBudget: boolean;
   level: number;
   dmBonusBu: number;
   itemBuSpent: number;
   warning?: string;
+  // Debt (volatility)
+  volatilityRating: number;
+  volatilityCeiling: number;
+  levelBracket:
+    | "L1-L4"
+    | "L5-L8"
+    | "L9-L12"
+    | "L13-L16"
+    | "L17-L20"
+    | "L21-L24"
+    | "L25-L28"
+    | "L29+";
+  volatilityRemaining: number;
+  volatilityExceeded: boolean;
+  mirroredPrimitives: ReadonlyArray<{
+    id: number;
+    name: string;
+    mirrorBuCredit: number;
+    acquiredAtLevel: number;
+  }>;
 }) {
+  const budgetPercent = progressionPool > 0 ? Math.min(100, (progressionSpent / progressionPool) * 100) : 0;
+  const budgetOverBy = overBudget ? progressionSpent - progressionPool : 0;
+  const budgetBarColor = overBudget
+    ? "bg-destructive"
+    : budgetPercent > 90
+    ? "bg-amber-500"
+    : "bg-primary";
+
+  const debtPercent = volatilityCeiling > 0 ? Math.min(100, (volatilityRating / volatilityCeiling) * 100) : 0;
+  const debtBarColor = volatilityExceeded
+    ? "bg-destructive"
+    : debtPercent > 80
+    ? "bg-amber-500"
+    : "bg-primary";
+
   return (
-    <div className="sticky top-0 z-20 mt-6 -mx-5 border-y border-border bg-background/85 px-5 py-3 backdrop-blur-md">
+    <div className="sticky bottom-0 z-20 mt-6 -mx-5 border-y border-border bg-background/85 px-5 py-3 backdrop-blur-md">
+      {/* ===== Row 1: Budget + Debt headers ===== */}
       <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Budget */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold uppercase text-muted-foreground">
-              BU Spent
+              Budget
             </span>
             <span
               className={`rounded-full px-3 py-1 font-mono text-base font-bold ${
@@ -653,6 +698,11 @@ function BuBar({
             >
               {progressionSpent}
               <span className="text-muted-foreground"> / {progressionPool}</span>
+              {overBudget && (
+                <span className="ml-1.5 text-destructive font-medium">
+                  (+{budgetOverBy})
+                </span>
+              )}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -667,10 +717,6 @@ function BuBar({
             <span className="text-xs font-semibold uppercase text-muted-foreground">
               DM Bonus
             </span>
-            {/* Phase 8.2 batch 5: inline editor — click the badge to
-                edit. Replaces the previous read-only display. The
-                editor handles its own optimistic state and posts to
-                /api/characters/[id]/dm-bonus. */}
             <DmBonusEditor
               characterId={characterId}
               initialValue={dmBonusBu}
@@ -685,90 +731,27 @@ function BuBar({
             </span>
           </div>
         </div>
-      </div>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
-        <div
-          className={`h-full rounded-full transition-all ${
-            overBudget
-              ? "bg-destructive"
-              : progressionPercent > 90
-                ? "bg-amber-500"
-                : "bg-primary"
-          }`}
-          style={{ width: `${Math.min(100, progressionPercent)}%` }}
-        />
-      </div>
-      {warning && (
-        <p className="mt-1.5 text-xs text-destructive">{warning}</p>
-      )}
-    </div>
-  );
-}
-
-// =============================================================================
-// Volatility Panel — mirror-vector accounting (BU Market canon)
-// =============================================================================
-// Shows the character's current volatility rating against the level-based
-// ceiling. Surfaces the list of mirrored primitives so players know exactly
-// where their negative BU comes from. Exceeded ceiling highlights red.
-function VolatilityPanel({
-  rating,
-  ceiling,
-  levelBracket,
-  remaining,
-  exceeded,
-  mirroredPrimitives,
-}: {
-  rating: number;
-  ceiling: number;
-  levelBracket:
-      | "L1-L4"
-      | "L5-L8"
-      | "L9-L12"
-      | "L13-L16"
-      | "L17-L20"
-      | "L21-L24"
-      | "L25-L28"
-      | "L29+";
-  remaining: number;
-  exceeded: boolean;
-  mirroredPrimitives: ReadonlyArray<{
-    id: number;
-    name: string;
-    mirrorBuCredit: number;
-    acquiredAtLevel: number;
-  }>;
-}) {
-  const percent = ceiling > 0 ? Math.min(100, (rating / ceiling) * 100) : 0;
-  const barColor = exceeded
-    ? "bg-destructive"
-    : percent > 80
-      ? "bg-amber-500"
-      : "bg-primary";
-
-  return (
-    <div className="mt-3 rounded-lg border border-border bg-card p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
+        {/* Debt */}
+        <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold uppercase text-muted-foreground">
-              Volatility
+              Debt
             </span>
             <span
               className={`rounded-full px-3 py-1 font-mono text-sm font-bold ${
-                exceeded
+                volatilityExceeded
                   ? "bg-destructive/10 text-destructive"
                   : "bg-primary/10 text-primary"
               }`}
               title="Mirror-vector BU credits accumulated"
             >
-              -{rating}
-              <span className="text-muted-foreground"> / -{ceiling}</span>
+              -{volatilityRating}
+              <span className="text-muted-foreground"> / -{volatilityCeiling}</span>
             </span>
           </div>
           <span
             className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-              exceeded
+              volatilityExceeded
                 ? "bg-destructive/15 text-destructive"
                 : "bg-secondary text-secondary-foreground"
             }`}
@@ -776,33 +759,57 @@ function VolatilityPanel({
           >
             L-bracket {levelBracket}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-2">
             <span className="text-xs font-semibold uppercase text-muted-foreground">
               Remaining
             </span>
             <span className="rounded-full bg-secondary px-3 py-1 text-sm font-medium">
-              -{remaining} BU
+              -{volatilityRemaining} BU
             </span>
           </div>
         </div>
       </div>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
-        <div
-          className={`h-full rounded-full transition-all ${barColor}`}
-          style={{ width: `${percent}%` }}
-        />
+
+      {/* ===== Row 2: Budget bar ===== */}
+      <div className="mt-2">
+        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+          <span>Budget usage</span>
+          <span>{Math.min(100, budgetPercent)}%</span>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
+          <div
+            className={`h-full rounded-full transition-all ${budgetBarColor}`}
+            style={{ width: `${Math.min(100, budgetPercent)}%` }}
+          />
+        </div>
+        {warning && <p className="mt-1.5 text-xs text-destructive">{warning}</p>}
       </div>
-      {exceeded && (
-        <p className="mt-2 text-xs font-medium text-destructive">
-          ⚠ Volatility ceiling exceeded. The DM must remove mirror primitives
-          or grant a respec before this character can be played.
-        </p>
-      )}
+
+      {/* ===== Row 3: Debt bar ===== */}
+      <div className="mt-2">
+        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+          <span>Debt usage</span>
+          <span>{Math.min(100, debtPercent)}%</span>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
+          <div
+            className={`h-full rounded-full transition-all ${debtBarColor}`}
+            style={{ width: `${Math.min(100, debtPercent)}%` }}
+          />
+        </div>
+        {volatilityExceeded && (
+          <p className="mt-1.5 text-xs font-medium text-destructive">
+            ⚠ Volatility ceiling exceeded. The DM must remove mirror primitives
+            or grant a respec before this character can be played.
+          </p>
+        )}
+      </div>
+
+      {/* ===== Row 4: Mirrored primitives detail ===== */}
       {mirroredPrimitives.length > 0 && (
         <details className="mt-3">
           <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">
-            {mirroredPrimitives.length} mirrored primitive
-            {mirroredPrimitives.length === 1 ? "" : "s"} (click to expand)
+            {mirroredPrimitives.length} mirrored primitive{mirroredPrimitives.length === 1 ? "" : "s"} (click to expand)
           </summary>
           <ul className="mt-2 space-y-1 text-xs">
             {mirroredPrimitives.map((p) => (
