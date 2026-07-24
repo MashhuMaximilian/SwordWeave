@@ -36,6 +36,8 @@ import {
   levelForBuBudget,
   maxBuDebtForLevel,
 } from "@/lib/engine/bu";
+import { useCharacterModal } from "../character-modal-store";
+import { cn } from "@/lib/utils";
 
 const PROF_OPTIONS = ["PHYSICAL", "MENTAL", "MAGICAL"] as const;
 export type Prof = (typeof PROF_OPTIONS)[number];
@@ -100,11 +102,15 @@ interface AttributesTabProps {
 }
 
 export function AttributesTab({ state, onChange }: AttributesTabProps) {
+  const { setDirty } = useCharacterModal();
+
   const setField = useCallback(
     <K extends keyof AttributesState>(key: K, value: AttributesState[K]) => {
       onChange({ ...state, [key]: value });
+      // Mark as dirty when user edits form fields
+      setDirty(true);
     },
-    [state, onChange],
+    [state, onChange, setDirty],
   );
 
   const attrSum = state.attrPhysical + state.attrMental + state.attrMagical;

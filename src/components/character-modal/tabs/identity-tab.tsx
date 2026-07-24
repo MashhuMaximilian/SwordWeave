@@ -2,13 +2,13 @@
 
 // =============================================================================
 // IdentityTab — Tab 1 of the 7-tab character modal.
-//
+// 
 // Fields:
 //   - name        (required, the character's display name)
 //   - portraitUrl (optional, URL to portrait image)
 //   - size        (TINY | SMALL | MEDIUM | LARGE | HUGE | GARGANTUAN)
 //   - notes       (optional, freeform)
-//
+// 
 // === Phase 8.1 fix-up: controlled when state/onChange provided ===
 // Originally this tab owned its state and persisted via localStorage.
 // Parent (TabbedCharacterForm) now owns the state for the same reason
@@ -17,6 +17,7 @@
 // =============================================================================
 
 import { useCallback, useEffect, useState } from "react";
+import { useCharacterModal } from "../character-modal-store";
 
 const STORAGE_KEY = "swordweave:character-modal:draft:identity";
 const SIZES = ["TINY", "SMALL", "MEDIUM", "LARGE", "HUGE", "GARGANTUAN"] as const;
@@ -61,6 +62,7 @@ interface IdentityTabProps {
 }
 
 export function IdentityTab({ state: controlled, onChange }: IdentityTabProps = {}) {
+  const { setDirty } = useCharacterModal();
   const [internal, setInternal] = useState<IdentityState>(IDENTITY_EMPTY);
   const [hydrated, setHydrated] = useState(false);
   const isControlled = controlled !== undefined && onChange !== undefined;
@@ -93,8 +95,10 @@ export function IdentityTab({ state: controlled, onChange }: IdentityTabProps = 
       } else {
         setInternal(next);
       }
+      // Mark as dirty when user edits form fields
+      setDirty(true);
     },
-    [state, isControlled, onChange],
+    [state, isControlled, onChange, setDirty],
   );
 
   if (!hydrated) {

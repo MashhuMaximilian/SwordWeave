@@ -2,18 +2,19 @@
 
 // =============================================================================
 // BackstoryTab — Tab 2 of the 7-tab character modal.
-//
+// 
 // Four freeform fields per the screenshot spec (Mashu 2026-07-21):
 //   - Origin & History      (where from, what happened)
 //   - Motivation & Goals    (what drives them, what they want)
 //   - Ties & Allies         (people who matter)
 //   - Flaw & Conflict       (internal/external friction)
-//
+// 
 // === Phase 8.1 fix-up: controlled when state/onChange provided ===
 // Same lift as IdentityTab and AttributesTab.
 // =============================================================================
 
 import { useCallback, useEffect, useState } from "react";
+import { useCharacterModal } from "../character-modal-store";
 
 const STORAGE_KEY = "swordweave:character-modal:draft:backstory";
 
@@ -85,6 +86,7 @@ export function BackstoryTab({
   state: controlled,
   onChange,
 }: BackstoryTabProps = {}) {
+  const { setDirty } = useCharacterModal();
   const [internal, setInternal] = useState<BackstoryState>(BACKSTORY_EMPTY);
   const [hydrated, setHydrated] = useState(false);
   const isControlled = controlled !== undefined && onChange !== undefined;
@@ -95,6 +97,8 @@ export function BackstoryTab({
     setHydrated(true);
   }, []);
 
+  // Debounced write to localStorage — only when uncontrolled. When
+  // controlled, the parent owns persistence.
   useEffect(() => {
     if (isControlled || !hydrated) return;
     const t = window.setTimeout(() => {
@@ -115,8 +119,10 @@ export function BackstoryTab({
       } else {
         setInternal(next);
       }
+      // Mark as dirty when user edits form fields
+      setDirty(true);
     },
-    [state, isControlled, onChange],
+    [state, isControlled, onChange, setDirty],
   );
 
   if (!hydrated) {
