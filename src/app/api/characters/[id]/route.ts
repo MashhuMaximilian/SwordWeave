@@ -209,19 +209,17 @@ export async function PATCH(
       updatePayload["dmBonusBu"] = v;
     }
 
-    // Validate progression cap with merged values
+    // Validate progression cap with merged values (soft warning only — matches POST behavior)
     const mergedLevel = (updatePayload["level"] as number | undefined) ?? current.level;
     const mergedStarting = (updatePayload["startingBu"] as number | undefined) ?? current.startingBu;
     const mergedBonus = (updatePayload["dmBonusBu"] as number | undefined) ?? current.dmBonusBu;
     const mergedSpent = (updatePayload["buSpent"] as number | undefined) ?? current.buSpent;
     const pool = Math.max(mergedStarting, cumulativeBuForLevel(mergedLevel)) + mergedBonus;
     if (mergedSpent > pool) {
-      return NextResponse.json(
-        {
-          error: `BU spent (${mergedSpent}) exceeds progression cap (${pool})`,
-        },
-        { status: 400 },
+      console.warn(
+        `[characters PATCH] soft warning: buSpent=${mergedSpent} > progressionPool=${pool} (character \"${current.name}\")`,
       );
+      // Do NOT block — soft warning only per canon (Phase 8.1 batch 13.6)
     }
 
     if ("enforceTemplateCaps" in values) {
