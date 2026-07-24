@@ -4,6 +4,7 @@
 // CharacterModal — the persistent overlay layer for character creation
 // (Phase 8.1). Edit-mode (Phase 8.2 batch 7) rides the same modal — no
 // separate UI surface.
+// =============================================================================
 //
 // Architectural decisions:
 //
@@ -46,19 +47,18 @@
 //    seed has already happened (the form's effect pulls it).
 // =============================================================================
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCharacterModal } from "./character-modal-store";
 import { TabbedCharacterForm } from "./tabbed-character-form";
+import { UnsavedChangesModal } from "@/components/sandbox/unsaved-changes-modal";
 
 export interface CharacterModalProps {
-  /**
-   * Optional content override. Defaults to a minimal "scaffold" panel
+  /** Optional content override. Defaults to a minimal "scaffold" panel
    * so the architectural shell can land before the wizard content is
-   * wired in (batch 2).
-   */
+   * wired in (batch 2). */
   children?: ReactNode;
 }
 
@@ -74,6 +74,8 @@ export function CharacterModal({ children }: CharacterModalProps) {
   } = useCharacterModal();
   const [isDesktop, setIsDesktop] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [pendingNav, setPendingNav] = useState<string | null>(null);
+  const modalDescRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     setMounted(true);
@@ -139,16 +141,12 @@ export function CharacterModal({ children }: CharacterModalProps) {
       if (href.startsWith("/atelier")) return;
       // Same-page hash links (#...) — allow freely.
       if (href === window.location.pathname + window.location.hash) return;
-      // External / route navigation while dirty — confirm.
-      const ok = window.confirm(
-        `You have unsaved changes to ${
-          editCharacterName ?? "this character"
-        }. Leaving will discard them. Continue?`,
-      );
-      if (!ok) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
+      // External / route navigation while dirty — confirm with in-app modal.
+      e.preventDefault();
+      e.stopPropagation();
+      modalDescRef.current =
+        `You have unsaved changes to ${editCharacterName ?? "this character"}. Leaving will discard them. Continue?`;
+      setPendingNav(href);
     };
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
