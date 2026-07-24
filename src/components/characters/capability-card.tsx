@@ -43,6 +43,7 @@ import { cn } from "@/lib/utils";
 import type { SlotSource } from "@/db/schema/characters";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
 import { OriginBadge } from "@/components/characters/origin-badge";
+import { useEntityPreview } from "@/components/characters/preview-modal";
 
 interface ToggleResponse {
   capability: { id: string; active: boolean };
@@ -119,6 +120,7 @@ export function CapabilityCard({
   capability,
 }: CapabilityCardProps) {
   const { showToast } = useToasts();
+  const { openPreview } = useEntityPreview();
 
   // Local optimistic state. Hydrate from localStorage on mount.
   const [active, setActive] = useState(false);
@@ -306,22 +308,50 @@ export function CapabilityCard({
           )}
           {triggerFlash ? "Triggered" : triggerPending ? "…" : "Trigger"}
         </button>
-        {/* Phase 8.2 batch 6: preview link opens the canonical library
-            detail page in a new tab. That page renders the same
-            EntityPreview component the atelier uses, so we get a
-            read-only preview without duplicating any preview plumbing.
-            target="_blank" preserves the sheet's state. */}
-        <Link
-          href={`/library/item/CAPABILITY:${capability.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary"
-          title="Open the canonical preview in a new tab"
-        >
-          <ExternalLink className="size-3" />
-          Preview
-        </Link>
-      </div>
+        {/* Preview modal — same EntityPreview used in atelier/library */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    openPreview({
+                      item: {
+                                      kind: "capability",
+                                      row: {
+                                        id: capability.id,
+                                        name: capability.name,
+                                        type: capability.type,
+                                        sourceType: capability.sourceType,
+                                        verboseDescription: capability.verboseDescription ?? "",
+                                        sourceOrigin: "manual",
+                                        tags: [],
+                                        isPublic: false,
+                                        primitiveLinks: [],
+                                        effectLinks: [],
+                                        iconSource: null,
+                                        iconKey: null,
+                                        iconUrl: null,
+                                        iconColor: "slate",
+                                      },
+                                    },
+                      category: "CAPABILITY",
+                      callbacks: {
+                        engagement: {
+                          likes: 0,
+                          dislikes: 0,
+                          forks: 0,
+                          userReaction: null,
+                          authorId: null,
+                          authorUsername: null,
+                          authorIsAdmin: null,
+                          currentUserInternalId: null,
+                        },
+                      },
+                    })
+                  }
+                >
+                  <ExternalLink className="size-3" />
+                  Preview
+                </button>
+              </div>
 
       {triggerFlash && (
         <p
