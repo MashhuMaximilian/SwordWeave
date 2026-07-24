@@ -56,8 +56,14 @@ export function CharacterEditButton({
         // We still navigate to /atelier so the user can browse
         // primitives/heritages to slot during the edit.
         void openForEditFromStore(characterId);
-        window.dispatchEvent(new CustomEvent("sw-navigate-away", { detail: "/atelier" }));
-        router.push("/atelier");
+        const navEvent = new CustomEvent("sw-navigate-away", {
+          detail: "/atelier",
+          cancelable: true,
+        });
+        window.dispatchEvent(navEvent);
+        if (!navEvent.defaultPrevented) {
+          router.push("/atelier");
+        }
       }}
       className={
         className ??

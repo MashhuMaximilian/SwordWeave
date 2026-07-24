@@ -51,8 +51,14 @@ export function NewCharacterButton({
         // Open the modal (no-op if already open) + take the user
         // to /atelier where they can browse + slot.
         characterModal.open();
-        window.dispatchEvent(new CustomEvent("sw-navigate-away", { detail: "/atelier" }));
-        router.push("/atelier");
+        const navEvent = new CustomEvent("sw-navigate-away", {
+          detail: "/atelier",
+          cancelable: true,
+        });
+        window.dispatchEvent(navEvent);
+        if (!navEvent.defaultPrevented) {
+          router.push("/atelier");
+        }
       }}
       className={base}
     >

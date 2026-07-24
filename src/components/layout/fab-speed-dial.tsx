@@ -249,11 +249,15 @@ export function FabSpeedDial({
                     // the in-app discard modal, whose confirm also uses a
                     // hard navigation — same reliable path.)
                     e.preventDefault();
-                    window.dispatchEvent(
-                      new CustomEvent("sw-navigate-away", { detail: item.href }),
-                    );
-                    window.location.assign(item.href);
-                    setOpen(false);
+                    const navEvent = new CustomEvent("sw-navigate-away", {
+                      detail: item.href,
+                      cancelable: true,
+                    });
+                    window.dispatchEvent(navEvent);
+                    if (!navEvent.defaultPrevented) {
+                      window.location.assign(item.href);
+                      setOpen(false);
+                    }
                   }}
                   style={{
                     animation: `sw-fab-item-in 180ms ease-out both`,
