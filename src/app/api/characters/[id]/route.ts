@@ -17,6 +17,7 @@ import {
   resolveLatestVersionId,
   resolveSlotSource,
 } from "@/lib/versions/slot-source";
+import { cumulativeBuForLevel } from "@/lib/engine/bu";
 
 const VALID_SIZES = [
   "TINY",
@@ -213,7 +214,7 @@ export async function PATCH(
     const mergedStarting = (updatePayload["startingBu"] as number | undefined) ?? current.startingBu;
     const mergedBonus = (updatePayload["dmBonusBu"] as number | undefined) ?? current.dmBonusBu;
     const mergedSpent = (updatePayload["buSpent"] as number | undefined) ?? current.buSpent;
-    const pool = mergedStarting + (mergedLevel - 1) * 5 + mergedBonus;
+    const pool = Math.max(mergedStarting, cumulativeBuForLevel(mergedLevel)) + mergedBonus;
     if (mergedSpent > pool) {
       return NextResponse.json(
         {
