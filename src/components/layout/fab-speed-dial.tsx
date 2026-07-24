@@ -249,6 +249,9 @@ export function FabSpeedDial({
                     // the in-app discard modal, whose confirm also uses a
                     // hard navigation — same reliable path.)
                     e.preventDefault();
+                    window.dispatchEvent(
+                      new CustomEvent("sw-navigate-away", { detail: item.href }),
+                    );
                     window.location.assign(item.href);
                     setOpen(false);
                   }}
