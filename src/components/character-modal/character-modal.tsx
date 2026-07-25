@@ -124,7 +124,9 @@ export function CharacterModal({ children }: CharacterModalProps) {
   // refresh — there's no way to intercept that with an in-app
   // dialog. For in-app navigation, the in-app confirm is shown.
   useEffect(() => {
-    if (!isOpen || !isDirty) return;
+    // Guard navigation when modal is open AND (dirty OR in edit mode).
+    // In edit mode we always want to confirm before abandoning the session.
+    if (!isOpen || (!isDirty && !editCharacterId)) return;
     const onAnchorClick = (e: MouseEvent) => {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) {
         return;
@@ -141,7 +143,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
       if (href.startsWith("/atelier")) return;
       // Same-page hash links (#...) — allow freely.
       if (href === window.location.pathname + window.location.hash) return;
-      // External / route navigation while dirty — confirm with in-app modal.
+      // External / route navigation while dirty or in edit mode — confirm with in-app modal.
       e.preventDefault();
       e.stopPropagation();
       modalDescRef.current =
@@ -149,7 +151,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
       setPendingNav(href);
     };
     const onPopState = (e: PopStateEvent) => {
-      // Browser back/forward navigation while dirty
+      // Browser back/forward navigation while dirty or in edit mode
       const href = window.location.pathname + window.location.search + window.location.hash;
       if (href.startsWith("/atelier")) return;
       if (href === window.location.pathname + window.location.hash) return;
@@ -182,7 +184,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
       window.removeEventListener("popstate", onPopState);
       window.removeEventListener("sw-navigate-away", onNavigateAway as EventListener);
     };
-  }, [isOpen, isDirty, editCharacterName]);
+  }, [isOpen, isDirty, editCharacterId, editCharacterName]);
 
   if (!mounted || !isOpen) return null;
 
