@@ -71,7 +71,6 @@ export function CharacterModal({ children }: CharacterModalProps) {
     editCharacterName,
     resetDraft,
     pendingEditId,
-    open,
   } = useCharacterModal();
   const [isDesktop, setIsDesktop] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -102,32 +101,23 @@ export function CharacterModal({ children }: CharacterModalProps) {
   }, [isOpen, close]);
 
   // Phase 8.2 batch 7 rev 2: navigate-away guard for the modal's
-  // own dirty state. The atelier already guards the build's dirty
-  // state via the AtelierSandboxClient's anchor-interceptor effect,
-  // but the modal's draft is a separate concern — if the user opens
-  // /characters, clicks Edit, lands on /atelier with a pre-filled
-  // modal, edits a few fields, then clicks a header link to
-  // /library, the modal's dirty state would be silently lost.
+  // own dirty state. This guard prevents navigation away from the
+  // character modal when it contains unsaved changes or is in edit mode.
+  // It handles:
+  //   - <a> tag clicks (internal navigation)
+  //   - browser back/forward (popstate)
+  //   - programmatic navigation via custom sw-navigate-away event (FAB links, router.push, etc.)
   //
-  // We listen for clicks on internal links (any <a> whose href
-  // starts with "/" and doesn't go back to /atelier) and, if the
-  // modal is dirty, fire a Save / Discard / Keep editing dialog
-  // before allowing the navigation. We also hook beforeunload for
-  // browser refresh / tab close.
+  // The guard shows the UnsavedChangesModal to let the user confirm
+  // navigation or cancel and stay on the current character.
   //
-  // Phase 8.2 batch 7 rev 2: this lives at the AppShell level so
-  // it covers ALL pages (the user can open the modal from
-  // /characters too). The guard is idempotent and only fires when
-  // the modal is open AND dirty — outside those conditions it's a
-  // no-op.
-  //
-  // NOTE: We use the "beforeunload" native prompt for tab close /
-  // refresh — there's no way to intercept that with an in-app
-  // dialog. For in-app navigation, the in-app confirm is shown.
+  // We consider the modal "dirty" for navigation purposes when:
+  //   - isDirty is true (user has made changes to the form)
+  //   OR editCharacterId is not null (we are in edit mode - abandoning loses seeded data)
   useEffect(() => {
-    // Guard navigation when modal is open AND (dirty OR in edit mode).
-    // In edit mode we always want to confirm before abandoning the session.
-    if (!isOpen || (!isDirty && !editCharacterId)) return;
+    // Only guard when modal is open and contains content that would be lost
+    if (!isOpen || (!isDirty && editCharacterId === null)) return;
+    
     const onAnchorClick = (e: MouseEvent) => {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) {
         return;
@@ -137,48 +127,51 @@ export function CharacterModal({ children }: CharacterModalProps) {
       ) as HTMLAnchorElement | null;
       if (!anchor) return;
       const href = anchor.getAttribute("href") ?? "";
+      // Only handle internal navigation (href starting with /)
       if (!href.startsWith("/")) return;
-      // Anchor on /atelier? Modal survives navigation within the
-      // atelier's tab bar (those routes don't reload the page). No
-      // confirm needed — the user is still in the editing context.
-      if (href.startsWith("/atelier")) return;
-      // Same-page hash links (#...) — allow freely.
-      if (href === window.location.pathname + window.location.hash) return;
-      // External / route navigation while dirty or in edit mode — confirm with in-app modal.
+      // Prevent navigation and show confirm modal
       e.preventDefault();
       e.stopPropagation();
       modalDescRef.current =
         `You have unsaved changes to ${editCharacterName ?? "this character"}. Leaving will discard them. Continue?`;
       setPendingNav(href);
     };
+    
     const onPopState = (e: PopStateEvent) => {
-      // Browser back/forward navigation while dirty or in edit mode
+      // Handle browser back/forward navigation
       const href = window.location.pathname + window.location.search + window.location.hash;
-      if (href.startsWith("/atelier")) return;
-      if (href === window.location.pathname + window.location.hash) return;
-      window.history.pushState(null, "", window.location.href); // revert
+      // Prevent navigation and show confirm modal
+      window.history.pushState(null, "", window.location.href); // revert to current URL
       modalDescRef.current =
         `You have unsaved changes to ${editCharacterName ?? "this character"}. Leaving will discard them. Continue?`;
       setPendingNav(href);
     };
+    
     const onNavigateAway = (e: CustomEvent<string>) => {
-      // Custom event for programmatic navigation (FAB, router.push, etc.)
+      // Handle programmatic navigation (FAB links, router.push, etc.)
       const href = e.detail;
+      // Only handle internal navigation
       if (!href.startsWith("/")) return;
-      if (href.startsWith("/atelier")) return;
+      // Prevent navigation and show confirm modal
       e.preventDefault();
       modalDescRef.current =
         `You have unsaved changes to ${editCharacterName ?? "this character"}. Leaving will discard them. Continue?`;
       setPendingNav(href);
     };
+    
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      // For tab close/refresh, we can only use the browser's native confirm
       e.preventDefault();
       e.returnValue = "";
     };
+    
+    // Set up event listeners
     document.addEventListener("click", onAnchorClick, true);
     window.addEventListener("beforeunload", onBeforeUnload);
     window.addEventListener("popstate", onPopState);
     window.addEventListener("sw-navigate-away", onNavigateAway as EventListener);
+    
+    // Clean up event listeners on unmount or when dependencies change
     return () => {
       document.removeEventListener("click", onAnchorClick, true);
       window.removeEventListener("beforeunload", onBeforeUnload);
