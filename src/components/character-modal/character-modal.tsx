@@ -71,6 +71,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
     editCharacterName,
     resetDraft,
     pendingEditId,
+    isSeedingEdit,
   } = useCharacterModal();
   const [isDesktop, setIsDesktop] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -178,7 +179,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
       window.removeEventListener("popstate", onPopState);
       window.removeEventListener("sw-navigate-away", onNavigateAway as EventListener);
     };
-  }, [isOpen, isDirty, editCharacterId, editCharacterName]);
+  }, [isOpen, isDirty, editCharacterId, editCharacterName, isSeedingEdit]);
 
   if (!mounted || !isOpen) return null;
 
