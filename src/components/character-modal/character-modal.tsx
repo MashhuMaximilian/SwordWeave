@@ -71,6 +71,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
     editCharacterName,
     resetDraft,
     pendingEditId,
+    open,
   } = useCharacterModal();
   const [isDesktop, setIsDesktop] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -193,6 +194,26 @@ export function CharacterModal({ children }: CharacterModalProps) {
       ? `Edit: ${editCharacterName}`
       : "Edit character"
     : "New Character";
+
+  // Render the UnsavedChangesModal at document.body level so it appears above everything
+  if (pendingNav) {
+    return createPortal(
+      <UnsavedChangesModal
+        isOpen={!!pendingNav}
+        onCancel={() => setPendingNav(null)}
+        onConfirm={() => {
+          const href = pendingNav;
+          setPendingNav(null);
+          // Discard the character draft before leaving
+          resetDraft();
+          close();
+          window.location.assign(href);
+        }}
+        description={modalDescRef.current ?? "You have unsaved changes. Leaving will discard them. Continue?"}
+      />,
+      document.body,
+    );
+  }
 
   return createPortal(
     <div
