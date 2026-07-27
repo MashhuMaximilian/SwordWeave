@@ -341,3 +341,5 @@ Week 2 (Aug 11–15):
   Thu:       Buffer / regression catches
   Fri:       → Phase 8.3 closed by Aug 15
 ```
+
+**Detailed 8.3 spec with SQL migration target and concrete test cases:** see `PHASE-8.3-RECAP.md` (next to this file).
