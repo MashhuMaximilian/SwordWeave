@@ -458,6 +458,14 @@ export function AtelierSandboxClient({
     setSandboxFormDirty(formIsDirty || editing !== null);
   }, [formIsDirty, editing, setSandboxFormDirty]);
 
+  // destructure the character modal state we need for the nav guard
+  const {
+    editCharacterId,
+    isSeedingEdit,
+    isOpen: charModalIsOpen,
+    isDirty: charModalIsDirty,
+  } = characterModal;
+
   // Navigation guard: when the build has unsaved changes, warn before
   // leaving the sandbox. The user wants to be able to navigate to
   // /creations, /library, etc., but with the SAME in-app "discard changes
@@ -473,7 +481,10 @@ export function AtelierSandboxClient({
     // the user expectation: "when there is content in the build and I leave,
     // the discard modal should appear." Uses `editing` in the closure, so
     // `editing` must be in the dep array (stale-closure bug fixed).
-    if (!formIsDirty && editing === null) return;
+    // Phase 8.2 rev 4: Also guard when character modal is dirty (has pending
+    // changes) or is in edit mode (editCharacterId is set) or the modal is
+    // open (charModalIsOpen) or seeding an edit (isSeedingEdit).
+    if (!formIsDirty && editing === null && !charModalIsDirty && !editCharacterId && !charModalIsOpen && !isSeedingEdit) return;
     const onAnchorClick = (e: MouseEvent) => {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey)
         return;
@@ -492,17 +503,38 @@ export function AtelierSandboxClient({
         "You have unsaved changes in the build. Leaving will discard them. Continue?";
       setPendingNav(href);
     };
+    const onSwNavigateAway = (event: Event) => {
+      // Check if it's a CustomEvent<string> and has a detail property.
+      if (
+        !(event instanceof CustomEvent) ||
+        typeof (event as CustomEvent<string>).detail !== "string"
+      ) {
+        return;
+      }
+      const href = (event as CustomEvent<string>).detail;
+      // Only guard navigation away from the sandbox page.
+      if (href.startsWith("/atelier")) return;
+      if (!href.startsWith("/")) return; // external / hash links ignored
+      // Prevent the default handling of the event (which is to navigate)
+      event.preventDefault();
+      // Show the modal
+      modalDescRef.current =
+        "You have unsaved changes in the build. Leaving will discard them. Continue?";
+      setPendingNav(href);
+    };
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "";
     };
     document.addEventListener("click", onAnchorClick, true);
+    window.addEventListener("sw-navigate-away", onSwNavigateAway);
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
       document.removeEventListener("click", onAnchorClick, true);
+      window.removeEventListener("sw-navigate-away", onSwNavigateAway);
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
-  }, [formIsDirty, editing]);
+  }, [formIsDirty, editing, charModalIsDirty, editCharacterId, charModalIsOpen, isSeedingEdit]);
 
   // Listen for the FAB "Build & Preview" action.
   //  - If the build column is EMPTY (no entity loaded and nothing typed),
