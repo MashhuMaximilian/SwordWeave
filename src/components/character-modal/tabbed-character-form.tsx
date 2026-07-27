@@ -372,7 +372,27 @@ export function TabbedCharacterForm() {
   );
   const budget = activeBuBudget(attributes);
   const debtCeiling = maxBuDebtForLevel(attributes.level);
-  const overBudget = buSummary.positiveSpent > budget;
+
+  // Phase 8.2 batch 19 (Mashu 2026-07-27): BU DEBT chip now follows
+  // the carry-over model.
+  //   - mirror primitives EARN debt (their sum is the available pool)
+  //   - non-mirror primitives fill the budget; overflow absorbs into
+  //     the available pool up to its size (hard cap is maxBuDebtForLevel)
+  //   - the budget display subtracts the absorbed overflow so the
+  //     visible budget number only reflects what's actually NOT been
+  //     absorbed by debt; any remainder overflow still shows as +N
+  // The chip format is `X/Y (max Z BU)`:
+  //   X = overflow absorbed by debt (= min(overflow, mirrorTotal))
+  //   Y = mirrorTotal (the earned/available debt pool)
+  //   Z = maxBuDebtForLevel(level)
+  const budgetOverflow = Math.max(0, buSummary.positiveSpent - budget);
+  const debtX = Math.min(budgetOverflow, buSummary.debtUsed);
+  const debtY = buSummary.debtUsed;
+  const budgetAbsorbed = debtX;
+  const budgetVisible = Math.max(0, buSummary.positiveSpent - budgetAbsorbed);
+  const budgetOverflowRemainder = Math.max(0, budgetVisible - budget);
+
+  const overBudget = budgetOverflowRemainder > 0;
   const debtExceeded = buSummary.debtUsed > debtCeiling;
 
   // Phase 8.2 batch 8: vitality max for the new character. The modal
@@ -739,54 +759,56 @@ export function TabbedCharacterForm() {
         )}
       </div>
 
-      /* Footer — compact stats + Create button. Pinned to bottom of
-                modal scroll container. Phase 8.1 batch 11 (Mashu
-                2026-07-22): footer now shows just BU and Debt — Attr
-                lives only in the Attributes tab, Rem is dropped because
-                `BU used/budget` already tells the user how much room is
-                left. Unified with character sheet BuBudgetFooter style.
-                Phase 8.2 batch 18 (Mashu 2026-07-27): BU DEBT format is
-                `X/Y` with a small grey `(max Y BU)` subtitle so the
-                level cap is explicit. Dropped the `- X used` suffix —
-                used and qualified are equal here. */
-            <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-2 border-t border-border bg-card px-4 py-2">
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <FooterStat label="Lvl" value={String(attributes.level)} />
-                <FooterStat
-                  label="BU"
-                  value={
-                    buSummary.positiveSpent > budget
-                      ? `${buSummary.positiveSpent}/${budget} (+${buSummary.positiveSpent - budget})`
-                      : `${buSummary.positiveSpent}/${budget}`
-                  }
-                  tone={overBudget ? "warn" : "default"}
-                />
-                {buSummary.debtUsed > 0 || debtCeiling > 0 ? (
-                  <FooterStat
-                    label="BU debt"
-                    value={`${buSummary.debtUsed}/${debtCeiling}`}
-                    sublabel={`(max ${debtCeiling} BU)`}
-                    tone={debtExceeded ? "warn" : "default"}
-                  />
-                ) : null}
-              </div>
-              <button
-                type="button"
-                onClick={() => void handleSubmit()}
-                disabled={!canCreate}
-                className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {/* Phase 8.2 batch 7: button label flips with mode. */}
-                {isPending
-                  ? editCharacterId
-                    ? "Saving…"
-                    : "Creating…"
-                  : editCharacterId
-                  ? "Save changes"
-                  : "Create"}
-                <ChevronRight className="size-3.5" />
-              </button>
-            </div>
+      {/* Footer — compact stats + Create button. Pinned to bottom of
+          modal scroll container.
+          Phase 8.2 batch 18 (Mashu 2026-07-27): BU DEBT format is `X/Y`
+          with a small grey `(max Y BU)` subtitle. Dropped the
+          `- X used` suffix.
+          Phase 8.2 batch 19 (Mashu 2026-07-27): wrap stats in their
+          own container so the Save/Create button stays anchored right
+          on mobile (stats can wrap inside, button never does). Also
+          wired the carry-over rule:
+            - mirror primitives earn debt (Y = their sum)
+            - non-mirror overflow absorbs into that pool (X = min(overflow, Y))
+            - any overflow past available stays in budget overflow (+N). */}
+      <div className="sticky bottom-0 z-10 -mx-4 flex items-center justify-between gap-2 border-t border-border bg-card px-4 py-2">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <FooterStat label="Lvl" value={String(attributes.level)} />
+          <FooterStat
+            label="BU"
+            value={
+              budgetOverflowRemainder > 0
+                ? `${budgetVisible}/${budget} (+${budgetOverflowRemainder})`
+                : `${budgetVisible}/${budget}`
+            }
+            tone={overBudget ? "warn" : "default"}
+          />
+          {buSummary.debtUsed > 0 || debtCeiling > 0 ? (
+            <FooterStat
+              label="BU debt"
+              value={`${debtX}/${debtY}`}
+              sublabel={`(max ${debtCeiling} BU)`}
+              tone={debtExceeded ? "warn" : "default"}
+            />
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={() => void handleSubmit()}
+          disabled={!canCreate}
+          className="flex shrink-0 items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {/* Phase 8.2 batch 7: button label flips with mode. */}
+          {isPending
+            ? editCharacterId
+              ? "Saving…"
+              : "Creating…"
+            : editCharacterId
+            ? "Save changes"
+            : "Create"}
+          <ChevronRight className="size-3.5" />
+        </button>
+      </div>
 
       <ToastViewport toasts={toasts} onDismiss={dismissToast} />
     </div>
