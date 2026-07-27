@@ -40,6 +40,7 @@ import { CharacterEditButton } from "@/components/characters/character-edit-butt
 import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-card";
 import { HeritagePreviewCard } from "@/components/characters/heritage-preview-card";
 import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
+import { CoreStatsCard } from "@/components/characters/core-stats-card";
 import { proficiencyBonus } from "@/lib/engine/practices";
 import {
   BACKSTORY_FIELDS,
@@ -936,6 +937,17 @@ function OverviewTab({
           />
         </div>
       </section>
+
+      {/* ---- Core stats (mobile only) — Phase 8 UI revamp ----
+          PHYS / MENT / MAG / PROF in a single row above Vitality.
+          Hidden on >= md screens. */}
+      <CoreStatsCard
+        physical={props.attrPhysical}
+        mental={props.attrMental}
+        magical={props.attrMagical}
+        pb={proficiencyBonus(props.level)}
+        proficientAttribute={props.attrProficient}
+      />
 
       {/* ---- Vitality + Defenses (single dense band) ---- */}
       <section
