@@ -38,6 +38,7 @@ import { ItemCard } from "@/components/characters/item-card";
 import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
 import { CharacterEditButton } from "@/components/characters/character-edit-button";
 import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-card";
+import { HeritagePreviewCard } from "@/components/characters/heritage-preview-card";
 import { proficiencyBonus } from "@/lib/engine/practices";
 import {
   BACKSTORY_FIELDS,
@@ -499,6 +500,19 @@ export function CharacterSheetView(props: CharacterSheetProps) {
                 // hardModifiers from the snapshot so the inner
                 // accordion can render ConditionBadges per row.
                 hardModifiers: l.primitive.hardModifiers,
+              },
+            }))}
+            // Phase 8.3e commit 4: heritage links for the new
+            // Heritages accordion (Lineages / Upbringings / Manifests).
+            heritageLinks={props.heritageLinks.map((l) => ({
+              heritageId: l.heritageId,
+              acquiredAtLevel: l.acquiredAtLevel,
+              isMirrored: l.isMirrored,
+              heritage: {
+                id: l.heritage.id,
+                name: l.heritage.name,
+                kind: l.heritage.kind,
+                description: l.heritage.description,
               },
             }))}
           />
@@ -1406,6 +1420,7 @@ function CapabilitiesTab({
   characterId,
   capabilities,
   primitiveLinks,
+  heritageLinks,
   heritageById,
   capabilityById,
   effectById,
@@ -1449,6 +1464,20 @@ function CapabilitiesTab({
   heritageById: Map<string, { name: string; kind: string }>;
   capabilityById: Map<string, { name: string }>;
   effectById: Map<string, { name: string }>;
+  // Phase 8.3e commit 4: heritage links for the new Heritages
+  // accordion. Each entry has the heritageId, acquiredAtLevel,
+  // and the full heritage row (id, name, kind, description).
+  heritageLinks: Array<{
+    heritageId: string;
+    acquiredAtLevel: number;
+    isMirrored: boolean;
+    heritage: {
+      id: string;
+      name: string;
+      kind: string;
+      description: string | null;
+    };
+  }>;
 }) {
   // Group primitives by their origin
   const primitivesByOrigin = new Map<
@@ -1590,6 +1619,76 @@ function CapabilitiesTab({
           )}
         </div>
       </details>
+
+      {/* ===== Accordion 1b: Heritages (Phase 8.3e commit 4) =====
+          Heritages are LINEAGE / UPBRINGING / MANIFEST templates
+          slotted onto a character. Each is rendered as a
+          HeritagePreviewCard — click to open the unified preview
+          modal with the heritage's full detail. We group by kind
+          so the user sees "Lineages" / "Upbringings" / "Manifests"
+          subsections.
+      */}
+      {heritageLinks.length > 0 && (
+        <details
+          className="group rounded-md border border-border bg-card"
+          data-testid="heritages-accordion"
+        >
+          <summary className="flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium cursor-pointer list-none">
+            <span className="flex items-center gap-2">
+              <ScrollText className="size-4 text-muted-foreground" />
+              Heritages ({heritageLinks.length})
+            </span>
+            <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="px-4 pb-4 space-y-3 border-t border-border">
+            {(["LINEAGE", "UPBRINGING", "MANIFEST"] as const).map(
+              (kind) => {
+                const group = heritageLinks.filter(
+                  (h) => h.heritage.kind === kind,
+                );
+                if (group.length === 0) return null;
+                const label =
+                  kind === "LINEAGE"
+                    ? "Lineages"
+                    : kind === "UPBRINGING"
+                      ? "Upbringings"
+                      : "Manifests";
+                return (
+                  <div key={kind} className="space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      <FolderOpen className="size-3" />
+                      {label}
+                      <span className="ml-auto rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium">
+                        {group.length}
+                      </span>
+                    </div>
+                    <ul className="ml-4 space-y-1">
+                      {group
+                        .sort((a, b) =>
+                          a.heritage.name.localeCompare(b.heritage.name),
+                        )
+                        .map((h) => (
+                          <li key={h.heritageId} className="py-0.5">
+                            <HeritagePreviewCard
+                              heritageLink={{
+                                heritageId: h.heritageId,
+                                name: h.heritage.name,
+                                kind: h.heritage.kind as
+                                  | "LINEAGE"
+                                  | "UPBRINGING"
+                                  | "MANIFEST",
+                              }}
+                            />
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                );
+              },
+            )}
+          </div>
+        </details>
+      )}
 
       {/* ===== Accordion 2: Capabilities by Style ===== */}
       {capabilities.length > 0 && (
