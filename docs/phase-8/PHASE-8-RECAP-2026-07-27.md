@@ -1,15 +1,31 @@
-# Phase 8 & 8.5 — Recap (2026-07-27)
+# Phase 8 → 8.5 — Recap (2026-07-27)
 
 **Author:** Senku (recap after `message.txt`)
 **For:** Mashu — review & scheduling
-**Status:** Mashu's 2026-07-27 message.txt locked the dedup architecture. This doc reflects the v2 model below.
+**Status:** Mashu's 2026-07-27 message.txt locked the dedup architecture. Phase numbering re-split to match what we've actually shipped. Open questions stripped of jargon for Mashu's review.
+
+---
+
+## Phase Numbering (re-split)
+
+Going forward I'll use these labels — what we already shipped is split sensibly:
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| **Phase 8.1** — Character creation modal | Tabbed modal for new + edit characters | ✅ Shipped |
+| **Phase 8.2** — BU math + carry-over + mobile fixes | The last batch we just landed (`13b23ac`) | ✅ Shipped |
+| **Phase 8.3** — Per-instance primitive model | v2 storage model from `message.txt` + stacking | 🔨 6 days, next |
+| **Phase 8.4** — Sheet live UI for tags/ops/mirror/conditions | Click primitive → see tags/ops live; mirror toggle works | 📅 After 8.3 |
+| **Phase 8.5** — Collections + Share + Follow + Conditions | In order C-condition, B-conditions evaluator, A-collections, D-share | 📅 After 8.4 |
+
+The order is now: **primitive flattening (8.3) → sheet interactive (8.4) → conditions & collections & share (8.5)**. This matches Mashu's 2026-07-27 intuition.
 
 ---
 
 ## TL;DR
 
-- **Phase 8 (Character Creation Modal):** the modal-based creation flow is **live** and works end-to-end. The biggest design deviation from the original plan: we shipped a **single tabbed UI** for both new and edit modes instead of the planned stepped wizard (Mode A) + tabbed editor (Mode B). Pragmatic simplification that worked.
-- **Phase 8 (Character Sheet):** sheet reads server-resolved values and renders 6 tabs. **Stacking modifiers from primitive duplicates don't actually stack** because the bundle-expander dedupes primitives at write time. Per your 2026-07-27 message.txt the architecture flips this — see "v2 Storage Model" below.
+- **Phase 8.1 + 8.2 (Character Creation Modal + BU math):** the modal-based creation flow is **live** and works end-to-end. The biggest design deviation from the original plan: we shipped a **single tabbed UI** for both new and edit modes instead of the planned stepped wizard (Mode A) + tabbed editor (Mode B). Pragmatic simplification that worked.
+- **Phase 8.3 (Per-Instance Primitives):** next batch of work. Currently stacking modifiers from primitive duplicates don't actually stack because the bundle-expander dedupes primitives at write time. Per Mashu's 2026-07-27 message.txt the architecture flips this — see "v2 Storage Model" below.
 - **Phase 8.5:** not started. Collections schema doesn't exist; `sourceOrigin` is still a freeform string; share-with-link and follow-list-views are in the schema but no UI.
 
 ---
@@ -213,54 +229,63 @@ From your message:
 
 ## Proposed Schedule
 
-Assuming you want to land Phase 8 before opening 8.5:
+**Phase 8.3 — Per-instance primitive model (6 days)**
 
 ```
 Week 1 (Aug 4–8):
-  Mon–Wed: 8.3a — De-collapse expander + schema migration
-  Thu–Fri: 8.3b — Owned-set registry + mirror refund
+  Mon:       8.3a — Schema migration + bundle-expander stays as-is for inheritance
+  Tue–Wed:   8.3b — Modal store: reworked direct-slot writes with mirror toggle
+  Thu–Fri:   8.3c — Stacking engine: instance array flow + sheet wiring
 
 Week 2 (Aug 11–15):
-  Mon–Wed: 8.3c — Sheet rewire to use instance array + stacking
-  Thu:     8.3d — <ConditionBadges> drop-in
-  Fri:     8.3e — Multi-instance UI in Capabilities tab
-
-Week 3 (Aug 18–22):
-  Buffer / integration testing / regression catches
-  → Phase 8 closed by Aug 22
-
-Week 4 (Aug 25–29):
-  Phase 8.5 Track A — Collections schema + composer dropdowns
-  (Skip Track B until 8.5 closeout design session)
-
-Week 5 (Sep 1–5):
-  Phase 8.5 Track A continued — UI for browsing collections
-  + Track D start — share-with-link
-
-Week 6 (Sep 8–12):
-  Phase 8.5 Track D — profile page + default collections
-  + Track B start — condition evaluator v1
+  Mon:       8.3d — <ConditionBadges> drop-in on sheet
+  Tue–Wed:   8.3e — Multi-instance UI in Capabilities tab + "add another copy" button
+  Thu:       Buffer / regression catches
+  Fri:       → Phase 8.3 closed by Aug 15
 ```
 
-This is **6 weeks of focused work** to close Phase 8 + a meaningful chunk of Phase 8.5. Tracks B and C can run in parallel with D after Week 4.
+**Phase 8.4 — Sheet live UI (~4–5 days)**
+Track C from above: click primitive → see tags/ops live; mirror toggle works in real-time; conditions show real effects.
+
+**Phase 8.5 — Collections + Share + Follow + Conditions (~12–14 days)**
+Order: B (conditions) → A (collections) → D (share + follow). Or swap if you prefer.
 
 ---
 
-## Open Questions (status as of 2026-07-27)
+## Open Questions (plain English)
 
-1. ~~Dedup at write vs at compute~~ — **RESOLVED** in `message.txt` v2 model. Schema migration: drop PK, add `instance_id` UUID, add partial unique indexes for inherited/mirror, unlimited direct-paid rows.
+### Q1: Phase 8.3 engine math location
 
-2. ~~Mirror refund semantics~~ — **RESOLVED**. Player toggles `[x] Mirror` on the direct slot. Mirror row costs −buCost (credit); paid row costs +buCost. Player chooses.
+**The question:** When a player opens their character sheet, where does the math (summing modifiers, applying stacking rules, getting the final vitality number) actually run?
 
-3. **Engine layer for sheet.** Today the sheet reads server-resolved values. With per-instance stacking, do you want:
-   - **(A)** Server resolves everything (modifier engine on the API route), sheet is pure display
-   - **(B)** Client-side pass: API returns raw instance array, sheet runs `evaluateModifiers()` in browser for live updates
-   - **(C)** Hybrid: server resolves for read-only display, client re-resolves for the edit modal
+- **(A) Server does the math** — server returns `{ vitality: 24, sources: [...] }`, your sheet just displays it. Always correct, no chance of drift. Slight delay each time you change something in the modal (small round-trip).
+- **(B) Browser does the math** — server sends raw primitive list, browser calculates locally. Instant updates as you edit. Risk: if I'm sloppy, the display and save can drift out of sync.
+- **(C) Hybrid** — server does math for the public read-only sheet (what others see when you share); browser does math for the edit modal (so you get instant feedback as you slot primitives). Two code paths, but each does what it's best at.
 
-4. **Phase 8.5 priority order.** My proposed order is A → D → B → C. Do you want to reorder, or skip some tracks entirely?
+**My recommendation: C (hybrid).** The modal already does live math in the store; we keep that. The public sheet URL reads server-resolved values, which is the part that needs to be "guaranteed legit."
 
-5. **Share-with-link scope.** Read-only source pages only, or also editable for collaborators (Google-Docs-style)?
+**If you want the simplest possible code: pick A.** The 100-300ms round-trip on modal edits is barely noticeable.
+
+### Q2: Phase 8.5 priority
+
+The four Phase 8.5 tracks:
+
+| Track | What it is | Why this order matters |
+|-------|-----------|------------------------|
+| **C — Sheet live UI** | Make the character sheet interactive — click a primitive, see its tags/ops, mirror toggle works in real-time, conditions show real effects | Comes first because **the v2 storage model (Phase 8.3) needs an interactive sheet to feel meaningful** — otherwise stacking does nothing visible |
+| **B — Condition evaluator** | Right now "poisoned" or "prone" just say `true`. This makes them mean something (poisoned = −2 to attack rolls, etc.) | Comes second because Track C will display these conditions and they need to do something |
+| **A — Collections** | "Playlists" for primitives/heritages/capabilities. Save to collection, browse collection | Comes third because nobody needs collections until the sheet + conditions are working |
+| **D — Share + Follow** | Make a character or collection shareable via link. Follow other people's published lists | Comes last because **sharing needs collections to share** (and a working sheet to share from) |
+
+**Recommended order: C → B → A → D** (which matches your 2026-07-27 instinct).
+
+### Q3: Share-with-link scope
+
+When you share a character/collection via link, what can the recipient do?
+
+- **Read-only** — they can view but not edit (safer, simpler)
+- **Editable for collaborators** — like Google Docs, multiple people can edit (more complex, needs permissions UI)
 
 ---
 
-*Once you answer Q3/Q4/Q5, I'll cut the schedule into actual implementation batches.*
+*Once you answer Q1/Q2/Q3, I'll cut the schedule into actual implementation batches.*
