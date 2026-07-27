@@ -294,13 +294,32 @@ export function SlotReceiverTab({
   ctaPrimary,
   ctaSecondary,
 }: SlotReceiverTabProps) {
-  const { pendingSlots, removeSlot, setSlotMirror } = useCharacterModal();
+  const { pendingSlots, removeSlot, setSlotMirror, queueSlot } = useCharacterModal();
   const slots = pendingSlots[tabId];
 
   const heritageSlots = useMemo(
     () => slots.filter((s) => s.kind === "heritage"),
     [slots],
   );
+
+  // Phase 8.3b: dedupe primitive slots by (primitiveId, mirror) for
+  // rendering — one card per unique combo. Direct-paid copies are
+  // rendered as one card with a copy counter; mirror rows get their
+  // own card. The first matching slot wins as the representative
+  // (its index is used for Remove).
+  const renderedSlots = useMemo(() => {
+    const seen = new Set<string>();
+    return slots.filter((slot) => {
+      if (slot.kind !== "primitive") return true;
+      const key =
+        slot.mirror === true
+          ? `mirror:${slot.primitiveId}`
+          : `direct:${slot.primitiveId}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [slots]);
 
   return (
     <div className="space-y-4">
@@ -316,32 +335,61 @@ export function SlotReceiverTab({
         </div>
       ) : (
         <ul className="space-y-3">
-          {slots.map((slot, idx) =>
-            slot.kind === "heritage" ? (
-              <HeritageSlotCard
-                key={slot.slotId ?? `heritage-${slot.heritageId}-${idx}`}
-                slot={slot}
-                onRemove={() => removeSlot(tabId, idx)}
-              />
-            ) : slot.kind === "capability" ? (
-              <CapabilitySlotCard
-                key={slot.slotId ?? `capability-${slot.capabilityId}-${idx}`}
-                slot={slot}
-                onRemove={() => removeSlot(tabId, idx)}
-              />
-            ) : (
-              <MechanicSlotRow
-                key={slot.slotId ?? `${slot.kind}-${idx}`}
-                slot={slot}
-                onRemove={() => removeSlot(tabId, idx)}
-                onToggleMirror={
-                  slot.kind === "primitive" && slot.isMirrorable
-                    ? (mirror: boolean) => setSlotMirror(slot.slotId ?? "", mirror)
-                    : undefined
-                }
-              />
-            ),
-          )}
+          {renderedSlots.map((slot, idx) => {
+            // Find the real index in the slots array by slotId match.
+            const realIdx = slot.slotId
+              ? slots.findIndex((s) => s.slotId === slot.slotId)
+              : slots.indexOf(slot);
+            if (slot.kind === "heritage") {
+              return (
+                <HeritageSlotCard
+                  key={slot.slotId ?? `heritage-${slot.heritageId}-${idx}`}
+                  slot={slot}
+                  onRemove={() => removeSlot(tabId, realIdx)}
+                />
+              );
+            }
+            if (slot.kind === "capability") {
+              return (
+                <CapabilitySlotCard
+                  key={slot.slotId ?? `capability-${slot.capabilityId}-${idx}`}
+                  slot={slot}
+                  onRemove={() => removeSlot(tabId, realIdx)}
+                />
+              );
+            }
+            if (slot.kind === "primitive") {
+              return (
+                <PrimitiveSlotRow
+                  key={`primitive-${slot.primitiveId}-${slot.mirror === true ? "mirror" : "direct"}-${idx}`}
+                  slot={slot}
+                  slots={slots}
+                  tabId={tabId}
+                  onRemove={() => removeSlot(tabId, realIdx)}
+                  onToggleMirror={(mirror: boolean) =>
+                    setSlotMirror(slot.slotId ?? "", mirror)
+                  }
+                  onAddAnotherCopy={() => {
+                    queueSlot({
+                      kind: "primitive",
+                      primitiveId: slot.primitiveId,
+                      tab: slot.tab,
+                      name: slot.name,
+                      mirror: false,
+                      ...(slot.isMirrorable === true ? { isMirrorable: true } : {}),
+                      ...(typeof slot.mirrorBuCredit === "number"
+                        ? { mirrorBuCredit: slot.mirrorBuCredit }
+                        : {}),
+                      ...(typeof slot.buCost === "number"
+                        ? { buCost: slot.buCost }
+                        : {}),
+                    });
+                  }}
+                />
+              );
+            }
+            return null;
+          })}
         </ul>
       )}
 
@@ -426,6 +474,122 @@ function MechanicSlotRow({
             )
           </span>
         </label>
+      ) : null}
+    </li>
+  );
+}
+
+/**
+ * Phase 8.3b: render one card per unique primitiveId, with a copy
+ * counter and an "Add another copy" button if there are multiple
+ * direct-paid copies. Mirror rows appear as a separate row in the
+ * DB (different row), so they get their own slot in the queue —
+ * shown alongside the copies with a "Mirrored" badge.
+ *
+ * The card aggregates all slots in `slots` with the same primitiveId,
+ * counting direct-paid copies and noting mirror presence.
+ */
+function PrimitiveSlotRow({
+  slot,
+  slots,
+  onRemove,
+  onToggleMirror,
+  onAddAnotherCopy,
+}: {
+  slot: Extract<PendingSlot, { kind: "primitive" }>;
+  slots: ReadonlyArray<PendingSlot>;
+  tabId: string;
+  onRemove: () => void;
+  onToggleMirror: (mirror: boolean) => void;
+  onAddAnotherCopy: () => void;
+}) {
+  // Aggregate all copies of this primitiveId (direct-paid only —
+  // mirror rows are a separate concept and shown below if present).
+  const copies = slots.filter(
+    (s) =>
+      s.kind === "primitive" &&
+      s.primitiveId === slot.primitiveId &&
+      s.mirror !== true,
+  );
+  const mirrorRow = slots.find(
+    (s) =>
+      s.kind === "primitive" &&
+      s.primitiveId === slot.primitiveId &&
+      s.mirror === true &&
+      s.slotId !== slot.slotId,
+  );
+
+  const copyCount = copies.length;
+  const isMirrorable = slot.isMirrorable === true;
+  const mirrored = slot.mirror === true;
+  const buCost = slot.buCost ?? 0;
+
+  return (
+    <li className="space-y-2 rounded-md border border-border p-3 text-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-foreground">{slot.name}</span>
+            {copyCount > 1 ? (
+              <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase text-blue-700 dark:text-blue-300">
+                ×{copyCount}
+              </span>
+            ) : null}
+            {isMirrorable ? (
+              <span
+                className={
+                  "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase " +
+                  (mirrored
+                    ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                    : "bg-secondary text-secondary-foreground")
+                }
+              >
+                {mirrored ? "Mirrored" : "Mirrorable"}
+              </span>
+            ) : null}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Direct primitive
+            {copyCount > 1 ? ` (${copyCount} copies, ${copyCount * buCost} BU total)` : ` (${buCost} BU)`}
+            {mirrored ? ` → −${slot.mirrorBuCredit ?? buCost} BU debt` : ""}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="shrink-0 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-destructive hover:text-destructive"
+        >
+          Remove
+        </button>
+      </div>
+      {isMirrorable ? (
+        <label className="flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={mirrored}
+            onChange={(e) => onToggleMirror(e.target.checked)}
+            className="size-4 rounded border-border text-primary focus:ring-primary"
+          />
+          <span className="text-muted-foreground">
+            Mirror this primitive (BU debt of{" "}
+            <span className="font-mono">
+              −{slot.mirrorBuCredit ?? buCost}
+            </span>
+            )
+          </span>
+        </label>
+      ) : null}
+      <button
+        type="button"
+        onClick={onAddAnotherCopy}
+        className="rounded-md border border-dashed border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-primary hover:text-primary"
+      >
+        + Add another copy ({buCost} BU)
+      </button>
+      {mirrorRow && mirrorRow.kind === "primitive" ? (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-900 dark:text-amber-200">
+          ↳ Mirrored instance: −{mirrorRow.mirrorBuCredit ?? mirrorRow.buCost ?? 0} BU debt (links to this primitive)
+        </div>
       ) : null}
     </li>
   );
