@@ -8,23 +8,15 @@
 // a library picker. Instead, the user slots things from /atelier via
 // the context-aware "Slot into [step]" button on library previews.
 //
-// === Phase 8.1 batch 9: heritage expansion ===
-// When a heritage is slotted, this tab fetches its bundled primitives,
-// capabilities, and effects (from /api/heritage/[id]) and renders them
-// under the heritage name. The user sees what they're getting without
-// having to drill into the heritage itself.
-//
-// Bundles are fetched lazily — only when at least one heritage slot is
-// present on this tab. We cache the bundle in a Map keyed by heritageId
-// for the session, so re-renders don't refetch.
-//
-// === What does NOT live here yet ===
-//   - Capability auto-expand to primitives (batch 10). Right now
-//     capability slots in the receiver show as a flat list. After
-//     batch 10 they should auto-expand their bundled primitives.
-//   - Per-slot Mirrored flag for heritage (Phase 7 Q-M-UX) — heritage
-//     slot's isMirrored is read-only for now; UI ships the badge in
-//     a follow-up.
+// === Phase 8.3b UI revamp: unified top + collapsed bottom ===
+// Each tab now renders two sections:
+//   1. Top — unified primitive list (all direct + inherited, with
+//      full controls). The user can mirror or copy ANY primitive
+//      active in this tab right from the list.
+//   2. Bottom — source bundles (heritages + direct capabilities),
+//      collapsed into accordions. Expandable to see provenance /
+//      read-only breakdown. Most of the screen real estate goes to
+//      the primitives, not the heritage chrome.
 // =============================================================================
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -33,6 +25,12 @@ import {
   type CharacterTabId,
   type PendingSlot,
 } from "../character-modal-store";
+import {
+  useTabPrimitives,
+  registerBundleCacheReader,
+  provenanceLabel,
+  type InheritedPrimitive,
+} from "./use-tab-primitives";
 
 interface SlotReceiverTabProps {
   tabId: CharacterTabId;
@@ -109,6 +107,16 @@ interface CapabilityBundle {
   computedBu: number;
 }
 const capabilityBundleCache = new Map<string, CapabilityBundle | null>();
+
+/**
+ * Phase 8.3b UI revamp: expose bundle caches to useTabPrimitives via
+ * a registered reader. The hook walks heritage + capability bundles
+ * to build the unified primitive list at the top of each tab.
+ */
+registerBundleCacheReader(() => ({
+  heritageBundles: heritageBundleCache,
+  capabilityBundles: capabilityBundleCache,
+}));
 
 /**
  * Phase 8.1 batch 10: parent components (footer) need a quick lookup
@@ -297,74 +305,84 @@ export function SlotReceiverTab({
   const { pendingSlots, removeSlot, setSlotMirror, queueSlot } = useCharacterModal();
   const slots = pendingSlots[tabId];
 
-  const heritageSlots = useMemo(
-    () => slots.filter((s) => s.kind === "heritage"),
-    [slots],
-  );
+  const { direct, inherited, heritageSlots, capabilitySlots } =
+    useTabPrimitives(tabId);
 
-  // Phase 8.3b: dedupe primitive slots by (primitiveId, mirror) for
-  // rendering — one card per unique combo. Direct-paid copies are
-  // rendered as one card with a copy counter; mirror rows get their
-  // own card. The first matching slot wins as the representative
-  // (its index is used for Remove).
-  const renderedSlots = useMemo(() => {
-    const seen = new Set<string>();
-    return slots.filter((slot) => {
-      if (slot.kind !== "primitive") return true;
-      const key =
-        slot.mirror === true
-          ? `mirror:${slot.primitiveId}`
-          : `direct:${slot.primitiveId}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }, [slots]);
+  // Force re-render when bundle caches populate (inherited list changes).
+  // HeritageSlotCard fires sw-character-bundle-loaded on fetch complete;
+  // we bump a counter so this tab re-derives.
+  const [bundleVersion, setBundleVersion] = useState(0);
+  useEffect(() => {
+    const handler = () => setBundleVersion((v) => v + 1);
+    if (typeof window !== "undefined") {
+      window.addEventListener("sw-character-bundle-loaded", handler);
+      return () => window.removeEventListener("sw-character-bundle-loaded", handler);
+    }
+    return undefined;
+  }, []);
+
+  const isEmpty =
+    slots.length === 0 && inherited.length === 0;
+
+  // ---------------------------------------------------------------------
+  // SECTION 1: Unified primitive list (top).
+  //
+  // We render ONE row per "instance parent" so the copy counter only
+  // counts copies attached to the same parent. Two PendingSlots of the
+  // same primitiveId with the same slot are different parents — each
+  // gets its own row, own counter, own "add another" button.
+  //
+  // Direct slots (the user explicitly added these on this tab) come
+  // first; inherited rows (from heritage/capability/effect bundles)
+  // come after, tagged with provenance.
+  // ---------------------------------------------------------------------
+
+  const directRows = direct; // already filtered by useTabPrimitives
+
+  const inheritedRows = inherited;
+
+  // ---------------------------------------------------------------------
+  // SECTION 2: Source bundles (bottom, collapsible).
+  // ---------------------------------------------------------------------
+
+  const totalBundleCount = heritageSlots.length + capabilitySlots.length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
         <h3 className="text-base font-semibold text-foreground">{title}</h3>
         <p className="mt-1 text-xs text-muted-foreground">{help}</p>
       </div>
 
-      {slots.length === 0 ? (
+      {isEmpty ? (
         <div className="rounded-md border border-dashed border-border bg-muted/40 p-6 text-center">
           <p className="text-sm font-medium text-foreground">{ctaPrimary}</p>
           <p className="mt-1 text-xs text-muted-foreground">{ctaSecondary}</p>
         </div>
-      ) : (
-        <ul className="space-y-3">
-          {renderedSlots.map((slot, idx) => {
-            // Find the real index in the slots array by slotId match.
-            const realIdx = slot.slotId
-              ? slots.findIndex((s) => s.slotId === slot.slotId)
-              : slots.indexOf(slot);
-            if (slot.kind === "heritage") {
+      ) : null}
+
+      {/* SECTION 1: Unified primitive list */}
+      {!isEmpty ? (
+        <section>
+          <header className="mb-2 flex items-baseline justify-between">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Active Primitives ({directRows.length + inheritedRows.length})
+            </h4>
+            <span className="text-[10px] text-muted-foreground">
+              Mirror, expand, or duplicate — all from here
+            </span>
+          </header>
+          <ul className="space-y-2">
+            {/* Direct primitives — each slot is its own row, no global dedup */}
+            {directRows.map((slot, idx) => {
+              const realIdx = slot.slotId
+                ? slots.findIndex((s) => s.slotId === slot.slotId)
+                : slots.indexOf(slot);
               return (
-                <HeritageSlotCard
-                  key={slot.slotId ?? `heritage-${slot.heritageId}-${idx}`}
+                <DirectPrimitiveRow
+                  key={`direct-${slot.slotId ?? `${slot.primitiveId}-${idx}`}`}
                   slot={slot}
-                  onRemove={() => removeSlot(tabId, realIdx)}
-                />
-              );
-            }
-            if (slot.kind === "capability") {
-              return (
-                <CapabilitySlotCard
-                  key={slot.slotId ?? `capability-${slot.capabilityId}-${idx}`}
-                  slot={slot}
-                  onRemove={() => removeSlot(tabId, realIdx)}
-                />
-              );
-            }
-            if (slot.kind === "primitive") {
-              return (
-                <PrimitiveSlotRow
-                  key={`primitive-${slot.primitiveId}-${slot.mirror === true ? "mirror" : "direct"}-${idx}`}
-                  slot={slot}
-                  slots={slots}
-                  tabId={tabId}
+                  allDirectSlots={directRows}
                   onRemove={() => removeSlot(tabId, realIdx)}
                   onToggleMirror={(mirror: boolean) =>
                     setSlotMirror(slot.slotId ?? "", mirror)
@@ -376,7 +394,9 @@ export function SlotReceiverTab({
                       tab: slot.tab,
                       name: slot.name,
                       mirror: false,
-                      ...(slot.isMirrorable === true ? { isMirrorable: true } : {}),
+                      ...(slot.isMirrorable === true
+                        ? { isMirrorable: true }
+                        : {}),
                       ...(typeof slot.mirrorBuCredit === "number"
                         ? { mirrorBuCredit: slot.mirrorBuCredit }
                         : {}),
@@ -387,154 +407,132 @@ export function SlotReceiverTab({
                   }}
                 />
               );
-            }
-            return null;
-          })}
-        </ul>
-      )}
+            })}
+            {/* Inherited primitives — read-only provenance rows */}
+            {inheritedRows.map((p, idx) => (
+              <InheritedPrimitiveRow
+                key={`inherited-${p.primitiveId}-${idx}`}
+                primitive={p}
+                onMirror={() => {
+                  // Mirror an inherited primitive: write a new direct
+                  // mirror slot. We need isMirrorable + mirrorBuCredit
+                  // from the underlying primitive — fall back to buCost
+                  // if mirrorBuCredit unknown.
+                  queueSlot({
+                    kind: "primitive",
+                    primitiveId: p.primitiveId,
+                    tab: tabId,
+                    name: p.name,
+                    mirror: true,
+                    ...(typeof p.buCost === "number"
+                      ? { buCost: p.buCost }
+                      : {}),
+                    ...(typeof p.mirrorBuCredit === "number"
+                      ? { mirrorBuCredit: p.mirrorBuCredit }
+                      : {}),
+                  });
+                }}
+                onAddCopy={() => {
+                  // Add a direct-paid copy of an inherited primitive.
+                  queueSlot({
+                    kind: "primitive",
+                    primitiveId: p.primitiveId,
+                    tab: tabId,
+                    name: p.name,
+                    mirror: false,
+                    ...(typeof p.buCost === "number"
+                      ? { buCost: p.buCost }
+                      : {}),
+                  });
+                }}
+              />
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
-      {/* Hide the heritage count when none exist (avoids noisy
-          counters in the empty state). */}
-      {heritageSlots.length === 0 && slots.length > 0 ? null : null}
+      {/* SECTION 2: Source bundles (collapsed accordions) */}
+      {totalBundleCount > 0 ? (
+        <section>
+          <header className="mb-2 flex items-baseline justify-between">
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Source Bundles ({totalBundleCount})
+            </h4>
+            <span className="text-[10px] text-muted-foreground">
+              Provenance — click [v] to inspect
+            </span>
+          </header>
+          <ul className="space-y-2">
+            {heritageSlots.map((slot, idx) => {
+              const realIdx = slot.slotId
+                ? slots.findIndex((s) => s.slotId === slot.slotId)
+                : slots.indexOf(slot);
+              return (
+                <HeritageSlotCard
+                  key={`heritage-${slot.slotId ?? `${slot.heritageId}-${idx}`}`}
+                  slot={slot}
+                  onRemove={() => removeSlot(tabId, realIdx)}
+                />
+              );
+            })}
+            {capabilitySlots.map((slot, idx) => {
+              const realIdx = slot.slotId
+                ? slots.findIndex((s) => s.slotId === slot.slotId)
+                : slots.indexOf(slot);
+              return (
+                <CapabilitySlotCard
+                  key={`capability-${slot.slotId ?? `${slot.capabilityId}-${idx}`}`}
+                  slot={slot}
+                  onRemove={() => removeSlot(tabId, realIdx)}
+                />
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
+      {/* bundleVersion referenced for re-render only */}
+      {bundleVersion > 0 ? null : null}
     </div>
   );
 }
 
-function MechanicSlotRow({
-  slot,
-  onRemove,
-  onToggleMirror,
-}: {
-  slot: PendingSlot;
-  onRemove: () => void;
-  onToggleMirror?: ((mirror: boolean) => void) | undefined;
-}) {
-  const label = slotLabel(slot);
-  const kindLabel = slotKindLabel(slot);
-  const isMirrorablePrimitive =
-    slot.kind === "primitive" && slot.isMirrorable === true;
-  const mirrored = isMirrorablePrimitive && slot.mirror === true;
-  const buCost = slot.kind === "primitive" ? (slot.buCost ?? 0) : 0;
-  return (
-    <li className="space-y-2 rounded-md border border-border p-3 text-sm">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-foreground">{label}</span>
-            {isMirrorablePrimitive ? (
-              <span
-                className={
-                  "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase " +
-                  (mirrored
-                    ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
-                    : "bg-secondary text-secondary-foreground")
-                }
-              >
-                {mirrored ? "Mirrored" : "Mirrorable"}
-              </span>
-            ) : null}
-          </div>
-          <div className="text-xs text-muted-foreground">{kindLabel}</div>
-          {isMirrorablePrimitive ? (
-            <div className="mt-1 text-xs text-muted-foreground">
-              <span className="font-mono">{buCost} BU</span>
-              {mirrored ? (
-                <>
-                  {" "}
-                  →{" "}
-                  <span className="font-mono text-amber-700 dark:text-amber-300">
-                    −{slot.mirrorBuCredit ?? buCost} BU (debt)
-                  </span>
-                </>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="shrink-0 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-destructive hover:text-destructive"
-        >
-          Remove
-        </button>
-      </div>
-      {isMirrorablePrimitive && onToggleMirror ? (
-        <label className="flex items-center gap-2 text-xs">
-          <input
-            type="checkbox"
-            checked={mirrored}
-            onChange={(e) => onToggleMirror(e.target.checked)}
-            className="size-4 rounded border-border text-primary focus:ring-primary"
-          />
-          <span className="text-muted-foreground">
-            Mirror this primitive (BU debt of{" "}
-            <span className="font-mono">
-              −{slot.mirrorBuCredit ?? buCost}
-            </span>
-            )
-          </span>
-        </label>
-      ) : null}
-    </li>
-  );
-}
+// =============================================================================
+// DirectPrimitiveRow — one row per PendingSlot.
+//
+// Bug fix for Phase 8.3b UI revamp: copy counter is per-slot, not
+// per-primitiveId. A direct slot is its own parent — the counter
+// counts copies *attached to this specific slot* (none today, but
+// kept as a hook for future "group siblings" behavior). Mirror rows
+// are separate slots too and get their own row.
+//
+// Actually, the simpler model: each PendingSlot IS one row. The
+// counter shows "1 of 1" if there's only this slot; "this is slot N"
+// if a future phase groups siblings. For now, we just render each
+// slot cleanly.
+// =============================================================================
 
-/**
- * Phase 8.3b: render one card per unique primitiveId, with a copy
- * counter and an "Add another copy" button if there are multiple
- * direct-paid copies. Mirror rows appear as a separate row in the
- * DB (different row), so they get their own slot in the queue —
- * shown alongside the copies with a "Mirrored" badge.
- *
- * The card aggregates all slots in `slots` with the same primitiveId,
- * counting direct-paid copies and noting mirror presence.
- */
-function PrimitiveSlotRow({
+function DirectPrimitiveRow({
   slot,
-  slots,
   onRemove,
   onToggleMirror,
   onAddAnotherCopy,
 }: {
   slot: Extract<PendingSlot, { kind: "primitive" }>;
-  slots: ReadonlyArray<PendingSlot>;
-  tabId: string;
+  allDirectSlots: ReadonlyArray<Extract<PendingSlot, { kind: "primitive" }>>;
   onRemove: () => void;
   onToggleMirror: (mirror: boolean) => void;
   onAddAnotherCopy: () => void;
 }) {
-  // Aggregate all copies of this primitiveId (direct-paid only —
-  // mirror rows are a separate concept and shown below if present).
-  const copies = slots.filter(
-    (s) =>
-      s.kind === "primitive" &&
-      s.primitiveId === slot.primitiveId &&
-      s.mirror !== true,
-  );
-  const mirrorRow = slots.find(
-    (s) =>
-      s.kind === "primitive" &&
-      s.primitiveId === slot.primitiveId &&
-      s.mirror === true &&
-      s.slotId !== slot.slotId,
-  );
-
-  const copyCount = copies.length;
   const isMirrorable = slot.isMirrorable === true;
   const mirrored = slot.mirror === true;
   const buCost = slot.buCost ?? 0;
 
   return (
-    <li className="space-y-2 rounded-md border border-border p-3 text-sm">
+    <li className="space-y-2 rounded-md border border-border bg-card p-3 text-sm">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="font-medium text-foreground">{slot.name}</span>
-            {copyCount > 1 ? (
-              <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase text-blue-700 dark:text-blue-300">
-                ×{copyCount}
-              </span>
-            ) : null}
             {isMirrorable ? (
               <span
                 className={
@@ -549,8 +547,7 @@ function PrimitiveSlotRow({
             ) : null}
           </div>
           <div className="text-xs text-muted-foreground">
-            Direct primitive
-            {copyCount > 1 ? ` (${copyCount} copies, ${copyCount * buCost} BU total)` : ` (${buCost} BU)`}
+            Direct primitive · {buCost} BU
             {mirrored ? ` → −${slot.mirrorBuCredit ?? buCost} BU debt` : ""}
           </div>
         </div>
@@ -586,11 +583,62 @@ function PrimitiveSlotRow({
       >
         + Add another copy ({buCost} BU)
       </button>
-      {mirrorRow && mirrorRow.kind === "primitive" ? (
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-900 dark:text-amber-200">
-          ↳ Mirrored instance: −{mirrorRow.mirrorBuCredit ?? mirrorRow.buCost ?? 0} BU debt (links to this primitive)
+    </li>
+  );
+}
+
+// =============================================================================
+// InheritedPrimitiveRow — read-only primitive from a bundle.
+//
+// Renders the primitive with its provenance tag ("via Aegis Shield").
+// Two action buttons:
+//   * "Mirror" — writes a new direct mirror slot (inheritance doesn't
+//     carry mirror; the user opts into the debt for this specific char).
+//   * "+ Add copy" — writes a new direct-paid row. Useful for stacking
+//     extra copies of an inherited primitive on top of the baseline.
+// =============================================================================
+
+function InheritedPrimitiveRow({
+  primitive,
+  onMirror,
+  onAddCopy,
+}: {
+  primitive: InheritedPrimitive;
+  onMirror: () => void;
+  onAddCopy: () => void;
+}) {
+  const buCost = primitive.buCost ?? 0;
+  return (
+    <li className="space-y-2 rounded-md border border-border/60 bg-card/60 p-3 text-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-foreground">{primitive.name}</span>
+            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700 dark:text-emerald-300">
+              Inherited
+            </span>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {buCost} BU · {provenanceLabel(primitive.provenance)}
+          </div>
         </div>
-      ) : null}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onMirror}
+          className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-amber-500 hover:text-amber-700 dark:hover:text-amber-300"
+        >
+          ⌐ Mirror (−{buCost} BU debt)
+        </button>
+        <button
+          type="button"
+          onClick={onAddCopy}
+          className="rounded-md border border-dashed border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-primary hover:text-primary"
+        >
+          + Add direct copy ({buCost} BU)
+        </button>
+      </div>
     </li>
   );
 }
