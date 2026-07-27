@@ -2,16 +2,53 @@
 
 **Author:** Senku (recap after `message.txt`)
 **For:** Mashu — review & scheduling
-
-This is a **read-only** status report of what's done, what's left, and a proposed schedule. No code changes yet — waiting for Mashu's call on priorities and the open questions at the bottom.
+**Status:** Mashu's 2026-07-27 message.txt locked the dedup architecture. This doc reflects the v2 model below.
 
 ---
 
 ## TL;DR
 
 - **Phase 8 (Character Creation Modal):** the modal-based creation flow is **live** and works end-to-end. The biggest design deviation from the original plan: we shipped a **single tabbed UI** for both new and edit modes instead of the planned stepped wizard (Mode A) + tabbed editor (Mode B). Pragmatic simplification that worked.
-- **Phase 8 (Character Sheet):** sheet reads server-resolved values and renders 6 tabs. **Stacking modifiers from primitive duplicates don't actually stack** because the bundle-expander dedupes primitives at write time. This is the gap your `message.txt` architecture diagram is solving.
+- **Phase 8 (Character Sheet):** sheet reads server-resolved values and renders 6 tabs. **Stacking modifiers from primitive duplicates don't actually stack** because the bundle-expander dedupes primitives at write time. Per your 2026-07-27 message.txt the architecture flips this — see "v2 Storage Model" below.
 - **Phase 8.5:** not started. Collections schema doesn't exist; `sourceOrigin` is still a freeform string; share-with-link and follow-list-views are in the schema but no UI.
+
+---
+
+## v2 Storage Model (per Mashu 2026-07-27 message.txt)
+
+The 3 storage outcomes from a single primitive_id:
+
+| Action | Storage | BU | Effect |
+|--------|---------|-----|--------|
+| **Inherited** (×N from heritage/capability/effect) | **1 row, collapsed** | 0 | 1× |
+| **Direct + paid** (player adds to sheet, mirror unchecked) | **N rows, separate** | Full BU each | Stacks (2×, 3×, …) |
+| **Direct + mirrored** (player adds + checks mirror) | **1 row, links to inherited** | −BU credit | Inherits baseline; flips sign |
+
+**Schema implication:** the existing PK `(character_id, primitive_id)` must change. New shape:
+
+- One **inherited** row per `(character_id, primitive_id)` where `origin_* IS NOT NULL` — collapses all inheritance paths
+- One **mirror** row per `(character_id, primitive_id)` where `origin IS NULL AND is_mirrored = true`
+- **N direct-paid** rows per `(character_id, primitive_id)` where `origin IS NULL AND is_mirrored = false` — each is a separate stack
+
+**Concretely:**
+- Drop PK `(character_id, primitive_id)`
+- Add `instance_id UUID defaultRandom()` — surrogate key for direct-paid rows
+- Add partial unique indexes:
+  - `UNIQUE (character_id, primitive_id) WHERE origin_heritage_id IS NOT NULL OR origin_capability_id IS NOT NULL OR origin_effect_id IS NOT NULL`
+  - `UNIQUE (character_id, primitive_id) WHERE origin IS NULL AND is_mirrored = true`
+- Direct-paid rows have no UNIQUE constraint — multiple allowed
+
+**Mirror logic at the engine layer:**
+- When player slots a primitive directly with `is_mirrored = true`:
+  - Check if inherited row exists for this `(character, primitive_id)`
+  - If yes → mirror row links to it; cost = −buCost (credit)
+  - If no → mirror row is a standalone negative instance; cost = −buCost (credit)
+- When player slots a primitive directly with `is_mirrored = false`:
+  - Cost = +buCost (pay full)
+  - Each is a separate direct-paid instance (N rows allowed)
+  - Stacks via modifier engine's `stacking: "stack"` rule
+
+**Stacking engine receives the post-storage array** of primitive instances per character. For each target (e.g. `max-vitality`), it groups by primitive_id, looks up the stacking rule on the modifier, and resolves per `stack` / `highest-only` / `lowest-only` / `unique-by-primitive` / `unique-by-target` / `replace`. The author writes the stacking rule per modifier — players don't pick.
 
 ---
 
@@ -93,34 +130,43 @@ Your `message.txt` describes a clean **3-phase pipeline**:
 | **2. Economy & Debt** | BU cost paid per primitive row (with mirror credit) | Pay BU ONCE per primitive_id; mirror toggles give back BU equal to cost | **Dedupe at the BU calculation layer**, not at storage |
 | **3. Modifier Engine** | `evaluateModifiers` supports all stacking modes — but never sees >1 instance of same primitive | Resolve modifiers via stacking rules; mirror flips per-operation | **Already done; just needs Phase 1 to feed it multiple instances** |
 
-### Concrete changes needed
+### Concrete changes needed (per v2 model)
 
-1. **De-collapse bundle-expander:** change `expandBundles()` to emit **one row per occurrence**, not dedup. Origin metadata stays. DB schema needs to allow multiple rows per `(character_id, primitive_id)` — current PK enforces one row. Either:
-   - **(a)** Add an `instance_id` UUID column; remove PK constraint, add unique on `(character_id, primitive_id, instance_id)`
-   - **(b)** Keep dedup but only for storage; pass-through multiple "logical" instances to the engine
+1. **Schema migration:** drop PK `(character_id, primitive_id)`. Add `instance_id UUID defaultRandom()`. Add partial unique indexes:
+   - One inherited row per `(character_id, primitive_id)` (where `origin_*` set)
+   - One mirror row per `(character_id, primitive_id)` (where `origin IS NULL AND is_mirrored = true`)
+   - Multiple direct-paid rows allowed (no unique constraint)
+   - Migration: `0048_multi_instance_primitives.sql`
 
-2. **Mirror refund at the economy layer:** when a direct slot's primitive_id is already in the owned set (inherited from heritage/capability), the direct slot's BU cost becomes **negative** (= mirror credit, equal to its cost). User can disable this toggle to "pay for a second copy" intentionally.
+2. **Bundle-expander stays mostly as-is** for inheritance (collapses to 1 row per primitive_id, picks most-specific origin). The change: now emits 1 row per inheritance, period.
 
-3. **Owned-set registry:** new function `computeOwnedPrimitiveSet(character)` — set of all primitive_ids present in any of: direct slot, heritage bundle, capability bundle, effect bundle. Used by Phase 2 to decide which direct additions are "free mirror."
+3. **Direct slot writes get reworked:**
+   - `character-modal-store.tsx`: when user slots a primitive directly, write a NEW row (not update existing). Each direct slot is a separate insert with a fresh `instance_id`.
+   - Player toggle `[x] Mirror` on the slot → write as `is_mirrored = true`. The cost flips to `−buCost` (credit).
+   - UI shows: "This primitive is already inherited from Lineage 'Ironborn'. Adding it directly costs 4 BU. [ ] Mirror this instead (−4 BU credit, links to inherited copy)"
 
-4. **Wire stacking engine:** the API route that loads a character should now return a `modifier instances` array (one per primitive occurrence), not a deduped primitives array. The sheet (or a derived client-side pass) runs `evaluateModifiers()` over those instances per target.
+4. **Stacking engine wiring:**
+   - `evaluateModifiers` already supports all 6 stacking modes — needs the per-instance data, not the deduped data
+   - API route `/api/characters/[id]` returns the **full instance array** (no dedup at read time either — read = write shape)
+   - `sheet.ts` (or a new `instance-resolver.ts`) iterates instances per target, applies stacking rule per modifier
 
 5. **Character sheet UI:**
-   - Multiple instances of same primitive display as separate cards in the Capabilities tab, each with its own origin badge
+   - Multiple instances of same primitive display as separate cards in the Capabilities tab, each with its own origin badge (or "Direct, mirror" badge if mirrored)
    - `<ConditionBadges>` drop-in on each card showing active/narrative/mirrored status
    - Sheet shows the **resolved value** for each stat (vitality, PB, awareness) alongside the modifier stack that produced it
+   - "Add another copy" button on direct-paid primitives (each click → new row, costs full BU)
 
 ### Scope estimate
 
-This is a **substantial refactor** of the bundle-expander + DB schema + API + sheet. Realistic split:
+This is a **substantial refactor** of the schema + bundle-expander + modal store + API + sheet. Realistic split:
 
-- **8.3a — De-collapse expander + schema migration** (1.5–2 days)
-- **8.3b — Owned-set registry + mirror refund in BU engine** (1 day)
-- **8.3c — Sheet rewire to use instance array + stacking** (2 days)
+- **8.3a — Schema migration + bundle-expander stays-as-is** (1 day)
+- **8.3b — Modal store: reworked direct-slot writes with mirror toggle** (1.5 days)
+- **8.3c — Stacking engine: instance array flow + sheet wiring** (2 days)
 - **8.3d — `<ConditionBadges>` drop-in on sheet** (0.5 day)
-- **8.3e — Multiple-instance UI in Capabilities tab** (1 day)
+- **8.3e — Multi-instance UI in Capabilities tab + "add another copy" button** (1 day)
 
-Total: **6–7 days** of focused work.
+Total: **6 days** of focused work.
 
 ---
 
@@ -200,14 +246,11 @@ This is **6 weeks of focused work** to close Phase 8 + a meaningful chunk of Pha
 
 ---
 
-## Open Questions for You (no implementation until you answer)
+## Open Questions (status as of 2026-07-27)
 
-1. **Dedup at write vs at compute.** Your `message.txt` suggests **no dedup at write** (keep all instances). But the current PK on `(character_id, primitive_id)` enforces one row. Option (a) requires a schema migration; option (b) keeps the constraint but adds a logical "instance counter" or moves dedup downstream. **Which way do you want it?**
+1. ~~Dedup at write vs at compute~~ — **RESOLVED** in `message.txt` v2 model. Schema migration: drop PK, add `instance_id` UUID, add partial unique indexes for inherited/mirror, unlimited direct-paid rows.
 
-2. **Mirror refund semantics.** When you slot a primitive directly that you already own via a heritage, do you want the system to:
-   - **(A)** Auto-mark it as mirrored (free, +BU credit) — the user "intends to mirror"
-   - **(B)** Default to "second copy" (paid) with a checkbox "Mirror this (use BU refund instead)"
-   - **(C)** Different rule for "I really want to pay for a duplicate" vs "I want to mirror this one"
+2. ~~Mirror refund semantics~~ — **RESOLVED**. Player toggles `[x] Mirror` on the direct slot. Mirror row costs −buCost (credit); paid row costs +buCost. Player chooses.
 
 3. **Engine layer for sheet.** Today the sheet reads server-resolved values. With per-instance stacking, do you want:
    - **(A)** Server resolves everything (modifier engine on the API route), sheet is pure display
@@ -220,4 +263,4 @@ This is **6 weeks of focused work** to close Phase 8 + a meaningful chunk of Pha
 
 ---
 
-*Once you answer these, I'll cut the schedule into actual implementation batches.*
+*Once you answer Q3/Q4/Q5, I'll cut the schedule into actual implementation batches.*
