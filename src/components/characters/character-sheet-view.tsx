@@ -95,6 +95,13 @@ type SheetPrimitiveLink = {
     isMirrorable: boolean;
     mirrorBuCredit: number;
     narrativeRule: string;
+    // Phase 8.3d (Mashu 2026-07-27): the primitive's authored
+    // hard_modifiers JSONB, passed through from the DB. Used by
+    // ConditionBadges to render each modifier's condition as a
+    // pill row beneath the primitive name on the character sheet.
+    // unknown[] because we parse the condition shape at render
+    // time (legacy vs v1 differ).
+    hardModifiers: readonly unknown[];
   };
 };
 
@@ -487,6 +494,10 @@ export function CharacterSheetView(props: CharacterSheetProps) {
                 isMirrorable: l.primitive.isMirrorable,
                 mirrorBuCredit: l.primitive.mirrorBuCredit,
                 narrativeRule: l.primitive.narrativeRule ?? "",
+                // Phase 8.3d (Mashu 2026-07-27): pass-through
+                // hardModifiers from the snapshot so the inner
+                // accordion can render ConditionBadges per row.
+                hardModifiers: l.primitive.hardModifiers,
               },
             }))}
           />
@@ -1431,6 +1442,7 @@ function CapabilitiesTab({
       isMirrorable: boolean;
       mirrorBuCredit: number;
       narrativeRule: string;
+      hardModifiers: readonly unknown[];
     };
   }>;
   heritageById: Map<string, { name: string; kind: string }>;

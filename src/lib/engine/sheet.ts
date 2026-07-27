@@ -58,6 +58,16 @@ export type PrimitiveLinkSnapshot = {
     buCost: number;
     isMirrorable: boolean;
     mirrorBuCredit: number;
+    /**
+     * Phase 8.3d (Mashu 2026-07-27): the primitive's authored
+     * hard_modifiers JSONB, passed through verbatim so the
+     * character sheet can render conditions via ConditionBadges.
+     * The BU ledger at the bottom of aggregateCharacterSheet
+     * still drops this (we only evaluate stacking by primitive
+     * id, not by modifier conditions). Future work: wire
+     * conditions into modifier evaluation.
+     */
+    hardModifiers: readonly unknown[];
   };
 };
 

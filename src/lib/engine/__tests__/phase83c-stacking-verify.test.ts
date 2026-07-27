@@ -44,6 +44,10 @@ function makeVitalityLink(opts: {
       buCost: 8,
       isMirrorable: true,
       mirrorBuCredit: 8,
+      // Phase 8.3d (Mashu 2026-07-27): required field on
+      // PrimitiveLinkSnapshot.primitive. Stacking tests don't
+      // exercise conditions, so empty array is correct.
+      hardModifiers: [],
     },
   };
 }

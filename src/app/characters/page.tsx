@@ -91,6 +91,11 @@ async function CharacterCard({
         buCost: number;
         isMirrorable: boolean;
         mirrorBuCredit: number;
+        // Phase 8.3d (Mashu 2026-07-27): included for parity with
+        // /characters/[id]/page.tsx. The list page doesn't render
+        // conditions directly, but the sheet aggregator's
+        // PrimitiveLinkSnapshot requires the field.
+        hardModifiers?: readonly unknown[];
       };
     }>;
     capabilityLinks: Array<{ capabilityId: string }>;
@@ -115,7 +120,13 @@ async function CharacterCard({
       source: "PERSONAL" as const,
       acquiredAtLevel: 1,
       isMirrored: l.isMirrored ?? false,
-      primitive: l.primitive,
+      primitive: {
+        ...l.primitive,
+        // Phase 8.3d: spread may not include hardModifiers if the
+        // type loses it. Default to [] so PrimitiveLinkSnapshot's
+        // hardModifiers: readonly unknown[] requirement is met.
+        hardModifiers: l.primitive.hardModifiers ?? [],
+      },
     })),
     capabilityLinks: [],
     itemLinks: character.itemLinks.map((l) => ({

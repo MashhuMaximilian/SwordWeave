@@ -129,6 +129,8 @@ describe("aggregateCharacterSheet", () => {
               buCost: 4,
               isMirrorable: false,
               mirrorBuCredit: 0,
+              // Phase 8.3d (Mashu 2026-07-27): required field.
+              hardModifiers: [],
             },
           },
         ],

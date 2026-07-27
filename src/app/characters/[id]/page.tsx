@@ -93,6 +93,11 @@ export default async function CharacterSheetPage({
         isMirrorable: l.primitive.isMirrorable,
         mirrorBuCredit: l.primitive.mirrorBuCredit,
         narrativeRule: l.primitive.narrativeRule ?? "",
+        // Phase 8.3d (Mashu 2026-07-27): include hardModifiers in
+        // the aggregator's primitive shape. The aggregator doesn't
+        // use them today, but the type requires it. 8.3d commit 2
+        // will render them via ConditionBadges on the sheet.
+        hardModifiers: l.primitive.hardModifiers ?? [],
       },
     })),
     capabilityLinks: row.capabilityLinks.map((l) => ({
@@ -206,6 +211,14 @@ export default async function CharacterSheetPage({
           isMirrorable: l.primitive.isMirrorable,
           mirrorBuCredit: l.primitive.mirrorBuCredit,
           narrativeRule: l.primitive.narrativeRule ?? "",
+          // Phase 8.3d (Mashu 2026-07-27): surface the primitive's
+          // hard_modifiers JSONB so the character sheet can render
+          // each modifier's condition as a pill badge. The column
+          // is on the primitive row (not the link row), defaults
+          // to [] if not authored. The downstream component
+          // (ConditionBadges) parses both legacy and v1 condition
+          // shapes, so we pass through the raw array.
+          hardModifiers: l.primitive.hardModifiers ?? [],
         },
       }))}
       capabilityLinks={row.capabilityLinks.map((l) => ({
