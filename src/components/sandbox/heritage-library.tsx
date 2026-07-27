@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import { useModalStack } from "@/components/ui/modal-stack";
-import { useCharacterModal, tabLabelForActiveStep, type CharacterTabId } from "@/components/character-modal/character-modal-store";
+import { useCharacterModal, tabLabelForActiveStep, type CharacterTabId, type PendingSlot } from "@/components/character-modal/character-modal-store";
 import {
   previewHeadingLabel,
   libraryCompositeId,
@@ -957,16 +957,32 @@ function BlueprintPreviewBody({
       if (item.kind === "primitive") {
         // Phase 8.1 batch 10: capture mirror metadata so the slot
         // receiver can render the mirror toggle without re-fetching.
-        const row = item.row;
-        characterModal.queueSlot({
+        // Phase 8.3b UI revamp: also capture modifier metadata so the
+        // row can decide whether mirror applies AND render the
+        // modifier chips when expanded.
+        const row = item.row as {
+          id: number;
+          name: string;
+          isMirrorable?: boolean;
+          mirrorBuCredit?: number;
+          buCost?: number;
+          targetScope?: string | null;
+          hardModifiers?: ReadonlyArray<unknown>;
+        };
+        const slot: Extract<PendingSlot, { kind: "primitive" }> = {
           kind: "primitive",
           primitiveId: row.id,
           tab,
           name: row.name,
-          isMirrorable: row.isMirrorable,
-          mirrorBuCredit: row.mirrorBuCredit,
-          buCost: row.buCost,
-        });
+        };
+        if (row.isMirrorable !== undefined) slot.isMirrorable = row.isMirrorable;
+        if (row.mirrorBuCredit !== undefined) slot.mirrorBuCredit = row.mirrorBuCredit;
+        if (row.buCost !== undefined) slot.buCost = row.buCost;
+        if (row.targetScope !== undefined) slot.targetScope = row.targetScope;
+        slot.hasModifier =
+          Array.isArray(row.hardModifiers) && row.hardModifiers.length > 0;
+        if (row.hardModifiers !== undefined) slot.hardModifiers = row.hardModifiers;
+        characterModal.queueSlot(slot);
       } else {
         characterModal.queueSlot({
           kind: "capability",

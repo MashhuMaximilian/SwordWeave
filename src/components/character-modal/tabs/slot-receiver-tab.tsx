@@ -409,34 +409,55 @@ export function SlotReceiverTab({
               );
             })}
             {/* Inherited primitives — read-only provenance rows */}
-            {inheritedRows.map((p, idx) => (
-              <InheritedPrimitiveRow
-                key={`inherited-${p.primitiveId}-${idx}`}
-                primitive={p}
-                onMirror={() => {
-                  // Mirror an inherited primitive: write a new direct
-                  // mirror slot. We need isMirrorable + mirrorBuCredit
-                  // from the underlying primitive — fall back to buCost
-                  // if mirrorBuCredit unknown.
-                  queueSlot({
-                    kind: "primitive",
-                    primitiveId: p.primitiveId,
-                    tab: tabId,
-                    name: p.name,
-                    mirror: true,
-                    ...(typeof p.buCost === "number"
-                      ? { buCost: p.buCost }
-                      : {}),
-                    ...(typeof p.mirrorBuCredit === "number"
-                      ? { mirrorBuCredit: p.mirrorBuCredit }
-                      : {}),
-                  });
-                }}
-                onAddCopy={() => {
-                  // Add a direct-paid copy of an inherited primitive.
-                  queueSlot({
-                    kind: "primitive",
-                    primitiveId: p.primitiveId,
+            {inheritedRows.map((p, idx) => {
+              // Phase 8.3b UI revamp: check whether a paired mirror
+              // slot is already active for this inherited primitive.
+              // The mirror slot is one whose primitiveId matches
+              // AND mirror=true AND no instanceId (i.e. it was added
+              // on top of the inherited baseline). The lookup is
+              // cheap (≤ N slots).
+              const pairedMirror = slots.find(
+                (s) =>
+                  s.kind === "primitive" &&
+                  s.primitiveId === p.primitiveId &&
+                  s.mirror === true,
+              );
+              return (
+                <InheritedPrimitiveRow
+                  key={`inherited-${p.primitiveId}-${idx}`}
+                  primitive={p}
+                  isMirrorActive={pairedMirror != null}
+                  onMirror={() => {
+                    // Toggle ON: write a new direct mirror slot.
+                    queueSlot({
+                      kind: "primitive",
+                      primitiveId: p.primitiveId,
+                      tab: tabId,
+                      name: p.name,
+                      mirror: true,
+                      ...(typeof p.buCost === "number"
+                        ? { buCost: p.buCost }
+                        : {}),
+                      ...(typeof p.mirrorBuCredit === "number"
+                        ? { mirrorBuCredit: p.mirrorBuCredit }
+                        : {}),
+                    });
+                  }}
+                  onUnmirror={() => {
+                    // Toggle OFF: remove the paired mirror slot.
+                    if (!pairedMirror?.slotId) return;
+                    removeSlot(
+                      tabId,
+                      slots.findIndex(
+                        (s) => s.slotId === pairedMirror.slotId,
+                      ),
+                    );
+                  }}
+                  onAddCopy={() => {
+                    // Add a direct-paid copy of an inherited primitive.
+                    queueSlot({
+                      kind: "primitive",
+                      primitiveId: p.primitiveId,
                     tab: tabId,
                     name: p.name,
                     mirror: false,
@@ -446,7 +467,8 @@ export function SlotReceiverTab({
                   });
                 }}
               />
-            ))}
+              );
+            })}
           </ul>
         </section>
       ) : null}
@@ -511,6 +533,148 @@ export function SlotReceiverTab({
 // slot cleanly.
 // =============================================================================
 
+function InheritedPrimitiveRow({
+  primitive,
+  onMirror,
+  onAddCopy,
+  isMirrorActive,
+  onUnmirror,
+}: {
+  primitive: InheritedPrimitive;
+  /** Toggle on: when no mirror slot exists for this primitive, write one. */
+  onMirror: () => void;
+  /** Toggle off: remove the matching mirror slot if one is active. */
+  onUnmirror: () => void;
+  /** True when a paired mirror slot is currently active for this
+   *  primitive (the button label flips to "Unmirror"). */
+  isMirrorActive: boolean;
+  onAddCopy: () => void;
+}) {
+  const buCost = primitive.buCost ?? 0;
+  const mirrorCredit = primitive.mirrorBuCredit ?? buCost;
+
+  // Mirrorability rule (Phase 8.3b UI revamp item #2):
+  //   1. DB-level isMirrorable flag must be true
+  //   2. The primitive must have at least one modifier entry (so it's
+  //      actually a modifier primitive, not e.g. a verb/domain)
+  //   3. No operation is currently assigned to it (TBD — operation
+  //      wiring is in a later phase; for now this is always true)
+  const isMirrorable =
+    primitive.isMirrorable === true && primitive.hardModifiers.length > 0;
+
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <li className="rounded-md border border-border/60 bg-card/60 text-sm">
+      {/* COLLAPSED — always-visible header row */}
+      <div
+        className="flex items-start justify-between gap-2 p-3"
+        role="button"
+        tabIndex={0}
+        onClick={() => setExpanded((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setExpanded((v) => !v);
+          }
+        }}
+      >
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium text-foreground">{primitive.name}</span>
+            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700 dark:text-emerald-300">
+              Inherited
+            </span>
+            {isMirrorActive ? (
+              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-700 dark:text-amber-300">
+                Mirrored
+              </span>
+            ) : null}
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {buCost} BU · {provenanceLabel(primitive.provenance)}
+          </div>
+        </div>
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-label={expanded ? "Collapse" : "Expand"}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded((v) => !v);
+          }}
+          className="shrink-0 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-primary hover:text-primary"
+        >
+          {expanded ? "▾" : "▸"}
+        </button>
+      </div>
+
+      {/* EXPANDED — action buttons + modifier display */}
+      {expanded ? (
+        <div className="space-y-2 border-t border-border/60 bg-background/40 p-3">
+          {isMirrorable ? (
+            <button
+              type="button"
+              onClick={isMirrorActive ? onUnmirror : onMirror}
+              className={
+                "rounded-md border px-2 py-1 text-xs font-medium " +
+                (isMirrorActive
+                  ? "border-amber-500 bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                  : "border-border bg-background text-muted-foreground hover:border-amber-500 hover:text-amber-700 dark:hover:text-amber-300")
+              }
+            >
+              {isMirrorActive
+                ? `✓ Mirrored (−${mirrorCredit} BU debt) — click to unmirror`
+                : `⌐ Mirror (−${mirrorCredit} BU debt)`}
+            </button>
+          ) : (
+            <span className="text-xs text-muted-foreground">
+              Not mirrorable
+              {primitive.isMirrorable !== true
+                ? " (no mirror flag on this primitive)"
+                : " (no modifier attached)"}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onAddCopy}
+            className="block rounded-md border border-dashed border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-primary hover:text-primary"
+          >
+            + Add direct copy ({buCost} BU)
+          </button>
+          {isMirrorable && primitive.hardModifiers.length > 0 ? (
+            <div className="space-y-1 border-t border-border/40 pt-2">
+              <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+                Modifier (mirrors to)
+              </div>
+              <ModifierChips
+                targetScope={primitive.targetScope}
+                hardModifiers={primitive.hardModifiers}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
+// =============================================================================
+// DirectPrimitiveRow — one row per PendingSlot.
+//
+// Phase 8.3b UI revamp:
+//   * Collapsed by default. Header shows: title + cost + (Mirrored or
+//     Mirrorable badge) + (▸ expand button).
+//   * On expand: shows mirror toggle (button-style), "+ Add copy" +
+//     "Remove" + (if mirrorable) modifier chips.
+//   * Mirror UI is a TOGGLE BUTTON, not a checkbox — click once to
+//     add a mirror row, click again to unmirror (toggles the slot's
+//     mirror flag or removes the paired mirror slot for inherited).
+//   * Mirror toggle is HIDDEN when the primitive has no modifier
+//     (Phase 8.3b UI revamp item #2). DB isMirrorable flag alone is
+//     not enough — the primitive must actually carry a modifier entry.
+// =============================================================================
+
 function DirectPrimitiveRow({
   slot,
   onRemove,
@@ -523,15 +687,30 @@ function DirectPrimitiveRow({
   onToggleMirror: (mirror: boolean) => void;
   onAddAnotherCopy: () => void;
 }) {
-  const isMirrorable = slot.isMirrorable === true;
+  const isMirrorable =
+    slot.isMirrorable === true &&
+    (slot.hardModifiers?.length ?? 0) > 0;
   const mirrored = slot.mirror === true;
   const buCost = slot.buCost ?? 0;
+  const [expanded, setExpanded] = useState(false);
 
   return (
-    <li className="space-y-2 rounded-md border border-border bg-card p-3 text-sm">
-      <div className="flex items-start justify-between gap-2">
+    <li className="rounded-md border border-border bg-card text-sm">
+      {/* COLLAPSED — always-visible header row */}
+      <div
+        className="flex items-start justify-between gap-2 p-3"
+        role="button"
+        tabIndex={0}
+        onClick={() => setExpanded((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setExpanded((v) => !v);
+          }
+        }}
+      >
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-foreground">{slot.name}</span>
             {isMirrorable ? (
               <span
@@ -546,101 +725,169 @@ function DirectPrimitiveRow({
               </span>
             ) : null}
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className="mt-1 text-xs text-muted-foreground">
             Direct primitive · {buCost} BU
             {mirrored ? ` → −${slot.mirrorBuCredit ?? buCost} BU debt` : ""}
           </div>
         </div>
         <button
           type="button"
-          onClick={onRemove}
-          className="shrink-0 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-destructive hover:text-destructive"
+          aria-expanded={expanded}
+          aria-label={expanded ? "Collapse" : "Expand"}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded((v) => !v);
+          }}
+          className="shrink-0 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-primary hover:text-primary"
         >
-          Remove
+          {expanded ? "▾" : "▸"}
         </button>
       </div>
-      {isMirrorable ? (
-        <label className="flex items-center gap-2 text-xs">
-          <input
-            type="checkbox"
-            checked={mirrored}
-            onChange={(e) => onToggleMirror(e.target.checked)}
-            className="size-4 rounded border-border text-primary focus:ring-primary"
-          />
-          <span className="text-muted-foreground">
-            Mirror this primitive (BU debt of{" "}
-            <span className="font-mono">
-              −{slot.mirrorBuCredit ?? buCost}
+
+      {/* EXPANDED — actions + modifier chips */}
+      {expanded ? (
+        <div className="space-y-2 border-t border-border bg-background/40 p-3">
+          {isMirrorable ? (
+            <button
+              type="button"
+              onClick={() => onToggleMirror(!mirrored)}
+              className={
+                "rounded-md border px-2 py-1 text-xs font-medium " +
+                (mirrored
+                  ? "border-amber-500 bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                  : "border-border bg-background text-muted-foreground hover:border-amber-500 hover:text-amber-700 dark:hover:text-amber-300")
+              }
+            >
+              {mirrored
+                ? `✓ Mirrored (−${slot.mirrorBuCredit ?? buCost} BU debt) — click to unmirror`
+                : `⌐ Mirror (−${slot.mirrorBuCredit ?? buCost} BU debt)`}
+            </button>
+          ) : (
+            <span className="text-xs text-muted-foreground">
+              Not mirrorable
+              {slot.isMirrorable !== true
+                ? " (no mirror flag on this primitive)"
+                : " (no modifier attached)"}
             </span>
-            )
-          </span>
-        </label>
+          )}
+          <button
+            type="button"
+            onClick={onAddAnotherCopy}
+            className="block rounded-md border border-dashed border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-primary hover:text-primary"
+          >
+            + Add another copy ({buCost} BU)
+          </button>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="block rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-destructive hover:text-destructive"
+          >
+            Remove
+          </button>
+          {isMirrorable && (slot.hardModifiers?.length ?? 0) > 0 ? (
+            <div className="space-y-1 border-t border-border/40 pt-2">
+              <div className="text-[10px] font-semibold uppercase text-muted-foreground">
+                Modifier (mirrors to)
+              </div>
+              <ModifierChips
+                targetScope={slot.targetScope ?? null}
+                hardModifiers={slot.hardModifiers ?? []}
+              />
+            </div>
+          ) : null}
+        </div>
       ) : null}
-      <button
-        type="button"
-        onClick={onAddAnotherCopy}
-        className="rounded-md border border-dashed border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-primary hover:text-primary"
-      >
-        + Add another copy ({buCost} BU)
-      </button>
     </li>
   );
 }
 
 // =============================================================================
-// InheritedPrimitiveRow — read-only primitive from a bundle.
+// ModifierChips — Phase 8.3b UI revamp item #5
 //
-// Renders the primitive with its provenance tag ("via Aegis Shield").
-// Two action buttons:
-//   * "Mirror" — writes a new direct mirror slot (inheritance doesn't
-//     carry mirror; the user opts into the debt for this specific char).
-//   * "+ Add copy" — writes a new direct-paid row. Useful for stacking
-//     extra copies of an inherited primitive on top of the baseline.
+// Render the hard-modifier payload as chips, plus a "mirrors to" callout
+// for each operation. Matches the "Modifier" + "Mirror" blocks in the
+// library preview (the one you screenshotted from /atelier).
 // =============================================================================
 
-function InheritedPrimitiveRow({
-  primitive,
-  onMirror,
-  onAddCopy,
+function ModifierChips({
+  targetScope,
+  hardModifiers,
 }: {
-  primitive: InheritedPrimitive;
-  onMirror: () => void;
-  onAddCopy: () => void;
+  targetScope: string | null;
+  hardModifiers: ReadonlyArray<unknown>;
 }) {
-  const buCost = primitive.buCost ?? 0;
+  if (hardModifiers.length === 0) return null;
   return (
-    <li className="space-y-2 rounded-md border border-border/60 bg-card/60 p-3 text-sm">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-foreground">{primitive.name}</span>
-            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700 dark:text-emerald-300">
-              Inherited
+    <div className="space-y-1">
+      {hardModifiers.map((m, i) => {
+        const mod = m as Partial<{
+          target: string;
+          operation: string;
+          value: unknown;
+          stacking: string;
+        }>;
+        const op = mod.operation ?? "add";
+        const value = mod.value;
+        return (
+          <div
+            key={i}
+            className="flex flex-wrap items-center gap-1 text-xs"
+          >
+            <span className="rounded border border-border bg-background px-2 py-0.5 font-mono">
+              {mod.target ?? targetScope ?? "?"}
+            </span>
+            <span className="rounded bg-primary/15 px-2 py-0.5 font-mono text-primary">
+              {opSymbol(op)}
+            </span>
+            <span className="font-mono text-foreground">
+              {formatValue(value)}
+            </span>
+            {mod.stacking ? (
+              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700 dark:text-emerald-300">
+                {mod.stacking}
+              </span>
+            ) : null}
+            <span className="text-muted-foreground">→</span>
+            <span className="text-muted-foreground">
+              Mirrors to{" "}
+              <span className="font-mono">{mirrorOp(op)}</span>{" "}
+              <span className="font-mono">{formatValue(value)}</span>
             </span>
           </div>
-          <div className="text-xs text-muted-foreground">
-            {buCost} BU · {provenanceLabel(primitive.provenance)}
-          </div>
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={onMirror}
-          className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-amber-500 hover:text-amber-700 dark:hover:text-amber-300"
-        >
-          ⌐ Mirror (−{buCost} BU debt)
-        </button>
-        <button
-          type="button"
-          onClick={onAddCopy}
-          className="rounded-md border border-dashed border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-primary hover:text-primary"
-        >
-          + Add direct copy ({buCost} BU)
-        </button>
-      </div>
-    </li>
+        );
+      })}
+    </div>
   );
+}
+
+function opSymbol(op: string): string {
+  switch (op) {
+    case "add":
+      return "+";
+    case "subtract":
+    case "sub":
+      return "−";
+    case "set":
+      return "=";
+    case "multiply":
+      return "×";
+    default:
+      return op;
+  }
+}
+
+function mirrorOp(op: string): string {
+  // Sign flip per the user's "Sign flip" in the preview.
+  if (op === "add") return "Subtract";
+  if (op === "subtract" || op === "sub") return "Add";
+  return op;
+}
+
+function formatValue(v: unknown): string {
+  if (typeof v === "number") return String(v);
+  if (typeof v === "string") return v;
+  if (v === null || v === undefined) return "?";
+  return JSON.stringify(v);
 }
 
 // =============================================================================
@@ -771,196 +1018,138 @@ function HeritageSlotCard({
     }
   }, [cached, fetchBundle]);
 
-  return (
+  // Phase 8.3b UI revamp: collapsed by default. Header is a pill row
+// with name + kind + computedBu + chevron. Click expands to show
+// the capabilities + their effects ONLY — primitives are gone from
+// this view because the top "ACTIVE PRIMITIVES" section already lists
+// every primitive active on this tab. This card is now purely a
+// provenance / structural overview.
+const [heritageExpanded, setHeritageExpanded] = useState(false);
+
+return (
     <li className="overflow-hidden rounded-md border border-border bg-card">
-      <div className="flex items-start justify-between gap-2 p-3">
+      <div
+        className="flex items-start justify-between gap-2 p-3"
+        role="button"
+        tabIndex={0}
+        onClick={() => setHeritageExpanded((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setHeritageExpanded((v) => !v);
+          }
+        }}
+      >
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-foreground">
               {bundle?.name ?? slot.name}
             </span>
             <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase text-secondary-foreground">
               {slot.heritageKind}
             </span>
+            <span className="font-mono text-sm font-bold text-foreground">
+              {bundle?.computedBu ?? 0} BU
+            </span>
           </div>
-          {bundle?.description ? (
-            <p className="mt-1 text-xs text-muted-foreground line-clamp-3">
-              {bundle.description}
-            </p>
-          ) : null}
-          <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="mt-1 text-xs text-muted-foreground">
             {bundle ? (
               <>
-                <span>
-                  {/* Phase 8.1 batch 13.1 follow-up: transitive
-                      primitive count (direct + via capabilities +
-                      via capability effects), deduped by ID. */}
-                  {(() => {
-                    const seen = new Set<number>();
-                    bundle.primitiveLinks.forEach((l) => {
-                      if (l.primitive?.id) seen.add(l.primitive.id);
-                    });
-                    bundle.capabilityLinks.forEach((cl) => {
-                      cl.primitiveLinks.forEach((l) => {
-                        if (l.primitive?.id) seen.add(l.primitive.id);
-                      });
-                      cl.effectLinks.forEach((el) => {
-                        el.primitiveLinks.forEach((l) => {
-                          if (l.primitive?.id) seen.add(l.primitive.id);
-                        });
-                      });
-                    });
-                    return `${seen.size} primitive${seen.size === 1 ? "" : "s"}`;
-                  })()}
-                </span>
-                <span>·</span>
-                <span>
-                  {bundle.capabilityLinks.length} capabilit
-                  {bundle.capabilityLinks.length === 1 ? "y" : "ies"}
-                </span>
-                <span>·</span>
-                <span className="font-mono font-bold text-foreground">
-                  {bundle.computedBu} BU
-                </span>
+                {bundle.capabilityLinks.length} capabilit
+                {bundle.capabilityLinks.length === 1 ? "y" : "ies"}
+                {" · "}
+                {(() => {
+                  // Count distinct effects across all capabilities
+                  const effectCount = bundle.capabilityLinks.reduce(
+                    (n, cl) => n + cl.effectLinks.length,
+                    0,
+                  );
+                  if (effectCount === 0) return null;
+                  return `${effectCount} effect${effectCount === 1 ? "" : "s"}`;
+                })()}
               </>
             ) : loading ? (
-              <span>Loading bundle…</span>
+              "Loading bundle…"
             ) : error ? (
               <span className="text-destructive">{error}</span>
-            ) : null}
+            ) : (
+              "—"
+            )}
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="shrink-0 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-destructive hover:text-destructive"
-        >
-          Remove
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            aria-expanded={heritageExpanded}
+            aria-label={heritageExpanded ? "Collapse" : "Expand"}
+            onClick={(e) => {
+              e.stopPropagation();
+              setHeritageExpanded((v) => !v);
+            }}
+            className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-primary hover:text-primary"
+          >
+            {heritageExpanded ? "▾" : "▸"}
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+            className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-destructive hover:text-destructive"
+          >
+            Remove
+          </button>
+        </div>
       </div>
 
-      {bundle && (bundle.primitiveLinks.length > 0 || bundle.capabilityLinks.length > 0) ? (
-        <div className="border-t border-border bg-muted/30 px-3 py-2">
-          {bundle.primitiveLinks.length > 0 ? (
-            <div className="mb-2">
-              <div className="text-[10px] font-semibold uppercase text-muted-foreground">
-                Bundled Primitives ({bundle.primitiveLinks.length})
-              </div>
-              <ul className="mt-1 flex flex-wrap gap-1">
-                {bundle.primitiveLinks.map((link, i) => (
-                  <li
-                    key={`${link.primitive?.id ?? "unknown"}-${i}`}
-                    className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-xs"
-                  >
-                    <span>{link.primitive?.name ?? "Unknown"}</span>
-                    {link.primitive?.buCost != null ? (
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        {link.primitive.buCost} BU
-                      </span>
-                    ) : null}
-                    {link.isMirrored ? (
-                      <span className="rounded-full bg-fuchsia-500/20 px-1.5 text-[10px] font-semibold uppercase text-fuchsia-700 dark:text-fuchsia-300">
-                        Mirrored
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {/* Phase 8.1 batch 13.1 follow-up: NEW section. Primitives
-              that come in via each bundled capability. Per user:
-              "we should also list primitives from capabilities."
-              Each row tagged with the source capability name. */}
-          {bundle.capabilityLinks.flatMap((cl) => cl.primitiveLinks).length > 0 ? (
-            <div className="mb-2">
-              <div className="text-[10px] font-semibold uppercase text-muted-foreground">
-                Primitives from Capabilities (
-                {bundle.capabilityLinks.flatMap((cl) => cl.primitiveLinks).length})
-              </div>
-              <ul className="mt-1 space-y-1">
-                {bundle.capabilityLinks.flatMap((cl) =>
-                  cl.primitiveLinks.map((link) => ({
-                    ...link,
-                    sourceName: cl.capability?.name ?? "Unknown capability",
-                  })),
-                ).map((link, i) => (
-                  <li
-                    key={`cap-${link.primitive?.id ?? "unknown"}-${i}`}
-                    className="inline-flex flex-wrap items-center gap-1 rounded border border-border bg-background px-2 py-0.5 text-xs"
-                  >
-                    <span className="font-medium">{link.primitive?.name ?? "Unknown"}</span>
-                    {link.primitive?.buCost != null ? (
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        {link.primitive.buCost} BU
-                      </span>
-                    ) : null}
-                    <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                      via {link.sourceName}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {/* Phase 8.1 batch 13.1 follow-up: NEW section. Primitives
-              that come in via each capability's effect. Per user:
-              "if said capability has an effect, in same section with
-              primitives from capability we should list the primitives
-              from effect of capability too (and for each we should
-              mention source)." */}
-          {bundle.capabilityLinks.flatMap((cl) =>
-            cl.effectLinks.flatMap((el) => el.primitiveLinks),
-          ).length > 0 ? (
-            <div className="mb-2">
-              <div className="text-[10px] font-semibold uppercase text-muted-foreground">
-                Primitives from Effects (
-                {bundle.capabilityLinks.flatMap((cl) =>
-                  cl.effectLinks.flatMap((el) => el.primitiveLinks),
-                ).length})
-              </div>
-              <ul className="mt-1 space-y-1">
-                {bundle.capabilityLinks.flatMap((cl) =>
-                  cl.effectLinks.flatMap((el) =>
-                    el.primitiveLinks.map((link) => ({
-                      ...link,
-                      sourcePath: `${cl.capability?.name ?? "?"} > ${el.effect?.name ?? "?"}`,
-                    })),
-                  ),
-                ).map((link, i) => (
-                  <li
-                    key={`eff-${link.primitive?.id ?? "unknown"}-${i}`}
-                    className="inline-flex flex-wrap items-center gap-1 rounded border border-border bg-background px-2 py-0.5 text-xs"
-                  >
-                    <span className="font-medium">{link.primitive?.name ?? "Unknown"}</span>
-                    {link.primitive?.buCost != null ? (
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        {link.primitive.buCost} BU
-                      </span>
-                    ) : null}
-                    <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                      via {link.sourcePath}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+      {heritageExpanded && bundle ? (
+        <div className="space-y-2 border-t border-border bg-muted/30 px-3 py-2 text-xs">
+          {bundle.description ? (
+            <p className="text-muted-foreground line-clamp-3">
+              {bundle.description}
+            </p>
           ) : null}
 
           {bundle.capabilityLinks.length > 0 ? (
             <div>
               <div className="text-[10px] font-semibold uppercase text-muted-foreground">
-                Bundled Capabilities
+                Bundled Capabilities ({bundle.capabilityLinks.length})
               </div>
-              <ul className="mt-1 flex flex-wrap gap-1">
-                {bundle.capabilityLinks.map((link, i) => (
+              <ul className="mt-1 space-y-1">
+                {bundle.capabilityLinks.map((cl) => (
                   <li
-                    key={`${link.capability?.id ?? "unknown"}-${i}`}
-                    className="inline-flex items-center rounded-full border border-border bg-background px-2 py-0.5 text-xs"
+                    key={cl.capabilityId}
+                    className="rounded border border-border bg-background px-2 py-1"
                   >
-                    {link.capability?.name ?? "Unknown"}
+                    <div className="flex flex-wrap items-center gap-1">
+                      <span className="font-medium">
+                        {cl.capability?.name ?? "Unknown capability"}
+                      </span>
+                      <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] uppercase text-secondary-foreground">
+                        {cl.effectLinks.length} effect
+                        {cl.effectLinks.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    {cl.effectLinks.length > 0 ? (
+                      <ul className="mt-1 space-y-0.5 pl-3">
+                        {cl.effectLinks.map((el) => (
+                          <li
+                            key={el.effectId}
+                            className="flex flex-wrap items-center gap-1 text-muted-foreground"
+                          >
+                            <span className="text-foreground">
+                              {el.effect?.name ?? "(unnamed effect)"}
+                            </span>
+                            {el.effect?.description ? (
+                              <span className="text-[10px] italic">
+                                — {el.effect.description}
+                              </span>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -1123,110 +1312,107 @@ function CapabilitySlotCard({
   const label = slot.name;
   const kindLabel = "Capability";
 
-  return (
-    <li className="space-y-2 rounded-md border border-border p-3 text-sm">
-      <div className="flex items-start justify-between gap-2">
+  // Phase 8.3b UI revamp: collapsed by default. Header shows name +
+// computedBu + chevron. Expanded reveals the effects — primitives
+// are gone from this view because the top "ACTIVE PRIMITIVES"
+// section already lists every primitive active on this tab.
+const [capabilityExpanded, setCapabilityExpanded] = useState(false);
+
+return (
+    <li className="overflow-hidden rounded-md border border-border bg-card text-sm">
+      <div
+        className="flex items-start justify-between gap-2 p-3"
+        role="button"
+        tabIndex={0}
+        onClick={() => setCapabilityExpanded((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setCapabilityExpanded((v) => !v);
+          }
+        }}
+      >
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-foreground">{label}</span>
+            <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase text-secondary-foreground">
+              {kindLabel}
+            </span>
+            <span className="font-mono text-sm font-bold text-foreground">
+              {bundle?.computedBu ?? 0} BU
+            </span>
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
             {bundle ? (
               <>
-                <span>·</span>
-                <span className="text-xs text-muted-foreground">
-                  {bundle.primitiveLinks.length} direct primitive
-                  {bundle.primitiveLinks.length === 1 ? "" : "s"}
-                </span>
-                <span>·</span>
-                <span className="text-xs text-muted-foreground">
-                  {bundle.effectLinks.length} effect
-                  {bundle.effectLinks.length === 1 ? "" : "s"}
-                </span>
-                <span>·</span>
-                <span className="font-mono font-bold text-foreground">
-                  {bundle.computedBu} BU
-                </span>
+                {bundle.effectLinks.length} effect
+                {bundle.effectLinks.length === 1 ? "" : "s"}
               </>
             ) : loading ? (
-              <span className="text-xs text-muted-foreground">
-                Loading bundle…
-              </span>
+              "Loading bundle…"
             ) : error ? (
-              <span className="text-xs text-destructive">{error}</span>
-            ) : null}
+              <span className="text-destructive">{error}</span>
+            ) : (
+              "—"
+            )}
           </div>
-          <div className="text-xs text-muted-foreground">{kindLabel}</div>
         </div>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="shrink-0 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-destructive hover:text-destructive"
-        >
-          Remove
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            aria-expanded={capabilityExpanded}
+            aria-label={capabilityExpanded ? "Collapse" : "Expand"}
+            onClick={(e) => {
+              e.stopPropagation();
+              setCapabilityExpanded((v) => !v);
+            }}
+            className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-primary hover:text-primary"
+          >
+            {capabilityExpanded ? "▾" : "▸"}
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+            className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-destructive hover:text-destructive"
+          >
+            Remove
+          </button>
+        </div>
       </div>
 
-      {bundle ? (
-        <div className="space-y-2 border-t border-border pt-2">
-          {/* Direct primitives bundled at capability level. */}
-          {bundle.primitiveLinks.length > 0 ? (
+      {capabilityExpanded && bundle ? (
+        <div className="space-y-2 border-t border-border bg-muted/30 px-3 py-2 text-xs">
+          {bundle.effectLinks.length > 0 ? (
             <div>
               <div className="text-[10px] font-semibold uppercase text-muted-foreground">
-                Bundled Primitives ({bundle.primitiveLinks.length})
+                Effects ({bundle.effectLinks.length})
               </div>
-              <ul className="mt-1 flex flex-wrap gap-1">
-                {bundle.primitiveLinks.map((link, i) => (
+              <ul className="mt-1 space-y-1">
+                {bundle.effectLinks.map((el) => (
                   <li
-                    key={`cap-p-${link.primitive?.id ?? "unknown"}-${i}`}
-                    className="inline-flex flex-wrap items-center gap-1 rounded border border-border bg-background px-2 py-0.5 text-xs"
+                    key={el.effectId}
+                    className="rounded border border-border bg-background px-2 py-1"
                   >
-                    <span className="font-medium">
-                      {link.primitive?.name ?? "Unknown"}
-                    </span>
-                    {link.primitive?.buCost != null ? (
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        {link.primitive.buCost} BU
-                      </span>
+                    <div className="font-medium text-foreground">
+                      {el.effect?.name ?? "(unnamed effect)"}
+                    </div>
+                    {el.effect?.description ? (
+                      <div className="text-muted-foreground italic">
+                        {el.effect.description}
+                      </div>
                     ) : null}
                   </li>
                 ))}
               </ul>
             </div>
-          ) : null}
-
-          {/* Primitives from each effect of the capability. */}
-          {bundle.effectLinks.flatMap((el) => el.primitiveLinks).length > 0 ? (
-            <div>
-              <div className="text-[10px] font-semibold uppercase text-muted-foreground">
-                Primitives from Effects (
-                {bundle.effectLinks.flatMap((el) => el.primitiveLinks).length})
-              </div>
-              <ul className="mt-1 flex flex-wrap gap-1">
-                {bundle.effectLinks.flatMap((el) =>
-                  el.primitiveLinks.map((link) => ({
-                    ...link,
-                    sourceName: el.effect?.name ?? "Unknown effect",
-                  })),
-                ).map((link, i) => (
-                  <li
-                    key={`cap-e-${link.primitive?.id ?? "unknown"}-${i}`}
-                    className="inline-flex flex-wrap items-center gap-1 rounded border border-border bg-background px-2 py-0.5 text-xs"
-                  >
-                    <span className="font-medium">
-                      {link.primitive?.name ?? "Unknown"}
-                    </span>
-                    {link.primitive?.buCost != null ? (
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        {link.primitive.buCost} BU
-                      </span>
-                    ) : null}
-                    <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                      via {link.sourceName}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+          ) : (
+            <div className="text-muted-foreground italic">
+              No effects on this capability.
             </div>
-          ) : null}
+          )}
         </div>
       ) : null}
     </li>

@@ -50,7 +50,15 @@ export interface BundlePrimitiveLink {
   primitiveId: number;
   isMirrored?: boolean;
   quantity?: number;
-  primitive: { id: number; name: string; buCost: number | null } | null;
+  primitive: {
+    id: number;
+    name: string;
+    buCost: number | null;
+    isMirrorable?: boolean;
+    mirrorBuCredit?: number;
+    targetScope?: string | null;
+    hardModifiers?: ReadonlyArray<unknown> | null;
+  } | null;
 }
 export interface BundleEffectLink {
   effectId: string;
@@ -84,8 +92,16 @@ export interface InheritedPrimitive {
   primitiveId: number;
   name: string;
   buCost: number | null;
+  /** DB-level mirror flag from the primitive row. */
   isMirrorable: boolean | null;
   mirrorBuCredit: number | null;
+  /** Modifier target scope (e.g. "max_vitality") — used for the
+   *  "mirrors to" display in the expanded view. Null if the primitive
+   *  has no target scope (i.e. it's not a modifier primitive). */
+  targetScope: string | null;
+  /** The raw hard-modifier payload — used to render the modifier
+   *  chips in the expanded view. */
+  hardModifiers: ReadonlyArray<unknown>;
   provenance: Exclude<Provenance, { kind: "direct" }>;
 }
 
@@ -184,8 +200,10 @@ export function useTabPrimitives(tabId: CharacterTabId): TabPrimitives {
           primitiveId: link.primitive.id,
           name: link.primitive.name,
           buCost: link.primitive.buCost,
-          isMirrorable: null, // unknown at this layer
-          mirrorBuCredit: null,
+          isMirrorable: link.primitive.isMirrorable ?? null,
+          mirrorBuCredit: link.primitive.mirrorBuCredit ?? null,
+          targetScope: link.primitive.targetScope ?? null,
+          hardModifiers: link.primitive.hardModifiers ?? [],
           provenance: { kind: "direct-heritage", heritageName: hSlot.name },
         });
       }
@@ -200,8 +218,10 @@ export function useTabPrimitives(tabId: CharacterTabId): TabPrimitives {
             primitiveId: p.primitive.id,
             name: p.primitive.name,
             buCost: p.primitive.buCost,
-            isMirrorable: null,
-            mirrorBuCredit: null,
+            isMirrorable: p.primitive.isMirrorable ?? null,
+            mirrorBuCredit: p.primitive.mirrorBuCredit ?? null,
+            targetScope: p.primitive.targetScope ?? null,
+            hardModifiers: p.primitive.hardModifiers ?? [],
             provenance: {
               kind: "direct-capability",
               capabilityName: capName,
@@ -218,8 +238,10 @@ export function useTabPrimitives(tabId: CharacterTabId): TabPrimitives {
               primitiveId: p.primitive.id,
               name: p.primitive.name,
               buCost: p.primitive.buCost,
-              isMirrorable: null,
-              mirrorBuCredit: null,
+              isMirrorable: p.primitive.isMirrorable ?? null,
+              mirrorBuCredit: p.primitive.mirrorBuCredit ?? null,
+              targetScope: p.primitive.targetScope ?? null,
+              hardModifiers: p.primitive.hardModifiers ?? [],
               provenance: {
                 kind: "direct-effect",
                 capabilityName: capName,
@@ -244,8 +266,10 @@ export function useTabPrimitives(tabId: CharacterTabId): TabPrimitives {
           primitiveId: p.primitive.id,
           name: p.primitive.name,
           buCost: p.primitive.buCost,
-          isMirrorable: null,
-          mirrorBuCredit: null,
+          isMirrorable: p.primitive.isMirrorable ?? null,
+          mirrorBuCredit: p.primitive.mirrorBuCredit ?? null,
+          targetScope: p.primitive.targetScope ?? null,
+          hardModifiers: p.primitive.hardModifiers ?? [],
           provenance: {
             kind: "direct-capability",
             capabilityName: capName,
@@ -262,8 +286,10 @@ export function useTabPrimitives(tabId: CharacterTabId): TabPrimitives {
             primitiveId: p.primitive.id,
             name: p.primitive.name,
             buCost: p.primitive.buCost,
-            isMirrorable: null,
-            mirrorBuCredit: null,
+            isMirrorable: p.primitive.isMirrorable ?? null,
+            mirrorBuCredit: p.primitive.mirrorBuCredit ?? null,
+            targetScope: p.primitive.targetScope ?? null,
+            hardModifiers: p.primitive.hardModifiers ?? [],
             provenance: {
               kind: "direct-effect",
               capabilityName: capName,

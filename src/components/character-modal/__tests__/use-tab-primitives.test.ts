@@ -23,7 +23,16 @@ import type { PendingSlot } from "../character-modal-store";
 interface BundlePrimitiveLink {
   primitiveId: number;
   isMirrored?: boolean;
-  primitive: { id: number; name: string; buCost: number | null } | null;
+  quantity?: number;
+  primitive: {
+    id: number;
+    name: string;
+    buCost: number | null;
+    isMirrorable?: boolean;
+    mirrorBuCredit?: number;
+    targetScope?: string | null;
+    hardModifiers?: ReadonlyArray<unknown>;
+  } | null;
 }
 interface BundleEffectLink {
   effectId: string;
@@ -56,6 +65,8 @@ interface InheritedPrimitive {
   buCost: number | null;
   isMirrorable: boolean | null;
   mirrorBuCredit: number | null;
+  targetScope: string | null;
+  hardModifiers: ReadonlyArray<unknown>;
   provenance:
     | { kind: "direct-heritage"; heritageName: string }
     | { kind: "direct-capability"; capabilityName: string }
@@ -94,8 +105,10 @@ function buildTabPrimitives(
         primitiveId: link.primitive.id,
         name: link.primitive.name,
         buCost: link.primitive.buCost,
-        isMirrorable: null,
-        mirrorBuCredit: null,
+        isMirrorable: link.primitive.isMirrorable ?? null,
+        mirrorBuCredit: link.primitive.mirrorBuCredit ?? null,
+        targetScope: link.primitive.targetScope ?? null,
+        hardModifiers: link.primitive.hardModifiers ?? [],
         provenance: { kind: "direct-heritage", heritageName: hSlot.name },
       });
     }
@@ -109,8 +122,10 @@ function buildTabPrimitives(
           primitiveId: p.primitive.id,
           name: p.primitive.name,
           buCost: p.primitive.buCost,
-          isMirrorable: null,
-          mirrorBuCredit: null,
+          isMirrorable: p.primitive.isMirrorable ?? null,
+          mirrorBuCredit: p.primitive.mirrorBuCredit ?? null,
+          targetScope: p.primitive.targetScope ?? null,
+          hardModifiers: p.primitive.hardModifiers ?? [],
           provenance: { kind: "direct-capability", capabilityName: capName },
         });
       }
@@ -124,8 +139,10 @@ function buildTabPrimitives(
             primitiveId: p.primitive.id,
             name: p.primitive.name,
             buCost: p.primitive.buCost,
-            isMirrorable: null,
-            mirrorBuCredit: null,
+            isMirrorable: p.primitive.isMirrorable ?? null,
+            mirrorBuCredit: p.primitive.mirrorBuCredit ?? null,
+            targetScope: p.primitive.targetScope ?? null,
+            hardModifiers: p.primitive.hardModifiers ?? [],
             provenance: {
               kind: "direct-effect",
               capabilityName: capName,
@@ -149,8 +166,10 @@ function buildTabPrimitives(
         primitiveId: p.primitive.id,
         name: p.primitive.name,
         buCost: p.primitive.buCost,
-        isMirrorable: null,
-        mirrorBuCredit: null,
+        isMirrorable: p.primitive.isMirrorable ?? null,
+        mirrorBuCredit: p.primitive.mirrorBuCredit ?? null,
+        targetScope: p.primitive.targetScope ?? null,
+        hardModifiers: p.primitive.hardModifiers ?? [],
         provenance: { kind: "direct-capability", capabilityName: capName },
       });
     }
@@ -164,8 +183,10 @@ function buildTabPrimitives(
           primitiveId: p.primitive.id,
           name: p.primitive.name,
           buCost: p.primitive.buCost,
-          isMirrorable: null,
-          mirrorBuCredit: null,
+          isMirrorable: p.primitive.isMirrorable ?? null,
+          mirrorBuCredit: p.primitive.mirrorBuCredit ?? null,
+          targetScope: p.primitive.targetScope ?? null,
+          hardModifiers: p.primitive.hardModifiers ?? [],
           provenance: {
             kind: "direct-effect",
             capabilityName: capName,

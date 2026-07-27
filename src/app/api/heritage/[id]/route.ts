@@ -139,7 +139,15 @@ export async function GET(
   let capPrimMap: Map<string, Array<{
     primitiveId: number;
     quantity: number;
-    primitive: { id: number; name: string; buCost: number | null };
+    primitive: {
+      id: number;
+      name: string;
+      buCost: number | null;
+      isMirrorable: boolean;
+      mirrorBuCredit: number;
+      targetScope: string | null;
+      hardModifiers: ReadonlyArray<unknown>;
+    };
   }>> = new Map();
   let effectPrimMap: Map<string, Array<{
     effectId: string;
@@ -147,12 +155,24 @@ export async function GET(
     primitiveLinks: Array<{
       primitiveId: number;
       quantity: number;
-      primitive: { id: number; name: string; buCost: number | null };
+      primitive: {
+        id: number;
+        name: string;
+        buCost: number | null;
+        isMirrorable: boolean;
+        mirrorBuCredit: number;
+        targetScope: string | null;
+        hardModifiers: ReadonlyArray<unknown>;
+      };
     }>;
   }>> = new Map();
 
   if (capabilityIds.length > 0) {
-    // Query A: capability primitives + their primitive (name+cost).
+    // Query A: capability primitives + their primitive (name+cost,
+    // plus the mirrorability + modifier metadata so the modal can
+    // hide the mirror toggle when the primitive has no modifier, and
+    // display the modifier + mirror target when expanded — see
+    // Phase 8.3b UI revamp item #2).
     const capPrimRows = await db
       .select({
         capabilityId: capabilityPrimitives.capabilityId,
@@ -160,6 +180,10 @@ export async function GET(
         quantity: capabilityPrimitives.quantity,
         name: primitives.name,
         buCost: primitives.buCost,
+        isMirrorable: primitives.isMirrorable,
+        mirrorBuCredit: primitives.mirrorBuCredit,
+        targetScope: primitives.targetScope,
+        hardModifiers: primitives.hardModifiers,
       })
       .from(capabilityPrimitives)
       .innerJoin(primitives, eq(primitives.id, capabilityPrimitives.primitiveId))
@@ -170,7 +194,15 @@ export async function GET(
       arr.push({
         primitiveId: r.primitiveId,
         quantity: r.quantity,
-        primitive: { id: r.primitiveId, name: r.name, buCost: r.buCost },
+        primitive: {
+          id: r.primitiveId,
+          name: r.name,
+          buCost: r.buCost,
+          isMirrorable: r.isMirrorable,
+          mirrorBuCredit: r.mirrorBuCredit,
+          targetScope: r.targetScope,
+          hardModifiers: r.hardModifiers,
+        },
       });
       capPrimMap.set(r.capabilityId, arr);
     }
@@ -184,6 +216,10 @@ export async function GET(
         quantity: effectPrimitives.quantity,
         name: primitives.name,
         buCost: primitives.buCost,
+        isMirrorable: primitives.isMirrorable,
+        mirrorBuCredit: primitives.mirrorBuCredit,
+        targetScope: primitives.targetScope,
+        hardModifiers: primitives.hardModifiers,
         effectName: effects.name,
         effectDescription: effects.narrativeDescription,
       })
@@ -216,7 +252,15 @@ export async function GET(
       effEntry.primitiveLinks.push({
         primitiveId: r.primitiveId,
         quantity: r.quantity,
-        primitive: { id: r.primitiveId, name: r.name, buCost: r.buCost },
+        primitive: {
+          id: r.primitiveId,
+          name: r.name,
+          buCost: r.buCost,
+          isMirrorable: r.isMirrorable,
+          mirrorBuCredit: r.mirrorBuCredit,
+          targetScope: r.targetScope,
+          hardModifiers: r.hardModifiers,
+        },
       });
     }
   }
@@ -229,7 +273,15 @@ export async function GET(
       primitiveLinks: Array<{
         primitiveId: number;
         quantity: number;
-        primitive: { id: number; name: string; buCost: number | null };
+        primitive: {
+          id: number;
+          name: string;
+          buCost: number | null;
+          isMirrorable?: boolean;
+          mirrorBuCredit?: number;
+          targetScope?: string | null;
+          hardModifiers?: ReadonlyArray<unknown>;
+        };
       }>;
       effectLinks: Array<{
         effectId: string;
@@ -237,7 +289,15 @@ export async function GET(
         primitiveLinks: Array<{
           primitiveId: number;
           quantity: number;
-          primitive: { id: number; name: string; buCost: number | null };
+          primitive: {
+          id: number;
+          name: string;
+          buCost: number | null;
+          isMirrorable?: boolean;
+          mirrorBuCredit?: number;
+          targetScope?: string | null;
+          hardModifiers?: ReadonlyArray<unknown>;
+        };
         }>;
       }>;
     };
@@ -262,7 +322,15 @@ export async function GET(
         primitiveLinks: Array<{
           primitiveId: number;
           quantity: number;
-          primitive: { id: number; name: string; buCost: number | null };
+          primitive: {
+          id: number;
+          name: string;
+          buCost: number | null;
+          isMirrorable?: boolean;
+          mirrorBuCredit?: number;
+          targetScope?: string | null;
+          hardModifiers?: ReadonlyArray<unknown>;
+        };
         }>;
         effectLinks: Array<{
           effectId: string;
@@ -270,7 +338,15 @@ export async function GET(
           primitiveLinks: Array<{
             primitiveId: number;
             quantity: number;
-            primitive: { id: number; name: string; buCost: number | null };
+            primitive: {
+          id: number;
+          name: string;
+          buCost: number | null;
+          isMirrorable?: boolean;
+          mirrorBuCredit?: number;
+          targetScope?: string | null;
+          hardModifiers?: ReadonlyArray<unknown>;
+        };
           }>;
         }>;
       };

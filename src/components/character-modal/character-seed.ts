@@ -157,10 +157,17 @@ export interface CharacterSeed {
        * (isMirrorable / mirrorBuCredit / buCost) so the seed can
        * build a PendingSlot that renders correctly in the modal —
        * mirror badge + actual BU cost + "Mirrorable" toggle.
+       *
+       * Phase 8.3b UI revamp: also surface modifier metadata
+       * (targetScope / hardModifiers / hasModifier) so the row can
+       * decide whether mirror applies AND render modifier chips when
+       * expanded.
        */
       isMirrorable?: boolean;
       mirrorBuCredit?: number;
       buCost?: number;
+      targetScope?: string | null;
+      hardModifiers?: ReadonlyArray<unknown>;
     };
   }>;
   /**
@@ -345,7 +352,7 @@ function seedPrimitiveSlot(
   // in the DB but the edit UI showed them as plain primitives).
   // Conditional spread so we don't write `undefined` keys —
   // exactOptionalPropertyTypes is on in tsconfig.
-  return {
+  const slot: Extract<PendingSlot, { kind: "primitive" }> = {
     kind: "primitive",
     primitiveId: link.primitiveId,
     // Phase 8.3b: instanceId is the dedup key for stacking — each
@@ -355,14 +362,30 @@ function seedPrimitiveSlot(
     tab: "manifest",
     name: primitive.name,
     mirror: link.isMirrored === true,
-    ...(primitive.isMirrorable === true ? { isMirrorable: true } : {}),
-    ...(typeof primitive.mirrorBuCredit === "number"
-      ? { mirrorBuCredit: primitive.mirrorBuCredit }
-      : {}),
-    ...(typeof primitive.buCost === "number"
-      ? { buCost: primitive.buCost }
-      : {}),
   };
+  // Phase 8.1 batch 10 + 8.3b UI revamp: mirror + modifier metadata
+  // captured here, conditionally so we don't write `undefined` into
+  // optional fields (the type system has exactOptionalPropertyTypes
+  // on, which forbids it).
+  if (primitive.isMirrorable !== undefined) {
+    slot.isMirrorable = primitive.isMirrorable;
+  }
+  if (primitive.mirrorBuCredit !== undefined) {
+    slot.mirrorBuCredit = primitive.mirrorBuCredit;
+  }
+  if (primitive.buCost !== undefined) {
+    slot.buCost = primitive.buCost;
+  }
+  if (primitive.targetScope !== undefined) {
+    slot.targetScope = primitive.targetScope;
+  }
+  if (primitive.hardModifiers !== undefined) {
+    slot.hasModifier =
+      Array.isArray(primitive.hardModifiers) &&
+      primitive.hardModifiers.length > 0;
+    slot.hardModifiers = primitive.hardModifiers;
+  }
+  return slot;
 }
 
 /**

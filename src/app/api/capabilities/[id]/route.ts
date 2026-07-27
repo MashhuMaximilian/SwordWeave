@@ -116,7 +116,15 @@ export async function GET(
   let effectPrimMap: Map<string, Array<{
     primitiveId: number;
     quantity: number;
-    primitive: { id: number; name: string; buCost: number | null };
+    primitive: {
+      id: number;
+      name: string;
+      buCost: number | null;
+      isMirrorable: boolean;
+      mirrorBuCredit: number;
+      targetScope: string | null;
+      hardModifiers: ReadonlyArray<unknown>;
+    };
   }>> = new Map();
 
   if (effectIds.length > 0) {
@@ -127,6 +135,10 @@ export async function GET(
         quantity: effectPrimitives.quantity,
         name: primitives.name,
         buCost: primitives.buCost,
+        isMirrorable: primitives.isMirrorable,
+        mirrorBuCredit: primitives.mirrorBuCredit,
+        targetScope: primitives.targetScope,
+        hardModifiers: primitives.hardModifiers,
       })
       .from(effectPrimitives)
       .innerJoin(primitives, eq(primitives.id, effectPrimitives.primitiveId))
@@ -137,7 +149,15 @@ export async function GET(
       arr.push({
         primitiveId: r.primitiveId,
         quantity: r.quantity,
-        primitive: { id: r.primitiveId, name: r.name, buCost: r.buCost },
+        primitive: {
+          id: r.primitiveId,
+          name: r.name,
+          buCost: r.buCost,
+          isMirrorable: r.isMirrorable,
+          mirrorBuCredit: r.mirrorBuCredit,
+          targetScope: r.targetScope,
+          hardModifiers: r.hardModifiers,
+        },
       });
       effectPrimMap.set(r.effectId, arr);
     }
@@ -148,7 +168,15 @@ export async function GET(
       primitiveLinks: Array<{
         primitiveId: number;
         quantity: number;
-        primitive: { id: number; name: string; buCost: number | null };
+        primitive: {
+          id: number;
+          name: string;
+          buCost: number | null;
+          isMirrorable?: boolean;
+          mirrorBuCredit?: number;
+          targetScope?: string | null;
+          hardModifiers?: ReadonlyArray<unknown>;
+        };
       }>;
     };
     eff.primitiveLinks = effectPrimMap.get(el.effectId) ?? [];
@@ -161,7 +189,15 @@ export async function GET(
         primitiveLinks: Array<{
           primitiveId: number;
           quantity: number;
-          primitive: { id: number; name: string; buCost: number | null };
+          primitive: {
+            id: number;
+            name: string;
+            buCost: number | null;
+            isMirrorable?: boolean;
+            mirrorBuCredit?: number;
+            targetScope?: string | null;
+            hardModifiers?: ReadonlyArray<unknown>;
+          };
         }>;
       };
       return {

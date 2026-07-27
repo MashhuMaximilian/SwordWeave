@@ -134,6 +134,19 @@ export type PendingSlot = {
       isMirrorable?: boolean;
       mirrorBuCredit?: number;
       buCost?: number;
+      /**
+       * Phase 8.3b UI revamp: modifier metadata. targetScope is the
+       * canonical target axis (e.g. "max_vitality", "HP",
+       * "NARROW_FOCUS", or null for non-modifier primitives).
+       * hasModifier + hardModifiers let the UI render the modifier
+       * chips in the expanded view + decide whether the mirror toggle
+       * is even valid (DB-level isMirrorable AND has at least one
+       * modifier entry; later we'll also gate on "no operation is
+       * assigned" once operations are wired into the modal).
+       */
+      targetScope?: string | null;
+      hasModifier?: boolean;
+      hardModifiers?: ReadonlyArray<unknown>;
     }
   | {
       kind: "capability";
