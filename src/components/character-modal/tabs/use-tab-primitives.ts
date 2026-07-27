@@ -34,7 +34,7 @@
  * The hook is read-only — it does NOT mutate the queue. The caller
  * wires the mirror/copy buttons back to queueSlot / setSlotMirror.
  */
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   useCharacterModal,
   type CharacterTabId,
@@ -194,6 +194,23 @@ export function registerBundleCacheReader(reader: BundleCacheReader): void {
 export function useTabPrimitives(tabId: CharacterTabId): TabPrimitives {
   const { pendingSlots } = useCharacterModal();
   const slots = pendingSlots[tabId];
+
+  // Phase 8.3b UI fix #2 follow-up (Mashu 2026-07-27):
+  //   The bundle cache is module-level mutable state. When a
+  //   preloader / card fires sw-character-bundle-loaded, the form's
+  //   bundleVersion bumps and re-renders — but pendingSlots[tabId]
+  //   reference doesn't change, so useMemo's [slots] dep array
+  //   would skip recomputation and the freshly-loaded bundle would
+  //   never show up in the active-primitives list. We subscribe to
+  //   the same event here so useMemo's deps list also bumps.
+  const [bundleVersion, setBundleVersion] = useState(0);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = () => setBundleVersion((v) => v + 1);
+    window.addEventListener("sw-character-bundle-loaded", handler);
+    return () =>
+      window.removeEventListener("sw-character-bundle-loaded", handler);
+  }, []);
 
   return useMemo(() => {
     const direct = slots.filter(
@@ -355,7 +372,7 @@ export function useTabPrimitives(tabId: CharacterTabId): TabPrimitives {
       capabilitySlots,
       loadingBundleIds,
     };
-  }, [slots]);
+  }, [slots, bundleVersion]);
 }
 
 /**

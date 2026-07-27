@@ -109,6 +109,19 @@
   }
 }
 
+/* Triple Yin spinner — counter-clockwise rotation. Mashu
+   2026-07-27: "45rpm counter clockwise" — 1.333s per revolution,
+   spinning in the negative direction (clockwise is positive in CSS,
+   so negative rotation = counter-clockwise). */
+@keyframes tripleYinSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+
 body {
   min-height: 100vh;
   background: var(--background);

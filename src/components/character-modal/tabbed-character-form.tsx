@@ -668,12 +668,26 @@ export function TabbedCharacterForm() {
         return;
       }
 
-      // Phase 8.3b UI fix #1 (Mashu 2026-07-27): after a successful
-      // save (create OR edit), navigate to the character sheet so the
-      // user lands on what they just made. Edit used to just refresh
-      // (leaving them on the modal behind whatever else they had open);
-      // create used to open a new tab — neither matches the user's
-      // intent of "I want to see my character now."
+      // Phase 8.3b UI fix #1 rev 2 (Mashu 2026-07-27):
+      //   "I saved, modal closed, not redirected." The previous
+      //   implementation called close() BEFORE router.push() — but
+      //   close() sets isOpen=false which unmounts the modal root
+      //   (character-modal.tsx line 184: returns null when !isOpen).
+      //   That unmount happens on the next React render, after which
+      //   the component holding the router instance is gone. The
+      //   router.push() call raced with the unmount and the navigation
+      //   was silently dropped.
+      //
+      //   Fix: navigate FIRST (so the router call lands on a still-
+      //   mounted tree), then close the modal. Next.js's App Router
+      //   keeps the current route's React tree alive during the
+      //   soft-transition to the new route, so close() will fire
+      //   cleanly once we've started navigating away.
+      //
+      //   The navigation guard (character-modal.tsx lines 118–182)
+      //   won't intercept this because we just called resetDraft()
+      //   which cleared editCharacterId, and the guard only fires
+      //   on anchor clicks / popstate — not on router.push().
       showToast(
         editCharacterId
           ? `Saved changes to "${charName}".`
@@ -685,11 +699,10 @@ export function TabbedCharacterForm() {
         clearPendingEdit();
       }
       resetDraft();
-      // Close the modal cleanly before navigating so we don't leave a
-      // stale dialog behind (the parent character-modal close handler
-      // resets isEditing flag — we just need to close it).
-      close();
+      // Navigate first, close after. The router call must land on a
+      // mounted tree — flipping close() before push() unmounts us.
       router.push(`/characters/${charId}`);
+      close();
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "Unknown error.";
       showToast(errMsg, "error");
