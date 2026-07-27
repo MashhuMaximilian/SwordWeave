@@ -6,19 +6,35 @@
 
 ---
 
-## Phase Numbering (re-split)
-
-Going forward I'll use these labels — what we already shipped is split sensibly:
+## Phase Numbering (re-split, v3 per Mashu 2026-07-27 feedback)
 
 | Phase | Scope | Status |
 |-------|-------|--------|
 | **Phase 8.1** — Character creation modal | Tabbed modal for new + edit characters | ✅ Shipped |
 | **Phase 8.2** — BU math + carry-over + mobile fixes | The last batch we just landed (`13b23ac`) | ✅ Shipped |
-| **Phase 8.3** — Per-instance primitive model | v2 storage model from `message.txt` + stacking | 🔨 6 days, next |
-| **Phase 8.4** — Sheet live UI for tags/ops/mirror/conditions | Click primitive → see tags/ops live; mirror toggle works | 📅 After 8.3 |
-| **Phase 8.5** — Collections + Share + Follow + Conditions | In order C-condition, B-conditions evaluator, A-collections, D-share | 📅 After 8.4 |
+| **Phase 8.3** — Per-instance primitive model | v2 storage model from `message.txt` + stacking | 🔨 **6 days, next** |
+| **Phase 8.4** — Conditions + sheet live UI | Conditions composer/runtime + interactive sheet | 📅 After 8.3 |
+| **Phase 8.5** — Collections | "Playlists" for primitives/heritages/capabilities | 📅 After 8.4 |
+| **Phase 8.6** — Share + Follow | Copy-link sharing + follow lists | 📅 After 8.5 |
 
-The order is now: **primitive flattening (8.3) → sheet interactive (8.4) → conditions & collections & share (8.5)**. This matches Mashu's 2026-07-27 intuition.
+The order is now: **primitive flattening (8.3) → conditions + sheet interactive (8.4) → collections (8.5) → share+follow (8.6)**.
+
+### Phase 8.4 detail (Conditions + Sheet UI)
+
+**Conditions** — user-authored, runtime-applied, not hardcoded:
+- Condition = `{ tag: string, description?: string, modifiers?: Modifier[], isActive: boolean }`
+- Players type a tag at runtime: `poisoned`, `prone`, `stunned`, or `poisoned −2 attack rolls`
+- If the tag carries modifiers, they apply to the character when the condition is active
+- If not, it's a visible note only (cosmetic)
+- Players can deactivate conditions (visible but don't apply) or delete them
+- Accordion on character sheet with cards for each condition
+- **No library required** — conditions are freeform strings, not entries from a `conditions` table. Avoids over-engineering per Mashu's 2026-07-27 note.
+
+**Sheet live UI** — interactive primitives:
+- Click a primitive → see its tags/ops/modifiers expanded
+- Mirror toggle works in real-time (not just at save)
+- Active/inactive toggle on capabilities (infrastructure already in `character_capabilities.isActive`)
+- Behavior references resolve live (e.g., `blockValue` from primitive shows current value in capability card)
 
 ---
 
@@ -65,6 +81,44 @@ The 3 storage outcomes from a single primitive_id:
   - Stacks via modifier engine's `stacking: "stack"` rule
 
 **Stacking engine receives the post-storage array** of primitive instances per character. For each target (e.g. `max-vitality`), it groups by primitive_id, looks up the stacking rule on the modifier, and resolves per `stack` / `highest-only` / `lowest-only` / `unique-by-primitive` / `unique-by-target` / `replace`. The author writes the stacking rule per modifier — players don't pick.
+
+---
+
+## Behavior Block References (per Mashu 2026-07-27 followup)
+
+**Use case:** Author defines a behavior in a primitive with a named modifier slot:
+```
+Primitive "Defender":
+  behaviors:
+    block: { modifier: 6, name: "blockValue" }
+```
+
+Then a capability references it by name:
+```
+Capability "Shield Wall":
+  description: "While active, reduces damage taken by blockValue."
+  activeBehavior: "block"
+```
+
+When the capability is toggled **active**, the engine looks up `blockValue` (currently `6`) from the referenced primitive and applies `damage taken − 6`. When toggled **inactive**, the modifier doesn't apply.
+
+**Infrastructure already in place:**
+- `behavior` token type exists in `equations.ts` (line 170: `{ kind: "behavior", name: string }`)
+- `isActive` column exists on `character_capabilities` (`entities.ts` line 62, default `true`)
+- `capability_toggle` log event exists for tracking toggles in the character log
+
+**Phase 8.4 work (sheet live UI):**
+- Resolve behavior references live in the capability card (show "While active: damage − blockValue (currently 6)")
+- Active/inactive toggle button on capability cards in the sheet
+- Mirror toggle on primitive cards (also live, not just at save)
+- Click primitive → expand to see tags/ops/modifiers/behavior slots
+
+**Phase 8.4 work (conditions):**
+- New table `character_conditions` (id, character_id, tag, description?, modifiers?, is_active, sort_order, created_at)
+- "Add condition" button on character sheet — opens small composer (tag input + optional description + optional modifier expression)
+- Accordion on sheet listing all conditions as cards
+- Each card: tag name, description text, modifier breakdown, active toggle, delete button
+- Parser handles patterns like `poisoned −2 attack rolls` (extract modifier if present, else treat as cosmetic only)
 
 ---
 
@@ -252,40 +306,38 @@ Order: B (conditions) → A (collections) → D (share + follow). Or swap if you
 
 ---
 
-## Open Questions (plain English)
+## Open Questions (status as of 2026-07-27)
 
-### Q1: Phase 8.3 engine math location
+### Q1: Phase 8.3 engine math location — ✅ **RESOLVED: C (hybrid)**
 
-**The question:** When a player opens their character sheet, where does the math (summing modifiers, applying stacking rules, getting the final vitality number) actually run?
+- **Server resolves** for the public character sheet (authoritative, what others see when shared)
+- **Browser resolves** inside the edit modal for live preview (PB, vitality, attributes, 10 practices, condition tags)
+- The modal store already runs live math locally — we keep that
+- No rewrite needed; we're extending what's already there
 
-- **(A) Server does the math** — server returns `{ vitality: 24, sources: [...] }`, your sheet just displays it. Always correct, no chance of drift. Slight delay each time you change something in the modal (small round-trip).
-- **(B) Browser does the math** — server sends raw primitive list, browser calculates locally. Instant updates as you edit. Risk: if I'm sloppy, the display and save can drift out of sync.
-- **(C) Hybrid** — server does math for the public read-only sheet (what others see when you share); browser does math for the edit modal (so you get instant feedback as you slot primitives). Two code paths, but each does what it's best at.
+### Q2: Phase 8.5 priority — ✅ **RESOLVED: B → A → D** (now B is part of 8.4)
 
-**My recommendation: C (hybrid).** The modal already does live math in the store; we keep that. The public sheet URL reads server-resolved values, which is the part that needs to be "guaranteed legit."
+Per Mashu 2026-07-27: conditions belong in 8.4 (with sheet UI), not 8.5. Collections move to 8.5. Share/Follow move to 8.6.
 
-**If you want the simplest possible code: pick A.** The 100-300ms round-trip on modal edits is barely noticeable.
+### Q3: Share-with-link scope — ✅ **RESOLVED: copy-link only (no collaborator permissions)**
 
-### Q2: Phase 8.5 priority
-
-The four Phase 8.5 tracks:
-
-| Track | What it is | Why this order matters |
-|-------|-----------|------------------------|
-| **C — Sheet live UI** | Make the character sheet interactive — click a primitive, see its tags/ops, mirror toggle works in real-time, conditions show real effects | Comes first because **the v2 storage model (Phase 8.3) needs an interactive sheet to feel meaningful** — otherwise stacking does nothing visible |
-| **B — Condition evaluator** | Right now "poisoned" or "prone" just say `true`. This makes them mean something (poisoned = −2 to attack rolls, etc.) | Comes second because Track C will display these conditions and they need to do something |
-| **A — Collections** | "Playlists" for primitives/heritages/capabilities. Save to collection, browse collection | Comes third because nobody needs collections until the sheet + conditions are working |
-| **D — Share + Follow** | Make a character or collection shareable via link. Follow other people's published lists | Comes last because **sharing needs collections to share** (and a working sheet to share from) |
-
-**Recommended order: C → B → A → D** (which matches your 2026-07-27 instinct).
-
-### Q3: Share-with-link scope
-
-When you share a character/collection via link, what can the recipient do?
-
-- **Read-only** — they can view but not edit (safer, simpler)
-- **Editable for collaborators** — like Google Docs, multiple people can edit (more complex, needs permissions UI)
+No editable-for-others mode. Player copies a link, recipient opens it read-only. Simpler, no permissions UI to build.
 
 ---
 
-*Once you answer Q1/Q2/Q3, I'll cut the schedule into actual implementation batches.*
+## All open questions resolved. Ready to start Phase 8.3.
+
+Phase 8.3 plan (the v2 storage model from `message.txt`):
+
+```
+Week 1 (Aug 4–8):
+  Mon:       8.3a — Schema migration (drop PK, add instance_id, partial unique indexes)
+  Tue–Wed:   8.3b — Modal store: direct-slot writes with mirror toggle
+  Thu–Fri:   8.3c — Stacking engine: instance array flow + sheet wiring
+
+Week 2 (Aug 11–15):
+  Mon:       8.3d — <ConditionBadges> drop-in on sheet (component already exists)
+  Tue–Wed:   8.3e — Multi-instance UI in Capabilities tab + "add another copy" button
+  Thu:       Buffer / regression catches
+  Fri:       → Phase 8.3 closed by Aug 15
+```
