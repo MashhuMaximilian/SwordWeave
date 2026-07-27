@@ -745,7 +745,10 @@ export function TabbedCharacterForm() {
                 lives only in the Attributes tab, Rem is dropped because
                 `BU used/budget` already tells the user how much room is
                 left. Unified with character sheet BuBudgetFooter style.
-                Format: Lvl X BU x/y a/b BU debt - c used */
+                Phase 8.2 batch 18 (Mashu 2026-07-27): BU DEBT format is
+                `X/Y` with a small grey `(max Y BU)` subtitle so the
+                level cap is explicit. Dropped the `- X used` suffix —
+                used and qualified are equal here. */
             <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-2 border-t border-border bg-card px-4 py-2">
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <FooterStat label="Lvl" value={String(attributes.level)} />
@@ -761,7 +764,8 @@ export function TabbedCharacterForm() {
                 {buSummary.debtUsed > 0 || debtCeiling > 0 ? (
                   <FooterStat
                     label="BU debt"
-                    value={`${buSummary.debtUsed}/${debtCeiling} - ${buSummary.debtUsed} used`}
+                    value={`${buSummary.debtUsed}/${debtCeiling}`}
+                    sublabel={`(max ${debtCeiling} BU)`}
                     tone={debtExceeded ? "warn" : "default"}
                   />
                 ) : null}
@@ -793,10 +797,13 @@ function FooterStat({
   label,
   value,
   tone = "default",
+  sublabel,
 }: {
   label: string;
   value: string;
   tone?: "default" | "ok" | "warn";
+  /** Optional small-grey caption rendered after the value, e.g. "(max 20 BU)". */
+  sublabel?: string;
 }) {
   return (
     <span
@@ -811,6 +818,11 @@ function FooterStat({
         {label}
       </span>
       {value}
+      {sublabel && (
+        <span className="font-sans text-[10px] font-normal normal-case text-muted-foreground">
+          {sublabel}
+        </span>
+      )}
     </span>
   );
 }
