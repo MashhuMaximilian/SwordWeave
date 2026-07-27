@@ -112,6 +112,63 @@ If the player checks Mirror, the cost flips and the row is inserted as a mirror.
 
 ---
 
+## Mirror scope clarification (per Mashu 2026-07-27 followup)
+
+**Mirror is character-specific. It does NOT propagate into capability/effect references.**
+
+When a primitive is mirrored on a character, the **character sheet stats** flip (vitality, attack, awareness, etc.). But when that primitive is **referenced inside a capability or effect**, the capability uses the primitive's **authored direction**, not the character's mirrored direction.
+
+**Concrete example:**
+
+- Primitive "Cursed Aura" authored as `{ modifier: -3, target: "attack" }`
+- Player slots it directly → character attack = -3
+- Player toggles mirror → character attack = +3 (mirrored)
+- Player has capability "Corrupting Touch" that references Cursed Aura
+- When player uses "Corrupting Touch" → applies **−3 attack debuff to enemy** (authored direction, NOT +3)
+
+**Why this matters:** The mirror is a **character-level inversion** (a curse being broken, a polarity flip on the character themselves). The primitive's "intrinsic meaning" (this aura weakens attack) stays the same regardless of who has it mirrored.
+
+**Implementation:**
+
+- `character_primitives.is_mirrored = true` flips the modifier when applied to the **character's stat aggregation**
+- When a capability references a primitive (via behavior token or modifier reference), the reference uses the **primitive's authored data** — the mirror flag is invisible to the reference resolver
+- The mirror flag is **metadata on the character's relationship to the primitive**, not on the primitive itself
+
+**What this means for the modifier engine:**
+
+The modifier collector runs in two contexts:
+
+1. **Character stat aggregation** — respects the mirror flag. Mirrored instances flip their values before applying.
+2. **Capability/effect resolution** — ignores the mirror flag. Uses primitive's authored values directly.
+
+The two contexts share the same primitive lookup, but apply different "view" rules. This is why we need to track which instance is which.
+
+---
+
+## Capability/Heritage/Effect are containers, not math (per Mashu 2026-07-27)
+
+**Capabilities, heritages, and effects are organizational bundles.** They don't add or subtract from the math — they're just named groups of primitives with a description.
+
+**In the character modal:**
+
+- Each tab lists primitives with origin tags (`Inherited from Lineage 'Ironborn'` / `Inherited from Capability 'Aegis Shield'` / `Direct, paid` / `Direct, mirror`)
+- Capabilities/heritages/effects appear as section headers, with their primitives listed below
+- The math happens at the **primitive level**, not at the container level
+
+**In `/atelier` (the composer for authors):**
+
+- Same pattern — primitives are the atomic unit, capabilities/heritages/effects are bundles
+- Author creates a capability by selecting primitives + giving it a name + description
+- From the character's perspective, the capability is "compiled" into its primitive list — the capability is just a way to organize
+
+**Origin metadata is display-only:**
+
+- `origin_heritage_id`, `origin_capability_id`, `origin_effect_id` columns tell the UI which tab/section to render the primitive under
+- They do NOT affect math — a primitive from a Capability inside a Lineage is the same primitive regardless of its origin
+- This is why the partial unique indexes in the migration allow only ONE inherited row per (char, prim): all inheritance paths collapse, the most-specific origin is kept for UI breadcrumbs
+
+---
+
 ## Concrete batches
 
 ### 8.3a — Schema migration + Drizzle update (1 day)
