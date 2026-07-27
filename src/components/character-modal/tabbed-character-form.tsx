@@ -435,7 +435,9 @@ export function TabbedCharacterForm() {
    * The two endpoints accept different field shapes:
    *   - POST accepts "primitivesBySource" / "capabilitiesBySource"
    *     / "heritages" arrays (heritage bundle model)
-   *   - PATCH accepts flat "primitiveIds" / "mirroredPrimitiveIds"
+   *   - PATCH accepts "primitiveInstances" (Phase 8.3b; legacy
+   *     "primitiveIds" + "mirroredPrimitiveIds" still supported for
+   *     back-compat)
    *     / "capabilityIds" / "itemIds" arrays (no heritage bundles;
    *     heritage fields come from the legacy flat columns)
    *
@@ -460,10 +462,11 @@ export function TabbedCharacterForm() {
     setIsPending(true);
     try {
       // Flatten pendingSlots into the arrays the API endpoints
-      // understand. We extract primitive ids, capability ids,
-      // item ids, and heritage ids separately.
-      const primitiveIds: number[] = [];
-      const mirroredPrimitiveIds: number[] = [];
+      // understand. Phase 8.3b: primitiveInstances preserves the
+      // per-slot shape (multiple direct-paid copies of the same
+      // primitive_id can coexist for stacking). We extract primitive
+      // ids, capability ids, item ids, and heritage ids separately.
+      const primitiveInstances: Array<{ primitiveId: number; isMirrored: boolean }> = [];
       const capabilityIds: string[] = [];
       const itemIds: string[] = [];
       const heritages: Array<{ id: string; isMirrored: boolean }> = [];
@@ -473,10 +476,10 @@ export function TabbedCharacterForm() {
           if (slot.kind === "heritage") {
             heritages.push({ id: slot.heritageId, isMirrored: false });
           } else if (slot.kind === "primitive") {
-            primitiveIds.push(slot.primitiveId);
-            if (slot.mirror === true) {
-              mirroredPrimitiveIds.push(slot.primitiveId);
-            }
+            primitiveInstances.push({
+              primitiveId: slot.primitiveId,
+              isMirrored: slot.mirror === true,
+            });
           } else if (slot.kind === "capability") {
             capabilityIds.push(slot.capabilityId);
           } else if (slot.kind === "item") {
@@ -484,6 +487,32 @@ export function TabbedCharacterForm() {
           }
           // effects: not slotted separately in v1 (placeholder)
         }
+      }
+
+      // Compute the buSummary from primitiveInstances so the footer
+      // matches what the server will charge. (Not currently used here
+      // since buSummary is already computed above via the useMemo —
+      // but kept as a sanity check during development.)
+      const primitiveBuCostById = new Map<number, number>();
+      for (const tab of CHARACTER_TABS) {
+        for (const slot of pendingSlots[tab]) {
+          if (slot.kind === "primitive" && typeof slot.buCost === "number") {
+            if (!primitiveBuCostById.has(slot.primitiveId)) {
+              primitiveBuCostById.set(slot.primitiveId, slot.buCost);
+            }
+          }
+        }
+      }
+      // Phase 8.3b: positiveSpent should equal sum of non-mirror
+      // instance BU costs. The footer already computes this via
+      // buSummary. Sanity-check that our local computation agrees.
+      const localPositiveSpent = primitiveInstances
+        .filter((inst) => !inst.isMirrored)
+        .reduce((sum, inst) => sum + (primitiveBuCostById.get(inst.primitiveId) ?? 0), 0);
+      if (localPositiveSpent !== buSummary.positiveSpent) {
+        console.warn(
+          `[character save] buSummary mismatch: local=${localPositiveSpent} footer=${buSummary.positiveSpent}`,
+        );
       }
 
       const baseBody: Record<string, unknown> = {
@@ -529,13 +558,12 @@ export function TabbedCharacterForm() {
       let body: Record<string, unknown>;
 
       if (editCharacterId) {
-        // Edit: PATCH the existing character with flat ids.
+        // Edit: PATCH the existing character with instance array.
         url = `/api/characters/${editCharacterId}`;
         method = "PATCH";
         body = {
           ...baseBody,
-          primitiveIds,
-          mirroredPrimitiveIds,
+          primitiveInstances,
           capabilityIds,
           itemIds,
         };
@@ -551,9 +579,9 @@ export function TabbedCharacterForm() {
           LINEAGE: [],
           UPBRINGING: [],
           MANIFEST: [],
-          PERSONAL: primitiveIds.map((id) => ({
-            id,
-            isMirrored: mirroredPrimitiveIds.includes(id),
+          PERSONAL: primitiveInstances.map((inst) => ({
+            id: inst.primitiveId,
+            isMirrored: inst.isMirrored,
           })),
         };
         const capsBySource: Record<string, Array<{ id: string; isMirrored: boolean }>> = {

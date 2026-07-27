@@ -117,6 +117,13 @@ export type PendingSlot = {
       tab: CharacterTabId;
       name: string;
       /**
+       * Phase 8.3b: per-instance UUID for stacking. New direct-paid
+       * copies get fresh UUIDs; the inherited baseline uses the
+       * server-side row's instance_id. Optional on PendingSlot —
+       * the store stamps a fresh UUID via makeSlotId() if missing.
+       */
+      instanceId?: string;
+      /**
        * Phase 8.1 batch 10: mirror metadata captured at queue time so
        * the slot receiver can render the mirror toggle without
        * refetching. isMirrorable=false means the mirror toggle is
@@ -716,12 +723,17 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
     setPendingSlots((current) => {
       // Merge: keep existing slots, add seeded ones.
       // Deduplicate by STABLE entity IDs (not slotId which is regenerated each call).
+      // Phase 8.3b: for primitives, dedup by instanceId (UUID) so multiple
+      // direct-paid copies don't merge. Pre-8.3b slots without instanceId
+      // fall back to primitiveId (back-compat with old seeds).
       const merged: PendingSlotsByTab = { ...current };
       for (const tab of CHARACTER_TABS) {
         const existingEntityKeys = new Set<string>();
         for (const s of current[tab]) {
           if (s.kind === "heritage") existingEntityKeys.add(`heritage:${s.heritageId}`);
-          else if (s.kind === "primitive") existingEntityKeys.add(`primitive:${s.primitiveId}`);
+          else if (s.kind === "primitive") {
+            existingEntityKeys.add(`primitive:${s.primitiveId}:${s.instanceId ?? "legacy"}`);
+          }
           else if (s.kind === "capability") existingEntityKeys.add(`capability:${s.capabilityId}`);
           else if (s.kind === "item") existingEntityKeys.add(`item:${s.itemId}`);
         }
@@ -732,7 +744,9 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
           ...current[tab],
           ...stampedSeeded.filter((s) => {
             if (s.kind === "heritage") return !existingEntityKeys.has(`heritage:${s.heritageId}`);
-            if (s.kind === "primitive") return !existingEntityKeys.has(`primitive:${s.primitiveId}`);
+            if (s.kind === "primitive") {
+              return !existingEntityKeys.has(`primitive:${s.primitiveId}:${s.instanceId ?? "legacy"}`);
+            }
             if (s.kind === "capability") return !existingEntityKeys.has(`capability:${s.capabilityId}`);
             if (s.kind === "item") return !existingEntityKeys.has(`item:${s.itemId}`);
             return !existingEntityKeys.has(`effect:${s.effectId}`);

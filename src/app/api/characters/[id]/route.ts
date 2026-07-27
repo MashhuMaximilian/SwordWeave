@@ -255,19 +255,38 @@ export async function PATCH(
 
     updatePayload["updatedAt"] = new Date();
 
-    // Volatility ceiling enforcement: if primitiveIds is being replaced AND
-    // any of them are mirrors, validate against level-based ceiling BEFORE write.
-    if ("primitiveIds" in values) {
-      const newPrimitives = parseStringArray(values["primitiveIds"]);
-      const newMirrors = parseStringArray(values["mirroredPrimitiveIds"] ?? []).filter(
-        (id) => newPrimitives.includes(id),
-      );
-      // PATCH replaces the full primitive set, so the "current mirror set" is empty
-      // for the ceiling check (everything in the request is the new state).
+    // Volatility ceiling enforcement: if primitiveInstances (or legacy
+    // primitiveIds) is being replaced AND any are mirrors, validate
+    // against level-based ceiling BEFORE write.
+    const wantsReplace = "primitiveInstances" in values || "primitiveIds" in values;
+    if (wantsReplace) {
+      // Phase 8.3b: read primitiveInstances if present, else fall back
+      // to legacy primitiveIds + mirroredPrimitiveIds.
+      let newPrimitives: Array<{ primitiveId: number; isMirrored: boolean }>;
+      if (Array.isArray(values["primitiveInstances"])) {
+        newPrimitives = (values["primitiveInstances"] as Array<Record<string, unknown>>)
+          .map((e) => ({
+            primitiveId: Number(e["primitiveId"]),
+            isMirrored: Boolean(e["isMirrored"]),
+          }))
+          .filter((e) => Number.isInteger(e.primitiveId) && e.primitiveId > 0);
+      } else {
+        const legacyIds = parseStringArray(values["primitiveIds"] ?? []);
+        const legacyMirrors = new Set(
+          parseStringArray(values["mirroredPrimitiveIds"] ?? []),
+        );
+        newPrimitives = legacyIds.map((pid) => ({
+          primitiveId: pid,
+          isMirrored: legacyMirrors.has(pid),
+        }));
+      }
+
+      // Validate against the mirror ceiling (the function dedupes
+      // internally, so stacking doesn't double-count).
       const volCheck = await validateMirrorSet(
         mergedLevel,
-        newMirrors,
-        newPrimitives,
+        newPrimitives.filter((p) => p.isMirrored).map((p) => p.primitiveId),
+        newPrimitives.map((p) => p.primitiveId),
       );
       if (!volCheck.ok) {
         return NextResponse.json(
@@ -281,8 +300,6 @@ export async function PATCH(
           { status: volCheck.status },
         );
       }
-      // Stash for use inside the transaction.
-      (values as Record<string, unknown>)["__resolvedMirrors"] = newMirrors;
     }
 
     const result = await db.transaction(async (tx) => {
@@ -290,14 +307,32 @@ export async function PATCH(
         await tx.update(characters).set(updatePayload).where(eq(characters.id, id));
       }
 
-      if ("primitiveIds" in values) {
-        const primitiveIds = parseStringArray(values["primitiveIds"]);
-        const resolvedMirrors = parseStringArray(
-          (values as Record<string, unknown>)["__resolvedMirrors"] ?? [],
-        );
+      if ("primitiveIds" in values || "primitiveInstances" in values) {
+        // Phase 8.3b: support new primitiveInstances shape (multiple
+        // direct-paid copies allowed) and legacy primitiveIds for
+        // back-compat. Each instance is its own row.
+        const instances: Array<{ primitiveId: number; isMirrored: boolean }> =
+          Array.isArray(values["primitiveInstances"])
+            ? (values["primitiveInstances"] as Array<Record<string, unknown>>)
+                .map((e) => ({
+                  primitiveId: Number(e["primitiveId"]),
+                  isMirrored: Boolean(e["isMirrored"]),
+                }))
+                .filter((e) => Number.isInteger(e.primitiveId) && e.primitiveId > 0)
+            : [];
+        if (Array.isArray(values["primitiveIds"]) && !Array.isArray(values["primitiveInstances"])) {
+          // Legacy fallback: convert flat array + mirroredPrimitiveIds
+          const legacyIds = parseStringArray(values["primitiveIds"]);
+          const legacyMirrors = new Set(
+            parseStringArray(values["mirroredPrimitiveIds"] ?? []),
+          );
+          for (const pid of legacyIds) {
+            instances.push({ primitiveId: pid, isMirrored: legacyMirrors.has(pid) });
+          }
+        }
+
         await tx.delete(characterPrimitives).where(eq(characterPrimitives.characterId, id));
-        if (primitiveIds.length > 0) {
-          const mirrorSet = new Set(resolvedMirrors);
+        if (instances.length > 0) {
           // Phase 5: load entity rows to compute version_id + slot_source.
           const primRows = await tx
             .select({
@@ -306,12 +341,15 @@ export async function PATCH(
               sourceOrigin: primitives.sourceOrigin,
             })
             .from(primitives)
-            .where(inArray(primitives.id, primitiveIds));
+            .where(inArray(primitives.id, instances.map((i) => i.primitiveId)));
           const primMap = new Map(primRows.map((r) => [r.id, r]));
           const slotsWithVersion = await Promise.all(
-            primitiveIds.map(async (pid) => {
-              const prim = primMap.get(pid);
-              const versionId = await resolveLatestVersionId("primitive", pid);
+            instances.map(async (inst) => {
+              const prim = primMap.get(inst.primitiveId);
+              const versionId = await resolveLatestVersionId(
+                "primitive",
+                inst.primitiveId,
+              );
               const slotSource = prim
                 ? resolveSlotSource({
                     entity: prim,
@@ -320,10 +358,10 @@ export async function PATCH(
                 : "PINNED";
               return {
                 characterId: id,
-                primitiveId: pid,
+                primitiveId: inst.primitiveId,
                 source: "PERSONAL" as const,
                 acquiredAtLevel: mergedLevel,
-                isMirrored: mirrorSet.has(pid),
+                isMirrored: inst.isMirrored,
                 versionId,
                 slotSource,
               };

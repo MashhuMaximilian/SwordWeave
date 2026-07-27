@@ -157,6 +157,13 @@ export interface ExpandedPrimitive {
   originHeritageId: string | null;
   originCapabilityId: string | null;
   originEffectId: string | null;
+  /**
+   * Phase 8.3b: per-instance index within a (character, primitive_id) group.
+   * 0 = the inherited baseline (if any). 1+ = direct-paid copies (each pays
+   * full BU). The DB uses instance_id UUID instead of this number — this
+   * index is just for ordering in the expander output.
+   */
+  instanceIndex: number;
   /** Diagnostic label for debug logs / sheet tooltips. */
   originPath: string;
 }
@@ -215,21 +222,69 @@ const MAX_RECURSION_DEPTH = 8;
  * ones. This means if a user slots primitive #42 in PERSONAL AND
  * heritage 'Elf' bundles primitive #42, the PERSONAL row wins.
  */
+/**
+ * Phase 8.3b: per-primitiveId grouping that supports multiple instances.
+ *
+ * Structure:
+ *   * `inherited`: 0 or 1 baseline row from heritage/capability/effect
+ *     bundles. If set, the origin cols describe the most-specific path.
+ *   * `mirror`: 0 or 1 direct mirror row (origin cols all null).
+ *     Links to the inherited baseline if any; the cost is -buCost.
+ *   * `directPaid`: 0..N direct-paid rows (origin cols all null, mirror
+ *     = false). Each is a separate stack, each pays full BU.
+ *
+ * The DB enforces:
+ *   * 1 inherited row per (char, prim) — partial unique index
+ *   * 1 mirror row per (char, prim) — partial unique index
+ *   * N direct-paid rows allowed — no unique constraint
+ */
+interface PrimitiveGroup {
+  inherited: ExpandedPrimitive | null;
+  mirror: ExpandedPrimitive | null;
+  directPaid: ExpandedPrimitive[];
+}
+
+function emptyGroup(): PrimitiveGroup {
+  return { inherited: null, mirror: null, directPaid: [] };
+}
+
 export function expandBundles(input: BundleExpansionInput): BundleExpansionResult {
   const warnings: string[] = [];
 
-  // === Step 1: direct primitive slots, origin cols null ===
-  const primitiveMap = new Map<number, ExpandedPrimitive>();
+  // === Step 1: direct primitive slots — split into mirror vs directPaid ===
+  const primitiveMap = new Map<number, PrimitiveGroup>();
   for (const p of input.primitives) {
-    primitiveMap.set(p.primitiveId, {
-      primitiveId: p.primitiveId,
-      source: p.source,
-      isMirrored: p.isMirrored,
-      originHeritageId: null,
-      originCapabilityId: null,
-      originEffectId: null,
-      originPath: "direct",
-    });
+    const group = primitiveMap.get(p.primitiveId) ?? emptyGroup();
+    if (p.isMirrored) {
+      // Only 1 mirror per primitive — keep the first one (dedup at expander)
+      if (!group.mirror) {
+        group.mirror = {
+          primitiveId: p.primitiveId,
+          source: p.source,
+          isMirrored: true,
+          originHeritageId: null,
+          originCapabilityId: null,
+          originEffectId: null,
+          instanceIndex: 0,
+          originPath: "direct:mirror",
+        };
+      }
+    } else {
+      // Direct-paid: each is a separate instance. instanceIndex starts
+      // at 0 (inherited baseline is also 0 — they share the index space
+      // for ordering purposes, but the DB assigns unique UUIDs).
+      group.directPaid.push({
+        primitiveId: p.primitiveId,
+        source: p.source,
+        isMirrored: false,
+        originHeritageId: null,
+        originCapabilityId: null,
+        originEffectId: null,
+        instanceIndex: group.directPaid.length,
+        originPath: "direct",
+      });
+    }
+    primitiveMap.set(p.primitiveId, group);
   }
 
   // === Step 2: capabilities — tracked for character_capabilities output
@@ -261,41 +316,53 @@ export function expandBundles(input: BundleExpansionInput): BundleExpansionResul
   // === Step 3: expand primitives from heritage bundles ===
   for (const h of input.heritages) {
     for (const link of h.primitiveLinks) {
-      mergePrimitive(primitiveMap, {
+      const group = primitiveMap.get(link.primitiveId) ?? emptyGroup();
+      // Inherited: only ONE row per (char, prim), regardless of how
+      // many inheritance paths brought it. mergeGroupInherited picks the
+      // most-specific origin.
+      group.inherited = mergeGroupInherited(group.inherited, {
         primitiveId: link.primitiveId,
         source: h.kind,
         isMirrored: link.isMirrored ?? false,
         originHeritageId: h.id,
         originCapabilityId: null,
         originEffectId: null,
+        instanceIndex: 0,
         originPath: `heritage:${h.id}`,
       });
+      primitiveMap.set(link.primitiveId, group);
     }
     for (const capLink of h.capabilityLinks) {
       // Heritage's capability's direct primitives (source = heritage kind)
       for (const pl of capLink.primitiveLinks) {
-        mergePrimitive(primitiveMap, {
+        const group = primitiveMap.get(pl.primitiveId) ?? emptyGroup();
+        group.inherited = mergeGroupInherited(group.inherited, {
           primitiveId: pl.primitiveId,
           source: h.kind,
           isMirrored: pl.isMirrored ?? false,
           originHeritageId: h.id,
           originCapabilityId: capLink.capabilityId,
           originEffectId: null,
+          instanceIndex: 0,
           originPath: `heritage:${h.id} > capability:${capLink.capabilityId}`,
         });
+        primitiveMap.set(pl.primitiveId, group);
       }
       // Heritage's capability's effect's primitives
       for (const effLink of capLink.effectLinks) {
         for (const pl of effLink.primitiveLinks) {
-          mergePrimitive(primitiveMap, {
+          const group = primitiveMap.get(pl.primitiveId) ?? emptyGroup();
+          group.inherited = mergeGroupInherited(group.inherited, {
             primitiveId: pl.primitiveId,
             source: h.kind,
             isMirrored: pl.isMirrored ?? false,
             originHeritageId: h.id,
             originCapabilityId: capLink.capabilityId,
             originEffectId: effLink.effectId,
+            instanceIndex: 0,
             originPath: `heritage:${h.id} > capability:${capLink.capabilityId} > effect:${effLink.effectId}`,
           });
+          primitiveMap.set(pl.primitiveId, group);
         }
       }
     }
@@ -304,27 +371,40 @@ export function expandBundles(input: BundleExpansionInput): BundleExpansionResul
   // === Step 4: expand primitives from direct capabilities ===
   for (const cap of input.capabilities) {
     for (const link of cap.primitiveLinks) {
-      mergePrimitive(primitiveMap, {
+      const group = primitiveMap.get(link.primitiveId) ?? emptyGroup();
+      // Direct capability doesn't override a direct slot — but it does
+      // override an inherited-from-heritage row (more-specific origin).
+      // However, if the primitive is already directPaid, the inherited
+      // slot is just an inherited addition with a less-specific origin
+      // than the direct slots — we still record it (because the
+      // character OWNS it through both paths), but the origin is the
+      // capability path. mergeGroupInherited picks most-specific.
+      group.inherited = mergeGroupInherited(group.inherited, {
         primitiveId: link.primitiveId,
         source: cap.source,
         isMirrored: link.isMirrored ?? false,
         originHeritageId: null,
         originCapabilityId: cap.id,
         originEffectId: null,
+        instanceIndex: 0,
         originPath: `direct:capability:${cap.id}`,
       });
+      primitiveMap.set(link.primitiveId, group);
     }
     for (const effLink of cap.effectLinks) {
-      for (const pl of effLink.primitiveLinks) {
-        mergePrimitive(primitiveMap, {
-          primitiveId: pl.primitiveId,
+      for (const link of effLink.primitiveLinks) {
+        const group = primitiveMap.get(link.primitiveId) ?? emptyGroup();
+        group.inherited = mergeGroupInherited(group.inherited, {
+          primitiveId: link.primitiveId,
           source: cap.source,
-          isMirrored: pl.isMirrored ?? false,
+          isMirrored: link.isMirrored ?? false,
           originHeritageId: null,
           originCapabilityId: cap.id,
           originEffectId: effLink.effectId,
+          instanceIndex: 0,
           originPath: `direct:capability:${cap.id} > effect:${effLink.effectId}`,
         });
+        primitiveMap.set(link.primitiveId, group);
       }
     }
   }
@@ -332,16 +412,29 @@ export function expandBundles(input: BundleExpansionInput): BundleExpansionResul
   // === Step 5: expand primitives from direct effects ===
   for (const eff of input.effects) {
     for (const link of eff.primitiveLinks) {
-      mergePrimitive(primitiveMap, {
+      const group = primitiveMap.get(link.primitiveId) ?? emptyGroup();
+      group.inherited = mergeGroupInherited(group.inherited, {
         primitiveId: link.primitiveId,
         source: eff.source,
         isMirrored: link.isMirrored ?? false,
         originHeritageId: null,
         originCapabilityId: null,
         originEffectId: eff.id,
+        instanceIndex: 0,
         originPath: `direct:effect:${eff.id}`,
       });
+      primitiveMap.set(link.primitiveId, group);
     }
+  }
+
+  // === Build primitives output: flatten groups into rows ===
+  // The DB will assign each row a fresh instance_id UUID; this order
+  // is the order rows will be inserted in (useful for tests + debug).
+  const primitives: ExpandedPrimitive[] = [];
+  for (const [, group] of primitiveMap) {
+    if (group.inherited) primitives.push(group.inherited);
+    if (group.mirror) primitives.push(group.mirror);
+    for (const dp of group.directPaid) primitives.push(dp);
   }
 
   // === Build heritages output ===
@@ -352,7 +445,7 @@ export function expandBundles(input: BundleExpansionInput): BundleExpansionResul
   }));
 
   return {
-    primitives: Array.from(primitiveMap.values()),
+    primitives,
     capabilities: Array.from(capabilityMap.values()),
     heritages,
     warnings,
@@ -360,33 +453,31 @@ export function expandBundles(input: BundleExpansionInput): BundleExpansionResul
 }
 
 /**
- * Merge a candidate primitive row into the map. Direct slots win
- * over bundle expansions; more-specific origin wins over less-specific.
+ * Merge a candidate inherited primitive into the group. Only ONE
+ * inherited row per (char, primitive_id) — picks the most-specific
+ * origin.
  *
  * Preference order (lower = wins):
- *   1. all origins null (direct slot) — never overridden
- *   2. has origin_effect_id (most specific — bubbled up through effect)
- *   3. has origin_capability_id (medium — bubbled up through capability)
- *   4. has origin_heritage_id only (least specific)
+ *   1. has origin_effect_id (most specific — bubbled up through effect)
+ *   2. has origin_capability_id (medium — bubbled up through capability)
+ *   3. has origin_heritage_id only (least specific)
+ *
+ * First wins. If both candidates have the same rank, keep existing
+ * (deterministic).
  */
-function mergePrimitive(
-  map: Map<number, ExpandedPrimitive>,
+function mergeGroupInherited(
+  existing: ExpandedPrimitive | null,
   candidate: ExpandedPrimitive,
-): void {
-  const existing = map.get(candidate.primitiveId);
-  if (!existing) {
-    map.set(candidate.primitiveId, candidate);
-    return;
-  }
-
+): ExpandedPrimitive {
+  if (!existing) return candidate;
   const existingRank = originRank(existing);
   const candidateRank = originRank(candidate);
   // Lower rank wins. Existing already won the first time, so only
   // override if candidate is MORE specific (lower rank number).
   if (candidateRank < existingRank) {
-    map.set(candidate.primitiveId, candidate);
+    return candidate;
   }
-  // If ranks tie, keep existing (deterministic: first-wins).
+  return existing;
 }
 
 function originRank(p: ExpandedPrimitive): number {

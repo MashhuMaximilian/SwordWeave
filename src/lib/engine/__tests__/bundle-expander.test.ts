@@ -65,6 +65,7 @@ describe("expandBundles — direct slots", () => {
       originHeritageId: null,
       originCapabilityId: null,
       originEffectId: null,
+      instanceIndex: 0,
       originPath: "direct",
     });
     const p2 = out.primitives.find((p) => p.primitiveId === 2);
@@ -165,6 +166,7 @@ describe("expandBundles — heritage expansion", () => {
       originHeritageId: "her-elf",
       originCapabilityId: "cap-keen-senses",
       originEffectId: null,
+      instanceIndex: 0,
       originPath: "heritage:her-elf > capability:cap-keen-senses",
     });
   });
@@ -273,6 +275,7 @@ describe("expandBundles — capability expansion", () => {
       originHeritageId: null,
       originCapabilityId: "cap-shield-bash",
       originEffectId: null,
+      instanceIndex: 0,
       originPath: "direct:capability:cap-shield-bash",
     });
   });
@@ -304,6 +307,7 @@ describe("expandBundles — capability expansion", () => {
       originHeritageId: null,
       originCapabilityId: "cap-fireball",
       originEffectId: "eff-boom",
+      instanceIndex: 0,
       originPath: "direct:capability:cap-fireball > effect:eff-boom",
     });
   });
@@ -370,6 +374,7 @@ describe("expandBundles — effect expansion", () => {
       originHeritageId: null,
       originCapabilityId: null,
       originEffectId: "eff-heal",
+      instanceIndex: 0,
       originPath: "direct:effect:eff-heal",
     });
   });
@@ -378,15 +383,20 @@ describe("expandBundles — effect expansion", () => {
 // =============================================================================
 // Dedup tests — the critical correctness property
 // =============================================================================
+// =============================================================================
+// Dedup tests — the critical correctness property
+// =============================================================================
 
 describe("expandBundles — dedup", () => {
-  it("same primitive slotted directly AND in heritage: direct wins", () => {
+  it("same primitive slotted directly AND in heritage: produces 2 rows (1 inherited + 1 direct)", () => {
     const input: BundleExpansionInput = {
       heritages: [
         {
-          id: "her-elf",
+          id: "her-ironborn",
           kind: "LINEAGE",
-          primitiveLinks: [{ primitiveId: 42, isMirrored: false }],
+          primitiveLinks: [
+            { primitiveId: 42, isMirrored: false },
+          ],
           capabilityLinks: [],
         },
       ],
@@ -397,12 +407,19 @@ describe("expandBundles — dedup", () => {
       ],
     };
     const out = expandBundles(input);
-    expect(out.primitives).toHaveLength(1);
-    const p = out.primitives[0];
-    expect(p?.primitiveId).toBe(42);
-    expect(p?.source).toBe("PERSONAL");
-    expect(p?.originHeritageId).toBeNull();
-    expect(p?.originPath).toBe("direct");
+    // Phase 8.3b v2 model: both rows kept (inherited + direct-paid)
+    expect(out.primitives).toHaveLength(2);
+
+    // Inherited row carries the heritage origin
+    const inherited = out.primitives.find((p) => p.originHeritageId !== null);
+    expect(inherited?.primitiveId).toBe(42);
+    expect(inherited?.originHeritageId).toBe("her-ironborn");
+
+    // Direct-paid row has direct origin path and null origin cols
+    const direct = out.primitives.find((p) => p.originPath === "direct");
+    expect(direct?.primitiveId).toBe(42);
+    expect(direct?.source).toBe("PERSONAL");
+    expect(direct?.originHeritageId).toBeNull();
   });
 
   it("same primitive in heritage AND capability: capability origin wins (more specific)", () => {
@@ -435,10 +452,15 @@ describe("expandBundles — dedup", () => {
       ...input,
       primitives: [{ primitiveId: 99, source: "PERSONAL", isMirrored: false }],
     });
-    expect(out2.primitives).toHaveLength(1);
-    const p = out2.primitives[0];
-    expect(p?.source).toBe("PERSONAL");
-    expect(p?.originPath).toBe("direct");
+    // Phase 8.3b: with v2 model, both rows are kept — 1 inherited from
+    // heritage + 1 direct-paid. Length is 2, not 1.
+    expect(out2.primitives).toHaveLength(2);
+    // The inherited row carries the heritage origin
+    const inherited = out2.primitives.find((p) => p.originHeritageId !== null);
+    expect(inherited?.originHeritageId).toBe("her-x");
+    // The direct-paid row has the direct origin path
+    const direct = out2.primitives.find((p) => p.originPath === "direct");
+    expect(direct?.source).toBe("PERSONAL");
   });
 
   it("same primitive via capability AND effect of same capability: effect wins (most specific)", () => {
@@ -495,7 +517,7 @@ describe("expandBundles — dedup", () => {
     expect(p?.source).toBe("LINEAGE");
   });
 
-  it("primitive appearing 5 times across many bundles stays a single row", () => {
+  it("primitive appearing 5 times across many bundles produces 2 rows (1 inherited + 1 direct)", () => {
     const input: BundleExpansionInput = {
       heritages: [
         {
@@ -528,7 +550,14 @@ describe("expandBundles — dedup", () => {
       primitives: [{ primitiveId: 7, source: "PERSONAL", isMirrored: false }],
     };
     const out = expandBundles(input);
-    expect(out.primitives).toHaveLength(1);
+    // Phase 8.3b v2 model: 1 inherited (collapsed from 4 paths) + 1 direct
+    expect(out.primitives).toHaveLength(2);
+    // The inherited row has the most-specific origin (capability > heritage)
+    const inherited = out.primitives.find((p) => p.originCapabilityId !== null);
+    expect(inherited?.originCapabilityId).toBe("cap-1");
+    // The direct-paid row has the direct origin path
+    const direct = out.primitives.find((p) => p.originPath === "direct");
+    expect(direct?.source).toBe("PERSONAL");
   });
 });
 
@@ -547,6 +576,7 @@ describe("summarizeExpansionCost", () => {
           originHeritageId: null,
           originCapabilityId: null,
           originEffectId: null,
+          instanceIndex: 0,
           originPath: "direct",
         },
         {
@@ -556,6 +586,7 @@ describe("summarizeExpansionCost", () => {
           originHeritageId: null,
           originCapabilityId: null,
           originEffectId: null,
+          instanceIndex: 0,
           originPath: "direct",
         },
         {
@@ -565,6 +596,7 @@ describe("summarizeExpansionCost", () => {
           originHeritageId: null,
           originCapabilityId: null,
           originEffectId: null,
+          instanceIndex: 0,
           originPath: "direct",
         },
       ],
@@ -599,6 +631,7 @@ describe("summarizeExpansionCost", () => {
           originHeritageId: null,
           originCapabilityId: null,
           originEffectId: null,
+          instanceIndex: 0,
           originPath: "direct",
         },
       ],
@@ -624,6 +657,7 @@ describe("summarizeExpansionCost", () => {
           originHeritageId: "h",
           originCapabilityId: null,
           originEffectId: null,
+          instanceIndex: 0,
           originPath: "heritage:h",
         },
       ],
@@ -631,6 +665,7 @@ describe("summarizeExpansionCost", () => {
         capabilityId: `c${i}`,
         source: "LINEAGE" as const,
         originHeritageId: "h",
+        instanceIndex: 0,
         originPath: "h",
       })),
       heritages: [

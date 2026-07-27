@@ -289,7 +289,37 @@ export async function POST(request: Request) {
     const dmNotes = String(values["dmNotes"] ?? "").trim() || null;
     const portraitUrl = String(values["portraitUrl"] ?? "").trim() || null;
 
-    const primitiveIds = parseStringArray(values["primitiveIds"]);
+    // Phase 8.3b: read primitiveInstances instead of primitiveIds. Each
+    // entry is a separate row (multiple direct-paid copies of the same
+    // primitive_id stack). The bundle-expander still produces inherited
+    // rows from heritages/capabilities/effects.
+    const primitiveInstances: Array<{ primitiveId: number; isMirrored: boolean }> =
+      Array.isArray(values["primitiveInstances"])
+        ? ((values["primitiveInstances"] as Array<Record<string, unknown>>)
+            .map((entry) => {
+              const pid = Number(entry["primitiveId"]);
+              return {
+                primitiveId: pid,
+                isMirrored: Boolean(entry["isMirrored"]),
+              };
+            })
+            .filter((e) => Number.isInteger(e.primitiveId) && e.primitiveId > 0))
+        : [];
+
+    // === Phase 8.3b: backward-compat with pre-8.3b clients that
+    //     still send primitiveIds + mirroredPrimitiveIds. We fold them
+    //     into primitiveInstances, then drop the legacy fields.
+    //     The legacy "one primitive_id per character" constraint is
+    //     gone — multiple direct copies are now allowed.
+    if (Array.isArray(values["primitiveIds"])) {
+      const legacyIds = parseStringArray(values["primitiveIds"]);
+      const legacyMirrors = new Set(
+        parseStringArray(values["mirroredPrimitiveIds"] ?? []),
+      );
+      for (const pid of legacyIds) {
+        primitiveInstances.push({ primitiveId: pid, isMirrored: legacyMirrors.has(pid) });
+      }
+    }
     const capabilityIds = parseUuidArray(values["capabilityIds"]);
     const itemIds = parseUuidArray(values["itemIds"]);
 
@@ -340,6 +370,18 @@ export async function POST(request: Request) {
         });
       }
     }
+    // Phase 8.3b: also accept direct primitive instances via the new
+    // shape (primitiveInstances). Each entry becomes its own expansion
+    // row, allowing multiple direct-paid copies of the same primitive
+    // (stacking). Source defaults to PERSONAL — the modal's per-slot
+    // source isn't meaningful for direct slots in v1.
+    for (const inst of primitiveInstances) {
+      expansionInput.primitives.push({
+        primitiveId: inst.primitiveId,
+        source: "PERSONAL",
+        isMirrored: inst.isMirrored,
+      });
+    }
     // Direct capability slots (from capabilitiesBySource).
     const directCapabilityIdsBySource: Array<{
       id: string;
@@ -359,12 +401,11 @@ export async function POST(request: Request) {
       }
     }
 
-    // Mirrored primitive IDs (subset of primitiveIds) — legacy
-    // shape. The source-keyed shape carries isMirrored per slot,
-    // so we don't need to extract mirrors here.
-    const mirroredPrimitiveIds = primitiveIds;
-
-    // === Phase 8.1 batch 13.1: bundle expansion ===
+    // === Phase 8.3b: build the expansion input. primitiveInstances
+    //     provides the direct + mirror slots; heritages/capabilities/effects
+    //     expand into inherited rows. The bundle-expander v2 model
+    //     handles the dedup + mirror-splitting. ===
+    //
     // Fetch heritage bundles (kind + primitiveLinks + capabilityLinks
     // with their own primitiveLinks + effectLinks with primitiveLinks).
     // Fetch direct capability bundles the same way. Direct effect

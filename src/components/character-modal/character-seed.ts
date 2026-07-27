@@ -126,9 +126,16 @@ export interface CharacterSeed {
    * "PERSONAL" for all of them in v1 (the modal's slot UI only
    * shows primitives under a single tab, regardless of source).
    * isMirrored is preserved on the slot for the mirror toggle.
+   *
+   * Phase 8.3b: each row has its own instanceId UUID so multiple
+   * direct-paid copies of the same primitive can coexist (stacking).
+   * For seed dedup we use (primitiveId, instanceId) instead of just
+   * primitiveId.
    */
   primitiveLinks: Array<{
     primitiveId: number;
+    /** Phase 8.3b: per-row UUID so multiple direct copies stack. */
+    instanceId: string;
     isMirrored: boolean | null;
     // Phase 8.2 batch 11: bundle-origin tracking. A primitive row
     // with a non-null origin came from a heritage/capability/effect
@@ -341,6 +348,10 @@ function seedPrimitiveSlot(
   return {
     kind: "primitive",
     primitiveId: link.primitiveId,
+    // Phase 8.3b: instanceId is the dedup key for stacking — each
+    // row gets its own slot. Without this, applySeed would merge two
+    // direct-paid copies into one slot.
+    instanceId: link.instanceId,
     tab: "manifest",
     name: primitive.name,
     mirror: link.isMirrored === true,
