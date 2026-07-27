@@ -39,6 +39,7 @@ import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
 import { CharacterEditButton } from "@/components/characters/character-edit-button";
 import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-card";
 import { HeritagePreviewCard } from "@/components/characters/heritage-preview-card";
+import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
 import { proficiencyBonus } from "@/lib/engine/practices";
 import {
   BACKSTORY_FIELDS,
@@ -628,6 +629,30 @@ export function CharacterSheetView(props: CharacterSheetProps) {
       )}
 
       <ToastViewport toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Phase 8 UI revamp (Mashu 2026-07-27): BottomStickyBar
+          is mobile-only (returns null on >= md screens via
+          Tailwind's md:hidden). It renders the same vitality
+          tracker + practices list that the in-page panels
+          show, but in a sticky bar that's always reachable
+          during gameplay. */}
+      <BottomStickyBar
+        characterId={props.id}
+        currentVitality={props.currentVitality}
+        maxVitality={props.vitality.max}
+        physical={props.attrPhysical}
+        mental={props.attrMental}
+        magical={props.attrMagical}
+        pb={proficiencyBonus(props.level)}
+        proficientAttribute={props.attrProficient}
+        practices={props.practices.map((p) => ({
+          practice: p.practice,
+          attribute: p.attribute as "PHYSICAL" | "MENTAL" | "MAGICAL",
+          total: p.total,
+          pbContribution: p.pbContribution,
+          proficient: p.attribute === props.attrProficient,
+        }))}
+      />
     </div>
   );
 }
