@@ -51,7 +51,10 @@ import { useEffect, useState, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCharacterModal } from "./character-modal-store";
+import {
+  useCharacterModal,
+  isNavigationApproved,
+} from "./character-modal-store";
 import { TabbedCharacterForm } from "./tabbed-character-form";
 import { UnsavedChangesModal } from "@/components/sandbox/unsaved-changes-modal";
 
@@ -161,6 +164,11 @@ export function CharacterModal({ children }: CharacterModalProps) {
     };
     
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Phase 8.3d (Mashu 2026-07-27): if the save handler just
+      // approved the navigation (right before window.location.assign),
+      // don't prompt — there's no unsaved work to lose. Otherwise
+      // show the browser's native dialog.
+      if (isNavigationApproved()) return;
       // For tab close/refresh, we can only use the browser's native confirm
       e.preventDefault();
       e.returnValue = "";

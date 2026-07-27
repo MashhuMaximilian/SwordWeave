@@ -38,6 +38,7 @@ import {
   useCharacterModal,
   CHARACTER_TABS,
   CHARACTER_TAB_LABELS,
+  approveNavigation,
   type CharacterTabId,
   type PendingSlot,
   summarizeSlotBu,
@@ -719,6 +720,11 @@ export function TabbedCharacterForm() {
       const target = `/characters/${charId}`;
       // eslint-disable-next-line no-console
       console.log("[SW save] hard-navigating to", target);
+      // Phase 8.3d (Mashu 2026-07-27): approve the navigation so the
+      // browser's native beforeunload dialog doesn't fire after a
+      // successful save. The character-modal guard reads this flag
+      // synchronously and skips preventDefault if it's set.
+      approveNavigation();
       window.location.assign(target);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "Unknown error.";

@@ -372,6 +372,55 @@ interface CharacterModalState {
   setSlotMirror: (slotId: string, mirror: boolean) => void;
 }
 
+// Phase 8.3d (Mashu 2026-07-27): navigation-approval flag.
+//
+// Why this exists: after a successful save, the form hard-navigates
+// via `window.location.assign(target)`. The browser fires its
+// native beforeunload dialog when navigation starts. The
+// character-modal guard listens for beforeunload and calls
+// preventDefault() to protect unsaved work — but for a
+// successful save, there IS no unsaved work, so the dialog is
+// just noise.
+//
+// Solution: a module-level flag the guard reads. Setting it is
+// synchronous and bypasses the React render cycle (which doesn't
+// get a chance to flush before the browser tears down the page).
+//
+// We set this in tabbed-character-form's save handler IMMEDIATELY
+// before `window.location.assign(target)`. The flag is read by
+// character-modal.tsx's `onBeforeUnload` listener; if set, the
+// listener returns without calling preventDefault, so the
+// browser doesn't show the dialog.
+//
+// Stays at module scope on purpose: the flag is read from a
+// beforeunload event handler that fires synchronously during
+// page teardown. A React state update wouldn't have time to
+// flush.
+let navigationApproved = false;
+
+/**
+ * Mark the next page-leave navigation as approved. Called by the
+ * save handler right before `window.location.assign(target)` so
+ * the browser's native beforeunload dialog doesn't fire after a
+ * successful save.
+ *
+ * One-shot: the flag stays set. The character-modal guard reads
+ * it on every beforeunload; once the page reloads, the new page
+ * gets a fresh flag value (default false).
+ */
+export function approveNavigation(): void {
+  navigationApproved = true;
+}
+
+/**
+ * Read the navigation-approval flag. Used by the character-modal
+ * beforeunload listener to decide whether to show the leave-page
+ * dialog.
+ */
+export function isNavigationApproved(): boolean {
+  return navigationApproved;
+}
+
 const CharacterModalCtx = createContext<CharacterModalState | null>(null);
 
 function isSlotTab(
