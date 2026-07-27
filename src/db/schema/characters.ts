@@ -25,6 +25,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -209,6 +210,17 @@ export type SlotSource = (typeof slotSourceEnum.enumValues)[number];
 export const characterPrimitives = pgTable(
   "character_primitives",
   {
+    /**
+     * Phase 8.3a (Mashu 2026-07-27 v2 storage model): every primitive
+     * slot gets a unique instance_id. This enables:
+     *   * Multiple direct-paid copies of the same primitive (stacking)
+     *   * Single mirror slot per primitive (linking to inherited)
+     *   * Single inherited row per primitive (collapsing multiple paths)
+     *
+     * See migration 0048_multi_instance_primitives.sql for the
+     * partial unique indexes that enforce these rules.
+     */
+    instanceId: uuid("instance_id").defaultRandom().notNull(),
     characterId: uuid("character_id")
       .notNull()
       .references(() => characters.id, { onDelete: "cascade" }),
@@ -222,6 +234,11 @@ export const characterPrimitives = pgTable(
      * Mirrored primitives contribute mirrorBuCredit to the character's
      * volatility rating (bounded by getVolatilityCeiling(level)).
      * See src/lib/engine/bu.ts for full mirror-vector accounting.
+     *
+     * Phase 8.3a note: the mirror flag affects ONLY the character's stat
+     * aggregation. When a primitive is referenced inside a capability or
+     * effect, the reference uses the primitive's authored direction —
+     * the mirror is invisible to the reference resolver (Mashu 2026-07-27).
      */
     isMirrored: boolean("is_mirrored").notNull().default(false),
     /**
@@ -251,6 +268,13 @@ export const characterPrimitives = pgTable(
     // can have multiple of these set (heritage + capability + effect
     // if it bubbled up through all three) — the UI uses the most
     // specific for breadcrumbs.
+    //
+    // Phase 8.3a note: origin_* is purely UI metadata. It does NOT
+    // affect math — a primitive from a Capability inside a Lineage
+    // is the same primitive as if it had come directly from the
+    // Lineage. The partial unique indexes in migration 0048 ensure
+    // that all inheritance paths collapse to ONE row per (char, prim)
+    // with the most-specific origin preserved for breadcrumbs.
     originHeritageId: uuid("origin_heritage_id").references(
       () => heritage.id,
       { onDelete: "set null" },
@@ -266,12 +290,20 @@ export const characterPrimitives = pgTable(
     ...timestamps,
   },
   (table) => [
-    primaryKey({
-      columns: [table.characterId, table.primitiveId],
-      name: "character_primitives_pk",
-    }),
+    // Phase 8.3a: NO primary key on (character_id, primitive_id).
+    // The v2 storage model requires:
+    //   * 1 inherited row per (character, primitive) — enforced by
+    //     partial unique index "character_primitives_inherited_uniq"
+    //   * 1 mirror row per (character, primitive) — enforced by
+    //     partial unique index "character_primitives_mirror_uniq"
+    //   * N direct-paid rows per (character, primitive) — no constraint
+    //     (intentional duplicates for stacking)
+    //
+    // Lookup is by characterId (most queries) and instanceId
+    // (when we need a specific row, e.g. delete).
     index("character_primitives_character_id_idx").on(table.characterId),
     index("character_primitives_primitive_id_idx").on(table.primitiveId),
+    index("character_primitives_instance_id_idx").on(table.instanceId),
     index("character_primitives_version_id_idx").on(table.versionId),
     index("character_primitives_slot_source_idx").on(table.slotSource),
     index("character_primitives_origin_heritage_idx").on(table.originHeritageId),
@@ -279,6 +311,14 @@ export const characterPrimitives = pgTable(
       table.originCapabilityId,
     ),
     index("character_primitives_origin_effect_idx").on(table.originEffectId),
+    // Partial unique: inherited (one per char/prim where origin_* set)
+    uniqueIndex("character_primitives_inherited_uniq")
+      .on(table.characterId, table.primitiveId)
+      .where(sql`${table.originHeritageId} IS NOT NULL OR ${table.originCapabilityId} IS NOT NULL OR ${table.originEffectId} IS NOT NULL`),
+    // Partial unique: mirror (one per char/prim where is_mirrored + no origin)
+    uniqueIndex("character_primitives_mirror_uniq")
+      .on(table.characterId, table.primitiveId)
+      .where(sql`${table.isMirrored} = true AND ${table.originHeritageId} IS NULL AND ${table.originCapabilityId} IS NULL AND ${table.originEffectId} IS NULL`),
   ],
 );
 
