@@ -701,49 +701,25 @@ export function TabbedCharacterForm() {
         clearPendingEdit();
       }
       resetDraft();
-      // DEBUG: Phase 8.3b rev 4 — instrument the redirect to find out
-      // why it's not landing. Will be removed once we know.
-      const debugInfo = {
-        charId,
-        href: `/characters/${charId}`,
-        pathname:
-          typeof window !== "undefined" ? window.location.pathname : "?",
-        origin:
-          typeof window !== "undefined" ? window.location.origin : "?",
-        href_full:
-          typeof window !== "undefined" ? window.location.href : "?",
-        hasRouter: !!router,
-        hasPush: typeof router?.push === "function",
-        historyLength:
-          typeof window !== "undefined" ? window.history.length : 0,
-        // eslint-disable-next-line no-console
-      };
-      // eslint-disable-next-line no-console
-      console.log("[SW save] about to navigate", debugInfo);
-
-      // Navigate — and only navigate. The old page's modal unmounts
-      // when the route changes. No manual close() required.
+      // Phase 8.3b rev 4 (Mashu 2026-07-27):
+      //   After three rounds of trying to make soft-nav (router.push)
+      //   work, the console log shows it RESOLVES CLEANLY but the
+      //   page never actually changes. Root cause unclear — could be
+      //   a React 19 + Next.js 16 race where the soft-nav RSC
+      //   payload finishes but the tree swap is suppressed by a
+      //   concurrent state update from resetDraft() (editCharacterId
+      //   going to null). The modal is in a portal on AppShell so it
+      //   survives the soft-nav and keeps us "stranded" on /atelier.
       //
-      // Try soft-nav first. If the new page server-component throws
-      // or middleware redirects, soft-nav may silently land us
-      // nowhere. Catch that and fall back to a hard nav so we
-      // always end up on the character sheet.
+      //   Fix: hard-navigate via window.location.assign. We accept
+      //   the page reload cost in exchange for a redirect that
+      //   actually lands. The form data is already saved to the DB,
+      //   and resetDraft() cleared the modal state, so there is
+      //   nothing to lose in the reload.
       const target = `/characters/${charId}`;
-      let navOk = false;
-      try {
-        await router.push(target);
-        navOk = true;
-        // eslint-disable-next-line no-console
-        console.log("[SW save] router.push resolved cleanly");
-      } catch (navErr) {
-        // eslint-disable-next-line no-console
-        console.warn("[SW save] router.push rejected", navErr);
-      }
-      if (!navOk) {
-        // eslint-disable-next-line no-console
-        console.log("[SW save] falling back to window.location.assign");
-        window.location.assign(target);
-      }
+      // eslint-disable-next-line no-console
+      console.log("[SW save] hard-navigating to", target);
+      window.location.assign(target);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "Unknown error.";
       showToast(errMsg, "error");
