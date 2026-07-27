@@ -178,6 +178,7 @@ export function TabbedCharacterForm() {
     applySeed,
     isSeedingEdit,
     clearPendingEdit,
+    close,
   } = useCharacterModal();
   const { toasts, showToast, dismissToast } = useToasts();
   const router = useRouter();
@@ -266,6 +267,42 @@ export function TabbedCharacterForm() {
       showToast(editSeedError, "error");
     }
   }, [editSeedError, showToast]);
+
+  // Phase 8.3b UI fix #2 (Mashu 2026-07-27):
+  //   When the user slots in a heritage or capability from the
+  //   library, the active-primitives list in Section 1 wouldn't show
+  //   the bundle's primitives until the user toggled tabs — because
+  //   the bundle fetch lived inside HeritageSlotCard / CapabilitySlotCard
+  //   in Section 2, which only mounted on first render of Section 2.
+  //
+  //   We now eagerly preload bundles the moment their heritage/
+  //   capability appears in pendingSlots. The preloader writes into
+  //   the same module-level cache the cards read from + dispatches the
+  //   same sw-character-bundle-loaded event, so Section 1's
+  //   useTabPrimitives recomputes without waiting for Section 2 to
+  //   mount.
+  useEffect(() => {
+    const heritageIds: string[] = [];
+    const capabilityIds: string[] = [];
+    for (const tab of Object.keys(pendingSlots) as Array<
+      keyof typeof pendingSlots
+    >) {
+      for (const slot of pendingSlots[tab] ?? []) {
+        if (slot.kind === "heritage" && slot.heritageId) {
+          heritageIds.push(slot.heritageId);
+        } else if (slot.kind === "capability" && slot.capabilityId) {
+          capabilityIds.push(slot.capabilityId);
+        }
+      }
+    }
+    if (heritageIds.length === 0 && capabilityIds.length === 0) return;
+    void (async () => {
+      await Promise.all([
+        preloadHeritageBundles(heritageIds),
+        preloadCapabilityBundles(capabilityIds),
+      ]);
+    })();
+  }, [pendingSlots]);
 
   // Hydrate form data from localStorage on mount. We do this once and
   // pass the snapshot to Create.
@@ -631,22 +668,28 @@ export function TabbedCharacterForm() {
         return;
       }
 
+      // Phase 8.3b UI fix #1 (Mashu 2026-07-27): after a successful
+      // save (create OR edit), navigate to the character sheet so the
+      // user lands on what they just made. Edit used to just refresh
+      // (leaving them on the modal behind whatever else they had open);
+      // create used to open a new tab — neither matches the user's
+      // intent of "I want to see my character now."
+      showToast(
+        editCharacterId
+          ? `Saved changes to "${charName}".`
+          : `Created character "${charName}"!`,
+        "success",
+      );
+      clearAllDraftStorage();
       if (editCharacterId) {
-        // Edit success — close the modal + clear the persisted
-        // edit session + refresh the page so the sheet (if open)
-        // reflects the new state.
-        showToast(`Saved changes to "${charName}".`, "success");
-        clearAllDraftStorage();
         clearPendingEdit();
-        resetDraft();
-        router.refresh();
-      } else {
-        // Create success — open the new sheet in a new tab.
-        showToast(`Created character "${charName}"!`, "success");
-        clearAllDraftStorage();
-        resetDraft();
-        window.open(`/characters/${charId}`, "_blank", "noopener,noreferrer");
       }
+      resetDraft();
+      // Close the modal cleanly before navigating so we don't leave a
+      // stale dialog behind (the parent character-modal close handler
+      // resets isEditing flag — we just need to close it).
+      close();
+      router.push(`/characters/${charId}`);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "Unknown error.";
       showToast(errMsg, "error");

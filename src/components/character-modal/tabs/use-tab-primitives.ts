@@ -114,6 +114,16 @@ export interface TabPrimitives {
   heritageSlots: Extract<PendingSlot, { kind: "heritage" }>[];
   /** Capability slots on this tab (for the bottom accordion). */
   capabilitySlots: Extract<PendingSlot, { kind: "capability" }>[];
+  /**
+   * Phase 8.3b UI fix #2 (Mashu 2026-07-27): heritage/capability IDs
+   * on this tab whose bundle is still being fetched. Used by
+   * SlotReceiverTab to render a loading state in the active-primitives
+   * list area while the bundle resolves. Read straight from the
+   * in-flight sets registered by slot-receiver-tab.tsx — the hook
+   * re-runs its useMemo on every render so the spinner disappears as
+   * soon as the fetch completes.
+   */
+  loadingBundleIds: ReadonlyArray<string>;
 }
 
 /**
@@ -125,6 +135,9 @@ export interface TabPrimitives {
 type BundleCacheReader = () => {
   heritageBundles: Map<string, HeritageBundleLite | null>;
   capabilityBundles: Map<string, CapabilityBundleLike | null>;
+  /** Phase 8.3b UI fix #2 — in-flight sets for loading state. */
+  heritageInFlight: Set<string>;
+  capabilityInFlight: Set<string>;
 };
 
 /** Local mirror of CapabilityBundle from slot-receiver-tab.tsx — kept
@@ -136,7 +149,15 @@ interface CapabilityBundleLike {
     primitiveId: number;
     isMirrored?: boolean;
     quantity?: number;
-    primitive: { id: number; name: string; buCost: number | null } | null;
+    primitive: {
+      id: number;
+      name: string;
+      buCost: number | null;
+      isMirrorable?: boolean;
+      mirrorBuCredit?: number;
+      targetScope?: string | null;
+      hardModifiers?: ReadonlyArray<unknown>;
+    } | null;
   }>;
   effectLinks: Array<{
     effectId: string;
@@ -145,7 +166,15 @@ interface CapabilityBundleLike {
       primitiveId: number;
       isMirrored?: boolean;
       quantity?: number;
-      primitive: { id: number; name: string; buCost: number | null } | null;
+      primitive: {
+        id: number;
+        name: string;
+        buCost: number | null;
+        isMirrorable?: boolean;
+        mirrorBuCredit?: number;
+        targetScope?: string | null;
+        hardModifiers?: ReadonlyArray<unknown>;
+      } | null;
     }>;
   }>;
   computedBu?: number;
@@ -182,10 +211,13 @@ export function useTabPrimitives(tabId: CharacterTabId): TabPrimitives {
 
     const inherited: InheritedPrimitive[] = [];
     const seen = new Set<number>(); // dedupe across sources
-    const bundles = bundleReader?.() ?? {
-      heritageBundles: new Map(),
-      capabilityBundles: new Map(),
-    };
+    const bundles: ReturnType<NonNullable<typeof bundleReader>> =
+      bundleReader?.() ?? {
+        heritageBundles: new Map(),
+        capabilityBundles: new Map(),
+        heritageInFlight: new Set<string>(),
+        capabilityInFlight: new Set<string>(),
+      };
 
     // Walk each heritage: primitiveLinks, capabilityLinks → primitiveLinks,
     // capabilityLinks → effectLinks → primitiveLinks.
@@ -300,7 +332,29 @@ export function useTabPrimitives(tabId: CharacterTabId): TabPrimitives {
       }
     }
 
-    return { direct, inherited, heritageSlots, capabilitySlots };
+    // Phase 8.3b UI fix #2: snapshot the in-flight bundle IDs on this
+    // tab. SlotReceiverTab uses this to render a loading spinner in
+    // Section 1 while the bundle resolves (so the user doesn't have
+    // to toggle tabs to mount Section 2 first).
+    const loadingBundleIds: string[] = [];
+    for (const hSlot of heritageSlots) {
+      if (bundles.heritageInFlight.has(hSlot.heritageId)) {
+        loadingBundleIds.push(`heritage:${hSlot.heritageId}`);
+      }
+    }
+    for (const cSlot of capabilitySlots) {
+      if (bundles.capabilityInFlight.has(cSlot.capabilityId)) {
+        loadingBundleIds.push(`capability:${cSlot.capabilityId}`);
+      }
+    }
+
+    return {
+      direct,
+      inherited,
+      heritageSlots,
+      capabilitySlots,
+      loadingBundleIds,
+    };
   }, [slots]);
 }
 

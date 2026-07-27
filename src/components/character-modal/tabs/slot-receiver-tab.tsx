@@ -31,6 +31,7 @@ import {
   provenanceLabel,
   type InheritedPrimitive,
 } from "./use-tab-primitives";
+import { YinYangSpinner } from "@/components/ui/yin-yang-spinner";
 
 interface SlotReceiverTabProps {
   tabId: CharacterTabId;
@@ -78,6 +79,15 @@ interface HeritageBundle {
 // Bundle cache shared across all SlotReceiverTab instances for the
 // session — keyed by heritageId. Avoids refetching when switching tabs.
 const heritageBundleCache = new Map<string, HeritageBundle | null>();
+/**
+ * Phase 8.3b UI fix #2 (Mashu 2026-07-27): Set of bundle IDs whose
+ * fetch is currently in-flight. The preloader, the HeritageSlotCard
+ * fetcher, and the CapabilitySlotCard fetcher all add/remove from
+ * this set so Section 1 (active primitives list) can render a
+ * loading state until the bundle lands — without the user having to
+ * toggle tabs to mount Section 2 first.
+ */
+const heritageBundleInFlight = new Set<string>();
 
 // Phase 8.1 batch 13.5 follow-up: same shape as HeritageBundle but for
 // capability slots. The capability slot card (see below) fetches
@@ -107,6 +117,8 @@ interface CapabilityBundle {
   computedBu: number;
 }
 const capabilityBundleCache = new Map<string, CapabilityBundle | null>();
+/** Phase 8.3b UI fix #2 — see heritageBundleInFlight above. */
+const capabilityBundleInFlight = new Set<string>();
 
 /**
  * Phase 8.3b UI revamp: expose bundle caches to useTabPrimitives via
@@ -116,6 +128,11 @@ const capabilityBundleCache = new Map<string, CapabilityBundle | null>();
 registerBundleCacheReader(() => ({
   heritageBundles: heritageBundleCache,
   capabilityBundles: capabilityBundleCache,
+  // Phase 8.3b UI fix #2: in-flight sets so the active-primitives
+  // list in Section 1 can render a loading state until the bundle
+  // resolves (no need for the user to toggle tabs).
+  heritageInFlight: heritageBundleInFlight,
+  capabilityInFlight: capabilityBundleInFlight,
 }));
 
 /**
@@ -177,6 +194,7 @@ export async function preloadHeritageBundles(
 async function fetchAndCacheHeritageBundle(
   heritageId: string,
 ): Promise<void> {
+  heritageBundleInFlight.add(heritageId);
   try {
     const res = await fetch(`/api/heritage/${heritageId}`);
     const data = await res.json();
@@ -233,6 +251,8 @@ async function fetchAndCacheHeritageBundle(
     }
   } catch {
     heritageBundleCache.set(heritageId, null);
+  } finally {
+    heritageBundleInFlight.delete(heritageId);
   }
 }
 
@@ -255,6 +275,7 @@ export async function preloadCapabilityBundles(
 async function fetchAndCacheCapabilityBundle(
   capabilityId: string,
 ): Promise<void> {
+  capabilityBundleInFlight.add(capabilityId);
   try {
     const res = await fetch(`/api/capabilities/${capabilityId}`);
     const data = await res.json();
@@ -292,6 +313,8 @@ async function fetchAndCacheCapabilityBundle(
     }
   } catch {
     capabilityBundleCache.set(capabilityId, null);
+  } finally {
+    capabilityBundleInFlight.delete(capabilityId);
   }
 }
 
@@ -305,8 +328,13 @@ export function SlotReceiverTab({
   const { pendingSlots, removeSlot, setSlotMirror, queueSlot } = useCharacterModal();
   const slots = pendingSlots[tabId];
 
-  const { direct, inherited, heritageSlots, capabilitySlots } =
-    useTabPrimitives(tabId);
+  const {
+    direct,
+    inherited,
+    heritageSlots,
+    capabilitySlots,
+    loadingBundleIds,
+  } = useTabPrimitives(tabId);
 
   // Force re-render when bundle caches populate (inherited list changes).
   // HeritageSlotCard fires sw-character-bundle-loaded on fetch complete;
@@ -372,6 +400,30 @@ export function SlotReceiverTab({
               Mirror, expand, or duplicate — all from here
             </span>
           </header>
+
+          {/* Phase 8.3b UI fix #2 (Mashu 2026-07-27): when a heritage
+              or capability slot was just queued, its bundle is still
+              fetching — show a counter-clockwise yin-yang spinner here
+              so the user knows primitives will land shortly. Disappears
+              automatically once loadingBundleIds is empty (which
+              happens via the bundle-loaded event bumping bundleVersion
+              → useTabPrimitives recomputes). */}
+          {loadingBundleIds.length > 0 ? (
+            <div
+              data-testid="loading-bundle-banner"
+              className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+            >
+              <YinYangSpinner size={18} label="Loading bundle primitives…" />
+              <span>
+                Resolving{" "}
+                {loadingBundleIds.length === 1
+                  ? loadingBundleIds[0]
+                  : `${loadingBundleIds.length} bundles`}{" "}
+                — primitives will appear momentarily.
+              </span>
+            </div>
+          ) : null}
+
           <ul className="space-y-2">
             {/* Direct primitives — each slot is its own row, no global dedup */}
             {directRows.map((slot, idx) => {
