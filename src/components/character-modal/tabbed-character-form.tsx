@@ -701,15 +701,48 @@ export function TabbedCharacterForm() {
         clearPendingEdit();
       }
       resetDraft();
+      // DEBUG: Phase 8.3b rev 4 — instrument the redirect to find out
+      // why it's not landing. Will be removed once we know.
+      const debugInfo = {
+        charId,
+        href: `/characters/${charId}`,
+        pathname:
+          typeof window !== "undefined" ? window.location.pathname : "?",
+        origin:
+          typeof window !== "undefined" ? window.location.origin : "?",
+        href_full:
+          typeof window !== "undefined" ? window.location.href : "?",
+        hasRouter: !!router,
+        hasPush: typeof router?.push === "function",
+        historyLength:
+          typeof window !== "undefined" ? window.history.length : 0,
+        // eslint-disable-next-line no-console
+      };
+      // eslint-disable-next-line no-console
+      console.log("[SW save] about to navigate", debugInfo);
+
       // Navigate — and only navigate. The old page's modal unmounts
       // when the route changes. No manual close() required.
+      //
+      // Try soft-nav first. If the new page server-component throws
+      // or middleware redirects, soft-nav may silently land us
+      // nowhere. Catch that and fall back to a hard nav so we
+      // always end up on the character sheet.
+      const target = `/characters/${charId}`;
+      let navOk = false;
       try {
-        await router.push(`/characters/${charId}`);
+        await router.push(target);
+        navOk = true;
+        // eslint-disable-next-line no-console
+        console.log("[SW save] router.push resolved cleanly");
       } catch (navErr) {
-        // Soft navigation failed (e.g. server component threw). Fall
-        // back to hard nav so we never strand the user on a
-        // dangling modal.
-        window.location.assign(`/characters/${charId}`);
+        // eslint-disable-next-line no-console
+        console.warn("[SW save] router.push rejected", navErr);
+      }
+      if (!navOk) {
+        // eslint-disable-next-line no-console
+        console.log("[SW save] falling back to window.location.assign");
+        window.location.assign(target);
       }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "Unknown error.";
