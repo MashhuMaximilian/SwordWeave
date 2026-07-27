@@ -37,7 +37,7 @@ import { CapabilityCard } from "@/components/characters/capability-card";
 import { ItemCard } from "@/components/characters/item-card";
 import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
 import { CharacterEditButton } from "@/components/characters/character-edit-button";
-import { ConditionBadges } from "@/components/library/condition-badges";
+import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-card";
 import { proficiencyBonus } from "@/lib/engine/practices";
 import {
   BACKSTORY_FIELDS,
@@ -1554,87 +1554,36 @@ function CapabilitiesTab({
                   <ul className="ml-4 space-y-1 divide-y divide-border">
                     {primitives
                       .sort((a, b) => a.primitive.name.localeCompare(b.primitive.name))
-                      .map((p) => {
-                        // Phase 8.3d (Mashu 2026-07-27): each
-                        // primitive may carry authored
-                        // hard_modifiers with conditions. We render
-                        // them as a second row of pill badges
-                        // beneath the primitive's name + meta. If
-                        // the primitive has no conditions, the
-                        // row stays single-line (no visual
-                        // change).
-                        //
-                        // We compute `hasConditions` here to avoid
-                        // mounting the ConditionBadges component
-                        // (and its useMemo) for the common empty
-                        // case — most primitives have no
-                        // conditions.
-                        const modifiers = p.primitive.hardModifiers;
-                        const hasConditions =
-                          Array.isArray(modifiers) && modifiers.length > 0;
-                        return (
-                          <li
-                            key={p.primitive.id}
-                            className="py-1.5 flex flex-col gap-1 text-sm"
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <span className="font-medium truncate">
-                                  {p.primitive.name}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {p.primitive.category}
-                                </span>
-                                {p.isMirrored && (
-                                  <span className="inline-flex items-center gap-0.5 rounded bg-destructive/10 text-destructive px-1.5 py-0.5 text-[10px] font-medium">
-                                    <RotateCcw className="size-2.5" />
-                                    Mirrored (−{p.primitive.mirrorBuCredit} BU)
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
-                                <span className="font-mono text-foreground">
-                                  {p.primitive.buCost} BU
-                                </span>
-                                {p.isMirrored && (
-                                  <span className="text-destructive">
-                                    mirror: −{p.primitive.mirrorBuCredit} BU
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            {/* Phase 8.3d commit 2: condition pills.
-                                Renders only when the primitive has
-                                at least one authored hard_modifier
-                                with a condition. Each modifier's
-                                condition shows as its own row of
-                                pills (preset / tag / narrative). */}
-                            {hasConditions ? (
-                              <div
-                                className="ml-1 space-y-0.5"
-                                data-testid="primitive-conditions"
-                              >
-                                {modifiers.map(
-                                  (
-                                    mod: unknown,
-                                    modIndex: number,
-                                  ) => (
-                                    <ConditionBadges
-                                      key={modIndex}
-                                      // Cast: ConditionBadges
-                                      // accepts any condition
-                                      // shape (legacy / v1 / null)
-                                      // and parses internally.
-                                      condition={mod}
-                                      showNarrative={true}
-                                    />
-                                  ),
-                                )}
-                              </div>
-                            ) : null}
-                          </li>
-                        );
-                      })}
+                      .map((p) => (
+                        // Phase 8.3e (Mashu 2026-07-27):
+                        // PrimitivePreviewCard replaces the
+                        // bare <li> row. Click the card to open
+                        // the unified EntityPreview modal. The
+                        // card also owns the condition pills
+                        // (Phase 8.3d follow-up) — previously
+                        // they lived inline here; consolidating
+                        // keeps the row in one component.
+                        <li key={p.primitive.id} className="py-0.5">
+                          <PrimitivePreviewCard
+                            primitiveLink={{
+                              primitiveId: p.primitiveId,
+                              source: p.source,
+                              acquiredAtLevel: p.acquiredAtLevel,
+                              isMirrored: p.isMirrored,
+                              primitive: {
+                                id: p.primitive.id,
+                                name: p.primitive.name,
+                                category: p.primitive.category,
+                                buCost: p.primitive.buCost,
+                                isMirrorable: p.primitive.isMirrorable,
+                                mirrorBuCredit: p.primitive.mirrorBuCredit,
+                                narrativeRule: p.primitive.narrativeRule,
+                                hardModifiers: p.primitive.hardModifiers,
+                              },
+                            }}
+                          />
+                        </li>
+                      ))}
                   </ul>
                 </div>
               ))
