@@ -668,26 +668,28 @@ export function TabbedCharacterForm() {
         return;
       }
 
-      // Phase 8.3b UI fix #1 rev 2 (Mashu 2026-07-27):
-      //   "I saved, modal closed, not redirected." The previous
-      //   implementation called close() BEFORE router.push() — but
-      //   close() sets isOpen=false which unmounts the modal root
-      //   (character-modal.tsx line 184: returns null when !isOpen).
-      //   That unmount happens on the next React render, after which
-      //   the component holding the router instance is gone. The
-      //   router.push() call raced with the unmount and the navigation
-      //   was silently dropped.
+      // Phase 8.3b UI fix #1 rev 3 (Mashu 2026-07-27):
+      //   "After I save, I still don't get redirected to
+      //   https://www.swordweave.quest/characters/[id]" — even after
+      //   flipping to router.push() FIRST (rev 2), the redirect still
+      //   didn't land. Root cause: router.push() schedules a soft-
+      //   transition + updates history.pushState synchronously, but
+      //   the follow-up close() flips isOpen=false which causes the
+      //   modal root (character-modal.tsx) to unmount on the same
+      //   render batch. Next.js's App Router soft-transition was
+      //   racing the unmount and losing.
       //
-      //   Fix: navigate FIRST (so the router call lands on a still-
-      //   mounted tree), then close the modal. Next.js's App Router
-      //   keeps the current route's React tree alive during the
-      //   soft-transition to the new route, so close() will fire
-      //   cleanly once we've started navigating away.
+      //   Fix: just navigate. Don't close. The current page
+      //   (e.g. /atelier) holds the modal; the new page
+      //   (/characters/[id]) does not. When the route changes,
+      //   Next.js unmounts the old page's tree (which includes the
+      //   modal) and mounts the new page's tree. No manual close()
+      //   needed — the navigation IS the cleanup.
       //
-      //   The navigation guard (character-modal.tsx lines 118–182)
-      //   won't intercept this because we just called resetDraft()
-      //   which cleared editCharacterId, and the guard only fires
-      //   on anchor clicks / popstate — not on router.push().
+      //   We await router.push() to confirm the navigation actually
+      //   started; if it throws, we fall back to hard navigation
+      //   via window.location so the user isn't stranded on a
+      //   dangling modal.
       showToast(
         editCharacterId
           ? `Saved changes to "${charName}".`
@@ -699,10 +701,16 @@ export function TabbedCharacterForm() {
         clearPendingEdit();
       }
       resetDraft();
-      // Navigate first, close after. The router call must land on a
-      // mounted tree — flipping close() before push() unmounts us.
-      router.push(`/characters/${charId}`);
-      close();
+      // Navigate — and only navigate. The old page's modal unmounts
+      // when the route changes. No manual close() required.
+      try {
+        await router.push(`/characters/${charId}`);
+      } catch (navErr) {
+        // Soft navigation failed (e.g. server component threw). Fall
+        // back to hard nav so we never strand the user on a
+        // dangling modal.
+        window.location.assign(`/characters/${charId}`);
+      }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "Unknown error.";
       showToast(errMsg, "error");

@@ -697,11 +697,12 @@ function InheritedPrimitiveRow({
           {isMirrorable && primitive.hardModifiers.length > 0 ? (
             <div className="space-y-1 border-t border-border/40 pt-2">
               <div className="text-[10px] font-semibold uppercase text-muted-foreground">
-                Modifier (mirrors to)
+                {isMirrorActive ? "Modifier (mirrored)" : "Modifier"}
               </div>
               <ModifierChips
                 targetScope={primitive.targetScope}
                 hardModifiers={primitive.hardModifiers}
+                mirrored={isMirrorActive}
               />
             </div>
           ) : null}
@@ -839,11 +840,12 @@ function DirectPrimitiveRow({
           {isMirrorable && (slot.hardModifiers?.length ?? 0) > 0 ? (
             <div className="space-y-1 border-t border-border/40 pt-2">
               <div className="text-[10px] font-semibold uppercase text-muted-foreground">
-                Modifier (mirrors to)
+                {mirrored ? "Modifier (mirrored)" : "Modifier"}
               </div>
               <ModifierChips
                 targetScope={slot.targetScope ?? null}
                 hardModifiers={slot.hardModifiers ?? []}
+                mirrored={mirrored}
               />
             </div>
           ) : null}
@@ -854,19 +856,39 @@ function DirectPrimitiveRow({
 }
 
 // =============================================================================
-// ModifierChips — Phase 8.3b UI revamp item #5
+// ModifierChips — Phase 8.3b UI revamp item #5 + rev 6
 //
-// Render the hard-modifier payload as chips, plus a "mirrors to" callout
-// for each operation. Matches the "Modifier" + "Mirror" blocks in the
-// library preview (the one you screenshotted from /atelier).
+// Render the hard-modifier payload as chips with LIVE inline
+// transformation when mirrored. Matches the "Modifier" + "Mirror"
+// blocks in the library preview.
+//
+// Mashu 2026-07-27 rev 6:
+//   "To clean up the Mirrors To display when toggling mirror on/off,
+//    use live inline transformation."
+//
+//   OFF state:
+//     Hide static "Mirrors To" text. Show the live positive modifier:
+//     [target]  [+]  5  [STACK]
+//     "Mirrors to subtract" (small caption)
+//
+//   ON state (mirrored):
+//     Highlight the pill, swap operator to its mirrored form, no
+//     extra text:
+//     [target]  [−]  5  [STACK]
+//
+// Header text:
+//   OFF: "MODIFIER"
+//   ON:  "MODIFIER (MIRRORED)"
 // =============================================================================
 
 function ModifierChips({
   targetScope,
   hardModifiers,
+  mirrored = false,
 }: {
   targetScope: string | null;
   hardModifiers: ReadonlyArray<unknown>;
+  mirrored?: boolean;
 }) {
   if (hardModifiers.length === 0) return null;
   return (
@@ -878,7 +900,13 @@ function ModifierChips({
           value: unknown;
           stacking: string;
         }>;
-        const op = mod.operation ?? "add";
+        const baseOp = mod.operation ?? "add";
+        // Live inline transformation:
+        //   - In OFF state we show the base op (e.g. "+") and a small
+        //     "Mirrors to subtract" caption.
+        //   - In ON state we swap to the mirror op (e.g. "−") and
+        //     drop the caption; the pill is highlighted.
+        const liveOp = mirrored ? mirrorOperation(baseOp) : baseOp;
         const value = mod.value;
         return (
           <div
@@ -888,28 +916,57 @@ function ModifierChips({
             <span className="rounded border border-border bg-background px-2 py-0.5 font-mono">
               {mod.target ?? targetScope ?? "?"}
             </span>
-            <span className="rounded bg-primary/15 px-2 py-0.5 font-mono text-primary">
-              {opSymbol(op)}
+            <span
+              className={
+                "rounded px-2 py-0.5 font-mono " +
+                (mirrored
+                  ? "bg-amber-500/20 font-semibold text-amber-700 ring-1 ring-amber-500/40 dark:text-amber-300"
+                  : "bg-primary/15 text-primary")
+              }
+            >
+              {opSymbol(liveOp)}
             </span>
             <span className="font-mono text-foreground">
               {formatValue(value)}
             </span>
             {mod.stacking ? (
-              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700 dark:text-emerald-300">
+              <span
+                className={
+                  "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase " +
+                  (mirrored
+                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                    : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300")
+                }
+              >
                 {mod.stacking}
               </span>
             ) : null}
-            <span className="text-muted-foreground">→</span>
-            <span className="text-muted-foreground">
-              Mirrors to{" "}
-              <span className="font-mono">{mirrorOp(op)}</span>{" "}
-              <span className="font-mono">{formatValue(value)}</span>
-            </span>
+            {!mirrored && (
+              <span className="ml-1 text-[10px] italic text-muted-foreground">
+                Mirrors to {describeMirrorOp(baseOp)}
+              </span>
+            )}
           </div>
         );
       })}
     </div>
   );
+}
+
+// Returns the operator that mirrors the given one (sign flip for
+// add/subtract). Used by the live inline transform.
+function mirrorOperation(op: string): string {
+  if (op === "add") return "subtract";
+  if (op === "subtract" || op === "sub") return "add";
+  return op;
+}
+
+// Human-readable mirror description for the OFF-state caption.
+// e.g. "add" → "Subtract", "subtract" → "Add".
+function describeMirrorOp(op: string): string {
+  if (op === "add") return "Subtract";
+  if (op === "subtract" || op === "sub") return "Add";
+  return op;
 }
 
 function opSymbol(op: string): string {
@@ -926,13 +983,6 @@ function opSymbol(op: string): string {
     default:
       return op;
   }
-}
-
-function mirrorOp(op: string): string {
-  // Sign flip per the user's "Sign flip" in the preview.
-  if (op === "add") return "Subtract";
-  if (op === "subtract" || op === "sub") return "Add";
-  return op;
 }
 
 function formatValue(v: unknown): string {
