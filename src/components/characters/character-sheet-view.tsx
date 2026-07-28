@@ -122,6 +122,18 @@ type SheetCapabilityLink = {
   // Phase 8.1 batch 13.1: capability origin (the heritage that
   // brought it in, if any). Direct slots have null.
   originHeritageId: string | null;
+  // Phase 8.4 v5 (Mashu 2026-07-28): effects belonging to the
+  // underlying capability template. Flattened to the outer
+  // link level so the CapabilitiesTab can spread `{...c}` into
+  // CapabilityCard without losing them.
+  effectLinks: Array<{
+    effectId: string;
+    effect: {
+      id: string;
+      name: string;
+      description: string;
+    };
+  }>;
   capability: {
     id: string;
     name: string;
@@ -546,6 +558,10 @@ export function CharacterSheetView(props: CharacterSheetProps) {
               // Phase 8.1 batch 13.1: pass through origin for the badge.
               originHeritageId: l.originHeritageId,
               tags: l.capability.tags ?? [],
+              // Phase 8.4 v5 (Mashu 2026-07-28): forward
+              // effectLinks so the CapabilityCard can render
+              // a nested Effects accordion.
+              effectLinks: l.effectLinks ?? [],
             }))}
             // Phase 8.1 batch 13.1: lookup maps for origin chain.
             heritageById={heritageById}
@@ -1079,8 +1095,17 @@ function OverviewTab({
               pb: proficiencyBonus(props.level),
             }}
           />
-          {/* Defensive DCs as a compact horizontal row (NOT a card) */}
-          <div className="flex flex-row gap-2 md:flex-col md:gap-1 md:border-l md:border-border md:pl-6">
+          {/* Phase 8.4 v5 (Mashu 2026-07-28): Defensive DCs are
+              HIDDEN on mobile. The new 4-cell attribute + PROF
+              row in the Vitality card (rendered above the
+              buttons) already surfaces attribute data inline, so
+              the separate Defensive DCs row is a duplicate on
+              mobile. Keep them visible on >= md screens where
+              the in-page Vitality card has more room.
+              Mashu 2026-07-28: "we have in vitality bar
+              duplicates, but the lower one with phys, mental,
+              magical have to be taken out." */}
+          <div className="hidden flex-row gap-2 md:flex md:flex-col md:gap-1 md:border-l md:border-border md:pl-6">
             <p className="hidden text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:block">
               Defenses
             </p>
@@ -1682,6 +1707,17 @@ function CapabilitiesTab({
     latestVersionId: string | null;
     originHeritageId: string | null;
     tags?: string[];
+    // Phase 8.4 v5 (Mashu 2026-07-28): effects belonging to
+    // the underlying capability template. Nested under
+    // each CapabilityCard.
+    effectLinks: Array<{
+      effectId: string;
+      effect: {
+        id: string;
+        name: string;
+        description: string;
+      };
+    }>;
   }>;
   primitiveLinks: Array<{
     primitiveId: number;
@@ -1786,8 +1822,13 @@ function CapabilitiesTab({
 
   return (
     <div className="space-y-6">
-      {/* ===== Accordion 1: All Primitives ===== */}
-      <details className="group rounded-md border border-border bg-card">
+      {/* ===== Accordion 1: All Primitives =====
+          Phase 8.4 v5 (Mashu 2026-07-28): opened by default so
+          the user sees all primitives without having to click.
+          Mashu 2026-07-28: "we still don't display all
+          primitives all capabilities all effects properly
+          like in the character creation/edit modal." */}
+      <details open className="group rounded-md border border-border bg-card">
         <summary className="flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium cursor-pointer list-none">
           <span className="flex items-center gap-2">
             <Package className="size-4 text-muted-foreground" />
@@ -1864,7 +1905,7 @@ function CapabilitiesTab({
           character modal builder with option to preview.) on
           click preview works." */}
       {heritageLinks.length > 0 && (
-        <details className="group rounded-md border border-border bg-card">
+        <details open className="group rounded-md border border-border bg-card">
           <summary className="flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium cursor-pointer list-none">
             <span className="flex items-center gap-2">
               <Flame className="size-4 text-muted-foreground" />
@@ -2023,9 +2064,10 @@ function CapabilitiesTab({
         </details>
       )}
 
-      {/* ===== Accordion 2: Capabilities by Style ===== */}
+      {/* ===== Accordion 2: Capabilities by Style =====
+          Phase 8.4 v5: opened by default. */}
       {capabilities.length > 0 && (
-        <details className="group rounded-md border border-border bg-card">
+        <details open className="group rounded-md border border-border bg-card">
           <summary className="flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium cursor-pointer list-none">
             <span className="flex items-center gap-2">
               <Swords className="size-4 text-muted-foreground" />

@@ -77,6 +77,22 @@ export interface CapabilityCardProps {
       kind: "heritage" | "capability" | "effect";
       name: string;
     }>;
+    /**
+     * Phase 8.4 v5 (Mashu 2026-07-28): effects attached to
+     * this capability. When present and non-empty, a
+     * collapsible "Effects (N)" section appears in the card
+     * body so the user can see them nested under the
+     * capability. Matches the character-creation modal's
+     * structure.
+     */
+    effectLinks?: Array<{
+      effectId: string;
+      effect: {
+        id: string;
+        name: string;
+        description: string;
+      };
+    }>;
   };
 }
 
@@ -348,6 +364,37 @@ export function CapabilityCard({
           <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-3">
             {capability.verboseDescription}
           </p>
+        )}
+        {/* Phase 8.4 v5 (Mashu 2026-07-28): nested effects list
+            (matches the character-creation modal's structure).
+            Only renders when the capability has at least one
+            effect. Mashu 2026-07-28: "we still don't display
+            all primitives all capabilities all effects
+            properly like in the character creation/edit
+            modal." */}
+        {capability.effectLinks && capability.effectLinks.length > 0 && (
+          <details className="mt-2 rounded border border-border bg-muted/30 px-2 py-1 text-xs">
+            <summary className="cursor-pointer list-none font-semibold uppercase tracking-wide text-muted-foreground">
+              Effects ({capability.effectLinks.length})
+            </summary>
+            <ul className="mt-1 space-y-1">
+              {capability.effectLinks.map((el) => (
+                <li
+                  key={el.effectId}
+                  className="rounded border border-border bg-background px-2 py-1"
+                >
+                  <div className="font-medium text-foreground">
+                    {el.effect.name}
+                  </div>
+                  {el.effect.description ? (
+                    <div className="text-muted-foreground italic">
+                      {el.effect.description}
+                    </div>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </details>
         )}
 
         {/* Action row */}

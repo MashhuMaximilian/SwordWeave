@@ -116,7 +116,7 @@ export function BottomStickyBar({
         )}
       </button>
 
-      {/* Expanded drawer — Phase 8.4 v4 (Mashu 2026-07-28):
+      {/* Expanded drawer — Phase 8.4 v5 (Mashu 2026-07-28):
           - Removed the duplicate "VITALITY: 78/73" header (the
             collapsed bar already shows it).
           - Full viewport width (no pr-16 padding) so the 4 vitality
@@ -131,10 +131,24 @@ export function BottomStickyBar({
             expanded drawer sits ABOVE the FAB (z-40). The bar
             header itself stays at z-30 (below FAB). Mashu
             2026-07-28: "Quick bar collaosed should be beneath fab
-            in z index, but expanded above it in z index." */}
+            in z index, but expanded above it in z index."
+          - Positioned at bottom-24 (96px) so the drawer's
+            bottom edge sits at the TOP of the bar (which is
+            at bottom-12 / 48px + ~48px tall = 96px). The
+            drawer no longer overlays the bar visually —
+            they're stacked with the drawer above the bar.
+            Mashu 2026-07-28: "When I expand quick bar it has
+            open space and we need to lower it to start on
+            top of the quick bar."
+          - Added pb-20 (80px) bottom padding so the last
+            practice row clears the FAB (at bottomOffset={56})
+            when the user scrolls within the drawer. Mashu
+            2026-07-28: "However we can use like some bottom
+            padding to not have the Fab overlap with the
+            modifiers." */}
       {expanded ? (
         <div
-          className="fixed bottom-12 left-0 right-0 z-50 border-t border-border bg-background/95 px-3 pb-3 pt-2 max-h-[60dvh] overflow-y-auto"
+          className="fixed bottom-24 left-0 right-0 z-50 border-t border-border bg-background/95 px-3 pb-20 pt-2 max-h-[60dvh] overflow-y-auto"
           data-testid="bottom-sticky-bar-drawer"
         >
           <div className="mb-3">
@@ -146,31 +160,65 @@ export function BottomStickyBar({
             />
           </div>
 
+          {/* Phase 8.4 v5 (Mashu 2026-07-28): the Quick
+              Practices header now surfaces the attribute
+              modifier (raw + primitive delta) inline with the
+              title. Mashu 2026-07-28: "I want in line with
+              quick practices title the modifiers for
+              attributes and well as the proficiency bonus."
+              The previous version showed best practice totals,
+              which the user explicitly rejected. */}
           <div>
-            <div className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-              Quick Practices
+            <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
+              <span className="text-xs font-semibold uppercase text-muted-foreground">
+                Quick Practices
+              </span>
+              <div className="flex items-center gap-2 font-mono text-[11px] font-bold tabular-nums">
+                <span className="rounded bg-secondary px-1.5 py-0.5 text-foreground">
+                  PHYS {phys}
+                </span>
+                <span className="rounded bg-secondary px-1.5 py-0.5 text-foreground">
+                  MENT {ment}
+                </span>
+                <span className="rounded bg-secondary px-1.5 py-0.5 text-foreground">
+                  MAGI {magi}
+                </span>
+                <span className="rounded bg-primary/15 px-1.5 py-0.5 text-primary">
+                  PROF {pbDisplay} PB
+                </span>
+              </div>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            {/* Phase 8.4 v5 (Mashu 2026-07-28): wider gutter
+                between the middle column and the ones on left
+                and right. Mashu 2026-07-28: "we need a bit more
+                gutter/padding between the middle column and
+                the one on left and right." The previous
+                `gap-2` (8px) is replaced with `gap-x-3` (12px)
+                and `gap-y-0` so rows stack tight vertically.
+                Also `px-1.5` adds 6px horizontal padding
+                inside each column cell so names don't bump
+                against the cell border. */}
+            <div className="grid grid-cols-3 gap-x-3 gap-y-0">
               <PracticeColumn
                 attr="PHYSICAL"
                 label="Physical"
                 practices={practices}
                 proficientAttribute={proficientAttribute}
-                pb={pb}
+                modifier={physMod}
               />
               <PracticeColumn
                 attr="MENTAL"
                 label="Mental"
                 practices={practices}
                 proficientAttribute={proficientAttribute}
-                pb={pb}
+                modifier={mentMod}
               />
               <PracticeColumn
                 attr="MAGICAL"
                 label="Magical"
                 practices={practices}
                 proficientAttribute={proficientAttribute}
-                pb={pb}
+                modifier={magiMod}
               />
             </div>
           </div>
@@ -185,26 +233,47 @@ function PracticeColumn({
   label,
   practices,
   proficientAttribute,
-  pb,
+  modifier,
 }: {
   attr: "PHYSICAL" | "MENTAL" | "MAGICAL";
   label: string;
   practices: ReadonlyArray<PracticeRowForSticky>;
   proficientAttribute: "PHYSICAL" | "MENTAL" | "MAGICAL" | null;
-  pb: number;
+  /**
+   * Phase 8.4 v5 (Mashu 2026-07-28): the attribute modifier
+   * (raw + primitive delta) for this column. Shown as a
+   * sub-label below the attribute name in the column header.
+   */
+  modifier: number;
 }) {
   const group = practices.filter((p) => p.attribute === attr);
   if (group.length === 0) return null;
   const isProficient = proficientAttribute === attr;
+  const modDisplay = modifier >= 0 ? `+${modifier}` : `${modifier}`;
   return (
     <div className="space-y-0.5">
-      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-        {isProficient ? (
-          <span className="ml-2 rounded-full bg-teal-600/10 px-1.5 py-0.5 text-[9px] font-medium text-teal-600 dark:text-teal-400">
-            Prof +{pb} PB
-          </span>
-        ) : null}
+      <div className="mb-1">
+        <span
+          className={cn(
+            "text-[10px] font-semibold uppercase tracking-wide",
+            isProficient ? "text-teal-600 dark:text-teal-400" : "text-muted-foreground",
+          )}
+        >
+          {label}
+        </span>
+        {/* Phase 8.4 v5: modifier badge below the label so
+            the column header shows both name and modifier.
+            Proficient columns get the teal accent so the
+            user can spot which attribute gets PB on every
+            practice at a glance. */}
+        <div
+          className={cn(
+            "mt-0.5 font-mono text-[11px] font-bold tabular-nums",
+            isProficient ? "text-teal-600 dark:text-teal-400" : "text-foreground",
+          )}
+        >
+          {modDisplay}
+        </div>
       </div>
       <ul className="space-y-0.5">
         {group

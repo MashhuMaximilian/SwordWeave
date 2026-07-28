@@ -85,7 +85,19 @@ export async function GET(
     where: eq(characters.id, id),
     with: {
       primitiveLinks: { with: { primitive: true } },
-      capabilityLinks: { with: { capability: true } },
+      // Phase 8.4 v5 (Mashu 2026-07-28): include each
+      // capability's effects so the Capabilities tab can
+      // show effects nested under each capability, matching
+      // the character-creation modal's layout.
+      capabilityLinks: {
+        with: {
+          capability: {
+            with: {
+              effectLinks: { with: { effect: true } },
+            },
+          },
+        },
+      },
       itemLinks: { with: { item: true } },
       // Phase 8.1 batch 13.1: include heritage slots so the sheet can
       // show "from Lineage 'Elf'" / "from Upbringing 'Scholar'"
@@ -99,7 +111,19 @@ export async function GET(
               // canonical bundle (capabilities + primitives) so
               // the user can see what the heritage provides even
               // when the character hasn't slotted any of them.
-              capabilityLinks: { with: { capability: true } },
+              // Phase 8.4 v5 (Mashu 2026-07-28): include each
+      // capability's effects so the Capabilities tab can
+      // show effects nested under each capability, matching
+      // the character-creation modal's layout.
+      capabilityLinks: {
+        with: {
+          capability: {
+            with: {
+              effectLinks: { with: { effect: true } },
+            },
+          },
+        },
+      },
               primitiveLinks: { with: { primitive: true } },
             },
           },
@@ -462,7 +486,19 @@ export async function PATCH(
         where: eq(characters.id, id),
         with: {
           primitiveLinks: { with: { primitive: true } },
-          capabilityLinks: { with: { capability: true } },
+          // Phase 8.4 v5 (Mashu 2026-07-28): include each
+      // capability's effects so the Capabilities tab can
+      // show effects nested under each capability, matching
+      // the character-creation modal's layout.
+      capabilityLinks: {
+        with: {
+          capability: {
+            with: {
+              effectLinks: { with: { effect: true } },
+            },
+          },
+        },
+      },
           itemLinks: { with: { item: true } },
         },
       });

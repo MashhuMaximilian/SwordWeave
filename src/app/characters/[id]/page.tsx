@@ -221,24 +221,41 @@ export default async function CharacterSheetPage({
           hardModifiers: l.primitive.hardModifiers ?? [],
         },
       }))}
-      capabilityLinks={row.capabilityLinks.map((l) => ({
-        capabilityId: l.capabilityId,
-        acquiredAtLevel: l.acquiredAtLevel,
-        // Phase 5: surface slot metadata to the view.
-        versionId: l.versionId,
-        slotSource: l.slotSource,
-        latestVersionId: latestVersions.get(makeKey("capability", l.capabilityId)) ?? null,
-        // Phase 8.1 batch 13.1: capability origin (the heritage that
-        // brought it in, if any).
-        originHeritageId: l.originHeritageId ?? null,
-        capability: {
-          id: l.capability.id,
-          name: l.capability.name,
-          type: l.capability.type,
-          sourceType: l.capability.sourceType,
-          verboseDescription: l.capability.verboseDescription,
-        },
-      }))}
+      capabilityLinks={row.capabilityLinks.map((l) => {
+        // Phase 8.4 v5 (Mashu 2026-07-28): capability.effectLinks
+        // is joined from the API but the TS inference for
+        // l.capability doesn't include it by default. Cast
+        // through a local to keep the rest of the code clean.
+        const cap = l.capability as typeof l.capability & {
+          effectLinks?: Array<{
+            effectId: string;
+            effect: { id: string; name: string; description: string | null };
+          }>;
+        };
+        return {
+          capabilityId: l.capabilityId,
+          acquiredAtLevel: l.acquiredAtLevel,
+          versionId: l.versionId,
+          slotSource: l.slotSource,
+          latestVersionId: latestVersions.get(makeKey("capability", l.capabilityId)) ?? null,
+          originHeritageId: l.originHeritageId ?? null,
+          effectLinks: (cap.effectLinks ?? []).map((el) => ({
+            effectId: el.effectId,
+            effect: {
+              id: el.effect.id,
+              name: el.effect.name,
+              description: el.effect.description ?? "",
+            },
+          })),
+          capability: {
+            id: l.capability.id,
+            name: l.capability.name,
+            type: l.capability.type,
+            sourceType: l.capability.sourceType,
+            verboseDescription: l.capability.verboseDescription,
+          },
+        };
+      })}
       itemLinks={row.itemLinks.map((l) => ({
         itemId: l.itemId,
         quantity: l.quantity,
