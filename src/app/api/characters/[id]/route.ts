@@ -13,6 +13,7 @@ import {
 } from "@/db/schema";
 import { validateAttributes, type Attribute } from "@/lib/engine/practices";
 import { validateMirrorSet } from "@/lib/api/volatility";
+import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 import {
   resolveLatestVersionId,
   resolveSlotSource,
@@ -507,6 +508,11 @@ export async function PATCH(
       });
     });
 
+    // Phase 8.3f S3 (Mashu 2026-07-28): drop the resolver
+    // cache so the next /api/characters/[id]/resolve call
+    // recomputes with the new attribute values, slotted
+    // primitives, mirror state, etc.
+    bustResolverCache(id);
     return NextResponse.json({ character: result });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";
@@ -533,6 +539,11 @@ export async function DELETE(
     if (!deleted) {
       return NextResponse.json({ error: "Character not found." }, { status: 404 });
     }
+
+    // Phase 8.3f S3 (Mashu 2026-07-28): drop the resolver
+    // cache for this character so any stale /resolve entries
+    // don't survive the delete.
+    bustResolverCache(id);
 
     return NextResponse.json({ deleted: deleted.id });
   } catch (error) {
