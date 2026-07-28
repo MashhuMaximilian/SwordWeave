@@ -813,11 +813,46 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         pb={proficiencyBonus(props.level)}
         proficientAttribute={props.attrProficient}
         attributeModifiers={{
-          physical: resolver.totals["character.attribute.physical"] ?? 0,
-          mental: resolver.totals["character.attribute.mental"] ?? 0,
-          magical: resolver.totals["character.attribute.magical"] ?? 0,
+          // Phase 8.3g v2: slice + primitive contributions.
+          // The resolver uses the SCOPED short form
+          // (`attribute.physical` etc.).
+          physical:
+            props.attrPhysical +
+            (resolver.totals["attribute.physical"] ?? 0),
+          mental:
+            props.attrMental +
+            (resolver.totals["attribute.mental"] ?? 0),
+          magical:
+            props.attrMagical +
+            (resolver.totals["attribute.magical"] ?? 0),
         }}
         resolver={resolver}
+        practices={props.practices.map((p) => {
+          const attr = p.attribute.toLowerCase() as "physical" | "mental" | "magical";
+          const attrKey = `attr${
+            p.attribute.charAt(0).toUpperCase() + p.attribute.slice(1).toLowerCase()
+          }` as "attrPhysical" | "attrMental" | "attrMagical";
+          const attrMod = props[attrKey];
+          const isProf = props.attrProficient === p.attribute;
+          const total =
+            (attrMod ?? 0) +
+            (isProf ? proficiencyBonus(props.level) : 0) +
+            (resolver.totals[`attribute.${attr}`] ?? 0) +
+            (resolver.totals[`defense_dc.${attr}`] ?? 0);
+          return {
+            name: p.practice,
+            category: "PRACTICE",
+            buCost: 0,
+            attribute: p.attribute as "PHYSICAL" | "MENTAL" | "MAGICAL",
+            total,
+            isMirrored: false,
+            isMirrorable: false,
+            mirrorVector: null,
+            originHeritageId: null,
+            originCapabilityId: null,
+            originEffectId: null,
+          };
+        })}
       />
     </div>
   );
@@ -1162,18 +1197,15 @@ function OverviewTab({
           duplicates for PB and for attributes. We need to clean
           this up." */}
 
-      {/* ---- Vitality + Action band (Phase 8.3g, Mashu 2026-07-28) ----
-          Two stacked cards:
-            1. VitalityDisplayCard: VITALITY label, current/max,
-               percent bar, DC inline with vitality, 4 cells
-               (PHYS/MENT/MAGI/PROF) each with mod on top + save
-               below. Every number is clickable for provenance.
-            2. VitalityActionBar: the 4 action buttons (Damage,
-               Heal, Long rest, Short rest). No data display.
-          The SavesCard (right-column 3-DC table) is GONE — there's
-          only ONE DC (from the proficient attribute), inline with
-          vitality. Per Mashu 2026-07-28: "We only have 1 DC. We
-          don't have one DC per attribute. One DC for everything." */}
+      {/* ---- Vitality band (Phase 8.3g v2, Mashu 2026-07-28) ----
+          ONE card, not two. Top half = the new
+          VitalityDisplayCard (vitality number, DC, 4 cells
+          with mod + save). Bottom half = the action buttons
+          (Damage / Heal / Long rest / Short rest) via the
+          legacy VitalityTracker. No card separator. Per
+          Mashu: "Why do we have 2 vitality cards... we need
+          one card for vitality and attributes DC
+          proficiencies." */}
       <section
         aria-label="Vitality display"
         className="relative overflow-hidden rounded-md border border-border bg-card"
@@ -1229,21 +1261,11 @@ function OverviewTab({
               })),
             }}
           />
-        </div>
-      </section>
-
-      {/* ---- Vitality Action bar (Phase 8.3g) ----
-          The 4 action buttons (Damage / Heal / Long rest / Short
-          rest) live in their own card, separate from the data
-          display. Phase 8.4 (Mashu 2026-07-28): compact=true
-          keeps the 4 buttons on a single row even on phones
-          ≤ 360px wide. */}
-      <section
-        aria-label="Vitality actions"
-        className="relative overflow-hidden rounded-md border border-border bg-card"
-      >
-        <span className="absolute inset-x-0 top-0 h-0.5 bg-rose-500/50" />
-        <div className="p-4">
+          {/* Phase 8.3g v2 (Mashu 2026-07-28): action buttons
+              in the SAME card as the display. Divided by a
+              hairline + small top margin. Per Mashu: "Why do
+              we have 2 vitality cards... we need one card." */}
+          <hr className="my-3 border-border" />
           <VitalityTracker
             characterId={props.id}
             max={props.vitality.max}

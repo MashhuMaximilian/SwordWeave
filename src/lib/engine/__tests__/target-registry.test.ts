@@ -70,21 +70,24 @@ function makeSlot(
 // =============================================================================
 
 describe("target constants", () => {
-  it("ATTR_TARGETS matches canonical modifier-target strings", () => {
-    expect(ATTR_TARGETS.physical).toBe("character.attribute.physical");
-    expect(ATTR_TARGETS.mental).toBe("character.attribute.mental");
-    expect(ATTR_TARGETS.magical).toBe("character.attribute.magical");
+  it("ATTR_TARGETS maps to canonical short axis 'attribute'", () => {
+    expect(ATTR_TARGETS.physical).toBe("attribute");
+    expect(ATTR_TARGETS.mental).toBe("attribute");
+    expect(ATTR_TARGETS.magical).toBe("attribute");
   });
 
-  it("SAVE_TARGETS maps to character.defense.{attr}Dc", () => {
-    expect(SAVE_TARGETS.physical).toBe("character.defense.physicalDc");
-    expect(SAVE_TARGETS.mental).toBe("character.defense.mentalDc");
-    expect(SAVE_TARGETS.magical).toBe("character.defense.magicalDc");
+  it("SAVE_TARGETS maps to canonical short axis 'defense_dc'", () => {
+    expect(SAVE_TARGETS.physical).toBe("defense_dc");
+    expect(SAVE_TARGETS.mental).toBe("defense_dc");
+    expect(SAVE_TARGETS.magical).toBe("defense_dc");
   });
 
-  it("VITALITY_TARGETS exposes max + current", () => {
-    expect(VITALITY_TARGETS.max).toBe("character.maxVitality");
-    expect(VITALITY_TARGETS.current).toBe("character.currentVitality");
+  it("VITALITY_TARGETS exposes max + current (snake_case)", () => {
+    // Phase 8.3g v2: the resolver uses the canonical short
+    // axis names (snake_case). The DB stores target as
+    // `max_vitality`, not `character.maxVitality`.
+    expect(VITALITY_TARGETS.max).toBe("max_vitality");
+    expect(VITALITY_TARGETS.current).toBe("current_vitality");
   });
 });
 
@@ -109,7 +112,7 @@ describe("resolveAttributeModifier", () => {
           hardModifiers: [
             {
               kind: "modify",
-              target: ATTR_TARGETS.physical,
+              target: `${ATTR_TARGETS.physical}.physical`,
               operation: "add",
               value: 2,
             },
@@ -131,7 +134,7 @@ describe("resolveAttributeModifier", () => {
           hardModifiers: [
             {
               kind: "modify",
-              target: ATTR_TARGETS.physical,
+              target: `${ATTR_TARGETS.physical}.physical`,
               operation: "add",
               value: 2,
             },
@@ -199,7 +202,7 @@ describe("resolveSaveValue", () => {
           hardModifiers: [
             {
               kind: "modify",
-              target: SAVE_TARGETS.magical,
+              target: `${SAVE_TARGETS.magical}.magical`,
               operation: "add",
               value: 3,
             },
@@ -240,7 +243,7 @@ describe("resolveSaveDc", () => {
           hardModifiers: [
             {
               kind: "modify",
-              target: SAVE_TARGETS.magical,
+              target: `${SAVE_TARGETS.magical}.magical`,
               operation: "add",
               value: 3,
             },
@@ -385,7 +388,7 @@ describe("contributionsForTarget", () => {
           hardModifiers: [
             {
               kind: "modify",
-              target: ATTR_TARGETS.physical,
+              target: `${ATTR_TARGETS.physical}.physical`,
               operation: "add",
               value: 2,
             },
@@ -396,7 +399,7 @@ describe("contributionsForTarget", () => {
           hardModifiers: [
             {
               kind: "modify",
-              target: SAVE_TARGETS.magical,
+              target: `${SAVE_TARGETS.magical}.magical`,
               operation: "add",
               value: 3,
             },
@@ -404,8 +407,8 @@ describe("contributionsForTarget", () => {
         }),
       ],
     };
-    expect(contributionsForTarget(input, ATTR_TARGETS.physical)).toHaveLength(1);
-    expect(contributionsForTarget(input, SAVE_TARGETS.magical)).toHaveLength(1);
+    expect(contributionsForTarget(input, `${ATTR_TARGETS.physical}.physical`)).toHaveLength(1);
+    expect(contributionsForTarget(input, `${SAVE_TARGETS.magical}.magical`)).toHaveLength(1);
     expect(contributionsForTarget(input, "character.attribute.nonexistent")).toEqual([]);
   });
 });

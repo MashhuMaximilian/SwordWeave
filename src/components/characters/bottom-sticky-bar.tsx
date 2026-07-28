@@ -1,22 +1,64 @@
 "use client";
 
+/**
+ * bottom-sticky-bar.tsx — Phase 8.3g v2 (Mashu 2026-07-28)
+ *
+ * Mobile-only bottom dock. ONE docked card at the bottom of
+ * the screen. The card has:
+ *
+ *   - A small "header" bar at the TOP of the card showing
+ *     collapsed info: ♥ 288/268 · DC 16 · P+0 Me+0 Ma+0 · PB +6.
+ *     Tap to expand. Tap again to collapse.
+ *   - When expanded: the bar is the toggle, the card content
+ *     below shows full info (vitality + actions, save chips,
+ *     practices).
+ *
+ * Per Mashu 2026-07-28: "Why isn't the small quick bar on top
+ * of the expanded one?" The bar IS on top — it's the header of
+ * the docked card. The "expanded" content sits BELOW the bar.
+ *
+ * Save chips: 2 rows each (mod on top, save value below) in
+ * ONE chip. NO separate SV chips. Proficient attribute is
+ * teal. Per Mashu: "I said chips like it was before, but not
+ * 2 separate chips for modifier and save but same chip for
+ * attribute and save in 2 rows."
+ *
+ * Practices list: RESTORED. Per Mashu: "Where are practices?
+ * Did I say anything about removing the practices?" — I
+ * removed them by mistake.
+ *
+ * Practices drop-down is REPLACED with a click-through modal
+ * (per the same modal-everywhere rule as the rest of the
+ * sheet). Practice value = attribute + PB (if proficient) +
+ * primitive contributions.
+ */
+
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, Heart } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { VitalityTracker } from "@/components/characters/vitality-tracker";
 import type { ResolvedModifiers } from "@/lib/engine/resolve-modifiers";
+import { ProvenanceModal } from "./provenance-modal";
 
-export interface AttributeModifiersForSticky {
+export interface PracticeRowForSticky {
+  /** Optional — older call sites use PracticeRow which has
+   * no `id`. Use a synthetic key in that case. */
+  readonly id?: number;
+  readonly name: string;
+  readonly category: string;
+  readonly buCost: number;
+  readonly attribute: "PHYSICAL" | "MENTAL" | "MAGICAL";
   /**
-   * Final per-attribute modifier (raw `Math.floor((attr-10)/2)` +
-   * primitive contributions, after mirror flips + stacking).
-   * The canonical Phase 8.3f resolver in
-   * `src/lib/engine/resolve-modifiers.ts` produces this directly
-   * — the bar no longer recomputes the formula itself.
+   * Phase 8.3g v2: practice value = attribute modifier + PB
+   * (if proficient) + primitive contributions. Computed by
+   * the page-level resolver and passed in here.
    */
-  readonly physical: number;
-  readonly mental: number;
-  readonly magical: number;
+  readonly total: number;
+  readonly isMirrored: boolean;
+  readonly isMirrorable: boolean;
+  readonly mirrorVector: string | null;
+  readonly originHeritageId: string | null;
+  readonly originCapabilityId: string | null;
+  readonly originEffectId: string | null;
 }
 
 export interface BottomStickyBarProps {
@@ -30,29 +72,13 @@ export interface BottomStickyBarProps {
   readonly proficientAttribute: "PHYSICAL" | "MENTAL" | "MAGICAL" | null;
   /**
    * Final per-attribute modifier (raw slice + primitive
-   * contributions) produced by the canonical resolver. The
-   * bar no longer recomputes anything — the resolver
-   * already handles the math + mirror flips + stacking.
+   * contributions) produced by the canonical resolver.
    */
-  readonly attributeModifiers?: AttributeModifiersForSticky;
-  /**
-   * Phase 8.3f S5 (Mashu 2026-07-28): the resolver's full
-   * output. The bar uses `totals` for save value + save DC
-   * computation. Optional — if omitted, the bar shows mod
-   * only (legacy fallback for tests).
-   */
+  readonly attributeModifiers?: { physical: number; mental: number; magical: number };
+  /** Resolver's full output (totals + byTarget). */
   readonly resolver?: ResolvedModifiers;
-  /**
-   * Phase 8.3g (Mashu 2026-07-28): practices list was removed.
-   * The quick bar no longer shows individual practices — just
-   * per-attribute modifier + save value. Use the in-page
-   * Practices card on the Overview tab to see the full list.
-   */
-  readonly practices?: never;
-  // Keep PracticeRowForSticky as an exported type so existing
-  // import sites don't break (the type was exported but never
-  // referenced outside the bar).
-  readonly __practiceRowForStickyCompat?: never;
+  /** Practice rows. */
+  readonly practices: ReadonlyArray<PracticeRowForSticky>;
 }
 
 export function BottomStickyBar({
@@ -66,9 +92,11 @@ export function BottomStickyBar({
   proficientAttribute,
   attributeModifiers,
   resolver,
+  practices,
 }: BottomStickyBarProps) {
   const [hydrated, setHydrated] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [provenanceTarget, setProvenanceTarget] = useState<string | null>(null);
 
   useEffect(() => {
     setHydrated(true);
@@ -76,63 +104,54 @@ export function BottomStickyBar({
 
   if (!hydrated) return null;
 
-  // Phase 8.3g (Mashu 2026-07-28): the resolver returns the
-  // FINAL per-attribute modifier (slice + primitive
-  // contributions + mirror flips). We just use it directly.
   const physMod = attributeModifiers?.physical ?? physical;
   const mentMod = attributeModifiers?.mental ?? mental;
   const magiMod = attributeModifiers?.magical ?? magical;
-
   const phys = physMod >= 0 ? `+${physMod}` : `${physMod}`;
   const ment = mentMod >= 0 ? `+${mentMod}` : `${mentMod}`;
   const magi = magiMod >= 0 ? `+${magiMod}` : `${magiMod}`;
   const pbDisplay = pb >= 0 ? `+${pb}` : `${pb}`;
 
-  // Phase 8.3g: per-attribute save values. PB only for proficient.
-  // The save value uses the same formula as the in-page vitality
-  // card: mod + PB (if proficient) + primitives@SAVE.
   function saveFor(attr: "physical" | "mental" | "magical", mod: number): number {
     const isProf = proficientAttribute?.toLowerCase() === attr;
     const base = mod + (isProf ? pb : 0);
-    const prim =
-      resolver?.totals[
-        `character.defense.${attr}Dc`
-      ] ?? 0;
+    const prim = resolver?.totals[`defense_dc.${attr}`] ?? 0;
     return base + prim;
   }
   const physSave = saveFor("physical", physMod);
   const mentSave = saveFor("mental", mentMod);
   const magiSave = saveFor("magical", magiMod);
 
-  // Phase 8.3g: ONE save DC (from the proficient attribute).
   const primaryAttr: "physical" | "mental" | "magical" =
     (proficientAttribute?.toLowerCase() as
       | "physical" | "mental" | "magical" | undefined) ?? "physical";
   const primaryMod =
     primaryAttr === "physical" ? physMod : primaryAttr === "mental" ? mentMod : magiMod;
-  const primarySaveDelta =
-    resolver?.totals[`character.defense.${primaryAttr}Dc`] ?? 0;
+  const primarySaveDelta = resolver?.totals[`defense_dc.${primaryAttr}`] ?? 0;
   const primaryDc = 5 + pb + primaryMod + primarySaveDelta;
   const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 
+  const closeProvenance = () => setProvenanceTarget(null);
+
   return (
     <div
-      // Phase 8.4 v4 (Mashu 2026-07-28): bar at bottom-12 (48px)
-      // so it sits directly on top of the tabs. The bar is
-      // ALWAYS visible (collapsed = just the bar, expanded = bar
-      // + drawer above it). Mashu 2026-07-28: "Quick bar
-      // should've been on top of drawer."
+      // ONE docked card. Always at bottom-12 (above the tabs).
+      // The card has a header bar (always visible) and an
+      // expanded content area (visible when expanded). Per
+      // Mashu: "the small quick bar on top of the expanded
+      // one" = the header is always on top of the content.
       className="fixed bottom-12 left-0 right-0 z-30 border-t border-border bg-background/95 backdrop-blur-md md:hidden"
       data-testid="bottom-sticky-bar"
       data-expanded={expanded}
     >
-      {/* Collapsed row — stays visible whether expanded or not.
-          Per Phase 8.3g: shows vitality + DC + attribute mod
-          pills. Click to expand; click again to collapse. */}
+      {/* Header bar — always visible. The TOGGLE.
+          Phase 8.3g v2: when expanded, this bar is at the
+          TOP of the docked card. The drawer content sits
+          BELOW it. */}
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center justify-between gap-3 pr-16 pl-3 py-1 text-sm hover:bg-secondary/30"
+        className="flex w-full items-center justify-between gap-3 border-b border-border pr-16 pl-3 py-1.5 text-sm hover:bg-secondary/30"
         aria-expanded={expanded}
         aria-label={expanded ? "Collapse quick dock" : "Expand quick dock"}
       >
@@ -142,13 +161,9 @@ export function BottomStickyBar({
             {currentVitality ?? maxVitality}/{maxVitality}
           </span>
           <span className="text-muted-foreground">·</span>
-          <span className="font-mono">
-            DC {primaryDc}
-          </span>
+          <span className="font-mono">DC {primaryDc}</span>
           <span className="text-muted-foreground">·</span>
-          <span className="font-mono">
-            P{phys} Me{ment} Ma{magi}
-          </span>
+          <span className="font-mono">P{phys} Me{ment} Ma{magi}</span>
           <span className="text-muted-foreground">·</span>
           <span className="font-mono">PB {pbDisplay}</span>
         </div>
@@ -159,20 +174,15 @@ export function BottomStickyBar({
         )}
       </button>
 
-      {/* Expanded drawer — Phase 8.3g (Mashu 2026-07-28):
-          - Sits ABOVE the bar (the bar is the toggle/header).
-          - The 3 attribute chips each have 2 ROWS: mod on top,
-            save value below. NO separate SV chips. NO practices
-            list (dropped per Mashu 2026-07-28 X-through).
-          - One DC inline with the bar (always visible). */}
-      {expanded ? (
+      {/* Drawer content — only when expanded. Below the
+          header. Contains: vitality + actions, save chips,
+          practices. */}
+      {expanded && (
         <div
-          // Sits above the bar (bottom-12 / 48px). The bar is
-          // ~28px tall so the drawer bottom = 48 + 28 = 76px
-          // from viewport bottom (bottom-[4.75rem]).
-          className="fixed bottom-[4.75rem] left-0 right-0 z-50 border-t border-border bg-background/95 px-3 pb-2 pt-1 max-h-[60dvh] overflow-y-auto"
+          className="px-3 pb-20 pt-2 max-h-[60dvh] overflow-y-auto"
           data-testid="bottom-sticky-bar-drawer"
         >
+          {/* Vitality + actions (compact) */}
           <div className="mb-3">
             <VitalityTracker
               characterId={characterId}
@@ -182,14 +192,8 @@ export function BottomStickyBar({
             />
           </div>
 
-          {/* Phase 8.3g (Mashu 2026-07-28): each attribute is a
-              SINGLE chip with 2 ROWS — mod on top, save value
-              below. NO separate SV chips. The bar's collapsed
-              row already shows the same numbers; the chips
-              here are clickable for provenance (mod → mod
-              modal, save → save modal). The proficient
-              attribute is highlighted teal. */}
-          <div>
+          {/* Save chips: 2 rows each (mod + save in one chip) */}
+          <div className="mb-3">
             <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
               Saves
             </p>
@@ -203,12 +207,20 @@ export function BottomStickyBar({
               ).map(({ attr, label, mod: m, save: s }) => {
                 const isProf = proficientAttribute?.toLowerCase() === attr;
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={attr}
-                    className={`flex flex-col items-center justify-center rounded-md border px-2 py-1.5 ${
+                    onClick={() =>
+                      setProvenanceTarget(
+                        attr === primaryAttr
+                          ? `defense_dc.${attr}`
+                          : `attribute.${attr}`,
+                      )
+                    }
+                    className={`flex flex-col items-center justify-center rounded-md border-2 px-2 py-1.5 text-center transition-colors ${
                       isProf
-                        ? "border-teal-500/40 bg-teal-500/5"
-                        : "border-border bg-card"
+                        ? "border-teal-500 bg-teal-500/15"
+                        : "border-border bg-card hover:bg-secondary/40"
                     }`}
                   >
                     <span className="text-[9px] font-semibold uppercase text-muted-foreground">
@@ -222,30 +234,91 @@ export function BottomStickyBar({
                       {fmt(s)}
                     </span>
                     <span className="text-[9px] text-muted-foreground">save</span>
-                  </div>
+                  </button>
                 );
               })}
             </div>
+          </div>
 
-            {/* DC card (single, big). Always shows primary DC
-                (from the proficient attribute). */}
-            <div className="mt-2 flex items-center justify-between rounded-md border border-border bg-card px-3 py-1.5">
-              <div>
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">
-                  Save DC
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  (from {primaryAttr === "physical" ? "Physical" : primaryAttr === "mental" ? "Mental" : "Magical"} — proficient)
-                </p>
+          {/* Practices — RESTORED. Per Mashu: "Where are
+              practices? Did I say anything about removing
+              the practices?" Each practice is a row with
+              name + value. NO drop-down — clicking opens a
+              modal (same modal pattern as everywhere
+              else). */}
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+              Practices
+            </p>
+            {practices.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">
+                No practices slotted.
+              </p>
+            ) : (
+              <div className="space-y-0.5">
+                {practices.map((p) => {
+                  const isProf = proficientAttribute === p.attribute;
+                  return (
+                    <button
+                      type="button"
+                      key={p.id ?? p.name}
+                      onClick={() => setProvenanceTarget(`attribute.${p.attribute.toLowerCase()}`)}
+                      className="flex w-full items-center justify-between gap-2 rounded border border-border bg-card/40 px-3 py-1.5 text-left transition-colors hover:bg-secondary/40"
+                    >
+                      <span
+                        className={`truncate text-xs ${
+                          isProf
+                            ? "font-semibold text-teal-600 dark:text-teal-400"
+                            : "text-foreground"
+                        }`}
+                      >
+                        {p.name}
+                      </span>
+                      <span
+                        className={`shrink-0 font-mono text-xs font-semibold ${
+                          isProf
+                            ? "text-teal-600 dark:text-teal-400"
+                            : "text-foreground"
+                        }`}
+                      >
+                        {fmt(p.total)}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
-              <span className="font-mono text-xl font-bold tabular-nums">
-                {primaryDc}
-              </span>
-            </div>
+            )}
           </div>
         </div>
-      ) : null}
+      )}
+
+      {provenanceTarget && resolver && (
+        <ProvenanceModal
+          target={provenanceTarget}
+          targetLabel={
+            provenanceTarget.startsWith("attribute.")
+              ? `${
+                  provenanceTarget.split(".").pop() === "physical"
+                    ? "Physical"
+                    : provenanceTarget.split(".").pop() === "mental"
+                      ? "Mental"
+                      : "Magical"
+                } attribute`
+              : provenanceTarget.startsWith("defense_dc.")
+                ? `${
+                    provenanceTarget.split(".").pop() === "physical"
+                      ? "Physical"
+                      : provenanceTarget.split(".").pop() === "mental"
+                        ? "Mental"
+                        : "Magical"
+                  } save`
+                : provenanceTarget
+          }
+          totals={resolver.totals}
+          byTarget={resolver.byTarget}
+          onClose={closeProvenance}
+        />
+      )}
     </div>
   );
 }
-

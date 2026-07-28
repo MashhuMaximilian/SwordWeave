@@ -49,18 +49,22 @@ const ATTR_FULL: Record<Attribute, string> = {
 };
 
 const ATTR_TARGET: Record<Attribute, string> = {
-  physical: "character.attribute.physical",
-  mental: "character.attribute.mental",
-  magical: "character.attribute.magical",
+  physical: "attribute.physical",
+  mental: "attribute.mental",
+  magical: "attribute.magical",
 };
 
+// Phase 8.3g v2: the resolver stores per-attribute save
+// contributions under the SCOPED key
+// (`defense_dc.physical` etc.). The modal needs the
+// scoped key to look up `byTarget[target]`.
 const SAVE_TARGET: Record<Attribute, string> = {
-  physical: "character.defense.physicalDc",
-  mental: "character.defense.mentalDc",
-  magical: "character.defense.magicalDc",
+  physical: "defense_dc.physical",
+  mental: "defense_dc.mental",
+  magical: "defense_dc.magical",
 };
 
-const MAX_VITALITY_TARGET = "character.maxVitality";
+const MAX_VITALITY_TARGET = "max_vitality";
 
 export interface VitalityDisplayCardProps {
   current: number;
@@ -98,7 +102,12 @@ export function VitalityDisplayCard({
 
   return (
     <div>
-      {/* Header: VITALITY label + DC inline, 288/268 number */}
+      {/* Header: VITALITY label + DC inline. Phase 8.3g v2
+          (Mashu 2026-07-28): the DC must be visually BIG —
+          it used to be tiny and the user couldn't read it
+          from the screenshot. Now it's a large right-aligned
+          number with a small label. The DC = the canonical
+          5 + PB + (proficient attribute mod) + primitives. */}
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-xs font-semibold uppercase text-muted-foreground">
           Vitality
@@ -106,11 +115,16 @@ export function VitalityDisplayCard({
         <button
           type="button"
           onClick={() => setProvenanceTarget(SAVE_TARGET[primaryDc.attr])}
-          className="rounded px-1 py-0.5 text-xs font-semibold uppercase text-muted-foreground transition-colors hover:bg-muted/40"
+          className="group flex flex-col items-end rounded px-1 py-0.5 text-right transition-colors hover:bg-muted/40"
           aria-label={`Show save DC provenance (${ATTR_FULL[primaryDc.attr]})`}
           title={`DC = 5 + PB + ${ATTR_FULL[primaryDc.attr]} modifier + primitive contributions`}
         >
-          DC {primaryDc.total}
+          <span className="text-[9px] font-semibold uppercase text-muted-foreground group-hover:text-foreground">
+            Save DC
+          </span>
+          <span className="font-mono text-2xl font-bold tabular-nums leading-none">
+            {primaryDc.total}
+          </span>
         </button>
       </div>
       <button
@@ -140,7 +154,14 @@ export function VitalityDisplayCard({
       </div>
       <p className="mt-0.5 text-[11px] text-muted-foreground">{percent}%</p>
 
-      {/* Attribute row: 4 cells, each with mod + small save below */}
+      {/* Attribute row: 4 cells, each with mod + small save below.
+          Phase 8.3g v2 (Mashu 2026-07-28): the proficient
+          attribute is highlighted with a clear teal BORDER +
+          teal-tinted BACKGROUND so it actually reads as
+          "this is your proficient one" at a glance. The
+          previous `bg-teal-500/5` was too subtle (the
+          screenshot showed it as the same color as the
+          non-proficient cells). */}
       <div className="mt-2 grid grid-cols-4 gap-1.5">
         {(["physical", "mental", "magical"] as const).map((attr) => {
           const isProficient = proficientAttribute === attr;
@@ -149,9 +170,9 @@ export function VitalityDisplayCard({
           return (
             <div
               key={attr}
-              className={`flex flex-col items-center justify-center rounded-md border px-1 py-1 text-center ${
+              className={`flex flex-col items-center justify-center rounded-md border-2 px-1 py-1 text-center ${
                 isProficient
-                  ? "border-teal-500/40 bg-teal-500/5"
+                  ? "border-teal-500 bg-teal-500/15"
                   : "border-border bg-background"
               }`}
             >
@@ -201,9 +222,9 @@ export function VitalityDisplayCard({
           targetLabel={
             provenanceTarget === MAX_VITALITY_TARGET
               ? "Max Vitality"
-              : provenanceTarget.startsWith("character.attribute.")
+              : provenanceTarget.startsWith("attribute.")
                 ? `${ATTR_FULL[provenanceTarget.split(".").pop() as Attribute]} modifier`
-                : provenanceTarget.startsWith("character.defense.")
+                : provenanceTarget.startsWith("defense_dc.")
                   ? `${ATTR_FULL[provenanceTarget.split(".").pop() as Attribute]} save`
                   : provenanceTarget
           }

@@ -38,21 +38,33 @@ import {
 // Target constants
 // =============================================================================
 
+// Phase 8.3g v2 (Mashu 2026-07-28): the resolver populates
+// totals + byTarget with the CANONICAL SHORT axis name
+// (`attribute`, `defense_dc`, `max_vitality`, etc.) — NOT
+// the legacy dotted form. The DB stores `target: "max_vitality"`
+// (snake), so the resolver's `target` field is the snake
+// form. Earlier code used the legacy dotted form
+// (`character.maxVitality`) which never matched real DB
+// data — so all primitive contributions were silently
+// dropped, and the modal showed no modifiers (Tessy had
+// 2 mirrored VCA primitives targeting max_vitality that
+// the resolver never picked up because the lookup used
+// the wrong key).
 export const ATTR_TARGETS = {
-  physical: "character.attribute.physical",
-  mental: "character.attribute.mental",
-  magical: "character.attribute.magical",
+  physical: "attribute",
+  mental: "attribute",
+  magical: "attribute",
 } as const;
 
 export const SAVE_TARGETS = {
-  physical: "character.defense.physicalDc",
-  mental: "character.defense.mentalDc",
-  magical: "character.defense.magicalDc",
+  physical: "defense_dc",
+  mental: "defense_dc",
+  magical: "defense_dc",
 } as const;
 
 export const VITALITY_TARGETS = {
-  max: "character.maxVitality",
-  current: "character.currentVitality",
+  max: "max_vitality",
+  current: "current_vitality",
 } as const;
 
 export type Attribute = "physical" | "mental" | "magical";
@@ -86,10 +98,15 @@ export function resolveAttributeModifier(
   attr: Attribute,
 ): { total: number; contributions: readonly ModifierContribution[] } {
   // Phase 8.3g: slices are the base modifier directly. No division.
+  // Phase 8.3g v2: the resolver stores attribute contribs under
+  // the SCOPED key (`attribute.physical`, `attribute.mental`,
+  // `attribute.magical`) — the unmodified `attribute` is the
+  // aggregate that includes all 3 axes. Use the scoped form.
   const base = input.attributes[attr];
   const r = resolveModifiers(input);
-  const primitives = r.totals[ATTR_TARGETS[attr]] ?? 0;
-  const contributions = r.byTarget[ATTR_TARGETS[attr]] ?? [];
+  const scopedTarget = `${ATTR_TARGETS[attr]}.${attr}`;
+  const primitives = r.totals[scopedTarget] ?? 0;
+  const contributions = r.byTarget[scopedTarget] ?? [];
   return { total: base + primitives, contributions };
 }
 
@@ -99,9 +116,9 @@ export function resolveAttributeModifier(
  *
  *   save = attribute modifier + (PB if proficient) + primitive contributions
  *
- * "Primitive contributions" target `SAVE_TARGETS[attr]`. Per Mashu:
- * PB is ONLY added for the attribute the character is proficient in
- * (or for no attribute if `proficientAttribute === null`).
+ * "Primitive contributions" target the SCOPED save axis
+ * (`defense_dc.physical` / `defense_dc.mental` / `defense_dc.magical`).
+ * Per Mashu: PB is ONLY added for the proficient attribute.
  */
 export function resolveSaveValue(
   input: ResolvedCharacterInput,
@@ -109,8 +126,9 @@ export function resolveSaveValue(
 ): { total: number; contributions: readonly ModifierContribution[] } {
   const mod = resolveAttributeModifier(input, attr);
   const r = resolveModifiers(input);
-  const primitiveDelta = r.totals[SAVE_TARGETS[attr]] ?? 0;
-  const primitiveContribs = r.byTarget[SAVE_TARGETS[attr]] ?? [];
+  const scopedTarget = `${SAVE_TARGETS[attr]}.${attr}`;
+  const primitiveDelta = r.totals[scopedTarget] ?? 0;
+  const primitiveContribs = r.byTarget[scopedTarget] ?? [];
   const pb = input.proficientAttribute === attr ? input.pb : 0;
   return {
     total: mod.total + pb + primitiveDelta,
@@ -132,9 +150,8 @@ export function resolveSaveValue(
  *
  *   dc = 5 + PB + attribute modifier + primitive contributions
  *
- * Per Mashu: PB is always included (PB is global per character,
- * not proficiency-gated). The "5" is the canonical baseline.
- * Primitive contributions target `SAVE_TARGETS[attr]`.
+ * Primitive contributions target the SCOPED save axis
+ * (`defense_dc.<attr>`).
  */
 export function resolveSaveDc(
   input: ResolvedCharacterInput,
@@ -142,8 +159,9 @@ export function resolveSaveDc(
 ): { total: number; contributions: readonly ModifierContribution[] } {
   const mod = resolveAttributeModifier(input, attr);
   const r = resolveModifiers(input);
-  const primitiveDelta = r.totals[SAVE_TARGETS[attr]] ?? 0;
-  const primitiveContribs = r.byTarget[SAVE_TARGETS[attr]] ?? [];
+  const scopedTarget = `${SAVE_TARGETS[attr]}.${attr}`;
+  const primitiveDelta = r.totals[scopedTarget] ?? 0;
+  const primitiveContribs = r.byTarget[scopedTarget] ?? [];
   return {
     total: 5 + input.pb + mod.total + primitiveDelta,
     contributions: [...mod.contributions, ...primitiveContribs],
@@ -169,11 +187,24 @@ export function resolveSaveDc(
  */
 export function resolvePrimarySaveDc(
   input: ResolvedCharacterInput,
-): { total: number; contributions: readonly ModifierContribution[]; attr: Attribute } {
+): { total: number; contributions: readonly ModifierContribution[]; attr: Attribute; scopedTarget: string } {
   const attr: Attribute = input.proficientAttribute ?? "physical";
+  // Phase 8.3g v2 (Mashu 2026-07-28): the SCOPED target
+  // (`defense_dc.mental`) is what the resolver actually
+  // populates byTarget with. Looking up `defense_dc`
+  // (unscoped) returns nothing for characters that only
+  // have the scoped form. The modal uses `scopedTarget`
+  // to find the per-primitive attribution list.
+  const scopedTarget = `${SAVE_TARGETS[attr]}.${attr}`;
+  const r = resolveModifiers(input);
+  const mod = resolveAttributeModifier(input, attr);
+  const primitiveDelta = r.totals[scopedTarget] ?? 0;
+  const primitiveContribs = r.byTarget[scopedTarget] ?? [];
   return {
     attr,
-    ...resolveSaveDc(input, attr),
+    scopedTarget,
+    total: 5 + input.pb + mod.total + primitiveDelta,
+    contributions: [...mod.contributions, ...primitiveContribs],
   };
 }
 

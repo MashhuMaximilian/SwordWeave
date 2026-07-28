@@ -3,12 +3,16 @@
  *
  * Phase 8.2 batch 2 — long or short rest.
  *
- * Long rest (Mashu 2026-07-22):
+ * Long rest (Mashu 2026-07-28):
  *   - currentVitality = maxVitality (full restore)
  *
- * Short rest:
- *   - currentVitality += ceil((max - current) / 2), i.e. restore
- *     50% of missing vitality (round up). Capped at max.
+ * Short rest (Mashu 2026-07-28):
+ *   - currentVitality += Math.ceil(max / 2) (i.e. +50% of
+ *     MAX vitality, not 50% of missing). Capped at max.
+ *     Earlier code used 50% of MISSING (rounded up). The
+ *     user clarified: "short rest restores 50% max
+ *     vitality: current vitality + half max vitality up to
+ *     max vitality."
  *
  * Both:
  *   - Logged as a 'rest' event
@@ -80,10 +84,10 @@ export async function POST(
       next = max;
       delta = max - prev;
     } else {
-      // Short: restore 50% of missing vitality, rounded UP. e.g.
-      // missing 7 → restore 4; missing 1 → restore 1; missing 0 → 0.
-      const missing = max - prev;
-      const restore = Math.ceil(missing / 2);
+      // Short (Phase 8.3g v2, Mashu 2026-07-28): +50% of MAX,
+      // not 50% of missing. e.g. max=268, current=200 →
+      // restore = 134, next = min(200+134, 268) = 268.
+      const restore = Math.ceil(max / 2);
       delta = restore;
       next = clampVitality(prev + restore, max);
     }
