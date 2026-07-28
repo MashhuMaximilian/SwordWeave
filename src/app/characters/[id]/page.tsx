@@ -93,6 +93,11 @@ export default async function CharacterSheetPage({
         isMirrorable: l.primitive.isMirrorable,
         mirrorBuCredit: l.primitive.mirrorBuCredit,
         narrativeRule: l.primitive.narrativeRule ?? "",
+        // Phase 8.3f S4 (Mashu 2026-07-28): mirrorVector needed
+        // by the resolver to apply the correct mirror semantics
+        // (VARIABLE_VECTOR flips sign, STRUCTURAL_FAULT preserves
+        // magnitude, COST_INSTABILITY adds user-side cost).
+        mirrorVector: l.primitive.mirrorVector,
         // Phase 8.3d (Mashu 2026-07-27): include hardModifiers in
         // the aggregator's primitive shape. The aggregator doesn't
         // use them today, but the type requires it. 8.3d commit 2
@@ -211,6 +216,11 @@ export default async function CharacterSheetPage({
           isMirrorable: l.primitive.isMirrorable,
           mirrorBuCredit: l.primitive.mirrorBuCredit,
           narrativeRule: l.primitive.narrativeRule ?? "",
+          // Phase 8.3f S4 (Mashu 2026-07-28): mirrorVector needed
+          // by the resolver to apply the correct mirror semantics
+          // (VARIABLE_VECTOR flips sign, STRUCTURAL_FAULT preserves
+          // magnitude, COST_INSTABILITY adds user-side cost).
+          mirrorVector: l.primitive.mirrorVector,
           // Phase 8.3d (Mashu 2026-07-27): surface the primitive's
           // hard_modifiers JSONB so the character sheet can render
           // each modifier's condition as a pill badge. The column

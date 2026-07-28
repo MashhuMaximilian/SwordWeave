@@ -5,7 +5,14 @@ import { ChevronDown, ChevronUp, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { VitalityTracker } from "@/components/characters/vitality-tracker";
 
-export interface PrimitiveModifierDeltaForSticky {
+export interface AttributeModifiersForSticky {
+  /**
+   * Final per-attribute modifier (raw `Math.floor((attr-10)/2)` +
+   * primitive contributions, after mirror flips + stacking).
+   * The canonical Phase 8.3f resolver in
+   * `src/lib/engine/resolve-modifiers.ts` produces this directly
+   * — the bar no longer recomputes the formula itself.
+   */
   readonly physical: number;
   readonly mental: number;
   readonly magical: number;
@@ -29,12 +36,13 @@ export interface BottomStickyBarProps {
   readonly pb: number;
   readonly proficientAttribute: "PHYSICAL" | "MENTAL" | "MAGICAL" | null;
   /**
-   * Phase 8.4 (Mashu 2026-07-28): per-attribute delta from slotted
-   * primitives (regular + mirrored). Used to compute the effective
-   * modifier so the collapsed bar shows the same value the
-   * CoreStatsCard shows on the page.
+   * Phase 8.3f S4 (Mashu 2026-07-28): final per-attribute modifier
+   * values (raw + primitive contributions) produced by the
+   * canonical resolver. The bar no longer recomputes
+   * `Math.floor((attr-10)/2) + primitiveDelta` — the resolver
+   * already handles that math + mirror flips + stacking.
    */
-  readonly primitiveModifierDelta?: PrimitiveModifierDeltaForSticky;
+  readonly attributeModifiers?: AttributeModifiersForSticky;
   readonly practices: ReadonlyArray<PracticeRowForSticky>;
 }
 
@@ -47,7 +55,7 @@ export function BottomStickyBar({
   magical,
   pb,
   proficientAttribute,
-  primitiveModifierDelta,
+  attributeModifiers,
   practices,
 }: BottomStickyBarProps) {
   const [hydrated, setHydrated] = useState(false);
@@ -59,12 +67,14 @@ export function BottomStickyBar({
 
   if (!hydrated) return null;
 
-  const physDelta = primitiveModifierDelta?.physical ?? 0;
-  const mentDelta = primitiveModifierDelta?.mental ?? 0;
-  const magiDelta = primitiveModifierDelta?.magical ?? 0;
-  const physMod = Math.floor((physical - 10) / 2) + physDelta;
-  const mentMod = Math.floor((mental - 10) / 2) + mentDelta;
-  const magiMod = Math.floor((magical - 10) / 2) + magiDelta;
+  // Phase 8.3f S4 (Mashu 2026-07-28): the resolver returns the
+  // FINAL per-attribute modifier (raw + primitive contributions
+  // + mirror flips). We just use it directly. Fallback to the
+  // old formula if no resolver was provided (shouldn't happen
+  // after S4 ships, but defensive for the test suite).
+  const physMod = attributeModifiers?.physical ?? Math.floor((physical - 10) / 2);
+  const mentMod = attributeModifiers?.mental ?? Math.floor((mental - 10) / 2);
+  const magiMod = attributeModifiers?.magical ?? Math.floor((magical - 10) / 2);
 
   const phys = physMod >= 0 ? `+${physMod}` : `${physMod}`;
   const ment = mentMod >= 0 ? `+${mentMod}` : `${mentMod}`;

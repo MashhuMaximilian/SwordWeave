@@ -45,7 +45,12 @@ import { CoreStatsCard } from "@/components/characters/core-stats-card";
 import { TabErrorBoundary } from "@/components/characters/tab-error-boundary";
 import { HeritageBundleView } from "@/components/characters/heritage-bundle-view";
 import { proficiencyBonus } from "@/lib/engine/practices";
-import { attributeModifierDeltas } from "@/lib/engine/attribute-modifier-delta";
+// Phase 8.3f S4 (Mashu 2026-07-28): the canonical resolver
+// replaces the presentation-time approximation in
+// `attribute-modifier-delta.ts`. The hook returns totals +
+// per-target attribution; we use it for the BottomStickyBar
+// and (in S5) the VitalityCard + provenance modal.
+import { useCharacterResolver } from "@/lib/hooks/use-character-resolver";
 import {
   BACKSTORY_FIELDS,
   isBackstoryEmpty,
@@ -103,6 +108,10 @@ type SheetPrimitiveLink = {
     isMirrorable: boolean;
     mirrorBuCredit: number;
     narrativeRule: string;
+    // Phase 8.3f S4 (Mashu 2026-07-28): mirrorVector needed by
+    // the resolver to apply the correct mirror semantics when
+    // computing per-target contributions.
+    mirrorVector: string | null;
     // Phase 8.3d (Mashu 2026-07-27): the primitive's authored
     // hard_modifiers JSONB, passed through from the DB. Used by
     // ConditionBadges to render each modifier's condition as a
@@ -348,6 +357,46 @@ export function CharacterSheetView(props: CharacterSheetProps) {
 
   const attrSum = props.attrPhysical + props.attrMental + props.attrMagical;
   const attrValid = attrSum === 10;
+
+  // Phase 8.3f S4 (Mashu 2026-07-28): run the canonical resolver
+  // once per render. The result drives the BottomStickyBar's
+  // attribute modifiers and (in S5) the VitalityCard + provenance
+  // modal. Memoized on the primitiveLinks ref + attribute values.
+  const resolver = useCharacterResolver({
+    characterId: props.id,
+    level: props.level,
+    pb: proficiencyBonus(props.level),
+    proficientAttribute:
+      props.attrProficient === null
+        ? null
+        : props.attrProficient.toLowerCase() === "PHYSICAL"
+          ? "physical"
+          : props.attrProficient.toLowerCase() === "MENTAL"
+            ? "mental"
+            : props.attrProficient.toLowerCase() === "MAGICAL"
+              ? "magical"
+              : null,
+    attributes: {
+      physical: props.attrPhysical,
+      mental: props.attrMental,
+      magical: props.attrMagical,
+    },
+    primitiveLinks: props.primitiveLinks.map((l) => ({
+      primitiveId: l.primitiveId,
+      isMirrored: l.isMirrored,
+      originHeritageId: l.originHeritageId,
+      originCapabilityId: l.originCapabilityId,
+      originEffectId: l.originEffectId,
+      primitive: {
+        id: l.primitive.id,
+        name: l.primitive.name,
+        category: l.primitive.category,
+        isMirrorable: l.primitive.isMirrorable,
+        mirrorVector: l.primitive.mirrorVector,
+        hardModifiers: l.primitive.hardModifiers,
+      },
+    })),
+  });
 
   // Phase 8.1 batch 13.1: lookup maps for resolving the origin chain
   // shown in OriginBadge. heritageById is built from props.heritageLinks
@@ -762,7 +811,11 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         magical={props.attrMagical}
         pb={proficiencyBonus(props.level)}
         proficientAttribute={props.attrProficient}
-        primitiveModifierDelta={attributeModifierDeltas(props.primitiveLinks)}
+        attributeModifiers={{
+          physical: resolver.totals["character.attribute.physical"] ?? 0,
+          mental: resolver.totals["character.attribute.mental"] ?? 0,
+          magical: resolver.totals["character.attribute.magical"] ?? 0,
+        }}
         practices={props.practices.map((p) => ({
           practice: p.practice,
           attribute: p.attribute as "PHYSICAL" | "MENTAL" | "MAGICAL",

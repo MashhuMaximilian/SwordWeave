@@ -32,6 +32,7 @@ import {
   loadCharacterMaxVitality,
 } from "@/lib/character/character-vitality";
 import { appendCharacterLog } from "@/lib/character/character-log";
+import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 
 export async function POST(
   request: Request,
@@ -126,6 +127,10 @@ export async function POST(
       next,
       source,
     });
+
+    // Phase 8.3f S4 (Mashu 2026-07-28): drop resolver cache so
+    // /resolve recomputes with the new current vitality.
+    bustResolverCache(id);
 
     return NextResponse.json({
       character: updated,

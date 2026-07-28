@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { characters } from "@/db/schema";
 import { getVolatilityCeiling } from "@/lib/engine/bu";
+import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 
 /**
  * POST /api/characters/[id]/level-up
@@ -75,6 +76,10 @@ export async function POST(
       .returning();
 
     const newCeiling = getVolatilityCeiling(updated?.level ?? 1);
+
+    // Phase 8.3f S4 (Mashu 2026-07-28): level change shifts PB
+    // and max vitality, so the resolver cache must be busted.
+    bustResolverCache(id);
 
     return NextResponse.json({
       character: updated,
