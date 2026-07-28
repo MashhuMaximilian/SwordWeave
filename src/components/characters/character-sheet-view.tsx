@@ -26,7 +26,6 @@ import {
   Check,
   Trash2,
   ChevronDown,
-  FolderOpen,
   RotateCcw,
 } from "lucide-react";
 import { DetailModal } from "@/components/ui/detail-modal";
@@ -1811,68 +1810,6 @@ function CapabilitiesTab({
   capabilityById: Map<string, { name: string }>;
   effectById: Map<string, { name: string }>;
 }) {
-  // Group primitives by their origin
-  const primitivesByOrigin = new Map<
-    string,
-    Array<typeof primitiveLinks[0]>
-  >();
-  for (const p of primitiveLinks) {
-    let originKey = "Direct";
-    if (p.originHeritageId) {
-      const h = heritageById.get(p.originHeritageId);
-      originKey = h
-        ? `Heritage: ${h.kind === "LINEAGE" ? "Lineage" : h.kind === "UPBRINGING" ? "Upbringing" : "Manifest"} — ${h.name}`
-        : "Heritage (unknown)";
-    } else if (p.originCapabilityId) {
-      const c = capabilityById.get(p.originCapabilityId);
-      originKey = c ? `Capability: ${c.name}` : "Capability (unknown)";
-    } else if (p.originEffectId) {
-      const e = effectById.get(p.originEffectId);
-      originKey = e ? `Effect: ${e.name}` : "Effect (unknown)";
-    }
-    if (!primitivesByOrigin.has(originKey)) primitivesByOrigin.set(originKey, []);
-    primitivesByOrigin.get(originKey)!.push(p);
-  }
-
-  // Helper: infer Style from capability tags (style-a, style-b, style-c)
-  function getCapabilityStyle(c: typeof capabilities[0]): "A" | "B" | "C" | "A+B" | "A+C" | "B+C" | "A+B+C" {
-    const tags = (c as any).tags as string[] | undefined;
-    if (!tags) return "A"; // default
-    const hasA = tags.includes("style-a") || tags.includes("style:A");
-    const hasB = tags.includes("style-b") || tags.includes("style:B");
-    const hasC = tags.includes("style-c") || tags.includes("style:C");
-    if (hasA && hasB && hasC) return "A+B+C";
-    if (hasA && hasB) return "A+B";
-    if (hasA && hasC) return "A+C";
-    if (hasB && hasC) return "B+C";
-    if (hasA) return "A";
-    if (hasB) return "B";
-    if (hasC) return "C";
-    return "A";
-  }
-
-  // Group capabilities by Style
-  const capabilitiesByStyle = new Map<
-    string,
-    Array<typeof capabilities[0]>
-  >();
-  const styleOrder = ["A", "B", "C", "A+B", "A+C", "B+C", "A+B+C"];
-  for (const c of capabilities) {
-    const style = getCapabilityStyle(c);
-    if (!capabilitiesByStyle.has(style)) capabilitiesByStyle.set(style, []);
-    capabilitiesByStyle.get(style)!.push(c);
-  }
-
-  const styleLabels: Record<string, { label: string; description: string }> = {
-    A: { label: "Style A — Passive", description: "Always-on bonuses. No interaction needed." },
-    B: { label: "Style B — Actionable", description: "Trigger for one-shot effects (damage, heal, etc.)." },
-    C: { label: "Style C — Toggleable", description: "On/Off toggle that gates passive modifiers." },
-    "A+B": { label: "Style A+B — Passive + Actionable", description: "Passive bonuses + triggerable one-shot." },
-    "A+C": { label: "Style A+C — Passive + Toggleable", description: "Passive bonuses gated by a toggle." },
-    "B+C": { label: "Style B+C — Actionable + Toggleable", description: "Toggle gates a triggerable effect." },
-    "A+B+C": { label: "Style A+B+C — All Three", description: "Passive, triggerable, and toggle-gated." },
-  };
-
   if (primitiveLinks.length === 0 && capabilities.length === 0) {
     return (
       <div className="rounded-md border border-dashed border-border bg-card/50 px-6 py-12 text-center">
@@ -1888,17 +1825,20 @@ function CapabilitiesTab({
 
   return (
     <div className="space-y-6">
-      {/* ===== Accordion 1: All Primitives =====
-          Phase 8.4 v5 (Mashu 2026-07-28): opened by default so
-          the user sees all primitives without having to click.
-          Mashu 2026-07-28: "we still don't display all
-          primitives all capabilities all effects properly
-          like in the character creation/edit modal." */}
+      {/* ===== Accordion 1: Primitives =====
+          Phase 8.3f S6 (Mashu 2026-07-28): renamed from "All
+          Primitives". Each row's provenance chain is surfaced
+          inline (the PrimitivePreviewCard already does this).
+          Sort order per the S6 PDF answers:
+            1. Direct (originHeritageId === null) first
+            2. Then by heritage kind: Manifest, Lineage,
+               Upbringing (alphabetical within kind)
+          Single accordion (per S6 spec: 4 total, this is one). */}
       <details open className="group rounded-md border border-border bg-card">
         <summary className="flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium cursor-pointer list-none">
           <span className="flex items-center gap-2">
             <Package className="size-4 text-muted-foreground" />
-            All Primitives ({primitiveLinks.length})
+            Primitives ({primitiveLinks.length})
           </span>
           <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
         </summary>
@@ -1906,198 +1846,213 @@ function CapabilitiesTab({
           {primitiveLinks.length === 0 ? (
             <p className="text-sm text-muted-foreground">No primitives slotted.</p>
           ) : (
-            [...primitivesByOrigin.entries()]
-              .sort(([a], [b]) => a.localeCompare(b))
-              .map(([origin, primitives]) => (
-                <div key={origin} className="space-y-2">
-                  <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    <FolderOpen className="size-3" />
-                    {origin}
-                    <span className="ml-auto rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium">
-                      {primitives.length}
-                    </span>
-                  </div>
-                  <ul className="ml-4 space-y-1 divide-y divide-border">
-                    {primitives
-                      .sort((a, b) => a.primitive.name.localeCompare(b.primitive.name))
-                      .map((p) => (
-                        // Phase 8.3e (Mashu 2026-07-27):
-                        // PrimitivePreviewCard replaces the
-                        // bare <li> row. Click the card to open
-                        // the unified EntityPreview modal. The
-                        // card also owns the condition pills
-                        // (Phase 8.3d follow-up) — previously
-                        // they lived inline here; consolidating
-                        // keeps the row in one component.
-                        <li key={p.primitive.id} className="py-0.5">
-                          <PrimitivePreviewCard
-                            primitiveLink={{
-                              primitiveId: p.primitiveId,
-                              source: p.source,
-                              acquiredAtLevel: p.acquiredAtLevel,
-                              isMirrored: p.isMirrored,
-                              primitive: {
-                                id: p.primitive.id,
-                                name: p.primitive.name,
-                                category: p.primitive.category,
-                                buCost: p.primitive.buCost,
-                                isMirrorable: p.primitive.isMirrorable,
-                                mirrorBuCredit: p.primitive.mirrorBuCredit,
-                                narrativeRule: p.primitive.narrativeRule,
-                                hardModifiers: p.primitive.hardModifiers,
-                              },
-                            }}
-                          />
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-              ))
+            <ul className="space-y-1 divide-y divide-border">
+              {primitiveLinks
+                .slice()
+                .sort((a, b) => {
+                  // Direct first.
+                  const aDirect = a.originHeritageId === null ? 0 : 1;
+                  const bDirect = b.originHeritageId === null ? 0 : 1;
+                  if (aDirect !== bDirect) return aDirect - bDirect;
+                  // Then by heritage kind (manifest → lineage →
+                  // upbringing), then by name.
+                  const aKind = a.originHeritageId
+                    ? heritageById.get(a.originHeritageId)?.kind ?? "ZZZ"
+                    : "DIRECT";
+                  const bKind = b.originHeritageId
+                    ? heritageById.get(b.originHeritageId)?.kind ?? "ZZZ"
+                    : "DIRECT";
+                  const kindOrder: Record<string, number> = {
+                    MANIFEST: 0,
+                    LINEAGE: 1,
+                    UPBRINGING: 2,
+                    DIRECT: 3,
+                    ZZZ: 4,
+                  };
+                  const aOrder = kindOrder[aKind] ?? 5;
+                  const bOrder = kindOrder[bKind] ?? 5;
+                  if (aOrder !== bOrder) return aOrder - bOrder;
+                  return a.primitive.name.localeCompare(b.primitive.name);
+                })
+                .map((p) => (
+                  <li key={p.primitive.id} className="py-0.5">
+                    <PrimitivePreviewCard
+                      primitiveLink={{
+                        primitiveId: p.primitiveId,
+                        source: p.source,
+                        acquiredAtLevel: p.acquiredAtLevel,
+                        isMirrored: p.isMirrored,
+                        primitive: {
+                          id: p.primitive.id,
+                          name: p.primitive.name,
+                          category: p.primitive.category,
+                          buCost: p.primitive.buCost,
+                          isMirrorable: p.primitive.isMirrorable,
+                          mirrorBuCredit: p.primitive.mirrorBuCredit,
+                          narrativeRule: p.primitive.narrativeRule,
+                          hardModifiers: p.primitive.hardModifiers,
+                        },
+                      }}
+                    />
+                  </li>
+                ))}
+            </ul>
           )}
         </div>
       </details>
 
-      {/* ===== Accordion 1.5: By Heritage (bundled view) ===== */}
-      {/* Phase 8.4 v3 (Mashu 2026-07-28): a heritage-bundle
-          section that mirrors the character-modal builder
-          layout. Each heritage shows:
-            - The heritage name + kind badge + mirrored chip
-            - Capabilities granted by this heritage (each
-              clickable to open the preview modal)
-            - Primitives granted by this heritage (each
-              rendered as a PrimitivePreviewCard)
-          Mashu 2026-07-28: "we should Also show the bundled
-          capabilities for each heritage (basically like in the
-          character modal builder with option to preview.) on
-          click preview works." */}
-      {heritageLinks.length > 0 && (
-        <details open className="group rounded-md border border-border bg-card">
-          <summary className="flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium cursor-pointer list-none">
-            <span className="flex items-center gap-2">
-              <Flame className="size-4 text-muted-foreground" />
-              By Heritage ({heritageLinks.length})
-            </span>
-            <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
-          </summary>
-          <div className="px-4 pb-4 space-y-4 border-t border-border">
-            {heritageLinks.map((hl) => {
-              const kindLabel =
-                hl.heritage.kind === "LINEAGE"
-                  ? "Lineage"
-                  : hl.heritage.kind === "UPBRINGING"
-                    ? "Upbringing"
-                    : "Manifest";
-              // Phase 8.4 v3 (Mashu 2026-07-28): render the
-              // heritage's CANONICAL bundle (from the heritage
-              // template) rather than only the inherited rows on
-              // the character. Older characters created before
-              // the originHeritageId migration have origin=null
-              // on every primitive/capability, which made the
-              // previous "match by originHeritageId" lookup
-              // render "0 bundled" for every heritage. The
-              // canonical bundle is always present on the
-              // heritage template, so the user always sees what
-              // each heritage provides.
-              const canonCaps = hl.heritage.capabilityLinks ?? [];
-              const canonPrims = hl.heritage.primitiveLinks ?? [];
-              // Slotted flags: which bundle entries are also
-              // present on the character (so we can show a
-              // "currently slotted" indicator).
-              const slottedCapIds = new Set(
-                capabilities
-                  .filter((c) => c.originHeritageId === hl.heritageId)
-                  .map((c) => c.id),
-              );
-              const slottedPrimIds = new Set(
-                primitiveLinks
-                  .filter((p) => p.originHeritageId === hl.heritageId)
-                  .map((p) => p.primitive.id),
-              );
-              return (
-                <HeritageBundleView
-                  key={hl.heritageId}
-                  heritageId={hl.heritageId}
-                  heritageName={hl.heritage.name}
-                  heritageKindLabel={kindLabel}
-                  heritageDescription={hl.heritage.description ?? null}
-                  isMirrored={hl.isMirrored ?? false}
-                  canonCaps={canonCaps}
-                  canonPrims={canonPrims}
-                  slottedCapIds={slottedCapIds}
-                  slottedPrimIds={slottedPrimIds}
-                />
-              );
-            })}
-          </div>
-        </details>
+      {/* ===== Accordion 2: Manifest (heritage kind = MANIFEST) =====
+          Phase 8.3f S6 (Mashu 2026-07-28): the per-kind
+          heritage accordion. Shows the canonical bundle
+          (capabilities + primitives) for each heritage the
+          character has slotted. Per the S6 spec: "Aura
+          Detective should be under Manifest (its heritage
+          kind), not floating in Capabilities section." */}
+      {heritageLinks.filter((hl) => hl.heritage.kind === "MANIFEST").length > 0 && (
+        <HeritageKindAccordion
+          kind="MANIFEST"
+          label="Manifest"
+          icon={<Sparkles className="size-4 text-muted-foreground" />}
+          heritageLinks={heritageLinks.filter(
+            (hl) => hl.heritage.kind === "MANIFEST",
+          )}
+          capabilities={capabilities}
+          primitiveLinks={primitiveLinks}
+        />
       )}
 
-      {/* ===== Accordion 2: Capabilities by Style =====
-          Phase 8.4 v5: opened by default. */}
-      {capabilities.length > 0 && (
-        <details open className="group rounded-md border border-border bg-card">
-          <summary className="flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium cursor-pointer list-none">
-            <span className="flex items-center gap-2">
-              <Swords className="size-4 text-muted-foreground" />
-              Capabilities ({capabilities.length})
-            </span>
-            <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
-          </summary>
-          <div className="px-4 pb-4 space-y-3 border-t border-border">
-            {styleOrder
-              .filter((s) => capabilitiesByStyle.has(s))
-              .map((style) => {
-                const caps = capabilitiesByStyle.get(style)!;
-                const styleKey = style as keyof typeof styleLabels;
-                const { label, description } = styleLabels[styleKey] ?? { label: style, description: "" };
-                return (
-                  <details key={style} className="group rounded-md border border-border bg-card/50">
-                    <summary className="flex items-center justify-between gap-3 px-3 py-2 text-sm font-medium cursor-pointer list-none">
-                      <span className="flex items-center gap-2">
-                        <FolderOpen className="size-4 text-muted-foreground" />
-                        <span>{label}</span>
-                        <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium">
-                          {caps.length}
-                        </span>
-                      </span>
-                      <p className="text-xs text-muted-foreground mr-4 flex-1 text-right hidden sm:block">
-                        {description}
-                      </p>
-                      <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
-                    </summary>
-                    <div className="px-3 pb-3 space-y-2 border-t border-border">
-                      <p className="text-xs text-muted-foreground px-2">{description}</p>
-                      <ul className="space-y-2">
-                        {caps.map((c) => (
-                          <li key={c.id}>
-                            <CapabilityCard
-                              characterId={characterId}
-                              capability={{
-                                ...c,
-                                originChain: c.originHeritageId
-                                  ? [{ kind: "heritage" as const, name: (() => {
-                                      const h = heritageById.get(c.originHeritageId!);
-                                      return h
-                                        ? `${h.kind === "LINEAGE" ? "Lineage" : h.kind === "UPBRINGING" ? "Upbringing" : "Manifest"}: ${h.name}`
-                                        : "Heritage (unknown)";
-                                    })() }]
-                                  : [],
-                              }}
-                            />
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  </details>
-                );
-              })}
-            </div>
-          </details>
-        )}
+      {/* ===== Accordion 3: Lineage (heritage kind = LINEAGE) ===== */}
+      {heritageLinks.filter((hl) => hl.heritage.kind === "LINEAGE").length > 0 && (
+        <HeritageKindAccordion
+          kind="LINEAGE"
+          label="Lineage"
+          icon={<Flame className="size-4 text-muted-foreground" />}
+          heritageLinks={heritageLinks.filter(
+            (hl) => hl.heritage.kind === "LINEAGE",
+          )}
+          capabilities={capabilities}
+          primitiveLinks={primitiveLinks}
+        />
+      )}
+
+      {/* ===== Accordion 4: Upbringing (heritage kind = UPBRINGING) ===== */}
+      {heritageLinks.filter((hl) => hl.heritage.kind === "UPBRINGING").length > 0 && (
+        <HeritageKindAccordion
+          kind="UPBRINGING"
+          label="Upbringing"
+          icon={<BookOpen className="size-4 text-muted-foreground" />}
+          heritageLinks={heritageLinks.filter(
+            (hl) => hl.heritage.kind === "UPBRINGING",
+          )}
+          capabilities={capabilities}
+          primitiveLinks={primitiveLinks}
+        />
+      )}
     </div>
   );
 }
 
+/**
+ * HeritageKindAccordion — Phase 8.3f S6 (Mashu 2026-07-28)
+ *
+ * One accordion per heritage kind. Renders each heritage as a
+ * HeritageBundleView (which shows the heritage's canonical
+ * bundle of capabilities + primitives). The accordion header
+ * is collapsed by default so the user opens the kind they
+ * care about (vs. the Primitives accordion which is open by
+ * default for the at-a-glance view).
+ */
+function HeritageKindAccordion({
+  kind,
+  label,
+  icon,
+  heritageLinks,
+  capabilities,
+  primitiveLinks,
+}: {
+  kind: "MANIFEST" | "LINEAGE" | "UPBRINGING";
+  label: string;
+  icon: React.ReactNode;
+  heritageLinks: Array<{
+    heritageId: string;
+    acquiredAtLevel: number;
+    isMirrored: boolean;
+    heritage: {
+      id: string;
+      name: string;
+      kind: string;
+      description: string | null;
+      capabilityLinks: Array<{
+        capabilityId: string;
+        capability: {
+          id: string;
+          name: string;
+          type: string;
+          sourceType: string;
+          verboseDescription: string;
+        };
+      }>;
+      primitiveLinks: Array<{
+        primitiveId: number;
+        primitive: {
+          id: number;
+          name: string;
+          category: string;
+          buCost: number;
+          isMirrorable: boolean;
+          mirrorBuCredit: number;
+          narrativeRule: string | null;
+          hardModifiers: unknown[];
+        };
+      }>;
+    };
+  }>;
+  capabilities: Array<{ id: string; originHeritageId: string | null }>;
+  primitiveLinks: Array<{ primitive: { id: number }; originHeritageId: string | null }>;
+}) {
+  void kind; // unused at runtime; kept for type clarity
+  return (
+    <details className="group rounded-md border border-border bg-card">
+      <summary className="flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium cursor-pointer list-none">
+        <span className="flex items-center gap-2">
+          {icon}
+          {label} ({heritageLinks.length})
+        </span>
+        <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="px-4 pb-4 space-y-4 border-t border-border">
+        {heritageLinks.map((hl) => {
+          const canonCaps = hl.heritage.capabilityLinks ?? [];
+          const canonPrims = hl.heritage.primitiveLinks ?? [];
+          const slottedCapIds = new Set(
+            capabilities
+              .filter((c) => c.originHeritageId === hl.heritageId)
+              .map((c) => c.id),
+          );
+          const slottedPrimIds = new Set(
+            primitiveLinks
+              .filter((p) => p.originHeritageId === hl.heritageId)
+              .map((p) => p.primitive.id),
+          );
+          return (
+            <HeritageBundleView
+              key={hl.heritageId}
+              heritageId={hl.heritageId}
+              heritageName={hl.heritage.name}
+              heritageKindLabel={label}
+              heritageDescription={hl.heritage.description ?? null}
+              isMirrored={hl.isMirrored ?? false}
+              canonCaps={canonCaps}
+              canonPrims={canonPrims}
+              slottedCapIds={slottedCapIds}
+              slottedPrimIds={slottedPrimIds}
+            />
+          );
+        })}
+      </div>
+    </details>
+  );
+}
 // =============================================================================
 // Items Tab
 // =============================================================================
