@@ -416,7 +416,7 @@ export function HeritageBundleView({
                                     {el.effect.description}
                                   </p>
                                 )}
-                                {effPrims.length > 0 && (
+                                {showPrimitives && effPrims.length > 0 && (
                                   <ul className="mt-1 space-y-0.5 pl-2 border-l border-border">
                                     {effPrims.map((pl) => (
                                       <li
@@ -441,8 +441,15 @@ export function HeritageBundleView({
                         </ul>
                       </details>
                     )}
-                    {/* Direct capability primitives */}
-                    {nestedPrims.length > 0 && (
+                    {/* Direct capability primitives — Phase 8.3g
+                        v2: hidden by default per the PDF Q8:
+                        "We don't show primitives in capabilities
+                        or effects, only in primitives accordion."
+                        The Primitives accordion at the top of the
+                        Capabilities tab already lists every slotted
+                        primitive. Use `showPrimitives={true}` to
+                        re-enable (character-modal builder). */}
+                    {showPrimitives && nestedPrims.length > 0 && (
                       <details
                         open
                         className="mt-2 group/prims"
