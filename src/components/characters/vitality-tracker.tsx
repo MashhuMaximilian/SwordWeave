@@ -207,15 +207,24 @@ export function VitalityTracker({
     }
   }
 
+  // Phase 8.3g v3 (Mashu 2026-07-28): compact mode now
+  // means "buttons + dialogs only" — the top label /
+  // number / bar are SKIPPED. They're rendered separately
+  // by VitalityDisplayCard. The legacy non-compact mode
+  // (some modal contexts) keeps the label + number + bar.
+  // The dialogs + buttons stay so the user can still
+  // apply damage / heal / rest.
   return (
     <div>
-      <p className="text-xs font-semibold uppercase text-muted-foreground">
-        Vitality
-      </p>
-      <p className="mt-1 font-mono text-2xl font-bold">
-        {optimisticCurrent}
-        <span className="text-muted-foreground text-base"> / {max}</span>
-      </p>
+      {!compact && (
+        <>
+          <p className="text-xs font-semibold uppercase text-muted-foreground">
+            Vitality
+          </p>
+          <p className="mt-1 font-mono text-2xl font-bold">
+            {optimisticCurrent}
+            <span className="text-muted-foreground text-base"> / {max}</span>
+          </p>
       <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-secondary">
         <div
           className={cn(
@@ -230,6 +239,8 @@ export function VitalityTracker({
         />
       </div>
       <p className="mt-1 text-xs text-muted-foreground">{percent}%</p>
+        </>
+      )}
 
       {/* Phase 8.4 v4 (Mashu 2026-07-28): attribute best totals +
           proficiency bonus row. Sits at the bottom of the Vitality

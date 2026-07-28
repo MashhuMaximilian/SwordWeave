@@ -1733,7 +1733,33 @@ function PracticeColumn({
     </div>
   );
 }
+/**
+ * BreakdownView — shows the practice total in plain language.
+ * Phase 8.3g v3 (Mashu 2026-07-28): rewrote the labels
+ * so they're self-explanatory. The old "Slice (attr) +1"
+ * left the user confused about why Prowess was +2 instead
+ * of +5. The new labels explain each piece:
+ *
+ *   Slice (your share)   +2   — your share of the PHYS+5 attribute
+ *                                 (spread across 3 PHYS practices: 2+2+1)
+ *   Proficiency           0   — you don't have PHYS as your proficient
+ *                                 attribute, so no PB bonus
+ *   + Prim primitives   +0    — sum of primitive contributions
+ *   ────────────────────────
+ *   = Total              +2
+ *
+ * The user asked: "Now it makes no sense what is slice
+ * (attr) and why +2???". The answer is in the new label
+ * ("Slice (your share)") and the explanation text below.
+ */
 function BreakdownView({ practice }: { practice: PracticeRow }) {
+  const sliceNote =
+    practice.slice > 0
+      ? `your share of ${practice.attribute} +${practice.slice} (spread across that attribute's practices)`
+      : practice.slice < 0
+        ? `your share of ${practice.attribute} ${practice.slice}`
+        : `${practice.attribute} attribute is +0`;
+
   return (
     <div className="space-y-1.5 text-xs">
       <div className="flex items-center justify-between text-sm">
@@ -1743,16 +1769,25 @@ function BreakdownView({ practice }: { practice: PracticeRow }) {
           {practice.total}
         </span>
       </div>
-      <BreakdownRow label="Slice (attr)" value={practice.slice} />
       <BreakdownRow
-        label="Proficiency"
+        label="Slice (your share)"
+        value={practice.slice}
+        subtitle={sliceNote}
+      />
+      <BreakdownRow
+        label="Proficiency bonus"
         value={practice.pbContribution}
         subdued={practice.pbContribution === 0}
+        subtitle={
+          practice.pbContribution > 0
+            ? `${practice.attribute} is your proficient attribute`
+            : `${practice.attribute} is NOT your proficient attribute`
+        }
       />
       {practice.primitiveContributions.length > 0 && (
         <div className="mt-1 space-y-0.5 border-t border-border/50 pt-1">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Primitives
+            Primitive contributions
           </p>
           {practice.primitiveContributions.map((p) => (
             <BreakdownRow
@@ -1766,7 +1801,8 @@ function BreakdownView({ practice }: { practice: PracticeRow }) {
       {practice.primitiveContributions.length === 0 &&
         practice.pbContribution === 0 && (
           <p className="text-[10px] italic text-muted-foreground">
-            Pure attribute slice.
+            No proficiency, no primitive bonuses. The total is just your
+            share of the attribute.
           </p>
         )}
     </div>
@@ -1777,22 +1813,27 @@ function BreakdownRow({
   label,
   value,
   subdued,
+  subtitle,
 }: {
   label: string;
   value: number;
   subdued?: boolean;
+  subtitle?: string;
 }) {
   return (
-    <div
-      className={`flex items-center justify-between ${
-        subdued ? "text-muted-foreground" : ""
-      }`}
-    >
-      <span>{label}</span>
-      <span className="font-mono font-bold">
-        {value >= 0 ? "+" : ""}
-        {value}
-      </span>
+    <div className={subdued ? "text-muted-foreground" : ""}>
+      <div className="flex items-center justify-between">
+        <span>{label}</span>
+        <span className="font-mono font-bold">
+          {value >= 0 ? "+" : ""}
+          {value}
+        </span>
+      </div>
+      {subtitle && (
+        <p className="mt-0.5 text-[10px] italic text-muted-foreground">
+          {subtitle}
+        </p>
+      )}
     </div>
   );
 }

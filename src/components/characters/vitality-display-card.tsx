@@ -102,27 +102,40 @@ export function VitalityDisplayCard({
 
   return (
     <div>
-      {/* Header: VITALITY label + DC inline. Phase 8.3g v2
-          (Mashu 2026-07-28): the DC must be visually BIG —
-          it used to be tiny and the user couldn't read it
-          from the screenshot. Now it's a large right-aligned
-          number with a small label. The DC = the canonical
-          5 + PB + (proficient attribute mod) + primitives. */}
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="text-xs font-semibold uppercase text-muted-foreground">
-          Vitality
-        </p>
+      {/* Header: 2 columns. Phase 8.3g v3 (Mashu
+          2026-07-28): the DC must be its own visually
+          distinct box on the RIGHT. Per Mashu: "one
+          column should be vitality title and below the
+          numbers as they are. And the column with save
+          DC should be on the right. So 2 rows left 1
+          row right or idk exactly how you made the grid
+          or containers or UI whatever." Layout:
+            [VITALITY   ] [ SAVE DC ]
+            [308/268    ] [   16    ]
+            [██████ 100%]
+          The DC box has a teal background to match the
+          proficient attribute color (Mashu said "put a
+          bg or something... make it more visible"). The
+          DC = 5 + PB + (proficient attribute mod) +
+          primitives@SAVE. Clicking the DC opens the
+          provenance modal. */}
+      <div className="grid grid-cols-[1fr_auto] items-start gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase text-muted-foreground">
+            Vitality
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => setProvenanceTarget(SAVE_TARGET[primaryDc.attr])}
-          className="group flex flex-col items-end rounded px-1 py-0.5 text-right transition-colors hover:bg-muted/40"
+          className="group flex flex-col items-center justify-center rounded-md border-2 border-teal-500 bg-teal-500/15 px-3 py-1 text-center transition-colors hover:bg-teal-500/25"
           aria-label={`Show save DC provenance (${ATTR_FULL[primaryDc.attr]})`}
           title={`DC = 5 + PB + ${ATTR_FULL[primaryDc.attr]} modifier + primitive contributions`}
         >
-          <span className="text-[9px] font-semibold uppercase text-muted-foreground group-hover:text-foreground">
+          <span className="text-[9px] font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-300 group-hover:text-teal-800 dark:group-hover:text-teal-200">
             Save DC
           </span>
-          <span className="font-mono text-2xl font-bold tabular-nums leading-none">
+          <span className="font-mono text-2xl font-bold tabular-nums leading-none text-teal-700 dark:text-teal-200">
             {primaryDc.total}
           </span>
         </button>
@@ -155,13 +168,13 @@ export function VitalityDisplayCard({
       <p className="mt-0.5 text-[11px] text-muted-foreground">{percent}%</p>
 
       {/* Attribute row: 4 cells, each with mod + small save below.
-          Phase 8.3g v2 (Mashu 2026-07-28): the proficient
-          attribute is highlighted with a clear teal BORDER +
-          teal-tinted BACKGROUND so it actually reads as
-          "this is your proficient one" at a glance. The
-          previous `bg-teal-500/5` was too subtle (the
-          screenshot showed it as the same color as the
-          non-proficient cells). */}
+          Phase 8.3g v3 (Mashu 2026-07-28): the proficient
+          attribute is highlighted with a teal BORDER, a
+          teal-tinted BACKGROUND, AND the text inside the
+          cell is teal-700/200 (light/dark mode). Per
+          Mashu: "Proficient attribute modifier text still
+          not teal." The earlier bg-only was too subtle
+          to read as a clear distinction. */}
       <div className="mt-2 grid grid-cols-4 gap-1.5">
         {(["physical", "mental", "magical"] as const).map((attr) => {
           const isProficient = proficientAttribute === attr;
@@ -176,7 +189,13 @@ export function VitalityDisplayCard({
                   : "border-border bg-background"
               }`}
             >
-              <span className="text-[9px] font-semibold uppercase text-muted-foreground">
+              <span
+                className={`text-[9px] font-semibold uppercase ${
+                  isProficient
+                    ? "text-teal-700 dark:text-teal-300"
+                    : "text-muted-foreground"
+                }`}
+              >
                 {ATTR_LABEL[attr]}
               </span>
               <button
@@ -185,7 +204,13 @@ export function VitalityDisplayCard({
                 className="rounded px-1 transition-colors hover:bg-muted/60"
                 aria-label={`Show ${ATTR_FULL[attr]} modifier provenance`}
               >
-                <span className="font-mono text-sm font-bold tabular-nums">
+                <span
+                  className={`font-mono text-sm font-bold tabular-nums ${
+                    isProficient
+                      ? "text-teal-700 dark:text-teal-200"
+                      : "text-foreground"
+                  }`}
+                >
                   {fmt(mod.total)}
                 </span>
               </button>
@@ -196,16 +221,42 @@ export function VitalityDisplayCard({
                 aria-label={`Show ${ATTR_FULL[attr]} save value provenance`}
                 title={`Save value = mod + PB (if proficient) + primitive contributions`}
               >
-                <span className="text-[9px] text-muted-foreground">save</span>{" "}
-                <span className="font-mono text-[10px] font-semibold tabular-nums">
+                <span
+                  className={`text-[9px] ${
+                    isProficient
+                      ? "text-teal-700/80 dark:text-teal-300/80"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  save
+                </span>{" "}
+                <span
+                  className={`font-mono text-[10px] font-semibold tabular-nums ${
+                    isProficient
+                      ? "text-teal-700 dark:text-teal-200"
+                      : "text-foreground"
+                  }`}
+                >
                   {fmt(sv.total)}
                 </span>
               </button>
             </div>
           );
         })}
-        {/* PROF cell (PB) — single line, no save. */}
-        <div className="flex flex-col items-center justify-center rounded-md border border-border bg-secondary/30 px-1 py-1 text-center">
+        {/* PROF cell (PB) — single line, no save. Phase
+            8.3g v3: clickable for provenance (per Mashu:
+            "I need for proficiency to see on click about
+            it too"). The PB source target is
+            `proficiency_bonus` in the resolver (or, if
+            the character isn't using the resolver's
+            target system, the modal will just show "no
+            primitive contributions"). */}
+        <button
+          type="button"
+          onClick={() => setProvenanceTarget("proficiency_bonus")}
+          className="flex flex-col items-center justify-center rounded-md border border-border bg-secondary/30 px-1 py-1 text-center transition-colors hover:bg-secondary/50"
+          aria-label="Show proficiency bonus provenance"
+        >
           <span className="text-[9px] font-semibold uppercase text-muted-foreground">
             PROF
           </span>
@@ -213,7 +264,7 @@ export function VitalityDisplayCard({
             {fmt(pb)}
           </span>
           <span className="text-[9px] text-muted-foreground">PB</span>
-        </div>
+        </button>
       </div>
 
       {provenanceTarget && (
@@ -222,11 +273,13 @@ export function VitalityDisplayCard({
           targetLabel={
             provenanceTarget === MAX_VITALITY_TARGET
               ? "Max Vitality"
-              : provenanceTarget.startsWith("attribute.")
-                ? `${ATTR_FULL[provenanceTarget.split(".").pop() as Attribute]} modifier`
-                : provenanceTarget.startsWith("defense_dc.")
-                  ? `${ATTR_FULL[provenanceTarget.split(".").pop() as Attribute]} save`
-                  : provenanceTarget
+              : provenanceTarget === "proficiency_bonus"
+                ? "Proficiency Bonus"
+                : provenanceTarget.startsWith("attribute.")
+                  ? `${ATTR_FULL[provenanceTarget.split(".").pop() as Attribute]} modifier`
+                  : provenanceTarget.startsWith("defense_dc.")
+                    ? `${ATTR_FULL[provenanceTarget.split(".").pop() as Attribute]} save`
+                    : provenanceTarget
           }
           totals={resolver.totals}
           byTarget={resolver.byTarget}

@@ -37,7 +37,6 @@ import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, Heart } from "lucide-react";
 import { VitalityTracker } from "@/components/characters/vitality-tracker";
 import type { ResolvedModifiers } from "@/lib/engine/resolve-modifiers";
-import { ProvenanceModal } from "./provenance-modal";
 
 export interface PracticeRowForSticky {
   /** Optional — older call sites use PracticeRow which has
@@ -96,7 +95,6 @@ export function BottomStickyBar({
 }: BottomStickyBarProps) {
   const [hydrated, setHydrated] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [provenanceTarget, setProvenanceTarget] = useState<string | null>(null);
 
   useEffect(() => {
     setHydrated(true);
@@ -132,8 +130,6 @@ export function BottomStickyBar({
   const primarySaveDelta = resolver?.totals[`defense_dc.${primaryAttr}`] ?? 0;
   const primaryDc = 5 + pb + primaryMod + primarySaveDelta;
   const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
-
-  const closeProvenance = () => setProvenanceTarget(null);
 
   return (
     <div
@@ -177,15 +173,48 @@ export function BottomStickyBar({
       </button>
 
       {/* Drawer content — only when expanded. Below the
-          header. Contains: vitality + actions, save chips,
-          practices. */}
+          header. Per Mashu 2026-07-28: "I need it to be
+          compact. In it I don't need to click on them and
+          see info, only in the card in overview tab. In
+          drawer we need to have the modifiers and saves
+          more compact. We need to show save DC too. And
+          the practices are on 3 columns each for mental,
+          physical, magical."
+          - NO clickable provenance in the drawer (it's a
+            glance-only view; the in-page card handles
+            provenance).
+          - Save DC visible at top.
+          - Save chips compact: 1 row, mod + save in same
+            chip, smaller font.
+          - Practices in 3 columns (PHYSICAL | MENTAL |
+            MAGICAL) — same layout as the in-page
+            PracticesPanel but tighter. */}
       {expanded && (
         <div
-          className="px-3 pb-20 pt-2 max-h-[60dvh] overflow-y-auto"
+          // Phase 8.3g v3 (Mashu 2026-07-28): tighter
+          // padding, smaller text. Bottom padding so the
+          // last row isn't covered by the tab bar.
+          className="px-2 pb-24 pt-1.5 max-h-[65dvh] overflow-y-auto"
           data-testid="bottom-sticky-bar-drawer"
         >
-          {/* Vitality + actions (compact) */}
-          <div className="mb-3">
+          {/* Save DC (prominent at the top of the
+              drawer). No click handler — glance only. */}
+          <div className="mb-2 flex items-center justify-between rounded-md border-2 border-teal-500 bg-teal-500/15 px-2.5 py-1.5">
+            <div>
+              <p className="text-[9px] font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-300">
+                Save DC
+              </p>
+              <p className="text-[9px] text-teal-700/80 dark:text-teal-300/80">
+                from {primaryAttr} (proficient)
+              </p>
+            </div>
+            <span className="font-mono text-xl font-bold tabular-nums leading-none text-teal-700 dark:text-teal-200">
+              {primaryDc}
+            </span>
+          </div>
+
+          {/* Vitality actions (compact = buttons only). */}
+          <div className="mb-2">
             <VitalityTracker
               characterId={characterId}
               max={maxVitality}
@@ -194,12 +223,14 @@ export function BottomStickyBar({
             />
           </div>
 
-          {/* Save chips: 2 rows each (mod + save in one chip) */}
-          <div className="mb-3">
-            <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-              Saves
+          {/* Save chips — compact, 1 row, mod + save in
+              the same chip. NOT clickable (per Mashu:
+              "I don't need to click on them and see info"). */}
+          <div className="mb-2">
+            <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Mods + saves
             </p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1.5">
               {(
                 [
                   { attr: "physical", label: "PHYS", mod: physMod, save: physSave },
@@ -209,83 +240,120 @@ export function BottomStickyBar({
               ).map(({ attr, label, mod: m, save: s }) => {
                 const isProf = proficientAttribute?.toLowerCase() === attr;
                 return (
-                  <button
-                    type="button"
+                  <div
                     key={attr}
-                    onClick={() =>
-                      setProvenanceTarget(
-                        attr === primaryAttr
-                          ? `defense_dc.${attr}`
-                          : `attribute.${attr}`,
-                      )
-                    }
-                    className={`flex flex-col items-center justify-center rounded-md border-2 px-2 py-1.5 text-center transition-colors ${
+                    className={`flex flex-col items-center justify-center rounded border-2 px-1 py-1 text-center ${
                       isProf
                         ? "border-teal-500 bg-teal-500/15"
-                        : "border-border bg-card hover:bg-secondary/40"
+                        : "border-border bg-card"
                     }`}
                   >
-                    <span className="text-[9px] font-semibold uppercase text-muted-foreground">
+                    <span
+                      className={`text-[8px] font-semibold uppercase ${
+                        isProf
+                          ? "text-teal-700 dark:text-teal-300"
+                          : "text-muted-foreground"
+                      }`}
+                    >
                       {label}
                     </span>
-                    <span className="font-mono text-base font-bold tabular-nums">
+                    <span
+                      className={`font-mono text-sm font-bold tabular-nums leading-none ${
+                        isProf
+                          ? "text-teal-700 dark:text-teal-200"
+                          : "text-foreground"
+                      }`}
+                    >
                       {fmt(m)}
                     </span>
-                    <span className="text-[9px] text-muted-foreground">mod</span>
-                    <span className="mt-1 font-mono text-sm font-semibold tabular-nums">
+                    <span
+                      className={`font-mono text-[10px] tabular-nums leading-none ${
+                        isProf
+                          ? "text-teal-700/80 dark:text-teal-300/80"
+                          : "text-muted-foreground"
+                      }`}
+                    >
                       {fmt(s)}
                     </span>
-                    <span className="text-[9px] text-muted-foreground">save</span>
-                  </button>
+                  </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Practices — RESTORED. Per Mashu: "Where are
-              practices? Did I say anything about removing
-              the practices?" Each practice is a row with
-              name + value. NO drop-down — clicking opens a
-              modal (same modal pattern as everywhere
-              else). */}
+          {/* Practices — 3 columns: PHYSICAL | MENTAL |
+              MAGICAL. Per Mashu: "the practices are on 3
+              columns each for mental, physical, magical".
+              Compact rows. Each practice is just a label
+              + value, NOT clickable for breakdown (use
+              the in-page card for that). */}
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+            <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
               Practices
             </p>
             {practices.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic">
+              <p className="text-[10px] text-muted-foreground italic">
                 No practices slotted.
               </p>
             ) : (
-              <div className="space-y-0.5">
-                {practices.map((p) => {
-                  const isProf = proficientAttribute === p.attribute;
+              <div className="grid grid-cols-3 gap-1.5">
+                {(["PHYSICAL", "MENTAL", "MAGICAL"] as const).map((attr) => {
+                  const rows = practices
+                    .filter((p) => p.attribute === attr)
+                    .sort((a, b) => b.total - a.total);
+                  const isProf = proficientAttribute === attr;
                   return (
-                    <button
-                      type="button"
-                      key={p.id ?? p.name}
-                      onClick={() => setProvenanceTarget(`attribute.${p.attribute.toLowerCase()}`)}
-                      className="flex w-full items-center justify-between gap-2 rounded border border-border bg-card/40 px-3 py-1.5 text-left transition-colors hover:bg-secondary/40"
+                    <div
+                      key={attr}
+                      className={`rounded border-2 px-1.5 py-1 ${
+                        isProf
+                          ? "border-teal-500 bg-teal-500/10"
+                          : "border-border bg-card/40"
+                      }`}
                     >
-                      <span
-                        className={`truncate text-xs ${
+                      <p
+                        className={`mb-1 text-[8px] font-semibold uppercase tracking-wide ${
                           isProf
-                            ? "font-semibold text-teal-600 dark:text-teal-400"
-                            : "text-foreground"
+                            ? "text-teal-700 dark:text-teal-300"
+                            : "text-muted-foreground"
                         }`}
                       >
-                        {p.name}
-                      </span>
-                      <span
-                        className={`shrink-0 font-mono text-xs font-semibold ${
-                          isProf
-                            ? "text-teal-600 dark:text-teal-400"
-                            : "text-foreground"
-                        }`}
-                      >
-                        {fmt(p.total)}
-                      </span>
-                    </button>
+                        {attr}
+                      </p>
+                      {rows.length === 0 ? (
+                        <p className="text-[9px] text-muted-foreground italic">
+                          —
+                        </p>
+                      ) : (
+                        <ul className="space-y-0.5">
+                          {rows.map((p) => (
+                            <li
+                              key={p.id ?? p.name}
+                              className="flex items-center justify-between gap-1"
+                            >
+                              <span
+                                className={`truncate text-[10px] ${
+                                  isProf
+                                    ? "text-teal-700 dark:text-teal-200"
+                                    : "text-foreground"
+                                }`}
+                              >
+                                {p.name}
+                              </span>
+                              <span
+                                className={`shrink-0 font-mono text-[10px] font-semibold tabular-nums ${
+                                  isProf
+                                    ? "text-teal-700 dark:text-teal-200"
+                                    : "text-foreground"
+                                }`}
+                              >
+                                {fmt(p.total)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -294,33 +362,13 @@ export function BottomStickyBar({
         </div>
       )}
 
-      {provenanceTarget && resolver && (
-        <ProvenanceModal
-          target={provenanceTarget}
-          targetLabel={
-            provenanceTarget.startsWith("attribute.")
-              ? `${
-                  provenanceTarget.split(".").pop() === "physical"
-                    ? "Physical"
-                    : provenanceTarget.split(".").pop() === "mental"
-                      ? "Mental"
-                      : "Magical"
-                } attribute`
-              : provenanceTarget.startsWith("defense_dc.")
-                ? `${
-                    provenanceTarget.split(".").pop() === "physical"
-                      ? "Physical"
-                      : provenanceTarget.split(".").pop() === "mental"
-                        ? "Mental"
-                        : "Magical"
-                  } save`
-                : provenanceTarget
-          }
-          totals={resolver.totals}
-          byTarget={resolver.byTarget}
-          onClose={closeProvenance}
-        />
-      )}
+      {/* Provenance modal — REMOVED in Phase 8.3g v3.
+          The drawer is glance-only (per Mashu 2026-07-28:
+          "In it I don't need to click on them and see
+          info, only in the card in overview tab").
+          Provenance happens in the in-page VitalityDisplayCard
+          + PracticesPanel. The bar/drawer is for at-a-glance
+          values during play. */}
     </div>
   );
 }
