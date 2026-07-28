@@ -111,19 +111,22 @@ export async function GET(
               // canonical bundle (capabilities + primitives) so
               // the user can see what the heritage provides even
               // when the character hasn't slotted any of them.
-              // Phase 8.4 v5 (Mashu 2026-07-28): include each
-      // capability's effects so the Capabilities tab can
-      // show effects nested under each capability, matching
-      // the character-creation modal's layout.
-      capabilityLinks: {
-        with: {
-          capability: {
-            with: {
-              effectLinks: { with: { effect: true } },
-            },
-          },
-        },
-      },
+              //
+              // Phase 8.4 v5 / v6 (Mashu 2026-07-28): we
+              // deliberately do NOT pull
+              // heritage.capabilityLinks.capability.effectLinks
+              // here. That would be a depth-3+ Drizzle `with:`
+              // join, which mis-scopes Postgres's LEFT JOIN
+              // LATERAL and makes the whole character query fail
+              // (see the same warning in src/app/atelier/page.tsx
+              // lines 102-128 and a depth-3 bug fix in
+              // src/app/api/heritage/[id]/route.ts). Effect data
+              // for heritage-bundled capabilities isn't needed by
+              // the sheet (the modal preloads effect data via its
+              // own /api/heritage/[id] fetches).
+              capabilityLinks: {
+                with: { capability: true },
+              },
               primitiveLinks: { with: { primitive: true } },
             },
           },

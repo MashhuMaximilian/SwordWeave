@@ -148,7 +148,7 @@ export function BottomStickyBar({
             modifiers." */}
       {expanded ? (
         <div
-          className="fixed bottom-24 left-0 right-0 z-50 border-t border-border bg-background/95 px-3 pb-20 pt-2 max-h-[60dvh] overflow-y-auto"
+          className="fixed bottom-[5.25rem] left-0 right-0 z-50 border-t border-border bg-background/95 px-3 pb-12 pt-2 max-h-[60dvh] overflow-y-auto"
           data-testid="bottom-sticky-bar-drawer"
         >
           <div className="mb-3">
@@ -198,27 +198,30 @@ export function BottomStickyBar({
                 Also `px-1.5` adds 6px horizontal padding
                 inside each column cell so names don't bump
                 against the cell border. */}
-            <div className="grid grid-cols-3 gap-x-3 gap-y-0">
+            {/* Phase 8.4 v5 (Mashu 2026-07-28): gap-x-4
+                (16px) between columns so the middle column
+                has clear breathing room from left/right.
+                Mashu 2026-07-28: "we need a bit more
+                gutter/padding between the middle column and
+                the one on left and right." */}
+            <div className="grid grid-cols-3 gap-x-4 gap-y-0">
               <PracticeColumn
                 attr="PHYSICAL"
                 label="Physical"
                 practices={practices}
                 proficientAttribute={proficientAttribute}
-                modifier={physMod}
               />
               <PracticeColumn
                 attr="MENTAL"
                 label="Mental"
                 practices={practices}
                 proficientAttribute={proficientAttribute}
-                modifier={mentMod}
               />
               <PracticeColumn
                 attr="MAGICAL"
                 label="Magical"
                 practices={practices}
                 proficientAttribute={proficientAttribute}
-                modifier={magiMod}
               />
             </div>
           </div>
@@ -233,47 +236,33 @@ function PracticeColumn({
   label,
   practices,
   proficientAttribute,
-  modifier,
 }: {
   attr: "PHYSICAL" | "MENTAL" | "MAGICAL";
   label: string;
   practices: ReadonlyArray<PracticeRowForSticky>;
   proficientAttribute: "PHYSICAL" | "MENTAL" | "MAGICAL" | null;
-  /**
-   * Phase 8.4 v5 (Mashu 2026-07-28): the attribute modifier
-   * (raw + primitive delta) for this column. Shown as a
-   * sub-label below the attribute name in the column header.
-   */
-  modifier: number;
 }) {
   const group = practices.filter((p) => p.attribute === attr);
   if (group.length === 0) return null;
   const isProficient = proficientAttribute === attr;
-  const modDisplay = modifier >= 0 ? `+${modifier}` : `${modifier}`;
   return (
     <div className="space-y-0.5">
-      <div className="mb-1">
+      {/* Phase 8.4 v5 (Mashu 2026-07-28): column header now
+          shows ONLY the attribute name. The modifier is
+          surfaced in the Quick Practices title row above
+          (PHYS -3 | MENT -3 | MAGI -5 | PROF +6 PB) — no
+          need to repeat it per column. Mashu 2026-07-28:
+          "we have the tags with modifiers, but on columns
+          under each title we don't need them (crossed
+          red)." */}
+      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide">
         <span
           className={cn(
-            "text-[10px] font-semibold uppercase tracking-wide",
             isProficient ? "text-teal-600 dark:text-teal-400" : "text-muted-foreground",
           )}
         >
           {label}
         </span>
-        {/* Phase 8.4 v5: modifier badge below the label so
-            the column header shows both name and modifier.
-            Proficient columns get the teal accent so the
-            user can spot which attribute gets PB on every
-            practice at a glance. */}
-        <div
-          className={cn(
-            "mt-0.5 font-mono text-[11px] font-bold tabular-nums",
-            isProficient ? "text-teal-600 dark:text-teal-400" : "text-foreground",
-          )}
-        >
-          {modDisplay}
-        </div>
       </div>
       <ul className="space-y-0.5">
         {group
