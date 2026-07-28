@@ -34,6 +34,14 @@ export interface VitalityTrackerProps {
   characterId: string;
   max: number;
   current: number;
+  /**
+   * Phase 8.4 (Mashu 2026-07-28): compact mode shrinks the four
+   * action buttons (damage / heal / short rest / long rest) so
+   * they lay out on a single row even on phones ≤ 360px wide. Used
+   * by BottomStickyBar's expanded drawer; the in-page Overview
+   * panel keeps the original roomier layout.
+   */
+  compact?: boolean;
 }
 
 interface ApplyResponse {
@@ -54,6 +62,7 @@ export function VitalityTracker({
   characterId,
   max,
   current,
+  compact = false,
 }: VitalityTrackerProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -205,15 +214,25 @@ export function VitalityTracker({
       </div>
       <p className="mt-1 text-xs text-muted-foreground">{percent}%</p>
 
-      {/* Action row */}
-      <div className="mt-3 flex flex-wrap gap-2">
+      {/* Action row. compact: no flex-wrap so the 4 buttons
+          always sit on a single row; smaller padding. normal: wraps
+          to 2 rows on phones ≤ 360px. */}
+      <div
+        className={cn(
+          "mt-3 flex gap-1.5",
+          compact ? "flex-nowrap" : "flex-wrap gap-2",
+        )}
+      >
         <button
           type="button"
           onClick={() => openDialog("damage")}
           disabled={
             pending || restPending !== null || optimisticCurrent === 0
           }
-          className="inline-flex items-center gap-1 rounded-md border border-destructive/50 bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive/20 disabled:cursor-not-allowed disabled:opacity-50"
+          className={cn(
+            "inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-destructive/50 bg-destructive/10 font-medium text-destructive transition-colors hover:bg-destructive/20 disabled:cursor-not-allowed disabled:opacity-50",
+            compact ? "px-1.5 py-1 text-[11px]" : "px-2 py-1 text-xs",
+          )}
           aria-label="Apply damage"
         >
           <Minus className="size-3" />
@@ -225,7 +244,10 @@ export function VitalityTracker({
           disabled={
             pending || restPending !== null || optimisticCurrent >= max
           }
-          className="inline-flex items-center gap-1 rounded-md border border-green-600/50 bg-green-500/10 px-2 py-1 text-xs font-medium text-green-700 transition-colors hover:bg-green-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:text-green-400"
+          className={cn(
+            "inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-green-600/50 bg-green-500/10 font-medium text-green-700 transition-colors hover:bg-green-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:text-green-400",
+            compact ? "px-1.5 py-1 text-[11px]" : "px-2 py-1 text-xs",
+          )}
           aria-label="Apply healing"
         >
           <Plus className="size-3" />
@@ -237,7 +259,10 @@ export function VitalityTracker({
           disabled={
             pending || restPending !== null || optimisticCurrent === max
           }
-          className="inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50"
+          className={cn(
+            "inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-border bg-secondary font-medium transition-colors hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50",
+            compact ? "px-1.5 py-1 text-[11px]" : "px-2 py-1 text-xs",
+          )}
           aria-label="Long rest"
           title="Long rest: restore to full vitality"
         >
@@ -250,7 +275,10 @@ export function VitalityTracker({
           disabled={
             pending || restPending !== null || optimisticCurrent === max
           }
-          className="inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50"
+          className={cn(
+            "inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-border bg-secondary font-medium transition-colors hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50",
+            compact ? "px-1.5 py-1 text-[11px]" : "px-2 py-1 text-xs",
+          )}
           aria-label="Short rest"
           title="Short rest: restore 50% of missing vitality (rounded up)"
         >

@@ -42,7 +42,9 @@ import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-
 import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
 import { SheetIdentityHeader } from "@/components/characters/sheet-identity-header";
 import { CoreStatsCard } from "@/components/characters/core-stats-card";
+import { TabErrorBoundary } from "@/components/characters/tab-error-boundary";
 import { proficiencyBonus } from "@/lib/engine/practices";
+import { attributeModifierDeltas } from "@/lib/engine/attribute-modifier-delta";
 import {
   BACKSTORY_FIELDS,
   isBackstoryEmpty,
@@ -350,8 +352,13 @@ export function CharacterSheetView(props: CharacterSheetProps) {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-8 pb-24">
-      {/* Header */}
-      <header className="flex flex-wrap items-start justify-between gap-4">
+      {/* Phase 8.4 (Mashu 2026-07-28): the in-page header
+          (Pumnu portrait + name + L5 + size + Edit/Level Up/Clone)
+          is hidden on mobile because SheetIdentityHeader at the top
+          of the screen takes over its identity/avatar/buttons. We
+          keep the in-page header on >= md screens where the sticky
+          bar collapses. */}
+      <header className="hidden flex-wrap items-start justify-between gap-4 md:flex">
         <div className="flex items-center gap-4">
           {props.portraitUrl ? (
             <img
@@ -410,6 +417,15 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           </Link>
         </div>
       </header>
+      {/* Mobile: SheetIdentityHeader is fixed at top-of-viewport, so
+          the content needs a top spacer to avoid being hidden. The
+          height == SheetIdentityHeader's collapsed-row height (88px
+          to give the buttons room). */}
+      <div
+        className="md:hidden"
+        aria-hidden="true"
+        data-testid="sheet-top-spacer"
+      />
 
       {/* BU Budget Footer — unified budget + debt display */}
       <BuBudgetFooter
@@ -462,6 +478,12 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           <OverviewTab props={props} />
         )}
         {tab === "capabilities" && (
+          /* Phase 8.4 (Mashu 2026-07-28): wrap the Capabilities tab
+             in a TabErrorBoundary so a single bad capability
+             (e.g. Tessy s Ironborn fork test reproducer) does not
+             white-screen the entire sheet. The error message is
+             shown inline so the user can keep using the other tabs. */
+          <TabErrorBoundary tabName="Capabilities">
           <CapabilitiesTab
             characterId={props.id}
             capabilities={props.capabilityLinks.map((l) => ({
@@ -506,6 +528,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
               },
             }))}
           />
+          </TabErrorBoundary>
         )}
         {tab === "items" && (
           <ItemsTab
@@ -631,8 +654,9 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         size={props.size}
         lineageName={props.lineageName ?? null}
         manifestName={props.manifestName ?? null}
-        portraitUrl={null}
+        portraitUrl={props.portraitUrl ?? null}
         canLevelUp={props.level < 20}
+        onLevelUp={() => setLevelUpConfirm(true)}
         buBalance={{
           progressionSpent: props.buBalance.progressionSpent,
           progressionPool: props.buBalance.progressionPool,
@@ -646,6 +670,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           levelBracket: props.volatility.levelBracket,
           remaining: props.volatility.remaining,
           exceeded: props.volatility.exceeded,
+          mirroredPrimitives: props.volatility.mirroredPrimitives,
         }}
       />
 
@@ -664,6 +689,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         magical={props.attrMagical}
         pb={proficiencyBonus(props.level)}
         proficientAttribute={props.attrProficient}
+        primitiveModifierDelta={attributeModifierDeltas(props.primitiveLinks)}
         practices={props.practices.map((p) => ({
           practice: p.practice,
           attribute: p.attribute as "PHYSICAL" | "MENTAL" | "MAGICAL",
@@ -959,13 +985,13 @@ function OverviewTab({
       {/* ---- Core stats (mobile only) — Phase 8 UI revamp ----
           PHYS / MENT / MAG / PROF in a single row above Vitality.
           Hidden on >= md screens. */}
-      <CoreStatsCard
-        physical={props.attrPhysical}
-        mental={props.attrMental}
-        magical={props.attrMagical}
-        pb={proficiencyBonus(props.level)}
-        proficientAttribute={props.attrProficient}
-      />
+      {/* Phase 8.4 (Mashu 2026-07-28): CoreStatsCard removed.
+          The BottomStickyBar collapsed row already shows the
+          P/Me/Ma modifiers + PB on every mobile viewport, and
+          the saves live next to each practice in the in-page
+          Practices card below. Mashu 2026-07-28: "we have
+          duplicates for PB and for attributes. We need to clean
+          this up." */}
 
       {/* ---- Vitality + Defenses (single dense band) ---- */}
       <section
@@ -974,10 +1000,14 @@ function OverviewTab({
       >
         <span className="absolute inset-x-0 top-0 h-0.5 bg-rose-500" />
         <div className="grid gap-4 p-4 md:grid-cols-[1fr_auto] md:items-start md:gap-6">
+          {/* Phase 8.4 (Mashu 2026-07-28): compact=true keeps the
+              4 vitality action buttons on a single row even on
+              phones ≤ 360px wide. */}
           <VitalityTracker
             characterId={props.id}
             max={props.vitality.max}
             current={props.vitality.current ?? 0}
+            compact
           />
           {/* Defensive DCs as a compact horizontal row (NOT a card) */}
           <div className="flex flex-row gap-2 md:flex-col md:gap-1 md:border-l md:border-border md:pl-6">
@@ -1001,9 +1031,11 @@ function OverviewTab({
         </div>
       </section>
 
-      {/* ---- Load + Equip slots + PB (one-row stat band) ---- */}
+      {/* ---- Load + Equip slots (PB dropped on mobile — already in
+                  CoreStatsCard's PROF cell above). On >= md we keep the
+                  legacy Load / Equip / PB band. ---- */}
       <section
-        aria-label="Load, equip slots, and proficiency bonus"
+        aria-label="Load and equip slots"
         className="relative overflow-hidden rounded-md border border-border bg-card"
       >
         <span className="absolute inset-x-0 top-0 h-0.5 bg-amber-500" />
@@ -1011,7 +1043,11 @@ function OverviewTab({
             the level-derived proficiency bonus that scales attack
             rolls and proficient saves. Mashu 2026-07-23: "when
             rewriting the tabs in overview we need a card with
-            proficiency bonus too to show it." */}
+            proficiency bonus too to show it."
+            Phase 8.4 (Mashu 2026-07-28): the PB cell is hidden on
+            mobile (md:hidden) because CoreStatsCard's PROF cell
+            already shows PB. Mashu 2026-07-28: "we have duplicates
+            for PB and for attributes. We need to clean this up." */}
         <div className="grid grid-cols-2 divide-x divide-border md:grid-cols-3">
           <StatCell
             label="Load"
@@ -1035,11 +1071,13 @@ function OverviewTab({
             primary={`${props.encumbrance.equipSlotsUsed}`}
             secondary={`/ ${props.encumbrance.equipSlotsAvailable}`}
           />
-          <StatCell
-            label={`PB (lvl ${props.level})`}
-            primary={`+${proficiencyBonus(props.level)}`}
-            secondary="proficiency"
-          />
+          <div className="hidden md:block">
+            <StatCell
+              label={`PB (lvl ${props.level})`}
+              primary={`+${proficiencyBonus(props.level)}`}
+              secondary="proficiency"
+            />
+          </div>
         </div>
       </section>
 
@@ -1317,32 +1355,30 @@ function PracticesPanel({
   const sortByTotal = (rows: PracticeRow[]) =>
     [...rows].sort((a, b) => b.total - a.total);
 
-  // Mashu 2026-07-27: 'make 2 columns. Physical, mental
-  // each a column and the magic should be below them.'
-  //
-  // Layout:
-  //   - Mobile (< md): 2-column grid for Physical + Mental,
-  //     then Magical full-width below.
-  //   - Desktop (>= md): 3-column grid (existing layout).
-  //
-  // Implementation: render the mobile shell as a 2-column grid
-  // that contains Physical + Mental cells, then a full-width
-  // Magical cell below them. On md+, we use `md:grid-cols-3`
-  // and `md:contents` to break out of the mobile 2-column grid
-  // back into the legacy 3-column flow.
+  // Phase 8.4 (Mashu 2026-07-28): the previous 2-column mobile
+  // layout (Physical + Mental side-by-side, Magical below) was
+  // reverted per user feedback: 'In practices card I don't need
+  // them on 2 columns (only on the quick bar expanded).' The
+  // BottomStickyBar keeps the 2-column compact layout. The
+  // in-page Practices card on Overview now uses a single column
+  // on mobile (3-column desktop via md:grid-cols-3).
   return (
-    <div className="grid grid-cols-2 gap-x-2 border-t border-border md:grid-cols-3 md:gap-0 md:divide-x md:divide-y-0">
-      {(["PHYSICAL", "MENTAL"] as const).map((attr) => {
+    <div className="grid grid-cols-1 divide-y divide-border border-t border-border md:grid-cols-3 md:divide-x md:divide-y-0 md:gap-0">
+      {(["PHYSICAL", "MENTAL", "MAGICAL"] as const).map((attr) => {
         const rows = sortByTotal(byAttr[attr] ?? []);
         const proficient = attrProficient === attr;
         const bestTotal = rows[0]?.total ?? 0;
-        return <PracticeColumn key={attr} attr={attr} rows={rows} proficient={proficient} bestTotal={bestTotal} expanded={expanded} setExpanded={setExpanded} />;
-      })}
-      {(["MAGICAL"] as const).map((attr) => {
-        const rows = sortByTotal(byAttr[attr] ?? []);
-        const proficient = attrProficient === attr;
-        const bestTotal = rows[0]?.total ?? 0;
-        return <PracticeColumn key={attr} attr={attr} rows={rows} proficient={proficient} bestTotal={bestTotal} expanded={expanded} setExpanded={setExpanded} colSpan={2} />;
+        return (
+          <PracticeColumn
+            key={attr}
+            attr={attr}
+            rows={rows}
+            proficient={proficient}
+            bestTotal={bestTotal}
+            expanded={expanded}
+            setExpanded={setExpanded}
+          />
+        );
       })}
     </div>
   );

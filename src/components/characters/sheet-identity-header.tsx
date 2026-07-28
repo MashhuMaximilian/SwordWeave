@@ -1,36 +1,49 @@
 "use client";
 
 /**
- * Phase 8 UI revamp (Mashu 2026-07-27): SheetIdentityHeader
+ * Phase 8.4 (Mashu 2026-07-28): SheetIdentityHeader rewrite.
  *
  * Mobile-only compact identity header for the character sheet.
  *
- * Per the user's PDF (Section 1):
- *   - Locked at the very top as a single compact block
- *   - Collapsed: avatar + name + level + lineage + manifest
- *     + BU alert metrics + expand chevron, ~60px max
- *   - Expanded: same as collapsed + DM Bonus / Item BU / Remaining
- *     + Budget Usage Bar + Debt Usage Bar + Edit / Level Up / Clone
- *     button row
+ * Collapsed (default): a single block at the top of the viewport
+ * with the portrait, name, level, size, lineage/manifest, BU
+ * metric, and expand chevron. ~60px tall.
+ *
+ * Expanded: tap the bar to reveal
+ *   - DM Bonus chip (with DmBonusEditor inline)
+ *   - Item BU chip
+ *   - Remaining chip
+ *   - Budget Usage bar
+ *   - Debt Usage bar (with bracket: used / available / max)
+ *   - Mirrored primitives accordion (NEW v3)
+ *   - Edit / Clone / Level Up button row (NEW v3)
+ *
+ * Mashu 2026-07-28 feedback (v3):
+ *   - "the image is not rendered in collapsed view on top" — the
+ *     previous version had `portraitUrl={null}` hard-coded at the
+ *     call site. Fixed at the call site (portraitUrl is now
+ *     forwarded from props); the chip-side rendering was already
+ *     correct.
+ *   - "we need the clone and level up buttons too there" — added
+ *     Level Up + Clone buttons in the expanded action row.
+ *   - "In the expanded we need to modify the DM bonus too" —
+ *     wired DmBonusEditor inline so the DM bonus chip is editable.
+ *   - "We don't have the BU debt like it should: used/available/max
+ *     for bracket" — re-rendered the debt chip as
+ *     `8 / 8 (L5-L8)` so the user sees the bracket ceiling.
+ *   - "We don't have the expanded mirror Primitives in the upper
+ *     part collapsible" — added a Mirrored primitives accordion
+ *     in the expanded panel.
  *
  * Hide on >= md screens via Tailwind's md:hidden.
- *
- * Implementation choices:
- *   - The desktop sheet's existing in-page header (which
- *     always shows Edit/Level Up/Clone inline) is preserved
- *     on md+. We do NOT hide it on mobile because the user
- *     didn't explicitly ask for that — they just asked for the
- *     compact top header to exist. If they want it to fully
- *     replace the desktop layout on mobile, that's a follow-up.
- *   - The bar respects BottomStickyBar's stacking (z-30 vs
- *     z-40 for the bottom bar). The bottom bar overdraws the
- *     top one if they ever share a corner.
  */
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, ArrowUp, RotateCcw, Pencil } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { CharacterEditButton } from "@/components/characters/character-edit-button";
+import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
 
 export interface SheetIdentityHeaderProps {
   readonly characterId: string;
@@ -41,6 +54,13 @@ export interface SheetIdentityHeaderProps {
   readonly manifestName: string | null;
   readonly portraitUrl: string | null;
   readonly canLevelUp: boolean;
+  /**
+   * Phase 8.4: when the user taps the Level Up button in the
+   * expanded panel, the parent shows the level-up confirmation
+   * modal. (We delegate the modal so the parent can reuse the
+   * same wiring as the in-page Level Up button.)
+   */
+  readonly onLevelUp?: () => void;
   readonly buBalance: {
     readonly progressionSpent: number;
     readonly progressionPool: number;
@@ -54,6 +74,16 @@ export interface SheetIdentityHeaderProps {
     readonly levelBracket: string;
     readonly remaining: number;
     readonly exceeded: boolean;
+    /**
+     * Phase 8.4: mirror primitives surfaced so the expanded
+     * panel can render an accordion with click-to-expand rows.
+     */
+    readonly mirroredPrimitives?: ReadonlyArray<{
+      readonly id: number;
+      readonly name: string;
+      readonly mirrorBuCredit: number;
+      readonly acquiredAtLevel: number;
+    }>;
   };
 }
 
@@ -66,6 +96,7 @@ export function SheetIdentityHeader({
   manifestName,
   portraitUrl,
   canLevelUp,
+  onLevelUp,
   buBalance,
   volatility,
 }: SheetIdentityHeaderProps) {
@@ -80,13 +111,21 @@ export function SheetIdentityHeader({
 
   const overSpent = buBalance.progressionSpent - buBalance.progressionPool;
   const buDisplay = `${buBalance.progressionSpent}/${buBalance.progressionPool}`;
-  const debtDisplay = `${volatility.rating}/${volatility.ceiling}`;
+  // Phase 8.4: the debt display shows used / available / max with
+  // the bracket ceiling, e.g. `8 / 8 (L5-L8)`. The `available`
+  // piece is `ceiling - rating` (clamped to 0).
+  const debtUsed = volatility.rating;
+  const debtAvailable = Math.max(0, volatility.ceiling - volatility.rating);
+  const debtMax = volatility.ceiling;
+  const debtDisplay = `${debtUsed} / ${debtMax} (${volatility.levelBracket})`;
 
   return (
     <div
-      className={cn(
-        "fixed left-0 right-0 top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md md:hidden",
-      )}
+      // Phase 8.4: keep the bar at the very top of the mobile
+      // viewport. The in-page content gets a top spacer to clear
+      // it. z-30 so it sits above the bottom tabs but below the
+      // BottomStickyBar (z-40).
+      className="fixed left-0 right-0 top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md md:hidden"
       data-testid="sheet-identity-header"
       data-expanded={expanded}
     >
@@ -97,6 +136,8 @@ export function SheetIdentityHeader({
         aria-expanded={expanded}
         aria-label={expanded ? "Collapse identity" : "Expand identity"}
       >
+        {/* Portrait — never empty. Falls back to the first letter
+            of the name when no portraitUrl is set. */}
         <div className="size-9 shrink-0 overflow-hidden rounded-full bg-muted">
           {portraitUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -105,7 +146,11 @@ export function SheetIdentityHeader({
               alt={`${name}'s portrait`}
               className="size-full object-cover"
             />
-          ) : null}
+          ) : (
+            <div className="flex size-full items-center justify-center text-sm font-bold text-muted-foreground">
+              {name.charAt(0).toUpperCase()}
+            </div>
+          )}
         </div>
         <div className="min-w-0 flex-1 text-left">
           <div className="flex items-baseline gap-1.5">
@@ -121,7 +166,7 @@ export function SheetIdentityHeader({
             {manifestName ?? ""}
           </div>
         </div>
-        {/* BU metric badge — the PDF's "BU: 74/69 (+5)" pill */}
+        {/* BU metric badge */}
         <div className="flex shrink-0 items-center gap-1.5 text-[11px]">
           {buBalance.overBudget ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-destructive/15 px-2 py-0.5 font-mono text-destructive">
@@ -143,15 +188,18 @@ export function SheetIdentityHeader({
 
       {expanded ? (
         <div className="border-t border-border bg-background/95 px-3 py-2 text-xs">
-          {/* DM Bonus / Item BU / Remaining — PDF line 1 */}
+          {/* DM Bonus / Item BU / Remaining. The DM Bonus chip is
+              editable in place via DmBonusEditor. Mashu 2026-07-28:
+              "In the expanded we need to modify the DM bonus too." */}
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1">
               <span className="font-semibold uppercase text-muted-foreground">
                 DM Bonus
               </span>
-              <span className="rounded-full bg-secondary px-2 py-0.5 font-mono">
-                {buBalance.dmBonusBu} BU
-              </span>
+              <DmBonusEditor
+                characterId={characterId}
+                initialValue={buBalance.dmBonusBu}
+              />
             </span>
             <span className="inline-flex items-center gap-1">
               <span className="font-semibold uppercase text-muted-foreground">
@@ -205,7 +253,7 @@ export function SheetIdentityHeader({
             </p>
           ) : null}
 
-          {/* Debt Usage Bar */}
+          {/* Debt Usage Bar — shows used / available / max with bracket. */}
           <div className="mt-2 mb-1 flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
             <span>Debt usage</span>
             <span>
@@ -234,26 +282,69 @@ export function SheetIdentityHeader({
             <span className="rounded-full bg-secondary px-1.5 py-0.5 font-mono">
               {volatility.levelBracket}
             </span>
-            <span>Debt: {debtDisplay}</span>
+            <span title="Used / Available / Max">
+              Debt: {debtUsed} / {debtAvailable} avail / {debtMax} max
+            </span>
           </div>
 
-          {/* Edit / Level Up / Clone — PDF line 2 */}
-          <div className="mt-3 flex flex-wrap gap-2">
+          {/* Mirrored primitives accordion (NEW v3) */}
+          {volatility.mirroredPrimitives && volatility.mirroredPrimitives.length > 0 ? (
+            <details className="mt-3 rounded-md border border-border bg-background/50">
+              <summary className="cursor-pointer list-none px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <span className="inline-flex items-center gap-1">
+                  <RotateCcw className="size-3" />
+                  {volatility.mirroredPrimitives.length} mirrored primitive
+                  {volatility.mirroredPrimitives.length === 1 ? "" : "s"} (click to expand)
+                </span>
+              </summary>
+              <ul className="border-t border-border px-3 py-2 text-xs">
+                {volatility.mirroredPrimitives.map((p) => (
+                  <li
+                    key={p.id}
+                    className="flex items-center justify-between py-1"
+                  >
+                    <span className="truncate">{p.name}</span>
+                    <span className="shrink-0 font-mono text-muted-foreground">
+                      −{p.mirrorBuCredit} BU
+                      <span className="ml-2 text-[10px]">L{p.acquiredAtLevel}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
+
+          {/* Edit / Clone / Level Up — Mashu 2026-07-28:
+              "we need the clone and level up buttons too there." */}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <CharacterEditButton
               characterId={characterId}
-              className="flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary"
-              title="Open in the atelier for editing"
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary"
             />
-            {canLevelUp ? (
-              <span className="self-center text-[10px] text-muted-foreground">
-                Level Up via the in-page Level Up button below.
-              </span>
-            ) : (
-              <span className="self-center text-[10px] text-muted-foreground">
-                Max level reached.
-              </span>
-            )}
+            <Link
+              href={`/characters/${characterId}/clone`}
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-secondary"
+              title="Clone this character"
+            >
+              <Pencil className="size-3" />
+              Clone
+            </Link>
+            {canLevelUp && onLevelUp ? (
+              <button
+                type="button"
+                onClick={onLevelUp}
+                className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                <ArrowUp className="size-3" />
+                Level Up
+              </button>
+            ) : null}
           </div>
+          {!canLevelUp ? (
+            <p className="mt-2 text-[10px] text-muted-foreground">
+              Max level reached.
+            </p>
+          ) : null}
         </div>
       ) : null}
     </div>

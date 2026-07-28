@@ -66,6 +66,13 @@ export function CoreStatsCard({
   const mentDelta = primitiveModifierDelta?.mental ?? 0;
   const magiDelta = primitiveModifierDelta?.magical ?? 0;
 
+  // Phase 8.4 (Mashu 2026-07-28): the displayed modifier is the
+  // raw attribute modifier plus the per-primitive contribution
+  // (e.g. "+2 from Sharp Mind"). Mirrored primitives flip sign.
+  const physEffective = physMod + physDelta;
+  const mentEffective = mentMod + mentDelta;
+  const magiEffective = magiMod + magiDelta;
+
   const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 
   return (
@@ -81,22 +88,22 @@ export function CoreStatsCard({
         <StatBlock
           label="P"
           fullLabel="PHYS"
-          modifier={physMod}
-          saveModifier={physMod + (proficientAttribute === "PHYSICAL" ? pb : 0) + physDelta}
+          modifier={physEffective}
+          saveModifier={physEffective + (proficientAttribute === "PHYSICAL" ? pb : 0)}
           isProficient={proficientAttribute === "PHYSICAL"}
         />
         <StatBlock
           label="M"
           fullLabel="MENT"
-          modifier={mentMod}
-          saveModifier={mentMod + (proficientAttribute === "MENTAL" ? pb : 0) + mentDelta}
+          modifier={mentEffective}
+          saveModifier={mentEffective + (proficientAttribute === "MENTAL" ? pb : 0)}
           isProficient={proficientAttribute === "MENTAL"}
         />
         <StatBlock
           label="M"
           fullLabel="MAG"
-          modifier={magiMod}
-          saveModifier={magiMod + (proficientAttribute === "MAGICAL" ? pb : 0) + magiDelta}
+          modifier={magiEffective}
+          saveModifier={magiEffective + (proficientAttribute === "MAGICAL" ? pb : 0)}
           isProficient={proficientAttribute === "MAGICAL"}
         />
         <div className="px-1 py-2">
