@@ -93,7 +93,7 @@ export function BottomStickyBar({
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center justify-between gap-3 pr-16 pl-3 py-2 text-sm hover:bg-secondary/30"
+        className="flex w-full items-center justify-between gap-3 pr-16 pl-3 py-1 text-sm hover:bg-secondary/30"
         aria-expanded={expanded}
         aria-label={expanded ? "Collapse quick dock" : "Expand quick dock"}
       >
@@ -148,7 +148,7 @@ export function BottomStickyBar({
             modifiers." */}
       {expanded ? (
         <div
-          className="fixed bottom-[5.25rem] left-0 right-0 z-50 border-t border-border bg-background/95 px-3 pb-12 pt-2 max-h-[60dvh] overflow-y-auto"
+          className="fixed bottom-[4.75rem] left-0 right-0 z-50 border-t border-border bg-background/95 px-3 pb-2 pt-1 max-h-[60dvh] overflow-y-auto"
           data-testid="bottom-sticky-bar-drawer"
         >
           <div className="mb-3">

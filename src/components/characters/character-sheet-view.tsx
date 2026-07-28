@@ -43,6 +43,7 @@ import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
 import { SheetIdentityHeader } from "@/components/characters/sheet-identity-header";
 import { CoreStatsCard } from "@/components/characters/core-stats-card";
 import { TabErrorBoundary } from "@/components/characters/tab-error-boundary";
+import { HeritageBundleView } from "@/components/characters/heritage-bundle-view";
 import { proficiencyBonus } from "@/lib/engine/practices";
 import { attributeModifierDeltas } from "@/lib/engine/attribute-modifier-delta";
 import {
@@ -1947,117 +1948,19 @@ function CapabilitiesTab({
                   .filter((p) => p.originHeritageId === hl.heritageId)
                   .map((p) => p.primitive.id),
               );
-              const total = canonCaps.length + canonPrims.length;
               return (
-                <div
+                <HeritageBundleView
                   key={hl.heritageId}
-                  className="rounded-md border border-border bg-card/50 overflow-hidden"
-                >
-                  <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 text-sm font-medium border-b border-border">
-                    <span className="font-semibold">{hl.heritage.name}</span>
-                    <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase text-secondary-foreground">
-                      {kindLabel}
-                    </span>
-                    {hl.isMirrored && (
-                      <span className="inline-flex items-center gap-1 rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
-                        <RotateCcw className="size-2.5" />
-                        Mirrored
-                      </span>
-                    )}
-                    <span className="ml-auto rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium">
-                      {total} bundled
-                    </span>
-                  </div>
-                  {hl.heritage.description && (
-                    <p className="px-3 py-2 text-xs text-muted-foreground border-b border-border">
-                      {hl.heritage.description}
-                    </p>
-                  )}
-                  <div className="px-3 py-2 space-y-2">
-                    {canonCaps.length > 0 && (
-                      <div>
-                        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          Capabilities ({canonCaps.length})
-                        </div>
-                        <ul className="space-y-1.5">
-                          {canonCaps.map((cl) => {
-                            const slotted = slottedCapIds.has(cl.capabilityId);
-                            return (
-                              <li
-                                key={cl.capabilityId}
-                                className="rounded border border-border bg-card/40 px-3 py-2"
-                              >
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="font-medium">
-                                    {cl.capability.name}
-                                  </span>
-                                  {slotted ? (
-                                    <span className="inline-flex shrink-0 items-center gap-1 rounded bg-green-500/10 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400">
-                                      ✓ slotted
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex shrink-0 items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                                      template
-                                    </span>
-                                  )}
-                                </div>
-                                {cl.capability.verboseDescription && (
-                                  <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-2">
-                                    {cl.capability.verboseDescription}
-                                  </p>
-                                )}
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </div>
-                    )}
-                    {canonPrims.length > 0 && (
-                      <div>
-                        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          Primitives ({canonPrims.length})
-                        </div>
-                        <ul className="space-y-1.5">
-                          {canonPrims
-                            .sort((a, b) =>
-                              a.primitive.name.localeCompare(b.primitive.name),
-                            )
-                            .map((pl) => {
-                              const slotted = slottedPrimIds.has(pl.primitiveId);
-                              return (
-                                <li key={pl.primitive.id}>
-                                  <div className="flex items-center justify-between gap-2 rounded border border-border bg-card/40 px-3 py-2">
-                                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                                      <span className="font-medium">
-                                        {pl.primitive.name}
-                                      </span>
-                                      {slotted ? (
-                                        <span className="inline-flex shrink-0 items-center gap-1 rounded bg-green-500/10 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400">
-                                          ✓ slotted
-                                        </span>
-                                      ) : (
-                                        <span className="inline-flex shrink-0 items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                                          template
-                                        </span>
-                                      )}
-                                    </div>
-                                    <span className="font-mono text-xs text-foreground shrink-0">
-                                      {pl.primitive.buCost} BU
-                                    </span>
-                                  </div>
-                                </li>
-                              );
-                            })}
-                        </ul>
-                      </div>
-                    )}
-                    {canonCaps.length === 0 && canonPrims.length === 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        No capabilities or primitives in this heritage's bundle.
-                      </p>
-                    )}
-                  </div>
-                </div>
+                  heritageId={hl.heritageId}
+                  heritageName={hl.heritage.name}
+                  heritageKindLabel={kindLabel}
+                  heritageDescription={hl.heritage.description ?? null}
+                  isMirrored={hl.isMirrored ?? false}
+                  canonCaps={canonCaps}
+                  canonPrims={canonPrims}
+                  slottedCapIds={slottedCapIds}
+                  slottedPrimIds={slottedPrimIds}
+                />
               );
             })}
           </div>
