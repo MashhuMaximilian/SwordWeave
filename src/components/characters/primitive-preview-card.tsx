@@ -171,11 +171,6 @@ export function PrimitivePreviewCard({
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
           <span className="font-mono text-foreground">{p.buCost} BU</span>
-          {primitiveLink.isMirrored && (
-            <span className="text-destructive">
-              mirror: −{p.mirrorBuCredit} BU
-            </span>
-          )}
         </div>
       </div>
       {fetching ? (

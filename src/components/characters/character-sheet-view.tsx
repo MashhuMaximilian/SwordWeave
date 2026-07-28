@@ -255,6 +255,33 @@ export type CharacterSheetProps = {
       name: string;
       kind: string;
       description: string | null;
+      // Phase 8.4 v3 (Mashu 2026-07-28): canonical bundle from
+      // the heritage template. Rendered in the Capabilities tab's
+      // "By Heritage" section so the user sees what each heritage
+      // provides (capabilities + primitives bundled together).
+      capabilityLinks: Array<{
+        capabilityId: string;
+        capability: {
+          id: string;
+          name: string;
+          type: string;
+          sourceType: string;
+          verboseDescription: string;
+        };
+      }>;
+      primitiveLinks: Array<{
+        primitiveId: number;
+        primitive: {
+          id: number;
+          name: string;
+          category: string;
+          buCost: number;
+          isMirrorable: boolean;
+          mirrorBuCredit: number;
+          narrativeRule: string | null;
+          hardModifiers: unknown[];
+        };
+      }>;
     };
   }>;
   // Phase 8.2 batch 3: freeform backstory. The DB column is
@@ -282,6 +309,19 @@ const TABS: Array<{ id: Tab; label: string; icon: typeof Edit }> = [
   { id: "notes", label: "Notes", icon: ScrollText },
   { id: "history", label: "History", icon: History },
 ];
+
+// Phase 8.4 v4 (Mashu 2026-07-28): best-practice total per
+// attribute. Returns the highest practice total (or 0 if the
+// attribute has no practices). Used by the Vitality card's
+// PHYS / MENT / MAGI / PROF row.
+function bestPracticeTotalForAttribute(
+  practices: ReadonlyArray<{ attribute: string; total: number }>,
+  attr: "PHYSICAL" | "MENTAL" | "MAGICAL",
+): number {
+  const filtered = practices.filter((p) => p.attribute === attr);
+  if (filtered.length === 0) return 0;
+  return filtered.reduce((best, p) => Math.max(best, p.total), 0);
+}
 
 export function CharacterSheetView(props: CharacterSheetProps) {
   const [tab, setTab] = useState<Tab>("overview");
@@ -788,11 +828,16 @@ function BuBudgetFooter({
       : "bg-amber-500";
 
   const debtPercent = volatilityCeiling > 0 ? Math.min(100, (volatilityRating / volatilityCeiling) * 100) : 0;
+  // Phase 8.4 v4 (Mashu 2026-07-28): same logic as the BU bar —
+  // green when 100% used (debt at the limit), orange when not
+  // yet at the limit, red if exceeded. Mashu 2026-07-28:
+  // "Debt usage bar should be green if debt used=max debt
+  // allowed."
   const debtBarColor = volatilityExceeded
     ? "bg-destructive"
-    : debtPercent > 80
-    ? "bg-amber-500"
-    : "bg-primary";
+    : debtPercent >= 100
+      ? "bg-green-500"
+      : "bg-amber-500";
 
   return (
     <div className="sticky bottom-0 z-20 mt-6 -mx-5 border-y border-border bg-background/85 px-5 py-3 backdrop-blur-md">
@@ -1027,7 +1072,12 @@ function OverviewTab({
             max={props.vitality.max}
             current={props.vitality.current ?? 0}
             compact
-            pb={proficiencyBonus(props.level)}
+            attrBestTotals={{
+              physical: bestPracticeTotalForAttribute(props.practices, "PHYSICAL"),
+              mental: bestPracticeTotalForAttribute(props.practices, "MENTAL"),
+              magical: bestPracticeTotalForAttribute(props.practices, "MAGICAL"),
+              pb: proficiencyBonus(props.level),
+            }}
           />
           {/* Defensive DCs as a compact horizontal row (NOT a card) */}
           <div className="flex flex-row gap-2 md:flex-col md:gap-1 md:border-l md:border-border md:pl-6">
@@ -1591,6 +1641,33 @@ function CapabilitiesTab({
       name: string;
       kind: string;
       description: string | null;
+      // Phase 8.4 v3 (Mashu 2026-07-28): canonical bundle from
+      // the heritage template. Rendered in the Capabilities tab's
+      // "By Heritage" section so the user sees what each heritage
+      // provides (capabilities + primitives bundled together).
+      capabilityLinks: Array<{
+        capabilityId: string;
+        capability: {
+          id: string;
+          name: string;
+          type: string;
+          sourceType: string;
+          verboseDescription: string;
+        };
+      }>;
+      primitiveLinks: Array<{
+        primitiveId: number;
+        primitive: {
+          id: number;
+          name: string;
+          category: string;
+          buCost: number;
+          isMirrorable: boolean;
+          mirrorBuCredit: number;
+          narrativeRule: string | null;
+          hardModifiers: unknown[];
+        };
+      }>;
     };
   }>;
   capabilities: Array<{
@@ -1803,13 +1880,33 @@ function CapabilitiesTab({
                   : hl.heritage.kind === "UPBRINGING"
                     ? "Upbringing"
                     : "Manifest";
-              const capsFromHeritage = capabilities.filter(
-                (c) => c.originHeritageId === hl.heritageId,
+              // Phase 8.4 v3 (Mashu 2026-07-28): render the
+              // heritage's CANONICAL bundle (from the heritage
+              // template) rather than only the inherited rows on
+              // the character. Older characters created before
+              // the originHeritageId migration have origin=null
+              // on every primitive/capability, which made the
+              // previous "match by originHeritageId" lookup
+              // render "0 bundled" for every heritage. The
+              // canonical bundle is always present on the
+              // heritage template, so the user always sees what
+              // each heritage provides.
+              const canonCaps = hl.heritage.capabilityLinks ?? [];
+              const canonPrims = hl.heritage.primitiveLinks ?? [];
+              // Slotted flags: which bundle entries are also
+              // present on the character (so we can show a
+              // "currently slotted" indicator).
+              const slottedCapIds = new Set(
+                capabilities
+                  .filter((c) => c.originHeritageId === hl.heritageId)
+                  .map((c) => c.id),
               );
-              const primsFromHeritage = primitiveLinks.filter(
-                (p) => p.originHeritageId === hl.heritageId,
+              const slottedPrimIds = new Set(
+                primitiveLinks
+                  .filter((p) => p.originHeritageId === hl.heritageId)
+                  .map((p) => p.primitive.id),
               );
-              const total = capsFromHeritage.length + primsFromHeritage.length;
+              const total = canonCaps.length + canonPrims.length;
               return (
                 <div
                   key={hl.heritageId}
@@ -1836,72 +1933,88 @@ function CapabilitiesTab({
                     </p>
                   )}
                   <div className="px-3 py-2 space-y-2">
-                    {capsFromHeritage.length > 0 && (
+                    {canonCaps.length > 0 && (
                       <div>
                         <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          Capabilities ({capsFromHeritage.length})
+                          Capabilities ({canonCaps.length})
                         </div>
                         <ul className="space-y-1.5">
-                          {capsFromHeritage.map((c) => (
-                            <li key={c.id}>
-                              <CapabilityCard
-                                characterId={characterId}
-                                capability={{
-                                  ...c,
-                                  originChain: [
-                                    {
-                                      kind: "heritage" as const,
-                                      name: `${kindLabel}: ${hl.heritage.name}`,
-                                    },
-                                  ],
-                                }}
-                              />
-                            </li>
-                          ))}
+                          {canonCaps.map((cl) => {
+                            const slotted = slottedCapIds.has(cl.capabilityId);
+                            return (
+                              <li
+                                key={cl.capabilityId}
+                                className="rounded border border-border bg-card/40 px-3 py-2"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="font-medium">
+                                    {cl.capability.name}
+                                  </span>
+                                  {slotted ? (
+                                    <span className="inline-flex shrink-0 items-center gap-1 rounded bg-green-500/10 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400">
+                                      ✓ slotted
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex shrink-0 items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                      template
+                                    </span>
+                                  )}
+                                </div>
+                                {cl.capability.verboseDescription && (
+                                  <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-2">
+                                    {cl.capability.verboseDescription}
+                                  </p>
+                                )}
+                              </li>
+                            );
+                          })}
                         </ul>
                       </div>
                     )}
-                    {primsFromHeritage.length > 0 && (
+                    {canonPrims.length > 0 && (
                       <div>
                         <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          Primitives ({primsFromHeritage.length})
+                          Primitives ({canonPrims.length})
                         </div>
                         <ul className="space-y-1.5">
-                          {primsFromHeritage
+                          {canonPrims
                             .sort((a, b) =>
                               a.primitive.name.localeCompare(b.primitive.name),
                             )
-                            .map((p) => (
-                              <li key={p.primitive.id}>
-                                <PrimitivePreviewCard
-                                  primitiveLink={{
-                                    primitiveId: p.primitiveId,
-                                    source: p.source,
-                                    acquiredAtLevel: p.acquiredAtLevel,
-                                    isMirrored: p.isMirrored,
-                                    primitive: {
-                                      id: p.primitive.id,
-                                      name: p.primitive.name,
-                                      category: p.primitive.category,
-                                      buCost: p.primitive.buCost,
-                                      isMirrorable: p.primitive.isMirrorable,
-                                      mirrorBuCredit: p.primitive.mirrorBuCredit,
-                                      narrativeRule: p.primitive.narrativeRule,
-                                      hardModifiers: p.primitive.hardModifiers,
-                                    },
-                                  }}
-                                />
-                              </li>
-                            ))}
+                            .map((pl) => {
+                              const slotted = slottedPrimIds.has(pl.primitiveId);
+                              return (
+                                <li key={pl.primitive.id}>
+                                  <div className="flex items-center justify-between gap-2 rounded border border-border bg-card/40 px-3 py-2">
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      <span className="font-medium">
+                                        {pl.primitive.name}
+                                      </span>
+                                      {slotted ? (
+                                        <span className="inline-flex shrink-0 items-center gap-1 rounded bg-green-500/10 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400">
+                                          ✓ slotted
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex shrink-0 items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                          template
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="font-mono text-xs text-foreground shrink-0">
+                                      {pl.primitive.buCost} BU
+                                    </span>
+                                  </div>
+                                </li>
+                              );
+                            })}
                         </ul>
                       </div>
                     )}
-                    {capsFromHeritage.length === 0 &&
-                      primsFromHeritage.length === 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          No capabilities or primitives currently bundled.
-                        </p>
-                      )}
+                    {canonCaps.length === 0 && canonPrims.length === 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        No capabilities or primitives in this heritage's bundle.
+                      </p>
+                    )}
                   </div>
                 </div>
               );

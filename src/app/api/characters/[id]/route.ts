@@ -90,7 +90,21 @@ export async function GET(
       // Phase 8.1 batch 13.1: include heritage slots so the sheet can
       // show "from Lineage 'Elf'" / "from Upbringing 'Scholar'"
       // breadcrumbs alongside the bundle-expanded primitives.
-      heritageLinks: { with: { heritage: true } },
+      heritageLinks: {
+        with: {
+          heritage: {
+            with: {
+              // Phase 8.4 v3 (Mashu 2026-07-28): the Capabilities
+              // tab's "By Heritage" section needs the heritage's
+              // canonical bundle (capabilities + primitives) so
+              // the user can see what the heritage provides even
+              // when the character hasn't slotted any of them.
+              capabilityLinks: { with: { capability: true } },
+              primitiveLinks: { with: { primitive: true } },
+            },
+          },
+        },
+      },
     },
   });
 

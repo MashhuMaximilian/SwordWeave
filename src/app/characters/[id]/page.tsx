@@ -268,7 +268,39 @@ export default async function CharacterSheetPage({
           heritageId: string;
           acquiredAtLevel: number;
           isMirrored: boolean | null;
-          heritage: { id: string; name: string; kind: string; description: string | null };
+          heritage: {
+            id: string;
+            name: string;
+            kind: string;
+            description: string | null;
+            // Phase 8.4 v3 (Mashu 2026-07-28): the heritage's
+            // canonical bundle is included so the Capabilities
+            // tab's "By Heritage" section can list the
+            // heritage's bundled capabilities + primitives.
+            capabilityLinks: Array<{
+              capabilityId: string;
+              capability: {
+                id: string;
+                name: string;
+                type: string;
+                sourceType: string;
+                verboseDescription: string;
+              };
+            }>;
+            primitiveLinks: Array<{
+              primitiveId: number;
+              primitive: {
+                id: number;
+                name: string;
+                category: string;
+                buCost: number;
+                isMirrorable: boolean;
+                mirrorBuCredit: number;
+                narrativeRule: string | null;
+                hardModifiers: unknown[];
+              };
+            }>;
+          };
         }> }).heritageLinks ?? []
       ).map((l) => ({
         heritageId: l.heritageId,
@@ -279,6 +311,14 @@ export default async function CharacterSheetPage({
           name: l.heritage.name,
           kind: l.heritage.kind,
           description: l.heritage.description,
+          capabilityLinks: (l.heritage.capabilityLinks ?? []).map((cl) => ({
+            capabilityId: cl.capabilityId,
+            capability: cl.capability,
+          })),
+          primitiveLinks: (l.heritage.primitiveLinks ?? []).map((pl) => ({
+            primitiveId: pl.primitiveId,
+            primitive: pl.primitive,
+          })),
         },
       }))}
       // Phase 8.2 batch 3: pass logEntries to the view for the

@@ -43,13 +43,21 @@ export interface VitalityTrackerProps {
    */
   compact?: boolean;
   /**
-   * Phase 8.4 v3 (Mashu 2026-07-28): optional proficiency bonus
-   * chip rendered above the action buttons. Used in the Overview
-   * Vitality card so the PB value is visible alongside the
-   * attributes / practices. Mashu 2026-07-28: "Proficiency bonus
-   * should be in the card with vitality and attributes."
+   * Phase 8.4 v4 (Mashu 2026-07-28): optional best-practice totals
+   * per attribute. When all four (phys, ment, magi, pb) are
+   * provided, the Vitality card renders a compact
+   * "PHYS 13 / MENT 8 / MAGI 7 / PROF +3" row at the bottom of
+   * the card so the user sees the proficiency bonus alongside
+   * the attributes. Mashu 2026-07-28: "I don't see proficiency
+   * bonus next to attributes in the vitality card (not in quick
+   * bar). I was wrong in deferring it."
    */
-  pb?: number;
+  attrBestTotals?: {
+    physical: number;
+    mental: number;
+    magical: number;
+    pb: number;
+  };
 }
 
 interface ApplyResponse {
@@ -71,7 +79,7 @@ export function VitalityTracker({
   max,
   current,
   compact = false,
-  pb,
+  attrBestTotals,
 }: VitalityTrackerProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -223,20 +231,21 @@ export function VitalityTracker({
       </div>
       <p className="mt-1 text-xs text-muted-foreground">{percent}%</p>
 
-      {/* Phase 8.4 v3 (Mashu 2026-07-28): optional PB chip. Shown
-          only when the parent passes a non-undefined pb value. The
-          chip sits above the action buttons so the user sees the
-          proficiency bonus alongside attribute best totals / vitality
-          on the in-page Vitality card. */}
-      {pb !== undefined && pb !== null && (
+      {/* Phase 8.4 v4 (Mashu 2026-07-28): attribute best totals +
+          proficiency bonus row. Sits at the bottom of the Vitality
+          card so the user sees the proficiency bonus alongside the
+          attributes. Mashu 2026-07-28: "I don't see proficiency
+          bonus next to attributes in the vitality card (not in
+          quick bar). I was wrong in deferring it." */}
+      {attrBestTotals && (
         <div
-          className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] font-bold text-secondary-foreground"
-          title="Proficiency bonus (depends on level)."
+          className="mt-2 grid grid-cols-4 gap-1.5"
+          data-testid="vitality-attribute-row"
         >
-          <span className="text-[10px] font-bold uppercase tracking-wide text-foreground">
-            PROF
-          </span>
-          <span>+{pb}</span>
+          <AttrTotalCell label="PHYS" value={attrBestTotals.physical} />
+          <AttrTotalCell label="MENT" value={attrBestTotals.mental} />
+          <AttrTotalCell label="MAGI" value={attrBestTotals.magical} />
+          <AttrTotalCell label="PROF" value={attrBestTotals.pb} emphasize />
         </div>
       )}
 
@@ -392,6 +401,40 @@ export function VitalityTracker({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function AttrTotalCell({
+  label,
+  value,
+  emphasize = false,
+}: {
+  label: string;
+  value: number;
+  emphasize?: boolean;
+}) {
+  const display = value >= 0 ? `+${value}` : `${value}`;
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between gap-1 rounded-md border px-2 py-1.5",
+        emphasize
+          ? "border-primary/50 bg-primary/10"
+          : "border-border bg-background",
+      )}
+    >
+      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      <span
+        className={cn(
+          "font-mono font-bold tabular-nums",
+          emphasize ? "text-sm text-primary" : "text-sm text-foreground",
+        )}
+      >
+        {display}
+      </span>
     </div>
   );
 }

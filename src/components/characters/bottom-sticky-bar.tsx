@@ -73,18 +73,19 @@ export function BottomStickyBar({
 
   return (
     <div
-      // Phase 8.4 v3 (Mashu 2026-07-28): back to bottom-16 so the
-      // bar sits ABOVE the bottom tabs (which are at bottom-0).
-      // Mashu 2026-07-28: "Now the quick bar is below the tabs. It
-      // should be just above the tabs like it was at first."
-      // The FAB is at bottomOffset={56} = 56px from the viewport
-      // bottom, so the FAB still clears the bar (64px) by 8px.
-      // z-index: z-50 (above FAB's z-40) so the drawer overlays the
-      // FAB when expanded. Mashu 2026-07-28: "to avoid the Fab
-      // overlap let's make the quick drawer over the fab, like
-      // bigger z index than the fab. Bc I don't need the fab when
-      // I have the quick drawer up."
-      className="fixed bottom-16 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-md md:hidden"
+      // Phase 8.4 v4 (Mashu 2026-07-28): bar at bottom-12 (48px)
+      // so it sits directly on top of the tabs (which are at
+      // bottom-0, ~48px tall). Mashu 2026-07-28: "Bar maybe at
+      // bottom 12 or 10? It should sit directly on the tabs."
+      // z-index: z-30 (BELOW FAB's z-40) so the FAB stays on top
+      // when the bar is collapsed. The expanded drawer has its
+      // own z-50 wrapper below so when expanded, the drawer
+      // overlays the FAB. Mashu 2026-07-28: "Quick bar collaosed
+      // should be beneath fab in z index, but expanded above it
+      // in z index (so we can make quick bar header the collapsed
+      // one have different z index than the expanded part below
+      // header)."
+      className="fixed bottom-12 left-0 right-0 z-30 border-t border-border bg-background/95 backdrop-blur-md md:hidden"
       data-testid="bottom-sticky-bar"
       data-expanded={expanded}
     >
@@ -115,7 +116,7 @@ export function BottomStickyBar({
         )}
       </button>
 
-      {/* Expanded drawer — Phase 8.4 v3 (Mashu 2026-07-28):
+      {/* Expanded drawer — Phase 8.4 v4 (Mashu 2026-07-28):
           - Removed the duplicate "VITALITY: 78/73" header (the
             collapsed bar already shows it).
           - Full viewport width (no pr-16 padding) so the 4 vitality
@@ -125,9 +126,17 @@ export function BottomStickyBar({
             side-by-side) instead of the previous 2-column +
             Magical-below layout. Mashu 2026-07-28: "Let's make 3
             columns for the quick practices here and see if it
-            works." */}
+            works."
+          - Wrapped in a z-50 fixed-positioned overlay so the
+            expanded drawer sits ABOVE the FAB (z-40). The bar
+            header itself stays at z-30 (below FAB). Mashu
+            2026-07-28: "Quick bar collaosed should be beneath fab
+            in z index, but expanded above it in z index." */}
       {expanded ? (
-        <div className="border-t border-border bg-background/95 px-3 pb-3 pt-2 max-h-[60dvh] overflow-y-auto">
+        <div
+          className="fixed bottom-12 left-0 right-0 z-50 border-t border-border bg-background/95 px-3 pb-3 pt-2 max-h-[60dvh] overflow-y-auto"
+          data-testid="bottom-sticky-bar-drawer"
+        >
           <div className="mb-3">
             <VitalityTracker
               characterId={characterId}
