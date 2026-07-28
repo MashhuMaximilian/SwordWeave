@@ -73,13 +73,14 @@ export function BottomStickyBar({
 
   return (
     <div
-      // Phase 8.4 (Mashu 2026-07-28): bring the bar down to bottom-16
-      // (64px) so it sits just above the FAB. The previous bottom-20
-      // (80px) was floating too high in the user's view. The FAB
-      // itself is at bottom-3 (12px) + size-12 (48px) = 60px. With
-      // bottom-16 the bar's bottom edge sits 4px above the FAB's top
-      // edge — close enough to feel anchored, but not overlapping.
-      className="fixed bottom-16 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-md md:hidden"
+      // Phase 8.4 v2 (Mashu 2026-07-28): bottom-0 so the bar docks
+      // to the very bottom of the viewport. The bottom tabs nav in
+      // character-sheet-view.tsx was moved up to bottom-16 (64px) so
+      // the bar + tabs stack vertically instead of overlapping. The
+      // FAB is at bottom-3 (12px) + size-12 (48px) = 60px; the FAB
+      // overlays the right edge of the bar (acceptable — the bar
+      // already gets pr-16 padding so its content stays clear).
+      className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-md md:hidden"
       data-testid="bottom-sticky-bar"
       data-expanded={expanded}
     >

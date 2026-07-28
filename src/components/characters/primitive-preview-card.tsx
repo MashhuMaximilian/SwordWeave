@@ -194,15 +194,26 @@ export function PrimitivePreviewCard({
           className="ml-1 space-y-0.5"
           data-testid="primitive-conditions"
         >
-          {modifiers.map(
-            (mod: unknown, modIndex: number) => (
+          {modifiers.map((mod: unknown, modIndex: number) => {
+            // Phase 8.4 v2 (Mashu 2026-07-28): pull the `.condition`
+            // field off the HardModifier before passing it to
+            // ConditionBadges. Previously we passed the whole
+            // modifier — but ConditionBadges.parseCondition saw
+            // `kind: "modify"` (the HardModifier's own kind, not
+            // a condition kind) and threw "unknown condition kind:
+            // modify", which crashed the entire Capabilities tab.
+            // The .condition field is the actual condition blob
+            // (legacy or v1) that parseCondition knows about.
+            const cond = (mod as { condition?: unknown })?.condition;
+            if (cond === undefined || cond === null) return null;
+            return (
               <ConditionBadges
                 key={modIndex}
-                condition={mod}
+                condition={cond}
                 showNarrative={true}
               />
-            ),
-          )}
+            );
+          })}
         </div>
       ) : null}
     </div>

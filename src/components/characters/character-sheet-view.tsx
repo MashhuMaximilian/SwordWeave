@@ -351,7 +351,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-5 py-8 pb-24">
+    <div className="mx-auto w-full max-w-7xl px-5 py-8 pb-32 md:pb-24">
       {/* Phase 8.4 (Mashu 2026-07-28): the in-page header
           (Pumnu portrait + name + L5 + size + Edit/Level Up/Clone)
           is hidden on mobile because SheetIdentityHeader at the top
@@ -427,7 +427,15 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         data-testid="sheet-top-spacer"
       />
 
-      {/* BU Budget Footer — unified budget + debt display */}
+      {/* Phase 8.4 v2 (Mashu 2026-07-28): the entire BuBudgetFooter
+          is hidden on mobile. SheetIdentityHeader's expanded panel
+          shows every value the footer exposed (budget, debt, DM
+          bonus, item BU, mirrored primitives) so the static
+          section is redundant on phones. Mashu 2026-07-28:
+          "Since we put all the BU budget things in collapsible on
+          top we don't need the section anymore that's not
+          collapsed." Desktop keeps the full footer. */}
+      <div className="hidden md:block">
       <BuBudgetFooter
         characterId={props.id}
         progressionSpent={props.buBalance.progressionSpent}
@@ -446,6 +454,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         volatilityExceeded={props.volatility.exceeded}
         mirroredPrimitives={props.volatility.mirroredPrimitives}
       />
+      </div>
 
       {/* Tabs — desktop: top, mobile: bottom sticky */}
       <nav
@@ -565,8 +574,12 @@ export function CharacterSheetView(props: CharacterSheetProps) {
       </div>
 
       {/* Mobile bottom tabs — Phase 8.2 batch 3: scrollable for 6 tabs */}
+      {/* Phase 8.4 (Mashu 2026-07-28): the bottom tabs now sit
+          at bottom-16 (64px) so the BottomStickyBar (at bottom-0)
+          can dock to the very bottom of the viewport. Mashu
+          2026-07-28: "Quick bar still too high." */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 flex overflow-x-auto border-t border-border bg-background/95 backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-16 z-30 flex overflow-x-auto border-t border-border bg-background/95 backdrop-blur md:hidden"
         aria-label="Sheet tabs (mobile)"
       >
         {TABS.map((t) => {
@@ -1090,19 +1103,28 @@ function OverviewTab({
         <div className="px-4 pt-3 pb-2">
           <div className="flex items-baseline justify-between">
             <h3 className="text-sm font-semibold">Practices</h3>
-            {props.attrProficient && (
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-primary">
-                Proficient: {props.attrProficient}
-              </span>
-            )}
+            {/* Phase 8.4 v2 (Mashu 2026-07-28): the PB chip is
+                back on the Practices card so the user can see
+                their proficiency bonus alongside the attribute
+                columns. "PB disappeared. We need to add Prof in
+                vitality card next to attributes (on same row)."
+                The chip is shown on every row so the value is
+                always visible — the user lost it when I dropped
+                CoreStatsCard. */}
+            <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[10px] font-bold text-secondary-foreground">
+              PROF +{proficiencyBonus(props.level)}
+            </span>
           </div>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            Roll modifier = attribute slice + PB (if proficient) + primitive bonuses.
-          </p>
+          {props.attrProficient && (
+            <p className="mt-0.5 text-[11px] text-primary">
+              Proficient: {props.attrProficient} (gets PB on every practice)
+            </p>
+          )}
         </div>
         <PracticesPanel
           practices={props.practices}
           attrProficient={props.attrProficient}
+          pb={proficiencyBonus(props.level)}
         />
       </section>
 
@@ -1336,9 +1358,11 @@ function NumField({
 function PracticesPanel({
   practices,
   attrProficient,
+  pb,
 }: {
   practices: PracticeRow[];
   attrProficient: string | null;
+  pb: number;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const byAttr: Record<string, PracticeRow[]> = {
@@ -1363,7 +1387,7 @@ function PracticesPanel({
   // in-page Practices card on Overview now uses a single column
   // on mobile (3-column desktop via md:grid-cols-3).
   return (
-    <div className="grid grid-cols-1 divide-y divide-border border-t border-border md:grid-cols-3 md:divide-x md:divide-y-0 md:gap-0">
+    <div className="grid grid-cols-4 divide-x divide-border border-t border-border">
       {(["PHYSICAL", "MENTAL", "MAGICAL"] as const).map((attr) => {
         const rows = sortByTotal(byAttr[attr] ?? []);
         const proficient = attrProficient === attr;
@@ -1380,6 +1404,19 @@ function PracticesPanel({
           />
         );
       })}
+      {/* PROF column — shows the proficiency bonus value. The
+          column has no practice rows because PB is not a practice
+          on its own; it just adds to every proficient practice. */}
+      <PracticeColumn
+        key="PROF"
+        attr="PROF"
+        rows={[]}
+        proficient={false}
+        bestTotal={pb}
+        expanded={expanded}
+        setExpanded={setExpanded}
+        isProfColumn
+      />
     </div>
   );
 }
@@ -1392,19 +1429,21 @@ function PracticeColumn({
   expanded,
   setExpanded,
   colSpan,
+  isProfColumn = false,
 }: {
-  attr: "PHYSICAL" | "MENTAL" | "MAGICAL";
+  attr: "PHYSICAL" | "MENTAL" | "MAGICAL" | "PROF";
   rows: PracticeRow[];
   proficient: boolean;
   bestTotal: number;
   expanded: string | null;
   setExpanded: React.Dispatch<React.SetStateAction<string | null>>;
   colSpan?: number;
+  isProfColumn?: boolean;
 }) {
   return (
     <div
       className={cn(
-        "bg-card p-2 md:divide-x md:divide-y-0",
+        "bg-card p-2",
         colSpan === 2 && "col-span-2",
       )}
     >
@@ -1422,10 +1461,17 @@ function PracticeColumn({
           )}
         </span>
         <span className="font-mono text-xs font-bold text-muted-foreground tabular-nums">
-          {rows.length > 0 ? `${bestTotal >= 0 ? "+" : ""}${bestTotal}` : "—"}
+          {isProfColumn
+            ? `${bestTotal >= 0 ? "+" : ""}${bestTotal}`
+            : rows.length > 0
+              ? `${bestTotal >= 0 ? "+" : ""}${bestTotal}`
+              : "—"}
         </span>
       </div>
-      {rows.length === 0 ? (
+      {/* The PROF column never shows practice rows — it just
+          displays the PB value as a header. We suppress the
+          "No practices" line for the PROF column. */}
+      {isProfColumn ? null : rows.length === 0 ? (
         <p className="px-2 py-2 text-[11px] text-muted-foreground">
           No practices.
         </p>

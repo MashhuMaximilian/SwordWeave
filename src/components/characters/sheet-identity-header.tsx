@@ -278,12 +278,18 @@ export function SheetIdentityHeader({
               }}
             />
           </div>
+          {/* Phase 8.4 v2 (Mashu 2026-07-28): reformat the debt
+              line as "Debt 8 used | 0 available | 8 max allowed".
+              The previous "8 / 0 avail / 8 max" was ambiguous —
+              the user wanted used / available / max explicitly. */}
           <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground">
             <span className="rounded-full bg-secondary px-1.5 py-0.5 font-mono">
               {volatility.levelBracket}
             </span>
-            <span title="Used / Available / Max">
-              Debt: {debtUsed} / {debtAvailable} avail / {debtMax} max
+            <span title="Used / Available / Max allowed for bracket">
+              Debt <span className="font-mono">{debtUsed}</span> used |{" "}
+              <span className="font-mono">{debtAvailable}</span> available |{" "}
+              <span className="font-mono">{debtMax}</span> max allowed
             </span>
           </div>
 
