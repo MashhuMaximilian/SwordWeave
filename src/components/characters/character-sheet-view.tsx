@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition, useEffect } from "react";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 import {
   ArrowUp,
@@ -39,6 +40,7 @@ import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
 import { CharacterEditButton } from "@/components/characters/character-edit-button";
 import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-card";
 import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
+import { SheetIdentityHeader } from "@/components/characters/sheet-identity-header";
 import { CoreStatsCard } from "@/components/characters/core-stats-card";
 import { proficiencyBonus } from "@/lib/engine/practices";
 import {
@@ -616,6 +618,36 @@ export function CharacterSheetView(props: CharacterSheetProps) {
       )}
 
       <ToastViewport toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Phase 8 UI revamp (Mashu 2026-07-27): SheetIdentityHeader
+          is mobile-only. Per the PDF, it forwards the same data
+          as the in-page Edit / Level Up / Clone header but in a
+          compact, collapsed-by-default block at the top of the
+          screen. Hidden on >= md. */}
+      <SheetIdentityHeader
+        characterId={props.id}
+        name={props.name}
+        level={props.level}
+        size={props.size}
+        lineageName={props.lineageName ?? null}
+        manifestName={props.manifestName ?? null}
+        portraitUrl={null}
+        canLevelUp={props.level < 20}
+        buBalance={{
+          progressionSpent: props.buBalance.progressionSpent,
+          progressionPool: props.buBalance.progressionPool,
+          overBudget: props.buBalance.overBudget,
+          dmBonusBu: props.buBalance.dmBonusBu,
+          itemBuSpent: props.buBalance.itemBuSpent,
+        }}
+        volatility={{
+          rating: props.volatility.rating,
+          ceiling: props.volatility.ceiling,
+          levelBracket: props.volatility.levelBracket,
+          remaining: props.volatility.remaining,
+          exceeded: props.volatility.exceeded,
+        }}
+      />
 
       {/* Phase 8 UI revamp (Mashu 2026-07-27): BottomStickyBar
           is mobile-only (returns null on >= md screens via
@@ -1285,83 +1317,131 @@ function PracticesPanel({
   const sortByTotal = (rows: PracticeRow[]) =>
     [...rows].sort((a, b) => b.total - a.total);
 
+  // Mashu 2026-07-27: 'make 2 columns. Physical, mental
+  // each a column and the magic should be below them.'
+  //
+  // Layout:
+  //   - Mobile (< md): 2-column grid for Physical + Mental,
+  //     then Magical full-width below.
+  //   - Desktop (>= md): 3-column grid (existing layout).
+  //
+  // Implementation: render the mobile shell as a 2-column grid
+  // that contains Physical + Mental cells, then a full-width
+  // Magical cell below them. On md+, we use `md:grid-cols-3`
+  // and `md:contents` to break out of the mobile 2-column grid
+  // back into the legacy 3-column flow.
   return (
-    <div className="grid divide-y divide-border border-t border-border md:grid-cols-3 md:divide-x md:divide-y-0">
-      {(["PHYSICAL", "MENTAL", "MAGICAL"] as const).map((attr) => {
+    <div className="grid grid-cols-2 gap-x-2 border-t border-border md:grid-cols-3 md:gap-0 md:divide-x md:divide-y-0">
+      {(["PHYSICAL", "MENTAL"] as const).map((attr) => {
         const rows = sortByTotal(byAttr[attr] ?? []);
         const proficient = attrProficient === attr;
         const bestTotal = rows[0]?.total ?? 0;
-        return (
-          <div key={attr} className="bg-card p-2">
-            <div className="flex items-baseline justify-between px-2 pb-1">
-              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {attr}
-                {proficient && (
-                  <span
-                    aria-label="Proficient"
-                    title="Proficient — gains PB on all practices"
-                    className="rounded bg-primary/15 px-1 text-[9px] font-bold text-primary"
-                  >
-                    PROF
-                  </span>
-                )}
-              </span>
-              <span className="font-mono text-xs font-bold text-muted-foreground tabular-nums">
-                {rows.length > 0 ? `${bestTotal >= 0 ? "+" : ""}${bestTotal}` : "—"}
-              </span>
-            </div>
-            {rows.length === 0 ? (
-              <p className="px-2 py-2 text-[11px] text-muted-foreground">
-                No practices.
-              </p>
-            ) : (
-              <ul className="space-y-0.5">
-                {rows.map((p) => {
-                  const isOpen = expanded === p.practice;
-                  return (
-                    <li key={p.practice}>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExpanded(isOpen ? null : p.practice)
-                        }
-                        aria-expanded={isOpen}
-                        className={`flex w-full items-center justify-between rounded px-2 py-1 text-left text-sm transition-colors ${
-                          isOpen
-                            ? "bg-primary/10"
-                            : "hover:bg-secondary"
-                        }`}
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <ChevronRight
-                            className={`size-3 text-muted-foreground transition-transform ${
-                              isOpen ? "rotate-90" : ""
-                            }`}
-                          />
-                          <span className="capitalize">{p.practice}</span>
-                        </span>
-                        <span className="font-mono text-sm font-bold tabular-nums">
-                          {p.total >= 0 ? "+" : ""}
-                          {p.total}
-                        </span>
-                      </button>
-                      {isOpen && (
-                        <div className="border-l-2 border-primary/40 bg-secondary/30 px-3 py-2 text-xs">
-                          <BreakdownView practice={p} />
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        );
+        return <PracticeColumn key={attr} attr={attr} rows={rows} proficient={proficient} bestTotal={bestTotal} expanded={expanded} setExpanded={setExpanded} />;
+      })}
+      {(["MAGICAL"] as const).map((attr) => {
+        const rows = sortByTotal(byAttr[attr] ?? []);
+        const proficient = attrProficient === attr;
+        const bestTotal = rows[0]?.total ?? 0;
+        return <PracticeColumn key={attr} attr={attr} rows={rows} proficient={proficient} bestTotal={bestTotal} expanded={expanded} setExpanded={setExpanded} colSpan={2} />;
       })}
     </div>
   );
 }
 
+function PracticeColumn({
+  attr,
+  rows,
+  proficient,
+  bestTotal,
+  expanded,
+  setExpanded,
+  colSpan,
+}: {
+  attr: "PHYSICAL" | "MENTAL" | "MAGICAL";
+  rows: PracticeRow[];
+  proficient: boolean;
+  bestTotal: number;
+  expanded: string | null;
+  setExpanded: React.Dispatch<React.SetStateAction<string | null>>;
+  colSpan?: number;
+}) {
+  return (
+    <div
+      className={cn(
+        "bg-card p-2 md:divide-x md:divide-y-0",
+        colSpan === 2 && "col-span-2",
+      )}
+    >
+      <div className="flex items-baseline justify-between px-2 pb-1">
+        <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {attr}
+          {proficient && (
+            <span
+              aria-label="Proficient"
+              title="Proficient — gains PB on all practices"
+              className="rounded bg-primary/15 px-1 text-[9px] font-bold text-primary"
+            >
+              PROF
+            </span>
+          )}
+        </span>
+        <span className="font-mono text-xs font-bold text-muted-foreground tabular-nums">
+          {rows.length > 0 ? `${bestTotal >= 0 ? "+" : ""}${bestTotal}` : "—"}
+        </span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="px-2 py-2 text-[11px] text-muted-foreground">
+          No practices.
+        </p>
+      ) : (
+        <ul className="space-y-0.5">
+          {rows.map((p) => {
+            const isOpen = expanded === p.practice;
+            // Mashu 2026-07-27: 'all of them have to start with
+            // big letters.' Transform the practice name to
+            // capitalize the first letter manually as a backup
+            // to the CSS class (some browsers / contexts may
+            // strip CSS transforms).
+            const displayName =
+              p.practice.length > 0
+                ? p.practice.charAt(0).toUpperCase() + p.practice.slice(1)
+                : p.practice;
+            return (
+              <li key={p.practice}>
+                <button
+                  type="button"
+                  onClick={() => setExpanded(isOpen ? null : p.practice)}
+                  aria-expanded={isOpen}
+                  className={`flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-sm transition-colors ${
+                    isOpen ? "bg-primary/10" : "hover:bg-secondary"
+                  }`}
+                >
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <ChevronRight
+                      className={`size-3 text-muted-foreground transition-transform ${
+                        isOpen ? "rotate-90" : ""
+                      }`}
+                    />
+                    <span className="truncate">{displayName}</span>
+                  </span>
+                  <span className="shrink-0 font-mono text-sm font-bold tabular-nums">
+                    {p.total >= 0 ? "+" : ""}
+                    {p.total}
+                  </span>
+                </button>
+                {isOpen && (
+                  <div className="border-l-2 border-primary/40 bg-secondary/30 px-3 py-2 text-xs">
+                    <BreakdownView practice={p} />
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
 function BreakdownView({ practice }: { practice: PracticeRow }) {
   return (
     <div className="space-y-1.5 text-xs">

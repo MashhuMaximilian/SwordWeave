@@ -38,6 +38,7 @@ import { ItemForm } from "./item-form";
 import { ItemFormPreview } from "./item-form-preview";
 import { GrammarLibrary } from "./grammar-library";
 import { HeritageLibrary } from "./heritage-library";
+import { isNavigationApproved } from "@/components/character-modal/character-modal-store";
 import { UnsavedChangesModal } from "./unsaved-changes-modal";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import { EntityPreview } from "@/components/preview/entity-preview";
@@ -523,6 +524,10 @@ export function AtelierSandboxClient({
       setPendingNav(href);
     };
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Phase 8.3d (Mashu 2026-07-27): if the save handler just
+      // approved the navigation (right before window.location.assign),
+      // do not prompt. Same guard as character-modal.tsx.
+      if (isNavigationApproved()) return;
       e.preventDefault();
       e.returnValue = "";
     };
