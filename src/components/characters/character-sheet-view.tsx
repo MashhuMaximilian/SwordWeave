@@ -370,11 +370,11 @@ export function CharacterSheetView(props: CharacterSheetProps) {
     proficientAttribute:
       props.attrProficient === null
         ? null
-        : props.attrProficient.toLowerCase() === "PHYSICAL"
+        : props.attrProficient.toLowerCase() === "physical"
           ? "physical"
-          : props.attrProficient.toLowerCase() === "MENTAL"
+          : props.attrProficient.toLowerCase() === "mental"
             ? "mental"
-            : props.attrProficient.toLowerCase() === "MAGICAL"
+            : props.attrProficient.toLowerCase() === "magical"
               ? "magical"
               : null,
     attributes: {
@@ -1135,11 +1135,11 @@ function OverviewTab({
     proficientAttribute:
       props.attrProficient === null
         ? null
-        : props.attrProficient.toLowerCase() === "PHYSICAL"
+        : props.attrProficient.toLowerCase() === "physical"
           ? "physical"
-          : props.attrProficient.toLowerCase() === "MENTAL"
+          : props.attrProficient.toLowerCase() === "mental"
             ? "mental"
-            : props.attrProficient.toLowerCase() === "MAGICAL"
+            : props.attrProficient.toLowerCase() === "magical"
               ? "magical"
               : null,
     attributes: {
@@ -1226,11 +1226,11 @@ function OverviewTab({
             proficientAttribute={
               props.attrProficient === null
                 ? null
-                : props.attrProficient.toLowerCase() === "PHYSICAL"
+                : props.attrProficient.toLowerCase() === "physical"
                   ? "physical"
-                  : props.attrProficient.toLowerCase() === "MENTAL"
+                  : props.attrProficient.toLowerCase() === "mental"
                     ? "mental"
-                    : props.attrProficient.toLowerCase() === "MAGICAL"
+                    : props.attrProficient.toLowerCase() === "magical"
                       ? "magical"
                       : null
             }
@@ -1242,11 +1242,11 @@ function OverviewTab({
               proficientAttribute:
                 props.attrProficient === null
                   ? null
-                  : props.attrProficient.toLowerCase() === "PHYSICAL"
+                  : props.attrProficient.toLowerCase() === "physical"
                     ? "physical"
-                    : props.attrProficient.toLowerCase() === "MENTAL"
+                    : props.attrProficient.toLowerCase() === "mental"
                       ? "mental"
-                      : props.attrProficient.toLowerCase() === "MAGICAL"
+                      : props.attrProficient.toLowerCase() === "magical"
                         ? "magical"
                         : null,
               attributes: {

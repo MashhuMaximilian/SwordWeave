@@ -277,7 +277,7 @@ export function VitalityTracker({
           }
           className={cn(
             "inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-destructive/60 bg-destructive/25 font-medium text-destructive transition-colors hover:bg-destructive/35 disabled:cursor-not-allowed disabled:opacity-70",
-            compact ? "px-1.5 py-1 text-[11px]" : "px-2 py-1 text-xs",
+            compact ? "px-1 py-0.5 text-[10px] gap-0.5" : "px-2 py-1 text-xs",
           )}
           aria-label="Apply damage"
         >
@@ -292,7 +292,7 @@ export function VitalityTracker({
           }
           className={cn(
             "inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-green-600/60 bg-green-500/25 font-medium text-green-700 transition-colors hover:bg-green-500/35 disabled:cursor-not-allowed disabled:opacity-70 dark:text-green-400",
-            compact ? "px-1.5 py-1 text-[11px]" : "px-2 py-1 text-xs",
+            compact ? "px-1 py-0.5 text-[10px] gap-0.5" : "px-2 py-1 text-xs",
           )}
           aria-label="Apply healing"
         >
@@ -307,7 +307,7 @@ export function VitalityTracker({
           }
           className={cn(
             "inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-border bg-secondary font-medium transition-colors hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-70",
-            compact ? "px-1.5 py-1 text-[11px]" : "px-2 py-1 text-xs",
+            compact ? "px-1 py-0.5 text-[10px] gap-0.5" : "px-2 py-1 text-xs",
           )}
           aria-label="Long rest"
           title="Long rest: restore to full vitality"
@@ -323,7 +323,7 @@ export function VitalityTracker({
           }
           className={cn(
             "inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-border bg-secondary font-medium transition-colors hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-70",
-            compact ? "px-1.5 py-1 text-[11px]" : "px-2 py-1 text-xs",
+            compact ? "px-1 py-0.5 text-[10px] gap-0.5" : "px-2 py-1 text-xs",
           )}
           aria-label="Short rest"
           title="Short rest: restore 50% of max vitality"

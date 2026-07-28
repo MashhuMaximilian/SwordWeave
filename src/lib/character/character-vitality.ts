@@ -26,6 +26,7 @@ import {
 } from "@/db/schema";
 import {
   computeMaxVitality,
+  computeVitalityModifiersFromPrimitives,
   type VitalityModifier,
 } from "@/lib/engine/vitality";
 
@@ -49,29 +50,33 @@ export async function loadCharacterMaxVitality(
     throw new Error(`Character ${characterId} not found.`);
   }
 
-  // Mirror src/lib/engine/sheet.ts's heuristic for which primitives
-  // contribute. We re-read primitive.name/category/buCost because the
-  // existing engine function uses those to filter.
-  const primMods: VitalityModifier[] = row.primitiveLinks
-    .map((l) => ({
-      name: l.primitive.name,
-      category: l.primitive.category,
+  // Phase 8.3g v5 (Mashu 2026-07-28): use the SAME
+  // engine function as the sheet aggregator. The previous
+  // inline filter+map was independently reimplementing
+  // the heuristic and DROPPING the `isMirrored` flag,
+  // so the rest/damage routes computed max vitality
+  // WITHOUT the mirror sign-flip. Result: a character
+  // with mirrored Vitality Core Augment primitives
+  // would sheet-display max = 268 (with mirrors) but
+  // the rest route would set current to 308 (without).
+  // `computeVitalityModifiersFromPrimitives` is the
+  // canonical engine entry point and respects mirrors.
+  const primMods: VitalityModifier[] = computeVitalityModifiersFromPrimitives(
+    row.primitiveLinks.map((l) => ({
       buCost: l.primitive.buCost,
-    }))
-    .filter((p) => {
-      const n = p.name.toLowerCase();
-      return (
-        n.includes("vitality") ||
-        n.includes("hp") ||
-        n.includes("health") ||
-        n.includes("tough")
-      );
-    })
-    .map((p) => ({ source: p.name, amount: p.buCost }));
+      category: l.primitive.category,
+      name: l.primitive.name,
+      // The critical field — was being dropped before.
+      isMirrored: l.isMirrored ?? false,
+    })),
+  ) as VitalityModifier[];
 
   // Items don't currently contribute vitality modifiers in the
-  // engine, but the engine reserves the shape — leave the door
-  // open by reading them.
+  // engine, but be defensive: if any item has "vitality"/"hp"/
+  // "health"/"tough" in its name, treat its buCost as a flat
+  // additive modifier. We're conservative here — items
+  // don't have an isMirrored flag in the schema as of
+  // Phase 8.3g, so they go through as positive.
   const itemMods: VitalityModifier[] = row.itemLinks
     .map((l) => ({
       name: l.item.name,
