@@ -142,6 +142,18 @@ export function CapabilityCard({
 
   // Local optimistic state. Hydrate from localStorage on mount.
   const [active, setActive] = useState(false);
+  // Phase 8.4 v9 (Mashu 2026-07-28): the sheet only carries the
+  // capability's effectLinks, not its primitiveLinks. For "actual
+  // play" the user wants to see the primitives that come in via
+  // the capability directly (not via effects). Lazy-load on
+  // mount via the existing preview fetch and stash a slim view.
+  const [bundledPrims, setBundledPrims] = useState<Array<{
+    primitiveId: number;
+    name: string;
+    category: string;
+    buCost: number;
+  }> | null>(null);
+  const [bundleLoading, setBundleLoading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [triggerPending, setTriggerPending] = useState(false);
@@ -155,8 +167,63 @@ export function CapabilityCard({
       const res = await fetch(`/api/capabilities/${capability.id}`);
       if (!res.ok) throw new Error("Failed to fetch capability");
       const data = await res.json();
-      setPreviewData(data.capability);
-      return data.capability;
+      // Phase 8.4 v9 (Mashu 2026-07-28): the /api/capabilities/[id]
+      // route returns the raw row + computedBu, which is NOT the
+      // SandboxCapabilityRow shape the EntityPreview expects.
+      // Project it here so CapabilityBody (which accesses
+      // row.primitiveLinks[i].versionNumber, etc.) never crashes
+      // on missing fields. Mashu 2026-07-28: "it even crashes if
+      // I click on a capability but for primitives works."
+      const raw = data.capability as Record<string, unknown>;
+      const projected = {
+        id: raw["id"] as string,
+        name: raw["name"] as string,
+        type: raw["type"] as string,
+        sourceType: raw["sourceType"] as string,
+        verboseDescription: (raw["verboseDescription"] as string) ?? "",
+        sourceOrigin: (raw["sourceOrigin"] as string | null) ?? null,
+        tags: (raw["tags"] as string[]) ?? [],
+        isPublic: (raw["isPublic"] as boolean) ?? true,
+        primitiveLinks: ((raw["primitiveLinks"] as Array<Record<string, unknown>>) ?? []).map((pl) => ({
+          primitiveId: pl["primitiveId"] as number,
+          role: (pl["role"] as string) ?? "OTHER",
+          quantity: (pl["quantity"] as number) ?? 1,
+          sortOrder: (pl["sortOrder"] as number) ?? 0,
+          slotLabel: (pl["slotLabel"] as string | null) ?? null,
+          notes: (pl["notes"] as string | null) ?? null,
+          versionNumber: null as number | null,
+          primitive: pl["primitive"] as {
+            id: number;
+            name: string;
+            category: string;
+            buCost: number;
+          },
+        })),
+        effectLinks: ((raw["effectLinks"] as Array<Record<string, unknown>>) ?? []).map((el) => ({
+          effectId: el["effectId"] as string,
+          sortOrder: (el["sortOrder"] as number) ?? 0,
+          slotLabel: (el["slotLabel"] as string | null) ?? null,
+          notes: (el["notes"] as string | null) ?? null,
+          versionNumber: null as number | null,
+          effect: el["effect"] as {
+            id: string;
+            name: string;
+            narrativeDescription: string | null;
+            sourceOrigin: string | null;
+            primitiveLinks?: Array<{
+              primitiveId: number;
+              quantity: number;
+              primitive: { id: number; name: string; category: string; buCost: number };
+            }>;
+          },
+        })),
+        iconSource: (raw["iconSource"] as string | null) ?? null,
+        iconKey: (raw["iconKey"] as string | null) ?? null,
+        iconUrl: (raw["iconUrl"] as string | null) ?? null,
+        iconColor: (raw["iconColor"] as string) ?? "#ffffff",
+      };
+      setPreviewData(projected);
+      return projected;
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to load preview", "error");
       return null;
@@ -169,6 +236,46 @@ export function CapabilityCard({
     setActive(readToggle(characterId, capability.id));
     setHydrated(true);
   }, [characterId, capability.id]);
+
+  // Phase 8.4 v9 (Mashu 2026-07-28): lazy-load the capability's
+  // bundled primitives so the SHEET can show them nested under
+  // the capability (the modal already does this via
+  // HeritageSlotCard). Mashu 2026-07-28: "we should see ALL
+  // primitives, and before for each heritage type the
+  // capabilities and effects nested in them or directly added.
+  // Not the primitives directly (more or less like we already
+  // display in the character creation modal, but more useful
+  // for actual play)."
+  useEffect(() => {
+    let cancelled = false;
+    setBundleLoading(true);
+    void (async () => {
+      try {
+        const res = await fetch(`/api/capabilities/${capability.id}`);
+        if (!res.ok) {
+          if (!cancelled) setBundleLoading(false);
+          return;
+        }
+        const data = (await res.json()) as { capability?: { primitiveLinks?: Array<{ primitive: { id: number; name: string; category: string; buCost: number } }> } };
+        const links = data.capability?.primitiveLinks ?? [];
+        if (cancelled) return;
+        setBundledPrims(
+          links.map((l) => ({
+            primitiveId: l.primitive.id,
+            name: l.primitive.name,
+            category: l.primitive.category,
+            buCost: l.primitive.buCost,
+          })),
+        );
+        setBundleLoading(false);
+      } catch {
+        if (!cancelled) setBundleLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [capability.id]);
 
   const handleToggle = useCallback(async () => {
     if (toggling) return;
@@ -268,33 +375,43 @@ export function CapabilityCard({
   // hydration mismatch on the active ring).
   const showActive = triggerFlash || (hydrated && active);
 
-  const handlePreviewClick = async (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click from also triggering
-    const data = await fetchPreviewData();
-    if (data) {
-      openPreview({
-        item: {
-          kind: "capability",
-          row: data as typeof data & { id: string; name: string; type: string; sourceType: string; verboseDescription: string | null; sourceOrigin: string | null; tags: string[]; isPublic: boolean; primitiveLinks: unknown[]; effectLinks: unknown[]; iconSource: string | null; iconKey: string | null; iconUrl: string | null; iconColor: string },
-        },
-        category: "CAPABILITY",
-        callbacks: {
-          engagement: {
-            likes: 0,
-            dislikes: 0,
-            forks: 0,
-            userReaction: null,
-            authorId: null,
-            authorUsername: null,
-            authorIsAdmin: null,
-            currentUserInternalId: null,
+  const openCapabilityPreview = useCallback(
+    async (e?: React.MouseEvent) => {
+      if (e) e.stopPropagation();
+      const data = await fetchPreviewData();
+      if (data) {
+        openPreview({
+          item: {
+            kind: "capability",
+            // Safe: fetchPreviewData now returns the projected
+            // SandboxCapabilityRow shape (see projection block
+            // above).
+            row: data as never,
           },
-        },
-      });
-    }
+          category: "CAPABILITY",
+          callbacks: {
+            engagement: {
+              likes: 0,
+              dislikes: 0,
+              forks: 0,
+              userReaction: null,
+              authorId: null,
+              authorUsername: null,
+              authorIsAdmin: null,
+              currentUserInternalId: null,
+            },
+          },
+        });
+      }
+    },
+    [fetchPreviewData, openPreview],
+  );
+
+  const handlePreviewClick = (e: React.MouseEvent) => {
+    void openCapabilityPreview(e);
   };
 
-  const handleCardClick = async (e: React.MouseEvent) => {
+  const handleCardClick = (e: React.MouseEvent) => {
     // Don't trigger preview if clicking on buttons
     if (
       (e.target as HTMLElement).closest("button") ||
@@ -302,28 +419,7 @@ export function CapabilityCard({
     ) {
       return;
     }
-    const data = await fetchPreviewData();
-    if (data) {
-      openPreview({
-        item: {
-          kind: "capability",
-          row: data as typeof data & { id: string; name: string; type: string; sourceType: string; verboseDescription: string | null; sourceOrigin: string | null; tags: string[]; isPublic: boolean; primitiveLinks: unknown[]; effectLinks: unknown[]; iconSource: string | null; iconKey: string | null; iconUrl: string | null; iconColor: string },
-        },
-        category: "CAPABILITY",
-        callbacks: {
-          engagement: {
-            likes: 0,
-            dislikes: 0,
-            forks: 0,
-            userReaction: null,
-            authorId: null,
-            authorUsername: null,
-            authorIsAdmin: null,
-            currentUserInternalId: null,
-          },
-        },
-      });
-    }
+    void openCapabilityPreview();
   };
 
   return (
@@ -396,6 +492,42 @@ export function CapabilityCard({
             </ul>
           </details>
         )}
+
+        {/* Phase 8.4 v9 (Mashu 2026-07-28): bundled primitives
+            nested under the capability (lazy-loaded from
+            /api/capabilities/[id]). Same data the modal's
+            CapabilitySlotCard shows. Mashu 2026-07-28: "we
+            should see ALL primitives, and before for each
+            heritage type the capabilities and effects nested
+            in them or directly added. Not the primitives
+            directly (more or less like we already display in
+            the character creation modal, but more useful for
+            actual play)." */}
+        {(bundledPrims && bundledPrims.length > 0) || bundleLoading ? (
+          <details open className="mt-2 rounded border border-border bg-muted/30 px-2 py-1 text-xs">
+            <summary className="cursor-pointer list-none font-semibold uppercase tracking-wide text-muted-foreground">
+              Primitives ({bundledPrims?.length ?? 0})
+            </summary>
+            <ul className="mt-1 space-y-0.5">
+              {bundledPrims?.map((pl) => (
+                <li
+                  key={pl.primitiveId}
+                  className="flex items-center justify-between rounded border border-border bg-background px-2 py-1"
+                >
+                  <span className="font-mono text-foreground">
+                    {pl.name}
+                  </span>
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    {pl.buCost} BU
+                  </span>
+                </li>
+              ))}
+              {bundleLoading && !bundledPrims && (
+                <li className="text-muted-foreground italic">Loading…</li>
+              )}
+            </ul>
+          </details>
+        ) : null}
 
         {/* Action row */}
         <div className="mt-3 flex flex-wrap gap-2">

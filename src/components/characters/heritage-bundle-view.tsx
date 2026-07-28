@@ -32,7 +32,7 @@
  * user can see tags, hardModifiers, narrative rule, etc.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { useEntityPreview } from "@/components/characters/preview-modal";
 import type { SandboxPreviewItem } from "@/components/library/library-item-preview";
@@ -134,6 +134,113 @@ export function HeritageBundleView({
   const [error, setError] = useState<string | null>(null);
   const { openPreview } = useEntityPreview();
 
+  /**
+   * Phase 8.4 v9 (Mashu 2026-07-28): lazy-load the full
+   * heritage template so its preview modal gets every field
+   * TemplateBody needs. Mashu 2026-07-28: "for heritages and
+   * stuff it doesn't do nothing."
+   */
+  const openHeritagePreview = useCallback(async () => {
+    if (!bundle) {
+      try {
+        const res = await fetch(`/api/heritage/${heritageId}`);
+        if (!res.ok) return;
+        const data = (await res.json()) as { template?: FullHeritageBundle };
+        if (!data.template) return;
+        const t = data.template;
+        const item: SandboxPreviewItem = {
+          kind: "heritage",
+          row: t as never,
+        };
+        openPreview({ item });
+      } catch {
+        /* swallow */
+      }
+      return;
+    }
+    const item: SandboxPreviewItem = {
+      kind: "heritage",
+      row: bundle as never,
+    };
+    openPreview({ item });
+  }, [bundle, heritageId, openPreview]);
+
+  /**
+   * Phase 8.4 v9 (Mashu 2026-07-28): capability preview inside
+   * the heritage view must fetch the FULL capability from
+   * /api/capabilities/[id] — the slim canon-bundle data we
+   * already have is missing effectLinks.primitiveLinks and
+   * other nested fields that CapabilityBody accesses.
+   * Mashu 2026-07-28: "it even crashes if I click on a
+   * capability but for primitives works."
+   */
+  const openCapabilityPreviewById = useCallback(
+    async (capabilityId: string) => {
+      try {
+        const res = await fetch(`/api/capabilities/${capabilityId}`);
+        if (!res.ok) return;
+        const data = (await res.json()) as { capability?: Record<string, unknown> };
+        if (!data.capability) return;
+        const raw = data.capability;
+        const projected = {
+          id: raw["id"] as string,
+          name: raw["name"] as string,
+          type: raw["type"] as string,
+          sourceType: raw["sourceType"] as string,
+          verboseDescription: (raw["verboseDescription"] as string) ?? "",
+          sourceOrigin: (raw["sourceOrigin"] as string | null) ?? null,
+          tags: (raw["tags"] as string[]) ?? [],
+          isPublic: (raw["isPublic"] as boolean) ?? true,
+          primitiveLinks: ((raw["primitiveLinks"] as Array<Record<string, unknown>>) ?? []).map((pl) => ({
+            primitiveId: pl["primitiveId"] as number,
+            role: (pl["role"] as string) ?? "OTHER",
+            quantity: (pl["quantity"] as number) ?? 1,
+            sortOrder: (pl["sortOrder"] as number) ?? 0,
+            slotLabel: (pl["slotLabel"] as string | null) ?? null,
+            notes: (pl["notes"] as string | null) ?? null,
+            versionNumber: null as number | null,
+            primitive: pl["primitive"] as {
+              id: number;
+              name: string;
+              category: string;
+              buCost: number;
+            },
+          })),
+          effectLinks: ((raw["effectLinks"] as Array<Record<string, unknown>>) ?? []).map((el) => ({
+            effectId: el["effectId"] as string,
+            sortOrder: (el["sortOrder"] as number) ?? 0,
+            slotLabel: (el["slotLabel"] as string | null) ?? null,
+            notes: (el["notes"] as string | null) ?? null,
+            versionNumber: null as number | null,
+            effect: el["effect"] as {
+              id: string;
+              name: string;
+              narrativeDescription: string | null;
+              sourceOrigin: string | null;
+              primitiveLinks?: Array<{
+                primitiveId: number;
+                quantity: number;
+                primitive: { id: number; name: string; category: string; buCost: number };
+              }>;
+            },
+          })),
+          iconSource: (raw["iconSource"] as string | null) ?? null,
+          iconKey: (raw["iconKey"] as string | null) ?? null,
+          iconUrl: (raw["iconUrl"] as string | null) ?? null,
+          iconColor: (raw["iconColor"] as string) ?? "#ffffff",
+        };
+        const item: SandboxPreviewItem = {
+          kind: "capability",
+          row: projected as never,
+        };
+        openPreview({ item });
+      } catch {
+        /* swallow */
+      }
+    },
+    [openPreview],
+  );
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -188,7 +295,15 @@ export function HeritageBundleView({
   return (
     <div className="rounded-md border border-border bg-card/50 overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 text-sm font-medium border-b border-border">
-        <span className="font-semibold">{heritageName}</span>
+        <button
+          type="button"
+          onClick={() => {
+            void openHeritagePreview();
+          }}
+          className="font-semibold text-left hover:underline"
+        >
+          {heritageName}
+        </button>
         <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase text-secondary-foreground">
           {heritageKindLabel}
         </span>
@@ -235,11 +350,7 @@ export function HeritageBundleView({
                     <button
                       type="button"
                       onClick={() => {
-                        const item: SandboxPreviewItem = {
-                          kind: "capability",
-                          row: cap as never,
-                        };
-                        openPreview({ item });
+                        void openCapabilityPreviewById(cl.capabilityId);
                       }}
                       className="flex w-full items-center justify-between gap-2 text-left hover:opacity-80"
                     >
