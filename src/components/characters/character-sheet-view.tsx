@@ -844,7 +844,14 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             category: "PRACTICE",
             buCost: 0,
             attribute: p.attribute as "PHYSICAL" | "MENTAL" | "MAGICAL",
-            total,
+            // Phase 8.3g v2: practice value = attribute +
+            // PB (if proficient) + primitive contributions
+            // targeting the attribute (NOT the DC). The
+            // bar's practice rows use the page's
+            // pre-computed `p.total` for the legacy
+            // PracticeRow shape; we recompute here for
+            // correctness.
+            total: p.total,
             isMirrored: false,
             isMirrorable: false,
             mirrorVector: null,
@@ -1542,7 +1549,13 @@ function PracticesPanel({
   practices: PracticeRow[];
   attrProficient: string | null;
 }) {
-  const [expanded, setExpanded] = useState<string | null>(null);
+  // Phase 8.3g v2 (Mashu 2026-07-28): the practice
+  // breakdown opens as a MODAL (per Mashu: "I still have
+  // the drop-down not the modal in click like everywhere
+  // else like we discussed"). The `provenanceTarget` is
+  // a JSON-stringified PracticeRow so the modal can
+  // render the breakdown with the right data.
+  const [practiceModal, setPracticeModal] = useState<PracticeRow | null>(null);
   const byAttr: Record<string, PracticeRow[]> = {
     PHYSICAL: [],
     MENTAL: [],
@@ -1560,28 +1573,78 @@ function PracticesPanel({
   // Phase 8.4 v3 (Mashu 2026-07-28): revert to single-column on
   // mobile (3 columns on desktop). The PROF column is gone —
   // the user wants PROF in the vitality card with the
-  // attributes, not in the Practices card. "Practices card (not
-  // in quick preview should only be one column like it was at
-  // first). Proficiency bonus should be in the card with
-  // vitality and attributes."
+  // attributes, not in the Practices card.
   return (
-    <div className="grid grid-cols-1 divide-y divide-border border-t border-border md:grid-cols-3 md:divide-x md:divide-y-0 md:gap-0">
-      {(["PHYSICAL", "MENTAL", "MAGICAL"] as const).map((attr) => {
-        const rows = sortByTotal(byAttr[attr] ?? []);
-        const proficient = attrProficient === attr;
-        const bestTotal = rows[0]?.total ?? 0;
-        return (
-          <PracticeColumn
-            key={attr}
-            attr={attr}
-            rows={rows}
-            proficient={proficient}
-            bestTotal={bestTotal}
-            expanded={expanded}
-            setExpanded={setExpanded}
-          />
-        );
-      })}
+    <>
+      <div className="grid grid-cols-1 divide-y divide-border border-t border-border md:grid-cols-3 md:divide-x md:divide-y-0 md:gap-0">
+        {(["PHYSICAL", "MENTAL", "MAGICAL"] as const).map((attr) => {
+          const rows = sortByTotal(byAttr[attr] ?? []);
+          const proficient = attrProficient === attr;
+          const bestTotal = rows[0]?.total ?? 0;
+          return (
+            <PracticeColumn
+              key={attr}
+              attr={attr}
+              rows={rows}
+              proficient={proficient}
+              bestTotal={bestTotal}
+              onOpen={(p) => setPracticeModal(p)}
+            />
+          );
+        })}
+      </div>
+      {practiceModal && <PracticeModal practice={practiceModal} onClose={() => setPracticeModal(null)} />}
+    </>
+  );
+}
+
+/**
+ * PracticeModal — Phase 8.3g v2 (Mashu 2026-07-28).
+ * Click-through modal for the practice breakdown. Replaces
+ * the previous inline drop-down.
+ */
+function PracticeModal({
+  practice,
+  onClose,
+}: {
+  practice: PracticeRow;
+  onClose: () => void;
+}) {
+  // Use the same DetailModal used elsewhere for consistency.
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Practice breakdown: ${practice.practice}`}
+    >
+      <div
+        className="flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Practice breakdown
+            </p>
+            <p className="mt-0.5 text-base font-semibold capitalize">
+              {practice.practice}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-1 transition-colors hover:bg-muted"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 py-3">
+          <BreakdownView practice={practice} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -1591,16 +1654,20 @@ function PracticeColumn({
   rows,
   proficient,
   bestTotal,
-  expanded,
-  setExpanded,
+  onOpen,
   colSpan,
 }: {
   attr: "PHYSICAL" | "MENTAL" | "MAGICAL";
   rows: PracticeRow[];
   proficient: boolean;
   bestTotal: number;
-  expanded: string | null;
-  setExpanded: React.Dispatch<React.SetStateAction<string | null>>;
+  /**
+   * Phase 8.3g v2: when set, clicking a practice row
+   * invokes this with the row data. The parent
+   * PracticesPanel opens a modal with the breakdown
+   * (replaces the previous inline drop-down).
+   */
+  onOpen: (p: PracticeRow) => void;
   colSpan?: number;
 }) {
   return (
@@ -1634,7 +1701,6 @@ function PracticeColumn({
       ) : (
         <ul className="space-y-0.5">
           {rows.map((p) => {
-            const isOpen = expanded === p.practice;
             // Mashu 2026-07-27: 'all of them have to start with
             // big letters.' Transform the practice name to
             // capitalize the first letter manually as a backup
@@ -1648,18 +1714,10 @@ function PracticeColumn({
               <li key={p.practice}>
                 <button
                   type="button"
-                  onClick={() => setExpanded(isOpen ? null : p.practice)}
-                  aria-expanded={isOpen}
-                  className={`flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-sm transition-colors ${
-                    isOpen ? "bg-primary/10" : "hover:bg-secondary"
-                  }`}
+                  onClick={() => onOpen(p)}
+                  className="flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-sm transition-colors hover:bg-secondary"
                 >
                   <span className="flex min-w-0 items-center gap-1.5">
-                    <ChevronRight
-                      className={`size-3 text-muted-foreground transition-transform ${
-                        isOpen ? "rotate-90" : ""
-                      }`}
-                    />
                     <span className="truncate">{displayName}</span>
                   </span>
                   <span className="shrink-0 font-mono text-sm font-bold tabular-nums">
@@ -1667,11 +1725,6 @@ function PracticeColumn({
                     {p.total}
                   </span>
                 </button>
-                {isOpen && (
-                  <div className="border-l-2 border-primary/40 bg-secondary/30 px-3 py-2 text-xs">
-                    <BreakdownView practice={p} />
-                  </div>
-                )}
               </li>
             );
           })}

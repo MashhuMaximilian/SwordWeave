@@ -193,7 +193,13 @@ describe("resolveSaveValue", () => {
     expect(resolveSaveValue(input, "physical").total).toBe(5);
   });
 
-  it("adds primitive contributions targeting the save target", () => {
+  it("adds primitive contributions targeting the attribute axis (for the save DC, not the save value)", () => {
+    // Phase 8.3g v2 (Mashu 2026-07-28): the save VALUE is
+    // the d20 modifier the character adds when making a
+    // save — it's just `mod + PB (if proficient)`. The
+    // primitive targeting `defense_dc.magical` bumps the
+    // DC, NOT the save value. Earlier code conflated
+    // these two.
     const input: ResolvedCharacterInput = {
       ...TESSY,
       slots: [
@@ -210,8 +216,8 @@ describe("resolveSaveValue", () => {
         }),
       ],
     };
-    // MAGI: mod 0, no PB (not proficient), +3 from primitive = 3
-    expect(resolveSaveValue(input, "magical").total).toBe(3);
+    // MAGI: mod 0, no PB (not proficient), 0 from save-value primitives = 0
+    expect(resolveSaveValue(input, "magical").total).toBe(0);
   });
 });
 

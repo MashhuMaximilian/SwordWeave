@@ -112,11 +112,13 @@ export function BottomStickyBar({
   const magi = magiMod >= 0 ? `+${magiMod}` : `${magiMod}`;
   const pbDisplay = pb >= 0 ? `+${pb}` : `${pb}`;
 
+  // Phase 8.3g v2: the save VALUE is the d20 modifier
+  // the character adds when making a save — just
+  // mod + PB (if proficient). NO save-target primitives
+  // (those bump the DC, not the save).
   function saveFor(attr: "physical" | "mental" | "magical", mod: number): number {
     const isProf = proficientAttribute?.toLowerCase() === attr;
-    const base = mod + (isProf ? pb : 0);
-    const prim = resolver?.totals[`defense_dc.${attr}`] ?? 0;
-    return base + prim;
+    return mod + (isProf ? pb : 0);
   }
   const physSave = saveFor("physical", physMod);
   const mentSave = saveFor("mental", mentMod);

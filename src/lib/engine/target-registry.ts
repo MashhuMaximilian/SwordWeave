@@ -124,23 +124,19 @@ export function resolveSaveValue(
   input: ResolvedCharacterInput,
   attr: Attribute,
 ): { total: number; contributions: readonly ModifierContribution[] } {
+  // Phase 8.3g v2 (Mashu 2026-07-28): the save VALUE is
+  // the d20 modifier the character adds when making a
+  // save — NOT the DC. The formula is just:
+  //   save = attribute modifier + (PB if proficient)
+  // The `defense_dc.<attr>` primitives bump the DC, not
+  // the character's own save roll. Earlier code
+  // incorrectly added the DC primitives to the save
+  // value, which inflated it.
   const mod = resolveAttributeModifier(input, attr);
-  const r = resolveModifiers(input);
-  const scopedTarget = `${SAVE_TARGETS[attr]}.${attr}`;
-  const primitiveDelta = r.totals[scopedTarget] ?? 0;
-  const primitiveContribs = r.byTarget[scopedTarget] ?? [];
   const pb = input.proficientAttribute === attr ? input.pb : 0;
   return {
-    total: mod.total + pb + primitiveDelta,
-    // Combine attr-mod contributions + save-target contributions so the
-    // modal can show "why is this save value what it is".
-    contributions: [
-      ...mod.contributions.map((c) => ({
-        ...c,
-        provenance: { ...c.provenance, kind: c.provenance.kind },
-      })),
-      ...primitiveContribs,
-    ],
+    total: mod.total + pb,
+    contributions: mod.contributions,
   };
 }
 
