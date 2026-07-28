@@ -161,10 +161,7 @@ export function PrimitivePreviewCard({
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <span className="font-medium truncate">{p.name}</span>
-          <span className="text-xs text-muted-foreground">
-            {p.category}
-          </span>
+          <span className="font-medium">{p.name}</span>
           {primitiveLink.isMirrored && (
             <span className="inline-flex items-center gap-0.5 rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
               <RotateCcw className="size-2.5" />

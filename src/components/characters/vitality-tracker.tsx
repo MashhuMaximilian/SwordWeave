@@ -42,6 +42,14 @@ export interface VitalityTrackerProps {
    * panel keeps the original roomier layout.
    */
   compact?: boolean;
+  /**
+   * Phase 8.4 v3 (Mashu 2026-07-28): optional proficiency bonus
+   * chip rendered above the action buttons. Used in the Overview
+   * Vitality card so the PB value is visible alongside the
+   * attributes / practices. Mashu 2026-07-28: "Proficiency bonus
+   * should be in the card with vitality and attributes."
+   */
+  pb?: number;
 }
 
 interface ApplyResponse {
@@ -63,6 +71,7 @@ export function VitalityTracker({
   max,
   current,
   compact = false,
+  pb,
 }: VitalityTrackerProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -213,6 +222,23 @@ export function VitalityTracker({
         />
       </div>
       <p className="mt-1 text-xs text-muted-foreground">{percent}%</p>
+
+      {/* Phase 8.4 v3 (Mashu 2026-07-28): optional PB chip. Shown
+          only when the parent passes a non-undefined pb value. The
+          chip sits above the action buttons so the user sees the
+          proficiency bonus alongside attribute best totals / vitality
+          on the in-page Vitality card. */}
+      {pb !== undefined && pb !== null && (
+        <div
+          className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] font-bold text-secondary-foreground"
+          title="Proficiency bonus (depends on level)."
+        >
+          <span className="text-[10px] font-bold uppercase tracking-wide text-foreground">
+            PROF
+          </span>
+          <span>+{pb}</span>
+        </div>
+      )}
 
       {/* Action row. compact: no flex-wrap so the 4 buttons
           always sit on a single row; smaller padding. normal: wraps

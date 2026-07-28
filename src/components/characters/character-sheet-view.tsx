@@ -351,7 +351,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-5 py-8 pb-32 md:pb-24">
+    <div className="mx-auto w-full max-w-7xl px-5 py-8 pb-32">
       {/* Phase 8.4 (Mashu 2026-07-28): the in-page header
           (Pumnu portrait + name + L5 + size + Edit/Level Up/Clone)
           is hidden on mobile because SheetIdentityHeader at the top
@@ -495,6 +495,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           <TabErrorBoundary tabName="Capabilities">
           <CapabilitiesTab
             characterId={props.id}
+            heritageLinks={props.heritageLinks}
             capabilities={props.capabilityLinks.map((l) => ({
               ...l.capability,
               acquiredAtLevel: l.acquiredAtLevel,
@@ -574,12 +575,14 @@ export function CharacterSheetView(props: CharacterSheetProps) {
       </div>
 
       {/* Mobile bottom tabs — Phase 8.2 batch 3: scrollable for 6 tabs */}
-      {/* Phase 8.4 (Mashu 2026-07-28): the bottom tabs now sit
-          at bottom-16 (64px) so the BottomStickyBar (at bottom-0)
-          can dock to the very bottom of the viewport. Mashu
-          2026-07-28: "Quick bar still too high." */}
+      {/* Phase 8.4 v3 (Mashu 2026-07-28): tabs dock at the very
+          bottom of the viewport (bottom-0). The BottomStickyBar
+          sits at bottom-16 (64px) ABOVE the tabs — the previous
+          swap (bar at bottom-0, tabs at bottom-16) was wrong.
+          Mashu 2026-07-28: "Now the quick bar is below the tabs.
+          It should be just above the tabs like it was at first." */}
       <nav
-        className="fixed inset-x-0 bottom-16 z-30 flex overflow-x-auto border-t border-border bg-background/95 backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 flex overflow-x-auto border-t border-border bg-background/95 backdrop-blur md:hidden"
         aria-label="Sheet tabs (mobile)"
       >
         {TABS.map((t) => {
@@ -775,11 +778,14 @@ function BuBudgetFooter({
 }) {
   const budgetPercent = progressionPool > 0 ? Math.min(100, (progressionSpent / progressionPool) * 100) : 0;
   const budgetOverBy = overBudget ? progressionSpent - progressionPool : 0;
+  // Phase 8.4 v3 (Mashu 2026-07-28): invert the BU bar color logic.
+  // Mashu 2026-07-28: "When bu is fully used it's green. It's orange
+  // when not fully used." Over-budget still stays destructive (red).
   const budgetBarColor = overBudget
     ? "bg-destructive"
-    : budgetPercent > 90
-    ? "bg-amber-500"
-    : "bg-primary";
+    : budgetPercent >= 100
+      ? "bg-green-500"
+      : "bg-amber-500";
 
   const debtPercent = volatilityCeiling > 0 ? Math.min(100, (volatilityRating / volatilityCeiling) * 100) : 0;
   const debtBarColor = volatilityExceeded
@@ -1021,6 +1027,7 @@ function OverviewTab({
             max={props.vitality.max}
             current={props.vitality.current ?? 0}
             compact
+            pb={proficiencyBonus(props.level)}
           />
           {/* Defensive DCs as a compact horizontal row (NOT a card) */}
           <div className="flex flex-row gap-2 md:flex-col md:gap-1 md:border-l md:border-border md:pl-6">
@@ -1103,17 +1110,6 @@ function OverviewTab({
         <div className="px-4 pt-3 pb-2">
           <div className="flex items-baseline justify-between">
             <h3 className="text-sm font-semibold">Practices</h3>
-            {/* Phase 8.4 v2 (Mashu 2026-07-28): the PB chip is
-                back on the Practices card so the user can see
-                their proficiency bonus alongside the attribute
-                columns. "PB disappeared. We need to add Prof in
-                vitality card next to attributes (on same row)."
-                The chip is shown on every row so the value is
-                always visible — the user lost it when I dropped
-                CoreStatsCard. */}
-            <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[10px] font-bold text-secondary-foreground">
-              PROF +{proficiencyBonus(props.level)}
-            </span>
           </div>
           {props.attrProficient && (
             <p className="mt-0.5 text-[11px] text-primary">
@@ -1124,7 +1120,6 @@ function OverviewTab({
         <PracticesPanel
           practices={props.practices}
           attrProficient={props.attrProficient}
-          pb={proficiencyBonus(props.level)}
         />
       </section>
 
@@ -1358,11 +1353,9 @@ function NumField({
 function PracticesPanel({
   practices,
   attrProficient,
-  pb,
 }: {
   practices: PracticeRow[];
   attrProficient: string | null;
-  pb: number;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const byAttr: Record<string, PracticeRow[]> = {
@@ -1379,15 +1372,15 @@ function PracticesPanel({
   const sortByTotal = (rows: PracticeRow[]) =>
     [...rows].sort((a, b) => b.total - a.total);
 
-  // Phase 8.4 (Mashu 2026-07-28): the previous 2-column mobile
-  // layout (Physical + Mental side-by-side, Magical below) was
-  // reverted per user feedback: 'In practices card I don't need
-  // them on 2 columns (only on the quick bar expanded).' The
-  // BottomStickyBar keeps the 2-column compact layout. The
-  // in-page Practices card on Overview now uses a single column
-  // on mobile (3-column desktop via md:grid-cols-3).
+  // Phase 8.4 v3 (Mashu 2026-07-28): revert to single-column on
+  // mobile (3 columns on desktop). The PROF column is gone —
+  // the user wants PROF in the vitality card with the
+  // attributes, not in the Practices card. "Practices card (not
+  // in quick preview should only be one column like it was at
+  // first). Proficiency bonus should be in the card with
+  // vitality and attributes."
   return (
-    <div className="grid grid-cols-4 divide-x divide-border border-t border-border">
+    <div className="grid grid-cols-1 divide-y divide-border border-t border-border md:grid-cols-3 md:divide-x md:divide-y-0 md:gap-0">
       {(["PHYSICAL", "MENTAL", "MAGICAL"] as const).map((attr) => {
         const rows = sortByTotal(byAttr[attr] ?? []);
         const proficient = attrProficient === attr;
@@ -1404,19 +1397,6 @@ function PracticesPanel({
           />
         );
       })}
-      {/* PROF column — shows the proficiency bonus value. The
-          column has no practice rows because PB is not a practice
-          on its own; it just adds to every proficient practice. */}
-      <PracticeColumn
-        key="PROF"
-        attr="PROF"
-        rows={[]}
-        proficient={false}
-        bestTotal={pb}
-        expanded={expanded}
-        setExpanded={setExpanded}
-        isProfColumn
-      />
     </div>
   );
 }
@@ -1429,16 +1409,14 @@ function PracticeColumn({
   expanded,
   setExpanded,
   colSpan,
-  isProfColumn = false,
 }: {
-  attr: "PHYSICAL" | "MENTAL" | "MAGICAL" | "PROF";
+  attr: "PHYSICAL" | "MENTAL" | "MAGICAL";
   rows: PracticeRow[];
   proficient: boolean;
   bestTotal: number;
   expanded: string | null;
   setExpanded: React.Dispatch<React.SetStateAction<string | null>>;
   colSpan?: number;
-  isProfColumn?: boolean;
 }) {
   return (
     <div
@@ -1461,17 +1439,10 @@ function PracticeColumn({
           )}
         </span>
         <span className="font-mono text-xs font-bold text-muted-foreground tabular-nums">
-          {isProfColumn
-            ? `${bestTotal >= 0 ? "+" : ""}${bestTotal}`
-            : rows.length > 0
-              ? `${bestTotal >= 0 ? "+" : ""}${bestTotal}`
-              : "—"}
+          {rows.length > 0 ? `${bestTotal >= 0 ? "+" : ""}${bestTotal}` : "—"}
         </span>
       </div>
-      {/* The PROF column never shows practice rows — it just
-          displays the PB value as a header. We suppress the
-          "No practices" line for the PROF column. */}
-      {isProfColumn ? null : rows.length === 0 ? (
+      {rows.length === 0 ? (
         <p className="px-2 py-2 text-[11px] text-muted-foreground">
           No practices.
         </p>
@@ -1603,6 +1574,7 @@ function BreakdownRow({
 
 function CapabilitiesTab({
   characterId,
+  heritageLinks,
   capabilities,
   primitiveLinks,
   heritageById,
@@ -1610,6 +1582,17 @@ function CapabilitiesTab({
   effectById,
 }: {
   characterId: string;
+  heritageLinks: Array<{
+    heritageId: string;
+    acquiredAtLevel: number;
+    isMirrored: boolean;
+    heritage: {
+      id: string;
+      name: string;
+      kind: string;
+      description: string | null;
+    };
+  }>;
   capabilities: Array<{
     id: string;
     name: string;
@@ -1789,6 +1772,143 @@ function CapabilitiesTab({
           )}
         </div>
       </details>
+
+      {/* ===== Accordion 1.5: By Heritage (bundled view) ===== */}
+      {/* Phase 8.4 v3 (Mashu 2026-07-28): a heritage-bundle
+          section that mirrors the character-modal builder
+          layout. Each heritage shows:
+            - The heritage name + kind badge + mirrored chip
+            - Capabilities granted by this heritage (each
+              clickable to open the preview modal)
+            - Primitives granted by this heritage (each
+              rendered as a PrimitivePreviewCard)
+          Mashu 2026-07-28: "we should Also show the bundled
+          capabilities for each heritage (basically like in the
+          character modal builder with option to preview.) on
+          click preview works." */}
+      {heritageLinks.length > 0 && (
+        <details className="group rounded-md border border-border bg-card">
+          <summary className="flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium cursor-pointer list-none">
+            <span className="flex items-center gap-2">
+              <Flame className="size-4 text-muted-foreground" />
+              By Heritage ({heritageLinks.length})
+            </span>
+            <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="px-4 pb-4 space-y-4 border-t border-border">
+            {heritageLinks.map((hl) => {
+              const kindLabel =
+                hl.heritage.kind === "LINEAGE"
+                  ? "Lineage"
+                  : hl.heritage.kind === "UPBRINGING"
+                    ? "Upbringing"
+                    : "Manifest";
+              const capsFromHeritage = capabilities.filter(
+                (c) => c.originHeritageId === hl.heritageId,
+              );
+              const primsFromHeritage = primitiveLinks.filter(
+                (p) => p.originHeritageId === hl.heritageId,
+              );
+              const total = capsFromHeritage.length + primsFromHeritage.length;
+              return (
+                <div
+                  key={hl.heritageId}
+                  className="rounded-md border border-border bg-card/50 overflow-hidden"
+                >
+                  <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 text-sm font-medium border-b border-border">
+                    <span className="font-semibold">{hl.heritage.name}</span>
+                    <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase text-secondary-foreground">
+                      {kindLabel}
+                    </span>
+                    {hl.isMirrored && (
+                      <span className="inline-flex items-center gap-1 rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
+                        <RotateCcw className="size-2.5" />
+                        Mirrored
+                      </span>
+                    )}
+                    <span className="ml-auto rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium">
+                      {total} bundled
+                    </span>
+                  </div>
+                  {hl.heritage.description && (
+                    <p className="px-3 py-2 text-xs text-muted-foreground border-b border-border">
+                      {hl.heritage.description}
+                    </p>
+                  )}
+                  <div className="px-3 py-2 space-y-2">
+                    {capsFromHeritage.length > 0 && (
+                      <div>
+                        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Capabilities ({capsFromHeritage.length})
+                        </div>
+                        <ul className="space-y-1.5">
+                          {capsFromHeritage.map((c) => (
+                            <li key={c.id}>
+                              <CapabilityCard
+                                characterId={characterId}
+                                capability={{
+                                  ...c,
+                                  originChain: [
+                                    {
+                                      kind: "heritage" as const,
+                                      name: `${kindLabel}: ${hl.heritage.name}`,
+                                    },
+                                  ],
+                                }}
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {primsFromHeritage.length > 0 && (
+                      <div>
+                        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Primitives ({primsFromHeritage.length})
+                        </div>
+                        <ul className="space-y-1.5">
+                          {primsFromHeritage
+                            .sort((a, b) =>
+                              a.primitive.name.localeCompare(b.primitive.name),
+                            )
+                            .map((p) => (
+                              <li key={p.primitive.id}>
+                                <PrimitivePreviewCard
+                                  primitiveLink={{
+                                    primitiveId: p.primitiveId,
+                                    source: p.source,
+                                    acquiredAtLevel: p.acquiredAtLevel,
+                                    isMirrored: p.isMirrored,
+                                    primitive: {
+                                      id: p.primitive.id,
+                                      name: p.primitive.name,
+                                      category: p.primitive.category,
+                                      buCost: p.primitive.buCost,
+                                      isMirrorable: p.primitive.isMirrorable,
+                                      mirrorBuCredit: p.primitive.mirrorBuCredit,
+                                      narrativeRule: p.primitive.narrativeRule,
+                                      hardModifiers: p.primitive.hardModifiers,
+                                    },
+                                  }}
+                                />
+                              </li>
+                            ))}
+                        </ul>
+                      </div>
+                    )}
+                    {capsFromHeritage.length === 0 &&
+                      primsFromHeritage.length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          No capabilities or primitives currently bundled.
+                        </p>
+                      )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </details>
+      )}
 
       {/* ===== Accordion 2: Capabilities by Style ===== */}
       {capabilities.length > 0 && (

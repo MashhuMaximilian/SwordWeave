@@ -73,14 +73,18 @@ export function BottomStickyBar({
 
   return (
     <div
-      // Phase 8.4 v2 (Mashu 2026-07-28): bottom-0 so the bar docks
-      // to the very bottom of the viewport. The bottom tabs nav in
-      // character-sheet-view.tsx was moved up to bottom-16 (64px) so
-      // the bar + tabs stack vertically instead of overlapping. The
-      // FAB is at bottom-3 (12px) + size-12 (48px) = 60px; the FAB
-      // overlays the right edge of the bar (acceptable — the bar
-      // already gets pr-16 padding so its content stays clear).
-      className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-md md:hidden"
+      // Phase 8.4 v3 (Mashu 2026-07-28): back to bottom-16 so the
+      // bar sits ABOVE the bottom tabs (which are at bottom-0).
+      // Mashu 2026-07-28: "Now the quick bar is below the tabs. It
+      // should be just above the tabs like it was at first."
+      // The FAB is at bottomOffset={56} = 56px from the viewport
+      // bottom, so the FAB still clears the bar (64px) by 8px.
+      // z-index: z-50 (above FAB's z-40) so the drawer overlays the
+      // FAB when expanded. Mashu 2026-07-28: "to avoid the Fab
+      // overlap let's make the quick drawer over the fab, like
+      // bigger z index than the fab. Bc I don't need the fab when
+      // I have the quick drawer up."
+      className="fixed bottom-16 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-md md:hidden"
       data-testid="bottom-sticky-bar"
       data-expanded={expanded}
     >
@@ -111,17 +115,20 @@ export function BottomStickyBar({
         )}
       </button>
 
-      {/* Expanded drawer */}
+      {/* Expanded drawer — Phase 8.4 v3 (Mashu 2026-07-28):
+          - Removed the duplicate "VITALITY: 78/73" header (the
+            collapsed bar already shows it).
+          - Full viewport width (no pr-16 padding) so the 4 vitality
+            buttons and the 3-column practice grid use the full
+            horizontal space.
+          - 3-column practice grid (Physical + Mental + Magical
+            side-by-side) instead of the previous 2-column +
+            Magical-below layout. Mashu 2026-07-28: "Let's make 3
+            columns for the quick practices here and see if it
+            works." */}
       {expanded ? (
-        <div className="border-t border-border bg-background/95 pr-16 pl-3 pb-3 pt-2 max-h-[60dvh] overflow-y-auto">
-          {/* Vitality management — `compact` flag shrinks the buttons
-              so all 4 (damage / heal / short rest / long rest) fit on
-              a single row even on phones ≤ 360px wide. */}
+        <div className="border-t border-border bg-background/95 px-3 pb-3 pt-2 max-h-[60dvh] overflow-y-auto">
           <div className="mb-3">
-            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
-              <Heart className="size-3.5 text-rose-500" />
-              Vitality: {currentVitality ?? maxVitality}/{maxVitality}
-            </div>
             <VitalityTracker
               characterId={characterId}
               max={maxVitality}
@@ -130,14 +137,11 @@ export function BottomStickyBar({
             />
           </div>
 
-          {/* Practices grid: 2 columns (Physical + Mental side-by-side),
-              Magical below. Mashu 2026-07-27: "make 2 columns. Physical,
-              mental each a column and the magic should be below them." */}
           <div>
             <div className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
               Quick Practices
             </div>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+            <div className="grid grid-cols-3 gap-2">
               <PracticeColumn
                 attr="PHYSICAL"
                 label="Physical"
@@ -152,15 +156,14 @@ export function BottomStickyBar({
                 proficientAttribute={proficientAttribute}
                 pb={pb}
               />
+              <PracticeColumn
+                attr="MAGICAL"
+                label="Magical"
+                practices={practices}
+                proficientAttribute={proficientAttribute}
+                pb={pb}
+              />
             </div>
-            <PracticeColumn
-              attr="MAGICAL"
-              label="Magical"
-              practices={practices}
-              proficientAttribute={proficientAttribute}
-              pb={pb}
-              wide
-            />
           </div>
         </div>
       ) : null}
@@ -174,20 +177,18 @@ function PracticeColumn({
   practices,
   proficientAttribute,
   pb,
-  wide = false,
 }: {
   attr: "PHYSICAL" | "MENTAL" | "MAGICAL";
   label: string;
   practices: ReadonlyArray<PracticeRowForSticky>;
   proficientAttribute: "PHYSICAL" | "MENTAL" | "MAGICAL" | null;
   pb: number;
-  wide?: boolean;
 }) {
   const group = practices.filter((p) => p.attribute === attr);
   if (group.length === 0) return null;
   const isProficient = proficientAttribute === attr;
   return (
-    <div className={cn("space-y-0.5", wide && "col-span-2")}>
+    <div className="space-y-0.5">
       <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
         {isProficient ? (
