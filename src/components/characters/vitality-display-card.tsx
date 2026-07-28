@@ -102,23 +102,15 @@ export function VitalityDisplayCard({
 
   return (
     <div>
-      {/* Header: 2 columns. Phase 8.3g v3 (Mashu
-          2026-07-28): the DC must be its own visually
-          distinct box on the RIGHT. Per Mashu: "one
-          column should be vitality title and below the
-          numbers as they are. And the column with save
-          DC should be on the right. So 2 rows left 1
-          row right or idk exactly how you made the grid
-          or containers or UI whatever." Layout:
-            [VITALITY   ] [ SAVE DC ]
-            [308/268    ] [   16    ]
-            [██████ 100%]
-          The DC box has a teal background to match the
-          proficient attribute color (Mashu said "put a
-          bg or something... make it more visible"). The
-          DC = 5 + PB + (proficient attribute mod) +
-          primitives@SAVE. Clicking the DC opens the
-          provenance modal. */}
+      {/* Phase 8.3g v4 (Mashu 2026-07-28): row 1 — Vitality
+          label on the left, DC card on the right. The DC
+          card is a REGULAR card (border-border, bg-background)
+          with just the NUMBER teal. Per Mashu: "Keep the
+          values teal but the backgrounds of the cards
+          (for save DC and the proficient block of
+          practices) regular." Clicking the DC opens the
+          provenance modal. The DC = 5 + PB + (proficient
+          attribute mod) + primitives@SAVE. */}
       <div className="grid grid-cols-[1fr_auto] items-start gap-3">
         <div>
           <p className="text-xs font-semibold uppercase text-muted-foreground">
@@ -128,11 +120,16 @@ export function VitalityDisplayCard({
         <button
           type="button"
           onClick={() => setProvenanceTarget(SAVE_TARGET[primaryDc.attr])}
-          className="group flex flex-col items-center justify-center rounded-md border-2 border-teal-500 bg-teal-500/15 px-3 py-1 text-center transition-colors hover:bg-teal-500/25"
+          // Phase 8.3g v4 (Mashu 2026-07-28): regular card
+          // (no teal BG). Just the number is teal. Per
+          // Mashu: "Keep the values teal but the
+          // backgrounds of the cards (for save DC and the
+          // proficient block of practices) regular."
+          className="group flex flex-col items-center justify-center rounded-md border-2 border-border bg-background px-3 py-1 text-center transition-colors hover:bg-secondary/40"
           aria-label={`Show save DC provenance (${ATTR_FULL[primaryDc.attr]})`}
           title={`DC = 5 + PB + ${ATTR_FULL[primaryDc.attr]} modifier + primitive contributions`}
         >
-          <span className="text-[9px] font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-300 group-hover:text-teal-800 dark:group-hover:text-teal-200">
+          <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
             Save DC
           </span>
           <span className="font-mono text-2xl font-bold tabular-nums leading-none text-teal-700 dark:text-teal-200">
@@ -168,13 +165,14 @@ export function VitalityDisplayCard({
       <p className="mt-0.5 text-[11px] text-muted-foreground">{percent}%</p>
 
       {/* Attribute row: 4 cells, each with mod + small save below.
-          Phase 8.3g v3 (Mashu 2026-07-28): the proficient
-          attribute is highlighted with a teal BORDER, a
-          teal-tinted BACKGROUND, AND the text inside the
-          cell is teal-700/200 (light/dark mode). Per
-          Mashu: "Proficient attribute modifier text still
-          not teal." The earlier bg-only was too subtle
-          to read as a clear distinction. */}
+          Phase 8.3g v4 (Mashu 2026-07-28): the proficient
+          attribute keeps the teal BORDER + teal text, but
+          the BACKGROUND is now REGULAR (bg-background,
+          not bg-teal-500/15). Per Mashu: "Keep the
+          values teal but the backgrounds of the cards
+          (for save DC and the proficient block of
+          practices) regular." Same for the PROF cell
+          below. */}
       <div className="mt-2 grid grid-cols-4 gap-1.5">
         {(["physical", "mental", "magical"] as const).map((attr) => {
           const isProficient = proficientAttribute === attr;
@@ -185,7 +183,7 @@ export function VitalityDisplayCard({
               key={attr}
               className={`flex flex-col items-center justify-center rounded-md border-2 px-1 py-1 text-center ${
                 isProficient
-                  ? "border-teal-500 bg-teal-500/15"
+                  ? "border-teal-500 bg-background"
                   : "border-border bg-background"
               }`}
             >
@@ -254,16 +252,23 @@ export function VitalityDisplayCard({
         <button
           type="button"
           onClick={() => setProvenanceTarget("proficiency_bonus")}
-          className="flex flex-col items-center justify-center rounded-md border border-border bg-secondary/30 px-1 py-1 text-center transition-colors hover:bg-secondary/50"
+          // Phase 8.3g v4 (Mashu 2026-07-28): "For
+          // proficiency bonus card make it like the
+          // attribute cards the bg, just text teal."
+          // Same border-border bg-background as the
+          // other 3 attribute cells; just the text inside
+          // is teal so it still reads as the "special"
+          // cell.
+          className="flex flex-col items-center justify-center rounded-md border-2 border-border bg-background px-1 py-1 text-center transition-colors hover:bg-secondary/40"
           aria-label="Show proficiency bonus provenance"
         >
-          <span className="text-[9px] font-semibold uppercase text-muted-foreground">
+          <span className="text-[9px] font-semibold uppercase text-teal-700 dark:text-teal-300">
             PROF
           </span>
-          <span className="mt-0.5 font-mono text-sm font-bold tabular-nums">
+          <span className="mt-0.5 font-mono text-sm font-bold tabular-nums text-teal-700 dark:text-teal-200">
             {fmt(pb)}
           </span>
-          <span className="text-[9px] text-muted-foreground">PB</span>
+          <span className="text-[9px] text-teal-700/80 dark:text-teal-300/80">PB</span>
         </button>
       </div>
 

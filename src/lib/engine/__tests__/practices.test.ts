@@ -136,22 +136,35 @@ describe("getPracticeAttribute", () => {
 });
 
 describe("getPracticeSlice", () => {
-  it("returns explicit slice if set", () => {
+  // Phase 8.3g v4 (Mashu 2026-07-28): the "slice" is
+  // now the FULL attribute value, not a sub-share. So
+  // every practice under an attribute gets the same
+  // base. The slices map is ignored.
+  it("returns the full attribute value (no split)", () => {
     const r = getPracticeSlice(
       "prowess",
       { physical: 5, mental: 3, magical: 2 },
       { prowess: 4 },
     );
-    expect(r).toBe(4);
+    expect(r).toBe(5);
   });
 
-  it("falls back to auto-distribution if not set", () => {
+  it("returns the full attribute even with empty slices", () => {
     const r = getPracticeSlice(
       "prowess",
       { physical: 5, mental: 3, magical: 2 },
       {},
     );
-    expect(r).toBe(2);
+    expect(r).toBe(5);
+  });
+
+  it("all practices under an attribute share the same base", () => {
+    const attrs = { physical: 5, mental: 3, magical: 2 };
+    expect(getPracticeSlice("prowess", attrs, {})).toBe(5);
+    expect(getPracticeSlice("finesse", attrs, {})).toBe(5);
+    expect(getPracticeSlice("fieldcraft", attrs, {})).toBe(5);
+    expect(getPracticeSlice("awareness", attrs, {})).toBe(3);
+    expect(getPracticeSlice("reason", attrs, {})).toBe(3);
   });
 });
 
@@ -187,45 +200,50 @@ describe("proficiencyBonus", () => {
 });
 
 describe("computePracticeModifierAtLevel", () => {
-  it("returns slice + PB when proficient", () => {
+  // Phase 8.3g v4 (Mashu 2026-07-28): practice =
+  //   attribute + PB (if proficient) + primitives
+  // All practices under the same attribute get the SAME
+  // attribute base (no split). The "slice" field is now
+  // the FULL attribute value.
+  it("returns attribute + PB when proficient", () => {
     const r = computePracticeModifierAtLevel(
       "prowess",
       { physical: 5, mental: 3, magical: 2 },
-      { prowess: 2 },
+      { prowess: 2 }, // slices ignored now
       "PHYSICAL",
       1,
       new Map(),
     );
-    expect(r.slice).toBe(2);
+    expect(r.slice).toBe(5); // full attribute
     expect(r.pbContribution).toBe(STARTING_PB);
-    expect(r.total).toBe(2 + STARTING_PB);
+    expect(r.total).toBe(5 + STARTING_PB);
   });
 
-  it("returns only slice when not proficient", () => {
+  it("returns only attribute when not proficient", () => {
     const r = computePracticeModifierAtLevel(
       "prowess",
       { physical: 5, mental: 3, magical: 2 },
       { prowess: 2 },
-      "MENTAL",
+      "MENTAL", // NOT proficient
       1,
       new Map(),
     );
     expect(r.pbContribution).toBe(0);
-    expect(r.total).toBe(2);
+    expect(r.total).toBe(5);
   });
 
   it("PB applies to ALL practices under proficient attribute", () => {
-    const slices = { prowess: 2, finesse: 2, fieldcraft: 1 };
     for (const practice of ["prowess", "finesse", "fieldcraft"] as const) {
       const r = computePracticeModifierAtLevel(
         practice,
         { physical: 5, mental: 3, magical: 2 },
-        slices,
+        { prowess: 2, finesse: 2, fieldcraft: 1 },
         "PHYSICAL",
         1,
         new Map(),
       );
       expect(r.pbContribution).toBe(STARTING_PB);
+      expect(r.total).toBe(5 + STARTING_PB);
     }
   });
 
@@ -243,7 +261,7 @@ describe("computePracticeModifierAtLevel", () => {
       primMap,
     );
     expect(r.primitiveContributions).toHaveLength(2);
-    expect(r.total).toBe(2 + STARTING_PB + 1 + 1);
+    expect(r.total).toBe(5 + STARTING_PB + 1 + 1);
   });
 });
 

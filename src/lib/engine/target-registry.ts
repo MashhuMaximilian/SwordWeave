@@ -247,36 +247,14 @@ export function resolveMaxVitality(
 // =============================================================================
 // Best practice totals
 // =============================================================================
-
-/**
- * Best practice totals — used by the Quick Practices bar. Each
- * practice contributes its slice to the attribute's "best" total.
- *
- *   practiceTotal = Math.floor((attr - 10) / 2) + PB (if proficient)
- *                   + max(practice contribution across all 3 practices)
- *
- * Per Mashu 2026-07-28: practices are sliced per attribute. We
- * compute the best slice (highest) and add it to the modifier.
- *
- * NOTE: The actual practice slice values come from the DB (via
- * `src/lib/engine/practices.ts`). This function expects the caller
- * to pass them in via `practiceSlices`. If you don't have them
- * yet, pass zeros — the result is just `attributeModifier +
- * (PB if proficient)`.
- */
-export function resolveBestPracticeTotal(
-  input: ResolvedCharacterInput,
-  attr: Attribute,
-  practiceSlices: { physical: number; mental: number; magical: number },
-): { total: number; contributions: readonly ModifierContribution[] } {
-  const mod = resolveAttributeModifier(input, attr);
-  const pb = input.proficientAttribute === attr ? input.pb : 0;
-  const bestSlice = Math.max(practiceSlices[attr], 0);
-  return {
-    total: mod.total + pb + bestSlice,
-    contributions: mod.contributions,
-  };
-}
+//
+// Phase 8.3g v4 (Mashu 2026-07-28): REMOVED.
+// `resolveBestPracticeTotal` was used to compute a "best practice" that
+// included the highest slice across the 3 practices of an attribute.
+// With the new model (each practice = full attribute + PB + primitives),
+// that's redundant — every practice under the same attribute has the
+// same base. The PracticeRow data is computed in
+// `src/lib/engine/practices.ts` and surfaced directly in the sheet.
 
 // =============================================================================
 // Helper: pick out the modifiers targeting a specific target

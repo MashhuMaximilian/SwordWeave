@@ -1715,12 +1715,25 @@ function PracticeColumn({
                 <button
                   type="button"
                   onClick={() => onOpen(p)}
+                  // Phase 8.3g v4 (Mashu 2026-07-28):
+                  // "in the practices card make the
+                  // proficient practices text teal (not
+                  // BG, not the name, just the modifiers)."
+                  // Only the modifier number goes teal
+                  // when the column is proficient. Name
+                  // + background stay regular.
                   className="flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-sm transition-colors hover:bg-secondary"
                 >
                   <span className="flex min-w-0 items-center gap-1.5">
                     <span className="truncate">{displayName}</span>
                   </span>
-                  <span className="shrink-0 font-mono text-sm font-bold tabular-nums">
+                  <span
+                    className={`shrink-0 font-mono text-sm font-bold tabular-nums ${
+                      proficient
+                        ? "text-teal-700 dark:text-teal-200"
+                        : "text-foreground"
+                    }`}
+                  >
                     {p.total >= 0 ? "+" : ""}
                     {p.total}
                   </span>

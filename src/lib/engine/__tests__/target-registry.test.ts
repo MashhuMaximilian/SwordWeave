@@ -18,7 +18,6 @@ import {
   VITALITY_TARGETS,
   resolveAllSaves,
   resolveAttributeModifier,
-  resolveBestPracticeTotal,
   resolveMaxVitality,
   resolveSaveDc,
   resolveSaveValue,
@@ -345,40 +344,11 @@ describe("resolveMaxVitality", () => {
 });
 
 // =============================================================================
-// resolveBestPracticeTotal
+// resolveBestPracticeTotal — REMOVED Phase 8.3g v4
 // =============================================================================
-
-describe("resolveBestPracticeTotal", () => {
-  it("returns attr mod + PB (if proficient) + best practice slice", () => {
-    const input: ResolvedCharacterInput = {
-      ...TESSY,
-      proficientAttribute: "physical",
-      slots: [],
-    };
-    const r = resolveBestPracticeTotal(input, "physical", {
-      physical: 4,
-      mental: 2,
-      magical: 1,
-    });
-    // Phase 8.3g: PHYS slice 5 + PB 6 + best phys slice 4 = 15
-    expect(r.total).toBe(15);
-  });
-
-  it("does NOT add PB when not proficient", () => {
-    const input: ResolvedCharacterInput = {
-      ...TESSY,
-      proficientAttribute: "mental",
-      slots: [],
-    };
-    const r = resolveBestPracticeTotal(input, "physical", {
-      physical: 4,
-      mental: 2,
-      magical: 1,
-    });
-    // PHYS slice 5 + 0 PB (not proficient) + 4 = 9
-    expect(r.total).toBe(9);
-  });
-});
+//
+// The "best practice" concept is gone. Each practice = full attribute
+// + PB (if proficient) + primitives. See practices.ts.
 
 // =============================================================================
 // contributionsForTarget

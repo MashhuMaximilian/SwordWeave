@@ -6,9 +6,11 @@
  *   - Physical: Prowess, Finesse, Fieldcraft
  *   - Mental: Awareness, Reason, Knowledge, Influence
  *   - Magical: Mysticism, Communion, Intuition
- * - Attributes sum to exactly 10; each is distributed across its sub-practices
+ * - Attributes sum to exactly 10; each is in [-1, +5]
  * - PB applies to ALL practices under a proficient attribute
- * - Practice roll-up: slice + PB + sum(primitive bonuses)
+ * - Practice roll-up: attribute + PB (if proficient) + sum(primitive bonuses)
+ *   — Phase 8.3g v4 (Mashu 2026-07-28): there is NO split across
+ *     practices. Each practice gets the FULL attribute value.
  * - DC = 5 + relevant attribute + PB (attr prof only)
  *
  * Pure functions, no DB dependency.
@@ -56,7 +58,11 @@ export type Attributes = {
 
 export type PracticeModifierBreakdown = {
   readonly practice: Practice;
+  readonly attribute: Attribute;
   readonly total: number;
+  /** The attribute contribution (= the FULL attribute value,
+   *  not a sub-share). Field name kept as "slice" for
+   *  backward compatibility with tests / sheet callers. */
   readonly slice: number;
   readonly pbContribution: number;
   readonly primitiveContributions: ReadonlyArray<{
@@ -111,6 +117,12 @@ export function validateAttributes(attrs: Attributes): {
 /**
  * Validate that practice slices for an attribute sum to the attribute value,
  * and each slice is >= MIN_SLICE.
+ *
+ * NOTE: Phase 8.3g v4 (Mashu 2026-07-28) — this validation is now purely
+ * informational and may not match the per-practice modifier calculation
+ * (which uses the FULL attribute, not a slice share). It is kept for
+ * the editor where the player manually distributes "slice points"
+ * across practices.
  */
 export function validatePracticeSlicesForAttribute(
   attribute: Attribute,
@@ -140,16 +152,29 @@ export function validatePracticeSlicesForAttribute(
   return { valid: errors.length === 0, errors, sum };
 }
 
-// =============================================================================
-// Slice distribution
-// =============================================================================
+/**
+ * Get the parent attribute of a practice.
+ */
+export function getPracticeAttribute(practice: Practice): Attribute {
+  for (const attr of ["PHYSICAL", "MENTAL", "MAGICAL"] as const) {
+    if (PRACTICE_ATTRIBUTE_MAP[attr].includes(practice as never)) {
+      return attr;
+    }
+  }
+  throw new Error(`Unknown practice: ${practice}`);
+}
 
 /**
- * Default auto-distribution when player hasn't manually set slices.
+ * DEFAULT auto-distribution of an attribute value across its practices.
  *
- * Strategy: spread positive value evenly; for odd remainders, give +1 to
- * practices in order (prowess → finesse → fieldcraft, etc.)
+ * Phase 8.3g v4 (Mashu 2026-07-28): kept for the editor where the
+ * player manually distributes "slice points" across an attribute's
+ * practices. This is NOT used by the practice modifier calculation
+ * anymore — every practice under an attribute gets the FULL attribute
+ * value, not a sub-share.
  *
+ * Strategy: spread positive value evenly; for odd remainders, give +1
+ * to practices in order (prowess → finesse → fieldcraft, etc.)
  * Negative values: put all -1 into the first practice.
  *
  * Example: Physical +5 → { prowess: 2, finesse: 2, fieldcraft: 1 }
@@ -187,74 +212,54 @@ export function distributeAttributeSlices(
   return result;
 }
 
+// =============================================================================
+// Practice modifier (Phase 8.3g v4 — no slice split)
+// =============================================================================
+//
+// Phase 8.3g v4 (Mashu 2026-07-28): reclaimed the old "slice" concept.
+// Mashu: "Ok so for practices we have something old. You have the
+// slice thing. That is old. I tried to tell you again and again and
+// again. For a practice, the modifier is attribute + proficiency
+// bonus if proficient + primitives where it's the case. There is
+// nothing split."
+//
+//   practice_total = attribute[practice] + (PB if proficient) + sum(primitives)
+//
+// The "slice" field is now the FULL attribute value (not a share).
+// Each practice under the same attribute has the same base, plus
+// or minus primitive contributions. They are NOT split.
+//
+// Example: PHYS+5, not proficient, no primitives
+//   prowess=5, finesse=5, fieldcraft=5  (NOT 2+2+1)
+//
+// Example: MENT+5, proficient, Psychic Firewall (+1 defense_dc.mental
+//   doesn't affect practice; ignore for example)
+//   awareness=5+6=11, reason=11, knowledge=11, influence=11
+//
+// The slices map is ignored for the per-practice modifier calculation;
+// it is kept for the editor where the player decides how to spread
+// slice points (informational only).
+
 /**
- * Compute the slice for a single practice given its attribute's total value
- * and the player's chosen slices.
- *
- * Defaults to auto-distribution if not specified.
+ * The "slice" of a practice = the FULL attribute modifier,
+ * not a sub-share. Phase 8.3g v4 (Mashu 2026-07-28):
+ * "the modifier is attribute + proficiency bonus if proficient +
+ * primitives where it's the case. There is nothing split."
  */
 export function getPracticeSlice(
   practice: Practice,
   attributes: Attributes,
-  slices: PracticeSlices,
+  _slices: PracticeSlices,
 ): number {
-  const attribute = getPracticeAttribute(practice);
-  const attrValue = attributes[attribute.toLowerCase() as keyof Attributes];
-
-  const explicit = slices[practice];
-  if (explicit !== undefined) return explicit;
-
-  // Fall back to auto-distribution
-  const auto = distributeAttributeSlices(attribute, attrValue);
-  return auto[practice];
+  const practiceAttribute = getPracticeAttribute(practice);
+  return attributes[practiceAttribute.toLowerCase() as keyof Attributes];
 }
 
 /**
- * Get the parent attribute of a practice.
- */
-export function getPracticeAttribute(practice: Practice): Attribute {
-  for (const attr of ["PHYSICAL", "MENTAL", "MAGICAL"] as const) {
-    if (PRACTICE_ATTRIBUTE_MAP[attr].includes(practice as never)) {
-      return attr;
-    }
-  }
-  throw new Error(`Unknown practice: ${practice}`);
-}
-
-// =============================================================================
-// Proficiency Bonus
-// =============================================================================
-
-export const STARTING_PB = 2;
-export const PB_PER_LEVEL_INTERVAL = 4;
-export const MAX_PB = 10;
-
-/**
- * Compute PB for a given level.
- * L1-3: +2, L5-7: +3, L9-11: +4, L13-15: +5, L17-19: +6, L20: +6
- * Wait — canonical D&D-style is +2, +3, +4, +5, +6 at L1, L5, L9, L13, L17.
- * Per Notion, "PB = +2 at L1, +1 every 4 levels" so L1=2, L5=3, L9=4, L13=5, L17=6.
- * Capped at MAX_PB.
- */
-export function proficiencyBonus(level: number): number {
-  if (level < 1) return 0;
-  const pb = STARTING_PB + Math.floor((level - 1) / PB_PER_LEVEL_INTERVAL);
-  return Math.min(pb, MAX_PB);
-}
-
-// =============================================================================
-// Practice roll-up
-// =============================================================================
-
-/**
- * Compute the total modifier for a practice check.
+ * Compute the practice modifier for a single practice.
  *
- * @param practice The practice being rolled
- * @param attributes Character's attribute scores
- * @param slices Practice slice distribution
- * @param attrProficient The character's proficient attribute (if any)
- * @param primitiveBonuses Map of primitiveId → +N bonus for this practice
- * @returns PracticeModifierBreakdown with total + per-component details
+ * Phase 8.3g v4 (Mashu 2026-07-28): practice =
+ *   attribute + PB (if proficient) + primitives
  */
 export function computePracticeModifier(
   practice: Practice,
@@ -266,13 +271,11 @@ export function computePracticeModifier(
     { readonly name: string; readonly bonus: number }
   > = new Map(),
 ): PracticeModifierBreakdown {
+  const attribute = getPracticeAttribute(practice);
   const slice = getPracticeSlice(practice, attributes, slices);
-  const practiceAttribute = getPracticeAttribute(practice);
 
   // PB applies to ALL practices under the proficient attribute
-  const isProficient = attrProficient === practiceAttribute;
-  const pb = isProficient ? proficiencyBonus(1) /* placeholder */ : 0;
-  // Use PB=2 at L1 for now; for proper PB use computePracticeModifierAtLevel
+  const isProficient = attrProficient === attribute;
   const pbContribution = isProficient ? STARTING_PB : 0;
 
   const primitiveContributions = Array.from(primitiveBonuses.entries()).map(
@@ -292,11 +295,14 @@ export function computePracticeModifier(
     slice,
     pbContribution,
     primitiveContributions,
+    attribute,
   };
 }
 
 /**
  * Compute practice modifier with explicit PB (for level-aware calculations).
+ * Phase 8.3g v4 (Mashu 2026-07-28): same formula as
+ * computePracticeModifier but uses level-scaled PB.
  */
 export function computePracticeModifierAtLevel(
   practice: Practice,
@@ -309,9 +315,9 @@ export function computePracticeModifierAtLevel(
     { readonly name: string; readonly bonus: number }
   > = new Map(),
 ): PracticeModifierBreakdown {
+  const attribute = getPracticeAttribute(practice);
   const slice = getPracticeSlice(practice, attributes, slices);
-  const practiceAttribute = getPracticeAttribute(practice);
-  const isProficient = attrProficient === practiceAttribute;
+  const isProficient = attrProficient === attribute;
   const pb = proficiencyBonus(level);
   const pbContribution = isProficient ? pb : 0;
 
@@ -332,6 +338,7 @@ export function computePracticeModifierAtLevel(
     slice,
     pbContribution,
     primitiveContributions,
+    attribute,
   };
 }
 
@@ -363,6 +370,27 @@ export function computeAllPracticeModifiers(
       primitiveBonuses,
     ),
   );
+}
+
+// =============================================================================
+// Proficiency Bonus
+// =============================================================================
+
+export const STARTING_PB = 2;
+export const PB_PER_LEVEL_INTERVAL = 4;
+export const MAX_PB = 10;
+
+/**
+ * Compute PB for a given level.
+ * L1-3: +2, L5-7: +3, L9-11: +4, L13-15: +5, L17-19: +6, L20: +6
+ * Wait — canonical D&D-style is +2, +3, +4, +5, +6 at L1, L5, L9, L13, L17.
+ * Per Notion, "PB = +2 at L1, +1 every 4 levels" so L1=2, L5=3, L9=4, L13=5, L17=6.
+ * Capped at MAX_PB.
+ */
+export function proficiencyBonus(level: number): number {
+  if (level < 1) return 0;
+  const pb = STARTING_PB + Math.floor((level - 1) / PB_PER_LEVEL_INTERVAL);
+  return Math.min(pb, MAX_PB);
 }
 
 // =============================================================================

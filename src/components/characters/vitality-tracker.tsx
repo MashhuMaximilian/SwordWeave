@@ -276,7 +276,7 @@ export function VitalityTracker({
             pending || restPending !== null || optimisticCurrent === 0
           }
           className={cn(
-            "inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-destructive/50 bg-destructive/10 font-medium text-destructive transition-colors hover:bg-destructive/20 disabled:cursor-not-allowed disabled:opacity-50",
+            "inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-destructive/60 bg-destructive/25 font-medium text-destructive transition-colors hover:bg-destructive/35 disabled:cursor-not-allowed disabled:opacity-70",
             compact ? "px-1.5 py-1 text-[11px]" : "px-2 py-1 text-xs",
           )}
           aria-label="Apply damage"
@@ -291,7 +291,7 @@ export function VitalityTracker({
             pending || restPending !== null || optimisticCurrent >= max
           }
           className={cn(
-            "inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-green-600/50 bg-green-500/10 font-medium text-green-700 transition-colors hover:bg-green-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:text-green-400",
+            "inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-green-600/60 bg-green-500/25 font-medium text-green-700 transition-colors hover:bg-green-500/35 disabled:cursor-not-allowed disabled:opacity-70 dark:text-green-400",
             compact ? "px-1.5 py-1 text-[11px]" : "px-2 py-1 text-xs",
           )}
           aria-label="Apply healing"
@@ -306,7 +306,7 @@ export function VitalityTracker({
             pending || restPending !== null || optimisticCurrent === max
           }
           className={cn(
-            "inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-border bg-secondary font-medium transition-colors hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50",
+            "inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-border bg-secondary font-medium transition-colors hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-70",
             compact ? "px-1.5 py-1 text-[11px]" : "px-2 py-1 text-xs",
           )}
           aria-label="Long rest"
@@ -322,11 +322,11 @@ export function VitalityTracker({
             pending || restPending !== null || optimisticCurrent === max
           }
           className={cn(
-            "inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-border bg-secondary font-medium transition-colors hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50",
+            "inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-border bg-secondary font-medium transition-colors hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-70",
             compact ? "px-1.5 py-1 text-[11px]" : "px-2 py-1 text-xs",
           )}
           aria-label="Short rest"
-          title="Short rest: restore 50% of missing vitality (rounded up)"
+          title="Short rest: restore 50% of max vitality"
         >
           <Coffee className="size-3" />
           {restPending === "short" ? "Resting…" : "Short rest"}
