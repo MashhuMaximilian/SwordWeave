@@ -17,6 +17,10 @@ export * from "./bu-debt";
 // and adds per-target attribution for the click-through
 // provenance modal.
 export * from "./resolve-modifiers";
+// Phase 8.3f S2 (Mashu 2026-07-28): canonical target registry.
+// Single source of truth for ModifierTarget constants and the
+// save/DC/vitality formulas.
+export * from "./target-registry";
 
 // Practices — explicit imports to avoid clashes with stats.
 // We choose the PRACTICES versions for these (newer, more complete):
