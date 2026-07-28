@@ -82,6 +82,16 @@ export interface HeritageBundleViewProps {
    * (originHeritageId === this heritageId).
    */
   slottedPrimIds: ReadonlySet<number>;
+  /**
+   * Phase 8.3g (Mashu 2026-07-28): hide the "BUNDLED PRIMITIVES"
+   * section that renders `canonPrims` inline inside the
+   * heritage view. The on-sheet Capabilities tab already has
+   * a single Primitives accordion that lists every slotted
+   * primitive (with provenance) — so showing them again
+   * inside each heritage's card is redundant. Defaults to
+   * false. The character-modal builder passes `true`.
+   */
+  showPrimitives?: boolean;
 }
 
 interface FullHeritageBundle {
@@ -128,6 +138,17 @@ export function HeritageBundleView({
   canonPrims,
   slottedCapIds,
   slottedPrimIds,
+  /**
+   * Phase 8.3g (Mashu 2026-07-28): hide the "BUNDLED PRIMITIVES"
+   * section. Per the PDF Q8: "We don't show primitives in
+   * capabilities or effects, only in primitives accordion."
+   * The Primitives accordion at the top of the Capabilities
+   * tab already shows every slotted primitive. Defaults to
+   * `false` (hide) so the on-sheet accordion doesn't duplicate.
+   * The character-modal builder passes `true` because that
+   * modal has no separate Primitives section.
+   */
+  showPrimitives = false,
 }: HeritageBundleViewProps) {
   const [bundle, setBundle] = useState<FullHeritageBundle | null>(null);
   const [loading, setLoading] = useState(false);
@@ -456,8 +477,17 @@ export function HeritageBundleView({
           </div>
         )}
 
-        {/* BUNDLED PRIMITIVES — direct heritage primitives */}
-        {canonPrims.length > 0 && (
+        {/* BUNDLED PRIMITIVES — direct heritage primitives.
+            Phase 8.3g (Mashu 2026-07-28): hidden by default
+            (`showPrimitives={false}`). Per the PDF Q8:
+            "We don't show primitives in capabilities or
+            effects, only in primitives accordion." The
+            Primitives accordion at the top of the
+            Capabilities tab shows every slotted primitive
+            with provenance. The character-modal builder
+            passes `showPrimitives={true}` because that
+            modal has no separate Primitives section. */}
+        {showPrimitives && canonPrims.length > 0 && (
           <div>
             <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               Primitives ({canonPrims.length})

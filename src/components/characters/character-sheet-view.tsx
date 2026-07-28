@@ -818,13 +818,6 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           magical: resolver.totals["character.attribute.magical"] ?? 0,
         }}
         resolver={resolver}
-        practices={props.practices.map((p) => ({
-          practice: p.practice,
-          attribute: p.attribute as "PHYSICAL" | "MENTAL" | "MAGICAL",
-          total: p.total,
-          pbContribution: p.pbContribution,
-          proficient: p.attribute === props.attrProficient,
-        }))}
       />
     </div>
   );

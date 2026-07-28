@@ -19,14 +19,6 @@ export interface AttributeModifiersForSticky {
   readonly magical: number;
 }
 
-export interface PracticeRowForSticky {
-  readonly practice: string;
-  readonly attribute: "PHYSICAL" | "MENTAL" | "MAGICAL";
-  readonly total: number;
-  readonly pbContribution: number;
-  readonly proficient: boolean;
-}
-
 export interface BottomStickyBarProps {
   readonly characterId: string;
   readonly currentVitality: number | null;
@@ -50,7 +42,17 @@ export interface BottomStickyBarProps {
    * only (legacy fallback for tests).
    */
   readonly resolver?: ResolvedModifiers;
-  readonly practices: ReadonlyArray<PracticeRowForSticky>;
+  /**
+   * Phase 8.3g (Mashu 2026-07-28): practices list was removed.
+   * The quick bar no longer shows individual practices — just
+   * per-attribute modifier + save value. Use the in-page
+   * Practices card on the Overview tab to see the full list.
+   */
+  readonly practices?: never;
+  // Keep PracticeRowForSticky as an exported type so existing
+  // import sites don't break (the type was exported but never
+  // referenced outside the bar).
+  readonly __practiceRowForStickyCompat?: never;
 }
 
 export function BottomStickyBar({
@@ -64,7 +66,6 @@ export function BottomStickyBar({
   proficientAttribute,
   attributeModifiers,
   resolver,
-  practices,
 }: BottomStickyBarProps) {
   const [hydrated, setHydrated] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -75,39 +76,59 @@ export function BottomStickyBar({
 
   if (!hydrated) return null;
 
-  // Phase 8.3f S4 (Mashu 2026-07-28): the resolver returns the
-  // FINAL per-attribute modifier (raw + primitive contributions
-  // + mirror flips). We just use it directly. Fallback to the
-  // old formula if no resolver was provided (shouldn't happen
-  // after S4 ships, but defensive for the test suite).
-  const physMod = attributeModifiers?.physical ?? Math.floor((physical - 10) / 2);
-  const mentMod = attributeModifiers?.mental ?? Math.floor((mental - 10) / 2);
-  const magiMod = attributeModifiers?.magical ?? Math.floor((magical - 10) / 2);
+  // Phase 8.3g (Mashu 2026-07-28): the resolver returns the
+  // FINAL per-attribute modifier (slice + primitive
+  // contributions + mirror flips). We just use it directly.
+  const physMod = attributeModifiers?.physical ?? physical;
+  const mentMod = attributeModifiers?.mental ?? mental;
+  const magiMod = attributeModifiers?.magical ?? magical;
 
   const phys = physMod >= 0 ? `+${physMod}` : `${physMod}`;
   const ment = mentMod >= 0 ? `+${mentMod}` : `${mentMod}`;
   const magi = magiMod >= 0 ? `+${magiMod}` : `${magiMod}`;
   const pbDisplay = pb >= 0 ? `+${pb}` : `${pb}`;
 
+  // Phase 8.3g: per-attribute save values. PB only for proficient.
+  // The save value uses the same formula as the in-page vitality
+  // card: mod + PB (if proficient) + primitives@SAVE.
+  function saveFor(attr: "physical" | "mental" | "magical", mod: number): number {
+    const isProf = proficientAttribute?.toLowerCase() === attr;
+    const base = mod + (isProf ? pb : 0);
+    const prim =
+      resolver?.totals[
+        `character.defense.${attr}Dc`
+      ] ?? 0;
+    return base + prim;
+  }
+  const physSave = saveFor("physical", physMod);
+  const mentSave = saveFor("mental", mentMod);
+  const magiSave = saveFor("magical", magiMod);
+
+  // Phase 8.3g: ONE save DC (from the proficient attribute).
+  const primaryAttr: "physical" | "mental" | "magical" =
+    (proficientAttribute?.toLowerCase() as
+      | "physical" | "mental" | "magical" | undefined) ?? "physical";
+  const primaryMod =
+    primaryAttr === "physical" ? physMod : primaryAttr === "mental" ? mentMod : magiMod;
+  const primarySaveDelta =
+    resolver?.totals[`character.defense.${primaryAttr}Dc`] ?? 0;
+  const primaryDc = 5 + pb + primaryMod + primarySaveDelta;
+  const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
+
   return (
     <div
       // Phase 8.4 v4 (Mashu 2026-07-28): bar at bottom-12 (48px)
-      // so it sits directly on top of the tabs (which are at
-      // bottom-0, ~48px tall). Mashu 2026-07-28: "Bar maybe at
-      // bottom 12 or 10? It should sit directly on the tabs."
-      // z-index: z-30 (BELOW FAB's z-40) so the FAB stays on top
-      // when the bar is collapsed. The expanded drawer has its
-      // own z-50 wrapper below so when expanded, the drawer
-      // overlays the FAB. Mashu 2026-07-28: "Quick bar collaosed
-      // should be beneath fab in z index, but expanded above it
-      // in z index (so we can make quick bar header the collapsed
-      // one have different z index than the expanded part below
-      // header)."
+      // so it sits directly on top of the tabs. The bar is
+      // ALWAYS visible (collapsed = just the bar, expanded = bar
+      // + drawer above it). Mashu 2026-07-28: "Quick bar
+      // should've been on top of drawer."
       className="fixed bottom-12 left-0 right-0 z-30 border-t border-border bg-background/95 backdrop-blur-md md:hidden"
       data-testid="bottom-sticky-bar"
       data-expanded={expanded}
     >
-      {/* Collapsed row */}
+      {/* Collapsed row — stays visible whether expanded or not.
+          Per Phase 8.3g: shows vitality + DC + attribute mod
+          pills. Click to expand; click again to collapse. */}
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
@@ -119,6 +140,10 @@ export function BottomStickyBar({
           <span className="flex items-center gap-1 font-mono font-semibold text-foreground">
             <Heart className="size-3.5 text-rose-500" />
             {currentVitality ?? maxVitality}/{maxVitality}
+          </span>
+          <span className="text-muted-foreground">·</span>
+          <span className="font-mono">
+            DC {primaryDc}
           </span>
           <span className="text-muted-foreground">·</span>
           <span className="font-mono">
@@ -134,38 +159,17 @@ export function BottomStickyBar({
         )}
       </button>
 
-      {/* Expanded drawer — Phase 8.4 v5 (Mashu 2026-07-28):
-          - Removed the duplicate "VITALITY: 78/73" header (the
-            collapsed bar already shows it).
-          - Full viewport width (no pr-16 padding) so the 4 vitality
-            buttons and the 3-column practice grid use the full
-            horizontal space.
-          - 3-column practice grid (Physical + Mental + Magical
-            side-by-side) instead of the previous 2-column +
-            Magical-below layout. Mashu 2026-07-28: "Let's make 3
-            columns for the quick practices here and see if it
-            works."
-          - Wrapped in a z-50 fixed-positioned overlay so the
-            expanded drawer sits ABOVE the FAB (z-40). The bar
-            header itself stays at z-30 (below FAB). Mashu
-            2026-07-28: "Quick bar collaosed should be beneath fab
-            in z index, but expanded above it in z index."
-          - Positioned at bottom-24 (96px) so the drawer's
-            bottom edge sits at the TOP of the bar (which is
-            at bottom-12 / 48px + ~48px tall = 96px). The
-            drawer no longer overlays the bar visually —
-            they're stacked with the drawer above the bar.
-            Mashu 2026-07-28: "When I expand quick bar it has
-            open space and we need to lower it to start on
-            top of the quick bar."
-          - Added pb-20 (80px) bottom padding so the last
-            practice row clears the FAB (at bottomOffset={56})
-            when the user scrolls within the drawer. Mashu
-            2026-07-28: "However we can use like some bottom
-            padding to not have the Fab overlap with the
-            modifiers." */}
+      {/* Expanded drawer — Phase 8.3g (Mashu 2026-07-28):
+          - Sits ABOVE the bar (the bar is the toggle/header).
+          - The 3 attribute chips each have 2 ROWS: mod on top,
+            save value below. NO separate SV chips. NO practices
+            list (dropped per Mashu 2026-07-28 X-through).
+          - One DC inline with the bar (always visible). */}
       {expanded ? (
         <div
+          // Sits above the bar (bottom-12 / 48px). The bar is
+          // ~28px tall so the drawer bottom = 48 + 28 = 76px
+          // from viewport bottom (bottom-[4.75rem]).
           className="fixed bottom-[4.75rem] left-0 right-0 z-50 border-t border-border bg-background/95 px-3 pb-2 pt-1 max-h-[60dvh] overflow-y-auto"
           data-testid="bottom-sticky-bar-drawer"
         >
@@ -178,111 +182,65 @@ export function BottomStickyBar({
             />
           </div>
 
-          {/* Phase 8.4 v5 (Mashu 2026-07-28): the Quick
-              Practices header now surfaces the attribute
-              modifier (raw + primitive delta) inline with the
-              title. Mashu 2026-07-28: "I want in line with
-              quick practices title the modifiers for
-              attributes and well as the proficiency bonus."
-              The previous version showed best practice totals,
-              which the user explicitly rejected. */}
+          {/* Phase 8.3g (Mashu 2026-07-28): each attribute is a
+              SINGLE chip with 2 ROWS — mod on top, save value
+              below. NO separate SV chips. The bar's collapsed
+              row already shows the same numbers; the chips
+              here are clickable for provenance (mod → mod
+              modal, save → save modal). The proficient
+              attribute is highlighted teal. */}
           <div>
-            <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
-              <span className="text-xs font-semibold uppercase text-muted-foreground">
-                Quick Practices
-              </span>
-              <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px] font-bold tabular-nums">
-                <span className="rounded bg-secondary px-1.5 py-0.5 text-foreground">
-                  PHYS {phys}
-                </span>
-                <span className="rounded bg-secondary px-1.5 py-0.5 text-foreground">
-                  MENT {ment}
-                </span>
-                <span className="rounded bg-secondary px-1.5 py-0.5 text-foreground">
-                  MAGI {magi}
-                </span>
-                <span className="rounded bg-primary/15 px-1.5 py-0.5 text-primary">
-                  PROF {pbDisplay} PB
-                </span>
-              </div>
-            </div>
-            {/* Phase 8.3f S5 (Mashu 2026-07-28): per-attribute
-                save values + save DCs, surfaced next to the
-                modifier pills above. Save VALUE = mod + PB (if
-                proficient) + primitive contributions. Save DC =
-                5 + PB + mod + primitive contributions. The
-                proficient attribute is highlighted in teal. The
-                quick bar is mobile-only (md:hidden) so this is
-                the only place mobile users see saves. */}
-            {resolver && (
-              <div className="mb-2 flex flex-wrap items-center gap-1.5 font-mono text-[10px] font-bold tabular-nums">
-                {(
-                  [
-                    { attr: "physical", label: "P SV", save: "character.defense.physicalDc" },
-                    { attr: "mental", label: "Me SV", save: "character.defense.mentalDc" },
-                    { attr: "magical", label: "Ma SV", save: "character.defense.magicalDc" },
-                  ] as const
-                ).map(({ attr, label, save }) => {
-                  const isProficient =
-                    proficientAttribute?.toLowerCase() === attr;
-                  const attrMod = resolver.totals[`character.attribute.${attr}`] ?? 0;
-                  const saveDelta = resolver.totals[save] ?? 0;
-                  const sv = attrMod + (isProficient ? pb : 0) + saveDelta;
-                  const dc = 5 + pb + attrMod + saveDelta;
-                  const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
-                  return (
-                    <span
-                      key={attr}
-                      className={`rounded px-1.5 py-0.5 ${
-                        isProficient
-                          ? "bg-teal-500/20 text-teal-700 dark:text-teal-300"
-                          : "bg-secondary text-foreground"
-                      }`}
-                      title={`${attr} save: value ${fmt(sv)}, DC ${dc}${
-                        isProficient ? " (proficient)" : ""
-                      }`}
-                    >
-                      {label} {fmt(sv)} / DC {dc}
+            <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+              Saves
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {(
+                [
+                  { attr: "physical", label: "PHYS", mod: physMod, save: physSave },
+                  { attr: "mental", label: "MENT", mod: mentMod, save: mentSave },
+                  { attr: "magical", label: "MAGI", mod: magiMod, save: magiSave },
+                ] as const
+              ).map(({ attr, label, mod: m, save: s }) => {
+                const isProf = proficientAttribute?.toLowerCase() === attr;
+                return (
+                  <div
+                    key={attr}
+                    className={`flex flex-col items-center justify-center rounded-md border px-2 py-1.5 ${
+                      isProf
+                        ? "border-teal-500/40 bg-teal-500/5"
+                        : "border-border bg-card"
+                    }`}
+                  >
+                    <span className="text-[9px] font-semibold uppercase text-muted-foreground">
+                      {label}
                     </span>
-                  );
-                })}
+                    <span className="font-mono text-base font-bold tabular-nums">
+                      {fmt(m)}
+                    </span>
+                    <span className="text-[9px] text-muted-foreground">mod</span>
+                    <span className="mt-1 font-mono text-sm font-semibold tabular-nums">
+                      {fmt(s)}
+                    </span>
+                    <span className="text-[9px] text-muted-foreground">save</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* DC card (single, big). Always shows primary DC
+                (from the proficient attribute). */}
+            <div className="mt-2 flex items-center justify-between rounded-md border border-border bg-card px-3 py-1.5">
+              <div>
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                  Save DC
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  (from {primaryAttr === "physical" ? "Physical" : primaryAttr === "mental" ? "Mental" : "Magical"} — proficient)
+                </p>
               </div>
-            )}
-            {/* Phase 8.4 v5 (Mashu 2026-07-28): wider gutter
-                between the middle column and the ones on left
-                and right. Mashu 2026-07-28: "we need a bit more
-                gutter/padding between the middle column and
-                the one on left and right." The previous
-                `gap-2` (8px) is replaced with `gap-x-3` (12px)
-                and `gap-y-0` so rows stack tight vertically.
-                Also `px-1.5` adds 6px horizontal padding
-                inside each column cell so names don't bump
-                against the cell border. */}
-            {/* Phase 8.4 v5 (Mashu 2026-07-28): gap-x-4
-                (16px) between columns so the middle column
-                has clear breathing room from left/right.
-                Mashu 2026-07-28: "we need a bit more
-                gutter/padding between the middle column and
-                the one on left and right." */}
-            <div className="grid grid-cols-3 gap-x-4 gap-y-0">
-              <PracticeColumn
-                attr="PHYSICAL"
-                label="Physical"
-                practices={practices}
-                proficientAttribute={proficientAttribute}
-              />
-              <PracticeColumn
-                attr="MENTAL"
-                label="Mental"
-                practices={practices}
-                proficientAttribute={proficientAttribute}
-              />
-              <PracticeColumn
-                attr="MAGICAL"
-                label="Magical"
-                practices={practices}
-                proficientAttribute={proficientAttribute}
-              />
+              <span className="font-mono text-xl font-bold tabular-nums">
+                {primaryDc}
+              </span>
             </div>
           </div>
         </div>
@@ -291,88 +249,3 @@ export function BottomStickyBar({
   );
 }
 
-function PracticeColumn({
-  attr,
-  label,
-  practices,
-  proficientAttribute,
-}: {
-  attr: "PHYSICAL" | "MENTAL" | "MAGICAL";
-  label: string;
-  practices: ReadonlyArray<PracticeRowForSticky>;
-  proficientAttribute: "PHYSICAL" | "MENTAL" | "MAGICAL" | null;
-}) {
-  const group = practices.filter((p) => p.attribute === attr);
-  if (group.length === 0) return null;
-  const isProficient = proficientAttribute === attr;
-  return (
-    <div className="space-y-0.5">
-      {/* Phase 8.4 v5 (Mashu 2026-07-28): column header now
-          shows ONLY the attribute name. The modifier is
-          surfaced in the Quick Practices title row above
-          (PHYS -3 | MENT -3 | MAGI -5 | PROF +6 PB) — no
-          need to repeat it per column. Mashu 2026-07-28:
-          "we have the tags with modifiers, but on columns
-          under each title we don't need them (crossed
-          red)." */}
-      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide">
-        <span
-          className={cn(
-            isProficient ? "text-teal-600 dark:text-teal-400" : "text-muted-foreground",
-          )}
-        >
-          {label}
-        </span>
-      </div>
-      <ul className="space-y-0.5">
-        {group
-          .sort((a, b) => b.total - a.total)
-          .map((p) => {
-            const total = p.total >= 0 ? `+${p.total}` : `${p.total}`;
-            // Mashu 2026-07-27: capitalize the first letter of the
-            // practice name. Source data is lowercase; we transform
-            // here. CSS `capitalize` is unreliable across environments
-            // so we do it in JS.
-            const displayName = p.practice.length > 0
-              ? p.practice.charAt(0).toUpperCase() + p.practice.slice(1)
-              : p.practice;
-            return (
-              <li
-                key={p.practice}
-                // Phase 8.4 (Mashu 2026-07-28): the practice name
-                // and the modifier need a small fixed gap so the
-                // eye can connect them. We use `gap-2` (8px) on the
-                // flex container which is wider than the natural
-                // 4px gap. The modifier is still right-aligned but
-                // no longer hugs the right edge — Mashu 2026-07-28:
-                // "modifiers should be closer to names not at the
-                // right edge of column, we need a padding of sorts".
-                className="flex items-center justify-between gap-2 text-xs"
-              >
-                <span
-                  className={cn(
-                    "truncate",
-                    isProficient
-                      ? "text-teal-600 dark:text-teal-400"
-                      : "text-foreground",
-                  )}
-                >
-                  {displayName}
-                </span>
-                <span
-                  className={cn(
-                    "shrink-0 font-mono font-semibold",
-                    isProficient
-                      ? "text-teal-600 dark:text-teal-400"
-                      : "text-foreground",
-                  )}
-                >
-                  {total}
-                </span>
-              </li>
-            );
-          })}
-      </ul>
-    </div>
-  );
-}
