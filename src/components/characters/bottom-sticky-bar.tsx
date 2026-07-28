@@ -37,11 +37,10 @@ export interface BottomStickyBarProps {
   readonly pb: number;
   readonly proficientAttribute: "PHYSICAL" | "MENTAL" | "MAGICAL" | null;
   /**
-   * Phase 8.3f S4 (Mashu 2026-07-28): final per-attribute modifier
-   * values (raw + primitive contributions) produced by the
-   * canonical resolver. The bar no longer recomputes
-   * `Math.floor((attr-10)/2) + primitiveDelta` — the resolver
-   * already handles that math + mirror flips + stacking.
+   * Final per-attribute modifier (raw slice + primitive
+   * contributions) produced by the canonical resolver. The
+   * bar no longer recomputes anything — the resolver
+   * already handles the math + mirror flips + stacking.
    */
   readonly attributeModifiers?: AttributeModifiersForSticky;
   /**

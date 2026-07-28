@@ -157,10 +157,10 @@ export async function GET(
     originEffectId: row.originEffectId,
   }));
 
-  // The DB stores attribute slices as 0-5 ints. The canonical
-  // formula Math.floor((attr - 10) / 2) treats them as D&D-style
-  // scores directly (PHYS=4 → -3, PHYS=5 → -2, etc.). We pass
-  // the slice count through unchanged.
+  // The DB stores attribute slices as -1..+5 ints (sum = 10,
+  // per characters_attr_sum_check). The slice IS the modifier
+  // directly (no D&D-style transform). We pass it through
+  // unchanged. See target-registry.ts:resolveAttributeModifier.
   const input = {
     characterId: id,
     level: charRow.level,

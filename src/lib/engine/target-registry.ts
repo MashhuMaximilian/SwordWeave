@@ -64,9 +64,17 @@ export type Attribute = "physical" | "mental" | "magical";
 /**
  * Resolve the **attribute modifier** for a given attribute.
  *
- *   modifier = Math.floor((attr - 10) / 2) + primitive contributions
+ *   modifier = slice + primitive contributions
  *
- * "primitive contributions" = sum of all HardModifier contributions
+ * IMPORTANT (Phase 8.3g, Mashu 2026-07-28): the DB stores attributes
+ * as **slices** in [-1, +5] (schema check constraint:
+ *   "characters_attr_sum_check": sum = 10, each ∈ [-1, 5])
+ * The slice IS the modifier — no D&D-style `(attr-10)/2` transform.
+ * Earlier code incorrectly applied the D&D formula to slice values,
+ * which gave `PHYS=5 → -3` (wrong) instead of `PHYS=5 → 5` (correct
+ * base, with primitive contributions added on top).
+ *
+ * "Primitive contributions" = sum of all HardModifier contributions
  * targeting `ATTR_TARGETS[attr]`, AFTER mirror flips and stacking.
  *
  * Returns the final integer (positive for high stats, negative for low).
@@ -77,7 +85,8 @@ export function resolveAttributeModifier(
   input: ResolvedCharacterInput,
   attr: Attribute,
 ): { total: number; contributions: readonly ModifierContribution[] } {
-  const base = Math.floor((input.attributes[attr] - 10) / 2);
+  // Phase 8.3g: slices are the base modifier directly. No division.
+  const base = input.attributes[attr];
   const r = resolveModifiers(input);
   const primitives = r.totals[ATTR_TARGETS[attr]] ?? 0;
   const contributions = r.byTarget[ATTR_TARGETS[attr]] ?? [];
@@ -142,8 +151,37 @@ export function resolveSaveDc(
 }
 
 /**
+ * Resolve the **primary save DC** (the single DC for the character,
+ * derived from the proficient attribute).
+ *
+ *   dc = 5 + PB + (proficient attribute modifier) + primitive contributions
+ *
+ * IMPORTANT (Phase 8.3g, Mashu 2026-07-28): the character has ONE save
+ * DC, not three. The DC is computed from the **proficient** attribute
+ * (the one that adds PB to saves). If `proficientAttribute` is null,
+ * falls back to physical.
+ *
+ * Primitive contributions are taken from `SAVE_TARGETS[proficientAttr]`
+ * — primitives that target the specific attribute's defense.
+ *
+ * Used by the Vitality card and Quick bar to display the single DC
+ * inline with the vitality number.
+ */
+export function resolvePrimarySaveDc(
+  input: ResolvedCharacterInput,
+): { total: number; contributions: readonly ModifierContribution[]; attr: Attribute } {
+  const attr: Attribute = input.proficientAttribute ?? "physical";
+  return {
+    attr,
+    ...resolveSaveDc(input, attr),
+  };
+}
+
+/**
  * Resolve all three saves at once. Used by the Vitality card and
- * the Quick Practices bar.
+ * the Quick Practices bar. NOTE: the per-attribute DC values are
+ * exposed for debugging, but the **primary** save DC (for the
+ * character) is always `resolvePrimarySaveDc()`'s output.
  */
 export function resolveAllSaves(
   input: ResolvedCharacterInput,

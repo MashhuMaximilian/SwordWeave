@@ -29,11 +29,12 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { DetailModal } from "@/components/ui/detail-modal";
+import type { HardModifier } from "@/types/swordweave";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
 import { OriginBadge } from "@/components/characters/origin-badge";
 import { VitalityTracker } from "@/components/characters/vitality-tracker";
-import { SavesCard } from "@/components/characters/saves-card";
+import { VitalityDisplayCard } from "@/components/characters/vitality-display-card";
 import { CapabilityCard } from "@/components/characters/capability-card";
 import { ItemCard } from "@/components/characters/item-card";
 import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
@@ -1168,52 +1169,45 @@ function OverviewTab({
           duplicates for PB and for attributes. We need to clean
           this up." */}
 
-      {/* ---- Vitality + Defenses (single dense band) ---- */}
+      {/* ---- Vitality + Action band (Phase 8.3g, Mashu 2026-07-28) ----
+          Two stacked cards:
+            1. VitalityDisplayCard: VITALITY label, current/max,
+               percent bar, DC inline with vitality, 4 cells
+               (PHYS/MENT/MAGI/PROF) each with mod on top + save
+               below. Every number is clickable for provenance.
+            2. VitalityActionBar: the 4 action buttons (Damage,
+               Heal, Long rest, Short rest). No data display.
+          The SavesCard (right-column 3-DC table) is GONE — there's
+          only ONE DC (from the proficient attribute), inline with
+          vitality. Per Mashu 2026-07-28: "We only have 1 DC. We
+          don't have one DC per attribute. One DC for everything." */}
       <section
-        aria-label="Vitality and defenses"
+        aria-label="Vitality display"
         className="relative overflow-hidden rounded-md border border-border bg-card"
       >
         <span className="absolute inset-x-0 top-0 h-0.5 bg-rose-500" />
-        <div className="grid gap-4 p-4 md:grid-cols-[1fr_auto] md:items-start md:gap-6">
-          {/* Phase 8.4 (Mashu 2026-07-28): compact=true keeps the
-              4 vitality action buttons on a single row even on
-              phones ≤ 360px wide. */}
-          <VitalityTracker
-            characterId={props.id}
-            max={props.vitality.max}
+        <div className="p-4">
+          <VitalityDisplayCard
             current={props.vitality.current ?? 0}
-            compact
-            attrBestTotals={{
-              physical: bestPracticeTotalForAttribute(props.practices, "PHYSICAL"),
-              mental: bestPracticeTotalForAttribute(props.practices, "MENTAL"),
-              magical: bestPracticeTotalForAttribute(props.practices, "MAGICAL"),
+            max={props.vitality.max}
+            pb={proficiencyBonus(props.level)}
+            proficientAttribute={
+              props.attrProficient === null
+                ? null
+                : props.attrProficient.toLowerCase() === "PHYSICAL"
+                  ? "physical"
+                  : props.attrProficient.toLowerCase() === "MENTAL"
+                    ? "mental"
+                    : props.attrProficient.toLowerCase() === "MAGICAL"
+                      ? "magical"
+                      : null
+            }
+            resolver={resolver}
+            resolverInput={{
+              characterId: props.id,
+              level: props.level,
               pb: proficiencyBonus(props.level),
-            }}
-          />
-          {/* Phase 8.4 v5 (Mashu 2026-07-28): Defensive DCs are
-              HIDDEN on mobile. The new 4-cell attribute + PROF
-              row in the Vitality card (rendered above the
-              buttons) already surfaces attribute data inline, so
-              the separate Defensive DCs row is a duplicate on
-              mobile. Keep them visible on >= md screens where
-              the in-page Vitality card has more room.
-              Mashu 2026-07-28: "we have in vitality bar
-              duplicates, but the lower one with phys, mental,
-              magical have to be taken out." */}
-          {/* Phase 8.3f S5 (Mashu 2026-07-28): the legacy
-              "Defensive DCs" column (3 attribute DC cells) is
-              replaced by the new SavesCard. The card shows:
-              attribute modifier + save value + save DC for all
-              3 attributes, with click-through provenance modals.
-              The proficient attribute is highlighted in teal.
-              Hidden on mobile (md:flex) — the BottomStickyBar
-              already shows saves on the sticky bar, and the
-              in-page Practices card surfaces the save value
-              inline next to each practice. */}
-          <div className="hidden md:block">
-            <SavesCard
-              resolver={resolver}
-              proficientAttribute={
+              proficientAttribute:
                 props.attrProficient === null
                   ? null
                   : props.attrProficient.toLowerCase() === "PHYSICAL"
@@ -1222,11 +1216,47 @@ function OverviewTab({
                       ? "mental"
                       : props.attrProficient.toLowerCase() === "MAGICAL"
                         ? "magical"
-                        : null
-              }
-              pb={proficiencyBonus(props.level)}
-            />
-          </div>
+                        : null,
+              attributes: {
+                physical: props.attrPhysical,
+                mental: props.attrMental,
+                magical: props.attrMagical,
+              },
+              slots: props.primitiveLinks.map((l) => ({
+                primitiveId: l.primitiveId,
+                name: l.primitive.name,
+                category: l.primitive.category,
+                hardModifiers: l.primitive.hardModifiers as readonly HardModifier[],
+                isMirrored: l.isMirrored,
+                isMirrorable: l.primitive.isMirrorable,
+                mirrorVector: l.primitive.mirrorVector,
+                originHeritageId: l.originHeritageId,
+                originCapabilityId: l.originCapabilityId,
+                originEffectId: l.originEffectId,
+              })),
+            }}
+          />
+        </div>
+      </section>
+
+      {/* ---- Vitality Action bar (Phase 8.3g) ----
+          The 4 action buttons (Damage / Heal / Long rest / Short
+          rest) live in their own card, separate from the data
+          display. Phase 8.4 (Mashu 2026-07-28): compact=true
+          keeps the 4 buttons on a single row even on phones
+          ≤ 360px wide. */}
+      <section
+        aria-label="Vitality actions"
+        className="relative overflow-hidden rounded-md border border-border bg-card"
+      >
+        <span className="absolute inset-x-0 top-0 h-0.5 bg-rose-500/50" />
+        <div className="p-4">
+          <VitalityTracker
+            characterId={props.id}
+            max={props.vitality.max}
+            current={props.vitality.current ?? 0}
+            compact
+          />
         </div>
       </section>
 

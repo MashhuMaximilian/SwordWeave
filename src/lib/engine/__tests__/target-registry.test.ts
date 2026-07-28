@@ -29,12 +29,20 @@ import {
 // Fixtures
 // =============================================================================
 
+// Phase 8.3g (Mashu 2026-07-28): Tessy now uses REAL slice values
+// from her character sheet, not D&D scores. The DB stores slices
+// in [-1, +5] (sum = 10). Earlier test data (14, 14, 10) was
+// based on the wrong D&D-style formula.
 const TESSY: ResolvedCharacterInput = {
   characterId: "tessy",
   level: 18,
   pb: 6,
   proficientAttribute: "mental",
-  attributes: { physical: 14, mental: 14, magical: 10 },
+  // From the edit-modal screenshot: P=+5, M=+5, MG=+0 (sum 10/10).
+  // Sheet shows final PHYS +2, MENT +8, MAGI +0 — so primitive
+  // contributions are: PHYS -3, MENT +3, MAGI 0. The TESTS for
+  // primitive contributions add their own slots on top of TESSY.
+  attributes: { physical: 5, mental: 5, magical: 0 },
   slots: [],
 };
 
@@ -85,10 +93,11 @@ describe("target constants", () => {
 // =============================================================================
 
 describe("resolveAttributeModifier", () => {
-  it("returns Math.floor((attr - 10) / 2) with no primitive slots", () => {
-    expect(resolveAttributeModifier(TESSY, "physical").total).toBe(2); // (14-10)/2 = 2
-    expect(resolveAttributeModifier(TESSY, "mental").total).toBe(2);
-    expect(resolveAttributeModifier(TESSY, "magical").total).toBe(0); // (10-10)/2 = 0
+  it("returns the slice value directly with no primitive slots", () => {
+    // Phase 8.3g: slices ARE the modifier (no D&D transform).
+    expect(resolveAttributeModifier(TESSY, "physical").total).toBe(5);
+    expect(resolveAttributeModifier(TESSY, "mental").total).toBe(5);
+    expect(resolveAttributeModifier(TESSY, "magical").total).toBe(0);
   });
 
   it("adds primitive contributions on top of the raw modifier", () => {
@@ -108,7 +117,8 @@ describe("resolveAttributeModifier", () => {
         }),
       ],
     };
-    expect(resolveAttributeModifier(input, "physical").total).toBe(4);
+    // Phase 8.3g: PHYS slice 5 + 2 primitive = 7 (was 4 with old D&D formula).
+    expect(resolveAttributeModifier(input, "physical").total).toBe(7);
   });
 
   it("returns attribution list with provenance", () => {
@@ -153,8 +163,9 @@ describe("resolveSaveValue", () => {
       proficientAttribute: "mental",
       slots: [],
     };
-    // PHYS: mod 2, no PB (not proficient), 0 primitives = 2
-    expect(resolveSaveValue(input, "physical").total).toBe(2);
+    // Phase 8.3g: PHYS slice is 5, not the old D&D-style 2.
+    // PHYS: mod 5, no PB (not proficient), 0 primitives = 5
+    expect(resolveSaveValue(input, "physical").total).toBe(5);
     // MAGI: mod 0, no PB, 0 primitives = 0
     expect(resolveSaveValue(input, "magical").total).toBe(0);
   });
@@ -165,8 +176,8 @@ describe("resolveSaveValue", () => {
       proficientAttribute: "mental",
       slots: [],
     };
-    // MENT: mod 2, PB 6 (proficient), 0 primitives = 8
-    expect(resolveSaveValue(input, "mental").total).toBe(8);
+    // MENT: mod 5, PB 6 (proficient), 0 primitives = 11
+    expect(resolveSaveValue(input, "mental").total).toBe(11);
   });
 
   it("does NOT add PB if proficientAttribute is null", () => {
@@ -175,8 +186,8 @@ describe("resolveSaveValue", () => {
       proficientAttribute: null,
       slots: [],
     };
-    expect(resolveSaveValue(input, "mental").total).toBe(2);
-    expect(resolveSaveValue(input, "physical").total).toBe(2);
+    expect(resolveSaveValue(input, "mental").total).toBe(5);
+    expect(resolveSaveValue(input, "physical").total).toBe(5);
   });
 
   it("adds primitive contributions targeting the save target", () => {
@@ -211,10 +222,11 @@ describe("resolveSaveDc", () => {
       ...TESSY,
       slots: [],
     };
-    // PHYS: 5 + 6 + 2 + 0 = 13
-    expect(resolveSaveDc(input, "physical").total).toBe(13);
-    // MENT: 5 + 6 + 2 + 0 = 13
-    expect(resolveSaveDc(input, "mental").total).toBe(13);
+    // Phase 8.3g: slice IS the modifier (no D&D transform).
+    // PHYS: 5 + 6 + 5 + 0 = 16
+    expect(resolveSaveDc(input, "physical").total).toBe(16);
+    // MENT: 5 + 6 + 5 + 0 = 16
+    expect(resolveSaveDc(input, "mental").total).toBe(16);
     // MAGI: 5 + 6 + 0 + 0 = 11
     expect(resolveSaveDc(input, "magical").total).toBe(11);
   });
@@ -252,8 +264,12 @@ describe("resolveAllSaves", () => {
       slots: [],
     };
     const r = resolveAllSaves(input);
-    expect(r.physical).toEqual({ total: 2, dc: 13 });
-    expect(r.mental).toEqual({ total: 8, dc: 13 }); // proficient + PB
+    // Phase 8.3g: slice IS the modifier.
+    // PHYS: mod 5, no PB, SV 5; DC 5+6+5 = 16
+    expect(r.physical).toEqual({ total: 5, dc: 16 });
+    // MENT: mod 5, +PB 6 (proficient), SV 11; DC 5+6+5 = 16
+    expect(r.mental).toEqual({ total: 11, dc: 16 });
+    // MAGI: mod 0, SV 0; DC 5+6+0 = 11
     expect(r.magical).toEqual({ total: 0, dc: 11 });
   });
 });
@@ -335,8 +351,8 @@ describe("resolveBestPracticeTotal", () => {
       mental: 2,
       magical: 1,
     });
-    // mod 2 + PB 6 + best physical slice 4 = 12
-    expect(r.total).toBe(12);
+    // Phase 8.3g: PHYS slice 5 + PB 6 + best phys slice 4 = 15
+    expect(r.total).toBe(15);
   });
 
   it("does NOT add PB when not proficient", () => {
@@ -350,8 +366,8 @@ describe("resolveBestPracticeTotal", () => {
       mental: 2,
       magical: 1,
     });
-    // mod 2 + 0 PB (not proficient) + 4 = 6
-    expect(r.total).toBe(6);
+    // PHYS slice 5 + 0 PB (not proficient) + 4 = 9
+    expect(r.total).toBe(9);
   });
 });
 
