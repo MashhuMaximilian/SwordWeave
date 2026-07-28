@@ -36,6 +36,12 @@ import {
 } from "@/components/library/library-item-preview";
 
 export interface PrimitivePreviewCardProps {
+  /** Phase 8.4 v6 (Mashu 2026-07-28): if this primitive is
+   * inherited from a heritage (manifest/lineage/upbringing) and
+   * NOT slotted directly, we render an "inherited" tag + the
+   * source heritage name + kind. */
+  readonly inheritedFrom?: string | null;
+  readonly inheritedKind?: string | null;
   /** The primitive link data the sheet already has. We use this
    * to render immediately (no fetch needed) and as a fallback
    * if the detail fetch fails. */
@@ -59,6 +65,8 @@ export interface PrimitivePreviewCardProps {
 
 export function PrimitivePreviewCard({
   primitiveLink,
+  inheritedFrom = null,
+  inheritedKind = null,
 }: PrimitivePreviewCardProps) {
   const p = primitiveLink.primitive;
   const { showToast } = useToasts();
@@ -165,7 +173,12 @@ export function PrimitivePreviewCard({
           {primitiveLink.isMirrored && (
             <span className="inline-flex items-center gap-0.5 rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
               <RotateCcw className="size-2.5" />
-              Mirrored (−{p.mirrorBuCredit} BU)
+              Mirrored
+            </span>
+          )}
+          {inheritedFrom && (
+            <span className="inline-flex items-center gap-0.5 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              inherited · {inheritedKind?.toLowerCase()}
             </span>
           )}
         </div>
@@ -208,7 +221,92 @@ export function PrimitivePreviewCard({
           })}
         </div>
       ) : null}
+      {/* Phase 8.4 v6 (Mashu 2026-07-28): expandable
+          provenance + modifier + operations + conditions
+          panel. Opened by clicking the chevron; the NAME
+          itself still opens the full preview modal. */}
+      <PrimitiveDetailToggle
+        inheritedFrom={inheritedFrom}
+        inheritedKind={inheritedKind}
+        modifierList={Array.isArray(modifiers) ? modifiers : []}
+        narrativeRule={p.narrativeRule}
+      />
     </div>
+  );
+}
+
+/**
+ * Phase 8.4 v6 (Mashu 2026-07-28): toggleable <details> for
+ * the per-primitive provenance + modifier + ops + conditions.
+ * Renders nothing if the primitive is featureless (no narrative
+ * rule, no modifiers, no inherited-from tag).
+ */
+function PrimitiveDetailToggle({
+  inheritedFrom,
+  inheritedKind,
+  modifierList,
+  narrativeRule,
+}: {
+  readonly inheritedFrom: string | null;
+  readonly inheritedKind: string | null;
+  readonly modifierList: ReadonlyArray<unknown>;
+  readonly narrativeRule: string;
+}) {
+  const hasContent =
+    Boolean(inheritedFrom) ||
+    Boolean(narrativeRule) ||
+    modifierList.length > 0;
+  if (!hasContent) return null;
+
+  return (
+    <details
+      className="mt-1 rounded border border-border bg-muted/30 px-2 py-1 text-xs"
+      data-testid="primitive-detail-toggle"
+    >
+      <summary className="cursor-pointer list-none font-semibold uppercase tracking-wide text-muted-foreground">
+        Details
+      </summary>
+      <div className="mt-1 space-y-2">
+        {inheritedFrom && (
+          <p className="text-[10px] text-muted-foreground">
+            <span className="font-semibold uppercase">Provenance: </span>
+            heritage ({inheritedKind?.toLowerCase() ?? "—"}) → {inheritedFrom}
+          </p>
+        )}
+        {narrativeRule && (
+          <p className="text-muted-foreground italic">{narrativeRule}</p>
+        )}
+        {modifierList.length > 0 && (
+          <div>
+            <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Modifiers
+            </p>
+            <ul className="space-y-0.5">
+              {modifierList.map((mod, i) => {
+                const m = mod as {
+                  target?: string;
+                  operation?: string;
+                  value?: unknown;
+                };
+                return (
+                  <li
+                    key={i}
+                    className="flex flex-wrap items-center gap-1 font-mono"
+                  >
+                    <span className="text-foreground">{m.operation ?? "modify"}</span>
+                    <span className="text-teal-700 dark:text-teal-300">
+                      {String(m.value ?? "?")}
+                    </span>
+                    <span className="text-muted-foreground">→</span>
+                    <span className="text-foreground">{m.target ?? "?"}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+      </div>
+    </details>
   );
 }
 

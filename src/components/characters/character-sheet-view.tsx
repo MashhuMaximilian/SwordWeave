@@ -68,11 +68,12 @@ type SlotSource = "OWNED" | "FORKED" | "PINNED";
 /**
  * Character Sheet UI
  *
- * 6 tabs: Overview · Capabilities · Items · Backstory · Notes · History
+ * 5 tabs: Capabilities · Items · Backstory · Notes · History. Overview
+ * merged into the bottom sticky drawer (Phase 8.4).
  * Mobile: bottom tabs (horizontally scrollable). Desktop: top tabs.
  *
  * Phase 8.2 batch 3: Tab restructure per Mashu 2026-07-22.
- *   - Overview merges practices (compact attribute columns inline)
+ *   - The bottom drawer carries identity + load/equip + vitality + mods + DC + practices
  *   - Backstory is a dedicated tab (read-only on sheet; modal edits)
  *   - History shows the character's event log (capability toggles,
  *     rests, vitality changes, level-ups, item equips)
@@ -322,10 +323,9 @@ export type CharacterSheetProps = {
   }>;
 };
 
-type Tab = "overview" | "capabilities" | "items" | "backstory" | "notes" | "history";
+type Tab = "capabilities" | "items" | "backstory" | "notes" | "history";
 
 const TABS: Array<{ id: Tab; label: string; icon: typeof Edit }> = [
-  { id: "overview", label: "Overview", icon: Shield },
   { id: "capabilities", label: "Capabilities", icon: Swords },
   { id: "items", label: "Items", icon: Package },
   { id: "backstory", label: "Backstory", icon: BookOpen },
@@ -347,7 +347,7 @@ function bestPracticeTotalForAttribute(
 }
 
 export function CharacterSheetView(props: CharacterSheetProps) {
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>("capabilities");
   const [levelUpConfirm, setLevelUpConfirm] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toasts, showToast, dismissToast } = useToasts();
@@ -586,9 +586,6 @@ export function CharacterSheetView(props: CharacterSheetProps) {
 
       {/* Content */}
       <div className="mt-6">
-        {tab === "overview" && (
-          <OverviewTab props={props} />
-        )}
         {tab === "capabilities" && (
           /* Phase 8.4 (Mashu 2026-07-28): wrap the Capabilities tab
              in a TabErrorBoundary so a single bad capability
@@ -797,12 +794,14 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         }}
       />
 
-      {/* Phase 8 UI revamp (Mashu 2026-07-27): BottomStickyBar
-          is mobile-only (returns null on >= md screens via
-          Tailwind's md:hidden). It renders the same vitality
-          tracker + practices list that the in-page panels
-          show, but in a sticky bar that's always reachable
-          during gameplay. */}
+      {/* Phase 8.4 (Mashu 2026-07-28): BottomStickyBar is
+          the character sheet's single source of truth for
+          play-time data. Visible on all screen sizes (no
+          `md:hidden`). Renders identity strip + load/equip
+          + vitality + mods/saves + DC + practices in the
+          expandable drawer. The Overview tab has been
+          removed because its content (identity strip + load
+          stripe) now lives here. */}
       <BottomStickyBar
         characterId={props.id}
         currentVitality={props.currentVitality}
@@ -813,9 +812,6 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         pb={proficiencyBonus(props.level)}
         proficientAttribute={props.attrProficient}
         attributeModifiers={{
-          // Phase 8.3g v2: slice + primitive contributions.
-          // The resolver uses the SCOPED short form
-          // (`attribute.physical` etc.).
           physical:
             props.attrPhysical +
             (resolver.totals["attribute.physical"] ?? 0),
@@ -827,39 +823,42 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             (resolver.totals["attribute.magical"] ?? 0),
         }}
         resolver={resolver}
-        practices={props.practices.map((p) => {
-          const attr = p.attribute.toLowerCase() as "physical" | "mental" | "magical";
-          const attrKey = `attr${
-            p.attribute.charAt(0).toUpperCase() + p.attribute.slice(1).toLowerCase()
-          }` as "attrPhysical" | "attrMental" | "attrMagical";
-          const attrMod = props[attrKey];
-          const isProf = props.attrProficient === p.attribute;
-          const total =
-            (attrMod ?? 0) +
-            (isProf ? proficiencyBonus(props.level) : 0) +
-            (resolver.totals[`attribute.${attr}`] ?? 0) +
-            (resolver.totals[`defense_dc.${attr}`] ?? 0);
-          return {
-            name: p.practice,
-            category: "PRACTICE",
-            buCost: 0,
-            attribute: p.attribute as "PHYSICAL" | "MENTAL" | "MAGICAL",
-            // Phase 8.3g v2: practice value = attribute +
-            // PB (if proficient) + primitive contributions
-            // targeting the attribute (NOT the DC). The
-            // bar's practice rows use the page's
-            // pre-computed `p.total` for the legacy
-            // PracticeRow shape; we recompute here for
-            // correctness.
-            total: p.total,
-            isMirrored: false,
-            isMirrorable: false,
-            mirrorVector: null,
-            originHeritageId: null,
-            originCapabilityId: null,
-            originEffectId: null,
-          };
-        })}
+        practices={props.practices.map((p) => ({
+          name: p.practice,
+          category: "PRACTICE",
+          buCost: 0,
+          attribute: p.attribute as "PHYSICAL" | "MENTAL" | "MAGICAL",
+          total: p.total,
+          isMirrored: false,
+          isMirrorable: false,
+          mirrorVector: null,
+          originHeritageId: null,
+          originCapabilityId: null,
+          originEffectId: null,
+        }))}
+        // Phase 8.4: identity strip data
+        lineageName={props.lineageName}
+        lineageDescription={props.lineageDescription}
+        upbringingName={props.upbringingName}
+        upbringingDescription={props.upbringingDescription}
+        manifestName={props.manifestName}
+        attrSum={props.attrPhysical + props.attrMental + props.attrMagical}
+        attrSumValid={props.attrPhysical + props.attrMental + props.attrMagical === 10}
+        // Phase 8.4: load/equip slots
+        encumbrance={{
+          load: props.encumbrance.load,
+          capacity: props.encumbrance.capacity,
+          percentOfCapacity: props.encumbrance.percentOfCapacity,
+          encumbered: props.encumbrance.encumbered,
+          // Phase 8.4: derive tiers from percentOfCapacity
+          // (the source-of-truth field). The legacy
+          // heavilyEncumbered / overburdened fields are
+          // not on the CharacterSheetProps shape, so we
+          // compute them here. Thresholds: encumbered
+          // > 50%, heavily > 75%, overburdened > 100%.
+          heavilyEncumbered: props.encumbrance.percentOfCapacity > 75,
+          overburdened: props.encumbrance.percentOfCapacity > 100,
+        }}
       />
     </div>
   );
@@ -1099,7 +1098,6 @@ function BuBudgetFooter({
 }
 
 // =============================================================================
-// Overview Tab
 // =============================================================================
 //
 // Phase 8.2 batch 3 redesign per Mashu 2026-07-22:
@@ -1114,257 +1112,6 @@ function BuBudgetFooter({
 //   - No bulky h3 icons; rely on a 3px top accent stripe per card to
 //     identify the section at a glance.
 //
-// The Practices sub-component manages its own expanded-state, so the
-// parent doesn't need to thread state through.
-
-function OverviewTab({
-  props,
-}: {
-  props: CharacterSheetProps;
-}) {
-  const attrSum = props.attrPhysical + props.attrMental + props.attrMagical;
-
-  // Phase 8.3f S5 (Mashu 2026-07-28): the canonical resolver
-  // drives the SavesCard (right column of the Vitality band) and
-  // the new provenance modals. Re-runs only when primitiveLinks
-  // ref or attribute values change.
-  const resolver = useCharacterResolver({
-    characterId: props.id,
-    level: props.level,
-    pb: proficiencyBonus(props.level),
-    proficientAttribute:
-      props.attrProficient === null
-        ? null
-        : props.attrProficient.toLowerCase() === "physical"
-          ? "physical"
-          : props.attrProficient.toLowerCase() === "mental"
-            ? "mental"
-            : props.attrProficient.toLowerCase() === "magical"
-              ? "magical"
-              : null,
-    attributes: {
-      physical: props.attrPhysical,
-      mental: props.attrMental,
-      magical: props.attrMagical,
-    },
-    primitiveLinks: props.primitiveLinks.map((l) => ({
-      primitiveId: l.primitiveId,
-      isMirrored: l.isMirrored,
-      originHeritageId: l.originHeritageId,
-      originCapabilityId: l.originCapabilityId,
-      originEffectId: l.originEffectId,
-      primitive: {
-        id: l.primitive.id,
-        name: l.primitive.name,
-        category: l.primitive.category,
-        isMirrorable: l.primitive.isMirrorable,
-        mirrorVector: l.primitive.mirrorVector,
-        hardModifiers: l.primitive.hardModifiers,
-      },
-    })),
-  });
-
-  return (
-    <div className="space-y-4">
-      {/* ---- Identity strip (compact, full-width) ---- */}
-      <section
-        aria-label="Identity"
-        className="relative overflow-hidden rounded-md border border-border bg-card"
-      >
-        <span className="absolute inset-x-0 top-0 h-0.5 bg-primary" />
-        <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
-          <IdentityCell
-            label="Lineage"
-            value={props.lineageName ?? "—"}
-            note={props.lineageDescription ?? null}
-          />
-          <IdentityCell
-            label="Upbringing"
-            value={props.upbringingName ?? "—"}
-            note={props.upbringingDescription ?? null}
-          />
-          <IdentityCell label="Manifest" value={props.manifestName ?? "—"} />
-          <IdentityCell
-            label="Attributes"
-            value={`${attrSum} / 10`}
-            tone={attrSum === 10 ? "ok" : "bad"}
-            note={attrSum === 10 ? "✓ valid" : `✗ off by ${attrSum - 10}`}
-          />
-        </div>
-      </section>
-
-      {/* ---- Core stats (mobile only) — Phase 8 UI revamp ----
-          PHYS / MENT / MAG / PROF in a single row above Vitality.
-          Hidden on >= md screens. */}
-      {/* Phase 8.4 (Mashu 2026-07-28): CoreStatsCard removed.
-          The BottomStickyBar collapsed row already shows the
-          P/Me/Ma modifiers + PB on every mobile viewport, and
-          the saves live next to each practice in the in-page
-          Practices card below. Mashu 2026-07-28: "we have
-          duplicates for PB and for attributes. We need to clean
-          this up." */}
-
-      {/* ---- Vitality band (Phase 8.3g v2, Mashu 2026-07-28) ----
-          ONE card, not two. Top half = the new
-          VitalityDisplayCard (vitality number, DC, 4 cells
-          with mod + save). Bottom half = the action buttons
-          (Damage / Heal / Long rest / Short rest) via the
-          legacy VitalityTracker. No card separator. Per
-          Mashu: "Why do we have 2 vitality cards... we need
-          one card for vitality and attributes DC
-          proficiencies." */}
-      <section
-        aria-label="Vitality display"
-        className="relative overflow-hidden rounded-md border border-border bg-card"
-      >
-        <span className="absolute inset-x-0 top-0 h-0.5 bg-rose-500" />
-        <div className="p-4">
-          <VitalityDisplayCard
-            current={props.vitality.current ?? 0}
-            max={props.vitality.max}
-            pb={proficiencyBonus(props.level)}
-            proficientAttribute={
-              props.attrProficient === null
-                ? null
-                : props.attrProficient.toLowerCase() === "physical"
-                  ? "physical"
-                  : props.attrProficient.toLowerCase() === "mental"
-                    ? "mental"
-                    : props.attrProficient.toLowerCase() === "magical"
-                      ? "magical"
-                      : null
-            }
-            resolver={resolver}
-            resolverInput={{
-              characterId: props.id,
-              level: props.level,
-              pb: proficiencyBonus(props.level),
-              proficientAttribute:
-                props.attrProficient === null
-                  ? null
-                  : props.attrProficient.toLowerCase() === "physical"
-                    ? "physical"
-                    : props.attrProficient.toLowerCase() === "mental"
-                      ? "mental"
-                      : props.attrProficient.toLowerCase() === "magical"
-                        ? "magical"
-                        : null,
-              attributes: {
-                physical: props.attrPhysical,
-                mental: props.attrMental,
-                magical: props.attrMagical,
-              },
-              slots: props.primitiveLinks.map((l) => ({
-                primitiveId: l.primitiveId,
-                name: l.primitive.name,
-                category: l.primitive.category,
-                hardModifiers: l.primitive.hardModifiers as readonly HardModifier[],
-                isMirrored: l.isMirrored,
-                isMirrorable: l.primitive.isMirrorable,
-                mirrorVector: l.primitive.mirrorVector,
-                originHeritageId: l.originHeritageId,
-                originCapabilityId: l.originCapabilityId,
-                originEffectId: l.originEffectId,
-              })),
-            }}
-          />
-          {/* Phase 8.3g v2 (Mashu 2026-07-28): action buttons
-              in the SAME card as the display. Divided by a
-              hairline + small top margin. Per Mashu: "Why do
-              we have 2 vitality cards... we need one card." */}
-          <hr className="my-3 border-border" />
-          <VitalityTracker
-            characterId={props.id}
-            max={props.vitality.max}
-            current={props.vitality.current ?? 0}
-            compact
-          />
-        </div>
-      </section>
-
-      {/* ---- Load + Equip slots (PB dropped on mobile — already in
-                  CoreStatsCard's PROF cell above). On >= md we keep the
-                  legacy Load / Equip / PB band. ---- */}
-      <section
-        aria-label="Load and equip slots"
-        className="relative overflow-hidden rounded-md border border-border bg-card"
-      >
-        <span className="absolute inset-x-0 top-0 h-0.5 bg-amber-500" />
-        {/* Phase 8.2 batch 9: 3-cell band — Load / Equip / PB. PB is
-            the level-derived proficiency bonus that scales attack
-            rolls and proficient saves. Mashu 2026-07-23: "when
-            rewriting the tabs in overview we need a card with
-            proficiency bonus too to show it."
-            Phase 8.4 (Mashu 2026-07-28): the PB cell is hidden on
-            mobile (md:hidden) because CoreStatsCard's PROF cell
-            already shows PB. Mashu 2026-07-28: "we have duplicates
-            for PB and for attributes. We need to clean this up." */}
-        <div className="grid grid-cols-2 divide-x divide-border md:grid-cols-3">
-          <StatCell
-            label="Load"
-            primary={`${props.encumbrance.load}`}
-            secondary={`/ ${props.encumbrance.capacity}`}
-            bar={{
-              percent: Math.min(100, props.encumbrance.percentOfCapacity),
-              tone:
-                props.encumbrance.encumbered
-                  ? "destructive"
-                  : props.encumbrance.percentOfCapacity > 90
-                    ? "warning"
-                    : "ok",
-            }}
-            alert={
-              props.encumbrance.encumbered ? "Encumbered!" : null
-            }
-          />
-          <StatCell
-            label="Equip Slots"
-            primary={`${props.encumbrance.equipSlotsUsed}`}
-            secondary={`/ ${props.encumbrance.equipSlotsAvailable}`}
-          />
-          <div className="hidden md:block">
-            <StatCell
-              label={`PB (lvl ${props.level})`}
-              primary={`+${proficiencyBonus(props.level)}`}
-              secondary="proficiency"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* ---- Practices (compact three-column, merged from old PracticesTab) ---- */}
-      <section
-        aria-label="Practices"
-        className="relative overflow-hidden rounded-md border border-border bg-card"
-      >
-        <span className="absolute inset-x-0 top-0 h-0.5 bg-blue-500" />
-        <div className="px-4 pt-3 pb-2">
-          <div className="flex items-baseline justify-between">
-            <h3 className="text-sm font-semibold">Practices</h3>
-          </div>
-          {props.attrProficient && (
-            <p className="mt-0.5 text-[11px] text-primary">
-              Proficient: {props.attrProficient} (gets PB on every practice)
-            </p>
-          )}
-        </div>
-        <PracticesPanel
-          practices={props.practices}
-          attrProficient={props.attrProficient}
-        />
-      </section>
-
-      {/* Phase 8.2 batch 7: QuickEditPanel removed per Mashu
-          2026-07-23. Editting happens in the atelier's character
-          builder modal, accessed via the header Edit button. */}
-    </div>
-  );
-}
-
-// -----------------------------------------------------------------------------
-// Dense atomic cells used by OverviewTab
-// -----------------------------------------------------------------------------
-
 function IdentityCell({
   label,
   value,
@@ -1962,6 +1709,58 @@ function CapabilitiesTab({
   capabilityById: Map<string, { name: string }>;
   effectById: Map<string, { name: string }>;
 }) {
+  // Phase 8.4 v6 (Mashu 2026-07-28): the Primitives accordion
+  // shows EVERY primitive the character has — slotted (direct)
+  // AND inherited (from heritages). Direct entries link to
+  // character_primitive_links; inherited entries fall back to
+  // heritage.template.primitive_links. We dedupe by primitive.id
+  // and tag each row with its origin so the user can see why a
+  // specific primitive is on the sheet.
+  type CombinedPrimitive = {
+    primitiveId: number;
+    primitive: {
+      id: number;
+      name: string;
+      category: string;
+      buCost: number;
+      isMirrorable: boolean;
+      mirrorBuCredit: number;
+      narrativeRule: string | null;
+      hardModifiers: readonly unknown[];
+    };
+    origin: "DIRECT" | { heritageId: string; heritageName: string; kind: string };
+    isMirrored: boolean;
+  };
+  const allPrimitives: CombinedPrimitive[] = [];
+  const seenPrimitiveIds = new Set<number>();
+  for (const l of primitiveLinks) {
+    if (seenPrimitiveIds.has(l.primitive.id)) continue;
+    seenPrimitiveIds.add(l.primitive.id);
+    allPrimitives.push({
+      primitiveId: l.primitiveId,
+      primitive: l.primitive,
+      origin: "DIRECT",
+      isMirrored: l.isMirrored,
+    });
+  }
+  for (const hl of heritageLinks) {
+    for (const pl of hl.heritage.primitiveLinks) {
+      if (seenPrimitiveIds.has(pl.primitive.id)) continue;
+      seenPrimitiveIds.add(pl.primitive.id);
+      const h = hl.heritage;
+      allPrimitives.push({
+        primitiveId: pl.primitiveId,
+        primitive: pl.primitive,
+        origin: {
+          heritageId: h.id,
+          heritageName: h.name,
+          kind: h.kind,
+        },
+        isMirrored: false,
+      });
+    }
+  }
+
   if (primitiveLinks.length === 0 && capabilities.length === 0) {
     return (
       <div className="rounded-md border border-dashed border-border bg-card/50 px-6 py-12 text-center">
@@ -1978,42 +1777,39 @@ function CapabilitiesTab({
   return (
     <div className="space-y-6">
       {/* ===== Accordion 1: Primitives =====
-          Phase 8.3f S6 (Mashu 2026-07-28): renamed from "All
-          Primitives". Each row's provenance chain is surfaced
-          inline (the PrimitivePreviewCard already does this).
-          Sort order per the S6 PDF answers:
-            1. Direct (originHeritageId === null) first
-            2. Then by heritage kind: Manifest, Lineage,
-               Upbringing (alphabetical within kind)
-          Single accordion (per S6 spec: 4 total, this is one). */}
+          Phase 8.4 v6 (Mashu 2026-07-28): now shows EVERY
+          primitive the character has — direct (slotted) AND
+          inherited (from heritage templates). Direct rows
+          first, then by heritage kind (Manifest → Lineage →
+          Upbringing), then alphabetical.
+          Each row can be expanded to reveal:
+            - Provenance chain (heritage → capability → effect)
+            - hardModifiers (target, operation, value, condition)
+            - Mirror status + mirrorBuCredit
+          Tags differentiate slotted vs inherited. */}
       <details open className="group rounded-md border border-border bg-card">
         <summary className="flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium cursor-pointer list-none">
           <span className="flex items-center gap-2">
             <Package className="size-4 text-muted-foreground" />
-            Primitives ({primitiveLinks.length})
+            Primitives ({allPrimitives.length})
           </span>
           <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
         </summary>
-        <div className="px-4 pb-4 space-y-3 border-t border-border">
-          {primitiveLinks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No primitives slotted.</p>
+        <div className="px-4 pb-4 pt-3 space-y-1.5 border-t border-border">
+          {allPrimitives.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No primitives slotted or inherited.
+            </p>
           ) : (
-            <ul className="space-y-1 divide-y divide-border">
-              {primitiveLinks
+            <ul className="space-y-1.5">
+              {allPrimitives
                 .slice()
                 .sort((a, b) => {
-                  // Direct first.
-                  const aDirect = a.originHeritageId === null ? 0 : 1;
-                  const bDirect = b.originHeritageId === null ? 0 : 1;
+                  const aDirect = a.origin === "DIRECT" ? 0 : 1;
+                  const bDirect = b.origin === "DIRECT" ? 0 : 1;
                   if (aDirect !== bDirect) return aDirect - bDirect;
-                  // Then by heritage kind (manifest → lineage →
-                  // upbringing), then by name.
-                  const aKind = a.originHeritageId
-                    ? heritageById.get(a.originHeritageId)?.kind ?? "ZZZ"
-                    : "DIRECT";
-                  const bKind = b.originHeritageId
-                    ? heritageById.get(b.originHeritageId)?.kind ?? "ZZZ"
-                    : "DIRECT";
+                  const aKind = a.origin === "DIRECT" ? "DIRECT" : a.origin.kind;
+                  const bKind = b.origin === "DIRECT" ? "DIRECT" : b.origin.kind;
                   const kindOrder: Record<string, number> = {
                     MANIFEST: 0,
                     LINEAGE: 1,
@@ -2026,28 +1822,37 @@ function CapabilitiesTab({
                   if (aOrder !== bOrder) return aOrder - bOrder;
                   return a.primitive.name.localeCompare(b.primitive.name);
                 })
-                .map((p) => (
-                  <li key={p.primitive.id} className="py-0.5">
-                    <PrimitivePreviewCard
-                      primitiveLink={{
-                        primitiveId: p.primitiveId,
-                        source: p.source,
-                        acquiredAtLevel: p.acquiredAtLevel,
-                        isMirrored: p.isMirrored,
-                        primitive: {
-                          id: p.primitive.id,
-                          name: p.primitive.name,
-                          category: p.primitive.category,
-                          buCost: p.primitive.buCost,
-                          isMirrorable: p.primitive.isMirrorable,
-                          mirrorBuCredit: p.primitive.mirrorBuCredit,
-                          narrativeRule: p.primitive.narrativeRule,
-                          hardModifiers: p.primitive.hardModifiers,
-                        },
-                      }}
-                    />
-                  </li>
-                ))}
+                .map((p) => {
+                  const isInherited = p.origin !== "DIRECT";
+                  const heritageName = isInherited && typeof p.origin === "object" ? p.origin.heritageName : null;
+                  const heritageKind = isInherited && typeof p.origin === "object" ? p.origin.kind : null;
+                  return (
+                    <li key={p.primitive.id}>
+                      <PrimitivePreviewCard
+                        primitiveLink={{
+                          primitiveId: p.primitiveId,
+                          source: isInherited
+                            ? `inherited:${heritageKind}`
+                            : "slotted",
+                          acquiredAtLevel: 0,
+                          isMirrored: p.isMirrored,
+                          primitive: {
+                            id: p.primitive.id,
+                            name: p.primitive.name,
+                            category: p.primitive.category,
+                            buCost: p.primitive.buCost,
+                            isMirrorable: p.primitive.isMirrorable,
+                            mirrorBuCredit: p.primitive.mirrorBuCredit,
+                            narrativeRule: p.primitive.narrativeRule ?? "",
+                            hardModifiers: p.primitive.hardModifiers,
+                          },
+                        }}
+                        inheritedFrom={heritageName}
+                        inheritedKind={heritageKind}
+                      />
+                    </li>
+                  );
+                })}
             </ul>
           )}
         </div>
@@ -2172,7 +1977,7 @@ function HeritageKindAccordion({
         </span>
         <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
       </summary>
-      <div className="px-4 pb-4 space-y-4 border-t border-border">
+      <div className="px-4 pb-4 pt-3 space-y-4 border-t border-border">
         {heritageLinks.map((hl) => {
           const canonCaps = hl.heritage.capabilityLinks ?? [];
           const canonPrims = hl.heritage.primitiveLinks ?? [];
