@@ -12,6 +12,11 @@ export * from "./sheet";
 export * from "./mirror";
 // Phase-7-Q-M: mirror-debt expansion (character creation / template).
 export * from "./bu-debt";
+// Phase 8.3f (Mashu 2026-07-28): canonical character modifier
+// resolver. Wraps evaluateModifiers() + resolveMirrorEffect()
+// and adds per-target attribution for the click-through
+// provenance modal.
+export * from "./resolve-modifiers";
 
 // Practices — explicit imports to avoid clashes with stats.
 // We choose the PRACTICES versions for these (newer, more complete):
