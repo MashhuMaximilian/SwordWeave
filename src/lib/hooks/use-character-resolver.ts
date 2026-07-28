@@ -78,6 +78,9 @@ export interface UseCharacterResolverResult {
   byTarget: ResolvedModifiers["byTarget"];
   /** Mirror cost attribution (e.g. extra strain). */
   mirrorCosts: ResolvedModifiers["mirrorCosts"];
+  /** ISO timestamp of when the resolver ran (used for cache key
+   * debugging + the "computed" footer in the ProvenanceModal). */
+  computedAt: ResolvedModifiers["computedAt"];
 }
 
 // =============================================================================
@@ -115,6 +118,7 @@ export function useCharacterResolver(
       totals: r.totals,
       byTarget: r.byTarget,
       mirrorCosts: r.mirrorCosts,
+      computedAt: r.computedAt,
     };
   }, [
     input.characterId,

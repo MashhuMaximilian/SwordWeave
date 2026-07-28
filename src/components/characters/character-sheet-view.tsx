@@ -34,6 +34,7 @@ import { ToastViewport, useToasts } from "@/components/ui/toast";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
 import { OriginBadge } from "@/components/characters/origin-badge";
 import { VitalityTracker } from "@/components/characters/vitality-tracker";
+import { SavesCard } from "@/components/characters/saves-card";
 import { CapabilityCard } from "@/components/characters/capability-card";
 import { ItemCard } from "@/components/characters/item-card";
 import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
@@ -816,6 +817,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           mental: resolver.totals["character.attribute.mental"] ?? 0,
           magical: resolver.totals["character.attribute.magical"] ?? 0,
         }}
+        resolver={resolver}
         practices={props.practices.map((p) => ({
           practice: p.practice,
           attribute: p.attribute as "PHYSICAL" | "MENTAL" | "MAGICAL",
@@ -1087,6 +1089,46 @@ function OverviewTab({
 }) {
   const attrSum = props.attrPhysical + props.attrMental + props.attrMagical;
 
+  // Phase 8.3f S5 (Mashu 2026-07-28): the canonical resolver
+  // drives the SavesCard (right column of the Vitality band) and
+  // the new provenance modals. Re-runs only when primitiveLinks
+  // ref or attribute values change.
+  const resolver = useCharacterResolver({
+    characterId: props.id,
+    level: props.level,
+    pb: proficiencyBonus(props.level),
+    proficientAttribute:
+      props.attrProficient === null
+        ? null
+        : props.attrProficient.toLowerCase() === "PHYSICAL"
+          ? "physical"
+          : props.attrProficient.toLowerCase() === "MENTAL"
+            ? "mental"
+            : props.attrProficient.toLowerCase() === "MAGICAL"
+              ? "magical"
+              : null,
+    attributes: {
+      physical: props.attrPhysical,
+      mental: props.attrMental,
+      magical: props.attrMagical,
+    },
+    primitiveLinks: props.primitiveLinks.map((l) => ({
+      primitiveId: l.primitiveId,
+      isMirrored: l.isMirrored,
+      originHeritageId: l.originHeritageId,
+      originCapabilityId: l.originCapabilityId,
+      originEffectId: l.originEffectId,
+      primitive: {
+        id: l.primitive.id,
+        name: l.primitive.name,
+        category: l.primitive.category,
+        isMirrorable: l.primitive.isMirrorable,
+        mirrorVector: l.primitive.mirrorVector,
+        hardModifiers: l.primitive.hardModifiers,
+      },
+    })),
+  });
+
   return (
     <div className="space-y-4">
       {/* ---- Identity strip (compact, full-width) ---- */}
@@ -1159,23 +1201,32 @@ function OverviewTab({
               Mashu 2026-07-28: "we have in vitality bar
               duplicates, but the lower one with phys, mental,
               magical have to be taken out." */}
-          <div className="hidden flex-row gap-2 md:flex md:flex-col md:gap-1 md:border-l md:border-border md:pl-6">
-            <p className="hidden text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:block">
-              Defenses
-            </p>
-            {props.defensiveDCs.map((d) => (
-              <div
-                key={d.attribute}
-                className="flex items-baseline gap-2 rounded-md border border-border bg-background px-3 py-1.5 md:min-w-[110px]"
-              >
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {d.attribute.slice(0, 4)}
-                </span>
-                <span className="font-mono text-base font-bold tabular-nums">
-                  {d.dc}
-                </span>
-              </div>
-            ))}
+          {/* Phase 8.3f S5 (Mashu 2026-07-28): the legacy
+              "Defensive DCs" column (3 attribute DC cells) is
+              replaced by the new SavesCard. The card shows:
+              attribute modifier + save value + save DC for all
+              3 attributes, with click-through provenance modals.
+              The proficient attribute is highlighted in teal.
+              Hidden on mobile (md:flex) — the BottomStickyBar
+              already shows saves on the sticky bar, and the
+              in-page Practices card surfaces the save value
+              inline next to each practice. */}
+          <div className="hidden md:block">
+            <SavesCard
+              resolver={resolver}
+              proficientAttribute={
+                props.attrProficient === null
+                  ? null
+                  : props.attrProficient.toLowerCase() === "PHYSICAL"
+                    ? "physical"
+                    : props.attrProficient.toLowerCase() === "MENTAL"
+                      ? "mental"
+                      : props.attrProficient.toLowerCase() === "MAGICAL"
+                        ? "magical"
+                        : null
+              }
+              pb={proficiencyBonus(props.level)}
+            />
           </div>
         </div>
       </section>
@@ -1343,45 +1394,6 @@ function StatCell({
         <p className="mt-1 text-[11px] font-semibold text-destructive">
           {alert}
         </p>
-      )}
-    </div>
-  );
-}
-
-function VitalityCard({
-  max,
-  current,
-  percent,
-}: {
-  max: number;
-  current: number | null;
-  percent: number | null;
-}) {
-  return (
-    <div>
-      <p className="text-xs font-semibold uppercase text-muted-foreground">
-        Vitality
-      </p>
-      <p className="mt-1 font-mono text-2xl font-bold">
-        {current ?? "—"}{" "}
-        <span className="text-muted-foreground text-base">/ {max}</span>
-      </p>
-      {percent !== null && (
-        <>
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-secondary">
-            <div
-              className={`h-full rounded-full ${
-                percent < 25
-                  ? "bg-destructive"
-                  : percent < 50
-                    ? "bg-amber-500"
-                    : "bg-green-500"
-              }`}
-              style={{ width: `${percent}%` }}
-            />
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">{percent}%</p>
-        </>
       )}
     </div>
   );

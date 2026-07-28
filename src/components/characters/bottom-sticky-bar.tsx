@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { VitalityTracker } from "@/components/characters/vitality-tracker";
+import type { ResolvedModifiers } from "@/lib/engine/resolve-modifiers";
 
 export interface AttributeModifiersForSticky {
   /**
@@ -43,6 +44,13 @@ export interface BottomStickyBarProps {
    * already handles that math + mirror flips + stacking.
    */
   readonly attributeModifiers?: AttributeModifiersForSticky;
+  /**
+   * Phase 8.3f S5 (Mashu 2026-07-28): the resolver's full
+   * output. The bar uses `totals` for save value + save DC
+   * computation. Optional — if omitted, the bar shows mod
+   * only (legacy fallback for tests).
+   */
+  readonly resolver?: ResolvedModifiers;
   readonly practices: ReadonlyArray<PracticeRowForSticky>;
 }
 
@@ -56,6 +64,7 @@ export function BottomStickyBar({
   pb,
   proficientAttribute,
   attributeModifiers,
+  resolver,
   practices,
 }: BottomStickyBarProps) {
   const [hydrated, setHydrated] = useState(false);
@@ -183,7 +192,7 @@ export function BottomStickyBar({
               <span className="text-xs font-semibold uppercase text-muted-foreground">
                 Quick Practices
               </span>
-              <div className="flex items-center gap-2 font-mono text-[11px] font-bold tabular-nums">
+              <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px] font-bold tabular-nums">
                 <span className="rounded bg-secondary px-1.5 py-0.5 text-foreground">
                   PHYS {phys}
                 </span>
@@ -198,6 +207,48 @@ export function BottomStickyBar({
                 </span>
               </div>
             </div>
+            {/* Phase 8.3f S5 (Mashu 2026-07-28): per-attribute
+                save values + save DCs, surfaced next to the
+                modifier pills above. Save VALUE = mod + PB (if
+                proficient) + primitive contributions. Save DC =
+                5 + PB + mod + primitive contributions. The
+                proficient attribute is highlighted in teal. The
+                quick bar is mobile-only (md:hidden) so this is
+                the only place mobile users see saves. */}
+            {resolver && (
+              <div className="mb-2 flex flex-wrap items-center gap-1.5 font-mono text-[10px] font-bold tabular-nums">
+                {(
+                  [
+                    { attr: "physical", label: "P SV", save: "character.defense.physicalDc" },
+                    { attr: "mental", label: "Me SV", save: "character.defense.mentalDc" },
+                    { attr: "magical", label: "Ma SV", save: "character.defense.magicalDc" },
+                  ] as const
+                ).map(({ attr, label, save }) => {
+                  const isProficient =
+                    proficientAttribute?.toLowerCase() === attr;
+                  const attrMod = resolver.totals[`character.attribute.${attr}`] ?? 0;
+                  const saveDelta = resolver.totals[save] ?? 0;
+                  const sv = attrMod + (isProficient ? pb : 0) + saveDelta;
+                  const dc = 5 + pb + attrMod + saveDelta;
+                  const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
+                  return (
+                    <span
+                      key={attr}
+                      className={`rounded px-1.5 py-0.5 ${
+                        isProficient
+                          ? "bg-teal-500/20 text-teal-700 dark:text-teal-300"
+                          : "bg-secondary text-foreground"
+                      }`}
+                      title={`${attr} save: value ${fmt(sv)}, DC ${dc}${
+                        isProficient ? " (proficient)" : ""
+                      }`}
+                    >
+                      {label} {fmt(sv)} / DC {dc}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
             {/* Phase 8.4 v5 (Mashu 2026-07-28): wider gutter
                 between the middle column and the ones on left
                 and right. Mashu 2026-07-28: "we need a bit more
