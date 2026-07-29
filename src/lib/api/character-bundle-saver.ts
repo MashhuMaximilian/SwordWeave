@@ -583,6 +583,20 @@ export async function saveCharacterBundles(
         `[saveCharacterBundles ${characterId}] capability insert OK:`,
         slotsWithVersion.map((s) => s.capabilityId),
       );
+      // Phase 8.4 v24.5 (Mashu 2026-07-29): verify the
+      // rows are actually readable from inside the same
+      // transaction. If they aren't, something weird is
+      // going on (e.g. row-level security, wrong schema
+      // reference, MVCC issue). Mashu's repro: cap not
+      // persisted, BU counted it briefly.
+      const verifyRows = await tx
+        .select({ capabilityId: characterCapabilities.capabilityId })
+        .from(characterCapabilities)
+        .where(eq(characterCapabilities.characterId, characterId));
+      console.log(
+        `[saveCharacterBundles ${characterId}] post-insert character_capabilities rows (${verifyRows.length}):`,
+        verifyRows.map((r) => r.capabilityId),
+      );
     } catch (insertErr) {
       console.error(
         `[saveCharacterBundles ${characterId}] capability insert FAILED:`,

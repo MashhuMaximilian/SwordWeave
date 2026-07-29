@@ -224,9 +224,33 @@ export function TabbedCharacterForm() {
         seededCharacterId: seededCharacter.id,
         seededOnce,
         activeStep: activeStep,
+        // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — show
+        // what the API actually returned. If the cap isn't
+        // here, the save write didn't persist it (or it
+        // was filtered out by the GET response shape).
+        seededCapabilityCount: seededCharacter.capabilityLinks?.length ?? 0,
+        seededCapabilityIds: (seededCharacter.capabilityLinks ?? []).map(
+          (c) => ({
+            id: c.capabilityId,
+            originHeritageId: c.originHeritageId,
+            name: c.capability?.name,
+          }),
+        ),
+        seededHeritageCount: seededCharacter.heritageLinks?.length ?? 0,
       }),
     );
     const seeds = buildCharacterSeeds(seededCharacter);
+    // Phase 8.4 v24.5: also log what the seed built.
+    console.log(
+      `[character-modal] seeded pendingSlots (after build):`,
+      Object.fromEntries(
+        Object.entries(seeds.pendingSlots).map(([k, v]) => [k, v.length]),
+      ),
+      "manifest caps:",
+      seeds.pendingSlots.manifest
+        .filter((s) => s.kind === "capability")
+        .map((s) => s.kind === "capability" && s.capabilityId),
+    );
     setIdentity(seeds.identity as IdentityState);
     setBackstory(seeds.backstory as BackstoryState);
     setAttributes(seeds.attributes as AttributesState);
@@ -700,6 +724,30 @@ export function TabbedCharacterForm() {
           itemsBySource,
         };
       }
+
+      // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — save regression
+      // debug. Log exactly what the modal is about to send so
+      // we can see the bundled caps + legacy capabilityIds
+      // shape. The server has matching logs at the route +
+      // saver level — paste both sides to triangulate.
+      console.log(
+        `[character save ${editCharacterId ?? "NEW"}] PATCH body:`,
+        {
+          ...(body as Record<string, unknown>),
+          // Trim noisy arrays to keep the log readable.
+          heritages: "see server log for details",
+        },
+        {
+          capabilityIdsSent: capabilityIds,
+          capBundledCounts: Object.fromEntries(
+            Object.entries(
+              (body as Record<string, unknown>)[
+                "capabilitiesBySource"
+              ] as Record<string, Array<unknown>>,
+            ).map(([k, v]) => [k, v.length]),
+          ),
+        },
+      );
 
       const res = await fetch(url, {
         method,

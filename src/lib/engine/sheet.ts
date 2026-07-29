@@ -85,6 +85,12 @@ export type CapabilityLinkSnapshot = {
 export type ItemLinkSnapshot = {
   itemId: string;
   equipped: boolean;
+  /**
+   * Phase 8.4 v24.5 (Mashu 2026-07-29): stack quantity
+   * affects the separate Item BU display (a stack of 3
+   * cheap torches costs 3x the single BU).
+   */
+  quantity?: number;
   item: {
     id: string;
     name: string;
@@ -93,6 +99,12 @@ export type ItemLinkSnapshot = {
     slotCost: number;
     isTwoHanded: boolean;
     isConsumable: boolean;
+    /**
+     * Phase 8.4 v24.5 (Mashu 2026-07-29): item BU cost
+     * surfaced to the sheet's top-deck "Item BU (separate)"
+     * card via sumItemBu().
+     */
+    buCost: number;
   };
 };
 
@@ -338,18 +350,25 @@ export function aggregateCharacterSheet(
 }
 
 /**
- * Sum item BU from linked items. We don't store item-bu-cost on the link,
- * so this pulls it from the linked item's buCost via buCost tracking.
- * For Phase 4 v1 we treat each item's buCost as its item-BU contribution.
+ * Sum item BU from linked items.
  *
- * NOTE: when items get their own buCost tracking this stays simple.
+ * Phase 8.4 v24.5 (Mashu 2026-07-29): the top-deck card
+ * "Item BU (separate)" was always rendering 0 because this
+ * helper returned a hardcoded 0. Per Mashu:
+ *   "We have in top deck the 'Item BU 0 (separate)' it's
+ *    still 0. That just sums up all the BU of items in the
+ *    item tab."
+ *
+ * Now sums each item's buCost, multiplied by quantity
+ * (multi-stack items count their quantity). Pure BU pool
+ * tracking is unaffected — items never deduct from the
+ * progression pool; this is purely the separate display.
  */
 function sumItemBu(items: ItemLinkSnapshot[]): number {
-  // Item BU is part of the phase 4 sheet display (separate from progression pool).
-  // For now we don't store item buCost on the link — return 0; the UI shows
-  // the count and the user can flip into Edit to see per-item cost.
-  void items;
-  return 0;
+  return items.reduce(
+    (sum, link) => sum + (link.item.buCost ?? 0) * (link.quantity ?? 1),
+    0,
+  );
 }
 
 /**

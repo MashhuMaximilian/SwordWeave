@@ -140,6 +140,8 @@ async function CharacterCard({
         slotCost: 1,
         isTwoHanded: false,
         isConsumable: false,
+        // Phase 8.4 v24.5: required by ItemLinkSnapshot.
+        buCost: 0,
       },
     })),
   });
