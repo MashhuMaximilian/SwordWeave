@@ -350,6 +350,24 @@ export const characterCapabilities = pgTable(
       () => heritage.id,
       { onDelete: "set null" },
     ),
+    /**
+     * Phase 8.4 v24.6 (Mashu 2026-07-29): per-tab accordion
+     * routing for DIRECT capabilities (originHeritageId is null).
+     *
+     * Heritage-bundled caps inherit their tab from the heritage's
+     * kind (LINEAGE/UPBRINGING/MANIFEST), so they leave this null.
+     *
+     * Direct caps slot into a specific tab in the character edit
+     * modal (Lineage / Upbringing / Manifest). When the sheet
+     * renders, the cap lives in the accordion matching its
+     * slotTab — not always MANIFEST. Without this column the
+     * sheet hardcoded all direct caps into MANIFEST, which made
+     * lineage/upbringing slot choices invisible.
+     *
+     * Backwards-compat: existing rows default to MANIFEST
+     * (preserving the old behavior for any pre-v24.6 cap).
+     */
+    slotTab: heritageKindEnum("slot_tab").default("MANIFEST"),
     notes: text("notes"),
     ...timestamps,
   },

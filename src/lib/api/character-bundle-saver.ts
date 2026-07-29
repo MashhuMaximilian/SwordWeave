@@ -568,6 +568,23 @@ export async function saveCharacterBundles(
           versionId,
           slotSource,
           originHeritageId: c.originHeritageId,
+          // Phase 8.4 v24.6 (Mashu 2026-07-29): per-tab
+          // accordion routing. For DIRECT caps
+          // (originHeritageId === null) we record which tab
+          // the user slotted them into (LINEAGE / UPBRINGING
+          // / MANIFEST). Heritage-bundled caps leave this
+          // null — they inherit the tab from the heritage's
+          // kind, which the sheet already routes correctly.
+          //
+          // PERSONAL source (legacy / no-tab picked) is
+          // coerced to MANIFEST since that's the historical
+          // behavior for un-routed direct slots.
+          slotTab:
+            c.originHeritageId === null
+              ? c.source === "PERSONAL"
+                ? "MANIFEST"
+                : (c.source as "LINEAGE" | "UPBRINGING" | "MANIFEST")
+              : null,
         };
       }),
     );

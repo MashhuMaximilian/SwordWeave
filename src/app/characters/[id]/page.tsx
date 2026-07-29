@@ -256,6 +256,11 @@ export default async function CharacterSheetPage({
           slotSource: l.slotSource,
           latestVersionId: latestVersions.get(makeKey("capability", l.capabilityId)) ?? null,
           originHeritageId: l.originHeritageId ?? null,
+          // Phase 8.4 v24.6 (Mashu 2026-07-29): per-tab
+          // accordion routing. Normalise legacy null rows
+          // (pre-v24.6) to MANIFEST — the sheet's
+          // HeritageKindAccordion expects a strict string.
+          slotTab: l.slotTab ?? "MANIFEST",
           effectLinks: (cap.effectLinks ?? []).map((el) => ({
             effectId: el.effectId,
             effect: {

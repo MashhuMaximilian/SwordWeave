@@ -136,6 +136,12 @@ type SheetCapabilityLink = {
   // Phase 8.1 batch 13.1: capability origin (the heritage that
   // brought it in, if any). Direct slots have null.
   originHeritageId: string | null;
+  // Phase 8.4 v24.6 (Mashu 2026-07-29): per-tab accordion
+  // routing for DIRECT caps. Heritage-bundled caps have
+  // originHeritageId set; their slotTab stays null. Direct
+  // caps read slotTab to know which accordion (LINEAGE /
+  // UPBRINGING / MANIFEST) to render under.
+  slotTab: "LINEAGE" | "UPBRINGING" | "MANIFEST" | null;
   // Phase 8.4 v5 (Mashu 2026-07-28): effects belonging to the
   // underlying capability template. Flattened to the outer
   // link level so the CapabilitiesTab can spread `{...c}` into
@@ -644,6 +650,11 @@ export function CharacterSheetView(props: CharacterSheetProps) {
               latestVersionId: l.latestVersionId,
               // Phase 8.1 batch 13.1: pass through origin for the badge.
               originHeritageId: l.originHeritageId,
+              // Phase 8.4 v24.6 (Mashu 2026-07-29): per-tab
+              // accordion routing for direct caps. Default
+              // to MANIFEST when the column is null (legacy
+              // rows pre-v24.6).
+              slotTab: l.slotTab ?? "MANIFEST",
               tags: l.capability.tags ?? [],
               // Phase 8.4 v5 (Mashu 2026-07-28): forward
               // effectLinks so the CapabilityCard can render
@@ -1724,6 +1735,13 @@ function CapabilitiesTab({
     slotSource: SlotSource | null;
     latestVersionId: string | null;
     originHeritageId: string | null;
+    /**
+     * Phase 8.4 v24.6 (Mashu 2026-07-29): per-tab accordion
+     * routing. Always present in CapabilitiesTab — the
+     * sheet's caller maps `l.slotTab ?? "MANIFEST"` so
+     * legacy pre-v24.6 rows get normalised.
+     */
+    slotTab: "LINEAGE" | "UPBRINGING" | "MANIFEST";
     tags?: string[];
     // Phase 8.4 v5 (Mashu 2026-07-28): effects belonging to
     // the underlying capability template. Nested under
@@ -2091,6 +2109,17 @@ function HeritageKindAccordion({
     sourceType: string;
     verboseDescription: string | null;
     originHeritageId: string | null;
+    /**
+     * Phase 8.4 v24.6 (Mashu 2026-07-29): per-tab accordion
+     * routing for DIRECT caps. Heritage-bundled caps have
+     * originHeritageId set; they inherit their tab from the
+     * heritage's kind. Direct caps read this column to know
+     * which accordion (LINEAGE / UPBRINGING / MANIFEST) to
+     * render under. The sheet's caller always normalises
+     * null → "MANIFEST" for legacy rows, so this can be a
+     * strict string here.
+     */
+    slotTab: "LINEAGE" | "UPBRINGING" | "MANIFEST";
   }>;
   primitiveLinks: Array<{ primitive: { id: number }; originHeritageId: string | null }>;
 }) {
@@ -2098,22 +2127,16 @@ function HeritageKindAccordion({
 
   // Phase 8.4 v24 (Mashu 2026-07-29): T4 — group direct
   // caps (originHeritageId === null) by their kind so we
-  // can attach them to the right accordion. Only caps
-  // with kind === `kind` slot here. (A cap slotted via
-  // the manifest tab that "belongs" to a LINEAGE-type
-  // concept would be filtered to the LINEAGE accordion.)
-  //
-  // For the simple case (caps aren't kind-typed),
-  // direct caps all flow into the MANIFEST accordion
-  // (matches Mashu's original S6 design where personal
-  // manifest choices live under the MANIFEST kind).
-  const directCapsForKind =
-    kind === "MANIFEST"
-      ? capabilities.filter(
-          (c) =>
-            c.originHeritageId === null || c.originHeritageId === undefined,
-        )
-      : [];
+  // can attach them to the right accordion. Phase 8.4
+  // v24.6: respect slotTab — caps slotted via the LINEAGE
+  // tab render in LINEAGE, etc. Caps without slotTab
+  // (legacy rows pre-v24.6) default to MANIFEST.
+  const directCapsForKind = capabilities.filter(
+    (c) =>
+      (c.originHeritageId === null || c.originHeritageId === undefined) &&
+      (c.slotTab === kind ||
+        (c.slotTab === null && kind === "MANIFEST")),
+  );
 
   return (
     <details className="group rounded-md border border-border bg-card">

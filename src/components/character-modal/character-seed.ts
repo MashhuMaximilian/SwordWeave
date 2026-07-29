@@ -184,6 +184,15 @@ export interface CharacterSeed {
      * BU and show duplicates the user has to clean up.
      */
     originHeritageId: string | null;
+    /**
+     * Phase 8.4 v24.6 (Mashu 2026-07-29): per-tab accordion
+     * routing for DIRECT caps. Set to "LINEAGE" / "UPBRINGING" /
+     * "MANIFEST" depending on which tab the user slotted the
+     * cap into. Heritage-bundled caps have originHeritageId set
+     * AND slotTab = null — they inherit their tab from the
+     * heritage's kind, not from this column.
+     */
+    slotTab: "LINEAGE" | "UPBRINGING" | "MANIFEST" | null;
     capability: { id: string; name: string };
   }>;
   /**
@@ -457,10 +466,20 @@ function seedCapabilitySlot(
   if (link.originHeritageId) {
     return null;
   }
+  // Phase 8.4 v24.6 (Mashu 2026-07-29): per-tab accordion
+  // routing. Read slotTab from the DB and route the cap to
+  // the matching tab on edit-open. Legacy rows (pre-v24.6)
+  // default to MANIFEST.
+  const tab =
+    link.slotTab === "LINEAGE"
+      ? "lineage"
+      : link.slotTab === "UPBRINGING"
+        ? "upbringing"
+        : "manifest";
   return {
     kind: "capability",
     capabilityId: link.capabilityId,
-    tab: "manifest",
+    tab,
     name: link.capability.name,
   };
 }
