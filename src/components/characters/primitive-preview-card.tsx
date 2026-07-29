@@ -42,6 +42,13 @@ export interface PrimitivePreviewCardProps {
    * source heritage name + kind. */
   readonly inheritedFrom?: string | null;
   readonly inheritedKind?: string | null;
+  /** Phase 8.4 v11 (Mashu 2026-07-28): the full provenance
+   * path "heritage → capability → effect" for primitives
+   * that came in via a capability or capability → effect.
+   * E.g. "Mystic → Aura Detective → Psychic Firewall".
+   * Used in the subtitle line to match the character
+   * creation modal's "via X > Y > Z" breadcrumb. */
+  readonly provenancePath?: string | null;
   /** The primitive link data the sheet already has. We use this
    * to render immediately (no fetch needed) and as a fallback
    * if the detail fetch fails. */
@@ -67,8 +74,11 @@ export function PrimitivePreviewCard({
   primitiveLink,
   inheritedFrom = null,
   inheritedKind = null,
+  provenancePath = null,
 }: PrimitivePreviewCardProps) {
   const p = primitiveLink.primitive;
+  const isMirrored = primitiveLink.isMirrored;
+  const mirrorBuCredit = p.mirrorBuCredit;
   const { showToast } = useToasts();
   const { openPreview } = useEntityPreview();
 
@@ -151,9 +161,17 @@ export function PrimitivePreviewCard({
   const hasConditions =
     Array.isArray(modifiers) && modifiers.length > 0;
 
+  const isInherited = Boolean(inheritedFrom) || Boolean(provenancePath);
+  // The character-creation modal uses a yellow / amber
+  // accent for the mirrored state. We mirror that here so
+  // the UI is consistent between modal and sheet.
+  const mirroredClasses = isMirrored
+    ? "border-yellow-500/50 bg-yellow-500/10"
+    : "";
+
   return (
     <div
-      className="flex flex-col gap-1 rounded border border-border bg-card/40 px-2 py-1.5 text-xs transition-colors hover:bg-card/80"
+      className={`flex flex-col gap-1 rounded border border-border bg-card/40 px-2 py-1.5 text-xs transition-colors hover:bg-card/80 ${mirroredClasses}`}
       data-testid="primitive-preview-card"
       data-primitive-id={p.id}
       data-primitive-name={p.name}
@@ -172,14 +190,19 @@ export function PrimitivePreviewCard({
             {p.name}
           </button>
           {primitiveLink.isMirrored && (
-            <span className="inline-flex items-center gap-0.5 rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
+            <span className="inline-flex items-center gap-0.5 rounded border border-yellow-500/50 bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-medium text-yellow-700 dark:text-yellow-300">
               <RotateCcw className="size-2.5" />
               Mirrored
             </span>
           )}
-          {inheritedFrom && (
-            <span className="inline-flex items-center gap-0.5 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-              inherited · {inheritedKind?.toLowerCase()}
+          {isInherited && !primitiveLink.isMirrored && (
+            <span className="inline-flex items-center gap-0.5 rounded border border-emerald-500/50 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
+              Inherited
+            </span>
+          )}
+          {!isInherited && (
+            <span className="inline-flex items-center gap-0.5 rounded border border-border bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              Direct
             </span>
           )}
         </div>
@@ -187,6 +210,43 @@ export function PrimitivePreviewCard({
           <span className="font-mono text-foreground">{p.buCost} BU</span>
         </div>
       </div>
+      {/* Phase 8.4 v11 (Mashu 2026-07-28): subtitle line
+          that shows the source path. Matches the
+          character-creation modal's "8 BU · via X > Y > Z"
+          breadcrumb. */}
+      <p
+        className="text-[10px] text-muted-foreground"
+        data-testid="primitive-subtitle"
+      >
+        {isMirrored ? (
+          <>
+            <span className="font-medium text-yellow-700 dark:text-yellow-300">
+              Direct primitive
+            </span>
+            {" · "}
+            <span className="line-through">{p.buCost} BU</span>
+            {" → "}
+            <span className="font-mono text-yellow-700 dark:text-yellow-300">
+              {mirrorBuCredit} BU debt
+            </span>
+          </>
+        ) : isInherited ? (
+          <>
+            <span className="font-mono">{p.buCost} BU</span>
+            {" · via "}
+            <span>
+              {provenancePath ??
+                `${inheritedFrom}${inheritedKind ? ` (${inheritedKind.toLowerCase()})` : ""}`}
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="font-medium">Direct primitive</span>
+            {" · "}
+            <span className="font-mono">{p.buCost} BU</span>
+          </>
+        )}
+      </p>
       {fetching ? (
         <span className="text-[10px] text-muted-foreground">
           Loading preview…
@@ -279,55 +339,69 @@ function PrimitiveDetailToggle({
         Details
       </summary>
       <div className="mt-1 space-y-1.5 text-[10px]">
-        {inheritedFrom && (
-          <p className="text-muted-foreground">
-            <span className="font-semibold uppercase">Provenance: </span>
-            heritage ({inheritedKind?.toLowerCase() ?? "—"}) → {inheritedFrom}
-          </p>
-        )}
+        {/* Mirror toggle (only when the primitive is mirrorable
+            and not currently mirrored — the modal has the
+            "✓ Mirrored (-N BU debt) — click to unmirror" pill).
+            Sheet is read-only, so just show the action hint. */}
         {isMirrored && (
-          <div className="text-destructive">
-            <p className="font-semibold uppercase">Mirrored modifiers</p>
-            {modifierList.length > 0 ? (
-              <ul className="mt-0.5 space-y-0.5">
-                {modifierList.map((mod, i) => {
-                  const m = mod as {
-                    target?: string;
-                    operation?: string;
-                    value?: unknown;
-                  };
-                  const v = Number(m.value ?? 0);
-                  // VARIABLE_VECTOR flips sign on the value
-                  const flipped = v !== 0 ? -v : v;
-                  return (
-                    <li
-                      key={i}
-                      className="flex flex-wrap items-center gap-1 font-mono"
-                    >
-                      <span>{m.operation ?? "modify"}</span>
-                      <span className="font-semibold">
-                        {v >= 0 ? `+${v}` : `${v}`} → {flipped >= 0 ? `+${flipped}` : `${flipped}`}
-                      </span>
-                      <span className="text-destructive/70">→</span>
-                      <span>{m.target ?? "?"}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <p className="italic">
-                No modifiers to mirror. BU cost: {buCost} → {mirrorBuCredit} BU.
-              </p>
-            )}
+          <div className="space-y-1">
+            <p className="rounded border border-yellow-500/50 bg-yellow-500/10 px-2 py-1 font-medium text-yellow-700 dark:text-yellow-300">
+              ✓ Mirrored (−{buCost - mirrorBuCredit || buCost} BU debt) —{" "}
+              <span className="italic">
+                toggle from the character editor to unmirror
+              </span>
+            </p>
+            <p className="mb-0.5 font-semibold uppercase tracking-wide text-yellow-700 dark:text-yellow-300">
+              Modifier (mirrored)
+            </p>
+            <ul className="space-y-0.5">
+              {modifierList.map((mod, i) => {
+                const m = mod as {
+                  target?: string;
+                  operation?: string;
+                  value?: unknown;
+                };
+                const v = Number(m.value ?? 0);
+                const flipped = v !== 0 ? -v : v;
+                return (
+                  <li
+                    key={i}
+                    className="flex flex-wrap items-center gap-1.5 font-mono"
+                  >
+                    <span className="rounded border border-border bg-background px-1.5 py-0.5 text-foreground">
+                      {m.target ?? "?"}
+                    </span>
+                    <span className="rounded border border-yellow-500/50 bg-yellow-500/15 px-1.5 py-0.5 font-mono text-yellow-700 dark:text-yellow-300">
+                      {m.operation ?? "modify"}
+                    </span>
+                    <span className="font-semibold text-foreground">
+                      {v >= 0 ? `+${v}` : `${v}`}
+                    </span>
+                    <span className="text-yellow-700/70 dark:text-yellow-300/70">
+                      →
+                    </span>
+                    <span className="font-semibold text-yellow-700 dark:text-yellow-300">
+                      {flipped >= 0 ? `+${flipped}` : `${flipped}`}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            {/* Mirror semantics tag — matches the modal's
+                UNIQUE-BY-PRIMITIVE / STACK badges. */}
+            <p className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+              <span className="rounded border border-yellow-500/50 bg-yellow-500/15 px-1.5 py-0.5 font-medium text-yellow-700 dark:text-yellow-300">
+                Mirrored
+              </span>
+              <span className="italic">sign flipped (VARIABLE_VECTOR)</span>
+            </p>
           </div>
         )}
-        {narrativeRule && (
-          <p className="text-muted-foreground italic">{narrativeRule}</p>
-        )}
-        {modifierList.length > 0 && (
-          <div>
+        {/* Unmirrored modifiers — green tag + same UI */}
+        {!isMirrored && modifierList.length > 0 && (
+          <div className="space-y-1">
             <p className="mb-0.5 font-semibold uppercase tracking-wide text-muted-foreground">
-              Modifiers
+              Modifier
             </p>
             <ul className="space-y-0.5">
               {modifierList.map((mod, i) => {
@@ -339,19 +413,25 @@ function PrimitiveDetailToggle({
                 return (
                   <li
                     key={i}
-                    className="flex flex-wrap items-center gap-1 font-mono"
+                    className="flex flex-wrap items-center gap-1.5 font-mono"
                   >
-                    <span className="text-foreground">{m.operation ?? "modify"}</span>
-                    <span className="text-teal-700 dark:text-teal-300">
+                    <span className="rounded border border-border bg-background px-1.5 py-0.5 text-foreground">
+                      {m.target ?? "?"}
+                    </span>
+                    <span className="rounded border border-emerald-500/50 bg-emerald-500/15 px-1.5 py-0.5 font-mono text-emerald-700 dark:text-emerald-300">
+                      {m.operation ?? "modify"}
+                    </span>
+                    <span className="font-semibold text-foreground">
                       {String(m.value ?? "?")}
                     </span>
-                    <span className="text-muted-foreground">→</span>
-                    <span className="text-foreground">{m.target ?? "?"}</span>
                   </li>
                 );
               })}
             </ul>
           </div>
+        )}
+        {narrativeRule && (
+          <p className="text-muted-foreground italic">{narrativeRule}</p>
         )}
       </div>
     </details>

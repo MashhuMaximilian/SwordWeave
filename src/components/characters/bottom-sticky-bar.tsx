@@ -29,7 +29,7 @@
  *     slots now live HERE. Single source of truth means no
  *     duplicate data.
  *   - Drawer is visible on all screen sizes (no md:hidden).
- *   - Drawer grows UPWARD with max-h-[88dvh] when expanded.
+ *   - Drawer grows UPWARD with max-h-[70dvh] when expanded.
  *   - Added provenance popups for DC, attrs, saves, vitality,
  *     and practices.
  *   - PROF tag next to the proficient attribute label.
@@ -299,12 +299,12 @@ export function BottomStickyBar({
       </button>
 
       {/* Drawer content — only when expanded. Grows upward
-          with max-h-[88dvh] so the user can see most of the
+          with max-h-[70dvh] so the user can see most of the
           page's content even when expanded. On mobile this
           is essentially the entire visible viewport. */}
       {expanded && (
         <div
-          className="px-2 pb-20 pt-1.5 max-h-[calc(100dvh-3rem)] overflow-y-auto"
+          className="px-2 pb-3 pt-1.5 max-h-[70dvh] overflow-y-auto"
           data-testid="bottom-sticky-bar-drawer"
         >
           {/* 1. Vitality header + bar + buttons.

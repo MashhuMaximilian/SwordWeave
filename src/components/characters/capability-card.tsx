@@ -38,6 +38,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Zap, Power, CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { SlotSource } from "@/db/schema/characters";
@@ -153,6 +154,7 @@ export function CapabilityCard({
   showPrimitives = true,
   showPreviewButton = true,
 }: CapabilityCardProps) {
+  const router = useRouter();
   const { showToast } = useToasts();
   const { openPreview } = useEntityPreview();
   const [previewData, setPreviewData] = useState<Record<string, unknown> | null>(null);
@@ -339,6 +341,10 @@ export function CapabilityCard({
         next ? `Activated "${capability.name}"` : `Deactivated "${capability.name}"`,
         "success",
       );
+      // Phase 8.4 v11 (Mashu 2026-07-28): refresh the
+      // page so the History tab picks up the new
+      // capability_toggle log entry without a hard reload.
+      router.refresh();
     } catch (err) {
       setActive(!next);
       writeToggle(characterId, capability.id, !next);
@@ -380,8 +386,9 @@ export function CapabilityCard({
 
       const data = (await res.json()) as TriggerResponse;
       showToast(`Triggered "${data.capability.name}"`, "success");
-      // No router.refresh() — trigger is a log-only event, nothing
-      // else on the sheet needs to re-render.
+      // Phase 8.4 v11 (Mashu 2026-07-28): refresh the page
+      // so the History tab picks up the new
+      // capability_trigger log entry.
     } catch (err) {
       showToast(
         err instanceof Error ? err.message : "Network error.",
@@ -556,19 +563,25 @@ export function CapabilityCard({
         <div className="mt-3 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={handleToggle}
+            onClick={(e) => {
+              // Don't bubble up to the card click handler
+              // (which opens the preview modal).
+              e.stopPropagation();
+              void handleToggle();
+            }}
             disabled={toggling || triggerPending}
             aria-pressed={showActive}
+            data-testid="capability-toggle"
             className={cn(
               "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
               showActive
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border bg-background hover:bg-secondary",
+                ? "border-green-500 bg-green-500/15 text-green-700 dark:text-green-300"
+                : "border-border bg-background text-muted-foreground hover:bg-secondary hover:text-foreground",
             )}
             title={
               showActive
-                ? "Currently active — click to deactivate"
-                : "Click to activate (persists in this browser)"
+                ? "Active — click to deactivate. Persists in localStorage; logs to History."
+                : "Inactive — click to activate. Persists in localStorage; logs to History."
             }
           >
             <Power className="size-3" />
@@ -576,8 +589,12 @@ export function CapabilityCard({
           </button>
           <button
             type="button"
-            onClick={handleTrigger}
+            onClick={(e) => {
+              e.stopPropagation();
+              void handleTrigger();
+            }}
             disabled={triggerPending || toggling}
+            data-testid="capability-trigger"
             className="inline-flex items-center gap-1 rounded-md border border-amber-500/50 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:text-amber-300"
             title="Fire this capability once and log it (state does not persist)"
           >
@@ -595,7 +612,10 @@ export function CapabilityCard({
           {showPreviewButton && (
             <button
               type="button"
-              onClick={handlePreviewClick}
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePreviewClick(e);
+              }}
               disabled={previewLoading}
               className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
               title="Open preview modal"

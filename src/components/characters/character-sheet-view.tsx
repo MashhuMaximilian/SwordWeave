@@ -490,36 +490,6 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             </div>
           </div>
         </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Phase 8.2 batch 7 rev 2: editing goes through the
-              atelier's character builder modal, accessed by
-              clicking this button → /atelier (with the edit id
-              in localStorage). QuickEditPanel was removed per
-              Mashu 2026-07-23. */}
-          <CharacterEditButton
-            characterId={props.id}
-            className="flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-card"
-            title="Open in the atelier for editing"
-          />
-          {props.level < 20 && (
-            <button
-              type="button"
-              onClick={() => setLevelUpConfirm(true)}
-              className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              <ArrowUp className="size-4" />
-              Level Up
-            </button>
-          )}
-          <Link
-            href={`/characters/${props.id}/clone`}
-            className="flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-card"
-          >
-            <Swords className="size-4" />
-            Clone
-          </Link>
-        </div>
       </header>
       {/* Mobile: SheetIdentityHeader is fixed at top-of-viewport, so
           the content needs a top spacer to avoid being hidden. The
@@ -591,6 +561,43 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             tone={attrValid ? "ok" : "bad"}
             note={attrValid ? "✓ valid" : `✗ off by ${attrSum - 10}`}
           />
+        </div>
+      </div>
+
+      {/* Phase 8.4 v11 (Mashu 2026-07-28): action button row.
+          Moved here from the <header> so the upper deck reads
+          top-to-bottom as: portrait+name → BU budgets →
+          identity card → actions → tabs. Matches the user's
+          annotated screenshot. */}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+<div className="flex flex-wrap items-center gap-2">
+          {/* Phase 8.2 batch 7 rev 2: editing goes through the
+              atelier's character builder modal, accessed by
+              clicking this button → /atelier (with the edit id
+              in localStorage). QuickEditPanel was removed per
+              Mashu 2026-07-23. */}
+          <CharacterEditButton
+            characterId={props.id}
+            className="flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-card"
+            title="Open in the atelier for editing"
+          />
+          {props.level < 20 && (
+            <button
+              type="button"
+              onClick={() => setLevelUpConfirm(true)}
+              className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              <ArrowUp className="size-4" />
+              Level Up
+            </button>
+          )}
+          <Link
+            href={`/characters/${props.id}/clone`}
+            className="flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-card"
+          >
+            <Swords className="size-4" />
+            Clone
+          </Link>
         </div>
       </div>
 
@@ -1771,6 +1778,16 @@ function CapabilitiesTab({
       hardModifiers: readonly unknown[];
     };
     origin: "DIRECT" | { heritageId: string; heritageName: string; kind: string };
+    /**
+     * Phase 8.4 v11 (Mashu 2026-07-28): the full
+     * provenance path "heritage → capability → effect"
+     * for primitives that came in via a capability or
+     * via a capability → effect. Used to render the
+     * "via X > Y > Z" subtitle on the sheet (matches the
+     * character-creation modal). Null for direct-slot
+     * primitives.
+     */
+    provenancePath: string | null;
     isMirrored: boolean;
   };
   const allPrimitives: CombinedPrimitive[] = [];
@@ -1782,6 +1799,7 @@ function CapabilitiesTab({
       primitiveId: l.primitiveId,
       primitive: l.primitive,
       origin: "DIRECT",
+      provenancePath: null,
       isMirrored: l.isMirrored,
     });
   }
@@ -1798,6 +1816,7 @@ function CapabilitiesTab({
           heritageName: h.name,
           kind: h.kind,
         },
+        provenancePath: h.name,
         isMirrored: false,
       });
     }
@@ -1822,6 +1841,9 @@ function CapabilitiesTab({
         heritageName: h?.name ?? "—",
         kind: h?.kind ?? "—",
       },
+      provenancePath: dp.sourceEffectId
+        ? `${h?.name ?? "—"} → ${capabilityById.get(dp.sourceCapabilityId)?.name ?? dp.sourceCapabilityId} → ${effectById.get(dp.sourceEffectId)?.name ?? dp.sourceEffectId}`
+        : `${h?.name ?? "—"} → ${capabilityById.get(dp.sourceCapabilityId)?.name ?? dp.sourceCapabilityId}`,
       isMirrored: false,
     });
   }
@@ -1914,6 +1936,7 @@ function CapabilitiesTab({
                         }}
                         inheritedFrom={heritageName}
                         inheritedKind={heritageKind}
+                        provenancePath={p.provenancePath}
                       />
                     </li>
                   );
