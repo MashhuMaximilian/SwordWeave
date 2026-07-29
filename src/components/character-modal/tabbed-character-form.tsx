@@ -880,6 +880,30 @@ export function TabbedCharacterForm() {
     );
   }
 
+  // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — log Save
+  // button state every render so we can see whether
+  // canCreate was false at click time. Mashu's repro:
+  // cap added via modal, "saved", reopened, cap not
+  // there. No save logs fired. Hypothesis: button was
+  // disabled (debtExceeded / nameValid / attrValid),
+  // she clicked anyway, browser ignored the disabled
+  // onClick, modal was then closed via X/Escape without
+  // saving. This log will tell us if that's the case.
+  console.log(
+    `[character-modal] Save button render — canCreate=${canCreate}`,
+    {
+      editCharacterId,
+      isPending,
+      nameValid,
+      attrValid,
+      debtExceeded,
+      debtUsed: buSummary.debtUsed,
+      debtCeiling,
+      overBudget,
+      budgetOverflowRemainder,
+    },
+  );
+
   return (
     <div className="flex flex-col gap-3">
       {/* Tab bar — sticky at top of scroll container */}
@@ -1010,7 +1034,33 @@ export function TabbedCharacterForm() {
         </div>
         <button
           type="button"
-          onClick={() => void handleSubmit()}
+          onClick={() => {
+            // Phase 8.4 v24.5: explicit click log. If this
+            // doesn't appear after the user clicked Save,
+            // the button was disabled and the click was eaten
+            // by the browser.
+            console.log(
+              `[character-modal] Save button clicked — canCreate=${canCreate}`,
+            );
+            if (!canCreate) {
+              showToast(
+                `Save blocked: ${
+                  !nameValid
+                    ? "name required"
+                    : !attrValid
+                      ? "attributes must sum to 10"
+                      : isPending
+                        ? "save already in progress"
+                        : debtExceeded
+                          ? `BU debt exceeds ceiling (${buSummary.debtUsed} > ${debtCeiling})`
+                          : "unknown"
+                }`,
+                "error",
+              );
+              return;
+            }
+            void handleSubmit();
+          }}
           disabled={!canCreate}
           className="flex shrink-0 items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
