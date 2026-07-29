@@ -51,11 +51,28 @@ export interface CapabilityTogglePayload {
   capabilityId: string;
   capabilityName: string;
   active: boolean;
+  /**
+   * Phase 8.4 v24.5 (Mashu 2026-07-29): when this toggle is
+   * for an item-scoped capability (lives on item_capabilities
+   * via a character_items slot), the itemId is recorded so
+   * the History tab can disambiguate from character-scoped
+   * toggles.
+   */
+  itemId?: string;
+  /**
+   * "item" if the cap lives on item_capabilities,
+   * "character" if on character_capabilities.
+   * Defaults to "character" for legacy log entries.
+   */
+  scope?: "item" | "character";
 }
 
 export interface CapabilityTriggerPayload {
   capabilityId: string;
   capabilityName: string;
+  /** Phase 8.4 v24.5 — same as toggle. */
+  itemId?: string;
+  scope?: "item" | "character";
 }
 
 export interface ItemEquipPayload {

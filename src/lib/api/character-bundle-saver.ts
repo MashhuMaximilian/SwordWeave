@@ -106,6 +106,31 @@ export async function saveCharacterBundles(
   tx: Tx,
   input: CharacterBundleInput,
 ): Promise<BundleExpansionResult> {
+  // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — save regression
+  // debug. Log the input shape so we can see what the modal
+  // actually sent. Mashu's repro: "I added a cap via modal,
+  // saved, cap not persisted, BU counted it briefly." If we
+  // see the cap here, the issue is downstream.
+  console.log(
+    `[saveCharacterBundles ${input.characterId}] input:`,
+    {
+      level: input.level,
+      heritageCount: input.heritages.length,
+      heritageIds: input.heritages,
+      capCountsBySource: Object.fromEntries(
+        Object.entries(input.capabilitiesBySource).map(([k, v]) => [k, v.length]),
+      ),
+      capIdsBySource: Object.fromEntries(
+        Object.entries(input.capabilitiesBySource).map(([k, v]) => [
+          k,
+          v.map((c) => c.id),
+        ]),
+      ),
+      itemCountsBySource: Object.fromEntries(
+        Object.entries(input.itemsBySource).map(([k, v]) => [k, v.length]),
+      ),
+    },
+  );
   const {
     userId,
     characterId,
@@ -489,6 +514,25 @@ export async function saveCharacterBundles(
   // 8. Write expanded capabilities (with version_id + slot_source +
   //    originHeritageId).
   // -----------------------------------------------------------------
+  // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — save regression
+  // debug. Log exactly which capabilities (with source +
+  // originHeritageId) are about to be inserted. Mashu's repro:
+  // "I added a cap via modal, saved, cap not persisted, BU
+  // counted it briefly." If we see the cap here but it doesn't
+  // show up in the sheet, the issue is downstream (sheet fetch
+  // or seed). If we DON'T see it, the issue is upstream (modal
+  // PATCH body or capabilitiesBySource parsing).
+  if (expansion.capabilities.length > 0) {
+    console.log(
+      `[saveCharacterBundles ${characterId}] writing ${expansion.capabilities.length} capability slot(s):`,
+      expansion.capabilities.map((c) => ({
+        id: c.capabilityId,
+        source: c.source,
+        originHeritageId: c.originHeritageId,
+        originPath: c.originPath,
+      })),
+    );
+  }
   if (expansion.capabilities.length > 0) {
     const capRows = await tx
       .select({
@@ -527,7 +571,28 @@ export async function saveCharacterBundles(
         };
       }),
     );
-    await tx.insert(characterCapabilities).values(slotsWithVersion);
+    // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — log insert.
+    // If this throws (PK violation, FK violation, etc.), the
+    // whole transaction rolls back and we lose ALL slot writes
+    // (primitives, heritages, items). That would explain
+    // "BU recalculated correctly to not include it" if the
+    // user was looking at a stale cached footer.
+    try {
+      await tx.insert(characterCapabilities).values(slotsWithVersion);
+      console.log(
+        `[saveCharacterBundles ${characterId}] capability insert OK:`,
+        slotsWithVersion.map((s) => s.capabilityId),
+      );
+    } catch (insertErr) {
+      console.error(
+        `[saveCharacterBundles ${characterId}] capability insert FAILED:`,
+        insertErr instanceof Error
+          ? { message: insertErr.message, cause: insertErr.cause }
+          : insertErr,
+        slotsWithVersion,
+      );
+      throw insertErr;
+    }
   }
 
   // -----------------------------------------------------------------

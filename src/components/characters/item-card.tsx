@@ -108,6 +108,11 @@ export function ItemCard({
   // item in the EntityPreview modal stack instead of a
   // new tab. Per Mashu: "Preview button — replace with
   // click-to-preview modal (no new tab)".
+  //
+  // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — same preview
+  // pattern for nested item capabilities, effects, and
+  // primitives. Mashu: "I still cannot click on the item
+  // primitives or capabilities to see their preview modals."
   const openItemPreview = useCallback(async () => {
     setPreviewPending(true);
     try {
@@ -143,6 +148,81 @@ export function ItemCard({
       setPreviewPending(false);
     }
   }, [item.id, openPreview, showToast]);
+
+  // v24.5: click on a nested capability → preview modal.
+  const openCapabilityPreview = useCallback(
+    async (capabilityId: string) => {
+      try {
+        const res = await fetch(
+          `/api/capabilities/${encodeURIComponent(capabilityId)}`,
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as {
+          capability: Record<string, unknown>;
+        };
+        openPreview({
+          item: { kind: "capability", row: data.capability as never },
+          category: "CAPABILITY",
+        });
+      } catch (err) {
+        showToast(
+          `Could not open preview: ${err instanceof Error ? err.message : String(err)}`,
+          "error",
+        );
+      }
+    },
+    [openPreview, showToast],
+  );
+
+  // v24.5: click on a nested primitive → preview modal.
+  const openPrimitivePreview = useCallback(
+    async (primitiveId: number) => {
+      try {
+        const res = await fetch(
+          `/api/primitives/${encodeURIComponent(String(primitiveId))}`,
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as {
+          primitive: Record<string, unknown>;
+        };
+        openPreview({
+          item: { kind: "primitive", row: data.primitive as never },
+          category: "PRIMITIVE",
+        });
+      } catch (err) {
+        showToast(
+          `Could not open preview: ${err instanceof Error ? err.message : String(err)}`,
+          "error",
+        );
+      }
+    },
+    [openPreview, showToast],
+  );
+
+  // v24.5: click on a nested effect → preview modal.
+  const openEffectPreview = useCallback(
+    async (effectId: string) => {
+      try {
+        const res = await fetch(
+          `/api/effects/${encodeURIComponent(effectId)}`,
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as {
+          effect: Record<string, unknown>;
+        };
+        openPreview({
+          item: { kind: "effect", row: data.effect as never },
+          category: "EFFECT",
+        });
+      } catch (err) {
+        showToast(
+          `Could not open preview: ${err instanceof Error ? err.message : String(err)}`,
+          "error",
+        );
+      }
+    },
+    [openPreview, showToast],
+  );
 
   // Optimistic local state.
   const [optimisticEquipped, setOptimisticEquipped] = useState(item.equipped);
@@ -318,11 +398,38 @@ export function ItemCard({
                           cap active/trigger lives on the
                           sheet (per-character runtime).
                           Per Mashu: items don't have caps
-                          in the modal — toggle here. */}
-                      <ItemCapabilityToggle
-                        itemId={item.id}
-                        capability={cl.capability}
-                      />
+                          in the modal — toggle here.
+                          v24.5: clicking the cap name
+                          opens the EntityPreview modal
+                          (cap click should preview the cap,
+                          not just be a toggle). */}
+                      <div className="flex items-start gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openCapabilityPreview(cl.capabilityId)}
+                          title={`Preview "${cl.capability.name}"`}
+                          className="flex-1 rounded border border-border/40 bg-card px-2 py-1.5 text-left transition-colors hover:bg-secondary"
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium">
+                              {cl.capability.name}
+                            </span>
+                            <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                              {cl.capability.type}
+                            </span>
+                          </div>
+                          {cl.capability.verboseDescription && (
+                            <p className="mt-1 text-muted-foreground line-clamp-3">
+                              {cl.capability.verboseDescription}
+                            </p>
+                          )}
+                        </button>
+                        <ItemCapabilityToggle
+                          itemId={item.id}
+                          characterId={characterId}
+                          capability={cl.capability}
+                        />
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -339,12 +446,20 @@ export function ItemCard({
                       key={el.effectId}
                       className="rounded border border-border/40 bg-background/40 px-2 py-1.5"
                     >
-                      <div className="font-medium">{el.effect.name}</div>
-                      {el.effect.description && (
-                        <p className="mt-1 text-muted-foreground line-clamp-2">
-                          {el.effect.description}
-                        </p>
-                      )}
+                      {/* v24.5: click the effect name to preview. */}
+                      <button
+                        type="button"
+                        onClick={() => openEffectPreview(el.effectId)}
+                        title={`Preview "${el.effect.name}"`}
+                        className="block w-full text-left transition-colors hover:underline"
+                      >
+                        <div className="font-medium">{el.effect.name}</div>
+                        {el.effect.description && (
+                          <p className="mt-1 text-muted-foreground line-clamp-2">
+                            {el.effect.description}
+                          </p>
+                        )}
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -361,22 +476,30 @@ export function ItemCard({
                       key={pl.primitiveId}
                       className="rounded border border-border/40 bg-background/40 px-2 py-1.5"
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">
-                          {pl.primitive.name}
-                        </span>
-                        <span className="font-mono text-muted-foreground">
-                          {pl.primitive.buCost} BU
-                        </span>
-                      </div>
-                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                        {pl.primitive.category}
-                      </div>
-                      {pl.primitive.narrativeRule && (
-                        <p className="mt-1 text-muted-foreground line-clamp-2">
-                          {pl.primitive.narrativeRule}
-                        </p>
-                      )}
+                      {/* v24.5: click the primitive name to preview. */}
+                      <button
+                        type="button"
+                        onClick={() => openPrimitivePreview(pl.primitiveId)}
+                        title={`Preview "${pl.primitive.name}"`}
+                        className="block w-full text-left transition-colors hover:underline"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">
+                            {pl.primitive.name}
+                          </span>
+                          <span className="font-mono text-muted-foreground">
+                            {pl.primitive.buCost} BU
+                          </span>
+                        </div>
+                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                          {pl.primitive.category}
+                        </div>
+                        {pl.primitive.narrativeRule && (
+                          <p className="mt-1 text-muted-foreground line-clamp-2">
+                            {pl.primitive.narrativeRule}
+                          </p>
+                        )}
+                      </button>
                     </li>
                   ))}
                 </ul>

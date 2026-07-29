@@ -606,6 +606,75 @@ export async function PATCH(
         }
         capabilitiesBySource["PERSONAL"] = personal;
       }
+      // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — save
+      // regression fix. The modal sends BOTH the bundled shape
+      // (capabilitiesBySource) AND the legacy flat shape
+      // (capabilityIds) for back-compat, mirroring the items
+      // shape. Items are deduped at the top of the itemsBySource
+      // section (see "bundledHasEntries" check below). We need
+      // the same treatment here: when bundled is non-empty,
+      // ignore legacy capabilityIds. Otherwise direct caps
+      // from the modal get pushed TWICE into PERSONAL.
+      //
+      // Mashu's repro confirmed the merge was buggy: cap added
+      // via modal showed briefly in BU footer (local compute
+      // reads pendingSlots), but never persisted because the
+      // duplicate PK row caused the insert to either silently
+      // skip (Map.set dedupe in expander) or, in some edge
+      // cases, throw and roll back the transaction.
+      const capBundledHasEntries =
+        capsBSRaw &&
+        typeof capsBSRaw === "object" &&
+        Object.values(capsBSRaw as Record<string, unknown>).some(
+          (v) => Array.isArray(v) && v.length > 0,
+        );
+      if (capBundledHasEntries && Array.isArray(values["capabilityIds"])) {
+        const legacyCount = (values["capabilityIds"] as unknown[]).length;
+        console.warn(
+          `[characters PATCH ${characterId}] capabilitiesBySource received BOTH bundled (trusting) AND legacy capabilityIds (${legacyCount} ids). Discarding legacy to avoid duplicates.`,
+          {
+            bundledCounts: Object.fromEntries(
+              Object.entries(capabilitiesBySource).map(([k, v]) => [
+                k,
+                v.length,
+              ]),
+            ),
+          },
+        );
+        // Hard-cut: re-derive capabilitiesBySource from the
+        // bundled shape alone, dropping any legacy merge.
+        // We rebuild only the keys that were present in the
+        // bundled shape — anything else is dropped.
+        const rebuilt: Record<
+          string,
+          Array<{ id: string; isMirrored: boolean }>
+        > = {};
+        for (const [source, list] of Object.entries(
+          capsBSRaw as Record<string, unknown>,
+        )) {
+          if (!Array.isArray(list)) continue;
+          rebuilt[source] = [];
+          for (const entry of list) {
+            if (typeof entry !== "object" || entry === null) continue;
+            const e = entry as Record<string, unknown>;
+            const cid = String(e["id"]);
+            if (!cid) continue;
+            rebuilt[source]!.push({
+              id: cid,
+              isMirrored: Boolean(e["isMirrored"]),
+            });
+          }
+        }
+        // Replace capabilitiesBySource keys with rebuilt version.
+        // Anything not in capsBSRaw gets cleared.
+        for (const k of Object.keys(capabilitiesBySource)) {
+          if (k in rebuilt) {
+            capabilitiesBySource[k] = rebuilt[k]!;
+          } else {
+            capabilitiesBySource[k] = [];
+          }
+        }
+      }
 
       // itemsBySource: read if present; else synthesize from
       // legacy itemIds as PERSONAL.
