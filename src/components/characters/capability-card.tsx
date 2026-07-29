@@ -38,6 +38,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Zap, Power, CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { emitCharacterLogAdded } from "@/lib/character/character-events";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { SlotSource } from "@/db/schema/characters";
@@ -339,6 +340,11 @@ export function CapabilityCard({
         next ? `Activated "${capability.name}"` : `Deactivated "${capability.name}"`,
         "success",
       );
+      // Mashu 2026-07-28: notify the History tab (and
+      // any other listener) so it re-fetches the log
+      // entries WITHOUT a router.refresh() that would
+      // remount this CapabilityCard and undo the toggle.
+      emitCharacterLogAdded(characterId);
       // Mashu 2026-07-28: don't call router.refresh() here.
       // It re-fetches the page, which can cause the
       // CapabilityCard to remount and reset its local
@@ -386,6 +392,10 @@ export function CapabilityCard({
 
       const data = (await res.json()) as TriggerResponse;
       showToast(`Triggered "${data.capability.name}"`, "success");
+      // Mashu 2026-07-28: same rationale as the toggle
+      // handler — notify the History tab via the event
+      // bus so it re-fetches without a router.refresh().
+      emitCharacterLogAdded(characterId);
       // Mashu 2026-07-28: same rationale as the toggle
       // handler — don't router.refresh() because it can
       // cause the CapabilityCard to remount and undo the

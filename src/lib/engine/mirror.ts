@@ -107,6 +107,24 @@ export interface MirrorResolution {
    * (which of the four vectors was applied).
    */
   readonly vector: MirrorVector;
+
+  /**
+   * Mashu 2026-07-28: the original modifier operation
+   * (e.g. "add"). Lets the UI render the standard /
+   * mirrored pair: original row + mirrored row with
+   * the flipped operation.
+   */
+  readonly originalOperation: string | null;
+
+  /**
+   * Mashu 2026-07-28: the mirror counterpart of the
+   * operation, under VARIABLE_VECTOR. null when:
+   *   - the slot is not mirrored
+   *   - the modifier is opted-out
+   *   - the operation is `set` (not mirrorable)
+   *   - the vector is not VARIABLE_VECTOR
+   */
+  readonly mirroredOperation: string | null;
 }
 
 export interface MirrorUserCost {
@@ -212,15 +230,37 @@ export function resolveMirrorEffect(
   // acts exactly as stored. No inversion, no user-cost.
   if (!isMirrored) {
     const targetValue = numericValue(modifierValue) ?? 0;
-    return { targetValue, userCost: null, vector: resolvedVector };
+    return {
+      targetValue,
+      userCost: null,
+      vector: resolvedVector,
+      originalOperation: null,
+      mirroredOperation: null,
+    };
   }
 
   switch (resolvedVector) {
     case "VARIABLE_VECTOR": {
       const v = numericValue(modifierValue) ?? 0;
-      // Sign flip. A +5 Max HP modifier mirrored becomes -5, applied
-      // to the target's Max HP. A -2 penalty mirrored becomes +2.
-      return { targetValue: -v, userCost: null, vector: resolvedVector };
+      // Mashu 2026-07-28: the engine preserves the sign-flip
+      // for backward compat (existing tests + downstream
+      // resolvers depend on it), AND emits the new
+      // mirroredOperation field so callers can flip the
+      // actual operation when they want to.
+      //
+      // For add/subtract, sign-flip and op-flip yield the
+      // same targetValue. For multiply/divide/min/max,
+      // sign-flip is wrong (it would treat ×2 as a -2
+      // modifier), so callers should apply the
+      // mirroredOperation instead of using targetValue
+      // directly. See the UI in primitive-preview-card.tsx.
+      return {
+        targetValue: -v,
+        userCost: null,
+        vector: resolvedVector,
+        originalOperation: null,
+        mirroredOperation: null, // Set by resolveEffectiveModifierValue
+      };
     }
 
     case "STRUCTURAL_FAULT": {
@@ -231,7 +271,13 @@ export function resolveMirrorEffect(
       // which side to apply it on based on the vulnerability vs
       // resistance bucket. Magnitude preserved so the label can
       // flip.
-      return { targetValue: v, userCost: null, vector: resolvedVector };
+      return {
+        targetValue: v,
+        userCost: null,
+        vector: resolvedVector,
+        originalOperation: null,
+        mirroredOperation: null,
+      };
     }
 
     case "COST_INSTABILITY": {
@@ -245,13 +291,21 @@ export function resolveMirrorEffect(
         targetValue: v,
         userCost: { kind: "extra_strain", magnitude: v },
         vector: resolvedVector,
+        originalOperation: null,
+        mirroredOperation: null,
       };
     }
 
     case "STANDARD_ONLY":
     default: {
       const v = numericValue(modifierValue) ?? 0;
-      return { targetValue: v, userCost: null, vector: resolvedVector };
+      return {
+        targetValue: v,
+        userCost: null,
+        vector: resolvedVector,
+        originalOperation: null,
+        mirroredOperation: null,
+      };
     }
   }
 }
@@ -301,6 +355,64 @@ export function resolveResistanceMultiplier(
  * resolveMirrorEffect(primitive.mirror_vector, slot.is_mirrored,
  * modifier.value) before summing the modifier into a stat.
  */
+/**
+ * Operations whose mirror counterpart is meaningful under
+ * VARIABLE_VECTOR. The mapping is:
+ *
+ *   add            → subtract
+ *   subtract       → add
+ *   multiply       → divide
+ *   divide         → multiply
+ *   min            → max
+ *   max            → min
+ *   grant          → revoke
+ *   revoke         → grant
+ *   set            → null  (mirror is a no-op for `set`)
+ *
+ * `set` is explicitly EXCLUDED from mirroring: per Mashu
+ * 2026-07-28, "set to (not mirrorable)" — the canonical
+ * intent is that a mirror should never force a fixed value
+ * on a target.
+ */
+export const MIRROR_OPERATION_FLIPS = {
+  add: "subtract",
+  subtract: "add",
+  multiply: "divide",
+  divide: "multiply",
+  min: "max",
+  max: "min",
+  grant: "revoke",
+  revoke: "grant",
+} as const;
+
+export type MirrorableOperation = keyof typeof MIRROR_OPERATION_FLIPS;
+
+/**
+ * Compute the mirror counterpart of an operation. Returns
+ * `null` when the operation is `set` (or any non-mirrorable
+ * op) — callers should treat this as "do not mirror this
+ * modifier".
+ */
+export function flipOperation(
+  operation: string,
+): MirrorableOperation | null {
+  if (operation in MIRROR_OPERATION_FLIPS) {
+    return MIRROR_OPERATION_FLIPS[
+      operation as MirrorableOperation
+    ] as MirrorableOperation;
+  }
+  return null;
+}
+
+/**
+ * Convenience: is this operation mirrorable at all?
+ * `set` returns false. Everything else returns true.
+ */
+export function isMirrorableOperation(operation: string): boolean {
+  if (operation === "set") return false;
+  return operation in MIRROR_OPERATION_FLIPS;
+}
+
 export function isMirroredSlot(slot: {
   readonly is_mirrored?: boolean;
 }): boolean {
@@ -349,6 +461,16 @@ export function resolveEffectiveModifierValue(
   const meta = readMirrorMeta(modifier);
   const optedOut = meta?.optedOut === true;
 
+  // Mashu 2026-07-28: mirror-flip the operation under
+  // VARIABLE_VECTOR. `set` is excluded (mirror is no-op).
+  // The original operation is preserved on the result so
+  // the UI can render the standard / mirrored pair.
+  const op = modifier.operation;
+  const flippedOp =
+    mirrored && !optedOut && vector === "VARIABLE_VECTOR"
+      ? flipOperation(op)
+      : null;
+
   if (optedOut) {
     const v = numericValue(modifier.value) ?? 0;
     const resolvedVector: MirrorVector = (
@@ -356,8 +478,34 @@ export function resolveEffectiveModifierValue(
     ).includes(vector as MirrorVector)
       ? (vector as MirrorVector)
       : "STANDARD_ONLY";
-    return { targetValue: v, userCost: null, vector: resolvedVector };
+    return {
+      targetValue: v,
+      userCost: null,
+      vector: resolvedVector,
+      originalOperation: op,
+      mirroredOperation: null,
+    };
   }
 
-  return resolveMirrorEffect(vector, mirrored, modifier.value);
+  // If mirrored and the operation is `set`, mirror is a
+  // no-op (the canonical "set is not mirrorable" rule).
+  if (mirrored && flippedOp === null && vector === "VARIABLE_VECTOR") {
+    const v = numericValue(modifier.value) ?? 0;
+    return {
+      targetValue: v,
+      userCost: null,
+      vector: "STANDARD_ONLY",
+      originalOperation: op,
+      mirroredOperation: null,
+    };
+  }
+
+  const base = resolveMirrorEffect(vector, mirrored, modifier.value);
+  return {
+    targetValue: base.targetValue,
+    userCost: base.userCost,
+    vector: base.vector,
+    originalOperation: op,
+    mirroredOperation: flippedOp,
+  };
 }

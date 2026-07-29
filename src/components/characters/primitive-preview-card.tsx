@@ -27,6 +27,7 @@
 
 import { useCallback, useState } from "react";
 import { RotateCcw } from "lucide-react";
+import { flipOperation, isMirrorableOperation } from "@/lib/engine/mirror";
 import { useToasts } from "@/components/ui/toast";
 import { useEntityPreview } from "@/components/characters/preview-modal";
 import { ConditionBadges } from "@/components/library/condition-badges";
@@ -291,6 +292,7 @@ export function PrimitivePreviewCard({
         modifierList={Array.isArray(modifiers) ? modifiers : []}
         narrativeRule={p.narrativeRule}
         isMirrored={primitiveLink.isMirrored}
+        isMirrorable={p.isMirrorable}
         mirrorBuCredit={p.mirrorBuCredit}
         buCost={p.buCost}
       />
@@ -310,6 +312,7 @@ function PrimitiveDetailToggle({
   modifierList,
   narrativeRule,
   isMirrored,
+  isMirrorable,
   mirrorBuCredit,
   buCost,
 }: {
@@ -318,6 +321,7 @@ function PrimitiveDetailToggle({
   readonly modifierList: ReadonlyArray<unknown>;
   readonly narrativeRule: string;
   readonly isMirrored: boolean;
+  readonly isMirrorable: boolean;
   readonly mirrorBuCredit: number;
   readonly buCost: number;
 }) {
@@ -337,12 +341,24 @@ function PrimitiveDetailToggle({
         Details
       </summary>
       <div className="mt-1 space-y-1.5 text-[10px]">
-        {/* Mashu 2026-07-28: modifier UI matches the
-            character-creation modal. When mirrored, two
-            rows: original (green operation tag) + mirrored
-            version (red operation tag, yellow mirrored
-            tag). When NOT mirrored, a single row with the
-            green operation tag. */}
+        {/* Mashu 2026-07-28 (round 6): modifier UI
+            matches the character-creation modal.
+
+            Three states:
+            1. isMirrored && op mirrorable (not `set`):
+               two rows — original (green tag) + mirrored
+               (red tag with flipped operation + yellow
+               Mirrored badge).
+            2. isMirrored && op NOT mirrorable (`set`):
+               one row — passes through unchanged with a
+               yellow "not mirrorable" hint.
+            3. isMirrorable && !isMirrored: two rows — the
+               standard row (green) PLUS a preview row
+               showing what the mirror would look like
+               (red tag + flipped operation). This lets
+               the player see the cost / effect before
+               actually mirroring.
+            4. neither mirrorable nor mirrored: one row. */}
         {modifierList.length > 0 && (
           <div className="space-y-1">
             <p className="mb-0.5 font-semibold uppercase tracking-wide text-muted-foreground">
@@ -355,49 +371,78 @@ function PrimitiveDetailToggle({
                   operation?: string;
                   value?: unknown;
                 };
-                const v = Number(m.value ?? 0);
-                const flipped = v !== 0 ? -v : v;
+                const op = m.operation ?? "modify";
+                const mirrorable = isMirrorableOperation(op);
+                const flippedOp = isMirrored
+                  ? flipOperation(op)
+                  : null;
                 return (
-                  <li
-                    key={i}
-                    className="space-y-1"
-                  >
-                    {/* Original (or unmirrored) row */}
+                  <li key={i} className="space-y-1">
+                    {/* Original / unmirrored row */}
                     <div className="flex flex-wrap items-center gap-1.5 font-mono">
                       <span className="rounded border border-border bg-background px-1.5 py-0.5 text-foreground">
                         {m.target ?? "?"}
                       </span>
                       <span className="rounded border border-emerald-500/50 bg-emerald-500/15 px-1.5 py-0.5 font-mono text-emerald-700 dark:text-emerald-300">
-                        {m.operation ?? "modify"}
+                        {op}
                       </span>
                       <span className="font-semibold text-foreground">
                         {String(m.value ?? "?")}
                       </span>
+                      {/* Mirrorable preview hint when
+                          the slot is mirrorable but not
+                          currently mirrored. */}
+                      {!isMirrored && isMirrorable && mirrorable ? (
+                        <span className="rounded border border-yellow-500/50 bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-medium text-yellow-700 dark:text-yellow-300">
+                          Mirrorable
+                        </span>
+                      ) : null}
                     </div>
-                    {/* Mirrored variant row — only when
-                        isMirrored is true. Shows the
-                        flipped value with a red operation
-                        tag + yellow mirrored badge. */}
-                    {isMirrored && (
+                    {/* Mirror preview / actual row */}
+                    {isMirrored ? (
+                      flippedOp ? (
+                        <div className="flex flex-wrap items-center gap-1.5 font-mono">
+                          <span className="rounded border border-yellow-500/50 bg-yellow-500/15 px-1.5 py-0.5 font-medium text-yellow-700 dark:text-yellow-300">
+                            Mirrored
+                          </span>
+                          <span className="rounded border border-border bg-background px-1.5 py-0.5 text-foreground">
+                            {m.target ?? "?"}
+                          </span>
+                          <span className="rounded border border-destructive/50 bg-destructive/15 px-1.5 py-0.5 font-mono text-destructive">
+                            {flippedOp}
+                          </span>
+                          <span className="font-semibold text-foreground">
+                            {String(m.value ?? "?")}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-1.5 font-mono">
+                          <span className="rounded border border-yellow-500/50 bg-yellow-500/15 px-1.5 py-0.5 font-medium text-yellow-700 dark:text-yellow-300">
+                            Mirrored
+                          </span>
+                          <span className="italic text-muted-foreground">
+                            `set` is not mirrorable — passes through unchanged
+                          </span>
+                        </div>
+                      )
+                    ) : isMirrorable && mirrorable && flippedOp !== null ? (
+                      // No actual mirror — just a preview
+                      // of what the mirror would look like.
                       <div className="flex flex-wrap items-center gap-1.5 font-mono">
-                        <span className="rounded border border-yellow-500/50 bg-yellow-500/15 px-1.5 py-0.5 font-medium text-yellow-700 dark:text-yellow-300">
-                          Mirrored
+                        <span className="rounded border border-yellow-500/50 bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-medium text-yellow-700 dark:text-yellow-300">
+                          Mirror preview
                         </span>
                         <span className="rounded border border-border bg-background px-1.5 py-0.5 text-foreground">
                           {m.target ?? "?"}
                         </span>
                         <span className="rounded border border-destructive/50 bg-destructive/15 px-1.5 py-0.5 font-mono text-destructive">
-                          {m.operation === "add"
-                            ? "subtract"
-                            : m.operation === "subtract"
-                              ? "add"
-                              : m.operation}
+                          {flippedOp}
                         </span>
                         <span className="font-semibold text-foreground">
-                          {flipped >= 0 ? `+${flipped}` : `${flipped}`}
+                          {String(m.value ?? "?")}
                         </span>
                       </div>
-                    )}
+                    ) : null}
                   </li>
                 );
               })}

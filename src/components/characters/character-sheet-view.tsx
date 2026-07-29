@@ -44,6 +44,7 @@ import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
 import { useDeepPrimitiveClosure } from "@/components/characters/use-deep-primitive-closure";
 import { SheetIdentityHeader } from "@/components/characters/sheet-identity-header";
 import { CoreStatsCard } from "@/components/characters/core-stats-card";
+import { onCharacterLogAdded } from "@/lib/character/character-events";
 import { TabErrorBoundary } from "@/components/characters/tab-error-boundary";
 import { HeritageBundleView } from "@/components/characters/heritage-bundle-view";
 import { proficiencyBonus } from "@/lib/engine/practices";
@@ -2627,6 +2628,23 @@ function HistoryTab({
     }>
   >(logEntries);
   const [loading, setLoading] = useState(false);
+  // Mashu 2026-07-28: tick is bumped by the parent via a
+  // refreshKey prop whenever a toggle/trigger happens, so
+  // this tab re-fetches without the user switching tabs.
+  // The mount-time fetch is the fallback.
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Mashu 2026-07-28: re-fetch whenever the character-events
+  // bus says a log entry was just added. CapabilityCard
+  // emits `log_added` after a successful toggle / trigger,
+  // so the user sees the new entry in History without
+  // a full page reload.
+  useEffect(() => {
+    const unsub = onCharacterLogAdded(characterId, () => {
+      setRefreshKey((n) => n + 1);
+    });
+    return unsub;
+  }, [characterId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2656,7 +2674,7 @@ function HistoryTab({
     return () => {
       cancelled = true;
     };
-  }, [characterId]);
+  }, [characterId, refreshKey]);
 
   if (entries.length === 0) {
     return (
@@ -2683,23 +2701,35 @@ function HistoryTab({
 
   return (
     <div className="space-y-3">
-      {/* Filter chips */}
-      <div className="flex flex-wrap gap-1.5">
-        <FilterChip
-          label="All"
-          count={entries.length}
-          active={filter === null}
-          onClick={() => setFilter(null)}
-        />
-        {filterOptions.map((k) => (
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {/* Filter chips */}
+        <div className="flex flex-wrap gap-1.5">
           <FilterChip
-            key={k}
-            label={k.replace(/_/g, " ")}
-            count={logEntries.filter((e) => e.kind === k).length}
-            active={filter === k}
-            onClick={() => setFilter(k)}
+            label="All"
+            count={entries.length}
+            active={filter === null}
+            onClick={() => setFilter(null)}
           />
-        ))}
+          {filterOptions.map((k) => (
+            <FilterChip
+              key={k}
+              label={k.replace(/_/g, " ")}
+              count={entries.filter((e) => e.kind === k).length}
+              active={filter === k}
+              onClick={() => setFilter(k)}
+            />
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => setRefreshKey((n) => n + 1)}
+          disabled={loading}
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          title="Re-fetch the latest log entries from the server"
+        >
+          <RotateCcw className="size-3" />
+          Refresh
+        </button>
       </div>
 
       {/* Timeline */}
