@@ -54,3 +54,4 @@ scripts/output/
 
 # Local-only: condition picker preview HTML (artifact for visual review)
 docs-archive/
+t4.tsx
