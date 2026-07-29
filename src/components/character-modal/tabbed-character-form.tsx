@@ -676,27 +676,47 @@ export function TabbedCharacterForm() {
         // and IGNORED heritages — meaning removing all
         // heritages in edit mode and clicking Save left the
         // character_heritages rows untouched.
+        //
+        // Phase 8.4 v24.8 (Mashu 2026-07-30): per-tab routing
+        // fix v2. v24.7 populated PERSONAL in addition to the
+        // per-tab keys, which meant the bundle-expander's
+        // capabilityMap (Map keyed by capabilityId) dedup'd
+        // each cap by overwriting the per-tab entry with the
+        // PERSONAL one (insertion order: UPBRINGING → PERSONAL
+        // in `for (const [source, list] of Object.entries…)`).
+        // The PERSONAL source then coerced to slot_tab='MANIFEST'
+        // — exactly what Mashu was seeing despite my v24.7 fix.
+        //
+        // Fix: do NOT include the legacy flat arrays in
+        // PERSONAL when the bundled per-tab keys are populated.
+        // PERSONAL is now ONLY a fallback for old clients that
+        // haven't been updated; the modal always populates
+        // per-tab buckets and should never put anything in
+        // PERSONAL. The route also has a "bundled non-empty"
+        // guard (F6) that discards legacy capabilityIds when
+        // bundled is present — we trust that here and
+        // simplify by not populating PERSONAL at all.
         url = `/api/characters/${editCharacterId}`;
         method = "PATCH";
         const primBySourceEdit: Record<string, Array<{ id: number; isMirrored: boolean }>> = {
-          LINEAGE: [...primitivesByTab["LINEAGE"]!],
-          UPBRINGING: [...primitivesByTab["UPBRINGING"]!],
-          MANIFEST: [...primitivesByTab["MANIFEST"]!],
-          PERSONAL: primitiveInstances.map((inst) => ({
-            id: inst.primitiveId,
-            isMirrored: inst.isMirrored,
-          })),
+          LINEAGE: [...primitivesByTab["LINEAGE"]],
+          UPBRINGING: [...primitivesByTab["UPBRINGING"]],
+          MANIFEST: [...primitivesByTab["MANIFEST"]],
+          PERSONAL: [],
         };
         const capsBySourceEdit: Record<string, Array<{ id: string; isMirrored: boolean }>> = {
-          LINEAGE: [...capabilitiesByTab["LINEAGE"]!],
-          UPBRINGING: [...capabilitiesByTab["UPBRINGING"]!],
-          MANIFEST: [...capabilitiesByTab["MANIFEST"]!],
-          PERSONAL: capabilityIds.map((id) => ({ id, isMirrored: false })),
+          LINEAGE: [...capabilitiesByTab["LINEAGE"]],
+          UPBRINGING: [...capabilitiesByTab["UPBRINGING"]],
+          MANIFEST: [...capabilitiesByTab["MANIFEST"]],
+          PERSONAL: [],
         };
         const itemsBySourceEdit: Record<
           string,
           Array<{ id: string; quantity: number; equipped: boolean }>
         > = {
+          // Items are character-scoped only (no per-tab routing
+          // for items in v24.x). Sending them in PERSONAL
+          // matches the route's expectations.
           PERSONAL: itemsForSave.map((i) => ({
             id: i.id,
             quantity: 1,
@@ -709,11 +729,27 @@ export function TabbedCharacterForm() {
           primitivesBySource: primBySourceEdit,
           capabilitiesBySource: capsBySourceEdit,
           itemsBySource: itemsBySourceEdit,
-          // Keep the flat arrays too for back-compat with
-          // older callers / defensive double-write.
-          primitiveInstances,
-          capabilityIds,
-          itemIds,
+          // Phase 8.4 v24.8 (Mashu 2026-07-30): the route
+          // supports per-tab routing for primitives via
+          // primitivesBySource, AND the legacy flat shape
+          // primitiveInstances. Sending both causes
+          // duplicate inserts in the saver's expansionInput
+          // (each primitive gets pushed twice → 2 rows in
+          // character_primitives). Mashu's repro:
+          // "I deleted most of them, saved. Edited again,
+          // they were again duplicated quite a few times."
+          //
+          // The route's F6 guard for caps rebuilds
+          // capabilitiesBySource from the bundled shape
+          // alone. There's no equivalent for primitives yet,
+          // so the safest move is to NOT send the legacy
+          // primitiveInstances at all — the modal is the
+          // only caller and it always populates
+          // primitivesBySource. capabilityIds gets the same
+          // treatment (F6 already drops it, but sending
+          // nothing is cleaner and removes the warn log).
+          primitiveInstances: [],
+          capabilityIds: [],
         };
       } else {
         // Create: POST with the legacy grouped shape. The POST
@@ -724,19 +760,16 @@ export function TabbedCharacterForm() {
         url = "/api/characters";
         method = "POST";
         const primBySource: Record<string, Array<{ id: number; isMirrored: boolean }>> = {
-          LINEAGE: [...primitivesByTab.LINEAGE],
-          UPBRINGING: [...primitivesByTab.UPBRINGING],
-          MANIFEST: [...primitivesByTab.MANIFEST],
-          PERSONAL: primitiveInstances.map((inst) => ({
-            id: inst.primitiveId,
-            isMirrored: inst.isMirrored,
-          })),
+          LINEAGE: [...primitivesByTab["LINEAGE"]],
+          UPBRINGING: [...primitivesByTab["UPBRINGING"]],
+          MANIFEST: [...primitivesByTab["MANIFEST"]],
+          PERSONAL: [],
         };
         const capsBySource: Record<string, Array<{ id: string; isMirrored: boolean }>> = {
-          LINEAGE: [...capabilitiesByTab.LINEAGE],
-          UPBRINGING: [...capabilitiesByTab.UPBRINGING],
-          MANIFEST: [...capabilitiesByTab.MANIFEST],
-          PERSONAL: capabilityIds.map((id) => ({ id, isMirrored: false })),
+          LINEAGE: [...capabilitiesByTab["LINEAGE"]],
+          UPBRINGING: [...capabilitiesByTab["UPBRINGING"]],
+          MANIFEST: [...capabilitiesByTab["MANIFEST"]],
+          PERSONAL: [],
         };
         const itemsBySource: Record<
           string,

@@ -2221,35 +2221,63 @@ function DirectCapabilitiesCard({
     sourceType: string;
     verboseDescription?: string | null;
     originHeritageId: string | null;
+    /**
+     * Phase 8.4 v24.8 (Mashu 2026-07-30): upgraded direct-cap
+     * card to use the rich CapabilityCard shape so direct
+     * caps render with the same UI affordances as caps slotted
+     * via a heritage (effect accordion, toggle/trigger,
+     * origin badge, etc.). Previously this was a slim
+     * name+type list which Mashu called out: "capabilities
+     * added personally in ch sheet need the same UI as the
+     * other capabilities in the ch sheet from heritages."
+     *
+     * The CapabilitiesTab prop already has these fields
+     * because it spreads `...l.capability` and forwards
+     * `l.effectLinks`, `l.slotSource`, `l.versionId`, etc.
+     * The filter inside HeritageKindAccordion doesn't strip
+     * them, so we can hand the array straight to CapabilityCard.
+     */
+    acquiredAtLevel?: number;
+    versionId?: string | null;
+    slotSource?: unknown;
+    latestVersionId?: string | null;
+    effectLinks?: Array<{
+      effectId: string;
+      effect: {
+        id: string;
+        name: string;
+        description: string;
+      };
+    }>;
+    tags?: string[];
   }>;
 }) {
-  void characterId; // reserved for future per-cap preview
   if (capabilities.length === 0) return null;
   return (
     <div className="rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-2">
       <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
         Direct capabilities ({capabilities.length})
       </div>
-      <ul className="mt-2 space-y-1.5">
+      <div className="mt-2 space-y-2">
         {capabilities.map((c) => (
-          <li
+          <CapabilityCard
             key={c.id}
-            className="rounded border border-border/40 bg-card px-2 py-1.5"
-          >
-            <div className="flex items-center gap-2">
-              <span className="font-medium">{c.name}</span>
-              <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                {c.type}
-              </span>
-            </div>
-            {c.verboseDescription && (
-              <p className="mt-1 text-muted-foreground line-clamp-2">
-                {c.verboseDescription}
-              </p>
-            )}
-          </li>
+            characterId={characterId}
+            capability={{
+              id: c.id,
+              name: c.name,
+              type: c.type,
+              sourceType: c.sourceType,
+              acquiredAtLevel: c.acquiredAtLevel ?? 1,
+              verboseDescription: c.verboseDescription ?? null,
+              versionId: c.versionId ?? null,
+              slotSource: (c.slotSource ?? null) as never,
+              latestVersionId: c.latestVersionId ?? null,
+              effectLinks: c.effectLinks ?? [],
+            }}
+          />
         ))}
-      </ul>
+      </div>
     </div>
   );
 }
