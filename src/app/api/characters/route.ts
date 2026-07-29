@@ -819,6 +819,16 @@ export async function POST(request: Request) {
               // heritage's id as their origin. Direct slots have
               // origin null.
               originHeritageId: c.originHeritageId,
+              // Phase 8.4 v24.6 (Mashu 2026-07-29): per-tab
+              // accordion routing for DIRECT caps. Heritage-
+              // bundled caps leave this null. PERSONAL source
+              // (legacy / no-tab picked) coerces to MANIFEST.
+              slotTab:
+                c.originHeritageId === null
+                  ? c.source === "PERSONAL"
+                    ? "MANIFEST"
+                    : (c.source as "LINEAGE" | "UPBRINGING" | "MANIFEST")
+                  : null,
             };
           }),
         );
