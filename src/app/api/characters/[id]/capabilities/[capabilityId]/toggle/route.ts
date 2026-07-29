@@ -29,10 +29,6 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string; capabilityId: string }> },
 ) {
-  // Mashu 2026-07-28 (round 8): diagnostic log so we can
-  // confirm in Vercel logs whether the route is being hit.
-  // Will be removed once toggle is verified to work.
-  console.log("[toggle] POST hit", { url: request.url });
   try {
     const { userId } = await auth.protect();
     const { id, capabilityId } = await params;

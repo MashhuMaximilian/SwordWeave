@@ -372,18 +372,12 @@ export function CapabilityCard({
     window.setTimeout(() => setTriggerFlash(false), 1200);
 
     try {
-      // Mashu 2026-07-28 (round 8): cache: "no-store" +
-      // unique query param (ts=Date.now()) ensures the
-      // browser doesn't replay a stale 404 response from
-      // an earlier deployment that didn't have this route.
       const res = await fetch(
-        `/api/characters/${characterId}/capabilities/${capability.id}/trigger?ts=${Date.now()}`,
+        `/api/characters/${characterId}/capabilities/${capability.id}/trigger`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({}),
-          cache: "no-store",
-          credentials: "same-origin",
         },
       );
 

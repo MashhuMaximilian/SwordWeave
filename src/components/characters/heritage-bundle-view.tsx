@@ -375,16 +375,27 @@ export function HeritageBundleView({
                 const cap = cl.capability;
                 const nestedPrims = cap.primitiveLinks ?? [];
                 const nestedEffects = cap.effectLinks ?? [];
-                // Phase 8.4 v11 (Mashu 2026-07-28): when the
-                // HeritageBundleView is rendered on the
-                // CHARACTER SHEET (characterId provided),
-                // render the capability as a full
-                // CapabilityCard (variant: no PRIMITIVES
-                // accordion, no Preview button — the card
-                // body itself opens the preview on click).
-                // The character-modal builder still uses the
-                // slim in-place render below.
-                if (characterId) {
+                // Mashu 2026-07-28 (round 8 fix): the toggle/trigger
+                // 404 bug. Previously HeritageBundleView rendered a
+                // FULL CapabilityCard (with toggle + trigger buttons)
+                // for every bundled capability, regardless of whether
+                // it was actually slotted on the character. The toggle
+                // /trigger handlers hit /api/characters/[id]/
+                // capabilities/[capabilityId]/toggle, which returns
+                // 404 when there's no character_capabilities link
+                // (i.e. for template-only caps). The button worked
+                // visually, the API legitimately rejected the row.
+                //
+                // Fix: only render the full CapabilityCard when the
+                // capability is actually slotted. Template-only caps
+                // get the slim read-only view (the modal-style
+                // rendering) — still clickable for preview, but no
+                // toggle/trigger buttons that would 404.
+                //
+                // HeritageBundleView is still given characterId so
+                // slotted caps render as full cards (with the
+                // origin-heritage badge + toggle/trigger).
+                if (characterId && slotted) {
                   return (
                     <li key={cl.capabilityId}>
                       <CapabilityCard
@@ -397,7 +408,7 @@ export function HeritageBundleView({
                           acquiredAtLevel: 1,
                           verboseDescription: cap.verboseDescription,
                           versionId: null,
-                          slotSource: slotted ? "PINNED" : null,
+                          slotSource: "PINNED",
                           latestVersionId: null,
                           originChain: [
                             { kind: "heritage", name: heritageName },
@@ -414,11 +425,6 @@ export function HeritageBundleView({
                         showPrimitives={false}
                         showPreviewButton={false}
                       />
-                      {!slotted && (
-                        <p className="mt-1 text-[10px] text-muted-foreground italic">
-                          template (not slotted)
-                        </p>
-                      )}
                     </li>
                   );
                 }
