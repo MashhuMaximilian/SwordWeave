@@ -580,11 +580,25 @@ export async function PATCH(
       // legacy itemIds as PERSONAL.
       const itemsBySource: Record<string, Array<{ id: string; quantity: number }>> = {};
       const itemsBSRaw = values["itemsBySource"];
-      if (itemsBSRaw && typeof itemsBSRaw === "object") {
-        for (const [, list] of Object.entries(itemsBSRaw as Record<string, unknown>)) {
-          // (key ignored — items go to PERSONAL regardless)
-          void 0;
-        }
+      // Phase 8.4 v20 (Mashu 2026-07-29): T1 — Save with items
+      // PK violation. The PATCH modal sends BOTH the bundled
+      // shape (itemsBySource) AND the legacy flat shape (itemIds)
+      // for back-compat. Previously this route merged them
+      // blindly, producing duplicate (character_id, item_id)
+      // rows in character_items.
+      //
+      // Fix: when itemsBySource is present and has any entries,
+      // trust it as the source of truth and IGNORE legacy
+      // itemIds. Only fall back to legacy itemIds when the
+      // bundled shape is missing/empty (so old callers still
+      // work).
+      const bundledHasEntries =
+        itemsBSRaw &&
+        typeof itemsBSRaw === "object" &&
+        Object.values(itemsBSRaw as Record<string, unknown>).some(
+          (v) => Array.isArray(v) && v.length > 0,
+        );
+      if (bundledHasEntries) {
         for (const [source, list] of Object.entries(
           itemsBSRaw as Record<string, unknown>,
         )) {
@@ -602,13 +616,11 @@ export async function PATCH(
             });
           }
         }
-      }
-      if (Array.isArray(values["itemIds"])) {
-        const personal = itemsBySource["PERSONAL"] ?? [];
-        for (const iid of parseUuidArray(values["itemIds"])) {
-          personal.push({ id: iid, quantity: 1 });
-        }
-        itemsBySource["PERSONAL"] = personal;
+      } else if (Array.isArray(values["itemIds"])) {
+        // Legacy fallback: synthesize itemsBySource from itemIds.
+        itemsBySource["PERSONAL"] = parseUuidArray(values["itemIds"]).map(
+          (iid) => ({ id: iid, quantity: 1 }),
+        );
       }
 
       return {

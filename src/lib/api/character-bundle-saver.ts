@@ -556,7 +556,13 @@ export async function saveCharacterBundles(
   // -----------------------------------------------------------------
   // 10. Write items (no expansion — items don't bring primitives).
   // -----------------------------------------------------------------
+  // Phase 8.4 v20 (Mashu 2026-07-29): defensive dedupe. If a
+  // caller ever passes a duplicated (character_id, item_id)
+  // pair in itemsBySource (e.g. from a buggy upstream), collapse
+  // to the first occurrence. character_items PK is
+  // (character_id, item_id), so duplicates crash the insert.
   const expandedItemIds: Array<{ id: string; quantity: number }> = [];
+  const seenItemIds = new Set<string>();
   for (const [, list] of Object.entries(rawItemsBySource)) {
     if (!Array.isArray(list)) continue;
     for (const entry of list) {
@@ -564,6 +570,8 @@ export async function saveCharacterBundles(
       const e = entry as Record<string, unknown>;
       const id = String(e["id"]);
       if (!id) continue;
+      if (seenItemIds.has(id)) continue; // dedupe (see T1 above)
+      seenItemIds.add(id);
       const q = Number(e["quantity"] ?? 1);
       expandedItemIds.push({
         id,
