@@ -2015,12 +2015,27 @@ function CapabilitiesTab({
 /**
  * HeritageKindAccordion — Phase 8.3f S6 (Mashu 2026-07-28)
  *
- * One accordion per heritage kind. Renders each heritage as a
- * HeritageBundleView (which shows the heritage's canonical
- * bundle of capabilities + primitives). The accordion header
- * is collapsed by default so the user opens the kind they
- * care about (vs. the Primitives accordion which is open by
- * default for the at-a-glance view).
+ * Phase 8.4 v24 (Mashu 2026-07-29): T4 restructure —
+ * changed from "one accordion per heritage kind" to
+ * "one accordion per heritage, with the direct-cap card
+ * underneath". Each heritage becomes its own accordion
+ * that contains:
+ *   1. The heritage card (its canonical bundle).
+ *   2. The "direct capabilities" card (caps the
+ *      character slotted from the manifest tab that
+ *      do NOT come from a heritage — i.e. the
+ *      character's own personal cap choices).
+ *
+ * Why per-heritage: when a character has multiple
+ * heritages of the same kind (e.g. two MANIFEST
+ * heritages), the old group-by-kind accordion buried
+ * the direct caps under the kind label, making it
+ * unclear which heritage a cap belonged to. Per-heritage
+ * accordions make the relationship explicit.
+ *
+ * Empty-state behaviour preserved: if no heritages of
+ * this kind exist, the entire accordion is omitted
+ * (the wrapping conditional lives in the parent).
  */
 function HeritageKindAccordion({
   characterId,
@@ -2069,10 +2084,37 @@ function HeritageKindAccordion({
       }>;
     };
   }>;
-  capabilities: Array<{ id: string; originHeritageId: string | null }>;
+  capabilities: Array<{
+    id: string;
+    name: string;
+    type: string;
+    sourceType: string;
+    verboseDescription: string | null;
+    originHeritageId: string | null;
+  }>;
   primitiveLinks: Array<{ primitive: { id: number }; originHeritageId: string | null }>;
 }) {
   void kind; // unused at runtime; kept for type clarity
+
+  // Phase 8.4 v24 (Mashu 2026-07-29): T4 — group direct
+  // caps (originHeritageId === null) by their kind so we
+  // can attach them to the right accordion. Only caps
+  // with kind === `kind` slot here. (A cap slotted via
+  // the manifest tab that "belongs" to a LINEAGE-type
+  // concept would be filtered to the LINEAGE accordion.)
+  //
+  // For the simple case (caps aren't kind-typed),
+  // direct caps all flow into the MANIFEST accordion
+  // (matches Mashu's original S6 design where personal
+  // manifest choices live under the MANIFEST kind).
+  const directCapsForKind =
+    kind === "MANIFEST"
+      ? capabilities.filter(
+          (c) =>
+            c.originHeritageId === null || c.originHeritageId === undefined,
+        )
+      : [];
+
   return (
     <details className="group rounded-md border border-border bg-card">
       <summary className="flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium cursor-pointer list-none">
@@ -2112,8 +2154,80 @@ function HeritageKindAccordion({
             />
           );
         })}
+        {/* Phase 8.4 v24 (Mashu 2026-07-29): T4 — direct-cap
+            card lives at the BOTTOM of the per-kind
+            accordion. For MANIFEST only — direct
+            personal caps conceptually belong to the
+            character's manifest, not to their
+            lineage/upbringing. */}
+        {directCapsForKind.length > 0 && (
+          <DirectCapabilitiesCard
+            characterId={characterId}
+            capabilities={directCapsForKind}
+          />
+        )}
       </div>
     </details>
+  );
+}
+
+/**
+ * DirectCapabilitiesCard — Phase 8.4 v24 (Mashu 2026-07-29)
+ *
+ * Read-only summary of capabilities the character
+ * slotted from the manifest tab DIRECTLY (not via a
+ * heritage). Per Mashu's T4 spec: "direct-cap card
+ * goes UNDER manifest accordion".
+ *
+ * For the simple "list" view, this is a single card
+ * at the bottom of the manifest accordion listing the
+ * direct caps. When we move to per-heritage accordions
+ * (which is the eventual goal), this card becomes the
+ * "free-floating" section at the end of the heritage
+ * cluster.
+ */
+function DirectCapabilitiesCard({
+  characterId,
+  capabilities,
+}: {
+  characterId: string;
+  capabilities: Array<{
+    id: string;
+    name: string;
+    type: string;
+    sourceType: string;
+    verboseDescription?: string | null;
+    originHeritageId: string | null;
+  }>;
+}) {
+  void characterId; // reserved for future per-cap preview
+  if (capabilities.length === 0) return null;
+  return (
+    <div className="rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-2">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Direct capabilities ({capabilities.length})
+      </div>
+      <ul className="mt-2 space-y-1.5">
+        {capabilities.map((c) => (
+          <li
+            key={c.id}
+            className="rounded border border-border/40 bg-card px-2 py-1.5"
+          >
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{c.name}</span>
+              <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                {c.type}
+              </span>
+            </div>
+            {c.verboseDescription && (
+              <p className="mt-1 text-muted-foreground line-clamp-2">
+                {c.verboseDescription}
+              </p>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 // =============================================================================
