@@ -166,6 +166,16 @@ export type PendingSlot = {
       /** Always "items". Kept as CharacterTabId for uniform shape. */
       tab: "items";
       name: string;
+      /**
+       * Phase 8.4 v21 (Mashu 2026-07-29): T2 — items modal/UX.
+       * Whether the user wants this item equipped when
+       * the character is saved. Defaults to false. The
+       * existing /api/characters/[id]/items/[itemId]/equip
+       * endpoint sets equipped on individual character_items
+       * rows, but in the modal flow we set equipped at save
+       * time atomically with the rest of the bundle.
+       */
+      equipped?: boolean;
     }
 );
 

@@ -849,8 +849,15 @@ export async function POST(request: Request) {
       }
 
       // === Items: separate from primitive expansion (item BU doesn't count) ===
-      // ItemsBySource shape: { PERSONAL: [{id, quantity}] }.
-      const expandedItemIds: Array<{ id: string; quantity: number }> = [];
+      // ItemsBySource shape: { PERSONAL: [{id, quantity, equipped?}] }.
+      // Phase 8.4 v21 (Mashu 2026-07-29): T2 — equipped flag is
+      // now part of the bundled shape so the modal can save it
+      // atomically with the rest of the character.
+      const expandedItemIds: Array<{
+        id: string;
+        quantity: number;
+        equipped: boolean;
+      }> = [];
       for (const [, list] of Object.entries(rawItemsBySource)) {
         if (!Array.isArray(list)) continue;
         for (const entry of list) {
@@ -862,6 +869,7 @@ export async function POST(request: Request) {
           expandedItemIds.push({
             id,
             quantity: Number.isInteger(q) && q > 0 ? q : 1,
+            equipped: Boolean(e["equipped"]),
           });
         }
       }
@@ -871,6 +879,9 @@ export async function POST(request: Request) {
       );
       const itemQtyById = new Map(
         expandedItemIds.map((i) => [i.id, i.quantity]),
+      );
+      const itemEquippedById = new Map(
+        expandedItemIds.map((i) => [i.id, i.equipped]),
       );
       if (allItemIds.length > 0) {
         const itemRows = await tx
@@ -896,6 +907,10 @@ export async function POST(request: Request) {
               characterId: created.id,
               itemId: iid,
               quantity: itemQtyById.get(iid) ?? 1,
+              // Phase 8.4 v21 (Mashu 2026-07-29): T2 — equipped
+              // defaults to false when not in the bundled shape
+              // (older callers).
+              equipped: itemEquippedById.get(iid) ?? false,
               versionId,
               slotSource,
             };

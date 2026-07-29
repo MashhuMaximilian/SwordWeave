@@ -187,11 +187,59 @@ export interface CharacterSeed {
     capability: { id: string; name: string };
   }>;
   /**
-   * Item slots.
+   * Item slots — Phase 8.4 v21 (Mashu 2026-07-29): T2.
+   * Each item carries its nested bundle so the modal can
+   * render primitives/capabilities/effects as item-scoped
+   * content (per Mashu's spec — they do NOT enter the
+   * character's general primitive pool).
    */
   itemLinks: Array<{
     itemId: string;
-    item: { id: string; name: string };
+    /** Phase 8.4 v21 (Mashu 2026-07-29): T2 — preserve equipped
+     * from character_items row on seed so the modal toggle
+     * round-trips correctly in edit mode. */
+    equipped?: boolean;
+    item: {
+      id: string;
+      name: string;
+      description: string;
+      itemType: string;
+      rarity: string;
+      buCost: number;
+      slotCost: number;
+      isTwoHanded: boolean;
+      isConsumable: boolean;
+      capabilityLinks: Array<{
+        capabilityId: string;
+        capability: {
+          id: string;
+          name: string;
+          type: string;
+          sourceType: string;
+          verboseDescription: string;
+          effectLinks: Array<{
+            effectId: string;
+            effect: { id: string; name: string; description: string };
+          }>;
+        };
+      }>;
+      effectLinks: Array<{
+        effectId: string;
+        effect: { id: string; name: string; description: string };
+      }>;
+      primitiveLinks: Array<{
+        primitiveId: number;
+        primitive: {
+          id: number;
+          name: string;
+          category: string;
+          buCost: number;
+          isMirrorable: boolean;
+          mirrorBuCredit: number;
+          narrativeRule: string | null;
+        };
+      }>;
+    };
   }>;
 }
 
@@ -423,11 +471,17 @@ function seedCapabilitySlot(
 function seedItemSlot(
   link: CharacterSeed["itemLinks"][number],
 ): PendingSlot {
+  // Phase 8.4 v21 (Mashu 2026-07-29): T2 — preserve the
+  // equipped flag from the seeded character_items row so the
+  // toggle survives a save round-trip in edit mode. Defaults
+  // to false (matches character_items.equipped default).
+  const equipped: boolean = link.equipped ?? false;
   return {
     kind: "item",
     itemId: link.itemId,
     tab: "items",
     name: link.item.name,
+    equipped,
   };
 }
 

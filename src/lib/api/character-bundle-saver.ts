@@ -81,7 +81,7 @@ export interface CharacterBundleInput {
   heritages: string[];
   primitivesBySource: Record<string, Array<{ id: number; isMirrored: boolean }>>;
   capabilitiesBySource: Record<string, Array<{ id: string; isMirrored: boolean }>>;
-  itemsBySource: Record<string, Array<{ id: string; quantity: number }>>;
+  itemsBySource: Record<string, Array<{ id: string; quantity: number; equipped?: boolean }>>;
   primitiveInstances?: Array<{ primitiveId: number; isMirrored: boolean }>;
 }
 
@@ -561,7 +561,11 @@ export async function saveCharacterBundles(
   // pair in itemsBySource (e.g. from a buggy upstream), collapse
   // to the first occurrence. character_items PK is
   // (character_id, item_id), so duplicates crash the insert.
-  const expandedItemIds: Array<{ id: string; quantity: number }> = [];
+  const expandedItemIds: Array<{
+    id: string;
+    quantity: number;
+    equipped: boolean;
+  }> = [];
   const seenItemIds = new Set<string>();
   for (const [, list] of Object.entries(rawItemsBySource)) {
     if (!Array.isArray(list)) continue;
@@ -576,6 +580,9 @@ export async function saveCharacterBundles(
       expandedItemIds.push({
         id,
         quantity: Number.isInteger(q) && q > 0 ? q : 1,
+        // Phase 8.4 v21 (Mashu 2026-07-29): T2 — equipped flag.
+        // Defaults to false when missing (older callers).
+        equipped: Boolean(e["equipped"]),
       });
     }
   }
@@ -603,6 +610,12 @@ export async function saveCharacterBundles(
           characterId,
           itemId: iid.id,
           quantity: iid.quantity,
+          // Phase 8.4 v21 (Mashu 2026-07-29): T2 — equipped.
+          // character_items.equipped has a default of false
+          // in the schema; we explicitly write the user's
+          // chosen value here so the modal save round-trips
+          // correctly.
+          equipped: iid.equipped,
           versionId,
           slotSource,
         };

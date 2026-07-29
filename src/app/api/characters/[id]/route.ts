@@ -91,7 +91,32 @@ export async function GET(
           },
         },
       },
-      itemLinks: { with: { item: true } },
+      // Phase 8.4 v21 (Mashu 2026-07-29): T2 — items modal/UX
+      // redesign. Items now need to expose their nested bundle
+      // (capabilities, effects, primitives) so the modal and
+      // sheet can render them as item-scoped containers. Per
+      // Mashu's spec, item's primitives/caps/effects do NOT
+      // enter the character's general primitive pool — they
+      // stay scoped to the item.
+      itemLinks: {
+        with: {
+          item: {
+            with: {
+              capabilityLinks: {
+                with: {
+                  capability: {
+                    with: {
+                      effectLinks: { with: { effect: true } },
+                    },
+                  },
+                },
+              },
+              effectLinks: { with: { effect: true } },
+              primitiveLinks: { with: { primitive: true } },
+            },
+          },
+        },
+      },
       // Phase 8.1 batch 13.1: include heritage slots so the sheet can
       // show "from Lineage 'Elf'" / "from Upbringing 'Scholar'"
       // breadcrumbs alongside the bundle-expanded primitives.
@@ -420,7 +445,32 @@ export async function PATCH(
                   },
                 },
               },
-              itemLinks: { with: { item: true } },
+              // Phase 8.4 v21 (Mashu 2026-07-29): T2 — items modal/UX
+      // redesign. Items now need to expose their nested bundle
+      // (capabilities, effects, primitives) so the modal and
+      // sheet can render them as item-scoped containers. Per
+      // Mashu's spec, item's primitives/caps/effects do NOT
+      // enter the character's general primitive pool — they
+      // stay scoped to the item.
+      itemLinks: {
+        with: {
+          item: {
+            with: {
+              capabilityLinks: {
+                with: {
+                  capability: {
+                    with: {
+                      effectLinks: { with: { effect: true } },
+                    },
+                  },
+                },
+              },
+              effectLinks: { with: { effect: true } },
+              primitiveLinks: { with: { primitive: true } },
+            },
+          },
+        },
+      },
             },
           });
         });
@@ -578,7 +628,10 @@ export async function PATCH(
 
       // itemsBySource: read if present; else synthesize from
       // legacy itemIds as PERSONAL.
-      const itemsBySource: Record<string, Array<{ id: string; quantity: number }>> = {};
+      const itemsBySource: Record<
+        string,
+        Array<{ id: string; quantity: number; equipped?: boolean }>
+      > = {};
       const itemsBSRaw = values["itemsBySource"];
       // Phase 8.4 v20 (Mashu 2026-07-29): T1 — Save with items
       // PK violation. The PATCH modal sends BOTH the bundled
@@ -613,6 +666,8 @@ export async function PATCH(
             itemsBySource[source].push({
               id,
               quantity: Number.isInteger(q) && q > 0 ? q : 1,
+              // Phase 8.4 v21 (Mashu 2026-07-29): T2 — equipped.
+              equipped: Boolean(e["equipped"]),
             });
           }
         }

@@ -506,6 +506,10 @@ export function TabbedCharacterForm() {
       // ids, capability ids, item ids, and heritage ids separately.
       const primitiveInstances: Array<{ primitiveId: number; isMirrored: boolean }> = [];
       const capabilityIds: string[] = [];
+      // Phase 8.4 v21 (Mashu 2026-07-29): T2 — items now carry
+      // an `equipped` flag so the modal can save it
+      // atomically with the rest of the bundle.
+      const itemsForSave: Array<{ id: string; equipped: boolean }> = [];
       const itemIds: string[] = [];
       const heritages: Array<{ id: string; isMirrored: boolean }> = [];
 
@@ -521,6 +525,10 @@ export function TabbedCharacterForm() {
           } else if (slot.kind === "capability") {
             capabilityIds.push(slot.capabilityId);
           } else if (slot.kind === "item") {
+            itemsForSave.push({
+              id: slot.itemId,
+              equipped: slot.equipped === true,
+            });
             itemIds.push(slot.itemId);
           }
           // effects: not slotted separately in v1 (placeholder)
@@ -621,8 +629,15 @@ export function TabbedCharacterForm() {
           MANIFEST: [],
           PERSONAL: capabilityIds.map((id) => ({ id, isMirrored: false })),
         };
-        const itemsBySourceEdit: Record<string, Array<{ id: string; quantity: number }>> = {
-          PERSONAL: itemIds.map((id) => ({ id, quantity: 1 })),
+        const itemsBySourceEdit: Record<
+          string,
+          Array<{ id: string; quantity: number; equipped: boolean }>
+        > = {
+          PERSONAL: itemsForSave.map((i) => ({
+            id: i.id,
+            quantity: 1,
+            equipped: i.equipped,
+          })),
         };
         body = {
           ...baseBody,
@@ -659,8 +674,15 @@ export function TabbedCharacterForm() {
           MANIFEST: [],
           PERSONAL: capabilityIds.map((id) => ({ id, isMirrored: false })),
         };
-        const itemsBySource: Record<string, Array<{ id: string; quantity: number }>> = {
-          PERSONAL: itemIds.map((id) => ({ id, quantity: 1 })),
+        const itemsBySource: Record<
+          string,
+          Array<{ id: string; quantity: number; equipped: boolean }>
+        > = {
+          PERSONAL: itemsForSave.map((i) => ({
+            id: i.id,
+            quantity: 1,
+            equipped: i.equipped,
+          })),
         };
         body = {
           ...baseBody,
