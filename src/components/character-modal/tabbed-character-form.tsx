@@ -77,6 +77,11 @@ import {
   type AttributesState,
 } from "./tabs/attributes-tab";
 import { SlotReceiverTab } from "./tabs/slot-receiver-tab";
+// Phase 8.4 v21 (Mashu 2026-07-29): T2 — items tab uses its
+// own component (per Mashu's spec, items work differently
+// than other tabs: item-scoped primitives/caps/effects,
+// equipped toggle, no per-slot mirror).
+import { ItemsTab } from "./tabs/items-tab";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
 
 const SLOT_RECEIVER_CONFIG: Record<
@@ -909,12 +914,15 @@ export function TabbedCharacterForm() {
           />
         )}
         {activeStep === "items" && (
-          <SlotReceiverTab
-            tabId="items"
-            title="Items"
-            help={SLOT_RECEIVER_CONFIG.items!.help}
-            ctaPrimary={SLOT_RECEIVER_CONFIG.items!.ctaPrimary}
-            ctaSecondary={SLOT_RECEIVER_CONFIG.items!.ctaSecondary}
+          // Phase 8.4 v21 (Mashu 2026-07-29): T2 — items tab
+          // now renders via the dedicated ItemsTab component
+          // (item containers with nested primitives/caps/
+          // effects + equipped toggle + cap active/trigger).
+          // Per Mashu's spec, items are item-scoped — their
+          // nested content does NOT enter the character's
+          // general primitive pool.
+          <ItemsTab
+            characterSeedItemLinks={seededCharacter?.itemLinks ?? []}
           />
         )}
       </div>
