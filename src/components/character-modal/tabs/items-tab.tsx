@@ -39,25 +39,21 @@
  *      caps, read-only).
  *   3. Empty state when no items.
  *
- * Active state for caps lives in localStorage (same model
- * as CapabilityCard on the sheet — see comments there).
- * The modal's "save" only writes the item row + equipped
- * flag; cap active state stays local to this session.
+ * Phase 8.4 v23 (Mashu 2026-07-29): cap active/trigger
+ * removed from the modal side. Per Mashu's direction,
+ * cap toggles are SHEET-only — they fire at runtime per
+ * character. The modal handles CRUD: add, remove,
+ * equip/unequip. Nested bundle here is read-only.
  *
- * NOTE: per T3 work (later session), the sheet's ItemsTab
- * will mirror this structure with the same item-scoped
- * semantics. For now the modal is the only place that
- * renders nested item content.
+ * The sheet's ItemsTab has the matching item-scoped
+ * active/trigger via the same localStorage pattern the
+ * existing CapabilityCard uses (sw:itemcap:<itemId>:<capId>).
  */
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Shield,
   ShieldOff,
-  Zap,
-  Power,
-  CheckCircle2,
-  Loader2,
   Package,
   Trash2,
 } from "lucide-react";
@@ -222,11 +218,11 @@ export function ItemsTab({ characterSeedItemLinks }: ItemsTabProps) {
     <div className="space-y-3">
       <p className="rounded-md border border-border bg-card/60 px-3 py-2 text-xs text-muted-foreground">
         Items live with their own primitives, capabilities,
-        and effects. Toggling equipped on/off does not change
-        what the item gives you — but it does affect encumbrance
-        and any item-scoped toggles/triggers. Cap active state
-        is per-session; toggle/trigger fire-and-revert like on
-        the character sheet.
+        and effects. Toggling equipped on/off affects
+        encumbrance and any character-side interactions the
+        item provides — but the item's nested caps are
+        toggled on the SHEET (per-character runtime), not
+        here. This modal is for CRUD: add, remove, equip.
       </p>
       <ul className="space-y-3">
         {itemSlots.map((slot, index) => {
@@ -348,8 +344,16 @@ function ItemContainerCard({
 }
 
 /**
- * ItemNestedBundle — nested caps (with active+trigger),
- * primitives (read-only), effects (read-only under caps).
+ * ItemNestedBundle — read-only display of item's
+ * capabilities (no active/trigger — that's sheet-only
+ * per Mashu 2026-07-29), effects, and primitives.
+ *
+ * Phase 8.4 v23 (Mashu 2026-07-29): cap active/trigger
+ * was removed from the modal side per Mashu's direction
+ * — item caps are toggled on the SHEET (per-character
+ * view), not during modal edit. The modal is purely for
+ * CRUD: equip/unequip, add/remove. Capability state
+ * happens at runtime on the sheet.
  */
 function ItemNestedBundle({
   item,
@@ -371,7 +375,7 @@ function ItemNestedBundle({
 
   return (
     <div className="mt-3 space-y-2">
-      {/* Capabilities — with active + trigger */}
+      {/* Capabilities — read-only (sheet has the active/trigger) */}
       {item.capabilityLinks.length > 0 && (
         <details className="rounded-md border border-border/60 bg-background/40 px-3 py-2 text-xs">
           <summary className="cursor-pointer select-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -379,11 +383,38 @@ function ItemNestedBundle({
           </summary>
           <ul className="mt-2 space-y-2">
             {item.capabilityLinks.map((cl) => (
-              <li key={cl.capabilityId}>
-                <ItemCapabilityToggle
-                  itemId={item.id}
-                  capability={cl.capability}
-                />
+              <li
+                key={cl.capabilityId}
+                className="rounded border border-border/40 bg-card px-2 py-1.5"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{cl.capability.name}</span>
+                  <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {cl.capability.type}
+                  </span>
+                </div>
+                {cl.capability.verboseDescription && (
+                  <p className="mt-1 text-muted-foreground line-clamp-3">
+                    {cl.capability.verboseDescription}
+                  </p>
+                )}
+                {cl.capability.effectLinks.length > 0 && (
+                  <ul className="mt-2 space-y-1 border-t border-border/30 pt-2">
+                    {cl.capability.effectLinks.map((el) => (
+                      <li
+                        key={el.effectId}
+                        className="rounded bg-background/40 px-2 py-1 text-[11px]"
+                      >
+                        <span className="font-medium">{el.effect.name}</span>
+                        {el.effect.description && (
+                          <p className="mt-0.5 text-muted-foreground line-clamp-2">
+                            {el.effect.description}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>
@@ -444,135 +475,6 @@ function ItemNestedBundle({
             ))}
           </ul>
         </details>
-      )}
-    </div>
-  );
-}
-
-/**
- * ItemCapabilityToggle — same active/trigger pattern as the
- * sheet's CapabilityCard, but scoped per-item (not per-character).
- * State lives in localStorage under "sw:itemcap:<itemId>:<capId>"
- * so it doesn't bleed across items.
- */
-function ItemCapabilityToggle({
-  itemId,
-  capability,
-}: {
-  itemId: string;
-  capability: ItemsTabProps["characterSeedItemLinks"][number]["item"]["capabilityLinks"][number]["capability"];
-}) {
-  const { showToast } = useToasts();
-  const storageKey = `sw:itemcap:${itemId}:${capability.id}`;
-  const [active, setActive] = useState(false);
-  const [triggerPending, setTriggerPending] = useState(false);
-
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(storageKey);
-      if (stored === "1") setActive(true);
-    } catch {
-      // ignore
-    }
-  }, [storageKey]);
-
-  const persist = useCallback(
-    (next: boolean) => {
-      setActive(next);
-      try {
-        window.localStorage.setItem(storageKey, next ? "1" : "0");
-      } catch {
-        // ignore
-      }
-    },
-    [storageKey],
-  );
-
-  const handleToggle = useCallback(() => {
-    persist(!active);
-  }, [active, persist]);
-
-  const handleTrigger = useCallback(async () => {
-    setTriggerPending(true);
-    persist(true);
-    showToast(`Triggered "${capability.name}".`, "success");
-    // Revert to inactive after a brief flash — same model
-    // as the sheet's CapabilityCard.
-    setTimeout(() => {
-      persist(false);
-      setTriggerPending(false);
-    }, 1200);
-  }, [capability.name, persist, showToast]);
-
-  return (
-    <div className="rounded border border-border/40 bg-card px-2 py-1.5">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{capability.name}</span>
-            <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-              {capability.type}
-            </span>
-          </div>
-          {capability.verboseDescription && (
-            <p className="mt-1 text-muted-foreground line-clamp-3">
-              {capability.verboseDescription}
-            </p>
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <button
-            type="button"
-            onClick={handleToggle}
-            aria-pressed={active}
-            className={cn(
-              "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition-colors",
-              active
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border bg-background hover:bg-secondary",
-            )}
-            title={active ? "Click to deactivate" : "Click to activate"}
-          >
-            {active ? (
-              <CheckCircle2 className="size-3" />
-            ) : (
-              <Power className="size-3" />
-            )}
-            {active ? "Active" : "Inactive"}
-          </button>
-          <button
-            type="button"
-            onClick={handleTrigger}
-            disabled={triggerPending}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[10px] font-medium transition-colors hover:bg-secondary disabled:opacity-50"
-            title="Trigger (one-shot fire-and-revert)"
-          >
-            {triggerPending ? (
-              <Loader2 className="size-3 animate-spin" />
-            ) : (
-              <Zap className="size-3" />
-            )}
-            Trigger
-          </button>
-        </div>
-      </div>
-      {/* Effects under the cap (read-only) */}
-      {capability.effectLinks.length > 0 && (
-        <ul className="mt-2 space-y-1 border-t border-border/30 pt-2">
-          {capability.effectLinks.map((el) => (
-            <li
-              key={el.effectId}
-              className="rounded bg-background/40 px-2 py-1 text-[11px]"
-            >
-              <span className="font-medium">{el.effect.name}</span>
-              {el.effect.description && (
-                <p className="mt-0.5 text-muted-foreground line-clamp-2">
-                  {el.effect.description}
-                </p>
-              )}
-            </li>
-          ))}
-        </ul>
       )}
     </div>
   );

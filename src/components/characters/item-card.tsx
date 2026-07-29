@@ -17,11 +17,12 @@
 
 import { useState, useEffect, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Shield, ShieldOff, ExternalLink } from "lucide-react";
+import { Shield, ShieldOff, Eye } from "lucide-react";
 import { useToasts } from "@/components/ui/toast";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
 import type { SlotSource } from "@/db/schema/characters";
+import { ItemCapabilityToggle } from "@/components/characters/item-capability-toggle";
+import { useEntityPreview } from "@/components/characters/preview-modal";
 import { cn } from "@/lib/utils";
 
 interface EquipResponse {
@@ -100,6 +101,48 @@ export function ItemCard({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const { showToast } = useToasts();
+  const { openPreview } = useEntityPreview();
+  const [previewPending, setPreviewPending] = useState(false);
+
+  // Phase 8.4 v23 (Mashu 2026-07-29): T3c — open the
+  // item in the EntityPreview modal stack instead of a
+  // new tab. Per Mashu: "Preview button — replace with
+  // click-to-preview modal (no new tab)".
+  const openItemPreview = useCallback(async () => {
+    setPreviewPending(true);
+    try {
+      const res = await fetch(`/api/items/${encodeURIComponent(item.id)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { item: Record<string, unknown> };
+      // Project to SandboxItemRow shape that EntityPreview expects.
+      // The /api/items/[id] endpoint already returns a complete
+      // payload (name, description, buCost, itemType, rarity, etc.)
+      // — we just feed it through with kind:"item".
+      openPreview({
+        item: { kind: "item", row: data.item as never },
+        category: "ITEM",
+        callbacks: {
+          engagement: {
+            likes: 0,
+            dislikes: 0,
+            forks: 0,
+            userReaction: null,
+            authorId: null,
+            authorUsername: null,
+            authorIsAdmin: null,
+            currentUserInternalId: null,
+          },
+        },
+      });
+    } catch (err) {
+      showToast(
+        `Could not open preview: ${err instanceof Error ? err.message : String(err)}`,
+        "error",
+      );
+    } finally {
+      setPreviewPending(false);
+    }
+  }, [item.id, openPreview, showToast]);
 
   // Optimistic local state.
   const [optimisticEquipped, setOptimisticEquipped] = useState(item.equipped);
@@ -237,16 +280,16 @@ export function ItemCard({
         {/* Phase 8.2 batch 6: preview link opens the canonical library
             detail page in a new tab. Same EntityPreview the atelier
             uses, fully read-only, sheet state preserved. */}
-        <Link
-          href={`/library/item/ITEM:${item.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary"
-          title="Open the canonical preview in a new tab"
+        <button
+          type="button"
+          onClick={openItemPreview}
+          disabled={previewPending}
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50"
+          title="Open preview in modal"
         >
-          <ExternalLink className="size-3" />
-          Preview
-        </Link>
+          <Eye className="size-3" />
+          {previewPending ? "Loading…" : "Preview"}
+        </button>
       </div>
 
       {/* Phase 8.4 v22 (Mashu 2026-07-29): T2 — nested
@@ -270,40 +313,16 @@ export function ItemCard({
                 </summary>
                 <ul className="mt-2 space-y-1.5">
                   {nested.capabilityLinks.map((cl) => (
-                    <li
-                      key={cl.capabilityId}
-                      className="rounded border border-border/40 bg-background/40 px-2 py-1.5"
-                    >
-                      <div className="font-medium">
-                        {cl.capability.name}
-                      </div>
-                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                        {cl.capability.type}
-                      </div>
-                      {cl.capability.verboseDescription && (
-                        <p className="mt-1 text-muted-foreground line-clamp-2">
-                          {cl.capability.verboseDescription}
-                        </p>
-                      )}
-                      {cl.capability.effectLinks.length > 0 && (
-                        <ul className="mt-1 space-y-1 border-t border-border/30 pt-1">
-                          {cl.capability.effectLinks.map((el) => (
-                            <li
-                              key={el.effectId}
-                              className="rounded bg-background/30 px-1.5 py-1"
-                            >
-                              <span className="font-medium">
-                                {el.effect.name}
-                              </span>
-                              {el.effect.description && (
-                                <p className="text-muted-foreground line-clamp-1">
-                                  {el.effect.description}
-                                </p>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+                    <li key={cl.capabilityId}>
+                      {/* Phase 8.4 v23 (Mashu 2026-07-29):
+                          cap active/trigger lives on the
+                          sheet (per-character runtime).
+                          Per Mashu: items don't have caps
+                          in the modal — toggle here. */}
+                      <ItemCapabilityToggle
+                        itemId={item.id}
+                        capability={cl.capability}
+                      />
                     </li>
                   ))}
                 </ul>
