@@ -465,7 +465,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           bar collapses. */}
       
 
-      <header className="hidden flex-wrap items-start justify-between gap-4 md:flex">
+      <header className="hidden flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-4">
           {props.portraitUrl ? (
             <img
@@ -522,12 +522,13 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           </Link>
         </div>
       </header>
-      {/* Mobile: SheetIdentityHeader is fixed at top-of-viewport, so
-          the content needs a top spacer to avoid being hidden. The
-          height == SheetIdentityHeader's collapsed-row height (88px
-          to give the buttons room). */}
+      {/* Phase 8.4 v15 (Mashu 2026-07-28): SheetIdentityHeader
+          is fixed at top-of-viewport on ALL screen sizes now.
+          Content needs a top spacer to avoid being hidden.
+          Height = SheetIdentityHeader's collapsed-row height
+          (88px to give the buttons room). */}
       <div
-        className="md:hidden"
+        className="h-[88px]"
         aria-hidden="true"
         data-testid="sheet-top-spacer"
       />
@@ -540,7 +541,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           "Since we put all the BU budget things in collapsible on
           top we don't need the section anymore that's not
           collapsed." Desktop keeps the full footer. */}
-      <div className="hidden md:block">
+      <div className="hidden">
       <BuBudgetFooter
         characterId={props.id}
         progressionSpent={props.buBalance.progressionSpent}
@@ -561,10 +562,12 @@ export function CharacterSheetView(props: CharacterSheetProps) {
       />
       </div>
 
-      {/* Tabs — desktop: top, mobile: bottom sticky */}
+      {/* Tabs — Mashu 2026-07-28 (round 7): move to bottom
+          on ALL screen sizes, matching mobile. The previous
+          desktop top tabs are hidden. */}
       <nav
-        className="mt-6 hidden border-b border-border md:flex md:gap-1"
-        aria-label="Sheet tabs"
+        className="mt-6 hidden"
+        aria-label="Sheet tabs (desktop top — disabled)"
       >
         {TABS.map((t) => {
           const Icon = t.icon;
@@ -688,8 +691,8 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           Mashu 2026-07-28: "Now the quick bar is below the tabs.
           It should be just above the tabs like it was at first." */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 flex overflow-x-auto border-t border-border bg-background/95 backdrop-blur md:hidden"
-        aria-label="Sheet tabs (mobile)"
+        className="fixed inset-x-0 bottom-0 z-30 flex overflow-x-auto border-t border-border bg-background/95 backdrop-blur"
+        aria-label="Sheet tabs"
       >
         {TABS.map((t) => {
           const Icon = t.icon;

@@ -374,7 +374,11 @@ function PrimitiveDetailToggle({
                 };
                 const op = m.operation ?? "modify";
                 const mirrorable = isMirrorableOperation(op);
-                const flippedOp = isMirrored
+                // Compute the flipped operation whenever the
+                // modifier is currently mirrored OR when the
+                // primitive is mirrorable (so we can preview
+                // what mirroring would do).
+                const flippedOp = mirrorable
                   ? flipOperation(op)
                   : null;
                 return (

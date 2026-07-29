@@ -135,11 +135,12 @@ export function SheetIdentityHeader({
 
   return (
     <div
-      // Phase 8.4: keep the bar at the very top of the mobile
-      // viewport. The in-page content gets a top spacer to clear
-      // it. z-30 so it sits above the bottom tabs but below the
-      // BottomStickyBar (z-40).
-      className="fixed left-0 right-0 top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md md:hidden"
+      // Phase 8.4 v15 (Mashu 2026-07-28): the bar is shown on
+      // ALL screen sizes. Previously mobile-only (`md:hidden`).
+      // On desktop it replaces the static in-page header.
+      // The content gets a top spacer to clear it (see
+      // character-sheet-view.tsx).
+      className="fixed left-0 right-0 top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md"
       data-testid="sheet-identity-header"
       data-expanded={expanded}
     >
