@@ -508,6 +508,14 @@ export function TabbedCharacterForm() {
       // per-slot shape (multiple direct-paid copies of the same
       // primitive_id can coexist for stacking). We extract primitive
       // ids, capability ids, item ids, and heritage ids separately.
+      //
+      // Phase 8.4 v24.7 (Mashu 2026-07-30): per-tab routing. The
+      // modal keeps primitives + capabilities in
+      // pendingSlots[lineage|upbringing|manifest] — which tab the
+      // user picked. We preserve that here so the saver can
+      // stamp `slot_tab` correctly. legacy `primitiveInstances` +
+      // `capabilityIds` flat arrays still go out for
+      // back-compat with the saver's PERSONAL coalescing.
       const primitiveInstances: Array<{ primitiveId: number; isMirrored: boolean }> = [];
       const capabilityIds: string[] = [];
       // Phase 8.4 v21 (Mashu 2026-07-29): T2 — items now carry
@@ -516,6 +524,22 @@ export function TabbedCharacterForm() {
       const itemsForSave: Array<{ id: string; equipped: boolean }> = [];
       const itemIds: string[] = [];
       const heritages: Array<{ id: string; isMirrored: boolean }> = [];
+
+      // Phase 8.4 v24.7: per-tab buckets. Keys are uppercase
+      // LINEAGE / UPBRINGING / MANIFEST — matching the
+      // character's heritage_kind enum. Caps + primitives slot
+      // in their user-picked tab; the saver writes slot_tab
+      // from this.
+      const primitivesByTab = {
+        LINEAGE: [] as Array<{ id: number; isMirrored: boolean }>,
+        UPBRINGING: [] as Array<{ id: number; isMirrored: boolean }>,
+        MANIFEST: [] as Array<{ id: number; isMirrored: boolean }>,
+      };
+      const capabilitiesByTab = {
+        LINEAGE: [] as Array<{ id: string; isMirrored: boolean }>,
+        UPBRINGING: [] as Array<{ id: string; isMirrored: boolean }>,
+        MANIFEST: [] as Array<{ id: string; isMirrored: boolean }>,
+      };
 
       for (const tab of CHARACTER_TABS) {
         for (const slot of pendingSlots[tab]) {
@@ -526,8 +550,44 @@ export function TabbedCharacterForm() {
               primitiveId: slot.primitiveId,
               isMirrored: slot.mirror === true,
             });
+            // Phase 8.4 v24.7: also push into the per-tab bucket.
+            // Items tab primitives are skipped (they're item-
+            // scoped, not character-scoped — see T15).
+            const bucket =
+              tab === "lineage"
+                ? "LINEAGE"
+                : tab === "upbringing"
+                  ? "UPBRINGING"
+                  : tab === "manifest"
+                    ? "MANIFEST"
+                    : null;
+            if (bucket) {
+              primitivesByTab[bucket].push({
+                id: slot.primitiveId,
+                isMirrored: slot.mirror === true,
+              });
+            }
           } else if (slot.kind === "capability") {
             capabilityIds.push(slot.capabilityId);
+            // Phase 8.4 v24.7: per-tab bucket. This is the
+            // fix for the per-tab accordion routing — without
+            // this, every cap was being saved with slot_tab
+            // = MANIFEST because the modal collapsed them all
+            // into PERSONAL.
+            const bucket =
+              tab === "lineage"
+                ? "LINEAGE"
+                : tab === "upbringing"
+                  ? "UPBRINGING"
+                  : tab === "manifest"
+                    ? "MANIFEST"
+                    : null;
+            if (bucket) {
+              capabilitiesByTab[bucket].push({
+                id: slot.capabilityId,
+                isMirrored: false,
+              });
+            }
           } else if (slot.kind === "item") {
             itemsForSave.push({
               id: slot.itemId,
@@ -619,18 +679,18 @@ export function TabbedCharacterForm() {
         url = `/api/characters/${editCharacterId}`;
         method = "PATCH";
         const primBySourceEdit: Record<string, Array<{ id: number; isMirrored: boolean }>> = {
-          LINEAGE: [],
-          UPBRINGING: [],
-          MANIFEST: [],
+          LINEAGE: [...primitivesByTab["LINEAGE"]!],
+          UPBRINGING: [...primitivesByTab["UPBRINGING"]!],
+          MANIFEST: [...primitivesByTab["MANIFEST"]!],
           PERSONAL: primitiveInstances.map((inst) => ({
             id: inst.primitiveId,
             isMirrored: inst.isMirrored,
           })),
         };
         const capsBySourceEdit: Record<string, Array<{ id: string; isMirrored: boolean }>> = {
-          LINEAGE: [],
-          UPBRINGING: [],
-          MANIFEST: [],
+          LINEAGE: [...capabilitiesByTab["LINEAGE"]!],
+          UPBRINGING: [...capabilitiesByTab["UPBRINGING"]!],
+          MANIFEST: [...capabilitiesByTab["MANIFEST"]!],
           PERSONAL: capabilityIds.map((id) => ({ id, isMirrored: false })),
         };
         const itemsBySourceEdit: Record<
@@ -664,18 +724,18 @@ export function TabbedCharacterForm() {
         url = "/api/characters";
         method = "POST";
         const primBySource: Record<string, Array<{ id: number; isMirrored: boolean }>> = {
-          LINEAGE: [],
-          UPBRINGING: [],
-          MANIFEST: [],
+          LINEAGE: [...primitivesByTab.LINEAGE],
+          UPBRINGING: [...primitivesByTab.UPBRINGING],
+          MANIFEST: [...primitivesByTab.MANIFEST],
           PERSONAL: primitiveInstances.map((inst) => ({
             id: inst.primitiveId,
             isMirrored: inst.isMirrored,
           })),
         };
         const capsBySource: Record<string, Array<{ id: string; isMirrored: boolean }>> = {
-          LINEAGE: [],
-          UPBRINGING: [],
-          MANIFEST: [],
+          LINEAGE: [...capabilitiesByTab.LINEAGE],
+          UPBRINGING: [...capabilitiesByTab.UPBRINGING],
+          MANIFEST: [...capabilitiesByTab.MANIFEST],
           PERSONAL: capabilityIds.map((id) => ({ id, isMirrored: false })),
         };
         const itemsBySource: Record<

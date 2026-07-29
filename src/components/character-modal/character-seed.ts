@@ -540,9 +540,26 @@ export function seedPendingSlots(
   for (const c of character.capabilityLinks) {
     // Phase 8.2 batch 12: skip bundle-origin capabilities (they're
     // already represented by the heritage card). Returns null for
-    // those rows; direct capabilities land in manifest.
+    // those rows; direct capabilities land in their slotTab's
+    // accordion (LINEAGE / UPBRINGING / MANIFEST).
     const slot = seedCapabilitySlot(c);
-    if (slot) out.manifest.push(slot);
+    if (slot) {
+      // Phase 8.4 v24.7 (Mashu 2026-07-30): per-tab routing.
+      // The seed puts each cap into the tab matching its
+      // slotTab column. Previously every direct cap was
+      // dumped into `out.manifest` — which silently broke
+      // the per-tab accordion feature (the modal showed the
+      // cap in the wrong place even when the user saved it
+      // to LINEAGE/UPBRINGING).
+      if (slot.kind === "capability") {
+        const tab = slot.tab;
+        if (tab === "lineage") out.lineage.push(slot);
+        else if (tab === "upbringing") out.upbringing.push(slot);
+        else out.manifest.push(slot);
+      } else {
+        out.manifest.push(slot);
+      }
+    }
   }
   for (const i of character.itemLinks) {
     out.items.push(seedItemSlot(i));
