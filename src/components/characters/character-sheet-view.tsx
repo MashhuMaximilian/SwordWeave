@@ -696,10 +696,11 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         className="fixed inset-x-0 bottom-0 z-30 flex overflow-x-auto border-t border-border bg-background/95 backdrop-blur"
         aria-label="Sheet tabs"
       >
-        {/* Mobile: compact evenly-spaced row (~40px).
-            Desktop (md+): same compact height, just
-            centered across the row with 15% left + 15%
-            right padding so the row doesn't feel edge-locked.
+        {/* Mobile: each button is flex-1 (evenly distributed
+            across the row, original Phase 8.4 behavior).
+            Desktop (md+): same compact height, but spread out
+            via justify-around + 15% left + 15% right padding
+            so the row doesn't feel edge-locked.
             We do NOT inflate height for desktop — that was
             making the quick bar above crowd the tabs. */}
         <div className="flex w-full py-1 md:justify-around md:px-[15%] md:py-1">
@@ -710,7 +711,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
                 key={t.id}
                 type="button"
                 onClick={() => setTab(t.id)}
-                className={`flex shrink-0 flex-col items-center gap-0.5 px-3 py-1.5 text-[10px] font-medium transition-colors md:px-3 md:py-1.5 ${
+                className={`flex flex-1 flex-col items-center gap-0.5 px-2 py-1.5 text-[10px] font-medium transition-colors md:flex-none md:px-3 md:py-1.5 ${
                   tab === t.id
                     ? "text-primary"
                     : "text-muted-foreground hover:text-foreground"

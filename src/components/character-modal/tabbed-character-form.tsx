@@ -596,11 +596,42 @@ export function TabbedCharacterForm() {
       let body: Record<string, unknown>;
 
       if (editCharacterId) {
-        // Edit: PATCH the existing character with instance array.
+        // Edit: PATCH the existing character. Phase 8.4 v18
+        // (Mashu 2026-07-28): send the SAME bundled shape as
+        // POST so heritage changes (add / remove / replace) get
+        // persisted. Previously PATCH only sent the flat
+        // primitiveInstances / capabilityIds / itemIds arrays
+        // and IGNORED heritages — meaning removing all
+        // heritages in edit mode and clicking Save left the
+        // character_heritages rows untouched.
         url = `/api/characters/${editCharacterId}`;
         method = "PATCH";
+        const primBySourceEdit: Record<string, Array<{ id: number; isMirrored: boolean }>> = {
+          LINEAGE: [],
+          UPBRINGING: [],
+          MANIFEST: [],
+          PERSONAL: primitiveInstances.map((inst) => ({
+            id: inst.primitiveId,
+            isMirrored: inst.isMirrored,
+          })),
+        };
+        const capsBySourceEdit: Record<string, Array<{ id: string; isMirrored: boolean }>> = {
+          LINEAGE: [],
+          UPBRINGING: [],
+          MANIFEST: [],
+          PERSONAL: capabilityIds.map((id) => ({ id, isMirrored: false })),
+        };
+        const itemsBySourceEdit: Record<string, Array<{ id: string; quantity: number }>> = {
+          PERSONAL: itemIds.map((id) => ({ id, quantity: 1 })),
+        };
         body = {
           ...baseBody,
+          heritages,
+          primitivesBySource: primBySourceEdit,
+          capabilitiesBySource: capsBySourceEdit,
+          itemsBySource: itemsBySourceEdit,
+          // Keep the flat arrays too for back-compat with
+          // older callers / defensive double-write.
           primitiveInstances,
           capabilityIds,
           itemIds,

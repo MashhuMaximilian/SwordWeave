@@ -1,24 +1,16 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import {
-  characterCapabilities,
-  characterItems,
-  characterPrimitives,
-  characters,
-  primitives,
-  capabilities,
-  items,
-} from "@/db/schema";
+import { characters } from "@/db/schema";
 import { validateAttributes, type Attribute } from "@/lib/engine/practices";
-import { validateMirrorSet } from "@/lib/api/volatility";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
-import {
-  resolveLatestVersionId,
-  resolveSlotSource,
-} from "@/lib/versions/slot-source";
 import { cumulativeBuForLevel } from "@/lib/engine/bu";
+import {
+  saveCharacterBundles,
+  CharacterBundleVolatilityError,
+  type CharacterBundleInput,
+} from "@/lib/api/character-bundle-saver";
 import {
   parseBackstory,
   sanitizeBackstory,
@@ -297,228 +289,339 @@ export async function PATCH(
 
     updatePayload["updatedAt"] = new Date();
 
-    // Volatility ceiling enforcement: if primitiveInstances (or legacy
-    // primitiveIds) is being replaced AND any are mirrors, validate
-    // against level-based ceiling BEFORE write.
-    const wantsReplace = "primitiveInstances" in values || "primitiveIds" in values;
-    if (wantsReplace) {
-      // Phase 8.3b: read primitiveInstances if present, else fall back
-      // to legacy primitiveIds + mirroredPrimitiveIds.
-      let newPrimitives: Array<{ primitiveId: number; isMirrored: boolean }>;
-      if (Array.isArray(values["primitiveInstances"])) {
-        newPrimitives = (values["primitiveInstances"] as Array<Record<string, unknown>>)
-          .map((e) => ({
-            primitiveId: Number(e["primitiveId"]),
-            isMirrored: Boolean(e["isMirrored"]),
-          }))
-          .filter((e) => Number.isInteger(e.primitiveId) && e.primitiveId > 0);
-      } else {
-        const legacyIds = parseStringArray(values["primitiveIds"] ?? []);
-        const legacyMirrors = new Set(
-          parseStringArray(values["mirroredPrimitiveIds"] ?? []),
-        );
-        newPrimitives = legacyIds.map((pid) => ({
-          primitiveId: pid,
-          isMirrored: legacyMirrors.has(pid),
-        }));
-      }
+        // Phase 8.4 v18 (Mashu 2026-07-28): the PATCH path now
+        // accepts the SAME input shapes as POST (heritages array +
+        // primitivesBySource + capabilitiesBySource + itemsBySource).
+        // Previously PATCH only handled the flat legacy arrays
+        // (primitiveIds / capabilityIds / itemIds) and IGNORED
+        // character_heritages entirely. That meant removing all
+        // heritages in edit mode and clicking Save left the heritage
+        // rows untouched on the sheet.
+        //
+        // The bundle expansion (which fetches heritage bundles, expands
+        // capabilities → primitives → effects, validates the mirror
+        // ceiling against the EXPANDED set, and writes the canonical
+        // junction rows) now lives in @/lib/api/character-bundle-saver.
+        // Both POST and PATCH call saveCharacterBundles() inside their
+        // transactions — single source of truth.
+        //
+        // Back-compat: callers still using the flat legacy arrays
+        // (primitiveIds + mirroredPrimitiveIds, capabilityIds, itemIds)
+        // continue to work. New callers should send the bundled shape.
+        const wantsBundleReplace =
+          "heritages" in values ||
+          "primitivesBySource" in values ||
+          "capabilitiesBySource" in values ||
+          "itemsBySource" in values ||
+          "primitiveInstances" in values ||
+          "primitiveIds" in values ||
+          "capabilityIds" in values ||
+          "itemIds" in values;
 
-      // Validate against the mirror ceiling (the function dedupes
-      // internally, so stacking doesn't double-count).
-      const volCheck = await validateMirrorSet(
-        mergedLevel,
-        newPrimitives.filter((p) => p.isMirrored).map((p) => p.primitiveId),
-        newPrimitives.map((p) => p.primitiveId),
-      );
-      if (!volCheck.ok) {
-        return NextResponse.json(
-          {
-            error: volCheck.error,
-            ceiling: volCheck.ceiling,
-            rating: volCheck.rating,
-            bracket: volCheck.bracket,
-            offendingPrimitiveId: volCheck.offendingPrimitiveId,
-          },
-          { status: volCheck.status },
-        );
-      }
-    }
-
-    const result = await db.transaction(async (tx) => {
-      if (Object.keys(updatePayload).length > 0) {
-        await tx.update(characters).set(updatePayload).where(eq(characters.id, id));
-      }
-
-      if ("primitiveIds" in values || "primitiveInstances" in values) {
-        // Phase 8.3b: support new primitiveInstances shape (multiple
-        // direct-paid copies allowed) and legacy primitiveIds for
-        // back-compat. Each instance is its own row.
-        const instances: Array<{ primitiveId: number; isMirrored: boolean }> =
-          Array.isArray(values["primitiveInstances"])
-            ? (values["primitiveInstances"] as Array<Record<string, unknown>>)
-                .map((e) => ({
-                  primitiveId: Number(e["primitiveId"]),
-                  isMirrored: Boolean(e["isMirrored"]),
-                }))
-                .filter((e) => Number.isInteger(e.primitiveId) && e.primitiveId > 0)
-            : [];
-        if (Array.isArray(values["primitiveIds"]) && !Array.isArray(values["primitiveInstances"])) {
-          // Legacy fallback: convert flat array + mirroredPrimitiveIds
-          const legacyIds = parseStringArray(values["primitiveIds"]);
-          const legacyMirrors = new Set(
-            parseStringArray(values["mirroredPrimitiveIds"] ?? []),
-          );
-          for (const pid of legacyIds) {
-            instances.push({ primitiveId: pid, isMirrored: legacyMirrors.has(pid) });
+        // Volatility ceiling pre-check: if only flat arrays were sent,
+        // we validate up-front (the helper will do it again, more
+        // thoroughly, against the expanded set). For the bundled shape,
+        // the helper does the check against the full expansion.
+        if (wantsBundleReplace && !("heritages" in values || "primitivesBySource" in values || "capabilitiesBySource" in values)) {
+          // Legacy path: validate direct primitives only.
+          let newPrimitives: Array<{ primitiveId: number; isMirrored: boolean }>;
+          if (Array.isArray(values["primitiveInstances"])) {
+            newPrimitives = (values["primitiveInstances"] as Array<Record<string, unknown>>)
+              .map((e) => ({
+                primitiveId: Number(e["primitiveId"]),
+                isMirrored: Boolean(e["isMirrored"]),
+              }))
+              .filter((e) => Number.isInteger(e.primitiveId) && e.primitiveId > 0);
+          } else {
+            const legacyIds = parseStringArray(values["primitiveIds"] ?? []);
+            const legacyMirrors = new Set(
+              parseStringArray(values["mirroredPrimitiveIds"] ?? []),
+            );
+            newPrimitives = legacyIds.map((pid) => ({
+              primitiveId: pid,
+              isMirrored: legacyMirrors.has(pid),
+            }));
+          }
+          if (newPrimitives.some((p) => p.isMirrored)) {
+            // Use the helper's validation indirectly: build a minimal
+            // expansion and call validateMirrorSet the same way the
+            // helper does. (We could call saveCharacterBundles to do
+            // this, but it's a destructive write — we want a dry
+            // pre-check here so a failed legacy save can return 400
+            // without touching the DB.)
+            const { validateMirrorSet } = await import("@/lib/api/volatility");
+            const volCheck = await validateMirrorSet(
+              mergedLevel,
+              newPrimitives.filter((p) => p.isMirrored).map((p) => p.primitiveId),
+              newPrimitives.map((p) => p.primitiveId),
+            );
+            if (!volCheck.ok) {
+              return NextResponse.json(
+                {
+                  error: volCheck.error,
+                  ceiling: volCheck.ceiling,
+                  rating: volCheck.rating,
+                  bracket: volCheck.bracket,
+                  offendingPrimitiveId: volCheck.offendingPrimitiveId,
+                },
+                { status: volCheck.status },
+              );
+            }
           }
         }
 
-        await tx.delete(characterPrimitives).where(eq(characterPrimitives.characterId, id));
-        if (instances.length > 0) {
-          // Phase 5: load entity rows to compute version_id + slot_source.
-          const primRows = await tx
-            .select({
-              id: primitives.id,
-              userId: primitives.userId,
-              sourceOrigin: primitives.sourceOrigin,
-            })
-            .from(primitives)
-            .where(inArray(primitives.id, instances.map((i) => i.primitiveId)));
-          const primMap = new Map(primRows.map((r) => [r.id, r]));
-          const slotsWithVersion = await Promise.all(
-            instances.map(async (inst) => {
-              const prim = primMap.get(inst.primitiveId);
-              const versionId = await resolveLatestVersionId(
-                "primitive",
-                inst.primitiveId,
-              );
-              const slotSource = prim
-                ? resolveSlotSource({
-                    entity: prim,
-                    callerUserId: userId,
-                  })
-                : "PINNED";
-              return {
-                characterId: id,
-                primitiveId: inst.primitiveId,
-                source: "PERSONAL" as const,
-                acquiredAtLevel: mergedLevel,
-                isMirrored: inst.isMirrored,
-                versionId,
-                slotSource,
-              };
-            }),
-          );
-          await tx.insert(characterPrimitives).values(slotsWithVersion);
-        }
-      }
+        // Build the input the helper expects, translating from any
+        // legacy flat shape into the bundled shape.
+        const bundleInput: CharacterBundleInput | null = wantsBundleReplace
+          ? buildBundleInputFromRequest(values, mergedLevel, userId, id)
+          : null;
 
-      if ("capabilityIds" in values) {
-        const capabilityIds = parseUuidArray(values["capabilityIds"]);
-        await tx.delete(characterCapabilities).where(eq(characterCapabilities.characterId, id));
-        if (capabilityIds.length > 0) {
-          // Phase 5: same wire-up for capabilities.
-          const capRows = await tx
-            .select({
-              id: capabilities.id,
-              userId: capabilities.userId,
-              sourceOrigin: capabilities.sourceOrigin,
-            })
-            .from(capabilities)
-            .where(inArray(capabilities.id, capabilityIds));
-          const capMap = new Map(capRows.map((r) => [r.id, r]));
-          const slotsWithVersion = await Promise.all(
-            capabilityIds.map(async (cid) => {
-              const cap = capMap.get(cid);
-              const versionId = await resolveLatestVersionId("capability", cid);
-              const slotSource = cap
-                ? resolveSlotSource({
-                    entity: cap,
-                    callerUserId: userId,
-                  })
-                : "PINNED";
-              return {
-                characterId: id,
-                capabilityId: cid,
-                acquiredAtLevel: mergedLevel,
-                versionId,
-                slotSource,
-              };
-            }),
-          );
-          await tx.insert(characterCapabilities).values(slotsWithVersion);
-        }
-      }
+        const result = await db.transaction(async (tx) => {
+          if (Object.keys(updatePayload).length > 0) {
+            await tx.update(characters).set(updatePayload).where(eq(characters.id, id));
+          }
 
-      if ("itemIds" in values) {
-        const itemIds = parseUuidArray(values["itemIds"]);
-        await tx.delete(characterItems).where(eq(characterItems.characterId, id));
-        if (itemIds.length > 0) {
-          // Phase 5: same wire-up for items.
-          const itemRows = await tx
-            .select({
-              id: items.id,
-              userId: items.userId,
-              sourceOrigin: items.sourceOrigin,
-            })
-            .from(items)
-            .where(inArray(items.id, itemIds));
-          const itemMap = new Map(itemRows.map((r) => [r.id, r]));
-          const slotsWithVersion = await Promise.all(
-            itemIds.map(async (iid) => {
-              const item = itemMap.get(iid);
-              const versionId = await resolveLatestVersionId("item", iid);
-              const slotSource = item
-                ? resolveSlotSource({
-                    entity: item,
-                    callerUserId: userId,
-                  })
-                : "PINNED";
-              return {
-                characterId: id,
-                itemId: iid,
-                versionId,
-                slotSource,
-              };
-            }),
-          );
-          await tx.insert(characterItems).values(slotsWithVersion);
-        }
-      }
+          if (bundleInput) {
+            await saveCharacterBundles(tx, bundleInput);
+          }
 
-      return tx.query.characters.findFirst({
-        where: eq(characters.id, id),
-        with: {
-          primitiveLinks: { with: { primitive: true } },
-          // Phase 8.4 v5 (Mashu 2026-07-28): include each
-      // capability's effects so the Capabilities tab can
-      // show effects nested under each capability, matching
-      // the character-creation modal's layout.
-      capabilityLinks: {
-        with: {
-          capability: {
+          return tx.query.characters.findFirst({
+            where: eq(characters.id, id),
             with: {
-              effectLinks: { with: { effect: true } },
+              primitiveLinks: { with: { primitive: true } },
+              // Phase 8.4 v5 (Mashu 2026-07-28): include each
+              // capability's effects so the Capabilities tab can
+              // show effects nested under each capability, matching
+              // the character-creation modal's layout.
+              capabilityLinks: {
+                with: {
+                  capability: {
+                    with: {
+                      effectLinks: { with: { effect: true } },
+                    },
+                  },
+                },
+              },
+              // Phase 8.4 v18 (Mashu 2026-07-28): include the
+              // heritage links so the sheet's "By Heritage"
+              // accordions + the origin chain badges on primitives
+              // re-render after a save that included heritage
+              // changes. Without this, a Save that removes all
+              // heritages would still show them on the sheet
+              // (until the user manually refreshed) because the
+              // response payload didn't carry heritageLinks.
+              heritageLinks: {
+                with: {
+                  heritage: {
+                    with: {
+                      capabilityLinks: { with: { capability: true } },
+                      primitiveLinks: { with: { primitive: true } },
+                    },
+                  },
+                },
+              },
+              itemLinks: { with: { item: true } },
             },
-          },
-        },
-      },
-          itemLinks: { with: { item: true } },
-        },
-      });
-    });
+          });
+        });
 
-    // Phase 8.3f S3 (Mashu 2026-07-28): drop the resolver
-    // cache so the next /api/characters/[id]/resolve call
-    // recomputes with the new attribute values, slotted
-    // primitives, mirror state, etc.
-    bustResolverCache(id);
-    return NextResponse.json({ character: result });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error.";
-    return NextResponse.json({ error: message }, { status: 400 });
-  }
-}
+        // Phase 8.3f S3 (Mashu 2026-07-28): drop the resolver
+        // cache so the next /api/characters/[id]/resolve call
+        // recomputes with the new attribute values, slotted
+        // primitives, mirror state, etc.
+        bustResolverCache(id);
+        return NextResponse.json({ character: result });
+      } catch (error) {
+        if (error instanceof CharacterBundleVolatilityError) {
+          return NextResponse.json(
+            {
+              error: error.volCheck.error,
+              ceiling: error.volCheck.ceiling,
+              rating: error.volCheck.rating,
+              bracket: error.volCheck.bracket,
+              offendingPrimitiveId: error.volCheck.offendingPrimitiveId,
+            },
+            { status: error.volCheck.status },
+          );
+        }
+        const message = error instanceof Error ? error.message : "Unknown error.";
+        return NextResponse.json({ error: message }, { status: 400 });
+      }
+    }
+
+    /**
+     * Phase 8.4 v18 (Mashu 2026-07-28): translate the PATCH body
+     * into the helper's input shape. Handles three formats:
+     *
+     *   1. BUNDLED (preferred — what POST takes):
+     *        heritages: [{id, isMirrored}] | [uuid]
+     *        primitivesBySource: { LINEAGE: [{id, isMirrored}], ... }
+     *        capabilitiesBySource: { LINEAGE: [{id, isMirrored}], ... }
+     *        itemsBySource: { PERSONAL: [{id, quantity}] }
+     *
+     *   2. FLAT INSTANCES (Phase 8.3b):
+     *        primitiveInstances: [{primitiveId, isMirrored}]
+     *
+     *   3. LEGACY FLAT (Phase 5/8.1):
+     *        primitiveIds: [number]
+     *        mirroredPrimitiveIds: [number]
+     *        capabilityIds: [uuid]
+     *        itemIds: [uuid]
+     *
+     * Legacy shapes get translated into the bundled shape — all
+     * primitives become PERSONAL, all capabilities become PERSONAL,
+     * all heritages go into the heritages array. The helper then
+     * does the expansion uniformly.
+     */
+    function buildBundleInputFromRequest(
+      values: Record<string, unknown>,
+      level: number,
+      userId: string,
+      characterId: string,
+    ): CharacterBundleInput {
+      // Heritages: accept both array of uuids and array of {id}.
+      const heritagesRaw = values["heritages"];
+      const heritages: string[] = [];
+      if (Array.isArray(heritagesRaw)) {
+        for (const h of heritagesRaw) {
+          if (typeof h === "string") {
+            heritages.push(h);
+          } else if (typeof h === "object" && h !== null) {
+            const id = (h as Record<string, unknown>)["id"];
+            if (typeof id === "string") heritages.push(id);
+          }
+        }
+      }
+
+      // primitivesBySource: read if present; else synthesize from
+      // primitiveInstances + legacy primitiveIds.
+      const primitivesBySource: Record<
+        string,
+        Array<{ id: number; isMirrored: boolean }>
+      > = {};
+      const primBSRaw = values["primitivesBySource"];
+      if (primBSRaw && typeof primBSRaw === "object") {
+        for (const [source, list] of Object.entries(
+          primBSRaw as Record<string, unknown>,
+        )) {
+          if (!Array.isArray(list)) continue;
+          primitivesBySource[source] = [];
+          for (const entry of list) {
+            if (typeof entry !== "object" || entry === null) continue;
+            const e = entry as Record<string, unknown>;
+            const id = Number(e["id"]);
+            if (!Number.isInteger(id) || id <= 0) continue;
+            primitivesBySource[source].push({
+              id,
+              isMirrored: Boolean(e["isMirrored"]),
+            });
+          }
+        }
+      }
+
+      // primitiveInstances: feed into PERSONAL when no bundled shape.
+      const primitiveInstances: Array<{ primitiveId: number; isMirrored: boolean }> = [];
+      if (Array.isArray(values["primitiveInstances"])) {
+        for (const entry of values["primitiveInstances"] as Array<Record<string, unknown>>) {
+          const pid = Number(entry["primitiveId"]);
+          if (!Number.isInteger(pid) || pid <= 0) continue;
+          primitiveInstances.push({
+            primitiveId: pid,
+            isMirrored: Boolean(entry["isMirrored"]),
+          });
+        }
+      } else if (Array.isArray(values["primitiveIds"])) {
+        // Legacy flat: convert to PERSONAL instances.
+        const legacyMirrors = new Set(
+          parseStringArray(values["mirroredPrimitiveIds"] ?? []),
+        );
+        for (const pid of parseStringArray(values["primitiveIds"])) {
+          primitiveInstances.push({
+            primitiveId: pid,
+            isMirrored: legacyMirrors.has(pid),
+          });
+        }
+      }
+
+      // capabilitiesBySource: read if present; else synthesize from
+      // legacy capabilityIds as PERSONAL.
+      const capabilitiesBySource: Record<
+        string,
+        Array<{ id: string; isMirrored: boolean }>
+      > = {};
+      const capsBSRaw = values["capabilitiesBySource"];
+      if (capsBSRaw && typeof capsBSRaw === "object") {
+        for (const [source, list] of Object.entries(
+          capsBSRaw as Record<string, unknown>,
+        )) {
+          if (!Array.isArray(list)) continue;
+          capabilitiesBySource[source] = [];
+          for (const entry of list) {
+            if (typeof entry !== "object" || entry === null) continue;
+            const e = entry as Record<string, unknown>;
+            const id = String(e["id"]);
+            if (!id) continue;
+            capabilitiesBySource[source].push({
+              id,
+              isMirrored: Boolean(e["isMirrored"]),
+            });
+          }
+        }
+      }
+      if (Array.isArray(values["capabilityIds"])) {
+        const personal = capabilitiesBySource["PERSONAL"] ?? [];
+        for (const cid of parseUuidArray(values["capabilityIds"])) {
+          personal.push({ id: cid, isMirrored: false });
+        }
+        capabilitiesBySource["PERSONAL"] = personal;
+      }
+
+      // itemsBySource: read if present; else synthesize from
+      // legacy itemIds as PERSONAL.
+      const itemsBySource: Record<string, Array<{ id: string; quantity: number }>> = {};
+      const itemsBSRaw = values["itemsBySource"];
+      if (itemsBSRaw && typeof itemsBSRaw === "object") {
+        for (const [, list] of Object.entries(itemsBSRaw as Record<string, unknown>)) {
+          // (key ignored — items go to PERSONAL regardless)
+          void 0;
+        }
+        for (const [source, list] of Object.entries(
+          itemsBSRaw as Record<string, unknown>,
+        )) {
+          if (!Array.isArray(list)) continue;
+          itemsBySource[source] = [];
+          for (const entry of list) {
+            if (typeof entry !== "object" || entry === null) continue;
+            const e = entry as Record<string, unknown>;
+            const id = String(e["id"]);
+            if (!id) continue;
+            const q = Number(e["quantity"] ?? 1);
+            itemsBySource[source].push({
+              id,
+              quantity: Number.isInteger(q) && q > 0 ? q : 1,
+            });
+          }
+        }
+      }
+      if (Array.isArray(values["itemIds"])) {
+        const personal = itemsBySource["PERSONAL"] ?? [];
+        for (const iid of parseUuidArray(values["itemIds"])) {
+          personal.push({ id: iid, quantity: 1 });
+        }
+        itemsBySource["PERSONAL"] = personal;
+      }
+
+      return {
+        userId,
+        characterId,
+        level,
+        heritages,
+        primitivesBySource,
+        capabilitiesBySource,
+        itemsBySource,
+        primitiveInstances,
+      };
+    }
 
 /**
  * DELETE /api/characters/[id]
