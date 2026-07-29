@@ -41,6 +41,7 @@ import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
 import { CharacterEditButton } from "@/components/characters/character-edit-button";
 import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-card";
 import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
+import { useDeepPrimitiveClosure } from "@/components/characters/use-deep-primitive-closure";
 import { SheetIdentityHeader } from "@/components/characters/sheet-identity-header";
 import { CoreStatsCard } from "@/components/characters/core-stats-card";
 import { TabErrorBoundary } from "@/components/characters/tab-error-boundary";
@@ -557,6 +558,40 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         volatilityExceeded={props.volatility.exceeded}
         mirroredPrimitives={props.volatility.mirroredPrimitives}
       />
+      </div>
+
+      {/* Phase 8.4 v11 (Mashu 2026-07-28): identity strip
+          moved from the bottom drawer to the TOP of the
+          page (right after the BU budgets, before the
+          tabs). Shows Lineage / Upbringing / Manifest /
+          Attributes as a compact 4-column grid. Visible
+          on all viewports so the user has the identity
+          data without expanding the drawer. */}
+      <div className="mt-4 rounded-md border border-border bg-card overflow-hidden">
+        <div className="border-b border-border px-3 py-1.5">
+          <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Identity
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
+          <IdentityCell
+            label="Lineage"
+            value={props.lineageName ?? "—"}
+            note={props.lineageDescription ?? null}
+          />
+          <IdentityCell
+            label="Upbringing"
+            value={props.upbringingName ?? "—"}
+            note={props.upbringingDescription ?? null}
+          />
+          <IdentityCell label="Manifest" value={props.manifestName ?? "—"} />
+          <IdentityCell
+            label="Attributes"
+            value={`${attrSum} / 10`}
+            tone={attrValid ? "ok" : "bad"}
+            note={attrValid ? "✓ valid" : `✗ off by ${attrSum - 10}`}
+          />
+        </div>
       </div>
 
       {/* Tabs — desktop: top, mobile: bottom sticky */}
@@ -1708,7 +1743,14 @@ function CapabilitiesTab({
   heritageById: Map<string, { name: string; kind: string }>;
   capabilityById: Map<string, { name: string }>;
   effectById: Map<string, { name: string }>;
-}) {
+}) {  // Phase 8.4 v11 (Mashu 2026-07-28): deep transitive
+  // closure — heritage → capability → primitive AND
+  // heritage → capability → effect → primitive. Lazy-loaded
+  // because depth-3+ Drizzle joins don't work in the page
+  // API. See the hook definition for the full rationale.
+  const deepPrimitives = useDeepPrimitiveClosure(heritageLinks);
+
+
   // Phase 8.4 v6 (Mashu 2026-07-28): the Primitives accordion
   // shows EVERY primitive the character has — slotted (direct)
   // AND inherited (from heritages). Direct entries link to
@@ -1759,6 +1801,29 @@ function CapabilitiesTab({
         isMirrored: false,
       });
     }
+  }
+  // Phase 8.4 v11 (Mashu 2026-07-28): deep transitive
+  // closure — primitives from heritage → capability
+  // and heritage → capability → effect. Lazy-loaded
+  // via useDeepPrimitiveClosure. Tagged so the user can
+  // see why each primitive is on the sheet.
+  const deepPrimEntries = Array.from(deepPrimitives.values());
+  for (const dp of deepPrimEntries) {
+    if (seenPrimitiveIds.has(dp.primitive.id)) continue;
+    seenPrimitiveIds.add(dp.primitive.id);
+    const h = heritageLinks.find(
+      (hl) => hl.heritageId === dp.heritageId,
+    )?.heritage;
+    allPrimitives.push({
+      primitiveId: dp.primitive.id,
+      primitive: dp.primitive,
+      origin: {
+        heritageId: dp.heritageId,
+        heritageName: h?.name ?? "—",
+        kind: h?.kind ?? "—",
+      },
+      isMirrored: false,
+    });
   }
 
   if (primitiveLinks.length === 0 && capabilities.length === 0) {
@@ -1867,6 +1932,7 @@ function CapabilitiesTab({
           kind), not floating in Capabilities section." */}
       {heritageLinks.filter((hl) => hl.heritage.kind === "MANIFEST").length > 0 && (
         <HeritageKindAccordion
+          characterId={characterId}
           kind="MANIFEST"
           label="Manifest"
           icon={<Sparkles className="size-4 text-muted-foreground" />}
@@ -1881,6 +1947,7 @@ function CapabilitiesTab({
       {/* ===== Accordion 3: Lineage (heritage kind = LINEAGE) ===== */}
       {heritageLinks.filter((hl) => hl.heritage.kind === "LINEAGE").length > 0 && (
         <HeritageKindAccordion
+          characterId={characterId}
           kind="LINEAGE"
           label="Lineage"
           icon={<Flame className="size-4 text-muted-foreground" />}
@@ -1895,6 +1962,7 @@ function CapabilitiesTab({
       {/* ===== Accordion 4: Upbringing (heritage kind = UPBRINGING) ===== */}
       {heritageLinks.filter((hl) => hl.heritage.kind === "UPBRINGING").length > 0 && (
         <HeritageKindAccordion
+          characterId={characterId}
           kind="UPBRINGING"
           label="Upbringing"
           icon={<BookOpen className="size-4 text-muted-foreground" />}
@@ -1904,39 +1972,6 @@ function CapabilitiesTab({
           capabilities={capabilities}
           primitiveLinks={primitiveLinks}
         />
-      )}
-
-      {/* ===== Accordion 5: Slotted Capabilities =====
-          Phase 8.4 v9 (Mashu 2026-07-28): the
-          character-time (slotted) capabilities — the ones
-          the user actually USES at the table. These are
-          rendered as full CapabilityCard with the
-          trigger + active/inactive toggle. Per Mashu:
-          "we should see ALL primitives, and before for
-          each heritage type the capabilities and effects
-          nested in them or directly added. Not the
-          primitives directly (more or less like we
-          already display in the character creation
-          modal, but more useful for actual play)." */}
-      {capabilities.length > 0 && (
-        <details className="group rounded-md border border-border bg-card">
-          <summary className="flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium cursor-pointer list-none">
-            <span className="flex items-center gap-2">
-              <Swords className="size-4 text-muted-foreground" />
-              Slotted Capabilities ({capabilities.length})
-            </span>
-            <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
-          </summary>
-          <div className="space-y-2 px-4 pb-4 pt-3 border-t border-border">
-            {capabilities.map((c) => (
-              <CapabilityCard
-                key={c.id}
-                characterId={characterId}
-                capability={c}
-              />
-            ))}
-          </div>
-        </details>
       )}
     </div>
   );
@@ -1953,6 +1988,7 @@ function CapabilitiesTab({
  * default for the at-a-glance view).
  */
 function HeritageKindAccordion({
+  characterId,
   kind,
   label,
   icon,
@@ -1960,6 +1996,7 @@ function HeritageKindAccordion({
   capabilities,
   primitiveLinks,
 }: {
+  characterId: string;
   kind: "MANIFEST" | "LINEAGE" | "UPBRINGING";
   label: string;
   icon: React.ReactNode;
@@ -2027,6 +2064,7 @@ function HeritageKindAccordion({
           return (
             <HeritageBundleView
               key={hl.heritageId}
+              characterId={characterId}
               heritageId={hl.heritageId}
               heritageName={hl.heritage.name}
               heritageKindLabel={label}

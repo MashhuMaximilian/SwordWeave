@@ -94,6 +94,22 @@ export interface CapabilityCardProps {
       };
     }>;
   };
+  /**
+   * Phase 8.4 v11 (Mashu 2026-07-28): hide the "Primitives (N)"
+   * accordion. The heritage-accordion variant uses this because
+   * the bundled primitives are shown directly in the
+   * Primitives accordion above; no need to duplicate them.
+   * Default: true (still shown for slotted capabilities).
+   */
+  showPrimitives?: boolean;
+  /**
+   * Phase 8.4 v11 (Mashu 2026-07-28): hide the "Preview" button.
+   * The heritage-accordion variant uses this because the user
+   * can already click the card body to open the preview;
+   * no need for a second affordance. Default: true (still shown
+   * for slotted capabilities).
+   */
+  showPreviewButton?: boolean;
 }
 
 function storageKey(characterId: string, capabilityId: string) {
@@ -134,6 +150,8 @@ function writeToggle(
 export function CapabilityCard({
   characterId,
   capability,
+  showPrimitives = true,
+  showPreviewButton = true,
 }: CapabilityCardProps) {
   const { showToast } = useToasts();
   const { openPreview } = useEntityPreview();
@@ -247,6 +265,11 @@ export function CapabilityCard({
   // display in the character creation modal, but more useful
   // for actual play)."
   useEffect(() => {
+    if (!showPrimitives) {
+      setBundledPrims([]);
+      setBundleLoading(false);
+      return;
+    }
     let cancelled = false;
     setBundleLoading(true);
     void (async () => {
@@ -275,7 +298,7 @@ export function CapabilityCard({
     return () => {
       cancelled = true;
     };
-  }, [capability.id]);
+  }, [capability.id, showPrimitives]);
 
   const handleToggle = useCallback(async () => {
     if (toggling) return;
@@ -503,7 +526,7 @@ export function CapabilityCard({
             directly (more or less like we already display in
             the character creation modal, but more useful for
             actual play)." */}
-        {(bundledPrims && bundledPrims.length > 0) || bundleLoading ? (
+        {showPrimitives && ((bundledPrims && bundledPrims.length > 0) || bundleLoading) ? (
           <details open className="mt-2 rounded border border-border bg-muted/30 px-2 py-1 text-xs">
             <summary className="cursor-pointer list-none font-semibold uppercase tracking-wide text-muted-foreground">
               Primitives ({bundledPrims?.length ?? 0})
@@ -565,21 +588,26 @@ export function CapabilityCard({
             )}
             {triggerFlash ? "Triggered" : triggerPending ? "…" : "Trigger"}
           </button>
-          {/* Preview modal — same EntityPreview used in atelier/library */}
-          <button
-            type="button"
-            onClick={handlePreviewClick}
-            disabled={previewLoading}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
-            title="Open preview modal"
-          >
-            {previewLoading ? (
-              <Loader2 className="size-3 animate-spin" />
-            ) : (
-              <ExternalLink className="size-3" />
-            )}
-            Preview
-          </button>
+          {/* Preview modal — same EntityPreview used in atelier/library.
+              Hidden in the heritage-accordion variant because the
+              user can already click the card body to open the
+              preview; no need for a second affordance. */}
+          {showPreviewButton && (
+            <button
+              type="button"
+              onClick={handlePreviewClick}
+              disabled={previewLoading}
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+              title="Open preview modal"
+            >
+              {previewLoading ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <ExternalLink className="size-3" />
+              )}
+              Preview
+            </button>
+          )}
         </div>
 
         {triggerFlash && (

@@ -14,12 +14,11 @@
  *   ♥ current/max | P/ME/MA | PB | DC [PROF] | chevron
  *
  * Drawer (when expanded, top → bottom):
- *   1. Identity strip — Lineage / Upbringing / Manifest / Attributes
- *   2. Vitality header + bar + buttons (compact, single row)
- *   3. Mods + saves (3 chips, "PROF" tag on the proficient one)
- *   4. Save DC card
- *   5. Practices (3 columns, capitalized)
- *   6. Load + Equip slots (Load only on mobile; PB on desktop) at the bottom
+ *   1. Vitality header + bar + buttons (compact, single row)
+ *   2. Mods + saves (3 chips, "PROF" tag on the proficient one)
+ *   3. Save DC card
+ *   4. Practices (3 columns, capitalized)
+ *   5. Load + Equip slots (Load only on mobile; PB on desktop) at the bottom
  *
  * Every number is clickable → opens a ProvenanceModal showing
  * the resolver contributions. The combined "mod + save" modal
@@ -308,35 +307,7 @@ export function BottomStickyBar({
           className="px-2 pb-20 pt-1.5 max-h-[calc(100dvh-3rem)] overflow-y-auto"
           data-testid="bottom-sticky-bar-drawer"
         >
-          {/* 1. Identity strip (TOP of drawer, just above buttons). */}
-          <div className="rounded-md border border-border bg-card overflow-hidden">
-            <div className="border-b border-border px-3 py-1.5">
-              <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Identity
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
-              <IdentityCell
-                label="Lineage"
-                value={lineageName ?? "—"}
-                note={lineageDescription}
-              />
-              <IdentityCell
-                label="Upbringing"
-                value={upbringingName ?? "—"}
-                note={upbringingDescription}
-              />
-              <IdentityCell label="Manifest" value={manifestName ?? "—"} />
-              <IdentityCell
-                label="Attributes"
-                value={`${attrSum} / 10`}
-                tone={attrSumValid ? "ok" : "bad"}
-                note={attrSumValid ? "✓ valid" : `✗ off by ${attrSum - 10}`}
-              />
-            </div>
-          </div>
-
-          {/* 2. Vitality header + bar + buttons.
+          {/* 1. Vitality header + bar + buttons.
               The header + numbers + bar are all clickable
               to open the max-vitality provenance modal.
               The Damage/Heal/Long-rest/Short-rest buttons
@@ -381,7 +352,7 @@ export function BottomStickyBar({
             </div>
           </div>
 
-          {/* 3. Mods + saves — 3 chips. Each is clickable for
+          {/* 2. Mods + saves — 3 chips. Each is clickable for
               a combined mod + save provenance modal. The
               proficient chip gets a "PROF" tag. */}
           <div className="mt-2 mb-2">
@@ -435,7 +406,7 @@ export function BottomStickyBar({
             </div>
           </div>
 
-          {/* 4. Save DC card — clickable for provenance. */}
+          {/* 3. Save DC card — clickable for provenance. */}
           <button
             type="button"
             onClick={openDcModal}
@@ -457,7 +428,7 @@ export function BottomStickyBar({
             </div>
           </button>
 
-          {/* 5. Practices — 3 columns, capitalized. Each
+          {/* 4. Practices — 3 columns, capitalized. Each
               column is clickable for practice provenance. */}
           <div>
             <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -535,7 +506,7 @@ export function BottomStickyBar({
             )}
           </div>
 
-          {/* 6. Load + Equip slots (BOTTOM of drawer). */}
+          {/* 5. Load + Equip slots (BOTTOM of drawer). */}
           <div className="mt-2 rounded-md border border-border bg-card overflow-hidden">
             <div className="grid grid-cols-2 divide-x divide-border md:grid-cols-3">
               <LoadCell encumbrance={encumbrance} />

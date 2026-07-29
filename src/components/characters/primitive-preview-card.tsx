@@ -76,15 +76,10 @@ export function PrimitivePreviewCard({
 
   const handleClick = useCallback(
     async (e: React.MouseEvent) => {
-      // Don't trigger preview if click landed on a button or link.
-      const target = e.target as HTMLElement;
-      if (
-        target.closest("button") ||
-        target.closest("a")
-      ) {
-        return;
-      }
-
+      // The preview is now bound ONLY to the name button,
+      // so we don't need to check for nested buttons. The
+      // Details toggle and the inherited/mirrored tags
+      // don't bubble up here anymore.
       setFetching(true);
       try {
         const res = await fetch(`/api/primitives/${p.id}`);
@@ -291,10 +286,40 @@ function PrimitiveDetailToggle({
           </p>
         )}
         {isMirrored && (
-          <p className="text-destructive">
-            <span className="font-semibold uppercase">Mirrored: </span>
-            BU cost flipped → {mirrorBuCredit} BU (was {buCost} BU)
-          </p>
+          <div className="text-destructive">
+            <p className="font-semibold uppercase">Mirrored modifiers</p>
+            {modifierList.length > 0 ? (
+              <ul className="mt-0.5 space-y-0.5">
+                {modifierList.map((mod, i) => {
+                  const m = mod as {
+                    target?: string;
+                    operation?: string;
+                    value?: unknown;
+                  };
+                  const v = Number(m.value ?? 0);
+                  // VARIABLE_VECTOR flips sign on the value
+                  const flipped = v !== 0 ? -v : v;
+                  return (
+                    <li
+                      key={i}
+                      className="flex flex-wrap items-center gap-1 font-mono"
+                    >
+                      <span>{m.operation ?? "modify"}</span>
+                      <span className="font-semibold">
+                        {v >= 0 ? `+${v}` : `${v}`} → {flipped >= 0 ? `+${flipped}` : `${flipped}`}
+                      </span>
+                      <span className="text-destructive/70">→</span>
+                      <span>{m.target ?? "?"}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="italic">
+                No modifiers to mirror. BU cost: {buCost} → {mirrorBuCredit} BU.
+              </p>
+            )}
+          </div>
         )}
         {narrativeRule && (
           <p className="text-muted-foreground italic">{narrativeRule}</p>

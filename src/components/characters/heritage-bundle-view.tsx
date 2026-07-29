@@ -34,10 +34,21 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, Loader2 } from "lucide-react";
+import { CapabilityCard } from "@/components/characters/capability-card";
 import { useEntityPreview } from "@/components/characters/preview-modal";
 import type { SandboxPreviewItem } from "@/components/library/library-item-preview";
 
 export interface HeritageBundleViewProps {
+  /**
+   * Phase 8.4 v11 (Mashu 2026-07-28): the active character
+   * id, threaded through to the CapabilityCard so the
+   * trigger + toggle handlers log against the right
+   * character. Required when the capabilities should be
+   * rendered as CapabilityCard (the on-sheet Capabilities
+   * tab passes this; the character-modal builder does not
+   * because it has its own preview flow).
+   */
+  characterId?: string;
   heritageId: string;
   heritageName: string;
   heritageKindLabel: string;
@@ -129,6 +140,7 @@ interface FullHeritageBundle {
 }
 
 export function HeritageBundleView({
+  characterId,
   heritageId,
   heritageName,
   heritageKindLabel,
@@ -363,6 +375,53 @@ export function HeritageBundleView({
                 const cap = cl.capability;
                 const nestedPrims = cap.primitiveLinks ?? [];
                 const nestedEffects = cap.effectLinks ?? [];
+                // Phase 8.4 v11 (Mashu 2026-07-28): when the
+                // HeritageBundleView is rendered on the
+                // CHARACTER SHEET (characterId provided),
+                // render the capability as a full
+                // CapabilityCard (variant: no PRIMITIVES
+                // accordion, no Preview button — the card
+                // body itself opens the preview on click).
+                // The character-modal builder still uses the
+                // slim in-place render below.
+                if (characterId) {
+                  return (
+                    <li key={cl.capabilityId}>
+                      <CapabilityCard
+                        characterId={characterId}
+                        capability={{
+                          id: cap.id,
+                          name: cap.name,
+                          type: cap.type,
+                          sourceType: cap.sourceType,
+                          acquiredAtLevel: 1,
+                          verboseDescription: cap.verboseDescription,
+                          versionId: null,
+                          slotSource: slotted ? "PINNED" : null,
+                          latestVersionId: null,
+                          originChain: [
+                            { kind: "heritage", name: heritageName },
+                          ],
+                          effectLinks: nestedEffects.map((el) => ({
+                            effectId: el.effectId,
+                            effect: {
+                              id: el.effect.id,
+                              name: el.effect.name,
+                              description: el.effect.description ?? "",
+                            },
+                          })),
+                        }}
+                        showPrimitives={false}
+                        showPreviewButton={false}
+                      />
+                      {!slotted && (
+                        <p className="mt-1 text-[10px] text-muted-foreground italic">
+                          template (not slotted)
+                        </p>
+                      )}
+                    </li>
+                  );
+                }
                 return (
                   <li
                     key={cl.capabilityId}
