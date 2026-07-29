@@ -176,6 +176,40 @@ type SheetItemLink = {
     slotCost: number;
     isTwoHanded: boolean;
     isConsumable: boolean;
+    // Phase 8.4 v22 (Mashu 2026-07-29): T2 — item's nested
+    // bundle so the sheet ItemsTab can render primitives /
+    // caps / effects per item (matching the modal's
+    // ItemsTab structure).
+    capabilityLinks: Array<{
+      capabilityId: string;
+      capability: {
+        id: string;
+        name: string;
+        type: string;
+        sourceType: string;
+        verboseDescription: string;
+        effectLinks: Array<{
+          effectId: string;
+          effect: { id: string; name: string; description: string };
+        }>;
+      };
+    }>;
+    effectLinks: Array<{
+      effectId: string;
+      effect: { id: string; name: string; description: string };
+    }>;
+    primitiveLinks: Array<{
+      primitiveId: number;
+      primitive: {
+        id: number;
+        name: string;
+        category: string;
+        buCost: number;
+        isMirrorable: boolean;
+        mirrorBuCredit: number;
+        narrativeRule: string | null;
+      };
+    }>;
   };
 };
 
@@ -2108,6 +2142,39 @@ function ItemsTab({
     versionId: string | null;
     slotSource: SlotSource | null;
     latestVersionId: string | null;
+    // Phase 8.4 v22 (Mashu 2026-07-29): T2 — item's nested
+    // bundle so the sheet card can render primitives/caps/
+    // effects per item.
+    capabilityLinks: Array<{
+      capabilityId: string;
+      capability: {
+        id: string;
+        name: string;
+        type: string;
+        sourceType: string;
+        verboseDescription: string;
+        effectLinks: Array<{
+          effectId: string;
+          effect: { id: string; name: string; description: string };
+        }>;
+      };
+    }>;
+    effectLinks: Array<{
+      effectId: string;
+      effect: { id: string; name: string; description: string };
+    }>;
+    primitiveLinks: Array<{
+      primitiveId: number;
+      primitive: {
+        id: number;
+        name: string;
+        category: string;
+        buCost: number;
+        isMirrorable: boolean;
+        mirrorBuCredit: number;
+        narrativeRule: string | null;
+      };
+    }>;
   }>;
   encumbrance: CharacterSheetProps["encumbrance"];
 }) {
@@ -2141,11 +2208,22 @@ function ItemsTab({
           <li key={i.id}>
             {/* Phase 8.2 batch 4: each item is now an interactive
                 card with an equip/unequip toggle. The card owns
-                its own optimistic state and dispatches the API. */}
+                its own optimistic state and dispatches the API.
+                Phase 8.4 v22 (Mashu 2026-07-29): T2 — `nested`
+                is the item's primitives/caps/effects bundle,
+                rendered inline as collapsible accordions below
+                the equip/preview row. Per Mashu's spec these
+                are item-scoped (not in the character's general
+                primitive pool). */}
             <ItemCard
               characterId={characterId}
               item={i}
               atCapacity={atCapacity}
+              nested={{
+                capabilityLinks: i.capabilityLinks,
+                effectLinks: i.effectLinks,
+                primitiveLinks: i.primitiveLinks,
+              }}
             />
           </li>
         ))}

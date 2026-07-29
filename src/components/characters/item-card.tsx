@@ -50,12 +50,52 @@ export interface ItemCardProps {
   };
   /** Whether the character is at or over equip-slot capacity. */
   atCapacity?: boolean;
+  /**
+   * Phase 8.4 v22 (Mashu 2026-07-29): T2 — item's nested
+   * bundle (capabilities / effects / primitives) for the
+   * sheet side. The modal ItemsTab has its own component;
+   * here we add a compact nested bundle preview to the
+   * existing card.
+   */
+  nested?: {
+    capabilityLinks: Array<{
+      capabilityId: string;
+      capability: {
+        id: string;
+        name: string;
+        type: string;
+        sourceType: string;
+        verboseDescription: string;
+        effectLinks: Array<{
+          effectId: string;
+          effect: { id: string; name: string; description: string };
+        }>;
+      };
+    }>;
+    effectLinks: Array<{
+      effectId: string;
+      effect: { id: string; name: string; description: string };
+    }>;
+    primitiveLinks: Array<{
+      primitiveId: number;
+      primitive: {
+        id: number;
+        name: string;
+        category: string;
+        buCost: number;
+        isMirrorable: boolean;
+        mirrorBuCredit: number;
+        narrativeRule: string | null;
+      };
+    }>;
+  };
 }
 
 export function ItemCard({
   characterId,
   item,
   atCapacity = false,
+  nested,
 }: ItemCardProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -208,6 +248,123 @@ export function ItemCard({
           Preview
         </Link>
       </div>
+
+      {/* Phase 8.4 v22 (Mashu 2026-07-29): T2 — nested
+          bundle (capabilities + effects + primitives).
+          Per Mashu: item's nested content is item-scoped,
+          not in the character's general pool. The toggles
+          here are read-only (caps still have their full
+          active/trigger via the sheet's CapabilityCard
+          when slotted through manifest, but the item's
+          own cap toggles live in the modal — sheet side
+          is just for visibility). */}
+      {nested &&
+        (nested.capabilityLinks.length > 0 ||
+          nested.effectLinks.length > 0 ||
+          nested.primitiveLinks.length > 0) && (
+          <div className="mt-3 space-y-2 border-t border-border/40 pt-3">
+            {nested.capabilityLinks.length > 0 && (
+              <details className="text-xs">
+                <summary className="cursor-pointer select-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Capabilities ({nested.capabilityLinks.length})
+                </summary>
+                <ul className="mt-2 space-y-1.5">
+                  {nested.capabilityLinks.map((cl) => (
+                    <li
+                      key={cl.capabilityId}
+                      className="rounded border border-border/40 bg-background/40 px-2 py-1.5"
+                    >
+                      <div className="font-medium">
+                        {cl.capability.name}
+                      </div>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {cl.capability.type}
+                      </div>
+                      {cl.capability.verboseDescription && (
+                        <p className="mt-1 text-muted-foreground line-clamp-2">
+                          {cl.capability.verboseDescription}
+                        </p>
+                      )}
+                      {cl.capability.effectLinks.length > 0 && (
+                        <ul className="mt-1 space-y-1 border-t border-border/30 pt-1">
+                          {cl.capability.effectLinks.map((el) => (
+                            <li
+                              key={el.effectId}
+                              className="rounded bg-background/30 px-1.5 py-1"
+                            >
+                              <span className="font-medium">
+                                {el.effect.name}
+                              </span>
+                              {el.effect.description && (
+                                <p className="text-muted-foreground line-clamp-1">
+                                  {el.effect.description}
+                                </p>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+            {nested.effectLinks.length > 0 && (
+              <details className="text-xs">
+                <summary className="cursor-pointer select-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Effects ({nested.effectLinks.length})
+                </summary>
+                <ul className="mt-2 space-y-1.5">
+                  {nested.effectLinks.map((el) => (
+                    <li
+                      key={el.effectId}
+                      className="rounded border border-border/40 bg-background/40 px-2 py-1.5"
+                    >
+                      <div className="font-medium">{el.effect.name}</div>
+                      {el.effect.description && (
+                        <p className="mt-1 text-muted-foreground line-clamp-2">
+                          {el.effect.description}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+            {nested.primitiveLinks.length > 0 && (
+              <details className="text-xs">
+                <summary className="cursor-pointer select-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Primitives ({nested.primitiveLinks.length})
+                </summary>
+                <ul className="mt-2 space-y-1.5">
+                  {nested.primitiveLinks.map((pl) => (
+                    <li
+                      key={pl.primitiveId}
+                      className="rounded border border-border/40 bg-background/40 px-2 py-1.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">
+                          {pl.primitive.name}
+                        </span>
+                        <span className="font-mono text-muted-foreground">
+                          {pl.primitive.buCost} BU
+                        </span>
+                      </div>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {pl.primitive.category}
+                      </div>
+                      {pl.primitive.narrativeRule && (
+                        <p className="mt-1 text-muted-foreground line-clamp-2">
+                          {pl.primitive.narrativeRule}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        )}
     </div>
   );
 }

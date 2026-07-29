@@ -1,16 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { characters } from "@/db/schema";
-import {
-  itemCapabilities,
-  itemEffects,
-  itemPrimitives,
-  capabilities as capabilitiesTable,
-  effects as effectsTable,
-  primitives as primitivesTable,
-} from "@/db/schema";
 import { validateAttributes, type Attribute } from "@/lib/engine/practices";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 import { cumulativeBuForLevel } from "@/lib/engine/bu";
@@ -19,6 +11,7 @@ import {
   CharacterBundleVolatilityError,
   type CharacterBundleInput,
 } from "@/lib/api/character-bundle-saver";
+import { enrichItemLinksWithNestedBundle } from "@/lib/api/enrich-item-links";
 import {
   parseBackstory,
   sanitizeBackstory,
@@ -73,182 +66,6 @@ function emptyToNull(v: unknown): string | null {
   return s || null;
 }
 
-/**
- * Phase 8.4 v22 (Mashu 2026-07-29): T2 followup — enrich
- * each itemLink with the item's nested bundle via FLAT
- * queries. This avoids the depth-3+ Drizzle `with:` join
- * that mis-scopes Postgres's LEFT JOIN LATERAL (see
- * /api/items/[id] for the same pattern).
- *
- * Side-effect mutates each `link.item` to include
- * capabilityLinks / effectLinks / primitiveLinks with
- * the joined capability / effect / primitive rows.
- *
- * Empty arrays are no-ops (no DB roundtrip when the
- * character has no items).
- */
-async function enrichItemLinksWithNestedBundle(
-  itemLinks: ReadonlyArray<{
-    itemId: string;
-    item: Record<string, unknown>;
-  }>,
-): Promise<void> {
-  if (!itemLinks || itemLinks.length === 0) return;
-  const itemIds = itemLinks.map((l) => l.itemId);
-
-  // 1) Direct item primitives
-  const itemPrimRows = await db
-    .select({
-      itemId: itemPrimitives.itemId,
-      primitiveId: itemPrimitives.primitiveId,
-      sortOrder: itemPrimitives.sortOrder,
-      pId: primitivesTable.id,
-      pName: primitivesTable.name,
-      pCategory: primitivesTable.category,
-      pBuCost: primitivesTable.buCost,
-      pIsMirrorable: primitivesTable.isMirrorable,
-      pMirrorBuCredit: primitivesTable.mirrorBuCredit,
-      pNarrativeRule: primitivesTable.narrativeRule,
-    })
-    .from(itemPrimitives)
-    .innerJoin(
-      primitivesTable,
-      eq(primitivesTable.id, itemPrimitives.primitiveId),
-    )
-    .where(inArray(itemPrimitives.itemId, itemIds));
-
-  // 2) Item capabilities + their effectLinks (capabilityEffects is
-  //    the join table)
-  const itemCapRows = await db
-    .select({
-      itemId: itemCapabilities.itemId,
-      capabilityId: itemCapabilities.capabilityId,
-      cId: capabilitiesTable.id,
-      cName: capabilitiesTable.name,
-      cType: capabilitiesTable.type,
-      cSourceType: capabilitiesTable.sourceType,
-      cVerboseDescription: capabilitiesTable.verboseDescription,
-    })
-    .from(itemCapabilities)
-    .innerJoin(
-      capabilitiesTable,
-      eq(capabilitiesTable.id, itemCapabilities.capabilityId),
-    )
-    .where(inArray(itemCapabilities.itemId, itemIds));
-
-  // 3) Item direct effects
-  const itemEffectRows = await db
-    .select({
-      itemId: itemEffects.itemId,
-      effectId: itemEffects.effectId,
-      eId: effectsTable.id,
-      eName: effectsTable.name,
-      eNarrativeDescription: effectsTable.narrativeDescription,
-    })
-    .from(itemEffects)
-    .innerJoin(effectsTable, eq(effectsTable.id, itemEffects.effectId))
-    .where(inArray(itemEffects.itemId, itemIds));
-
-  // 4) Capability effect links — see comment above. For now
-  //    we leave capEffectRows empty; the modal will lazy-fetch
-  //    each capability's nested effects via /api/capabilities/
-  //    [id] when the user expands them. This keeps the GET
-  //    response fast (single roundtrip for the depth-1 bits;
-  //    lazy for the depth-2 nested under caps).
-  const capabilityIds = itemCapRows.map((r) => r.capabilityId);
-  const capEffectRows: Array<{
-    capabilityId: string;
-    effectId: string;
-    eId: string;
-    eName: string;
-    eNarrativeDescription: string;
-  }> = [];
-  void capabilityIds;
-
-  // Group by itemId and attach to the link.
-  const primsByItemId = new Map<string, typeof itemPrimRows>();
-  for (const r of itemPrimRows) {
-    const arr = primsByItemId.get(r.itemId) ?? [];
-    arr.push(r);
-    primsByItemId.set(r.itemId, arr);
-  }
-  const capsByItemId = new Map<string, typeof itemCapRows>();
-  for (const r of itemCapRows) {
-    const arr = capsByItemId.get(r.itemId) ?? [];
-    arr.push(r);
-    capsByItemId.set(r.itemId, arr);
-  }
-  const effectsByItemId = new Map<string, typeof itemEffectRows>();
-  for (const r of itemEffectRows) {
-    const arr = effectsByItemId.get(r.itemId) ?? [];
-    arr.push(r);
-    effectsByItemId.set(r.itemId, arr);
-  }
-
-  // Also group capability effect links by capabilityId so we
-  // can attach effectLinks per cap when we have them.
-  const capEffectsByCapId = new Map<
-    string,
-    Array<{
-      effectId: string;
-      effect: { id: string; name: string; description: string };
-    }>
-  >();
-  for (const r of capEffectRows) {
-    const arr = capEffectsByCapId.get(r.capabilityId) ?? [];
-    arr.push({
-      effectId: r.effectId,
-      effect: {
-        id: r.eId,
-        name: r.eName,
-        description: r.eNarrativeDescription,
-      },
-    });
-    capEffectsByCapId.set(r.capabilityId, arr);
-  }
-
-  for (const link of itemLinks) {
-    const item = link.item;
-    // Primitives
-    item["primitiveLinks"] = (primsByItemId.get(link.itemId) ?? []).map(
-      (r) => ({
-        primitiveId: r.primitiveId,
-        primitive: {
-          id: r.pId,
-          name: r.pName,
-          category: r.pCategory,
-          buCost: r.pBuCost,
-          isMirrorable: r.pIsMirrorable,
-          mirrorBuCredit: r.pMirrorBuCredit,
-          narrativeRule: r.pNarrativeRule,
-        },
-      }),
-    );
-    // Capabilities
-    item["capabilityLinks"] = (capsByItemId.get(link.itemId) ?? []).map(
-      (r) => ({
-        capabilityId: r.capabilityId,
-        capability: {
-          id: r.cId,
-          name: r.cName,
-          type: r.cType,
-          sourceType: r.cSourceType,
-          verboseDescription: r.cVerboseDescription,
-          effectLinks: capEffectsByCapId.get(r.capabilityId) ?? [],
-        },
-      }),
-    );
-    // Direct effects
-    item["effectLinks"] = (effectsByItemId.get(link.itemId) ?? []).map((r) => ({
-      effectId: r.effectId,
-      effect: {
-        id: r.eId,
-        name: r.eName,
-        description: r.eNarrativeDescription,
-      },
-    }));
-  }
-}
 
 /**
  * GET /api/characters/[id]

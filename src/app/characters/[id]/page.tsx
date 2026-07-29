@@ -11,6 +11,7 @@ import {
   type VersionKey,
 } from "@/lib/versions/bulk-resolve-latest-versions";
 import { parseBackstory } from "@/lib/character/character-backstory";
+import { enrichItemLinksWithNestedBundle } from "@/lib/api/enrich-item-links";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,12 @@ export default async function CharacterSheetPage({
     ...row.itemLinks.map((l) => ({ kind: "item" as const, id: l.itemId })),
   ];
   const latestVersions = await bulkResolveLatestVersions(entityPairs);
+
+  // Phase 8.4 v22 (Mashu 2026-07-29): T2 followup — enrich
+  // itemLinks with the nested bundle via flat queries.
+  // Same helper the modal uses; safe because it's a
+  // separate roundtrip (no depth-N Drizzle joins).
+  await enrichItemLinksWithNestedBundle(row.itemLinks);
 
   const sheet = aggregateCharacterSheet({
     level: row.level,
@@ -284,6 +291,42 @@ export default async function CharacterSheetPage({
           slotCost: l.item.slotCost,
           isTwoHanded: l.item.isTwoHanded,
           isConsumable: l.item.isConsumable,
+          // Phase 8.4 v22 (Mashu 2026-07-29): T2 — pass the
+          // nested bundle through so the sheet ItemsTab can
+          // render primitives/caps/effects per item.
+          capabilityLinks:
+            (l.item as { capabilityLinks?: Array<{
+              capabilityId: string;
+              capability: {
+                id: string;
+                name: string;
+                type: string;
+                sourceType: string;
+                verboseDescription: string;
+                effectLinks: Array<{
+                  effectId: string;
+                  effect: { id: string; name: string; description: string };
+                }>;
+              };
+            }> }).capabilityLinks ?? [],
+          effectLinks:
+            (l.item as { effectLinks?: Array<{
+              effectId: string;
+              effect: { id: string; name: string; description: string };
+            }> }).effectLinks ?? [],
+          primitiveLinks:
+            (l.item as { primitiveLinks?: Array<{
+              primitiveId: number;
+              primitive: {
+                id: number;
+                name: string;
+                category: string;
+                buCost: number;
+                isMirrorable: boolean;
+                mirrorBuCredit: number;
+                narrativeRule: string | null;
+              };
+            }> }).primitiveLinks ?? [],
         },
       }))}
       // Phase 8.1 batch 13.1: pass heritageLinks so the sheet can
