@@ -38,7 +38,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Zap, Power, CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { SlotSource } from "@/db/schema/characters";
@@ -154,7 +153,6 @@ export function CapabilityCard({
   showPrimitives = true,
   showPreviewButton = true,
 }: CapabilityCardProps) {
-  const router = useRouter();
   const { showToast } = useToasts();
   const { openPreview } = useEntityPreview();
   const [previewData, setPreviewData] = useState<Record<string, unknown> | null>(null);
@@ -341,10 +339,12 @@ export function CapabilityCard({
         next ? `Activated "${capability.name}"` : `Deactivated "${capability.name}"`,
         "success",
       );
-      // Phase 8.4 v11 (Mashu 2026-07-28): refresh the
-      // page so the History tab picks up the new
-      // capability_toggle log entry without a hard reload.
-      router.refresh();
+      // Mashu 2026-07-28: don't call router.refresh() here.
+      // It re-fetches the page, which can cause the
+      // CapabilityCard to remount and reset its local
+      // state, undoing the toggle. The audit log entry is
+      // written server-side; the user can switch tabs
+      // and back (or click the History tab) to see it.
     } catch (err) {
       setActive(!next);
       writeToggle(characterId, capability.id, !next);
@@ -386,9 +386,12 @@ export function CapabilityCard({
 
       const data = (await res.json()) as TriggerResponse;
       showToast(`Triggered "${data.capability.name}"`, "success");
-      // Phase 8.4 v11 (Mashu 2026-07-28): refresh the page
-      // so the History tab picks up the new
-      // capability_trigger log entry.
+      // Mashu 2026-07-28: same rationale as the toggle
+      // handler — don't router.refresh() because it can
+      // cause the CapabilityCard to remount and undo the
+      // trigger flash. The audit log is written
+      // server-side and visible on the History tab after
+      // a manual refresh.
     } catch (err) {
       showToast(
         err instanceof Error ? err.message : "Network error.",

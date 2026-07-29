@@ -43,6 +43,7 @@ import { AlertTriangle, ChevronDown, ChevronUp, ArrowUp, RotateCcw, Pencil } fro
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { CharacterEditButton } from "@/components/characters/character-edit-button";
+import { IdentityCell } from "@/components/characters/identity-cell";
 import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
 
 export interface SheetIdentityHeaderProps {
@@ -51,7 +52,16 @@ export interface SheetIdentityHeaderProps {
   readonly level: number;
   readonly size: string;
   readonly lineageName: string | null;
+  readonly lineageDescription: string | null;
+  readonly upbringingName: string | null;
+  readonly upbringingDescription: string | null;
   readonly manifestName: string | null;
+  /**
+   * Phase 8.4 v11 (Mashu 2026-07-28): attribute values
+   * for the identity card's "Attributes" cell (sum +
+   * validity check).
+   */
+  readonly attrSum: number;
   readonly portraitUrl: string | null;
   readonly canLevelUp: boolean;
   /**
@@ -93,7 +103,11 @@ export function SheetIdentityHeader({
   level,
   size,
   lineageName,
+  lineageDescription,
+  upbringingName,
+  upbringingDescription,
   manifestName,
+  attrSum,
   portraitUrl,
   canLevelUp,
   onLevelUp,
@@ -319,6 +333,36 @@ export function SheetIdentityHeader({
               </ul>
             </details>
           ) : null}
+
+          {/* Phase 8.4 v11 (Mashu 2026-07-28): identity
+              card INSIDE the expanded top deck. Shows
+              Lineage / Upbringing / Manifest / Attributes
+              in a 2-column grid just above the action
+              buttons. Per the user's annotated screenshot:
+              "INSIDE THAT GOD DAMN expanded top deck I
+              want to put the identity card. Just above
+              the existing buttons for lvl up edit clone." */}
+          <div className="mt-3 overflow-hidden rounded-md border border-border bg-card">
+            <div className="grid grid-cols-2 gap-px bg-border">
+              <IdentityCell
+                label="Lineage"
+                value={lineageName ?? "—"}
+                note={lineageDescription}
+              />
+              <IdentityCell
+                label="Upbringing"
+                value={upbringingName ?? "—"}
+                note={upbringingDescription}
+              />
+              <IdentityCell label="Manifest" value={manifestName ?? "—"} />
+              <IdentityCell
+                label="Attributes"
+                value={`${attrSum} / 10`}
+                tone={attrSum === 10 ? "ok" : "bad"}
+                note={attrSum === 10 ? "✓ valid" : `✗ off by ${attrSum - 10}`}
+              />
+            </div>
+          </div>
 
           {/* Edit / Clone / Level Up — Mashu 2026-07-28:
               "we need the clone and level up buttons too there." */}

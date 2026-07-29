@@ -606,44 +606,7 @@ export function BottomStickyBar({
   );
 }
 
-// =============================================================================
-// IdentityCell — compact cell for the identity strip
-// =============================================================================
-function IdentityCell({
-  label,
-  value,
-  note,
-  tone = "default",
-}: {
-  label: string;
-  value: string;
-  note?: string | null;
-  tone?: "default" | "ok" | "bad";
-}) {
-  return (
-    <div className="bg-card p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p
-        className={`mt-1 truncate font-medium ${
-          tone === "ok"
-            ? "text-green-600 dark:text-green-400"
-            : tone === "bad"
-              ? "text-destructive"
-              : ""
-        }`}
-      >
-        {value}
-      </p>
-      {note && (
-        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-          {note}
-        </p>
-      )}
-    </div>
-  );
-}
+
 
 // =============================================================================
 // LoadCell — load + capacity bar

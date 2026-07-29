@@ -462,6 +462,8 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           of the screen takes over its identity/avatar/buttons. We
           keep the in-page header on >= md screens where the sticky
           bar collapses. */}
+      
+
       <header className="hidden flex-wrap items-start justify-between gap-4 md:flex">
         <div className="flex items-center gap-4">
           {props.portraitUrl ? (
@@ -489,6 +491,34 @@ export function CharacterSheetView(props: CharacterSheetProps) {
               {props.manifestName && <span>· {props.manifestName}</span>}
             </div>
           </div>
+        </div>
+        {/* Action buttons. Mashu 2026-07-28: kept in the
+            <header> on desktop because the identity card
+            now lives in the SheetIdentityHeader's expanded
+            view (mobile). */}
+        <div className="flex flex-wrap items-center gap-2">
+          <CharacterEditButton
+            characterId={props.id}
+            className="flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-card"
+            title="Open in the atelier for editing"
+          />
+          {props.level < 20 && (
+            <button
+              type="button"
+              onClick={() => setLevelUpConfirm(true)}
+              className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              <ArrowUp className="size-4" />
+              Level Up
+            </button>
+          )}
+          <Link
+            href={`/characters/${props.id}/clone`}
+            className="flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-card"
+          >
+            <Swords className="size-4" />
+            Clone
+          </Link>
         </div>
       </header>
       {/* Mobile: SheetIdentityHeader is fixed at top-of-viewport, so
@@ -528,77 +558,6 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         volatilityExceeded={props.volatility.exceeded}
         mirroredPrimitives={props.volatility.mirroredPrimitives}
       />
-      </div>
-
-      {/* Phase 8.4 v11 (Mashu 2026-07-28): identity strip
-          moved from the bottom drawer to the TOP of the
-          page (right after the BU budgets, before the
-          tabs). Shows Lineage / Upbringing / Manifest /
-          Attributes as a compact 4-column grid. Visible
-          on all viewports so the user has the identity
-          data without expanding the drawer. */}
-      <div className="mt-4 rounded-md border border-border bg-card overflow-hidden">
-        <div className="border-b border-border px-3 py-1.5">
-          <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Identity
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
-          <IdentityCell
-            label="Lineage"
-            value={props.lineageName ?? "—"}
-            note={props.lineageDescription ?? null}
-          />
-          <IdentityCell
-            label="Upbringing"
-            value={props.upbringingName ?? "—"}
-            note={props.upbringingDescription ?? null}
-          />
-          <IdentityCell label="Manifest" value={props.manifestName ?? "—"} />
-          <IdentityCell
-            label="Attributes"
-            value={`${attrSum} / 10`}
-            tone={attrValid ? "ok" : "bad"}
-            note={attrValid ? "✓ valid" : `✗ off by ${attrSum - 10}`}
-          />
-        </div>
-      </div>
-
-      {/* Phase 8.4 v11 (Mashu 2026-07-28): action button row.
-          Moved here from the <header> so the upper deck reads
-          top-to-bottom as: portrait+name → BU budgets →
-          identity card → actions → tabs. Matches the user's
-          annotated screenshot. */}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-<div className="flex flex-wrap items-center gap-2">
-          {/* Phase 8.2 batch 7 rev 2: editing goes through the
-              atelier's character builder modal, accessed by
-              clicking this button → /atelier (with the edit id
-              in localStorage). QuickEditPanel was removed per
-              Mashu 2026-07-23. */}
-          <CharacterEditButton
-            characterId={props.id}
-            className="flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-card"
-            title="Open in the atelier for editing"
-          />
-          {props.level < 20 && (
-            <button
-              type="button"
-              onClick={() => setLevelUpConfirm(true)}
-              className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              <ArrowUp className="size-4" />
-              Level Up
-            </button>
-          )}
-          <Link
-            href={`/characters/${props.id}/clone`}
-            className="flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-card"
-          >
-            <Swords className="size-4" />
-            Clone
-          </Link>
-        </div>
       </div>
 
       {/* Tabs — desktop: top, mobile: bottom sticky */}
@@ -716,7 +675,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           />
         )}
         {tab === "history" && (
-          <HistoryTab logEntries={props.logEntries} />
+          <HistoryTab characterId={props.id} logEntries={props.logEntries} />
         )}
       </div>
 
@@ -815,7 +774,11 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         level={props.level}
         size={props.size}
         lineageName={props.lineageName ?? null}
+        lineageDescription={props.lineageDescription ?? null}
+        upbringingName={props.upbringingName ?? null}
+        upbringingDescription={props.upbringingDescription ?? null}
         manifestName={props.manifestName ?? null}
+        attrSum={attrSum}
         portraitUrl={props.portraitUrl ?? null}
         canLevelUp={props.level < 20}
         onLevelUp={() => setLevelUpConfirm(true)}
@@ -2636,8 +2599,10 @@ function BackstoryEditModal({
 // human-readable form.
 
 function HistoryTab({
+  characterId,
   logEntries,
 }: {
+  characterId: string;
   logEntries: Array<{
     id: number;
     kind: string;
@@ -2646,24 +2611,75 @@ function HistoryTab({
   }>;
 }) {
   const [filter, setFilter] = useState<string | null>(null);
+  // Mashu 2026-07-28: fetch fresh log entries from
+  // /api/characters/[id]/logs whenever this tab is
+  // mounted. The page-level logEntries are passed in
+  // as a fallback so the first render has data, but
+  // we always re-fetch so new entries (capability
+  // toggle / trigger, vitality change, rest, etc.)
+  // appear without a page reload.
+  const [entries, setEntries] = useState<
+    Array<{
+      id: number;
+      kind: string;
+      payload: Record<string, unknown>;
+      createdAt: string;
+    }>
+  >(logEntries);
+  const [loading, setLoading] = useState(false);
 
-  if (logEntries.length === 0) {
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    void (async () => {
+      try {
+        const res = await fetch(`/api/characters/${characterId}/logs`);
+        if (!res.ok) {
+          if (!cancelled) setLoading(false);
+          return;
+        }
+        const data = (await res.json()) as {
+          entries: Array<{
+            id: number;
+            kind: string;
+            payload: Record<string, unknown>;
+            createdAt: string;
+          }>;
+        };
+        if (cancelled) return;
+        setEntries(data.entries ?? []);
+        setLoading(false);
+      } catch {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [characterId]);
+
+  if (entries.length === 0) {
     return (
-      <div className="rounded-md border border-dashed border-border bg-card p-8 text-center">
-        <History className="mx-auto size-8 text-muted-foreground" />
-        <p className="mt-2 text-sm font-medium">No history yet.</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Events appear here as you take damage, rest, level up, or
-          use capabilities in play.
-        </p>
+      <div className="space-y-2">
+        {loading ? (
+          <p className="text-[10px] text-muted-foreground">Loading history…</p>
+        ) : null}
+        <div className="rounded-md border border-dashed border-border bg-card p-8 text-center">
+          <History className="mx-auto size-8 text-muted-foreground" />
+          <p className="mt-2 text-sm font-medium">No history yet.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Events appear here as you take damage, rest, level up, or
+            use capabilities in play.
+          </p>
+        </div>
       </div>
     );
   }
 
-  const filterOptions = Array.from(new Set(logEntries.map((e) => e.kind)));
+  const filterOptions = Array.from(new Set(entries.map((e) => e.kind)));
   const filtered = filter
-    ? logEntries.filter((e) => e.kind === filter)
-    : logEntries;
+    ? entries.filter((e) => e.kind === filter)
+    : entries;
 
   return (
     <div className="space-y-3">
@@ -2671,7 +2687,7 @@ function HistoryTab({
       <div className="flex flex-wrap gap-1.5">
         <FilterChip
           label="All"
-          count={logEntries.length}
+          count={entries.length}
           active={filter === null}
           onClick={() => setFilter(null)}
         />
