@@ -76,6 +76,7 @@
  */
 
 import type { HardModifier, JsonValue } from "@/types/swordweave";
+import { OP_SPECS } from "@/types/modifier";
 
 /** Mirror vector taxonomy, mirrored from the DB enum. */
 export type MirrorVector =
@@ -356,52 +357,24 @@ export function resolveResistanceMultiplier(
  * modifier.value) before summing the modifier into a stat.
  */
 /**
- * Operations whose mirror counterpart is meaningful under
- * VARIABLE_VECTOR. The mapping is:
- *
- *   add            → subtract
- *   subtract       → add
- *   multiply       → divide
- *   divide         → multiply
- *   min            → max
- *   max            → min
- *   grant          → revoke
- *   revoke         → grant
- *   set            → null  (mirror is a no-op for `set`)
- *
- * `set` is explicitly EXCLUDED from mirroring: per Mashu
- * 2026-07-28, "set to (not mirrorable)" — the canonical
- * intent is that a mirror should never force a fixed value
- * on a target.
+ * Mashu 2026-07-28: thin re-exports of the canonical mirror
+ * helpers from src/types/modifier.ts. Engine callers can
+ * import from this file without taking a dep on the type
+ * module. The authoritative source for `set` not being
+ * mirrorable is OP_SPECS[op].mirrorable === false.
  */
-export const MIRROR_OPERATION_FLIPS = {
-  add: "subtract",
-  subtract: "add",
-  multiply: "divide",
-  divide: "multiply",
-  min: "max",
-  max: "min",
-  grant: "revoke",
-  revoke: "grant",
-} as const;
-
-export type MirrorableOperation = keyof typeof MIRROR_OPERATION_FLIPS;
+export { OP_SPECS, applyMirror } from "@/types/modifier";
 
 /**
- * Compute the mirror counterpart of an operation. Returns
- * `null` when the operation is `set` (or any non-mirrorable
- * op) — callers should treat this as "do not mirror this
- * modifier".
+ * Compute the mirror counterpart of an operation string.
+ * Returns `null` when the operation is `set` (or any
+ * non-mirrorable op) — callers should treat this as
+ * "do not mirror this modifier".
  */
-export function flipOperation(
-  operation: string,
-): MirrorableOperation | null {
-  if (operation in MIRROR_OPERATION_FLIPS) {
-    return MIRROR_OPERATION_FLIPS[
-      operation as MirrorableOperation
-    ] as MirrorableOperation;
-  }
-  return null;
+export function flipOperation(operation: string): string | null {
+  if (!Object.prototype.hasOwnProperty.call(OP_SPECS, operation)) return null;
+  const spec = OP_SPECS[operation as keyof typeof OP_SPECS];
+  return spec.mirrorable ? spec.mirrorOp : null;
 }
 
 /**
@@ -409,8 +382,8 @@ export function flipOperation(
  * `set` returns false. Everything else returns true.
  */
 export function isMirrorableOperation(operation: string): boolean {
-  if (operation === "set") return false;
-  return operation in MIRROR_OPERATION_FLIPS;
+  if (!Object.prototype.hasOwnProperty.call(OP_SPECS, operation)) return false;
+  return OP_SPECS[operation as keyof typeof OP_SPECS].mirrorable === true;
 }
 
 export function isMirroredSlot(slot: {

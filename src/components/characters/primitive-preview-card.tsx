@@ -28,6 +28,7 @@
 import { useCallback, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { flipOperation, isMirrorableOperation } from "@/lib/engine/mirror";
+import { OP_SPECS } from "@/types/modifier";
 import { useToasts } from "@/components/ui/toast";
 import { useEntityPreview } from "@/components/characters/preview-modal";
 import { ConditionBadges } from "@/components/library/condition-badges";
@@ -384,7 +385,7 @@ function PrimitiveDetailToggle({
                         {m.target ?? "?"}
                       </span>
                       <span className="rounded border border-emerald-500/50 bg-emerald-500/15 px-1.5 py-0.5 font-mono text-emerald-700 dark:text-emerald-300">
-                        {op}
+                        {OP_SPECS[op as keyof typeof OP_SPECS]?.label ?? op}
                       </span>
                       <span className="font-semibold text-foreground">
                         {String(m.value ?? "?")}
@@ -409,7 +410,7 @@ function PrimitiveDetailToggle({
                             {m.target ?? "?"}
                           </span>
                           <span className="rounded border border-destructive/50 bg-destructive/15 px-1.5 py-0.5 font-mono text-destructive">
-                            {flippedOp}
+                            {OP_SPECS[flippedOp as keyof typeof OP_SPECS]?.label ?? flippedOp}
                           </span>
                           <span className="font-semibold text-foreground">
                             {String(m.value ?? "?")}
@@ -436,7 +437,7 @@ function PrimitiveDetailToggle({
                           {m.target ?? "?"}
                         </span>
                         <span className="rounded border border-destructive/50 bg-destructive/15 px-1.5 py-0.5 font-mono text-destructive">
-                          {flippedOp}
+                          {OP_SPECS[flippedOp as keyof typeof OP_SPECS]?.label ?? flippedOp}
                         </span>
                         <span className="font-semibold text-foreground">
                           {String(m.value ?? "?")}

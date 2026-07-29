@@ -32,6 +32,7 @@ import {
   type InheritedPrimitive,
 } from "./use-tab-primitives";
 import { YinYangSpinner } from "@/components/ui/yin-yang-spinner";
+import { OP_SPECS } from "@/types/modifier";
 
 interface SlotReceiverTabProps {
   tabId: CharacterTabId;
@@ -953,20 +954,28 @@ function ModifierChips({
   );
 }
 
-// Returns the operator that mirrors the given one (sign flip for
-// add/subtract). Used by the live inline transform.
+// Returns the operator that mirrors the given one.
+// Canonical: per OP_SPECS, every operation is mirrorable
+// EXCEPT `set` (which returns itself, so the mirror is a
+// pass-through no-op visually). Mashu 2026-07-28:
+// add→subtract, multiply→divide, min→max, grant→revoke,
+// set→set (no flip).
 function mirrorOperation(op: string): string {
-  if (op === "add") return "subtract";
-  if (op === "subtract" || op === "sub") return "add";
-  return op;
+  if (op === "sub") return "add";
+  const spec = OP_SPECS[op as keyof typeof OP_SPECS];
+  if (!spec || !spec.mirrorable || spec.mirrorOp === null) return op;
+  return spec.mirrorOp;
 }
 
 // Human-readable mirror description for the OFF-state caption.
-// e.g. "add" → "Subtract", "subtract" → "Add".
+// Uses OP_SPECS labels so the same canonical flip table is
+// shared with the sheet, atelier, sandbox, and library
+// previews. Mashu 2026-07-28: same as mirrorOperation but
+// human-readable ("Subtract" vs "subtract").
 function describeMirrorOp(op: string): string {
-  if (op === "add") return "Subtract";
-  if (op === "subtract" || op === "sub") return "Add";
-  return op;
+  const mirrored = mirrorOperation(op);
+  if (mirrored === op) return op;
+  return OP_SPECS[mirrored as keyof typeof OP_SPECS]?.label ?? mirrored;
 }
 
 function opSymbol(op: string): string {
