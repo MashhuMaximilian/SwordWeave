@@ -2,6 +2,8 @@
 
 SwordWeave is a modular tabletop RPG engine where every character, capability, effect, item, monster, heritage, and background is composed from one shared library of atomic Primitives.
 
+<!-- Trigger Vercel redeploy: stable state at 595513f (Phase 8.4 v18). -->
+
 ## Bootstrap Commands
 
 ```bash
