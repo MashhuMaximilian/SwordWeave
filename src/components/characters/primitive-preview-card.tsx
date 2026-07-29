@@ -141,9 +141,9 @@ export function PrimitivePreviewCard({
   );
 
   // Keyboard accessibility: Enter / Space should also open the
-  // preview, since the card is the click target.
+  // preview, since the name is the click target.
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
+    (e: React.KeyboardEvent<HTMLButtonElement>) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         void handleClick(e as unknown as React.MouseEvent);
@@ -158,18 +158,24 @@ export function PrimitivePreviewCard({
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      className="flex flex-col gap-1 rounded border border-border bg-card/40 px-3 py-2 text-sm transition-colors hover:bg-card/80 focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer"
+      className="flex flex-col gap-1 rounded border border-border bg-card/40 px-2 py-1.5 text-xs transition-colors hover:bg-card/80"
       data-testid="primitive-preview-card"
       data-primitive-id={p.id}
       data-primitive-name={p.name}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <span className="font-medium">{p.name}</span>
+          {/* Only the NAME opens the preview modal. The
+              inherited/mirrored tags + the Details toggle
+              don't trigger the preview. */}
+          <button
+            type="button"
+            onClick={handleClick}
+            onKeyDown={handleKeyDown}
+            className="font-medium text-left hover:underline focus:outline-none focus:ring-2 focus:ring-ring rounded"
+          >
+            {p.name}
+          </button>
           {primitiveLink.isMirrored && (
             <span className="inline-flex items-center gap-0.5 rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
               <RotateCcw className="size-2.5" />
@@ -222,14 +228,18 @@ export function PrimitivePreviewCard({
         </div>
       ) : null}
       {/* Phase 8.4 v6 (Mashu 2026-07-28): expandable
-          provenance + modifier + operations + conditions
-          panel. Opened by clicking the chevron; the NAME
-          itself still opens the full preview modal. */}
+          provenance + modifier + ops + conditions panel.
+          Same pattern as the CapabilityCard's Effects
+          toggle. The summary is small (10px) so it doesn't
+          dominate the card. Mirroring is shown inline. */}
       <PrimitiveDetailToggle
         inheritedFrom={inheritedFrom}
         inheritedKind={inheritedKind}
         modifierList={Array.isArray(modifiers) ? modifiers : []}
         narrativeRule={p.narrativeRule}
+        isMirrored={primitiveLink.isMirrored}
+        mirrorBuCredit={p.mirrorBuCredit}
+        buCost={p.buCost}
       />
     </div>
   );
@@ -246,11 +256,17 @@ function PrimitiveDetailToggle({
   inheritedKind,
   modifierList,
   narrativeRule,
+  isMirrored,
+  mirrorBuCredit,
+  buCost,
 }: {
   readonly inheritedFrom: string | null;
   readonly inheritedKind: string | null;
   readonly modifierList: ReadonlyArray<unknown>;
   readonly narrativeRule: string;
+  readonly isMirrored: boolean;
+  readonly mirrorBuCredit: number;
+  readonly buCost: number;
 }) {
   const hasContent =
     Boolean(inheritedFrom) ||
@@ -260,17 +276,24 @@ function PrimitiveDetailToggle({
 
   return (
     <details
-      className="mt-1 rounded border border-border bg-muted/30 px-2 py-1 text-xs"
+      className="mt-1 rounded border border-border bg-muted/30 px-2 py-1"
       data-testid="primitive-detail-toggle"
+      onClick={(e) => e.stopPropagation()}
     >
-      <summary className="cursor-pointer list-none font-semibold uppercase tracking-wide text-muted-foreground">
+      <summary className="cursor-pointer list-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
         Details
       </summary>
-      <div className="mt-1 space-y-2">
+      <div className="mt-1 space-y-1.5 text-[10px]">
         {inheritedFrom && (
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-muted-foreground">
             <span className="font-semibold uppercase">Provenance: </span>
             heritage ({inheritedKind?.toLowerCase() ?? "—"}) → {inheritedFrom}
+          </p>
+        )}
+        {isMirrored && (
+          <p className="text-destructive">
+            <span className="font-semibold uppercase">Mirrored: </span>
+            BU cost flipped → {mirrorBuCredit} BU (was {buCost} BU)
           </p>
         )}
         {narrativeRule && (
@@ -278,7 +301,7 @@ function PrimitiveDetailToggle({
         )}
         {modifierList.length > 0 && (
           <div>
-            <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="mb-0.5 font-semibold uppercase tracking-wide text-muted-foreground">
               Modifiers
             </p>
             <ul className="space-y-0.5">

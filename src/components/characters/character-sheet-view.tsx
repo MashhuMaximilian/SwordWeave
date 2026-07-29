@@ -1905,6 +1905,39 @@ function CapabilitiesTab({
           primitiveLinks={primitiveLinks}
         />
       )}
+
+      {/* ===== Accordion 5: Slotted Capabilities =====
+          Phase 8.4 v9 (Mashu 2026-07-28): the
+          character-time (slotted) capabilities — the ones
+          the user actually USES at the table. These are
+          rendered as full CapabilityCard with the
+          trigger + active/inactive toggle. Per Mashu:
+          "we should see ALL primitives, and before for
+          each heritage type the capabilities and effects
+          nested in them or directly added. Not the
+          primitives directly (more or less like we
+          already display in the character creation
+          modal, but more useful for actual play)." */}
+      {capabilities.length > 0 && (
+        <details className="group rounded-md border border-border bg-card">
+          <summary className="flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium cursor-pointer list-none">
+            <span className="flex items-center gap-2">
+              <Swords className="size-4 text-muted-foreground" />
+              Slotted Capabilities ({capabilities.length})
+            </span>
+            <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="space-y-2 px-4 pb-4 pt-3 border-t border-border">
+            {capabilities.map((c) => (
+              <CapabilityCard
+                key={c.id}
+                characterId={characterId}
+                capability={c}
+              />
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }

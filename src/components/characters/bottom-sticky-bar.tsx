@@ -15,11 +15,11 @@
  *
  * Drawer (when expanded, top → bottom):
  *   1. Identity strip — Lineage / Upbringing / Manifest / Attributes
- *   2. Load + Equip slots (Load only on mobile; PB on desktop)
- *   3. Vitality header + bar + buttons (compact, single row)
- *   4. Mods + saves (3 chips, "PROF" tag on the proficient one)
- *   5. Save DC card
- *   6. Practices (3 columns, capitalized)
+ *   2. Vitality header + bar + buttons (compact, single row)
+ *   3. Mods + saves (3 chips, "PROF" tag on the proficient one)
+ *   4. Save DC card
+ *   5. Practices (3 columns, capitalized)
+ *   6. Load + Equip slots (Load only on mobile; PB on desktop) at the bottom
  *
  * Every number is clickable → opens a ProvenanceModal showing
  * the resolver contributions. The combined "mod + save" modal
@@ -93,7 +93,13 @@ export interface BottomStickyBarProps {
   readonly encumbrance: EncumbranceForSticky;
 }
 
-type ComboKind = "mod+save" | "vitality" | "dc" | "practice" | null;
+type ComboKind =
+  | "mod+save"
+  | "vitality"
+  | "dc"
+  | "practice"
+  | "practice-detail"
+  | null;
 
 export function BottomStickyBar({
   characterId,
@@ -120,6 +126,11 @@ export function BottomStickyBar({
   const [expanded, setExpanded] = useState(false);
   const [combo, setCombo] = useState<ComboKind>(null);
   const [comboAttr, setComboAttr] = useState<"physical" | "mental" | "magical">("physical");
+  const [comboPractice, setComboPractice] = useState<{
+    name: string;
+    attribute: "physical" | "mental" | "magical";
+    total: number;
+  } | null>(null);
 
   useEffect(() => {
     setHydrated(true);
@@ -184,6 +195,30 @@ export function BottomStickyBar({
     [],
   );
 
+  // Phase 8.4 v8 (Mashu 2026-07-28): per-practice modal —
+  // each individual practice row opens a modal showing
+  // its total + the resolver contributions that produced
+  // that total. The column-level modal (openPracticeModal)
+  // remains for the column "hey what makes physical
+  // practices tick" case.
+  const openPracticeDetailModal = useCallback(
+    (
+      p: {
+        name: string;
+        attribute: "PHYSICAL" | "MENTAL" | "MAGICAL";
+        total: number;
+      },
+    ) => {
+      setComboPractice({
+        name: p.name,
+        attribute: p.attribute.toLowerCase() as "physical" | "mental" | "magical",
+        total: p.total,
+      });
+      setCombo("practice-detail");
+    },
+    [],
+  );
+
   if (!hydrated) return null;
 
   const resolver_ = resolver as ResolvedModifiers | undefined;
@@ -205,11 +240,15 @@ export function BottomStickyBar({
       data-testid="bottom-sticky-bar"
       data-expanded={expanded}
     >
-      {/* Header bar — always visible. The TOGGLE. */}
+      {/* Header bar — always visible. The TOGGLE.
+          Phase 8.4 v10 (Mashu 2026-07-28): right padding
+          doubled (`pr-12`) again because the FAB was still
+          covering PB/DC. PB/DC inner gap also doubled
+          (`gap-6`) for more breathing room. */}
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 border-b border-border pl-3 pr-6 py-1.5 text-sm hover:bg-secondary/30"
+        className="flex w-full items-center justify-between gap-2 border-b border-border pl-3 pr-12 py-1.5 text-sm hover:bg-secondary/30"
         aria-expanded={expanded}
         aria-label={expanded ? "Collapse quick dock" : "Expand quick dock"}
       >
@@ -236,7 +275,7 @@ export function BottomStickyBar({
             ))}
           </div>
 
-          <div className="flex items-center gap-3 font-mono text-xs">
+          <div className="flex items-center gap-6 font-mono text-xs">
             <div className="flex flex-col items-center leading-none">
               <span className="text-[9px] font-semibold uppercase text-muted-foreground">
                 PB
@@ -266,10 +305,10 @@ export function BottomStickyBar({
           is essentially the entire visible viewport. */}
       {expanded && (
         <div
-          className="px-2 pb-20 pt-1.5 max-h-[88dvh] overflow-y-auto"
+          className="px-2 pb-20 pt-1.5 max-h-[calc(100dvh-3rem)] overflow-y-auto"
           data-testid="bottom-sticky-bar-drawer"
         >
-          {/* 1. Identity strip (moved from Overview tab). */}
+          {/* 1. Identity strip (TOP of drawer, just above buttons). */}
           <div className="rounded-md border border-border bg-card overflow-hidden">
             <div className="border-b border-border px-3 py-1.5">
               <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -297,63 +336,40 @@ export function BottomStickyBar({
             </div>
           </div>
 
-          {/* 2. Load + Equip slots. PB cell hidden on mobile
-              (already in the header). */}
-          <div className="mt-2 rounded-md border border-border bg-card overflow-hidden">
-            <div className="grid grid-cols-2 divide-x divide-border md:grid-cols-3">
-              <LoadCell encumbrance={encumbrance} />
-              <div className="hidden md:block">
-                <div className="bg-card p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    PB
-                  </p>
-                  <p className="mt-1 font-mono text-2xl font-bold tabular-nums">
-                    {fmt(pb)}
-                  </p>
-                </div>
-              </div>
-              <div className="bg-card p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Equip
-                </p>
-                <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-muted-foreground">
-                  —
-                </p>
-                <p className="mt-0.5 text-[10px] text-muted-foreground">
-                  (coming soon)
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* 3. Vitality header + bar + buttons. */}
+          {/* 2. Vitality header + bar + buttons.
+              The header + numbers + bar are all clickable
+              to open the max-vitality provenance modal.
+              The Damage/Heal/Long-rest/Short-rest buttons
+              live in their own row to avoid click conflicts. */}
           <div className="mt-2 rounded-md border border-border bg-card px-2 py-1.5">
-            <div className="flex items-baseline justify-between">
-              <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Vitality
+            <button
+              type="button"
+              onClick={openVitalityModal}
+              className="block w-full text-left"
+              title="Show provenance for max vitality"
+            >
+              <div className="flex items-baseline justify-between">
+                <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Vitality
+                </p>
+                <span className="text-[9px] text-muted-foreground tabular-nums">
+                  {vitalityPercent}%
+                </span>
+              </div>
+              <p className="mt-0.5 font-mono text-xl font-bold leading-none">
+                {effectiveCurrent}
+                <span className="text-sm font-normal text-muted-foreground">
+                  {" "}
+                  / {maxVitality}
+                </span>
               </p>
-              <button
-                type="button"
-                onClick={openVitalityModal}
-                className="text-[9px] text-muted-foreground tabular-nums hover:text-foreground"
-                title="Show provenance for max vitality"
-              >
-                {vitalityPercent}%
-              </button>
-            </div>
-            <p className="mt-0.5 font-mono text-xl font-bold leading-none">
-              {effectiveCurrent}
-              <span className="text-sm font-normal text-muted-foreground">
-                {" "}
-                / {maxVitality}
-              </span>
-            </p>
-            <div className="mt-1 h-1 overflow-hidden rounded-full bg-secondary">
-              <div
-                className={`h-full rounded-full transition-all ${vitalityColor}`}
-                style={{ width: `${vitalityPercent}%` }}
-              />
-            </div>
+              <div className="mt-1 h-1 overflow-hidden rounded-full bg-secondary">
+                <div
+                  className={`h-full rounded-full transition-all ${vitalityColor}`}
+                  style={{ width: `${vitalityPercent}%` }}
+                />
+              </div>
+            </button>
 
             <div className="mt-1.5 flex flex-nowrap gap-1">
               <VitalityTracker
@@ -365,7 +381,7 @@ export function BottomStickyBar({
             </div>
           </div>
 
-          {/* 4. Mods + saves — 3 chips. Each is clickable for
+          {/* 3. Mods + saves — 3 chips. Each is clickable for
               a combined mod + save provenance modal. The
               proficient chip gets a "PROF" tag. */}
           <div className="mt-2 mb-2">
@@ -419,7 +435,7 @@ export function BottomStickyBar({
             </div>
           </div>
 
-          {/* 5. Save DC card — clickable for provenance. */}
+          {/* 4. Save DC card — clickable for provenance. */}
           <button
             type="button"
             onClick={openDcModal}
@@ -441,7 +457,7 @@ export function BottomStickyBar({
             </div>
           </button>
 
-          {/* 6. Practices — 3 columns, capitalized. Each
+          {/* 5. Practices — 3 columns, capitalized. Each
               column is clickable for practice provenance. */}
           <div>
             <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -485,22 +501,29 @@ export function BottomStickyBar({
                       ) : (
                         <ul className="space-y-1">
                           {rows.map((p) => (
-                            <li
-                              key={p.id ?? p.name}
-                              className="flex items-center justify-between gap-1"
-                            >
-                              <span className="truncate text-xs">
-                                {p.name}
-                              </span>
-                              <span
-                                className={`shrink-0 font-mono text-xs font-semibold tabular-nums ${
-                                  isProf
-                                    ? "text-teal-700 dark:text-teal-200"
-                                    : "text-foreground"
-                                }`}
+                            <li key={p.id ?? p.name}>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openPracticeDetailModal(p);
+                                }}
+                                className="flex w-full items-center justify-between gap-1 rounded px-1 py-0.5 text-left hover:bg-secondary/30"
+                                title={`Show provenance for ${p.name}`}
                               >
-                                {fmt(p.total)}
-                              </span>
+                                <span className="truncate text-xs capitalize">
+                                  {p.name}
+                                </span>
+                                <span
+                                  className={`shrink-0 font-mono text-xs font-semibold tabular-nums ${
+                                    isProf
+                                      ? "text-teal-700 dark:text-teal-200"
+                                      : "text-foreground"
+                                  }`}
+                                >
+                                  {fmt(p.total)}
+                                </span>
+                              </button>
                             </li>
                           ))}
                         </ul>
@@ -510,6 +533,34 @@ export function BottomStickyBar({
                 })}
               </div>
             )}
+          </div>
+
+          {/* 6. Load + Equip slots (BOTTOM of drawer). */}
+          <div className="mt-2 rounded-md border border-border bg-card overflow-hidden">
+            <div className="grid grid-cols-2 divide-x divide-border md:grid-cols-3">
+              <LoadCell encumbrance={encumbrance} />
+              <div className="hidden md:block">
+                <div className="bg-card p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    PB
+                  </p>
+                  <p className="mt-1 font-mono text-2xl font-bold tabular-nums">
+                    {fmt(pb)}
+                  </p>
+                </div>
+              </div>
+              <div className="bg-card p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Equip
+                </p>
+                <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-muted-foreground">
+                  —
+                </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                  (coming soon)
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -550,7 +601,7 @@ export function BottomStickyBar({
             byTarget={byTarget}
             onClose={() => setCombo(null)}
           />
-        ) : (
+        ) : combo === "practice" ? (
           <ProvenanceModal
             target={practiceTarget}
             targetLabel={`${comboAttr.toUpperCase()} practice`}
@@ -558,7 +609,27 @@ export function BottomStickyBar({
             byTarget={byTarget}
             onClose={() => setCombo(null)}
           />
-        )
+        ) : combo === "practice-detail" && comboPractice ? (
+          <PracticeDetailModal
+            practice={comboPractice}
+            totals={totals}
+            byTarget={byTarget}
+            pb={pb}
+            attrBase={
+              comboPractice.attribute === "physical" ? physical :
+              comboPractice.attribute === "mental" ? mental : magical
+            }
+            attrMod={
+              comboPractice.attribute === "physical" ? physMod :
+              comboPractice.attribute === "mental" ? mentMod : magiMod
+            }
+            isProf={proficientAttribute?.toLowerCase() === comboPractice.attribute}
+            onClose={() => {
+              setCombo(null);
+              setComboPractice(null);
+            }}
+          />
+        ) : null
       )}
     </div>
   );
@@ -824,3 +895,128 @@ function ContribListItem({ c }: {
   );
 }
 
+// =============================================================================
+// PracticeDetailModal — per-practice provenance modal.
+// Shows the practice's total + the formula + the resolver
+// contributions that produced it.
+// =============================================================================
+function PracticeDetailModal({
+  practice,
+  totals,
+  byTarget,
+  pb,
+  attrBase,
+  attrMod,
+  isProf,
+  onClose,
+}: {
+  readonly practice: {
+    name: string;
+    attribute: "physical" | "mental" | "magical";
+    total: number;
+  };
+  readonly totals: ResolvedModifiers["totals"];
+  readonly byTarget: ResolvedModifiers["byTarget"];
+  readonly pb: number;
+  readonly attrBase: number;
+  readonly attrMod: number;
+  readonly isProf: boolean;
+  readonly onClose: () => void;
+}) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
+
+  // The practice's "primitive contributions" are the
+  // same as the attribute's primitive contributions —
+  // practices inherit the attribute's resolver total.
+  const attrTarget = `attribute.${practice.attribute}`;
+  const contributions = byTarget[attrTarget] ?? [];
+  const attrDelta = totals[attrTarget] ?? 0;
+  // Mirror-style trace: show the formula
+  //   total = attrBase + (PB if prof) + attrDelta
+  // It's the same as the Save DC formula except the
+  // primitive contributions are real (the attribute's
+  // primitives), not just PB.
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Provenance for ${practice.name}`}
+    >
+      <div
+        className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Provenance
+            </h2>
+            <p className="mt-0.5 text-base font-semibold">
+              {practice.name}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-1 transition-colors hover:bg-muted"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+          <section>
+            <div className="mb-2 flex items-baseline gap-2">
+              <span className="text-xs font-semibold uppercase text-muted-foreground">
+                Total
+              </span>
+              <span className="font-mono text-xl font-bold tabular-nums">
+                {fmt(practice.total)}
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              formula: {fmt(attrBase)} (attr) + {fmt(attrDelta)} (primitives) + {isProf ? fmt(pb) : "0"} (PB) = {fmt(practice.total)}
+            </p>
+          </section>
+
+          <section>
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Primitive contributions
+            </p>
+            {contributions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No primitive contributes to this practice. Total = attribute + PB.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {contributions.map((c, i) => (
+                  <ContribListItem key={`${c.primitiveId}-${i}`} c={c} />
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
