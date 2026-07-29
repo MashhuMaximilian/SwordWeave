@@ -775,6 +775,31 @@ export function TabbedCharacterForm() {
         return;
       }
 
+      // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — log the
+      // POST-SAVE state of the response. The server's
+      // console.log was being lost when the modal
+      // hard-navigated to /characters/[id] and cleared the
+      // console. The PATCH response carries the FULL
+      // character payload (capabilityLinks, primitiveLinks,
+      // heritageLinks) — that's the authoritative
+      // post-insert state from inside the same transaction.
+      // If capability count here matches what we sent,
+      // save worked. If it doesn't, save didn't.
+      console.log(
+        `[character save ${charId}] POST-SAVE response state:`,
+        {
+          capabilityCount: data.character.capabilityLinks?.length ?? 0,
+          capabilityIds: (data.character.capabilityLinks ?? []).map(
+            (l: { capabilityId: string; originHeritageId: string | null }) => ({
+              id: l.capabilityId,
+              originHeritageId: l.originHeritageId,
+            }),
+          ),
+          primitiveCount: data.character.primitiveLinks?.length ?? 0,
+          heritageCount: data.character.heritageLinks?.length ?? 0,
+        },
+      );
+
       // Phase 8.3b UI fix #1 rev 3 (Mashu 2026-07-27):
       //   "After I save, I still don't get redirected to
       //   https://www.swordweave.quest/characters/[id]" — even after
