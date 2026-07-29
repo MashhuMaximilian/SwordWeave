@@ -28,6 +28,10 @@ export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string; capabilityId: string }> },
 ) {
+  // Mashu 2026-07-28 (round 8): diagnostic log so we can
+  // confirm in Vercel logs whether the route is being hit.
+  // Will be removed once trigger is verified to work.
+  console.log("[trigger] POST hit", { url: _request.url });
   try {
     const { userId } = await auth.protect();
     const { id, capabilityId } = await params;

@@ -691,27 +691,35 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           Mashu 2026-07-28: "Now the quick bar is below the tabs.
           It should be just above the tabs like it was at first." */}
       <nav
+        // Mashu 2026-07-28 (round 8): tabs at the bottom
+        // on every screen size.
         className="fixed inset-x-0 bottom-0 z-30 flex overflow-x-auto border-t border-border bg-background/95 backdrop-blur"
         aria-label="Sheet tabs"
       >
-        {TABS.map((t) => {
-          const Icon = t.icon;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              className={`flex min-w-[68px] shrink-0 flex-col items-center gap-0.5 px-2 py-2 text-[10px] font-medium transition-colors ${
-                tab === t.id
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Icon className="size-4" />
-              <span className="whitespace-nowrap">{t.label}</span>
-            </button>
-          );
-        })}
+        {/* Mobile: compact evenly-spaced row. Desktop (md+):
+            tabs fill the row (justify-around) with 15% left
+            and 15% right padding so the row doesn't feel
+            edge-locked. */}
+        <div className="flex w-full py-1 md:justify-around md:px-[15%] md:py-2">
+          {TABS.map((t) => {
+            const Icon = t.icon;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                className={`flex shrink-0 flex-col items-center gap-0.5 px-3 py-2 text-[10px] font-medium transition-colors md:px-6 md:py-2 md:text-sm ${
+                  tab === t.id
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className="size-4" />
+                <span className="whitespace-nowrap">{t.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </nav>
 
       {/* Level-up confirmation modal */}

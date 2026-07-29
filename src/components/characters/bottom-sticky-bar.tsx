@@ -247,7 +247,7 @@ export function BottomStickyBar({
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 border-b border-border pl-3 pr-12 py-1.5 text-sm hover:bg-secondary/30"
+        className="flex w-full items-center justify-between gap-2 border-b border-border pl-3 pr-16 py-1.5 text-sm hover:bg-secondary/30"
         aria-expanded={expanded}
         aria-label={expanded ? "Collapse quick dock" : "Expand quick dock"}
       >
