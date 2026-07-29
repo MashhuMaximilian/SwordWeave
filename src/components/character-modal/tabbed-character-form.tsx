@@ -217,40 +217,15 @@ export function TabbedCharacterForm() {
     if (!editCharacterId || !seededCharacter || seededOnce) return;
     if (seededCharacter.id !== editCharacterId) return;
     // eslint-disable-next-line no-console
-    console.warn(
-      "[character-modal] seed effect running",
-      JSON.stringify({
+    console.log(
+      `[character-modal] seed effect running — ${seededCharacter.id}`,
+      {
         editCharacterId,
-        seededCharacterId: seededCharacter.id,
-        seededOnce,
-        activeStep: activeStep,
-        // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — show
-        // what the API actually returned. If the cap isn't
-        // here, the save write didn't persist it (or it
-        // was filtered out by the GET response shape).
         seededCapabilityCount: seededCharacter.capabilityLinks?.length ?? 0,
-        seededCapabilityIds: (seededCharacter.capabilityLinks ?? []).map(
-          (c) => ({
-            id: c.capabilityId,
-            originHeritageId: c.originHeritageId,
-            name: c.capability?.name,
-          }),
-        ),
         seededHeritageCount: seededCharacter.heritageLinks?.length ?? 0,
-      }),
+      },
     );
     const seeds = buildCharacterSeeds(seededCharacter);
-    // Phase 8.4 v24.5: also log what the seed built.
-    console.log(
-      `[character-modal] seeded pendingSlots (after build):`,
-      Object.fromEntries(
-        Object.entries(seeds.pendingSlots).map(([k, v]) => [k, v.length]),
-      ),
-      "manifest caps:",
-      seeds.pendingSlots.manifest
-        .filter((s) => s.kind === "capability")
-        .map((s) => s.kind === "capability" && s.capabilityId),
-    );
     setIdentity(seeds.identity as IdentityState);
     setBackstory(seeds.backstory as BackstoryState);
     setAttributes(seeds.attributes as AttributesState);
@@ -905,29 +880,27 @@ export function TabbedCharacterForm() {
     );
   }
 
-  // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — log Save
-  // button state every render so we can see whether
-  // canCreate was false at click time. Mashu's repro:
-  // cap added via modal, "saved", reopened, cap not
-  // there. No save logs fired. Hypothesis: button was
-  // disabled (debtExceeded / nameValid / attrValid),
-  // she clicked anyway, browser ignored the disabled
-  // onClick, modal was then closed via X/Escape without
-  // saving. This log will tell us if that's the case.
-  console.log(
-    `[character-modal] Save button render — canCreate=${canCreate}`,
-    {
-      editCharacterId,
-      isPending,
-      nameValid,
-      attrValid,
-      debtExceeded,
-      debtUsed: buSummary.debtUsed,
-      debtCeiling,
-      overBudget,
-      budgetOverflowRemainder,
-    },
-  );
+  // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — per-render
+  // log of canCreate's preconditions. Was useful as a
+  // one-off diagnostic; left in place because it's the
+  // only way to debug "why is Save disabled?" without
+  // a custom devtools panel. Fires once per render of
+  // the footer (cheap).
+  if (editCharacterId) {
+    console.log(
+      `[character-modal] Save render — canCreate=${canCreate}`,
+      {
+        editCharacterId,
+        isPending,
+        nameValid,
+        attrValid,
+        debtExceeded,
+        debtUsed: buSummary.debtUsed,
+        debtCeiling,
+        overBudget,
+      },
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -1060,13 +1033,11 @@ export function TabbedCharacterForm() {
         <button
           type="button"
           onClick={() => {
-            // Phase 8.4 v24.5: explicit click log. If this
-            // doesn't appear after the user clicked Save,
-            // the button was disabled and the click was eaten
-            // by the browser.
-            console.log(
-              `[character-modal] Save button clicked — canCreate=${canCreate}`,
-            );
+            // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — if
+            // canCreate is false, show a toast with the
+            // specific reason. The button was silently
+            // doing nothing before, which made it look
+            // like the save "worked" when it didn't.
             if (!canCreate) {
               showToast(
                 `Save blocked: ${

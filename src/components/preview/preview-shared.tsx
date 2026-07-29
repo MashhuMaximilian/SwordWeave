@@ -407,7 +407,18 @@ export type PreviewActionProps = {
    * Context-aware: label changes based on the character modal's
    * activeStep. Only shown when provided.
    */
-  primaryTertiary?: { label: string; onClick?: () => void; href?: string };
+  primaryTertiary?: {
+    label: string;
+    onClick?: () => void;
+    href?: string;
+    /**
+     * Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — when the cap
+     * is already slotted, render the button as greyed-out
+     * with an explanatory tooltip.
+     */
+    disabled?: boolean;
+    title?: string;
+  };
   /** Optional 4th grid button rendered on the SAME row as Edit/Source/Versions
    *  (e.g. "Load into build"). When present the grid becomes 4 columns and
    *  the row is pinned to the bottom of the modal. */
@@ -521,7 +532,14 @@ export function PreviewActions(props: PreviewActionProps) {
           <button
             type="button"
             onClick={primaryTertiary.onClick}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+            // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — wire
+            // disabled + title for the "Already slotted"
+            // state so the user sees why the button is
+            // greyed instead of clicking it and getting
+            // a silent no-op.
+            disabled={primaryTertiary.disabled}
+            title={primaryTertiary.title}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border disabled:hover:text-foreground"
           >
             {primaryTertiary.label}
           </button>

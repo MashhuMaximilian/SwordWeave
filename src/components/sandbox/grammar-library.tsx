@@ -838,9 +838,30 @@ function SandboxPreviewBody({
   // manifest) AND on identity/backstory/attributes where it defaults
   // to manifest. It's hidden entirely on the items tab — items have
   // their own slot button ("Slot into character [Items]").
+  // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — disable the
+  // button if this cap is already slotted (either in the
+  // current edit session's pendingSlots, or already
+  // persisted in DB at edit-open time). Mashu's repro:
+  // she kept "adding" the same cap, server PK violation
+  // rolled back the transaction, modal closed, no error
+  // visible. Now the button is greyed + shows a hint
+  // explaining why.
+  const isCapAlreadySlotted =
+    item.kind === "capability" &&
+    ((characterModal.seededCharacter?.capabilityLinks ?? []).some(
+      (l) => l.capabilityId === item.row.id,
+    ) ||
+      (Object.values(characterModal.pendingSlots ?? {}) as PendingSlot[][]).some(
+        (arr) =>
+          Array.isArray(arr) &&
+          arr.some(
+            (s) => s.kind === "capability" && s.capabilityId === item.row.id,
+          ),
+      ));
   const canSlotIntoCharacter =
     (item.kind === "primitive" || item.kind === "capability") &&
-    characterModal.activeStep !== "items";
+    characterModal.activeStep !== "items" &&
+    !isCapAlreadySlotted;
 
   // Engagement snapshot for the LikeForkBar + version-history link. The
   // hook fetches the user's existing reaction (so the bar shows the right
@@ -1026,6 +1047,10 @@ function SandboxPreviewBody({
     // into Manifest" instead of "Slot into [Info tab name]". Only
     // shown for entity kinds the modal accepts (primitives/caps);
     // items tab is filtered out by canSlotIntoCharacter.
+    //
+    // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — when the cap
+    // is already slotted, override the label with an
+    // informative "Already slotted" message.
     ...(canSlotIntoCharacter
       ? {
           primaryTertiary: {
@@ -1033,7 +1058,17 @@ function SandboxPreviewBody({
             onClick: slotIntoCharacter,
           },
         }
-      : {}),
+      : isCapAlreadySlotted
+        ? {
+            primaryTertiary: {
+              label: "Already slotted",
+              onClick: () => undefined,
+              disabled: true,
+              title:
+                "This capability is already on this character — no need to slot it again.",
+            },
+          }
+        : {}),
     ...(isOwner
       ? {
           onEdit: () =>

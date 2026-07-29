@@ -504,6 +504,12 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
 
   const [activeStep, setActiveStepState] = useState<CharacterTabId>("identity");
   const [pendingSlots, setPendingSlots] = useState<PendingSlotsByTab>(EMPTY_PENDING);
+  // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — refs for
+  // synchronous reads inside queueSlot's duplicate check.
+  // useState's setter is async; refs let queueSlot read the
+  // current state without a stale-closure problem.
+  const pendingSlotsRef = useRef<PendingSlotsByTab>(EMPTY_PENDING);
+  pendingSlotsRef.current = pendingSlots;
   // Override for cases where dirty needs to be true outside of pending
   // slots (e.g. the wizard has typed identity/backstory/attributes).
   const [dirtyOverride, setDirtyOverride] = useState(false);
@@ -559,6 +565,10 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
   const [seededCharacter, setSeededCharacter] = useState<CharacterSeed | null>(
     null,
   );
+  // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — sync ref for
+  // queueSlot's duplicate check.
+  const seededCharacterRef = useRef<CharacterSeed | null>(null);
+  seededCharacterRef.current = seededCharacter;
   /**
    * Phase 8.2 batch 7 rev 2: persistent pending-edit id from
    * localStorage. Hydrated on mount. The /atelier client reads
@@ -730,25 +740,64 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
     setActiveStepState(tab);
   }, []);
 
-  const queueSlot = useCallback((slot: PendingSlot) => {
-    setPendingSlots((current) => {
-      // Determine which tab the slot belongs to.
-      let tab: CharacterTabId;
-      if (slot.kind === "heritage") {
-        if (slot.heritageKind === "LINEAGE") tab = "lineage";
-        else if (slot.heritageKind === "UPBRINGING") tab = "upbringing";
-        else tab = "manifest";
-      } else if (slot.kind === "item") {
-        tab = "items";
-      } else {
-        tab = slot.tab;
+  const queueSlot = useCallback(
+    (slot: PendingSlot): { ok: boolean; reason?: "duplicate" } => {
+      // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — duplicate
+      // capability guard. Mashu's repro: clicking 'Slot into
+      // manifest' on a cap that was ALREADY slotted (via a
+      // heritage bundle) re-queued the same capabilityId. The
+      // modal accepts the slot, the user clicks Save, the
+      // server transaction tries INSERT INTO character_capabilities
+      // (PK = (characterId, capabilityId)), hits a PK violation,
+      // rolls back, returns 200 with the unchanged character. The
+      // modal navigates to /characters/[id] and the user sees
+      // "no change happened" — but they have no idea the slot
+      // was a duplicate.
+      //
+      // Fix: refuse the add at queue time. Direct caps that
+      // already appear in seededCharacter.capabilityLinks (which
+      // is the DB state at edit-open time) get rejected. The
+      // caller checks `result.ok` and shows a toast.
+      if (slot.kind === "capability") {
+        const id = slot.capabilityId;
+        const alreadyInPending = (Object.values(pendingSlotsRef.current) as PendingSlot[][]).some(
+          (arr) =>
+            Array.isArray(arr) &&
+            arr.some((s) => s.kind === "capability" && s.capabilityId === id),
+        );
+        if (alreadyInPending) return { ok: false, reason: "duplicate" };
+        if (
+          seededCharacterRef.current?.capabilityLinks?.some(
+            (l) => l.capabilityId === id,
+          )
+        ) {
+          return { ok: false, reason: "duplicate" };
+        }
       }
-      // Assign a stable slotId if the caller didn't supply one (it
-      // shouldn't, but we guard so old call sites don't break).
-      const stamped: PendingSlot = { ...slot, slotId: makeSlotId() };
-      return { ...current, [tab]: [...current[tab], stamped] };
-    });
-  }, []);
+
+      let didAdd = false;
+      setPendingSlots((current) => {
+        // Determine which tab the slot belongs to.
+        let tab: CharacterTabId;
+        if (slot.kind === "heritage") {
+          if (slot.heritageKind === "LINEAGE") tab = "lineage";
+          else if (slot.heritageKind === "UPBRINGING") tab = "upbringing";
+          else tab = "manifest";
+        } else if (slot.kind === "item") {
+          tab = "items";
+        } else {
+          tab = slot.tab;
+        }
+        // Assign a stable slotId if the caller didn't supply one (it
+        // shouldn't, but we guard so old call sites don't break).
+        const stamped: PendingSlot = { ...slot, slotId: makeSlotId() };
+        didAdd = true;
+        return { ...current, [tab]: [...current[tab], stamped] };
+      });
+      return { ok: didAdd };
+    },
+    [],
+  );
 
   // Phase 8.1 batch 10: toggle the mirror flag on a specific slot.
   // Mirror only applies to primitive slots whose primitive is
