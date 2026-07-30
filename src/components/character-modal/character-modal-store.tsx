@@ -742,22 +742,28 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
 
   const queueSlot = useCallback(
     (slot: PendingSlot): { ok: boolean; reason?: "duplicate" } => {
-      // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — duplicate
-      // capability guard. Mashu's repro: clicking 'Slot into
-      // manifest' on a cap that was ALREADY slotted (via a
-      // heritage bundle) re-queued the same capabilityId. The
-      // modal accepts the slot, the user clicks Save, the
-      // server transaction tries INSERT INTO character_capabilities
-      // (PK = (characterId, capabilityId)), hits a PK violation,
-      // rolls back, returns 200 with the unchanged character. The
-      // modal navigates to /characters/[id] and the user sees
-      // "no change happened" — but they have no idea the slot
-      // was a duplicate.
+      // Phase 8.4 v25.2 (Mashu 2026-07-30): cap duplicate guard
+      // — REWORKED.
       //
-      // Fix: refuse the add at queue time. Direct caps that
-      // already appear in seededCharacter.capabilityLinks (which
-      // is the DB state at edit-open time) get rejected. The
-      // caller checks `result.ok` and shows a toast.
+      // History: v24.5 (e4eaeea) added a duplicate guard that
+      // rejected any cap that already appeared in
+      // seededCharacter.capabilityLinks (DB state at edit-open).
+      // This was a mis-diagnosis: the server's save path uses
+      // DELETE + INSERT (not just INSERT), so it never raises a
+      // PK violation. The guard was blocking legitimate "slot a
+      // cap from the atelier that I see in DB via a heritage
+      // bundle" actions — exactly the v25 bug Mashu reported
+      // ("nothing gets added" in edit mode).
+      //
+      // What we still want: a safety net against *double-clicking
+      // the same Slot button* within one edit session. That's
+      // caught by the pendingSlots check below — if it's already
+      // queued for any tab, refuse.
+      //
+      // We do NOT check seededCharacter. DB state is already on
+      // the sheet; queueing the same cap is either a no-op (if
+      // already direct) or a legitimate "promote from heritage
+      // bundle to direct" action.
       if (slot.kind === "capability") {
         const id = slot.capabilityId;
         const alreadyInPending = (Object.values(pendingSlotsRef.current) as PendingSlot[][]).some(
@@ -766,13 +772,6 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
             arr.some((s) => s.kind === "capability" && s.capabilityId === id),
         );
         if (alreadyInPending) return { ok: false, reason: "duplicate" };
-        if (
-          seededCharacterRef.current?.capabilityLinks?.some(
-            (l) => l.capabilityId === id,
-          )
-        ) {
-          return { ok: false, reason: "duplicate" };
-        }
       }
 
       let didAdd = false;

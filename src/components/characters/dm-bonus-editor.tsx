@@ -145,7 +145,12 @@ export function DmBonusEditor({
         title="Click to edit DM bonus BU"
       >
         <span>{optimisticValue} BU</span>
-        <Pencil className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+        {/* Phase 8.4 v25.2 (Mashu 2026-07-30): always show
+            the edit icon. Previously opacity-0/group-hover:opacity-100
+            which made the chip look like a static badge — users
+            didn't know it was clickable. Now always visible at
+            muted-foreground, full opacity on hover. */}
+        <Pencil className="size-3 text-muted-foreground transition-opacity group-hover:text-foreground" />
       </button>
     );
   }

@@ -893,25 +893,23 @@ function BlueprintPreviewBody({
   // (the reset default) and the slot would never become visible.
   const characterModal = useCharacterModal();
 
-  // Phase 8.4 v25.1 (Mashu 2026-07-30): heritage + primitive
-  // duplicate guards for the heritage-library action bar.
-  // Mirrors grammar-library's isCapAlreadySlotted pattern. See
-  // that comment for the full rationale. Without these, adding
-  // the same heritage twice would queue two slots, the save
-  // would PK-violate on character_heritages, and the entire
-  // save transaction would silently roll back.
+  // Phase 8.4 v25.2 (Mashu 2026-07-30): heritage + primitive
+  // duplicate guards — REWORKED. The previous version blocked
+  // any heritage already in seededCharacter.heritageLinks (DB
+  // state), which broke the legitimate "add another heritage"
+  // flow in edit mode. Now only checks pendingSlots (the
+  // current edit session) — that catches double-clicks without
+  // blocking the user from adding multiple heritages they
+  // don't already have.
   const isHeritageAlreadySlotted =
     item.kind === "heritage" &&
-    ((characterModal.seededCharacter?.heritageLinks ?? []).some(
-      (l) => l.heritageId === item.row.id,
-    ) ||
-      (Object.values(characterModal.pendingSlots ?? {}) as PendingSlot[][]).some(
-        (arr) =>
-          Array.isArray(arr) &&
-          arr.some(
-            (s) => s.kind === "heritage" && s.heritageId === item.row.id,
-          ),
-      ));
+    (Object.values(characterModal.pendingSlots ?? {}) as PendingSlot[][]).some(
+      (arr) =>
+        Array.isArray(arr) &&
+        arr.some(
+          (s) => s.kind === "heritage" && s.heritageId === item.row.id,
+        ),
+    );
   const isPrimitiveAlreadyDirectlySlotted =
     item.kind === "primitive" &&
     (Object.values(characterModal.pendingSlots ?? {}) as PendingSlot[][]).some(

@@ -839,52 +839,41 @@ function SandboxPreviewBody({
   // manifest) AND on identity/backstory/attributes where it defaults
   // to manifest. It's hidden entirely on the items tab — items have
   // their own slot button ("Slot into character [Items]").
-  // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — disable the
-  // button if this cap is already slotted (either in the
-  // current edit session's pendingSlots, or already
-  // persisted in DB at edit-open time). Mashu's repro:
-  // she kept "adding" the same cap, server PK violation
-  // rolled back the transaction, modal closed, no error
-  // visible. Now the button is greyed + shows a hint
-  // explaining why.
+  // Phase 8.4 v25.2 (Mashu 2026-07-30): cap duplicate guard —
+  // REWORKED. Previously checked seededCharacter.capabilityLinks
+  // (DB state at edit-open) which blocked legitimate "promote
+  // from heritage bundle to direct" actions. Now only blocks
+  // double-clicking the Slot button within one edit session
+  // (pendingSlots). DB state is already on the sheet; queueing
+  // the same cap is either a no-op or a legitimate promote.
   const isCapAlreadySlotted =
     item.kind === "capability" &&
-    ((characterModal.seededCharacter?.capabilityLinks ?? []).some(
-      (l) => l.capabilityId === item.row.id,
-    ) ||
-      (Object.values(characterModal.pendingSlots ?? {}) as PendingSlot[][]).some(
-        (arr) =>
-          Array.isArray(arr) &&
-          arr.some(
-            (s) => s.kind === "capability" && s.capabilityId === item.row.id,
-          ),
-      ));
-  // Phase 8.4 v25.1 (Mashu 2026-07-30): heritage + primitive
-  // duplicate guards. Previously only caps had a "Already
-  // slotted" check (T5 cap duplicate guard, e4eaeea). For
-  // heritages: char_heritages has (characterId, heritageId) as
-  // PK — adding the same heritage twice rolls back the whole
-  // save transaction with a PK violation, silently losing
-  // all other changes. For primitives: char_primitives has
-  // a partial unique index on (char, prim) WHERE
-  // origin_heritage_id IS NULL — but the atelier button was
-  // firing queueSlot() unconditionally for primitives, so a
-  // user clicking Slot twice on the same direct primitive
-  // would queue it twice (allowed) but the rendered list
-  // would show a confusing duplicate row. We mirror the cap
-  // pattern for both.
+    (Object.values(characterModal.pendingSlots ?? {}) as PendingSlot[][]).some(
+      (arr) =>
+        Array.isArray(arr) &&
+        arr.some(
+          (s) => s.kind === "capability" && s.capabilityId === item.row.id,
+        ),
+    );
+  // Phase 8.4 v25.2 (Mashu 2026-07-30): heritage + primitive
+  // duplicate guards — REWORKED to match the cap pattern.
+  // Previously blocked any heritage already in seededCharacter
+  // (DB state). For heritages the user CAN have multiple
+  // (lineage + upbringing + manifest) — they just can't have
+  // the same heritageId twice in one slot (and they wouldn't
+  // want to). Same for primitives: the user can slot the same
+  // primitive directly even if it's already bundled via
+  // heritage (that's the "promote to direct" action).
+  // We only block on pendingSlots double-clicks.
   const isHeritageAlreadySlotted =
     item.kind === "heritage" &&
-    ((characterModal.seededCharacter?.heritageLinks ?? []).some(
-      (l) => l.heritageId === item.row.id,
-    ) ||
-      (Object.values(characterModal.pendingSlots ?? {}) as PendingSlot[][]).some(
-        (arr) =>
-          Array.isArray(arr) &&
-          arr.some(
-            (s) => s.kind === "heritage" && s.heritageId === item.row.id,
-          ),
-      ));
+    (Object.values(characterModal.pendingSlots ?? {}) as PendingSlot[][]).some(
+      (arr) =>
+        Array.isArray(arr) &&
+        arr.some(
+          (s) => s.kind === "heritage" && s.heritageId === item.row.id,
+        ),
+    );
   // For primitives: only "direct" slots count as duplicates.
   // Bundled primitives (originHeritageId != null) are NOT
   // duplicates — the user can intentionally add the same

@@ -39,12 +39,73 @@
  */
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronUp, ArrowUp, RotateCcw, Pencil } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  ArrowUp,
+  RotateCcw,
+  Pencil,
+} from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { CharacterEditButton } from "@/components/characters/character-edit-button";
 import { IdentityCell } from "@/components/characters/identity-cell";
 import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
+import {
+  FormulaModal,
+  type FormulaStep,
+} from "@/components/characters/formula-modal";
+
+// Phase 8.4 v25.2 (Mashu 2026-07-30): reference tables used by
+// the BU budget + volatility popups. Same data as
+// character-sheet-view.tsx's BuFormulaModal — duplicated here
+// because that whole footer is wrapped in `hidden` divs in the
+// v15 sheet layout (SheetIdentityHeader is the actually-rendered
+// top deck). When we consolidate the two footers in a future
+// session we'll extract these to a shared module.
+const PROGRESSION_SPIKES = [
+  { level: 4, spike: 4 },
+  { level: 8, spike: 8 },
+  { level: 12, spike: 12 },
+  { level: 16, spike: 16 },
+  { level: 20, spike: 20 },
+] as const;
+
+const VOLATILITY_BRACKETS = [
+  { label: "L1", minLevel: 1, maxLevel: 1, ceiling: 0 },
+  { label: "L2-L4", minLevel: 2, maxLevel: 4, ceiling: 8 },
+  { label: "L5-L8", minLevel: 5, maxLevel: 8, ceiling: 16 },
+  { label: "L9-L12", minLevel: 9, maxLevel: 12, ceiling: 24 },
+  { label: "L13-L16", minLevel: 13, maxLevel: 16, ceiling: 32 },
+  { label: "L17-L20", minLevel: 17, maxLevel: 20, ceiling: 40 },
+] as const;
+
+// Phase 8.4 v25.2 (Mashu 2026-07-30): single source of truth for
+// the debt bar color rule. Mashu's spec is "green when full,
+// yellow when available, orange otherwise" but the examples she
+// gave were inconsistent — Ex 1 (50% used) was orange while
+// Ex 2 (25% used) was yellow. Picked a simpler rule that
+// captures the spirit:
+//   ceiling == 0 (L1)        → bg-secondary (no debt capacity)
+//   used >= ceiling          → bg-green-500 (maxed)
+//   used >= ceiling * 0.5    → bg-amber-500 (good use)
+//   used > 0                 → bg-amber-500/40 (low use)
+//   used == 0                → bg-secondary (no debt)
+//   exceeded                 → bg-destructive (over ceiling)
+// If the rule needs to flip, this helper is the single place to change.
+function debtBarColor(
+  rating: number,
+  ceiling: number,
+  exceeded: boolean,
+): string {
+  if (exceeded) return "bg-destructive";
+  if (ceiling === 0) return "bg-secondary";
+  if (rating >= ceiling) return "bg-green-500";
+  if (rating >= ceiling * 0.5) return "bg-amber-500";
+  if (rating > 0) return "bg-amber-500/40";
+  return "bg-secondary";
+}
 
 export interface SheetIdentityHeaderProps {
   readonly characterId: string;
@@ -116,6 +177,11 @@ export function SheetIdentityHeader({
 }: SheetIdentityHeaderProps) {
   const [hydrated, setHydrated] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  // Phase 8.4 v25.2 (Mashu 2026-07-30): BU popup state.
+  // The Budget + Debt bars are clickable; opening the popup
+  // explains the formula in the same FormulaModal pattern
+  // used by the rest of the sheet.
+  const [buPopup, setBuPopup] = useState<"budget" | "debt" | null>(null);
 
   useEffect(() => {
     setHydrated(true);
@@ -181,24 +247,38 @@ export function SheetIdentityHeader({
             {manifestName ?? ""}
           </div>
         </div>
-        {/* BU metric badge */}
-        <div className="flex shrink-0 items-center gap-1.5 text-[11px]">
-          {buBalance.overBudget ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-destructive/15 px-2 py-0.5 font-mono text-destructive">
-              <AlertTriangle className="size-3" />
+        {/* BU metric badge — clickable to open budget popup.
+             Phase 8.4 v25.2 (Mashu 2026-07-30): inner button
+             nested inside the outer expand button. We use
+             stopPropagation so clicking the chip opens the
+             formula popup without toggling expand. */}
+          <div className="flex shrink-0 items-center gap-1.5 text-[11px]">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setBuPopup("budget");
+              }}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono transition-colors hover:ring-2 hover:ring-primary/40",
+                buBalance.overBudget
+                  ? "bg-destructive/15 text-destructive"
+                  : "bg-secondary",
+              )}
+              title="Show BU budget formula"
+              aria-label="Show BU budget formula"
+            >
+              {buBalance.overBudget ? (
+                <AlertTriangle className="size-3" />
+              ) : null}
               {buDisplay}
-            </span>
-          ) : (
-            <span className="rounded-full bg-secondary px-2 py-0.5 font-mono">
-              {buDisplay}
-            </span>
-          )}
-          {expanded ? (
-            <ChevronUp className="size-4 text-muted-foreground" />
-          ) : (
-            <ChevronDown className="size-4 text-muted-foreground" />
-          )}
-        </div>
+            </button>
+            {expanded ? (
+              <ChevronUp className="size-4 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="size-4 text-muted-foreground" />
+            )}
+          </div>
       </button>
 
       {expanded ? (
@@ -234,65 +314,99 @@ export function SheetIdentityHeader({
             </span>
           </div>
 
-          {/* Budget Usage Bar */}
-          <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
-            <span>Budget usage</span>
-            <span>
-              {buBalance.progressionPool > 0
-                ? Math.round(
-                    (buBalance.progressionSpent / buBalance.progressionPool) *
-                      100,
-                  )
-                : 0}
-              %
-            </span>
-          </div>
-          <div className="relative h-1.5 overflow-hidden rounded-full bg-secondary">
-            <div
-              className={cn(
-                "h-full",
-                buBalance.overBudget
-                  ? "bg-destructive"
-                  : buBalance.progressionSpent / buBalance.progressionPool > 0.9
-                    ? "bg-amber-500"
-                    : "bg-primary",
-              )}
-              style={{
-                width: `${Math.min(100, buBalance.progressionPool > 0 ? (buBalance.progressionSpent / buBalance.progressionPool) * 100 : 0)}%`,
-              }}
-            />
-          </div>
-          {buBalance.overBudget ? (
-            <p className="mt-1 text-[10px] text-destructive">
-              BU spent exceeds progression cap by {overSpent}
-            </p>
-          ) : null}
+          {/* Budget Usage Bar — clickable to open formula popup.
+              Phase 8.4 v25.2 (Mashu 2026-07-30): reworked colors
+              per the new spec. Green when under pool (not punished
+              for not spending every BU), amber/orange at/over the
+              soft cap (still allowed — players can spend mid-session
+              with DM approval), destructive red when hard exceeded.
+              Previously used bg-primary (teal) / bg-amber at >90% /
+              bg-destructive — flipped the polarity. */}
+          <button
+            type="button"
+            onClick={() => setBuPopup("budget")}
+            className="block w-full text-left transition-opacity hover:opacity-80"
+            title="Show BU budget formula"
+            aria-label="Show BU budget formula"
+          >
+            <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
+              <span>Budget usage</span>
+              <span>
+                {buBalance.progressionPool > 0
+                  ? Math.round(
+                      (buBalance.progressionSpent / buBalance.progressionPool) *
+                        100,
+                    )
+                  : 0}
+                %
+              </span>
+            </div>
+            <div className="relative h-1.5 overflow-hidden rounded-full bg-secondary">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all",
+                  buBalance.overBudget
+                    ? "bg-destructive"
+                    : buBalance.progressionSpent >= buBalance.progressionPool
+                      ? "bg-amber-500"
+                      : "bg-green-500",
+                )}
+                style={{
+                  width: `${Math.min(100, buBalance.progressionPool > 0 ? (buBalance.progressionSpent / buBalance.progressionPool) * 100 : 0)}%`,
+                }}
+              />
+            </div>
+            {buBalance.overBudget ? (
+              <p className="mt-1 text-[10px] text-destructive">
+                BU spent exceeds progression cap by {overSpent}
+              </p>
+            ) : null}
+          </button>
 
-          {/* Debt Usage Bar — shows used / available / max with bracket. */}
-          <div className="mt-2 mb-1 flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
-            <span>Debt usage</span>
-            <span>
-              {volatility.ceiling > 0
-                ? Math.round((volatility.rating / volatility.ceiling) * 100)
-                : 0}
-              %
-            </span>
-          </div>
-          <div className="relative h-1.5 overflow-hidden rounded-full bg-secondary">
-            <div
-              className={cn(
-                "h-full",
-                volatility.exceeded
-                  ? "bg-destructive"
-                  : volatility.rating / volatility.ceiling > 0.8
-                    ? "bg-amber-500"
-                    : "bg-primary",
-              )}
-              style={{
-                width: `${Math.min(100, volatility.ceiling > 0 ? (volatility.rating / volatility.ceiling) * 100 : 0)}%`,
-              }}
-            />
-          </div>
+          {/* Debt Usage Bar — clickable to open formula popup.
+              Phase 8.4 v25.2 (Mashu 2026-07-30): reworked colors.
+              Mashu's spec is "green when full, yellow when
+              available, orange otherwise" but the examples she
+              gave were inconsistent — Ex 1 (50% used) was
+              orange while Ex 2 (25% used) was yellow. I'm
+              picking a simpler rule that captures the spirit:
+                ceiling == 0 (L1)        → track only, gray
+                used >= ceiling          → green (maxed)
+                used > ceiling * 0.5     → amber (good use)
+                used > 0                 → amber/40 (low use)
+                used == 0                → gray (no debt)
+              exceeded                   → destructive red
+              If the rule needs to flip, debtBarColor
+              (defined at module scope) is the single source
+              of truth. */}
+          <button
+            type="button"
+            onClick={() => setBuPopup("debt")}
+            className="mt-2 block w-full text-left transition-opacity hover:opacity-80"
+            title="Show volatility / debt formula"
+            aria-label="Show volatility / debt formula"
+          >
+            <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
+              <span>Debt usage</span>
+              <span>
+                {volatility.ceiling > 0
+                  ? Math.round((volatility.rating / volatility.ceiling) * 100)
+                  : 0}
+                %
+              </span>
+            </div>
+            <div className="relative h-1.5 overflow-hidden rounded-full bg-secondary">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all",
+                  debtBarColor(volatility.rating, volatility.ceiling, volatility.exceeded)
+                )}
+                style={{
+                  width: `${Math.min(100, volatility.ceiling > 0 ? (volatility.rating / volatility.ceiling) * 100 : 0)}%`,
+                }}
+              />
+            </div>
+          </button>
           {/* Phase 8.4 v2 (Mashu 2026-07-28): reformat the debt
               line as "Debt 8 used | 0 available | 8 max allowed".
               The previous "8 / 0 avail / 8 max" was ambiguous —
@@ -398,6 +512,290 @@ export function SheetIdentityHeader({
           ) : null}
         </div>
       ) : null}
+
+      {/* Phase 8.4 v25.2 (Mashu 2026-07-30): BU Budget + Debt
+          formula popups. Two modes. Budget explains lifetime BU
+          + progression spikes + soft cap + DM bonus. Debt
+          explains volatility ceiling + cascade rule (BU fills
+          first, then debt). Uses the shared FormulaModal for
+          layout consistency with the rest of the sheet. */}
+      {buPopup ? (
+        <BuHeaderFormulaModal
+          mode={buPopup}
+          level={level}
+          progressionSpent={buBalance.progressionSpent}
+          progressionPool={buBalance.progressionPool}
+          dmBonusBu={buBalance.dmBonusBu}
+          itemBuSpent={buBalance.itemBuSpent}
+          volatilityRating={volatility.rating}
+          volatilityCeiling={volatility.ceiling}
+          volatilityRemaining={volatility.remaining}
+          levelBracket={volatility.levelBracket}
+          overBudget={buBalance.overBudget}
+          mirroredPrimitives={volatility.mirroredPrimitives ?? []}
+          onClose={() => setBuPopup(null)}
+        />
+      ) : null}
     </div>
+  );
+}
+
+// Phase 8.4 v25.2 (Mashu 2026-07-30): local copy of the BU
+// formula modal. Duplicated from character-sheet-view.tsx
+// (where it's wrapped in a hidden div) so the popups actually
+// show up. When we consolidate the two footers we'll extract
+// this to a shared module.
+interface BuHeaderFormulaModalProps {
+  readonly mode: "budget" | "debt";
+  readonly level: number;
+  readonly progressionSpent: number;
+  readonly progressionPool: number;
+  readonly dmBonusBu: number;
+  readonly itemBuSpent: number;
+  readonly volatilityRating: number;
+  readonly volatilityCeiling: number;
+  readonly volatilityRemaining: number;
+  readonly levelBracket: string;
+  readonly overBudget: boolean;
+  readonly mirroredPrimitives: ReadonlyArray<{
+    readonly id: number;
+    readonly name: string;
+    readonly mirrorBuCredit: number;
+    readonly acquiredAtLevel: number;
+  }>;
+  readonly onClose: () => void;
+}
+
+function spikesUpToLevel(level: number): number {
+  // Same formula as character-sheet-view.tsx: 4 * k*(k+1)/2 for k = floor(L/4)
+  if (level < 4) return 0;
+  const k = Math.floor(level / 4);
+  return (4 * (k * (k + 1))) / 2;
+}
+
+function BuHeaderFormulaModal({
+  mode,
+  level,
+  progressionSpent,
+  progressionPool,
+  dmBonusBu,
+  itemBuSpent,
+  volatilityRating,
+  volatilityCeiling,
+  volatilityRemaining,
+  levelBracket,
+  overBudget,
+  mirroredPrimitives,
+  onClose,
+}: BuHeaderFormulaModalProps) {
+  const baseBu = 25 + 10 * (level - 1);
+  const spikesTotal = spikesUpToLevel(level);
+  const lifetimeBu = baseBu + spikesTotal;
+
+  if (mode === "budget") {
+    const breakdown: FormulaStep[] = [
+      { label: "L1 base", value: 25 },
+      { label: `+10 BU × ${level - 1} levels`, value: 10 * (level - 1) },
+      { label: "Progression Spikes (Σ)", value: spikesTotal },
+      { label: `= Lifetime BU (L${level})`, value: lifetimeBu },
+    ];
+    return (
+      <FormulaModal
+        title="BU Budget"
+        subtitle={`Level ${level} character`}
+        total={lifetimeBu}
+        formula="Lifetime BU = 25 + 10×(Level − 1) + Σ Progression Spikes"
+        breakdown={breakdown}
+        info={{
+          title: "Progression Spikes + Soft cap + DM Bonus",
+          body: (
+            <div>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="py-1 text-left font-semibold uppercase">Level</th>
+                    <th className="py-1 text-right font-semibold uppercase">Spike</th>
+                    <th className="py-1 text-right font-semibold uppercase">Cumulative</th>
+                  </tr>
+                </thead>
+                <tbody className="font-mono">
+                  {PROGRESSION_SPIKES.map((s) => {
+                    const k = s.spike / 4;
+                    const cum = (4 * (k * (k + 1))) / 2;
+                    const reached = level >= s.level;
+                    return (
+                      <tr
+                        key={s.level}
+                        className={reached ? "bg-teal-500/10" : ""}
+                      >
+                        <td className="py-0.5">L{s.level}</td>
+                        <td className="py-0.5 text-right tabular-nums">
+                          +{s.spike} BU
+                        </td>
+                        <td className="py-0.5 text-right tabular-nums">
+                          {cum} BU
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <p className="mt-3 text-[11px] text-muted-foreground">
+                A progression spike fires every 4 levels (L4, L8, L12, L16,
+                L20…). The spike value equals the level itself — L4 = +4 BU,
+                L8 = +8 BU, etc. Formula:{" "}
+                <span className="font-mono text-foreground">
+                  Σ(4k) for k = 1..⌊L/4⌋
+                </span>
+                .
+              </p>
+              <p className="mt-3 text-[11px] text-muted-foreground border-t border-border pt-3">
+                <strong className="text-foreground">Soft cap, not hard cap:</strong>{" "}
+                the lifetime BU shown above is a <em>suggested</em> budget, not
+                a hard limit. You can spend BU mid-session to enable
+                primitives on-the-fly (e.g. a Tier 1 Light domain = 4 BU).{" "}
+                {overBudget ? (
+                  <>
+                    Your current usage{" "}
+                    <strong className="text-destructive">
+                      ({progressionSpent}/{progressionPool})
+                    </strong>{" "}
+                    exceeds the pool — the bar shows red.
+                  </>
+                ) : (
+                  <>The bar stays green while you're under the pool.</>
+                )}
+              </p>
+              <p className="mt-3 text-[11px] text-muted-foreground border-t border-border pt-3">
+                <strong className="text-foreground">DM Bonus BU:</strong>{" "}
+                the DM can grant additional BU outside your lifetime pool.
+                DM bonus ({dmBonusBu}) is shown separately on the header (it
+                does NOT count toward your lifetime cap). The DM uses it to{" "}
+                <strong className="text-foreground">reward narrative
+                milestones</strong> (boss defeats, story arcs, exceptional
+                roleplay) — granting you +N BU to spend immediately or bank
+                for later. DM bonus is a gift, not a debt: it never has to
+                be repaid.
+              </p>
+              <p className="mt-3 text-[11px] text-muted-foreground border-t border-border pt-3">
+                <strong className="text-foreground">Item BU</strong> (
+                {itemBuSpent} spent) is tracked separately from progression BU.
+                Items bring their own nested primitives with them, and those
+                primitives don't deduct from your lifetime pool — they're
+                "taken for granted" with the item.
+              </p>
+            </div>
+          ),
+        }}
+        onClose={onClose}
+      />
+    );
+  }
+
+  // mode === "debt"
+  const debtBreakdown: FormulaStep[] = [
+    {
+      label: "Mirror primitives (Σ credits)",
+      value: -volatilityRating,
+    },
+    {
+      label: `Bracket ceiling (${levelBracket})`,
+      value: -volatilityCeiling,
+    },
+    {
+      label: `= Headroom (L${level})`,
+      value: -volatilityRemaining,
+    },
+  ];
+
+  return (
+    <FormulaModal
+      title="Volatility / Debt"
+      subtitle={`Mirror-debt bracket for ${levelBracket}`}
+      total={-volatilityRating}
+      formula="Volatility = Σ mirror primitive credits (negative). Ceiling = bracket-based."
+      breakdown={debtBreakdown}
+      info={{
+        title: "Cascade rule + Bracket ceiling",
+        body: (
+          <div>
+            <p className="text-[11px] text-muted-foreground mb-2">
+              <strong className="text-foreground">Cascade rule:</strong> when
+              you slot a primitive, the engine first tries to deduct from
+              your <strong className="text-foreground">available BU budget</strong>.
+              Once your available BU is zero, additional slots overflow into{" "}
+              <strong className="text-foreground">mirror debt</strong>. Going
+              into debt is allowed up to your bracket ceiling — beyond that,
+              the DM must intervene.
+            </p>
+            <p className="text-[11px] text-muted-foreground mb-2">
+              <strong className="text-foreground">What counts as debt?</strong>{" "}
+              Every primitive you <em>mirrored</em> contributes its{" "}
+              <span className="font-mono text-foreground">mirrorBuCredit</span>{" "}
+              (negative BU) to your total. The engine adds the same amount as
+              positive expansion to your available pool, so the net cost is
+              zero — but the volatility tracking remains so you can audit how
+              much of your build is built on debt.
+            </p>
+            <table className="w-full text-xs mt-2">
+              <thead>
+                <tr className="border-b border-border text-muted-foreground">
+                  <th className="py-1 text-left font-semibold uppercase">
+                    Bracket
+                  </th>
+                  <th className="py-1 text-right font-semibold uppercase">
+                    Max Mirror Debt
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="font-mono">
+                {VOLATILITY_BRACKETS.map((b) => {
+                  const reached = level >= b.minLevel && level <= b.maxLevel;
+                  return (
+                    <tr
+                      key={b.label}
+                      className={reached ? "bg-teal-500/10" : ""}
+                    >
+                      <td className="py-0.5">{b.label}</td>
+                      <td className="py-0.5 text-right tabular-nums">
+                        -{b.ceiling} BU
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              L1 has zero debt capacity (no mirrors allowed at character
+              creation). Each subsequent 4-level bracket increases the
+              allowance. Debt ceilings are <strong className="text-foreground">bracket-based</strong>,
+              not cumulative — exceeding your bracket means the DM must
+              remove mirrors or grant a respec.
+            </p>
+            {mirroredPrimitives.length > 0 ? (
+              <>
+                <p className="mt-3 text-[11px] font-semibold text-foreground">
+                  Your mirrored primitives:
+                </p>
+                <ul className="mt-1 space-y-1 text-[11px]">
+                  {mirroredPrimitives.map((p) => (
+                    <li
+                      key={p.id}
+                      className="flex items-center justify-between rounded border border-border bg-background/40 px-2 py-1"
+                    >
+                      <span>{p.name}</span>
+                      <span className="font-mono text-muted-foreground">
+                        -{p.mirrorBuCredit} BU @L{p.acquiredAtLevel}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+          </div>
+        ),
+      }}
+      onClose={onClose}
+    />
   );
 }
