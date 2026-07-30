@@ -12,11 +12,20 @@
  * Mechanism:
  *   1. The user clicks "Remove" on the row.
  *   2. We mark the row as `removing` — the row swaps to a
- *      fade+collapse class (Tailwind transitions handle the
- *      visual).
- *   3. We wait `duration` ms for the animation to play.
- *   4. We call the underlying `onRemove` to drop the row
- *      from `pendingSlots`.
+ *      fade+slide class (Tailwind transitions handle the visual).
+ *   3. We call the underlying `onRemove` IMMEDIATELY so
+ *      `pendingSlots` reflects the removal right away — if the
+ *      user clicks Save before the CSS transition finishes,
+ *      the save body is already correct. (Phase 8.4 v24.9
+ *      originally deferred the removal until after the
+ *      transition, but Mashu 2026-07-30 reported "remove does
+ *      not persist" on edit-existing-character saves — the
+ *      180ms setTimeout window was enough time for a fast click
+ *      to slip through with the slot still in pendingSlots.
+ *      Removing the delay fixed the persistence bug.)
+ *   4. The CSS transition still plays for visual feedback —
+ *      ~200ms of fade+slide — but the data layer is already
+ *      updated by the time the row finishes animating.
  *
  * If the user closes the modal mid-animation, the row is
  * already on its way out — the unmount cleans up the state.
@@ -34,7 +43,6 @@ import { useCallback, useState } from "react";
 
 export function useRemoveAnimation(
   onRemove: () => void,
-  durationMs = 180,
 ): {
   removing: boolean;
   handleRemove: () => void;
@@ -44,13 +52,13 @@ export function useRemoveAnimation(
   const handleRemove = useCallback(() => {
     if (removing) return; // ignore double-clicks during animation
     setRemoving(true);
-    // Defer the actual removal until after the CSS transition
-    // completes. setTimeout matches the duration we pass to the
-    // Tailwind `duration-200` class on the row.
-    window.setTimeout(() => {
-      onRemove();
-    }, durationMs);
-  }, [removing, onRemove, durationMs]);
+    // Remove from pendingSlots IMMEDIATELY — the save handler
+    // needs to see the slot gone before it can persist a
+    // deletion. The CSS transition runs purely for visual
+    // feedback after this; the row's slot is already off the
+    // store's record.
+    onRemove();
+  }, [removing, onRemove]);
 
   return { removing, handleRemove };
 }
