@@ -41,6 +41,7 @@ import {
   approveNavigation,
   type CharacterTabId,
   type PendingSlot,
+  type PendingSlotsByTab,
   summarizeSlotBu,
 } from "./character-modal-store";
 import {
@@ -161,11 +162,46 @@ function migrateAttributesState(input: unknown): AttributesState {
   };
 }
 
+const PENDING_SLOTS_STORAGE_KEY_PREFIX = "swordweave:character-modal:draft:pendingSlots";
+
+/**
+ * Phase 8.4 v24.11 (Mashu 2026-07-30): localStorage persistence
+ * for pendingSlots. Each character (or the "new" create-mode
+ * session) gets its own key so multiple in-flight edits don't
+ * collide. Without this, the modal's slot state lives only in
+ * memory and is discarded the moment the user closes the modal
+ * — re-opening always re-seeded from DB, so any "remove this
+ * thing and look at it later" workflow was impossible.
+ *
+ * Mashu 2026-07-30: "I remove something it gets removed, I
+ * close modal, I open modal, not removed anymore" + "we have
+ * to keep the last update state in localstorage or cache or
+ * something."
+ *
+ * Lifecycle:
+ *   - On mount, the seed effect checks localStorage FIRST; if a
+ *     draft exists for the current character (or "new"), it
+ *     hydrates from there instead of the DB.
+ *   - On any pendingSlots change, a debounced 500ms write
+ *     pushes the new state to localStorage.
+ *   - On save success, the key for this character is cleared
+ *     (next open = fresh seed from DB).
+ *   - On save failure, the key is left intact so the user
+ *     can retry without losing work.
+ *   - On close-without-save, the key is left intact so reopen
+ *     resumes the previous edit session.
+ */
+function pendingSlotsKey(characterId: string | null): string {
+  return `${PENDING_SLOTS_STORAGE_KEY_PREFIX}:${characterId ?? "new"}`;
+}
+
 function clearAllDraftStorage() {
   try {
     window.localStorage.removeItem(IDENTITY_STORAGE_KEY);
     window.localStorage.removeItem(BACKSTORY_STORAGE_KEY);
     window.localStorage.removeItem(ATTRIBUTES_STORAGE_KEY);
+    // Note: PENDING_SLOTS is per-character, cleared explicitly
+    // in the save handler (so failed saves don't lose work).
   } catch {
     // ignore
   }
@@ -216,6 +252,29 @@ export function TabbedCharacterForm() {
   useEffect(() => {
     if (!editCharacterId || !seededCharacter || seededOnce) return;
     if (seededCharacter.id !== editCharacterId) return;
+    // Phase 8.4 v24.11 (Mashu 2026-07-30): localStorage draft
+    // takes priority over a fresh DB seed. If the user has
+    // unsaved changes from a previous open (e.g. they removed
+    // a slot, closed without saving, and came back), we resume
+    // that session instead of clobbering it with DB state.
+    // For NEW (create) mode, editCharacterId is null and the
+    // "new" key holds the in-progress slot list.
+    const draftKey = pendingSlotsKey(editCharacterId);
+    const draft = readLocalStorage<PendingSlotsByTab | null>(draftKey, null);
+    if (draft && typeof draft === "object") {
+      let slotTotal = 0;
+      for (const tab of CHARACTER_TABS) {
+        slotTotal += Array.isArray(draft[tab]) ? draft[tab].length : 0;
+      }
+      // eslint-disable-next-line no-console
+      console.log(
+        `[character-modal] seed effect — hydrating from localStorage draft — ${editCharacterId}`,
+        { slotTotal },
+      );
+      applySeed(draft);
+      setSeededOnce(true);
+      return;
+    }
     // eslint-disable-next-line no-console
     console.log(
       `[character-modal] seed effect running — ${seededCharacter.id}`,
@@ -364,6 +423,30 @@ export function TabbedCharacterForm() {
     }, 500);
     return () => window.clearTimeout(t);
   }, [attributes, hydrated]);
+
+  // Phase 8.4 v24.11 (Mashu 2026-07-30): debounced localStorage
+  // write for pendingSlots, keyed by character id (or "new" for
+  // create-mode). Without this the slot state is purely in-memory
+  // and lost on close. The 500ms debounce matches the identity/
+  // backstory/attributes tabs above — keeps the write rate low
+  // during heavy slot/remove activity.
+  //
+  // We write ONLY when seededOnce is true — otherwise the initial
+  // EMPTY_PENDING from useState would clobber any draft on the
+  // very first render (the seed effect is what stamps the actual
+  // slots, and it happens AFTER initial render).
+  useEffect(() => {
+    if (!hydrated || !seededOnce) return;
+    const key = pendingSlotsKey(editCharacterId);
+    const t = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(key, JSON.stringify(pendingSlots));
+      } catch {
+        // ignore quota / serialization failures
+      }
+    }, 500);
+    return () => window.clearTimeout(t);
+  }, [pendingSlots, hydrated, seededOnce, editCharacterId]);
 
   // Phase 8.1 batch 10: live BU summary for the footer. The summary
   // flattens every pending slot across all tabs and asks
@@ -897,6 +980,24 @@ export function TabbedCharacterForm() {
         "success",
       );
       clearAllDraftStorage();
+      // Phase 8.4 v24.11 (Mashu 2026-07-30): the save just
+      // committed to DB, so the localStorage draft for this
+      // character is now stale. Clear it so the next edit-open
+      // re-seeds from DB instead of replaying the just-saved
+      // state. (We deliberately did NOT clear it before the
+      // fetch — a failed save leaves the draft intact, letting
+      // the user retry without losing work.)
+      try {
+        window.localStorage.removeItem(pendingSlotsKey(editCharacterId));
+        // Also clear the "new" key if we just transitioned
+        // from create-mode → save → DB row created. The new
+        // character's id is in `charId` (the response payload).
+        if (charId) {
+          window.localStorage.removeItem(pendingSlotsKey(charId));
+        }
+      } catch {
+        // ignore
+      }
       if (editCharacterId) {
         clearPendingEdit();
       }
