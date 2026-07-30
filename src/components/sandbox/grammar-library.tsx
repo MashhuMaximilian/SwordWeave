@@ -859,6 +859,52 @@ function SandboxPreviewBody({
             (s) => s.kind === "capability" && s.capabilityId === item.row.id,
           ),
       ));
+  // Phase 8.4 v25.1 (Mashu 2026-07-30): heritage + primitive
+  // duplicate guards. Previously only caps had a "Already
+  // slotted" check (T5 cap duplicate guard, e4eaeea). For
+  // heritages: char_heritages has (characterId, heritageId) as
+  // PK — adding the same heritage twice rolls back the whole
+  // save transaction with a PK violation, silently losing
+  // all other changes. For primitives: char_primitives has
+  // a partial unique index on (char, prim) WHERE
+  // origin_heritage_id IS NULL — but the atelier button was
+  // firing queueSlot() unconditionally for primitives, so a
+  // user clicking Slot twice on the same direct primitive
+  // would queue it twice (allowed) but the rendered list
+  // would show a confusing duplicate row. We mirror the cap
+  // pattern for both.
+  const isHeritageAlreadySlotted =
+    item.kind === "heritage" &&
+    ((characterModal.seededCharacter?.heritageLinks ?? []).some(
+      (l) => l.heritageId === item.row.id,
+    ) ||
+      (Object.values(characterModal.pendingSlots ?? {}) as PendingSlot[][]).some(
+        (arr) =>
+          Array.isArray(arr) &&
+          arr.some(
+            (s) => s.kind === "heritage" && s.heritageId === item.row.id,
+          ),
+      ));
+  // For primitives: only "direct" slots count as duplicates.
+  // Bundled primitives (originHeritageId != null) are NOT
+  // duplicates — the user can intentionally add the same
+  // primitive as direct (it shows up in the direct-cap card
+  // with origin=null). Bundled primitives are tracked
+  // separately via the heritage card.
+  const isPrimitiveAlreadyDirectlySlotted =
+    item.kind === "primitive" &&
+    (Object.values(characterModal.pendingSlots ?? {}) as PendingSlot[][]).some(
+      (arr) =>
+        Array.isArray(arr) &&
+        arr.some(
+          (s) =>
+            s.kind === "primitive" &&
+            s.primitiveId === item.row.id &&
+            // Only count pending slots that haven't been
+            // pushed to a heritage yet (direct path).
+            !("originHeritageId" in s && s.originHeritageId),
+        ),
+    );
   // Phase 8.4 v25 (Mashu 2026-07-30): T5 — atelier slot
   // button tab-awareness. Previously the button was hidden
   // on the items tab. Per Mashu: "Currently those buttons
@@ -871,9 +917,15 @@ function SandboxPreviewBody({
   // We still gate on item.kind (only primitives and caps
   // slot through this button — items have their own flow in
   // the items tab) and on the cap not already being slotted.
+  // Phase 8.4 v25.1: also gate on heritage / direct-primitive
+  // duplicate checks (see isHeritageAlreadySlotted /
+  // isPrimitiveAlreadyDirectlySlotted above).
   const canSlotIntoCharacter =
-    (item.kind === "primitive" || item.kind === "capability") &&
-    !isCapAlreadySlotted;
+    ((item.kind === "primitive" && !isPrimitiveAlreadyDirectlySlotted) ||
+      (item.kind === "capability" && !isCapAlreadySlotted)) &&
+    // Heritages use a different gate (see the heritage branch
+    // in the action bar below).
+    true;
 
   // Engagement snapshot for the LikeForkBar + version-history link. The
   // hook fetches the user's existing reaction (so the bar shows the right
@@ -1080,6 +1132,26 @@ function SandboxPreviewBody({
                 "This capability is already on this character — no need to slot it again.",
             },
           }
+        : isHeritageAlreadySlotted
+          ? {
+              primaryTertiary: {
+                label: "Already slotted",
+                onClick: () => undefined,
+                disabled: true,
+                title:
+                  "This heritage is already on this character — no need to slot it again.",
+              },
+            }
+          : isPrimitiveAlreadyDirectlySlotted
+            ? {
+                primaryTertiary: {
+                  label: "Already slotted",
+                  onClick: () => undefined,
+                  disabled: true,
+                  title:
+                    "This primitive is already slotted directly — no need to slot it again.",
+                },
+              }
         : {}),
     ...(isOwner
       ? {

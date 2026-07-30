@@ -893,6 +893,42 @@ function BlueprintPreviewBody({
   // (the reset default) and the slot would never become visible.
   const characterModal = useCharacterModal();
 
+  // Phase 8.4 v25.1 (Mashu 2026-07-30): heritage + primitive
+  // duplicate guards for the heritage-library action bar.
+  // Mirrors grammar-library's isCapAlreadySlotted pattern. See
+  // that comment for the full rationale. Without these, adding
+  // the same heritage twice would queue two slots, the save
+  // would PK-violate on character_heritages, and the entire
+  // save transaction would silently roll back.
+  const isHeritageAlreadySlotted =
+    item.kind === "heritage" &&
+    ((characterModal.seededCharacter?.heritageLinks ?? []).some(
+      (l) => l.heritageId === item.row.id,
+    ) ||
+      (Object.values(characterModal.pendingSlots ?? {}) as PendingSlot[][]).some(
+        (arr) =>
+          Array.isArray(arr) &&
+          arr.some(
+            (s) => s.kind === "heritage" && s.heritageId === item.row.id,
+          ),
+      ));
+  const isPrimitiveAlreadyDirectlySlotted =
+    item.kind === "primitive" &&
+    (Object.values(characterModal.pendingSlots ?? {}) as PendingSlot[][]).some(
+      (arr) =>
+        Array.isArray(arr) &&
+        arr.some(
+          (s) =>
+            s.kind === "primitive" &&
+            s.primitiveId === item.row.id &&
+            // Only direct path — bundled primitives (with an
+            // originHeritageId) don't count as duplicates
+            // here; they're tracked separately via the
+            // heritage card.
+            !("originHeritageId" in s && s.originHeritageId),
+        ),
+    );
+
   // Phase 8.1 round 3: heritage label needs the destination tab name,
   // not the modal's activeStep. LINEAGE → "Lineage", UPBRINGING →
   // "Upbringing", MANIFEST → "Manifest". Anything else falls back
@@ -1088,12 +1124,22 @@ function BlueprintPreviewBody({
     //     parent capability, or via "Slot into build" if the open
     //     build is capability or item)
     ...(item.kind === "heritage"
-      ? {
-          primaryTertiary: {
-            label: `Slot into ${heritageTabLabel(item.row as { kind: string })}`,
-            onClick: slotIntoCharacter,
-          },
-        }
+      ? isHeritageAlreadySlotted
+        ? {
+            primaryTertiary: {
+              label: "Already slotted",
+              onClick: () => undefined,
+              disabled: true,
+              title:
+                "This heritage is already on this character — no need to slot it again.",
+            },
+          }
+        : {
+            primaryTertiary: {
+              label: `Slot into ${heritageTabLabel(item.row as { kind: string })}`,
+              onClick: slotIntoCharacter,
+            },
+          }
       : item.kind === "item"
         ? {
             primaryTertiary: {
@@ -1102,21 +1148,31 @@ function BlueprintPreviewBody({
             },
           }
         : item.kind === "primitive" || item.kind === "capability"
-          ? {
-              // Phase 8.1 batch 11 (Mashu 2026-07-22): the label
-              // shows the resolved destination tab (not the active
-              // tab), so when the user is on identity/backstory/
-              // attributes the button reads 'Slot into Manifest'.
-              //
-              // Phase 8.4 v25 (Mashu 2026-07-30): T5 — the items
-              // tab is no longer filtered out. resolveHeritageSlotDestination
-              // falls through to "manifest" when activeStep is
-              // "items", so the button still works correctly.
-              primaryTertiary: {
-                label: `Slot into ${tabLabelForActiveStep(resolveHeritageSlotDestination(characterModal.activeStep), characterModal.isOpen)}`,
-                onClick: slotIntoCharacter,
-              },
-            }
+          ? isPrimitiveAlreadyDirectlySlotted
+            ? {
+                primaryTertiary: {
+                  label: "Already slotted",
+                  onClick: () => undefined,
+                  disabled: true,
+                  title:
+                    "This primitive is already slotted directly — no need to slot it again.",
+                },
+              }
+            : {
+                // Phase 8.1 batch 11 (Mashu 2026-07-22): the label
+                // shows the resolved destination tab (not the active
+                // tab), so when the user is on identity/backstory/
+                // attributes the button reads 'Slot into Manifest'.
+                //
+                // Phase 8.4 v25 (Mashu 2026-07-30): T5 — the items
+                // tab is no longer filtered out. resolveHeritageSlotDestination
+                // falls through to "manifest" when activeStep is
+                // "items", so the button still works correctly.
+                primaryTertiary: {
+                  label: `Slot into ${tabLabelForActiveStep(resolveHeritageSlotDestination(characterModal.activeStep), characterModal.isOpen)}`,
+                  onClick: slotIntoCharacter,
+                },
+              }
           : {}),
     ...(isOwner
       ? {
