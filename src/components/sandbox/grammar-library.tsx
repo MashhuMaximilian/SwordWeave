@@ -202,12 +202,13 @@ const TYPE_GROUPS: Record<string, LibraryTargetType[]> = {
  *   - lineage / upbringing / manifest pass through (those tabs are
  *     the natural destination for primitives / capabilities / effects)
  *   - identity / backstory / attributes default to manifest — these
- *     tabs are informational, and slotting from them means "I want
- *     this primitive on my character, drop it somewhere reasonable"
- *   - items is filtered out at the canSlotIntoCharacter level so
- *     slotIntoCharacter never runs for the items tab; but defensively
- *     we still resolve to manifest here.
- */
+ *   - tabs are informational, and slotting from them means "I want
+  *     this primitive on my character, drop it somewhere reasonable"
+  *   - Phase 8.4 v25 (Mashu 2026-07-30): T5 — items tab is now a
+  *     valid activeStep for slotting primitives/caps. Destination
+  *     falls through to "manifest" since items have their own
+  *     separate slotting flow.
+  */
 function resolveSlotDestination(activeStep: CharacterTabId): CharacterTabId {
   if (
     activeStep === "lineage" ||
@@ -858,9 +859,20 @@ function SandboxPreviewBody({
             (s) => s.kind === "capability" && s.capabilityId === item.row.id,
           ),
       ));
+  // Phase 8.4 v25 (Mashu 2026-07-30): T5 — atelier slot
+  // button tab-awareness. Previously the button was hidden
+  // on the items tab. Per Mashu: "Currently those buttons
+  // only appear when the modal's active tab is
+  // identity/backstory/attributes. They should ALSO appear
+  // when the modal is on the items tab (with appropriate
+  // target tab — manifest, since items live in their own
+  // tab but the slot source path matters)."
+  //
+  // We still gate on item.kind (only primitives and caps
+  // slot through this button — items have their own flow in
+  // the items tab) and on the cap not already being slotted.
   const canSlotIntoCharacter =
     (item.kind === "primitive" || item.kind === "capability") &&
-    characterModal.activeStep !== "items" &&
     !isCapAlreadySlotted;
 
   // Engagement snapshot for the LikeForkBar + version-history link. The

@@ -34,7 +34,11 @@ import {
   resolvePrimarySaveDc,
   type Attribute,
 } from "@/lib/engine/target-registry";
-import { ProvenanceModal } from "./provenance-modal";
+import {
+  FormulaModal,
+  contributionsToSteps,
+  type FormulaStep,
+} from "./formula-modal";
 
 const ATTR_LABEL: Record<Attribute, string> = {
   physical: "PHYS",
@@ -65,6 +69,16 @@ const SAVE_TARGET: Record<Attribute, string> = {
 };
 
 const MAX_VITALITY_TARGET = "max_vitality";
+
+/**
+ * Reverse PB → level. PB starts at 2 and adds 1 every 4 levels.
+ * Returns the lowest level consistent with this PB. Used for
+ * the PB popup's breakdown label.
+ */
+function computeLevelFromPb(pb: number): number {
+  if (pb <= 2) return 1;
+  return (pb - 2) * 4 + 1;
+}
 
 export interface VitalityDisplayCardProps {
   current: number;
@@ -273,23 +287,72 @@ export function VitalityDisplayCard({
       </div>
 
       {provenanceTarget && (
-        <ProvenanceModal
-          target={provenanceTarget}
-          targetLabel={
-            provenanceTarget === MAX_VITALITY_TARGET
-              ? "Max Vitality"
-              : provenanceTarget === "proficiency_bonus"
-                ? "Proficiency Bonus"
-                : provenanceTarget.startsWith("attribute.")
-                  ? `${ATTR_FULL[provenanceTarget.split(".").pop() as Attribute]} modifier`
-                  : provenanceTarget.startsWith("defense_dc.")
-                    ? `${ATTR_FULL[provenanceTarget.split(".").pop() as Attribute]} save`
-                    : provenanceTarget
-          }
-          totals={resolver.totals}
-          byTarget={resolver.byTarget}
-          onClose={closeProvenance}
-        />
+        provenanceTarget === MAX_VITALITY_TARGET ? (
+          <FormulaModal
+            title="Max Vitality"
+            total={max}
+            formula="Max Vitality = (10 + PB) × level + vitality primitive contributions"
+            breakdown={contributionsToSteps(MAX_VITALITY_TARGET, resolver)}
+            onClose={closeProvenance}
+          />
+        ) : provenanceTarget === "proficiency_bonus" ? (
+          <FormulaModal
+            title="Proficiency Bonus"
+            total={pb}
+            formula={`PB = 2 + floor(level / 4) — starts at +2, +1 every 4 levels`}
+            breakdown={[
+              { label: "Base PB", value: 2 },
+              {
+                label: `Level bonus (floor(${computeLevelFromPb(pb)} / 4))`,
+                value: pb - 2,
+              },
+            ]}
+            onClose={closeProvenance}
+          />
+        ) : provenanceTarget.startsWith("attribute.") ? (
+          <FormulaModal
+            title={`${ATTR_FULL[provenanceTarget.split(".").pop() as Attribute]} modifier`}
+            total={resolveAttributeModifier(
+              resolverInput,
+              provenanceTarget.split(".").pop() as Attribute,
+            ).total}
+            formula={`${ATTR_FULL[provenanceTarget.split(".").pop() as Attribute]} modifier = base attribute value + primitive contributions`}
+            breakdown={[
+              {
+                label: "Base attribute",
+                value: (resolverInput.attributes as Record<Attribute, number>)[
+                  provenanceTarget.split(".").pop() as Attribute
+                ] ?? 0,
+              },
+              ...contributionsToSteps(provenanceTarget, resolver),
+            ]}
+            onClose={closeProvenance}
+          />
+        ) : provenanceTarget.startsWith("defense_dc.") ? (
+          <FormulaModal
+            title={`${ATTR_FULL[provenanceTarget.split(".").pop() as Attribute]} save`}
+            total={resolveSaveValue(
+              resolverInput,
+              provenanceTarget.split(".").pop() as Attribute,
+            ).total}
+            formula={`${ATTR_FULL[provenanceTarget.split(".").pop() as Attribute]} save = attribute mod + PB (if proficient) + primitive save contributions`}
+            breakdown={[
+              {
+                label: `${ATTR_FULL[provenanceTarget.split(".").pop() as Attribute]} modifier`,
+                value: resolveAttributeModifier(
+                  resolverInput,
+                  provenanceTarget.split(".").pop() as Attribute,
+                ).total,
+              },
+              ...contributionsToSteps(provenanceTarget, resolver),
+              ...(proficientAttribute?.toLowerCase() ===
+              (provenanceTarget.split(".").pop() as Attribute).toLowerCase()
+                ? [{ label: "PB (proficient)", value: pb }]
+                : []),
+            ]}
+            onClose={closeProvenance}
+          />
+        ) : null
       )}
     </div>
   );

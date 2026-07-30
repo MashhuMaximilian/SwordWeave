@@ -1102,20 +1102,21 @@ function BlueprintPreviewBody({
             },
           }
         : item.kind === "primitive" || item.kind === "capability"
-          ? characterModal.activeStep !== "items"
-            ? {
-                // Phase 8.1 batch 11 (Mashu 2026-07-22): the label
-                // shows the resolved destination tab (not the active
-                // tab), so when the user is on identity/backstory/
-                // attributes the button reads 'Slot into Manifest'.
-                // Items tab is hidden entirely here (canSlot is also
-                // gated via the canSlotIntoCharacter below).
-                primaryTertiary: {
-                  label: `Slot into ${tabLabelForActiveStep(resolveHeritageSlotDestination(characterModal.activeStep), characterModal.isOpen)}`,
-                  onClick: slotIntoCharacter,
-                },
-              }
-            : {}
+          ? {
+              // Phase 8.1 batch 11 (Mashu 2026-07-22): the label
+              // shows the resolved destination tab (not the active
+              // tab), so when the user is on identity/backstory/
+              // attributes the button reads 'Slot into Manifest'.
+              //
+              // Phase 8.4 v25 (Mashu 2026-07-30): T5 — the items
+              // tab is no longer filtered out. resolveHeritageSlotDestination
+              // falls through to "manifest" when activeStep is
+              // "items", so the button still works correctly.
+              primaryTertiary: {
+                label: `Slot into ${tabLabelForActiveStep(resolveHeritageSlotDestination(characterModal.activeStep), characterModal.isOpen)}`,
+                onClick: slotIntoCharacter,
+              },
+            }
           : {}),
     ...(isOwner
       ? {

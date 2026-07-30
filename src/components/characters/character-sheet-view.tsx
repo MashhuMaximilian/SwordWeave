@@ -924,6 +924,19 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           heavilyEncumbered: props.encumbrance.percentOfCapacity > 75,
           overburdened: props.encumbrance.percentOfCapacity > 100,
         }}
+        // Phase 8.4 v25: character size for the encumbrance
+        // formula popup. Cast from the loose `string` type on
+        // CharacterSheetProps to the literal union the bar
+        // expects — the page SC validates it server-side.
+        characterSize={
+          (props.size as
+            | "TINY"
+            | "SMALL"
+            | "MEDIUM"
+            | "LARGE"
+            | "HUGE"
+            | "GARGANTUAN") || "MEDIUM"
+        }
       />
     </div>
   );
