@@ -321,8 +321,17 @@ export function TabbedCharacterForm() {
 
   // Reset the seeded-once latch whenever the modal closes (so a
   // re-open for a different character seeds fresh).
+  //
+  // Phase 8.4 v25.3 (Mashu 2026-07-30): the old version only
+  // reset on `editCharacterId === null`, which doesn't fire when
+  // the user switches directly from editing Tessy3 to editing
+  // Pumnu (the store goes tessy3Id → pumnuId without a null
+  // transition). Result: identity/backstory/attributes stayed
+  // as Tessy3's data in Pumnu's modal because the seed effect
+  // returned early on the `seededOnce === true` guard. Now we
+  // reset whenever editCharacterId CHANGES (any value).
   useEffect(() => {
-    if (!editCharacterId) setSeededOnce(false);
+    setSeededOnce(false);
   }, [editCharacterId]);
 
   // If seeding failed, surface the error via toast and close.

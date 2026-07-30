@@ -13,7 +13,6 @@
  *   FORMULA    — static, always-shown text describing how the
  *                number is computed. Same for every character.
  *                (e.g. "Save DC = 5 + PB + proficient Attribute
- *                Mod + primitive contributions")
  *
  *   PROVENANCE — per-character live trace, one row per step,
  *                in evaluation order. Each row carries a label,
@@ -34,9 +33,20 @@
  *
  * Dismissal: X button, backdrop click, or Escape key — same as
  * the existing provenance-modal.tsx.
+ *
+ * Phase 8.4 v25.3 (Mashu 2026-07-30): portal to document.body.
+ * When this component is rendered inside a parent that uses
+ * `backdrop-filter`, `transform`, `filter`, or `will-change`,
+ * CSS treats that parent as the containing block for `fixed`
+ * children — breaking `fixed inset-0` and clipping the modal
+ * to the parent's bounds. SheetIdentityHeader uses
+ * `backdrop-blur-md`, so any FormulaModal rendered inside it
+ * was clipped to the header's height. Portalling to
+ * `document.body` restores full-viewport sizing.
  */
 
 import { useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import type {
   ModifierContribution,
@@ -196,16 +206,16 @@ export function FormulaModal({
     };
   }, []);
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={`Formula for ${title}`}
     >
       <div
-        className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -280,7 +290,8 @@ export function FormulaModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

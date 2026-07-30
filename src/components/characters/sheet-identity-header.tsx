@@ -57,13 +57,22 @@ import {
   type FormulaStep,
 } from "@/components/characters/formula-modal";
 
-// Phase 8.4 v25.2 (Mashu 2026-07-30): reference tables used by
+// Phase 8.4 v25.3 (Mashu 2026-07-30): reference tables used by
 // the BU budget + volatility popups. Same data as
 // character-sheet-view.tsx's BuFormulaModal — duplicated here
 // because that whole footer is wrapped in `hidden` divs in the
 // v15 sheet layout (SheetIdentityHeader is the actually-rendered
 // top deck). When we consolidate the two footers in a future
 // session we'll extract these to a shared module.
+//
+// Phase 8.4 v25.3 fix: the volatility table was hardcoded to
+// {L1:0, L2-L4:8, L5-L8:16, ...} which doubled the engine's
+// correct values (which are {L1-L4:4, L5-L8:8, ...}). We now
+// derive ceilings from maxBuDebtForLevel() so the table can
+// extend past L20 (the engine returns ceil(L/4)*4 which keeps
+// growing). We show a wider window — every bracket from L1
+// through L29+ — so high-level characters still see their row.
+import { maxBuDebtForLevel } from "@/lib/engine/bu";
 const PROGRESSION_SPIKES = [
   { level: 4, spike: 4 },
   { level: 8, spike: 8 },
@@ -72,14 +81,36 @@ const PROGRESSION_SPIKES = [
   { level: 20, spike: 20 },
 ] as const;
 
-const VOLATILITY_BRACKETS = [
-  { label: "L1", minLevel: 1, maxLevel: 1, ceiling: 0 },
-  { label: "L2-L4", minLevel: 2, maxLevel: 4, ceiling: 8 },
-  { label: "L5-L8", minLevel: 5, maxLevel: 8, ceiling: 16 },
-  { label: "L9-L12", minLevel: 9, maxLevel: 12, ceiling: 24 },
-  { label: "L13-L16", minLevel: 13, maxLevel: 16, ceiling: 32 },
-  { label: "L17-L20", minLevel: 17, maxLevel: 20, ceiling: 40 },
-] as const;
+const VOLATILITY_BRACKETS = (() => {
+  const out: Array<{ label: string; minLevel: number; maxLevel: number; ceiling: number }> = [];
+  // Build [L1-L4, L5-L8, L9-L12, ...] up to L28. Per Notion
+  // canon (Leveling & Progression v1) and engine
+  // maxBuDebtForLevel, ceiling(L) = ceil(L/4)*4. So:
+  //   L1-L4   → 4
+  //   L5-L8   → 8
+  //   L9-L12  → 12
+  //   L13-L16 → 16
+  //   L17-L20 → 20
+  //   L21-L24 → 24
+  //   L25-L28 → 28
+  // We show the first row as "L1-L4" (4 levels) rather than
+  // splitting L1 and L2-L4 because per Mashu "you have at lvl
+  // 1 too" — L1 has the same 4-BU ceiling as L2-L4. Even
+  // though players typically can't slot mirrors at L1 (per
+  // the cascade rule), the engine doesn't enforce a hard L1
+  // exception — we render the truth.
+  for (let start = 1; start <= 28; start += 4) {
+    const end = start + 3;
+    const ceiling = Math.ceil(start / 4) * 4;
+    const label = start === 1 ? `L${start}-L${end}` : `L${start}-L${end}`;
+    out.push({ label, minLevel: start, maxLevel: end, ceiling });
+  }
+  return out;
+})();
+// Reference maxBuDebtForLevel so tree-shaking doesn't drop the import
+// and so the engine function is the canonical source of the ceiling.
+// (The VOLATILITY_BRACKETS table above mirrors maxBuDebtForLevel.)
+void maxBuDebtForLevel;
 
 // Phase 8.4 v25.2 (Mashu 2026-07-30): single source of truth for
 // the debt bar color rule. Mashu's spec is "green when full,
@@ -99,7 +130,7 @@ function debtBarColor(
   ceiling: number,
   exceeded: boolean,
 ): string {
-  if (exceeded) return "bg-destructive";
+  if (exceeded) return "bg-red-500";
   if (ceiling === 0) return "bg-secondary";
   if (rating >= ceiling) return "bg-green-500";
   if (rating >= ceiling * 0.5) return "bg-amber-500";
@@ -346,7 +377,7 @@ export function SheetIdentityHeader({
                 className={cn(
                   "h-full rounded-full transition-all",
                   buBalance.overBudget
-                    ? "bg-destructive"
+                    ? "bg-red-500"
                     : buBalance.progressionSpent >= buBalance.progressionPool
                       ? "bg-amber-500"
                       : "bg-green-500",
@@ -668,14 +699,15 @@ function BuHeaderFormulaModal({
               </p>
               <p className="mt-3 text-[11px] text-muted-foreground border-t border-border pt-3">
                 <strong className="text-foreground">DM Bonus BU:</strong>{" "}
-                the DM can grant additional BU outside your lifetime pool.
-                DM bonus ({dmBonusBu}) is shown separately on the header (it
-                does NOT count toward your lifetime cap). The DM uses it to{" "}
-                <strong className="text-foreground">reward narrative
-                milestones</strong> (boss defeats, story arcs, exceptional
-                roleplay) — granting you +N BU to spend immediately or bank
-                for later. DM bonus is a gift, not a debt: it never has to
-                be repaid.
+                the DM can grant additional BU at any time for
+                narrative milestones (boss defeats, story arcs,
+                exceptional roleplay). DM bonus ({dmBonusBu})
+                is <strong className="text-foreground">additive</strong>{" "}
+                to your lifetime pool — it counts toward level
+                thresholds just like progression spikes do. At
+                level-up you receive +10 BU (or +N for spike
+                levels), and you also receive any DM bonus that's
+                been granted since your last level-up.
               </p>
               <p className="mt-3 text-[11px] text-muted-foreground border-t border-border pt-3">
                 <strong className="text-foreground">Item BU</strong> (
@@ -766,9 +798,10 @@ function BuHeaderFormulaModal({
               </tbody>
             </table>
             <p className="mt-2 text-[11px] text-muted-foreground">
-              L1 has zero debt capacity (no mirrors allowed at character
-              creation). Each subsequent 4-level bracket increases the
-              allowance. Debt ceilings are <strong className="text-foreground">bracket-based</strong>,
+              Per Notion canon, every 4-level bracket adds 4 BU
+              of debt capacity: L1-L4 → 4, L5-L8 → 8, L9-L12 → 12,
+              continuing indefinitely. Debt ceilings are{" "}
+              <strong className="text-foreground">bracket-based</strong>,
               not cumulative — exceeding your bracket means the DM must
               remove mirrors or grant a respec.
             </p>

@@ -29,9 +29,9 @@ import { Pencil } from "lucide-react";
 import { useCharacterModal } from "@/components/character-modal/character-modal-store";
 
 export interface CharacterEditButtonProps {
-  characterId: string;
-  className?: string;
-  title?: string;
+  readonly characterId: string;
+  readonly className?: string;
+  readonly title?: string;
 }
 
 export function CharacterEditButton({
@@ -53,17 +53,19 @@ export function CharacterEditButton({
         // before the form rendered. Opening directly guarantees
         // edit mode the moment the modal appears.
         //
-        // We still navigate to /atelier so the user can browse
-        // primitives/heritages to slot during the edit.
+        // Phase 8.4 v25.3 (Mashu 2026-07-30): we DO navigate to
+        // /atelier after opening the modal so the user can slot
+        // primitives / heritages from the grammar-library and
+        // heritage-library pickers. We use a direct router.push
+        // (no custom event) so the modal's unsaved-changes
+        // listener doesn't intercept our own action. The
+        // modal is portalled at document.body so it survives the
+        // page navigation; the seed fetch completes in the
+        // background and fills the modal once the atelier page
+        // is ready.
         void openForEditFromStore(characterId);
-        const navEvent = new CustomEvent("sw-navigate-away", {
-          detail: "/atelier",
-          cancelable: true,
-        });
-        window.dispatchEvent(navEvent);
-        if (!navEvent.defaultPrevented) {
-          router.push("/atelier");
-        }
+        // Direct navigation, no event dance.
+        router.push("/atelier");
       }}
       className={
         className ??
