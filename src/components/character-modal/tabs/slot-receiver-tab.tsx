@@ -33,6 +33,7 @@ import {
 } from "./use-tab-primitives";
 import { YinYangSpinner } from "@/components/ui/yin-yang-spinner";
 import { OP_SPECS } from "@/types/modifier";
+import { useRemoveAnimation } from "@/lib/hooks/use-remove-animation";
 
 interface SlotReceiverTabProps {
   tabId: CharacterTabId;
@@ -747,9 +748,21 @@ function DirectPrimitiveRow({
   const mirrored = slot.mirror === true;
   const buCost = slot.buCost ?? 0;
   const [expanded, setExpanded] = useState(false);
+  // Phase 8.4 v24.9 (Mashu 2026-07-30): slide-off animation
+  // when the user clicks Remove. The actual `removeSlot`
+  // call (which drops this row from `pendingSlots`) is
+  // deferred until after the CSS transition completes —
+  // see use-remove-animation.ts for the mechanism.
+  const { removing, handleRemove } = useRemoveAnimation(onRemove);
 
   return (
-    <li className="rounded-md border border-border bg-card text-sm">
+    <li
+      className={`overflow-hidden rounded-md border border-border bg-card text-sm transition-all duration-200 ${
+        removing
+          ? "pointer-events-none -translate-x-6 scale-95 opacity-0"
+          : ""
+      }`}
+    >
       {/* COLLAPSED — always-visible header row */}
       <div
         className="flex items-start justify-between gap-2 p-3"
@@ -833,8 +846,9 @@ function DirectPrimitiveRow({
           </button>
           <button
             type="button"
-            onClick={onRemove}
-            className="block rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-destructive hover:text-destructive"
+            onClick={handleRemove}
+            disabled={removing}
+            className="block rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-50"
           >
             Remove
           </button>
@@ -1136,9 +1150,19 @@ function HeritageSlotCard({
 // every primitive active on this tab. This card is now purely a
 // provenance / structural overview.
 const [heritageExpanded, setHeritageExpanded] = useState(false);
+// Phase 8.4 v24.9 (Mashu 2026-07-30): slide-off animation
+// when the user clicks Remove. See DirectPrimitiveRow for
+// the same wiring.
+const { removing, handleRemove } = useRemoveAnimation(onRemove);
 
 return (
-    <li className="overflow-hidden rounded-md border border-border bg-card">
+    <li
+      className={`overflow-hidden rounded-md border border-border bg-card transition-all duration-200 ${
+        removing
+          ? "pointer-events-none -translate-x-6 scale-95 opacity-0"
+          : ""
+      }`}
+    >
       <div
         className="flex items-start justify-between gap-2 p-3"
         role="button"
@@ -1205,9 +1229,10 @@ return (
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onRemove();
+              handleRemove();
             }}
-            className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-destructive hover:text-destructive"
+            disabled={removing}
+            className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-50"
           >
             Remove
           </button>
@@ -1428,9 +1453,17 @@ function CapabilitySlotCard({
 // are gone from this view because the top "ACTIVE PRIMITIVES"
 // section already lists every primitive active on this tab.
 const [capabilityExpanded, setCapabilityExpanded] = useState(false);
+// Phase 8.4 v24.9 (Mashu 2026-07-30): slide-off animation.
+const { removing, handleRemove } = useRemoveAnimation(onRemove);
 
 return (
-    <li className="overflow-hidden rounded-md border border-border bg-card text-sm">
+    <li
+      className={`overflow-hidden rounded-md border border-border bg-card text-sm transition-all duration-200 ${
+        removing
+          ? "pointer-events-none -translate-x-6 scale-95 opacity-0"
+          : ""
+      }`}
+    >
       <div
         className="flex items-start justify-between gap-2 p-3"
         role="button"
@@ -1485,9 +1518,10 @@ return (
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onRemove();
+              handleRemove();
             }}
-            className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-destructive hover:text-destructive"
+            disabled={removing}
+            className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-50"
           >
             Remove
           </button>

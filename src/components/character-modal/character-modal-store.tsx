@@ -841,41 +841,34 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
   const clearSlots = useCallback(() => setPendingSlots(EMPTY_PENDING), []);
 
   const applySeed = useCallback((seededSlots: PendingSlotsByTab) => {
-    setPendingSlots((current) => {
-      // Merge: keep existing slots, add seeded ones.
-      // Deduplicate by STABLE entity IDs (not slotId which is regenerated each call).
-      // Phase 8.3b: for primitives, dedup by instanceId (UUID) so multiple
-      // direct-paid copies don't merge. Pre-8.3b slots without instanceId
-      // fall back to primitiveId (back-compat with old seeds).
-      const merged: PendingSlotsByTab = { ...current };
-      for (const tab of CHARACTER_TABS) {
-        const existingEntityKeys = new Set<string>();
-        for (const s of current[tab]) {
-          if (s.kind === "heritage") existingEntityKeys.add(`heritage:${s.heritageId}`);
-          else if (s.kind === "primitive") {
-            existingEntityKeys.add(`primitive:${s.primitiveId}:${s.instanceId ?? "legacy"}`);
-          }
-          else if (s.kind === "capability") existingEntityKeys.add(`capability:${s.capabilityId}`);
-          else if (s.kind === "item") existingEntityKeys.add(`item:${s.itemId}`);
-        }
-        const stampedSeeded = seededSlots[tab].map((s) =>
-          s.slotId ? s : { ...s, slotId: makeSlotId() }
-        );
-        merged[tab] = [
-          ...current[tab],
-          ...stampedSeeded.filter((s) => {
-            if (s.kind === "heritage") return !existingEntityKeys.has(`heritage:${s.heritageId}`);
-            if (s.kind === "primitive") {
-              return !existingEntityKeys.has(`primitive:${s.primitiveId}:${s.instanceId ?? "legacy"}`);
-            }
-            if (s.kind === "capability") return !existingEntityKeys.has(`capability:${s.capabilityId}`);
-            if (s.kind === "item") return !existingEntityKeys.has(`item:${s.itemId}`);
-            return !existingEntityKeys.has(`effect:${s.effectId}`);
-          }),
-        ];
-      }
-      return merged;
-    });
+    // Phase 8.4 v24.9 (Mashu 2026-07-30): REPLACE not merge.
+    // The previous merge-with-current behaviour resurrected
+    // deleted-on-modal-close items: user opens edit, deletes a
+    // cap, closes WITHOUT saving (pendingSlots still has the
+    // cap removed), reopens — fetch returns DB state (cap
+    // present), applySeed merged with stale `current`, dedup'd
+    // by entity key, cap re-appeared. Mashu's words:
+    // "I remove something it gets removed, I close modal, I
+    //  open modal, not removed anymore."
+    //
+    // The seed effect calls applySeed exactly once per
+    // open. Replacing `current` with `seededSlots` makes the
+    // DB the source of truth on every open. Unsaved work
+    // (e.g. user types a name, closes without saving) is lost
+    // — that's the cost of "fresh load from DB" semantics and
+    // matches what users expect when they reopen an edit modal.
+    //
+    // stamp a fresh slotId on each seeded slot so React keys
+    // are stable across re-mounts.
+    const stamped: PendingSlotsByTab = {
+      ...EMPTY_PENDING,
+    };
+    for (const tab of CHARACTER_TABS) {
+      stamped[tab] = seededSlots[tab].map((s) =>
+        s.slotId ? s : { ...s, slotId: makeSlotId() },
+      );
+    }
+    setPendingSlots(stamped);
     setDirtyOverride(false);
   }, []);
 

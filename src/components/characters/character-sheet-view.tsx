@@ -2263,6 +2263,19 @@ function DirectCapabilitiesCard({
           <CapabilityCard
             key={c.id}
             characterId={characterId}
+            // Phase 8.4 v24.9 (Mashu 2026-07-30): explicit
+            // false. CapabilityCard defaults showPrimitives
+            // to true (it's used inside the modal builder
+            // where the primitives accordion isn't shown
+            // separately). On the character sheet, the
+            // Primitives tab already shows every primitive
+            // so the per-cap nested list is redundant — and
+            // Mashu asked: "we don't need the primitives in
+            // them." HeritageBundleView passes false
+            // explicitly on the sheet (it sets the default
+            // of showPrimitives when it instantiates
+            // CapabilityCard for the bundle's caps).
+            showPrimitives={false}
             capability={{
               id: c.id,
               name: c.name,
