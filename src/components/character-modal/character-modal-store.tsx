@@ -557,6 +557,8 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
   );
   const [editCharacterName, setEditCharacterName] = useState<string | null>(null);
   const [isSeedingEdit, setIsSeedingEdit] = useState(false);
+  const isSeedingEditRef = useRef(isSeedingEdit);
+  isSeedingEditRef.current = isSeedingEdit;
   const [editSeedError, setEditSeedError] = useState<string | null>(null);
   /**
    * Stash the fetched character payload here so the form can read
@@ -741,29 +743,17 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const queueSlot = useCallback(
-    (slot: PendingSlot): { ok: boolean; reason?: "duplicate" } => {
-      // Phase 8.4 v25.2 (Mashu 2026-07-30): cap duplicate guard
-      // — REWORKED.
-      //
-      // History: v24.5 (e4eaeea) added a duplicate guard that
-      // rejected any cap that already appeared in
-      // seededCharacter.capabilityLinks (DB state at edit-open).
-      // This was a mis-diagnosis: the server's save path uses
-      // DELETE + INSERT (not just INSERT), so it never raises a
-      // PK violation. The guard was blocking legitimate "slot a
-      // cap from the atelier that I see in DB via a heritage
-      // bundle" actions — exactly the v25 bug Mashu reported
-      // ("nothing gets added" in edit mode).
-      //
-      // What we still want: a safety net against *double-clicking
-      // the same Slot button* within one edit session. That's
-      // caught by the pendingSlots check below — if it's already
-      // queued for any tab, refuse.
-      //
-      // We do NOT check seededCharacter. DB state is already on
-      // the sheet; queueing the same cap is either a no-op (if
-      // already direct) or a legitimate "promote from heritage
-      // bundle to direct" action.
+    (slot: PendingSlot): { ok: boolean; reason?: "duplicate" | "seeding" } => {
+      // Phase 8.4 v25.5 (Mashu 2026-07-30): block slot additions
+      // while the modal is still seeding edit-mode data from the DB.
+      // Before the fetch completes, pendingSlots may be wiped when
+      // applySeed(DB state) fires on seed completion, silently
+      // dropping anything that arrived during the race window.
+      // This creates a "cannot add in edit mode" symptom that works
+      // fine in create mode (where isSeedingEdit is never true).
+      if (isSeedingEditRef.current) {
+        return { ok: false, reason: "seeding" };
+      }
       if (slot.kind === "capability") {
         const id = slot.capabilityId;
         const alreadyInPending = (Object.values(pendingSlotsRef.current) as PendingSlot[][]).some(

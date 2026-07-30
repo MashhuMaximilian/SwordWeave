@@ -1090,6 +1090,11 @@ function SandboxPreviewBody({
     stack.clear();
   }
 
+  // Phase 8.4 v25.5 (Mashu 2026-07-30): when the modal is
+  // still seeding its edit-mode data (fetch pending), disable
+  // the "Slot into [tab]" button and show a loading indicator.
+  const isSeedingEdit = characterModal.isSeedingEdit;
+
   const actionBar: PreviewActionProps = {
     loadIntoBuild: { label: "Load into build", onClick: onLoadIntoBuild },
     ...(canSlot ? { primarySecondary: { label: "Slot into build", onClick: slotIntoBuild } } : {}),
@@ -1101,18 +1106,35 @@ function SandboxPreviewBody({
     // shown for entity kinds the modal accepts (primitives/caps);
     // items tab is filtered out by canSlotIntoCharacter.
     //
+    // Phase 8.4 v25.5 (Mashu 2026-07-30): when the modal is
+    // still seeding its edit-mode data (fetch pending), disable
+    // the "Slot into [tab]" button and show a loading indicator.
+    // Without this, clicks during the loading window silently
+    // do nothing (queueSlot is gated), and on seed completion
+    // applySeed(DB state) can wipe any in-flight slots added
+    // during the race. The button re-enables as soon as
+    // isSeedingEdit flips false (seed completes).
     // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — when the cap
     // is already slotted, override the label with an
     // informative "Already slotted" message.
-    ...(canSlotIntoCharacter
+    ...(isSeedingEdit
       ? {
           primaryTertiary: {
-            label: `Slot into ${tabLabelForActiveStep(resolveSlotDestination(characterModal.activeStep), characterModal.isOpen)}`,
-            onClick: slotIntoCharacter,
+            label: "Loading character...",
+            onClick: () => undefined,
+            disabled: true,
+            title: "Character data is still being loaded.",
           },
         }
-      : isCapAlreadySlotted
+      : canSlotIntoCharacter
         ? {
+            primaryTertiary: {
+              label: `Slot into ${tabLabelForActiveStep(resolveSlotDestination(characterModal.activeStep), characterModal.isOpen)}`,
+              onClick: slotIntoCharacter,
+            },
+          }
+        : isCapAlreadySlotted
+          ? {
             primaryTertiary: {
               label: "Already slotted",
               onClick: () => undefined,
