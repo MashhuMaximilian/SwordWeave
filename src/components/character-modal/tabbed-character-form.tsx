@@ -30,7 +30,7 @@
 //   - "Slot into [step]" library buttons (batch 8).
 // =============================================================================
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -562,6 +562,54 @@ export function TabbedCharacterForm() {
   // as a safety net; the server returns 400 if the user somehow
   // tries to save an over-budget build (shouldn't happen via UI now).
   const canCreate = nameValid && attrValid && !isPending && !debtExceeded;
+
+  // Phase 8.4 v25.x (Mashu 2026-07-30): detect whether any edits have been
+  // made to the character in the modal. Compare pendingSlots + form state
+  // against the seeded snapshot right after seeding completes. This powers
+  // the "no changes to save" UI state on the Save button.
+  const seededSnapshotRef = useRef<{
+    pendingSlots: PendingSlotsByTab;
+    identity: IdentityState;
+    backstory: BackstoryState;
+    attributes: AttributesState;
+  } | null>(null);
+  if (seededOnce && seededSnapshotRef.current === null) {
+    seededSnapshotRef.current = {
+      pendingSlots: structuredClone(pendingSlots),
+      identity: { ...identity },
+      backstory: { ...backstory },
+      attributes: { ...attributes },
+    };
+  }
+
+  const hasEdits = useMemo(() => {
+    const snap = seededSnapshotRef.current;
+    if (!snap) return false;
+    for (const tab of CHARACTER_TABS) {
+      const cur = pendingSlots[tab] ?? [];
+      const ref = snap.pendingSlots[tab] ?? [];
+      if (cur.length !== ref.length) return true;
+      for (let i = 0; i < cur.length; i++) {
+        if (JSON.stringify(cur[i]) !== JSON.stringify(ref[i])) return true;
+      }
+    }
+    return (
+      identity.name.trim() !== snap.identity.name.trim() ||
+      identity.size !== snap.identity.size ||
+      identity.portraitUrl.trim() !== snap.identity.portraitUrl.trim() ||
+      identity.notes.trim() !== snap.identity.notes.trim() ||
+      backstory.origin !== snap.backstory.origin ||
+      backstory.motivation !== snap.backstory.motivation ||
+      backstory.ties !== snap.backstory.ties ||
+      backstory.flaw !== snap.backstory.flaw ||
+      attributes.attrPhysical !== snap.attributes.attrPhysical ||
+      attributes.attrMental !== snap.attributes.attrMental ||
+      attributes.attrMagical !== snap.attributes.attrMagical ||
+      attributes.attrProficient !== snap.attributes.attrProficient ||
+      attributes.level !== snap.attributes.level ||
+      attributes.buBudget !== snap.attributes.buBudget
+    );
+  }, [pendingSlots, identity, backstory, attributes, seededOnce]);
 
   /**
    * Phase 8.2 batch 7: unified submit (was handleCreate).
@@ -1261,9 +1309,13 @@ export function TabbedCharacterForm() {
               );
               return;
             }
+            if (!hasEdits) {
+              showToast("No changes to save.", "info");
+              return;
+            }
             void handleSubmit();
           }}
-          disabled={!canCreate}
+          disabled={!canCreate || !hasEdits}
           className="flex shrink-0 items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {/* Phase 8.2 batch 7: button label flips with mode. */}
@@ -1272,7 +1324,9 @@ export function TabbedCharacterForm() {
               ? "Saving…"
               : "Creating…"
             : editCharacterId
-            ? "Save changes"
+            ? hasEdits
+              ? "Save changes"
+              : "No changes"
             : "Create"}
           <ChevronRight className="size-3.5" />
         </button>
