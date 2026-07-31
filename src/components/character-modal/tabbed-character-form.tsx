@@ -252,46 +252,17 @@ export function TabbedCharacterForm() {
   useEffect(() => {
     if (!editCharacterId || !seededCharacter || seededOnce) return;
     if (seededCharacter.id !== editCharacterId) return;
-    // Phase 8.4 v24.11 (Mashu 2026-07-30): localStorage draft
-    // for pendingSlots takes priority for slot list restoration.
-    // If the user removed slots, closed without saving, and
-    // reopened, we resume that session for pendingSlots.
-    // HOWEVER: identity/backstory/attributes ALWAYS come from the
-    // DB seed — the localStorage draft never carries those fields
-    // (they are per-character but stored in global keys to avoid
-    // cross-contamination). The seed effect must not return early
-    // here, or identity/backstory/attributes stay frozen as the
-    // previous character's data.
-    const draftKey = pendingSlotsKey(editCharacterId);
-    const draft = readLocalStorage<PendingSlotsByTab | null>(draftKey, null);
-    if (draft && typeof draft === "object") {
-      let slotTotal = 0;
-      for (const tab of CHARACTER_TABS) {
-        slotTotal += Array.isArray(draft[tab]) ? draft[tab].length : 0;
-      }
-      // eslint-disable-next-line no-console
-      console.log(
-        `[character-modal] seed effect — hydrating from localStorage draft — ${editCharacterId}`,
-        { slotTotal },
-      );
-      applySeed(draft);
-    }
-    // eslint-disable-next-line no-console
-    console.log(
-      `[character-modal] seed effect running — ${seededCharacter.id}`,
-      {
-        editCharacterId,
-        seededCapabilityCount: seededCharacter.capabilityLinks?.length ?? 0,
-        seededHeritageCount: seededCharacter.heritageLinks?.length ?? 0,
-      },
-    );
+    // Phase 8.4 v26 (Mashu 2026-07-30): removed localStorage draft for
+    // pendingSlots. pendingSlots now always comes from DB seed, consistent
+    // with how identity/backstory/attributes are handled. localStorage draft
+    // for pendingSlots was causing data-loss bugs when draft had fewer slots
+    // than DB (stale draft from previous failed edit), causing Save to
+    // overwrite DB with incomplete data and delete heritage/primitive rows.
     const seeds = buildCharacterSeeds(seededCharacter);
     setIdentity(seeds.identity as IdentityState);
     setBackstory(seeds.backstory as BackstoryState);
     setAttributes(seeds.attributes as AttributesState);
-    if (!draft || typeof draft !== "object") {
-      applySeed(seeds.pendingSlots);
-    }
+    applySeed(seeds.pendingSlots);
     setSeededOnce(true);
     // Phase 8.2 batch 10: warm the heritage + capability bundle
     // caches so the footer BU summary reflects seeded characters
