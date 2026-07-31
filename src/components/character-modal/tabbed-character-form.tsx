@@ -419,20 +419,20 @@ export function TabbedCharacterForm() {
   // very first render (the seed effect is what stamps the actual
   // slots, and it happens AFTER initial render).
   //
-  // NOTE: no cleanup function — the timeout must fire even if the
-  // component unmounts (e.g. user closes the modal mid-debounce).
-  // Cancelling the timeout on unmount would lose pending slot
-  // edits made while the modal was closed.
+  // Write synchronously (no debounce) so that removals are
+  // persisted immediately. A debounce here caused the exact
+  // bug Mashu reported: remove a cap, close modal within
+  // 500ms, debounce fires after unmount (or gets cancelled),
+  // localStorage draft never updated, reopen re-seeds from
+  // DB and the removed cap reappears.
   useEffect(() => {
     if (!hydrated || !seededOnce) return;
     const key = pendingSlotsKey(editCharacterId);
-    window.setTimeout(() => {
-      try {
-        window.localStorage.setItem(key, JSON.stringify(pendingSlots));
-      } catch {
-        // ignore quota / serialization failures
-      }
-    }, 500);
+    try {
+      window.localStorage.setItem(key, JSON.stringify(pendingSlots));
+    } catch {
+      // ignore quota / serialization failures
+    }
   }, [pendingSlots, hydrated, seededOnce, editCharacterId]);
 
   // Phase 8.1 batch 10: live BU summary for the footer. The summary
