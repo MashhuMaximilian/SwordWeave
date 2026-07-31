@@ -752,6 +752,17 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
       // This creates a "cannot add in edit mode" symptom that works
       // fine in create mode (where isSeedingEdit is never true).
       if (isSeedingEditRef.current) {
+        console.log(
+          `[character-modal] queueSlot blocked — isSeedingEditRef.current is true`,
+          {
+            pendingSlots: Object.fromEntries(
+              Object.entries(pendingSlotsRef.current).map(([k, v]) => [
+                k,
+                v.length,
+              ]),
+            ),
+          },
+        );
         return { ok: false, reason: "seeding" };
       }
       if (slot.kind === "capability") {
@@ -761,7 +772,12 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
             Array.isArray(arr) &&
             arr.some((s) => s.kind === "capability" && s.capabilityId === id),
         );
-        if (alreadyInPending) return { ok: false, reason: "duplicate" };
+        if (alreadyInPending) {
+          console.log(
+            `[character-modal] queueSlot blocked — duplicate capability ${id}`,
+          );
+          return { ok: false, reason: "duplicate" };
+        }
       }
 
       let didAdd = false;
@@ -783,6 +799,18 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
         didAdd = true;
         return { ...current, [tab]: [...current[tab], stamped] };
       });
+      console.log(
+        `[character-modal] queueSlot added ${slot.kind} to tab="${tab}" pendingSlots now: ${
+          JSON.stringify(
+            Object.fromEntries(
+              Object.entries(pendingSlotsRef.current).map(([k, v]) => [
+                k,
+                v.length,
+              ]),
+            ),
+          )
+        }`,
+      );
       return { ok: didAdd };
     },
     [],
