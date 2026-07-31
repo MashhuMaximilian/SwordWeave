@@ -781,6 +781,7 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
       }
 
       let didAdd = false;
+      let addedTab: CharacterTabId = "manifest";
       setPendingSlots((current) => {
         // Determine which tab the slot belongs to.
         let tab: CharacterTabId;
@@ -793,6 +794,7 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
         } else {
           tab = slot.tab;
         }
+        addedTab = tab;
         // Assign a stable slotId if the caller didn't supply one (it
         // shouldn't, but we guard so old call sites don't break).
         const stamped: PendingSlot = { ...slot, slotId: makeSlotId() };
@@ -800,7 +802,7 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
         return { ...current, [tab]: [...current[tab], stamped] };
       });
       console.log(
-        `[character-modal] queueSlot added ${slot.kind} to tab="${tab}" pendingSlots now: ${
+        `[character-modal] queueSlot added ${slot.kind} to tab="${addedTab}" pendingSlots now: ${
           JSON.stringify(
             Object.fromEntries(
               Object.entries(pendingSlotsRef.current).map(([k, v]) => [
@@ -858,35 +860,72 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
   const clearSlots = useCallback(() => setPendingSlots(EMPTY_PENDING), []);
 
   const applySeed = useCallback((seededSlots: PendingSlotsByTab) => {
-    // Phase 8.4 v24.9 (Mashu 2026-07-30): REPLACE not merge.
-    // The previous merge-with-current behaviour resurrected
-    // deleted-on-modal-close items: user opens edit, deletes a
-    // cap, closes WITHOUT saving (pendingSlots still has the
-    // cap removed), reopens — fetch returns DB state (cap
-    // present), applySeed merged with stale `current`, dedup'd
-    // by entity key, cap re-appeared. Mashu's words:
-    // "I remove something it gets removed, I close modal, I
-    //  open modal, not removed anymore."
+    // Phase 8.4 v26 (Mashu 2026-07-30): when reopening an edit
+    // modal that already has pending slots (slots added while the
+    // modal was closed — e.g. "Slot into character" in the sidebar
+    // when the modal was not open), MERGE new DB seed slots ON TOP
+    // of the existing pending slots instead of replacing them.
+    // Only DB-sourced slots that aren't already in pendingSlots
+    // are added; existing pending slots (including ones added
+    // while the modal was closed) are preserved.
     //
-    // The seed effect calls applySeed exactly once per
-    // open. Replacing `current` with `seededSlots` makes the
-    // DB the source of truth on every open. Unsaved work
-    // (e.g. user types a name, closes without saving) is lost
-    // — that's the cost of "fresh load from DB" semantics and
-    // matches what users expect when they reopen an edit modal.
-    //
-    // stamp a fresh slotId on each seeded slot so React keys
-    // are stable across re-mounts.
-    const stamped: PendingSlotsByTab = {
-      ...EMPTY_PENDING,
-    };
-    for (const tab of CHARACTER_TABS) {
-      stamped[tab] = seededSlots[tab].map((s) =>
-        s.slotId ? s : { ...s, slotId: makeSlotId() },
+    // The REPLACE behavior below is still used for create mode
+    // (where there's nothing to preserve) and for when the store
+    // has truly no pending slots (fresh open).
+    setPendingSlots((current) => {
+      // Build a set of keys from current pending slots so we
+      // don't duplicate them when merging DB seed.
+      const existingKeys = new Set<string>();
+      for (const tab of CHARACTER_TABS) {
+        for (const s of current[tab]) {
+          if (s.kind === "capability") existingKeys.add(`cap:${s.capabilityId}`);
+          else if (s.kind === "primitive") existingKeys.add(`prim:${s.primitiveId}`);
+          else if (s.kind === "heritage") existingKeys.add(`heritage:${s.heritageId}`);
+          else if (s.kind === "item") existingKeys.add(`item:${s.itemId}`);
+          else if (s.kind === "effect") existingKeys.add(`fx:${s.effectId}`);
+        }
+      }
+      // If current already has pending slots, treat this as a
+      // merge (don't wipe user-sourced slots). Only add DB seed
+      // slots that aren't already represented in current.
+      const totalCurrent = CHARACTER_TABS.reduce(
+        (sum, t) => sum + current[t].length,
+        0,
       );
-    }
-    setPendingSlots(stamped);
-    setDirtyOverride(false);
+      if (totalCurrent > 0) {
+        const merged: PendingSlotsByTab = { ...EMPTY_PENDING };
+        // Start with existing pending slots (preserving user additions)
+        for (const tab of CHARACTER_TABS) {
+          merged[tab] = [...current[tab]];
+        }
+        // Add DB seed slots that don't conflict
+        for (const tab of CHARACTER_TABS) {
+          for (const s of seededSlots[tab]) {
+            let key: string;
+            if (s.kind === "capability") key = `cap:${s.capabilityId}`;
+            else if (s.kind === "primitive") key = `prim:${s.primitiveId}`;
+            else if (s.kind === "heritage") key = `heritage:${s.heritageId}`;
+            else if (s.kind === "item") key = `item:${s.itemId}`;
+            else if (s.kind === "effect") key = `fx:${s.effectId}`;
+            else continue;
+            if (!existingKeys.has(key)) {
+              merged[tab].push(s.slotId ? s : { ...s, slotId: makeSlotId() });
+            }
+          }
+        }
+        setDirtyOverride(false);
+        return merged;
+      }
+      // No existing pending slots — fresh open, replace with DB seed.
+      const stamped: PendingSlotsByTab = { ...EMPTY_PENDING };
+      for (const tab of CHARACTER_TABS) {
+        stamped[tab] = seededSlots[tab].map((s) =>
+          s.slotId ? s : { ...s, slotId: makeSlotId() },
+        );
+      }
+      setDirtyOverride(false);
+      return stamped;
+    });
   }, []);
 
   const setDirty = useCallback((dirty: boolean) => setDirtyOverride(dirty), []);
