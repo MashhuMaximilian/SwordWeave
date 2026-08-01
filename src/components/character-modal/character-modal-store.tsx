@@ -894,11 +894,9 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
       );
       if (totalCurrent > 0) {
         const merged: PendingSlotsByTab = { ...EMPTY_PENDING };
-        // Start with existing pending slots (preserving user additions)
-        for (const tab of CHARACTER_TABS) {
-          merged[tab] = [...current[tab]];
-        }
-        // Add DB seed slots that don't conflict
+        
+        // Build a set of keys from seededSlots (DB state) to know what originally came from DB
+        const seededKeys = new Set<string>();
         for (const tab of CHARACTER_TABS) {
           for (const s of seededSlots[tab]) {
             let key: string;
@@ -908,8 +906,65 @@ export function CharacterModalProvider({ children }: { children: ReactNode }) {
             else if (s.kind === "item") key = `item:${s.itemId}`;
             else if (s.kind === "effect") key = `fx:${s.effectId}`;
             else continue;
-            if (!existingKeys.has(key)) {
-              merged[tab].push(s.slotId ? s : { ...s, slotId: makeSlotId() });
+            seededKeys.add(key);
+          }
+        }
+
+        // Build a set of keys currently present in `current` (pendingSlots)
+        const currentKeys = new Set<string>();
+        for (const tab of CHARACTER_TABS) {
+          for (const s of current[tab]) {
+            let key: string;
+            if (s.kind === "capability") key = `cap:${s.capabilityId}`;
+            else if (s.kind === "primitive") key = `prim:${s.primitiveId}`;
+            else if (s.kind === "heritage") key = `heritage:${s.heritageId}`;
+            else if (s.kind === "item") key = `item:${s.itemId}`;
+            else if (s.kind === "effect") key = `fx:${s.effectId}`;
+            else continue;
+            currentKeys.add(key);
+          }
+        }
+
+        // 1. Keep user additions (slots in current that were NOT in seededSlots)
+        for (const tab of CHARACTER_TABS) {
+          merged[tab] = current[tab].filter((s) => {
+            let key: string;
+            if (s.kind === "capability") key = `cap:${s.capabilityId}`;
+            else if (s.kind === "primitive") key = `prim:${s.primitiveId}`;
+            else if (s.kind === "heritage") key = `heritage:${s.heritageId}`;
+            else if (s.kind === "item") key = `item:${s.itemId}`;
+            else if (s.kind === "effect") key = `fx:${s.effectId}`;
+            else return true;
+            return !seededKeys.has(key);
+          });
+        }
+
+        // 2. Add seeded slots that the user did NOT explicitly remove
+        for (const tab of CHARACTER_TABS) {
+          for (const s of seededSlots[tab]) {
+            let key: string;
+            if (s.kind === "capability") key = `cap:${s.capabilityId}`;
+            else if (s.kind === "primitive") key = `prim:${s.primitiveId}`;
+            else if (s.kind === "heritage") key = `heritage:${s.heritageId}`;
+            else if (s.kind === "item") key = `item:${s.itemId}`;
+            else if (s.kind === "effect") key = `fx:${s.effectId}`;
+            else continue;
+
+            const wasRemovedByUser = seededKeys.has(key) && !currentKeys.has(key) && totalCurrent > 0;
+            if (!wasRemovedByUser) {
+              const alreadyMerged = CHARACTER_TABS.some(t => merged[t].some(existing => {
+                let ek: string;
+                if (existing.kind === "capability") ek = `cap:${existing.capabilityId}`;
+                else if (existing.kind === "primitive") ek = `prim:${existing.primitiveId}`;
+                else if (existing.kind === "heritage") ek = `heritage:${existing.heritageId}`;
+                else if (existing.kind === "item") ek = `item:${existing.itemId}`;
+                else if (existing.kind === "effect") ek = `fx:${existing.effectId}`;
+                else return false;
+                return ek === key;
+              }));
+              if (!alreadyMerged) {
+                merged[tab].push(s.slotId ? s : { ...s, slotId: makeSlotId() });
+              }
             }
           }
         }
