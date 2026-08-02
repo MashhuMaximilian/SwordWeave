@@ -50,13 +50,20 @@ export function useRemoveAnimation(
   const [removing, setRemoving] = useState(false);
 
   const handleRemove = useCallback(() => {
-    if (removing) return; // ignore double-clicks during animation
+    if (removing) return;
     setRemoving(true);
-    // Delay the actual onRemove call by 200ms so the CSS transition
-    // (slide-off + fade) has time to play for visual feedback.
-    setTimeout(() => {
-      onRemove();
-    }, 200);
+    // Call onRemove IMMEDIATELY so pendingSlots updates right away.
+    // This triggers the localStorage persistence effect, ensuring
+    // removals survive a modal close before any animation completes.
+    // Phase 8.4 v24.9 (Mashu 2026-07-30): the 200ms delay caused
+    // removals to be lost when the user closed the modal before the
+    // timer fired.
+    //
+    // The `removing` flag is still set for visual feedback, but since
+    // onRemove immediately removes the slot from pendingSlots, the
+    // parent's map will unmount this component. The CSS transition
+    // may not fully play, but data integrity is guaranteed.
+    onRemove();
   }, [removing, onRemove]);
 
   return { removing, handleRemove };
