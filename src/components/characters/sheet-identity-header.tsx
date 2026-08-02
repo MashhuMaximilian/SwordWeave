@@ -220,13 +220,20 @@ export function SheetIdentityHeader({
 
   if (!hydrated) return null;
 
-  const overSpent = buBalance.progressionSpent - buBalance.progressionPool;
-  const buDisplay = `${buBalance.progressionSpent}/${buBalance.progressionPool}`;
+  const budgetOverBy = buBalance.progressionSpent - buBalance.progressionPool;
+  // Phase 8.4 v26.8: debt absorbs overflow up to total mirror credit.
+  const debtUsedValue = Math.min(Math.max(0, budgetOverBy), volatility.rating);
+  const budgetVisible = Math.max(0, buBalance.progressionSpent - debtUsedValue);
+  const budgetOverflowRemainder = Math.max(0, budgetVisible - buBalance.progressionPool);
+  const trulyOverBudget = budgetOverflowRemainder > 0;
+  const buDisplay = `${budgetVisible}/${buBalance.progressionPool}`;
   // Phase 8.4: the debt display shows used / available / max with
   // the bracket ceiling, e.g. `8 / 8 (L5-L8)`. The `available`
   // piece is `ceiling - rating` (clamped to 0).
-  const debtUsed = volatility.rating;
-  const debtAvailable = Math.max(0, volatility.ceiling - volatility.rating);
+  // Phase 8.4 v26.8: show actual debt used (capped at overflow),
+  // not total mirror credit.
+  const debtUsed = debtUsedValue;
+  const debtAvailable = Math.max(0, volatility.ceiling - debtUsed);
   const debtMax = volatility.ceiling;
   const debtDisplay = `${debtUsed} / ${debtMax} (${volatility.levelBracket})`;
 
@@ -292,14 +299,14 @@ export function SheetIdentityHeader({
               }}
               className={cn(
                 "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono transition-colors hover:ring-2 hover:ring-primary/40",
-                buBalance.overBudget
+                trulyOverBudget
                   ? "bg-destructive/15 text-destructive"
                   : "bg-secondary",
               )}
               title="Show BU budget formula"
               aria-label="Show BU budget formula"
             >
-              {buBalance.overBudget ? (
+              {trulyOverBudget ? (
                 <AlertTriangle className="size-3" />
               ) : null}
               {buDisplay}
@@ -365,7 +372,7 @@ export function SheetIdentityHeader({
               <span>
                 {buBalance.progressionPool > 0
                   ? Math.round(
-                      (buBalance.progressionSpent / buBalance.progressionPool) *
+                      (budgetVisible / buBalance.progressionPool) *
                         100,
                     )
                   : 0}
@@ -376,20 +383,20 @@ export function SheetIdentityHeader({
               <div
                 className={cn(
                   "h-full rounded-full transition-all",
-                  buBalance.overBudget
+                  trulyOverBudget
                     ? "bg-red-500"
-                    : buBalance.progressionSpent >= buBalance.progressionPool
+                    : budgetVisible >= buBalance.progressionPool
                       ? "bg-amber-500"
                       : "bg-green-500",
                 )}
                 style={{
-                  width: `${Math.min(100, buBalance.progressionPool > 0 ? (buBalance.progressionSpent / buBalance.progressionPool) * 100 : 0)}%`,
+                  width: `${Math.min(100, buBalance.progressionPool > 0 ? (budgetVisible / buBalance.progressionPool) * 100 : 0)}%`,
                 }}
               />
             </div>
-            {buBalance.overBudget ? (
+            {trulyOverBudget ? (
               <p className="mt-1 text-[10px] text-destructive">
-                BU spent exceeds progression cap by {overSpent}
+                BU spent exceeds progression cap by {budgetOverflowRemainder}
               </p>
             ) : null}
           </button>
@@ -421,7 +428,7 @@ export function SheetIdentityHeader({
               <span>Debt usage</span>
               <span>
                 {volatility.ceiling > 0
-                  ? Math.round((volatility.rating / volatility.ceiling) * 100)
+                  ? Math.round((debtUsed / volatility.ceiling) * 100)
                   : 0}
                 %
               </span>
@@ -430,10 +437,10 @@ export function SheetIdentityHeader({
               <div
                 className={cn(
                   "h-full rounded-full transition-all",
-                  debtBarColor(volatility.rating, volatility.ceiling, volatility.exceeded)
+                  debtBarColor(debtUsed, volatility.ceiling, volatility.exceeded)
                 )}
                 style={{
-                  width: `${Math.min(100, volatility.ceiling > 0 ? (volatility.rating / volatility.ceiling) * 100 : 0)}%`,
+                  width: `${Math.min(100, volatility.ceiling > 0 ? (debtUsed / volatility.ceiling) * 100 : 0)}%`,
                 }}
               />
             </div>
