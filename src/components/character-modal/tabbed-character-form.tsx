@@ -381,8 +381,13 @@ export function TabbedCharacterForm() {
     })();
   }, [pendingSlots]);
 
-  // Hydrate identity/backstory/attributes and set hydrated = true on mount.
+  // Hydrate identity/backstory/attributes from localStorage ONLY in CREATE
+  // mode (editCharacterId === null). In edit mode, the seed effect at line 253
+  // sets these from the DB-fetched seededCharacter, so we must not clobber them
+  // with potentially stale localStorage drafts.
   useEffect(() => {
+    if (editCharacterId) return;
+    if (!isOpen) return;
     setIdentity(
       readLocalStorage<IdentityState>(IDENTITY_STORAGE_KEY, IDENTITY_EMPTY),
     );
@@ -395,7 +400,21 @@ export function TabbedCharacterForm() {
       ),
     );
     setHydrated(true);
-  }, [editCharacterId, seededOnce, applySeed, hydrated, isOpen]);
+  }, [isOpen, editCharacterId]);
+
+  // Hydrate pendingSlots from localStorage draft when reopening an edit
+  // session. This restores uncommitted slot changes (adds/removes) across
+  // close/reopen cycles. Gated on seededOnce to avoid racing with the
+  // seed effect which calls applySeed from DB state.
+  useEffect(() => {
+    if (!editCharacterId || !isOpen || seededOnce) return;
+    const key = pendingSlotsKey(editCharacterId);
+    const draft = readLocalStorage<PendingSlotsByTab | null>(key, null);
+    if (draft && typeof draft === "object" && Object.keys(draft).length > 0) {
+      applySeed(draft);
+      setSeededOnce(true);
+    }
+  }, [editCharacterId, isOpen, seededOnce, applySeed]);
 
   // Debounced persistence for each tab's state. Each setter triggers
   // a 500ms-debounced write to its own localStorage slot so a reload
