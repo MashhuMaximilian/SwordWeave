@@ -303,9 +303,10 @@ export function TabbedCharacterForm() {
   // transition). Result: identity/backstory/attributes stayed
   // as Tessy3's data in Pumnu's modal because the seed effect
   // returned early on the `seededOnce === true` guard. Now we
-  // reset whenever editCharacterId CHANGES (any value).
+  // Reset seededOnce and seededSnapshotRef whenever editCharacterId CHANGES (any value).
   useEffect(() => {
     setSeededOnce(false);
+    seededSnapshotRef.current = null;
   }, [editCharacterId]);
 
   // If seeding failed, surface the error via toast and close.
