@@ -463,8 +463,13 @@ export function TabbedCharacterForm() {
   // Debounced persistence for each tab's state. Each setter triggers
   // a 500ms-debounced write to its own localStorage slot so a reload
   // restores the user mid-edit.
+  //
+  // Only persist in CREATE mode — the global keys (IDENTITY_STORAGE_KEY
+  // etc.) are shared across all characters. In edit mode, writing DB-seeded
+  // values to these keys would leak the previous character's identity into
+  // the next create session.
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || editCharacterId) return;
     const t = window.setTimeout(() => {
       try {
         window.localStorage.setItem(IDENTITY_STORAGE_KEY, JSON.stringify(identity));
@@ -473,10 +478,10 @@ export function TabbedCharacterForm() {
       }
     }, 500);
     return () => window.clearTimeout(t);
-  }, [identity, hydrated]);
+  }, [identity, hydrated, editCharacterId]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || editCharacterId) return;
     const t = window.setTimeout(() => {
       try {
         window.localStorage.setItem(BACKSTORY_STORAGE_KEY, JSON.stringify(backstory));
@@ -485,10 +490,10 @@ export function TabbedCharacterForm() {
       }
     }, 500);
     return () => window.clearTimeout(t);
-  }, [backstory, hydrated]);
+  }, [backstory, hydrated, editCharacterId]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || editCharacterId) return;
     const t = window.setTimeout(() => {
       try {
         window.localStorage.setItem(ATTRIBUTES_STORAGE_KEY, JSON.stringify(attributes));
@@ -497,7 +502,7 @@ export function TabbedCharacterForm() {
       }
     }, 500);
     return () => window.clearTimeout(t);
-  }, [attributes, hydrated]);
+  }, [attributes, hydrated, editCharacterId]);
 
   // Phase 8.4 v24.11 (Mashu 2026-07-30): debounced localStorage
   // write for pendingSlots, keyed by character id (or "new" for
