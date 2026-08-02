@@ -309,21 +309,34 @@ export function TabbedCharacterForm() {
   // This fixes the close/reopen-same-character cycle: previously
   // editCharacterId stayed the same on reopen, so seededOnce and the
   // snapshot were never cleared, causing hasEdits to compare the
-  // freshly-fetched pendingSlots (which included the user's removals)
-  // against a stale snapshot that no longer matched — yielding "no changes".
+  // freshly-fetched pendingSlots against a stale snapshot — yielding "no changes".
   useEffect(() => {
     setSeededOnce(false);
     seededSnapshotRef.current = null;
   }, [editCharacterId]);
 
-  // Also reset when the modal closes: even if editCharacterId is stable,
+  // Also reset when the modal closes — even if editCharacterId is stable,
   // closing and reopening means a fresh seed cycle is required.
   useEffect(() => {
     if (!isOpen) {
       setSeededOnce(false);
       seededSnapshotRef.current = null;
+    } else if (!editCharacterId) {
+      // Create mode: hydrate from localStorage drafts if present.
+      setIdentity(
+        readLocalStorage<IdentityState>(IDENTITY_STORAGE_KEY, IDENTITY_EMPTY),
+      );
+      setBackstory(
+        readLocalStorage<BackstoryState>(BACKSTORY_STORAGE_KEY, BACKSTORY_EMPTY),
+      );
+      setAttributes(
+        migrateAttributesState(
+          readLocalStorage<unknown>(ATTRIBUTES_STORAGE_KEY, ATTRIBUTES_EMPTY),
+        ),
+      );
+      setHydrated(true);
     }
-  }, [isOpen]);
+  }, [isOpen, editCharacterId]);
 
   // If seeding failed, surface the error via toast and close.
   useEffect(() => {
@@ -382,18 +395,7 @@ export function TabbedCharacterForm() {
       ),
     );
     setHydrated(true);
-  }, [editCharacterId]);
-
-  // Hydrate pendingSlots draft from localStorage on mount if present.
-  useEffect(() => {
-    if (!editCharacterId || seededOnce) return;
-    const key = pendingSlotsKey(editCharacterId);
-    const draft = readLocalStorage<PendingSlotsByTab | null>(key, null);
-    if (draft && typeof draft === "object" && Object.keys(draft).length > 0) {
-      applySeed(draft);
-      setSeededOnce(true);
-    }
-  }, [editCharacterId, seededOnce, applySeed]);
+  }, [editCharacterId, seededOnce, applySeed, hydrated, isOpen]);
 
   // Debounced persistence for each tab's state. Each setter triggers
   // a 500ms-debounced write to its own localStorage slot so a reload
