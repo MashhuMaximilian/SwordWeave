@@ -352,8 +352,7 @@ export function TabbedCharacterForm() {
     })();
   }, [pendingSlots]);
 
-  // Hydrate form data from localStorage on mount. We do this once and
-  // pass the snapshot to Create.
+  // Hydrate identity/backstory/attributes and set hydrated = true on mount.
   useEffect(() => {
     setIdentity(
       readLocalStorage<IdentityState>(IDENTITY_STORAGE_KEY, IDENTITY_EMPTY),
@@ -366,11 +365,19 @@ export function TabbedCharacterForm() {
         readLocalStorage<unknown>(ATTRIBUTES_STORAGE_KEY, ATTRIBUTES_EMPTY),
       ),
     );
-    // Phase 8.4 v26 (Mashu 2026-07-30): removed localStorage draft for
-    // pendingSlots. pendingSlots now always comes from DB seed, consistent
-    // with how identity/backstory/attributes are handled.
     setHydrated(true);
   }, [editCharacterId]);
+
+  // Hydrate pendingSlots draft from localStorage on mount if present.
+  useEffect(() => {
+    if (!editCharacterId || seededOnce) return;
+    const key = pendingSlotsKey(editCharacterId);
+    const draft = readLocalStorage<PendingSlotsByTab | null>(key, null);
+    if (draft && typeof draft === "object" && Object.keys(draft).length > 0) {
+      applySeed(draft);
+      setSeededOnce(true);
+    }
+  }, [editCharacterId, seededOnce, applySeed]);
 
   // Debounced persistence for each tab's state. Each setter triggers
   // a 500ms-debounced write to its own localStorage slot so a reload
