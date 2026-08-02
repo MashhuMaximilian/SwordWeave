@@ -303,13 +303,9 @@ export function TabbedCharacterForm() {
     const draft = readLocalStorage<PendingSlotsByTab | null>(draftKey, null);
     let mergedSlots = dbSeeds.pendingSlots;
     if (draft && typeof draft === "object" && Object.keys(draft).length > 0) {
-      // The draft represents the user's pending changes. Start from DB seeds,
-      // then apply the draft as the source of truth (it already contains
-      // both DB-sourced and user-added slots, with user removals excluded).
-      // We use applySeed's merge path by first applying the draft, then
-      // merging any DB slots that the user hasn't removed.
       mergedSlots = mergeDraftWithDbSeed(dbSeeds.pendingSlots, draft);
     }
+    console.log("[seed] editCharacterId:", editCharacterId, "draft exists:", !!draft, "draft keys:", draft ? Object.keys(draft).filter(k => draft[k as keyof typeof draft].length > 0) : [], "dbSeeds slots:", JSON.stringify(dbSeeds.pendingSlots), "merged:", JSON.stringify(mergedSlots));
     setIdentity(dbSeeds.identity as IdentityState);
     setBackstory(dbSeeds.backstory as BackstoryState);
     setAttributes(dbSeeds.attributes as AttributesState);
@@ -658,25 +654,38 @@ export function TabbedCharacterForm() {
       backstory: { ...backstory },
       attributes: { ...attributes },
     };
+    console.log("[snapshot] captured from DB seed", {
+      dbSlots: JSON.stringify(dbSeedSlotsRef.current),
+      currentSlots: JSON.stringify(pendingSlots),
+    });
   }
 
   const hasEdits = useMemo(() => {
     const snap = seededSnapshotRef.current;
-    if (!snap) return false;
+    if (!snap) {
+      console.log("[hasEdits] no snapshot → false");
+      return false;
+    }
     for (const tab of CHARACTER_TABS) {
       const cur = pendingSlots[tab] ?? [];
       const ref = snap.pendingSlots[tab] ?? [];
-      if (cur.length !== ref.length) return true;
+      if (cur.length !== ref.length) {
+        console.log("[hasEdits] slot count mismatch on", tab, "cur:", cur.length, "snap:", ref.length);
+        return true;
+      }
       // Compare items ignoring transient slotIds that might differ
       for (let i = 0; i < cur.length; i++) {
         const cCopy = { ...(cur[i] as any) };
         const rCopy = { ...(ref[i] as any) };
         delete cCopy.slotId;
         delete rCopy.slotId;
-        if (JSON.stringify(cCopy) !== JSON.stringify(rCopy)) return true;
+        if (JSON.stringify(cCopy) !== JSON.stringify(rCopy)) {
+          console.log("[hasEdits] slot mismatch on", tab, "at", i);
+          return true;
+        }
       }
     }
-    return (
+    const formChanged = (
       identity.name.trim() !== snap.identity.name.trim() ||
       identity.size !== snap.identity.size ||
       identity.portraitUrl.trim() !== snap.identity.portraitUrl.trim() ||
@@ -692,6 +701,11 @@ export function TabbedCharacterForm() {
       attributes.level !== snap.attributes.level ||
       attributes.buBudget !== snap.attributes.buBudget
     );
+    if (formChanged) {
+      console.log("[hasEdits] form state changed");
+    }
+    console.log("[hasEdits] final:", formChanged || false);
+    return formChanged;
   }, [pendingSlots, identity, backstory, attributes, seededOnce]);
 
   /**
