@@ -221,6 +221,7 @@ export function TabbedCharacterForm() {
     isSeedingEdit,
     clearPendingEdit,
     close,
+    isOpen,
   } = useCharacterModal();
   const { toasts, showToast, dismissToast } = useToasts();
   const router = useRouter();
@@ -303,11 +304,26 @@ export function TabbedCharacterForm() {
   // transition). Result: identity/backstory/attributes stayed
   // as Tessy3's data in Pumnu's modal because the seed effect
   // returned early on the `seededOnce === true` guard. Now we
-  // Reset seededOnce and seededSnapshotRef whenever editCharacterId CHANGES (any value).
+  // Reset seededOnce whenever editCharacterId changes OR whenever the
+  // modal closes (isOpen goes false while editCharacterId is still set).
+  // This fixes the close/reopen-same-character cycle: previously
+  // editCharacterId stayed the same on reopen, so seededOnce and the
+  // snapshot were never cleared, causing hasEdits to compare the
+  // freshly-fetched pendingSlots (which included the user's removals)
+  // against a stale snapshot that no longer matched — yielding "no changes".
   useEffect(() => {
     setSeededOnce(false);
     seededSnapshotRef.current = null;
   }, [editCharacterId]);
+
+  // Also reset when the modal closes: even if editCharacterId is stable,
+  // closing and reopening means a fresh seed cycle is required.
+  useEffect(() => {
+    if (!isOpen) {
+      setSeededOnce(false);
+      seededSnapshotRef.current = null;
+    }
+  }, [isOpen]);
 
   // If seeding failed, surface the error via toast and close.
   useEffect(() => {
