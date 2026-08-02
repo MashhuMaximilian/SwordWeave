@@ -52,12 +52,11 @@ export function useRemoveAnimation(
   const handleRemove = useCallback(() => {
     if (removing) return; // ignore double-clicks during animation
     setRemoving(true);
-    // Remove from pendingSlots IMMEDIATELY — the save handler
-    // needs to see the slot gone before it can persist a
-    // deletion. The CSS transition runs purely for visual
-    // feedback after this; the row's slot is already off the
-    // store's record.
-    onRemove();
+    // Delay the actual onRemove call by 200ms so the CSS transition
+    // (slide-off + fade) has time to play for visual feedback.
+    setTimeout(() => {
+      onRemove();
+    }, 200);
   }, [removing, onRemove]);
 
   return { removing, handleRemove };

@@ -552,7 +552,12 @@ export function TabbedCharacterForm() {
     backstory: BackstoryState;
     attributes: AttributesState;
   } | null>(null);
-  if (seededOnce && seededSnapshotRef.current === null) {
+
+  // Always keep seededSnapshotRef in sync when seededOnce becomes true,
+  // or clear it if seededOnce resets (e.g. character change).
+  if (!seededOnce) {
+    seededSnapshotRef.current = null;
+  } else if (seededSnapshotRef.current === null) {
     seededSnapshotRef.current = {
       pendingSlots: structuredClone(pendingSlots),
       identity: { ...identity },
