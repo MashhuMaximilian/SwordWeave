@@ -365,8 +365,11 @@ export function TabbedCharacterForm() {
         readLocalStorage<unknown>(ATTRIBUTES_STORAGE_KEY, ATTRIBUTES_EMPTY),
       ),
     );
+    // Phase 8.4 v26 (Mashu 2026-07-30): removed localStorage draft for
+    // pendingSlots. pendingSlots now always comes from DB seed, consistent
+    // with how identity/backstory/attributes are handled.
     setHydrated(true);
-  }, []);
+  }, [editCharacterId]);
 
   // Debounced persistence for each tab's state. Each setter triggers
   // a 500ms-debounced write to its own localStorage slot so a reload
