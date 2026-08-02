@@ -315,6 +315,7 @@ export function TabbedCharacterForm() {
     setAttributes(dbSeeds.attributes as AttributesState);
     applySeed(mergedSlots);
     setSeededOnce(true);
+    setHydrated(true);
     // Phase 8.2 batch 10: warm the heritage + capability bundle
     // caches so the footer BU summary reflects seeded characters
     // on first render, instead of waiting for the user to click
@@ -451,25 +452,6 @@ export function TabbedCharacterForm() {
     );
     setHydrated(true);
   }, [isOpen, editCharacterId]);
-
-  // Phase 8.4 v26 fix: the localStorage draft hydration for pendingSlots
-  // was firing BEFORE the DB seed effect (line 253), setting seededOnce=true
-  // and blocking the DB seed from ever running. This caused:
-  //   1. Edit mode to show stale localStorage draft instead of DB state
-  //   2. Identity/backstory/attributes tabs to be blank (seed effect early-returned)
-  //
-  // New approach: do NOT auto-apply localStorage drafts in edit mode.
-  // Instead, the DB seed effect runs first. If there's a localStorage draft
-  // with MORE slots than the DB (i.e. user added things while modal was
-  // closed via sidebar "Slot into character"), merge them on top of DB seed.
-  // If there's a draft with FEWER slots (user removed things), those removals
-  // are honored because the seed effect calls applySeed which calls
-  // setPendingSlots — and applySeed's merge logic preserves removals (it
-  // diffs by content key, not by array length).
-  //
-  // The localStorage draft is applied in submit (handleSubmit) by comparing
-  // against whatever the current pendingSlots are — no separate rehydration
-  // needed. The DB seed is the single source of truth on modal open.
 
   // Debounced persistence for each tab's state. Each setter triggers
   // a 500ms-debounced write to its own localStorage slot so a reload
