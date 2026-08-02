@@ -305,7 +305,6 @@ export function TabbedCharacterForm() {
     if (draft && typeof draft === "object" && Object.keys(draft).length > 0) {
       mergedSlots = mergeDraftWithDbSeed(dbSeeds.pendingSlots, draft);
     }
-    console.log("[seed] editCharacterId:", editCharacterId, "draft exists:", !!draft, "draft keys:", draft ? Object.keys(draft).filter(k => draft[k as keyof typeof draft].length > 0) : [], "dbSeeds slots:", JSON.stringify(dbSeeds.pendingSlots), "merged:", JSON.stringify(mergedSlots));
     setIdentity(dbSeeds.identity as IdentityState);
     setBackstory(dbSeeds.backstory as BackstoryState);
     setAttributes(dbSeeds.attributes as AttributesState);
@@ -361,9 +360,17 @@ export function TabbedCharacterForm() {
   // editCharacterId stayed the same on reopen, so seededOnce and the
   // snapshot were never cleared, causing hasEdits to compare the
   // freshly-fetched pendingSlots against a stale snapshot — yielding "no changes".
+  // Reset seededOnce + snapshot when editCharacterId CHANGES to a new value.
+  // We use a ref to skip the initial mount (the seed effect handles that).
+  const isFirstMountRef = useRef(true);
   useEffect(() => {
+    if (isFirstMountRef.current) {
+      isFirstMountRef.current = false;
+      return;
+    }
     setSeededOnce(false);
     seededSnapshotRef.current = null;
+    dbSeedSlotsRef.current = null;
   }, [editCharacterId]);
 
   // Also reset when the modal closes — even if editCharacterId is stable,
@@ -654,38 +661,25 @@ export function TabbedCharacterForm() {
       backstory: { ...backstory },
       attributes: { ...attributes },
     };
-    console.log("[snapshot] captured from DB seed", {
-      dbSlots: JSON.stringify(dbSeedSlotsRef.current),
-      currentSlots: JSON.stringify(pendingSlots),
-    });
   }
 
   const hasEdits = useMemo(() => {
     const snap = seededSnapshotRef.current;
-    if (!snap) {
-      console.log("[hasEdits] no snapshot → false");
-      return false;
-    }
+    if (!snap) return false;
     for (const tab of CHARACTER_TABS) {
       const cur = pendingSlots[tab] ?? [];
       const ref = snap.pendingSlots[tab] ?? [];
-      if (cur.length !== ref.length) {
-        console.log("[hasEdits] slot count mismatch on", tab, "cur:", cur.length, "snap:", ref.length);
-        return true;
-      }
+      if (cur.length !== ref.length) return true;
       // Compare items ignoring transient slotIds that might differ
       for (let i = 0; i < cur.length; i++) {
         const cCopy = { ...(cur[i] as any) };
         const rCopy = { ...(ref[i] as any) };
         delete cCopy.slotId;
         delete rCopy.slotId;
-        if (JSON.stringify(cCopy) !== JSON.stringify(rCopy)) {
-          console.log("[hasEdits] slot mismatch on", tab, "at", i);
-          return true;
-        }
+        if (JSON.stringify(cCopy) !== JSON.stringify(rCopy)) return true;
       }
     }
-    const formChanged = (
+    return (
       identity.name.trim() !== snap.identity.name.trim() ||
       identity.size !== snap.identity.size ||
       identity.portraitUrl.trim() !== snap.identity.portraitUrl.trim() ||
@@ -701,11 +695,6 @@ export function TabbedCharacterForm() {
       attributes.level !== snap.attributes.level ||
       attributes.buBudget !== snap.attributes.buBudget
     );
-    if (formChanged) {
-      console.log("[hasEdits] form state changed");
-    }
-    console.log("[hasEdits] final:", formChanged || false);
-    return formChanged;
   }, [pendingSlots, identity, backstory, attributes, seededOnce]);
 
   /**
