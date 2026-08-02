@@ -313,6 +313,10 @@ export function TabbedCharacterForm() {
     setIdentity(dbSeeds.identity as IdentityState);
     setBackstory(dbSeeds.backstory as BackstoryState);
     setAttributes(dbSeeds.attributes as AttributesState);
+    // Capture the DB-seed pendingSlots BEFORE applying the merged draft.
+    // This lets hasEdits compare the user's current (draft-merged) state
+    // against the original DB baseline — so removals/additions show as edits.
+    dbSeedSlotsRef.current = structuredClone(dbSeeds.pendingSlots);
     applySeed(mergedSlots);
     setSeededOnce(true);
     setHydrated(true);
@@ -627,20 +631,29 @@ export function TabbedCharacterForm() {
   // made to the character in the modal. Compare pendingSlots + form state
   // against the seeded snapshot right after seeding completes. This powers
   // the "no changes to save" UI state on the Save button.
-  const seededSnapshotRef = useRef<{
+  const seededSnapshotRef = useRef<null | {
     pendingSlots: PendingSlotsByTab;
     identity: IdentityState;
     backstory: BackstoryState;
     attributes: AttributesState;
-  } | null>(null);
+  }>(null);
+  // Track the DB-seed pendingSlots separately so the snapshot captures
+  // the original DB state (without user removals from localStorage draft).
+  // This ensures hasEdits correctly detects the user's uncommitted
+  // removals/additions even after a close/reopen cycle.
+  const dbSeedSlotsRef = useRef<PendingSlotsByTab | null>(null);
 
   // Always keep seededSnapshotRef in sync when seededOnce becomes true,
   // or clear it if seededOnce resets (e.g. character change).
+  // The snapshot uses DB-seed pendingSlots (from dbSeedSlotsRef) as the
+  // baseline, NOT the current pendingSlots (which may include user
+  // removals from a localStorage draft). This ensures hasEdits correctly
+  // shows "Save changes" when the user's current state differs from DB.
   if (!seededOnce) {
     seededSnapshotRef.current = null;
-  } else if (seededSnapshotRef.current === null) {
+  } else if (seededSnapshotRef.current === null && dbSeedSlotsRef.current) {
     seededSnapshotRef.current = {
-      pendingSlots: structuredClone(pendingSlots),
+      pendingSlots: structuredClone(dbSeedSlotsRef.current),
       identity: { ...identity },
       backstory: { ...backstory },
       attributes: { ...attributes },
