@@ -883,12 +883,10 @@ export function TabbedCharacterForm() {
         // Phase 8.2 batch 8: persist the BU we currently have slotted.
         // Phase 8.1 batch 13.6 follow-up Mashu 2026-07-22: "BU budget is
         // 0 not saved from character creation". We send positiveSpent
-        // Phase 8.4 v26.8: send netSpent (positiveSpent + mirrorCredit)
-        // as buSpent so the character sheet doesn't show the net spend
-        // as over-budget when mirror credit covers the overflow.
-        // E.g. 248 positive BU, 20 mirror credit → netSpent = 228
-        // → sheet shows 228/235 (not 248/235 over budget).
-        buSpent: buSummary.netSpent,
+        // Phase 8.4 v26.8: send positiveSpent (sum of non-mirror slot BU)
+        // as buSpent. The character sheet computes budget overflow + debt
+        // display using this value plus the mirrored primitives list.
+        buSpent: buSummary.positiveSpent,
         // Phase 8.2 batch 8: dmBonusBu is set on the character row
         // via /api/characters/[id]/dm-bonus (separate flow). The
         // modal doesn't edit it — sending 0 here would overwrite the

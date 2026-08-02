@@ -1001,8 +1001,15 @@ function BuBudgetFooter({
     acquiredAtLevel: number;
   }>;
 }) {
-  const budgetPercent = progressionPool > 0 ? Math.min(100, (progressionSpent / progressionPool) * 100) : 0;
   const budgetOverBy = overBudget ? progressionSpent - progressionPool : 0;
+  // Phase 8.4 v26.8: compute the actual debt used to cover budget overflow,
+  // capped at the total mirror credit available. This matches the modal
+  // footer's debtX = min(budgetOverflow, debtUsed) logic.
+  const debtUsed = Math.min(budgetOverBy, volatilityRating);
+  const budgetVisible = Math.max(0, progressionSpent - debtUsed);
+  // Cap the budget bar at 100% when over budget, since the overflow
+  // is covered by mirror debt.
+  const budgetPercent = progressionPool > 0 ? Math.min(100, (budgetVisible / progressionPool) * 100) : 0;
   // Phase 8.4 v25 (Mashu 2026-07-30): flipped budget bar colors.
   // Per Mashu: "The budget bar is orange if > than max allowed
   // technically, green if lower than max budget." Players should
@@ -1014,7 +1021,9 @@ function BuBudgetFooter({
     ? "bg-destructive"
     : "bg-green-500";
 
-  const debtPercent = volatilityCeiling > 0 ? Math.min(100, (volatilityRating / volatilityCeiling) * 100) : 0;
+  // Phase 8.4 v26.8: debt bar percentage uses actual debt used (capped
+  // at overflow) rather than total mirror credit.
+  const debtPercent = volatilityCeiling > 0 ? Math.min(100, (debtUsed / volatilityCeiling) * 100) : 0;
   // Phase 8.4 v25 (Mashu 2026-07-30): debt bar — green when at
   // limit (full), amber/yellow when under (per Mashu: "BU debt
   // is green when full, yellow (like mirror tag) when not").
@@ -1051,7 +1060,7 @@ function BuBudgetFooter({
               title="Show BU budget formula"
               aria-label="Show BU budget formula"
             >
-              {progressionSpent}
+              {overBudget ? budgetVisible : progressionSpent}
               <span className="text-muted-foreground"> / {progressionPool}</span>
               {overBudget && (
                 <span className="ml-1.5 text-destructive font-medium">
@@ -1103,7 +1112,7 @@ function BuBudgetFooter({
               title="Show volatility/debt formula"
               aria-label="Show volatility/debt formula"
             >
-              -{volatilityRating}
+              -{debtUsed}
               <span className="text-muted-foreground"> / -{volatilityCeiling}</span>
             </button>
           </div>
@@ -1122,7 +1131,7 @@ function BuBudgetFooter({
               Remaining
             </span>
             <span className="rounded-full bg-secondary px-3 py-1 text-sm font-medium">
-              -{volatilityRemaining} BU
+              -{volatilityCeiling - debtUsed} BU
             </span>
           </div>
         </div>
