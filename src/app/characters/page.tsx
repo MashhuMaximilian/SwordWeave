@@ -151,6 +151,15 @@ async function CharacterCard({
   const overBudget = sheet.buBalance.overBudget;
   const portrait = character.portraitUrl;
 
+  // Phase 8.4 v26.8: compute budget-visible and debt-used the same way
+  // the modal footer and detail sheet do — debt absorbs overflow up to
+  // total mirror credit, then remaining overflow pushes budget visible.
+  const budgetOverBy = sheet.buBalance.progressionSpent - sheet.buBalance.progressionPool;
+  const debtUsed = Math.min(Math.max(0, budgetOverBy), sheet.volatility.rating);
+  const budgetVisible = Math.max(0, sheet.buBalance.progressionSpent - debtUsed);
+  // Truly over budget only if debt doesn't cover ALL the overflow
+  const trulyOverBudget = sheet.buBalance.progressionSpent > sheet.buBalance.progressionPool + sheet.volatility.rating;
+
   return (
     <div className="group relative flex flex-col rounded-md border border-border bg-card p-5 transition-colors hover:border-primary">
       <div className="flex items-start gap-3">
@@ -187,24 +196,28 @@ async function CharacterCard({
             BU
           </span>
           <span
-            className={`font-mono font-bold ${
-              overBudget ? "text-destructive" : ""
-            }`}
+            className={`font-mono font-bold ${trulyOverBudget ? "text-destructive" : ""}`}
           >
-            {sheet.buBalance.progressionSpent}/{sheet.buBalance.progressionPool}
+            {budgetVisible}/{sheet.buBalance.progressionPool}
+            {overBudget && ` (+${budgetOverBy})`}
           </span>
+          {sheet.volatility.rating > 0 && (
+            <span className="font-mono text-muted-foreground">
+              {" "}· debt {debtUsed}/{sheet.volatility.ceiling}
+            </span>
+          )}
         </div>
         <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary">
           <div
-            className={`h-full rounded-full transition-all ${
-              overBudget
-                ? "bg-destructive"
-                : sheet.buBalance.progressionPercent > 90
-                  ? "bg-amber-500"
-                  : "bg-primary"
-            }`}
-            style={{
-              width: `${Math.min(100, sheet.buBalance.progressionPercent)}%`,
+          className={`h-full rounded-full transition-all ${
+            trulyOverBudget
+              ? "bg-destructive"
+              : budgetVisible >= sheet.buBalance.progressionPool
+                ? "bg-amber-500"
+                : "bg-primary"
+          }`}
+          style={{
+            width: `${Math.min(100, sheet.buBalance.progressionPool > 0 ? (budgetVisible / sheet.buBalance.progressionPool) * 100 : 0)}%`,
             }}
           />
         </div>
