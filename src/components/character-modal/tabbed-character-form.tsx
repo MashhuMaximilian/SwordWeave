@@ -573,8 +573,13 @@ export function TabbedCharacterForm() {
       const cur = pendingSlots[tab] ?? [];
       const ref = snap.pendingSlots[tab] ?? [];
       if (cur.length !== ref.length) return true;
+      // Compare items ignoring transient slotIds that might differ
       for (let i = 0; i < cur.length; i++) {
-        if (JSON.stringify(cur[i]) !== JSON.stringify(ref[i])) return true;
+        const cCopy = { ...(cur[i] as any) };
+        const rCopy = { ...(ref[i] as any) };
+        delete cCopy.slotId;
+        delete rCopy.slotId;
+        if (JSON.stringify(cCopy) !== JSON.stringify(rCopy)) return true;
       }
     }
     return (
