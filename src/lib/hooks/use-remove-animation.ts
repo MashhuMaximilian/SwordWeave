@@ -11,24 +11,15 @@
  *
  * Mechanism:
  *   1. The user clicks "Remove" on the row.
- *   2. We mark the row as `removing` — the row swaps to a
- *      fade+slide class (Tailwind transitions handle the visual).
- *   3. We call the underlying `onRemove` IMMEDIATELY so
- *      `pendingSlots` reflects the removal right away — if the
- *      user clicks Save before the CSS transition finishes,
- *      the save body is already correct. (Phase 8.4 v24.9
- *      originally deferred the removal until after the
- *      transition, but Mashu 2026-07-30 reported "remove does
- *      not persist" on edit-existing-character saves — the
- *      180ms setTimeout window was enough time for a fast click
- *      to slip through with the slot still in pendingSlots.
- *      Removing the delay fixed the persistence bug.)
- *   4. The CSS transition still plays for visual feedback —
- *      ~200ms of fade+slide — but the data layer is already
- *      updated by the time the row finishes animating.
- *
- * If the user closes the modal mid-animation, the row is
- * already on its way out — the unmount cleans up the state.
+ *   2. We mark the row as `removing` — the row swaps to a fade+slide
+ *      class (Tailwind transitions handle the visual).
+ *   3. We call the underlying `onRemove` IMMEDIATELY so pendingSlots
+ *      reflects the removal right away. This triggers the localStorage
+ *      persistence effect, ensuring removals survive a modal close.
+ *      (The original 200ms delay caused removals to be lost when the
+ *      user closed the modal before the timer fired.)
+ *   4. The CSS transition may not fully play (the row unmounts when
+ *      its slot leaves pendingSlots), but data integrity is guaranteed.
  *
  * Usage:
  *   const { handleRemove, removing } = useRemoveAnimation(onRemove);
