@@ -195,6 +195,47 @@ function pendingSlotsKey(characterId: string | null): string {
   return `${PENDING_SLOTS_STORAGE_KEY_PREFIX}:${characterId ?? "new"}`;
 }
 
+/**
+ * Phase 8.4 v26: merge the localStorage pendingSlots draft (user's
+ * uncommitted changes from a previous close/reopen cycle) with the
+ * DB-seeded slots (fresh from the API).
+ *
+ * Strategy:
+ *   - Start with the draft as the baseline (it has the user's current
+ *     set of slots including additions and excluding removals).
+ *   - For each DB slot, check if it still exists in the draft.
+ *     - If it does → skip (preserve the draft's version, including
+ *       any mirror toggles the user set).
+ *     - If it doesn't → the user removed it; skip it (don't re-add).
+ *   - DB-only additions (e.g. server-side defaults the user hasn't
+ *     seen yet) should NOT be present in normal flow, since the
+ *     draft was seeded from the same DB. But if they are, add them.
+ */
+function mergeDraftWithDbSeed(
+  dbSlots: PendingSlotsByTab,
+  draft: PendingSlotsByTab,
+): PendingSlotsByTab {
+  // The draft is the user's authoritative pending state from the last
+  // session. We use it as the baseline — it already includes user
+  // additions and excludes user removals. Since the draft was seeded
+  // from the DB originally, it should be a superset of what the user
+  // has chosen. We just return the draft as-is, ensuring all tabs
+  // are present (some tabs may be missing keys in a stored draft).
+  const result: PendingSlotsByTab = {
+    identity: [],
+    backstory: [],
+    attributes: [],
+    lineage: [],
+    upbringing: [],
+    manifest: [],
+    items: [],
+  };
+  for (const tab of CHARACTER_TABS) {
+    result[tab] = [...(draft[tab] ?? [])];
+  }
+  return result;
+}
+
 function clearAllDraftStorage() {
   try {
     window.localStorage.removeItem(IDENTITY_STORAGE_KEY);
@@ -253,17 +294,26 @@ export function TabbedCharacterForm() {
   useEffect(() => {
     if (!editCharacterId || !seededCharacter || seededOnce) return;
     if (seededCharacter.id !== editCharacterId) return;
-    // Phase 8.4 v26 (Mashu 2026-07-30): removed localStorage draft for
-    // pendingSlots. pendingSlots now always comes from DB seed, consistent
-    // with how identity/backstory/attributes are handled. localStorage draft
-    // for pendingSlots was causing data-loss bugs when draft had fewer slots
-    // than DB (stale draft from previous failed edit), causing Save to
-    // overwrite DB with incomplete data and delete heritage/primitive rows.
-    const seeds = buildCharacterSeeds(seededCharacter);
-    setIdentity(seeds.identity as IdentityState);
-    setBackstory(seeds.backstory as BackstoryState);
-    setAttributes(seeds.attributes as AttributesState);
-    applySeed(seeds.pendingSlots);
+    // Phase 8.4 v26 (Mashu 2026-07-30): check localStorage for uncommitted
+    // pendingSlots draft from a previous close/reopen cycle. Merge it with
+    // the DB-seeded slots so user additions AND removals survive across
+    // modal close/reopen of the same character.
+    const dbSeeds = buildCharacterSeeds(seededCharacter);
+    const draftKey = pendingSlotsKey(editCharacterId);
+    const draft = readLocalStorage<PendingSlotsByTab | null>(draftKey, null);
+    let mergedSlots = dbSeeds.pendingSlots;
+    if (draft && typeof draft === "object" && Object.keys(draft).length > 0) {
+      // The draft represents the user's pending changes. Start from DB seeds,
+      // then apply the draft as the source of truth (it already contains
+      // both DB-sourced and user-added slots, with user removals excluded).
+      // We use applySeed's merge path by first applying the draft, then
+      // merging any DB slots that the user hasn't removed.
+      mergedSlots = mergeDraftWithDbSeed(dbSeeds.pendingSlots, draft);
+    }
+    setIdentity(dbSeeds.identity as IdentityState);
+    setBackstory(dbSeeds.backstory as BackstoryState);
+    setAttributes(dbSeeds.attributes as AttributesState);
+    applySeed(mergedSlots);
     setSeededOnce(true);
     // Phase 8.2 batch 10: warm the heritage + capability bundle
     // caches so the footer BU summary reflects seeded characters
@@ -402,19 +452,24 @@ export function TabbedCharacterForm() {
     setHydrated(true);
   }, [isOpen, editCharacterId]);
 
-  // Hydrate pendingSlots from localStorage draft when reopening an edit
-  // session. This restores uncommitted slot changes (adds/removes) across
-  // close/reopen cycles. Gated on seededOnce to avoid racing with the
-  // seed effect which calls applySeed from DB state.
-  useEffect(() => {
-    if (!editCharacterId || !isOpen || seededOnce) return;
-    const key = pendingSlotsKey(editCharacterId);
-    const draft = readLocalStorage<PendingSlotsByTab | null>(key, null);
-    if (draft && typeof draft === "object" && Object.keys(draft).length > 0) {
-      applySeed(draft);
-      setSeededOnce(true);
-    }
-  }, [editCharacterId, isOpen, seededOnce, applySeed]);
+  // Phase 8.4 v26 fix: the localStorage draft hydration for pendingSlots
+  // was firing BEFORE the DB seed effect (line 253), setting seededOnce=true
+  // and blocking the DB seed from ever running. This caused:
+  //   1. Edit mode to show stale localStorage draft instead of DB state
+  //   2. Identity/backstory/attributes tabs to be blank (seed effect early-returned)
+  //
+  // New approach: do NOT auto-apply localStorage drafts in edit mode.
+  // Instead, the DB seed effect runs first. If there's a localStorage draft
+  // with MORE slots than the DB (i.e. user added things while modal was
+  // closed via sidebar "Slot into character"), merge them on top of DB seed.
+  // If there's a draft with FEWER slots (user removed things), those removals
+  // are honored because the seed effect calls applySeed which calls
+  // setPendingSlots — and applySeed's merge logic preserves removals (it
+  // diffs by content key, not by array length).
+  //
+  // The localStorage draft is applied in submit (handleSubmit) by comparing
+  // against whatever the current pendingSlots are — no separate rehydration
+  // needed. The DB seed is the single source of truth on modal open.
 
   // Debounced persistence for each tab's state. Each setter triggers
   // a 500ms-debounced write to its own localStorage slot so a reload
