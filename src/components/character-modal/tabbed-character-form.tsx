@@ -670,7 +670,9 @@ export function TabbedCharacterForm() {
 
   const hasEdits = useMemo(() => {
     const snap = seededSnapshotRef.current;
-    if (!snap) return false;
+    // In create mode, there is no snapshot — everything the user
+    // enters is a change. Enable the button whenever the form is valid.
+    if (!snap) return !editCharacterId; // true in create mode, false in edit before seed
     for (const tab of CHARACTER_TABS) {
       const cur = pendingSlots[tab] ?? [];
       const ref = snap.pendingSlots[tab] ?? [];
