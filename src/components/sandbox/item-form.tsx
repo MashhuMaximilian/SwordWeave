@@ -170,10 +170,6 @@ export function ItemForm({
   const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
 
-  const itemAugmentPrimitives = availablePrimitives.filter(
-    (p) => p.category === "ITEM_AUGMENT",
-  );
-
   const bootstrappedRef = useRef<string | null>(null);
   useEffect(() => {
     const id = initialItem?.id ?? null;
@@ -286,8 +282,17 @@ export function ItemForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [primitiveIds, capabilityIds, effectIds, initialItem?.id]);
 
+  // Phase 8.5 H-fix2 (Mashu 2026-08-03): previous lookup was against
+  // `itemAugmentPrimitives` (the filtered `availablePrimitives.filter(
+  // p => p.category === "ITEM_AUGMENT")` pool) — so any primitive
+  // slotted into the item whose category wasn't ITEM_AUGMENT
+  // would fail the .find() and the render path would show an empty
+  // list even though state held the ids (and Save would round-trip
+  // correctly). Look up against the FULL availablePrimitives pool
+  // so the slotted-section renders primitives regardless of which
+  // category they belong to.
   const slottedPrimitives = primitiveIds
-    .map((id) => itemAugmentPrimitives.find((p) => p.id === id))
+    .map((id) => availablePrimitives.find((p) => p.id === id))
     .filter((p): p is NonNullable<typeof p> => Boolean(p));
 
   useEffect(() => {
