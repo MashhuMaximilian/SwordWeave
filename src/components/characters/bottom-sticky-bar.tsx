@@ -319,12 +319,13 @@ export function BottomStickyBar({
           </div>
 
           <div className="flex items-center gap-6 font-mono text-xs">
-            <div className="flex flex-col items-center leading-none">
-              <span className="text-[9px] font-semibold uppercase text-muted-foreground">
-                PB
-              </span>
-              <span className="font-bold tabular-nums">{fmt(pb)}</span>
-            </div>
+            {/* Phase 8.5 H7 (Mashu 2026-08-03): PB removed
+                from the top collapsed strip now that it has
+                a proper card in the meta-stat row below.
+                The strip shows the two modifiers (DC and
+                ATK) the user wants quick access to when
+                collapsed; PB is always visible as a card
+                in the body. */}
             <div className="flex flex-col items-center leading-none">
               <span className="text-[9px] font-semibold uppercase text-muted-foreground">
                 DC
@@ -333,11 +334,6 @@ export function BottomStickyBar({
                 {primaryDc}
               </span>
             </div>
-            {/* ATK chip stays in the top collapsed strip AND is
-                also present as a 2-column card in the drawer body
-                below (alongside Save DC). Both are needed: the
-                strip gives a quick read when collapsed, the card
-                gives a clickable provenance target when expanded. */}
             <button
               type="button"
               onClick={openAtkModal}
@@ -421,9 +417,13 @@ export function BottomStickyBar({
               the bottom grid so the user sees it next to the mods). */}
           <div className="mt-2 mb-2">
             <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Mods + saves + PB
+              Mods + saves
             </p>
-            <div className="grid grid-cols-4 gap-1.5">
+            {/* Phase 8.5 H7 (Mashu 2026-08-03): PB removed from
+                  this row and moved into the meta-stat row
+                  below alongside ATK and Save DC. Grid is now
+                  grid-cols-3 for the three attributes. */}
+            <div className="grid grid-cols-3 gap-1.5">
               {(
                 [
                   { attr: "physical", label: "PHYS", mod: physMod, save: physSave },
@@ -467,45 +467,44 @@ export function BottomStickyBar({
                   </button>
                 );
               })}
-              {/* PB card — Phase 8.4 v25. Clickable for provenance.
-                  Phase 8.5 H7 (Mashu 2026-08-03): PB is now teal-
-                  accented as a whole (border + label + number +
-                  subtext) so it reads as a peer of Save DC and
-                  Attack Bonus — the three "special" meta-cells in
-                  this row. Previously only label + number glyphs
-                  were teal; the border stayed neutral which made
-                  PB look like a 4th attribute card. */}
-              <button
-                type="button"
-                onClick={() => setCombo("pb")}
-                className="flex flex-col items-center justify-center rounded border-2 border-teal-500/60 bg-teal-500/5 px-1 py-1.5 text-center transition-colors hover:bg-teal-500/10"
-                title="Show formula for Proficiency Bonus"
-                aria-label="Show proficiency bonus formula"
-              >
-                <span className="text-[8px] font-semibold uppercase text-teal-700 dark:text-teal-300">
-                  PB
-                </span>
-                <span className="mt-1 font-mono text-base font-bold tabular-nums leading-none text-teal-700 dark:text-teal-200">
-                  {fmt(pb)}
-                </span>
-                <span className="mt-1.5 text-[9px] text-teal-700/70 dark:text-teal-300/70">
-                  starts +2
-                </span>
-              </button>
             </div>
           </div>
 
-          {/* 3. Attack Bonus (left) + Save DC (right) — 2 cards side-by-side. */}
-          {/* Phase 8.5 H6: split into a 2-col grid. ATK defaults to Physical. */}
-          <div className="mb-2 grid grid-cols-2 gap-2">
+          {/* 3. PB (left) + Attack Bonus (mid) + Save DC (right)
+              — three teal-accented "meta-stat" cards on a
+              single row at all widths. Phase 8.5 H7 (Mashu
+              2026-08-03): PB joined ATK + Save DC here; it was
+              previously in the attribute row above. */}
+          <div className="mb-2 grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => setCombo("pb")}
+              className="block w-full rounded-md border-2 border-teal-500/60 bg-teal-500/5 px-2 py-2 text-left transition-colors hover:bg-teal-500/10"
+              title="Show formula for Proficiency Bonus"
+              aria-label="Show proficiency bonus formula"
+            >
+              <div className="flex items-center justify-between gap-1">
+                <div>
+                  <p className="text-[9px] font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-300">
+                    PB
+                  </p>
+                  <p className="text-[9px] text-teal-700/70 dark:text-teal-300/70">
+                    starts +2
+                  </p>
+                </div>
+                <span className="font-mono text-2xl font-bold tabular-nums leading-none text-teal-700 dark:text-teal-200">
+                  {fmt(pb)}
+                </span>
+              </div>
+            </button>
             <button
               type="button"
               onClick={openAtkModal}
-              className="block w-full rounded-md border border-border bg-card px-3 py-2 text-left transition-colors hover:bg-secondary/30"
+              className="block w-full rounded-md border border-border bg-card px-2 py-2 text-left transition-colors hover:bg-secondary/30"
               title="Show formula for Attack Bonus"
               aria-label="Show attack bonus formula"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-1">
                 <div>
                   <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
                     Attack Bonus
@@ -522,7 +521,7 @@ export function BottomStickyBar({
             <button
               type="button"
               onClick={openDcModal}
-              className="block w-full rounded-md border border-border bg-card px-3 py-2 text-left transition-colors hover:bg-secondary/30"
+              className="block w-full rounded-md border border-border bg-card px-2 py-2 text-left transition-colors hover:bg-secondary/30"
               title="Show provenance for Save DC"
               aria-label="Show save DC formula"
             >

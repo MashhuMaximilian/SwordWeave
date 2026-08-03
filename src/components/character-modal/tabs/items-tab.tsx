@@ -196,6 +196,26 @@ export function ItemsTab({ characterSeedItemLinks }: ItemsTabProps) {
     [itemSlots, queueSlot, removeSlot, setDirty],
   );
 
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03): per-slot
+  // quantity so travellers carrying 4 healing potions (or
+  // 100 bullets) get the right encumbrance Load. Previously
+  // the modal only sent `equipped` and the server defaulted
+  // quantity to 1 — meaning Load completely ignored stack
+  // counts. Clamped to >= 1 here, no upper cap (matches the
+  // item template's quantity policy).
+  const setQuantity = useCallback(
+    (index: number, next: number) => {
+      const slot = itemSlots[index];
+      if (!slot) return;
+      const clamped = Math.max(1, Math.floor(Number.isFinite(next) ? next : 1));
+      const nextSlot: PendingSlot = { ...slot, quantity: clamped };
+      removeSlot("items", index);
+      queueSlot(nextSlot);
+      setDirty(true);
+    },
+    [itemSlots, queueSlot, removeSlot, setDirty],
+  );
+
   const removeItem = useCallback(
     (index: number) => {
       removeSlot("items", index);
@@ -260,7 +280,12 @@ export function ItemsTab({ characterSeedItemLinks }: ItemsTabProps) {
               <ItemContainerCard
                 item={item}
                 equipped={slot.equipped === true}
+                // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+                // per-slot quantity falls back to 1 so older
+                // seeded slots (pre-H6) render a 1, not blank.
+                quantity={slot.quantity ?? 1}
                 onToggleEquipped={() => toggleEquipped(index)}
+                onSetQuantity={(q) => setQuantity(index, q)}
                 onRemove={() => removeItem(index)}
                 // Phase 8.5 / Session H6 (Mashu 2026-08-03):
                 // when the item is marked not equippable, hide
@@ -285,7 +310,9 @@ export function ItemsTab({ characterSeedItemLinks }: ItemsTabProps) {
 function ItemContainerCard({
   item,
   equipped,
+  quantity,
   onToggleEquipped,
+  onSetQuantity,
   onRemove,
   // Phase 8.5 / Session H6 (Mashu 2026-08-03): when true,
   // the item is carried but never equipped. Hide the
@@ -296,7 +323,12 @@ function ItemContainerCard({
 }: {
   item: ItemsTabProps["characterSeedItemLinks"][number]["item"];
   equipped: boolean;
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03): how many
+  // of this item the character holds. Editable inline
+  // via the new quantity input.
+  quantity: number;
   onToggleEquipped: () => void;
+  onSetQuantity: (q: number) => void;
   onRemove: () => void;
   isNotEquippable?: boolean;
 }) {
@@ -328,6 +360,28 @@ function ItemContainerCard({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {/* Phase 8.5 / Session H6 (Mashu 2026-08-03):
+              inline quantity input — how many of this item
+              the character holds. Quantities > 1 multiply
+              into the encumbrance Load (the engine already
+              sums over quantity on the read side; the modal
+              save path was hardcoding 1 here). No upper cap
+              to match the item template's policy. */}
+          <label className="flex items-center gap-1 text-[10px] font-semibold uppercase text-muted-foreground">
+            Qty
+            <input
+              type="number"
+              min={1}
+              value={quantity}
+              onChange={(e) => onSetQuantity(Number(e.target.value))}
+              onBlur={(e) => {
+                const raw = Number(e.target.value);
+                onSetQuantity(Math.max(1, Math.floor(Number.isFinite(raw) ? raw : 1)));
+              }}
+              className="h-7 w-14 rounded-md border border-input bg-background px-1.5 text-xs font-bold tabular-nums text-foreground outline-none ring-ring focus:ring-2"
+              title="How many of this item the character holds. Multiplies into the encumbrance Load."
+            />
+          </label>
           {/* Phase 8.5 / Session H6: hide the Equip toggle
               entirely for not-equippable items. */}
           {!isNotEquippable && (
