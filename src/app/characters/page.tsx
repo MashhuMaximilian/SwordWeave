@@ -148,17 +148,34 @@ async function CharacterCard({
 
   const attrSum =
     character.attrPhysical + character.attrMental + character.attrMagical;
-  const overBudget = sheet.buBalance.overBudget;
-  const portrait = character.portraitUrl;
 
-  // Phase 8.4 v26.8: compute budget-visible and debt-used the same way
-  // the modal footer and detail sheet do — debt absorbs overflow up to
-  // total mirror credit, then remaining overflow pushes budget visible.
+  // Phase 8.5 H-fix3 (Mashu 2026-08-03): the list page previously
+  // showed `budgetVisible / pool (+budgetOverBy)` whenever the
+  // raw `overBudget` flag was true, regardless of whether debt
+  // already absorbed the overflow. Per the modal's canonical
+  // formula in `tabbed-character-form.tsx`:
+  //   budgetOverflowRemainder = max(0, budgetVisible - budget)
+  //                              ↑ overflow STILL VISIBLE after
+  //                                debt absorption — this is
+  //                                what the `(+N)` indicator
+  //                                should track, NOT the raw
+  //                                `progressionSpent - pool`.
+  // For Tessy (spent=240, pool=235, debt=20):
+  //   budgetOverBy = 5, debtUsed = min(5, 20) = 5,
+  //   budgetVisible = 235, budgetOverflowRemainder = 0
+  //   → "235/235 debt 5/20"  (no `(+5)` — debt absorbed it).
+  // For spent=260, pool=235, debt=20:
+  //   budgetOverBy = 25, debtUsed = 20, budgetVisible = 240,
+  //   budgetOverflowRemainder = 5 → "235/235 (+5) debt 20/20".
   const budgetOverBy = sheet.buBalance.progressionSpent - sheet.buBalance.progressionPool;
   const debtUsed = Math.min(Math.max(0, budgetOverBy), sheet.volatility.rating);
   const budgetVisible = Math.max(0, sheet.buBalance.progressionSpent - debtUsed);
-  // Truly over budget only if debt doesn't cover ALL the overflow
-  const trulyOverBudget = sheet.buBalance.progressionSpent > sheet.buBalance.progressionPool + sheet.volatility.rating;
+  const budgetOverflowRemainder = Math.max(0, budgetVisible - sheet.buBalance.progressionPool);
+  // Destructive styling only when there's STILL visible overflow past
+  // the pool after debt absorption (matches the modal's `overBudget`
+  // semantic).
+  const trulyOverBudget = budgetOverflowRemainder > 0;
+  const portrait = character.portraitUrl;
 
   return (
     <div className="group relative flex flex-col rounded-md border border-border bg-card p-5 transition-colors hover:border-primary">
@@ -199,7 +216,7 @@ async function CharacterCard({
             className={`font-mono font-bold ${trulyOverBudget ? "text-destructive" : ""}`}
           >
             {budgetVisible}/{sheet.buBalance.progressionPool}
-            {overBudget && ` (+${budgetOverBy})`}
+            {budgetOverflowRemainder > 0 && ` (+${budgetOverflowRemainder})`}
           </span>
           {sheet.volatility.rating > 0 && (
             <span className="font-mono text-muted-foreground">
