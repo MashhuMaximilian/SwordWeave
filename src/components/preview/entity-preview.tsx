@@ -1149,22 +1149,32 @@ function ItemBody({
           <>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{totalBu} BU</span>
             <span className={`rounded-full px-2 py-0.5 font-medium ${rarityClass(row.rarity)}`}>{row.rarity}</span>
-            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">Slot {row.slotCost}</span>
+            {/* Phase 8.5 H4-rev: rename to "Equipped slots • N". */}
+            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
+              Equipped slots • {row.slotCost}
+            </span>
             {/* Phase 8.5 / Session H1: size drives encumbrance Load. */}
             {row.size ? (
               <span
                 className="rounded-full bg-secondary px-2 py-0.5 font-medium"
-                title={`Encumbrance: ${SIZE_LOAD[row.size as keyof typeof SIZE_LOAD] ?? 0} Load per item`}
+                title={
+                  row.size === "TINY"
+                    ? "Tiny items use the pouch system: 1000 tiny items = 1 Load."
+                    : `Encumbrance: ${SIZE_LOAD[row.size as keyof typeof SIZE_LOAD] ?? 0} Load per item`
+                }
               >
                 Size {row.size}
                 {row.size === "TINY"
-                  ? " (pouch)"
-                  : ` · ${SIZE_LOAD[row.size as keyof typeof SIZE_LOAD] ?? 0} Load`}
+                  ? " (pouch · 1000 = 1 Load)"
+                  : ` • ${SIZE_LOAD[row.size as keyof typeof SIZE_LOAD] ?? 0} Load`}
               </span>
             ) : null}
             {row.quantity && row.quantity > 1 ? (
-              <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-                ×{row.quantity}
+              <span
+                className="rounded-full bg-secondary px-2 py-0.5 font-medium"
+                title={`Quantity multiplies Load/Capacity per item (×${row.quantity})`}
+              >
+                Quantity ×{row.quantity}
               </span>
             ) : null}
             {row.isTwoHanded ? <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">Two-handed</span> : null}

@@ -132,22 +132,29 @@ export function ItemFormPreview({
             {form.rarity}
           </span>
           <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-            Slot cost {form.slotCost || 1}
+            Equipped slots • {form.slotCost || 1}
           </span>
           {form.size ? (
             <span
               className="rounded-full bg-secondary px-2 py-0.5 font-medium"
-              title={`Encumbrance: ${SIZE_LOAD[form.size as keyof typeof SIZE_LOAD] ?? 0} Load per item`}
+              title={
+                form.size === "TINY"
+                  ? "Tiny items use the pouch system: 1000 tiny items = 1 Load."
+                  : `Encumbrance: ${SIZE_LOAD[form.size as keyof typeof SIZE_LOAD] ?? 0} Load per item`
+              }
             >
               Size {form.size}
               {form.size === "TINY"
-                ? " (pouch)"
-                : ` · ${SIZE_LOAD[form.size as keyof typeof SIZE_LOAD] ?? 0} Load`}
+                ? " (pouch · 1000 = 1 Load)"
+                : ` • ${SIZE_LOAD[form.size as keyof typeof SIZE_LOAD] ?? 0} Load`}
             </span>
           ) : null}
           {Number(form.quantity) > 1 ? (
-            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-              ×{form.quantity}
+            <span
+              className="rounded-full bg-secondary px-2 py-0.5 font-medium"
+              title={`Quantity multiplies Load/Capacity per item (×${form.quantity})`}
+            >
+              Quantity ×{form.quantity}
             </span>
           ) : null}
           {form.isTwoHanded ? (
