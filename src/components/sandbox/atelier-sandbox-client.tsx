@@ -117,6 +117,10 @@ type PrimitiveRow = {
   iconKey: string | null;
   iconUrl: string | null;
   iconColor: string;
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03): carried but
+  // never equipped. Optional in this alias type because the
+  // form/state bootstrap defaults missing values to false.
+  isNotEquippable?: boolean;
 };
 
 type EffectRow = {
@@ -137,6 +141,10 @@ type EffectRow = {
   iconKey: string | null;
   iconUrl: string | null;
   iconColor: string;
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03): carried but
+  // never equipped. Optional in this alias type because the
+  // form/state bootstrap defaults missing values to false.
+  isNotEquippable?: boolean;
 };
 
 type CapabilityRow = {
@@ -169,6 +177,10 @@ type CapabilityRow = {
   iconKey: string | null;
   iconUrl: string | null;
   iconColor: string;
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03): carried but
+  // never equipped. Optional in this alias type because the
+  // form/state bootstrap defaults missing values to false.
+  isNotEquippable?: boolean;
 };
 
 type HeritageRow = {
@@ -196,6 +208,10 @@ type HeritageRow = {
   iconKey: string | null;
   iconUrl: string | null;
   iconColor: string;
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03): carried but
+  // never equipped. Optional in this alias type because the
+  // form/state bootstrap defaults missing values to false.
+  isNotEquippable?: boolean;
 };
 
 type ItemRow = {
@@ -238,6 +254,10 @@ type ItemRow = {
   iconKey: string | null;
   iconUrl: string | null;
   iconColor: string;
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03): carried but
+  // never equipped. Optional in this alias type because the
+  // form/state bootstrap defaults missing values to false.
+  isNotEquippable?: boolean;
 };
 
 type EditingState =
@@ -1376,6 +1396,11 @@ export function AtelierSandboxClient({
             isTwoHanded: boolean;
             isConsumable: boolean;
             actsAsFocus: boolean;
+            // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+            // carried-but-not-equippable. Optional on the
+            // snapshot shape because old persisted snapshots
+            // pre-date migration 0051.
+            isNotEquippable?: boolean;
             isPublic: boolean;
             sourceOrigin: string;
             tags: string;
@@ -1384,7 +1409,7 @@ export function AtelierSandboxClient({
             iconUrl: string | null;
             iconColor: string;
           }
-        | undefined;
+          | undefined;
       const snapPrimitiveIds = formSnapshot?.primitiveIds as string[] | undefined;
       const snapCapabilityIds = formSnapshot?.capabilityIds as string[] | undefined;
       const snapEffectIds = formSnapshot?.effectIds as string[] | undefined;
@@ -1415,7 +1440,18 @@ export function AtelierSandboxClient({
         iconColor: row.iconColor,
       } : null);
       const formWithDefaults = form
-        ? { ...form, iconSource: form.iconSource ?? null, iconKey: form.iconKey ?? null, iconUrl: form.iconUrl ?? null, iconColor: form.iconColor ?? "#ffffff" }
+        ? {
+            ...form,
+            iconSource: form.iconSource ?? null,
+            iconKey: form.iconKey ?? null,
+            iconUrl: form.iconUrl ?? null,
+            iconColor: form.iconColor ?? "#ffffff",
+            // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+            // defensively default carried-but-not-equippable
+            // when the form preview is constructed from an
+            // older snapshot that pre-dates the field.
+            isNotEquippable: form.isNotEquippable ?? false,
+          }
         : null;
       const snapMirroredIds = new Set<number>(formSnapshot?.mirroredPrimitiveIds ?? []);
       const primitiveSlots = snapPrimitiveIds

@@ -24,6 +24,11 @@ export type ItemFormState = {
   isTwoHanded: boolean;
   isConsumable: boolean;
   actsAsFocus: boolean;
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03): carried but
+  // never equipped. Character sheet ItemsTab hides the equip
+  // button when this is true; the engine omits the item from
+  // equip-slot accounting (Load still adds).
+  isNotEquippable: boolean;
   isPublic: boolean;
   sourceOrigin: string;
   tags: string;
