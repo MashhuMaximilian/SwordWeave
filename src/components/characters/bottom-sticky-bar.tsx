@@ -324,6 +324,22 @@ export function BottomStickyBar({
                 {primaryDc}
               </span>
             </div>
+            {/* Phase 8.5 H7 (revised): ATK chip in top collapsed strip,
+                mirroring PB/DC layout. Clickable for provenance. */}
+            <button
+              type="button"
+              onClick={openAtkModal}
+              className="flex flex-col items-center leading-none"
+              title="Show formula for Attack Bonus"
+              aria-label="Show attack bonus formula"
+            >
+              <span className="text-[9px] font-semibold uppercase text-muted-foreground">
+                ATK
+              </span>
+              <span className="font-bold tabular-nums text-teal-700 dark:text-teal-200">
+                {fmt(physicalAttackBonus)}
+              </span>
+            </button>
           </div>
         </div>
         {expanded ? (
@@ -395,7 +411,7 @@ export function BottomStickyBar({
             <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
               Mods + saves + PB
             </p>
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-4 gap-1.5">
               {(
                 [
                   { attr: "physical", label: "PHYS", mod: physMod, save: physSave },
@@ -459,26 +475,8 @@ export function BottomStickyBar({
                   starts +2
                 </span>
               </button>
-              {/* ATK chip — Phase 8.5 H7. Mirrors the PB chip exactly:
-                  same shape, same teal accent, same click-for-provenance
-                  behaviour. Shows the physicalAttackBonus value. */}
-              <button
-                type="button"
-                onClick={openAtkModal}
-                className="flex flex-col items-center justify-center rounded border-2 border-border bg-card px-1 py-1.5 text-center transition-colors hover:bg-secondary/30"
-                title="Show formula for Attack Bonus"
-                aria-label="Show attack bonus formula"
-              >
-                <span className="text-[8px] font-semibold uppercase text-teal-700 dark:text-teal-300">
-                  ATK
-                </span>
-                <span className="mt-1 font-mono text-base font-bold tabular-nums leading-none text-teal-700 dark:text-teal-200">
-                  {fmt(physicalAttackBonus)}
-                </span>
-                <span className="mt-1.5 text-[9px] text-muted-foreground">
-                  physical
-                </span>
-              </button>
+              {/* Phase 8.5 H7 (revised): ATK chip moved to the top collapsed
+                  strip next to DC. Removed from this row — see top of file. */}
             </div>
           </div>
 
