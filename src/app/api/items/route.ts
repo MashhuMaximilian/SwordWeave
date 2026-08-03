@@ -31,6 +31,17 @@ type ItemType = (typeof VALID_TYPES)[number];
 const VALID_RARITIES = ["COMMON", "RARE", "EPIC", "LEGENDARY"] as const;
 type ItemRarity = (typeof VALID_RARITIES)[number];
 
+// Phase 8.5 / Session H1 (Mashu 2026-08-03): item size for encumbrance.
+const VALID_SIZES = [
+  "TINY",
+  "SMALL",
+  "MEDIUM",
+  "LARGE",
+  "HUGE",
+  "GARGANTUAN",
+] as const;
+type ItemSize = (typeof VALID_SIZES)[number];
+
 function parseType(value: unknown): ItemType | null {
   if (typeof value !== "string") return null;
   const upper = value.toUpperCase();
@@ -45,6 +56,15 @@ function parseRarity(value: unknown): ItemRarity | null {
   const upper = value.toUpperCase();
   if ((VALID_RARITIES as readonly string[]).includes(upper)) {
     return upper as ItemRarity;
+  }
+  return null;
+}
+
+function parseSize(value: unknown): ItemSize | null {
+  if (typeof value !== "string") return null;
+  const upper = value.toUpperCase();
+  if ((VALID_SIZES as readonly string[]).includes(upper)) {
+    return upper as ItemSize;
   }
   return null;
 }
@@ -127,6 +147,8 @@ export async function POST(request: Request) {
     const name = String(values["name"] ?? "").trim();
     const itemType = parseType(values["itemType"]);
     const rarity = parseRarity(values["rarity"]) ?? "COMMON";
+    // Phase 8.5 H1: optional size; defaults to SMALL at the DB level.
+    const size = parseSize(values["size"]) ?? "SMALL";
     const buCost = parseIntInRange(values["buCost"], 0, 1000);
     const description = String(values["description"] ?? "").trim();
     const slotCost = parseIntInRange(values["slotCost"], 1, 100);
@@ -210,6 +232,7 @@ export async function POST(request: Request) {
           name,
           itemType,
           rarity,
+          size,
           buCost,
           description,
           slotCost,
@@ -297,6 +320,7 @@ export async function POST(request: Request) {
       name: result.name,
       itemType: result.itemType,
       rarity: result.rarity,
+      size: result.size,
       buCost: result.buCost,
       description: result.description,
       slotCost: result.slotCost,
@@ -315,6 +339,7 @@ export async function POST(request: Request) {
       name: result.name,
       itemType: result.itemType,
       rarity: result.rarity,
+      size: result.size,
       buCost: result.buCost,
       description: result.description,
       slotCost: result.slotCost,

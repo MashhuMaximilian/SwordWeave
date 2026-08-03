@@ -42,6 +42,16 @@ const VALID_TYPES = [
 ] as const;
 const VALID_RARITIES = ["COMMON", "RARE", "EPIC", "LEGENDARY"] as const;
 
+// Phase 8.5 / Session H1 (Mashu 2026-08-03): item size for encumbrance.
+const VALID_SIZES = [
+  "TINY",
+  "SMALL",
+  "MEDIUM",
+  "LARGE",
+  "HUGE",
+  "GARGANTUAN",
+] as const;
+
 function parseType(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const upper = value.toUpperCase();
@@ -53,6 +63,13 @@ function parseRarity(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const upper = value.toUpperCase();
   if ((VALID_RARITIES as readonly string[]).includes(upper)) return upper;
+  return null;
+}
+
+function parseSize(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const upper = value.toUpperCase();
+  if ((VALID_SIZES as readonly string[]).includes(upper)) return upper;
   return null;
 }
 
@@ -379,6 +396,20 @@ export async function PATCH(
       }
     }
 
+    // Phase 8.5 H1: optional size in PATCH — if supplied, must be one
+    // of the six valid sizes. Falls back to the existing row's size
+    // when omitted (no-op for the canonical payload).
+    let size: string | null = null;
+    if ("size" in values) {
+      size = parseSize(values["size"]);
+      if (!size) {
+        return NextResponse.json(
+          { error: `size must be one of: ${VALID_SIZES.join(", ")}.` },
+          { status: 400 },
+        );
+      }
+    }
+
     const buCost = "buCost" in values
       ? parseIntInRange(values["buCost"], 0, 1000)
       : 0;
@@ -446,6 +477,15 @@ export async function PATCH(
       return NextResponse.json({ error: "Item name is required." }, { status: 400 });
     }
 
+    // Phase 8.5 H1: fetch the existing row up front so we can use its
+    // size as the fallback when the PATCH omits size. Saves a duplicate
+    // query later (the dispatchEntitySave path fetches it again).
+    const existingRow = await db.query.items.findFirst({
+      where: eq(items.id, id),
+      columns: { size: true },
+    });
+    const existingSize = existingRow?.size ?? "SMALL";
+
     // -------------------------------------------------------------------
     // Canonical payload + content hash (server is the source of truth).
     // -------------------------------------------------------------------
@@ -453,6 +493,7 @@ export async function PATCH(
       name,
       itemType: itemType ?? "TRINKET",
       rarity: rarity ?? "COMMON",
+      size: size ?? existingSize,
       buCost,
       description,
       slotCost,
@@ -477,6 +518,7 @@ export async function PATCH(
       name,
       itemType: itemType ?? "TRINKET",
       rarity: rarity ?? "COMMON",
+      size: size ?? existingSize,
       buCost,
       description,
       slotCost,
@@ -541,6 +583,9 @@ export async function PATCH(
         name,
         ...(itemType !== null && { itemType }),
         ...(rarity !== null && { rarity }),
+        // Phase 8.5 H1: only push size when the PATCH actually supplied
+        // one — preserves existing size for partial updates.
+        ...(size !== null && { size }),
         buCost,
         description,
         slotCost,
@@ -707,6 +752,14 @@ export async function PATCH(
             | "RARE"
             | "EPIC"
             | "LEGENDARY",
+          // Phase 8.5 H1: carry size into the new fork row.
+          size: (size ?? existingSize) as
+            | "TINY"
+            | "SMALL"
+            | "MEDIUM"
+            | "LARGE"
+            | "HUGE"
+            | "GARGANTUAN",
           buCost,
           description,
           slotCost,

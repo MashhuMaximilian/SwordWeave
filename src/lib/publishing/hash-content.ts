@@ -425,6 +425,8 @@ export interface CanonicalItemPayload {
   name: string;
   itemType: string;
   rarity: string;
+  // Phase 8.5 / Session H1: size drives encumbrance Load.
+  size: string;
   buCost: number;
   description: string;
   slotCost: number;
@@ -454,6 +456,9 @@ export function buildCanonicalItemPayload(args: {
   name: string;
   itemType: string;
   rarity: string;
+  // Phase 8.5 H1: optional; defaults to SMALL. Hash must change when
+  // size changes (no-op detection still works).
+  size?: string;
   buCost: number;
   description: string;
   slotCost: number;
@@ -485,6 +490,7 @@ export function buildCanonicalItemPayload(args: {
     name: args.name.trim(),
     itemType: args.itemType,
     rarity: args.rarity,
+    size: args.size ?? "SMALL",
     buCost: Math.max(0, Math.floor(args.buCost)),
     description: args.description.trim(),
     slotCost: Math.max(0, Math.floor(args.slotCost)),
@@ -520,6 +526,8 @@ export async function computeItemContentHash(args: {
   name: string;
   itemType: string;
   rarity: string;
+  // Phase 8.5 H1: optional; defaults to SMALL inside buildCanonicalItemPayload.
+  size?: string;
   buCost: number;
   description: string;
   slotCost: number;

@@ -470,6 +470,15 @@ async function restoreItem(
     name: asString(payload["name"]),
     itemType: asString(payload["itemType"]) || "TRINKET",
     rarity: asString(payload["rarity"]) || "COMMON",
+    // Phase 8.5 H1: carry size through the restore path so reverting
+    // to a historical version puts the right size back.
+    size: (asString(payload["size"]) || "SMALL") as
+      | "TINY"
+      | "SMALL"
+      | "MEDIUM"
+      | "LARGE"
+      | "HUGE"
+      | "GARGANTUAN",
     buCost: asInt(payload["buCost"]),
     description: asString(payload["description"]),
     slotCost: Math.max(1, asInt(payload["slotCost"], 1)),
@@ -486,6 +495,7 @@ async function restoreItem(
     name: update["name"] as string,
     itemType: update["itemType"] as string,
     rarity: update["rarity"] as string,
+    size: update["size"] as string,
     buCost: update["buCost"] as number,
     description: update["description"] as string,
     slotCost: update["slotCost"] as number,

@@ -157,6 +157,8 @@ async function backfillItems() {
       name: r.name,
       itemType: r.itemType,
       rarity: r.rarity,
+      // Phase 8.5 H1: include size in backfilled hashes.
+      size: r.size,
       buCost: r.buCost,
       description: r.description ?? "",
       slotCost: r.slotCost,
@@ -178,6 +180,7 @@ async function backfillItems() {
       name: r.name,
       itemType: r.itemType,
       rarity: r.rarity,
+      size: r.size,
       buCost: r.buCost,
       description: r.description ?? "",
       slotCost: r.slotCost,

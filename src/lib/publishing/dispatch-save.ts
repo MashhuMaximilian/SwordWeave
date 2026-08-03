@@ -664,6 +664,9 @@ async function backfillSourceHash(
       name: source.name,
       itemType: source.itemType,
       rarity: source.rarity,
+      // Phase 8.5 H1: include size in the hash so backfilled content
+      // hashes match what the API computes going forward.
+      size: source.size,
       buCost: source.buCost,
       description: source.description,
       slotCost: source.slotCost,
