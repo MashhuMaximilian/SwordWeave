@@ -20,6 +20,7 @@ import { IconSlot } from "@/components/icons/icon-slot";
 import type { IconSource } from "@/components/icons/icon-display";
 import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
+import { SIZE_LOAD } from "@/lib/engine/encumbrance";
 
 type ItemRow = {
   id: string;
@@ -576,7 +577,7 @@ export function ItemForm({
         />
       </label>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-4">
         <label className="block text-sm font-medium">
           Type
           <select
@@ -635,7 +636,7 @@ export function ItemForm({
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-4">
         {/* Phase 8.5 / Session H1: size drives encumbrance Load. */}
         <label className="block text-sm font-medium">
           Size
@@ -651,6 +652,16 @@ export function ItemForm({
               </option>
             ))}
           </select>
+          {/* Phase 8.5 H4-rev2: pouch-system hint when TINY is selected. */}
+          {form.size === "TINY" ? (
+            <span className="mt-1 block text-[11px] text-muted-foreground">
+              1000 tiny items = 1 Load (pouch system).
+            </span>
+          ) : (
+            <span className="mt-1 block text-[11px] text-muted-foreground">
+              {SIZE_LOAD[form.size as keyof typeof SIZE_LOAD] ?? 0} Load per item.
+            </span>
+          )}
         </label>
         {/* Phase 8.5 H3-rev: slotCost renamed to "Equipped slots",
             user-editable, min 1 or 2 (when Two-handed). */}
@@ -663,8 +674,14 @@ export function ItemForm({
             className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
             value={form.slotCost}
             onChange={(e) => {
-              const raw = Number(e.target.value) || 0;
+              // Allow any digit / empty string while typing.
+              // Clamp on blur so the user can clear the field,
+              // type freely, and only get nudged on commit.
+              updateForm("slotCost", String(Number(e.target.value) || 0));
+            }}
+            onBlur={(e) => {
               const minSlot = form.isTwoHanded ? 2 : 1;
+              const raw = Number(e.target.value) || 0;
               updateForm("slotCost", String(Math.max(minSlot, raw)));
             }}
             title={
@@ -676,7 +693,7 @@ export function ItemForm({
         </label>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-4">
         <label className="block text-sm font-medium">
           Quantity
           <input

@@ -475,17 +475,38 @@ export function ItemComposer({
                     </option>
                   ))}
                 </select>
+                {/* Phase 8.5 H4-rev2: pouch-system hint when TINY is selected. */}
+                {form.size === "TINY" ? (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    1000 tiny items = 1 Load (pouch system).
+                  </p>
+                ) : (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {SIZE_LOAD[form.size as keyof typeof SIZE_LOAD] ?? 0} Load per item.
+                  </p>
+                )}
               </Field>
-              {/* Phase 8.5 H3-rev: slotCost field renamed to "Equipped slots"
-                  and made editable. When isTwoHanded is true, min is 2. */}
+              {/* Phase 8.5 H3-rev2: slotCost field is editable. We let
+                  the user clear the field and type freely; we clamp on
+                  blur to the min so partial input doesn't fight them.
+                  The two-handed checkbox handler still bumps the field
+                  up to ≥2 when the toggle is flipped on. */}
               <Field label="Equipped slots">
                 <input
                   type="number"
                   min={form.isTwoHanded ? 2 : 1}
                   value={form.slotCost}
-                  onChange={(e) => {
-                    const raw = Number(e.target.value) || 0;
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      // Allow any digit / empty string while typing.
+                      // Clamp happens on blur.
+                      slotCost: Number(e.target.value) || 0,
+                    }))
+                  }
+                  onBlur={(e) => {
                     const minSlot = form.isTwoHanded ? 2 : 1;
+                    const raw = Number(e.target.value) || 0;
                     setForm((f) => ({
                       ...f,
                       slotCost: Math.max(minSlot, raw),
