@@ -228,8 +228,22 @@ export function ItemForm({
       return;
     }
     setPrimitiveIds(initialItem.primitiveLinks.map((l) => l.primitiveId));
-    setCapabilityIds([]);
-    setEffectIds([]);
+    // Phase 8.5 H-fix (Mashu 2026-08-03): previously the form
+    // hardcoded both arrays to `[]` after a load, which is why
+    // loading an existing item into the build modal showed zero
+    // capabilities and zero effects even though the row carried
+    // them. Now seed from `initialItem.capabilityLinks` /
+    // `initialItem.effectLinks` (the columns joined by the
+    // atelier `with:` tree). Saving via handleSubmit still POSTs
+    // the full arrays, so the bundle round-trips correctly.
+    setCapabilityIds(
+      (initialItem as { capabilityLinks?: Array<{ capabilityId: string }> })
+        .capabilityLinks?.map((cl) => cl.capabilityId) ?? [],
+    );
+    setEffectIds(
+      (initialItem as { effectLinks?: Array<{ effectId: string }> })
+        .effectLinks?.map((el) => el.effectId) ?? [],
+    );
     // Phase 7 Q-M-UX: restore mirrored flags from the DB column.
     setIsMirroredIds(
       new Set<number>(

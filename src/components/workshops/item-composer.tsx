@@ -109,6 +109,23 @@ export function ItemComposer({
     ? editingItem.primitiveLinks.map((l) => l.primitiveId)
     : [];
 
+  // Phase 8.5 H-fix (Mashu 2026-08-03): the loader used to seed
+  // `selectedPrimitiveIds` from the row's primitiveLinks but
+  // hardcoded capability/effect lists to `[]` — same bug as the
+  // atelier Item Form fixed at the same time. Loading an existing
+  // item into the workshop composer (or via /api/items/[id] PATCH
+  // re-seed) now also pulls in its capabilities and effects.
+  const initialCapabilityIds = editingItem
+    ? ((editingItem as unknown as {
+        capabilityLinks?: Array<{ capabilityId: string }>;
+      }).capabilityLinks?.map((cl) => cl.capabilityId) ?? [])
+    : [];
+  const initialEffectIds = editingItem
+    ? ((editingItem as unknown as {
+        effectLinks?: Array<{ effectId: string }>;
+      }).effectLinks?.map((el) => el.effectId) ?? [])
+    : [];
+
   const initialForm = editingItem
     ? {
         name: editingItem.name,
@@ -151,9 +168,11 @@ export function ItemComposer({
   const [selectedPrimitiveIds, setSelectedPrimitiveIds] =
     useState<number[]>(initialPrimitiveIds);
   const [selectedCapabilityIds, setSelectedCapabilityIds] = useState<string[]>(
-    [],
+    initialCapabilityIds,
   );
-  const [selectedEffectIds, setSelectedEffectIds] = useState<string[]>([]);
+  const [selectedEffectIds, setSelectedEffectIds] = useState<string[]>(
+    initialEffectIds,
+  );
   const [form, setForm] = useState(initialForm);
   const [query, setQuery] = useState("");
   const [isPending, startTransition] = useTransition();
