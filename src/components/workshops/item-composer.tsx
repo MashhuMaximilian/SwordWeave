@@ -501,7 +501,15 @@ export function ItemComposer({
                   stay on the same row at desktop widths (3-up)
                   and stack below each other on mobile (1-up
                   via the `sm:` breakpoint). */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {/* Phase 8.5 / Session H6 (Mashu 2026-08-03):
+                  Mashu explicitly asked for the three flags
+                  (Size / Equipped slots / Not equippable) to
+                  share a single row at ALL widths — desktop
+                  AND mobile — so this uses grid-cols-3
+                  unconditionally. On very narrow phones the
+                  columns get tight; that's intentional (per
+                  Mashu's "same row even on mobile"). */}
+              <div className="grid grid-cols-3 gap-3">
                 <Field label="Size">
                   <select
                     value={form.size}
@@ -534,34 +542,48 @@ export function ItemComposer({
                     The two-handed checkbox handler still bumps the field
                     up to ≥2 when the toggle is flipped on. */}
                 <Field label="Equipped slots">
-                  <input
-                    type="number"
-                    min={form.isTwoHanded ? 2 : 1}
-                    value={form.slotCost}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        // Allow any digit / empty string while typing.
-                        // Clamp happens on blur.
-                        slotCost: Number(e.target.value) || 0,
-                      }))
-                    }
-                    onBlur={(e) => {
-                      const minSlot = form.isTwoHanded ? 2 : 1;
-                      const raw = Number(e.target.value) || 0;
-                      setForm((f) => ({
-                        ...f,
-                        slotCost: Math.max(minSlot, raw),
-                      }));
-                    }}
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                    title={
-                      form.isTwoHanded
-                        ? "Two-handed items use a minimum of 2 slots."
-                        : "Equipped slots used by this item"
-                    }
-                  />
-                </Field>
+                                {/* Phase 8.5 / Session H6 (Mashu 2026-08-03):
+                                    not-equippable items can't occupy equip
+                                    slots — there's no "equipped" state to
+                                    model. Hide the input and show a small
+                                    "—" badge instead. */}
+                                {form.isNotEquippable ? (
+                                  <div
+                                    className="mt-2 inline-flex h-10 items-center rounded-md border border-dashed border-border bg-muted px-3 text-sm text-muted-foreground"
+                                    title="Not equippable items don't occupy equip slots."
+                                  >
+                                    —
+                                  </div>
+                                ) : (
+                                  <input
+                                    type="number"
+                                    min={form.isTwoHanded ? 2 : 1}
+                                    value={form.slotCost}
+                                    onChange={(e) =>
+                                      setForm((f) => ({
+                                        ...f,
+                                        // Allow any digit / empty string while typing.
+                                        // Clamp happens on blur.
+                                        slotCost: Number(e.target.value) || 0,
+                                      }))
+                                    }
+                                    onBlur={(e) => {
+                                      const minSlot = form.isTwoHanded ? 2 : 1;
+                                      const raw = Number(e.target.value) || 0;
+                                      setForm((f) => ({
+                                        ...f,
+                                        slotCost: Math.max(minSlot, raw),
+                                      }));
+                                    }}
+                                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                                    title={
+                                      form.isTwoHanded
+                                        ? "Two-handed items use a minimum of 2 slots."
+                                        : "Equipped slots used by this item"
+                                    }
+                                  />
+                                )}
+                              </Field>
                 <Field label="Not equippable">
                   <label className="mt-2 inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground">
                     <input
@@ -571,6 +593,19 @@ export function ItemComposer({
                         setForm((f) => ({
                           ...f,
                           isNotEquippable: e.target.checked,
+                          // Phase 8.5 / Session H6 (Mashu
+                          // 2026-08-03): when the item is
+                          // flagged "not equippable", its
+                          // equipped-slot footprint drops
+                          // to 0 — there's nothing to slot.
+                          // Force the value here so the
+                          // form, the API save, and the
+                          // engine all agree. Setting the
+                          // flag false doesn't auto-restore
+                          // the previous slotCost (the user
+                          // can pick a fresh value if they
+                          // un-flip it).
+                          slotCost: e.target.checked ? 0 : f.slotCost,
                         }))
                       }
                       className="size-4 accent-primary"
@@ -659,7 +694,7 @@ export function ItemComposer({
                 onChange={(e) =>
                   setForm((f) => ({ ...f, sourceOrigin: e.target.value }))
                 }
-                placeholder="e.g. system:phase8-item-seed or fork-of:<name>"
+                placeholder="core campaign"
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
               />
             </Field>

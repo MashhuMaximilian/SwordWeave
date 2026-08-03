@@ -674,7 +674,13 @@ export function ItemForm({
           on a single row at desktop (3-up) and stack on mobile
           (1-up via the `sm:` breakpoint). The third column is
           the new "Not equippable" boolean. */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {/* Phase 8.5 / Session H6 (Mashu 2026-08-03):
+          Three encumbrance / slot / equip flags share a single
+          row at ALL widths — desktop AND mobile — per Mashu's
+          explicit "same row even on mobile" requirement. This
+          uses grid-cols-3 unconditionally; on very narrow phones
+          the columns get tight, that's intentional. */}
+      <div className="grid grid-cols-3 gap-4">
         {/* Phase 8.5 / Session H1: size drives encumbrance Load. */}
         <label className="block text-sm font-medium">
           Size
@@ -702,41 +708,63 @@ export function ItemForm({
           )}
         </label>
         {/* Phase 8.5 H3-rev: slotCost renamed to "Equipped slots",
-            user-editable, min 1 or 2 (when Two-handed). */}
+            user-editable, min 1 or 2 (when Two-handed).
+            Phase 8.5 / Session H6: when "Not equippable" is
+            on, the field is hidden and a "—" badge shown. */}
         <label className="block text-sm font-medium">
           Equipped slots
-          <input
-            type="number"
-            min={form.isTwoHanded ? 2 : 1}
-            max={100}
-            className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-            value={form.slotCost}
-            onChange={(e) => {
-              // Allow any digit / empty string while typing.
-              // Clamp on blur so the user can clear the field,
-              // type freely, and only get nudged on commit.
-              updateForm("slotCost", String(Number(e.target.value) || 0));
-            }}
-            onBlur={(e) => {
-              const minSlot = form.isTwoHanded ? 2 : 1;
-              const raw = Number(e.target.value) || 0;
-              updateForm("slotCost", String(Math.max(minSlot, raw)));
-            }}
-            title={
-              form.isTwoHanded
-                ? "Two-handed items must use ≥ 2 equipped slots"
-                : "Equipped slots used by this item"
-            }
-          />
+          {form.isNotEquippable ? (
+            <div
+              className="mt-2 inline-flex h-10 items-center rounded-md border border-dashed border-input bg-muted px-3 text-sm text-muted-foreground"
+              title="Not equippable items don't occupy equip slots."
+            >
+              —
+            </div>
+          ) : (
+            <input
+              type="number"
+              min={form.isTwoHanded ? 2 : 1}
+              max={100}
+              className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+              value={form.slotCost}
+              onChange={(e) => {
+                // Allow any digit / empty string while typing.
+                // Clamp on blur so the user can clear the field,
+                // type freely, and only get nudged on commit.
+                updateForm("slotCost", String(Number(e.target.value) || 0));
+              }}
+              onBlur={(e) => {
+                const minSlot = form.isTwoHanded ? 2 : 1;
+                const raw = Number(e.target.value) || 0;
+                updateForm("slotCost", String(Math.max(minSlot, raw)));
+              }}
+              title={
+                form.isTwoHanded
+                  ? "Two-handed items must use ≥ 2 equipped slots"
+                  : "Equipped slots used by this item"
+              }
+            />
+          )}
         </label>
         <label className="block text-sm font-medium">
           Not equippable
+          {/* Phase 8.5 / Session H6: workshop composer forces
+                slotCost = 0 when the user flips this on; the
+                atelier form uses the same narrow handler so
+                both surfaces agree. The Equipped slots input
+                is hidden via the conditional above, but we
+                still clear the value so the saved payload is
+                consistent. */}
           <label className="mt-2 flex h-10 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-sm">
             <input
               type="checkbox"
               className="size-4 accent-primary"
               checked={form.isNotEquippable}
-              onChange={(e) => updateForm("isNotEquippable", e.target.checked)}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                updateForm("isNotEquippable", checked);
+                if (checked) updateForm("slotCost", "0");
+              }}
               title="If checked, the item is carried but never equipped (potions / scrolls / ammo pouches). The character-sheet ItemsTab hides the Equip button."
             />
             <span>{form.isNotEquippable ? "Yes" : "No"}</span>
@@ -811,7 +839,7 @@ export function ItemForm({
           className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
           value={form.sourceOrigin}
           onChange={(e) => updateForm("sourceOrigin", e.target.value)}
-          placeholder="system:phase8-item-seed or fork-of:<name>"
+          placeholder="core campaign"
         />
       </label>
       <div className="rounded-md border border-border bg-background p-3 text-sm font-medium">
