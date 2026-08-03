@@ -437,6 +437,14 @@ export interface CanonicalItemPayload {
   isPublic: boolean;
   tags: readonly string[];
   /**
+   * Phase 8.5 / Session H6 (Mashu 2026-08-03): carried-but-
+   * not-equippable flag. Affects slot accounting + the
+   * character sheet's equip-button visibility, so it must
+   * be part of the content hash. Optional for backward
+   * compat (defaults to false in the builder).
+   */
+  isNotEquippable?: boolean;
+  /**
    * Phase 7 Q-M-UX: primitiveIds is now derived from primitiveSlots
    * (kept for backwards compat). primitiveSlots is the source of truth
    * for the per-slot Mirrored flag.
@@ -467,6 +475,10 @@ export function buildCanonicalItemPayload(args: {
   isConsumable: boolean;
   actsAsFocus: boolean;
   isPublic: boolean;
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03): optional —
+  // defaults to false in the canonical payload so legacy
+  // callers that omit the field still hash identically.
+  isNotEquippable?: boolean;
   tags: readonly string[];
   primitiveIds: readonly number[];
   primitiveSlots?: readonly { primitiveId: number; isMirrored: boolean }[];
@@ -499,6 +511,7 @@ export function buildCanonicalItemPayload(args: {
     isConsumable: Boolean(args.isConsumable),
     actsAsFocus: Boolean(args.actsAsFocus),
     isPublic: Boolean(args.isPublic),
+    isNotEquippable: Boolean(args.isNotEquippable ?? false),
     tags: [...args.tags].map((t) => t.trim()).filter(Boolean).sort(),
     primitiveIds: sortedSlots.map((s) => s.primitiveId),
     primitiveSlots: sortedSlots,
@@ -536,6 +549,10 @@ export async function computeItemContentHash(args: {
   isConsumable: boolean;
   actsAsFocus: boolean;
   isPublic: boolean;
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03): optional —
+  // the builder defaults to false so older callers pass
+  // through unchanged.
+  isNotEquippable?: boolean;
   tags: readonly string[];
   primitiveIds: readonly number[];
   primitiveSlots?: readonly { primitiveId: number; isMirrored: boolean }[];

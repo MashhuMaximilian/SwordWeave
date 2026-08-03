@@ -164,6 +164,11 @@ export async function POST(request: Request) {
     const isTwoHanded = Boolean(values["isTwoHanded"]);
     const isConsumable = Boolean(values["isConsumable"]);
     const actsAsFocus = Boolean(values["actsAsFocus"]);
+    // Phase 8.5 / Session H6 (Mashu 2026-08-03): carried but
+    // not equipped. Optional input — defaults to false (most
+    // items ARE equippable). Consumables / scrolls / ammo
+    // pouches typically set this true.
+    const isNotEquippable = Boolean(values["isNotEquippable"]);
     const isPublic = Boolean(values["isPublic"]);
     const tags = parseTags(values["tags"]);
     const sourceOrigin = String(values["sourceOrigin"] ?? "").trim() || null;
@@ -262,6 +267,7 @@ export async function POST(request: Request) {
           isTwoHanded,
           isConsumable,
           actsAsFocus,
+          isNotEquippable,
           isPublic,
           userId,
           sourceOrigin: sourceOrigin ?? `manual:item`,
@@ -350,6 +356,7 @@ export async function POST(request: Request) {
       isTwoHanded: result.isTwoHanded,
       isConsumable: result.isConsumable,
       actsAsFocus: result.actsAsFocus,
+      isNotEquippable: result.isNotEquippable,
       isPublic: result.isPublic,
       tags: result.tags,
       primitiveIds: validSlots.map((s) => s.primitiveId),

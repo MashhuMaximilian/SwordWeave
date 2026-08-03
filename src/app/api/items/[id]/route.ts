@@ -434,6 +434,14 @@ export async function PATCH(
     const actsAsFocus = "actsAsFocus" in values
       ? Boolean(values["actsAsFocus"])
       : true;
+    // Phase 8.5 / Session H6 (Mashu 2026-08-03): carried-
+    // but-not-equippable flag. Optional input — `in` check
+    // means the field only updates when the form explicitly
+    // sends it (so we don't accidentally flip to false on
+    // legacy payloads).
+    const isNotEquippable = "isNotEquippable" in values
+      ? Boolean(values["isNotEquippable"])
+      : false;
     const isPublic = "isPublic" in values
       ? Boolean(values["isPublic"])
       : false;
@@ -501,6 +509,7 @@ export async function PATCH(
       isConsumable,
       actsAsFocus,
       isPublic,
+      isNotEquippable,
       tags,
       primitiveIds: primitiveSlots.map((s) => s.primitiveId),
       primitiveSlots,
@@ -526,6 +535,7 @@ export async function PATCH(
       isConsumable,
       actsAsFocus,
       isPublic,
+      isNotEquippable,
       tags,
       primitiveIds: primitiveSlots.map((s) => s.primitiveId),
       primitiveSlots,
@@ -592,6 +602,13 @@ export async function PATCH(
         isTwoHanded,
         isConsumable,
         actsAsFocus,
+        // Phase 8.5 / Session H6 (Mashu 2026-08-03): persist
+        // isNotEquippable whenever the form sends it (so the
+        // hash + the DB stay consistent). `in`-guarded earlier
+        // so legacy payloads still work — this only fires when
+        // the field is explicitly set, which keeps the
+        // prepare-phase UPDATE narrow.
+        ...("isNotEquippable" in values && { isNotEquippable }),
         isPublic,
         tags,
         sourceOrigin: sourceItem.sourceOrigin, // preserve
@@ -765,6 +782,11 @@ export async function PATCH(
           isTwoHanded,
           isConsumable,
           actsAsFocus,
+          // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+          // carry isNotEquippable into the fork row, but only
+          // when the user explicitly sent the field (same
+          // narrow-guard pattern as the UPDATE path above).
+          ...("isNotEquippable" in values && { isNotEquippable }),
           isPublic,
           userId,
           sourceOrigin: finalSourceOrigin,
