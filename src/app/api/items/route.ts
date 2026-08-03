@@ -17,7 +17,13 @@ import { recordVersion } from "@/lib/versions/auto-snapshot";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import { autoPublishOnCreate } from "@/lib/publishing/auto-publish";
 
-export const ITEM_PRIMITIVE_CATEGORY = "ITEM_AUGMENT";
+// Phase 8.5 H-fix5 (Mashu 2026-08-03): the previous
+// `ITEM_PRIMITIVE_CATEGORY = "ITEM_AUGMENT"` export was used to
+// gate the POST + PATCH primitive validation. We dropped that
+// gate (items now accept primitives of any category), so the
+// constant is no longer needed. Leaving the enum value itself
+// intact in the DB migration (0008) — there's still plenty of
+// legitimate item-augment content seeded via future primitives.
 
 const VALID_TYPES = [
   "WEAPON",
@@ -202,19 +208,35 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate primitives are item-augment
+    // Phase 8.5 H-fix5 (Mashu 2026-08-03): previously the API
+    // rejected any primitive whose category wasn't ITEM_AUGMENT
+    // (hardcoded via ITEM_PRIMITIVE_CATEGORY). That restriction
+    // was added back in Phase 4 alongside the 5-category split
+    // (heritage / background / character-sheet / practice /
+    // item augment) — but it was over-restrictive for items,
+    // because the engine applies category-specific math that
+    // works on items regardless of category, and the atelier
+    // picker (atelier-sandbox-client.tsx) shows the FULL
+    // primitive pool when picking primitives for items. So
+    // users could slot any primitive in the form but the
+    // server rejected it on save. Forking an item with mixed
+    // primitives produced this error and prevented re-save.
+    //
+    // Fix: drop the category gate. Keep the valid-id check so
+    // we still don't write garbage FK references. Items now
+    // accept primitives from any category — same as the
+    // capability form (which never had the gate).
     let validSlots: { primitiveId: number; isMirrored: boolean }[] = [];
     if (primitiveSlots.length > 0) {
       const ids = primitiveSlots.map((s) => s.primitiveId);
       const prims = await db
-        .select({ id: primitives.id, category: primitives.category, name: primitives.name })
+        .select({ id: primitives.id, name: primitives.name })
         .from(primitives)
         .where(inArray(primitives.id, ids));
-      const wrong = prims.filter((p) => p.category !== ITEM_PRIMITIVE_CATEGORY);
-      if (wrong.length > 0) {
+      if (prims.length === 0 && ids.length > 0) {
         return NextResponse.json(
           {
-            error: `Items can only use ${ITEM_PRIMITIVE_CATEGORY} primitives. Invalid: ${wrong.map((p) => p.name).join(", ")}`,
+            error: `No matching primitives found for ids: ${ids.join(", ")}`,
           },
           { status: 400 },
         );

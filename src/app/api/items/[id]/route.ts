@@ -13,7 +13,6 @@ import {
   effectPrimitives,
   effects,
 } from "@/db/schema";
-import { ITEM_PRIMITIVE_CATEGORY } from "../route";
 import {
   dispatchEntitySave,
   type SaveTargetType,
@@ -616,7 +615,10 @@ export async function PATCH(
             ),
           );
 
-        // Validate + replace primitive slots.
+        // Phase 8.5 H-fix5 (Mashu 2026-08-03): see POST route for rationale.
+        // The category gate (only ITEM_AUGMENT) is dropped here too —
+        // items now accept primitives from any category, matching the
+        // atelier picker's full-pool display.
         if (
           ("primitiveSlots" in values || "primitiveIds" in values) &&
           primitiveSlots.length > 0
@@ -625,17 +627,13 @@ export async function PATCH(
           const prims = await tx
             .select({
               id: primitives.id,
-              category: primitives.category,
               name: primitives.name,
             })
             .from(primitives)
             .where(inArray(primitives.id, ids));
-          const wrong = prims.filter(
-            (p) => p.category !== ITEM_PRIMITIVE_CATEGORY,
-          );
-          if (wrong.length > 0) {
+          if (prims.length === 0 && ids.length > 0) {
             throw new Error(
-              `Items can only use ${ITEM_PRIMITIVE_CATEGORY} primitives. Invalid: ${wrong.map((p) => p.name).join(", ")}`,
+              `No matching primitives found for ids: ${ids.join(", ")}`,
             );
           }
           const validIdSet = new Set(prims.map((p) => p.id));
@@ -779,23 +777,21 @@ export async function PATCH(
         throw new Error("Unable to create item.");
       }
 
-      // Validate + insert primitive slots.
+      // Phase 8.5 H-fix5 (Mashu 2026-08-03): see POST route for rationale.
+      // Drop the ITEM_AUGMENT category gate on the insert path
+      // (used by fork-on-save when no item exists yet).
       if (primitiveSlots.length > 0) {
         const ids = primitiveSlots.map((s) => s.primitiveId);
         const prims = await tx
           .select({
             id: primitives.id,
-            category: primitives.category,
             name: primitives.name,
           })
           .from(primitives)
           .where(inArray(primitives.id, ids));
-        const wrong = prims.filter(
-          (p) => p.category !== ITEM_PRIMITIVE_CATEGORY,
-        );
-        if (wrong.length > 0) {
+        if (prims.length === 0 && ids.length > 0) {
           throw new Error(
-            `Items can only use ${ITEM_PRIMITIVE_CATEGORY} primitives. Invalid: ${wrong.map((p) => p.name).join(", ")}`,
+            `No matching primitives found for ids: ${ids.join(", ")}`,
           );
         }
         const validIdSet = new Set(prims.map((p) => p.id));
