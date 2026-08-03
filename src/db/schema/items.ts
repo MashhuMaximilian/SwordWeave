@@ -42,6 +42,15 @@ export const items = pgTable(
     isTwoHanded: boolean("is_two_handed").notNull().default(false),
     isConsumable: boolean("is_consumable").notNull().default(false),
     actsAsFocus: boolean("acts_as_focus").notNull().default(true),
+    // Phase 8.5 / Session H6 (Mashu 2026-08-03): "carried but
+    // not equipped" flag. Used by characters to flag items
+    // like potions, scrolls, and ammunition pouches that live
+    // in the inventory but should not occupy an equip slot.
+    // The character-sheet ItemsTab hides the Equip button when
+    // this is true; the engine doesn't count these items
+    // toward equip slot usage (Load still adds — see
+    // computeLoad). Default false: most items ARE equippable.
+    isNotEquippable: boolean("is_not_equippable").notNull().default(false),
     isPublic: boolean("is_public").notNull().default(false),
     userId: text("user_id"),
     sourceOrigin: text("source_origin"),

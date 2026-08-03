@@ -337,6 +337,13 @@
       "when": 1786200000000,
       "tag": "0050_item_size",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1786300000000,
+      "tag": "0051_item_is_not_equippable",
+      "breakpoints": true
     }
   ]
 }
