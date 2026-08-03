@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
+import { SIZE_LOAD } from "@/lib/engine/encumbrance";
 
 /**
  * Item Composer
@@ -49,6 +50,8 @@ type ItemRow = {
   name: string;
   itemType: string;
   rarity: string;
+  // Phase 8.5 / Session H1: item size for encumbrance (Load + pouch).
+  size: string;
   buCost: number;
   description: string;
   slotCost: number;
@@ -73,6 +76,17 @@ const ITEM_TYPES = [
 
 const RARITIES = ["COMMON", "RARE", "EPIC", "LEGENDARY"] as const;
 
+// Phase 8.5 / Session H1: item size for encumbrance.
+// Drives Load via SIZE_LOAD. Tiny items use the pouch system.
+const SIZES = [
+  "TINY",
+  "SMALL",
+  "MEDIUM",
+  "LARGE",
+  "HUGE",
+  "GARGANTUAN",
+] as const;
+
 export function ItemComposer({
   primitives,
   capabilities,
@@ -95,9 +109,15 @@ export function ItemComposer({
         name: editingItem.name,
         itemType: editingItem.itemType,
         rarity: editingItem.rarity,
+        // Phase 8.5 H1: existing items default to SMALL if the field
+        // wasn't on the row when it was saved (legacy rows).
+        size: editingItem.size ?? "SMALL",
         buCost: editingItem.buCost,
         description: editingItem.description,
-        slotCost: editingItem.slotCost,
+        // Phase 8.5 H1: slotCost is derived from isTwoHanded (1 slot,
+        // or 2 if Two-handed). Size doesn't drive slots per session H.
+        // Read-only in the UI; recomputed on submit.
+        slotCost: editingItem.isTwoHanded ? 2 : 1,
         isTwoHanded: editingItem.isTwoHanded,
         isConsumable: editingItem.isConsumable,
         actsAsFocus: editingItem.actsAsFocus,
@@ -109,6 +129,7 @@ export function ItemComposer({
         name: "",
         itemType: "WEAPON",
         rarity: "COMMON",
+        size: "SMALL",
         buCost: 0,
         description: "",
         slotCost: 1,
@@ -175,6 +196,7 @@ export function ItemComposer({
       name: "",
       itemType: "WEAPON",
       rarity: "COMMON",
+      size: "SMALL",
       buCost: 0,
       description: "",
       slotCost: 1,
@@ -202,6 +224,10 @@ export function ItemComposer({
           : "/api/items";
         const method = isEditMode ? "PATCH" : "POST";
 
+        // Phase 8.5 H1: slotCost is derived, not user-entered.
+        // 1 slot normally, 2 if isTwoHanded.
+        const derivedSlotCost = form.isTwoHanded ? 2 : 1;
+
         const res = await fetch(url, {
           method,
           headers: { "Content-Type": "application/json" },
@@ -209,9 +235,10 @@ export function ItemComposer({
             name: form.name.trim(),
             itemType: form.itemType,
             rarity: form.rarity,
+            size: form.size,
             buCost: form.buCost,
             description: form.description.trim(),
-            slotCost: form.slotCost,
+            slotCost: derivedSlotCost,
             isTwoHanded: form.isTwoHanded,
             isConsumable: form.isConsumable,
             actsAsFocus: form.actsAsFocus,
@@ -353,7 +380,7 @@ export function ItemComposer({
                 required
               />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <Field label="Type">
                 <select
                   value={form.itemType}
@@ -384,21 +411,34 @@ export function ItemComposer({
                   ))}
                 </select>
               </Field>
+              {/* Phase 8.5 / Session H1: size drives encumbrance Load. */}
+              <Field label="Size">
+                <select
+                  value={form.size}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, size: e.target.value }))
+                  }
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  title="Drives encumbrance Load. Tiny items use the pouch system."
+                >
+                  {SIZES.map((s) => (
+                    <option key={s} value={s}>
+                      {s} ({s === "TINY" ? "pouch" : `${SIZE_LOAD[s] ?? 0} Load`})
+                    </option>
+                  ))}
+                </select>
+              </Field>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
+              {/* Phase 8.5 H1: slotCost is derived from isTwoHanded — read-only. */}
               <Field label="Slot Cost">
                 <input
                   type="number"
-                  min={1}
-                  max={100}
-                  value={form.slotCost}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      slotCost: Math.max(1, Number(e.target.value) || 1),
-                    }))
-                  }
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={form.isTwoHanded ? 2 : 1}
+                  readOnly
+                  disabled
+                  className="w-full cursor-not-allowed rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground"
+                  title="1 slot, or 2 if Two-handed is enabled below"
                 />
               </Field>
               <Field label="Manual BU">
