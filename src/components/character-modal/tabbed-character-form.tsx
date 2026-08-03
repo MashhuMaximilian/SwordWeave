@@ -757,7 +757,20 @@ export function TabbedCharacterForm() {
       // Phase 8.4 v21 (Mashu 2026-07-29): T2 — items now carry
       // an `equipped` flag so the modal can save it
       // atomically with the rest of the bundle.
-      const itemsForSave: Array<{ id: string; equipped: boolean }> = [];
+      const itemsForSave: Array<{
+        id: string;
+        equipped: boolean;
+        // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+        // the modal save previously omitted quantity on
+        // every slotted item — landed at quantity=1. The
+        // per-slot quantity is now carried by PendingSlot
+        // (see character-modal-store.tsx) and threaded
+        // through here so character_items.quantity is
+        // written correctly. The encumbrance Load math
+        // already multiplies by quantity on the engine
+        // side; this just makes the data flow.
+        quantity: number;
+      }> = [];
       const itemIds: string[] = [];
       const heritages: Array<{ id: string; isMirrored: boolean }> = [];
 
@@ -828,6 +841,16 @@ export function TabbedCharacterForm() {
             itemsForSave.push({
               id: slot.itemId,
               equipped: slot.equipped === true,
+              // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+              // quantity on the PendingSlot was added so the
+              // user can carry 4 of a stackable item and the
+              // encumbrance Load aggregates over the count.
+              // Falls back to 1 if the slot didn't carry one
+              // (e.g. older queued slots pre-H6).
+              quantity:
+                typeof slot.quantity === "number" && slot.quantity > 0
+                  ? slot.quantity
+                  : 1,
             });
             itemIds.push(slot.itemId);
           }
@@ -956,7 +979,15 @@ export function TabbedCharacterForm() {
           // matches the route's expectations.
           PERSONAL: itemsForSave.map((i) => ({
             id: i.id,
-            quantity: 1,
+            // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+            // propagate the per-slot quantity through the
+            // save payload so the server can write the
+            // correct count to character_items.quantity.
+            // Previously hardcoded to 1 — every slotted
+            // item landed at quantity=1 regardless of how
+            // many the user actually picked up, which made
+            // the encumbrance Load ignore qty entirely.
+            quantity: i.quantity ?? 1,
             equipped: i.equipped,
           })),
         };
@@ -1014,7 +1045,10 @@ export function TabbedCharacterForm() {
         > = {
           PERSONAL: itemsForSave.map((i) => ({
             id: i.id,
-            quantity: 1,
+            // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+            // see the matching comment at the edit-mode
+            // itemsBySourceEdit construction above.
+            quantity: i.quantity ?? 1,
             equipped: i.equipped,
           })),
         };

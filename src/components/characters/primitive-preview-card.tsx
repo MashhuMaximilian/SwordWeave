@@ -26,12 +26,14 @@
  */
 
 import { useCallback, useState } from "react";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, ExternalLink, History } from "lucide-react";
 import { flipOperation, isMirrorableOperation } from "@/lib/engine/mirror";
 import { OP_SPECS } from "@/types/modifier";
 import { useToasts } from "@/components/ui/toast";
 import { useEntityPreview } from "@/components/characters/preview-modal";
 import { ConditionBadges } from "@/components/library/condition-badges";
+import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
+import type { SlotSource } from "@/db/schema/characters";
 import {
   type SandboxPreviewItem,
   type SandboxPrimitiveRow,
@@ -69,6 +71,16 @@ export interface PrimitivePreviewCardProps {
       readonly narrativeRule: string;
       readonly hardModifiers: readonly unknown[];
     };
+    // Phase 8.5 / Session H6 (Mashu 2026-08-03): the
+    // provenance fields were already plumbed through
+    // character_primitives (version_id, slot_source,
+    // latest_version_id) but the preview card didn't
+    // surface them. Add them here so the same SlotSourceBadge
+    // + "View source / version history" buttons the item
+    // card has can render on primitives too.
+    readonly versionId?: string | null;
+    readonly slotSource?: SlotSource | null;
+    readonly latestVersionId?: string | null;
   };
 }
 
@@ -297,6 +309,56 @@ export function PrimitivePreviewCard({
         mirrorBuCredit={p.mirrorBuCredit}
         buCost={p.buCost}
       />
+      {/* Phase 8.5 / Session H6 (Mashu 2026-08-03): provenance
+          row on the primitive preview card — same surface
+          the item card has. SlotSourceBadge renders owned/
+          pinned/forked + version mismatch chip. View source
+          + View version history open the template page in a
+          new tab so the user can see the canonical detail.
+          Buttons disabled when the versionId is null
+          (legacy pre-provenance primitives). */}
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px]">
+        <SlotSourceBadge
+          slotSource={primitiveLink.slotSource ?? null}
+          versionId={primitiveLink.versionId ?? null}
+          latestVersionId={primitiveLink.latestVersionId ?? null}
+        />
+        <button
+          type="button"
+          onClick={() =>
+            window.open(
+              `/atelier/primitive/${p.id}`,
+              "_blank",
+              "noopener",
+            )
+          }
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary"
+          title="Open the primitive template page in a new tab"
+        >
+          <ExternalLink className="size-3" />
+          View source
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            window.open(
+              `/atelier/primitive/${p.id}?tab=versions`,
+              "_blank",
+              "noopener",
+            )
+          }
+          disabled={!primitiveLink.versionId}
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50"
+          title={
+            primitiveLink.versionId
+              ? "Open this primitive's version history in a new tab"
+              : "No version history yet"
+          }
+        >
+          <History className="size-3" />
+          View version history
+        </button>
+      </div>
     </div>
   );
 }

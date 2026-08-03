@@ -1916,6 +1916,14 @@ function CapabilitiesTab({
      */
     provenancePath: string | null;
     isMirrored: boolean;
+    // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+    // provenance fields surfaced to the primitive preview
+    // card so it can render the same SlotSourceBadge +
+    // View source / View version history buttons the
+    // item card has.
+    versionId?: string | null;
+    slotSource?: SlotSource | null;
+    latestVersionId?: string | null;
   };
   const allPrimitives: CombinedPrimitive[] = [];
   const seenPrimitiveIds = new Set<number>();
@@ -1928,6 +1936,16 @@ function CapabilitiesTab({
       origin: "DIRECT",
       provenancePath: null,
       isMirrored: l.isMirrored,
+      // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+      // surface the slot's provenance to the preview card.
+      // heritage / deep-closure paths below don't carry
+      // their own character-level provenance (the slot is
+      // effectively inherited, so the badge would say
+      // "inherited" anyway); those just leave the
+      // fields undefined.
+      versionId: l.versionId,
+      slotSource: l.slotSource,
+      latestVersionId: l.latestVersionId,
     });
   }
   for (const hl of heritageLinks) {
@@ -2050,6 +2068,16 @@ function CapabilitiesTab({
                             : "slotted",
                           acquiredAtLevel: 0,
                           isMirrored: p.isMirrored,
+                          // Phase 8.5 / Session H6 (Mashu
+                          // 2026-08-03): forward the
+                          // provenance fields through to the
+                          // preview card so it can render
+                          // SlotSourceBadge + View source /
+                          // View version history buttons
+                          // (matching the item card).
+                          versionId: p.versionId ?? null,
+                          slotSource: p.slotSource ?? null,
+                          latestVersionId: p.latestVersionId ?? null,
                           primitive: {
                             id: p.primitive.id,
                             name: p.primitive.name,

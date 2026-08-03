@@ -176,6 +176,16 @@ export type PendingSlot = {
        * time atomically with the rest of the bundle.
        */
       equipped?: boolean;
+      /**
+       * Phase 8.5 / Session H6 (Mashu 2026-08-03): how many
+       * of this item the character holds. The character_items
+       * table already has a `quantity` column, but the modal
+       * save previously didn't write it — items always landed
+       * as quantity=1. This field closes that loop so a
+       * traveller adding 4 healing potions actually carries
+       * 4 (and the encumbrance Load aggregates over qty).
+       */
+      quantity?: number;
     }
 );
 
