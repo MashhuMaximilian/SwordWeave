@@ -148,6 +148,12 @@ export default async function CharacterSheetPage({
         slotCost: l.item.slotCost,
         isTwoHanded: l.item.isTwoHanded,
         isConsumable: l.item.isConsumable,
+        // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+        // carried-but-not-equippable. Default false for
+        // legacy characters (rows created before migration
+        // 0051). The modal's ItemsTab uses this to hide
+        // the Equip button on potions / scrolls / ammo.
+        isNotEquippable: l.item.isNotEquippable ?? false,
       },
     })),
   });
@@ -296,6 +302,11 @@ export default async function CharacterSheetPage({
           slotCost: l.item.slotCost,
           isTwoHanded: l.item.isTwoHanded,
           isConsumable: l.item.isConsumable,
+          // Phase 8.5 / Session H6 (Mashu 2026-08-03): see
+          // the duplicate of this mapping at line 148 above
+          // for context on the carried-but-not-equippable
+          // flag. Defaults to false for legacy rows.
+          isNotEquippable: l.item.isNotEquippable ?? false,
           // Phase 8.5 H5: item size drives Load via SIZE_LOAD.
           // Defaults to SMALL for legacy items pre-0050.
           size: l.item.size ?? "SMALL",

@@ -82,6 +82,12 @@ interface ItemsTabProps {
       slotCost: number;
       isTwoHanded: boolean;
       isConsumable: boolean;
+      // Phase 8.5 / Session H6 (Mashu 2026-08-03): carried-
+      // but-not-equippable. Optional because legacy seed
+      // rows (pre-0051 migration) won't carry the field.
+      // The ItemsTab uses this to hide the Equip button
+      // for true — potions / scrolls / ammo pouches.
+      isNotEquippable?: boolean;
       capabilityLinks: Array<{
         capabilityId: string;
         capability: {
@@ -256,6 +262,12 @@ export function ItemsTab({ characterSeedItemLinks }: ItemsTabProps) {
                 equipped={slot.equipped === true}
                 onToggleEquipped={() => toggleEquipped(index)}
                 onRemove={() => removeItem(index)}
+                // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+                // when the item is marked not equippable, hide
+                // the Equip/Unequip toggle. Potions, scrolls,
+                // and ammo pouches just sit in the inventory —
+                // they have no "equipped" state to express.
+                isNotEquippable={item.isNotEquippable === true}
               />
             </li>
           );
@@ -275,17 +287,24 @@ function ItemContainerCard({
   equipped,
   onToggleEquipped,
   onRemove,
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03): when true,
+  // the item is carried but never equipped. Hide the
+  // Equip/Unequip toggle and show a small "Not equippable"
+  // pill instead so the user understands why the button
+  // is absent.
+  isNotEquippable = false,
 }: {
   item: ItemsTabProps["characterSeedItemLinks"][number]["item"];
   equipped: boolean;
   onToggleEquipped: () => void;
   onRemove: () => void;
+  isNotEquippable?: boolean;
 }) {
   return (
     <div
       className={cn(
         "rounded-md border bg-card p-4 transition-colors",
-        equipped ? "border-primary/40" : "border-border",
+        !isNotEquippable && equipped ? "border-primary/40" : "border-border",
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -296,30 +315,42 @@ function ItemContainerCard({
             <span>· {item.rarity}</span>
             {item.isTwoHanded && <span>· Two-handed</span>}
             {item.isConsumable && <span>· Consumable</span>}
+            {/* Phase 8.5 / Session H6: surface the "carried
+                but never equipped" flag here so the user
+                sees why the Equip button is missing. */}
+            {isNotEquippable && (
+              <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-700 dark:text-amber-300">
+                Not equippable
+              </span>
+            )}
             <span>· {item.buCost} BU</span>
             <span>· Slot cost {item.slotCost}</span>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={onToggleEquipped}
-            aria-pressed={equipped}
-            className={cn(
-              "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition-colors",
-              equipped
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border bg-background hover:bg-secondary",
-            )}
-            title={equipped ? "Click to unequip" : "Click to equip"}
-          >
-            {equipped ? (
-              <Shield className="size-3" />
-            ) : (
-              <ShieldOff className="size-3" />
-            )}
-            {equipped ? "Equipped" : "Equip"}
-          </button>
+          {/* Phase 8.5 / Session H6: hide the Equip toggle
+              entirely for not-equippable items. */}
+          {!isNotEquippable && (
+            <button
+              type="button"
+              onClick={onToggleEquipped}
+              aria-pressed={equipped}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition-colors",
+                equipped
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-background hover:bg-secondary",
+              )}
+              title={equipped ? "Click to unequip" : "Click to equip"}
+            >
+              {equipped ? (
+                <Shield className="size-3" />
+              ) : (
+                <ShieldOff className="size-3" />
+              )}
+              {equipped ? "Equipped" : "Equip"}
+            </button>
+          )}
           <button
             type="button"
             onClick={onRemove}
