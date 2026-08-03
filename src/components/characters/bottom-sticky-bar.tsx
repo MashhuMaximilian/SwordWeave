@@ -79,6 +79,15 @@ export interface EncumbranceForSticky {
   readonly encumbered: boolean;
   readonly heavilyEncumbered: boolean;
   readonly overburdened: boolean;
+  // Phase 8.5 H-fix4 (Mashu 2026-08-03): equip-slot fields
+  // were previously omitted from this type, which forced
+  // <EquipSlotsPanel> to fall back to hardcoded `slotCount={6}`
+  // / `usedSlots={0}` in the bottom drawer. Now that the type
+  // carries them, the panel reads them off `encumbrance` and
+  // updates whenever the encumbrance prop re-renders (e.g.
+  // after an item equip toggle on the Items tab).
+  readonly equipSlotsUsed: number;
+  readonly equipSlotsAvailable: number;
 }
 
 export interface BottomStickyBarProps {
@@ -608,12 +617,20 @@ export function BottomStickyBar({
           {/* 5. Load + Equip slots (BOTTOM of drawer). */}
           {/* Phase 8.4 v25: 2-column layout — Load (left) and
               Equip slots (right). PB moved to the mod+saves row. */}
+          {/* Phase 8.5 H-fix4 (Mashu 2026-08-03): EquipSlotsPanel
+              was receiving hardcoded `slotCount={6} usedSlots={0}`,
+              which is why the drawer showed zero equipped slots
+              regardless of how many items the character had
+              equipped. Now reads from encumbrance.equipSlotsUsed /
+              encumbrance.equipSlotsAvailable, which the engine
+              already returns on sheet.encumbrance (the ItemsTab
+              worked because it pulls the same fields directly). */}
           <div className="mt-2 rounded-md border border-border bg-card overflow-hidden">
             <div className="grid grid-cols-2 divide-x divide-border">
               <LoadCell encumbrance={encumbrance} onClick={openEncumbranceModal} />
               <EquipSlotsPanel
-                slotCount={6}
-                usedSlots={0}
+                slotCount={encumbrance.equipSlotsAvailable}
+                usedSlots={encumbrance.equipSlotsUsed}
               />
             </div>
           </div>
@@ -792,6 +809,14 @@ function EquipSlotsPanel({
   // this is display-only — when items are equipped the slots
   // fill in. Session G only handles the visual; the equip
   // wiring itself is the sheet tab's responsibility.
+  //
+  // Phase 8.5 H-fix4 (Mashu 2026-08-03): caller was passing
+  // hardcoded `slotCount={6} usedSlots={0}` — now reads the
+  // real values off `encumbrance.equipSlotsUsed` /
+  // `encumbrance.equipSlotsAvailable` (see call site). The
+  // grid below clamps to 6 columns for visual density; extra
+  // slots beyond 6 still count in the `usedSlots / slotCount`
+  // number above the grid.
   const slots = Array.from({ length: slotCount }, (_, i) => i < usedSlots);
   return (
     <div className="bg-card p-3">

@@ -928,6 +928,16 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           // > 50%, heavily > 75%, overburdened > 100%.
           heavilyEncumbered: props.encumbrance.percentOfCapacity > 75,
           overburdened: props.encumbrance.percentOfCapacity > 100,
+          // Phase 8.5 H-fix4 (Mashu 2026-08-03): equip-slot
+          // fields forwarded here so the bottom-drawer
+          // <EquipSlotsPanel> renders the real values instead
+          // of the previous hardcoded `slotCount={6}
+          // usedSlots={0}`. The ItemsTab on the sheet worked
+          // correctly because it read these fields directly off
+          // CharacterSheetProps; the bottom drawer needed them
+          // bridged through the sticky-bar mapper.
+          equipSlotsUsed: props.encumbrance.equipSlotsUsed,
+          equipSlotsAvailable: props.encumbrance.equipSlotsAvailable,
         }}
         // Phase 8.4 v25: character size for the encumbrance
         // formula popup. Cast from the loose `string` type on
@@ -1005,12 +1015,28 @@ function BuBudgetFooter({
     acquiredAtLevel: number;
   }>;
 }) {
-  const budgetOverBy = overBudget ? progressionSpent - progressionPool : 0;
-  // Phase 8.4 v26.8: compute the actual debt used to cover budget overflow,
-  // capped at the total mirror credit available. This matches the modal
-  // footer's debtX = min(budgetOverflow, debtUsed) logic.
+  // Phase 8.5 H-fix3 (Mashu 2026-08-03): the sheet's BuBudgetFooter
+  // previously used `overBudget` as the condition for showing the
+  // `(+N)` overflow indicator, which meant the indicator fired
+  // whenever raw `progressionSpent > progressionPool`, even when
+  // debt had fully absorbed the overflow. Per the modal's
+  // canonical formula in `tabbed-character-form.tsx`, the right
+  // condition is the STILL-VISIBLE remainder after debt absorption:
+  //   budgetOverflowRemainder = max(0, budgetVisible - progressionPool)
+  // For Tessy (spent=240, pool=235, debt=20):
+  //   budgetOverBy=5, debtUsed=5, budgetVisible=235,
+  //   budgetOverflowRemainder=0 → "235/235" (no `(+5)`).
+  // For spent=260, pool=235, debt=20:
+  //   budgetOverBy=25, debtUsed=20, budgetVisible=240,
+  //   budgetOverflowRemainder=5 → "235/235 (+5)".
+  // Same logic was already correct on /characters/[id] modal but
+  // missing on the character-sheet footer and the /characters
+  // list page. Bringing all three surfaces in line.
+  const budgetOverBy = Math.max(0, progressionSpent - progressionPool);
   const debtUsed = Math.min(budgetOverBy, volatilityRating);
   const budgetVisible = Math.max(0, progressionSpent - debtUsed);
+  const budgetOverflowRemainder = Math.max(0, budgetVisible - progressionPool);
+  const overBudgetAfterDebt = budgetOverflowRemainder > 0;
   // Cap the budget bar at 100% when over budget, since the overflow
   // is covered by mirror debt.
   const budgetPercent = progressionPool > 0 ? Math.min(100, (budgetVisible / progressionPool) * 100) : 0;
@@ -1021,7 +1047,11 @@ function BuBudgetFooter({
   // spending every BU) — the budget is a SOFT cap you can
   // exceed with DM approval (mid-session, etc.).
   // Over-budget still stays destructive (red).
-  const budgetBarColor = overBudget
+  // Phase 8.5 H-fix3 (Mashu 2026-08-03): budget bar color uses
+  // `overBudgetAfterDebt` (destructive only when there's STILL
+  // visible overflow past the pool after debt absorption),
+  // matching the modal's `overBudget` semantic.
+  const budgetBarColor = overBudgetAfterDebt
     ? "bg-destructive"
     : "bg-green-500";
 
@@ -1057,18 +1087,23 @@ function BuBudgetFooter({
               type="button"
               onClick={() => setPopup("budget")}
               className={`rounded-full px-3 py-1 font-mono text-base font-bold transition-colors hover:ring-2 hover:ring-primary/40 ${
-                overBudget
+                overBudgetAfterDebt
                   ? "bg-destructive/10 text-destructive"
                   : "bg-primary/10 text-primary"
               }`}
               title="Show BU budget formula"
               aria-label="Show BU budget formula"
             >
-              {overBudget ? budgetVisible : progressionSpent}
+              {/* Phase 8.5 H-fix3 (Mashu 2026-08-03): show the
+                  budget number that's visible AFTER debt absorption,
+                  then append `(+N)` only when debt could NOT fully
+                  cover the overflow (matches the modal's formula).
+                  See the bu-carry-over.test.ts canonical example. */}
+              {budgetVisible}
               <span className="text-muted-foreground"> / {progressionPool}</span>
-              {overBudget && (
+              {budgetOverflowRemainder > 0 && (
                 <span className="ml-1.5 text-destructive font-medium">
-                  (+{budgetOverBy})
+                  (+{budgetOverflowRemainder})
                 </span>
               )}
             </button>
