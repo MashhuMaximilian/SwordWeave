@@ -183,6 +183,10 @@ type SheetItemLink = {
     slotCost: number;
     isTwoHanded: boolean;
     isConsumable: boolean;
+    // Phase 8.5 H5 (Mashu 2026-08-03): item size drives
+    // encumbrance Load via SIZE_LOAD. Optional in the type
+    // because the bottom drawer doesn't render it.
+    size?: string;
     // Phase 8.4 v22 (Mashu 2026-07-29): T2 — item's nested
     // bundle so the sheet ItemsTab can render primitives /
     // caps / effects per item (matching the modal's

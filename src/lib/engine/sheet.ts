@@ -36,6 +36,7 @@ import {
 import {
   EncumbranceBreakdown,
   computeEncumbrance,
+  SIZE_LOAD,
   type CharacterSize,
 } from "./encumbrance";
 import {
@@ -105,6 +106,13 @@ export type ItemLinkSnapshot = {
      * card via sumItemBu().
      */
     buCost: number;
+    /**
+     * Phase 8.5 H5 (Mashu 2026-08-03): item size drives
+     * encumbrance Load via SIZE_LOAD. Required for the
+     * encumbrance aggregator. Optional so legacy callers
+     * still compile; the engine defaults to SMALL.
+     */
+    size?: string;
   };
 };
 
@@ -279,21 +287,42 @@ export function aggregateCharacterSheet(
   ];
 
   // Encumbrance
-  const equippedItems = input.itemLinks.filter((l) => l.equipped);
-  const encumbranceItems = equippedItems.map((l) => ({
-    size: "MEDIUM" as CharacterSize, // items are MEDIUM by default
-    loadValue: l.item.slotCost, // approximate: slot cost ~= load
-    slotCount: l.item.isTwoHanded ? 2 : 1,
+//
+// Phase 8.5 H5-fix (Mashu 2026-08-03): encumbrance semantics.
+//
+// Per the canonical spec (message.txt):
+//   - Load (capacity consumed) = sum of (item.size load × quantity)
+//     for ALL items, equipped or not. Everything the character
+//     carries contributes to Load.
+//   - Equipped slots = number of slot-bearing items currently
+//     equipped, multiplied by the item's slotCost (2H = 2 slots).
+//   - Capacity = size base + (Physical mod × 5) + capacity bonuses.
+//
+// The previous code was filtering to equipped items only for Load
+// AND was using `slotCost` as a load proxy (which conflated equipped
+// slots with carry weight). Both are wrong.
+const ITEM_SIZE_DEFAULT: CharacterSize = "SMALL";
+const encumbranceItems = input.itemLinks.map((l) => {
+  const itemSize =
+    (l.item as { size?: CharacterSize }).size ?? ITEM_SIZE_DEFAULT;
+  return {
+    size: itemSize,
+    loadValue: SIZE_LOAD[itemSize],
+    slotCount: l.item.slotCost,
     capacityBonus: 0,
     ignoreLoadBonus: 0,
-    quantity: 1,
-    equipped: true,
-  }));
-  const encumbrance = computeEncumbrance(
-    (input.size as CharacterSize) ?? "MEDIUM",
-    input.attrPhysical,
-    encumbranceItems,
-  );
+    quantity: l.quantity ?? 1,
+    // `equipped` drives slot accounting only — Load ignores
+    // equipped state and counts every item.
+    equipped: l.equipped,
+  };
+});
+const equippedItems = input.itemLinks.filter((l) => l.equipped);
+const encumbrance = computeEncumbrance(
+  (input.size as CharacterSize) ?? "MEDIUM",
+  input.attrPhysical,
+  encumbranceItems,
+);
 
   // Volatility (mirror-vector) — per BU Market canon, each character has a
   // level-based ceiling on how much negative BU they can take. We compute the

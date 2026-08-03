@@ -296,6 +296,9 @@ export default async function CharacterSheetPage({
           slotCost: l.item.slotCost,
           isTwoHanded: l.item.isTwoHanded,
           isConsumable: l.item.isConsumable,
+          // Phase 8.5 H5: item size drives Load via SIZE_LOAD.
+          // Defaults to SMALL for legacy items pre-0050.
+          size: l.item.size ?? "SMALL",
           // Phase 8.4 v22 (Mashu 2026-07-29): T2 — pass the
           // nested bundle through so the sheet ItemsTab can
           // render primitives/caps/effects per item.
