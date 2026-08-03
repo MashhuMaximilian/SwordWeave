@@ -37,6 +37,11 @@ type ItemRow = {
   isTwoHanded: boolean;
   isConsumable: boolean;
   actsAsFocus: boolean;
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03): carried-but-
+  // not-equippable. Optional because callers may pass rows
+  // that pre-date the column; the form's bootstrap defaults
+  // missing values to false.
+  isNotEquippable?: boolean;
   isPublic: boolean;
   sourceOrigin: string | null;
   tags: string[];
@@ -92,6 +97,7 @@ const blankForm: ItemFormState = {
   isTwoHanded: false,
   isConsumable: false,
   actsAsFocus: true,
+  isNotEquippable: false,
   isPublic: false,
   sourceOrigin: "",
   tags: "",
@@ -194,6 +200,10 @@ export function ItemForm({
       isTwoHanded: initialItem.isTwoHanded,
       isConsumable: initialItem.isConsumable,
       actsAsFocus: initialItem.actsAsFocus,
+      // Phase 8.5 / Session H6 (Mashu 2026-08-03): default
+      // to false for legacy items that pre-date the
+      // is_not_equippable column.
+      isNotEquippable: initialItem.isNotEquippable ?? false,
       isPublic: initialItem.isPublic,
       sourceOrigin: initialItem.sourceOrigin ?? "",
       tags: (initialItem.tags ?? []).join(", "),
@@ -439,6 +449,10 @@ export function ItemForm({
       isTwoHanded: form.isTwoHanded,
       isConsumable: form.isConsumable,
       actsAsFocus: form.actsAsFocus,
+      // Phase 8.5 / Session H6 (Mashu 2026-08-03): send
+      // the carried-but-not-equippable flag in every save
+      // payload, including the legacy-form path.
+      isNotEquippable: form.isNotEquippable,
       isPublic: form.isPublic,
       sourceOrigin: form.sourceOrigin.trim() || null,
       tags: form.tags
@@ -655,7 +669,12 @@ export function ItemForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      {/* Phase 8.5 / Session H6 (Mashu 2026-08-03):
+          Three encumbrance / slot / equip flags stay grouped
+          on a single row at desktop (3-up) and stack on mobile
+          (1-up via the `sm:` breakpoint). The third column is
+          the new "Not equippable" boolean. */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {/* Phase 8.5 / Session H1: size drives encumbrance Load. */}
         <label className="block text-sm font-medium">
           Size
@@ -710,6 +729,23 @@ export function ItemForm({
             }
           />
         </label>
+        <label className="block text-sm font-medium">
+          Not equippable
+          <label className="mt-2 flex h-10 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-sm">
+            <input
+              type="checkbox"
+              className="size-4 accent-primary"
+              checked={form.isNotEquippable}
+              onChange={(e) => updateForm("isNotEquippable", e.target.checked)}
+              title="If checked, the item is carried but never equipped (potions / scrolls / ammo pouches). The character-sheet ItemsTab hides the Equip button."
+            />
+            <span>{form.isNotEquippable ? "Yes" : "No"}</span>
+          </label>
+          <span className="mt-1 block text-[11px] text-muted-foreground">
+            Carried but never equipped. Hides the Equip button on
+            the character sheet and skips equip-slot accounting.
+          </span>
+        </label>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -762,6 +798,20 @@ export function ItemForm({
           value={form.tags}
           onChange={(e) => updateForm("tags", e.target.value)}
           placeholder="fire, knight, focus"
+        />
+      </label>
+      {/* Phase 8.5 H7 (Mashu 2026-08-03): sourceOrigin was already
+          wired in state and submit on the atelier Item form
+          but never rendered in the UI, so users couldn't edit
+          it. Added as a free-text field matching the other
+          ateliers (primitives, capabilities, effects). */}
+      <label className="block text-sm font-medium">
+        Source origin
+        <input
+          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+          value={form.sourceOrigin}
+          onChange={(e) => updateForm("sourceOrigin", e.target.value)}
+          placeholder="system:phase8-item-seed or fork-of:<name>"
         />
       </label>
       <div className="rounded-md border border-border bg-background p-3 text-sm font-medium">

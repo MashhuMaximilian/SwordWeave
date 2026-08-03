@@ -63,6 +63,12 @@ type ItemRow = {
   isTwoHanded: boolean;
   isConsumable: boolean;
   actsAsFocus: boolean;
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03): carried-but-
+  // not-equippable flag. Optional in this alias type because
+  // the editor defaults it to false on the form (see the
+  // bootstrap below). The DB column has been backfilled to
+  // false for all legacy rows by migration 0051.
+  isNotEquippable?: boolean;
   isPublic: boolean;
   sourceOrigin: string | null;
   tags: string[];
@@ -144,6 +150,10 @@ export function ItemComposer({
         isTwoHanded: editingItem.isTwoHanded,
         isConsumable: editingItem.isConsumable,
         actsAsFocus: editingItem.actsAsFocus,
+        // Phase 8.5 / Session H6 (Mashu 2026-08-03): default
+        // to false for legacy items that pre-date the
+        // is_not_equippable column.
+        isNotEquippable: editingItem.isNotEquippable ?? false,
         isPublic: editingItem.isPublic,
         sourceOrigin: editingItem.sourceOrigin ?? "",
         tags: editingItem.tags.join(", "),
@@ -160,6 +170,7 @@ export function ItemComposer({
         isTwoHanded: false,
         isConsumable: false,
         actsAsFocus: true,
+        isNotEquippable: false,
         isPublic: false,
         sourceOrigin: "",
         tags: "",
@@ -230,6 +241,7 @@ export function ItemComposer({
       isTwoHanded: false,
       isConsumable: false,
       actsAsFocus: true,
+      isNotEquippable: false,
       isPublic: false,
       sourceOrigin: "",
       tags: "",
@@ -273,6 +285,11 @@ export function ItemComposer({
             isTwoHanded: form.isTwoHanded,
             isConsumable: form.isConsumable,
             actsAsFocus: form.actsAsFocus,
+            // Phase 8.5 / Session H6 (Mashu 2026-08-03): send
+            // carried-but-not-equippable to the API. The PATCH
+            // route uses an `in` check on this field, so even a
+            // false value persists (matches the create path).
+            isNotEquippable: form.isNotEquippable,
             isPublic: form.isPublic,
             sourceOrigin: form.sourceOrigin.trim() || null,
             tags: form.tags
@@ -478,67 +495,95 @@ export function ItemComposer({
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              {/* Phase 8.5 / Session H1: size drives encumbrance Load. */}
-              <Field label="Size">
-                <select
-                  value={form.size}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, size: e.target.value }))
-                  }
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                  title="Drives encumbrance Load. Tiny items use the pouch system."
-                >
-                  {SIZES.map((s) => (
-                    <option key={s} value={s}>
-                      {s} ({s === "TINY" ? "pouch" : `${SIZE_LOAD[s] ?? 0} Load`})
-                    </option>
-                  ))}
-                </select>
-                {/* Phase 8.5 H4-rev2: pouch-system hint when TINY is selected. */}
-                {form.size === "TINY" ? (
+              {/* Phase 8.5 / Session H6 (Mashu 2026-08-03):
+                  Added a third column for "Not equippable" so
+                  the three encumbrance / slot / equip flags
+                  stay on the same row at desktop widths (3-up)
+                  and stack below each other on mobile (1-up
+                  via the `sm:` breakpoint). */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <Field label="Size">
+                  <select
+                    value={form.size}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, size: e.target.value }))
+                    }
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                    title="Drives encumbrance Load. Tiny items use the pouch system."
+                  >
+                    {SIZES.map((s) => (
+                      <option key={s} value={s}>
+                        {s} ({s === "TINY" ? "pouch" : `${SIZE_LOAD[s] ?? 0} Load`})
+                      </option>
+                    ))}
+                  </select>
+                  {/* Phase 8.5 H4-rev2: pouch-system hint when TINY is selected. */}
+                  {form.size === "TINY" ? (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      1000 tiny items = 1 Load (pouch system).
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {SIZE_LOAD[form.size as keyof typeof SIZE_LOAD] ?? 0} Load per item.
+                    </p>
+                  )}
+                </Field>
+                {/* Phase 8.5 H3-rev2: slotCost field is editable. We let
+                    the user clear the field and type freely; we clamp on
+                    blur to the min so partial input doesn't fight them.
+                    The two-handed checkbox handler still bumps the field
+                    up to ≥2 when the toggle is flipped on. */}
+                <Field label="Equipped slots">
+                  <input
+                    type="number"
+                    min={form.isTwoHanded ? 2 : 1}
+                    value={form.slotCost}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        // Allow any digit / empty string while typing.
+                        // Clamp happens on blur.
+                        slotCost: Number(e.target.value) || 0,
+                      }))
+                    }
+                    onBlur={(e) => {
+                      const minSlot = form.isTwoHanded ? 2 : 1;
+                      const raw = Number(e.target.value) || 0;
+                      setForm((f) => ({
+                        ...f,
+                        slotCost: Math.max(minSlot, raw),
+                      }));
+                    }}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                    title={
+                      form.isTwoHanded
+                        ? "Two-handed items use a minimum of 2 slots."
+                        : "Equipped slots used by this item"
+                    }
+                  />
+                </Field>
+                <Field label="Not equippable">
+                  <label className="mt-2 inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={form.isNotEquippable}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          isNotEquippable: e.target.checked,
+                        }))
+                      }
+                      className="size-4 accent-primary"
+                      title="If checked, the item is carried but never equipped (potions / scrolls / ammo pouches). The character-sheet ItemsTab hides the Equip button."
+                    />
+                    <span>{form.isNotEquippable ? "Yes" : "No"}</span>
+                  </label>
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    1000 tiny items = 1 Load (pouch system).
+                    Carried but never equipped. Hides the Equip button on the
+                    character sheet and skips equip-slot accounting.
                   </p>
-                ) : (
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {SIZE_LOAD[form.size as keyof typeof SIZE_LOAD] ?? 0} Load per item.
-                  </p>
-                )}
-              </Field>
-              {/* Phase 8.5 H3-rev2: slotCost field is editable. We let
-                  the user clear the field and type freely; we clamp on
-                  blur to the min so partial input doesn't fight them.
-                  The two-handed checkbox handler still bumps the field
-                  up to ≥2 when the toggle is flipped on. */}
-              <Field label="Equipped slots">
-                <input
-                  type="number"
-                  min={form.isTwoHanded ? 2 : 1}
-                  value={form.slotCost}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      // Allow any digit / empty string while typing.
-                      // Clamp happens on blur.
-                      slotCost: Number(e.target.value) || 0,
-                    }))
-                  }
-                  onBlur={(e) => {
-                    const minSlot = form.isTwoHanded ? 2 : 1;
-                    const raw = Number(e.target.value) || 0;
-                    setForm((f) => ({
-                      ...f,
-                      slotCost: Math.max(minSlot, raw),
-                    }));
-                  }}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                  title={
-                    form.isTwoHanded
-                      ? "Two-handed items must use ≥ 2 equipped slots"
-                      : "Equipped slots used by this item"
-                  }
-                />
-              </Field>
+                </Field>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Quantity">
@@ -598,6 +643,23 @@ export function ItemComposer({
                   setForm((f) => ({ ...f, tags: e.target.value }))
                 }
                 placeholder="fire, knight, focus"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              />
+            </Field>
+            {/* Phase 8.5 H7 (Mashu 2026-08-03): source origin
+                was wired in state + submit on the workshop
+                composer but never rendered in the UI. Items
+                can't be filtered by source origin without it.
+                Added as a free-text field matching the other
+                workshops (primitives, capabilities, effects). */}
+            <Field label="Source origin">
+              <input
+                type="text"
+                value={form.sourceOrigin}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, sourceOrigin: e.target.value }))
+                }
+                placeholder="e.g. system:phase8-item-seed or fork-of:<name>"
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
               />
             </Field>
