@@ -576,7 +576,7 @@ export function ItemForm({
         />
       </label>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <label className="block text-sm font-medium">
           Type
           <select
@@ -605,6 +605,37 @@ export function ItemForm({
             ))}
           </select>
         </label>
+      </div>
+
+      {/* Phase 8.5 H3-rev: 3 booleans row right under Type/Rarity. */}
+      <div className="grid grid-cols-3 gap-3">
+        <Checkbox
+          label="Two-handed"
+          checked={form.isTwoHanded}
+          onChange={(v) => {
+            // Two-handed bumps slotCost to a minimum of 2.
+            const minSlot = v ? 2 : 1;
+            const nextSlotCost =
+              v && Number(form.slotCost) < minSlot
+                ? String(minSlot)
+                : form.slotCost;
+            updateForm("isTwoHanded", v);
+            updateForm("slotCost", nextSlotCost);
+          }}
+        />
+        <Checkbox
+          label="Consumable"
+          checked={form.isConsumable}
+          onChange={(v) => updateForm("isConsumable", v)}
+        />
+        <Checkbox
+          label="Acts as focus"
+          checked={form.actsAsFocus}
+          onChange={(v) => updateForm("actsAsFocus", v)}
+        />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
         {/* Phase 8.5 / Session H1: size drives encumbrance Load. */}
         <label className="block text-sm font-medium">
           Size
@@ -612,7 +643,7 @@ export function ItemForm({
             className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
             value={form.size}
             onChange={(e) => updateForm("size", e.target.value)}
-            title="Drives encumbrance Load. Tiny items use the pouch system."
+            title="Drives encumbrance Load. Tiny items use the pouch system (1000 tiny items = 1 Load)."
           >
             {SIZES.map((s) => (
               <option key={s} value={s}>
@@ -621,30 +652,31 @@ export function ItemForm({
             ))}
           </select>
         </label>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3">
+        {/* Phase 8.5 H3-rev: slotCost renamed to "Equipped slots",
+            user-editable, min 1 or 2 (when Two-handed). */}
         <label className="block text-sm font-medium">
-          Slot Cost
+          Equipped slots
           <input
             type="number"
-            min={1}
+            min={form.isTwoHanded ? 2 : 1}
             max={100}
             className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
             value={form.slotCost}
-            onChange={(e) => updateForm("slotCost", e.target.value)}
+            onChange={(e) => {
+              const raw = Number(e.target.value) || 0;
+              const minSlot = form.isTwoHanded ? 2 : 1;
+              updateForm("slotCost", String(Math.max(minSlot, raw)));
+            }}
+            title={
+              form.isTwoHanded
+                ? "Two-handed items must use ≥ 2 equipped slots"
+                : "Equipped slots used by this item"
+            }
           />
         </label>
-        <label className="block text-sm font-medium">
-          Manual BU
-          <input
-            type="number"
-            min={0}
-            className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-            value={form.buCost}
-            onChange={(e) => updateForm("buCost", e.target.value)}
-          />
-        </label>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
         <label className="block text-sm font-medium">
           Quantity
           <input
@@ -654,6 +686,17 @@ export function ItemForm({
             className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
             value={form.quantity}
             onChange={(e) => updateForm("quantity", e.target.value)}
+            title="Multiplies Load/Capacity per item. Does not affect equipped slots."
+          />
+        </label>
+        <label className="block text-sm font-medium">
+          BU cost
+          <input
+            type="number"
+            min={0}
+            className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+            value={form.buCost}
+            onChange={(e) => updateForm("buCost", e.target.value)}
           />
         </label>
       </div>
@@ -678,24 +721,6 @@ export function ItemForm({
           placeholder="fire, knight, focus"
         />
       </label>
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Checkbox
-          label="Two-handed"
-          checked={form.isTwoHanded}
-          onChange={(v) => updateForm("isTwoHanded", v)}
-        />
-        <Checkbox
-          label="Consumable"
-          checked={form.isConsumable}
-          onChange={(v) => updateForm("isConsumable", v)}
-        />
-        <Checkbox
-          label="Acts as focus"
-          checked={form.actsAsFocus}
-          onChange={(v) => updateForm("actsAsFocus", v)}
-        />
-      </div>
       <div className="rounded-md border border-border bg-background p-3 text-sm font-medium">
         <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
           Visibility

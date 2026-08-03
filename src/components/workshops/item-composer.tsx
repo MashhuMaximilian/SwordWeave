@@ -55,6 +55,11 @@ type ItemRow = {
   buCost: number;
   description: string;
   slotCost: number;
+  /**
+   * Phase 8.5 H3-rev: how many of this item a character holds.
+   * Multiplies Load/Capacity per item, doesn't affect equipped slots.
+   */
+  quantity?: number;
   isTwoHanded: boolean;
   isConsumable: boolean;
   actsAsFocus: boolean;
@@ -114,10 +119,11 @@ export function ItemComposer({
         size: editingItem.size ?? "SMALL",
         buCost: editingItem.buCost,
         description: editingItem.description,
-        // Phase 8.5 H1: slotCost is derived from isTwoHanded (1 slot,
-        // or 2 if Two-handed). Size doesn't drive slots per session H.
-        // Read-only in the UI; recomputed on submit.
-        slotCost: editingItem.isTwoHanded ? 2 : 1,
+        // Phase 8.5 H3-rev: slotCost is user-editable again. Existing
+        // rows preserve the saved slotCost (legacy 1-slot items keep 1).
+        // Two-handed default bump to ≥2 happens via the checkbox handler.
+        slotCost: editingItem.slotCost ?? (editingItem.isTwoHanded ? 2 : 1),
+        quantity: editingItem.quantity ?? 1,
         isTwoHanded: editingItem.isTwoHanded,
         isConsumable: editingItem.isConsumable,
         actsAsFocus: editingItem.actsAsFocus,
@@ -133,6 +139,7 @@ export function ItemComposer({
         buCost: 0,
         description: "",
         slotCost: 1,
+        quantity: 1,
         isTwoHanded: false,
         isConsumable: false,
         actsAsFocus: true,
@@ -200,6 +207,7 @@ export function ItemComposer({
       buCost: 0,
       description: "",
       slotCost: 1,
+      quantity: 1,
       isTwoHanded: false,
       isConsumable: false,
       actsAsFocus: true,
@@ -224,9 +232,11 @@ export function ItemComposer({
           : "/api/items";
         const method = isEditMode ? "PATCH" : "POST";
 
-        // Phase 8.5 H1: slotCost is derived, not user-entered.
-        // 1 slot normally, 2 if isTwoHanded.
-        const derivedSlotCost = form.isTwoHanded ? 2 : 1;
+        // Phase 8.5 H3-rev: slotCost is user-editable. The two-handed
+        // checkbox handler already enforces ≥2 when the toggle is on,
+        // so by the time we submit the value is already valid. Send
+        // it through verbatim.
+        const finalSlotCost = form.slotCost;
 
         const res = await fetch(url, {
           method,
@@ -238,7 +248,9 @@ export function ItemComposer({
             size: form.size,
             buCost: form.buCost,
             description: form.description.trim(),
-            slotCost: derivedSlotCost,
+            slotCost: finalSlotCost,
+            // Phase 8.5 H3-rev: send quantity through to the API.
+            quantity: form.quantity ?? 1,
             isTwoHanded: form.isTwoHanded,
             isConsumable: form.isConsumable,
             actsAsFocus: form.actsAsFocus,
@@ -380,7 +392,7 @@ export function ItemComposer({
                 required
               />
             </Field>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <Field label="Type">
                 <select
                   value={form.itemType}
@@ -411,6 +423,42 @@ export function ItemComposer({
                   ))}
                 </select>
               </Field>
+            </div>
+            {/* Phase 8.5 H3-rev: 3 booleans row under Type/Rarity. */}
+            <div className="grid grid-cols-3 gap-3 pt-1 text-sm">
+              <Checkbox
+                label="Two-handed"
+                checked={form.isTwoHanded}
+                onChange={(v) =>
+                  setForm((f) => {
+                    const nextIsTwoHanded = v;
+                    // Two-handed bumps slotCost to a minimum of 2 (and
+                    // raises from 1 to 2 if it was 1).
+                    const minSlot = nextIsTwoHanded ? 2 : 1;
+                    const nextSlotCost =
+                      nextIsTwoHanded && f.slotCost < minSlot
+                        ? minSlot
+                        : f.slotCost;
+                    return {
+                      ...f,
+                      isTwoHanded: nextIsTwoHanded,
+                      slotCost: nextSlotCost,
+                    };
+                  })
+                }
+              />
+              <Checkbox
+                label="Consumable"
+                checked={form.isConsumable}
+                onChange={(v) => setForm((f) => ({ ...f, isConsumable: v }))}
+              />
+              <Checkbox
+                label="Acts as focus"
+                checked={form.actsAsFocus}
+                onChange={(v) => setForm((f) => ({ ...f, actsAsFocus: v }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               {/* Phase 8.5 / Session H1: size drives encumbrance Load. */}
               <Field label="Size">
                 <select
@@ -428,20 +476,47 @@ export function ItemComposer({
                   ))}
                 </select>
               </Field>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              {/* Phase 8.5 H1: slotCost is derived from isTwoHanded — read-only. */}
-              <Field label="Slot Cost">
+              {/* Phase 8.5 H3-rev: slotCost field renamed to "Equipped slots"
+                  and made editable. When isTwoHanded is true, min is 2. */}
+              <Field label="Equipped slots">
                 <input
                   type="number"
-                  value={form.isTwoHanded ? 2 : 1}
-                  readOnly
-                  disabled
-                  className="w-full cursor-not-allowed rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground"
-                  title="1 slot, or 2 if Two-handed is enabled below"
+                  min={form.isTwoHanded ? 2 : 1}
+                  value={form.slotCost}
+                  onChange={(e) => {
+                    const raw = Number(e.target.value) || 0;
+                    const minSlot = form.isTwoHanded ? 2 : 1;
+                    setForm((f) => ({
+                      ...f,
+                      slotCost: Math.max(minSlot, raw),
+                    }));
+                  }}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  title={
+                    form.isTwoHanded
+                      ? "Two-handed items must use ≥ 2 equipped slots"
+                      : "Equipped slots used by this item"
+                  }
                 />
               </Field>
-              <Field label="Manual BU">
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Quantity">
+                <input
+                  type="number"
+                  min={1}
+                  value={form.quantity ?? 1}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      quantity: Math.max(1, Number(e.target.value) || 1),
+                    }))
+                  }
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  title="Multiplies Load/Capacity per item. Does not affect equipped slots."
+                />
+              </Field>
+              <Field label="BU cost">
                 <input
                   type="number"
                   min={0}
@@ -478,22 +553,8 @@ export function ItemComposer({
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
               />
             </Field>
-            <div className="grid grid-cols-2 gap-3 pt-2 text-sm">
-              <Checkbox
-                label="Two-handed"
-                checked={form.isTwoHanded}
-                onChange={(v) => setForm((f) => ({ ...f, isTwoHanded: v }))}
-              />
-              <Checkbox
-                label="Consumable"
-                checked={form.isConsumable}
-                onChange={(v) => setForm((f) => ({ ...f, isConsumable: v }))}
-              />
-              <Checkbox
-                label="Acts as focus"
-                checked={form.actsAsFocus}
-                onChange={(v) => setForm((f) => ({ ...f, actsAsFocus: v }))}
-              />
+            {/* Phase 8.5 H3-rev: Public stays as a single checkbox row. */}
+            <div className="grid grid-cols-2 gap-3 pt-1 text-sm">
               <Checkbox
                 label="Public"
                 checked={form.isPublic}
