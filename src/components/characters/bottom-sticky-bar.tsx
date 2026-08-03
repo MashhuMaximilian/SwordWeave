@@ -114,6 +114,7 @@ type ComboKind =
   | "mod+save"
   | "vitality"
   | "dc"
+  | "atk"
   | "practice"
   | "practice-detail"
   | "pb"
@@ -179,6 +180,16 @@ export function BottomStickyBar({
   const primarySaveDelta = resolver?.totals[`defense_dc.${primaryAttr}`] ?? 0;
   const primaryDc = 5 + pb + primaryMod + primarySaveDelta;
 
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03): Attack Bonus card
+  // mirrors the Save DC card. Default attribute is PHYSICAL (we
+  // don't track weapon/spell selection yet — that's a future phase).
+  // Formula: Attack Bonus = PB + Physical mod + primitive bonuses
+  // keyed by attack_bonus.physical in the resolver.
+  const physicalAttackBonus =
+    pb +
+    physMod +
+    (resolver?.totals["attack_bonus.physical"] ?? 0);
+
   const PRACTICE_ATTR_LABEL: Record<"PHYSICAL" | "MENTAL" | "MAGICAL", string> = {
     PHYSICAL: "Physical",
     MENTAL: "Mental",
@@ -207,6 +218,8 @@ export function BottomStickyBar({
   );
   const openVitalityModal = useCallback(() => setCombo("vitality"), []);
   const openDcModal = useCallback(() => setCombo("dc"), []);
+  // Phase 8.5 H6: Attack Bonus modal
+  const openAtkModal = useCallback(() => setCombo("atk"), []);
   const openPracticeModal = useCallback(
     (attr: "physical" | "mental" | "magical") => {
       setComboAttr(attr);
@@ -449,27 +462,52 @@ export function BottomStickyBar({
             </div>
           </div>
 
-          {/* 3. Save DC card — clickable for provenance. */}
-          <button
-            type="button"
-            onClick={openDcModal}
-            className="mb-2 block w-full rounded-md border border-border bg-card px-3 py-2 text-left transition-colors hover:bg-secondary/30"
-            title="Show provenance for Save DC"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Save DC
-                </p>
-                <p className="text-[9px] text-muted-foreground">
-                  from {primaryAttrLabel} (proficient)
-                </p>
+          {/* 3. Attack Bonus (left) + Save DC (right) — 2 cards side-by-side. */}
+          {/* Phase 8.5 H6: split into a 2-col grid. ATK defaults to Physical. */}
+          <div className="mb-2 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={openAtkModal}
+              className="block w-full rounded-md border border-border bg-card px-3 py-2 text-left transition-colors hover:bg-secondary/30"
+              title="Show formula for Attack Bonus"
+              aria-label="Show attack bonus formula"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Attack Bonus
+                  </p>
+                  <p className="text-[9px] text-muted-foreground">
+                    PHYSICAL
+                  </p>
+                </div>
+                <span className="font-mono text-2xl font-bold tabular-nums leading-none text-teal-700 dark:text-teal-200">
+                  {fmt(physicalAttackBonus)}
+                </span>
               </div>
-              <span className="font-mono text-2xl font-bold tabular-nums leading-none text-teal-700 dark:text-teal-200">
-                {primaryDc}
-              </span>
-            </div>
-          </button>
+            </button>
+            <button
+              type="button"
+              onClick={openDcModal}
+              className="block w-full rounded-md border border-border bg-card px-3 py-2 text-left transition-colors hover:bg-secondary/30"
+              title="Show provenance for Save DC"
+              aria-label="Show save DC formula"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Save DC
+                  </p>
+                  <p className="text-[9px] text-muted-foreground">
+                    from {primaryAttrLabel}
+                  </p>
+                </div>
+                <span className="font-mono text-2xl font-bold tabular-nums leading-none text-teal-700 dark:text-teal-200">
+                  {primaryDc}
+                </span>
+              </div>
+            </button>
+          </div>
 
           {/* 4. Practices — 3 columns, capitalized. Each
               column is clickable for practice provenance. */}
@@ -667,6 +705,44 @@ export function BottomStickyBar({
               { label: "Base PB", value: 2 },
               { label: `Level bonus (floor(${computeLevelFromPb(pb)} / 4))`, value: pb - 2 },
             ]}
+            onClose={() => setCombo(null)}
+          />
+        ) : combo === "atk" ? (
+          // Phase 8.5 H6: Attack Bonus popup. Mirrors the PB popup
+          // shape so future attribute/scope options can plug in
+          // without rewiring.
+          <FormulaModal
+            title="Attack Bonus"
+            subtitle="PHYSICAL — to-hit roll"
+            total={physicalAttackBonus}
+            formula="Attack Bonus = Proficiency Bonus + Physical modifier + attack_bonus.physical primitives"
+            breakdown={[
+              { label: "Proficiency Bonus", value: pb },
+              { label: `Physical modifier`, value: physMod },
+              {
+                label: "Primitive bonuses (attack_bonus.physical)",
+                value: resolver?.totals["attack_bonus.physical"] ?? 0,
+              },
+              { label: "= Attack Bonus", value: physicalAttackBonus },
+            ]}
+            info={{
+              title: "Scope: PHYSICAL only (v1)",
+              body: (
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-2">
+                    Today the attack bonus card defaults to the
+                    PHYSICAL attribute. Future phases will surface
+                    weapon/spell selection so the same card can drive
+                    MENTAL (ranged/cantrip) and MAGICAL (spell) attacks.
+                    The primitive total{" "}
+                    <span className="font-mono text-foreground">
+                      attack_bonus.physical
+                    </span>{" "}
+                    is read from the resolver when present.
+                  </p>
+                </div>
+              ),
+            }}
             onClose={() => setCombo(null)}
           />
         ) : combo === "encumbrance" ? (
