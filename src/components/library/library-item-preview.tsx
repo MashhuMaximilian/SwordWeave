@@ -165,9 +165,16 @@ export type SandboxItemRow = {
   name: string;
   itemType: string;
   rarity: string;
+  // Phase 8.5 / Session H1: item size for encumbrance.
+  size: string;
   buCost: number;
   description: string;
   slotCost: number;
+  /**
+   * How many of this item a character holds. Default 1; consumables and
+   * stackable types use higher values.
+   */
+  quantity?: number;
   isTwoHanded: boolean;
   isConsumable: boolean;
   actsAsFocus: boolean;

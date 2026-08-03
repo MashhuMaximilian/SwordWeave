@@ -27,6 +27,8 @@ type ItemRow = {
   name: string;
   itemType: string;
   rarity: string;
+  // Phase 8.5 / Session H1: item size for encumbrance.
+  size: string;
   buCost: number;
   description: string;
   slotCost: number;
@@ -67,10 +69,21 @@ const ITEM_TYPES = [
 
 const RARITIES = ["COMMON", "RARE", "EPIC", "LEGENDARY"] as const;
 
+// Phase 8.5 / Session H1: item size for encumbrance (Load + pouch).
+const SIZES = [
+  "TINY",
+  "SMALL",
+  "MEDIUM",
+  "LARGE",
+  "HUGE",
+  "GARGANTUAN",
+] as const;
+
 const blankForm: ItemFormState = {
   name: "",
   itemType: "WEAPON",
   rarity: "COMMON",
+  size: "SMALL",
   buCost: "0",
   description: "",
   slotCost: "1",
@@ -170,6 +183,9 @@ export function ItemForm({
       name: initialItem.name,
       itemType: initialItem.itemType,
       rarity: initialItem.rarity,
+      // Phase 8.5 H1: existing items default to SMALL if size was
+      // missing on the row (legacy rows pre-0050).
+      size: initialItem.size ?? "SMALL",
       buCost: String(initialItem.buCost),
       description: initialItem.description,
       slotCost: String(initialItem.slotCost),
@@ -391,6 +407,8 @@ export function ItemForm({
       name: form.name.trim(),
       itemType: form.itemType,
       rarity: form.rarity,
+      // Phase 8.5 H1: include size in the save body so PATCH/POST round-trip.
+      size: form.size,
       buCost: Math.max(0, Number(form.buCost) || 0),
       description: form.description,
       slotCost: Math.max(1, Number(form.slotCost) || 1),
@@ -558,7 +576,7 @@ export function ItemForm({
         />
       </label>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <label className="block text-sm font-medium">
           Type
           <select
@@ -583,6 +601,22 @@ export function ItemForm({
             {RARITIES.map((r) => (
               <option key={r} value={r}>
                 {r}
+              </option>
+            ))}
+          </select>
+        </label>
+        {/* Phase 8.5 / Session H1: size drives encumbrance Load. */}
+        <label className="block text-sm font-medium">
+          Size
+          <select
+            className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+            value={form.size}
+            onChange={(e) => updateForm("size", e.target.value)}
+            title="Drives encumbrance Load. Tiny items use the pouch system."
+          >
+            {SIZES.map((s) => (
+              <option key={s} value={s}>
+                {s}
               </option>
             ))}
           </select>

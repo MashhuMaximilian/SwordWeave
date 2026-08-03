@@ -25,6 +25,7 @@ import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 import { ChevronRight, History, Link2 } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { computeTransitiveBu } from "@/lib/engine/transitive-bu";
+import { SIZE_LOAD } from "@/lib/engine/encumbrance";
 import {
   OperationBadge,
   Section,
@@ -1149,6 +1150,23 @@ function ItemBody({
             <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{totalBu} BU</span>
             <span className={`rounded-full px-2 py-0.5 font-medium ${rarityClass(row.rarity)}`}>{row.rarity}</span>
             <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">Slot {row.slotCost}</span>
+            {/* Phase 8.5 / Session H1: size drives encumbrance Load. */}
+            {row.size ? (
+              <span
+                className="rounded-full bg-secondary px-2 py-0.5 font-medium"
+                title={`Encumbrance: ${SIZE_LOAD[row.size as keyof typeof SIZE_LOAD] ?? 0} Load per item`}
+              >
+                Size {row.size}
+                {row.size === "TINY"
+                  ? " (pouch)"
+                  : ` · ${SIZE_LOAD[row.size as keyof typeof SIZE_LOAD] ?? 0} Load`}
+              </span>
+            ) : null}
+            {row.quantity && row.quantity > 1 ? (
+              <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
+                ×{row.quantity}
+              </span>
+            ) : null}
             {row.isTwoHanded ? <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">Two-handed</span> : null}
             {row.isConsumable ? <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">Consumable</span> : null}
             {row.actsAsFocus ? <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">Focus</span> : null}

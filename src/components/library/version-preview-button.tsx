@@ -280,9 +280,13 @@ function mapPayloadToPreviewItem(
       name: String(payload["name"] ?? ""),
       itemType: String(payload["itemType"] ?? "TRINKET"),
       rarity: String(payload["rarity"] ?? "COMMON"),
+      // Phase 8.5 H1: read size from the version payload (falls back to
+      // SMALL for very old versions where size wasn't part of the hash).
+      size: String(payload["size"] ?? "SMALL"),
       buCost: Number(payload["buCost"]) || 0,
       description: String(payload["description"] ?? ""),
       slotCost: Number(payload["slotCost"]) || 1,
+      quantity: Number(payload["quantity"]) || 1,
       isTwoHanded: Boolean(payload["isTwoHanded"]),
       isConsumable: Boolean(payload["isConsumable"]),
       actsAsFocus: Boolean(payload["actsAsFocus"]),

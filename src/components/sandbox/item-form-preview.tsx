@@ -4,11 +4,14 @@
 
 import { Markdown } from "@/components/ui/markdown";
 import { dispatchOpenPreview } from "@/lib/sandbox/slot-events";
+import { SIZE_LOAD } from "@/lib/engine/encumbrance";
 
 export type ItemFormState = {
   name: string;
   itemType: string;
   rarity: string;
+  // Phase 8.5 / Session H1: item size for encumbrance.
+  size: string;
   buCost: string;
   description: string;
   slotCost: string;
@@ -131,6 +134,17 @@ export function ItemFormPreview({
           <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
             Slot cost {form.slotCost || 1}
           </span>
+          {form.size ? (
+            <span
+              className="rounded-full bg-secondary px-2 py-0.5 font-medium"
+              title={`Encumbrance: ${SIZE_LOAD[form.size as keyof typeof SIZE_LOAD] ?? 0} Load per item`}
+            >
+              Size {form.size}
+              {form.size === "TINY"
+                ? " (pouch)"
+                : ` · ${SIZE_LOAD[form.size as keyof typeof SIZE_LOAD] ?? 0} Load`}
+            </span>
+          ) : null}
           {Number(form.quantity) > 1 ? (
             <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
               ×{form.quantity}

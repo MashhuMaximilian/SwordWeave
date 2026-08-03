@@ -204,6 +204,8 @@ type ItemRow = {
   name: string;
   itemType: string;
   rarity: string;
+  // Phase 8.5 / Session H1: item size for encumbrance.
+  size: string;
   buCost: number;
   description: string;
   slotCost: number;
@@ -1366,6 +1368,7 @@ export function AtelierSandboxClient({
             name: string;
             itemType: string;
             rarity: string;
+            size: string;
             buCost: string;
             description: string;
             slotCost: string;
@@ -1393,6 +1396,9 @@ export function AtelierSandboxClient({
         name: row.name,
         itemType: row.itemType,
         rarity: row.rarity,
+        // Phase 8.5 H1: carry size into the preview; default to SMALL
+        // for legacy rows that pre-date the column.
+        size: row.size ?? "SMALL",
         buCost: String(row.buCost),
         description: row.description,
         slotCost: String(row.slotCost),
