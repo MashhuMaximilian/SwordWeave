@@ -333,8 +333,11 @@ export function BottomStickyBar({
                 {primaryDc}
               </span>
             </div>
-            {/* Phase 8.5 H7 (revised): ATK chip in top collapsed strip,
-                mirroring PB/DC layout. Clickable for provenance. */}
+            {/* ATK chip stays in the top collapsed strip AND is
+                also present as a 2-column card in the drawer body
+                below (alongside Save DC). Both are needed: the
+                strip gives a quick read when collapsed, the card
+                gives a clickable provenance target when expanded. */}
             <button
               type="button"
               onClick={openAtkModal}
@@ -465,12 +468,17 @@ export function BottomStickyBar({
                 );
               })}
               {/* PB card — Phase 8.4 v25. Clickable for provenance.
-                  Visual style matches the attribute cards (border + bg).
-                  Text teal so it still reads as the "special" cell. */}
+                  Phase 8.5 H7 (Mashu 2026-08-03): PB is now teal-
+                  accented as a whole (border + label + number +
+                  subtext) so it reads as a peer of Save DC and
+                  Attack Bonus — the three "special" meta-cells in
+                  this row. Previously only label + number glyphs
+                  were teal; the border stayed neutral which made
+                  PB look like a 4th attribute card. */}
               <button
                 type="button"
                 onClick={() => setCombo("pb")}
-                className="flex flex-col items-center justify-center rounded border-2 border-border bg-card px-1 py-1.5 text-center transition-colors hover:bg-secondary/30"
+                className="flex flex-col items-center justify-center rounded border-2 border-teal-500/60 bg-teal-500/5 px-1 py-1.5 text-center transition-colors hover:bg-teal-500/10"
                 title="Show formula for Proficiency Bonus"
                 aria-label="Show proficiency bonus formula"
               >
@@ -480,12 +488,10 @@ export function BottomStickyBar({
                 <span className="mt-1 font-mono text-base font-bold tabular-nums leading-none text-teal-700 dark:text-teal-200">
                   {fmt(pb)}
                 </span>
-                <span className="mt-1.5 text-[9px] text-muted-foreground">
+                <span className="mt-1.5 text-[9px] text-teal-700/70 dark:text-teal-300/70">
                   starts +2
                 </span>
               </button>
-              {/* Phase 8.5 H7 (revised): ATK chip moved to the top collapsed
-                  strip next to DC. Removed from this row — see top of file. */}
             </div>
           </div>
 
