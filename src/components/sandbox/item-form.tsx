@@ -707,7 +707,7 @@ export function ItemForm({
           />
         </label>
         <label className="block text-sm font-medium">
-          BU cost
+          Extra BU cost
           <input
             type="number"
             min={0}
@@ -715,6 +715,13 @@ export function ItemForm({
             value={form.buCost}
             onChange={(e) => updateForm("buCost", e.target.value)}
           />
+          {/* Phase 8.5 H-rev3: helper text below the field flags that
+              the proper integration with the deduped primitive
+              total is parked in Session J / T16 (see
+              swordweave-character-items SKILL "Open followup #2"). */}
+          <span className="mt-1 block text-[11px] text-muted-foreground">
+            Adds to the summed total of primitives (T16/Session J rework).
+          </span>
         </label>
       </div>
 

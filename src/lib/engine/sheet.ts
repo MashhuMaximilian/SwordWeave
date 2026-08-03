@@ -392,6 +392,19 @@ const encumbrance = computeEncumbrance(
  * (multi-stack items count their quantity). Pure BU pool
  * tracking is unaffected — items never deduct from the
  * progression pool; this is purely the separate display.
+ *
+ * Phase 8.5 H-rev3 (Mashu 2026-08-03): the `buCost` field on
+ * items is now labeled "Extra BU cost" in the composer; today
+ * it's still summed verbatim here as the "Item BU (separate)"
+ * display number. The proper integration with the deduped
+ * primitive total (so narrative-only items or items whose
+ * extra cost should fold into the same direct-vs-inherited
+ * split that primitives already use) is parked for
+ * Session J / T16. DO NOT change the math here without
+ * reading the "Open followup #2" block in
+ * `~/.hermes/skills/swordweave/swordweave-character-items/SKILL.md`
+ * (and `swordweave-transitive-bu-dedup-split.md` for the
+ * primitive-side spec). Filed: T16 / Session J.
  */
 function sumItemBu(items: ItemLinkSnapshot[]): number {
   return items.reduce(

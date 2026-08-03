@@ -537,7 +537,12 @@ export function ItemComposer({
                   title="Multiplies Load/Capacity per item. Does not affect equipped slots."
                 />
               </Field>
-              <Field label="BU cost">
+              {/* Phase 8.5 H-rev3: rename "BU cost" -> "extra BU cost".
+                  Helper text below the field flags that the proper
+                  integration with the deduped primitive total is
+                  parked in Session J / T16 (see
+                  swordweave-character-items SKILL "Open followup #2"). */}
+              <Field label="Extra BU cost">
                 <input
                   type="number"
                   min={0}
@@ -550,6 +555,9 @@ export function ItemComposer({
                   }
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                 />
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Adds to the summed total of primitives (T16/Session J rework).
+                </p>
               </Field>
             </div>
             <Field label="Description">
