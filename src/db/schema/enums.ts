@@ -87,6 +87,24 @@ export const itemRarityEnum = pgEnum("item_rarity", [
 ]);
 
 /**
+ * Phase 8.5 / Session H1 (Mashu 2026-08-03): Item size for encumbrance.
+ *
+ * One item = one size. The size drives:
+ *   - encumbrance Load (SIZE_LOAD map in lib/engine/encumbrance.ts)
+ *   - pouch rule for TINY items (1000/pouch)
+ *
+ * Slot count is independent of size (see session H clarifications).
+ */
+export const itemSizeEnum = pgEnum("item_size", [
+  "TINY",
+  "SMALL",
+  "MEDIUM",
+  "LARGE",
+  "HUGE",
+  "GARGANTUAN",
+]);
+
+/**
  * Phase 8: icon system. Every entity (primitive/effect/capability/
  * template/item) can have a single icon attached. The icon is either:
  *   - GAME_ICONS: a game-icons.net slug (e.g. "lorc/sword-brandish"),

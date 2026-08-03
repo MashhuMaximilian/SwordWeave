@@ -10,7 +10,12 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { timestamps } from "./common";
-import { itemRarityEnum, iconSourceEnum, itemTypeEnum } from "./enums";
+import {
+  itemRarityEnum,
+  iconSourceEnum,
+  itemSizeEnum,
+  itemTypeEnum,
+} from "./enums";
 import { entities } from "./entities";
 import { capabilities, effects, primitives } from "./engine";
 
@@ -21,6 +26,9 @@ export const items = pgTable(
     name: text("name").notNull(),
     itemType: itemTypeEnum("item_type").notNull(),
     rarity: itemRarityEnum("rarity").notNull().default("COMMON"),
+    // Phase 8.5 / Session H1: size drives encumbrance Load.
+    // Slot cost is independent of size (per Mashu 2026-08-03).
+    size: itemSizeEnum("size").notNull().default("SMALL"),
     buCost: integer("bu_cost").notNull().default(0),
     description: text("description").notNull().default(""),
     slotCost: integer("slot_cost").notNull().default(1),
@@ -56,6 +64,7 @@ export const items = pgTable(
   (table) => [
     index("items_item_type_idx").on(table.itemType),
     index("items_rarity_idx").on(table.rarity),
+    index("items_size_idx").on(table.size),
     index("items_is_public_idx").on(table.isPublic),
     index("items_user_id_idx").on(table.userId),
     index("items_tags_idx").using("gin", table.tags),

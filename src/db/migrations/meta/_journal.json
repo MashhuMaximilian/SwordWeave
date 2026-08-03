@@ -330,6 +330,13 @@
       "when": 1786100000000,
       "tag": "0049_capability_slot_tab",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1786200000000,
+      "tag": "0050_item_size",
+      "breakpoints": true
     }
   ]
 }

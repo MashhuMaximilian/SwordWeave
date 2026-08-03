@@ -79,15 +79,6 @@ export const heritageKindEnum = pgEnum("heritage_kind", [
   "MANIFEST",
 ]);
 
-export const itemSizeEnum = pgEnum("item_size", [
-  "TINY",
-  "SMALL",
-  "MEDIUM",
-  "LARGE",
-  "HUGE",
-  "GARGANTUAN",
-]);
-
 // =============================================================================
 // Characters
 // =============================================================================
