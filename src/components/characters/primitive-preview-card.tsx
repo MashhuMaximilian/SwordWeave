@@ -125,8 +125,8 @@ export function PrimitivePreviewCard({
           // the sheet. Buttons render at the bottom of the
           // modal (matching items / caps / effects / herts).
           actionBar: {
-            openSourceHref: `/atelier/primitive/${p.id}`,
-            versionHistoryHref: `/atelier/primitive/${p.id}?tab=versions`,
+            openSourceHref: `/library/item/PRIMITIVE:${p.id}`,
+            versionHistoryHref: `/library/item/PRIMITIVE:${p.id}/versions`,
           },
         });
       } catch (err) {
@@ -162,8 +162,8 @@ export function PrimitivePreviewCard({
           // fallback preview also has source + version-
           // history buttons in the modal.
           actionBar: {
-            openSourceHref: `/atelier/primitive/${p.id}`,
-            versionHistoryHref: `/atelier/primitive/${p.id}?tab=versions`,
+            openSourceHref: `/library/item/PRIMITIVE:${p.id}`,
+            versionHistoryHref: `/library/item/PRIMITIVE:${p.id}/versions`,
           },
         });
         showToast(

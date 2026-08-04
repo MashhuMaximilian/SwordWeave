@@ -153,8 +153,13 @@ export function ItemCard({
         // wanted these in the PREVIEW MODAL, not inline
         // on the card — this is the central wiring.
         actionBar: {
-          openSourceHref: `/atelier/item/${item.id}`,
-          versionHistoryHref: `/atelier/item/${item.id}?tab=versions`,
+          // Phase 8.5 / Session H6 round 8 (Mashu
+          // 2026-08-03): round 7 used
+          // `/atelier/item/${id}` which 404s. Switched
+          // to the canonical `/library/item/ITEM:<id>`
+          // URL that the library page accepts.
+          openSourceHref: `/library/item/ITEM:${item.id}`,
+          versionHistoryHref: `/library/item/ITEM:${item.id}/versions`,
         },
         callbacks: {
           engagement: {

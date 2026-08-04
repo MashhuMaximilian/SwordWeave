@@ -2398,6 +2398,15 @@ function HeritageKindAccordion({
               heritageId={hl.heritageId}
               heritageName={hl.heritage.name}
               heritageKindLabel={label}
+              // Phase 8.5 / Session H6 round 8 (Mashu
+              // 2026-08-03): pass the raw heritage kind
+              // so the component can build the canonical
+              // library composite id
+              // (`<KIND>_TEMPLATE:<id>`) for the
+              // "View source" / "View version history"
+              // links. Without this, the links go to
+              // `/atelier/heritage/<id>` which 404s.
+              heritageKindRaw={hl.heritage.kind as "LINEAGE" | "UPBRINGING" | "MANIFEST"}
               heritageDescription={hl.heritage.description ?? null}
               isMirrored={hl.isMirrored ?? false}
               // Phase 8.5 / Session H6 round 7: surface

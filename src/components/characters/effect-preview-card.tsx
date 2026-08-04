@@ -196,8 +196,8 @@ export function EffectPreviewCard({
         openPreview({
           item,
           actionBar: {
-            openSourceHref: `/atelier/effect/${effectLink.effectId}`,
-            versionHistoryHref: `/atelier/effect/${effectLink.effectId}?tab=versions`,
+            openSourceHref: `/library/item/EFFECT:${effectLink.effectId}`,
+            versionHistoryHref: `/library/item/EFFECT:${effectLink.effectId}/versions`,
           },
         });
       }
@@ -227,8 +227,8 @@ export function EffectPreviewCard({
         openPreview({
           item,
           actionBar: {
-            openSourceHref: `/atelier/effect/${effectLink.effectId}`,
-            versionHistoryHref: `/atelier/effect/${effectLink.effectId}?tab=versions`,
+            openSourceHref: `/library/item/EFFECT:${effectLink.effectId}`,
+            versionHistoryHref: `/library/item/EFFECT:${effectLink.effectId}/versions`,
           },
         });
       }

@@ -54,6 +54,15 @@ export interface HeritageBundleViewProps {
   heritageId: string;
   heritageName: string;
   heritageKindLabel: string;
+  /**
+   * Phase 8.5 / Session H6 round 8 (Mashu 2026-08-03):
+   * the raw heritage kind (LINEAGE / UPBRINGING /
+   * MANIFEST) needed to build the canonical library
+   * composite id (`<KIND>_TEMPLATE:<heritageId>`).
+   * Without this the "View source" link used to point
+   * at `/atelier/heritage/<id>` which 404s.
+   */
+  heritageKindRaw: "LINEAGE" | "UPBRINGING" | "MANIFEST";
   heritageDescription: string | null;
   isMirrored: boolean;
   /**
@@ -157,6 +166,7 @@ export function HeritageBundleView({
   heritageId,
   heritageName,
   heritageKindLabel,
+  heritageKindRaw,
   heritageDescription,
   isMirrored,
   versionId = null,
@@ -207,8 +217,8 @@ export function HeritageBundleView({
         openPreview({
           item,
           actionBar: {
-            openSourceHref: `/atelier/heritage/${heritageId}`,
-            versionHistoryHref: `/atelier/heritage/${heritageId}?tab=versions`,
+            openSourceHref: `/library/item/${heritageKindRaw}_TEMPLATE:${heritageId}`,
+            versionHistoryHref: `/library/item/${heritageKindRaw}_TEMPLATE:${heritageId}/versions`,
           },
         });
       } catch {
@@ -227,11 +237,11 @@ export function HeritageBundleView({
       // modal's action bar — same wiring as the fetch
       // path above.
       actionBar: {
-        openSourceHref: `/atelier/heritage/${heritageId}`,
-        versionHistoryHref: `/atelier/heritage/${heritageId}?tab=versions`,
+        openSourceHref: `/library/item/${heritageKindRaw}_TEMPLATE:${heritageId}`,
+        versionHistoryHref: `/library/item/${heritageKindRaw}_TEMPLATE:${heritageId}/versions`,
       },
     });
-  }, [bundle, heritageId, openPreview]);
+  }, [bundle, heritageId, heritageKindRaw, openPreview]);
 
   /**
    * Phase 8.4 v9 (Mashu 2026-07-28): capability preview inside
@@ -307,8 +317,8 @@ export function HeritageBundleView({
         openPreview({
           item,
           actionBar: {
-            openSourceHref: `/atelier/capability/${capabilityId}`,
-            versionHistoryHref: `/atelier/capability/${capabilityId}?tab=versions`,
+            openSourceHref: `/library/item/CAPABILITY:${capabilityId}`,
+            versionHistoryHref: `/library/item/CAPABILITY:${capabilityId}/versions`,
           },
         });
       } catch {

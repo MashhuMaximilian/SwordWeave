@@ -439,8 +439,8 @@ export function CapabilityCard({
           // user wants these in the PREVIEW, not inline
           // on the card.
           actionBar: {
-            openSourceHref: `/atelier/capability/${capability.id}`,
-            versionHistoryHref: `/atelier/capability/${capability.id}?tab=versions`,
+            openSourceHref: `/library/item/CAPABILITY:${capability.id}`,
+            versionHistoryHref: `/library/item/CAPABILITY:${capability.id}/versions`,
           },
           callbacks: {
             engagement: {
