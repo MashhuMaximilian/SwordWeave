@@ -55,3 +55,7 @@ scripts/output/
 # Local-only: condition picker preview HTML (artifact for visual review)
 docs-archive/
 t4.tsx
+
+
+# Local scratch notes (not for Vercel)
+.hermes-*.md
