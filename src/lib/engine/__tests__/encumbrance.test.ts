@@ -82,73 +82,46 @@ describe("computeLoad", () => {
   // Claymore (loadValue=4) means 4 LARGE pieces fit in
   // 1 Load — so 4 pieces = 1 Load, 5 pieces = 2 Load.
   // Math: ceil(quantity / piecesPerLoad).
-  it("sums ceil(quantity / piecesPerLoad)", () => {
+  it("sums loadValue * quantity", () => {
     const items = [
-      mkItem({ loadValue: 2, quantity: 3 }), // ceil(3/2) = 2
-      mkItem({ loadValue: 1, quantity: 2 }), // ceil(2/1) = 2
+      mkItem({ loadValue: 2, quantity: 3 }), // 6
+      mkItem({ loadValue: 1, quantity: 2 }), // 2
     ];
+    expect(computeLoad(items)).toBe(8);
+  });
+
+  it("single LARGE item = 4 Load (size_load[size])", () => {
+    // Phase 8.5 H6 round 5: revert. LARGE = 4 Load per
+    // piece. Same as the table shows: large 80 4.
+    const items = [mkItem({ size: "LARGE", loadValue: 4, quantity: 1 })];
     expect(computeLoad(items)).toBe(4);
   });
 
-  it("single LARGE item = 1 Load", () => {
-    // 1 LARGE piece = ceil(1/4) = 1 Load.
-    const items = [mkItem({ loadValue: 4, quantity: 1 })];
-    expect(computeLoad(items)).toBe(1);
+  it("2 LARGE items = 8 Load (stacking multiplies)", () => {
+    const items = [mkItem({ size: "LARGE", loadValue: 4, quantity: 2 })];
+    expect(computeLoad(items)).toBe(8);
   });
 
-  it("4 LARGE items still = 1 Load", () => {
-    // 4 LARGE pieces all fit in the same 1 Load slot.
-    const items = [mkItem({ loadValue: 4, quantity: 4 })];
-    expect(computeLoad(items)).toBe(1);
-  });
-
-  it("5 LARGE items = 2 Load (overflow)", () => {
-    const items = [mkItem({ loadValue: 4, quantity: 5 })];
-    expect(computeLoad(items)).toBe(2);
-  });
-
-  it("respects ignoreLoadBonus", () => {
-    // piecesPerLoad = max(1, 5 - 3) = 2. ceil(1/2) = 1.
-    const items = [
-      mkItem({ loadValue: 5, ignoreLoadBonus: 3, quantity: 1 }),
-    ];
-    expect(computeLoad(items)).toBe(1);
-  });
-
-  it("clamps piecesPerLoad to >= 1 when bonus = load", () => {
-    // piecesPerLoad = max(1, 2 - 5) = 1. ceil(1/1) = 1.
-    const items = [
-      mkItem({ loadValue: 2, ignoreLoadBonus: 5, quantity: 1 }),
-    ];
-    expect(computeLoad(items)).toBe(1);
+  it("MEDIUM item (2 Load per piece) × 3 quantity = 6 Load", () => {
+    const items = [mkItem({ size: "MEDIUM", loadValue: 2, quantity: 3 })];
+    expect(computeLoad(items)).toBe(6);
   });
 
   it("TINY items use the pouch system (1000 per Load)", () => {
-    // Phase 8.5 H6 round 4: per the user's spec, even a
-    // tiny item count of 1 fills 1 pouch = 1 Load. The
-    // ceiling applies: ceil(quantity / 1000). So:
-    //   1..1000 tiny items = 1 Load
-    //   1001..2000 tiny items = 2 Load
-    //   2001..3000 tiny items = 3 Load
+    // Per the user's spec: 1..1000 tiny items = 1 Load,
+    // 1001..2000 = 2 Load, 2001..3000 = 3 Load. Math:
+    // ceil(quantity / 1000).
     const items1 = [mkItem({ size: "TINY", loadValue: 0, quantity: 1 })];
     expect(computeLoad(items1)).toBe(1);
-
     const items500 = [mkItem({ size: "TINY", loadValue: 0, quantity: 500 })];
     expect(computeLoad(items500)).toBe(1);
-
-    const items2 = [mkItem({ size: "TINY", loadValue: 0, quantity: 1000 })];
-    expect(computeLoad(items2)).toBe(1);
-
-    const items3 = [mkItem({ size: "TINY", loadValue: 0, quantity: 1001 })];
-    expect(computeLoad(items3)).toBe(2);
-
-    const items4 = [mkItem({ size: "TINY", loadValue: 0, quantity: 1999 })];
-    expect(computeLoad(items4)).toBe(2);
-
-    const items5 = [mkItem({ size: "TINY", loadValue: 0, quantity: 2000 })];
-    expect(computeLoad(items5)).toBe(2);
+    const items1000 = [mkItem({ size: "TINY", loadValue: 0, quantity: 1000 })];
+    expect(computeLoad(items1000)).toBe(1);
+    const items1001 = [mkItem({ size: "TINY", loadValue: 0, quantity: 1001 })];
+    expect(computeLoad(items1001)).toBe(2);
+    const items2000 = [mkItem({ size: "TINY", loadValue: 0, quantity: 2000 })];
+    expect(computeLoad(items2000)).toBe(2);
   });
-});
 
 describe("computeEquipSlotsUsed", () => {
   // Phase 8.5 H6 round 4: size-aware slot accounting. The
@@ -186,22 +159,30 @@ describe("computeEquipSlotsUsed", () => {
   });
 
   it("2H SMALL weapon = 2 slots (baseline 2, mult 1)", () => {
+    // max(2, 2) = 2, stored == baseline, mult 1 → 2 slots.
     const items = [mkItem({ slotCount: 2, isTwoHanded: true, size: "SMALL", equipped: true })];
     expect(computeEquipSlotsUsed(items)).toBe(2);
   });
 
   it("1H LARGE weapon = 2 slots (baseline 1, mult 2)", () => {
+    // max(1, 1) = 1, stored == baseline, mult 2 → 2 slots.
     const items = [mkItem({ slotCount: 1, isTwoHanded: false, size: "LARGE", equipped: true })];
     expect(computeEquipSlotsUsed(items)).toBe(2);
   });
 
-  it("Claymore 2H LARGE = 4 slots (baseline 2, mult 2) — sticky 2H baseline", () => {
-    // The Claymore's stored slotCost=3 is a legacy value
-    // that pre-dates the size multiplier. The 2H baseline
-    // dominates: 2 * 2 = 4 slots. (The user's stored
-    // slotCost is preserved for display but isn't used
-    // for the slot total when the 2H baseline is in play.)
+  it("Claymore 2H LARGE = 3 slots (stored 3 wins over 2H baseline 2)", () => {
+    // Round 5: the user explicitly set slotCost=3 on the
+    // Claymore. max(3, 2) = 3. stored > 2H baseline, so
+    // the size multiplier is suppressed (finalMult = 1).
+    // Total = 3 * 1 * 1 = 3 slots.
     const items = [mkItem({ slotCount: 3, isTwoHanded: true, size: "LARGE", equipped: true })];
+    expect(computeEquipSlotsUsed(items)).toBe(3);
+  });
+
+  it("2H LARGE weapon (no stored slotCost override) = 4 slots (LARGE mult fires)", () => {
+    // When stored slotCost equals the 2H baseline (2), the
+    // size multiplier applies. 2 * 2 = 4 slots.
+    const items = [mkItem({ slotCount: 2, isTwoHanded: true, size: "LARGE", equipped: true })];
     expect(computeEquipSlotsUsed(items)).toBe(4);
   });
 
@@ -226,23 +207,23 @@ describe("computeEquipSlotsUsed", () => {
 
 describe("computeEncumbrance", () => {
   it("encumbered state is binary", () => {
-    // Phase 8.5 H6: loadValue=5 means 5 pieces per Load.
-    // ceil(10/5) = 2 Load.
+    // loadValue=5, qty=10 → 5*10 = 50 Load. > 40 capacity → encumbered.
     const items = [
       mkItem({ loadValue: 5, quantity: 10 }),
     ];
     const r = computeEncumbrance("MEDIUM", 0, items);
-    expect(r.encumbered).toBe(false);
-    expect(r.load).toBe(2);
+    expect(r.encumbered).toBe(true);
+    expect(r.load).toBe(50);
     expect(r.capacity).toBe(40);
   });
 
   it("not encumbered under capacity", () => {
-    // loadValue=5, qty=2 → ceil(2/5) = 1 Load.
+    // loadValue=5, qty=2 → 10 Load. ≤ 40 capacity → not encumbered.
     const items = [mkItem({ loadValue: 5, quantity: 2 })];
     const r = computeEncumbrance("MEDIUM", 0, items);
     expect(r.encumbered).toBe(false);
-    expect(r.load).toBe(1);
+    expect(r.load).toBe(10);
+    expect(r.load).toBeLessThanOrEqual(r.capacity);
   });
 
   it("tracks equip slots", () => {
@@ -288,3 +269,4 @@ describe("tinyItemsToPouches", () => {
     expect(r.load).toBe(0);
   });
 });
+})

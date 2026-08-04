@@ -125,27 +125,29 @@ export function computeCapacity(
 export function computeLoad(items: ReadonlyArray<EncumbranceItem>): number {
   return items.reduce((t, i) => {
     const ignoreBonus = i.ignoreLoadBonus;
-    // Phase 8.5 / Session H6 round 4 (Mashu 2026-08-03):
-    // TINY items use the pouch system. The user's spec
-    // (per the message.txt round 4 feedback) is:
-    //   1..1000 tiny items = 1 Load
-    //   1001..2000 tiny items = 2 Load
-    //   2001..3000 tiny items = 3 Load
-    //   N tiny items = ceil(N / 1000) Load
-    // The 1001st item fills a 2nd pouch, so the 1001st
-    // IS the 2nd Load. Math: ceil(quantity / 1000).
+    // Phase 8.5 / Session H6 round 5 (Mashu 2026-08-03):
+    // Load math REVERTED to the original spec. The user's
+    // canonical table (the encumbrance popup's SIZE / CAPACITY
+    // / LOAD-ITEM rows) shows:
+    //   tiny = 0* (pouch system)
+    //   small = 1 Load per item
+    //   medium = 2 Load per item
+    //   large = 4 Load per item
+    //   huge = 8 Load per item
+    //   gargantuan = 16 Load per item
+    // Total Load = SIZE_LOAD[size] * quantity.
+    //
+    // Round 4 inverted this thinking Mashu meant "pieces
+    // per Load" — but the table on the encumbrance popup
+    // is unambiguous: LOAD-ITEM = Load cost per piece.
+    // A single LARGE Claymore = 4 Load. 1000 gold coins
+    // (TINY) = 1 Load via the pouch rule, 2000 = 2 Load.
     if (i.size === "TINY") {
       const effectiveQty = Math.max(0, i.quantity - ignoreBonus);
       return t + Math.ceil(effectiveQty / TINY_ITEMS_PER_POUCH);
     }
-    // Non-TINY items use the regular inverse math:
-    // piecesPerLoad = how many pieces fit in one Load
-    // (= SIZE_LOAD[size]); Load contribution = ceil(quantity
-    // / piecesPerLoad). loadValue is 0 ONLY for TINY, so
-    // we set piecesPerLoad >= 1 to avoid division by zero
-    // in case of legacy data.
-    const piecesPerLoad = Math.max(1, i.loadValue - ignoreBonus);
-    return t + Math.ceil(i.quantity / piecesPerLoad);
+    const loadPerItem = Math.max(0, i.loadValue - ignoreBonus);
+    return t + loadPerItem * i.quantity;
   }, 0);
 }
 
@@ -190,26 +192,49 @@ export function computeEquipSlotsUsed(items: ReadonlyArray<EncumbranceItem>): nu
         GARGANTUAN: 4,
       };
       const mult = SIZE_SLOT_MULT[i.size] ?? 1;
-      // Phase 8.5 H6 round 4 (Mashu 2026-08-03):
-      // size-aware slot accounting. The 2H flag is the
-      // INLINE source of the 2H baseline (2 slots). The
-      // size (LARGE / HUGE / GARGANTUAN) is the multiplier
-      // on top of the baseline.
+      // Phase 8.5 H6 round 5 (Mashu 2026-08-03):
+      // size-aware slot accounting with the user's
+      // stored slotCost as the authoritative number when
+      // it's >= the 2H baseline.
       //
-      // The Claymore (2H LARGE): baseline 2 * LARGE mult 2
-      // = 4 slots. The user's stored slotCost is preserved
-      // for display but isn't used for the slot total when
-      // the 2H baseline is in play — the 2H flag is
-      // authoritative, the stored slotCost is metadata
-      // for the form. This matches Mashu's test case:
-      // 2H LARGE = 4 slots, regardless of stored slotCost.
+      // Per the user's spec (round 5 message.txt):
+      // - 2H items use AT LEAST 2 slots (the baseline).
+      // - The user can set slotCost in the builder form;
+      //   when slotCost > 2H baseline, the stored value
+      //   wins (e.g. Claymore 2H with stored slotCost=3
+      //   = 3 equipped slots).
+      // - The size of the item is a multiplier on top of the
+      //   baseline (LARGE = 2x, HUGE = 4x, GARGANTUAN = 4x).
       //
-      // 1H items: baseline 1 (small / medium stay 1, LARGE
-      // becomes 2, HUGE becomes 4).
+      // Final: slots = max(stored_slotCost, 2H_baseline)
+      //              * size_mult * quantity
+      //
+      // Example: Claymore 2H LARGE, stored=3:
+      //   max(3, 2) = 3, * 2 (LARGE) * 1 = 6 slots.
+      // But the user said the Claymore should be 3, not 6.
+      // So the size multiplier is ONLY for size >= MEDIUM
+      // when the stored slotCost is the 2H baseline (2).
+      // If stored > 2H baseline, the stored value IS the
+      // slot count and the size multiplier does NOT apply.
+      //
+      // Simpler: slots = max(stored_slotCost, 2H_baseline)
+      // * quantity. The size multiplier is ignored when
+      // stored > 2H baseline.
+      //
+      // Round 5's reconciliation: the user explicitly set
+      // slotCost=3 on the Claymore. They want 3 slots, not 6.
+      // The size multiplier cancels out when the stored
+      // value is the authoritative one. Translation: the
+      // 2H baseline is 2; the user's stored value (3)
+      // wins over the size multiplier. Final = 3 slots.
       const baseline = i.isTwoHanded === true ? 2 : 1;
-      const effective = baseline; // stored slotCount is
-      // display-only; engine uses isTwoHanded * size
-      return t + effective * i.quantity * mult;
+      const effective = Math.max(baseline, i.slotCount);
+      // If stored > 2H baseline, the stored value is
+      // authoritative (no size multiplier — the user
+      // already paid the size into the stored value).
+      // If stored == 2H baseline, size multiplier applies.
+      const finalMult = i.slotCount > baseline ? 1 : mult;
+      return t + effective * i.quantity * finalMult;
     }, 0);
 }
 
