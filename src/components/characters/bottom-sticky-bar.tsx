@@ -319,28 +319,23 @@ export function BottomStickyBar({
           </div>
 
           <div className="flex items-center gap-6 font-mono text-xs">
-            {/* Phase 8.5 H7 (Mashu 2026-08-03): PB IS
-                in the top collapsed strip AND in the
-                meta-stat card row below. PB appears in
-                both because the strip is the quick-read
-                when collapsed and the card row is the
-                clickable provenance target when expanded.
-                The user explicitly confirmed PB stays in
-                the top header next to DC and ATK. */}
-            <button
-              type="button"
-              onClick={() => setCombo("pb")}
-              className="flex flex-col items-center leading-none"
-              title="Show formula for Proficiency Bonus"
-              aria-label="Show proficiency bonus formula"
-            >
+            {/* Phase 8.5 H7 round 5 (Mashu 2026-08-03):
+                PB / DC / ATK in the small header are NOT
+                clickable — they're at-a-glance readouts.
+                The provenance modal opens from the body
+                cards (the meta-stat row when the drawer
+                is expanded). Including buttons here made
+                the header feel like a button farm and the
+                user explicitly asked for the modal click
+                to live on the cards only. */}
+            <div className="flex flex-col items-center leading-none">
               <span className="text-[9px] font-semibold uppercase text-muted-foreground">
                 PB
               </span>
               <span className="font-bold tabular-nums text-teal-700 dark:text-teal-200">
                 {fmt(pb)}
               </span>
-            </button>
+            </div>
             <div className="flex flex-col items-center leading-none">
               <span className="text-[9px] font-semibold uppercase text-muted-foreground">
                 DC
@@ -349,20 +344,14 @@ export function BottomStickyBar({
                 {primaryDc}
               </span>
             </div>
-            <button
-              type="button"
-              onClick={openAtkModal}
-              className="flex flex-col items-center leading-none"
-              title="Show formula for Attack Bonus"
-              aria-label="Show attack bonus formula"
-            >
+            <div className="flex flex-col items-center leading-none">
               <span className="text-[9px] font-semibold uppercase text-muted-foreground">
                 ATK
               </span>
               <span className="font-bold tabular-nums text-teal-700 dark:text-teal-200">
                 {fmt(physicalAttackBonus)}
               </span>
-            </button>
+            </div>
           </div>
         </div>
         {expanded ? (
