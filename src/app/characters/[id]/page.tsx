@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { eq, inArray } from "drizzle-orm";
 import { CharacterSheetView } from "@/components/characters/character-sheet-view";
 import { db } from "@/db/client";
-import { characters, capabilityEffects } from "@/db/schema";
+import { characters, capabilityEffects, effectPrimitives } from "@/db/schema";
 import { aggregateCharacterSheet } from "@/lib/engine";
 import {
   bulkResolveLatestVersions,
@@ -133,6 +133,45 @@ export default async function CharacterSheetPage({
     }
   }
 
+  // Phase 8.5 / Session H6 round 13 (Mashu
+  // 2026-08-03): include every effect id reachable
+  // through any of the primitives Tessy has — direct,
+  // item-bundled, or heritage-bundled. The path is
+  // (effect_primitives) primitive → cap / item /
+  // heritage. The chip renderer doesn't currently
+  // surface these, but capturing them here means any
+  // future chip rendering on the deep path will
+  // resolve the v:XXXX short-hash from the bulk map
+  // without an extra roundtrip.
+  const allNestedPrimIds = Array.from(
+    new Set([
+      ...row.primitiveLinks.map((l) => l.primitiveId),
+      ...itemBundledPrimIds,
+      ...heritageBundledPrimIds,
+    ]),
+  );
+  const deepEffectsViaPrimitives: string[] = [];
+  if (allNestedPrimIds.length > 0) {
+    // Walk effect_primitives to find every effect id
+    // that reaches the character through any of the
+    // primitives in the deep closure (direct, item-
+    // bundled, or heritage-bundled). Covers the
+    // cap → prim → effect path that's reachable via
+    // the deep-primitive closure hook.
+    const epRows = await db
+      .select({ effectId: effectPrimitives.effectId })
+      .from(effectPrimitives)
+      .where(inArray(effectPrimitives.primitiveId, allNestedPrimIds));
+    for (const r of epRows) {
+      deepEffectsViaPrimitives.push(r.effectId);
+    }
+  }
+  // Dedup between direct cap effects and deep
+  // prim-derived effects (the map.set already dedups).
+  for (const id of deepEffectsViaPrimitives) {
+    nestedEffectIds.push(id);
+  }
+
   // Phase 5 (T5.C.2): compute the latest version id for every linked
   // entity so the sheet can render "stale" badges. One bulk query per
   // entity kind, returns a Map keyed by `${kind}:${id}`.
@@ -148,11 +187,22 @@ export default async function CharacterSheetPage({
     ...heritageLinkArr.map((l) => ({ kind: "heritage" as const, id: l.heritageId })),
     // Phase 8.5 / Session H6 round 12 (Mashu
     // 2026-08-03): include every cap / effect /
-    // primitive that's nested inside a slotted item
-    // or heritage, so the nested chips render
-    // "Pinned v:XXXX" with the canonical latest
-    // version id rather than falling back to a
-    // hardcoded "Pinned".
+    // primitive id that the character can reach.
+    //
+    // Round 13 (Mashu 2026-08-03) generalises the
+    // coverage: in addition to the surfaces already
+    // covered by round 12 (item.capabilityLinks /
+    // item.primitiveLinks / item.effectLinks and
+    // heritage.capabilityLinks / heritage.primitiveLinks
+    // and capabilityEffects where cap is nested), we
+    // also walk the deeper junction tables — a primitive
+    // nested inside a cap or item can itself link to
+    // effects via effect_primitives. Without this, an
+    // effect whose only path to the character is through
+    // primitiveA → capB (or primitiveA → itemB) would
+    // miss the bulkResolveLatestVersions map and the
+    // chip would render "Pinned" without a version
+    // short-hash.
     ...itemBundledCapIds.map((id) => ({ kind: "capability" as const, id })),
     ...itemBundledPrimIds.map((id) => ({ kind: "primitive" as const, id })),
     ...itemBundledEffectIds.map((id) => ({ kind: "effect" as const, id })),
