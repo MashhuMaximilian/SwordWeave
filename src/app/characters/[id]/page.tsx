@@ -1,9 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { CharacterSheetView } from "@/components/characters/character-sheet-view";
 import { db } from "@/db/client";
-import { characters } from "@/db/schema";
+import { characters, capabilityEffects } from "@/db/schema";
 import { aggregateCharacterSheet } from "@/lib/engine";
 import {
   bulkResolveLatestVersions,
@@ -49,6 +49,90 @@ export default async function CharacterSheetPage({
     redirect("/characters");
   }
 
+  // Phase 8.4 v22 (Mashu 2026-07-29): T2 followup — enrich
+  // itemLinks with the nested bundle via flat queries.
+  // Same helper the modal uses; safe because it's a
+  // separate roundtrip (no depth-N Drizzle joins).
+  //
+  // Phase 8.5 / Session H6 round 12 (Mashu 2026-08-03):
+  // run BEFORE bulkResolveLatestVersions so the version
+  // map also covers every nested cap / effect / primitive
+  // id inside each slotted item's bundle.
+  await enrichItemLinksWithNestedBundle(row.itemLinks);
+
+  // Phase 8.5 / Session H6 round 12 (Mashu 2026-08-03):
+  // gather every cap / effect / primitive id that lives
+  // NESTED inside an item or a heritage bundle, plus
+  // every effect id that lives NESTED inside one of
+  // those nested caps. The pre-round-12 lookup only
+  // covered top-level character_slots, so nested chips
+  // fell back to a hardcoded "Pinned" without a version
+  // number.
+  //
+  // Why walk the enriched structures server-side rather
+  // than rely on the heritage-bundle-view's lazy fetch:
+  // the chip needs the version id BEFORE the bundle
+  // renders, but the lazy fetch happens after the chip.
+  // Collecting ids here + doing one flat query per kind
+  // gives every nested chip the same v:XXXX treatment.
+  const heritageLinkArr =
+    (row as unknown as { heritageLinks?: Array<{
+      heritageId: string;
+      heritage: {
+        capabilityLinks?: Array<{ capability: { id: string } }>;
+        primitiveLinks?: Array<{ primitive: { id: number } }>;
+      };
+    }> }).heritageLinks ?? [];
+
+  const itemBundledCapIds: string[] = [];
+  const itemBundledPrimIds: number[] = [];
+  const itemBundledEffectIds: string[] = [];
+  for (const l of row.itemLinks) {
+    const item = l.item as {
+      capabilityLinks?: Array<{ capability: { id: string } }>;
+      primitiveLinks?: Array<{ primitive: { id: number } }>;
+      effectLinks?: Array<{ effectId: string }>;
+    };
+    for (const cl of item.capabilityLinks ?? []) {
+      itemBundledCapIds.push(cl.capability.id);
+    }
+    for (const pl of item.primitiveLinks ?? []) {
+      itemBundledPrimIds.push(pl.primitive.id);
+    }
+    for (const el of item.effectLinks ?? []) {
+      itemBundledEffectIds.push(el.effectId);
+    }
+  }
+
+  const heritageBundledCapIds: string[] = [];
+  const heritageBundledPrimIds: number[] = [];
+  for (const hl of heritageLinkArr) {
+    for (const cl of hl.heritage.capabilityLinks ?? []) {
+      heritageBundledCapIds.push(cl.capability.id);
+    }
+    for (const pl of hl.heritage.primitiveLinks ?? []) {
+      heritageBundledPrimIds.push(pl.primitive.id);
+    }
+  }
+
+  // Effects nested inside caps — both item-bundled caps
+  // and heritage-bundled caps share the same junction
+  // table (capabilityEffects), so one flat query covers
+  // both.
+  const allNestedCapIds = Array.from(
+    new Set([...itemBundledCapIds, ...heritageBundledCapIds]),
+  );
+  const nestedEffectIds: string[] = [];
+  if (allNestedCapIds.length > 0) {
+    const effectRows = await db
+      .select({ effectId: capabilityEffects.effectId })
+      .from(capabilityEffects)
+      .where(inArray(capabilityEffects.capabilityId, allNestedCapIds));
+    for (const r of effectRows) {
+      nestedEffectIds.push(r.effectId);
+    }
+  }
+
   // Phase 5 (T5.C.2): compute the latest version id for every linked
   // entity so the sheet can render "stale" badges. One bulk query per
   // entity kind, returns a Map keyed by `${kind}:${id}`.
@@ -61,16 +145,22 @@ export default async function CharacterSheetPage({
     // HeritageBundleView header can render the
     // SlotSourceBadge with a real latest version id
     // (not just the slot's pinned versionId).
-    ...(row as unknown as { heritageLinks?: Array<{ heritageId: string }> })
-      .heritageLinks?.map((l) => ({ kind: "heritage" as const, id: l.heritageId })) ?? [],
+    ...heritageLinkArr.map((l) => ({ kind: "heritage" as const, id: l.heritageId })),
+    // Phase 8.5 / Session H6 round 12 (Mashu
+    // 2026-08-03): include every cap / effect /
+    // primitive that's nested inside a slotted item
+    // or heritage, so the nested chips render
+    // "Pinned v:XXXX" with the canonical latest
+    // version id rather than falling back to a
+    // hardcoded "Pinned".
+    ...itemBundledCapIds.map((id) => ({ kind: "capability" as const, id })),
+    ...itemBundledPrimIds.map((id) => ({ kind: "primitive" as const, id })),
+    ...itemBundledEffectIds.map((id) => ({ kind: "effect" as const, id })),
+    ...heritageBundledCapIds.map((id) => ({ kind: "capability" as const, id })),
+    ...heritageBundledPrimIds.map((id) => ({ kind: "primitive" as const, id })),
+    ...nestedEffectIds.map((id) => ({ kind: "effect" as const, id })),
   ];
   const latestVersions = await bulkResolveLatestVersions(entityPairs);
-
-  // Phase 8.4 v22 (Mashu 2026-07-29): T2 followup — enrich
-  // itemLinks with the nested bundle via flat queries.
-  // Same helper the modal uses; safe because it's a
-  // separate roundtrip (no depth-N Drizzle joins).
-  await enrichItemLinksWithNestedBundle(row.itemLinks);
 
   const sheet = aggregateCharacterSheet({
     level: row.level,
