@@ -185,7 +185,16 @@ export function HeritageBundleView({
           kind: "heritage",
           row: t as never,
         };
-        openPreview({ item });
+        // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+        // source + version-history buttons live in the
+        // preview modal, not inline on the card.
+        openPreview({
+          item,
+          actionBar: {
+            openSourceHref: `/atelier/heritage/${heritageId}`,
+            versionHistoryHref: `/atelier/heritage/${heritageId}?tab=versions`,
+          },
+        });
       } catch {
         /* swallow */
       }
@@ -195,7 +204,17 @@ export function HeritageBundleView({
       kind: "heritage",
       row: bundle as never,
     };
-    openPreview({ item });
+    openPreview({
+      item,
+      // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+      // source + version-history buttons in the preview
+      // modal's action bar — same wiring as the fetch
+      // path above.
+      actionBar: {
+        openSourceHref: `/atelier/heritage/${heritageId}`,
+        versionHistoryHref: `/atelier/heritage/${heritageId}?tab=versions`,
+      },
+    });
   }, [bundle, heritageId, openPreview]);
 
   /**
@@ -266,7 +285,16 @@ export function HeritageBundleView({
           kind: "capability",
           row: projected as never,
         };
-        openPreview({ item });
+        // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+        // source + version-history buttons in the preview
+        // modal — same wiring as the sheet's CapabilityCard.
+        openPreview({
+          item,
+          actionBar: {
+            openSourceHref: `/atelier/capability/${capabilityId}`,
+            versionHistoryHref: `/atelier/capability/${capabilityId}?tab=versions`,
+          },
+        });
       } catch {
         /* swallow */
       }

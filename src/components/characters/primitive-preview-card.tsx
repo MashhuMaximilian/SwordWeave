@@ -26,7 +26,7 @@
  */
 
 import { useCallback, useState } from "react";
-import { RotateCcw, ExternalLink, History } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { flipOperation, isMirrorableOperation } from "@/lib/engine/mirror";
 import { OP_SPECS } from "@/types/modifier";
 import { useToasts } from "@/components/ui/toast";
@@ -116,7 +116,19 @@ export function PrimitivePreviewCard({
           kind: "primitive",
           row: primitive,
         };
-        openPreview({ item });
+        openPreview({
+          item,
+          // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+          // wire the source + version-history buttons into
+          // the preview modal's action bar so they show up
+          // when the user opens a primitive preview from
+          // the sheet. Buttons render at the bottom of the
+          // modal (matching items / caps / effects / herts).
+          actionBar: {
+            openSourceHref: `/atelier/primitive/${p.id}`,
+            versionHistoryHref: `/atelier/primitive/${p.id}?tab=versions`,
+          },
+        });
       } catch (err) {
         // Fallback: build a minimal preview from the data we
         // already have on the sheet. This won't have icon /
@@ -145,6 +157,14 @@ export function PrimitivePreviewCard({
         };
         openPreview({
           item: { kind: "primitive", row: fallback },
+          // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+          // same wiring as the success path so the
+          // fallback preview also has source + version-
+          // history buttons in the modal.
+          actionBar: {
+            openSourceHref: `/atelier/primitive/${p.id}`,
+            versionHistoryHref: `/atelier/primitive/${p.id}?tab=versions`,
+          },
         });
         showToast(
           err instanceof Error
@@ -308,57 +328,21 @@ export function PrimitivePreviewCard({
         isMirrorable={p.isMirrorable}
         mirrorBuCredit={p.mirrorBuCredit}
         buCost={p.buCost}
+        // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+        // forward provenance into the expanded details
+        // panel so the badge renders once the user
+        // clicks "Details".
+        versionId={primitiveLink.versionId ?? null}
+        slotSource={primitiveLink.slotSource ?? null}
+        latestVersionId={primitiveLink.latestVersionId ?? null}
       />
-      {/* Phase 8.5 / Session H6 (Mashu 2026-08-03): provenance
-          row on the primitive preview card — same surface
-          the item card has. SlotSourceBadge renders owned/
-          pinned/forked + version mismatch chip. View source
-          + View version history open the template page in a
-          new tab so the user can see the canonical detail.
-          Buttons disabled when the versionId is null
-          (legacy pre-provenance primitives). */}
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px]">
-        <SlotSourceBadge
-          slotSource={primitiveLink.slotSource ?? null}
-          versionId={primitiveLink.versionId ?? null}
-          latestVersionId={primitiveLink.latestVersionId ?? null}
-        />
-        <button
-          type="button"
-          onClick={() =>
-            window.open(
-              `/atelier/primitive/${p.id}`,
-              "_blank",
-              "noopener",
-            )
-          }
-          className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary"
-          title="Open the primitive template page in a new tab"
-        >
-          <ExternalLink className="size-3" />
-          View source
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            window.open(
-              `/atelier/primitive/${p.id}?tab=versions`,
-              "_blank",
-              "noopener",
-            )
-          }
-          disabled={!primitiveLink.versionId}
-          className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50"
-          title={
-            primitiveLink.versionId
-              ? "Open this primitive's version history in a new tab"
-              : "No version history yet"
-          }
-        >
-          <History className="size-3" />
-          View version history
-        </button>
-      </div>
+      {/* Phase 8.5 / Session H6 (Mashu 2026-08-03):
+          SlotSourceBadge now renders inside the EXPANDED
+          Details panel (per the user's preference —
+          version info should appear in the expanded view,
+          not inline on every card). Inline cards stay
+          compact; once the user clicks "Details" the
+          badge + version mismatch chip become visible. */}
     </div>
   );
 }
@@ -378,6 +362,13 @@ function PrimitiveDetailToggle({
   isMirrorable,
   mirrorBuCredit,
   buCost,
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03): provenance
+  // fields. The badge renders inside the expanded details
+  // panel so the user can see "owned / pinned / forked"
+  // + version mismatch without opening the preview modal.
+  versionId,
+  slotSource,
+  latestVersionId,
 }: {
   readonly inheritedFrom: string | null;
   readonly inheritedKind: string | null;
@@ -387,11 +378,16 @@ function PrimitiveDetailToggle({
   readonly isMirrorable: boolean;
   readonly mirrorBuCredit: number;
   readonly buCost: number;
+  readonly versionId?: string | null;
+  readonly slotSource?: SlotSource | null;
+  readonly latestVersionId?: string | null;
 }) {
   const hasContent =
     Boolean(inheritedFrom) ||
     Boolean(narrativeRule) ||
-    modifierList.length > 0;
+    modifierList.length > 0 ||
+    Boolean(versionId) ||
+    Boolean(slotSource);
   if (!hasContent) return null;
 
   return (
@@ -403,6 +399,22 @@ function PrimitiveDetailToggle({
       <summary className="cursor-pointer list-none text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
         Details
       </summary>
+      {/* Phase 8.5 / Session H6 (Mashu 2026-08-03):
+          provenance row inside the EXPANDED details
+          panel — not inline on the card. The user wants
+          version / source info visible once the user
+          opens the Details toggle. SlotSourceBadge
+          renders owned / pinned / forked + version
+          mismatch chip. */}
+      {(versionId || slotSource) && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <SlotSourceBadge
+            slotSource={slotSource ?? null}
+            versionId={versionId ?? null}
+            latestVersionId={latestVersionId ?? null}
+          />
+        </div>
+      )}
       <div className="mt-1 space-y-1.5 text-[10px]">
         {/* Mashu 2026-07-28 (round 6): modifier UI
             matches the character-creation modal.

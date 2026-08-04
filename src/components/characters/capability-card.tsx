@@ -432,6 +432,16 @@ export function CapabilityCard({
             row: data as never,
           },
           category: "CAPABILITY",
+          // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+          // wire source + version-history buttons into
+          // the capability preview modal's action bar so
+          // they render at the bottom of the modal. The
+          // user wants these in the PREVIEW, not inline
+          // on the card.
+          actionBar: {
+            openSourceHref: `/atelier/capability/${capability.id}`,
+            versionHistoryHref: `/atelier/capability/${capability.id}?tab=versions`,
+          },
           callbacks: {
             engagement: {
               likes: 0,

@@ -190,10 +190,19 @@ export function EffectPreviewCard({
           kind: "effect",
           row: data as SandboxEffectRow,
         };
-        openPreview({ item });
+        // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+        // source + version-history buttons live in the
+        // preview modal, not inline on the card.
+        openPreview({
+          item,
+          actionBar: {
+            openSourceHref: `/atelier/effect/${effectLink.effectId}`,
+            versionHistoryHref: `/atelier/effect/${effectLink.effectId}?tab=versions`,
+          },
+        });
       }
     },
-    [fetchPreviewData, openPreview],
+    [fetchPreviewData, openPreview, effectLink.effectId],
   );
 
   const handleCardClick = useCallback(
@@ -210,7 +219,18 @@ export function EffectPreviewCard({
           kind: "effect",
           row: data as SandboxEffectRow,
         };
-        openPreview({ item });
+        // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+        // source + version-history buttons live in the
+        // preview modal — same wiring as handlePreviewClick
+        // above. Both click paths (name button + card body)
+        // should yield the same action bar.
+        openPreview({
+          item,
+          actionBar: {
+            openSourceHref: `/atelier/effect/${effectLink.effectId}`,
+            versionHistoryHref: `/atelier/effect/${effectLink.effectId}?tab=versions`,
+          },
+        });
       }
     },
     [fetchPreviewData, openPreview],
