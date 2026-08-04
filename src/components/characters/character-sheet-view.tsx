@@ -732,6 +732,11 @@ export function CharacterSheetView(props: CharacterSheetProps) {
               latestVersionId: l.latestVersionId,
             }))}
             encumbrance={props.encumbrance}
+            // Phase 8.5 / Session H6 round 10 (Mashu
+            // 2026-08-03): forwarded so each ItemCard's
+            // nested CAPABILITIES / EFFECTS / PRIMITIVES
+            // chips can render "Pinned v:XXXX".
+            latestVersions={latestVersions}
           />
         )}
         {tab === "notes" && (
@@ -2419,6 +2424,13 @@ function HeritageKindAccordion({
               versionId={hl.versionId ?? null}
               slotSource={hl.slotSource ?? null}
               latestVersionId={latestVersions.get(makeVersionKey("heritage", hl.heritageId)) ?? null}
+              // Phase 8.5 / Session H6 round 10 (Mashu
+              // 2026-08-03): forward the bulk-resolved
+              // latest-version map so the heritage
+              // bundle's nested CAPABILITIES / EFFECTS
+              // chips can render "Pinned v:XXXX" with
+              // each entity's canonical version.
+              latestVersions={latestVersions}
               canonCaps={canonCaps}
               canonPrims={canonPrims}
               slottedCapIds={slottedCapIds}
@@ -2551,6 +2563,12 @@ function ItemsTab({
   characterId,
   items,
   encumbrance,
+  // Phase 8.5 / Session H6 round 10 (Mashu
+  // 2026-08-03): forwarded to each ItemCard so
+  // the nested CAPABILITIES / EFFECTS /
+  // PRIMITIVES chips can render "Pinned v:XXXX"
+  // instead of just "Pinned".
+  latestVersions,
 }: {
   characterId: string;
   items: Array<{
@@ -2604,6 +2622,7 @@ function ItemsTab({
     }>;
   }>;
   encumbrance: CharacterSheetProps["encumbrance"];
+  latestVersions: Map<VersionKey, string>;
 }) {
   if (items.length === 0) {
     return (
@@ -2651,6 +2670,12 @@ function ItemsTab({
                 effectLinks: i.effectLinks,
                 primitiveLinks: i.primitiveLinks,
               }}
+              // Phase 8.5 / Session H6 round 10 (Mashu
+              // 2026-08-03): forward the latest-version
+              // map so the nested CAPABILITIES /
+              // EFFECTS / PRIMITIVES chips render
+              // "Pinned v:XXXX" instead of just "Pinned".
+              latestVersions={latestVersions}
             />
           </li>
         ))}

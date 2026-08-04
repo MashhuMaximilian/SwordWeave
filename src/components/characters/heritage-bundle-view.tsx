@@ -37,6 +37,7 @@ import { ChevronDown, Loader2 } from "lucide-react";
 import { CapabilityCard } from "@/components/characters/capability-card";
 import { useEntityPreview } from "@/components/characters/preview-modal";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
+import { makeKey as makeVersionKey, type VersionKey } from "@/lib/versions/version-key";
 import type { SandboxPreviewItem } from "@/components/library/library-item-preview";
 import type { SlotSource } from "@/db/schema/characters";
 
@@ -76,6 +77,17 @@ export interface HeritageBundleViewProps {
   slotSource?: SlotSource | null;
   /** Latest published version id for the heritage template. */
   latestVersionId?: string | null;
+  /**
+   * Phase 8.5 / Session H6 round 10 (Mashu
+   * 2026-08-03): the bulk-resolved latest-version
+   * map, used to render "Pinned v:XXXX" chips on
+   * every nested cap / effect / primitive inside
+   * the heritage bundle. Without this, the
+   * heritage_capabilities junction had no
+   * version_id column and the chips rendered
+   * a hardcoded "Pinned" without a version.
+   */
+  latestVersions?: Map<VersionKey, string>;
   /**
    * Slim canon bundle from the sheet's character response.
    * Used to render the header immediately while the full
@@ -172,6 +184,7 @@ export function HeritageBundleView({
   versionId = null,
   slotSource = null,
   latestVersionId = null,
+  latestVersions = undefined,
   canonCaps,
   canonPrims,
   slottedCapIds,
@@ -485,9 +498,17 @@ export function HeritageBundleView({
                           sourceType: cap.sourceType,
                           acquiredAtLevel: 1,
                           verboseDescription: cap.verboseDescription,
-                          versionId: null,
+                          // Phase 8.5 / Session H6 round 10
+                          // (Mashu 2026-08-03): resolve the
+                          // cap's latest version id from
+                          // the bulk-resolved map. Heritage
+                          // caps are PINNED to the heritage
+                          // template version, so we feed
+                          // the cap's canonical latest
+                          // version into SlotSourceBadge.
+                          versionId: latestVersions?.get(makeVersionKey("capability", cap.id)) ?? null,
                           slotSource: "PINNED",
-                          latestVersionId: null,
+                          latestVersionId: latestVersions?.get(makeVersionKey("capability", cap.id)) ?? null,
                           originChain: [
                             { kind: "heritage", name: heritageName },
                           ],
@@ -555,13 +576,19 @@ export function HeritageBundleView({
                                   <span className="font-medium text-foreground">
                                     {el.effect.name}
                                   </span>
-                                  {/* Phase 8.5 H6 round 5: effect
-                                      provenance chip — same pattern
-                                      as the cap's Pinned badge. */}
-                                  <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-medium text-sky-700 dark:text-sky-300">
-                                    <span className="size-1 rounded-full bg-current" aria-hidden />
-                                    Pinned
-                                  </span>
+                                  {/* Phase 8.5 H6 round 10: SlotSourceBadge
+                                      with the effect's latest version
+                                      id (resolved from the bulk
+                                      latestVersions map). Falls back
+                                      to a plain "Pinned" when the
+                                      effect's version isn't in the map
+                                      (shouldn't happen — every effect
+                                      has at least a v1). */}
+                                  <SlotSourceBadge
+                                    slotSource={"PINNED"}
+                                    versionId={latestVersions?.get(makeVersionKey("effect", el.effectId)) ?? null}
+                                    latestVersionId={null}
+                                  />
                                 </div>
                                 {el.effect.description && (
                                   <p className="mt-0.5 text-[11px] text-muted-foreground italic">

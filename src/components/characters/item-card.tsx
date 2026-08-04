@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useToasts } from "@/components/ui/toast";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
+import { makeKey as makeVersionKey, type VersionKey } from "@/lib/versions/version-key";
 import {
   SIZE_LOAD,
   TINY_ITEMS_PER_POUCH,
@@ -108,6 +109,17 @@ export interface ItemCardProps {
       };
     }>;
   };
+  // Phase 8.5 / Session H6 round 10 (Mashu
+  // 2026-08-03): the latest-version map from
+  // bulkResolveLatestVersions. Used to render
+  // "Pinned v:XXXX" chips on every nested
+  // cap/effect/primitive inside the item's
+  // CAPABILITIES / EFFECTS / PRIMITIVES
+  // accordions — without this, the nested chips
+  // rendered a hardcoded "Pinned" without a
+  // version number, even though every cap /
+  // effect / primitive has a v1 version row.
+  latestVersions?: Map<VersionKey, string>;
 }
 
 export function ItemCard({
@@ -115,6 +127,7 @@ export function ItemCard({
   item,
   atCapacity = false,
   nested,
+  latestVersions,
 }: ItemCardProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -706,13 +719,18 @@ export function ItemCard({
                             <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
                               {cl.capability.type}
                             </span>
-                            {/* Phase 8.5 H6 round 6: provenance
-                                on every nested cap inside the
-                                item's CAPABILITIES accordion. */}
-                            <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-medium text-sky-700 dark:text-sky-300">
-                              <span className="size-1 rounded-full bg-current" aria-hidden />
-                              Pinned
-                            </span>
+                            {/* Phase 8.5 H6 round 10: every
+                                nested cap gets a SlotSourceBadge
+                                with the cap's latest version id.
+                                Falls back to a plain "Pinned" span
+                                when the version isn't in the map
+                                (shouldn't happen in practice — every
+                                cap has at least a v1). */}
+                            <SlotSourceBadge
+                              slotSource={"PINNED"}
+                              versionId={latestVersions?.get(makeVersionKey("capability", cl.capability.id)) ?? null}
+                              latestVersionId={null}
+                            />
                           </div>
                           {cl.capability.verboseDescription && (
                             <p className="mt-1 text-muted-foreground line-clamp-3">
@@ -751,13 +769,13 @@ export function ItemCard({
                       >
                         <div className="flex flex-wrap items-center gap-1.5">
                           <span className="font-medium">{el.effect.name}</span>
-                          {/* Phase 8.5 H6 round 6: provenance on
-                              every nested effect inside the
-                              item's EFFECTS accordion. */}
-                          <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-medium text-sky-700 dark:text-sky-300">
-                            <span className="size-1 rounded-full bg-current" aria-hidden />
-                            Pinned
-                          </span>
+                          {/* Phase 8.5 H6 round 10: SlotSourceBadge
+                              with the effect's latest version id. */}
+                          <SlotSourceBadge
+                            slotSource={"PINNED"}
+                            versionId={latestVersions?.get(makeVersionKey("effect", el.effectId)) ?? null}
+                            latestVersionId={null}
+                          />
                         </div>
                         {el.effect.description && (
                           <p className="mt-1 text-muted-foreground line-clamp-2">
@@ -800,13 +818,13 @@ export function ItemCard({
                           <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
                             {pl.primitive.category}
                           </span>
-                          {/* Phase 8.5 H6 round 6: provenance on
-                              every nested primitive inside the
-                              item's PRIMITIVES accordion. */}
-                          <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-medium text-sky-700 dark:text-sky-300">
-                            <span className="size-1 rounded-full bg-current" aria-hidden />
-                            Pinned
-                          </span>
+                          {/* Phase 8.5 H6 round 10: SlotSourceBadge
+                              with the primitive's latest version id. */}
+                          <SlotSourceBadge
+                            slotSource={"PINNED"}
+                            versionId={latestVersions?.get(makeVersionKey("primitive", pl.primitiveId)) ?? null}
+                            latestVersionId={null}
+                          />
                         </div>
                         {pl.primitive.narrativeRule && (
                           <p className="mt-1 text-muted-foreground line-clamp-2">
