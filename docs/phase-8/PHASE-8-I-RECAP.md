@@ -1,8 +1,8 @@
 # Phase 8.I — Engine Math Cluster (Modifiers → Numbers + Tags)
 
 **Author:** Senku
-**For:** Mashu — review & answer the open questions before any implementation work
-**Status:** 🟡 Recap + question-collection phase. No code changes yet.
+**For:** Mashu — review & answer the remaining open questions before any implementation work
+**Status:** 🟡 Recap + question-collection phase. Round 2 answered 2026-08-04. Round 3 pending.
 **Started:** 2026-08-04
 **Origin:** Session I from the master plan (post-Sessions G + H which closed on 2026-08-04)
 
@@ -15,8 +15,6 @@ Translate **every modifier** a character has access to (from slotted primitives,
 ---
 
 ## Why it's harder than "translate to numbers"
-
-You said it best:
 
 > *"all it has to do is translate the modifiers into numbers on the character sheet. But in reality it's way more complicated. Some literally add numbers. Some change numbers. Some just add some tags."*
 
@@ -71,67 +69,72 @@ These are already authored, tested, and consistent across the schema, the form, 
 
 | # | Item | Severity | Symptom |
 |---|---|---|---|
-| I1 | **Null sub-target bug** — modifier with `target: "character.attribute.physical"` axis but no sub-target selected → adds to all attributes instead of none | 🛑 Root bug, cascades into I2–I5 | Sheet shows wrong attribute bonuses |
+| I1 | **Null sub-target bug** — modifier with axis set but no sub-target → adds to ALL sub-targets (e.g. "attribute" with no `physical`/`mental`/`magical` selected boosts all three) | 🛑 Root bug | Sheet shows wrong attribute bonuses |
 | I2 | **Character sheet rolls up via `buCost`, not via hardModifiers** | 🛑 All modifier math is wrong | Sheet shows `+5 mental` because the primitive's `buCost = 5`, not because any modifier actually says so |
 | I3 | **Conditions are display-only** — v1 condition shapes (`preset` / `narrative` / `tags` / `compound`) never gate the modifier at runtime | 🛑 Wrong numbers when conditions should suppress | Sheet shows `+3 to grappled bonus` even when target isn't grappled |
 | I4 | **Stacking defaults to `stack`**, not `highest-only` as intended | 🛑 Wrong totals | A modifier slotted twice contributes 2× instead of the safer 1× |
-| I5 | **Custom behavior variables** (e.g. `blockValue = 6`) — no system to persist / resolve them across primitives | 🟡 New surface | Author-defined runtime variables don't flow between modifiers |
+| I5 | **Custom behavior variables** (e.g. `blockValue = 6`) — no system to resolve them across primitives | 🟡 New surface | Author-defined runtime variables don't flow between modifiers |
 | I6 | **Tag operands** (`[fire]` inside equations) — resolver carries them through but the sheet doesn't surface them | 🟡 Missing label | Damage rolls don't show the damage type chip |
-| I7 | **Advantage/Disadvantage glyph system** (`︽` / `︾` per your spec, with `*` for conditional) | 🟡 New UI | Sheet shows nothing for advantages; should show glyphs next to the affected axis |
+| I7 | **Advantage/Disadvantage glyph system** (`︽` / `︾` per the spec, with `*` for conditional) | 🟡 New UI | Sheet shows nothing for advantages; should show glyphs next to the affected axis |
 | I8 | **"Small cards" zone in bottom drawer** for movement speeds, resistances, vulnerabilities, languages, advantages, custom behaviors | 🟡 New UI | These tags currently have no home on the sheet |
 | I9 | **Modal traceability is incomplete** — modals don't show the full primitive → capability → effect → item chain or the substituted formula | 🟡 Quality of life | Hard to debug "where does this number come from" |
 | I10 | **Mirror COST_INSTABILITY user-side cost** (extra_strain) — resolver captures it, no place on the sheet for it | 🟡 Missing display | -5 vitality from mirror shows nowhere |
-| I11 | **DB seed quality** — most primitives have template/incomplete modifiers; `target = "attribute"` with no sub-target is common | 🟡 Data quality | Even after engine fixes, sheet may show empty for many slots |
-| I12 | **`buCost` should NOT be a fallback for modifiers** (per your feedback) | 🛑 Design principle | Delete the buCost-as-fallback path entirely |
+| I11 | **DB seed quality** — most primitives have template/incomplete modifiers | 🟡 Data quality | Even after engine fixes, sheet may show empty for many slots |
+| I12 | **`buCost` should NOT be a fallback for modifiers** (per the feedback) | 🛑 Design principle | Delete the buCost-as-fallback path entirely |
 | I13 | **Items drive modifiers** — primitives nested in items contribute to the sheet | ✅ Already works via bundle expansion | Confirm |
-| I14 | **Capabilities are activatable / triggerable** — sheet at rest shows passive baseline; trigger caps fire and log to history | 🟡 New model | Sheet doesn't differentiate between active/passive/trigger caps |
+| I14 | **Capabilities are activatable / triggerable** — cap.active toggle bundles all its primitives; trigger caps fire and log to history | 🟡 New model | Sheet doesn't differentiate between passive/augment/active caps |
 | I15 | **Movement sub-types** (climb, fly, swim, burrow) — sheet only shows land | 🟡 Missing axes | Sheet doesn't surface climbing speed, flight, etc. |
-| I16 | **Per-action modifiers** — `action.roll` is one target; some modifiers should target specific action types | 🟡 Schema question | Schema doesn't have sub-targets under `action.*` |
+| I16 | **Schema cleanup**: rename `action.roll` → `attack_roll`, separate `defense_dc` (saving throws DC) from new `save_dc` (global single DC) | 🟡 Schema rename | Naming is unclear in practice |
+| I17 | **Mirror is per-primitive, not per-capability** — capabilities are NEVER mirrored; only primitives are | 🟡 Concept fix | Engine must not propagate mirror from a cap to its primitives |
+| I18 | **Equip gating for items** — equippable items contribute modifiers only when equipped; non-equippable items always contribute | 🟡 Behavior | Currently always contributes regardless of equipped state |
+| I19 | **Mirror color is yellow, not red** | 🟡 UI | Sheet's color hint was wrong |
+| I20 | **Hide stacking field when op = `set`** (stacking doesn't apply to `set`) | 🟡 UI | Form lets author pick a meaningless stacking mode |
+| I21 | **Future FAB for runtime modifiers** — add a temporary modifier at runtime (e.g. "I'm grappled", "I have -10ft movement") | 🚫 Parked for later | Out of Session I scope |
 
 ---
 
-## What we clarified (your feedback round 1, 2026-08-04)
+## Decisions log (your feedback, rounds 1–2)
 
-These are settled. Answered inline.
+### Round 1 (2026-08-04)
 
-### The null sub-target bug
-> *"Attribute increment with target attribute with no attribute selected should not give any modifier to anything for example even if set up. We have to explicitly set a target/sub target (like what changes? Attribute, mental, not just attribute and leave toggles empty)."*
+#### Null sub-target behavior
+> *"We have to explicitly set a target/sub target (like what changes? Attribute, mental, not just attribute and leave toggles empty)."*
 
 **Decision:** A modifier with axis set but sub-target empty → does NOT contribute to anything. The author must explicitly fill in the sub-target. This applies to all axes that have sub-targets (`attribute`, `defense`, `vitality`, `movement`, `action.*` if we add sub-targets).
 
-### Advantage/Disadvantage glyphs
+#### Advantage/Disadvantage glyphs
 > *"on character sheet if advantage near the practice for example, we should set `︽` (U+FE3D) and for disadvantage `︾` (U+FE3E). But what about advantage on fieldcraft based on tracking? I guess `︽ *` (and we write 'based on tracking enemies' in the modal)."*
 
 **Decision:** Glyphs `︽` / `︾` for advantage/disadvantage. Asterisk `*` appended when the modifier has a condition (so DM clicks the modal to see "based on tracking enemies"). Glyphs go near the affected axis on the sheet.
 
-### Custom behavior variables
+#### Custom behavior variables
 > *"I will create a primitive with a modifier target behavior called (key) blockValue (or block) set to 6. And a capability called Blocking with some primitives that while capability active it will subtract blockValue from damage taken. This is just one example, possibilities should be endless."*
 
 **Decision:** `behavior:<name>` is a fully open runtime variable space. Authors can name any variable. The engine resolves `behavior:<name>` references by walking the slotted modifiers and finding the latest `set` to that name (or `add` / `multiply` etc.). The variable's value lives only as long as the modifiers that set it.
 
-### `buCost` is NOT a proxy
+#### `buCost` is NOT a proxy
 > *"buCost should be no proxy for modifiers. It has nothing to do with them."*
 
-**Decision:** Delete the buCost-as-proxy path entirely. The engine walks hardModifiers only. If a primitive has empty hardModifiers, it contributes nothing. (DB cleanup is a separate sub-task — I11.)
+**Decision:** Delete the buCost-as-proxy path entirely. The engine walks hardModifiers only. If a primitive has empty hardModifiers, it contributes nothing.
 
-### Capability activation state
+#### Capability activation state
 > *"there are capabilities that can be triggered or set active/inactive. like a capability will deal 2d6 fire damage (albeit via a primitive inside it), but not the primitive itself."*
 
 **Decision:** Capabilities have an activation state. The sheet at rest shows the *passive baseline*. Trigger caps are normally inert; firing them logs to history AND adds their contribution to the active total for that moment. Augment caps apply their modifier (e.g. `+PB to attacks`) when the augmented action is taken.
 
-### Items drive modifiers
+#### Items drive modifiers
 > *"the primitives from items can also affect the sheet. Like I can get +1 attack roll from item."*
 
 **Decision:** Items contain primitives → primitives carry modifiers → modifiers target `action.roll` (or whatever). Already works via bundle expansion. Confirm at end of phase.
 
-### Runtime UX — two surfaces
+#### Runtime UX — two surfaces
 > *"1. In capabilities we already have the description of capabilities and primitives. We click on one, modal opens with all the info we need. 2. In the bottom drawer (modals that open on click for everything) where we have the actual numbers and the traceability for each thing for quick access."*
 
 **Decision:** Two surfaces for tag-bearing modifiers:
 - **Modal on click** in capabilities/items tab → describes the modifier and its condition
 - **Bottom drawer** → shows the running totals + glyphs + a new "small cards" zone for non-numeric tags (advantages, resistances, movement speeds, custom behaviors)
 
-### Modal traceability
+#### Modal traceability
 > *"we need the full traceability. Like we have in drawer +10 Fieldcraft. In its modal we have general formula, we have the provenance of what contributes to it (modifiers, proficiency bonus, primitives that contribute, and tidal) and below we have the formula again with everything substituted it."*
 
 **Decision:** Every modal in the bottom drawer must show:
@@ -139,19 +142,17 @@ These are settled. Answered inline.
 2. **Provenance breakdown** — list of contributors with their source (heritage → cap → effect → primitive → modifier chain)
 3. **Substituted formula** — same formula with every token replaced by its resolved value
 
-(TBD — see J1 question below re: the word "tidal".)
-
-### DB seed quality
+#### DB seed quality
 > *"some primitives are not good at all when it comes to modifiers. Also, most of those with modifiers (like attribute increment) are just templates, incomplete."*
 
-**Decision:** DB seed cleanup is part of Session I. After the engine is wired, audit the primitives and fill in the missing modifier specs.
+**Decision:** DB seed cleanup is part of Session I. After the engine is wired, audit the primitives and fill in the missing modifier specs. *(Updated in round 2 — MIX: engine must be flexible, new test characters, defer DB cleanup later. See round 2 below.)*
 
-### Stacking default
+#### Stacking default
 > *"It is stacking by default, but can be changed. […] But highest-only as default should be safer."*
 
 **Decision:** Engine default for missing `stacking` field is `highest-only`. DB should still record explicit `stacking` per modifier (UI enforces this), but the runtime fallback is `highest-only`.
 
-### Mirror COST_INSTABILITY / user-side cost
+#### Mirror COST_INSTABILITY / user-side cost
 > *"A primitive can be mirrored to get some penalties in order to access more primitives. I can get vitality mirror (-5 vitality, appears in modal for vitality), or a mirror to give me vulnerability to fire, in the new section with small cards."*
 
 **Decision:** Mirrored primitives can impose **user-side penalties** (negative vitality, vulnerability, debuffs). These appear:
@@ -159,12 +160,12 @@ These are settled. Answered inline.
 - In the new "small cards" zone (e.g. vulnerability:fire)
 - Never DM-only — always visible to the player
 
-### Sheet shape — numbers AND breakdown
-> *"in the drawer and stuff the final number and in the modal on click we have the breakdown and traceability. […] we also need a full traceability. Like we have in drawer +10 Fieldcraft. In its modal we have general formula, we have the provenance of what contributes to it (modifiers, proficiency bonus, primitives that contribute) and below we have the formula again with everything substituted it."*
+#### Sheet shape — numbers AND breakdown
+> *"in the drawer and stuff the final number and in the modal on click we have the breakdown and traceability."*
 
 **Decision:** Sheet shows the **final number** per axis in the drawer (compact). Modal on click shows the **full breakdown** with provenance chain + substituted formula.
 
-### Character sheet = expected outcome
+#### Character sheet = expected outcome
 > *"The character sheet is the expected outcome. How we have it now. (We are still missing things maybe like movement speed and specialized movement speed like climbing flying burrowing swimming)."*
 
 **Decision:** The current character sheet (top section + bottom drawer) is the target layout. Phase 8.I adds:
@@ -175,125 +176,324 @@ These are settled. Answered inline.
 
 ---
 
-## Open questions (asked 2026-08-04, awaiting your answers)
+### Round 2 (2026-08-04)
 
-These are the gaps where the design is not yet specific enough to write code. Group by area.
+#### A. Null sub-target validation
 
-### A. Null sub-target behavior
+> *"For everything that has sub-target raise error. If they want all choose all because they are checkboxes. We need to map all what changes I wonder to figure it out? So we have in modifier inside primitive modal. Some have sub-targets and we'd need to raise error. Some don't have any sub target. Some have free text like strain and scene. And behavior is more like a variable name."*
 
-- **A1.** When modifier schema target is `<axis>` (e.g. `attribute`) but no sub-target (e.g. `physical`/`mental`/`magical`) selected:
-  - (a) silently dropped (no number, no chip, no audit row)
-  - (b) silently dropped at engine level BUT surfaced as "non-contributing modifier" in the modal/audit
-  - (c) raises validation error at save time so author must fix before publishing
-- **A2.** Same question for `target = "character.skill"` and `target = "action.roll"` — these don't have sub-targets. Are they always valid? Or is there a "skill name" / "action name" that ALSO must be filled in, and if blank, same drop rule?
-- **A3.** For `behavior:blockValue` style targets — those are free-form strings. If the author writes `behavior:` with nothing after it, same drop rule?
+**Decision:** When a modifier's target has a sub-target AND the sub-target is not selected → raise validation error at save time. Author must explicitly:
+- Pick at least one sub-target from the checkbox group (multi-select allowed — pick all to apply to all)
+- OR pick single-target axes that don't have sub-targets (`set`, `grant`, `revoke` on a single axis)
+- OR use free-text targets (`strain`, `scene.pace`) where the text itself is the value
+- OR use `behavior:<name>` where the author must name the variable — `behavior:` with empty name also raises validation error at save time
 
-### B. Advantage / Disadvantage glyph system
+**Sub-target mapping (to be confirmed in round 3):**
 
-- **B1.** The `*` means "has a condition attached". Confirm? Or is `*` the literal symbol and the condition is a separate annotated footnote chip in the modal?
-- **B2.** When a modifier grants `advantage` AND has a condition AND is slotted as heritage-bundled vs direct — does the sheet show the same `︽ *`?
-- **B3.** When a modifier grants advantage WITH a condition (e.g. "only when target is below half HP"):
-  - (a) `︽ *` always (indicating "if condition met, you'd have advantage here")
-  - (b) `︽ *` only when the condition is currently MET in the scene
-  - (c) nothing at all when condition isn't met, `︽` (no asterisk) when it IS met
-- **B4.** Stacking rules for advantage/disadvantage — when TWO modifiers grant advantage on the same practice:
-  - (a) double up (2× advantage — usually meaningless in D&D-style, but SwordWeave may differ)
-  - (b) just count as one `︽` (anything > 1 advantage = 1 advantage)
-  - (c) depend on the modifier's stacking mode
-- **B5.** Legacy `{key, operator, value}` rows in DB — some are probably old `bias-value` rows that grant advantage/disadvantage. Do those parse cleanly into `grant`/`revoke` on `behavior:advantage` / `behavior:disadvantage`? Or do we need a DB backfill as part of Session I?
+| Axis | Has sub-target? | Validation rule |
+|---|---|---|
+| `character.attribute` | Yes (physical/mental/magical) | At least one checkbox checked |
+| `character.defense` / `saving_throws` | Yes (physical/mental/magical) | At least one checkbox checked |
+| `character.vitality` | Yes (max/current) | At least one checkbox checked |
+| `character.movement` | Yes (land/fly/swim/climb/burrow) | At least one checkbox checked |
+| `character.skill` | No — single-axis | No validation |
+| `character.proficiencyBonus` | No — single-axis | No validation |
+| `action.roll` / `attack_roll` | No (single-axis) — *renaming TBD* | No validation |
+| `action.damage` | No — single-axis | No validation |
+| `action.range`, `action.targetCount`, `action.areaSize`, `action.duration`, `action.strain` | No — single-axis with free text | No validation |
+| `entity.loadout` | No — single-axis | No validation |
+| `item.slotCost` | No — single-axis | No validation |
+| `scene.pace` | No — single-axis with free text | No validation |
+| `behavior:<name>` | Variable name (author-typed) | Name must be non-empty after stripping spaces/symbols |
 
-### C. Custom behavior variables (blockValue)
+#### Schema cleanup — saving throws vs save DC
 
-- **C1.** The capability has a primitive that **subtracts** `blockValue` from damage. That primitive's `value` is the token `behavior:blockValue` (read-only, resolved at runtime). The capability is only "active" when the Blocking stance is on, so the modifier is gated by capability.active=true. Confirm?
-- **C2.** When the capability is inactive, does the modifier:
-  - (a) not contribute at all (gated by capability.active=true)
-  - (b) still contribute but marked as `*` (gated) on the sheet
-  - (c) still contribute at half strength or reduced form
-- **C3.** Order of evaluation: if a primitive SETS `behavior:blockValue = 6` and another primitive SUBTRACTS `blockValue` from incoming damage — do we resolve `blockValue` first (state-like), or is the order sequential within a single capability's modifier chain?
-- **C4.** Custom variables that the author names — engine should:
-  - (a) auto-create a state slot the first time a `set` modifier targets `behavior:<name>` (default 0)
-  - (b) require author to declare the variable in a separate "runtime variables" schema/UI first
-  - (c) attempt to read whatever `behavior:<name>` value exists; if never been set, modifier resolves to 0 silently
-- **C5.** When the sheet shows `blockValue = 6`, where does it live? In the new "small cards" zone? Or hidden behavior that only surfaces when something references it?
-- **C6.** Can a single capability have multiple primitives that all target `behavior:blockValue`? Canonical order: `set → add → multiply → divide → min/max → grant/revoke`?
+> *"Defense DC (rename to saving throws). And add save DC (because we have a single save DC, but for each attribute we have modifier and saving throw DC). Do you understand this?"*
 
-### D. Capabilities are activatable / triggerable
+**Decision (preliminary, needs round 3 confirmation):**
+- Current `character.defense.<physical|mental|magical>Dc` (formulas like `5 + PB + modifier`) → **rename** to `character.saving_throws.<physical|mental|magical>` (or `saving_throw.<physical|mental|magical>`)
+- **New axis:** `character.save_dc` (single global DC, e.g. `8 + PB + modifier of proficient attribute`) — the public-facing number enemies must hit against the character
 
-- **D1.** Sheet at rest shows:
-  - (a) ALL slotted caps (active + passive + trigger + augment + reaction) summed up, ignoring activation state except for trigger caps
-  - (b) only PASSIVE caps by default, with an "Active loadout" view to toggle trigger caps on/off
-  - (c) sheet shows passive as baseline; modal of each cap shows "what this contributes when active"
-- **D2.** When a trigger is fired (logged in history), does the history row include the **provenance chain**? E.g. "Triggered Aegis Shield → 2d6 + PB + (Ironborn heritage → Heavy Steps → +1 physical) = 18 damage blocked"?
-- **D3.** Mirror on a capability — primitives INDIVIDUALLY mirrored (each flips its own op), or whole capability's contribution flips uniformly?
+**Open question (R3-Q1):** Does `save_dc` use the same formula as `saving_throws` (i.e. `5 + PB + modifier`), or is it different (e.g. `8 + PB + modifier`)? You said "we have a single save DC, but for each attribute we have modifier and saving throw DC" — confirming these are two different numbers?
 
-### E. Items drive modifiers
+#### Schema cleanup — action.roll naming
 
-- **E1.** Bundle expansion already walks into items. Confirm: an item's `capabilityLink` chain shows provenance as `Item → Capability → Effect → Primitive → Modifier` in the modal. Same convention as heritage-bundled caps. OK?
-- **E2.** When an item has both a direct-equipped modifier (via a primitive slotted inside the item) AND a slot-cost modifier — both contribute independently, OR equipping the item gates the modifier (only when equipped)?
+> *"Action roll should be for all rolls? Or change to attack roll or we add attack roll separately in list?"*
 
-### F. The "small cards" zone in the bottom drawer
+**Decision (preliminary, needs round 3 confirmation):** `action.roll` is currently used as a generic "all rolls" target. You suggested either renaming to `attack_roll` or adding a separate `attack_roll`. The system has many specific roll types (attack roll, save roll, check roll, etc.).
 
-- **F1.** Taxonomy — should it be:
-  - (a) one big "Bag" zone with all behavior tokens collected, grouped by category (`movement`, `damage-type`, `meta`, `custom`)
-  - (b) dedicated zones per category (one row for movement, one row for damage modifiers, one row for meta tags)
-  - (c) one zone per `behavior:` target namespace
-- **F2.** New things to appear as small cards (not just behaviors) — explicit list needed. Suggestion:
-  - resistance:fire, resistance:cold, immunity:poison, vulnerability:radiant
-  - advantage:fieldcraft (conditional → `︽ *`), advantage:attack
-  - movement:-+10ft, movement:fly 30ft, movement:swim 15ft, movement:climb 15ft, movement:burrow 5ft
-  - darkvision:60ft, blindsight:30ft, tremorsense:any
-  - languages:Common, languages:Draconic, languages:Thieves' Cant
-  - custom:blockValue:6, custom:manapool:30, custom:spellslots:1/day
-- **F3.** When a behavior card has a numeric value (e.g. `movement: 35ft`), should it be **editable** on the sheet (DM tracks current vs base), or always computed (read-only)?
-- **F4.** When a behavior card has a condition attached, the card shows the `*` indicator AND the modal shows the condition. Do all small cards support conditions, or only some?
+**Open question (R3-Q2):** Should `action.roll` be renamed to `attack_roll` (narrower), or should we add a set of explicit axes (`attack_roll`, `save_roll`, `check_roll`, `initiative_roll`)?
 
-### G. Modal traceability
+#### B. Advantage/disadvantage clarifications
 
-- **G1.** "And tidal" — what does that mean? I don't see this in the modifier system. Is it a typo for "title" / "detail" / "tied" / "trial" / something else? Or is there a `tidal` modifier concept I'm missing?
-- **G2.** Provenance chain — flat list (one row per contributing primitive) or tree (capability → effect → primitive → modifier, recursively)?
-- **G3.** Substituted formula — each contributor shows its own source + condition + stacking rule, OR per-contributor collapsed into one row with "click for full detail"?
-- **G4.** For mirrored contributors, show both pre-mirror and post-mirror values (e.g. `+2 (mirrored to -2)`)? Color hint (red for negative, teal for positive)?
+**B1 — `*` placement:** `*` is the literal symbol next to the glyph (e.g. `︽ *`). The exact condition text is in the modal. **Confirmed.**
 
-### H. DB seed quality
+**B2 — Source doesn't matter:** A modifier with condition looks the same on the sheet regardless of whether it came from a heritage-bundled cap, a direct cap, or an item. The engine doesn't distinguish source for display. The provenance modal shows the full chain. **Confirmed.**
 
-- **H1.** When Session I is done, do we want to:
-  - (a) ALSO do a DB cleanup pass now — author proper modifiers for seed primitives so Tessy's sheet has real numbers
-  - (b) DEFER DB cleanup to a later session
-  - (c) MIX — wire engine correct against any modifier shape, AND fix the most-used primitives as a quick win. Defer the rest
-- **H2.** Primitives with `target: "attribute"` but no sub-target selected — should we flag them in DB (a `needs_review` flag, or a separate column) so the data-quality view shows "these primitives have malformed modifiers"?
-- **H3.** Custom behavior variables like `blockValue` — persist in a `runtime_variables` table with `(character_id, name, value)` tuples, OR transient (lived only in modifier resolution, never stored, just computed on the fly)?
+**B3 — Always show `︽ *` when condition present:** The sheet shows `︽ *` always when the modifier has a condition, regardless of whether the condition is currently met in the scene. The DM decides at the table. **Confirmed.**
 
-### I. Stacking default
+**B4 — Advantages stack:** Two modifiers granting advantage on the same practice → both contribute. The sheet shows `︽︽` (two glyphs). At the table, this means "roll 3 dice, take highest" instead of "roll 2 dice, take highest." **No special rule needed.**
 
-- **I1.** Confirm: missing `stacking` field in DB → engine defaults to `highest-only` (not `stack`). DB should still record explicit stacking per modifier (UI enforces this), but runtime fallback is `highest-only`.
-- **I2.** For `set` operations specifically — does `stack` even make sense? `set` overrides. If three modifiers `set` attribute to 5, 10, 15, result is 15 (last-write-wins). Is `set` always last-write-wins, OR does it follow the modifier's stacking mode?
+**B5 — DB backfill for advantage/disadvantage:** Legacy modifiers in the DB probably store `advantage = 1` or `bias-value = "advantage"` with a `bias` op. These need to be parsed properly into the new `grant` on `behavior:advantage` / `behavior:disadvantage` shape. **Backfill task added to Session I scope (I22).**
 
-### J. Engine vs display-only
+#### C. Custom behavior variables
 
-- **J1.** Conditions on a modifier — when **active** (condition met), engine adds its contribution. When **inactive**, engine ignores it. Sheet chip for the modifier shows `*` to indicate "conditional, check modal." Confirm?
-- **J2.** Base attributes (slice values set in Identity tab) — modified by primitive modifiers at engine level, OR used as base for the formula with primitives on top? In other words: `displayed_attribute = slice + sum(primitive modifier contributions)`. Yes?
-- **J3.** Modifier targets `attribute` axis but sub-target is `physical` — engine adds to `physical` only. Slice for physical is shown as `physical: slice + sum(modifiers)`. Same for mental and magical. Each independent. Confirmed?
-- **J4.** Modifier targets `action.roll` or `action.damage` — contribution added to a generic `action` total, OR each `action` modifier knows which specific action it rolls for? Schema has `action.roll` as single target — does that mean all actions roll the same modifier, OR is `action.X` a wildcard needing sub-targeting?
-- **J5.** Slot NOT mirrored but modifier's `metadata.mirror.optedOut = true` — no-op (pass-through unchanged), OR inert (no contribution)?
+> *"And what about advantage on fieldcraft based on tracking? I guess `︽ *` (and we write 'based on tracking enemies' in the modal when we click on it where we have the what primitives affect this thing I guess. Idk of a better way)."*
 
-### K. Where to start
+**C1 — Capability gating confirmed:** A capability with a primitive that references `blockValue` only contributes when the capability is active. The modifier is gated by `capability.active`. **Confirmed.**
 
-- **K1.** Highest priority to land first?
-  - (a) Engine resolution — wire `resolveModifiers()` into character sheet (replace buCost-as-proxy). Smallest scope, biggest correctness win.
-  - (b) Null-target bug fix — fix "no sub-target = adds to all" bug. Very narrow, unblocks the audit.
-  - (c) Custom behavior variables — design and wire `blockValue` system. New surface, biggest design decision.
-  - (d) The "small cards" UI — bottom drawer zone for tags, resistances, etc. Visible win, no engine changes.
-  - (e) DB seed cleanup — make existing primitives have proper modifiers. Data work, not engine work.
-- **K2.** Anything I should NOT touch in Session I? E.g. "don't rewrite the existing practice formula" or "don't change the slot-receiver tab"?
+**C2 — Inactive = no contribution:** When the capability is inactive, the modifier inside it does NOT contribute at all — not reduced, not flagged. The toggle bundles ALL the primitives' modifiers. **Confirmed.**
+
+**C3 — Two separate operations:** Setting `blockValue` and referencing `blockValue` are different modifiers. The `set` modifier mutates the variable; the `subtract` modifier reads it. They're independent and the reference is resolved at engine time by walking the current modifier chain. **Confirmed.**
+
+**C4 — Variable creation:** Two layers:
+- (a) Engine auto-creates a variable on first `set` (default 0) — permissive
+- (c) Engine just reads whatever exists; missing = 0 silently
+
+**Decision:** Go with (a) + (c) hybrid. On first `set` modifier targeting `behavior:<name>`, the engine creates the variable in the character's runtime state. Missing variables resolve to 0 silently. The variable is **transient** (not in DB), pulled from JSON each time the sheet renders. **Open question (R3-Q3):** What is the canonical variable name format? You said "strip of spaces and symbols" — confirm: lowercase, alphanumeric, underscores allowed, hyphens allowed?
+
+**C5 — Variables live in small cards:** `blockValue: 6` shows in the small cards zone. **Confirmed.**
+
+**C6 — Multiple primitives target same variable:** Order: `set` first, then `add`, then `multiply`, then `divide`, then `min`, then `max`, then `grant`, then `revoke`. Within a single canonical-order group, modifiers apply in their original order. Multiple capabilities can target the same variable; engine walks all modifiers in the canonical order. **Confirmed.**
+
+#### D. Capabilities — clarification on types
+
+> *"Only passives and augment. Capabilities are passive augment or active only. Trigger and active/inactive are behaviors on the character sheet. So capabilities that are active only should have trigger and active/inactive buttons. Maybe we need to think more about this."*
+
+**Decision:** The 4 capability types collapse into 3 effective states:
+- **Passive** — always contributes; no toggle
+- **Augment** — applies when the augmented action is taken (e.g. +PB to attacks)
+- **Active** — has a trigger button (one-shot, log to history) AND an active/inactive toggle (toggleable buff)
+
+The "trigger" and "active/inactive" are **two separate buttons** on active caps. The "active/inactive" toggle bundles ALL nested primitive modifiers. **Open question (R3-Q4):** When an active cap is currently toggled ON, does the sheet show its modifier contribution in the standard totals? Or only when triggered?
+
+**D2 — History includes provenance:** When a trigger fires, the history row includes the full provenance chain. **Confirmed.**
+
+**D3 — Capabilities are NEVER mirrored:**
+
+> *"Capabilities are not mirrored, just primitives!! And only when editing/creating character or capability. So I can have a primitive that is direct and mirrored. But maybe a capability uses same primitive but not mirrored. Well that's just how capability works. It doesn't change mirroring of my direct capability nor does it double/dupe it."*
+
+**Decision:** Mirror is a property of the **primitive slot** (the character's slot for that primitive), not the capability. A capability uses the primitive's slot, including its mirror state. The capability itself has no mirror. If the primitive is slotted as mirrored, the cap sees the mirrored version. If slotted as direct (un-mirrored), the cap sees the un-mirrored version. **This is the current behavior — confirmed correct.**
+
+#### E. Items drive modifiers + equip gating
+
+> *"If item equippable only when equipped. If item not equippable both contribute."*
+
+**E1 — Bundle expansion OK:** Already works. **Confirmed.**
+
+**E2 — Equip gating:** Equippable items contribute only when equipped. Non-equippable items (`is_not_equippable = true`) always contribute. **Confirmed.**
+
+#### F. Small cards zone
+
+**F1 — Dedicated zones per category:** Separate row groups for movement, damage types, resistances, etc. Not one giant bag. **Needs round 3 final taxonomy.**
+
+**F2 — No explicit list yet.** The examples are fine as a starting set. **Confirmed.**
+
+**F3 — Read-only on sheet, future FAB to add runtime modifiers:**
+
+> *"readonly. we'd eventually make a button/second FAB on character sheet that would let us add modifiers and conditions with name and description at runtime in ch sheet. To change movement speed or to apply penalties. (I said something like this before)"*
+
+**Decision:** Small cards in the sheet are read-only (computed values). A future FAB (separate phase) will allow adding runtime modifiers — e.g. "I'm currently grappled" — that flow through the same engine. **FAB parked for later (I21).**
+
+**F4 — Modifiers near existing axes already in the drawer:**
+
+> *"Idk.. I guess all. But not everything needs a card. Like for fieldcraft for example we already have practices in the drawer. Condition appears when I click on it. So if we have it in the drawer we apply the symbols and extra info in modal. But for the other things... Hmmm...yeah we can keep the idea with modals I guess....but we need to figure out where it makes sense to."*
+
+**Decision:** For modifiers that target an existing axis already shown in the drawer (practices, attributes, defenses, vitality, movement, etc.), the modifier's symbol (`︽` / `︾` / `*`) appears next to that axis in the drawer. Clicking the axis modal shows the full breakdown. For modifiers that don't have a corresponding axis (resistance:fire, darkvision:60ft, languages:Draconic, custom:blockValue), they get their own small card in the bottom drawer.
+
+#### G. Modal traceability
+
+**G1 — "Tidal" was a typo for "total":**
+
+> *"Typo I meant 'total' but we already have these in those modals. We have a single modal structure I guess that's flexible enough and reusable, we can add to it these new revelations."*
+
+**Decision:** All three sections (general formula, provenance breakdown, substituted formula) are already in the reusable modal structure. We just need to enrich them with the new modifier-resolution data. **Confirmed.**
+
+**G2 — Tree internally, flat list UI:**
+
+> *"Tree. But it's gonna be tricky to illustrate on mobile. If this is just UI, we make flat list. If it's like needed or better and not just UI/UX wise, tree. Idk if I understood correctly."*
+
+**Decision:** The engine returns the **full tree** of provenance (capability → effect → primitive → modifier, recursively with the source chain). The UI **flattens** for display when needed (e.g. on mobile, or when the user clicks "show flat"). Default rendering: tree, with each level collapsible. **Confirmed.**
+
+**G3 — Per-contributor breakdown collapsed with click-for-full-detail:** Each contributor shows name + total contribution. Click to expand: shows the source chain, the modifier's op, condition, stacking mode. **Confirmed.**
+
+**G4 — Yellow for mirror, only mirror value:**
+
+> *"what? Color code yes but yellow for mirror not red. If mirrored only the mirror value. We already have in the primitive accordion what it mirrors to..."*
+
+**Decision:** The modal shows the **mirror value only** (not the pre-mirror value). Mirror contributions are highlighted in **yellow** (not red — red is reserved for negative numbers that aren't from mirror). The primitive accordion already shows the original-to-mirror mapping. **Confirmed.**
+
+#### H. DB seed quality
+
+**H1 — Mix, defer DB cleanup:**
+
+> *"C. Because engine must be flexible because idk how people will create things in the future. I will also not be testing on Tessy I will create new character, new primitives brew things to test against the engine. Defer DB cleanup later."*
+
+**Decision:** Engine is the focus of Session I. After wiring the engine, you create new characters + new primitives to test against it. **DB seed cleanup is deferred** to a later session (post-Session I/J/K). **Confirmed.**
+
+**H2 — Flag malformed modifiers in DB:** Yes, if that's the correct way. **Open question (R3-Q5):** What's the actual mechanism — a `needs_review` boolean column on `primitives`, a separate `modifier_audit` table, or a runtime check that surfaces the issue in the data UI?
+
+**H3 — Custom behavior variables NOT in DB:**
+
+> *"Idk... I'd say not in db. Bc people will do whatever. Engine will pull them from a JSON and resolve them I guess... Right?"*
+
+**Decision:** Custom behavior variables are **transient** — never persisted as a separate row. The engine resolves them by walking the modifier chain at character-sheet render time. No DB column for `runtime_variables`. **Confirmed.**
+
+#### I. Stacking rules
+
+**I1 — Default `highest-only`:** When stacking field is missing, engine defaults to `highest-only`. UI enforces explicit stacking. **Confirmed.**
+
+**I2 — Hide stacking field when op = `set`:**
+
+> *"For set stacking does not make sense. We should even hide field in modal build when set to because it doesn't make sense."*
+
+**Decision:** `set` doesn't have a stacking mode (always last-write-wins). Hide the stacking field in the modifier composer when op = `set`. **Confirmed.**
+
+#### J. Engine vs display-only
+
+**J1 — Capability toggle bundles all its primitive modifiers:**
+
+> *"I guess yes. Sounds ok. But clarification. On Ch sheet I set capability as active/inactive not the modifier. All the modifiers nested inside the primitives of said capabilities are bundled in same toggle to matter or not."*
+
+**Decision:** The character's active/inactive toggle is on the **capability**, not on each modifier. When the cap is toggled OFF, all its primitives' modifiers are bundled into the off state — none contribute. When toggled ON, all contribute. **Confirmed.**
+
+**J2 — Attributes are the base, primitives add on top:**
+
+> *"I don't understand. In identity tabs I only set size. You can trigger it with a primitive or capability (like enlarge reduce spell from dnd5e for example). If you mean attributes in attributes tab (physical, mental, magical), they are used as base for everything else."*
+
+**Decision:** Base attributes (slice values set in the Attributes tab) are the **base** for the formula. `displayed_attribute = slice + sum(primitive modifier contributions)`. Identity tab only has size; size is a separate axis (not a base for attributes). The Enlarge/Reduce example clarifies size can be modified by a primitive/cap. **Confirmed.**
+
+**J3 — Sub-targets are independent checkboxes:**
+
+> *"Yes. But I can choose what targets attribute and choose all 3 and it applies to all of them. Or I can only choose one or 2... Same for practices and movement and all sub-targets."*
+
+**Decision:** Sub-targets are multi-select checkboxes. Author can pick any subset. A modifier targeting `attribute` with physical+mental selected (not magical) applies to physical and mental only. **Confirmed.**
+
+**J4 — Saving throws vs DC:** See A. Schema cleanup section above. **Open question (R3-Q1, R3-Q2).**
+
+**J5 — Too technical, re-asked as R3-Q6 below.**
+
+#### K. Where to start
+
+> *"b with null target because of we don't start with that we cannot properly continue so I can verify. So I say b → a → d (because I cannot verify without UI) c → d (UI polish) → e."*
+
+**Decision: Execution order for Session I:**
+
+1. **b — Null-target bug fix** (validation error at save time + engine drop rule)
+2. **a — Engine resolution** (wire `resolveModifiers()` into the character sheet, delete buCost-as-proxy)
+3. **d — Small cards UI** (so you can verify with the new characters you create)
+4. **c — Custom behavior variables** (`blockValue` system + canonical ordering)
+5. **d — UI polish round 2** (small cards refinement, glyph placements, traceability)
+6. **e — DB seed cleanup** (deferred to later session per H1)
+
+**K2 — Do NOT touch:**
+
+> *"I mean don't change formulas like how we calculate a roll for a practice or for attack or for vitality or things like this. And don't touch UI that was done in character sheet before now. And don't make changes that are not part of this plan or previously agreed to without asking me...."*
+
+**Decision:** Session I does NOT modify:
+- The formula for practice roll, attack roll, vitality, etc. (existing formulas stay)
+- The pre-existing character sheet UI (already shipped in earlier phases)
+- Anything outside this plan or previously agreed (ask first)
+
+Session I DOES add:
+- The new "small cards" zone in the bottom drawer
+- Glyphs next to existing axes (`︽` / `︾` / `*`)
+- Movement sub-types (extend display, not formula)
+- Full modal traceability (extend existing modal structure, not rewrite)
+
+---
+
+## Open questions — round 3 (asked 2026-08-04)
+
+These are the remaining gaps before we can write the subtask breakdown and start implementing.
+
+### R3-Q1. Saving throws vs save DC — what are the two numbers?
+
+You said:
+> *"Defense DC (rename to saving throws). And add save DC (because we have a single save DC, but for each attribute we have modifier and saving throw DC). Do you understand this?"*
+
+I think these are two different things but I want to confirm:
+
+- **Saving throw DC** (one per attribute: `saving_throw.<physical>`, `saving_throw.<mental>`, `saving_throw.<magical>`) — the threshold players must meet when **the character is rolling to defend against an incoming effect** (e.g. "save vs. fire" → the player's d20 + modifier ≥ this DC)
+- **Save DC** (single global number, `character.save_dc`) — the threshold enemies must meet when they're trying to affect the character (e.g. "enemy attacks the character" → enemy's attack roll ≥ this DC)
+
+Is that right? And do they use the same formula (`5 + PB + modifier`) or different formulas?
+
+### R3-Q2. Action.roll rename vs add
+
+> *"Action roll should be for all rolls? Or change to attack roll or we add attack roll separately in list?"*
+
+Two options:
+- (a) **Rename** `action.roll` → `attack_roll` (one target, replaces the generic one)
+- (b) **Add a set of explicit axes**: `attack_roll`, `save_roll`, `check_roll`, `initiative_roll` — keep `action.roll` as the wildcard for "any roll"
+
+Which? Or a different set?
+
+### R3-Q3. Behavior variable name format
+
+You said: "strip of spaces and symbols." Confirm:
+- Lowercase only?
+- Letters + digits + underscore + hyphen allowed?
+- Must start with a letter?
+- Min/max length?
+- Any reserved names (e.g. can't be `set`, `add`, `multiply`, etc.)?
+
+### R3-Q4. Active caps — when toggled ON, contribute to totals?
+
+> *"Only passives and augment. Capabilities are passive augment or active only. Trigger and active/inactive are behaviors on the character sheet."*
+
+Two interpretations:
+- (a) **Active caps are toggle-only.** When toggled ON, their modifiers contribute to the sheet's totals (alongside passive). Trigger is a separate one-shot button that adds to the active total temporarily and logs to history.
+- (b) **Active caps are trigger-only.** No toggle; they only contribute when explicitly fired. The "active/inactive" toggle you mentioned is for **persistent buffs** (a different category than trigger caps).
+
+Which? Or both? (i.e. an active cap has BOTH a toggle AND a trigger button, and the toggle enables/disables the passive contribution while the trigger fires it once)
+
+### R3-Q5. "Flag malformed modifiers" — implementation
+
+You said: "If that is the correct way to do it then yes." Three options:
+- (a) Add a `needs_review BOOLEAN` column on `primitives` — server-side audit script flags primitives with malformed modifiers
+- (b) Add a `modifier_audit` table — runtime view that joins primitives + their modifiers + validation status
+- (c) No DB change — the engine itself reports malformed modifiers at evaluation time (returns them in the resolver output with a `validated: false` flag)
+
+### R3-Q6. J5 re-asked in plain language
+
+J5 was: "When slot NOT mirrored but modifier's `metadata.mirror.optedOut = true` — no-op (pass-through unchanged), OR inert (no contribution)?"
+
+In plain language: imagine a primitive is slotted as **normal** (not mirrored). But one of its modifiers has a flag that says "I refuse to be mirrored." Does that modifier:
+- (a) **Contribute normally** as if nothing was weird (the mirror-opt-out flag is ignored when the slot isn't mirrored anyway)
+- (b) **Become inert** (no contribution at all, because the modifier is "broken" without mirror)
+- (c) Something else
+
+### R3-Q7. Stacking interaction with cap activation
+
+When a cap is toggled OFF, none of its primitives contribute. But what about **stacking** across multiple active caps that target the same axis? E.g. two active caps both grant `set save_dc = 10 + PB`. When both are ON, do they stack (one wins), or do they all contribute independently?
+
+For `set`, the answer is clear: last-write-wins. But what about `add` from two active caps that are both ON? Do they stack normally, or do we treat the cap-toggle as a stacking boundary?
+
+### R3-Q8. Per-action modifier scope
+
+When a modifier targets `action.roll` (or `attack_roll` if we rename), does it apply to:
+- (a) **All attack rolls** (universal +X to attack)
+- (b) **Specific attack rolls** (e.g. "ranged attack roll vs. melee within 5ft")
+
+If (a), no sub-target needed. If (b), we need a sub-target like `action.roll.attack_sword` or a free-text field for "weapon type" or similar.
+
+### R3-Q9. Mirror contributions to small cards
+
+When a mirrored primitive grants `vulnerability:fire`, the small card shows `vulnerability:fire`. Does the card have a `*` marker to indicate "this is from a mirrored primitive" (so the player knows it's a penalty they're paying for)?
+
+### R3-Q10. Item equip preview
+
+When an item is in the inventory but NOT equipped, does the sheet show its potential contribution in a dimmed/grayed-out state? Or is it invisible until equipped?
 
 ---
 
 ## What happens after you answer
 
-1. I'll fold the answers into this doc (replace the open-questions section with "Decisions log").
-2. I'll write a concrete subtask breakdown for I1–I11 (in execution order, dependency-aware).
-3. We'll start with the highest-priority item per your K1 answer.
-4. Each subtask gets its own commit per your preference (4 sequential commits over 1 signoff-gated commit).
+1. Fold round 3 answers into the doc (replace this section with "Decisions log round 3").
+2. Write concrete subtask breakdown for I1–I11 in execution order (per K1: b → a → d → c → d → e).
+3. Start with the highest-priority item (b — null-target bug).
+4. Each subtask gets its own commit (per your preference: 4 sequential commits over 1 signoff-gated commit).
 
 ---
 
@@ -303,3 +503,4 @@ These are the gaps where the design is not yet specific enough to write code. Gr
 - The resolver today does NOT walk v1 condition shapes (`preset` / `narrative` / `tags` / `compound`). It treats `null` condition as active and treats any condition with a `kind` discriminator as active. Only the legacy `{key, operator, value}` path is actually evaluated. **I3 fix.**
 - The `conditionActive` field in `ModifierContribution` is currently `!mod.condition || "kind" in (mod.condition ?? {})` — a soft-warn placeholder. I3 replaces this with real evaluation.
 - The runtime reference token (`{kind: "runtime", name: "blockValue", hint: "number"}`) is the parser's fallback when the author types a non-canonical inner string. The resolver soft-warns at character-sheet render time if the runtime reference is still unresolved — no hard error, it's an open future slot.
+- The mirror button on a primitive is per-slot: it lives on the character's slot for that primitive (in `character_primitives.is_mirrored`). The capability uses the primitive's slot, so it sees the mirror state. **Critical:** the capability's own mirror flag is irrelevant — mirror is always primitive-level, not capability-level.
