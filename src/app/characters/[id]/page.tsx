@@ -10,6 +10,7 @@ import {
   makeKey,
   type VersionKey,
 } from "@/lib/versions/bulk-resolve-latest-versions";
+import type { SlotSource } from "@/db/schema/characters";
 import { parseBackstory } from "@/lib/character/character-backstory";
 import { enrichItemLinksWithNestedBundle } from "@/lib/api/enrich-item-links";
 
@@ -55,6 +56,13 @@ export default async function CharacterSheetPage({
     ...row.primitiveLinks.map((l) => ({ kind: "primitive" as const, id: l.primitiveId })),
     ...row.capabilityLinks.map((l) => ({ kind: "capability" as const, id: l.capabilityId })),
     ...row.itemLinks.map((l) => ({ kind: "item" as const, id: l.itemId })),
+    // Phase 8.5 / Session H6 round 7 (Mashu
+    // 2026-08-03): include heritages so the
+    // HeritageBundleView header can render the
+    // SlotSourceBadge with a real latest version id
+    // (not just the slot's pinned versionId).
+    ...(row as unknown as { heritageLinks?: Array<{ heritageId: string }> })
+      .heritageLinks?.map((l) => ({ kind: "heritage" as const, id: l.heritageId })) ?? [],
   ];
   const latestVersions = await bulkResolveLatestVersions(entityPairs);
 
@@ -366,6 +374,8 @@ export default async function CharacterSheetPage({
           heritageId: string;
           acquiredAtLevel: number;
           isMirrored: boolean | null;
+          versionId: string | null;
+          slotSource: SlotSource | null;
           heritage: {
             id: string;
             name: string;
@@ -404,6 +414,14 @@ export default async function CharacterSheetPage({
         heritageId: l.heritageId,
         acquiredAtLevel: l.acquiredAtLevel,
         isMirrored: l.isMirrored ?? false,
+        // Phase 8.5 / Session H6 round 7 (Mashu
+        // 2026-08-03): forward versionId + slotSource
+        // from the character_heritages row so the
+        // HeritageBundleView header can render the
+        // SlotSourceBadge with a real version number
+        // instead of a hardcoded "Pinned" chip.
+        versionId: l.versionId ?? null,
+        slotSource: l.slotSource ?? null,
         heritage: {
           id: l.heritage.id,
           name: l.heritage.name,
@@ -419,6 +437,15 @@ export default async function CharacterSheetPage({
           })),
         },
       }))}
+      // Phase 8.5 / Session H6 round 7 (Mashu
+      // 2026-08-03): forward the bulk-resolved
+      // latest-version map so HeritageKindAccordion
+      // → HeritageBundleView can render the heritage
+      // header SlotSourceBadge with the latest
+      // version id (drives the "update available"
+      // stale pill when a heritage has been
+      // re-published).
+      latestVersions={latestVersions}
       // Phase 8.2 batch 3: pass logEntries to the view for the
       // History tab. The shape matches what aggregateCharacterSheet
       // has historically logged on the character row; here we just

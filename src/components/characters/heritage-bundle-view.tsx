@@ -36,7 +36,9 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { CapabilityCard } from "@/components/characters/capability-card";
 import { useEntityPreview } from "@/components/characters/preview-modal";
+import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
 import type { SandboxPreviewItem } from "@/components/library/library-item-preview";
+import type { SlotSource } from "@/db/schema/characters";
 
 export interface HeritageBundleViewProps {
   /**
@@ -54,6 +56,17 @@ export interface HeritageBundleViewProps {
   heritageKindLabel: string;
   heritageDescription: string | null;
   isMirrored: boolean;
+  /**
+   * Phase 8.5 / Session H6 round 7 (Mashu 2026-08-03):
+   * the slot's pinned versionId + slotSource from the
+   * character_heritages row. Used by the header
+   * SlotSourceBadge so it can render "Pinned v:XXXXX"
+   * instead of just "Pinned".
+   */
+  versionId?: string | null;
+  slotSource?: SlotSource | null;
+  /** Latest published version id for the heritage template. */
+  latestVersionId?: string | null;
   /**
    * Slim canon bundle from the sheet's character response.
    * Used to render the header immediately while the full
@@ -146,6 +159,9 @@ export function HeritageBundleView({
   heritageKindLabel,
   heritageDescription,
   isMirrored,
+  versionId = null,
+  slotSource = null,
+  latestVersionId = null,
   canonCaps,
   canonPrims,
   slottedCapIds,
@@ -368,16 +384,20 @@ export function HeritageBundleView({
         <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase text-secondary-foreground">
           {heritageKindLabel}
         </span>
-        {/* Phase 8.5 / Session H6 round 5 (Mashu 2026-08-03):
-            the heritage itself doesn't have a slot model
-            (it's a template, not a versioned reference), but
-            we'll surface the source origin + content hash
-            so the user can see provenance. Pinned because
-            heritage is always a snapshot. */}
-        <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300">
-          <span className="size-1.5 rounded-full bg-current" aria-hidden />
-          Pinned
-        </span>
+        {/* Phase 8.5 / Session H6 round 7 (Mashu
+            2026-08-03): use the canonical
+            SlotSourceBadge so the header shows
+            "Pinned v:XXXXXXX" (or "Forked v:..." if
+            the user forked the heritage) instead of
+            just "Pinned". The latestVersionId flag
+            powers the "update available" stale pill
+            when the heritage has been re-published
+            since the character slotted it. */}
+        <SlotSourceBadge
+          slotSource={slotSource}
+          versionId={versionId}
+          latestVersionId={latestVersionId}
+        />
         {isMirrored && (
           <span className="inline-flex items-center gap-1 rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
             Mirrored

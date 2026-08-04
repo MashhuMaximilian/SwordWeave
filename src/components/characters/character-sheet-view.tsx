@@ -33,6 +33,10 @@ import type { HardModifier } from "@/types/swordweave";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
 import { OriginBadge } from "@/components/characters/origin-badge";
+import {
+  makeKey as makeVersionKey,
+  type VersionKey,
+} from "@/lib/versions/bulk-resolve-latest-versions";
 import { VitalityTracker } from "@/components/characters/vitality-tracker";
 import { VitalityDisplayCard } from "@/components/characters/vitality-display-card";
 import { CapabilityCard } from "@/components/characters/capability-card";
@@ -315,6 +319,13 @@ export type CharacterSheetProps = {
   primitiveLinks: SheetPrimitiveLink[];
   capabilityLinks: SheetCapabilityLink[];
   itemLinks: SheetItemLink[];
+  // Phase 8.5 / Session H6 round 7 (Mashu
+  // 2026-08-03): the latest-version map from
+  // bulkResolveLatestVersions. Lets the sheet render
+  // "update available" stale pills on every entity
+  // type, including heritages which weren't covered
+  // before round 7.
+  latestVersions?: Map<VersionKey, string>;
   // Phase 8.1 batch 13.1: heritage slots (lineage/upbringing/manifest)
   // so the sheet can show "from Lineage 'Elf'" origin badges.
   heritageLinks: Array<{
@@ -397,6 +408,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
   const [tab, setTab] = useState<Tab>("capabilities");
   const [levelUpConfirm, setLevelUpConfirm] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const latestVersions = props.latestVersions ?? (new Map<VersionKey, string>());
   const { toasts, showToast, dismissToast } = useToasts();
   // Phase 8.2 batch 7: opening edit mode triggers the atelier's
   // character builder modal (pre-filled via openForEdit).
@@ -666,6 +678,14 @@ export function CharacterSheetView(props: CharacterSheetProps) {
               // a nested Effects accordion.
               effectLinks: l.effectLinks ?? [],
             }))}
+            // Phase 8.5 / Session H6 round 7 (Mashu
+            // 2026-08-03): forward the latest-version
+            // map so HeritageKindAccordion (and the
+            // heritage header SlotSourceBadge inside
+            // it) can render "Pinned v:XXX" + the
+            // "update available" stale pill when the
+            // heritage has been re-published.
+            latestVersions={latestVersions}
             // Phase 8.1 batch 13.1: lookup maps for origin chain.
             heritageById={heritageById}
             capabilityById={capabilityById}
@@ -1781,12 +1801,26 @@ function CapabilitiesTab({
   heritageById,
   capabilityById,
   effectById,
+  // Phase 8.5 / Session H6 round 7 (Mashu
+  // 2026-08-03): forwarded so HeritageKindAccordion
+  // → HeritageBundleView can render the header
+  // SlotSourceBadge with the slot's versionId
+  // + the heritage's latestVersionId (so the
+  // "update available" stale pill lights up
+  // when needed).
+  latestVersions,
 }: {
   characterId: string;
   heritageLinks: Array<{
     heritageId: string;
     acquiredAtLevel: number;
     isMirrored: boolean;
+    // Phase 8.5 / Session H6 round 7: forwarded
+    // from character_heritages so the
+    // HeritageBundleView header can render
+    // "Pinned v:XXXX" instead of "Pinned".
+    versionId?: string | null;
+    slotSource?: SlotSource | null;
     heritage: {
       id: string;
       name: string;
@@ -1877,6 +1911,12 @@ function CapabilitiesTab({
   heritageById: Map<string, { name: string; kind: string }>;
   capabilityById: Map<string, { name: string }>;
   effectById: Map<string, { name: string }>;
+  // Phase 8.5 / Session H6 round 7: forwarded to
+  // HeritageKindAccordion → HeritageBundleView so
+  // the heritage header SlotSourceBadge can render
+  // the slot's versionId + the latestVersionId
+  // (drives the "update available" stale pill).
+  latestVersions: Map<VersionKey, string>;
 }) {  // Phase 8.4 v11 (Mashu 2026-07-28): deep transitive
   // closure — heritage → capability → primitive AND
   // heritage → capability → effect → primitive. Lazy-loaded
@@ -1930,11 +1970,56 @@ function CapabilitiesTab({
   for (const l of primitiveLinks) {
     if (seenPrimitiveIds.has(l.primitive.id)) continue;
     seenPrimitiveIds.add(l.primitive.id);
+    // Phase 8.5 / Session H6 round 7 (Mashu
+    // 2026-08-03): honor the per-row
+    // origin_heritage_id / origin_capability_id /
+    // origin_effect_id columns on character_primitives.
+    // Pre-round-7 code hardcoded origin: "DIRECT"
+    // for every direct-slotted primitive even when
+    // the DB row had an origin_heritage_id set
+    // (which happens because the same primitive
+    // can be slotted via heritage-bundle and ALSO
+    // appear as a top-level char_primitive row, or
+    // because the slot was stamped with its origin
+    // source during the heritage fork).
+    const originHeritageId = l.originHeritageId ?? null;
+    const originCapabilityId = l.originCapabilityId ?? null;
+    const originEffectId = l.originEffectId ?? null;
+    let origin: "DIRECT" | {
+      heritageId: string;
+      heritageName: string;
+      kind: string;
+    } = "DIRECT";
+    let provenancePath: string | null = null;
+    if (originHeritageId) {
+      const h = heritageById.get(originHeritageId);
+      if (h) {
+        origin = {
+          heritageId: originHeritageId,
+          heritageName: h.name,
+          kind: h.kind,
+        };
+        provenancePath = h.name;
+      }
+    } else if (originCapabilityId) {
+      const c = capabilityById.get(originCapabilityId);
+      if (c) {
+        // No heritage: cap is on the manifest directly.
+        // Build a synthetic DIRECT-style entry tagged to
+        // the cap so the UI can show "via Cap Name".
+        provenancePath = `via ${c.name}`;
+      }
+    } else if (originEffectId) {
+      const e = effectById.get(originEffectId);
+      if (e) {
+        provenancePath = `via effect ${e.name}`;
+      }
+    }
     allPrimitives.push({
       primitiveId: l.primitiveId,
       primitive: l.primitive,
-      origin: "DIRECT",
-      provenancePath: null,
+      origin,
+      provenancePath,
       isMirrored: l.isMirrored,
       // Phase 8.5 / Session H6 (Mashu 2026-08-03):
       // surface the slot's provenance to the preview card.
@@ -2119,6 +2204,7 @@ function CapabilitiesTab({
           )}
           capabilities={capabilities}
           primitiveLinks={primitiveLinks}
+          latestVersions={latestVersions}
         />
       )}
 
@@ -2134,6 +2220,7 @@ function CapabilitiesTab({
           )}
           capabilities={capabilities}
           primitiveLinks={primitiveLinks}
+          latestVersions={latestVersions}
         />
       )}
 
@@ -2149,6 +2236,7 @@ function CapabilitiesTab({
           )}
           capabilities={capabilities}
           primitiveLinks={primitiveLinks}
+          latestVersions={latestVersions}
         />
       )}
     </div>
@@ -2188,6 +2276,12 @@ function HeritageKindAccordion({
   heritageLinks,
   capabilities,
   primitiveLinks,
+  // Phase 8.5 / Session H6 round 7: forwarded
+  // to HeritageBundleView so the SlotSourceBadge
+  // can render "update available" when the
+  // heritage has been re-published since the
+  // character slotted it.
+  latestVersions,
 }: {
   characterId: string;
   kind: "MANIFEST" | "LINEAGE" | "UPBRINGING";
@@ -2197,6 +2291,12 @@ function HeritageKindAccordion({
     heritageId: string;
     acquiredAtLevel: number;
     isMirrored: boolean;
+    // Phase 8.5 / Session H6 round 7 (Mashu
+    // 2026-08-03): forwarded so HeritageBundleView
+    // can render the SlotSourceBadge with a real
+    // version number.
+    versionId?: string | null;
+    slotSource?: SlotSource | null;
     heritage: {
       id: string;
       name: string;
@@ -2247,6 +2347,11 @@ function HeritageKindAccordion({
     slotTab: "LINEAGE" | "UPBRINGING" | "MANIFEST";
   }>;
   primitiveLinks: Array<{ primitive: { id: number }; originHeritageId: string | null }>;
+  // Phase 8.5 / Session H6 round 7: forwarded to
+  // HeritageBundleView so the SlotSourceBadge can
+  // render the latest published version id and the
+  // "update available" stale pill.
+  latestVersions: Map<VersionKey, string>;
 }) {
   void kind; // unused at runtime; kept for type clarity
 
@@ -2295,6 +2400,16 @@ function HeritageKindAccordion({
               heritageKindLabel={label}
               heritageDescription={hl.heritage.description ?? null}
               isMirrored={hl.isMirrored ?? false}
+              // Phase 8.5 / Session H6 round 7: surface
+              // the slot's version + the heritage's
+              // latest published version so the header
+              // SlotSourceBadge renders "Pinned v:XXXX"
+              // (and lights up the "update available"
+              // pill when the heritage has been
+              // re-published since Tessy slotted it).
+              versionId={hl.versionId ?? null}
+              slotSource={hl.slotSource ?? null}
+              latestVersionId={latestVersions.get(makeVersionKey("heritage", hl.heritageId)) ?? null}
               canonCaps={canonCaps}
               canonPrims={canonPrims}
               slottedCapIds={slottedCapIds}
