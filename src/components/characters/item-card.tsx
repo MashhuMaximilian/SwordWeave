@@ -17,7 +17,14 @@
 
 import { useState, useEffect, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Shield, ShieldOff, Eye } from "lucide-react";
+import {
+  Shield,
+  ShieldOff,
+  Eye,
+  Check,
+  X,
+  Pencil,
+} from "lucide-react";
 import { useToasts } from "@/components/ui/toast";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
 import {
@@ -248,82 +255,98 @@ export function ItemCard({
 
   // Optimistic local state.
   const [optimisticEquipped, setOptimisticEquipped] = useState(item.equipped);
-  // Phase 8.5 / Session H6 (Mashu 2026-08-03): optimistic
-  // quantity so the inline Qty input on the sheet card
-  // updates immediately. The route /api/characters/[id]/
-  // items/[itemId]/quantity persists and refreshes the SC.
-  const [optimisticQuantity, setOptimisticQuantity] = useState(item.quantity);
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03 round 4):
+  // the quantity field uses a CHECKBOX-CONFIRM pattern,
+  // not instant-save. The user types a number into the
+  // input but the value is NOT saved until they click
+  // the small checkbox next to the field. Reasons:
+  //   1) typing into the field shouldn't trigger SC
+  //      refreshes that re-arrange cards (wonky UX)
+  //   2) the user couldn't delete and re-type cleanly;
+  //      with the checkbox-confirm, the input is its
+  //      own little scratchpad until confirmation
+  // Tri-state:
+  //   - editing=false: shows a "× N" pill + pencil edit
+  //     button (compact inline display)
+  //   - editing=true: shows the input + a checkbox to
+  //     confirm (saves), or X to cancel (reverts)
+  const [editingQty, setEditingQty] = useState(false);
+  const [qtyInput, setQtyInput] = useState<string>(String(item.quantity));
   const [pending, setPending] = useState(false);
 
   // Reconcile with props on server-pushed updates.
   useEffect(() => {
     if (!pending) setOptimisticEquipped(item.equipped);
   }, [item.equipped, pending]);
+  // When the server pushes a new quantity (e.g. another
+  // tab saved) and we're not in edit mode, sync the input
+  // string so the next edit starts from the right value.
   useEffect(() => {
-    if (!pending) setOptimisticQuantity(item.quantity);
-  }, [item.quantity, pending]);
+    if (!pending && !editingQty) setQtyInput(String(item.quantity));
+  }, [item.quantity, pending, editingQty]);
 
-  // Phase 8.5 / Session H6 (Mashu 2026-08-03): optimistic
-  // quantity save. Same shape as handleToggleEquip but
-  // posts to /quantity instead of /equip. Clamped to >=1.
-  const handleSetQuantity = useCallback(
-    async (next: number) => {
-      if (pending) return;
-      const clamped = Math.max(
-        1,
-        Math.floor(Number.isFinite(next) ? next : 1),
+  // Phase 8.5 / Session H6 round 4: confirm-checkbox
+  // save. The bounding box for the new quantity is the
+  // input text at the moment the user clicks the
+  // checkbox. Empty / non-numeric / < 1 inputs are
+  // silently rejected and the input stays open for the
+  // user to fix.
+  const handleConfirmQuantity = useCallback(async () => {
+    if (pending) return;
+    const parsed = Number(qtyInput);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      showToast("Quantity must be a positive integer.", "error");
+      return;
+    }
+    const previous = item.quantity;
+    if (parsed === previous) {
+      // No-op — exit edit mode without saving.
+      setEditingQty(false);
+      return;
+    }
+
+    setPending(true);
+    try {
+      const res = await fetch(
+        `/api/characters/${characterId}/items/${item.id}/quantity`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ quantity: parsed }),
+        },
       );
-      if (clamped === optimisticQuantity) return;
 
-      const previous = optimisticQuantity;
-      setOptimisticQuantity(clamped);
-      setPending(true);
-
-      try {
-        const res = await fetch(
-          `/api/characters/${characterId}/items/${item.id}/quantity`,
-          {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ quantity: clamped }),
-          },
-        );
-
-        if (!res.ok) {
-          setOptimisticQuantity(previous);
-          const body = await res.json().catch(() => ({}));
-          const msg =
-            (body as { error?: string }).error ??
-            "Failed to update item quantity.";
-          showToast(msg, "error");
-          return;
-        }
-
-        startTransition(() => router.refresh());
-
-        const delta = clamped - previous;
-        const verb = delta > 0 ? "Added" : "Removed";
-        showToast(
-          `${verb} ${Math.abs(delta)} ${item.name} (now ${clamped}).`,
-          "success",
-        );
-      } catch {
-        setOptimisticQuantity(previous);
-        showToast("Network error updating item quantity.", "error");
-      } finally {
-        setPending(false);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const msg =
+          (body as { error?: string }).error ??
+          "Failed to update item quantity.";
+        showToast(msg, "error");
+        // Leave edit mode open so the user can retry.
+        return;
       }
-    },
-    [
-      pending,
-      optimisticQuantity,
-      characterId,
-      item.id,
-      item.name,
-      router,
-      showToast,
-    ],
-  );
+
+      startTransition(() => router.refresh());
+      const delta = parsed - previous;
+      const verb = delta > 0 ? "Added" : "Removed";
+      showToast(
+        `${verb} ${Math.abs(delta)} ${item.name} (now ${parsed}).`,
+        "success",
+      );
+      setEditingQty(false);
+    } catch {
+      showToast("Network error updating item quantity.", "error");
+    } finally {
+      setPending(false);
+    }
+  }, [pending, qtyInput, item.quantity, item.id, item.name, characterId, router, showToast]);
+
+  // Cancel button: reverts the input to the server value
+  // and exits edit mode without saving.
+  const handleCancelQuantity = useCallback(() => {
+    setQtyInput(String(item.quantity));
+    setEditingQty(false);
+  }, [item.quantity]);
 
   const handleToggleEquip = useCallback(async () => {
     if (pending) return;
@@ -390,37 +413,91 @@ export function ItemCard({
         <div className="min-w-0">
           <h4 className="flex flex-wrap items-center gap-2 font-semibold">
             {item.name}
-            {/* Phase 8.5 / Session H6 (Mashu 2026-08-03):
-                editable inline Qty stepper on the sheet card.
-                A traveller carrying 4 healing potions sees 4
-                in the input; typing 7 + blur immediately
-                saves the new stack count and refreshes the
-                SC (which updates Load + the bottom drawer).
-                Min 1, no upper cap. Equivalent to opening
-                the modal and editing quantity there, but
-                without leaving the page. */}
-            <label
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-1.5 py-0.5 text-xs font-bold text-foreground"
-              title="How many of this item the character holds. Scales into Load."
-            >
-              <span className="text-[10px] font-semibold uppercase text-muted-foreground">
-                ×
+            {/* Phase 8.5 / Session H6 round 4 (Mashu
+                2026-08-03): CHECKBOX-CONFIRM quantity
+                pattern. The instant-save version was
+                wonky — typing into the field triggered
+                SC refreshes that re-arranged cards, and
+                the user couldn't cleanly delete and
+                retype. Now the field has two modes:
+                  - display mode (default): a "× N" pill
+                    + a pencil edit button
+                  - edit mode: a number input + a small
+                    checkbox (save) + an X (cancel)
+                The save fires only when the user clicks
+                the checkbox. The input is a scratchpad;
+                empty / non-numeric values are rejected
+                with a toast and the input stays open. */}
+            {editingQty ? (
+              <span
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-1.5 py-0.5 text-xs font-bold text-foreground"
+                title="Type a positive integer, then click the checkbox to save."
+              >
+                <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+                  ×
+                </span>
+                <input
+                  type="number"
+                  min={1}
+                  value={qtyInput}
+                  onChange={(e) => setQtyInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void handleConfirmQuantity();
+                    }
+                    if (e.key === "Escape") {
+                      e.preventDefault();
+                      handleCancelQuantity();
+                    }
+                  }}
+                  autoFocus
+                  disabled={pending}
+                  className="w-14 border-0 bg-transparent p-0 text-xs font-bold tabular-nums text-foreground outline-none"
+                />
+                {/* Confirm checkbox */}
+                <button
+                  type="button"
+                  onClick={() => void handleConfirmQuantity()}
+                  disabled={pending}
+                  title="Save quantity"
+                  aria-label="Save quantity"
+                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border border-emerald-500/50 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 disabled:opacity-50 dark:text-emerald-300"
+                >
+                  <Check className="size-3" />
+                </button>
+                {/* Cancel X */}
+                <button
+                  type="button"
+                  onClick={handleCancelQuantity}
+                  disabled={pending}
+                  title="Cancel"
+                  aria-label="Cancel quantity edit"
+                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/20 disabled:opacity-50"
+                >
+                  <X className="size-3" />
+                </button>
               </span>
-              <input
-                type="number"
-                min={1}
-                value={optimisticQuantity}
-                onChange={(e) => handleSetQuantity(Number(e.target.value))}
-                onBlur={(e) => {
-                  const raw = Number(e.target.value);
-                  handleSetQuantity(
-                    Math.max(1, Math.floor(Number.isFinite(raw) ? raw : 1)),
-                  );
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setQtyInput(String(item.quantity));
+                  setEditingQty(true);
                 }}
-                disabled={pending}
-                className="w-12 border-0 bg-transparent p-0 text-xs font-bold tabular-nums text-foreground outline-none"
-              />
-            </label>
+                title="Edit quantity"
+                aria-label="Edit quantity"
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-1.5 py-0.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/70"
+              >
+                <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+                  ×
+                </span>
+                <span className="text-xs font-bold tabular-nums text-foreground">
+                  {item.quantity}
+                </span>
+                <Pencil className="size-3 text-muted-foreground" />
+              </button>
+            )}
           </h4>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             <span>{item.rarity}</span>
@@ -441,10 +518,14 @@ export function ItemCard({
                 / 4) = 2 Load. The number input above lets the
                 user pick the quantity; this line lets them
                 see the Load impact without scrolling. */}
+            {/* Phase 8.5 / Session H6 round 4: per-item Load
+                uses item.quantity (the canonical value),
+                not the scratchpad qtyInput — so the preview
+                Load doesn't change mid-typing. */}
             <span>
               · Load{" "}
               {Math.ceil(
-                optimisticQuantity /
+                item.quantity /
                   Math.max(
                     1,
                     SIZE_LOAD[
