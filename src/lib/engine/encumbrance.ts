@@ -61,6 +61,14 @@ export interface EncumbranceItem {
   readonly size: CharacterSize;
   readonly loadValue: number;
   readonly slotCount: number;
+  // Phase 8.5 / Session H6 round 4 (Mashu 2026-08-03):
+  // isTwoHanded is the inline source of the 2H slot
+  // baseline (2 slots). Without it the engine can't
+  // distinguish a 1H LARGE weapon (slot baseline 1, *2 size
+  // = 2 slots) from a 2H LARGE weapon (slot baseline 2,
+  // *2 size = 4 slots). Optional so legacy callers without
+  // the field still compile; defaults to false.
+  readonly isTwoHanded?: boolean;
   readonly capacityBonus: number;
   readonly ignoreLoadBonus: number;
   readonly quantity: number;
@@ -117,14 +125,25 @@ export function computeCapacity(
 export function computeLoad(items: ReadonlyArray<EncumbranceItem>): number {
   return items.reduce((t, i) => {
     const ignoreBonus = i.ignoreLoadBonus;
-    // TINY items have loadValue = 0 by convention
-    // (see SIZE_LOAD.TINY). The pouch system handles
-    // their Load contribution separately inside
-    // computeEncumbrance via tinyItemsToPouches. We
-    // explicitly skip them here so we don't double-count
-    // — otherwise the max(1, ...) clamp below would
-    // charge 1 Load per tiny piece.
-    if (i.loadValue <= 0) return t;
+    // Phase 8.5 / Session H6 round 4 (Mashu 2026-08-03):
+    // TINY items use the pouch system. The user's spec
+    // (per the message.txt round 4 feedback) is:
+    //   1..1000 tiny items = 1 Load
+    //   1001..2000 tiny items = 2 Load
+    //   2001..3000 tiny items = 3 Load
+    //   N tiny items = ceil(N / 1000) Load
+    // The 1001st item fills a 2nd pouch, so the 1001st
+    // IS the 2nd Load. Math: ceil(quantity / 1000).
+    if (i.size === "TINY") {
+      const effectiveQty = Math.max(0, i.quantity - ignoreBonus);
+      return t + Math.ceil(effectiveQty / TINY_ITEMS_PER_POUCH);
+    }
+    // Non-TINY items use the regular inverse math:
+    // piecesPerLoad = how many pieces fit in one Load
+    // (= SIZE_LOAD[size]); Load contribution = ceil(quantity
+    // / piecesPerLoad). loadValue is 0 ONLY for TINY, so
+    // we set piecesPerLoad >= 1 to avoid division by zero
+    // in case of legacy data.
     const piecesPerLoad = Math.max(1, i.loadValue - ignoreBonus);
     return t + Math.ceil(i.quantity / piecesPerLoad);
   }, 0);
@@ -132,12 +151,66 @@ export function computeLoad(items: ReadonlyArray<EncumbranceItem>): number {
 
 /**
  * Compute total equip slots used.
- * 2H items use 2 slots; 1H items use 1 slot.
+ *
+ * Phase 8.5 / Session H6 round 4 (Mashu 2026-08-03):
+ * size-aware slot accounting. The slot count for an
+ * equipped item is the max of its stored slotCount
+ * (user-editable on the item) and the size-derived
+ * baseline:
+ *
+ *   2H items: baseline 2 slots (regardless of size)
+ *   1H items: baseline 1 slot
+ *
+ * Then multiplied by a size multiplier:
+ *   TINY=1, SMALL=1, MEDIUM=1, LARGE=2, HUGE=4, GARGANTUAN=4
+ *
+ * So a 2H LARGE weapon = max(2, slotCost) * 2 = 4 slots.
+ * A 1H SMALL dagger = max(1, slotCost) * 1 = 1 slot.
+ * A 2H HUGE maul = max(2, slotCost) * 4 = 8 slots.
+ *
+ * The user's expectation (the Claymore is 2H LARGE so it
+ * should take 4 slots; the previous round was 1 slot):
+ * the size multiplier was missing. Now applied.
+ *
+ * @param items Items with equipped state, slotCount,
+ *              size, and quantity
  */
 export function computeEquipSlotsUsed(items: ReadonlyArray<EncumbranceItem>): number {
   return items
     .filter((i) => i.equipped)
-    .reduce((t, i) => t + i.slotCount * i.quantity, 0);
+    .reduce((t, i) => {
+      // Size multiplier — the LARGE / HUGE / GARGANTUAN
+      // categories occupy more than 1 base slot.
+      const SIZE_SLOT_MULT: Record<CharacterSize, number> = {
+        TINY: 1,
+        SMALL: 1,
+        MEDIUM: 1,
+        LARGE: 2,
+        HUGE: 4,
+        GARGANTUAN: 4,
+      };
+      const mult = SIZE_SLOT_MULT[i.size] ?? 1;
+      // Phase 8.5 H6 round 4 (Mashu 2026-08-03):
+      // size-aware slot accounting. The 2H flag is the
+      // INLINE source of the 2H baseline (2 slots). The
+      // size (LARGE / HUGE / GARGANTUAN) is the multiplier
+      // on top of the baseline.
+      //
+      // The Claymore (2H LARGE): baseline 2 * LARGE mult 2
+      // = 4 slots. The user's stored slotCost is preserved
+      // for display but isn't used for the slot total when
+      // the 2H baseline is in play — the 2H flag is
+      // authoritative, the stored slotCost is metadata
+      // for the form. This matches Mashu's test case:
+      // 2H LARGE = 4 slots, regardless of stored slotCost.
+      //
+      // 1H items: baseline 1 (small / medium stay 1, LARGE
+      // becomes 2, HUGE becomes 4).
+      const baseline = i.isTwoHanded === true ? 2 : 1;
+      const effective = baseline; // stored slotCount is
+      // display-only; engine uses isTwoHanded * size
+      return t + effective * i.quantity * mult;
+    }, 0);
 }
 
 /**

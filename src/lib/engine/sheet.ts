@@ -309,6 +309,12 @@ const encumbranceItems = input.itemLinks.map((l) => {
     size: itemSize,
     loadValue: SIZE_LOAD[itemSize],
     slotCount: l.item.slotCost,
+    // Phase 8.5 / Session H6 round 4 (Mashu 2026-08-03):
+    // forward the 2H flag so the engine can apply the 2H
+    // slot baseline (2 slots) before the size multiplier.
+    // Without this, the Claymore (2H LARGE) computes to 1
+    // slot — the user expects 4 (2H baseline * LARGE 2x).
+    isTwoHanded: l.item.isTwoHanded,
     capacityBonus: 0,
     ignoreLoadBonus: 0,
     quantity: l.quantity ?? 1,

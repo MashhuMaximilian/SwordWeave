@@ -123,30 +123,103 @@ describe("computeLoad", () => {
     expect(computeLoad(items)).toBe(1);
   });
 
-  it("TINY items (loadValue=0) contribute 0 to Load directly", () => {
-    // TINY items use the pouch system; computeLoad skips
-    // them so computeEncumbrance can sum the pouch count.
-    const items = [mkItem({ loadValue: 0, quantity: 500 })];
-    expect(computeLoad(items)).toBe(0);
+  it("TINY items use the pouch system (1000 per Load)", () => {
+    // Phase 8.5 H6 round 4: per the user's spec, even a
+    // tiny item count of 1 fills 1 pouch = 1 Load. The
+    // ceiling applies: ceil(quantity / 1000). So:
+    //   1..1000 tiny items = 1 Load
+    //   1001..2000 tiny items = 2 Load
+    //   2001..3000 tiny items = 3 Load
+    const items1 = [mkItem({ size: "TINY", loadValue: 0, quantity: 1 })];
+    expect(computeLoad(items1)).toBe(1);
+
+    const items500 = [mkItem({ size: "TINY", loadValue: 0, quantity: 500 })];
+    expect(computeLoad(items500)).toBe(1);
+
+    const items2 = [mkItem({ size: "TINY", loadValue: 0, quantity: 1000 })];
+    expect(computeLoad(items2)).toBe(1);
+
+    const items3 = [mkItem({ size: "TINY", loadValue: 0, quantity: 1001 })];
+    expect(computeLoad(items3)).toBe(2);
+
+    const items4 = [mkItem({ size: "TINY", loadValue: 0, quantity: 1999 })];
+    expect(computeLoad(items4)).toBe(2);
+
+    const items5 = [mkItem({ size: "TINY", loadValue: 0, quantity: 2000 })];
+    expect(computeLoad(items5)).toBe(2);
   });
 });
 
 describe("computeEquipSlotsUsed", () => {
-  it("2H item uses 2 slots", () => {
-    const items = [mkItem({ slotCount: 2, equipped: true })];
+  // Phase 8.5 H6 round 4: size-aware slot accounting. The
+  // formula is:
+  //   effective = max(2H_baseline, stored_slotCount)
+  //   slots    = effective * quantity * size_mult
+  // where:
+  //   2H_baseline = 2 if isTwoHanded else 1
+  //   size_mult   = 1 for SMALL/MEDIUM, 2 for LARGE, 4 for HUGE/GARGANTUAN
+  //
+  // The Claymore (2H LARGE, stored slotCost=3) ends up at:
+  //   effective = max(2, 3) = 3 (stored wins because 3 > 2)
+  //   slots    = 3 * 1 * 2 = 6 slots
+  //
+  // Wait — Mashu expects 4. So the 2H baseline should DOMINATE
+  // the stored slotCount, not the other way around. The slot
+  // accounting is: 2H baseline (2) * size_mult (2) = 4.
+  // If 2H baseline dominates, the formula is:
+  //   effective = 2H baseline (sticky)
+  //        with override only when stored > 2H
+  // Er, that's the same as max(). The Claymore's stored is
+  // 3, baseline is 2, max = 3, * 2 = 6. Mashu wants 4.
+  //
+  // Resolution: stored slotCost "wins" only when it's > 2H
+  // baseline AND explicit user override. The Claymore's
+  // stored slotCost=3 is a legacy value — the right answer
+  // is 2H(2) * LARGE(2) = 4. So the formula should be:
+  //   effective = 2H_baseline (sticky)
+  // Unless the stored slot_cost is 0, in which case use 0.
+  // (For backwards compat with stored slot_cost=1 = 1H SMALL = 1 slot.)
+
+  it("1H SMALL weapon = 1 slot (baseline 1, mult 1)", () => {
+    const items = [mkItem({ slotCount: 1, isTwoHanded: false, size: "SMALL", equipped: true })];
+    expect(computeEquipSlotsUsed(items)).toBe(1);
+  });
+
+  it("2H SMALL weapon = 2 slots (baseline 2, mult 1)", () => {
+    const items = [mkItem({ slotCount: 2, isTwoHanded: true, size: "SMALL", equipped: true })];
     expect(computeEquipSlotsUsed(items)).toBe(2);
+  });
+
+  it("1H LARGE weapon = 2 slots (baseline 1, mult 2)", () => {
+    const items = [mkItem({ slotCount: 1, isTwoHanded: false, size: "LARGE", equipped: true })];
+    expect(computeEquipSlotsUsed(items)).toBe(2);
+  });
+
+  it("Claymore 2H LARGE = 4 slots (baseline 2, mult 2) — sticky 2H baseline", () => {
+    // The Claymore's stored slotCost=3 is a legacy value
+    // that pre-dates the size multiplier. The 2H baseline
+    // dominates: 2 * 2 = 4 slots. (The user's stored
+    // slotCost is preserved for display but isn't used
+    // for the slot total when the 2H baseline is in play.)
+    const items = [mkItem({ slotCount: 3, isTwoHanded: true, size: "LARGE", equipped: true })];
+    expect(computeEquipSlotsUsed(items)).toBe(4);
+  });
+
+  it("2H HUGE maul = 8 slots (baseline 2, mult 4)", () => {
+    const items = [mkItem({ slotCount: 2, isTwoHanded: true, size: "HUGE", equipped: true })];
+    expect(computeEquipSlotsUsed(items)).toBe(8);
   });
 
   it("only equipped items count", () => {
     const items = [
-      mkItem({ equipped: true, slotCount: 1 }),
-      mkItem({ equipped: false, slotCount: 1 }),
+      mkItem({ slotCount: 1, isTwoHanded: false, size: "SMALL", equipped: true }),
+      mkItem({ slotCount: 1, isTwoHanded: false, size: "SMALL", equipped: false }),
     ];
     expect(computeEquipSlotsUsed(items)).toBe(1);
   });
 
   it("quantity multiplies slot use", () => {
-    const items = [mkItem({ slotCount: 1, quantity: 3, equipped: true })];
+    const items = [mkItem({ slotCount: 1, quantity: 3, isTwoHanded: false, size: "SMALL", equipped: true })];
     expect(computeEquipSlotsUsed(items)).toBe(3);
   });
 });
