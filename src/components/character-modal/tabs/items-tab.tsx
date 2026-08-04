@@ -56,6 +56,8 @@ import {
   ShieldOff,
   Package,
   Trash2,
+  Check,
+  X,
 } from "lucide-react";
 import { useCharacterModal, type PendingSlot } from "../character-modal-store";
 import { useToasts } from "@/components/ui/toast";
@@ -332,6 +334,28 @@ function ItemContainerCard({
   onRemove: () => void;
   isNotEquippable?: boolean;
 }) {
+  // Phase 8.5 / Session H6 round 4 (Mashu 2026-08-03):
+  // CHECKBOX-CONFIRM quantity pattern — input is a
+  // scratchpad, only commits to the PendingSlot when the
+  // user clicks the checkbox. The previous instant-save
+  // version was wonky because calling onSetQuantity on
+  // every keystroke re-queued the slot, which re-arranged
+  // the card list via the store's queueSlot mechanism.
+  const [qtyInput, setQtyInput] = useState<string>(String(quantity));
+  const [editingQty, setEditingQty] = useState(false);
+  const handleConfirmQty = useCallback(() => {
+    const parsed = Number(qtyInput);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      setQtyInput(String(quantity));
+      setEditingQty(false);
+      return;
+    }
+    if (parsed !== quantity) {
+      onSetQuantity(parsed);
+    }
+    setQtyInput(String(parsed));
+    setEditingQty(false);
+  }, [qtyInput, quantity, onSetQuantity]);
   return (
     <div
       className={cn(
@@ -372,16 +396,49 @@ function ItemContainerCard({
             <input
               type="number"
               min={1}
-              value={quantity}
-              onChange={(e) => onSetQuantity(Number(e.target.value))}
-              onBlur={(e) => {
-                const raw = Number(e.target.value);
-                onSetQuantity(Math.max(1, Math.floor(Number.isFinite(raw) ? raw : 1)));
+              value={qtyInput}
+              onChange={(e) => setQtyInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleConfirmQty();
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setQtyInput(String(quantity));
+                  setEditingQty(false);
+                }
               }}
+              onFocus={() => setEditingQty(true)}
               className="h-7 w-14 rounded-md border border-input bg-background px-1.5 text-xs font-bold tabular-nums text-foreground outline-none ring-ring focus:ring-2"
-              title="How many of this item the character holds. Multiplies into the encumbrance Load."
+              title="How many of this item the character holds. Click the checkbox to apply."
             />
           </label>
+          {editingQty && qtyInput !== String(quantity) && (
+            <button
+              type="button"
+              onClick={handleConfirmQty}
+              title="Apply quantity"
+              aria-label="Apply quantity"
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-emerald-500/50 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300"
+            >
+              <Check className="size-3" />
+            </button>
+          )}
+          {editingQty && (
+            <button
+              type="button"
+              onClick={() => {
+                setQtyInput(String(quantity));
+                setEditingQty(false);
+              }}
+              title="Cancel"
+              aria-label="Cancel quantity edit"
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/20"
+            >
+              <X className="size-3" />
+            </button>
+          )}
           {/* Phase 8.5 / Session H6: hide the Equip toggle
               entirely for not-equippable items. */}
           {!isNotEquippable && (
