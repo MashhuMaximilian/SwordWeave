@@ -491,6 +491,14 @@ export function HeritageBundleView({
                     <li key={cl.capabilityId}>
                       <CapabilityCard
                         characterId={characterId}
+                        // Phase 8.5 / Session H6 round 11
+                        // (Mashu 2026-08-03): forwarded so
+                        // the cap's nested EFFECTS chips
+                        // render "Pinned v:XXXX" instead
+                        // of just "Pinned". The
+                        // capability-card's own SlotSourceBadge
+                        // already uses versionId below.
+                        latestVersions={latestVersions}
                         capability={{
                           id: cap.id,
                           name: cap.name,

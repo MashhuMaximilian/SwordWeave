@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils";
 import type { SlotSource } from "@/db/schema/characters";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
 import { OriginBadge } from "@/components/characters/origin-badge";
+import { makeKey as makeVersionKey, type VersionKey } from "@/lib/versions/version-key";
 import { useEntityPreview } from "@/components/characters/preview-modal";
 
 interface ToggleResponse {
@@ -111,6 +112,16 @@ export interface CapabilityCardProps {
    * for slotted capabilities).
    */
   showPreviewButton?: boolean;
+  /**
+   * Phase 8.5 / Session H6 round 11 (Mashu
+   * 2026-08-03): the bulk-resolved latest-version
+   * map. Used to render "Pinned v:XXXX" chips on
+   * the nested effects and primitives inside the
+   * capability's EFFECTS / PRIMITIVES accordions.
+   * Without this, the chips render a hardcoded
+   * "Pinned" without a version.
+   */
+  latestVersions?: Map<VersionKey, string> | undefined;
 }
 
 function storageKey(characterId: string, capabilityId: string) {
@@ -153,6 +164,7 @@ export function CapabilityCard({
   capability,
   showPrimitives = true,
   showPreviewButton = true,
+  latestVersions,
 }: CapabilityCardProps) {
   const { showToast } = useToasts();
   const { openPreview } = useEntityPreview();
@@ -536,14 +548,14 @@ export function CapabilityCard({
                     <span className="font-medium text-foreground">
                       {el.effect.name}
                     </span>
-                    {/* Phase 8.5 H6 round 6: every effect row
-                        inside every capability gets a
-                        Pinned provenance chip, even when the
-                        cap is itself inherited from a heritage. */}
-                    <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-medium text-sky-700 dark:text-sky-300">
-                      <span className="size-1 rounded-full bg-current" aria-hidden />
-                      Pinned
-                    </span>
+                    {/* Phase 8.5 H6 round 11: SlotSourceBadge
+                        with the effect's latest version id
+                        (resolved from bulk latestVersions). */}
+                    <SlotSourceBadge
+                      slotSource={"PINNED"}
+                      versionId={latestVersions?.get(makeVersionKey("effect", el.effectId)) ?? null}
+                      latestVersionId={null}
+                    />
                   </div>
                   {el.effect.description ? (
                     <div className="text-muted-foreground italic">
@@ -581,16 +593,13 @@ export function CapabilityCard({
                     <span className="font-mono text-foreground">
                       {pl.name}
                     </span>
-                    {/* Phase 8.5 H6 round 6: provenance on
-                        every bundled primitive inside a
-                        capability. The card-level
-                        SlotSourceBadge is in the expanded
-                        details panel; this chip is always
-                        visible. */}
-                    <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-medium text-sky-700 dark:text-sky-300">
-                      <span className="size-1 rounded-full bg-current" aria-hidden />
-                      Pinned
-                    </span>
+                    {/* Phase 8.5 H6 round 11: SlotSourceBadge
+                        with the primitive's latest version id. */}
+                    <SlotSourceBadge
+                      slotSource={"PINNED"}
+                      versionId={latestVersions?.get(makeVersionKey("primitive", pl.primitiveId)) ?? null}
+                      latestVersionId={null}
+                    />
                   </div>
                   <span className="font-mono text-[10px] text-muted-foreground">
                     {pl.buCost} BU

@@ -211,6 +211,15 @@ export function ItemCard({
         openPreview({
           item: { kind: "capability", row: data.capability as never },
           category: "CAPABILITY",
+          // Phase 8.5 / Session H6 round 11 (Mashu
+          // 2026-08-03): the preview modal must include
+          // the source + version-history buttons so the
+          // nested item-cap preview matches the slot
+          // preview on the regular character sheet.
+          actionBar: {
+            openSourceHref: `/library/item/CAPABILITY:${capabilityId}`,
+            versionHistoryHref: `/library/item/CAPABILITY:${capabilityId}/versions`,
+          },
         });
       } catch (err) {
         showToast(
@@ -236,6 +245,13 @@ export function ItemCard({
         openPreview({
           item: { kind: "primitive", row: data.primitive as never },
           category: "PRIMITIVE",
+          // Phase 8.5 / Session H6 round 11 (Mashu
+          // 2026-08-03): same source/version-history
+          // wiring as the cap preview handler above.
+          actionBar: {
+            openSourceHref: `/library/item/PRIMITIVE:${primitiveId}`,
+            versionHistoryHref: `/library/item/PRIMITIVE:${primitiveId}/versions`,
+          },
         });
       } catch (err) {
         showToast(
@@ -261,6 +277,14 @@ export function ItemCard({
         openPreview({
           item: { kind: "effect", row: data.effect as never },
           category: "EFFECT",
+          // Phase 8.5 / Session H6 round 11 (Mashu
+          // 2026-08-03): same source/version-history
+          // wiring as the cap / primitive handlers
+          // above.
+          actionBar: {
+            openSourceHref: `/library/item/EFFECT:${effectId}`,
+            versionHistoryHref: `/library/item/EFFECT:${effectId}/versions`,
+          },
         });
       } catch (err) {
         showToast(

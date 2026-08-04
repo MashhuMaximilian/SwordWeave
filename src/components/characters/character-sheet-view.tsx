@@ -2448,6 +2448,7 @@ function HeritageKindAccordion({
           <DirectCapabilitiesCard
             characterId={characterId}
             capabilities={directCapsForKind}
+            latestVersions={latestVersions}
           />
         )}
       </div>
@@ -2473,6 +2474,7 @@ function HeritageKindAccordion({
 function DirectCapabilitiesCard({
   characterId,
   capabilities,
+  latestVersions,
 }: {
   characterId: string;
   capabilities: Array<{
@@ -2512,6 +2514,10 @@ function DirectCapabilitiesCard({
     }>;
     tags?: string[];
   }>;
+  // Phase 8.5 / Session H6 round 11 (Mashu
+  // 2026-08-03): forwarded so the cap's nested
+  // EFFECTS chips can render "Pinned v:XXXX".
+  latestVersions: Map<VersionKey, string>;
 }) {
   if (capabilities.length === 0) return null;
   return (
@@ -2537,6 +2543,11 @@ function DirectCapabilitiesCard({
             // of showPrimitives when it instantiates
             // CapabilityCard for the bundle's caps).
             showPrimitives={false}
+            // Phase 8.5 / Session H6 round 11 (Mashu
+            // 2026-08-03): forwarded so the cap's
+            // nested EFFECTS chips can render
+            // "Pinned v:XXXX" instead of just "Pinned".
+            latestVersions={latestVersions}
             capability={{
               id: c.id,
               name: c.name,
