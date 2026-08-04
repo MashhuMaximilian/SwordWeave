@@ -553,19 +553,26 @@ export function ItemCard({
                     ] * item.quantity}
               </span>
             </span>
-            {/* Equipped slots chip */}
-            <span className="rounded-full bg-secondary px-2 py-0.5 text-foreground">
-              Equipped slots:{" "}
-              <span className="font-mono">
-                {(() => {
-                  const is2H = item.isTwoHanded === true;
-                  const baseline = is2H ? 2 : 1;
-                  const stored = item.slotCost ?? 1;
-                  const effective = Math.max(baseline, stored);
-                  return effective * item.quantity;
-                })()}
+            {/* Equipped slots chip — hidden for non-equippable
+                items. Carried-but-never-equipped means the
+                item takes inventory load but no equip slot.
+                Showing "Equipped slots: N" for potions / scrolls
+                / coins was misleading because the value has no
+                meaning on those items. */}
+            {!item.isNotEquippable && (
+              <span className="rounded-full bg-secondary px-2 py-0.5 text-foreground">
+                Equipped slots:{" "}
+                <span className="font-mono">
+                  {(() => {
+                    const is2H = item.isTwoHanded === true;
+                    const baseline = is2H ? 2 : 1;
+                    const stored = item.slotCost ?? 1;
+                    const effective = Math.max(baseline, stored);
+                    return effective * item.quantity;
+                  })()}
+                </span>
               </span>
-            </span>
+            )}
           </div>
         </div>
         <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
@@ -687,12 +694,19 @@ export function ItemCard({
                           title={`Preview "${cl.capability.name}"`}
                           className="flex-1 rounded border border-border/40 bg-card px-2 py-1.5 text-left transition-colors hover:bg-secondary"
                         >
-                          <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5">
                             <span className="font-medium">
                               {cl.capability.name}
                             </span>
                             <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
                               {cl.capability.type}
+                            </span>
+                            {/* Phase 8.5 H6 round 6: provenance
+                                on every nested cap inside the
+                                item's CAPABILITIES accordion. */}
+                            <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-medium text-sky-700 dark:text-sky-300">
+                              <span className="size-1 rounded-full bg-current" aria-hidden />
+                              Pinned
                             </span>
                           </div>
                           {cl.capability.verboseDescription && (
@@ -730,7 +744,16 @@ export function ItemCard({
                         title={`Preview "${el.effect.name}"`}
                         className="block w-full text-left transition-colors hover:underline"
                       >
-                        <div className="font-medium">{el.effect.name}</div>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="font-medium">{el.effect.name}</span>
+                          {/* Phase 8.5 H6 round 6: provenance on
+                              every nested effect inside the
+                              item's EFFECTS accordion. */}
+                          <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-medium text-sky-700 dark:text-sky-300">
+                            <span className="size-1 rounded-full bg-current" aria-hidden />
+                            Pinned
+                          </span>
+                        </div>
                         {el.effect.description && (
                           <p className="mt-1 text-muted-foreground line-clamp-2">
                             {el.effect.description}
@@ -760,7 +783,7 @@ export function ItemCard({
                         title={`Preview "${pl.primitive.name}"`}
                         className="block w-full text-left transition-colors hover:underline"
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-center justify-between gap-1.5">
                           <span className="font-medium">
                             {pl.primitive.name}
                           </span>
@@ -768,8 +791,17 @@ export function ItemCard({
                             {pl.primitive.buCost} BU
                           </span>
                         </div>
-                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                          {pl.primitive.category}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                            {pl.primitive.category}
+                          </span>
+                          {/* Phase 8.5 H6 round 6: provenance on
+                              every nested primitive inside the
+                              item's PRIMITIVES accordion. */}
+                          <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-medium text-sky-700 dark:text-sky-300">
+                            <span className="size-1 rounded-full bg-current" aria-hidden />
+                            Pinned
+                          </span>
                         </div>
                         {pl.primitive.narrativeRule && (
                           <p className="mt-1 text-muted-foreground line-clamp-2">
