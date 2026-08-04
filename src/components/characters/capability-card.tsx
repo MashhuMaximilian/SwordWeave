@@ -532,8 +532,18 @@ export function CapabilityCard({
                   key={el.effectId}
                   className="rounded border border-border bg-background px-2 py-1"
                 >
-                  <div className="font-medium text-foreground">
-                    {el.effect.name}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-medium text-foreground">
+                      {el.effect.name}
+                    </span>
+                    {/* Phase 8.5 H6 round 6: every effect row
+                        inside every capability gets a
+                        Pinned provenance chip, even when the
+                        cap is itself inherited from a heritage. */}
+                    <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-medium text-sky-700 dark:text-sky-300">
+                      <span className="size-1 rounded-full bg-current" aria-hidden />
+                      Pinned
+                    </span>
                   </div>
                   {el.effect.description ? (
                     <div className="text-muted-foreground italic">
@@ -565,11 +575,23 @@ export function CapabilityCard({
               {bundledPrims?.map((pl) => (
                 <li
                   key={pl.primitiveId}
-                  className="flex items-center justify-between rounded border border-border bg-background px-2 py-1"
+                  className="flex flex-wrap items-center justify-between gap-1.5 rounded border border-border bg-background px-2 py-1"
                 >
-                  <span className="font-mono text-foreground">
-                    {pl.name}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-mono text-foreground">
+                      {pl.name}
+                    </span>
+                    {/* Phase 8.5 H6 round 6: provenance on
+                        every bundled primitive inside a
+                        capability. The card-level
+                        SlotSourceBadge is in the expanded
+                        details panel; this chip is always
+                        visible. */}
+                    <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-medium text-sky-700 dark:text-sky-300">
+                      <span className="size-1 rounded-full bg-current" aria-hidden />
+                      Pinned
+                    </span>
+                  </div>
                   <span className="font-mono text-[10px] text-muted-foreground">
                     {pl.buCost} BU
                   </span>
