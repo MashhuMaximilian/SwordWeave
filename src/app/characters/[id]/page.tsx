@@ -148,6 +148,15 @@ export default async function CharacterSheetPage({
         slotCost: l.item.slotCost,
         isTwoHanded: l.item.isTwoHanded,
         isConsumable: l.item.isConsumable,
+        // Phase 8.5 / Session H6 round 6 (Mashu
+        // 2026-08-03): the loader must forward
+        // `size` to the engine — without it the
+        // sheet.ts encumbrance calculator falls
+        // back to ITEM_SIZE_DEFAULT = SMALL, so a
+        // LARGE Claymore computes Load=1 instead of
+        // Load=4. Round-5 caught this in the chip,
+        // round-6 catches it in the items-tab header.
+        size: l.item.size ?? undefined,
         // Phase 8.5 / Session H6 (Mashu 2026-08-03):
         // carried-but-not-equippable. Default false for
         // legacy characters (rows created before migration
