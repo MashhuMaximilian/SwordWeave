@@ -29,6 +29,7 @@ import { useToasts } from "@/components/ui/toast";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
 import {
   SIZE_LOAD,
+  TINY_ITEMS_PER_POUCH,
   type CharacterSize,
 } from "@/lib/engine/encumbrance";
 import type { SlotSource } from "@/db/schema/characters";
@@ -412,7 +413,24 @@ export function ItemCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h4 className="flex flex-wrap items-center gap-2 font-semibold">
-            {item.name}
+            {/* Phase 8.5 H6 round 5 (Mashu 2026-08-03):
+                the item name is now a clickable preview
+                trigger — same affordance as the cap
+                cards. The standalone Preview button at
+                the bottom of the card was removed because
+                naming the item should open the preview
+                the same way it does for caps / primitives
+                / effects / heritages. */}
+            <button
+              type="button"
+              onClick={() => void openItemPreview()}
+              disabled={previewPending}
+              aria-label={`Open preview for ${item.name}`}
+              title="Open preview"
+              className="cursor-pointer hover:underline disabled:opacity-50"
+            >
+              {item.name}
+            </button>
             {/* Phase 8.5 / Session H6 round 4 (Mashu
                 2026-08-03): CHECKBOX-CONFIRM quantity
                 pattern. The instant-save version was
@@ -508,31 +526,45 @@ export function ItemCard({
                 Equipped
               </span>
             )}
-            {/* Phase 8.5 / Session H6: per-item Load = ceil(qty /
-                SIZE_LOAD[size]). The ceiling matches the
-                "1 Load fits N items" rule the user clarified
-                this round — e.g. SMALL = 1 item per Load, so
-                4 SMALL items costs 4 Load (not 1). LARGE = 1
-                item per 4 Load, so a single LARGE item costs
-                ceil(1 / 4) = 1 Load. 5 LARGE items = ceil(5
-                / 4) = 2 Load. The number input above lets the
-                user pick the quantity; this line lets them
-                see the Load impact without scrolling. */}
-            {/* Phase 8.5 / Session H6 round 4: per-item Load
-                uses item.quantity (the canonical value),
-                not the scratchpad qtyInput — so the preview
-                Load doesn't change mid-typing. */}
-            <span>
-              · Load{" "}
-              {Math.ceil(
-                item.quantity /
-                  Math.max(
-                    1,
-                    SIZE_LOAD[
+          </div>
+
+          {/* Phase 8.5 / Session H6 round 5 (Mashu 2026-08-03):
+              per-card encumbrance metadata. The user wants
+              size, load value, and equipped slots visible on
+              every item card so the math is transparent without
+              opening the preview. TINY items show the pouch
+              rule explicitly. */}
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
+            {/* Size chip */}
+            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium text-foreground">
+              Size:{" "}
+              <span className="font-mono">
+                {(item as { size?: CharacterSize }).size ?? "SMALL"}
+              </span>
+            </span>
+            {/* Load value chip — TINY uses pouch rule */}
+            <span className="rounded-full bg-secondary px-2 py-0.5 text-foreground">
+              Load:{" "}
+              <span className="font-mono">
+                {(item as { size?: CharacterSize }).size === "TINY"
+                  ? Math.ceil(item.quantity / TINY_ITEMS_PER_POUCH)
+                  : SIZE_LOAD[
                       (item as { size?: CharacterSize }).size ?? "SMALL"
-                    ],
-                  ),
-              )}
+                    ] * item.quantity}
+              </span>
+            </span>
+            {/* Equipped slots chip */}
+            <span className="rounded-full bg-secondary px-2 py-0.5 text-foreground">
+              Equipped slots:{" "}
+              <span className="font-mono">
+                {(() => {
+                  const is2H = item.isTwoHanded === true;
+                  const baseline = is2H ? 2 : 1;
+                  const stored = item.slotCost ?? 1;
+                  const effective = Math.max(baseline, stored);
+                  return effective * item.quantity;
+                })()}
+              </span>
             </span>
           </div>
         </div>
@@ -608,25 +640,13 @@ export function ItemCard({
             Not equippable
           </span>
         )}
-        {/* Phase 8.5 / Session H6 (Mashu 2026-08-03): the
-          View source + View version history buttons were
-          removed from this card. Mashu clarified the
-          buttons belong in the PREVIEW MODAL that opens
-          when the user clicks the item's title / Preview
-          button — not inline on every card. Inline cards
-          should stay compact. The new buttons live in
-          library-item-preview.tsx and render for every
-          entity type (item, capability, effect, primitive). */}
-        <button
-          type="button"
-          onClick={openItemPreview}
-          disabled={previewPending}
-          className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50"
-          title="Open preview in modal"
-        >
-          <Eye className="size-3" />
-          {previewPending ? "Loading…" : "Preview"}
-        </button>
+        {/* Phase 8.5 H6 round 5 (Mashu 2026-08-03):
+            the standalone Preview button was removed.
+            Clicking the item name (top of the card) opens
+            the preview — same pattern as the cap cards.
+            The user explicitly asked for the preview button
+            to be gone so the card has two single-purpose
+            buttons: Equip toggle + the name (preview). */}
       </div>
 
       {/* Phase 8.4 v22 (Mashu 2026-07-29): T2 — nested
