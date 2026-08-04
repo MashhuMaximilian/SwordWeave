@@ -77,25 +77,56 @@ describe("computeLoad", () => {
     expect(computeLoad([])).toBe(0);
   });
 
-  it("sums load * quantity", () => {
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03): the
+  // engine uses "pieces per Load" semantics. A LARGE
+  // Claymore (loadValue=4) means 4 LARGE pieces fit in
+  // 1 Load — so 4 pieces = 1 Load, 5 pieces = 2 Load.
+  // Math: ceil(quantity / piecesPerLoad).
+  it("sums ceil(quantity / piecesPerLoad)", () => {
     const items = [
-      mkItem({ loadValue: 2, quantity: 3 }), // 6
-      mkItem({ loadValue: 1, quantity: 2 }), // 2
+      mkItem({ loadValue: 2, quantity: 3 }), // ceil(3/2) = 2
+      mkItem({ loadValue: 1, quantity: 2 }), // ceil(2/1) = 2
     ];
-    expect(computeLoad(items)).toBe(8);
+    expect(computeLoad(items)).toBe(4);
   });
 
-  it("respects ignoreLoadBonus", () => {
-    const items = [
-      mkItem({ loadValue: 5, ignoreLoadBonus: 3 }), // effective 2
-    ];
+  it("single LARGE item = 1 Load", () => {
+    // 1 LARGE piece = ceil(1/4) = 1 Load.
+    const items = [mkItem({ loadValue: 4, quantity: 1 })];
+    expect(computeLoad(items)).toBe(1);
+  });
+
+  it("4 LARGE items still = 1 Load", () => {
+    // 4 LARGE pieces all fit in the same 1 Load slot.
+    const items = [mkItem({ loadValue: 4, quantity: 4 })];
+    expect(computeLoad(items)).toBe(1);
+  });
+
+  it("5 LARGE items = 2 Load (overflow)", () => {
+    const items = [mkItem({ loadValue: 4, quantity: 5 })];
     expect(computeLoad(items)).toBe(2);
   });
 
-  it("clamps to 0 when bonus > load", () => {
+  it("respects ignoreLoadBonus", () => {
+    // piecesPerLoad = max(1, 5 - 3) = 2. ceil(1/2) = 1.
     const items = [
-      mkItem({ loadValue: 2, ignoreLoadBonus: 5 }), // effective 0
+      mkItem({ loadValue: 5, ignoreLoadBonus: 3, quantity: 1 }),
     ];
+    expect(computeLoad(items)).toBe(1);
+  });
+
+  it("clamps piecesPerLoad to >= 1 when bonus = load", () => {
+    // piecesPerLoad = max(1, 2 - 5) = 1. ceil(1/1) = 1.
+    const items = [
+      mkItem({ loadValue: 2, ignoreLoadBonus: 5, quantity: 1 }),
+    ];
+    expect(computeLoad(items)).toBe(1);
+  });
+
+  it("TINY items (loadValue=0) contribute 0 to Load directly", () => {
+    // TINY items use the pouch system; computeLoad skips
+    // them so computeEncumbrance can sum the pouch count.
+    const items = [mkItem({ loadValue: 0, quantity: 500 })];
     expect(computeLoad(items)).toBe(0);
   });
 });
@@ -122,20 +153,23 @@ describe("computeEquipSlotsUsed", () => {
 
 describe("computeEncumbrance", () => {
   it("encumbered state is binary", () => {
+    // Phase 8.5 H6: loadValue=5 means 5 pieces per Load.
+    // ceil(10/5) = 2 Load.
     const items = [
-      mkItem({ loadValue: 5, quantity: 10 }), // 50 load
+      mkItem({ loadValue: 5, quantity: 10 }),
     ];
     const r = computeEncumbrance("MEDIUM", 0, items);
-    expect(r.encumbered).toBe(true);
-    expect(r.load).toBe(50);
+    expect(r.encumbered).toBe(false);
+    expect(r.load).toBe(2);
     expect(r.capacity).toBe(40);
   });
 
   it("not encumbered under capacity", () => {
+    // loadValue=5, qty=2 → ceil(2/5) = 1 Load.
     const items = [mkItem({ loadValue: 5, quantity: 2 })];
     const r = computeEncumbrance("MEDIUM", 0, items);
     expect(r.encumbered).toBe(false);
-    expect(r.load).toBe(10);
+    expect(r.load).toBe(1);
   });
 
   it("tracks equip slots", () => {
