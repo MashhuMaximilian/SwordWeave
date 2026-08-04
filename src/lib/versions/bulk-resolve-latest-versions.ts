@@ -9,6 +9,13 @@
  * Designed to be called server-side (in page.tsx) where the call site
  * already has the entity list. The Map is then handed to the
  * CharacterSheetView component as a prop.
+ *
+ * Phase 8.5 / Session H6 round 9 (Mashu 2026-08-03): the
+ * makeKey / VersionKey type moved to `./version-key` so
+ * client components can import them without pulling in
+ * the server-only Neon client. This file re-exports them
+ * for backward compatibility with the few server call
+ * sites that still import makeKey from here.
  */
 
 import { and, desc, eq, inArray } from "drizzle-orm";
@@ -21,14 +28,16 @@ import {
   heritageVersions,
 } from "@/db/schema";
 
-export type VersionKey = `${"primitive" | "effect" | "capability" | "item" | "heritage"}:${string | number}`;
+import {
+  makeKey,
+  type VersionEntityKind,
+  type VersionKey,
+} from "./version-key";
 
-export function makeKey(
-  kind: "primitive" | "effect" | "capability" | "item" | "heritage",
-  id: string | number,
-): VersionKey {
-  return `${kind}:${id}` as VersionKey;
-}
+// Re-export the client-safe helpers so any existing
+// `import { makeKey } from "@/lib/versions/bulk-resolve-latest-versions"`
+// in a server module keeps working.
+export { makeKey, type VersionEntityKind, type VersionKey };
 
 export async function bulkResolveLatestVersions(
   pairs: ReadonlyArray<{

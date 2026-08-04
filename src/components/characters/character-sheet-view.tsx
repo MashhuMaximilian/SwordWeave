@@ -36,7 +36,7 @@ import { OriginBadge } from "@/components/characters/origin-badge";
 import {
   makeKey as makeVersionKey,
   type VersionKey,
-} from "@/lib/versions/bulk-resolve-latest-versions";
+} from "@/lib/versions/version-key";
 import { VitalityTracker } from "@/components/characters/vitality-tracker";
 import { VitalityDisplayCard } from "@/components/characters/vitality-display-card";
 import { CapabilityCard } from "@/components/characters/capability-card";
