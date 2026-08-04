@@ -368,6 +368,16 @@ export function HeritageBundleView({
         <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase text-secondary-foreground">
           {heritageKindLabel}
         </span>
+        {/* Phase 8.5 / Session H6 round 5 (Mashu 2026-08-03):
+            the heritage itself doesn't have a slot model
+            (it's a template, not a versioned reference), but
+            we'll surface the source origin + content hash
+            so the user can see provenance. Pinned because
+            heritage is always a snapshot. */}
+        <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-300">
+          <span className="size-1.5 rounded-full bg-current" aria-hidden />
+          Pinned
+        </span>
         {isMirrored && (
           <span className="inline-flex items-center gap-1 rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
             Mirrored
@@ -424,6 +434,16 @@ export function HeritageBundleView({
                 // slotted caps render as full cards (with the
                 // origin-heritage badge + toggle/trigger).
                 if (characterId && slotted) {
+                  // Phase 8.5 H6 round 5: heritage-bundled caps
+                  // are always PINNED (they're a snapshot
+                  // reference). The version display in the
+                  // SlotSourceBadge will show the version short
+                  // id when the bundle has been loaded and the
+                  // cap template's latestVersionId is available.
+                  // Older rows pre-Phase 5 have no version_id
+                  // column on heritage_capabilities, so the
+                  // version chip shows "no version" until the
+                  // user re-saves the heritage template.
                   return (
                     <li key={cl.capabilityId}>
                       <CapabilityCard
@@ -501,8 +521,17 @@ export function HeritageBundleView({
                                 key={el.effectId}
                                 className="rounded bg-muted/30 px-2 py-1.5"
                               >
-                                <div className="font-medium text-foreground">
-                                  {el.effect.name}
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-medium text-foreground">
+                                    {el.effect.name}
+                                  </span>
+                                  {/* Phase 8.5 H6 round 5: effect
+                                      provenance chip — same pattern
+                                      as the cap's Pinned badge. */}
+                                  <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-medium text-sky-700 dark:text-sky-300">
+                                    <span className="size-1 rounded-full bg-current" aria-hidden />
+                                    Pinned
+                                  </span>
                                 </div>
                                 {el.effect.description && (
                                   <p className="mt-0.5 text-[11px] text-muted-foreground italic">
