@@ -319,13 +319,28 @@ export function BottomStickyBar({
           </div>
 
           <div className="flex items-center gap-6 font-mono text-xs">
-            {/* Phase 8.5 H7 (Mashu 2026-08-03): PB removed
-                from the top collapsed strip now that it has
-                a proper card in the meta-stat row below.
-                The strip shows the two modifiers (DC and
-                ATK) the user wants quick access to when
-                collapsed; PB is always visible as a card
-                in the body. */}
+            {/* Phase 8.5 H7 (Mashu 2026-08-03): PB IS
+                in the top collapsed strip AND in the
+                meta-stat card row below. PB appears in
+                both because the strip is the quick-read
+                when collapsed and the card row is the
+                clickable provenance target when expanded.
+                The user explicitly confirmed PB stays in
+                the top header next to DC and ATK. */}
+            <button
+              type="button"
+              onClick={() => setCombo("pb")}
+              className="flex flex-col items-center leading-none"
+              title="Show formula for Proficiency Bonus"
+              aria-label="Show proficiency bonus formula"
+            >
+              <span className="text-[9px] font-semibold uppercase text-muted-foreground">
+                PB
+              </span>
+              <span className="font-bold tabular-nums text-teal-700 dark:text-teal-200">
+                {fmt(pb)}
+              </span>
+            </button>
             <div className="flex flex-col items-center leading-none">
               <span className="text-[9px] font-semibold uppercase text-muted-foreground">
                 DC

@@ -2,7 +2,10 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
-import { SIZE_LOAD } from "@/lib/engine/encumbrance";
+import {
+  SIZE_LOAD,
+  type CharacterSize,
+} from "@/lib/engine/encumbrance";
 
 /**
  * Item Composer
@@ -633,8 +636,18 @@ export function ItemComposer({
                     }))
                   }
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                  title="Multiplies Load/Capacity per item. Does not affect equipped slots."
+                  title="How many pieces of this item fit in 1 Load (per the chosen Size)."
                 />
+                {/* Phase 8.5 / Session H6 (Mashu 2026-08-03):
+                    same size-load helper text as the
+                    atelier form. SIZE_LOAD[size] is the
+                    max number of pieces per 1 Load; total
+                    Load contribution is
+                    ceil(quantity / SIZE_LOAD[size]). */}
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Pieces of this item per 1 Load = {SIZE_LOAD[(form.size as CharacterSize) ?? "SMALL"]}.
+                  Total Load = {Math.ceil((form.quantity ?? 1) / Math.max(1, SIZE_LOAD[(form.size as CharacterSize) ?? "SMALL"]))}.
+                </p>
               </Field>
               {/* Phase 8.5 H-rev3: rename "BU cost" -> "extra BU cost".
                   Helper text below the field flags that the proper
