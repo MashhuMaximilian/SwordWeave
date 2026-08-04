@@ -96,6 +96,20 @@ export interface ItemUnequipPayload {
 }
 
 /**
+ * Phase 8.5 / Session H6 (Mashu 2026-08-03): the
+ * character-sheet inline Qty input writes a log entry
+ * with the previous + new quantity so the History tab
+ * can show "added 3 healing potions" instead of an
+ * equip / unequip event.
+ */
+export interface ItemQuantityChangePayload {
+  itemId: string;
+  itemName: string;
+  previousQuantity: number;
+  newQuantity: number;
+}
+
+/**
  * Phase 8.2 batch 5 — DM bonus BU inline editor log entry.
  * Tracks the previous and new value plus the delta, so the audit
  * trail captures exactly how the bonus pool was adjusted.
@@ -120,6 +134,13 @@ export type CharacterLogPayload =
   | CapabilityTriggerPayload
   | ItemEquipPayload
   | ItemUnequipPayload
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+  // item_quantity — character_items.quantity updated
+  // from the sheet card's inline Qty input. Distinct
+  // from item_equip / item_unequip so the History
+  // timeline can show "added 3 healing potions" vs
+  // "equipped the longsword".
+  | ItemQuantityChangePayload
   | DmBonusChangePayload;
 
 /**

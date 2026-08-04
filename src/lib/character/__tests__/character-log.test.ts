@@ -43,6 +43,7 @@ describe("characterLog table", () => {
       "capability_toggle",
       "item_equip",
       "item_unequip",
+      "item_quantity",
       // Phase 8.2 batch 5
       "dm_bonus_change",
     ]);
@@ -57,6 +58,7 @@ describe("characterLog table", () => {
       | "capability_toggle"
       | "item_equip"
       | "item_unequip"
+      | "item_quantity"
       | "dm_bonus_change"
     >();
   });

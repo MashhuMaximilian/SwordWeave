@@ -597,6 +597,12 @@ export const characterLogKindEnum = pgEnum("character_log_kind", [
   "capability_toggle",
   "item_equip",
   "item_unequip",
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03): when an
+  // item's quantity is updated from the character sheet
+  // (e.g. traveller loots 3 more healing potions).
+  // Body payload:
+  //   { itemId, itemName, previousQuantity, newQuantity }
+  "item_quantity",
   // Phase 8.2 batch 5: when a DM-issued bonus BU is added/removed
   // by the inline editor. Body payload: { prev, next, applied,
   // note? }. Distinct from 'level_up' (which implicitly zeroes

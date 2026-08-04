@@ -136,6 +136,18 @@ export function ItemCard({
       openPreview({
         item: { kind: "item", row: data.item as never },
         category: "ITEM",
+        // Phase 8.5 / Session H6 (Mashu 2026-08-03):
+        // pass the source + version-history links into
+        // the preview's action bar so they render as
+        // buttons at the bottom of the modal (matching
+        // the source / versions buttons the My Creations
+        // and Library previews already show). The user
+        // wanted these in the PREVIEW MODAL, not inline
+        // on the card — this is the central wiring.
+        actionBar: {
+          openSourceHref: `/atelier/item/${item.id}`,
+          versionHistoryHref: `/atelier/item/${item.id}?tab=versions`,
+        },
         callbacks: {
           engagement: {
             likes: 0,
@@ -236,12 +248,82 @@ export function ItemCard({
 
   // Optimistic local state.
   const [optimisticEquipped, setOptimisticEquipped] = useState(item.equipped);
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03): optimistic
+  // quantity so the inline Qty input on the sheet card
+  // updates immediately. The route /api/characters/[id]/
+  // items/[itemId]/quantity persists and refreshes the SC.
+  const [optimisticQuantity, setOptimisticQuantity] = useState(item.quantity);
   const [pending, setPending] = useState(false);
 
   // Reconcile with props on server-pushed updates.
   useEffect(() => {
     if (!pending) setOptimisticEquipped(item.equipped);
   }, [item.equipped, pending]);
+  useEffect(() => {
+    if (!pending) setOptimisticQuantity(item.quantity);
+  }, [item.quantity, pending]);
+
+  // Phase 8.5 / Session H6 (Mashu 2026-08-03): optimistic
+  // quantity save. Same shape as handleToggleEquip but
+  // posts to /quantity instead of /equip. Clamped to >=1.
+  const handleSetQuantity = useCallback(
+    async (next: number) => {
+      if (pending) return;
+      const clamped = Math.max(
+        1,
+        Math.floor(Number.isFinite(next) ? next : 1),
+      );
+      if (clamped === optimisticQuantity) return;
+
+      const previous = optimisticQuantity;
+      setOptimisticQuantity(clamped);
+      setPending(true);
+
+      try {
+        const res = await fetch(
+          `/api/characters/${characterId}/items/${item.id}/quantity`,
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ quantity: clamped }),
+          },
+        );
+
+        if (!res.ok) {
+          setOptimisticQuantity(previous);
+          const body = await res.json().catch(() => ({}));
+          const msg =
+            (body as { error?: string }).error ??
+            "Failed to update item quantity.";
+          showToast(msg, "error");
+          return;
+        }
+
+        startTransition(() => router.refresh());
+
+        const delta = clamped - previous;
+        const verb = delta > 0 ? "Added" : "Removed";
+        showToast(
+          `${verb} ${Math.abs(delta)} ${item.name} (now ${clamped}).`,
+          "success",
+        );
+      } catch {
+        setOptimisticQuantity(previous);
+        showToast("Network error updating item quantity.", "error");
+      } finally {
+        setPending(false);
+      }
+    },
+    [
+      pending,
+      optimisticQuantity,
+      characterId,
+      item.id,
+      item.name,
+      router,
+      showToast,
+    ],
+  );
 
   const handleToggleEquip = useCallback(async () => {
     if (pending) return;
@@ -306,19 +388,39 @@ export function ItemCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h4 className="font-semibold">
+          <h4 className="flex flex-wrap items-center gap-2 font-semibold">
             {item.name}
             {/* Phase 8.5 / Session H6 (Mashu 2026-08-03):
-                render "× N" when the character holds more
-                than one of this item. Previously the public
-                card hid quantity entirely — a traveller
-                carrying 4 healing potions only saw the item
-                name with no count. */}
-            {item.quantity > 1 && (
-              <span className="ml-1.5 rounded-full bg-secondary px-1.5 py-0.5 text-xs font-bold text-foreground">
-                × {item.quantity}
+                editable inline Qty stepper on the sheet card.
+                A traveller carrying 4 healing potions sees 4
+                in the input; typing 7 + blur immediately
+                saves the new stack count and refreshes the
+                SC (which updates Load + the bottom drawer).
+                Min 1, no upper cap. Equivalent to opening
+                the modal and editing quantity there, but
+                without leaving the page. */}
+            <label
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-1.5 py-0.5 text-xs font-bold text-foreground"
+              title="How many of this item the character holds. Scales into Load."
+            >
+              <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+                ×
               </span>
-            )}
+              <input
+                type="number"
+                min={1}
+                value={optimisticQuantity}
+                onChange={(e) => handleSetQuantity(Number(e.target.value))}
+                onBlur={(e) => {
+                  const raw = Number(e.target.value);
+                  handleSetQuantity(
+                    Math.max(1, Math.floor(Number.isFinite(raw) ? raw : 1)),
+                  );
+                }}
+                disabled={pending}
+                className="w-12 border-0 bg-transparent p-0 text-xs font-bold tabular-nums text-foreground outline-none"
+              />
+            </label>
           </h4>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             <span>{item.rarity}</span>
@@ -329,12 +431,27 @@ export function ItemCard({
                 Equipped
               </span>
             )}
-            {/* Phase 8.5 / Session H6: per-item Load = size ×
-                quantity. Lets the user see at a glance why
-                their load total is what it is — a stack of 4
-                SMALL items is 4 Load, not 1. */}
+            {/* Phase 8.5 / Session H6: per-item Load = ceil(qty /
+                SIZE_LOAD[size]). The ceiling matches the
+                "1 Load fits N items" rule the user clarified
+                this round — e.g. SMALL = 1 item per Load, so
+                4 SMALL items costs 4 Load (not 1). LARGE = 1
+                item per 4 Load, so a single LARGE item costs
+                ceil(1 / 4) = 1 Load. 5 LARGE items = ceil(5
+                / 4) = 2 Load. The number input above lets the
+                user pick the quantity; this line lets them
+                see the Load impact without scrolling. */}
             <span>
-              · Load {SIZE_LOAD[(item as { size?: CharacterSize }).size ?? "SMALL"] * item.quantity}
+              · Load{" "}
+              {Math.ceil(
+                optimisticQuantity /
+                  Math.max(
+                    1,
+                    SIZE_LOAD[
+                      (item as { size?: CharacterSize }).size ?? "SMALL"
+                    ],
+                  ),
+              )}
             </span>
           </div>
         </div>
@@ -410,44 +527,15 @@ export function ItemCard({
             Not equippable
           </span>
         )}
-        {/* Phase 8.5 / Session H6 (Mashu 2026-08-03): preview
-          (canonical library page) + view source (open the
-          item's template page) + view version history (open
-          the version-history tab in the template page). The
-          item template page lives at /atelier/item/<id> for
-          the user's own items and /atelier/item/<id> for
-          the shared library (handled by the same route). */}
-        <button
-          type="button"
-          onClick={() => {
-            const itemId = (item as { id: string }).id;
-            window.open(`/atelier/item/${itemId}`, "_blank", "noopener");
-          }}
-          className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary"
-          title="Open the item template page (atelier) in a new tab"
-        >
-          View source
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            const itemId = (item as { id: string }).id;
-            window.open(
-              `/atelier/item/${itemId}?tab=versions`,
-              "_blank",
-              "noopener",
-            );
-          }}
-          disabled={!item.versionId}
-          className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary disabled:opacity-50"
-          title={
-            item.versionId
-              ? "Open this item's version history in a new tab"
-              : "No version history yet"
-          }
-        >
-          View version history
-        </button>
+        {/* Phase 8.5 / Session H6 (Mashu 2026-08-03): the
+          View source + View version history buttons were
+          removed from this card. Mashu clarified the
+          buttons belong in the PREVIEW MODAL that opens
+          when the user clicks the item's title / Preview
+          button — not inline on every card. Inline cards
+          should stay compact. The new buttons live in
+          library-item-preview.tsx and render for every
+          entity type (item, capability, effect, primitive). */}
         <button
           type="button"
           onClick={openItemPreview}
