@@ -199,19 +199,47 @@ describe("computeMaxVitality", () => {
 });
 
 describe("computeVitalityModifiersFromPrimitives", () => {
-  it("finds vitality-related primitives by name", () => {
+  // Phase 8.I i2 (Mashu 2026-08-04): name-match heuristic gone.
+  // Now reads hardModifiers targeting max_vitality.
+
+  it("finds vitality-related primitives via hardModifier target=max_vitality", () => {
     const r = computeVitalityModifiersFromPrimitives([
-      { name: "Toughness", category: "character-sheet-augment", buCost: 4 },
-      { name: "Fire Damage", category: "verb-tier", buCost: 4 },
-      { name: "Vitality Boost", category: "character-sheet-augment", buCost: 3 },
+      {
+        name: "Toughness",
+        category: "character-sheet-augment",
+        buCost: 4,
+        hardModifiers: [{ target: "max_vitality", operation: "add", value: 4 }],
+      },
+      {
+        name: "Fire Damage",
+        category: "verb-tier",
+        buCost: 4,
+        hardModifiers: [], // no vitality modifier
+      },
+      {
+        name: "Vitality Boost",
+        category: "character-sheet-augment",
+        buCost: 3,
+        hardModifiers: [{ target: "max_vitality", operation: "add", value: 3 }],
+      },
     ]);
     expect(r.length).toBe(2);
   });
 
-  it("returns empty for unrelated primitives", () => {
+  it("returns empty for primitives with no max_vitality modifier", () => {
     const r = computeVitalityModifiersFromPrimitives([
-      { name: "Fire Damage", category: "verb-tier", buCost: 4 },
-      { name: "Light", category: "domain-license", buCost: 2 },
+      {
+        name: "Fire Damage",
+        category: "verb-tier",
+        buCost: 4,
+        hardModifiers: [],
+      },
+      {
+        name: "Light",
+        category: "domain-license",
+        buCost: 2,
+        hardModifiers: [],
+      },
     ]);
     expect(r).toEqual([]);
   });

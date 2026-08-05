@@ -115,7 +115,10 @@ describe("aggregateCharacterSheet", () => {
     expect(sheet.capabilityCount).toBe(2);
   });
 
-  it("applies character-sheet-augment primitive bonuses to practices", () => {
+  it("applies hardModifier-based practice bonuses (not buCost proxy)", () => {
+    // Phase 8.I i2 (Mashu 2026-08-04): practice bonuses now come from
+    // hardModifiers targeting skill_practice_check, NOT from buCost.
+    // The primitive has a real `add 4` modifier to MENTAL practice.
     const sheet = aggregateCharacterSheet(
       baseInput({
         primitiveLinks: [
@@ -128,24 +131,65 @@ describe("aggregateCharacterSheet", () => {
               id: 100,
               name: "Sharp Mind",
               category: "CHARACTER_SHEET_AUGMENT",
-              buCost: 4,
+              buCost: 4, // No longer used as bonus source
               isMirrorable: false,
               mirrorBuCredit: 0,
-              // Phase 8.3d (Mashu 2026-07-27): required field.
-              hardModifiers: [],
+              hardModifiers: [
+                {
+                  target: "skill_practice_check",
+                  operation: "add",
+                  value: 4,
+                  metadata: {
+                    targetScope: {
+                      layer: "PRACTICE",
+                      values: ["REASON"], // MENTAL practice
+                    },
+                  },
+                },
+              ],
             },
           },
         ],
       }),
     );
-    // At least one practice should have a primitive bonus in its breakdown
+    // The MENTAL practice (reason) should pick up the +4 from
+    // Sharp Mind's hardModifier.
+    const reason = sheet.practices.find((p) => p.practice === "reason");
+    expect(reason?.primitiveContributions).toHaveLength(1);
+    expect(reason?.primitiveContributions[0]?.primitiveName).toBe("Sharp Mind");
+    expect(reason?.primitiveContributions[0]?.bonus).toBe(4);
+  });
+
+  it("a CHARACTER_SHEET_AUGMENT primitive with NO skill_practice_check modifier contributes 0", () => {
+    // The old buCost-proxy would have contributed +2 here. With i2,
+    // a primitive with no hardModifier targeting skill_practice_check
+    // contributes nothing — the buCost heuristic is gone.
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        primitiveLinks: [
+          {
+            primitiveId: 101,
+            source: "PERSONAL",
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 101,
+              name: "Generic Sheet Augment",
+              category: "CHARACTER_SHEET_AUGMENT",
+              buCost: 2,
+              isMirrorable: false,
+              mirrorBuCredit: 0,
+              hardModifiers: [], // No practice modifier
+            },
+          },
+        ],
+      }),
+    );
+    // No practice should have a primitive bonus.
     const withBonus = sheet.practices.filter(
       (p) => p.primitiveContributions.length > 0,
     );
-    expect(withBonus.length).toBeGreaterThan(0);
-    const bonus = withBonus[0]?.primitiveContributions[0];
-    expect(bonus?.primitiveName).toBe("Sharp Mind");
-    expect(bonus?.bonus).toBe(4);
+    expect(withBonus).toHaveLength(0);
   });
 
   it("L5 progression pool = max(25, cumulative(5)) = 69", () => {

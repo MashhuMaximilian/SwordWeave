@@ -41,35 +41,102 @@ describe("computeMaxVitality", () => {
 });
 
 describe("computeVitalityModifiersFromPrimitives", () => {
-  it("identifies vitality primitives by name", () => {
+  // Phase 8.I i2 (Mashu 2026-08-04): the old name-match + buCost
+  // proxy is gone. Vitality contributions now come from
+  // hardModifiers targeting `max_vitality` with add/subtract ops.
+
+  it("identifies vitality primitives via hardModifier target=max_vitality", () => {
     const prims = [
-      { name: "Toughness", category: "character-sheet-augment", buCost: 4 },
-      { name: "Fire Resistance", category: "defense", buCost: 3 },
-      { name: "Vitality Boost", category: "character-sheet-augment", buCost: 5 },
+      {
+        name: "Toughness",
+        category: "character-sheet-augment",
+        buCost: 4,
+        hardModifiers: [
+          { target: "max_vitality", operation: "add", value: 4 },
+        ],
+      },
+      {
+        name: "Fire Resistance",
+        category: "defense",
+        buCost: 3,
+        hardModifiers: [
+          { target: "resistance", operation: "grant", value: "fire" },
+        ],
+      },
+      {
+        name: "Vitality Boost",
+        category: "character-sheet-augment",
+        buCost: 5,
+        hardModifiers: [
+          { target: "max_vitality", operation: "add", value: 5 },
+        ],
+      },
     ];
     const mods = computeVitalityModifiersFromPrimitives(prims);
     expect(mods).toHaveLength(2);
     expect(mods.map((m) => m.source)).toEqual(["Toughness", "Vitality Boost"]);
   });
 
-  it("identifies HP/Health/Tough in name", () => {
+  it("a primitive WITHOUT a max_vitality modifier contributes nothing", () => {
+    // Phase 8.I i2: the old "name includes 'hp'/'vitality'/'health'/'tough'"
+    // heuristic is gone. A primitive named "HP Bonus" with no
+    // hardModifier contributes 0 — the author must author the
+    // modifier explicitly.
     const prims = [
-      { name: "HP Bonus", category: "x", buCost: 2 },
-      { name: "Health Aura", category: "x", buCost: 4 },
-      { name: "Tough Skin", category: "x", buCost: 1 },
+      { name: "HP Bonus", category: "x", buCost: 2, hardModifiers: [] },
+      { name: "Health Aura", category: "x", buCost: 4, hardModifiers: [] },
+      { name: "Tough Skin", category: "x", buCost: 1, hardModifiers: [] },
     ];
-    expect(computeVitalityModifiersFromPrimitives(prims)).toHaveLength(3);
+    expect(computeVitalityModifiersFromPrimitives(prims)).toHaveLength(0);
   });
 
   it("empty list = no modifiers", () => {
     expect(computeVitalityModifiersFromPrimitives([])).toEqual([]);
   });
 
-  it("uses buCost as amount", () => {
+  it("reads value from hardModifier, not from buCost", () => {
     const prims = [
-      { name: "Toughness", category: "x", buCost: 7 },
+      {
+        name: "Toughness",
+        category: "x",
+        buCost: 7,
+        hardModifiers: [
+          { target: "max_vitality", operation: "add", value: 7 },
+        ],
+      },
     ];
     const [mod] = computeVitalityModifiersFromPrimitives(prims);
     expect(mod?.amount).toBe(7);
+  });
+
+  it("mirrored primitive flips the sign", () => {
+    const prims = [
+      {
+        name: "Vigorous",
+        category: "character-sheet-augment",
+        buCost: 5,
+        isMirrored: true,
+        hardModifiers: [
+          { target: "max_vitality", operation: "add", value: 5 },
+        ],
+      },
+    ];
+    const [mod] = computeVitalityModifiersFromPrimitives(prims);
+    expect(mod?.amount).toBe(-5);
+  });
+
+  it("subtract op contributes negatively", () => {
+    const prims = [
+      {
+        name: "Withered",
+        category: "x",
+        buCost: 1,
+        hardModifiers: [
+          { target: "max_vitality", operation: "subtract", value: 4 },
+        ],
+      },
+    ];
+    const [mod] = computeVitalityModifiersFromPrimitives(prims);
+    expect(mod?.amount).toBe(-4);
   });
 });

@@ -191,42 +191,108 @@ export function aggregateCharacterSheet(
   const slices: PracticeSlices = input.practiceSlices ?? {};
 
   // Build primitive bonus map (used by practice roll-up)
-  // Heuristic: practice-affecting primitives contribute their buCost as bonus.
-  // This is a simplified v1 — full primitive→practice modifiers come from
-  // hardModifiers (see primitives.ts) when wired in.
   //
-  // Phase 8.2 batch 11: mirror rule. Per Phase 7.5 modifier-rebuild
-  // spec, mirror is per-OPERATION on a modifier (Add↔Subtract sign
-  // flip, Multiply↔Divide reciprocal, Min↔Max, Grant↔Revoke). For
-  // the v1 sheet roll-up using buCost as a proxy (hardModifiers not
-  // yet wired), we model the buCost contribution as an implicit Add
-  // op: mirroring flips the sign. This matches OP_SPECS.add.mirrorOp
-  // = "subtract" + mirrorFlipsSign=true — same rule the form's
-  // Mirror toggle uses in /sandbox/primitive-form.tsx. When
-  // hardModifiers come online, this will be replaced by walking each
-  // primitive's modifier and calling applyMirror() per OP_SPECS.
-  const primitiveBonuses = new Map<
+  // Phase 8.I i2 (Mashu 2026-08-04): REPLACE buCost-as-proxy with
+  // real hardModifier walks. The previous loop added each primitive's
+  // buCost as a contribution to all practices silently — this
+  // produced the "+7 mystery number" on Tessy because there was no
+  // real modifier that explained it.
+  //
+  // New behaviour: for each primitive with category
+  // CHARACTER_SHEET_AUGMENT or PRACTICE_PROGRESSION_AUGMENT, walk
+  // its hardModifiers and pick up `add`/`subtract` ops that target
+  // `skill_practice_check`. Each modifier carries a sub-target
+  // (the practice(s) it applies to) — we split the bonus per
+  // practice so the correct practices get the correct delta.
+  //
+  // Returns: Map<PrimitiveId, Map<Practice, {name, bonus}>>
+  // The inner map is keyed by Practice so a single primitive can
+  // contribute different amounts to different practices (e.g. one
+  // modifier targets "awareness" for +2, another targets "reason"
+  // for +3). A primitive with NO skill_practice_check modifier
+  // contributes nothing — the buCost-as-proxy path is gone.
+  //
+  // The modal's "Primitive contributions" section reads from the
+  // same source, so the displayed total will match the formula.
+  type PracticeBonusMap = Map<
     number,
-    { name: string; bonus: number }
-  >();
+    Map<Practice, { name: string; bonus: number }>
+  >;
+  const primitiveBonuses: PracticeBonusMap = new Map();
+
+  // Practice names in metadata.targetScope.values are stored UPPER
+  // ("AWARENESS", "REASON", etc.) but the Practice enum is
+  // lowercase. We map both ways for backwards compat.
+  const upperToPractice: Record<string, Practice> = {
+    PROWESS: "prowess",
+    FINESSE: "finesse",
+    FIELDCRAFT: "fieldcraft",
+    AWARENESS: "awareness",
+    REASON: "reason",
+    KNOWLEDGE: "knowledge",
+    INFLUENCE: "influence",
+    MYSTICISM: "mysticism",
+    COMMUNION: "communion",
+    INTUITION: "intuition",
+  };
+
   for (const link of input.primitiveLinks) {
     const p = link.primitive;
-    // Practice-affecting primitives typically live in CHARACTER_SHEET_AUGMENT
-    // or PRACTICE_PROGRESSION_AUGMENT categories.
     if (
-      p.category === "CHARACTER_SHEET_AUGMENT" ||
-      p.category === "PRACTICE_PROGRESSION_AUGMENT"
+      p.category !== "CHARACTER_SHEET_AUGMENT" &&
+      p.category !== "PRACTICE_PROGRESSION_AUGMENT"
     ) {
-      const existing = primitiveBonuses.get(p.id);
-      if (!existing) {
-        const bonus =
-          link.isMirrored === true ? -p.buCost : p.buCost;
-        primitiveBonuses.set(p.id, {
-          name: p.name,
-          bonus,
-        });
+      continue;
+    }
+    if (primitiveBonuses.has(p.id)) continue;
+
+    const practiceMap = new Map<Practice, { name: string; bonus: number }>();
+    const mods = Array.isArray(p.hardModifiers) ? p.hardModifiers : [];
+    for (const rawMod of mods) {
+      const mod = rawMod as {
+        target?: string;
+        operation?: string;
+        value?: unknown;
+        metadata?: {
+          targetScope?: { layer?: unknown; values?: unknown };
+        };
+      };
+      if (String(mod.target ?? "") !== "skill_practice_check") continue;
+
+      const scope = mod.metadata?.targetScope;
+      const values = Array.isArray(scope?.values)
+        ? scope.values.map((v) => String(v))
+        : [];
+      if (values.length === 0) continue;
+
+      const value = typeof mod.value === "number"
+        ? mod.value
+        : typeof mod.value === "string"
+          ? Number(mod.value)
+          : NaN;
+      if (!Number.isFinite(value)) continue;
+
+      const op = String(mod.operation ?? "");
+      let delta = 0;
+      if (op === "add") delta = value;
+      else if (op === "subtract") delta = -value;
+      else continue; // multiply/divide/set/grant don't apply to practice math
+
+      if (link.isMirrored === true) delta = -delta;
+
+      // Distribute delta across each practice listed in the sub-target.
+      for (const v of values) {
+        const practiceName = upperToPractice[v.toUpperCase()] ?? (v.toLowerCase() as Practice);
+        if (!practiceName) continue;
+        const existing = practiceMap.get(practiceName);
+        if (existing) {
+          existing.bonus += delta;
+        } else {
+          practiceMap.set(practiceName, { name: p.name, bonus: delta });
+        }
       }
     }
+    primitiveBonuses.set(p.id, practiceMap);
   }
 
   // BU balance
@@ -249,22 +315,16 @@ export function aggregateCharacterSheet(
   );
 
   // Vitality
-  // Phase 8.2 batch 11: mirror rule. Per Phase 7.5 modifier-rebuild
-  // spec, mirror is per-OPERATION on a modifier (Add↔Subtract sign
-  // flip, Multiply↔Divide reciprocal, Min↔Max, Grant↔Revoke). For
-  // the v1 sheet roll-up using buCost as a proxy (hardModifiers not
-  // yet wired), we model the buCost contribution as an implicit Add
-  // op: mirroring flips the sign. This matches OP_SPECS.add.mirrorOp
-  // = "subtract" + mirrorFlipsSign=true — same rule the form's
-  // Mirror toggle uses in /sandbox/primitive-form.tsx. When
-  // hardModifiers come online, this will be replaced by walking each
-  // primitive's modifier and calling applyMirror() per OP_SPECS.
+  // Phase 8.I i2 (Mashu 2026-08-04): now reads hardModifiers from
+  // each primitive instead of relying on a name-match + buCost
+  // proxy. The vitality helper has its own doc explaining why.
   const vitalityModifiers = computeVitalityModifiersFromPrimitives(
     input.primitiveLinks.map((l) => ({
       name: l.primitive.name,
       category: l.primitive.category,
       buCost: l.primitive.buCost,
       isMirrored: l.isMirrored === true,
+      hardModifiers: l.primitive.hardModifiers ?? [],
     })),
   );
   const maxVitality = computeMaxVitality(input.level, vitalityModifiers);

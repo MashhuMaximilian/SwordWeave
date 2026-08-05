@@ -260,6 +260,10 @@ export function getPracticeSlice(
  *
  * Phase 8.3g v4 (Mashu 2026-07-28): practice =
  *   attribute + PB (if proficient) + primitives
+ *
+ * Phase 8.I i2 (Mashu 2026-08-04): primitiveBonuses is now a
+ * Map<PrimitiveId, Map<Practice, {name, bonus}>>. See
+ * computePracticeModifierAtLevel for the same shape.
  */
 export function computePracticeModifier(
   practice: Practice,
@@ -268,7 +272,7 @@ export function computePracticeModifier(
   attrProficient: Attribute | null | undefined,
   primitiveBonuses: ReadonlyMap<
     number,
-    { readonly name: string; readonly bonus: number }
+    ReadonlyMap<Practice, { readonly name: string; readonly bonus: number }>
   > = new Map(),
 ): PracticeModifierBreakdown {
   const attribute = getPracticeAttribute(practice);
@@ -278,13 +282,20 @@ export function computePracticeModifier(
   const isProficient = attrProficient === attribute;
   const pbContribution = isProficient ? STARTING_PB : 0;
 
-  const primitiveContributions = Array.from(primitiveBonuses.entries()).map(
-    ([primitiveId, info]) => ({
+  const primitiveContributions: Array<{
+    primitiveId: number;
+    primitiveName: string;
+    bonus: number;
+  }> = [];
+  for (const [primitiveId, practiceMap] of primitiveBonuses.entries()) {
+    const entry = practiceMap.get(practice);
+    if (!entry) continue;
+    primitiveContributions.push({
       primitiveId,
-      primitiveName: info.name,
-      bonus: info.bonus,
-    }),
-  );
+      primitiveName: entry.name,
+      bonus: entry.bonus,
+    });
+  }
 
   const total =
     slice + pbContribution + primitiveContributions.reduce((t, p) => t + p.bonus, 0);
@@ -303,6 +314,11 @@ export function computePracticeModifier(
  * Compute practice modifier with explicit PB (for level-aware calculations).
  * Phase 8.3g v4 (Mashu 2026-07-28): same formula as
  * computePracticeModifier but uses level-scaled PB.
+ *
+ * Phase 8.I i2 (Mashu 2026-08-04): primitiveBonuses is now a
+ * Map<PrimitiveId, Map<Practice, {name, bonus}>> so the per-practice
+ * filtering happens here, not at the call site. Each primitive
+ * only contributes to the practices in its sub-target.
  */
 export function computePracticeModifierAtLevel(
   practice: Practice,
@@ -312,7 +328,7 @@ export function computePracticeModifierAtLevel(
   level: number,
   primitiveBonuses: ReadonlyMap<
     number,
-    { readonly name: string; readonly bonus: number }
+    ReadonlyMap<Practice, { readonly name: string; readonly bonus: number }>
   > = new Map(),
 ): PracticeModifierBreakdown {
   const attribute = getPracticeAttribute(practice);
@@ -321,13 +337,24 @@ export function computePracticeModifierAtLevel(
   const pb = proficiencyBonus(level);
   const pbContribution = isProficient ? pb : 0;
 
-  const primitiveContributions = Array.from(primitiveBonuses.entries()).map(
-    ([primitiveId, info]) => ({
+  // Per-practice filter: only pick up primitives that have an
+  // entry for THIS practice in their inner map. A primitive with
+  // no skill_practice_check modifier or with sub-targets for
+  // different practices contributes nothing here.
+  const primitiveContributions: Array<{
+    primitiveId: number;
+    primitiveName: string;
+    bonus: number;
+  }> = [];
+  for (const [primitiveId, practiceMap] of primitiveBonuses.entries()) {
+    const entry = practiceMap.get(practice);
+    if (!entry) continue;
+    primitiveContributions.push({
       primitiveId,
-      primitiveName: info.name,
-      bonus: info.bonus,
-    }),
-  );
+      primitiveName: entry.name,
+      bonus: entry.bonus,
+    });
+  }
 
   const total =
     slice + pbContribution + primitiveContributions.reduce((t, p) => t + p.bonus, 0);
@@ -352,7 +379,7 @@ export function computeAllPracticeModifiers(
   level: number,
   primitiveBonuses: ReadonlyMap<
     number,
-    { readonly name: string; readonly bonus: number }
+    ReadonlyMap<Practice, { readonly name: string; readonly bonus: number }>
   > = new Map(),
 ): ReadonlyArray<PracticeModifierBreakdown> {
   const allPractices: Practice[] = [

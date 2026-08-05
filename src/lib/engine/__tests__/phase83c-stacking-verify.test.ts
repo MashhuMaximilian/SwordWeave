@@ -38,16 +38,21 @@ function makeVitalityLink(opts: {
     primitive: {
       id: opts.id,
       name: "Vitality Core Augment",
-      // Category + name trigger the vitality filter in
-      // computeVitalityModifiersFromPrimitives (matches "vitality").
+      // Phase 8.I i2 (Mashu 2026-08-04): the name-match filter is
+      // gone. The primitive must carry a hardModifier targeting
+      // max_vitality for it to contribute to vitality.
       category: "CHARACTER_SHEET_AUGMENT",
       buCost: 8,
       isMirrorable: true,
       mirrorBuCredit: 8,
-      // Phase 8.3d (Mashu 2026-07-27): required field on
-      // PrimitiveLinkSnapshot.primitive. Stacking tests don't
-      // exercise conditions, so empty array is correct.
-      hardModifiers: [],
+      // Real hardModifier — buCost is no longer used as a proxy.
+      hardModifiers: [
+        {
+          target: "max_vitality",
+          operation: "add",
+          value: 8,
+        },
+      ],
     },
   };
 }
@@ -154,14 +159,16 @@ describe("Phase 8.3c — vitality stacking (8.3c verification)", () => {
   });
 
   it("non-vitality primitives don't contribute to vitality modifiers", () => {
-    // Domain grant primitive — name doesn't match "vitality"/"hp"/etc.
-    // → should be filtered out of the modifier list.
+    // Phase 8.I i2 (Mashu 2026-08-04): with the name-match
+    // heuristic gone, a primitive with NO hardModifier targeting
+    // max_vitality contributes 0 — regardless of name.
     const nonVital: PrimitiveLinkSnapshot = {
       ...makeVitalityLink({ id: 2002 }),
       primitive: {
         ...makeVitalityLink({ id: 2002 }).primitive,
         name: "Domain Access Tier II",
         buCost: 8,
+        hardModifiers: [], // no max_vitality modifier → no contribution
       },
     };
     const sheet = aggregateCharacterSheet({

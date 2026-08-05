@@ -16,6 +16,7 @@ import {
   STARTING_PB,
   validateAttributes,
   validatePracticeSlicesForAttribute,
+  type Practice,
 } from "../practices";
 
 describe("validateAttributes", () => {
@@ -247,10 +248,13 @@ describe("computePracticeModifierAtLevel", () => {
     }
   });
 
-  it("includes primitive bonuses with names", () => {
-    const primMap = new Map([
-      [10, { name: "Keen Nose", bonus: 1 }],
-      [11, { name: "Iron Grip", bonus: 1 }],
+  it("includes primitive bonuses with names (per-practice filtered)", () => {
+    // Phase 8.I i2 (Mashu 2026-08-04): primitiveBonuses is now
+    // Map<PrimitiveId, Map<Practice, {name, bonus}>>. A primitive
+    // only contributes to the practices in its inner map.
+    const primMap = new Map<number, Map<Practice, { name: string; bonus: number }>>([
+      [10, new Map([["prowess", { name: "Keen Nose", bonus: 1 }]])],
+      [11, new Map([["prowess", { name: "Iron Grip", bonus: 1 }]])],
     ]);
     const r = computePracticeModifierAtLevel(
       "prowess",
@@ -262,6 +266,24 @@ describe("computePracticeModifierAtLevel", () => {
     );
     expect(r.primitiveContributions).toHaveLength(2);
     expect(r.total).toBe(5 + STARTING_PB + 1 + 1);
+  });
+
+  it("does NOT contribute primitives targeting other practices", () => {
+    // Phase 8.I i2: a primitive targeting finesse should NOT show
+    // up in prowess's primitiveContributions list.
+    const primMap = new Map<number, Map<Practice, { name: string; bonus: number }>>([
+      [20, new Map([["finesse", { name: "Finesse Boost", bonus: 5 }]])],
+    ]);
+    const r = computePracticeModifierAtLevel(
+      "prowess",
+      { physical: 5, mental: 3, magical: 2 },
+      { prowess: 2 },
+      "PHYSICAL",
+      1,
+      primMap,
+    );
+    expect(r.primitiveContributions).toHaveLength(0);
+    expect(r.total).toBe(5 + STARTING_PB);
   });
 });
 
