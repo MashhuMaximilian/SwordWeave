@@ -171,7 +171,14 @@ export type ModifierDraft = {
   v1Condition: ConditionAuthoring;
 };
 
+// Phase 8.I i2.5e (Mashu 2026-08-05): synced to the canonical enum
+// in src/db/schema/enums.ts. Previously the form only had 11 of the
+// ~35 enum values, missing KINETIC_CONTROL, ACTION_ECONOMY,
+// METAMORPHOSIS, SENSORY_ARRAY, EVALUATION_STRAIN, etc. Also had
+// stale "DEFENSE" (renamed to "DEFENSIVE") and "OUTPUT" (no longer
+// a valid category). Now mirrors the enum exactly.
 const categories = [
+  // Core BU Market categories
   "VERB_TIER",
   "DOMAIN",
   "SIZING",
@@ -182,7 +189,30 @@ const categories = [
   "CONDITION",
   "DEFENSE",
   "STRUCTURAL",
+  "PROBABILITY_BIAS",
+  "TRIGGER_HOOK",
+  "PERCEPTION_QUALIFIER",
+  "KINETIC_CONTROL",
+  "AGENCY_OVERRIDE",
+  "METAMORPHOSIS",
+  "ACTION_ECONOMY",
+  "EVALUATION_STRAIN",
+  "TEMPORAL_CHRONOLOGICAL",
+  "SENSORY_ARRAY",
+  "MOBILITY_LOCOMOTION",
+  "TARGETING_AOE",
+  "INTENSITY_DICE",
+  "BOSS_ECONOMY",
+  "DEFENSIVE",
+  "SPEED_QUICKENING",
+  "TACTICAL",
+  "VITALITY",
   "SHEET_AUGMENT",
+  "HERITAGE_AUGMENT",
+  "BACKGROUND_AUGMENT",
+  "CHARACTER_SHEET_AUGMENT",
+  "PRACTICE_PROGRESSION_AUGMENT",
+  "ITEM_AUGMENT",
 ] as const;
 
 const costTiers = [

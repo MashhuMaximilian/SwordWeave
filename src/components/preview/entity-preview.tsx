@@ -312,19 +312,98 @@ function ModifierCards({
         m["value"] === undefined || m["value"] === null
           ? null
           : m["value"];
-      const v = typeof raw === "number"
-        ? String(raw)
-        : raw === null
-          ? "0"
-          : prettifyModifierValue(String(raw));
+      // Phase 8.I i2.5e (Mashu 2026-08-05): typed tokens (PB chip,
+      // /physical/, etc.) are stored as objects. The previous
+      // String(raw) yielded "[object Object]" — copy the
+      // dispatch helper from primitive-preview-card.tsx.
+      let v: string;
+      if (typeof raw === "number") {
+        v = String(raw);
+      } else if (raw === null) {
+        v = "0";
+      } else if (typeof raw === "string") {
+        v = prettifyModifierValue(raw);
+      } else if (typeof raw === "object") {
+        const obj = raw as Record<string, unknown>;
+        const kind = obj["kind"];
+        if (typeof kind !== "string") {
+          v = "?";
+        } else {
+          switch (kind) {
+            case "number":
+              v = String(obj["value"]);
+              break;
+            case "derived":
+              v = String(obj["which"] ?? "");
+              break;
+            case "attribute":
+              v = String(obj["attribute"] ?? "");
+              break;
+            case "practice":
+              v = String(obj["practice"] ?? "");
+              break;
+            case "behavior":
+              v = String(obj["name"] ?? "");
+              break;
+            case "dice":
+              v = String(obj["expression"] ?? "");
+              break;
+            case "keyword":
+              v = `[${String(obj["text"] ?? "")}]`;
+              break;
+            case "runtime":
+              v = `/${String(obj["name"] ?? "")}/`;
+              break;
+            default:
+              v = "?";
+          }
+        }
+      } else {
+        v = prettifyModifierValue(String(raw));
+      }
       valueLine = (
         <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs break-all">{v}</code>
       );
     }
 
-    // Scope (targetValues / freeTextNarrowFocus) — only present in the draft.
-    const tv = (m["targetValues"] as string[] | undefined) ?? [];
-    const narrow = String(m["freeTextNarrowFocus"] ?? "");
+    // Phase 8.I i2.5e (Mashu 2026-08-05): scope (sub-target) is read
+    // from BOTH the draft (targetValues/freeTextNarrowFocus) AND the
+    // stored modifier (metadata.targetScope.values +
+    // metadata.behaviorName/scopeName). The previous version only
+    // read the draft fields, so stored primitives never displayed
+    // their sub-targets (PROWESS, PHYSICAL, blockValue, etc.) in the
+    // preview.
+    const draftTv = (m["targetValues"] as string[] | undefined) ?? [];
+    const draftNarrow = String(m["freeTextNarrowFocus"] ?? "");
+    // Stored form: metadata.targetScope.values
+    let storedTv: string[] = [];
+    let storedNarrow = "";
+    const storedMeta = m["metadata"] as Record<string, unknown> | undefined;
+    if (storedMeta && typeof storedMeta === "object") {
+      const scope = storedMeta["targetScope"] as
+        | Record<string, unknown>
+        | undefined;
+      if (scope && typeof scope === "object") {
+        const values = scope["values"];
+        if (Array.isArray(values)) {
+          storedTv = values
+            .filter((v): v is unknown => v !== null && v !== undefined)
+            .map((v) => String(v));
+        }
+      }
+      const bname = storedMeta["behaviorName"];
+      if (typeof bname === "string" && bname.trim().length > 0) {
+        storedNarrow = bname.trim();
+      } else {
+        const sname = storedMeta["scopeName"];
+        if (typeof sname === "string" && sname.trim().length > 0) {
+          storedNarrow = sname.trim();
+        }
+      }
+    }
+    // Draft values take precedence; fall back to stored.
+    const tv = draftTv.length > 0 ? draftTv : storedTv;
+    const narrow = draftNarrow.length > 0 ? draftNarrow : storedNarrow;
     let scope: React.ReactNode = null;
     if (tv.length > 0 || narrow.length > 0) {
       scope = (

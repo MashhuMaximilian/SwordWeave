@@ -207,6 +207,45 @@ export async function recordVersion(
         ? null
         : (await resolveUserIdByClerkId(args.publishedByUserId)) ?? null;
 
+  // Phase 8.I i2.5e (Mashu 2026-08-05): the content-addressed
+  // `versionId` can collide with an existing row when the user
+  // re-saves the SAME content (idempotent re-save). The previous
+  // ON CONFLICT only handled `(primitive_id, version_number)`
+  // and the new save was attempting to bump version_number from
+  // N to N+1 even when content was unchanged → primary key
+  // violation on the existing `id`.
+  //
+  // Fix: first, if a row with this id already exists, UPDATE
+  // it in place (no version_number bump). This is the true
+  // idempotent-save the original comment promised.
+  const existing = await db
+    .select({ id: ref.id, versionNumber: ref.versionNumber })
+    .from(ref.table)
+    .where(eq(ref.id, versionId))
+    .limit(1);
+
+  if (existing[0]) {
+    // Same content — update in place. We do NOT bump
+    // version_number (idempotent), but we DO refresh the
+    // is_latest flag and the published_at timestamp.
+    await db
+      .update(ref.table)
+      .set({
+        isLatest: true,
+        publishedAt: now,
+        snapshot,
+        publishedByUserId,
+      })
+      .where(eq(ref.id, versionId));
+    return {
+      versionId,
+      versionNumber: existing[0].versionNumber,
+      isLatest: true,
+    };
+  }
+
+  // Different content (new versionId). Proceed with the original
+  // upsert logic.
   await db
     .insert(ref.table)
     .values({

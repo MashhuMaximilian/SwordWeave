@@ -230,6 +230,15 @@ export const LEGACY_TARGET_MIGRATIONS: Record<
     target: "item_slot_cost",
     defaultScope: { layer: null, values: [] },
   },
+  // Phase 8.I i2.5e (Mashu 2026-08-05): legacy "behavior:<name>" targets.
+  // Pre-i2.5c data saved behavior modifiers using the legacy dotted
+  // form (e.g. "behavior:global_dc_modifier"). The form now uses
+  // target="behavior" + metadata.behaviorName="<name>". Loading a
+  // legacy row should map to the new shape so the form can re-edit it.
+  //
+  // We don't pre-fill defaultScope here — the form's free-text input
+  // carries the actual behavior name (set via the behaviorName key
+  // in metadata). See fromHardModifier in primitive-form.tsx.
 };
 
 // =============================================================================
@@ -744,6 +753,20 @@ export function selectionForModifier(modifier: {
       granularity: null,
       targetValues: [...migration.defaultScope.values],
       freeTextNarrowFocus: null,
+    };
+  }
+  // Phase 8.I i2.5e (Mashu 2026-08-05): legacy "behavior:<name>"
+  // targets from pre-i2.5c data. Extract the name and route to the
+  // new shape: target="behavior" with the name in
+  // freeTextNarrowFocus. The fromHardModifier then writes
+  // metadata.behaviorName on save.
+  if (targetRaw.startsWith("behavior:")) {
+    const behaviorName = targetRaw.slice("behavior:".length).trim();
+    return {
+      target: "behavior",
+      granularity: null,
+      targetValues: [],
+      freeTextNarrowFocus: behaviorName.length > 0 ? behaviorName : null,
     };
   }
   // Unknown target — default to action.roll with no scope.
