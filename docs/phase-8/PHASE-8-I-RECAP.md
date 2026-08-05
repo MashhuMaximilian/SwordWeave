@@ -1,7 +1,7 @@
 # Phase 8.I — Modifier Resolution Engine (the SHEET, not the TABLE)
 
 **Author:** Senku
-**For:** Mashu — this is the FINAL RECAP. Session I is broken into 7 sub-sessions (i1–i7) you can test incrementally. Review the breakdown and confirm before we start coding.
+**For:** Mashu — this is the FINAL RECAP. Session I is broken into 7 sub-sessions (i1–i7) you can test incrementally. Each sub-session has a clear test plan with what you should author.
 **Status:** 🟢 Recap closing. Rounds 1–5 answered 2026-08-04. Final review pending.
 **Started:** 2026-08-04
 **Origin:** Session I from the master plan (post-Sessions G + H which closed on 2026-08-04)
@@ -10,64 +10,123 @@
 
 ## 🎯 EXECUTIVE SUMMARY (2026-08-04 — final recap)
 
-**Session I is too big for one chunk.** You're right: we should break it into independent sub-sessions (let's call them **i1–i7**) that you can test incrementally. Each sub-session is a commit (or a short sequence of commits) with a visible, testable outcome.
+**Session I is too big for one chunk.** You said: *"we need to break up I in sessions now. Incrementally so I know what to test step by step."* Confirmed — Session I is broken into 7 independent sub-sessions (i1–i7), each with a clear test plan.
 
 ### The 7 sub-sessions
 
 | # | Name | What you can test | Est. |
 |---|---|---|---|
-| **i1** | Null sub-target validator + mirror-per-primitive test | Save a primitive with `target: "attribute"`, no sub-target. Save should reject. Mirror test confirms heritage-bundled caps respect primitive mirror state. | S |
-| **i2** | Engine resolution — replace buCost-as-proxy | Character sheet rolls up attributes/practices/defenses/vitality from `hardModifiers` instead of `buCost`. Tessy-equivalent test characters show real numbers. | M |
-| **i3** | Conditions runtime evaluation + per-toggle gating | The `+1 if grappled` modifier shows `*` on the axis; engine suppresses it when toggle is OFF. | M |
-| **i4** | Custom behavior variables (blockValue etc.) | A primitive that `set behavior:blockValue = 6` is visible in the small cards zone. Another primitive that `subtract` from it reads the value. | M |
-| **i5** | Play session scratchpad | A FAB opens a modal. Add "Poisoned until long rest" with optional modifiers. The condition shows in the bottom drawer. Toggle on/off. Delete. | M |
-| **i6** | UI polish — small cards, glyphs, modal traceability | The "small cards" zone is rendered. `︽` / `︾` / `*` / `🪞` glyphs appear. Modal traceability shows the full chain. | L |
+| **i1** | Null sub-target validator + warning + mirror-per-primitive test | Save a primitive with `target: "attribute"`, no sub-target → save rejects. Existing primitives with malformed modifiers show a **warning** in the data UI (NOT in the drawer). Mirror test confirms heritage-bundled caps respect primitive mirror state. | S |
+| **i2** | Engine resolution — replace buCost-as-proxy | Character sheet rolls up attributes/practices/defenses/vitality from `hardModifiers` instead of `buCost`. Tessy or a new test character shows real numbers. | M |
+| **i3** | Conditions runtime evaluation + per-toggle gating | `+1 if grappled` modifier shows `*` on the axis; engine suppresses it when cap toggle is OFF. | M |
+| **i4** | Custom behavior variables (blockValue etc.) | A primitive that `set behavior:blockValue = 6` is visible in the small cards. Another primitive that `subtract` reads it. | M |
+| **i5** | Play session scratchpad | A **second FAB** (above the existing one) opens a modal. Add "Poisoned until long rest" with optional modifiers. Shows in the **Capabilities tab** (NOT drawer) as warning cards. Toggle on/off. Delete. | M |
+| **i6** | UI polish — small cards, glyphs, modal traceability | "Small cards" zone rendered. `︽` / `︾` / `*` / `🪞` glyphs appear. Modal traceability shows the full chain. | L |
 | **i7** | DB cleanup + schema renames (Psychic→Mental, Hybrid removal) | DB backfill for advantage/disadvantage. `SourceType` enum: `physical`/`magical`/`mental`. New `needs_review` column on primitives. | S |
+
+### Per-phase authoring plan
+
+You author incrementally. At each sub-session, build a test character with just what's needed for that phase. Don't carry over the previous phase's authoring.
+
+#### Before i1 (no authoring needed)
+
+The engine fix is purely validation. Existing data stays as-is. The mirror test uses existing primitives. **You can test i1 with the existing Tessy data.**
+
+#### Before i2 (build a test character with real modifiers)
+
+Create a new character. Author these primitives with proper modifiers (sub-targets set, ops, values):
+
+| Primitive | Modifiers |
+|---|---|
+| **+1 to Physical** | `add 1` to `attribute.physical` |
+| **+2 to Mental** | `add 2` to `attribute.mental` |
+| **+1 to Magical** | `add 1` to `attribute.magical` |
+| **+1 to Vitality** | `add 1` to `maxVitality` |
+| **+1 to Practice: Fieldcraft** | `add 1` to `practice.fieldcraft` |
+| **+1 to Practice: Awareness** | `add 1` to `practice.awareness` |
+| **+1 to Physical DC** | `add 1` to `defense.physicalDc` |
+| **+2 to Mental DC** | `add 2` to `defense.mentalDc` |
+
+Slot these directly on the character. Verify the sheet shows the right numbers in the bottom drawer. Adjust values if needed.
+
+#### Before i3 (add conditions to some modifiers)
+
+Edit the existing primitives to add conditions:
+
+| Primitive | Modifier (with condition) |
+|---|---|
+| **+1 to Fieldcraft** | `add 1` to `practice.fieldcraft`, condition: `target-is-grappled` |
+| **+2 to Physical** | `add 2` to `attribute.physical`, condition: `actor-below-half-hp` |
+| **Advantage on Awareness** | `grant behavior:awareness_advantage`, condition: `scene-dim` (tracking enemies-style) |
+
+Slot these. Verify the `*` marker appears on the axis. Toggle the cap OFF and verify the modifier is suppressed.
+
+#### Before i4 (add blockValue example)
+
+Add these primitives:
+
+| Primitive | Modifiers |
+|---|---|
+| **Set blockValue** | `set 6` to `behavior:blockValue` (no condition; or with `actor:stance` defensive) |
+| **Subtract blockValue from damage** | `subtract $behavior:blockValue` from `action.damage` (read-only, resolves at runtime) |
+
+Add a capability **"Blocking"** that contains the "Subtract blockValue" primitive. The character's stance toggle controls the cap. When the stance is active, the block applies.
+
+Verify: toggle on → small cards show `blockValue: 6`. Toggle off → blockValue card disappears.
+
+#### Before i5 (no authoring needed)
+
+You test the FAB by adding conditions via the scratchpad. No existing primitives need editing.
+
+#### Before i6 (add some tags to existing primitives)
+
+Add some modifiers that produce tags (not numbers):
+
+| Modifier | Effect |
+|---|---|
+| `grant behavior:darkvision` with value `60ft` | Adds darkvision tag to small cards |
+| `grant behavior:resistance:fire` | Adds `resistance:fire` to damage modifier cards |
+| `grant behavior:language:draconic` | Adds Draconic to languages cards |
+
+Verify these show up in the small cards zone.
+
+#### Before i7 (no authoring needed)
+
+Run the migration. The DB backfill script handles advantage/disadvantage and Psychic→Mental.
 
 ### Why this order
 
-- **i1 first** — pure correctness/safety. Catches the "null-target bug" and confirms the mirror-is-per-primitive assumption. No engine changes, just validation + a test.
+- **i1 first** — pure correctness/safety. No engine changes, just validation + a test. **Does NOT break existing data.** Adds a warning UI for malformed modifiers.
 - **i2 second** — the big engine rewrite. Nothing else meaningful without this. You can test by loading Tessy or a new test character and seeing the numbers change.
 - **i3 third** — conditions are how the engine respects the "what changes when" question. i2 gives the engine; i3 gives it the gates.
-- **i4 fourth** — custom behavior variables open up the "blockValue" type of authoring. This is a niche but powerful feature for power users.
-- **i5 fifth** — the play session scratchpad is the BIG UX win for the "I'm at the table" use case. Easy to test: drop a poison condition, see it on the sheet.
-- **i6 sixth** — UI polish. The biggest surface area but mostly cosmetic. Can be split into smaller commits if needed.
-- **i7 last** — DB cleanup. Architecturally safest to do after the engine is stable.
+- **i4 fourth** — custom behavior variables open up the "blockValue" type of authoring. Power-user feature.
+- **i5 fifth** — play session scratchpad. The BIG UX win for "I'm at the table." Easy to test: drop a poison condition, see it on the sheet.
+- **i6 sixth** — UI polish. The biggest surface area but mostly cosmetic.
+- **i7 last** — DB cleanup. Safest after the engine is stable.
 
-### What's excluded
+### What's excluded (and why)
 
-- ❌ 11-field capability template (table syntax, not engine scope)
-- ❌ Strain Tier as numeric value (DM heuristic)
-- ❌ Effect standalone trigger (out of scope)
-- ❌ Hybrid source type (removed)
-- ❌ Damage roll calculation at runtime
-- ❌ Chains of effects (debuff → damage → condition)
-- ❌ Round-by-round combat state tracking
-- ❌ DB seed quality (explicitly deferred)
-- ❌ Movement sub-types display (deferred)
-- ❌ Tag operands in equations (deferred)
+- ❌ 11-field capability template — table syntax, not engine scope
+- ❌ Strain Tier as numeric value — DM heuristic, not sheet value
+- ❌ Effect standalone trigger — out of scope
+- ❌ Hybrid source type — removed (rename to `mental` per R5-Q8)
+- ❌ Damage roll calculation at runtime — DM at the table
+- ❌ Chains of effects (debuff → damage → condition) — DM at the table
+- ❌ Round-by-round combat state tracking — DM at the table
+- ❌ DB seed quality (template/incomplete primitives) — explicitly deferred per your H1 decision
+- ❌ Movement sub-types display (climb/fly/swim/burrow) — easy add, but deferred
+- ❌ Tag operands in equations (e.g. `[fire]`) — deferred
+- ❌ Verb/Domain as required fields — implicit/flavor, not engine scope
+
+### The big reframe
+
+You said: *"OUR SOFTWARE IS MORE LIKE A DIGITAL INTERACTIVE CHARACTER SHEET. NOT A WAY TO ACTUALLY PLAY THE GAME ON THE PHONE."*
+
+The engine is **not** a combat simulator. It's a **digital interactive character sheet** that gives the player visibility into their numbers, their conditions, and their capabilities' active/inactive state. The DM adjudicates at the table.
 
 ---
 
 ## ⚠️ THE BIG REFRAME (R5-Q7, 2026-08-04)
-
-### Canonical field names (R5-Q9, confirmed in build modals)
-
-| Entity | Field | Where in the modals |
-|---|---|---|
-| Capability | **Verbose Description** | `src/components/workshops/capability-composer.tsx:626`, `src/components/sandbox/capability-form.tsx:668` |
-| Effect | **Narrative Rule** | `src/components/workshops/effect-composer.tsx:364`, `src/components/sandbox/effect-form.tsx:515`, `src/components/library/library-primitives-view.tsx:264` |
-| Primitive | **Mechanical Output Text** + **Verbose Narrative Rule** | `src/components/workshops/primitive-registry.tsx:931,943`, `src/components/sandbox/primitive-form.tsx:1293,1305` |
-
-These are the canonical labels for the "intent" fields. No new schema fields needed — the schema already has them.
-
-### Schema rename (R5-Q8)
-
-Current `SourceType` enum: `"physical" | "magical" | "psychic" | "hybrid"` (in `src/types/swordweave.ts:150`).
-
-Rename to: `"physical" | "magical" | "mental"` (drop `psychic` → `mental`, drop `hybrid`). This affects the `capability.sourceType` field. DB backfill needed in i7.
-
-You said:
 
 > *"OUR SOFTWARE IS MORE LIKE A DIGITAL INTERACTIVE CHARACTER SHEET. NOT A WAY TO ACTUALLY PLAY THE GAME ON THE PHONE. THIS IS THE KEY to what we are trying to achieve."*
 >
@@ -76,8 +135,6 @@ You said:
 > *"when it comes to chains of events and stuff, well, that is for the table."*
 
 ### What this means
-
-We are **not** building a combat simulator. We are building a **digital interactive character sheet**.
 
 The engine does NOT:
 - ❌ Resolve damage rolls at runtime
@@ -97,206 +154,445 @@ The engine DOES:
 - ✅ Evaluate conditions as gates (when toggle is ON, condition is checked)
 - ✅ Show glyphs for advantage/disadvantage/mirror/conditional
 - ✅ Show small cards for non-numeric tags (resistances, movement speeds, senses, languages)
-- ✅ **NEW (R5-Q6):** **Play session scratchpad** — a button to add temporary conditions (e.g. "I'm poisoned until long rest") with optional modifiers. This is a real Session I feature.
-
-### Items cut from the original Session I scope
-
-| Item | Reason |
-|---|---|
-| I23 — Source Type inheritance enforcement | In our model, source is metadata, doesn't affect sheet math |
-| I24 — Effect.has vector type (Direct Manifestation vs Projected Vector) | Table syntax, not sheet |
-| I25 — Effect.has resolution gate (save attr, DC formula) | Table syntax |
-| I26 — Effect.has temporal boundary (duration tier) | Table syntax |
-| I27 — Strain Tier separate from BU | DM heuristic, not sheet value |
-| I28 — Effect standalone trigger | Not in scope; caps trigger effects |
-| Effect template (mini-capability with own primitives "teeth") | Overkill for our model |
-| 11-field capability template | Overkill; we use 3 types (passive/augment/active) |
-| "Hybrid" source type | Removed |
-| 6 standalone Effect examples (System Freeze, Corrosive Decay, etc.) | Interesting but reference, not engine scope |
-
-### Items that survive in Session I scope
-
-- **I1** — Null sub-target bug (validation at save time)
-- **I2** — Engine resolution (replace buCost-as-proxy with hardModifier walk)
-- **I3** — Conditions runtime evaluation
-- **I4** — Stacking default `highest-only`
-- **I5** — Custom behavior variables (`blockValue` etc.)
-- **I7** — Advantage/disadvantage glyphs (`︽` / `︾`)
-- **I8** — Small cards zone (cards for non-numeric tags)
-- **I9** — Modal traceability
-- **I10** — Mirror penalties displayed (yellow)
-- **I12** — `buCost` is NOT a proxy
-- **I14** — Capability active/inactive toggle bundles
-- **I17** — Mirror is per-primitive (not per-capability)
-- **I18** — Equip gating for items (equippable only when equipped, non-equippable always contributes)
-- **I19** — Mirror color is yellow
-- **I20** — Hide stacking field when op = `set`
-- **I22** — DB backfill for advantage/disadvantage
-- **NEW I29** — **Play session scratchpad** (FAB → add temporary conditions with optional modifiers, duration tier, toggle on/off, delete)
-
-### Items deferred
-
-- **I6** — Tag operands in equations (e.g. `[fire]`) — rendered tags on action.roll / damage. Defer to Session K or later.
-- **I11** — DB seed quality — explicitly deferred per your H1 decision.
-- **I15** — Movement sub-types (climb, fly, swim, burrow) — easy if we do it, but defer.
-- **I16** — Action.roll sub-targets — IS happening in Session I (I30 below).
-- **I21** — Future FAB for runtime modifiers — **Promoted to I29 (play session scratchpad).**
-
-### New items from R5
-
-- **I30** — Action.roll sub-targets: `attack`, `save.physical`, `save.mental`, `save.magical`, `other` (for proficiencies, custom tools)
-- **I31** — Source Type is metadata-only (no engine math); remove "Hybrid" from spec
-- **I32** — `*` marker placement on the **target/sub-target axis** (not on the modifier itself), per R5-Q3 clarification
-- **I33** — Behavior name field for strain/scene/pace/behavior axes, per R5-Q4
+- ✅ **NEW (R5-Q6):** **Play session scratchpad** — a button to add temporary conditions (e.g. "I'm poisoned until long rest") with optional modifiers. Live in the **Capabilities tab**, not the drawer.
 
 ---
 
-You sent 4 screenshots. These are the canonical visual references for the current UI and the modifier convention.
+## 📋 CANONICAL FIELD NAMES (R5-Q9, 2026-08-04 — confirmed in build modals)
 
-### Image 1 — `MODS + SAVES` drawer (bottom drawer)
+These are the canonical labels for the "intent" fields. **No new schema fields needed** — the schema already has them.
 
-Three cards on one row: `PHYS +5` (save: +5) | `MENT +5` (PROF badge) (save: +11) | `MAGI +0` (save: +0).
-
-**This proves the drawer shows two different numbers per attribute:**
-- **Modifier** — the attribute's slice + primitive contributions (e.g. `+5`)
-- **Save bonus** — modifier + PB (only for the proficient attribute, hence MENT gets `+11 = 5 + 6 PB`; PHYS and MAGI get unmodified saves)
-
-Two concepts, two formulas. Confirms R3-Q1's answer.
-
-### Image 2 — `What changes?` dropdown in the Modifier composer
-
-Current target list verbatim:
-```
-Attribute
-Defense DC
-Speed
-Max Vitality
-Current Vitality
-Proficiency Bonus
-Action Roll
-Skill / Practice Check
-Damage / Healing Output
-Targeting
-Duration
-Strain
-Item Slot Cost
-Scene Pace
-Behavior (custom)
-```
-
-This is the schema we have today. R3-Q1 + R3-Q2 are about renaming some of these targets.
-
-### Image 3 — `NARRATIVE RULE` + modifier editor with `behavior:disadvantage`
-
-Left column shows a baseline narrative rule: *"Forces negative bias on a narrow narrative trigger. Roll twice and take the lower result."* Fork guidance tells the author to spec the focus via the condition.
-
-Right column shows the modifier editor:
-- Target: `behavior:disadvantage` (custom behavior)
-- Change: `Grant` op (NOT `bias` — confirms B5's convention)
-- Helper text: *"Mirrorable — flips to Revoke when inverted (sign/reciprocal flipped per OP_SPECS)."*
-- Value: `1` (number)
-- Stacking: `unique-by-target`
-
-This is the canonical pattern for advantage/disadvantage: `Grant` op with `behavior:advantage` / `behavior:disadvantage` target.
-
-### Image 4 — Modifier 1 with `Grant` op + `[advantage]` text keyword
-
-The EXPANDED modifier composer with full UI:
-- Target: Attribute (PHYSICAL checked, MENTAL/MAGICAL unchecked). Hint: *"ATTRIBUTE — LEAVE EMPTY FOR 'ANY'"*
-- Change: `Grant` op. *"VARIABLE — Mirrorable — flips to Revoke when inverted"*
-- Value Type: `Text / Keyword`
-- Placeholder: *"No tokens yet — pick suggestions below or type a value"*
-- Custom input: `[advantage]` (keyword syntax)
-- Custom input syntax hint: `#dice#` (dice), `[tag]` (keyword), `/value/` (number or runtime reference)
-
-**This confirms the existing convention for advantages:** use `Grant` op with text value `[advantage]` or `behavior:advantage`. The legacy `bias` op is gone — do NOT add it back.
-
----
-
-## What this phase is, in one sentence
-
-Translate **every modifier** a character has access to (from slotted primitives, heritage-bundled caps, item-bundled caps, item-bundled primitives, and runtime state) into the **right number** on the character sheet, with **the right tag** attached, gated by the **right condition**, honoring the **right stacking rule** and **mirror direction** — and surface the full provenance chain in every modal.
-
----
-
-## Why it's harder than "translate to numbers"
-
-> *"all it has to do is translate the modifiers into numbers on the character sheet. But in reality it's way more complicated. Some literally add numbers. Some change numbers. Some just add some tags."*
-
-The modifier system is rich. There are 9 operations, 5 value types, 6 stacking modes, 4 condition shapes, 23 canonical targets plus a `behavior:` escape hatch, an arithmetic equation system with paren groups and tag-style keyword operands, runtime references for values that don't exist at authoring time, a mirror vector system with 4 vectors, and the ability for a modifier to carry a custom behavior variable (e.g. `blockValue = 6`) that other modifiers reference.
-
-Today the character sheet's v1 roll-up uses **`buCost` as a proxy for hardModifiers** everywhere. That's the bug. A primitive with hardModifiers that explicitly say "+2 to vitality, +1 to physical, +1d4 fire damage on action.roll" all collapse to a single buCost number when the sheet rolls up. We need to actually walk the hardModifiers.
-
----
-
-## What we already have (working today)
-
-These are already authored, tested, and consistent across the schema, the form, the DB, and the engine layer. **Do not re-author.**
-
-| Surface | Where | Status |
+| Entity | Field | Where in the modals |
 |---|---|---|
-| `HardModifier` shape (target / op / value / condition / stacking / metadata) | `src/types/swordweave.ts` | ✅ Locked |
-| `Phase75HardModifier` shape (token-based value) | `src/types/modifier.ts` | ✅ Locked |
-| 9 ops (`add`, `subtract`, `multiply`, `divide`, `set`, `min`, `max`, `grant`, `revoke`) | `src/types/modifier.ts` | ✅ Locked + tested |
-| 5 value types (`number`, `text`, `dice`, `boolean`, `equation`) | `src/types/modifier.ts` | ✅ Locked + tested |
-| `OP_VALUE_TYPE_MATRIX` (which ops allow which value types) | `src/types/modifier.ts` | ✅ Locked + tested |
-| `OP_SPECS` (chirality + mirror behavior per op) | `src/types/modifier.ts` | ✅ Locked + tested |
-| `applyMirror(op, value)` (pure mirror function) | `src/types/modifier.ts` | ✅ Locked + tested |
-| 3 attributes (`physical`, `mental`, `magic-abstract`) | `src/types/modifier.ts` | ✅ Locked |
-| 10 practices (`awareness`, `fieldcraft`, `influence`, `reason`, `vitality`, `lore`, `magic`, `combat`, `movement`, `social`) | `src/types/modifier.ts` | ✅ Locked (TBD against canon names) |
-| 3 derived (`pb`, `pb_half`, `level`) | `src/types/modifier.ts` | ✅ Locked |
-| `ValueToken` discriminated union (8 kinds incl. `runtime` for unresolved refs) | `src/types/modifier.ts` | ✅ Locked |
-| `Operand` / `Operator` / `renderEquation()` for arithmetic expressions | `src/types/modifier.ts` | ✅ Locked |
-| `Keyword` operands (tag-style `[fire]` carried through, not arithmetic) | `src/types/modifier.ts` | ✅ Locked |
-| `Paren` operands (nested expression groups) | `src/types/modifier.ts` | ✅ Locked |
-| `ModifierCondition` v1 (4 shapes: `preset` / `narrative` / `tags` / `compound`) | `src/types/condition.ts` | ✅ Locked |
-| 16 canonical `ConditionPresetKey` catalog (target/scene/actor × N) | `src/types/condition.ts` | ✅ Locked |
-| `BehaviorTarget = `behavior:${string}`` (free-form runtime variable axis) | `src/types/modifier.ts` | ✅ Locked |
-| `ModifierStackingMode` (6 modes) | `src/types/swordweave.ts` | ✅ Locked |
-| `ModifierTarget` (23 canonical axes) | `src/types/swordweave.ts` | ✅ Locked |
-| `resolveModifiers(input, sourceNames)` engine | `src/lib/engine/resolve-modifiers.ts` | ✅ Implemented + tested in isolation |
-| `resolveMirrorEffect(vector, isMirrored, value)` engine | `src/lib/engine/mirror.ts` | ✅ Implemented + tested |
-| `resolveAttributeModifier(input, attr)` engine | `src/lib/engine/target-registry.ts` | ✅ Implemented |
-| `resolveAllDefensiveDCs(input)` engine | `src/lib/engine/target-registry.ts` | ✅ Implemented |
-| `computeVitalityModifiersFromPrimitives()` engine | `src/lib/engine/vitality.ts` | ✅ Implemented |
-| `evaluateCondition()` for legacy `{key, operator, value}` triples | `src/lib/primitives/condition` | ✅ Implemented (legacy only) |
-| `applyOperation()` (single-op arithmetic) | `src/lib/engine/operations` | ✅ Implemented + tested |
-| `applyStacking()` (combine contributions per stacking mode) | `src/lib/engine/stacking` | ✅ Implemented + tested |
-| `migrateOperation("toggle"/"bias") → "set"/"grant"` | `src/types/modifier.ts` | ✅ Implemented + tested |
-| `parseValueField()` (auto-coerce raw values into ValueToken[]) | `src/types/modifier.ts` | ✅ Implemented + tested |
-| `bulkResolveLatestVersions()` | `src/lib/versions/bulk-resolve-latest-versions.ts` | ✅ Implemented + tested |
-| Bundle expansion (heritage → caps → prims + effects → mirror ceiling) | `src/lib/api/enrich-item-links.ts`, `src/lib/api/character-bundle-saver.ts` | ✅ Implemented |
-| Version/provenance chips (rounds 7–13 of Session H) | `src/components/characters/slot-source-badge.tsx` | ✅ Implemented |
+| Capability | **Verbose Description** | `src/components/workshops/capability-composer.tsx:626`, `src/components/sandbox/capability-form.tsx:668` |
+| Effect | **Narrative Rule** | `src/components/workshops/effect-composer.tsx:364`, `src/components/sandbox/effect-form.tsx:515`, `src/components/library/library-primitives-view.tsx:264` |
+| Primitive | **Mechanical Output Text** + **Verbose Narrative Rule** | `src/components/workshops/primitive-registry.tsx:931,943`, `src/components/sandbox/primitive-form.tsx:1293,1305` |
 
 ---
 
-## What's broken or missing (the Session I scope)
+## 🔧 SCHEMA RENAME (R5-Q8, 2026-08-04)
 
-| # | Item | Severity | Symptom |
-|---|---|---|---|
-| I1 | **Null sub-target bug** — modifier with axis set but no sub-target → adds to ALL sub-targets (e.g. "attribute" with no `physical`/`mental`/`magical` selected boosts all three) | 🛑 Root bug | Sheet shows wrong attribute bonuses |
-| I2 | **Character sheet rolls up via `buCost`, not via hardModifiers** | 🛑 All modifier math is wrong | Sheet shows `+5 mental` because the primitive's `buCost = 5`, not because any modifier actually says so |
-| I3 | **Conditions are display-only** — v1 condition shapes (`preset` / `narrative` / `tags` / `compound`) never gate the modifier at runtime | 🛑 Wrong numbers when conditions should suppress | Sheet shows `+3 to grappled bonus` even when target isn't grappled |
-| I4 | **Stacking defaults to `stack`**, not `highest-only` as intended | 🛑 Wrong totals | A modifier slotted twice contributes 2× instead of the safer 1× |
-| I5 | **Custom behavior variables** (e.g. `blockValue = 6`) — no system to resolve them across primitives | 🟡 New surface | Author-defined runtime variables don't flow between modifiers |
-| I6 | **Tag operands** (`[fire]` inside equations) — resolver carries them through but the sheet doesn't surface them | 🟡 Missing label | Damage rolls don't show the damage type chip |
-| I7 | **Advantage/Disadvantage glyph system** (`︽` / `︾` per the spec, with `*` for conditional) | 🟡 New UI | Sheet shows nothing for advantages; should show glyphs next to the affected axis |
-| I8 | **"Small cards" zone in bottom drawer** for movement speeds, resistances, vulnerabilities, languages, advantages, custom behaviors | 🟡 New UI | These tags currently have no home on the sheet |
-| I9 | **Modal traceability is incomplete** — modals don't show the full primitive → capability → effect → item chain or the substituted formula | 🟡 Quality of life | Hard to debug "where does this number come from" |
-| I10 | **Mirror COST_INSTABILITY user-side cost** (extra_strain) — resolver captures it, no place on the sheet for it | 🟡 Missing display | -5 vitality from mirror shows nowhere |
-| I11 | **DB seed quality** — most primitives have template/incomplete modifiers | 🟡 Data quality | Even after engine fixes, sheet may show empty for many slots |
-| I12 | **`buCost` should NOT be a fallback for modifiers** (per the feedback) | 🛑 Design principle | Delete the buCost-as-fallback path entirely |
-| I13 | **Items drive modifiers** — primitives nested in items contribute to the sheet | ✅ Already works via bundle expansion | Confirm |
-| I14 | **Capabilities are activatable / triggerable** — cap.active toggle bundles all its primitives; trigger caps fire and log to history | 🟡 New model | Sheet doesn't differentiate between passive/augment/active caps |
-| I15 | **Movement sub-types** (climb, fly, swim, burrow) — sheet only shows land | 🟡 Missing axes | Sheet doesn't surface climbing speed, flight, etc. |
-| I16 | **Schema cleanup**: rename `action.roll` → `attack_roll`, separate `defense_dc` (saving throws DC) from new `save_dc` (global single DC) | 🟡 Schema rename | Naming is unclear in practice |
-| I17 | **Mirror is per-primitive, not per-capability** — capabilities are NEVER mirrored; only primitives are | 🟡 Concept fix | Engine must not propagate mirror from a cap to its primitives |
-| I18 | **Equip gating for items** — equippable items contribute modifiers only when equipped; non-equippable items always contribute | 🟡 Behavior | Currently always contributes regardless of equipped state |
-| I19 | **Mirror color is yellow, not red** | 🟡 UI | Sheet's color hint was wrong |
-| I20 | **Hide stacking field when op = `set`** (stacking doesn't apply to `set`) | 🟡 UI | Form lets author pick a meaningless stacking mode |
-| I21 | **Future FAB for runtime modifiers** — add a temporary modifier at runtime (e.g. "I'm grappled", "I have -10ft movement") | 🚫 Parked for later | Out of Session I scope |
+Current `SourceType` enum: `"physical" | "magical" | "psychic" | "hybrid"` (in `src/types/swordweave.ts:150`).
+
+Rename to: `"physical" | "magical" | "mental"` (drop `psychic` → `mental`, drop `hybrid`).
+
+You said: *"Just rename we have Mental everywhere only in that dropdown in capability build modal we have Phychic under source. Mental is phychic and psionic. Same thing, depends on the capability. and wording."*
+
+This affects the `capability.sourceType` field. DB backfill needed in i7.
 
 ---
+
+## 🧪 DETAILED SUB-SESSION BREAKDOWN
+
+### i1 — Null sub-target validator + warning + mirror-per-primitive test
+
+**Size:** Small (1–2 commits)
+**Depends on:** nothing
+**What you can test:** Save a primitive with `target: "attribute"`, no sub-target selected → save rejects. Existing primitives with malformed modifiers show a **warning** in the data UI (NOT in the drawer — drawer follows sheet logic). Mirror test confirms heritage-bundled caps respect primitive mirror state.
+
+#### What you author: NOTHING
+
+Use existing Tessy data. The fix is purely validation + a warning + a test.
+
+#### What to build
+
+1. **Form-level validator** (`src/components/workshops/primitive-registry.tsx` + `src/components/sandbox/primitive-form.tsx`):
+   - When `target = "attribute"` and no sub-target checked → save button shows error "Select at least one of physical/mental/magical"
+   - Same for `defense`, `vitality`, `movement`, `action.roll.*`
+   - `behavior:` with empty name → "Behavior name is required"
+   - Free-text axes (`action.strain`, `scene.pace`) — no validation
+2. **Engine drop rule** (`src/lib/engine/resolve-modifiers.ts`):
+   - At evaluation time, silently drop modifiers with null sub-targets
+   - Add `validated: false` flag in the resolver output (no DB change)
+3. **Data UI warning** (new component, in the data-atelier tab):
+   - List all primitives with `validated: false` modifiers
+   - Show the warning count as a badge
+   - On click → modal with the list of malformed modifiers + suggested fixes
+   - **NOT in the drawer, NOT in the character sheet** — only in the data-quality view
+4. **Mirror test** (`src/lib/engine/resolve-modifiers.test.ts`):
+   - Create a primitive with `+2 to physical` modifier
+   - Slot it as mirrored directly + via a heritage-bundled cap
+   - Verify both show the mirrored value (`-2`)
+   - Same test with not mirrored → `+2`
+
+#### What you'll see
+
+- Saving a primitive with no sub-target → blocked at the form
+- Existing Tessy data still works (engine drops bad modifiers silently)
+- Data UI shows a warning badge for malformed primitives
+- Mirror test passes (confirms the behavior is correct)
+
+#### Files to touch
+
+- `src/components/workshops/primitive-registry.tsx` (validator)
+- `src/components/sandbox/primitive-form.tsx` (validator)
+- `src/lib/engine/resolve-modifiers.ts` (drop rule + validated flag)
+- `src/lib/engine/resolve-modifiers.test.ts` (new tests — mirror + null drop)
+- `src/components/atelier/data-quality-panel.tsx` (new — warning UI)
+- `src/app/atelier/page.tsx` (integrate warning panel)
+
+#### Round answers used
+
+- A1, A2, A3 (null sub-target validation rules)
+- R3-Q3 (behavior variable name normalization)
+- R3-Q6 (mirror is per-primitive test)
+
+---
+
+### i2 — Engine resolution (replace buCost-as-proxy)
+
+**Size:** Medium (2–3 commits)
+**Depends on:** i1
+**What you can test:** Character sheet rolls up attributes/practices/defenses/vitality from `hardModifiers` instead of `buCost`. Real numbers on Tessy or a new test character.
+
+#### What you author
+
+Create a new character (or use a copy of Tessy). Author these primitives with proper modifiers:
+
+| Primitive | Modifiers |
+|---|---|
+| **+1 to Physical** | `add 1` to `attribute.physical` |
+| **+2 to Mental** | `add 2` to `attribute.mental` |
+| **+1 to Magical** | `add 1` to `attribute.magical` |
+| **+1 to Vitality** | `add 1` to `maxVitality` |
+| **+1 to Practice: Fieldcraft** | `add 1` to `practice.fieldcraft` |
+| **+1 to Practice: Awareness** | `add 1` to `practice.awareness` |
+| **+1 to Physical DC** | `add 1` to `defense.physicalDc` |
+| **+2 to Mental DC** | `add 2` to `defense.mentalDc` |
+
+Slot these directly on the character. Verify the sheet shows the right numbers in the bottom drawer.
+
+#### What to build
+
+1. **Replace `buCost`-as-proxy** in `aggregateCharacterSheet()` with `hardModifiers` walk
+2. **Wire `resolveModifiers()`** from the engine (already implemented + tested)
+3. **Wire `resolveAttributeModifier()`** for attribute modifiers
+4. **Wire `resolveAllDefensiveDCs()`** for defense DC
+5. **Wire `computeVitalityModifiersFromPrimitives()`** for vitality
+6. **Wire practice/skill roll-up** via `buildPrimitiveBonusMap()` (extend to use real modifiers)
+7. **Engine returns contributions per axis** with provenance
+8. **Sheet displays the new numbers** in the bottom drawer
+
+#### What you'll see
+
+- Bottom drawer shows real numbers (e.g. `+5` for physical = `5 (slice) + 0 (primitives)`)
+- If you add a `+1 to Physical` primitive, the drawer updates to `+6`
+- Modal traceability shows the breakdown (slice + primitive contributions)
+
+#### Files to touch
+
+- `src/lib/engine/sheet.ts` (replace buCost-as-proxy)
+- `src/lib/engine/sheet.test.ts` (new tests)
+- `src/app/characters/[id]/page.tsx` (load + pass through)
+- `src/components/characters/character-sheet-view.tsx` (display)
+- `src/components/characters/bottom-sticky-bar.tsx` (display)
+
+#### Round answers used
+
+- R3-Q1 (saving throw formulas)
+- R3-Q2 / R5-Q2 (action.roll sub-targets)
+- R4-Q1 (per-attribute PB rules)
+
+---
+
+### i3 — Conditions runtime evaluation + per-toggle gating
+
+**Size:** Medium (2 commits)
+**Depends on:** i2
+**What you can test:** `+1 if grappled` modifier shows `*` on the axis; engine suppresses it when cap toggle is OFF.
+
+#### What you author
+
+Edit the existing primitives from i2 to add conditions:
+
+| Primitive | Modifier (with condition) |
+|---|---|
+| **+1 to Fieldcraft** | `add 1` to `practice.fieldcraft`, condition: `target-is-grappled` |
+| **+2 to Physical** | `add 2` to `attribute.physical`, condition: `actor-below-half-hp` |
+| **Advantage on Awareness** | `grant behavior:awareness_advantage`, condition: `scene-dim` |
+
+Slot these via a capability. Verify the `*` marker appears on the axis. Toggle the cap OFF and verify the modifier is suppressed.
+
+#### What to build
+
+1. **Wire `evaluateCondition()`** (already implemented for legacy form) for v1 conditions
+2. **Wire v1 condition evaluator** for the 4 shapes: `preset`, `narrative`, `tags`, `compound`
+3. **Each modifier card has a `condition` field**; engine evaluates it on each render
+4. **Cap toggle bundles all its primitives' modifiers** (per-toggle, not per-modifier)
+5. **Sheet shows `*` on the target/sub-target axis** when a modifier has a condition
+6. **Modal has a "Conditions" section** showing the explicit conditions
+
+#### What you'll see
+
+- Drawer shows `Prowess +4 *` when the modifier has a condition
+- Click the `*` → modal shows the condition text
+- Toggle cap OFF → `*` might stay visible but the modifier contribution is suppressed
+- Toggle ON, condition met → modifier contributes
+- Toggle ON, condition not met → modifier doesn't contribute
+
+#### Files to touch
+
+- `src/lib/primitives/condition.ts` (extend with v1 evaluators)
+- `src/lib/engine/resolve-modifiers.ts` (integrate condition evaluation)
+- `src/lib/engine/resolve-modifiers.test.ts` (new tests)
+- `src/components/characters/character-sheet-view.tsx` (render `*` on axis)
+- `src/components/characters/item-card.tsx` (modal condition section)
+
+#### Round answers used
+
+- B1, B2, B3, B5 (advantage/debuff convention)
+- J1 (cap toggle bundles modifiers)
+- R4-Q3 (per-toggle gating)
+- R5-Q3 (`*` on axis, not modifier)
+
+---
+
+### i4 — Custom behavior variables (blockValue)
+
+**Size:** Medium (2 commits)
+**Depends on:** i2
+**What you can test:** A primitive that `set behavior:blockValue = 6` is visible in the small cards. Another primitive that `subtract` reads it.
+
+#### What you author
+
+Add these primitives:
+
+| Primitive | Modifiers |
+|---|---|
+| **Set blockValue** | `set 6` to `behavior:blockValue` (no condition) |
+| **Subtract blockValue from damage** | `subtract $behavior:blockValue` from `action.damage` (read-only, resolves at runtime) |
+
+Add a capability **"Blocking"** that contains the "Subtract blockValue" primitive. The character's stance toggle controls the cap.
+
+#### What to build
+
+1. **Authors can name a variable** via `behavior:<name>` (normalized to lowercase-hyphen)
+2. **Engine supports** `set`, `add`, `multiply`, etc. on `behavior:<name>` targets
+3. **Variables are TRANSIENT** (not in DB) — pulled from the modifier chain at render time
+4. **Custom behaviors big card** (like Attributes) in the drawer
+5. **Variables show**: `blockValue: 6` (name + value)
+6. **Custom behavior card supports conditions** (per R3-Q4)
+
+#### What you'll see
+
+- Drawer shows a "Custom Behaviors" big card with `blockValue: 6`
+- Toggle the Blocking stance OFF → card disappears
+- Toggle ON → card shows again
+
+#### Files to touch
+
+- `src/lib/engine/resolve-modifiers.ts` (behavior variable resolution)
+- `src/lib/primitives/condition.ts` (validate behavior variable names)
+- `src/components/character-sheet/CustomBehaviorsCard.tsx` (new)
+- `src/components/characters/bottom-sticky-bar.tsx` (render custom behaviors card)
+- `src/lib/engine/resolve-modifiers.test.ts` (new tests)
+
+#### Round answers used
+
+- C1, C2, C3, C4, C5, C6 (blockValue lifecycle)
+- R3-Q3 (behavior variable name normalization)
+- R5-Q2 (custom behaviors = big cards)
+
+---
+
+### i5 — Play session scratchpad
+
+**Size:** Medium (2–3 commits)
+**Depends on:** none (uses i1 validators)
+**What you can test:** A **second FAB** (above the existing one) opens a modal. Add "Poisoned until long rest" with optional modifiers. Shows in the **Capabilities tab** (NOT drawer) as warning cards. Toggle on/off. Delete.
+
+#### What you author: NOTHING
+
+You test the FAB by adding conditions via the scratchpad.
+
+#### What to build
+
+1. **A second FAB** on the character sheet (above the existing one)
+2. **Modal opens** with: title, description, optional modifiers (target/axis/operation/value), duration tier (long rest / short rest / manual toggle)
+3. **Saves as a runtime condition** on the character
+4. **Capabilities tab** shows a "Scratchpad" section with warning cards (NOT in the drawer)
+5. **Each card has**: title, description, optional mini modifier preview, toggle on/off, delete, duration indicator
+6. **Persists in DB** (these are real conditions, not transient)
+7. **On character sheet render**, the scratchpad conditions are merged with the cap-toggle for the engine
+
+#### What you'll see
+
+- Click the new FAB → modal opens
+- Fill in "Poisoned" + description + optional modifiers + duration
+- Save → card appears in the Capabilities tab as a warning
+- Toggle on/off from the card
+- Delete from the card
+- The modifier (if added) contributes to the sheet totals when active
+
+#### Files to touch
+
+- `src/db/schema/character-conditions.ts` (new table)
+- `src/db/migrations/0006_*.sql` (new migration)
+- `src/app/api/characters/[id]/scratchpad/route.ts` (CRUD)
+- `src/components/character-sheet/ScratchpadModal.tsx` (new)
+- `src/components/character-sheet/ScratchpadCard.tsx` (new)
+- `src/components/character-modal/tabs/capabilities-tab.tsx` (render scratchpad)
+- `src/app/characters/[id]/page.tsx` (load + pass scratchpad)
+
+#### Round answers used
+
+- R5-Q6 (play session scratchpad feature)
+- F3 (read-only on sheet, FAB for runtime)
+- R5-Q2 (warnings in capabilities tab, not drawer)
+
+---
+
+### i6 — UI polish — small cards, glyphs, modal traceability
+
+**Size:** Large (4–6 commits)
+**Depends on:** i2, i3, i4
+**What you can test:** "Small cards" zone rendered. `︽` / `︾` / `*` / `🪞` glyphs appear. Modal traceability shows the full chain.
+
+#### What you author
+
+Add some modifiers that produce tags (not numbers):
+
+| Modifier | Effect |
+|---|---|
+| `grant behavior:darkvision` with value `60ft` | Adds darkvision tag to small cards |
+| `grant behavior:resistance:fire` | Adds `resistance:fire` to damage modifier cards |
+| `grant behavior:language:draconic` | Adds Draconic to languages cards |
+
+#### What to build
+
+1. **Small cards zone** in the bottom drawer (categories per R5-Q2)
+   - Custom behaviors (big cards) — already in i4
+   - Movement, Damage modifiers, Senses, Languages, Proficiencies (smaller cards)
+   - Meta tags (inline chips, not cards)
+2. **Glyphs**: `︽` / `︾` / `*` / `🪞` placed per R5-Q3 (on the axis)
+3. **Modal traceability**: show the full chain (per G2)
+4. **Mirror**: yellow highlight, only the mirror value (per G4)
+5. **Stacking field hidden when op = `set`** (per I20)
+6. **Item equip gating**: dim when unequipped (per R4-Q9)
+7. **Capability toggle bundle**: show inactive `(inactive)` marker (per R4-Q6)
+8. **Move sub-types** (per I15): only if low effort, otherwise defer
+
+#### What you'll see
+
+- Drawer shows the small cards zone organized by category
+- Glyphs appear next to affected axes
+- Modal traceability shows the full chain (cap → effect → primitive → modifier)
+- Mirror contributions are highlighted yellow
+- Inactive caps show `(inactive)` marker
+- Unequipped items are dimmed with `(when equipped)` suffix
+
+#### Files to touch
+
+- `src/components/character-sheet/SmallCards.tsx` (new)
+- `src/components/characters/bottom-sticky-bar.tsx` (integrate)
+- `src/components/characters/item-card.tsx` (dim when unequipped)
+- `src/components/character-modal/...` (hide stacking for set)
+- `src/components/characters/character-sheet-view.tsx` (glyphs, traceability)
+
+#### Round answers used
+
+- F1, F2, F3, F4 (small cards taxonomy)
+- G1, G2, G3, G4 (modal traceability)
+- I20 (hide stacking for set)
+- R4-Q6 (show inactive markers)
+- R4-Q9 (dim unequipped items)
+- R5-Q2 (full taxonomy)
+
+---
+
+### i7 — DB cleanup + schema renames
+
+**Size:** Small (1–2 commits)
+**Depends on:** i2 (so engine doesn't break)
+**What you can test:** DB backfill for advantage/disadvantage. `SourceType` enum: `physical`/`magical`/`mental`. New `needs_review` column on primitives.
+
+#### What you author: NOTHING
+
+Run the migration. The DB backfill script handles advantage/disadvantage and Psychic→Mental.
+
+#### What to build
+
+1. **Schema rename**: `SourceType` enum `physical`/`magical`/`psychic`/`hybrid` → `physical`/`magical`/`mental`
+2. **DB backfill**: `psychic` → `mental`, drop `hybrid` rows
+3. **DB backfill**: `bias` op → `grant` op, wrap bare `advantage`/`disadvantage` in `behavior:advantage`/`behavior:disadvantage`
+4. **New column**: `primitives.needs_review BOOLEAN` (audit script flags malformed modifiers)
+5. **Audit script**: walk all primitives, flag malformed modifiers
+
+#### What you'll see
+
+- After migration, no rows have `psychic` or `hybrid` source types
+- All advantage/disadvantage modifiers use the new grant+keyword pattern
+- Audit script reports the number of primitives with `needs_review = true`
+
+#### Files to touch
+
+- `src/types/swordweave.ts` (rename enum)
+- `src/db/schema/primitives.ts` (add column)
+- `src/db/migrations/0007_*.sql` (rename + new column)
+- `scripts/audit-modifiers.mts` (new)
+- `scripts/backfill-source-type.mts` (new)
+- `scripts/backfill-advantage-disadvantage.mts` (new)
+
+#### Round answers used
+
+- R5-Q1 (`needs_review` column)
+- R5-Q8 (Psychic → Mental rename)
+
+---
+
+## 📊 SUB-SESSION DEPENDENCY GRAPH
+
+```
+i1 (no deps)
+ ↓
+i2 (depends on i1)
+ ↓
+i3 (depends on i2)
+i4 (depends on i2)
+i5 (depends on i1) ← can run in parallel with i2/i3
+ ↓
+i6 (depends on i2, i3, i4)
+ ↓
+i7 (depends on i2)
+```
+
+i5 can run in parallel with i2/i3 if you want to make progress on the scratchpad while the engine is being built. Otherwise, sequential.
+
+---
+
+## 🔗 Cross-references
+
+- **i1** uses the canonical field names from R5-Q9
+- **i2** uses action.roll sub-targets from R5-Q2 / R4-Q2
+- **i3** uses the per-toggle gating decision from R4-Q3
+- **i4** uses the custom behavior variable name format from R3-Q3
+- **i5** is the new play session scratchpad from R5-Q6
+- **i6** uses the small cards taxonomy from R5-Q2
+- **i7** uses the Psychic→Mental rename from R5-Q8
+
+---
+
+## 📅 What happens after you confirm
+
+1. You confirm the 7 sub-sessions are right + the authoring plan
+2. We start with **i1** (null sub-target validator + mirror test)
+3. i1 commits locally, Vercel deploys, you test
+4. Move to i2, repeat
+5. Each sub-session ends with a clear test plan you can run
+
+---
+
+## 📎 ATTACHMENT
+
+This doc is attached to the next message as `PHASE-8-I-RECAP.md` for your reference. The chat stream summarizes the key points + the 7 sub-session breakdown.
+
+---
+
+## 📜 HISTORICAL APPENDICES (rounds 1–5, for reference)
+
+The rest of this document is the round-by-round decision log. Kept for traceability but not actively used for the plan.
+
+
 
 ## Decisions log (your feedback, rounds 1–2)
 
@@ -1364,195 +1660,3 @@ You mentioned a "big recap" to review scope. Let's do that now. The current scop
 Is the scope right? Anything else to add / cut?
 
 ---
-
-## ✅ ROUND 5 DECISIONS LOCKED (from your message, 2026-08-04)
-
-### R5-Q8. Psychic → Mental — rename, same concept
-
-> *"Just rename we have Mental everywhere only in that dropdown in capability build modal we have Phychic under source. Mental is phychic and psionic. Same thing, depends on the capability. and wording."*
-
-**Decision locked:** `SourceType.psychic` → `mental`. Drop `SourceType.hybrid`. New enum: `physical` | `magical` | `mental`. Add to **i7** (DB cleanup + schema renames).
-
-### R5-Q9. Capability intent — fields already exist
-
-> *"intent is in description. So capability has field Verbose Description, effect has Narrative Rule, primitive has Mechanical Output Text and Verbose Narrative Rule (how they are labeled in the build modals)."*
-
-**Decision locked:** The intent lives in existing schema fields. No new fields needed.
-
-| Entity | Field | Confirmed location |
-|---|---|---|
-| Capability | **Verbose Description** | `src/components/workshops/capability-composer.tsx:626` |
-| Effect | **Narrative Rule** | `src/components/workshops/effect-composer.tsx:364` |
-| Primitive | **Mechanical Output Text** + **Verbose Narrative Rule** | `src/components/workshops/primitive-registry.tsx:931,943` |
-
-### R5-Q10. Break Session I into sub-sessions
-
-> *"we need to break up I in sessions now. Incrementally so I know what to test step by step, does it make senes?"*
-
-**Decision locked:** Session I is broken into **7 sub-sessions (i1–i7)** — see Executive Summary at the top of this doc. Each sub-session is independently testable.
-
----
-
-## 📋 DETAILED SUB-SESSION BREAKDOWN
-
-### i1 — Null sub-target validator + mirror-per-primitive test
-**Size:** Small (single commit)
-**Depends on:** nothing
-**What:**
-- Validator at primitive save: if `target` has sub-targets (e.g. `attribute` requires at least one of `physical`/`mental`/`magical`), reject if none selected
-- For free-text axes (`action.strain`, `scene.pace`, `behavior:`), no validation
-- For `behavior:<name>`, validate name is non-empty + non-reserved
-- Test: mirror inheritance through heritage-bundled capability
-- Engine: drop null sub-target modifiers at evaluation time (no audit, just silent drop — surfaced via the audit query in i7)
-- Test: a primitive slotted mirrored via a heritage-bundled cap shows the mirrored value on the sheet
-**Files to touch:**
-- `src/db/schema/primitives.ts` (validation at the schema layer)
-- `src/lib/engine/resolve-modifiers.ts` (drop null sub-target)
-- `src/lib/engine/resolve-modifiers.test.ts` (new test file)
-- `src/app/api/primitives/route.ts` (POST validation)
-- `src/app/api/primitives/[id]/route.ts` (PATCH validation)
-**Round 3 answers used:** A1, A2, A3, C3, R3-Q3, R3-Q6
-
-### i2 — Engine resolution (replace buCost-as-proxy)
-**Size:** Medium (2–3 commits)
-**Depends on:** i1
-**What:**
-- Replace `buCost`-as-proxy in `aggregateCharacterSheet()` with `hardModifiers` walk
-- Call `resolveModifiers()` from the engine (already implemented + tested)
-- Wire `resolveAttributeModifier()` for attribute modifiers
-- Wire `resolveAllDefensiveDCs()` for defense DC
-- Wire `computeVitalityModifiersFromPrimitives()` for vitality
-- Wire practice/skill roll-up via `buildPrimitiveBonusMap()` (extend to use real modifiers)
-- Engine returns contributions per axis with provenance
-- Sheet displays the new numbers
-**Files to touch:**
-- `src/lib/engine/sheet.ts` (replace buCost-as-proxy)
-- `src/lib/engine/sheet.test.ts` (new tests)
-- `src/app/characters/[id]/page.tsx` (load + pass through)
-- `src/components/characters/character-sheet-view.tsx` (display)
-- `src/components/characters/bottom-sticky-bar.tsx` (display)
-**Round 3 answers used:** R3-Q1 (saving throw formulas), R3-Q2, R4-Q2, R5-Q2 (action.roll sub-targets)
-
-### i3 — Conditions runtime evaluation + per-toggle gating
-**Size:** Medium (2 commits)
-**Depends on:** i2
-**What:**
-- Wire `evaluateCondition()` (already implemented for legacy form) for v1 conditions
-- Wire v1 condition evaluator for the 4 shapes: `preset`, `narrative`, `tags`, `compound`
-- Each modifier card has a `condition` field; engine evaluates it on each render
-- Cap toggle bundles all its primitives' modifiers (per-toggle, not per-modifier)
-- Sheet shows `*` on the target/sub-target axis when a modifier has a condition
-- Modal has a "Conditions" section showing the explicit conditions
-**Files to touch:**
-- `src/lib/primitives/condition.ts` (extend with v1 evaluators)
-- `src/lib/engine/resolve-modifiers.ts` (integrate condition evaluation)
-- `src/lib/engine/resolve-modifiers.test.ts` (new tests)
-- `src/components/characters/character-sheet-view.tsx` (render `*` on axis)
-- `src/components/characters/item-card.tsx` (modal condition section)
-**Round 3 answers used:** B1, B2, B3, B5, J1, R4-Q3, R5-Q3
-
-### i4 — Custom behavior variables (blockValue etc.)
-**Size:** Medium (2 commits)
-**Depends on:** i2
-**What:**
-- Authors can name a variable via `behavior:<name>` (normalized to lowercase-hyphen)
-- Engine supports `set`, `add`, `multiply`, etc. on `behavior:<name>` targets
-- The variables are TRANSIENT (not in DB) — pulled from the modifier chain at render time
-- The character sheet has a "Custom behaviors" big card (like Attributes) showing the variables
-- Variables show: `blockValue: 6` (name + value)
-- The custom behavior card supports conditions (per R3-Q4)
-**Files to touch:**
-- `src/lib/engine/resolve-modifiers.ts` (behavior variable resolution)
-- `src/lib/primitives/condition.ts` (validate behavior variable names)
-- `src/components/character-sheet/CustomBehaviorsCard.tsx` (new)
-- `src/components/characters/bottom-sticky-bar.tsx` (render custom behaviors card)
-- `src/lib/engine/resolve-modifiers.test.ts` (new tests)
-**Round 3 answers used:** C1, C2, C3, C4, C5, C6, R3-Q3, R5-Q2 (custom behaviors = big cards)
-
-### i5 — Play session scratchpad
-**Size:** Medium (2–3 commits)
-**Depends on:** none (use i1 for validators)
-**What:**
-- A FAB on the character sheet opens a modal
-- Modal: title, description, optional modifiers (target/axis/operation/value), duration tier (long rest / short rest / manual toggle)
-- Saves as a runtime condition on the character
-- Bottom drawer shows a "Scratchpad" section with warning cards
-- Each card has: title, description, optional mini modifier preview, toggle on/off, delete, duration indicator
-- Persists in DB (these are real conditions, not transient)
-- On character sheet render, the scratchpad conditions are merged with the cap-toggle for the engine
-**Files to touch:**
-- `src/db/schema/character-conditions.ts` (new table)
-- `src/db/migrations/0006_*.sql` (new migration)
-- `src/app/api/characters/[id]/scratchpad/route.ts` (CRUD)
-- `src/components/character-sheet/ScratchpadModal.tsx` (new)
-- `src/components/character-sheet/ScratchpadCard.tsx` (new)
-- `src/components/characters/bottom-sticky-bar.tsx` (render scratchpad)
-- `src/app/characters/[id]/page.tsx` (load + pass scratchpad)
-**Round 5 answers used:** R5-Q6 (the play session scratchpad feature)
-
-### i6 — UI polish — small cards, glyphs, modal traceability
-**Size:** Large (4–6 commits)
-**Depends on:** i2, i3, i4
-**What:**
-- Add the "small cards" zone to the bottom drawer (categories per R5-Q2)
-- Custom behaviors = big cards (already in i4)
-- Glyphs: `︽` / `︾` / `*` / `🪞` placed per R5-Q3 (on the axis)
-- Modal traceability: show the full chain (per G2)
-- Mirror: yellow highlight, only the mirror value (per G4)
-- Stacking field hidden when op = `set` (per I20)
-- Item equip gating: dim when unequipped (per R4-Q9)
-- Move sub-types (per I15): only if low effort
-- Capability toggle bundle: show inactive `(inactive)` marker (per R4-Q6)
-**Files to touch:**
-- `src/components/character-sheet/SmallCards.tsx` (new)
-- `src/components/characters/bottom-sticky-bar.tsx` (integrate)
-- `src/components/characters/item-card.tsx` (dim when unequipped)
-- `src/components/character-modal/...` (hide stacking for set)
-- `src/components/characters/character-sheet-view.tsx` (glyphs, traceability)
-**Round 3–5 answers used:** everything from F-series, G-series, I-series, R4-Q6, R4-Q9, R5-Q2
-
-### i7 — DB cleanup + schema renames
-**Size:** Small (1–2 commits)
-**Depends on:** i2 (so engine doesn't break)
-**What:**
-- Schema rename: `SourceType` enum `physical`/`magical`/`psychic`/`hybrid` → `physical`/`magical`/`mental`
-- DB backfill: `psychic` → `mental`, drop `hybrid` rows
-- DB backfill: `bias` op → `grant` op, wrap bare `advantage`/`disadvantage` in `behavior:advantage`/`behavior:disadvantage`
-- New column: `primitives.needs_review BOOLEAN` (audit script flags malformed modifiers)
-- Audit script: walk all primitives, flag malformed modifiers
-**Files to touch:**
-- `src/types/swordweave.ts` (rename enum)
-- `src/db/schema/primitives.ts` (add column)
-- `src/db/migrations/0007_*.sql` (rename + new column)
-- `scripts/audit-modifiers.mts` (new)
-- `scripts/backfill-source-type.mts` (new)
-- `scripts/backfill-advantage-disadvantage.mts` (new)
-**Round 5 answers used:** R5-Q1, R5-Q8
-
----
-
-## 🔗 Cross-references
-
-- **i1** uses the canonical field names from R5-Q9
-- **i2** uses action.roll sub-targets from R5-Q2 / R4-Q2
-- **i3** uses the per-toggle gating decision from R4-Q3
-- **i4** uses the custom behavior variable name format from R3-Q3
-- **i5** is the new play session scratchpad from R5-Q6
-- **i6** uses the small cards taxonomy from R5-Q2
-- **i7** uses the Psychic→Mental rename from R5-Q8
-
----
-
-## 📅 What happens after you confirm
-
-1. You confirm the 7 sub-session breakdown is right
-2. We start with **i1** (null sub-target validator + mirror test)
-3. i1 commits locally, Vercel deploys, you test
-4. Move to i2, repeat
-5. Each sub-session ends with a clear test plan you can run
-
----
-
-## 📎 ATTACHMENT
-
-This doc is attached to the next message as `PHASE-8-I-RECAP.md` for your reference. The chat stream will summarize the key points + the 7 sub-session breakdown.
