@@ -396,28 +396,45 @@ describe("calculateDefenseDc", () => {
 // compileDefenses
 // =============================================================================
 
-describe("compileDefenses", () => {
-  it("L1 character with 3/3/4 attributes gets 12/12/16... wait, 12/12/16", () => {
-    // physicalDc: 10 + 2 + 3 = 15? No, attribute=3
-    // Actually the DC is 10 + PB + attribute. So 10 + 2 + 3 = 15
-    const result = compileDefenses({ physical: 3, mental: 3, magical: 3 }, 2);
-    expect(result).toEqual({ physicalDc: 15, mentalDc: 15, magicalDc: 15 });
+describe("compileDefenses (Phase 8.I i2.0: single global Save DC)", () => {
+  it("L1 character with 3/3/3 attributes, proficient=physical: saveDc = 10 + 2 + 3 = 15", () => {
+    const result = compileDefenses(
+      { physical: 3, mental: 3, magical: 3 },
+      2,
+      [],
+      "physical",
+    );
+    expect(result.saveDc).toBe(15);
+    expect(result.proficientAttribute).toBe("physical");
   });
 
-  it("L1 character with 3/4/3 attributes: physicalDc 15, mentalDc 16, magicalDc 15", () => {
-    const result = compileDefenses({ physical: 3, mental: 4, magical: 3 }, 2);
-    expect(result).toEqual({ physicalDc: 15, mentalDc: 16, magicalDc: 15 });
+  it("L1 character with 3/4/3 attributes, proficient=mental: saveDc = 10 + 2 + 4 = 16", () => {
+    const result = compileDefenses(
+      { physical: 3, mental: 4, magical: 3 },
+      2,
+      [],
+      "mental",
+    );
+    expect(result.saveDc).toBe(16);
+    expect(result.proficientAttribute).toBe("mental");
   });
 
-  it("L5 character with high mental: physicalDc 16, mentalDc 18, magicalDc 17", () => {
+  it("L5 character with 3/5/4 attributes, proficient=mental: saveDc = 10 + 3 + 5 = 18", () => {
     const result = compileDefenses(
       { physical: 3, mental: 5, magical: 4 },
       3,
+      [],
+      "mental",
     );
-    expect(result).toEqual({ physicalDc: 16, mentalDc: 18, magicalDc: 17 });
+    expect(result.saveDc).toBe(18);
+    expect(result.proficientAttribute).toBe("mental");
   });
 
-  it("applies defense-specific modifiers", () => {
+  it("rolls up legacy per-attribute defense modifiers into the single DC", () => {
+    // Phase 8.I i2.0 migration: existing primitives that target
+    // character.defense.physicalDc / mentalDc / magicalDc all
+    // contribute to the single Save DC. The previous per-attribute
+    // filter is dropped.
     const mods: HardModifier[] = [
       {
         kind: "modify",
@@ -425,11 +442,56 @@ describe("compileDefenses", () => {
         operation: "add",
         value: 2,
       },
+      {
+        kind: "modify",
+        target: "character.defense.mentalDc",
+        operation: "add",
+        value: 1,
+      },
     ];
-    const result = compileDefenses({ physical: 3, mental: 3, magical: 3 }, 2, mods);
-    expect(result.physicalDc).toBe(17); // 15 + 2
-    expect(result.mentalDc).toBe(15);
-    expect(result.magicalDc).toBe(15);
+    const result = compileDefenses(
+      { physical: 3, mental: 3, magical: 3 },
+      2,
+      mods,
+      "physical",
+    );
+    expect(result.saveDc).toBe(18); // 15 + 2 + 1
+  });
+
+  it("rolls up canonical short-axis defense_dc modifiers", () => {
+    const mods: HardModifier[] = [
+      {
+        kind: "modify",
+        target: "defense_dc",
+        operation: "add",
+        value: 5,
+      },
+    ];
+    const result = compileDefenses(
+      { physical: 3, mental: 3, magical: 3 },
+      2,
+      mods,
+      "physical",
+    );
+    expect(result.saveDc).toBe(20); // 15 + 5
+  });
+
+  it("subtract operations reduce the DC", () => {
+    const mods: HardModifier[] = [
+      {
+        kind: "modify",
+        target: "character.defense.physicalDc",
+        operation: "subtract",
+        value: 3,
+      },
+    ];
+    const result = compileDefenses(
+      { physical: 3, mental: 3, magical: 3 },
+      2,
+      mods,
+      "physical",
+    );
+    expect(result.saveDc).toBe(12); // 15 - 3
   });
 });
 
@@ -534,7 +596,9 @@ describe("compileEntityLiveStats", () => {
       maxVitality: 12,
       currentVitality: 12,
       movement: { land: 30 },
-      defenses: { physicalDc: 15, mentalDc: 16, magicalDc: 15 },
+      // Phase 8.I i2.0: single save DC, derived from proficient attribute
+      // (physical=3 by default). 10 + 2 + 3 = 15.
+      defenses: { saveDc: 15, proficientAttribute: "physical" },
       attributes: { physical: 3, mental: 4, magical: 3 },
     });
   });
@@ -601,7 +665,8 @@ describe("compileEntityLiveStats", () => {
     expect(stats.proficiencyBonus).toBe(3);
     expect(stats.attributes.physical).toBe(5);
     expect(stats.maxVitality).toBe(77); // 65 + 12
-    expect(stats.defenses.physicalDc).toBe(20); // 10 + 3 + 5 + 2
+    // Phase 8.I i2.0: single save DC, derived from proficient attribute (physical=5 here)
+    expect(stats.defenses.saveDc).toBe(20); // 10 + 3 + 5 + 2
     expect(stats.movement.land).toBe(40); // 30 + 10
   });
 });

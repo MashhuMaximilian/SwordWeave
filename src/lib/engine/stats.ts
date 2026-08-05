@@ -368,38 +368,82 @@ export function calculateDefenseDc(
 }
 
 /**
- * Compile all three defensive profiles (Physical, Mental, Magical DC).
+ * Compile the single defensive profile (the global Save DC).
  *
- * Returns DefensiveProfile { physicalDc, mentalDc, magicalDc }.
+ * Phase 8.I i2.0 (Mashu 2026-08-05): the previous 3 per-attribute
+ * DCs (physical, mental, magical) collapse into ONE Save DC. The
+ * DC is computed from the proficient attribute's modifier + PB +
+ * primitive contributions. See target-registry.ts:
+ * resolvePrimarySaveDc for the canonical implementation.
+ *
+ * Phase 8.I i2.0 migration: existing modifiers with
+ * `target: "character.defense.<attr>Dc"` are read here as
+ * contributions to the single Save DC, regardless of which
+ * attribute they were originally keyed to.
  */
 export function compileDefenses(
   attributes: AttributeScores,
   pb: number,
   modifiers: readonly HardModifier[] = [],
+  proficientAttribute: "physical" | "mental" | "magical" = "physical",
 ): DefensiveProfile {
+  // The single Save DC = 5 + PB + (proficient attribute modifier) +
+  // primitive contributions. Primitive contributions target the
+  // canonical "defense_dc" axis (no sub-targets after i2.0).
+  const attrModifier = attributes[proficientAttribute];
+  const primitiveDelta = sumNumericModifiers(
+    modifiers,
+    "character.defense",  // legacy dotted form
+    "defense_dc",         // canonical short axis
+  );
   return {
-    physicalDc: calculateDefenseDc(
-      BASELINE_DEFENSE,
-      pb,
-      attributes.physical,
-      modifiers,
-      "character.defense.physicalDc",
-    ),
-    mentalDc: calculateDefenseDc(
-      BASELINE_DEFENSE,
-      pb,
-      attributes.mental,
-      modifiers,
-      "character.defense.mentalDc",
-    ),
-    magicalDc: calculateDefenseDc(
-      BASELINE_DEFENSE,
-      pb,
-      attributes.magical,
-      modifiers,
-      "character.defense.magicalDc",
-    ),
+    saveDc: Math.floor(BASELINE_DEFENSE + pb + attrModifier + primitiveDelta),
+    proficientAttribute,
   };
+}
+
+/**
+ * Phase 8.I i2.0 helper: sum the numeric contributions of
+ * modifiers that target a defense axis (either legacy dotted form
+ * or canonical short axis). Excludes legacy per-attribute dotted
+ * forms (character.defense.physicalDc, etc.) — those are read but
+ * NOT filtered by attribute, since the single Save DC rolls up
+ * all 3 per-attribute inherited contributions.
+ */
+function sumNumericModifiers(
+  modifiers: readonly HardModifier[],
+  legacyAxis: string,
+  shortAxis: string,
+): number {
+  let sum = 0;
+  for (const mod of modifiers) {
+    const target = mod.target;
+    const isLegacy = target === legacyAxis;
+    const isShort = target === shortAxis;
+    const isLegacyPerAttr =
+      target === "character.defense.physicalDc" ||
+      target === "character.defense.mentalDc" ||
+      target === "character.defense.magicalDc";
+    if (!isLegacy && !isShort && !isLegacyPerAttr) continue;
+
+    if (typeof mod.value !== "number" && typeof mod.value !== "string") {
+      continue;
+    }
+    const numericValue =
+      typeof mod.value === "number" ? mod.value : Number(mod.value);
+    if (!Number.isFinite(numericValue)) continue;
+
+    const sign = mod.operation === "subtract" ? -1 : 1;
+    // set/min/max/grant/revoke don't apply to the rolled-up DC
+    // primitive contributions (they go through different paths).
+    if (
+      mod.operation === "add" ||
+      mod.operation === "subtract"
+    ) {
+      sum += sign * numericValue;
+    }
+  }
+  return sum;
 }
 
 // =============================================================================
@@ -565,6 +609,7 @@ export interface EntityCompilationInput {
   readonly baseAttributes: AttributeScores;
   readonly currentVitality?: number;
   readonly modifiers: readonly HardModifier[];
+  readonly proficientAttribute?: "physical" | "mental" | "magical";
 }
 
 /**
@@ -581,7 +626,14 @@ export function compileEntityLiveStats(
   const pb = proficiencyBonus(level);
   const attributes = compileAttributes(baseAttributes, modifiers);
   const maxVitality = calculateMaxVitality(level, modifiers);
-  const defenses = compileDefenses(attributes, pb, modifiers);
+  // Phase 8.I i2.0: pass proficient attribute so the single Save DC
+  // is derived from the right attribute modifier.
+  const defenses = compileDefenses(
+    attributes,
+    pb,
+    modifiers,
+    input.proficientAttribute ?? "physical",
+  );
   const movement = compileMovement(level, modifiers);
 
   return {

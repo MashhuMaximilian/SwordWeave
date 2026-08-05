@@ -638,11 +638,14 @@ describe("parseEquationInput — bracket/delim convention", () => {
 // =============================================================================
 
 describe("SUB_CHOICE_KEYWORDS — sub-choice picker", () => {
-  it("includes defense axes", () => {
+  it("includes the single Save DC axis (i2.0)", () => {
+    // Phase 8.I i2.0 (Mashu 2026-08-05): was 3 per-attribute DC
+    // chips, now 1 single global Save DC chip.
     const labels = SUB_CHOICE_KEYWORDS.map((k) => k.label);
-    expect(labels).toContain("Physical DC");
-    expect(labels).toContain("Mental DC");
-    expect(labels).toContain("Magical DC");
+    expect(labels).toContain("Save DC");
+    expect(labels).not.toContain("Physical DC");
+    expect(labels).not.toContain("Mental DC");
+    expect(labels).not.toContain("Magical DC");
   });
 
   it("includes speed axes", () => {
@@ -691,9 +694,11 @@ describe("SUB_CHOICE_KEYWORDS — sub-choice picker", () => {
   it("Mashu's request: keywords for all sub-choices (no missing)", () => {
     // v4 ensures every per-axis sub-choice in MODIFIER_TARGET_SPEC
     // appears here so the picker can tag any modifier.
+    // Phase 8.I i2.0 (Mashu 2026-08-05): the 3 per-attribute DC
+    // chips were replaced with a single "Save DC" chip.
     const expectedLabels = [
-      // Defense
-      "Physical DC", "Mental DC", "Magical DC",
+      // Defense (single Save DC, no sub-targets)
+      "Save DC",
       // Speed
       "Walking Speed", "Climbing Speed", "Swimming Speed",
       "Flying Speed", "Burrowing Speed",

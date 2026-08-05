@@ -64,6 +64,11 @@ function isValidTarget(t: string): boolean {
     "character.attribute.physical",
     "character.attribute.mental",
     "character.attribute.magical",
+    // Phase 8.I i2.0 (Mashu 2026-08-05): single global Save DC.
+    "character.defense.saveDc",
+    // Legacy per-attribute defense keys still resolve (read-only
+    // for backwards compatibility) but are mapped to the single
+    // Save DC axis via modifier-scope.ts:LEGACY_TARGET_MIGRATIONS.
     "character.defense.physicalDc",
     "character.defense.mentalDc",
     "character.defense.magicalDc",
@@ -77,6 +82,7 @@ function attrFromTarget(target: string): Attribute | null {
   if (target === "character.attribute.physical" || target === "character.defense.physicalDc") return "physical";
   if (target === "character.attribute.mental" || target === "character.defense.mentalDc") return "mental";
   if (target === "character.attribute.magical" || target === "character.defense.magicalDc") return "magical";
+  if (target === "character.defense.saveDc") return "physical"; // legacy callers — return any
   return null;
 }
 

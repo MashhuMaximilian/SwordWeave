@@ -37,13 +37,17 @@ describe("validateModifierDraft — widget rules (Phase 8.I i1, Mashu 2026-08-04
       expect(validateModifierDraft(draft)).toBeNull();
     });
 
-    it("rejects defense_dc with no sub-target", () => {
+    it("accepts defense_dc with no sub-target (single global Save DC, i2.0)", () => {
+      // Phase 8.I i2.0 (Mashu 2026-08-05): defense_dc is now the
+      // single global Save DC axis. There are no sub-targets, so
+      // an empty targetValues is valid (the modifier just targets
+      // "the" Save DC).
       const draft: ModifierDraftForValidation = {
         target: "defense_dc",
         targetValues: [],
         freeTextNarrowFocus: "",
       };
-      expect(validateModifierDraft(draft)).toMatch(/Select at least one value for "Defense DC"/);
+      expect(validateModifierDraft(draft)).toBeNull();
     });
 
     it("rejects speed with no locomotion chosen", () => {
@@ -214,10 +218,22 @@ describe("validateModifierDraft — widget rules (Phase 8.I i1, Mashu 2026-08-04
       expect(validateModifierDraft(draft)).toBeNull();
     });
 
-    it("accepts action_roll with no values", () => {
+    it("requires action_roll to have at least one sub-target (i2.0)", () => {
+      // Phase 8.I i2.0 (Mashu 2026-08-05): action_roll now has 5
+      // sub-targets (attack / physical_save / mental_save / magical_save
+      // / other). The form rejects empty targetValues.
       const draft: ModifierDraftForValidation = {
         target: "action_roll",
         targetValues: [],
+        freeTextNarrowFocus: "",
+      };
+      expect(validateModifierDraft(draft)).toMatch(/Select at least one value for "Action Roll"/);
+    });
+
+    it("accepts action_roll with at least one sub-target (i2.0)", () => {
+      const draft: ModifierDraftForValidation = {
+        target: "action_roll",
+        targetValues: ["ATTACK_ROLL"],
         freeTextNarrowFocus: "",
       };
       expect(validateModifierDraft(draft)).toBeNull();
@@ -330,13 +346,17 @@ describe("validateModifierDrafts (multi-modifier loop)", () => {
   });
 
   it("returns the first invalid modifier with index", () => {
+    // Phase 8.I i2.0 (Mashu 2026-08-05): defense_dc is now a single
+    // global axis (no sub-targets), so a defense_dc modifier with
+    // empty targetValues is valid. We use skill_practice_check
+    // (which DOES require sub-targets) as the invalid one.
     const drafts: ModifierDraftForValidation[] = [
       { target: "attribute", targetValues: ["PHYSICAL"], freeTextNarrowFocus: "" },
       { target: "defense_dc", targetValues: [], freeTextNarrowFocus: "" },
-      { target: "max_vitality", targetValues: [], freeTextNarrowFocus: "" },
+      { target: "skill_practice_check", targetValues: [], freeTextNarrowFocus: "" },
     ];
     const err = validateModifierDrafts(drafts);
-    expect(err).toMatch(/Modifier 2: Select at least one value for "Defense DC"/);
+    expect(err).toMatch(/Modifier 3: Select at least one value for "Skill \/ Practice Check"/);
   });
 
   it("returns null for empty array", () => {

@@ -485,10 +485,12 @@ export interface SubChoiceKeyword {
 }
 
 export const SUB_CHOICE_KEYWORDS: readonly SubChoiceKeyword[] = [
-  // Defense axes (defense_dc).
-  { label: "Physical DC", group: "Defense" },
-  { label: "Mental DC", group: "Defense" },
-  { label: "Magical DC", group: "Defense" },
+  // Phase 8.I i2.0 (Mashu 2026-08-05): Save DC is a SINGLE global
+  // axis — not per-attribute. The previous 3 chips (Physical DC,
+  // Mental DC, Magical DC) were removed because we don't have one
+  // DC per attribute, just one Save DC total.
+  // Defense axes (defense_dc — single global Save DC).
+  { label: "Save DC", group: "Defense" },
   // Speed axes (single axis with locomotion sub-choices).
   { label: "Walking Speed", group: "Speed" },
   { label: "Climbing Speed", group: "Speed" },

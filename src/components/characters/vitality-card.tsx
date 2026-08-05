@@ -1,25 +1,14 @@
 /**
  * vitality-card.tsx — Phase 8.3f S5 (Mashu 2026-07-28)
  *
- * Vitality tracker + per-attribute saves + per-attribute save DCs.
- * Reads values from the canonical resolver (S1 + S2) so the
- * "Max Vitality" line is `(10 + PB) × level + primitive augments`
- * (the resolver handles the +augment + mirror-flips math).
+ * Vitality tracker + per-attribute saves + ONE global Save DC.
+ * Phase 8.I i2.0 (Mashu 2026-08-05): per user feedback, there is
+ * ONE global Save DC — not per-attribute. The 3 per-attribute DC
+ * columns were removed and replaced with a single Save DC card
+ * at the bottom, derived from the proficient attribute.
  *
- * Per-attribute rows:
- *   - attribute modifier (e.g. PHYS +4)
- *   - save value (modifier + PB if proficient + primitives@SAVE)
- *     e.g. PHYS +2 (proficient? +PB), MENT +10 (proficient, +PB)
- *   - save DC (5 + PB + modifier + primitives@SAVE)
- *     e.g. PHYS +15
- *
- * Each row is clickable → opens ProvenanceModal showing the
- * per-primitive attribution list.
- *
- * Provenant card highlights:
- *   - "PROFICIENT" badge on the proficient attribute (teal)
- *   - Mirror indicator: if any contribution is mirrored, the
- *     card shows "MIRRORED" pill near the modifier
+ * Reads values from the canonical resolver so the "Max Vitality"
+ * line is `(10 + PB) × level + primitive augments`.
  */
 
 import { useState } from "react";
@@ -46,13 +35,24 @@ const ATTR_TARGET: Record<Attribute, string> = {
   magical: "character.attribute.magical",
 };
 
+/**
+ * Phase 8.I i2.0: saving throws are sub-targets of action_roll,
+ * not a separate axis. `+1 to Physical Save` after i2.0 is
+ * `add 1 to action_roll with sub-target physical_save`.
+ */
 const SAVE_TARGET: Record<Attribute, string> = {
-  physical: "character.defense.physicalDc",
-  mental: "character.defense.mentalDc",
-  magical: "character.defense.magicalDc",
+  physical: "character.action_roll.physical_save",
+  mental: "character.action_roll.mental_save",
+  magical: "character.action_roll.magical_save",
 };
 
 const MAX_VITALITY_TARGET = "character.maxVitality";
+
+/**
+ * Phase 8.I i2.0: single Save DC. Reads from the
+ * character.defense.saveDc contribution.
+ */
+const SAVE_DC_TARGET = "character.defense.saveDc";
 
 export interface VitalityCardProps {
   current: number | null;
@@ -131,13 +131,12 @@ export function VitalityCard({
         )}
       </div>
 
-      {/* Per-attribute rows */}
+      {/* Per-attribute rows (mod + save value) */}
       <div className="grid grid-cols-1 gap-1.5">
         {(["physical", "mental", "magical"] as const).map((attr) => {
           const isProficient = proficientAttribute === attr;
           const mod = resolver.totals[ATTR_TARGET[attr]] ?? 0;
           const saveValue = mod + (isProficient ? pb : 0) + (resolver.totals[SAVE_TARGET[attr]] ?? 0);
-          const saveDc = 5 + pb + mod + (resolver.totals[SAVE_TARGET[attr]] ?? 0);
           const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 
           return (
@@ -182,23 +181,19 @@ export function VitalityCard({
                     {fmt(saveValue)}
                   </span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => open(SAVE_TARGET[attr])}
-                  className="rounded px-1 py-0.5 transition-colors hover:bg-muted/60"
-                  aria-label={`Show ${ATTR_LABEL[attr]} save DC provenance`}
-                  title="Save DC (threshold enemies must meet)"
-                >
-                  <span className="text-muted-foreground">DC</span>{" "}
-                  <span className="font-mono font-semibold tabular-nums">
-                    {saveDc}
-                  </span>
-                </button>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Phase 8.I i2.0: ONE global Save DC card at the bottom. */}
+      <SaveDcCard
+        resolver={resolver}
+        proficientAttribute={proficientAttribute}
+        pb={pb}
+        onOpen={open}
+      />
 
       {/* Provenance modal (only rendered when a target is selected) */}
       {provenanceTarget && (
@@ -207,11 +202,13 @@ export function VitalityCard({
           targetLabel={
             provenanceTarget === MAX_VITALITY_TARGET
               ? "Max Vitality"
-              : provenanceTarget.startsWith("character.attribute.")
-                ? `${ATTR_LABEL[provenanceTarget.split(".").pop() as Attribute]} modifier`
-                : provenanceTarget.startsWith("character.defense.")
-                  ? `${ATTR_LABEL[provenanceTarget.split(".").pop() as Attribute]} save`
-                  : provenanceTarget
+              : provenanceTarget === SAVE_DC_TARGET
+                ? "Save DC"
+                : provenanceTarget.startsWith("character.attribute.")
+                  ? `${ATTR_LABEL[provenanceTarget.split(".").pop() as Attribute]} modifier`
+                  : provenanceTarget.startsWith("character.action_roll.")
+                    ? `${ATTR_LABEL[provenanceTarget.split(".").pop()?.replace("_save", "") as Attribute]} save value`
+                    : provenanceTarget
           }
           totals={resolver.totals}
           byTarget={resolver.byTarget}
@@ -219,5 +216,42 @@ export function VitalityCard({
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Phase 8.I i2.0 (Mashu 2026-08-05): the single Save DC card.
+ * Reads from the resolver's character.defense.saveDc contribution
+ * (single global axis). Derived from the proficient attribute's
+ * modifier + PB + primitive contributions.
+ */
+function SaveDcCard({
+  resolver,
+  proficientAttribute,
+  pb,
+  onOpen,
+}: {
+  resolver: ResolvedModifiers;
+  proficientAttribute: Attribute | null;
+  pb: number;
+  onOpen: (target: string) => void;
+}) {
+  const proficientAttr = proficientAttribute ?? "physical";
+  const proficientMod = resolver.totals[ATTR_TARGET[proficientAttr]] ?? 0;
+  const saveDcDelta = resolver.totals[SAVE_DC_TARGET] ?? 0;
+  const saveDc = 5 + pb + proficientMod + saveDcDelta;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(SAVE_DC_TARGET)}
+      className="flex w-full items-center justify-between rounded-md border border-border bg-card px-2 py-1.5 text-sm transition-colors hover:bg-muted/40"
+      title="Save DC — one global value, click for provenance"
+    >
+      <span className="font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Save DC
+      </span>
+      <span className="font-mono font-bold tabular-nums">{saveDc}</span>
+    </button>
   );
 }

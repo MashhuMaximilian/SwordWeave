@@ -162,10 +162,20 @@ export interface Capability {
 
 export type EntityType = "player" | "monster";
 
+/**
+ * Phase 8.I i2.0 (Mashu 2026-08-05): there is ONE global Save DC,
+ * not per-attribute. The character has a single DC enemies must
+ * meet. The Save DC is computed from the proficient attribute
+ * (5 + PB + modifier of proficient attribute + primitive
+ * contributions). See target-registry.ts:resolvePrimarySaveDc.
+ *
+ * `proficientAttribute` tracks which attribute the character's
+ * proficiency bonus applies to for saves + attack rolls. If null,
+ * falls back to physical.
+ */
 export interface DefensiveProfile {
-  readonly physicalDc: number;
-  readonly mentalDc: number;
-  readonly magicalDc: number;
+  readonly saveDc: number;
+  readonly proficientAttribute: "physical" | "mental" | "magical" | null;
 }
 
 export interface EntityLiveStats {

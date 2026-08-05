@@ -102,16 +102,20 @@ export const LEGACY_TARGET_MIGRATIONS: Record<
     defaultScope: { layer: "ATTRIBUTE", values: ["MAGICAL"] },
   },
   "character.defense.physicalDc": {
+    // Phase 8.I i2.0 (Mashu 2026-08-05): legacy per-attribute
+    // defense DC keys collapse into the single global Save DC axis.
+    // The previous defaultScope.values=["DEFENSE_ROLL"] was mapped
+    // to the old per-attribute axis; now there's no sub-target.
     target: "defense_dc",
-    defaultScope: { layer: "METRIC", values: ["DEFENSE_ROLL"] },
+    defaultScope: { layer: "METRIC", values: [] },
   },
   "character.defense.mentalDc": {
     target: "defense_dc",
-    defaultScope: { layer: "METRIC", values: ["DEFENSE_ROLL"] },
+    defaultScope: { layer: "METRIC", values: [] },
   },
   "character.defense.magicalDc": {
     target: "defense_dc",
-    defaultScope: { layer: "METRIC", values: ["DEFENSE_ROLL"] },
+    defaultScope: { layer: "METRIC", values: [] },
   },
   "character.movement.land": {
     // Phase-7-E/UX2a-r: legacy walking-speed modal lands on
@@ -318,15 +322,16 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
     options: ATTRIBUTES,
   },
   defense_dc: {
+    // Phase 8.I i2.0 (Mashu 2026-08-05): per user feedback, there is
+    // ONE global Save DC — not per-attribute. The form previously
+    // exposed Physical/Mental/Magical sub-targets, which was wrong.
+    // Migration: existing modifiers with sub-targets coerce to the
+    // single axis (engine reads them all as contributions to the
+    // single character.defense.saveDc number).
     target: "defense_dc",
-    label: "Defense DC",
+    label: "Save DC",
     layer: "METRIC",
-    widget: "checklist",
-    // Reuse the DC/Defense metric scope. The form presents these as
-    // "Physical / Mental / Magical" (the attribute-keyed axes) for
-    // human-readability even though the canonical metric value is
-    // DEFENSE_ROLL.
-    options: ["PHYSICAL", "MENTAL", "MAGICAL"],
+    widget: "none",
   },
   speed: {
     // Phase-7-E/UX2a-r: Speed is one dropdown entry. The five
@@ -385,10 +390,30 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
     widget: "none",
   },
   action_roll: {
+    // Phase 8.I i2.0 (Mashu 2026-08-05): per user feedback, action
+    // roll needs 5 sub-targets so authors can target attack rolls,
+    // any of the three saves (physical/mental/magical), or a free
+    // "other" axis (used for proficiencies and other tagged effects
+    // — see R4-Q2 and R5-Q2). The form previously had no sub-target
+    // widget, which forced everything through the single axis.
     target: "action_roll",
     label: "Action Roll",
     layer: "METRIC",
-    widget: "none",
+    widget: "checklist",
+    options: [
+      "ATTACK_ROLL",
+      "PHYSICAL_SAVE",
+      "MENTAL_SAVE",
+      "MAGICAL_SAVE",
+      "OTHER",
+    ],
+    optionLabels: {
+      ATTACK_ROLL: "Attack Roll",
+      PHYSICAL_SAVE: "Physical Save",
+      MENTAL_SAVE: "Mental Save",
+      MAGICAL_SAVE: "Magical Save",
+      OTHER: "Other",
+    },
   },
   damage_healing_output: {
     // Phase 7.5 v4: Damage / Healing Output has NO target value

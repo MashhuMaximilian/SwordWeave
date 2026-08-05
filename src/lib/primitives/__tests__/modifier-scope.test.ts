@@ -113,11 +113,15 @@ describe("MODIFIER_TARGET_SPEC", () => {
     expect(spec.options).toEqual(ATTRIBUTES);
   });
 
-  it("defense_dc uses METRIC with Physical/Mental/Magical checklist", () => {
+  it("defense_dc is the single global Save DC axis (no sub-targets, i2.0)", () => {
+    // Phase 8.I i2.0 (Mashu 2026-08-05): per user feedback, there
+    // is ONE global Save DC — not per-attribute. The form previously
+    // exposed Physical/Mental/Magical sub-targets, which was wrong.
     const spec = MODIFIER_TARGET_SPEC.defense_dc;
     expect(spec.layer).toBe("METRIC");
-    expect(spec.widget).toBe("checklist");
-    expect(spec.options).toEqual(["PHYSICAL", "MENTAL", "MAGICAL"]);
+    expect(spec.widget).toBe("none");
+    expect(spec.options).toBeUndefined();
+    expect(spec.label).toBe("Save DC");
   });
 
   it("speed uses METRIC with multi-select checklist (UX2a-r2)", () => {
@@ -188,7 +192,27 @@ describe("MODIFIER_TARGET_SPEC", () => {
     expect(MODIFIER_TARGET_SPEC.max_vitality.widget).toBe("none");
     expect(MODIFIER_TARGET_SPEC.current_vitality.widget).toBe("none");
     expect(MODIFIER_TARGET_SPEC.proficiency_bonus.widget).toBe("none");
-    expect(MODIFIER_TARGET_SPEC.action_roll.widget).toBe("none");
+    // Phase 8.I i2.0 (Mashu 2026-08-05): action_roll now has 5
+    // sub-targets (attack / physical_save / mental_save / magical_save
+    // / other), so it's a checklist, not a single-axis widget.
+    expect(MODIFIER_TARGET_SPEC.action_roll.widget).toBe("checklist");
+  });
+
+  it("action_roll has 5 sub-targets (attack + 3 saves + other, i2.0)", () => {
+    // Phase 8.I i2.0 (Mashu 2026-08-05): per user feedback, action
+    // roll needs 5 sub-targets.
+    const spec = MODIFIER_TARGET_SPEC.action_roll;
+    expect(spec.widget).toBe("checklist");
+    expect(spec.options).toEqual([
+      "ATTACK_ROLL",
+      "PHYSICAL_SAVE",
+      "MENTAL_SAVE",
+      "MAGICAL_SAVE",
+      "OTHER",
+    ]);
+    expect(spec.optionLabels?.["ATTACK_ROLL"]).toBe("Attack Roll");
+    expect(spec.optionLabels?.["PHYSICAL_SAVE"]).toBe("Physical Save");
+    expect(spec.optionLabels?.["OTHER"]).toBe("Other");
   });
 });
 
