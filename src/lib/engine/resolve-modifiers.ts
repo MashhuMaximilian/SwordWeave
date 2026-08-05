@@ -62,6 +62,12 @@ import {
   isModifierValid,
   type ModifierDraftForValidation,
 } from "@/lib/primitives/modifier-validator";
+import {
+  resolveValue,
+  isTypedToken,
+  type ResolveContext,
+} from "./runtime-resolver";
+import { resolveEquation } from "./equation-resolver";
 
 // =============================================================================
 // Public types
@@ -117,6 +123,9 @@ export interface ModifierContribution {
   /** Value BEFORE mirror (for display when the user wants to see
    *  the standard polarity). null when not mirrored. */
   readonly preMirrorValue: number | null;
+  /** Phase 8.I i2.5: preserved keyword tags from equations
+   *  (e.g. [fire], [piercing]). Empty for non-equation values. */
+  readonly tags: readonly string[];
   /** True if the modifier's condition was satisfied (always true
    *  for v1 conditions per Phase 7 design — they're hints). */
   readonly conditionActive: boolean;
@@ -196,104 +205,192 @@ export function resolveModifiers(
     // the resolver doesn't need them for stat math.
   };
 
-  // Walk each slot. For each modifier in the slot's
-  // hardModifiers, compute the post-mirror value and add it to
-  // both byTarget and totals.
+  // Phase 8.I i2.5: typed-token resolution context. The
+  // behaviorVariables map is mutated during Pass 1 as `set` ops
+  // populate custom variables. Other modifiers in Pass 1 read
+  // from this map through the snapshot passed to resolveValue.
+  const behaviorVariables: Record<string, number> = {};
+  const practices: Record<string, number> = {};
+  // Phase 8.I TODO: thread the engine's practice roll-ups
+  // (computeAllPracticeModifiers) into this map.
+  const practiceRollUps = buildPracticeRollUps(input);
+  for (const [k, v] of practiceRollUps.entries()) {
+    practices[k] = v;
+  }
+  const resolveCtx: ResolveContext = {
+    level: input.level,
+    pb: input.pb,
+    attributes: input.attributes as ResolveContext["attributes"],
+    practices: practices as ResolveContext["practices"],
+    behaviorVariables: behaviorVariables as ResolveContext["behaviorVariables"],
+  };
+
+  // ───────────────────────────────────────────────────────────────────
+  // PASS 1 — collect behavior variables from `set` ops on behavior
+  // targets. Phase 8.I i2.5: behavior values are populated by
+  // primitives that target `behavior` (free-text) and call `set`.
+  // They need to land in behaviorVariables BEFORE other modifiers
+  // that read them (e.g. `add 1 to /blockValue/`).
+  //
+  // We also collect the modifier's settled value here so we can
+  // apply ops uniformly in pass 2.
+  //
+  // For each modifier, we resolve:
+  //   1. effect of mirror (if slot is mirrored)
+  //   2. typed-token value (i2.5)
+  //   3. behavior target routing (i2.5)
+  // ───────────────────────────────────────────────────────────────────
+  interface PassEntry {
+    readonly slot: ResolvedPrimitiveSlot;
+    readonly mod: HardModifier;
+    readonly target: string;
+    readonly effectiveValue: number;
+    readonly preMirrorValue: number | null;
+    readonly tags: readonly string[];
+  }
+  const entries: PassEntry[] = [];
+
   for (const slot of input.slots) {
-    const source = sourceNames?.get(slot.primitiveId);
-
     for (const mod of slot.hardModifiers) {
-      const target = String(mod.target);
-
-      // Phase 8.I i1 (Mashu 2026-08-04): silently drop modifiers
-      // whose sub-target validation fails (e.g. an `attribute`
-      // modifier with no PHYSICAL/MENTAL/MAGICAL picked). This is
-      // the engine-side enforcement of A1/A2 — backwards compat
-      // with existing malformed data so the engine doesn't
-      // accidentally apply a wildcard. The form validator
-      // (validateModifierDrafts) is the user-facing surface; this
-      // is the runtime guard.
       if (!isEngineModifierValid(mod)) continue;
 
-      // ---- Mirror handling -------------------------------------
+      const target = String(mod.target);
+
+      // Phase 8.I i2.5: for behavior variables, before resolving
+      // we need to know WHICH variable. The metadata carries
+      // `behaviorName` (canonical) or the legacy `value` field.
+      let behaviorName: string | null = null;
+      if (target === "behavior") {
+        const meta = mod.metadata as Record<string, JsonValue> | undefined;
+        const nameVal = meta?.["behaviorName"];
+        if (typeof nameVal === "string" && nameVal.trim().length > 0) {
+          behaviorName = nameVal.trim();
+        }
+      }
+
+      // Phase 8.I i2.5: typed-value resolution. If mod.value is
+      // a typed token (PB chip, /physical/, blockValue, dice),
+      // resolve against character state. Plain numbers stay.
+      const ctx: ResolveContext = resolveCtx;
+
+      // Mirror handling.
       let effectiveValue: number;
       let preMirrorValue: number | null = null;
-      if (slot.isMirrored) {
-        // SAFE default: if the primitive isn't mirrorable, treat
-        // the mirror as a no-op (pass-through). The DB CHECK
-        // constraint should prevent this but the runtime is
-        // defensive.
-        if (!slot.isMirrorable) {
-          effectiveValue = numericValue(mod.value);
-          preMirrorValue = null;
-        } else {
-          const mirror = resolveMirrorEffect(
-            slot.mirrorVector ?? "STANDARD_ONLY",
-            true,
-            mod.value,
-          );
-          effectiveValue = mirror.targetValue;
-          preMirrorValue = numericValue(mod.value);
-          // COST_INSTABILITY adds a user-side cost. Capture it.
-          if (mirror.userCost?.kind === "extra_strain") {
-            mirrorCosts.push({
-              primitiveId: slot.primitiveId,
-              primitiveName: slot.name,
-              vector: mirror.vector,
-              magnitude: mirror.userCost.magnitude,
-            });
-          }
+      if (slot.isMirrored && slot.isMirrorable) {
+        const mirror = resolveMirrorEffect(
+          slot.mirrorVector ?? "STANDARD_ONLY",
+          true,
+          mod.value,
+        );
+        effectiveValue = numericValue(mirror.targetValue);
+        preMirrorValue = numericValue(mod.value);
+        if (mirror.userCost?.kind === "extra_strain") {
+          mirrorCosts.push({
+            primitiveId: slot.primitiveId,
+            primitiveName: slot.name,
+            vector: mirror.vector,
+            magnitude: mirror.userCost.magnitude,
+          });
         }
       } else {
         effectiveValue = numericValue(mod.value);
       }
 
-      if (!Number.isFinite(effectiveValue)) continue;
+      // Phase 8.I i2.5: value resolution. Three paths:
+      //   1. Equation (metadata.operands present): walk operands,
+      //      resolve each token, apply operators. Returns a
+      //      number + tags.
+      //   2. Typed token (mod.value is a ValueToken object):
+      //      resolve against character state via resolveValue.
+      //   3. Plain number / string: pass through.
+      const meta = mod.metadata as Record<string, unknown> | undefined;
+      const operandsRaw = meta?.["operands"];
+      let resolvedValue: number;
+      let equationTags: readonly string[] = [];
+      if (Array.isArray(operandsRaw) && operandsRaw.length > 0) {
+        // Equation path. The runtime resolver reads each operand
+        // and applies operators recursively (handles paren
+        // groups, keyword tags, mixed expressions like
+        // "PB + (level / 4) [fire]").
+        const eq = resolveEquation(operandsRaw as never, ctx);
+        resolvedValue = eq.numeric;
+        equationTags = eq.tags;
+      } else if (isTypedToken(mod.value)) {
+        resolvedValue = resolveValue(mod.value, ctx);
+      } else {
+        resolvedValue = effectiveValue;
+      }
 
-      // ---- Build the attribution entry ------------------------
-      const contribution: ModifierContribution = {
-        target,
-        primitiveId: slot.primitiveId,
-        primitiveName: slot.name,
-        primitiveCategory: slot.category,
-        op: mod.operation,
-        value: effectiveValue,
-        preMirrorValue,
-        // Phase 7 design: v1 conditions are hints, always active.
-        // Legacy conditions are evaluated by evaluateCondition() —
-        // but we treat any condition as active here to match the
-        // engine's behaviour (where the legacy path is the only
-        // one that actually gates). For now, we say "active" if
-        // the modifier has no condition OR the condition is v1
-        // shape. The engine's evaluateModifiers() handles legacy
-        // gating internally and produces matching totals.
-        conditionActive: !mod.condition || "kind" in (mod.condition ?? {}),
-        stacking: mod.stacking ?? "stack",
-        provenance: {
-          heritageName: source?.heritageName ?? null,
-          capabilityName: source?.capabilityName ?? null,
-          effectName: source?.effectName ?? null,
-          kind: deriveProvenanceKind(slot),
-        },
-      };
-
-      // ---- Append to byTarget ---------------------------------
-      const list = byTarget[target] ?? [];
-      list.push(contribution);
-      byTarget[target] = list;
-
-      // ---- Compute the running total --------------------------
-      // We mimic evaluateModifiers(): apply ops sequentially
-      // starting from 0, then apply the stacking mode across
-      // all contributions to the same target.
-      const previousBase = totals[target] ?? 0;
-      const nextBase = applyOperation(
-        previousBase,
-        mod.operation,
-        effectiveValue,
-      );
-      totals[target] = numericOr(nextBase, previousBase);
+      // ---- Behavior variable collection (Pass 1) ---------------
+      if (target === "behavior" && behaviorName !== null) {
+        // Apply the op to the existing variable (default 0).
+        const prev = behaviorVariables[behaviorName] ?? 0;
+        const next = applyOperation(prev, mod.operation, resolvedValue);
+        behaviorVariables[behaviorName] = numericOr(
+          next,
+          prev,
+        );
+        // Track the contribution so pass 2 includes it.
+        // The byTarget key is "behavior.<name>" (not "behavior")
+        // so multiple behaviors don't collide.
+        entries.push({
+          slot,
+          mod,
+          target: `behavior.${behaviorName}`,
+          effectiveValue: resolvedValue,
+          preMirrorValue,
+          tags: equationTags,
+        });
+      } else {
+        entries.push({
+          slot,
+          mod,
+          target,
+          effectiveValue: resolvedValue,
+          preMirrorValue,
+          tags: equationTags,
+        });
+      }
     }
+  }
+
+  // ───────────────────────────────────────────────────────────────────
+  // PASS 2 — apply the resolved values to totals + byTarget.
+  // ----------------------------------------------------------------─
+  for (const entry of entries) {
+    const { slot, mod, target, effectiveValue, preMirrorValue, tags } = entry;
+
+    if (!Number.isFinite(effectiveValue)) continue;
+
+    const list = byTarget[target] ?? [];
+    list.push({
+      target,
+      primitiveId: slot.primitiveId,
+      primitiveName: slot.name,
+      primitiveCategory: slot.category,
+      op: mod.operation,
+      value: effectiveValue,
+      preMirrorValue,
+      tags,
+      // Phase 7 design: v1 conditions are hints, always active.
+      conditionActive: !mod.condition || "kind" in (mod.condition ?? {}),
+      stacking: mod.stacking ?? "stack",
+      provenance: {
+        heritageName: sourceNames?.get(slot.primitiveId)?.heritageName ?? null,
+        capabilityName: sourceNames?.get(slot.primitiveId)?.capabilityName ?? null,
+        effectName: sourceNames?.get(slot.primitiveId)?.effectName ?? null,
+        kind: deriveProvenanceKind(slot),
+      },
+    });
+    byTarget[target] = list;
+
+    const previousBase = totals[target] ?? 0;
+    const nextBase = applyOperation(
+      previousBase,
+      mod.operation,
+      effectiveValue,
+    );
+    totals[target] = numericOr(nextBase, previousBase);
   }
 
   // ---- Apply stacking per target --------------------------------
@@ -348,6 +445,29 @@ function deriveProvenanceKind(
   if (slot.originCapabilityId !== null) return "capability";
   if (slot.originHeritageId !== null) return "heritage";
   return "direct";
+}
+
+/**
+ * Phase 8.I i2.5: build a practice roll-up map keyed by the FORM's
+ * practice names (lowercase, from the chip stack). The engine's
+ * practice math uses different keys (uppercase, from Notion).
+ * We bridge by lowercasing engine keys. When the form's
+ * "+awareness" chip is authored, the engine resolves the practice
+ * value via this map. i2-finish will reconcile the canonical names.
+ *
+ * For i2.5 this is a stub: returns 0 for every practice. We rely
+ * on the existing engine paths (computePracticeModifierAtLevel)
+ * to populate practice totals via the byTarget map. The runtime
+ * resolver's practice lookup is only used when an equation
+ * references /awareness/ as a token in a value field.
+ */
+function buildPracticeRollUps(
+  _input: ResolvedCharacterInput,
+): Map<string, number> {
+  // Phase 8.I TODO: thread the engine's practice roll-ups
+  // (computeAllPracticeModifiers) into this map. For now, return
+  // empty so unknown practice tokens resolve to 0.
+  return new Map();
 }
 
 function numericValue(v: unknown): number {

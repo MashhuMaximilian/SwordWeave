@@ -335,6 +335,150 @@ describe("resolveModifiers", () => {
 // Parity check against evaluateModifiers()
 // =============================================================================
 
+
+// =============================================================================
+// Phase 8.I i2.5 (Mashu 2026-08-05): runtime token resolution
+// =============================================================================
+
+describe("resolveModifiers — i2.5 — runtime token resolution", () => {
+  it("set behavior:blockValue=6 + add 1 to /blockValue/ — end-to-end", () => {
+    // Primitive 1: set blockValue to 6
+    const setBlock: HardModifier = {
+      kind: "modify",
+      target: "behavior",
+      operation: "set",
+      value: 6,
+      metadata: { behaviorName: "blockValue" },
+    };
+    // Primitive 2: add /blockValue/ to the action.damage target
+    // (the value is a typed token that resolves to 6 at runtime)
+    const subBlockToDamage: HardModifier = {
+      kind: "modify",
+      target: "action.damage",
+      operation: "subtract",
+      value: { kind: "behavior", name: "blockValue" },
+    };
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      slots: [
+        makeSlot({ primitiveId: 1, hardModifiers: [setBlock] }),
+        makeSlot({ primitiveId: 2, hardModifiers: [subBlockToDamage] }),
+      ],
+    };
+    const result = resolveModifiers(input);
+    // The behavior variable is set to 6.
+    expect(result.totals["behavior.blockValue"]).toBe(6);
+    // The second primitive subtracts the resolved value (6) from
+    // action.damage — net contribution is -6.
+    expect(result.totals["action.damage"]).toBe(-6);
+  });
+
+  it("PB chip on + PB to Prowess — engine resolves to character's PB", () => {
+    const pbToProwess: HardModifier = {
+      kind: "modify",
+      target: "skill_practice_check",
+      operation: "add",
+      value: { kind: "derived", which: "pb" },
+      metadata: { targetScope: { layer: "PRACTICE", values: ["PROWESS"] } },
+    };
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      // BASE_INPUT has pb=3 (L5)
+      slots: [makeSlot({ primitiveId: 1, hardModifiers: [pbToProwess] })],
+    };
+    const result = resolveModifiers(input);
+    // The PB token resolves to 3. The byTarget key is the raw
+    // target string "skill_practice_check" — sub-targets in
+    // metadata.targetScope.values are stored but don't expand
+    // the key. The drawer reads this and combines with the
+    // practice's per-sub-target contribution elsewhere.
+    expect(result.totals["skill_practice_check"]).toBe(3);
+  });
+
+  it("/physical/ token resolves to character's physical attribute", () => {
+    const selfRefPhys: HardModifier = {
+      kind: "modify",
+      target: "attribute",
+      operation: "add",
+      // "+1 to physical attribute, where the value is the
+      // physical attribute itself" — useful for clones, mirrors.
+      value: { kind: "attribute", attribute: "physical" },
+      metadata: { targetScope: { layer: "ATTRIBUTE", values: ["PHYSICAL"] } },
+    };
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      // BASE_INPUT has physical=10
+      slots: [makeSlot({ primitiveId: 1, hardModifiers: [selfRefPhys] })],
+    };
+    const result = resolveModifiers(input);
+    // The /physical/ token resolves to physical attribute (10), and
+    // the modifier adds 10. The byTarget key is the raw target
+    // string "attribute" — sub-targets in metadata don't expand
+    // the key.
+    expect(result.totals["attribute"]).toBe(10);
+  });
+
+  it("plain numeric value still works (backwards compat)", () => {
+    const add3: HardModifier = {
+      kind: "modify",
+      target: "attribute",
+      operation: "add",
+      value: 3,
+      metadata: { targetScope: { layer: "ATTRIBUTE", values: ["PHYSICAL"] } },
+    };
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      slots: [makeSlot({ primitiveId: 1, hardModifiers: [add3] })],
+    };
+    const result = resolveModifiers(input);
+    expect(result.totals["attribute"]).toBe(3);
+  });
+
+  it("dice expression #2d6# averages to 7", () => {
+    const diceMod: HardModifier = {
+      kind: "modify",
+      target: "action.damage",
+      operation: "add",
+      value: { kind: "dice", expression: "2d6" },
+    };
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      slots: [makeSlot({ primitiveId: 1, hardModifiers: [diceMod] })],
+    };
+    const result = resolveModifiers(input);
+    // 2d6 avg = 7. The modifier contributes +7 to action.damage.
+    expect(result.totals["action.damage"]).toBe(7);
+  });
+
+  it("multiple behavior variables don't collide (each routed to behavior.<name>)", () => {
+    const setBlock: HardModifier = {
+      kind: "modify",
+      target: "behavior",
+      operation: "set",
+      value: 6,
+      metadata: { behaviorName: "blockValue" },
+    };
+    const setDarkvision: HardModifier = {
+      kind: "modify",
+      target: "behavior",
+      operation: "set",
+      value: 60,
+      metadata: { behaviorName: "darkvision" },
+    };
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      slots: [
+        makeSlot({ primitiveId: 1, hardModifiers: [setBlock] }),
+        makeSlot({ primitiveId: 2, hardModifiers: [setDarkvision] }),
+      ],
+    };
+    const result = resolveModifiers(input);
+    // Each behavior has its own key.
+    expect(result.totals["behavior.blockValue"]).toBe(6);
+    expect(result.totals["behavior.darkvision"]).toBe(60);
+  });
+});
+
 describe("parityCheck", () => {
   it("matches evaluateModifiers() for a direct slot", () => {
     const input: ResolvedCharacterInput = {
@@ -489,6 +633,9 @@ describe("resolveModifiers — i1 null sub-target drop rule", () => {
   });
 
   it("accepts a behavior modifier with name set", () => {
+    // Phase 8.I i2.5 (Mashu 2026-08-05): behavior modifiers
+    // route to byTarget["behavior.<name>"] (not "behavior") so
+    // multiple behaviors don't collide.
     const behavior: HardModifier = {
       kind: "modify",
       target: "behavior",
@@ -501,7 +648,7 @@ describe("resolveModifiers — i1 null sub-target drop rule", () => {
       slots: [makeSlot({ primitiveId: 1, hardModifiers: [behavior] })],
     };
     const result = resolveModifiers(input);
-    expect(result.byTarget["behavior"] ?? []).toHaveLength(1);
+    expect(result.byTarget["behavior.blockValue"] ?? []).toHaveLength(1);
   });
 
   it("drops a behavior modifier with no name", () => {

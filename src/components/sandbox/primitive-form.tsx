@@ -55,6 +55,7 @@ import {
 import {
   allowedTokenKinds,
   allowedValueTypes,
+  classifyTypedValue,
   effectiveMirrorable,
   hidesValueTypeSelect,
   OPERATION_LABELS,
@@ -503,13 +504,52 @@ function fromHardModifier(modifier: Record<string, unknown>, index: number): Mod
   };
 }
 
-function parseValue(value: string, valueKind: ModifierDraft["valueKind"]): unknown {
-  if (valueKind === "number") {
-    const numericValue = Number(value);
-    return Number.isFinite(numericValue) ? numericValue : 0;
-  }
+/**
+ * Phase 8.I i2.5 (Mashu 2026-08-05): parseValue now writes typed
+ * tokens to `value` instead of dropping non-numeric inputs to 0.
+ *
+ * The form's classifyTypedValue() — see @/lib/primitives/form-helpers —
+ * recognizes these token kinds in the value string:
+ *   - number:    plain numeric (e.g. "5", "-2", "1.5")
+ *   - derived:   PB / PB/2 / LEVEL (auto-resolved at runtime)
+ *   - attribute: physical / mental / magical (auto-resolved)
+ *   - practice:  awareness / fieldcraft / etc. (auto-resolved)
+ *   - behavior:  blockValue / darkvision / etc. (custom var)
+ *   - keyword:   [fire] / [piercing] (tag-style)
+ *   - dice:      #2d6+3# (rolled at runtime)
+ *
+ * Plain numeric values stay as-is (backwards compat). Boolean values
+ * stay as-is. Anything else falls back to the raw string (legacy
+ * behavior for unknown types).
+ *
+ * The engine's runtime-resolver (Phase 8.I i2.5) reads the typed
+ * token from `value` and resolves it against character state at
+ * evaluation time. Tagged keywords ([fire]) resolve to 0 (no
+ * numeric contribution) but the tag itself carries through to
+ * the ModifierContribution.
+ */
+function parseValue(
+  value: string,
+  valueKind: ModifierDraft["valueKind"],
+): unknown {
   if (valueKind === "boolean") {
     return value === "true";
+  }
+  // number, dice, text, equation — all go through classifyTypedValue.
+  // classifyTypedValue reads the input string and returns a typed
+  // token (or a fallback for unrecognized input). For the number
+  // path it preserves the "PB chip" → derived token translation.
+  const trimmed = String(value ?? "").trim();
+  if (trimmed.length === 0) return 0;
+  const result = classifyTypedValue(trimmed, "add", valueKind);
+  if (result.token) {
+    return result.token;
+  }
+  // Fallback: legacy behavior — try to coerce to a number for
+  // number kind, otherwise return the raw string.
+  if (valueKind === "number") {
+    const numericValue = Number(trimmed);
+    return Number.isFinite(numericValue) ? numericValue : 0;
   }
   return value;
 }
