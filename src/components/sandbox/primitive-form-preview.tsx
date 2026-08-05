@@ -23,6 +23,10 @@ export type ModifierDraft = {
   operation: string;
   value: string;
   valueKind: "number" | "text" | "boolean" | "dice" | "equation";
+  /** Phase 8.I i2.5: typed tokens for the chip stack. Populated
+   *  from the stored `value` when it\'s a typed token (post-i2.5)
+   *  or from the legacy `value` field. */
+  tokens?: Array<Record<string, unknown>>;
   // Phase 7.5 v4: optional fields the preview uses to render
   // the equation/condition/stacking summary in full. These are
   // also present on the form's ModifierDraft; the preview reads
@@ -79,6 +83,28 @@ function parseValue(value: string, valueKind: ModifierDraft["valueKind"]): unkno
     return value === "true";
   }
   return value;
+}
+
+/**
+ * Phase 8.I i2.5 (Mashu 2026-08-05): detect typed ValueTokens in
+ * a stored HardModifier.value. The form's TokenChipStack uses the
+ * `tokens` array; if we don\'t populate it on load, the chip
+ * stack renders empty.
+ *
+ * Recognized shapes (from @/types/modifier ValueToken union):
+ *   - {kind: "number", value: N}
+ *   - {kind: "derived", which: "pb"|"pb_half"|"level"}
+ *   - {kind: "attribute", attribute: "physical"|...}
+ *   - {kind: "practice", practice: "awareness"|...}
+ *   - {kind: "behavior", name: string}
+ *   - {kind: "dice", expression: string}
+ *   - {kind: "keyword", text: string}
+ *   - {kind: "runtime", name: string, hint: ...}
+ */
+function isTypedTokenShape(v: unknown): boolean {
+  if (v === null || typeof v !== "object") return false;
+  const obj = v as Record<string, unknown>;
+  return typeof obj["kind"] === "string";
 }
 
 function modifierSummary(modifier: ModifierDraft): string {
@@ -355,24 +381,46 @@ export function modifiersFromHardModifiers(stored: unknown): ModifierDraft[] {
         (m as Record<string, unknown>)["kind"] === "modify",
     )
     .map((modifier, index) => {
-      const valueKind: ModifierDraft["valueKind"] =
-        typeof modifier.value === "boolean"
-          ? "boolean"
-          : typeof modifier.value === "number"
-            ? "number"
-            : "text";
-      const value =
-        modifier.value === undefined || modifier.value === null
-          ? ""
-          : typeof modifier.value === "string"
-            ? modifier.value
-            : String(modifier.value);
-      // Phase-7-Q-B: condition may now be legacy {key, operator, value}
-      // OR v1 {kind: "preset"|"narrative"|"tags", ...}. Project both
-      // shapes back into the legacy triple for the ModifierDraft
-      // cache. The picker reads v1Condition on load (via v1Condition
-      // field); this projection only feeds the legacy fields that
-      // round-trip to the new shape via buildCondition when saved.
+      // Phase 8.I i2.5 (Mashu 2026-08-05): detect typed tokens
+      // in stored value. HardModifier.value can be a typed
+      // ValueToken object (post-i2.5) OR a primitive number/string
+      // (legacy). The TokenChipStack uses `tokens` array — if
+      // value is a typed token we MUST populate `tokens` from it
+      // so the chip stack renders correctly on reload.
+      const storedValue = modifier.value as unknown;
+      const rawMeta = modifier.metadata as
+        | Record<string, unknown>
+        | undefined;
+      const storedOperands = rawMeta?.["operands"];
+
+      let tokens: Array<Record<string, unknown>> = [];
+      let valueKind: ModifierDraft["valueKind"];
+      let value: string;
+
+      if (Array.isArray(storedOperands) && storedOperands.length > 0) {
+        // Equation mode: operands live in metadata.operands.
+        valueKind = "equation";
+        value = "";
+      } else if (isTypedTokenShape(storedValue)) {
+        // Typed token — populate the chip stack.
+        valueKind = "number";
+        tokens = [storedValue as Record<string, unknown>];
+        // Cache the canonical string for the legacy value field.
+        value = typedTokenToString(storedValue as Record<string, unknown>);
+      } else if (typeof storedValue === "boolean") {
+        valueKind = "boolean";
+        value = storedValue ? "true" : "false";
+      } else if (typeof storedValue === "number") {
+        valueKind = "number";
+        value = String(storedValue);
+      } else if (typeof storedValue === "string") {
+        valueKind = "text";
+        value = storedValue;
+      } else {
+        valueKind = "number";
+        value = "";
+      }
+
       const raw = modifier.condition;
       const legacyProjection = legacyConditionProjection(raw);
       return {
@@ -381,6 +429,13 @@ export function modifiersFromHardModifiers(stored: unknown): ModifierDraft[] {
         operation: modifier.operation,
         value,
         valueKind,
+        tokens,
+        // Phase-7-Q-B: condition may now be legacy {key, operator, value}
+        // OR v1 {kind: "preset"|"narrative"|"tags", ...}. Project both
+        // shapes back into the legacy triple for the ModifierDraft
+        // cache. The picker reads v1Condition on load (via v1Condition
+        // field); this projection only feeds the legacy fields that
+        // round-trip to the new shape via buildCondition when saved.
         conditionMode: raw ? "custom" : "always",
         conditionKey: legacyProjection.key,
         conditionOperator: legacyProjection.operator,
@@ -388,6 +443,33 @@ export function modifiersFromHardModifiers(stored: unknown): ModifierDraft[] {
         stacking: modifier.stacking ?? "stack",
       };
     });
+}
+
+/**
+ * Phase 8.I i2.5: convert a typed token back to its canonical
+ * string form for the cached `value` field.
+ */
+function typedTokenToString(token: Record<string, unknown>): string {
+  switch (token["kind"]) {
+    case "derived":
+      return String(token["which"] ?? "");
+    case "attribute":
+      return String(token["attribute"] ?? "");
+    case "practice":
+      return String(token["practice"] ?? "");
+    case "behavior":
+      return String(token["name"] ?? "");
+    case "dice":
+      return String(token["expression"] ?? "");
+    case "number":
+      return String(token["value"] ?? "0");
+    case "keyword":
+      return `[${String(token["text"] ?? "")}]`;
+    case "runtime":
+      return `/${String(token["name"] ?? "")}/`;
+    default:
+      return "";
+  }
 }
 
 // =============================================================================

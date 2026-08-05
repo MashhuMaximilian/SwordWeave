@@ -428,20 +428,93 @@ function isHardModifierLike(value: unknown): boolean {
   );
 }
 
+/**
+ * Phase 8.I i2.5: detect a typed ValueToken object in a stored
+ * HardModifier.value. Mirrors @/types/modifier isTokenLike.
+ */
+function isTypedTokenShape(v: unknown): boolean {
+  if (v === null || typeof v !== "object") return false;
+  const obj = v as Record<string, unknown>;
+  if (typeof obj["kind"] !== "string") return false;
+  return [
+    "number",
+    "derived",
+    "attribute",
+    "practice",
+    "behavior",
+    "dice",
+    "keyword",
+    "runtime",
+  ].includes(obj["kind"]);
+}
+
+/**
+ * Phase 8.I i2.5: convert a typed token back to its canonical
+ * display string for the cached `value` field. The user sees
+ * this in the form\'s value input.
+ */
+function typedTokenToDisplayString(token: Record<string, unknown>): string {
+  switch (token["kind"]) {
+    case "derived":
+      return String(token["which"] ?? "");
+    case "attribute":
+      return String(token["attribute"] ?? "");
+    case "practice":
+      return String(token["practice"] ?? "");
+    case "behavior":
+      return String(token["name"] ?? "");
+    case "dice":
+      return String(token["expression"] ?? "");
+    case "number":
+      return String(token["value"] ?? "0");
+    case "keyword":
+      return `[${String(token["text"] ?? "")}]`;
+    case "runtime":
+      return `/${String(token["name"] ?? "")}/`;
+    default:
+      return "";
+  }
+}
+
 function fromHardModifier(modifier: Record<string, unknown>, index: number): ModifierDraft {
   const rawValue = modifier["value"];
-  const valueKind: ModifierDraft["valueKind"] =
-    typeof rawValue === "boolean"
-      ? "boolean"
-      : typeof rawValue === "number"
-        ? "number"
-        : "text";
-  const value =
-    rawValue === undefined || rawValue === null
-      ? ""
-      : typeof rawValue === "string"
-        ? rawValue
-        : String(rawValue);
+  const rawMeta = modifier["metadata"];
+  const meta =
+    rawMeta && typeof rawMeta === "object"
+      ? (rawMeta as Record<string, unknown>)
+      : null;
+  const operandsRaw = meta?.["operands"];
+
+  // Phase 8.I i2.5 (Mashu 2026-08-05): typed ValueTokens in
+  // stored HardModifier.value must round-trip correctly. After
+  // i2.5 the form saves value as a typed-token object (e.g.
+  // {kind: "derived", which: "pb"}). The chip stack uses
+  // `tokens` (already populated via parseValueField below), but
+  // the cached `value` string and `valueKind` must reflect the
+  // typed token — NOT fall through to "text" / "[object Object]".
+  let valueKind: ModifierDraft["valueKind"];
+  let value: string;
+  if (Array.isArray(operandsRaw) && operandsRaw.length > 0) {
+    // Equation mode: operands live in metadata.operands.
+    valueKind = "equation";
+    value = "";
+  } else if (isTypedTokenShape(rawValue)) {
+    // Typed token — derive valueKind and display string.
+    valueKind = "number";
+    value = typedTokenToDisplayString(rawValue as Record<string, unknown>);
+  } else if (typeof rawValue === "boolean") {
+    valueKind = "boolean";
+    value = rawValue ? "true" : "false";
+  } else if (typeof rawValue === "number") {
+    valueKind = "number";
+    value = String(rawValue);
+  } else if (typeof rawValue === "string") {
+    valueKind = "text";
+    value = rawValue;
+  } else {
+    valueKind = "number";
+    value = "";
+  }
 
   const condition = modifier["condition"];
   const cond =

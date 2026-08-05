@@ -477,6 +477,32 @@ describe("resolveModifiers — i2.5 — runtime token resolution", () => {
     expect(result.totals["behavior.blockValue"]).toBe(6);
     expect(result.totals["behavior.darkvision"]).toBe(60);
   });
+
+  it("scoped target routing — modifier on 'attribute' with PHYSICAL scope hits both 'attribute' AND 'attribute.PHYSICAL'", () => {
+    // Phase 8.I i2.5 (Mashu 2026-08-05): the form saves the
+    // short target 'attribute' with metadata.targetScope.values
+    // = ['PHYSICAL']. The resolver emits byTarget entries for
+    // both the raw key AND each scoped key, so the fast-path
+    // lookups in target-registry (resolveAttributeModifier,
+    // resolveSaveDc) find the contribution.
+    const add3Phys: HardModifier = {
+      kind: "modify",
+      target: "attribute",
+      operation: "add",
+      value: 3,
+      metadata: {
+        targetScope: { layer: "ATTRIBUTE", values: ["PHYSICAL"] },
+      },
+    };
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      slots: [makeSlot({ primitiveId: 1, hardModifiers: [add3Phys] })],
+    };
+    const result = resolveModifiers(input);
+    // Both keys populated.
+    expect(result.totals["attribute"]).toBe(3);
+    expect(result.totals["attribute.PHYSICAL"]).toBe(3);
+  });
 });
 
 describe("parityCheck", () => {

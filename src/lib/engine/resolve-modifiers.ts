@@ -247,6 +247,15 @@ export function resolveModifiers(
     readonly effectiveValue: number;
     readonly preMirrorValue: number | null;
     readonly tags: readonly string[];
+    /**
+     * Phase 8.I i2.5 (Mashu 2026-08-05): per-sub-target keys for
+     * scoped lookups. When a modifier has metadata.targetScope.values
+     * (e.g. ["PHYSICAL"]), we emit BOTH a raw entry and one entry
+     * per scoped key. This lets target-registry read either the
+     * bare `attribute` lookup OR the scoped
+     * `attribute.PHYSICAL` lookup and get the contribution.
+     */
+    readonly scopedTargets: readonly string[];
   }
   const entries: PassEntry[] = [];
 
@@ -321,6 +330,24 @@ export function resolveModifiers(
         resolvedValue = effectiveValue;
       }
 
+      // Compute scoped targets from metadata.targetScope.values
+      // (Phase 8.I i2.5). The form stores targetScope with a
+      // values array (e.g. ["PHYSICAL"] or ["PROWESS"]). When
+      // present, we emit one byTarget entry per value.
+      const scopedValues = (mod.metadata as Record<string, unknown> | undefined);
+      let scopedValuesList: string[] = [];
+      if (scopedValues && typeof scopedValues === "object") {
+        const scope = scopedValues["targetScope"];
+        if (scope && typeof scope === "object") {
+          const values = (scope as Record<string, unknown>)["values"];
+          if (Array.isArray(values)) {
+            scopedValuesList = values
+              .filter((v): v is unknown => v !== null && v !== undefined)
+              .map((v) => String(v));
+          }
+        }
+      }
+
       // ---- Behavior variable collection (Pass 1) ---------------
       if (target === "behavior" && behaviorName !== null) {
         // Apply the op to the existing variable (default 0).
@@ -330,7 +357,6 @@ export function resolveModifiers(
           next,
           prev,
         );
-        // Track the contribution so pass 2 includes it.
         // The byTarget key is "behavior.<name>" (not "behavior")
         // so multiple behaviors don't collide.
         entries.push({
@@ -340,6 +366,7 @@ export function resolveModifiers(
           effectiveValue: resolvedValue,
           preMirrorValue,
           tags: equationTags,
+          scopedTargets: scopedValuesList.map((v) => `behavior.${v}`),
         });
       } else {
         entries.push({
@@ -349,6 +376,7 @@ export function resolveModifiers(
           effectiveValue: resolvedValue,
           preMirrorValue,
           tags: equationTags,
+          scopedTargets: scopedValuesList.map((v) => `${target}.${v}`),
         });
       }
     }
@@ -356,41 +384,52 @@ export function resolveModifiers(
 
   // ───────────────────────────────────────────────────────────────────
   // PASS 2 — apply the resolved values to totals + byTarget.
+  // Phase 8.I i2.5 (Mashu 2026-08-05): when the modifier has
+  // scoped sub-targets (metadata.targetScope.values), we emit
+  // entries for BOTH the raw target AND each scoped key. The
+  // fast-path lookups (resolveAttributeModifier, etc.) use the
+  // scoped form; legacy callers read the raw target.
   // ----------------------------------------------------------------─
   for (const entry of entries) {
-    const { slot, mod, target, effectiveValue, preMirrorValue, tags } = entry;
+    const { slot, mod, target, effectiveValue, preMirrorValue, tags, scopedTargets } = entry;
 
     if (!Number.isFinite(effectiveValue)) continue;
 
-    const list = byTarget[target] ?? [];
-    list.push({
-      target,
-      primitiveId: slot.primitiveId,
-      primitiveName: slot.name,
-      primitiveCategory: slot.category,
-      op: mod.operation,
-      value: effectiveValue,
-      preMirrorValue,
-      tags,
-      // Phase 7 design: v1 conditions are hints, always active.
-      conditionActive: !mod.condition || "kind" in (mod.condition ?? {}),
-      stacking: mod.stacking ?? "stack",
-      provenance: {
-        heritageName: sourceNames?.get(slot.primitiveId)?.heritageName ?? null,
-        capabilityName: sourceNames?.get(slot.primitiveId)?.capabilityName ?? null,
-        effectName: sourceNames?.get(slot.primitiveId)?.effectName ?? null,
-        kind: deriveProvenanceKind(slot),
-      },
-    });
-    byTarget[target] = list;
+    // Build the list of all byTarget keys this contribution
+    // lands on: the raw target + any scoped sub-target keys.
+    const allTargets = [target, ...scopedTargets];
 
-    const previousBase = totals[target] ?? 0;
-    const nextBase = applyOperation(
-      previousBase,
-      mod.operation,
-      effectiveValue,
-    );
-    totals[target] = numericOr(nextBase, previousBase);
+    for (const t of allTargets) {
+      const list = byTarget[t] ?? [];
+      list.push({
+        target: t,
+        primitiveId: slot.primitiveId,
+        primitiveName: slot.name,
+        primitiveCategory: slot.category,
+        op: mod.operation,
+        value: effectiveValue,
+        preMirrorValue,
+        tags,
+        // Phase 7 design: v1 conditions are hints, always active.
+        conditionActive: !mod.condition || "kind" in (mod.condition ?? {}),
+        stacking: mod.stacking ?? "stack",
+        provenance: {
+          heritageName: sourceNames?.get(slot.primitiveId)?.heritageName ?? null,
+          capabilityName: sourceNames?.get(slot.primitiveId)?.capabilityName ?? null,
+          effectName: sourceNames?.get(slot.primitiveId)?.effectName ?? null,
+          kind: deriveProvenanceKind(slot),
+        },
+      });
+      byTarget[t] = list;
+
+      const previousBase = totals[t] ?? 0;
+      const nextBase = applyOperation(
+        previousBase,
+        mod.operation,
+        effectiveValue,
+      );
+      totals[t] = numericOr(nextBase, previousBase);
+    }
   }
 
   // ---- Apply stacking per target --------------------------------
