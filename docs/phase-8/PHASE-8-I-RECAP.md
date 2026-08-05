@@ -2,9 +2,73 @@
 
 **Author:** Senku
 **For:** Mashu — review & answer the remaining open questions before any implementation work
-**Status:** 🟡 Recap + question-collection phase. Round 2 answered 2026-08-04. Round 3 pending.
+**Status:** 🟡 Recap + question-collection phase. Rounds 1–3 answered 2026-08-04. Round 4 pending.
 **Started:** 2026-08-04
 **Origin:** Session I from the master plan (post-Sessions G + H which closed on 2026-08-04)
+
+---
+
+## Image evidence (round 3, 2026-08-04)
+
+You sent 4 screenshots. These are the canonical visual references for the current UI and the modifier convention.
+
+### Image 1 — `MODS + SAVES` drawer (bottom drawer)
+
+Three cards on one row: `PHYS +5` (save: +5) | `MENT +5` (PROF badge) (save: +11) | `MAGI +0` (save: +0).
+
+**This proves the drawer shows two different numbers per attribute:**
+- **Modifier** — the attribute's slice + primitive contributions (e.g. `+5`)
+- **Save bonus** — modifier + PB (only for the proficient attribute, hence MENT gets `+11 = 5 + 6 PB`; PHYS and MAGI get unmodified saves)
+
+Two concepts, two formulas. Confirms R3-Q1's answer.
+
+### Image 2 — `What changes?` dropdown in the Modifier composer
+
+Current target list verbatim:
+```
+Attribute
+Defense DC
+Speed
+Max Vitality
+Current Vitality
+Proficiency Bonus
+Action Roll
+Skill / Practice Check
+Damage / Healing Output
+Targeting
+Duration
+Strain
+Item Slot Cost
+Scene Pace
+Behavior (custom)
+```
+
+This is the schema we have today. R3-Q1 + R3-Q2 are about renaming some of these targets.
+
+### Image 3 — `NARRATIVE RULE` + modifier editor with `behavior:disadvantage`
+
+Left column shows a baseline narrative rule: *"Forces negative bias on a narrow narrative trigger. Roll twice and take the lower result."* Fork guidance tells the author to spec the focus via the condition.
+
+Right column shows the modifier editor:
+- Target: `behavior:disadvantage` (custom behavior)
+- Change: `Grant` op (NOT `bias` — confirms B5's convention)
+- Helper text: *"Mirrorable — flips to Revoke when inverted (sign/reciprocal flipped per OP_SPECS)."*
+- Value: `1` (number)
+- Stacking: `unique-by-target`
+
+This is the canonical pattern for advantage/disadvantage: `Grant` op with `behavior:advantage` / `behavior:disadvantage` target.
+
+### Image 4 — Modifier 1 with `Grant` op + `[advantage]` text keyword
+
+The EXPANDED modifier composer with full UI:
+- Target: Attribute (PHYSICAL checked, MENTAL/MAGICAL unchecked). Hint: *"ATTRIBUTE — LEAVE EMPTY FOR 'ANY'"*
+- Change: `Grant` op. *"VARIABLE — Mirrorable — flips to Revoke when inverted"*
+- Value Type: `Text / Keyword`
+- Placeholder: *"No tokens yet — pick suggestions below or type a value"*
+- Custom input: `[advantage]` (keyword syntax)
+- Custom input syntax hint: `#dice#` (dice), `[tag]` (keyword), `/value/` (number or runtime reference)
+
+**This confirms the existing convention for advantages:** use `Grant` op with text value `[advantage]` or `behavior:advantage`. The legacy `bias` op is gone — do NOT add it back.
 
 ---
 
@@ -504,3 +568,284 @@ When an item is in the inventory but NOT equipped, does the sheet show its poten
 - The `conditionActive` field in `ModifierContribution` is currently `!mod.condition || "kind" in (mod.condition ?? {})` — a soft-warn placeholder. I3 replaces this with real evaluation.
 - The runtime reference token (`{kind: "runtime", name: "blockValue", hint: "number"}`) is the parser's fallback when the author types a non-canonical inner string. The resolver soft-warns at character-sheet render time if the runtime reference is still unresolved — no hard error, it's an open future slot.
 - The mirror button on a primitive is per-slot: it lives on the character's slot for that primitive (in `character_primitives.is_mirrored`). The capability uses the primitive's slot, so it sees the mirror state. **Critical:** the capability's own mirror flag is irrelevant — mirror is always primitive-level, not capability-level.
+
+---
+
+## Round 3 decisions (2026-08-04)
+
+### R3-Q1. DC vs Saving Throws — two different numbers
+
+> *"we have DC (when somebody attacks me he rolls against my DC. If I use a spell he needs to make a saving throw based on a certain attribute but against same DC). And we have saving throws. If I am subject to a Mental Save DC, I roll with save."*
+
+**Image 1 confirms** the drawer shows two numbers per attribute: `modifier` (attr + primitives) and `save` (modifier + PB for the proficient attribute).
+
+**Decision locked:**
+- **`saving_throw.<physical|mental|magical>`** — the bonus this CHARACTER rolls when subject to a save. Formula: `modifier + PB` (only for the proficient attribute). Display: shown in the `MODS + SAVES` drawer card, below the modifier (e.g. `+5` then `save: +11`).
+- **`save_dc`** — the threshold enemies must meet when attacking THIS CHARACTER (or this character casts a spell that requires a save). Formula: `8 + PB + modifier_of_proficient_attribute` (per your `target-registry.ts` comment, "save DC always uses PB"). Display: `SAVE DC` card in the bottom drawer (the existing one).
+- The renaming `defense DC` → `saving throws` is a **schema rename** for the target list. The single `save_dc` is a separate axis that uses the existing `5 + PB + modifier` formula.
+- **Open follow-up (R4-Q1):** the modifier used for `saving_throw.<attr>` is the same as the attribute's modifier (slice + primitive contributions). The modifier used for `save_dc` is the modifier of the proficient attribute. Confirm.
+
+### R3-Q2. Action Roll sub-targets
+
+> *"we should just add a couple of sub-targets to action roll? to offer flexibility? what comes to mind is Attack Roll / Spell attack roll (which should be same thing. Because a spell is a capability and an attack roll is either just an attack or still via a capability) and Contested Check [x] Contested Check: Modifies non-attack active maneuvers (grapples, shoves, contested actions) or what do you think? Just rename it to attack roll and call it a day?"*
+
+**Decision (preliminary, needs R4 confirmation):** Add sub-targets to `action.roll`:
+- `action.roll.attack` — attack roll (covers both physical attacks and spell attacks, since spells are caps)
+- `action.roll.contested` — contested check (grapples, shoves, contested actions)
+- `action.roll` (no sub-target) — wild card, applies to all roll types
+
+Open follow-up (R4-Q2): Validate this 3-sub-target set, or pick a different set.
+
+### R3-Q3. Behavior variable name format
+
+> *"idk, i guess we can do like: blockvalue, blockValue, block-value.... idk if Blockvalue and block.value would not be good...something to not confuse the engine or programming."*
+
+**Decision locked:**
+- Accept: `blockvalue`, `blockValue`, `block-value`, `BLOCK_VALUE` (all normalized to lowercase-hyphen for storage)
+- Reject: `Blockvalue` (ambiguous case), `block.value` (dot would confuse parser)
+- Validation rule (at save time):
+  - Strip whitespace and most punctuation except `-` and `_`
+  - Must start with a letter
+  - Must contain at least 1 character after stripping
+  - Normalize to lowercase + hyphens for storage: `blockValue` → `blockvalue`, `block-value` stays as `block-value`, `BLOCK_VALUE` → `block_value`
+  - The engine resolves the variable by the normalized form
+  - The author sees the original form on the sheet (display only)
+- **Reserved names** (to be added in R4): `true`, `false`, `true_only`, `false_only`, `set`, `add`, `multiply`, `divide`, `min`, `max`, `grant`, `revoke`, `stack`, `highest`, `lowest`, `unique`, `replace`, the canonical attribute/practice/derived names from the enum. Names matching these reject at save time.
+
+### R3-Q4. Active caps — toggle + trigger
+
+> *"active/inactive would be for those with conditions/triggers when set. but not necessarily. Like invisibility would be a thing you need to keep active to be invisible even with no triggers when. And A capability giving you +3 attack when enemy is below 50% health should give you +3 if you trigger it while active. Also a Capability like fireball would not need active/inactive, just trigger but idk how to differentiate... i guess we leave both on all capabilities (except the rule with passive that we said... but actually there too, because a passive could have a condition... idkk this is hard...."*
+
+**Decision (preliminary, needs R4 confirmation):** Every capability has BOTH:
+- **Active/inactive toggle** — persists state. Default is ON when there are no triggers, OFF when there are triggers. The toggle bundles all its primitive modifiers.
+- **Trigger button** — fires a one-shot. Modifiers inside a triggered cap contribute for that one moment AND log to history.
+
+The complications:
+- `invisibility` (no trigger, just keep active) → toggle ON, no trigger button visible (or disabled)
+- `+3 attack when enemy < 50% HP` (condition + trigger) → toggle must be ON for the trigger to fire, AND the cap must be triggered
+- `fireball` (just trigger, no persistence) → toggle starts OFF, only fires on trigger
+
+**Open follow-up (R4-Q3):** The condition in "+3 attack when enemy < 50% HP" — is it a per-trigger-check (each trigger verifies the condition) or a per-cap-toggle (the cap is only active when condition is true)? Per your wording "should give you +3 if you trigger it while active" — I think it's per-cap-toggle: the toggle checks the condition, and the trigger fires whatever the toggle currently allows.
+
+Open follow-up (R4-Q4): For `fireball` (no trigger input), the toggle should default to OFF when the cap has only triggers and no modifiers. Per your answer. Confirm.
+
+### R3-Q5. "Flag malformed modifiers" — implementation
+
+> *"I do not understand the question."*
+
+**Re-asked (R4-Q5):** When a primitive in the DB has a malformed modifier (e.g. `target: "attribute"` with no sub-target selected), how should the data tool surface it?
+
+### R3-Q6. Mirror is per-primitive, not per-capability — confirmed
+
+> *"Look, in character creation we can set a primitive mirrored or not. After we save, in character creation we don't play with those anymore. However. As I stated over and over again. Capabilities and effects are just bundles of primitives. […] The reason we display these on character sheet is just to have a quick book at base with everything like a quick sheet. especially for beginners."*
+
+**Decision locked:**
+- Mirror is a property of the **primitive slot** on the character (`character_primitives.is_mirrored`)
+- Capabilities and effects are bundles that use the primitive's slot
+- The capability itself has no mirror flag
+- When a cap uses a primitive, the cap sees the primitive's mirror state
+- Heritages are bundles for story/flavor with some mechanics, most primitives flow through
+- The character sheet shows everything slotted (mirror state included) — beginners can see the full picture
+- Advanced players can theoretically recompile primitives at runtime (out of platform scope)
+
+**Test verification:** I need to confirm the current behavior matches this. Adding a test as part of Session I step 1 (null-target bug) — verify that a mirrored primitive slotted via a heritage-bundled cap displays the mirrored value on the sheet.
+
+### R3-Q7. Cap toggle is a stacking boundary
+
+> *"I guess cap toggle is a boundary. So maybe I have 2 capabilities that give me +1 to mental attribute. each one has triggers when differently. And I have another passive always +1 mental and all are stacking. So i get +3 is both capabilities are active, I get +2 if only one capability is active. By default all capabilities should be active unless they have conditions/triggers when. If they have triggers when they should either be inactive. because in triggers when we only have text pills, not modifiers or things I guess.... maybe we should extend that to allow for things that our engine could resolve such as different variables like attributes, practices, attack rol, etc."*
+
+**Decision locked:**
+- Each capability's active/inactive toggle IS a stacking boundary
+- Modifiers inside a single cap stack normally (per the cap's stacking rules)
+- Modifiers across caps stack normally if all relevant caps are active
+- When a cap is toggled OFF, all its modifiers are excluded from the running total
+- Default: caps are ON unless they have triggers/conditions
+- Trigger caps default to OFF (so they don't stack their modifier until fired)
+- **Future extension:** extend the "triggers when" condition to allow engine-resolvable things (attributes, practices, attack roll, etc.) so a cap can be auto-toggled based on character state
+
+**Open follow-up (R4-Q6):** When a cap is toggled OFF, does its modifier still appear in the modal traceability (with a `*` or "(inactive)" marker), or is it completely hidden?
+
+### R3-Q8. No weapon types, no sub-targets on action.roll
+
+> *"We don't have weapon types. And it would make things harder because we'd need to have items involved and it would make things harder for now. If anything, An item could have a capability that gives +1 to attack roll when triggered only not always idk..."*
+
+**Decision locked:**
+- `action.roll` is a single target for now (no weapon sub-targets)
+- Items can have caps that grant +1 to attack roll via the trigger flow (see R3-Q4) — "fire when active, +1 attack roll" is a complete capability
+- No need for per-weapon resolver
+
+### R3-Q9. Mirror glyph
+
+> *"maybe we just use `🪞` (U+1FA9E)? or idk, we'd need some identifiers for 'this has conditions', 'this is advantage/disadvantage', 'this is mirrored', idk"*
+
+**Decision (preliminary):**
+- Advantage glyph: `︽` (U+FE3D) — confirmed from round 2
+- Disadvantage glyph: `︾` (U+FE3E) — confirmed from round 2
+- Conditional marker: `*` — confirmed from round 2
+- Mirror glyph: `🪞` (U+1FA9E) — proposed in round 3
+
+**Open follow-up (R4-Q7):** Are the glyphs always visible on the sheet, or only on click in the modal? Hover tooltip? Different colors for different states? (E.g. mirror is yellow, advantage is teal, disadvantage is red?)
+
+### R3-Q10. Item equip preview
+
+> *"yes. not active, but shows it dimmed if unequipped. maybe we add '(when equipped)'"*
+
+**Decision locked:**
+- Unequipped items show their potential contributions in a dimmed state
+- The contribution is suffixed with `(when equipped)` so the player knows it's not currently active
+- This applies to all modifier contributions from the item (via bundle expansion)
+
+---
+
+## Round 4 open questions (asked 2026-08-04)
+
+These are the remaining gaps. Plain language, no technical jargon.
+
+### R4-Q1. Saving throw formula — confirm the modifier used
+
+Per R3-Q1's decision:
+- `saving_throw.<attr>` = `modifier_of_<attr> + PB` (only for proficient attribute)
+- `save_dc` = `8 + PB + modifier_of_proficient_attribute`
+
+In the drawer the SECOND number (`save`) below the modifier is the saving throw bonus. Confirm: a PHYS save (non-proficient) shows save bonus = modifier + 0 PB? Or always modifier + PB for the proficient attribute regardless of which attribute?
+
+The image shows: `PHYS +5, save: +5` (no PB), `MENT +5, save: +11` (= +5 + 6 PB). So PHYS save = modifier only, MENT save = modifier + PB (because MENT is proficient). **Confirm: each attribute's save bonus replaces PB with the proficient attribute's PB only IF this attribute is the proficient one, else no PB?**
+
+### R4-Q2. Validate action.roll sub-targets
+
+Per R3-Q2, proposed sub-targets: `attack`, `contested`, (none). Other options:
+- `attack`, `contested`, `save` (save roll)
+- `attack`, `contested`, `check` (skill check)
+- Just `attack` (rename `action.roll` → `attack_roll`, drop the wildcard)
+- Keep `action.roll` as is, no sub-targets (current state)
+
+Which?
+
+### R4-Q3. Capability condition is per-toggle or per-trigger?
+
+> *"A capability giving you +3 attack when enemy is below 50% health should give you +3 if you trigger it while active."*
+
+"While active" suggests the toggle is the gate. So:
+- Toggle ON, condition met → trigger fires, +3 attack
+- Toggle ON, condition NOT met → trigger does nothing (or logs "ignored")
+- Toggle OFF → trigger does nothing
+
+Or:
+- Toggle ON, condition met → trigger fires, +3 attack
+- Toggle ON, condition NOT met → trigger fires, but +3 doesn't apply (because condition is in the modifier, not the toggle)
+- Toggle OFF → trigger does nothing
+
+Which?
+
+### R4-Q4. Cap defaults
+
+Confirm:
+- **Passive cap** — toggle defaults to ON, no trigger button
+- **Augment cap** — toggle defaults to ON, no trigger button (applies to augmented action)
+- **Active cap with no conditions** — toggle defaults to ON, no trigger button OR trigger button always visible (your choice)
+- **Active cap with conditions** — toggle defaults to ON, trigger button visible (fires when conditions met)
+- **Active cap with triggers only** — toggle defaults to OFF, trigger button visible (toggle turns it on as a persistent buff)
+
+### R4-Q5. Re-ask of R3-Q5 (flag malformed modifiers)
+
+In plain language: when a primitive in the DB has a malformed modifier (e.g. `target: "attribute"` with no sub-target selected), how should the data tool surface it?
+
+- (a) Add a `needs_review` boolean column on `primitives` — server-side audit script flags malformed primitives
+- (b) Add a `modifier_audit` table — runtime view that lists malformed modifiers
+- (c) No DB change — the engine reports malformed modifiers at evaluation time (returns them in the resolver output with a `validated: false` flag, no DB persistence)
+
+### R4-Q6. Cap toggle OFF — hide or show inactive?
+
+When a cap is toggled OFF, does its modifier still appear in the modal traceability:
+- (a) **Hidden** (completely invisible to the player)
+- (b) **Dimmed** with `(inactive)` or `(when toggled on)` marker
+- (c) **Visible in the modal only** (DM sees the full list, drawer shows only active caps)
+
+### R4-Q7. Mirror glyph visibility
+
+`🪞` (U+1FA9E) for mirrored contributions. Where does it appear?
+- (a) Always visible next to the modifier value on the sheet
+- (b) Only visible in the modal (hover/click)
+- (c) Visible only in the equipped/inventory sections (not for slotted primitives which are baseline)
+
+And what color?
+- Yellow (per G4)?
+- A different color?
+
+### R4-Q8. Small cards taxonomy — brainstorm
+
+Let's start the category list. Suggestion for first pass:
+
+| Category | Examples |
+|---|---|
+| **Movement** | `movement: 30ft`, `movement.fly: 30ft`, `movement.swim: 15ft`, `movement.climb: 15ft`, `movement.burrow: 5ft`, `movement.conditional: +10ft when X` |
+| **Damage modifiers** | `resistance:fire`, `resistance:cold`, `immunity:poison`, `vulnerability:radiant`, `damage:fire 1d6` |
+| **Senses** | `darkvision:60ft`, `blindsight:30ft`, `tremorsense:any`, `truesight:120ft` |
+| **Languages** | `languages:Common`, `languages:Draconic`, `languages:Thieves' Cant` |
+| **Custom behaviors** | `blockValue:6`, `manaPool:30`, `spellSlots:1/day` |
+| **Meta tags** | `cantSpeak`, `isFlying`, `isInvisible`, `isGrappled`, `isStunned` |
+
+Add / remove / merge categories?
+
+### R4-Q9. Item equip preview — which surfaces get the dimmed state?
+
+Per R3-Q10, unequipped items show dimmed with `(when equipped)`. Does this apply to:
+- (a) The item card in the inventory tab only
+- (b) The item contribution in the bottom drawer (e.g. PB card "from item Dagger: +1 when equipped")
+- (c) Both
+
+### R4-Q10. Trigger button placement
+
+When a cap has a trigger button (active cap with conditions OR active cap with triggers only), where does the button live?
+- (a) On the capability card in the Capabilities tab (next to the cap name)
+- (b) In the bottom drawer near the relevant axis (e.g. near the attack roll card, since the trigger grants +3 attack)
+- (c) In the history tab (fire from history, logs there)
+- (d) A floating action button (FAB) on the character sheet
+
+### R4-Q11. Condition text — where shown
+
+When a modifier has a condition (e.g. `target is grappled`), the condition text appears:
+- (a) In the modal traceability only (you click the modifier to see the condition)
+- (b) In a small chip next to the modifier on the sheet (along with the `*` marker)
+- (c) Both — modal is the full text, sheet shows a tooltip on hover
+
+### R4-Q12. Free-text axes validation
+
+Per your answer for A1's free-text axes (`action.strain`, `scene.pace`): "yes I guess, especially scene and pace are more of an info thing because they are resolved at runtime."
+
+Confirm: validation rule for free-text axes is **no validation** (any text accepted, since they're info-only, resolved at runtime). The same applies to `behavior:<name>` (handled by R3-Q3's normalization).
+
+Two edge cases:
+- Empty string for `action.strain` — accept (no value, no contribution)? Or reject?
+- `behavior:<name>` with name matching a reserved name (e.g. `behavior:set`) — reject at save time (per R3-Q3's reserved names list).
+
+### R4-Q13. DB backfill for advantage/disadvantage — exact encoding
+
+Per R3-Q5, advantages use `Grant` op with `behavior:advantage` / `behavior:disadvantage` target. The image confirms this convention.
+
+But the DB may have OLD rows with:
+- `op: "bias"` with `value: "advantage"` / `value: "disadvantage"` (legacy)
+- `op: "grant"` with `value: "advantage"` / `value: "disadvantage"` (modern, but using bare text instead of `behavior:advantage`)
+- `op: "set"` with `value: 1` for `target: "advantage"` (incorrect category)
+
+The migration should:
+- Map `bias` → `grant`
+- Wrap bare `advantage` / `disadvantage` values in `behavior:advantage` / `behavior:disadvantage`
+- Leave already-correct rows untouched
+
+Confirm this is the encoding.
+
+### R4-Q14. Verifying mirror-is-per-primitive
+
+Per R3-Q6, I'll add a test that confirms the current behavior. The test:
+- Create a primitive with `+2 to physical` modifier
+- Slot it as **mirrored** directly on a character
+- Wrap it in a capability
+- The capability slotted on the same character should see the **mirrored** value (`-2`) on the sheet
+- Same test with the primitive NOT mirrored → +2
+
+OK to add this test as part of step 1 (null-target bug)?
+
+### R4-Q15. Anything else ambiguous
+
+Any other thing from your answer that I might have misinterpreted?
