@@ -389,3 +389,263 @@ describe("parityCheck", () => {
     expect(p.matches).toBe(true);
   });
 });
+
+// =============================================================================
+// Phase 8.I i1 (Mashu 2026-08-04): engine drop rule + mirror inheritance
+// =============================================================================
+
+describe("resolveModifiers — i1 null sub-target drop rule", () => {
+  it("drops an attribute modifier with no sub-target", () => {
+    // v7-E canonical shape: short target "attribute" with no
+    // PHYSICAL/MENTAL/MAGICAL picked in metadata.targetScope.values.
+    // Engine should silently drop — does NOT contribute to any
+    // attribute.
+    const malformed: HardModifier = {
+      kind: "modify",
+      target: "attribute",
+      operation: "add",
+      value: 5,
+      metadata: { targetScope: { layer: "ATTRIBUTE", values: [] } },
+    };
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      slots: [makeSlot({ primitiveId: 1, hardModifiers: [malformed] })],
+    };
+    const result = resolveModifiers(input);
+    // No contribution to any attribute target.
+    expect(result.totals["attribute.physical"]).toBeUndefined();
+    expect(result.totals["attribute.mental"]).toBeUndefined();
+    expect(result.totals["attribute.magical"]).toBeUndefined();
+    expect(result.byTarget["attribute"] ?? []).toHaveLength(0);
+  });
+
+  it("drops a defense_dc modifier with no sub-target", () => {
+    const malformed: HardModifier = {
+      kind: "modify",
+      target: "defense_dc",
+      operation: "add",
+      value: 3,
+      metadata: { targetScope: { layer: "METRIC", values: [] } },
+    };
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      slots: [makeSlot({ primitiveId: 1, hardModifiers: [malformed] })],
+    };
+    const result = resolveModifiers(input);
+    expect(result.totals["defense_dc.physical"]).toBeUndefined();
+    expect(result.totals["defense_dc.mental"]).toBeUndefined();
+    expect(result.totals["defense_dc.magical"]).toBeUndefined();
+  });
+
+  it("drops a speed modifier with no locomotion type", () => {
+    const malformed: HardModifier = {
+      kind: "modify",
+      target: "speed",
+      operation: "add",
+      value: 30,
+      metadata: { targetScope: { layer: "METRIC", values: [] } },
+    };
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      slots: [makeSlot({ primitiveId: 1, hardModifiers: [malformed] })],
+    };
+    const result = resolveModifiers(input);
+    expect(result.byTarget["speed"] ?? []).toHaveLength(0);
+  });
+
+  it("accepts an attribute modifier with PHYSICAL picked", () => {
+    const valid: HardModifier = {
+      kind: "modify",
+      target: "attribute",
+      operation: "add",
+      value: 3,
+      metadata: { targetScope: { layer: "ATTRIBUTE", values: ["PHYSICAL"] } },
+    };
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      slots: [makeSlot({ primitiveId: 1, hardModifiers: [valid] })],
+    };
+    const result = resolveModifiers(input);
+    // Should contribute to physical attribute.
+    expect(result.byTarget["attribute"]).toHaveLength(1);
+  });
+
+  it("accepts attribute modifier with all three checked (any attribute)", () => {
+    const broad: HardModifier = {
+      kind: "modify",
+      target: "attribute",
+      operation: "add",
+      value: 1,
+      metadata: {
+        targetScope: { layer: "ATTRIBUTE", values: ["PHYSICAL", "MENTAL", "MAGICAL"] },
+      },
+    };
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      slots: [makeSlot({ primitiveId: 1, hardModifiers: [broad] })],
+    };
+    const result = resolveModifiers(input);
+    expect(result.byTarget["attribute"]).toHaveLength(1);
+  });
+
+  it("accepts a behavior modifier with name set", () => {
+    const behavior: HardModifier = {
+      kind: "modify",
+      target: "behavior",
+      operation: "set",
+      value: 6,
+      metadata: { behaviorName: "blockValue" },
+    };
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      slots: [makeSlot({ primitiveId: 1, hardModifiers: [behavior] })],
+    };
+    const result = resolveModifiers(input);
+    expect(result.byTarget["behavior"] ?? []).toHaveLength(1);
+  });
+
+  it("drops a behavior modifier with no name", () => {
+    const malformed: HardModifier = {
+      kind: "modify",
+      target: "behavior",
+      operation: "set",
+      value: 6,
+      metadata: {},
+    };
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      slots: [makeSlot({ primitiveId: 1, hardModifiers: [malformed] })],
+    };
+    const result = resolveModifiers(input);
+    expect(result.byTarget["behavior"] ?? []).toHaveLength(0);
+  });
+
+  it("passes through legacy dotted target strings (backward compat)", () => {
+    // Legacy "character.attribute.physical" carries the sub-target
+    // in the string itself. These should always be considered valid.
+    const legacy: HardModifier = {
+      kind: "modify",
+      target: "character.attribute.physical",
+      operation: "add",
+      value: 2,
+    };
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      slots: [makeSlot({ primitiveId: 1, hardModifiers: [legacy] })],
+    };
+    const result = resolveModifiers(input);
+    expect(result.byTarget["character.attribute.physical"]).toHaveLength(1);
+  });
+});
+
+describe("resolveModifiers — i1 mirror inheritance through heritage/capability", () => {
+  it("mirrored primitive slotted via heritage-bundled cap shows mirrored value", () => {
+    // Create a primitive that adds 2 to physical. Mirror it
+    // directly. Also bundle it in a heritage (via the
+    // originHeritageId / originCapabilityId fields). The engine
+    // should produce the same mirrored value regardless of
+    // whether the slot is direct or inherited.
+    const addTwoPhys: HardModifier = {
+      kind: "modify",
+      target: "attribute",
+      operation: "add",
+      value: 2,
+      metadata: { targetScope: { layer: "ATTRIBUTE", values: ["PHYSICAL"] } },
+    };
+    const directSlot = makeSlot({
+      primitiveId: 1,
+      hardModifiers: [addTwoPhys],
+      isMirrored: true,
+      isMirrorable: true,
+      mirrorVector: "VARIABLE_VECTOR",
+    });
+    const heritageSlot = makeSlot({
+      primitiveId: 1, // Same primitiveId — same modifier
+      hardModifiers: [addTwoPhys],
+      isMirrored: true,
+      isMirrorable: true,
+      mirrorVector: "VARIABLE_VECTOR",
+      originHeritageId: "heritage-ironborn",
+      originCapabilityId: null,
+      originEffectId: null,
+    });
+    const capSlot = makeSlot({
+      primitiveId: 1,
+      hardModifiers: [addTwoPhys],
+      isMirrored: true,
+      isMirrorable: true,
+      mirrorVector: "VARIABLE_VECTOR",
+      originHeritageId: null,
+      originCapabilityId: "cap-blocking",
+      originEffectId: null,
+    });
+
+    const directResult = resolveModifiers({ ...BASE_INPUT, slots: [directSlot] });
+    const heritageResult = resolveModifiers({ ...BASE_INPUT, slots: [heritageSlot] });
+    const capResult = resolveModifiers({ ...BASE_INPUT, slots: [capSlot] });
+
+    // Each slot should produce the mirrored value (Add → Subtract 2 → -2)
+    expect(directResult.byTarget["attribute"]).toHaveLength(1);
+    expect(directResult.byTarget["attribute"]?.[0]?.value).toBe(-2);
+    expect(heritageResult.byTarget["attribute"]?.[0]?.value).toBe(-2);
+    expect(capResult.byTarget["attribute"]?.[0]?.value).toBe(-2);
+
+    // Provenance kind should differ
+    expect(directResult.byTarget["attribute"]?.[0]?.provenance.kind).toBe("direct");
+    expect(heritageResult.byTarget["attribute"]?.[0]?.provenance.kind).toBe("heritage");
+    expect(capResult.byTarget["attribute"]?.[0]?.provenance.kind).toBe("capability");
+  });
+
+  it("NOT mirrored primitive slotted via heritage-bundled cap shows non-mirrored value", () => {
+    const addTwoPhys: HardModifier = {
+      kind: "modify",
+      target: "attribute",
+      operation: "add",
+      value: 2,
+      metadata: { targetScope: { layer: "ATTRIBUTE", values: ["PHYSICAL"] } },
+    };
+    const directSlot = makeSlot({
+      primitiveId: 1,
+      hardModifiers: [addTwoPhys],
+      isMirrored: false,
+      isMirrorable: true,
+      mirrorVector: "VARIABLE_VECTOR",
+    });
+    const heritageSlot = makeSlot({
+      primitiveId: 1,
+      hardModifiers: [addTwoPhys],
+      isMirrored: false,
+      isMirrorable: true,
+      mirrorVector: "VARIABLE_VECTOR",
+      originHeritageId: "heritage-ironborn",
+      originCapabilityId: null,
+      originEffectId: null,
+    });
+
+    const directResult = resolveModifiers({ ...BASE_INPUT, slots: [directSlot] });
+    const heritageResult = resolveModifiers({ ...BASE_INPUT, slots: [heritageSlot] });
+
+    expect(directResult.byTarget["attribute"]?.[0]?.value).toBe(2);
+    expect(heritageResult.byTarget["attribute"]?.[0]?.value).toBe(2);
+  });
+
+  it("non-mirrorable primitive slotted as mirrored is a safe no-op (pass-through)", () => {
+    const addTwoPhys: HardModifier = {
+      kind: "modify",
+      target: "attribute",
+      operation: "add",
+      value: 2,
+      metadata: { targetScope: { layer: "ATTRIBUTE", values: ["PHYSICAL"] } },
+    };
+    const slot = makeSlot({
+      primitiveId: 1,
+      hardModifiers: [addTwoPhys],
+      isMirrored: true,
+      isMirrorable: false, // Not mirrorable — but isMirrored is true
+      mirrorVector: null,
+    });
+    const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
+    // Pass-through: value stays +2, mirror is no-op
+    expect(result.byTarget["attribute"]?.[0]?.value).toBe(2);
+  });
+});

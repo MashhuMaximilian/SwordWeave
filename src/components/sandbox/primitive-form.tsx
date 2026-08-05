@@ -38,6 +38,7 @@ import {
   selectionForModifier,
   scopeForSelection,
 } from "@/lib/primitives/modifier-scope";
+import { validateModifierDrafts } from "@/lib/primitives/modifier-validator";
 import {
   BIAS_VALUES,
   OP_SPECS,
@@ -882,6 +883,24 @@ export function PrimitiveForm({
   function submitPrimitive(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
+
+    // Phase 8.I i1 (Mashu 2026-08-04): validate sub-target selection
+    // before any network round-trip. Attribute increment with no
+    // sub-target should not contribute; we block the save here so
+    // existing data with malformed modifiers stays untouched.
+    const validationError = validateModifierDrafts(
+      modifiers.map((m) => ({
+        target: String(m.target),
+        targetValues: m.targetValues,
+        freeTextNarrowFocus: m.freeTextNarrowFocus,
+      })),
+    );
+    if (validationError) {
+      setMessage(validationError);
+      setIsSaving(false);
+      return;
+    }
+
     setIsSaving(true);
 
     // (Async save flow — previously wrapped in startTransition(), which

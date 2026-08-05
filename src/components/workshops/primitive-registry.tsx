@@ -10,6 +10,7 @@ import type {
 } from "@/types/swordweave";
 import { legacyConditionProjection } from "@/lib/primitives/condition";
 import { resolveMirrorEffect } from "@/lib/engine/mirror";
+import { validateModifierDrafts } from "@/lib/primitives/modifier-validator";
 import {
   MODIFIER_TARGETS,
   MODIFIER_TARGET_SPEC,
@@ -572,6 +573,22 @@ export function PrimitiveRegistry({
   function submitPrimitive(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
+
+    // Phase 8.I i1 (Mashu 2026-08-04): validate sub-target selection
+    // before any network round-trip. Attribute increment with no
+    // sub-target should not contribute; we block the save here so
+    // existing data with malformed modifiers stays untouched.
+    const validationError = validateModifierDrafts(
+      modifiers.map((m) => ({
+        target: String(m.target),
+        targetValues: m.targetValues,
+        freeTextNarrowFocus: m.freeTextNarrowFocus,
+      })),
+    );
+    if (validationError) {
+      setMessage(validationError);
+      return;
+    }
 
     startTransition(async () => {
       const response = await fetch("/api/primitives", {

@@ -54,6 +54,14 @@ import {
   applyStacking,
 } from "./modifiers";
 import { resolveMirrorEffect } from "./mirror";
+import {
+  MODIFIER_TARGET_SPEC,
+  type ModifierTarget,
+} from "@/lib/primitives/modifier-scope";
+import {
+  isModifierValid,
+  type ModifierDraftForValidation,
+} from "@/lib/primitives/modifier-validator";
 
 // =============================================================================
 // Public types
@@ -197,6 +205,16 @@ export function resolveModifiers(
     for (const mod of slot.hardModifiers) {
       const target = String(mod.target);
 
+      // Phase 8.I i1 (Mashu 2026-08-04): silently drop modifiers
+      // whose sub-target validation fails (e.g. an `attribute`
+      // modifier with no PHYSICAL/MENTAL/MAGICAL picked). This is
+      // the engine-side enforcement of A1/A2 — backwards compat
+      // with existing malformed data so the engine doesn't
+      // accidentally apply a wildcard. The form validator
+      // (validateModifierDrafts) is the user-facing surface; this
+      // is the runtime guard.
+      if (!isEngineModifierValid(mod)) continue;
+
       // ---- Mirror handling -------------------------------------
       let effectiveValue: number;
       let preMirrorValue: number | null = null;
@@ -323,10 +341,13 @@ export function resolveModifiers(
 function deriveProvenanceKind(
   slot: ResolvedPrimitiveSlot,
 ): ModifierContribution["provenance"]["kind"] {
-  if (slot.originHeritageId === null) return "direct";
+  // Check most-specific provenance first. A slot can have multiple
+  // origin fields set (e.g. capability + heritage both), so we pick
+  // the deepest level. effect → capability → heritage → direct.
   if (slot.originEffectId !== null) return "effect";
   if (slot.originCapabilityId !== null) return "capability";
-  return "heritage";
+  if (slot.originHeritageId !== null) return "heritage";
+  return "direct";
 }
 
 function numericValue(v: unknown): number {
@@ -342,6 +363,51 @@ function numericValue(v: unknown): number {
 function numericOr(v: unknown, fallback: number): number {
   const n = numericValue(v);
   return Number.isFinite(n) ? n : fallback;
+}
+
+/**
+ * Phase 8.I i1 (Mashu 2026-08-04): engine-side drop rule for
+ * modifiers with null sub-targets.
+ *
+ * Reads the modifier's target (short axis) and sub-target scope
+ * (from `metadata.targetScope.values[]` or legacy dotted targets)
+ * and calls the validator. If the modifier's target doesn't have
+ * a known sub-target widget OR the sub-target is unspecified, the
+ * modifier is silently dropped.
+ *
+ * Backward compat: returns true for unknown targets (legacy
+ * dotted strings, custom behavior keys) — we can't safely reject
+ * what we don't understand, so we pass them through and let
+ * downstream filters handle them.
+ */
+function isEngineModifierValid(mod: HardModifier): boolean {
+  const targetRaw = String(mod.target);
+
+  // Build the validator input. Sub-target comes from
+  // metadata.targetScope.values (canonical v7-E+ shape).
+  // Legacy dotted targets like "character.attribute.physical"
+  // carry the sub-target in the string itself — those are always
+  // valid (single-attribute scope is explicit by construction).
+  const scope = mod.metadata?.["targetScope"] as
+    | { layer?: unknown; values?: unknown }
+    | undefined;
+  const values = Array.isArray(scope?.values)
+    ? (scope!.values as unknown[]).map((v) => String(v))
+    : [];
+
+  // For free-text axes, the sub-target lives in metadata.behaviorName
+  // (canonical) or the value field (legacy). If neither exists, drop.
+  const spec = MODIFIER_TARGET_SPEC[targetRaw as ModifierTarget];
+  if (!spec) return true; // Unknown / legacy → pass-through
+
+  const behaviorName = mod.metadata?.["behaviorName"];
+  const draft: ModifierDraftForValidation = {
+    target: targetRaw,
+    targetValues: values,
+    freeTextNarrowFocus:
+      typeof behaviorName === "string" ? String(behaviorName) : "",
+  };
+  return isModifierValid(draft);
 }
 
 // =============================================================================

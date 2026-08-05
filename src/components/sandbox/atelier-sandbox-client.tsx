@@ -36,6 +36,7 @@ import { HeritageForm } from "./heritage-form";
 import { HeritageFormPreview } from "./heritage-form-preview";
 import { ItemForm } from "./item-form";
 import { ItemFormPreview } from "./item-form-preview";
+import { DataQualityPanel } from "@/components/atelier/data-quality-panel";
 import { GrammarLibrary } from "./grammar-library";
 import { HeritageLibrary } from "./heritage-library";
 import { isNavigationApproved } from "@/components/character-modal/character-modal-store";
@@ -1586,6 +1587,13 @@ export function AtelierSandboxClient({
 
   return (
     <>
+      {/* Phase 8.I i1 (Mashu 2026-08-04): malformed-modifier audit.
+          Lives at the top of the atelier so it's visible to authors
+          editing primitives. NOT in the drawer — drawer follows
+          sheet logic (engine drops invalid modifiers silently). */}
+      <div className="border-b border-border bg-card/30 px-4 py-2">
+        <DataQualityPanel />
+      </div>
       <SandboxLayout
         storageKey="atelier"
         library={libraryNode}
