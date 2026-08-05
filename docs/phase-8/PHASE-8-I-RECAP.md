@@ -571,6 +571,149 @@ When an item is in the inventory but NOT equipped, does the sheet show its poten
 
 ---
 
+## Canonical reference: capability specification (Mashu 2026-08-04)
+
+You attached `capabilities.txt` (762 lines). This is the **canonical spec** for how capabilities, effects, and primitives combine. All Session I work must respect this structure. Full text saved at `/home/xeun/Projects/SwordWeave/.hermes-capabilities.txt` (gitignored).
+
+### The 3 Capability Styles
+
+| Style | Description | Effect slot? | Range/Target? | Example |
+|---|---|---|---|---|
+| **A — Passive / Stance** | Always-on or toggled. No targeting, no active execution. Modifies sheet directly. | NONE | NONE | Bloodhound Master (advantage on tracking) |
+| **B — Direct Resolution** | Instant execution. Damage/heal/move resolves immediately, leaves no state. | NONE | YES | Gravity Impact (kinetic blast) |
+| **C — Dynamic State** | Delivers a mini-capability (Effect) to a target. Lingering conditions. | REQUIRED | YES | Compelled Focus (taunt via disadvantage) |
+
+Mapping to the recap's `capability.type`:
+- `passive` → Style A
+- `augment` → Style A or B (augments existing action)
+- `active` → Style B or C (active execution)
+
+### The 4-step Resolution & Runtime Safety Valve
+
+```
+[1. License Check] ──> Confirm player owns the utilized Primitive Tiers globally.
+[2. Source Match] ──> Downward-inherit Source (Physical/Magical/Psychic/Hybrid).
+[3. Vector Match] ──> Projected Vector (applies Cover penalties) OR
+                      Direct Manifestation (bypasses Cover, requires bare Line of Sight).
+[4. DM Strain Appraisal] ──> Analyze Complexity + Targets + Nesting Depth.
+                            └──> Assign Strain Level (Low ──> Extreme) ──> Collect Vitality/Strain Cost.
+```
+
+**Critical for Session I:**
+- **Source Type inheritance** — All nested primitives downward-inherit the cap's source type. This is a NEW concept the engine must enforce (`source_type` on cap propagates to all primitives below it).
+- **Vector Match** — Direct Manifestation vs Projected Vector is an Effect-level property, not a cap-level property. Means an effect can be "Direct Manifestation" while the cap that delivers it is "Projected Vector" or vice versa. Engine must support per-effect vector type.
+- **DM Strain Layer** — Runtime toll. Affects vitality/strain. This is what the COST_INSTABILITY mirror vector maps to.
+- **Strain Tier** — Calculated from complexity, NOT from BU. Two different ways to compute "how hard is this?" — engine must support both.
+
+### Effect Template (v1)
+
+```
+EFFECT IDENTITY
+- Name: [Narrative/Thematic Name]
+- Execution Type: Direct Manifestation / Projected Vector
+
+THE MECHANICAL TEETH (the primitives that power the effect)
+- Core Primitive Component A: [Primitive Name - BU Cost]
+- Core Primitive Component B: [Primitive Name - BU Cost]
+
+RESOLUTION GATE
+- Saving Throw Attribute: [Which Attribute/Practice defends against this state]
+- Difficulty Threshold: [Character DC = 5 + PB + Attribute Modifier + Modifiers]
+
+TEMPORAL BOUNDARY
+- Persistence Layer: Instant / Short / Medium / Long / Scene / Persistent / Permanent
+```
+
+**Critical for Session I:**
+- An Effect IS a mini-capability with its own primitives ("teeth")
+- Effects have their own resolution gate (which attribute defends, which DC)
+- Effects have their own temporal boundary (duration)
+- **Effects can be triggered on their own** — they're not just "applied to a target from a cap"; they can be triggered independently at runtime (advanced usage)
+
+### Capability Template (v1 — Canonical)
+
+```
+1. Identity
+   - Name
+   - Type: Passive / Active / Augment
+   - Source (Physical / Magical / Psychic / Hybrid)
+     - SOURCE TYPE is inherited by all effects in the cap.
+
+2. Construction
+   - Verbs (1–n)
+   - Domains (1–n)
+   - Effects (1–n)
+
+3. Targeting
+   - Target Mode: Single / Multiple / AoE
+   - Target Shape (if AoE): cone / line / sphere / zone / beam
+   - Target Size: 5 / 10 / 20 ft/m etc
+   - Placement: self / target / point / directional
+
+4. Range
+   - Touch / Close / Near / Far / Very Far / Extreme
+   - (cost gate only, no scaling effect)
+
+5. Output
+   - Dice type and number (d4–d12 numeric)
+   - 2d6, 4d8, 4d8+8d6, etc
+   - Damage type (inherited from domain)
+
+6. Duration and casting time
+   - Duration of spell effects: Instant / Short / Medium / Long / Scene / Persistent / Permanent
+   - Time needed to be cast: Instant / Short / Medium / Long / Scene / Persistent / Permanent
+
+7. Scaling
+   - Intensity modifiers (optional expansion rules)
+   - BU equivalence reference (non-binding)
+
+8. BU Evaluation (CORE VALUE)
+   - Base BU cost (construction equivalence)
+   - Adjusted BU (scaled version if expanded)
+
+9. Strain (DM LAYER)
+   - Heuristic difficulty
+   - Scaling pressure
+   - Complexity load
+   - Vitality consequence (DM discretion)
+
+10. CV (NERD LAYER ONLY)
+    - Computed complexity estimate
+    - BU-equivalent approximation
+    - Scaling comparison tool
+
+11. Verbose Description
+    - Narrative explanation (player-facing text)
+```
+
+### Standalone Effect Examples (from the spec)
+
+These effects are referenced in the existing data:
+
+| Effect | Domain | Teeth | Save | Duration |
+|---|---|---|---|---|
+| **System Freeze** | Technomancy/Ice | Velocity Arrest (6 BU) + Reaction Lock (4 BU) | Physical vs Character DC | Short (end of round) |
+| **Corrosive Decay** | Acid/Void | Kinetic Hardening Degradation (-3 Phys Def, 6 BU) + Standard Tick d4 (4 BU) | Physical vs Character DC | Medium (3 rounds) |
+| **Vertigo Spasms** | Psychic/Air | Negative Bias on offense (6 BU) + Involuntary Vector Shift 5ft (4 BU) | Mental vs Character DC | Long (until saved) |
+| **Compelled Focus** | Psychic/Emotion | Selective Negative Bias on non-caster attacks (8 BU) | Mental vs Character DC | Short (end of round) |
+
+These are the canonical effect templates. The engine should be able to express each of these as a Style C capability with one Effect.
+
+### Scope changes for Session I (from the canonical spec)
+
+These were NOT in the original Session I plan but are now required by the spec:
+
+| # | Item | Notes |
+|---|---|---|
+| **I23** | Source Type inheritance — cap.source_type propagates to nested primitives and effects | Engine must walk the chain |
+| **I24** | Effect has its own vector type (Direct Manifestation vs Projected Vector) | Per-effect, not per-cap |
+| **I25** | Effect has its own resolution gate (save attribute, DC formula) | Engine resolves per-effect |
+| **I26** | Effect has its own temporal boundary (duration tier) | Display on sheet |
+| **I27** | Strain Tier is separate from BU | Two parallel complexity metrics |
+| **I28** | Effect can be triggered standalone (not just from a cap) | Runtime, not engine |
+
+---
+
 ## Round 3 decisions (2026-08-04)
 
 ### R3-Q1. DC vs Saving Throws — two different numbers
@@ -849,3 +992,133 @@ OK to add this test as part of step 1 (null-target bug)?
 ### R4-Q15. Anything else ambiguous
 
 Any other thing from your answer that I might have misinterpreted?
+
+
+---
+
+## Round 4 decisions (2026-08-04)
+
+> **Note:** You could not see the local doc file, so several questions were unclear. The answers below are what I could extract. Some questions are re-asked in the message stream with full text.
+
+### R4-Q1. Saving throw formulas — locked
+
+> *"I have Physical +5, Mental +4, magic+1. I am proficient in Physical. I have PB = +3. Physical save is 5+3 =8, mental +4 and magic +1 (ofc + modifiers from primitives if the case)"*
+
+**Decision locked:**
+- `saving_throw.<attr>` = `modifier_of_<attr> + PB` **IF this attribute is the proficient one, ELSE just `modifier_of_<attr>`**
+- Each attribute is independent (doesn't share PB across them)
+- Primitive modifier contributions to the attribute's modifier feed into the save (additive)
+- **Example confirmed:** PHYS+5 prof + PB=3 → PHYS save = 8; MENT+4 not prof → MENT save = 4; MAGI+1 not prof → MAGI save = 1
+
+### R4-Q2. action.roll sub-targets — locked
+
+> *"attack, saves. Attack is attack, and we have like a checkbox for attack, and one for each save (one for physical, one for mental, one for magic save). For contested idk we already have practices and we have conditions and triggers when. So for grappling contest we make like targets practices prowess with condition for/while grappling."*
+
+**Decision locked:**
+- `action.roll.attack` (covers all attacks and spell attacks)
+- `action.roll.save.physical`, `action.roll.save.mental`, `action.roll.save.magical` (three separate sub-targets)
+- No `contested` — contests are handled via practices + conditions/triggers when. A "Grappling contest" is a `practice(physical)` check with a `target grappled` condition.
+- **Mapping needed:** `action.roll` is currently a single target. Need to add sub-targets.
+
+### R4-Q3. Capability condition is per-toggle
+
+> *"But it should be per-toggle."*
+
+**Decision locked:** Condition check is on the **toggle**, not the trigger. The toggle bundles the cap's condition check. When the cap is toggled ON, the engine checks the condition; if met, the cap's modifiers contribute. The trigger fires whatever the toggle currently allows.
+
+- Toggle ON, condition met → modifiers contribute
+- Toggle ON, condition NOT met → modifiers don't contribute
+- Toggle OFF → modifiers don't contribute
+
+### R4-Q4. Cap types — passive, augment, active (per capabilities.txt)
+
+> *"passive, augment, active. I attached more about capabilities in capabilities.txt"*
+
+**Decision locked:** The 3 capability types map to the canonical 3 styles (see "Canonical reference" section above):
+- `passive` → Style A (no effect, no range/target, always-on)
+- `augment` → Style A or B (modifies an existing action)
+- `active` → Style B (direct) or Style C (with effect)
+
+**Trigger button defaults:**
+- **Passive** — toggle ON, no trigger button
+- **Augment** — toggle ON, no trigger button (applies when augmented action is taken)
+- **Active** — toggle ON, trigger button visible (fires when triggered)
+
+### R4-Q5. Flag malformed modifiers — re-asked in message stream
+
+> *"I don't understand. I cannot see the local files you created."*
+
+### R4-Q6. Hide or show inactive caps — show inactive
+
+> *"show inactive I guess. If hide how would i be able to unhide it??"*
+
+**Decision locked:** Inactive caps are visible in the modal traceability (with `(inactive)` marker). The drawer shows only active caps. The user can change the toggle to bring them back.
+
+### R4-Q7. Mirror glyph — unicode for now
+
+> *"we can use unicode for now I guess."*
+
+**Decision locked:** Use unicode glyphs (`🪞` for mirror, `︽` for advantage, `︾` for disadvantage, `*` for conditional). No icons/sprites needed for Session I.
+
+### R4-Q8. Small cards taxonomy — re-asked in message stream
+
+> *"I don't understand. I cannot see the local files you created."*
+
+### R4-Q9. Item equip preview — entire card dimmed
+
+> *"I guess the entire card? idk..."*
+
+**Decision locked:** When an item is unequipped, its ENTIRE contribution to the sheet is dimmed (in the drawer, in modals, everywhere). The card itself shows it dimmed with `(when equipped)` suffix.
+
+### R4-Q10. Trigger button placement — already exists
+
+> *"We already have trigger button on the capabilities. and capabilities inside items."*
+
+**Decision locked:** Trigger button already exists on capability cards (and capabilities inside items). No new UI needed. Session I should ensure the trigger button is wired to the engine's modifier-resolution flow.
+
+### R4-Q11. Condition text — re-asked in message stream
+
+> *"I don't understand. I cannot see the local files you created."*
+
+### R4-Q12. Free-text axes validation — re-asked in message stream
+
+> *"I don't understand. I cannot see the local files you created."*
+
+### R4-Q13. DB backfill for advantage/disadvantage — encoding is Grant+keyword
+
+> *"I guess op grant value type keyword, value advantage/disadvantage should be."*
+
+**Decision locked:** The DB backfill should:
+- Map `op: "bias"` → `op: "grant"`
+- Wrap bare `value: "advantage"` / `value: "disadvantage"` in keyword form: `value: { kind: "keyword", text: "advantage" }` OR `value: "behavior:advantage"` (whichever the form uses)
+- Leave already-correct rows untouched
+
+This confirms the modern convention from Image 4 (the modifier editor screenshot showing `[advantage]` keyword syntax).
+
+### R4-Q14. Verifying mirror-is-per-primitive — yes, verify
+
+> *"yes. But we already have this functionality I guess that is why you need to check."*
+
+**Decision locked:** Add a test as part of Session I step 1 (null-target bug). The test verifies that a mirrored primitive slotted via a heritage-bundled cap displays the mirrored value on the sheet. If the test passes, the current behavior is correct. If it fails, we need to fix it.
+
+### R4-Q15. Anything else ambiguous — re-asked in message stream
+
+> *"I don't understand. I cannot see the local files you created."*
+
+### R4-Q16 (NEW). Source Type field — Hybrid is a 4th option
+
+The canonical spec says Source Type is "Physical / Magical / Psychic / Hybrid" but the recap's `CapabilitySourceType` has only 3 (`physical`, `magical`, `psychic`). Hybrid is missing.
+
+**Deferred to round 5** — needs disambiguation.
+
+### R4-Q17 (NEW). capabilities.txt reveals: Source Type includes "Hybrid"
+
+The `capabilities.txt` spec lists source types as "Physical / Magical / Psychic / Hybrid". The current schema enum `CapabilitySourceType` only has 3 options. **Add Hybrid?** Or is Hybrid = a capability that uses primitives from multiple sources (e.g. a Psychic attack with Physical components)?
+
+**Deferred to round 5** — needs disambiguation in the message stream.
+
+---
+
+## Round 5 questions — full text in message stream
+
+Several questions were unclear because you couldn't see the local doc. Full text is in the latest message stream.
