@@ -237,10 +237,20 @@ export function aggregateCharacterSheet(
     INTUITION: "intuition",
   };
 
+  // Phase 8.I i2.5d (Mashu 2026-08-05): accept BOTH the legacy
+  // category name (SHEET_AUGMENT) and the canonical name
+  // (CHARACTER_SHEET_AUGMENT). The form saves under the legacy
+  // short name; the engine filter only matched the canonical name,
+  // so primitives saved through the form were silently filtered
+  // out of the practice math. The canonical type was renamed at
+  // some point during Phase 7 (per the comment in
+  // src/lib/packages/primitive-package.ts) but the engine code
+  // wasn\'t updated to handle the legacy alias.
   for (const link of input.primitiveLinks) {
     const p = link.primitive;
     if (
       p.category !== "CHARACTER_SHEET_AUGMENT" &&
+      p.category !== "SHEET_AUGMENT" &&
       p.category !== "PRACTICE_PROGRESSION_AUGMENT"
     ) {
       continue;
@@ -518,6 +528,7 @@ export function buildPrimitiveBonusMap(
     const p = link.primitive;
     if (
       p.category === "CHARACTER_SHEET_AUGMENT" ||
+      p.category === "SHEET_AUGMENT" ||
       p.category === "PRACTICE_PROGRESSION_AUGMENT"
     ) {
       map.set(p.id, { name: p.name, bonus: p.buCost });

@@ -455,6 +455,70 @@ function PrimitiveDetailToggle({
                 const flippedOp = mirrorable
                   ? flipOperation(op)
                   : null;
+                // Phase 8.I i2.5d (Mashu 2026-08-05): render
+                // the modifier value correctly. The DB stores
+                // typed tokens (PB chip, /physical/) as objects
+                // — naive String() yields '[object Object]'.
+                // We render typed tokens by their canonical
+                // display string (e.g. "PB", "physical",
+                // "blockValue") and sub-targets are appended
+                // after the target pill.
+                const renderValue = (raw: unknown): string => {
+                  if (raw === null || raw === undefined) return "?";
+                  if (typeof raw === "number") return String(raw);
+                  if (typeof raw === "string") return raw;
+                  if (typeof raw === "boolean") return raw ? "true" : "false";
+                  if (typeof raw === "object") {
+                    const obj = raw as Record<string, unknown>;
+                    const kind = obj["kind"];
+                    if (typeof kind !== "string") return "?";
+                    switch (kind) {
+                      case "number":
+                        return String(obj["value"]);
+                      case "derived":
+                        return String(obj["which"] ?? "");
+                      case "attribute":
+                        return String(obj["attribute"] ?? "");
+                      case "practice":
+                        return String(obj["practice"] ?? "");
+                      case "behavior":
+                        return String(obj["name"] ?? "");
+                      case "dice":
+                        return String(obj["expression"] ?? "");
+                      case "keyword":
+                        return `[${String(obj["text"] ?? "")}]`;
+                      case "runtime":
+                        return `/${String(obj["name"] ?? "")}/`;
+                      default:
+                        return "?";
+                    }
+                  }
+                  return "?";
+                };
+                const scopeValues = (() => {
+                  const modMeta = m as unknown as {
+                    metadata?: unknown;
+                  };
+                  const meta =
+                    modMeta.metadata && typeof modMeta.metadata === "object"
+                      ? (modMeta.metadata as Record<string, unknown>)
+                      : null;
+                  if (!meta) return [];
+                  const scope = meta["targetScope"];
+                  if (
+                    !scope ||
+                    typeof scope !== "object"
+                  )
+                    return [];
+                  const scopeObj = scope as Record<string, unknown>;
+                  const values = scopeObj["values"];
+                  if (!Array.isArray(values)) return [];
+                  return values
+                    .filter(
+                      (v): v is unknown => v !== null && v !== undefined,
+                    )
+                    .map((v) => String(v));
+                })();
                 return (
                   <li key={i} className="space-y-1">
                     {/* Original / unmirrored row */}
@@ -462,11 +526,16 @@ function PrimitiveDetailToggle({
                       <span className="rounded border border-border bg-background px-1.5 py-0.5 text-foreground">
                         {m.target ?? "?"}
                       </span>
+                      {scopeValues.length > 0 ? (
+                        <span className="rounded border border-border bg-muted/30 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                          {scopeValues.join(", ")}
+                        </span>
+                      ) : null}
                       <span className="rounded border border-emerald-500/50 bg-emerald-500/15 px-1.5 py-0.5 font-mono text-emerald-700 dark:text-emerald-300">
                         {OP_SPECS[op as keyof typeof OP_SPECS]?.label ?? op}
                       </span>
                       <span className="font-semibold text-foreground">
-                        {String(m.value ?? "?")}
+                        {renderValue(m.value)}
                       </span>
                       {/* Mirrorable preview hint when
                           the slot is mirrorable but not
@@ -487,11 +556,16 @@ function PrimitiveDetailToggle({
                           <span className="rounded border border-border bg-background px-1.5 py-0.5 text-foreground">
                             {m.target ?? "?"}
                           </span>
+                          {scopeValues.length > 0 ? (
+                            <span className="rounded border border-border bg-muted/30 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                              {scopeValues.join(", ")}
+                            </span>
+                          ) : null}
                           <span className="rounded border border-destructive/50 bg-destructive/15 px-1.5 py-0.5 font-mono text-destructive">
                             {OP_SPECS[flippedOp as keyof typeof OP_SPECS]?.label ?? flippedOp}
                           </span>
                           <span className="font-semibold text-foreground">
-                            {String(m.value ?? "?")}
+                            {renderValue(m.value)}
                           </span>
                         </div>
                       ) : (
@@ -514,11 +588,16 @@ function PrimitiveDetailToggle({
                         <span className="rounded border border-border bg-background px-1.5 py-0.5 text-foreground">
                           {m.target ?? "?"}
                         </span>
+                        {scopeValues.length > 0 ? (
+                          <span className="rounded border border-border bg-muted/30 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                            {scopeValues.join(", ")}
+                          </span>
+                        ) : null}
                         <span className="rounded border border-destructive/50 bg-destructive/15 px-1.5 py-0.5 font-mono text-destructive">
                           {OP_SPECS[flippedOp as keyof typeof OP_SPECS]?.label ?? flippedOp}
                         </span>
                         <span className="font-semibold text-foreground">
-                          {String(m.value ?? "?")}
+                          {renderValue(m.value)}
                         </span>
                       </div>
                     ) : null}
