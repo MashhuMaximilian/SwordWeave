@@ -49,6 +49,7 @@ import {
   serializeValueField,
   tokenLabel,
   type Operand,
+  type OperandValue,
   type ValueToken,
   type ValueType,
 } from "@/types/modifier";
@@ -61,6 +62,13 @@ import {
   OPERATION_LABELS,
   valueTypeLabel,
 } from "@/lib/primitives/form-helpers";
+import {
+  tokenKindToValueKind,
+  operandsToTokens,
+  serializeToken,
+  serializeFirstToken,
+  serializeOperandsAsExpression,
+} from "@/lib/primitives/modifier-translator";
 import { TokenChipStack } from "./token-chip-stack";
 import { EquationPicker } from "./equation-picker";
 
@@ -515,36 +523,54 @@ function fromHardModifier(modifier: Record<string, unknown>, index: number): Mod
       : null;
   const operandsRaw = meta?.["operands"];
 
-  // Phase 8.I i2.5 (Mashu 2026-08-05): typed ValueTokens in
-  // stored HardModifier.value must round-trip correctly. After
-  // i2.5 the form saves value as a typed-token object (e.g.
-  // {kind: "derived", which: "pb"}). The chip stack uses
-  // `tokens` (already populated via parseValueField below), but
-  // the cached `value` string and `valueKind` must reflect the
-  // typed token — NOT fall through to "text" / "[object Object]".
-  let valueKind: ModifierDraft["valueKind"];
-  let value: string;
+  // Phase 8.I i2.5h (Mashu 2026-08-06): tokens is the SOURCE OF
+  // TRUTH for the chip stack. The cached `value` and `valueKind`
+  // are DERIVED from tokens — never the other way around.
+  let tokens: ReturnType<typeof parseValueField>;
+  let valueKind: ModifierDraft["valueKind"] = "number";
+  let value = "";
+  let operands: ModifierDraft["operands"] = [];
+
   if (Array.isArray(operandsRaw) && operandsRaw.length > 0) {
     // Equation mode: operands live in metadata.operands.
+    // The chip stack shows the FLATTENED operands.
+    const opArr = operandsRaw as unknown as Operand[];
+    tokens = operandsToTokens(opArr);
     valueKind = "equation";
-    value = "";
+    value = serializeOperandsAsExpression(opArr);
+    operands = opArr;
   } else if (isTypedTokenShape(rawValue)) {
-    // Typed token — derive valueKind and display string.
-    valueKind = "number";
-    value = typedTokenToDisplayString(rawValue as Record<string, unknown>);
+    // Typed token — chips come from parseValueField; valueKind
+    // comes from the token's kind (not a hardcoded "number").
+    tokens = parseValueField(rawValue);
+    const first = tokens[0];
+    valueKind = first ? tokenKindToValueKind(first.kind) : "number";
+    value = serializeFirstToken(tokens);
   } else if (typeof rawValue === "boolean") {
+    // Boolean stored as plain boolean — keep backwards compat.
     valueKind = "boolean";
     value = rawValue ? "true" : "false";
+    tokens = [{ kind: "behavior", name: value }];
   } else if (typeof rawValue === "number") {
     valueKind = "number";
     value = String(rawValue);
+    tokens = [{ kind: "number", value: rawValue }];
   } else if (typeof rawValue === "string") {
-    valueKind = "text";
-    value = rawValue;
+    // Plain string: classify via classifyTypedValue. Falls through
+    // to a behavior token if unrecognized.
+    tokens = parseValueField(rawValue);
+    const first = tokens[0];
+    valueKind = first ? tokenKindToValueKind(first.kind) : "text";
+    value = first ? serializeToken(first) : rawValue;
   } else {
+    // null / undefined / unknown — empty chip stack.
+    tokens = [];
     valueKind = "number";
     value = "";
   }
+
+  // Defensive: ensure tokens is never undefined.
+  tokens = tokens ?? [];
 
   const condition = modifier["condition"];
   const cond =
@@ -598,18 +624,13 @@ function fromHardModifier(modifier: Record<string, unknown>, index: number): Mod
     id: `modifier-${index + 1}`,
     target: selection.target,
     operation: String(modifier["operation"] ?? "add") as ModifierOperation,
-    // Phase 7.5: parse the legacy value field into the new
-    // token shape. parseValueField auto-coerces plain numbers,
-    // strings, booleans, dice expressions, etc.
-    tokens: parseValueField(rawValue),
+    // Phase 8.I i2.5h: tokens + operands were already populated
+    // above based on the metadata.operands check. Use those
+    // directly. Don't re-parse — that would lose info.
+    tokens,
+    operands,
     value,
     valueKind,
-    // Phase 7.5 v4: legacy rows have no operands. If the
-    // serialized row contains an `operands` array, use it
-    // directly (forward-compat). Otherwise, default to empty.
-    operands: Array.isArray(modifier["operands"])
-      ? (modifier["operands"] as Operand[])
-      : [],
     targetValues: [...selection.targetValues],
     granularity: "broad",
     freeTextNarrowFocus: freeTextValue,
@@ -658,30 +679,72 @@ function parseValue(
   value: string,
   valueKind: ModifierDraft["valueKind"],
 ): unknown {
+  // Phase 8.I i2.5h (Mashu 2026-08-06): the form's primary
+  // value storage is `tokens: ValueToken[]`. The cached `value`
+  // string is a derived display cache, kept in sync with the
+  // first token via serializeValueField on every change.
+  //
+  // parseValue() runs only at SAVE time to translate the cached
+  // string into the stored HardModifier.value. We must NEVER
+  // return 0 just because the string is empty — an empty string
+  // means the chip stack is the source of truth, not 0.
+  //
+  // Phase 8.I i2.5h-fix: return the empty marker so toHardModifier
+  // can fall back to the chips.
   if (valueKind === "boolean") {
     return value === "true";
   }
-  // number, dice, text, equation — all go through classifyTypedValue.
-  // classifyTypedValue reads the input string and returns a typed
-  // token (or a fallback for unrecognized input). For the number
-  // path it preserves the "PB chip" → derived token translation.
   const trimmed = String(value ?? "").trim();
-  if (trimmed.length === 0) return 0;
+  if (trimmed.length === 0) {
+    // Empty cached value → toHardModifier should fall back to
+    // the first token. We return null to signal this.
+    return null;
+  }
   const result = classifyTypedValue(trimmed, "add", valueKind);
   if (result.token) {
     return result.token;
   }
-  // Fallback: legacy behavior — try to coerce to a number for
-  // number kind, otherwise return the raw string.
+  // classifyTypedValue returned null → unrecognized input.
+  // For number mode try numeric coercion; otherwise return null
+  // so toHardModifier falls back to the chips.
   if (valueKind === "number") {
     const numericValue = Number(trimmed);
-    return Number.isFinite(numericValue) ? numericValue : 0;
+    return Number.isFinite(numericValue) ? numericValue : null;
   }
+  // Last resort: return the raw string (for text/dice modes
+  // where unrecognized input should round-trip literally).
   return value;
 }
 
 function toHardModifier(modifier: ModifierDraft): import("@/types/swordweave").HardModifier {
-  const baseValue = parseValue(modifier.value, modifier.valueKind);
+  // Phase 8.I i2.5h (Mashu 2026-08-06): the stored value is
+  // derived from the chip stack (tokens), not from re-parsing
+  // the cached `value` string. The previous implementation called
+  // parseValue(value, valueKind) which produced wrong tokens
+  // whenever the cached string was empty (equation mode default)
+  // or didn't round-trip cleanly (keyword/runtime tokens stored
+  // with valueKind="number").
+  //
+  // For equation mode: stored value = first operand's value.
+  // For simple mode: stored value = first token (the typed
+  // token object). parseValue is now a FALLBACK only.
+  let baseValue: unknown = null;
+  if (modifier.valueKind === "equation" && modifier.operands.length > 0) {
+    // Equation mode: the stored value is the first operand's value.
+    baseValue = modifier.operands[0]?.value ?? 0;
+  } else if (modifier.tokens.length > 0) {
+    // Simple mode: stored value is the first token (typed object).
+    baseValue = modifier.tokens[0] ?? 0;
+  } else {
+    // Fallback: re-parse the cached string.
+    baseValue = parseValue(modifier.value, modifier.valueKind);
+    if (baseValue === null) {
+      // No tokens and no cached value — use a default for the kind.
+      if (modifier.valueKind === "text") baseValue = "";
+      else if (modifier.valueKind === "boolean") baseValue = false;
+      else baseValue = 0;
+    }
+  }
 
   // Phase-7-E: write the canonical short axis + metadata.targetScope.
   // If the form somehow still holds a legacy dotted target (only
