@@ -28,7 +28,7 @@ const num = (value: number, op: Operator = "+"): Operand => ({
 const diceOp = (expression: string, op: Operator = "+"): Operand => ({
   op, value: { kind: "dice", expression },
 });
-const attr = (a: "physical" | "mental" | "magic-abstract", op: Operator = "+"): Operand => ({
+const attr = (a: "physical" | "mental" | "magical", op: Operator = "+"): Operand => ({
   op, value: { kind: "attribute", attribute: a },
 });
 const derivedOp = (which: "pb" | "pb_half" | "level", op: Operator = "+"): Operand => ({

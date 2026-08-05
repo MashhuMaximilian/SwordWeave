@@ -55,18 +55,26 @@ const RESERVED_BEHAVIOR_NAMES = new Set<string>([
   "physical",
   "mental",
   "magical",
-  "magic-abstract",
-  // Canonical practices
-  "awareness",
+  "magical",
+  // Canonical practices (aligned with engine PRACTICES, lowercase).
+  "prowess",
+  "finesse",
   "fieldcraft",
-  "influence",
+  "awareness",
   "reason",
-  "vitality",
+  "knowledge",
+  "influence",
+  "mysticism",
+  "communion",
+  "intuition",
+  // Legacy / stale practice names that must NOT be reused
+  // as behavior variables. (Engine dropped these in Phase 7.)
   "lore",
   "magic",
   "combat",
   "movement",
   "social",
+  "vitality",
   // Derived
   "pb",
   "pb_half",

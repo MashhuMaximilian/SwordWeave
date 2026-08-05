@@ -102,10 +102,15 @@ export function resolveToken(
     }
 
     case "attribute": {
-      // Form's ALL_ATTRIBUTES uses "magic-abstract" (kebab).
-      // Engine's ctx.attributes uses "magical" (the canonical
-      // character state key). Normalize at the resolver boundary.
-      const key = token.attribute === "magic-abstract" ? "magical" : token.attribute;
+      // Phase 8.I i2.5g: ALL_ATTRIBUTES now uses "magical"
+      // matching the engine. We accept both "magical" and the
+      // legacy "magic-abstract" kebab form (saved by older
+      // form versions) and normalize at the resolver boundary.
+      const attr = token.attribute as string;
+      const key = (attr === "magic-abstract" ? "magical" : attr) as
+        | "physical"
+        | "mental"
+        | "magical";
       return ctx.attributes[key] ?? 0;
     }
 

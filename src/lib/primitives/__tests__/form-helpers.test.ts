@@ -240,9 +240,13 @@ describe("classifyTypedValue — value-type-aware input classification", () => {
       const r = classifyTypedValue("pb", "add", "number");
       expect(r.token).toEqual({ kind: "derived", which: "pb" });
     });
-    it("dice-looking string in number mode → number token + warning", () => {
+    it("dice-looking string in number mode → dice token + warning", () => {
+      // Phase 8.I i2.5g: dice expressions in number mode produce
+      // dice tokens (with a warning suggesting the user switch
+      // to Dice mode). Previously coerced "2d6" → {value:6}
+      // which was nonsense.
       const r = classifyTypedValue("2d6", "add", "number");
-      expect(r.token).toMatchObject({ kind: "number" });
+      expect(r.token).toMatchObject({ kind: "dice" });
       expect(r.warning).toMatch(/dice expression/i);
     });
     it("behavior-like string in number mode → behavior token (silent)", () => {

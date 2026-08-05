@@ -16,7 +16,7 @@ import {
 } from "../runtime-resolver";
 
 // Resolver uses engine's canonical attribute keys: physical | mental | magical
-// (the form's "magic-abstract" chip is normalized at lookup time).
+// (the form's "magical" chip is normalized at lookup time).
 
 const baseCtx: ResolveContext = {
   level: 17,
@@ -27,12 +27,12 @@ const baseCtx: ResolveContext = {
     fieldcraft: 9,
     influence: 7,
     reason: 10,
-    vitality: 8,
-    lore: 6,
-    magic: 5,
-    combat: 12,
-    movement: 7,
-    social: 8,
+    mysticism: 8,
+    knowledge: 6,
+    communion: 5,
+    prowess: 12,
+    finesse: 7,
+    intuition: 6,
   },
   behaviorVariables: {
     blockValue: 6,
@@ -130,10 +130,10 @@ describe("resolveToken — attribute token (Phase 8.I i2.5: /physical/ works)", 
     ).toBe(4);
   });
 
-  it("normalizes magic-abstract to magical", () => {
+  it("normalizes magical to magical", () => {
     expect(
       resolveToken(
-        { kind: "attribute", attribute: "magic-abstract" },
+        { kind: "attribute", attribute: "magical" },
         baseCtx,
       ),
     ).toBe(3);
@@ -166,10 +166,10 @@ describe("resolveToken — practice token (Phase 8.I i2.5: /awareness/ works)", 
   it("returns 0 for unset practice", () => {
     const ctx: ResolveContext = {
       ...baseCtx,
-      practices: { ...baseCtx.practices, combat: 0 },
+      practices: { ...baseCtx.practices, prowess: 0 },
     };
     expect(
-      resolveToken({ kind: "practice", practice: "combat" }, ctx),
+      resolveToken({ kind: "practice", practice: "prowess" }, ctx),
     ).toBe(0);
   });
 });

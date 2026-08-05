@@ -18,19 +18,19 @@ const ctx: ResolveContext = {
   level: 17,
   pb: 6, // L17: 2 + floor(16/4) = 6
   // Resolver uses engine's canonical attribute keys: physical | mental | magical
-  // (the form's "magic-abstract" chip is normalized at lookup time).
+  // (the form's "magical" chip is normalized at lookup time).
   attributes: { physical: 5, mental: 4, magical: 3 } as never,
   practices: {
     awareness: 11,
     fieldcraft: 9,
     influence: 7,
     reason: 10,
-    vitality: 8,
-    lore: 6,
-    magic: 5,
-    combat: 12,
-    movement: 7,
-    social: 8,
+    mysticism: 8,
+    knowledge: 6,
+    communion: 5,
+    prowess: 12,
+    finesse: 7,
+    intuition: 6,
   },
   behaviorVariables: { blockValue: 6 },
 };

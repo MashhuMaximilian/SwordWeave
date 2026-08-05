@@ -222,15 +222,27 @@ describe("parseValueField — auto-coercion", () => {
     }
   });
 
-  it("'magic' alone is a practice token (no attribute conflict)", () => {
+  it("'magic' is a stale practice name and is now a behavior token", () => {
+    // Phase 8.I i2.5g (Mashu 2026-08-05): the form previously
+    // shipped a 10-practice list with stale names (awareness,
+    // fieldcraft, magic, combat, etc.) that didn't match the
+    // engine's canonical 10 (prowess, finesse, fieldcraft,
+    // awareness, reason, knowledge, influence, mysticism,
+    // communion, intuition). The author can still type 'magic'
+    // and it'll be stored as a behavior token — not silently
+    // misclassified as a practice that doesn't exist.
     expect(parseValueField("magic")).toEqual([
-      { kind: "practice", practice: "magic" },
+      { kind: "behavior", name: "magic" },
     ]);
   });
 
-  it("'magic-abstract' is the canonical Magic/Abstract attribute token", () => {
-    expect(parseValueField("magic-abstract")).toEqual([
-      { kind: "attribute", attribute: "magic-abstract" },
+  it("'magical' is the canonical Magic/Abstract attribute token", () => {
+    // Phase 8.I i2.5g: ALL_ATTRIBUTES now uses "magical"
+    // matching the engine. Legacy "magic-abstract" kebab form
+    // is accepted as a behavior token for backwards compat
+    // (will be normalized at resolver time).
+    expect(parseValueField("magical")).toEqual([
+      { kind: "attribute", attribute: "magical" },
     ]);
   });
 

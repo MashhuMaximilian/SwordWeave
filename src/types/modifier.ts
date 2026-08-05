@@ -619,34 +619,46 @@ export function operandKind(value: OperandValue): OperandKind {
 }
 
 /**
- * The 10 canonical Practices. Names TBD against the Notion canon
- * (page 37eed8479ccd813dab39dd57511a0c48 — "🎲 DM Quick Cost
- * Cheat Sheet" / Practice/skill page). Phase 7.5 uses these
- * defaults; Phase 8 reconciles against the canon.
+ * The 10 canonical Practices. Phase 8.I i2.5g (Mashu 2026-08-05):
+ * aligned with the engine's canonical PRACTICES list in
+ * src/lib/primitives/target-scope.ts. Previously had 10 STALE
+ * lowercase names (awareness, fieldcraft, etc.) that didn't match
+ * the engine — engine uses uppercase, form had lowercase + wrong
+ * practices (was missing FINESSE, KNOWLEDGE, COMMUNION, INTUITION).
  */
 export type PracticeKey =
-  | "awareness"
+  | "prowess"
+  | "finesse"
   | "fieldcraft"
-  | "influence"
+  | "awareness"
   | "reason"
-  | "vitality"
-  | "lore"
-  | "magic"
-  | "combat"
-  | "movement"
-  | "social";
+  | "knowledge"
+  | "influence"
+  | "mysticism"
+  | "communion"
+  | "intuition";
 
+// Phase 8.I i2.5g (Mashu 2026-08-05): aligned with the engine's
+// canonical PRACTICES list in src/lib/primitives/target-scope.ts.
+// Previously ALL_PRACTICES had 10 STALE lowercase names that didn't
+// match the engine — the form's chip click would save them as
+// behavior tokens, not practice tokens. The engine uses
+// uppercase canonical names. Form is now case-insensitive on
+// input but writes lowercase values to match engine expectations.
 export const ALL_PRACTICES: readonly PracticeKey[] = [
-  "awareness",
+  // Physical
+  "prowess",
+  "finesse",
   "fieldcraft",
-  "influence",
+  // Mental
+  "awareness",
   "reason",
-  "vitality",
-  "lore",
-  "magic",
-  "combat",
-  "movement",
-  "social",
+  "knowledge",
+  "influence",
+  // Magical/Abstract
+  "mysticism",
+  "communion",
+  "intuition",
 ];
 
 /**
@@ -655,7 +667,13 @@ export const ALL_PRACTICES: readonly PracticeKey[] = [
  * `"magic-abstract"` for the token to disambiguate from the
  * `"magic"` Practice (which exists in `ALL_PRACTICES`).
  */
-export const ALL_ATTRIBUTES = ["physical", "mental", "magic-abstract"] as const;
+// Phase 8.I i2.5g: aligned with engine's Attribute type
+// ("physical" | "mental" | "magical"). Previously had
+// "magic-abstract" (kebab) which didn't match the engine's
+// "magical". The chip click saved it as a behavior token, not
+// an attribute token. Form now uses "magical" matching the
+// engine.
+export const ALL_ATTRIBUTES = ["physical", "mental", "magical"] as const;
 
 /**
  * Re-export the underlying string union as `"physical" | "mental"
@@ -857,7 +875,19 @@ function serializeSingleToken(token: ValueToken): unknown {
     case "behavior": return `behavior:${token.name}`;
     case "dice": return token.expression;
     case "number": return token.value;
+    // Phase 8.I i2.5g (Mashu 2026-08-05): keyword + runtime
+    // kinds MUST round-trip. The previous switch silently
+    // fell through (no case match) → returned undefined →
+    // serializeValueField produced [undefined] → form's
+    // derived cache became empty string → next save coerced
+    // empty to 0 via parseValue(). This was the source of
+    // 'value type text + keyword → refresh → value=0'.
+    case "keyword": return `[${token.text}]`;
+    case "runtime": return `/${token.name}/`;
   }
+  // Unknown token kind — fall back to a behavior token
+  // (never silently lose data).
+  return `behavior:unknown`;
 }
 
 /**

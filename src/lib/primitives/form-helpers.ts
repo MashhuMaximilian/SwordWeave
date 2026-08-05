@@ -252,21 +252,33 @@ export function classifyTypedValue(
     if (Number.isFinite(num) && /^-?\d+(\.\d+)?$/.test(trimmed)) {
       return { token: { kind: "number", value: num }, warning: null };
     }
+    // Phase 8.I i2.5g (Mashu 2026-08-05): dice expressions in
+    // number mode should round-trip as DICE tokens, not get
+    // coerced to the die-face number. Previously "2d6" in number
+    // mode yielded {kind:"number", value:6} — wrong on every
+    // axis. Now we emit the dice token with a warning so the
+    // author knows to switch to Dice mode.
     if (isDiceExpression(trimmed)) {
       return {
-        token: { kind: "number", value: Number(trimmed.split("d")[1]) || 0 },
-        warning: `Looks like a dice expression (${trimmed}). Switch Value Type to Dice?`,
+        token: { kind: "dice", expression: trimmed },
+        warning: `"${trimmed}" is a dice expression. Switch Value Type to Dice?`,
       };
     }
-    if ((ALL_ATTRIBUTES as readonly string[]).includes(trimmed)) {
-      return { token: { kind: "attribute", attribute: trimmed as never }, warning: null };
+    // Phase 8.I i2.5g: case-insensitive matching for attribute,
+    // practice, derived. The author types "PB" (uppercase) but
+    // the engine stores "pb" (lowercase). Case-insensitive
+    // matching here means the form normalizes to lowercase, and
+    // the engine reads it correctly.
+    const trimmedLower = trimmed.toLowerCase();
+    if ((ALL_ATTRIBUTES as readonly string[]).includes(trimmedLower)) {
+      return { token: { kind: "attribute", attribute: trimmedLower as never }, warning: null };
     }
-    if ((ALL_PRACTICES as readonly string[]).includes(trimmed)) {
-      return { token: { kind: "practice", practice: trimmed as never }, warning: null };
+    if ((ALL_PRACTICES as readonly string[]).includes(trimmedLower)) {
+      return { token: { kind: "practice", practice: trimmedLower as never }, warning: null };
     }
-    if ((ALL_DERIVED as readonly string[]).includes(trimmed)) {
+    if ((ALL_DERIVED as readonly string[]).includes(trimmedLower)) {
       return {
-        token: { kind: "derived", which: trimmed as never },
+        token: { kind: "derived", which: trimmedLower as never },
         warning: null,
       };
     }
@@ -376,13 +388,21 @@ export function classifyTypedValue(
     };
   }
 
-  // Text mode — anything becomes a behavior token. But
-  // strip the [tag] convention so users who type
-  // [fire] don't see the brackets in the chip.
+  // Text mode — strip the [tag] convention so users who type
+  // [fire] don't see the brackets in the chip. Also strip
+  // the behavior: prefix convention so "behavior:focused_edge"
+  // becomes {kind:"behavior", name:"focused_edge"} with no
+  // literal colon in the name.
   if (trimmed.startsWith("[") && trimmed.endsWith("]") && trimmed.length >= 3) {
     const inner = trimmed.slice(1, -1).trim();
     if (inner.length > 0) {
       return { token: { kind: "keyword", text: inner }, warning: null };
+    }
+  }
+  if (trimmed.startsWith("behavior:") && trimmed.length > "behavior:".length) {
+    const name = trimmed.slice("behavior:".length).trim();
+    if (name.length > 0) {
+      return { token: { kind: "behavior", name }, warning: null };
     }
   }
   return { token: { kind: "behavior", name: trimmed }, warning: null };
