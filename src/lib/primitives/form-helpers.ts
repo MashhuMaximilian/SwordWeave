@@ -480,8 +480,22 @@ export const OPERATION_LABELS: ReadonlyArray<{
 export interface SubChoiceKeyword {
   /** Display label shown in the picker. */
   readonly label: string;
-  /** Group for the picker's section heading. */
-  readonly group: "Defense" | "Speed" | "Targeting" | "Duration" | "Vitality" | "Action";
+  /**
+   * Group for the picker's section heading. Phase 8.I i2.5f
+   * (Mashu 2026-08-05) added Bias / Damage Type / Condition / Range
+   * to surface the missing keywords flagged in QA.
+   */
+  readonly group:
+    | "Defense"
+    | "Speed"
+    | "Targeting"
+    | "Duration"
+    | "Vitality"
+    | "Action"
+    | "Bias"
+    | "Damage Type"
+    | "Condition"
+    | "Range";
 }
 
 export const SUB_CHOICE_KEYWORDS: readonly SubChoiceKeyword[] = [
@@ -522,6 +536,49 @@ export const SUB_CHOICE_KEYWORDS: readonly SubChoiceKeyword[] = [
   { label: "Action Roll", group: "Action" },
   { label: "Proficiency Bonus", group: "Action" },
   { label: "Item Slot Cost", group: "Action" },
+  // Phase 8.I i2.5f (Mashu 2026-08-05): Mashu flagged these as
+  // missing — the bias op is gone but grant/revoke modifiers
+  // still need keyword tags to distinguish them at runtime.
+  { label: "Advantage", group: "Bias" },
+  { label: "Disadvantage", group: "Bias" },
+  { label: "Normal", group: "Bias" },
+  // Common damage types (engine reads these on damage_healing_output).
+  { label: "Slashing", group: "Damage Type" },
+  { label: "Piercing", group: "Damage Type" },
+  { label: "Bludgeoning", group: "Damage Type" },
+  { label: "Fire", group: "Damage Type" },
+  { label: "Cold", group: "Damage Type" },
+  { label: "Lightning", group: "Damage Type" },
+  { label: "Thunder", group: "Damage Type" },
+  { label: "Acid", group: "Damage Type" },
+  { label: "Poison", group: "Damage Type" },
+  { label: "Radiant", group: "Damage Type" },
+  { label: "Necrotic", group: "Damage Type" },
+  { label: "Psychic", group: "Damage Type" },
+  { label: "Force", group: "Damage Type" },
+  { label: "Healing", group: "Damage Type" },
+  { label: "True Damage", group: "Damage Type" },
+  // Common conditions (engine reads these on damage conditions).
+  { label: "Prone", group: "Condition" },
+  { label: "Blinded", group: "Condition" },
+  { label: "Charmed", group: "Condition" },
+  { label: "Deafened", group: "Condition" },
+  { label: "Frightened", group: "Condition" },
+  { label: "Grappled", group: "Condition" },
+  { label: "Incapacitated", group: "Condition" },
+  { label: "Invisible", group: "Condition" },
+  { label: "Paralyzed", group: "Condition" },
+  { label: "Petrified", group: "Condition" },
+  { label: "Poisoned", group: "Condition" },
+  { label: "Restrained", group: "Condition" },
+  { label: "Stunned", group: "Condition" },
+  { label: "Unconscious", group: "Condition" },
+  // Common range options.
+  { label: "Melee", group: "Range" },
+  { label: "Reach", group: "Range" },
+  { label: "Self", group: "Range" },
+  { label: "Touch", group: "Range" },
+  { label: "Ranged", group: "Range" },
 ];
 
 // =============================================================================

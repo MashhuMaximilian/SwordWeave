@@ -737,6 +737,17 @@ export function isBehaviorLike(s: string): boolean {
  */
 export function parseValueField(raw: unknown): ValueToken[] {
   if (raw === null || raw === undefined) return [];
+  // If it's a single typed token object, pass through as a
+  // one-element array. Phase 8.I i2.5 saved stored modifier
+  // values as typed-token objects (e.g. {kind:"number",value:1}).
+  // The previous logic only recognized arrays of tokens; a
+  // single typed token fell through to coerceSingleValue which
+  // only handles primitives (number, boolean, string) — and
+  // returned null for objects → empty tokens array → empty
+  // chip stack → "value missing" when re-editing.
+  if (!Array.isArray(raw) && isTokenLike(raw)) {
+    return [raw as ValueToken];
+  }
   // If it's already a structured array of tokens, pass through.
   if (Array.isArray(raw) && raw.every((r) => isTokenLike(r))) {
     return raw as ValueToken[];
@@ -753,6 +764,10 @@ export function parseValueField(raw: unknown): ValueToken[] {
 function isTokenLike(value: unknown): boolean {
   if (typeof value !== "object" || value === null) return false;
   const obj = value as Record<string, unknown>;
+  // Phase 8.I i2.5f (Mashu 2026-08-05): include keyword + runtime
+  // kinds. They were missing — any keyword/dice expression stored
+  // as a typed token (e.g. {kind:"keyword", text:"advantage"})
+  // got dropped to [] on reload, breaking the form's chip stack.
   return (
     typeof obj["kind"] === "string" &&
     [
@@ -762,6 +777,8 @@ function isTokenLike(value: unknown): boolean {
       "behavior",
       "dice",
       "number",
+      "keyword",
+      "runtime",
     ].includes(obj["kind"])
   );
 }
@@ -774,6 +791,25 @@ function coerceSingleValue(raw: unknown): ValueToken | null {
     return { kind: "behavior", name: raw ? "true" : "false" };
   }
   if (typeof raw !== "string") return null;
+  // Phase 8.I i2.5f (Mashu 2026-08-05): [tag] convention from
+  // the equation input parser. The author types [fire] or
+  // [advantage] in the simple number field; we strip the
+  // brackets and emit a keyword token. Without this, [fire]
+  // becomes a behavior token named literally "[fire]" with
+  // the brackets intact — broken.
+  if (raw.startsWith("[") && raw.endsWith("]") && raw.length >= 3) {
+    const inner = raw.slice(1, -1).trim();
+    if (inner.length > 0) return { kind: "keyword", text: inner };
+  }
+  // Phase 8.I i2.5f: #dice# convention from the equation input
+  // parser. Strip the hashes and emit a dice token if the
+  // inner expression is valid.
+  if (raw.startsWith("#") && raw.endsWith("#") && raw.length >= 3) {
+    const inner = raw.slice(1, -1).trim();
+    if (inner.length > 0 && isDiceExpression(inner)) {
+      return { kind: "dice", expression: inner };
+    }
+  }
   // v3: "advantage"/"disadvantage" strings parse as behavior
   // tokens (since the bias op is gone). Used by grant/revoke.
   if (raw === "advantage" || raw === "disadvantage") {
