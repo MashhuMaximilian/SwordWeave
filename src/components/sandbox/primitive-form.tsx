@@ -541,6 +541,29 @@ function fromHardModifier(modifier: Record<string, unknown>, index: number): Mod
         : null,
   });
 
+  // Phase 8.I i2.5c (Mashu 2026-08-05): selectionForModifier
+  // doesn't handle free-text targets (behavior, strain, scene_pace).
+  // The behavior name lives in metadata.behaviorName OR
+  // metadata.scopeName. Read it here and inject into
+  // freeTextNarrowFocus so the form's free-text input repopulates.
+  let freeTextValue = selection.freeTextNarrowFocus ?? "";
+  const mdObj = meta;
+  const isFreeTextTarget = (() => {
+    const t = selection.target;
+    if (typeof t !== "string") return false;
+    const spec = MODIFIER_TARGET_SPEC[t as ModifierTarget];
+    return spec?.widget === "free-text" || spec?.widget === "checklist-with-free-text";
+  })();
+  if (isFreeTextTarget && mdObj) {
+    const bname = mdObj["behaviorName"];
+    const sname = mdObj["scopeName"];
+    if (typeof bname === "string" && bname.trim().length > 0) {
+      freeTextValue = bname;
+    } else if (typeof sname === "string" && sname.trim().length > 0) {
+      freeTextValue = sname;
+    }
+  }
+
   return {
     id: `modifier-${index + 1}`,
     target: selection.target,
@@ -559,7 +582,7 @@ function fromHardModifier(modifier: Record<string, unknown>, index: number): Mod
       : [],
     targetValues: [...selection.targetValues],
     granularity: "broad",
-    freeTextNarrowFocus: selection.freeTextNarrowFocus ?? "",
+    freeTextNarrowFocus: freeTextValue,
     conditionMode: cond ? "custom" : "always",
     conditionKey: String(cond?.["key"] ?? ""),
     conditionOperator:
@@ -653,6 +676,19 @@ function toHardModifier(modifier: ModifierDraft): import("@/types/swordweave").H
     freeTextNarrowFocus: modifier.freeTextNarrowFocus,
   });
 
+  // Phase 8.I i2.5c (Mashu 2026-08-05): free-text targets
+  // (behavior, strain, scene_pace, etc.) need the user-typed
+  // name persisted to metadata. scopeForSelection() only handles
+  // the targetScope axis — it drops freeTextNarrowFocus. We
+  // write the behaviorName (or scopeName for non-behavior
+  // free-text targets) here so the engine + load path can
+  // recover it.
+  const specForTarget = MODIFIER_TARGET_SPEC[canonicalTarget];
+  const isFreeTextTarget =
+    specForTarget?.widget === "free-text" ||
+    specForTarget?.widget === "checklist-with-free-text";
+  const freeTextValue = (modifier.freeTextNarrowFocus ?? "").trim();
+
   const hardModifier: import("@/types/swordweave").HardModifier = {
     kind: "modify" as const,
     target: canonicalTarget,
@@ -663,6 +699,16 @@ function toHardModifier(modifier: ModifierDraft): import("@/types/swordweave").H
       targetScope: scopeMetadata.targetScope,
       ...(scopeMetadata.granularity
         ? { granularity: scopeMetadata.granularity }
+        : {}),
+      // Persist the free-text name. For behavior target this
+      // is the behavior variable name (e.g. "blockValue"). For
+      // strain / scene_pace / duration it's the descriptive
+      // key (e.g. "physical_pain", "round").
+      ...(isFreeTextTarget && freeTextValue.length > 0
+        ? {
+            behaviorName: freeTextValue,
+            scopeName: freeTextValue,
+          }
         : {}),
     } as unknown as Record<string, import("@/types/swordweave").JsonValue>,
   };

@@ -499,9 +499,12 @@ describe("resolveModifiers — i2.5 — runtime token resolution", () => {
       slots: [makeSlot({ primitiveId: 1, hardModifiers: [add3Phys] })],
     };
     const result = resolveModifiers(input);
-    // Both keys populated.
+    // Both keys populated. Phase 8.I i2.5c: scoped values
+    // normalized to lowercase to match the engine's
+    // target-registry lookups (attribute.physical, not
+    // attribute.PHYSICAL).
     expect(result.totals["attribute"]).toBe(3);
-    expect(result.totals["attribute.PHYSICAL"]).toBe(3);
+    expect(result.totals["attribute.physical"]).toBe(3);
   });
 });
 

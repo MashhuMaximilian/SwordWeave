@@ -64,11 +64,16 @@ export function computeVitalityModifiersFromPrimitives(
       };
       if (String(mod.target ?? "") !== "max_vitality") continue;
 
+      // Phase 8.I i2.5c (Mashu 2026-08-05): typed tokens
+      // (PB chip, /physical/, etc.) are stored as objects.
+      // Without character state we can't resolve them here,
+      // so we skip them — the resolveModifiers() path (with
+      // character state) handles typed tokens. Plain numbers
+      // still work.
+      if (mod.value === null || typeof mod.value === "object") continue;
       const value = typeof mod.value === "number"
         ? mod.value
-        : typeof mod.value === "string"
-          ? Number(mod.value)
-          : NaN;
+        : Number(mod.value);
       if (!Number.isFinite(value)) continue;
 
       const op = String(mod.operation ?? "");

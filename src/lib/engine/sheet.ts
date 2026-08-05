@@ -28,6 +28,7 @@ import {
   computeVitalityModifiersFromPrimitives,
   type VitalityModifier,
 } from "./vitality";
+import { resolveValue, isTypedToken, type ResolveContext } from "./runtime-resolver";
 import {
   BUAccount,
   BUBalance,
@@ -265,11 +266,37 @@ export function aggregateCharacterSheet(
         : [];
       if (values.length === 0) continue;
 
-      const value = typeof mod.value === "number"
-        ? mod.value
-        : typeof mod.value === "string"
-          ? Number(mod.value)
-          : NaN;
+      // Phase 8.I i2.5c (Mashu 2026-08-05): typed tokens
+      // (PB chip, /physical/, etc.) are stored as objects,
+      // not plain numbers. We must resolve them through the
+      // runtime resolver (resolveValue) instead of NaNing
+      // them. For the practice math we only care about plain
+      // numeric contributions — typed tokens contribute 0
+      // unless the form's value resolves to a number, which
+      // the resolver handles.
+      const ctx: ResolveContext = {
+        level: input.level,
+        pb: 2 + Math.floor((input.level - 1) / 4),
+        attributes: {
+          physical: input.attrPhysical,
+          mental: input.attrMental,
+          magical: input.attrMagical,
+        } as ResolveContext["attributes"],
+        practices: {} as ResolveContext["practices"],
+        behaviorVariables: {} as ResolveContext["behaviorVariables"],
+      };
+      let value: number;
+      if (isTypedToken(mod.value)) {
+        value = resolveValue(mod.value, ctx);
+      } else if (typeof mod.value === "number") {
+        value = mod.value;
+      } else if (typeof mod.value === "string") {
+        const parsed = Number(mod.value);
+        if (!Number.isFinite(parsed)) continue;
+        value = parsed;
+      } else {
+        continue;
+      }
       if (!Number.isFinite(value)) continue;
 
       const op = String(mod.operation ?? "");

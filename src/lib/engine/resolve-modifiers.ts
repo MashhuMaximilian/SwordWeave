@@ -332,8 +332,11 @@ export function resolveModifiers(
 
       // Compute scoped targets from metadata.targetScope.values
       // (Phase 8.I i2.5). The form stores targetScope with a
-      // values array (e.g. ["PHYSICAL"] or ["PROWESS"]). When
-      // present, we emit one byTarget entry per value.
+      // values array (e.g. ["PHYSICAL"] or ["PROWESS"]) — usually
+      // uppercase. The engine's target-registry looks up scoped
+      // keys in LOWERCASE (e.g. "attribute.physical", not
+      // "attribute.PHYSICAL"). We normalize to lowercase here
+      // so the byTarget key matches.
       const scopedValues = (mod.metadata as Record<string, unknown> | undefined);
       let scopedValuesList: string[] = [];
       if (scopedValues && typeof scopedValues === "object") {
@@ -343,7 +346,7 @@ export function resolveModifiers(
           if (Array.isArray(values)) {
             scopedValuesList = values
               .filter((v): v is unknown => v !== null && v !== undefined)
-              .map((v) => String(v));
+              .map((v) => String(v).toLowerCase());
           }
         }
       }
