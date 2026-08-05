@@ -1,14 +1,98 @@
-# Phase 8.I — Engine Math Cluster (Modifiers → Numbers + Tags)
+# Phase 8.I — Modifier Resolution Engine (the SHEET, not the TABLE)
 
 **Author:** Senku
-**For:** Mashu — review & answer the remaining open questions before any implementation work
-**Status:** 🟡 Recap + question-collection phase. Rounds 1–3 answered 2026-08-04. Round 4 pending.
+**For:** Mashu — the recap is now in scope-refinement mode. Several items have been cut as out-of-scope. The few remaining questions are below.
+**Status:** 🟡 Recap + question-collection phase. Rounds 1–4 answered 2026-08-04. R5 in progress. Goal: close the recap and start coding.
 **Started:** 2026-08-04
 **Origin:** Session I from the master plan (post-Sessions G + H which closed on 2026-08-04)
 
 ---
 
-## Image evidence (round 3, 2026-08-04)
+## ⚠️ THE BIG REFRAME (R5-Q7, 2026-08-04)
+
+You said:
+
+> *"OUR SOFTWARE IS MORE LIKE A DIGITAL INTERACTIVE CHARACTER SHEET. NOT A WAY TO ACTUALLY PLAY THE GAME ON THE PHONE. THIS IS THE KEY to what we are trying to achieve."*
+>
+> *"we need a base of what and when numbers change based on primitives and capabilities that are active/inactive. And to offer a base for custom things and some operations. But not to calculate damage or all sorts of things like that per se."*
+>
+> *"when it comes to chains of events and stuff, well, that is for the table."*
+
+### What this means
+
+We are **not** building a combat simulator. We are building a **digital interactive character sheet**.
+
+The engine does NOT:
+- ❌ Resolve damage rolls at runtime
+- ❌ Calculate chains of effects (debuff → damage → condition)
+- ❌ Replace the DM's role at the table
+- ❌ Auto-roll dice
+- ❌ Track round-by-round combat state
+- ❌ Enforce the 11-field capability template (range, target, output, duration, casting time, scaling) — these are table syntax, not sheet values
+- ❌ Handle "Hybrid" source type — metadata only, not a computational axis
+- ❌ Use "Strain Tier" as a numeric value — DM heuristic, not sheet value
+
+The engine DOES:
+- ✅ Translate modifiers → numbers per attribute/practice/defense/vitality/movement
+- ✅ Display the per-axis running totals (with provenance in the modal)
+- ✅ Show capability active/inactive state (the toggle is on the sheet, not at the table)
+- ✅ Support custom behavior variables (`blockValue` etc.) AS A PLAYER TOOL, not auto-resolved
+- ✅ Evaluate conditions as gates (when toggle is ON, condition is checked)
+- ✅ Show glyphs for advantage/disadvantage/mirror/conditional
+- ✅ Show small cards for non-numeric tags (resistances, movement speeds, senses, languages)
+- ✅ **NEW (R5-Q6):** **Play session scratchpad** — a button to add temporary conditions (e.g. "I'm poisoned until long rest") with optional modifiers. This is a real Session I feature.
+
+### Items cut from the original Session I scope
+
+| Item | Reason |
+|---|---|
+| I23 — Source Type inheritance enforcement | In our model, source is metadata, doesn't affect sheet math |
+| I24 — Effect.has vector type (Direct Manifestation vs Projected Vector) | Table syntax, not sheet |
+| I25 — Effect.has resolution gate (save attr, DC formula) | Table syntax |
+| I26 — Effect.has temporal boundary (duration tier) | Table syntax |
+| I27 — Strain Tier separate from BU | DM heuristic, not sheet value |
+| I28 — Effect standalone trigger | Not in scope; caps trigger effects |
+| Effect template (mini-capability with own primitives "teeth") | Overkill for our model |
+| 11-field capability template | Overkill; we use 3 types (passive/augment/active) |
+| "Hybrid" source type | Removed |
+| 6 standalone Effect examples (System Freeze, Corrosive Decay, etc.) | Interesting but reference, not engine scope |
+
+### Items that survive in Session I scope
+
+- **I1** — Null sub-target bug (validation at save time)
+- **I2** — Engine resolution (replace buCost-as-proxy with hardModifier walk)
+- **I3** — Conditions runtime evaluation
+- **I4** — Stacking default `highest-only`
+- **I5** — Custom behavior variables (`blockValue` etc.)
+- **I7** — Advantage/disadvantage glyphs (`︽` / `︾`)
+- **I8** — Small cards zone (cards for non-numeric tags)
+- **I9** — Modal traceability
+- **I10** — Mirror penalties displayed (yellow)
+- **I12** — `buCost` is NOT a proxy
+- **I14** — Capability active/inactive toggle bundles
+- **I17** — Mirror is per-primitive (not per-capability)
+- **I18** — Equip gating for items (equippable only when equipped, non-equippable always contributes)
+- **I19** — Mirror color is yellow
+- **I20** — Hide stacking field when op = `set`
+- **I22** — DB backfill for advantage/disadvantage
+- **NEW I29** — **Play session scratchpad** (FAB → add temporary conditions with optional modifiers, duration tier, toggle on/off, delete)
+
+### Items deferred
+
+- **I6** — Tag operands in equations (e.g. `[fire]`) — rendered tags on action.roll / damage. Defer to Session K or later.
+- **I11** — DB seed quality — explicitly deferred per your H1 decision.
+- **I15** — Movement sub-types (climb, fly, swim, burrow) — easy if we do it, but defer.
+- **I16** — Action.roll sub-targets — IS happening in Session I (I30 below).
+- **I21** — Future FAB for runtime modifiers — **Promoted to I29 (play session scratchpad).**
+
+### New items from R5
+
+- **I30** — Action.roll sub-targets: `attack`, `save.physical`, `save.mental`, `save.magical`, `other` (for proficiencies, custom tools)
+- **I31** — Source Type is metadata-only (no engine math); remove "Hybrid" from spec
+- **I32** — `*` marker placement on the **target/sub-target axis** (not on the modifier itself), per R5-Q3 clarification
+- **I33** — Behavior name field for strain/scene/pace/behavior axes, per R5-Q4
+
+---
 
 You sent 4 screenshots. These are the canonical visual references for the current UI and the modifier convention.
 
@@ -1122,3 +1206,124 @@ The `capabilities.txt` spec lists source types as "Physical / Magical / Psychic 
 ## Round 5 questions — full text in message stream
 
 Several questions were unclear because you couldn't see the local doc. Full text is in the latest message stream.
+
+
+---
+
+## Round 5 decisions (2026-08-04)
+
+### R5-Q1. Flag malformed modifiers — column
+
+> *"a."*
+
+**Decision locked:** Add a `needs_review` boolean column on the `primitives` table. Server-side audit script flags malformed primitives. Surface flagged primitives in the data-atelier UI.
+
+### R5-Q2. Small cards taxonomy — agreed + Other category
+
+> *"yes those are good. however, Custom behaviors would be like bigger cards like we have for Attributes in the drawer. The rest like smaller cards, not necessarily like tags. meta tags would be tags. And the rest maybe we would group them in lists inside cards like for primitives, one card each category. But they are good. We also need proficiencies though. Like they would be targets action roll. sub-target other. so R4-Q2 we add other. And would be for proficiency with painting tools like targets action roll other grant proficiency bonus condition when using painting tools. I guess... so R4-Q2 we have attack, save, other."*
+
+**Decision locked:**
+- **Custom behaviors** (blockValue, manaPool, etc.) — **BIG cards** (like Attributes in the drawer)
+- **Movement, Damage modifiers, Senses, Languages, Proficiencies** — **smaller cards**, grouped by category (one card per category)
+- **Meta tags** (cantSpeak, isFlying, isGrappled, etc.) — **inline tags** (chips, not cards)
+- New category: **Proficiencies** (with `other` action.roll sub-target)
+
+### R5-Q3. Condition text — modal, `*` on the axis
+
+> *"a. in the modal. we add the * on the proper thing -> which is the target or sub-target to let them know there are more conditions. Like I would have prowess + 4 *. In modal we have breakdown but we'd have a section for conditions and there we have extra +1 if target is grappled. I don't want to use on hover because on mobile we cannot make hover work... that is why we have on click modals."*
+
+**Decision locked:**
+- `*` marker is on the **target/sub-target axis** (e.g. `PROWESS +4 *`), not on the modifier itself
+- Modal has a "Conditions" section showing explicit conditions
+- No hover tooltips (mobile-incompatible)
+- On-click modals are the only expansion mechanism
+
+### R5-Q4. Behavior name field for free-text axes
+
+> *"yes. we need to set value for 'Behavior name (key)' in strain, scene pace, behavior."*
+
+**Decision locked:** For `action.strain`, `scene.pace`, and `behavior:<name>` axes, the modifier composer needs a "Behavior name (key)" field. The value writes to that behavior variable. So `action.strain` modifier with `+5` value and `behavior:exhaustion_penalty` key would write `exhaustion_penalty = 5` to the character's runtime state.
+
+### R5-Q5. Anything else ambiguous — covered
+
+> *"i answer per question and I write extra things for ambiguous things. After we clear up all the questions we will make a big recap so we understand the scope and see if anything is wrong or whatever. Because there are also db and in UI in the primitive build modal in selection fields etc."*
+
+**Decision locked:** You'll continue answering per question. After the recap closes, we'll do a big review pass to verify scope. DB seating and UI selection fields in the primitive build modal are also part of the review.
+
+### R5-Q6. Hybrid source type — removed
+
+> *"We don't need hybrid. Psychic changed to mental. basically we know how it scales. If physical attack bonus scales with physical attribute, mental with mental, and magic with magic. (with pb where the case and modifiers from primitives). Hybrid would be hard to resolve. It's implicit, dm rules at the table, but not our software."*
+
+**Decision locked:**
+- Remove "Hybrid" from spec
+- Note: "Psychic" was renamed to "mental" in your head — but the spec calls it "Psychic". Let me know if this is a rename.
+- Source Type is metadata only (doesn't affect sheet math)
+- The scaling rules per source:
+  - Physical attacks/abilities use Physical attribute (+ PB where applicable)
+  - Mental abilities use Mental attribute
+  - Magic abilities use Magic attribute
+- DM adjudicates mixed-source cases at the table
+
+### R5-Q7. capabilities.txt may be outdated
+
+> *"that may be outdated. But the capabilities.txt may be outdated tbh...like the capability template I guess is very different from the model we built.... but the model we built is better on how to construct capabilities. Because a lot of things like targeting, range, output, Duration and casting time, scaling are for the table, not in-app. Like the template is more of a syntax how to say you use at the table. Also not all capabilities need to include verb or domain, since those are more for flavor and table. Sometimes they may be implied."*
+>
+> *"maybe, now that i am thinking about all this, maybe we are trying to do too much....idkkk..."*
+
+**Decision locked:**
+- `capabilities.txt` is reference material, not authoritative spec
+- Our model (3 cap types: passive/augment/active) is the canonical engine structure
+- Targeting, range, output, duration, casting time, scaling are TABLE syntax, not engine scope
+- Verb/Domain are flavor/implicit, not required engine fields
+- "Maybe we're trying to do too much" — **YES**, the recap was sprawling. The big reframe at the top of this doc cuts scope significantly.
+
+### R5-Q8 (NEW). "Psychic" → "Mental" rename
+
+You mentioned "Psychic changed to mental" in R5-Q6. Both names appear in the spec. Per the spec's "BU Market" page, attributes are "physical / mental / magical". But the source types in the capability template are "Physical / Magical / Psychic / Hybrid". 
+
+**Decision locked:** Source type "Psychic" → "Mental" (matches the attribute name). Confirm: are these the same thing or are they different concepts (e.g. Psychic = mental magic, Mental = psionic)?
+
+**R5-Q8 — answer in next message.**
+
+### R5-Q9 (NEW). "What" the capability does — what does this mean?
+
+> *"It's important what the capability does mainly like does it fire things up, does it stun, does it make me invisible or transform me? how many targets how many dice how far how fast those are resolved by the dm and the player at the table."*
+
+So the capability needs to describe its INTENT (what it does) and the TABLE mechanics (how many targets, dice, range) are resolved by the DM/player. The sheet needs to show the intent + the modifier contributions.
+
+**Open follow-up (R5-Q9):** Where does the "intent" live in the schema? Is it the existing `capability.description` field? Or do we need a new field like `capability.intent` or `capability.sheet_summary`?
+
+**R5-Q9 — answer in next message.**
+
+### R5-Q10 (NEW). "Review pass" before starting code
+
+You mentioned a "big recap" to review scope. Let's do that now. The current scope is:
+
+- 17 surviving items (I1, I2, I3, I4, I5, I7, I8, I9, I10, I12, I14, I17, I18, I19, I20, I22, I29)
+- 4 new items from R5 (I30, I31, I32, I33)
+- 8 items deferred (I6, I11, I15, I16→I30 done, I21→I29 done, I23–I28 cut)
+- 1 new question (R5-Q8, R5-Q9)
+
+Is the scope right? Anything else to add / cut?
+
+---
+
+## Next round of questions — full text in message stream
+
+The recap is close to closing. I have 3 final questions to ask:
+
+### R5-Q8. "Psychic" → "Mental" — confirm or not?
+
+Per the spec, source types are "Physical / Magical / Psychic / Hybrid". Per the attributes, they are "physical / mental / magical". You said "Psychic changed to mental" — is this a rename (Psychic and Mental are the same concept, just different names) or are they DIFFERENT (e.g. Psychic = mental magic, Mental = psionic)?
+
+### R5-Q9. Capability "intent" — where does it live?
+
+The capability needs to describe WHAT it does (intent: "fire things up", "stun", "make me invisible", "transform me"). The HOW (how many targets, dice, range) is DM/player table territory.
+
+Question: is the "intent" stored in the existing `capability.description` field, or do we need a new schema field (e.g. `capability.intent` or `capability.sheet_summary`)?
+
+### R5-Q10. Scope review — anything else to add/cut before we start coding?
+
+The current Session I scope is 17 surviving items + 4 new items. Anything else to add? Anything that should be cut further?
+
+If you're ready, we can start coding after this round.
