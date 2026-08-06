@@ -42,6 +42,7 @@ import {
   classifyTypedValue,
   isBooleanValueType,
   NUMBER_SHORTCUTS,
+  RUNTIME_VARIABLES,
   showsNumberShortcuts,
   SUB_CHOICE_KEYWORDS,
   type FormValueKind,
@@ -396,6 +397,49 @@ function TokenPicker({
     </div>
   );
 
+  // Section: Runtime Variables — i2.7. Author can pick
+  // /size/, /source_type/, /upkeep_cost/, etc. without typing.
+  // Emits { kind: "runtime", name: v.name, hint: v.hint }.
+  const runtimeGroups = (() => {
+    const byGroup = new Map<string, typeof RUNTIME_VARIABLES>();
+    for (const v of RUNTIME_VARIABLES) {
+      const list = byGroup.get(v.group) ?? [];
+      byGroup.set(v.group, [...list, v]);
+    }
+    return Array.from(byGroup.entries());
+  })();
+  const runtimeSection = (
+    <CollapsibleSection
+      title="Runtime Variables (/size/, /source_type/...)"
+      count={RUNTIME_VARIABLES.length}
+    >
+      <div className="mt-1 space-y-1.5">
+        {runtimeGroups.map(([group, items]) => (
+          <div key={group}>
+            <p className="px-1 text-[9px] uppercase tracking-wide text-muted-foreground/70">
+              {group}
+            </p>
+            <div className="mt-0.5 flex flex-wrap gap-1">
+              {items.map((v) => (
+                <button
+                  key={v.name}
+                  type="button"
+                  onClick={() =>
+                    onPick({ kind: "runtime", name: v.name, hint: v.hint })
+                  }
+                  title={`Add /${v.name}/ (resolved at runtime against the character sheet)`}
+                  className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-xs italic text-indigo-700 hover:bg-indigo-500/20 dark:text-indigo-300"
+                >
+                  /{v.name}/
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </CollapsibleSection>
+  );
+
   return (
     <div className="space-y-2 rounded-md border border-border bg-card p-2 shadow-sm">
       {numberSection}
@@ -405,6 +449,7 @@ function TokenPicker({
       {derivedSection}
       {diceSection}
       {subChoiceSection}
+      {runtimeSection}
 
       <div>
         <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">

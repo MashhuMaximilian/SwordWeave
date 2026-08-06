@@ -519,7 +519,8 @@ export interface SubChoiceKeyword {
     | "Size"
     | "Source Type"
     | "Encumbrance"
-    | "Upkeep";
+    | "Upkeep"
+    | "Tier";
 }
 
 export const SUB_CHOICE_KEYWORDS: readonly SubChoiceKeyword[] = [
@@ -607,6 +608,12 @@ export const SUB_CHOICE_KEYWORDS: readonly SubChoiceKeyword[] = [
   // suggest the new atoms (size, source type, encumbrance,
   // upkeep) as keyword tags. Same surface as target / trigger.
   // Size tiers — same list as the target SPEC.
+  { label: "Tier 1", group: "Tier" },
+  { label: "Tier 2", group: "Tier" },
+  { label: "Tier 3", group: "Tier" },
+  { label: "Tier 4", group: "Tier" },
+  { label: "Tier 5", group: "Tier" },
+  { label: "Tier 6", group: "Tier" },
   { label: "Tiny", group: "Size" },
   { label: "Small", group: "Size" },
   { label: "Medium", group: "Size" },
@@ -626,6 +633,54 @@ export const SUB_CHOICE_KEYWORDS: readonly SubChoiceKeyword[] = [
   { label: "Upkeep Cost", group: "Upkeep" },
   { label: "Maintained", group: "Upkeep" },
   { label: "Complexity", group: "Upkeep" },
+];
+
+/**
+ * Runtime variable suggestions — atoms the author can pick as
+ * /<name>/ refs that resolve at character-sheet slot time.
+ * Mapped to engine output: clicking a chip emits
+ * `{ kind: "runtime", name: <value>, hint: "number" | "text" }`.
+ *
+ * Phase 8.I i2.7 (Mashu 2026-08-06): the value picker should
+ * offer every new target atom as a runtime reference, not just
+ * as a typed /name/ in the custom input. Click the chip, the
+ * author gets /size/ without typing.
+ *
+ * Groups:
+ *   - 'Stat'        — numeric character-sheet reads
+ *   - 'Tag Enum'    — tag enum comparisons (size tier, source type)
+ *   - 'Sub-Target'  — author-named sub-target refs (equip slot,
+ *                     damage type, maintained capability)
+ *   - 'Custom'      — author-typed anything
+ */
+export interface RuntimeVariable {
+  /** Suggestion chip label. */
+  readonly label: string;
+  /** Token name (the /<name>/ value). */
+  readonly name: string;
+  /** Resolves to a number or text? */
+  readonly hint: "number" | "text";
+  /** Section label for the value picker. */
+  readonly group: "Stat" | "Tag Enum" | "Sub-Target" | "Custom";
+}
+
+export const RUNTIME_VARIABLES: readonly RuntimeVariable[] = [
+  // Numeric character-sheet reads.
+  { label: "speed", name: "speed", hint: "number", group: "Stat" },
+  { label: "carry capacity", name: "carry_capacity", hint: "number", group: "Stat" },
+  { label: "load", name: "load", hint: "number", group: "Stat" },
+  { label: "upkeep cost", name: "upkeep_cost", hint: "number", group: "Stat" },
+  { label: "complexity", name: "complexity", hint: "number", group: "Stat" },
+  // Tag enum comparisons (engine maps enum to numeric tier).
+  { label: "size", name: "size", hint: "number", group: "Tag Enum" },
+  { label: "source type", name: "source_type", hint: "number", group: "Tag Enum" },
+  // Sub-target refs — author names the key at primitive time,
+  // the chip is the placeholder; the user typically types
+  // /equip_slot:weapon/ directly.
+  { label: "equip slot:<key>", name: "equip_slot:<key>", hint: "text", group: "Sub-Target" },
+  { label: "damage type:<key>", name: "damage_type:<key>", hint: "text", group: "Sub-Target" },
+  { label: "maintained:<key>", name: "maintained:<key>", hint: "number", group: "Sub-Target" },
+  { label: "upkeep cost:<key>", name: "upkeep_cost:<key>", hint: "number", group: "Sub-Target" },
 ];
 
 // =============================================================================

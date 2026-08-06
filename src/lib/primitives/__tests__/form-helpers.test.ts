@@ -33,6 +33,7 @@ import {
   NUMBER_SHORTCUTS,
   OPERATION_LABELS,
   parseEquationInput,
+  RUNTIME_VARIABLES,
   showsNumberShortcuts,
   SUB_CHOICE_KEYWORDS,
   valueTypeLabel,
@@ -766,15 +767,77 @@ describe("SUB_CHOICE_KEYWORDS — i2.7 atoms", () => {
     expect(labels).toContain("Complexity");
   });
 
-  it("has new keyword groups (Size / Source Type / Encumbrance / Upkeep)", () => {
-    const groups = new Set(SUB_CHOICE_KEYWORDS.map((k) => k.group));
-    for (const g of [
+  it("has new keyword groups (Size / Source Type / Encumbrance / Upkeep / Tier)", () => {
+    const expectedGroups = [
       "Size",
       "Source Type",
       "Encumbrance",
       "Upkeep",
-    ]) {
+      "Tier",
+    ] as const;
+    const groups = new Set(SUB_CHOICE_KEYWORDS.map((k) => k.group));
+    for (const g of expectedGroups) {
       expect(groups.has(g)).toBe(true);
     }
+  });
+});
+
+
+describe("RUNTIME_VARIABLES - value picker chip feed", () => {
+  it("includes the i2.7 numeric stat atoms", () => {
+    const names = RUNTIME_VARIABLES.map((v) => v.name);
+    for (const n of ["speed", "carry_capacity", "load", "upkeep_cost", "complexity"]) {
+      expect(names).toContain(n);
+    }
+  });
+
+  it("includes the i2.7 tag enum atoms (size, source_type)", () => {
+    const names = RUNTIME_VARIABLES.map((v) => v.name);
+    expect(names).toContain("size");
+    expect(names).toContain("source_type");
+  });
+
+  it("includes the i2.7 sub-target placeholder atoms", () => {
+    const names = RUNTIME_VARIABLES.map((v) => v.name);
+    expect(names).toContain("equip_slot:<key>");
+    expect(names).toContain("damage_type:<key>");
+    expect(names).toContain("maintained:<key>");
+  });
+
+  it("groups atoms into Stat / Tag Enum / Sub-Target sections", () => {
+    const groups = new Set(RUNTIME_VARIABLES.map((v) => v.group));
+    expect(groups.has("Stat")).toBe(true);
+    expect(groups.has("Tag Enum")).toBe(true);
+    expect(groups.has("Sub-Target")).toBe(true);
+  });
+
+  it("numeric atoms have hint='number'", () => {
+    const numeric = RUNTIME_VARIABLES.filter((v) => v.hint === "number");
+    expect(numeric.length).toBeGreaterThan(0);
+    for (const v of numeric) {
+      expect(v.hint).toBe("number");
+    }
+  });
+
+  it("text-hint atoms include sub-target placeholders", () => {
+    const text = RUNTIME_VARIABLES.filter((v) => v.hint === "text");
+    expect(text.length).toBeGreaterThan(0);
+    for (const v of text) {
+      expect(v.hint).toBe("text");
+    }
+  });
+});
+
+describe("SUB_CHOICE_KEYWORDS - Tier 1-6", () => {
+  it("includes Tier 1 through Tier 6", () => {
+    const labels = SUB_CHOICE_KEYWORDS.map((k) => k.label);
+    for (const tier of ["Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 5", "Tier 6"]) {
+      expect(labels).toContain(tier);
+    }
+  });
+
+  it("all tier keywords share the Tier group", () => {
+    const tierKw = SUB_CHOICE_KEYWORDS.filter((k) => k.group === "Tier");
+    expect(tierKw.length).toBe(6);
   });
 });
