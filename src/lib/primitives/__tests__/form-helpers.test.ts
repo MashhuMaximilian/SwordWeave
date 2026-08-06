@@ -721,3 +721,60 @@ describe("SUB_CHOICE_KEYWORDS — sub-choice picker", () => {
     }
   });
 });
+
+// ---- Phase 8.I i2.7 — value picker has every target atom ----
+
+describe("SUB_CHOICE_KEYWORDS — i2.7 atoms", () => {
+  it("includes size tiers (Tiny..Gargantuan)", () => {
+    const labels = SUB_CHOICE_KEYWORDS.map((k) => k.label);
+    for (const tier of [
+      "Tiny",
+      "Small",
+      "Medium",
+      "Large",
+      "Huge",
+      "Gargantuan",
+    ]) {
+      expect(labels).toContain(tier);
+    }
+  });
+
+  it("includes source types (Physical/Magical/Mental in Source Type group)", () => {
+    // Phase 8.I i2.7: source type PSYCHIC renamed to MENTAL.
+    // We check the Source Type group rather than all labels —
+    // Psychic still exists as a damage type keyword (separate
+    // concept) and that's correct.
+    const sourceTypeLabels = SUB_CHOICE_KEYWORDS
+      .filter((k) => k.group === "Source Type")
+      .map((k) => k.label);
+    expect(sourceTypeLabels).toContain("Physical");
+    expect(sourceTypeLabels).toContain("Magical");
+    expect(sourceTypeLabels).toContain("Mental");
+  });
+
+  it("includes encumbrance atoms (carry capacity / equip slot / load)", () => {
+    const labels = SUB_CHOICE_KEYWORDS.map((k) => k.label);
+    expect(labels).toContain("Carry Capacity");
+    expect(labels).toContain("Equip Slot");
+    expect(labels).toContain("Load");
+  });
+
+  it("includes upkeep / maintained / complexity atoms", () => {
+    const labels = SUB_CHOICE_KEYWORDS.map((k) => k.label);
+    expect(labels).toContain("Upkeep Cost");
+    expect(labels).toContain("Maintained");
+    expect(labels).toContain("Complexity");
+  });
+
+  it("has new keyword groups (Size / Source Type / Encumbrance / Upkeep)", () => {
+    const groups = new Set(SUB_CHOICE_KEYWORDS.map((k) => k.group));
+    for (const g of [
+      "Size",
+      "Source Type",
+      "Encumbrance",
+      "Upkeep",
+    ]) {
+      expect(groups.has(g)).toBe(true);
+    }
+  });
+});

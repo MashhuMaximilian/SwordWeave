@@ -515,7 +515,11 @@ export interface SubChoiceKeyword {
     | "Bias"
     | "Damage Type"
     | "Condition"
-    | "Range";
+    | "Range"
+    | "Size"
+    | "Source Type"
+    | "Encumbrance"
+    | "Upkeep";
 }
 
 export const SUB_CHOICE_KEYWORDS: readonly SubChoiceKeyword[] = [
@@ -599,6 +603,29 @@ export const SUB_CHOICE_KEYWORDS: readonly SubChoiceKeyword[] = [
   { label: "Self", group: "Range" },
   { label: "Touch", group: "Range" },
   { label: "Ranged", group: "Range" },
+  // Phase 8.I i2.7 (Mashu 2026-08-06) — value picker should
+  // suggest the new atoms (size, source type, encumbrance,
+  // upkeep) as keyword tags. Same surface as target / trigger.
+  // Size tiers — same list as the target SPEC.
+  { label: "Tiny", group: "Size" },
+  { label: "Small", group: "Size" },
+  { label: "Medium", group: "Size" },
+  { label: "Large", group: "Size" },
+  { label: "Huge", group: "Size" },
+  { label: "Gargantuan", group: "Size" },
+  // Source types — physical / magical / mental (PSYCHIC
+  // renamed to MENTAL per Mashu 2026-08-06).
+  { label: "Physical", group: "Source Type" },
+  { label: "Magical", group: "Source Type" },
+  { label: "Mental", group: "Source Type" },
+  // Encumbrance — equip slot + load keywords.
+  { label: "Carry Capacity", group: "Encumbrance" },
+  { label: "Equip Slot", group: "Encumbrance" },
+  { label: "Load", group: "Encumbrance" },
+  // Upkeep — numeric capability tags.
+  { label: "Upkeep Cost", group: "Upkeep" },
+  { label: "Maintained", group: "Upkeep" },
+  { label: "Complexity", group: "Upkeep" },
 ];
 
 // =============================================================================
