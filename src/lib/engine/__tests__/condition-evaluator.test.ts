@@ -624,3 +624,115 @@ describe("evaluateCondition — grouped stat refs (i2.6)", () => {
     ).toBe(true);
   });
 });
+
+
+// ---- i2.6 — grouped proficiency checks + custom proficiencies ----
+
+describe("evaluateCondition — proficiency groupings (i2.6)", () => {
+  it("not_proficient_in(all_practices) fires when NOT proficient in ANY practice", () => {
+    // (i.e. true iff not_proficient covers at least one practice —
+    // the check as written matches the "every member is non-proficient"
+    // semantic, which is too strict for "any one is non-proficient"
+    // patterns). For Broad Familiarity the per-practice dynamic
+    // form (not_proficient without parens) is the correct path.
+    const ctx = makeCtx({
+      character: makeCharacter({
+        proficiencies: new Set(),
+      }),
+    });
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["actor:not_proficient_in(all_practices)"],
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("not_proficient_in(all_practices) is false if proficient in any practice", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        proficiencies: new Set(["prowess"]),
+      }),
+    });
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["actor:not_proficient_in(all_practices)"],
+        },
+        ctx,
+      ),
+    ).toBe(false);
+  });
+
+  it("not_proficient_in(all_saves) fires when NOT proficient in any save", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        proficiencies: new Set(),
+      }),
+    });
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["actor:not_proficient_in(all_saves)"],
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("custom proficiency — proficient_in(painting) reads custom Set entry", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        proficiencies: new Set(["painting"]),
+      }),
+    });
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["actor:proficient_in(painting)"],
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("custom proficiency — not_proficient_in(thieves_tools) is true when missing", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        proficiencies: new Set([]),
+      }),
+    });
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["actor:not_proficient_in(thieves_tools)"],
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("attribute proficiency — proficient_in_attribute(physical) reads Set", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        proficiencies: new Set(["physical"]),
+      }),
+    });
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["actor:proficient_in_attribute(physical)"],
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+});

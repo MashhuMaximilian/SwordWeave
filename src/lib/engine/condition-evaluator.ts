@@ -32,6 +32,7 @@
  */
 
 import type { ModifierCondition } from "@/types/condition";
+import { ALL_PRACTICES, ALL_ATTRIBUTES } from "@/types/modifier";
 import type { PracticeKey } from "@/types/modifier";
 
 // =============================================================================
@@ -70,9 +71,13 @@ export interface CharacterConditionState {
   readonly attributes: AttributeState;
   /** Per-practice score (10 practices). */
   readonly practices: PracticeState;
-  /** Practice proficiency flags. A practice is in this set when
-   *  the character has a Practice Proficiency slotted there. */
-  readonly proficiencies: ReadonlySet<PracticeKey>;
+  /** Proficiency flags. Each entry is a practice name (one of
+   *  10), an attribute name (one of 3), or a custom proficiency
+   *  string (e.g. "painting", "thieves_tools"). The character
+   *  gains a set membership when they slot a Proficiency primitive
+   *  for that target, or via the planned extra-FAB layer on the
+   *  character sheet (Phase 8.I i2.6 follow-on). */
+  readonly proficiencies: ReadonlySet<string>;
   /** Boolean flags the player has set on the character (e.g.
    *  "prone", "stunned", "sick", "wounded"). These are managed
    *  via the planned extra-FAB layer on the character sheet
@@ -520,13 +525,39 @@ function checkSelfFlag(
   character: CharacterConditionState,
   currentPractice: PracticeKey | null | undefined,
 ): boolean {
+  // Grouped proficiency checks (Phase 8.I i2.6 — Mashu 2026-08-06).
+  // `all_practices` / `all_saves` aggregate over every member of
+  // the relevant axis. `all_practices` returns true iff the
+  // character is/isn't proficient in EVERY practice; `all_saves`
+  // does the same for saves (currently modeled as 3 attribute
+  // saves — full save math comes in a later phase).
+  if (label === "proficient_in(all_practices)") {
+    return ALL_PRACTICES.every((p) => character.proficiencies.has(p));
+  }
+  if (label === "not_proficient_in(all_practices)") {
+    return ALL_PRACTICES.every((p) => !character.proficiencies.has(p));
+  }
+  if (label === "proficient_in(all_saves)") {
+    return ALL_ATTRIBUTES.every((a) => character.proficiencies.has(`save_${a}`));
+  }
+  if (label === "not_proficient_in(all_saves)") {
+    return ALL_ATTRIBUTES.every((a) => !character.proficiencies.has(`save_${a}`));
+  }
   if (label.startsWith("proficient_in(")) {
-    const practice = label.slice("proficient_in(".length, -1) as PracticeKey;
+    const practice = label.slice("proficient_in(".length, -1);
     return character.proficiencies.has(practice);
   }
   if (label.startsWith("not_proficient_in(")) {
-    const practice = label.slice("not_proficient_in(".length, -1) as PracticeKey;
+    const practice = label.slice("not_proficient_in(".length, -1);
     return !character.proficiencies.has(practice);
+  }
+  if (label.startsWith("proficient_in_attribute(")) {
+    const attr = label.slice("proficient_in_attribute(".length, -1);
+    return character.proficiencies.has(attr);
+  }
+  if (label.startsWith("not_proficient_in_attribute(")) {
+    const attr = label.slice("not_proficient_in_attribute(".length, -1);
+    return !character.proficiencies.has(attr);
   }
   // Phase 8.I i2.6 (Mashu 2026-08-06): dynamic proficiency check.
   // Authors can write `actor:not_proficient` (no parens) and the

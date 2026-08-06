@@ -252,6 +252,22 @@ export function PickerProficiencySection({
             >
               proficient
             </button>
+            <button
+              type="button"
+              onClick={() => onAdd("not_proficient_in(all_practices)", "all_practices", "practice")}
+              className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-xs text-orange-700 hover:bg-orange-500/20 dark:text-orange-300"
+              title="Fires when the character is not proficient in EVERY practice"
+            >
+              not_proficient(all practices)
+            </button>
+            <button
+              type="button"
+              onClick={() => onAdd("not_proficient_in(all_saves)", "all_saves", "practice")}
+              className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-xs text-orange-700 hover:bg-orange-500/20 dark:text-orange-300"
+              title="Fires when the character is not proficient in EVERY save"
+            >
+              not_proficient(all saves)
+            </button>
           </div>
         </div>
         <div>
@@ -332,8 +348,71 @@ export function PickerProficiencySection({
             ))}
           </div>
         </div>
+
+        {/* Custom proficiency input — e.g. 'painting', 'thieves_tools' */}
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Custom (anything not in the canonical list)
+          </div>
+          <CustomProficiencyInput
+            onAdd={(label, mode) => onAdd(label, label, mode as "practice" | "attribute")}
+          />
+        </div>
       </div>
     </CollapsibleSection>
+  );
+}
+
+/**
+ * Custom proficiency input — author types any tag name
+ * (e.g. 'painting', 'thieves_tools') and clicks the matching
+ * +/− button to emit a structured pill.
+ */
+function CustomProficiencyInput({
+  onAdd,
+}: {
+  readonly onAdd: (
+    label: string,
+    practice: string,
+    mode: "practice" | "attribute",
+  ) => void;
+}): ReactElement {
+  const [draft, setDraft] = useState("");
+  const trimmed = draft.trim();
+  const submit = (mode: "practice" | "attribute") => {
+    if (trimmed.length === 0) return;
+    onAdd(`${mode === "practice" ? "proficient_in" : "proficient_in_attribute"}(${trimmed})`, trimmed, mode);
+    setDraft("");
+  };
+  return (
+    <div className="mt-1 flex items-center gap-1.5 text-xs">
+      <input
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") submit("practice");
+        }}
+        placeholder="e.g. painting, thieves_tools"
+        className="w-44 rounded-md border border-input bg-background px-2 py-0.5 font-mono text-xs"
+      />
+      <button
+        type="button"
+        onClick={() => submit("practice")}
+        disabled={trimmed.length === 0}
+        className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 hover:bg-emerald-500/25 disabled:opacity-40 dark:text-emerald-300"
+      >
+        + add
+      </button>
+      <button
+        type="button"
+        onClick={() => submit("attribute")}
+        disabled={trimmed.length === 0}
+        className="rounded-md bg-orange-500/15 px-2 py-0.5 text-xs font-medium text-orange-700 hover:bg-orange-500/25 disabled:opacity-40 dark:text-orange-300"
+      >
+        − add
+      </button>
+    </div>
   );
 }
 
