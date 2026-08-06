@@ -377,3 +377,116 @@ describe("evaluatePredicate — flag + tag checks", () => {
     ).toBe(true);
   });
 });
+
+
+// ---- Phase 8.I i2.6 — structured pills (stat comparisons via tokens) ------
+
+describe("evaluateCondition — structured stat pills (i2.6)", () => {
+  it("vitality < 10 fires when current HP is 9", () => {
+    const ctx = makeCtx({ character: makeCharacter({ vitality: 9, vitalityMax: 60 }) });
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["self:stat|vitality|<|10"],
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("vitality < 10 does NOT fire when current HP is 11", () => {
+    const ctx = makeCtx({ character: makeCharacter({ vitality: 11, vitalityMax: 60 }) });
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["self:stat|vitality|<|10"],
+        },
+        ctx,
+      ),
+    ).toBe(false);
+  });
+
+  it("vitality_pct < 0.5 fires at 25/60", () => {
+    const ctx = makeCtx({ character: makeCharacter({ vitality: 25, vitalityMax: 60 }) });
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["self:stat|vitality_pct|<|0.5"],
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("block_value > 5 fires at 6", () => {
+    const ctx = makeCtx({ character: makeCharacter({ blockValue: 6 }) });
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["self:stat|block_value|>|5"],
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("between: vitality between 5-15 fires at 10", () => {
+    const ctx = makeCtx({ character: makeCharacter({ vitality: 10, vitalityMax: 60 }) });
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["self:stat|vitality|between|5|15"],
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("compound AND: vitality < 10 AND is_prone", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({ vitality: 9, vitalityMax: 60, flags: new Set(["is_prone"]) }),
+    });
+    expect(
+      evaluateCondition(
+        {
+          kind: "compound",
+          tokens: ["self:stat|vitality|<|10", "AND", "self:is_prone"],
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("compound AND: vitality < 10 fails when NOT prone", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({ vitality: 9, vitalityMax: 60, flags: new Set() }),
+    });
+    expect(
+      evaluateCondition(
+        {
+          kind: "compound",
+          tokens: ["self:stat|vitality|<|10", "AND", "self:is_prone"],
+        },
+        ctx,
+      ),
+    ).toBe(false);
+  });
+
+  it("proficient_in(prowess) static pill — non-dynamic", () => {
+    const ctx = makeCtx({ character: makeCharacter({ proficiencies: new Set(["prowess"]) }) });
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["self:proficient_in(prowess)"],
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+});

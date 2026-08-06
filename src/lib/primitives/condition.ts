@@ -222,9 +222,76 @@ export function validateCompoundTokens(tokens: readonly string[]): void {
  * parallel and interleaves them with the `category:` prefix
  * on each pill.
  */
+/**
+ * Serialize a structured pill to a token string the engine reads.
+ *
+ * Token shapes by kind:
+ *   - 'tag'           → `${category}:${label}`
+ *   - 'flag'          → `${category}:${flag}`
+ *   - 'proficiency'   → `${category}:proficient_in(${practice})` /
+ *                       `${category}:not_proficient_in(${practice})`
+ *                       (or just `${category}:not_proficient` /
+ *                       `${category}:proficient` when practice is
+ *                       dynamic via currentPractice)
+ *   - 'stat'          → `${category}:stat|${stat}|${op}|${value}[|${valueHigh}]`
+ *                       (engine parses this 4- or 5-tuple shape)
+ */
+export function serializeConditionPill(pill: {
+  readonly category: ConditionPresetCategory;
+  readonly label: string;
+  readonly kind?: 'tag' | 'flag' | 'stat' | 'proficiency' | undefined;
+  readonly stat?: string | undefined;
+  readonly operator?: '<' | '<=' | '=' | '!=' | '>=' | '>' | 'between' | undefined;
+  readonly value?: number | undefined;
+  readonly valueHigh?: number | undefined;
+  readonly practice?: string | undefined;
+  readonly flag?: string | undefined;
+}): string {
+  const k = pill.kind ?? 'tag';
+  switch (k) {
+    case 'tag':
+      return `${pill.category}:${pill.label}`;
+    case 'flag':
+      return `${pill.category}:${pill.flag ?? pill.label}`;
+    case 'proficiency': {
+      // If no practice is set, the engine uses currentPractice as
+      // the dynamic practice (the engine's per-practice walk sets
+      // it before evaluating). Tokens emitted without a practice
+      // are dynamic.
+      const op =
+        pill.label.startsWith('not') ? 'not_proficient' : 'proficient';
+      if (pill.practice && pill.practice.length > 0) {
+        return `${pill.category}:${op}_in(${pill.practice})`;
+      }
+      return `${pill.category}:${op}`;
+    }
+    case 'stat': {
+      // Encode stat comparison as a 4- or 5-tuple pipe-separated.
+      // The engine's evaluateCompound path splits on '|' to read
+      // (kind, stat, op, value, valueHigh?).
+      const op = pill.operator ?? '=';
+      const v = pill.value ?? 0;
+      if (op === 'between') {
+        return `${pill.category}:stat|${pill.stat ?? ''}|${op}|${v}|${pill.valueHigh ?? v}`;
+      }
+      return `${pill.category}:stat|${pill.stat ?? ''}|${op}|${v}`;
+    }
+  }
+}
+
 export function serializeCompoundTokens(
-  pills: readonly { category: ConditionPresetCategory; label: string }[],
-  operators: readonly ("AND" | "OR")[],
+  pills: readonly {
+    category: ConditionPresetCategory;
+    label: string;
+    kind?: 'tag' | 'flag' | 'stat' | 'proficiency' | undefined;
+    stat?: string | undefined;
+    operator?: '<' | '<=' | '=' | '!=' | '>=' | '>' | 'between' | undefined;
+    value?: number | undefined;
+    valueHigh?: number | undefined;
+    practice?: string | undefined;
+    flag?: string | undefined;
+  }[],
+  operators: readonly ('AND' | 'OR')[],
 ): string[] {
   if (pills.length === 0) return [];
   if (operators.length !== pills.length - 1) {
@@ -235,7 +302,7 @@ export function serializeCompoundTokens(
   const tokens: string[] = [];
   for (let i = 0; i < pills.length; i++) {
     const pill = pills[i]!;
-    tokens.push(`${pill.category}:${pill.label}`);
+    tokens.push(serializeConditionPill(pill));
     if (i < operators.length) {
       tokens.push(operators[i]!);
     }
@@ -299,15 +366,36 @@ export function buildCondition(
   // the operator whose LEFT pill is the first surviving pill —
   // we look that up by finding which authoring.operators slot
   // has pills[firstSurvivingIdx] as its left side.
-  const trimmed: { category: ConditionPresetCategory; label: string }[] = [];
+  type TrimmedPill = {
+    readonly category: ConditionPresetCategory;
+    readonly label: string;
+    readonly kind?: 'tag' | 'flag' | 'stat' | 'proficiency' | undefined;
+    readonly stat?: string | undefined;
+    readonly operator?: '<' | '<=' | '=' | '!=' | '>=' | '>' | 'between' | undefined;
+    readonly value?: number | undefined;
+    readonly valueHigh?: number | undefined;
+    readonly practice?: string | undefined;
+    readonly flag?: string | undefined;
+  };
+  const trimmed: TrimmedPill[] = [];
   // Map: trimmed index → authoring.operators index that connects
   // trimmed[trimmedIdx] to trimmed[trimmedIdx+1].
-  const trimmedOps: ("AND" | "OR")[] = [];
+  const trimmedOps: ('AND' | 'OR')[] = [];
   for (let i = 0; i < authoring.pills.length; i++) {
     const p = authoring.pills[i]!;
     if (p.label.trim().length === 0) continue;
     const newIdx = trimmed.length;
-    trimmed.push({ category: p.category, label: p.label.trim() });
+    trimmed.push({
+      category: p.category,
+      label: p.label.trim(),
+      kind: p.kind,
+      stat: p.stat,
+      operator: p.operator,
+      value: p.value,
+      valueHigh: p.valueHigh,
+      practice: p.practice,
+      flag: p.flag,
+    });
     if (newIdx > 0) {
       // We just added a 2nd+ surviving pill. Find the operator
       // whose LEFT pill is the previous surviving pill (i.e.
@@ -340,7 +428,7 @@ export function buildCondition(
     const single = trimmed[0]!;
     return {
       kind: "tags",
-      customTags: [`${single.category}:${single.label}`],
+      customTags: [serializeConditionPill(single)],
     };
   }
 

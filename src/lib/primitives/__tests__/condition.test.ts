@@ -704,3 +704,146 @@ describe("legacyConditionProjection", () => {
     });
   });
 });
+
+
+// =============================================================================
+// Phase 8.I i2.6 — structured-pill serialization + evaluator
+// =============================================================================
+
+describe("buildCondition — structured pills (i2.6)", () => {
+  it("stat pill with single comparator emits stat|...|...|... token", () => {
+    const result = buildCondition({
+      categories: ["actor"],
+      pills: [
+        {
+          category: "actor",
+          label: "vitality",
+          kind: "stat",
+          stat: "vitality",
+          operator: "<",
+          value: 10,
+        },
+      ],
+      operators: [],
+      narrative: "",
+      includeTags: false,
+    });
+    expect(result).toEqual({
+      kind: "tags",
+      customTags: ["actor:stat|vitality|<|10"],
+    });
+  });
+
+  it("stat pill with 'between' emits 5-tuple stat|vitality|between|A|B token", () => {
+    const result = buildCondition({
+      categories: ["actor"],
+      pills: [
+        {
+          category: "actor",
+          label: "vitality",
+          kind: "stat",
+          stat: "vitality",
+          operator: "between",
+          value: 5,
+          valueHigh: 15,
+        },
+      ],
+      operators: [],
+      narrative: "",
+      includeTags: false,
+    });
+    expect(result).toEqual({
+      kind: "tags",
+      customTags: ["actor:stat|vitality|between|5|15"],
+    });
+  });
+
+  it("proficiency pill with explicit practice emits proficient_in(<practice>)", () => {
+    const result = buildCondition({
+      categories: ["actor"],
+      pills: [
+        {
+          category: "actor",
+          label: "proficient_in(prowess)",
+          kind: "proficiency",
+          practice: "prowess",
+        },
+      ],
+      operators: [],
+      narrative: "",
+      includeTags: false,
+    });
+    expect(result).toEqual({
+      kind: "tags",
+      customTags: ["actor:proficient_in(prowess)"],
+    });
+  });
+
+  it("proficiency pill WITHOUT practice emits dynamic not_proficient (uses currentPractice)", () => {
+    const result = buildCondition({
+      categories: ["actor"],
+      pills: [
+        {
+          category: "actor",
+          label: "not_proficient",
+          kind: "proficiency",
+        },
+      ],
+      operators: [],
+      narrative: "",
+      includeTags: false,
+    });
+    expect(result).toEqual({
+      kind: "tags",
+      customTags: ["actor:not_proficient"],
+    });
+  });
+
+  it("compound: vitality < 10 AND is_prone → 5-token interleaved stream", () => {
+    const result = buildCondition({
+      categories: ["actor"],
+      pills: [
+        {
+          category: "actor",
+          label: "vitality",
+          kind: "stat",
+          stat: "vitality",
+          operator: "<",
+          value: 10,
+        },
+        {
+          category: "actor",
+          label: "is_prone",
+          kind: "flag",
+          flag: "is_prone",
+        },
+      ],
+      operators: ["AND"],
+      narrative: "",
+      includeTags: false,
+    });
+    expect(result).toEqual({
+      kind: "compound",
+      tokens: ["actor:stat|vitality|<|10", "AND", "actor:is_prone"],
+    });
+  });
+
+  it("legacy tag pill without kind defaults to 'tag' kind", () => {
+    const result = buildCondition({
+      categories: ["actor"],
+      pills: [
+        {
+          category: "actor",
+          label: "unconscious",
+        },
+      ],
+      operators: [],
+      narrative: "",
+      includeTags: false,
+    });
+    expect(result).toEqual({
+      kind: "tags",
+      customTags: ["actor:unconscious"],
+    });
+  });
+});

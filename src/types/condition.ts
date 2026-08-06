@@ -297,6 +297,42 @@ export interface ConditionAuthoring {
   readonly pills: readonly {
     readonly category: ConditionPresetCategory;
     readonly label: string;
+    /**
+     * Phase 8.I i2.6 (Mashu 2026-08-06): structured-pill kind.
+     * Defaults to 'tag' for backwards compat with pills
+     * authored before this field existed (treated as a
+     * descriptive label whose presence in the relevant axis
+     * means the condition fires).
+     *
+     * - 'tag'           descriptive label for the axis (target:Prone, scene:dim)
+     * - 'flag'          boolean flag the character holds (self:is_prone, self:has_cover)
+     * - 'stat'          numeric comparison against character state (self:vitality < 0.5)
+     * - 'proficiency'   checks character's proficiency flag for a practice (self:proficient_in(prowess))
+     *
+     * For 'stat' and 'proficiency' the optional `stat` /
+     * `practice` / `operator` / `value` fields are populated.
+     * For 'tag' they're all null.
+     */
+    readonly kind?: 'tag' | 'flag' | 'stat' | 'proficiency';
+    /** Stat reference for 'stat' pills. */
+    readonly stat?: string;
+    /** Comparison operator for 'stat' pills. */
+    readonly operator?:
+      | '<'
+      | '<='
+      | '='
+      | '!='
+      | '>='
+      | '>'
+      | 'between';
+    /** Numeric value for 'stat' pills. */
+    readonly value?: number;
+    /** Upper bound for 'between' operator. */
+    readonly valueHigh?: number;
+    /** Practice reference for 'proficiency' pills. */
+    readonly practice?: string;
+    /** Flag reference for 'flag' pills. */
+    readonly flag?: string;
   }[];
   /**
    * Operators BETWEEN pills. Length is always `pills.length - 1`.

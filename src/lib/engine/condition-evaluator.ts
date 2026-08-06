@@ -403,9 +403,18 @@ function evaluateTagsAsPillChain(
 }
 
 /**
- * Evaluate a single `<axis>:<label>` pill token against the
- * appropriate runtime axis. Falls back to checking the character's
- * boolean flags when the axis is self.
+ * Evaluate a single `<axis>:<payload>` pill token against the
+ * appropriate runtime axis. The payload format depends on the
+ * pill kind:
+ *
+ *   - "self:unconscious"            → character.flags.has("unconscious")
+ *   - "self:proficient_in(prowess)"  → proficiencies.has("prowess")
+ *   - "self:not_proficient"          → !proficiencies.has(currentPractice)
+ *   - "self:stat|vitality|<|0.5"     → stat comparison
+ *
+ * The legacy axes are recognized ("actor" aliases to "self";
+ * "target" reads target.tags; "scene" reads scene.tags). All
+ * tag-style pills are read as descriptive tags.
  */
 function evaluatePillToken(
   token: string,
@@ -414,19 +423,85 @@ function evaluatePillToken(
   const sep = token.indexOf(":");
   if (sep < 0) return false;
   const axis = token.slice(0, sep);
-  const label = token.slice(sep + 1);
+  const payload = token.slice(sep + 1);
+
+  // Stat comparison path: payload starts with "stat|...".
+  // (Encoded by the picker's buildCondition → serializeConditionPill.)
+  if (payload.startsWith("stat|")) {
+    if (axis === "target") {
+      if (!ctx.target) return false;
+      return evaluateStatTokenPayload(payload, {
+        custom: ctx.target.custom,
+      });
+    }
+    if (axis === "scene") {
+      if (!ctx.scene) return false;
+      return evaluateStatTokenPayload(payload, {
+        custom: ctx.scene.custom,
+      });
+    }
+    // self or actor
+    return evaluateStatTokenPayload(payload, ctx.character);
+  }
+
+  // Standard pill — flag / proficiency / tag.
   switch (axis) {
     case "self":
-      return checkSelfFlag(label, ctx.character, ctx.currentPractice);
+      return checkSelfFlag(payload, ctx.character, ctx.currentPractice);
     case "actor":
       // Alias for self — backwards compat with v1 preset semantics.
-      return checkSelfFlag(label, ctx.character, ctx.currentPractice);
+      return checkSelfFlag(payload, ctx.character, ctx.currentPractice);
     case "target":
-      return ctx.target?.tags.has(label) ?? false;
+      return ctx.target?.tags.has(payload) ?? false;
     case "scene":
-      return ctx.scene?.tags.has(label) ?? false;
+      return ctx.scene?.tags.has(payload) ?? false;
     default:
       return false;
+  }
+}
+
+/**
+ * Evaluate a stat-comparison pill payload against a stat source.
+ * Payload shape: "stat|<statName>|<op>|<value>[|<valueHigh>]".
+ * The "stat|" prefix has already been stripped by the caller.
+ */
+function evaluateStatTokenPayload(
+  payload: string,
+  source:
+    | { custom: Readonly<Record<string, number | boolean>> }
+    | CharacterConditionState,
+): boolean {
+  // Strip "stat|" prefix if not already done by caller.
+  let body = payload.startsWith("stat|") ? payload.slice(5) : payload;
+  // Parse [statName, op, value, valueHigh?].
+  const parts = body.split("|");
+  if (parts.length < 3) return false;
+  const statName = parts[0]!;
+  const op = parts[1]!;
+  const v1 = Number(parts[2]);
+  if (!Number.isFinite(v1)) return false;
+  const v2 = parts[3] !== undefined ? Number(parts[3]) : v1;
+
+  // Resolve the actual stat value.
+  let actual: number | undefined;
+  if ("vitality" in source || "practices" in source) {
+    // It's a CharacterConditionState.
+    actual = readCharacterStat(statName, source as CharacterConditionState);
+  } else {
+    const v = (source as { custom: Readonly<Record<string, number | boolean>> }).custom[statName];
+    actual = typeof v === "number" ? v : undefined;
+  }
+  if (actual === undefined) return false;
+
+  switch (op) {
+    case "<": return actual < v1;
+    case "<=": return actual <= v1;
+    case ">": return actual > v1;
+    case ">=": return actual >= v1;
+    case "=": return actual === v1;
+    case "!=": return actual !== v1;
+    case "between": return actual >= v1 && actual <= v2;
+    default: return false;
   }
 }
 

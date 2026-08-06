@@ -48,7 +48,7 @@ const PROPOSED: ReadonlyArray<Proposed> = [
   { id: 64, name: "Focused Presence (Global DC Modifier)", operation: "add", target: "defense_dc", value: 1, stacking: "stack" },
   { id: 65, name: "Precise Vector Alignment (Global Attack Modifier)", operation: "add", target: "action.roll", value: 1, stacking: "stack" },
   // VITALITY (3) — 7.9.3g coda
-  { id: 853, name: "Stabilize (Fieldcraft Aid)", operation: "grant", target: "behavior:stabilize_capable", value: 1, stacking: "unique-by-primitive" },
+  { id: 853, name: "Stabilize (Fieldcraft Aid)", operation: "set", target: "behavior", value: "", stacking: "unique-by-primitive" },
   { id: 854, name: "Last Breath (Tenacity Trigger)", operation: "grant", target: "behavior:tenacity_trigger_1", value: 1, stacking: "unique-by-primitive" },
   { id: 855, name: "Tether of Being (Sustained Tenacity)", operation: "grant", target: "behavior:tenacity_persistent", value: 1, stacking: "unique-by-primitive" },
 ];
@@ -196,8 +196,11 @@ describe("Phase 7.9.3e+f+g — final migration (closes Phase 7.9)", () => {
             expect(p.target.startsWith("behavior:")).toBe(false);
           }
         } else {
-          // Phase 8.I i2.0 also allowed grant ops to target defense_dc.
-          expect(p.target).toMatch(/^(behavior:|defense_dc)/);
+          // Phase 8.I i2.0+ also allows grant / set ops to target the
+          // scoped behavior axis (bare "behavior" + scopeName) or
+          // defense_dc. Stabilize (Fieldcraft Aid) is the canonical
+          // example of a "behavior" target with scopeName:stabilize_capable.
+          expect(p.target).toMatch(/^(behavior(:|\b)|defense_dc)/);
         }
       });
     }
