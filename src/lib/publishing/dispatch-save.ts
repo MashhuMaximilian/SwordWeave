@@ -258,16 +258,23 @@ export function decideSaveOutcome(
   }
 
   // Phase 9 follow-up: admin canon-edit exception.
-  // Rule: when intent=load AND the caller is an admin AND the source
-  // row's owner is either system-attributed (userId IS NULL) or
-  // another admin, treat the save as a version-update so the admin
-  // can patch canon directly. The entity's `userId` stays unchanged
-  // (so the row keeps its canon attribution) and a `versions` row is
+  // Rule: when intent=load OR intent=null (default-load semantics)
+  // AND the caller is an admin AND the source row's owner is
+  // either system-attributed (userId IS NULL) or another admin,
+  // treat the save as a version-update so the admin can patch
+  // canon directly. The entity's `userId` stays unchanged (so
+  // the row keeps its canon attribution) and a `versions` row is
   // written by the caller to audit who edited it.
+  //
+  // Phase 8.I i2.5h-fix (Mashu 2026-08-06): intent=null was
+  // being skipped here, causing admin edits with no ?intent= param
+  // to fall through to the fork branch. The atlas form often
+  // navigates without setting intent, so this check now considers
+  // null as "load-equivalent" for canon-edit purposes.
   //
   // Non-admin callers never reach this path — `callerIsAdmin = false`
   // makes the check trivially false and the existing matrix applies.
-  if (intent === "load" && callerIsAdmin) {
+  if ((intent === "load" || intent === null) && callerIsAdmin) {
     const ownerIsSystem = source.userId === null;
     const ownerIsAdmin = source.ownerIsAdmin === true;
     if (ownerIsSystem || ownerIsAdmin) {

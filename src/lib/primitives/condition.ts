@@ -580,3 +580,160 @@ export function legacyConditionProjection(
   }
   return EMPTY;
 }
+
+// =============================================================================
+// Reverse migration — stored condition → ConditionAuthoring
+// =============================================================================
+
+/**
+ * Convert a stored `ModifierCondition` back to the form's
+ * `ConditionAuthoring` shape so the picker can re-render the
+ * condition the author originally authored.
+ *
+ * Phase 8.I i2.5h-fix (Mashu 2026-08-06): the previous loader
+ * only read the LEGACY `key/operator/value` fields and ignored
+ * the new v1 condition shapes (`tags`, `preset`, `compound`,
+ * `narrative`). For modifiers saved with the new picker, this
+ * meant the picker re-opened EMPTY even though the condition
+ * was correctly stored in the DB. The form's preview showed
+ * the condition; the edit modal did not.
+ *
+ * Now we parse the stored shape directly:
+ *   - {kind: "preset", presetKey}  → authoring with the right category pills
+ *   - {kind: "tags", customTags}    → authoring with pills (split category:label)
+ *   - {kind: "compound", tokens}    → authoring with pills + operators
+ *   - {kind: "narrative", text}     → authoring with narrative only
+ *
+ * Falls back to `conditionAuthoringFromLegacy` (which the form
+ * already had) for the legacy `{key, operator, value}` shape.
+ */
+export function conditionToAuthoring(
+  stored: unknown,
+): ConditionAuthoring {
+  const EMPTY: ConditionAuthoring = {
+    categories: [],
+    pills: [],
+    operators: [],
+    narrative: "",
+    includeTags: false,
+  };
+
+  if (!stored || typeof stored !== "object") return EMPTY;
+  const obj = stored as Record<string, unknown>;
+  const kind = obj["kind"];
+
+  // Legacy shape — inline migration (mirrors the form's
+  // conditionAuthoringFromLegacy helper).
+  if (!kind && "key" in obj) {
+    const value = obj["value"];
+    const condKey = typeof obj["key"] === "string" ? obj["key"] : "";
+    let categories: ConditionPresetCategory[] = [];
+    if (condKey.startsWith("target-")) categories = ["target"];
+    else if (condKey.startsWith("scene-")) categories = ["scene"];
+    else if (condKey.startsWith("actor-")) categories = ["actor"];
+    return {
+      categories,
+      pills: [],
+      operators: [],
+      narrative: (typeof value === "string" ? value : condKey) || "",
+      includeTags: false,
+    };
+  }
+
+  // v1 preset shape.
+  if (kind === "preset") {
+    const presetKey = typeof obj["presetKey"] === "string" ? obj["presetKey"] : "";
+    const category = presetKey.startsWith("target-") ? "target"
+      : presetKey.startsWith("actor-") ? "actor"
+      : presetKey.startsWith("scene-") ? "scene"
+      : null;
+    const label = presetKey.includes("-")
+      ? presetKey.split("-").slice(1).join("-")
+      : presetKey;
+    return {
+      categories: category ? [category] : [],
+      pills: category ? [{ category: category as ConditionPresetCategory, label }] : [],
+      operators: [],
+      narrative: "",
+      includeTags: false,
+    };
+  }
+
+  // v1 tags shape — each tag is "category:label".
+  if (kind === "tags") {
+    const customTags = Array.isArray(obj["customTags"])
+      ? obj["customTags"].filter((t): t is string => typeof t === "string")
+      : [];
+    const pills: { category: ConditionPresetCategory; label: string }[] = [];
+    const categoriesSet = new Set<ConditionPresetCategory>();
+    for (const tag of customTags) {
+      const sep = tag.indexOf(":");
+      if (sep >= 0) {
+        const cat = tag.slice(0, sep);
+        const lbl = tag.slice(sep + 1);
+        if (cat === "target" || cat === "actor" || cat === "scene") {
+          pills.push({ category: cat, label: lbl });
+          categoriesSet.add(cat);
+        }
+      }
+    }
+    return {
+      categories: Array.from(categoriesSet),
+      pills,
+      operators: [],
+      narrative: pills.length === 0 ? customTags.join(", ") : "",
+      includeTags: pills.length > 0,
+    };
+  }
+
+  // v1 compound shape — alternating pill/operator tokens.
+  if (kind === "compound") {
+    const tokens = Array.isArray(obj["tokens"])
+      ? obj["tokens"].filter((t): t is string => typeof t === "string")
+      : [];
+    const pills: { category: ConditionPresetCategory; label: string }[] = [];
+    const operators: ("AND" | "OR")[] = [];
+    const categoriesSet = new Set<ConditionPresetCategory>();
+    for (let i = 0; i < tokens.length; i++) {
+      const t = tokens[i];
+      if (!t) continue;
+      if (i % 2 === 0) {
+        // Even index = pill, shape "category:label"
+        const sep = t.indexOf(":");
+        if (sep >= 0) {
+          const cat = t.slice(0, sep);
+          const lbl = t.slice(sep + 1);
+          if (cat === "target" || cat === "actor" || cat === "scene") {
+            pills.push({ category: cat, label: lbl });
+            categoriesSet.add(cat);
+          }
+        }
+      } else {
+        // Odd index = operator
+        if (t === "AND" || t === "OR") {
+          operators.push(t);
+        }
+      }
+    }
+    return {
+      categories: Array.from(categoriesSet),
+      pills,
+      operators,
+      narrative: "",
+      includeTags: true,
+    };
+  }
+
+  // v1 narrative shape.
+  if (kind === "narrative") {
+    return {
+      categories: [],
+      pills: [],
+      operators: [],
+      narrative: typeof obj["text"] === "string" ? obj["text"] : "",
+      includeTags: false,
+    };
+  }
+
+  return EMPTY;
+}

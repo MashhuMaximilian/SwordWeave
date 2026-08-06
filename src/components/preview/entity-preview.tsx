@@ -19,6 +19,7 @@
 // =============================================================================
 
 import { type ReactNode } from "react";
+import { OP_SPECS } from "@/types/modifier";
 import { Markdown } from "@/components/ui/markdown";
 import { IconDisplay } from "@/components/icons/icon-display";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
@@ -836,7 +837,28 @@ function PrimitiveBody({
       <ModifierCards row={row} buildModifiers={buildModifiers} />
       {row.isMirrorable ? (
         <MirrorPanel
-          op={"add" as Parameters<typeof MirrorPanel>[0]["op"]}
+          op={
+            // Phase 8.I i2.5h-fix (Mashu 2026-08-06): derive the
+            // mirror op from the FIRST mirrorable modifier in
+            // hardModifiers. The previous hardcoded "add" was
+            // wrong for primitives that mirror to revoke, min,
+            // or any other non-subtract op.
+            //
+            // We pick the first modifier with a mirrorable op
+            // (skip set/multiply/divide if non-mirrorable) and
+            // show the actual inverse op.
+            (() => {
+              const mods = buildModifiers ?? (row.hardModifiers as Array<Record<string, unknown>> | undefined) ?? [];
+              for (const m of mods) {
+                const op = String(m["operation"] ?? "") as Parameters<typeof MirrorPanel>[0]["op"];
+                const spec = OP_SPECS[op];
+                if (spec?.mirrorable && spec.mirrorOp) {
+                  return spec.mirrorOp;
+                }
+              }
+              return "add" as Parameters<typeof MirrorPanel>[0]["op"];
+            })()
+          }
           buCredit={row.mirrorBuCredit}
           notes={row.mirrorEligibilityNotes}
         />

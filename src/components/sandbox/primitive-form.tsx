@@ -69,6 +69,7 @@ import {
   serializeFirstToken,
   serializeOperandsAsExpression,
 } from "@/lib/primitives/modifier-translator";
+import { conditionToAuthoring } from "@/lib/primitives/condition";
 import { TokenChipStack } from "./token-chip-stack";
 import { EquationPicker } from "./equation-picker";
 
@@ -640,14 +641,13 @@ function fromHardModifier(modifier: Record<string, unknown>, index: number): Mod
       (String(cond?.["operator"] ?? "equals") as ModifierDraft["conditionOperator"]),
     conditionValue: condValue,
     stacking: (String(modifier["stacking"] ?? "stack") as ModifierStackingMode),
-    // Phase-7-Q-B: derive v1 authoring from the legacy fields. For
-    // unknown legacy shapes this falls back to a narrative variant
-    // (the author can re-pick a preset from the picker).
-    v1Condition: conditionAuthoringFromLegacy(
-      String(cond?.["key"] ?? ""),
-      String(cond?.["operator"] ?? ""),
-      condValue,
-    ),
+    // Phase 8.I i2.5h-fix (Mashu 2026-08-06): use the new
+    // conditionToAuthoring() that reads the v1 condition shape
+    // directly ({kind, customTags, presetKey, tokens, text}).
+    // The previous legacy-only loader lost any condition saved
+    // through the new picker — pills were dropped, leaving
+    // only narrative text in the picker.
+    v1Condition: conditionToAuthoring(cond),
   };
 }
 
