@@ -86,7 +86,9 @@ export interface CharacterConditionState {
   /** User-defined variables. Resolved on the character sheet,
    *  not in the DB. Examples: `custom_fortune_points`,
    *  `custom_block_value`, `custom_kill_count`. */
-  readonly custom: Readonly<Record<string, number | boolean>>;
+  // Phase 8.I i2.7: widened to include string values for
+  // tag-enum stats (source_type, size, damage_type, etc).
+  readonly custom: Readonly<Record<string, number | boolean | string>>;
 }
 
 /**
@@ -99,7 +101,9 @@ export interface TargetConditionState {
    *  "flanking", "in_melee"). */
   readonly tags: ReadonlySet<string>;
   /** User-defined variables on the target. */
-  readonly custom: Readonly<Record<string, number | boolean>>;
+  // Phase 8.I i2.7: widened to include string values for
+  // tag-enum stats (source_type, size, damage_type, etc).
+  readonly custom: Readonly<Record<string, number | boolean | string>>;
 }
 
 /**
@@ -107,7 +111,9 @@ export interface TargetConditionState {
  */
 export interface SceneConditionState {
   readonly tags: ReadonlySet<string>;
-  readonly custom: Readonly<Record<string, number | boolean>>;
+  // Phase 8.I i2.7: widened to include string values for
+  // tag-enum stats (source_type, size, damage_type, etc).
+  readonly custom: Readonly<Record<string, number | boolean | string>>;
 }
 
 /**
@@ -483,10 +489,29 @@ function evaluatePillToken(
  * Payload shape: "stat|<statName>|<op>|<value>[|<valueHigh>]".
  * The "stat|" prefix has already been stripped by the caller.
  */
+/**
+ * Phase 8.I i2.7 (Mashu 2026-08-06): tag-enum stats compare
+ * as strings, not numbers. The author writes
+ *   actor:stat|source_type|=|magical
+ * and the engine reads character.custom.source_type as a
+ * string ("physical" / "magical" / "mental") and compares
+ * to the literal value.
+ *
+ * The picker emits the enum value in lowercase (e.g.
+ * 'physical' / 'magical' / 'mental' for source_type).
+ */
+const TAG_ENUM_STATS: ReadonlySet<string> = new Set([
+  "source_type",
+  "damage_type",
+  "equip_slot",
+  // Author-named sub-target refs follow the same path.
+  // Anything not in this set is treated as a numeric stat.
+]);
+
 function evaluateStatTokenPayload(
   payload: string,
   source:
-    | { custom: Readonly<Record<string, number | boolean>> }
+    | { custom: Readonly<Record<string, number | boolean | string>> }
     | CharacterConditionState,
 ): boolean {
   // Strip "stat|" prefix if not already done by caller.
@@ -496,31 +521,131 @@ function evaluateStatTokenPayload(
   if (parts.length < 3) return false;
   const statName = parts[0]!;
   const op = parts[1]!;
-  const v1 = Number(parts[2]);
+  const rawValue = parts[2]!;
+
+  // Resolve the actual stat value.
+  let actualNum: number | undefined;
+  let actualStr: string | undefined;
+  if ("vitality" in source || "practices" in source) {
+    // It's a CharacterConditionState.
+    const stat = readCharacterStatString(statName, source as CharacterConditionState);
+    if (typeof stat === "number") {
+      actualNum = stat;
+    } else if (typeof stat === "string") {
+      actualStr = stat;
+    }
+  } else {
+    const v = (source as { custom: Readonly<Record<string, number | boolean>> }).custom[statName];
+    if (typeof v === "number") {
+      actualNum = v;
+    } else if (typeof v === "string") {
+      actualStr = v;
+    }
+  }
+
+  // Tag-enum comparison: strings, with = != supported and
+  // 'between' treated as 'is one of [v1, v2]' (set membership).
+  // Numeric comparisons fall through to the numeric branch
+  // below — for tier-mapped stats (size, source_type,
+  // upkeep_cost, complexity) the numeric tier is what
+  // numeric ops compare against.
+  if (TAG_ENUM_STATS.has(statName) || actualStr !== undefined) {
+    if (actualStr === undefined) return false;
+    if (op === "=") return actualStr === rawValue;
+    if (op === "!=") return actualStr !== rawValue;
+    if (op === "between") {
+      const v2 = parts[3] ?? rawValue;
+      return actualStr === rawValue || actualStr === v2;
+    }
+    // Tier-mapped comparisons (size, upkeep_cost, complexity
+    // resolved to numeric tier by readCharacterStat). For
+    // these we still get a number from readCharacterStat and
+    // fall through to the numeric branch.
+    if (actualNum !== undefined) {
+      const v1 = Number(rawValue);
+      if (!Number.isFinite(v1)) return false;
+      const v2 = parts[3] !== undefined ? Number(parts[3]) : v1;
+      switch (op) {
+        case "<": return actualNum < v1;
+        case "<=": return actualNum <= v1;
+        case ">": return actualNum > v1;
+        case ">=": return actualNum >= v1;
+        case "between": return actualNum >= v1 && actualNum <= v2;
+        default: return false;
+      }
+    }
+    return false;
+  }
+
+  // Numeric comparison.
+  if (actualNum === undefined) return false;
+  const v1 = Number(rawValue);
   if (!Number.isFinite(v1)) return false;
   const v2 = parts[3] !== undefined ? Number(parts[3]) : v1;
 
-  // Resolve the actual stat value.
-  let actual: number | undefined;
-  if ("vitality" in source || "practices" in source) {
-    // It's a CharacterConditionState.
-    actual = readCharacterStat(statName, source as CharacterConditionState);
-  } else {
-    const v = (source as { custom: Readonly<Record<string, number | boolean>> }).custom[statName];
-    actual = typeof v === "number" ? v : undefined;
-  }
-  if (actual === undefined) return false;
-
   switch (op) {
-    case "<": return actual < v1;
-    case "<=": return actual <= v1;
-    case ">": return actual > v1;
-    case ">=": return actual >= v1;
-    case "=": return actual === v1;
-    case "!=": return actual !== v1;
-    case "between": return actual >= v1 && actual <= v2;
+    case "<": return actualNum < v1;
+    case "<=": return actualNum <= v1;
+    case ">": return actualNum > v1;
+    case ">=": return actualNum >= v1;
+    case "=": return actualNum === v1;
+    case "!=": return actualNum !== v1;
+    case "between": return actualNum >= v1 && actualNum <= v2;
     default: return false;
   }
+}
+
+/**
+ * Phase 8.I i2.7: read a character stat as either a number
+ * or a string. Used for tag-enum stats like source_type,
+ * damage_type, equip_slot that have string values in
+ * character.custom.
+ */
+function readCharacterStatString(
+  stat: string,
+  character: CharacterConditionState,
+): number | string | undefined {
+  // Tag-enum stats: read as string from character.custom,
+  // with numeric tier fallback.
+  if (stat === "size") {
+    const v = character.custom["size"];
+    if (typeof v === "string") return v;
+    if (typeof v === "number") {
+      const tier: Readonly<Record<number, string>> = {
+        0: "tiny",
+        1: "small",
+        2: "medium",
+        3: "large",
+        4: "huge",
+        5: "gargantuan",
+      };
+      return tier[v] ?? String(v);
+    }
+    return "medium";
+  }
+  if (stat === "source_type") {
+    const v = character.custom["source_type"];
+    if (typeof v === "string") return v;
+    if (typeof v === "number") {
+      const tier: Readonly<Record<number, string>> = {
+        1: "physical",
+        2: "magical",
+        3: "mental",
+      };
+      return tier[v] ?? String(v);
+    }
+    return "physical";
+  }
+  // All other stats: delegate to readCharacterStat (the
+  // canonical numeric reader that handles vitality, attr
+  // modifiers, practices, etc).
+  const num = readCharacterStat(stat, character);
+  if (typeof num === "number") return num;
+  // Last resort: check character.custom directly.
+  const v = character.custom[stat];
+  if (typeof v === "string") return v;
+  if (typeof v === "number") return v;
+  return undefined;
 }
 
 /**

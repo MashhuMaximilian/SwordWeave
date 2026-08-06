@@ -242,8 +242,8 @@ export function serializeConditionPill(pill: {
   readonly kind?: 'tag' | 'flag' | 'stat' | 'proficiency' | undefined;
   readonly stat?: string | undefined;
   readonly operator?: '<' | '<=' | '=' | '!=' | '>=' | '>' | 'between' | undefined;
-  readonly value?: number | undefined;
-  readonly valueHigh?: number | undefined;
+  readonly value?: number | string | undefined;
+  readonly valueHigh?: number | string | undefined;
   readonly practice?: string | undefined;
   readonly flag?: string | undefined;
 }): string {
@@ -301,8 +301,8 @@ export function serializeCompoundTokens(
     kind?: 'tag' | 'flag' | 'stat' | 'proficiency' | undefined;
     stat?: string | undefined;
     operator?: '<' | '<=' | '=' | '!=' | '>=' | '>' | 'between' | undefined;
-    value?: number | undefined;
-    valueHigh?: number | undefined;
+    value?: number | string | undefined;
+    valueHigh?: number | string | undefined;
     practice?: string | undefined;
     flag?: string | undefined;
   }[],
@@ -387,8 +387,8 @@ export function buildCondition(
     readonly kind?: 'tag' | 'flag' | 'stat' | 'proficiency' | undefined;
     readonly stat?: string | undefined;
     readonly operator?: '<' | '<=' | '=' | '!=' | '>=' | '>' | 'between' | undefined;
-    readonly value?: number | undefined;
-    readonly valueHigh?: number | undefined;
+    readonly value?: number | string | undefined;
+    readonly valueHigh?: number | string | undefined;
     readonly practice?: string | undefined;
     readonly flag?: string | undefined;
   };

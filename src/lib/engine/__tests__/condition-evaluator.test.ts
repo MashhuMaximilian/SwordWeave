@@ -864,41 +864,42 @@ describe("evaluateCondition — i2.7 atoms (PDFs)", () => {
     ).toBe(true);
   });
 
-  it("size == LARGE fires when character.custom.size is 3", () => {
+  it("size == large fires when character.custom.size = 'large'", () => {
+    // Phase 8.I i2.7: tag-enum stats compare as strings.
     const ctx = makeCtx({
       character: makeCharacter({
-        custom: { size: 3 },
+        custom: { size: "large" },
       }),
     });
     expect(
       evaluateCondition(
-        { kind: "tags", customTags: ["actor:stat|size|=|3"] },
+        { kind: "tags", customTags: ["actor:stat|size|=|large"] },
         ctx,
       ),
     ).toBe(true);
   });
 
-  it("size == MEDIUM (default tier 2) fires for fresh character", () => {
+  it("size == medium (default) fires for fresh character", () => {
     const ctx = makeCtx({
       character: makeCharacter(),
     });
     expect(
       evaluateCondition(
-        { kind: "tags", customTags: ["actor:stat|size|=|2"] },
+        { kind: "tags", customTags: ["actor:stat|size|=|medium"] },
         ctx,
       ),
     ).toBe(true);
   });
 
-  it("source_type == MAGICAL fires when character.custom.source_type is 2", () => {
+  it("source_type == magical fires when character.custom.source_type = 'magical'", () => {
     const ctx = makeCtx({
       character: makeCharacter({
-        custom: { source_type: 2 },
+        custom: { source_type: "magical" },
       }),
     });
     expect(
       evaluateCondition(
-        { kind: "tags", customTags: ["actor:stat|source_type|=|2"] },
+        { kind: "tags", customTags: ["actor:stat|source_type|=|magical"] },
         ctx,
       ),
     ).toBe(true);
@@ -955,6 +956,109 @@ describe("evaluateCondition — i2.7 atoms (PDFs)", () => {
     expect(
       evaluateCondition(
         { kind: "tags", customTags: ["actor:combat_action"] },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+});
+
+
+// ---- i2.7 — tag-enum string comparisons ----
+
+describe("evaluateCondition - i2.7 tag-enum string comparisons", () => {
+  it("source_type == magical fires when character.custom.source_type = 'magical'", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        custom: { source_type: "magical" },
+      }),
+    });
+    expect(
+      evaluateCondition(
+        { kind: "tags", customTags: ["actor:stat|source_type|=|magical"] },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("source_type != physical fires when character.custom.source_type = 'magical'", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        custom: { source_type: "magical" },
+      }),
+    });
+    expect(
+      evaluateCondition(
+        { kind: "tags", customTags: ["actor:stat|source_type|!=|physical"] },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("size == large fires when character.custom.size = 'large'", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        custom: { size: "large" },
+      }),
+    });
+    expect(
+      evaluateCondition(
+        { kind: "tags", customTags: ["actor:stat|size|=|large"] },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("size == medium (default) fires for fresh character", () => {
+    const ctx = makeCtx({ character: makeCharacter() });
+    expect(
+      evaluateCondition(
+        { kind: "tags", customTags: ["actor:stat|size|=|medium"] },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("damage_type == fire fires when character.custom.damage_type = 'fire'", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        custom: { damage_type: "fire" },
+      }),
+    });
+    expect(
+      evaluateCondition(
+        { kind: "tags", customTags: ["actor:stat|damage_type|=|fire"] },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("equip_slot == weapon fires when character.custom.equip_slot = 'weapon'", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        custom: { equip_slot: "weapon" },
+      }),
+    });
+    expect(
+      evaluateCondition(
+        { kind: "tags", customTags: ["actor:stat|equip_slot|=|weapon"] },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("source_type numeric tier mapping still works (back-compat)", () => {
+    // Phase 8.I i2.6 stored source_type as a number (1=physical,
+    // 2=magical, 3=mental). i2.7 should still support the numeric
+    // form so legacy rows don't break.
+    const ctx = makeCtx({
+      character: makeCharacter({
+        custom: { source_type: 2 },
+      }),
+    });
+    // =|magical should fire because 2 maps to 'magical'
+    expect(
+      evaluateCondition(
+        { kind: "tags", customTags: ["actor:stat|source_type|=|magical"] },
         ctx,
       ),
     ).toBe(true);

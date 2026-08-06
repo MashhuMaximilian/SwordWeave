@@ -25,6 +25,22 @@ import { ALL_PRACTICES, ALL_ATTRIBUTES } from "@/types/modifier";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 
 // Canonical stat references.
+/**
+ * Phase 8.I i2.7 (Mashu 2026-08-06): tag-enum stats compare as
+ * strings (e.g. source_type == "magical"). The picker renders a
+ * text input for these stats so the author can type the enum
+ * value (physical / magical / mental for source_type, tiny /
+ * small / medium / large / huge / gargantuan for size, etc).
+ *
+ * The numeric stat list is everything else.
+ */
+export const TAG_ENUM_STAT_VALUES: ReadonlySet<string> = new Set([
+  "source_type",
+  "damage_type",
+  "equip_slot",
+  // author-named sub-target refs follow the same path
+]);
+
 export const SELF_STAT_REFS: ReadonlyArray<{
   readonly value: string;
   readonly label: string;
@@ -123,8 +139,8 @@ export function PickerStatSection({
   readonly onAddStat: (
     stat: string,
     op: "<" | "<=" | "=" | "!=" | ">=" | ">" | "between",
-    value: number,
-    valueHigh: number,
+    value: number | string,
+    valueHigh: number | string,
   ) => void;
 }): ReactElement | null {
   if (category !== "actor") return null;
@@ -134,8 +150,18 @@ export function PickerStatSection({
   >("<");
   const [val, setVal] = useState("0.5");
   const [valHigh, setValHigh] = useState("1");
+  const isTagEnumStat =
+    chosenStat !== null && TAG_ENUM_STAT_VALUES.has(chosenStat);
   const onAddClick = () => {
     if (!chosenStat) return;
+    if (isTagEnumStat) {
+      // String comparison path — pass the raw string value.
+      const v = val.trim();
+      if (v.length === 0) return;
+      const vh = valHigh.trim();
+      onAddStat(chosenStat, chosenOp, v, vh.length > 0 ? vh : v);
+      return;
+    }
     const v = parseFloat(val);
     const vh = parseFloat(valHigh);
     if (Number.isNaN(v)) return;
@@ -190,7 +216,8 @@ export function PickerStatSection({
               onKeyDown={(e) => {
                 if (e.key === "Enter") onAddClick();
               }}
-              className="w-20 rounded-md border border-input bg-background px-2 py-0.5 font-mono text-xs"
+              placeholder={isTagEnumStat ? "enum value (e.g. magical)" : "0.5"}
+              className="w-32 rounded-md border border-input bg-background px-2 py-0.5 font-mono text-xs"
             />
             {chosenOp === "between" ? (
               <>
@@ -570,8 +597,8 @@ export function useConditionPillAdder(
       cat: ConditionPresetCategory,
       stat: string,
       op: "<" | "<=" | "=" | "!=" | ">=" | ">" | "between",
-      statValue: number,
-      statValueHigh: number,
+      statValue: number | string,
+      statValueHigh: number | string,
     ) => {
       const basePill = {
         category: cat,

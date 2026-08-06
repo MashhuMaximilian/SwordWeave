@@ -325,10 +325,17 @@ export interface ConditionAuthoring {
       | '>='
       | '>'
       | 'between';
-    /** Numeric value for 'stat' pills. */
-    readonly value?: number;
-    /** Upper bound for 'between' operator. */
-    readonly valueHigh?: number;
+    /**
+     * Value for 'stat' pills. Phase 8.I i2.7 (Mashu 2026-08-06):
+     * widened to accept strings for tag-enum stats
+     * (source_type, damage_type, equip_slot, size) so the
+     * author can type 'magical' or 'fire' etc. Numeric
+     * stats (vitality, attr modifiers, etc) still use
+     * numbers.
+     */
+    readonly value?: number | string;
+    /** Upper bound for 'between' operator (number or string). */
+    readonly valueHigh?: number | string;
     /** Practice reference for 'proficiency' pills. */
     readonly practice?: string;
     /** Flag reference for 'flag' pills. */
