@@ -1,0 +1,604 @@
+/**
+ * condition-evaluator.ts — Phase 8.I i2.6 (Mashu 2026-08-06)
+ *
+ * Runtime evaluator for v1 ModifierCondition shapes. The /atelier
+ * form persists `condition` as one of four v1 variants
+ * (preset, tags, compound, narrative) — only the first three are
+ * auto-evaluated by the engine. Narrative conditions are
+ * GM-triggered hints (the engine returns true and the GM sees
+ * the text on the sheet).
+ *
+ * The evaluator takes:
+ *   - the stored `ModifierCondition` (parsed from the DB or
+ *     in-flight from the form), and
+ *   - a `ConditionContext` describing the runtime state of the
+ *     slotted character (and optionally the target / scene for
+ *     cross-axis checks)
+ *
+ * It returns:
+ *   - `true` if the condition passes (modifier fires)
+ *   - `false` if the condition fails (modifier is filtered out)
+ *
+ * For predicates (`vitality_pct < 0.5`, `proficient_in(prowess)`,
+ * `block_value > 5`) the evaluator reads the runtime context
+ * directly. Predicate authoring is a Phase 5 UI concern — for
+ * Phases 1-4 we write stored conditions by hand for the MVP
+ * primitives (Broad Familiarity, Focused Presence, etc.).
+ *
+ * Custom variables (Block value, fortune points, anything the
+ * player adds to the character sheet) are read from
+ * `ctx.character.custom` / `ctx.target?.custom` / `ctx.scene?.custom`.
+ * They are NOT in the DB — they're resolved at sheet-render time.
+ */
+
+import type { ModifierCondition } from "@/types/condition";
+import type { PracticeKey } from "@/types/modifier";
+
+// =============================================================================
+// Runtime context
+// =============================================================================
+
+/**
+ * The 10 canonical practice names. Used as keys for character state
+ * (each value is the practice score, e.g. Prowess = 5 + PB bonus).
+ */
+export type PracticeState = Readonly<Record<PracticeKey, number>>;
+
+/**
+ * The 3 canonical attribute names.
+ */
+export type AttributeState = Readonly<{
+  physical: number;
+  mental: number;
+  magical: number;
+}>;
+
+/**
+ * The slotted character's runtime state. Read from the character
+ * sheet at the moment of evaluation.
+ */
+export interface CharacterConditionState {
+  /** Current HP. */
+  readonly vitality: number;
+  /** Max HP at the moment of evaluation. */
+  readonly vitalityMax: number;
+  /** Save DC after all modifiers. */
+  readonly saveDc: number;
+  /** Block value after all modifiers. */
+  readonly blockValue: number;
+  /** Per-attribute score (3 attrs). */
+  readonly attributes: AttributeState;
+  /** Per-practice score (10 practices). */
+  readonly practices: PracticeState;
+  /** Practice proficiency flags. A practice is in this set when
+   *  the character has a Practice Proficiency slotted there. */
+  readonly proficiencies: ReadonlySet<PracticeKey>;
+  /** Boolean flags the player has set on the character (e.g.
+   *  "prone", "stunned", "sick", "wounded"). These are managed
+   *  via the planned extra-FAB layer on the character sheet
+   *  (Phase 8.I i2.6 follow-on). */
+  readonly flags: ReadonlySet<string>;
+  /** User-defined variables. Resolved on the character sheet,
+   *  not in the DB. Examples: `custom_fortune_points`,
+   *  `custom_block_value`, `custom_kill_count`. */
+  readonly custom: Readonly<Record<string, number | boolean>>;
+}
+
+/**
+ * The target of an action / roll / attack. Optional — many
+ * modifiers only need self-state. When present, this is the
+ * entity being targeted.
+ */
+export interface TargetConditionState {
+  /** Tags set on the target (e.g. "prone", "stunned",
+   *  "flanking", "in_melee"). */
+  readonly tags: ReadonlySet<string>;
+  /** User-defined variables on the target. */
+  readonly custom: Readonly<Record<string, number | boolean>>;
+}
+
+/**
+ * The ambient scene state. Tags describe environmental conditions.
+ */
+export interface SceneConditionState {
+  readonly tags: ReadonlySet<string>;
+  readonly custom: Readonly<Record<string, number | boolean>>;
+}
+
+/**
+ * Bundles all three axes. Pass only what the caller can provide.
+ * Missing axes default to "always-true" (i.e. never block).
+ */
+export interface ConditionContext {
+  readonly character: CharacterConditionState;
+  readonly target?: TargetConditionState;
+  readonly scene?: SceneConditionState;
+}
+
+// =============================================================================
+// Predicate variants — runtime checks the engine understands
+// =============================================================================
+
+/**
+ * Comparison operators a predicate can use. Symmetric vs.
+ * asymmetric operators are both supported — the engine reads
+ * them as labeled (no commutative transform).
+ */
+export type PredicateOperator = "<" | "<=" | ">" | ">=" | "=" | "≠" | "between";
+
+/**
+ * A single runtime check the engine can evaluate. Stored in
+ * the v1 `predicate` variant of ModifierCondition (added in
+ * this phase).
+ *
+ * Examples:
+ *   {kind:"stat", axis:"self", stat:"vitality_pct", op:"<", value:0.5}
+ *   {kind:"stat", axis:"self", stat:"vitality", op:"<", value:10}
+ *   {kind:"stat", axis:"self", stat:"block_value", op:">", value:5}
+ *   {kind:"flag", axis:"self", flag:"proficient_in(prowess)"}
+ *   {kind:"flag", axis:"self", flag:"not_proficient_in(fieldcraft)"}
+ *   {kind:"flag", axis:"self", flag:"is_prone"}
+ *   {kind:"tag", axis:"target", tag:"prone"}
+ *   {kind:"tag", axis:"scene", tag:"dim"}
+ *
+ * The `axis` says which axis of the ConditionContext to read
+ * (character / target / scene). The `kind` says which kind of
+ * check (numeric comparison / boolean flag / descriptive tag).
+ */
+export type ConditionPredicate =
+  | {
+      readonly kind: "stat";
+      readonly axis: "self" | "target" | "scene";
+      /** Stat reference — see `ALL_STATS` for the canonical names. */
+      readonly stat: string;
+      readonly op: PredicateOperator;
+      readonly value: number;
+      /** For `between` only. */
+      readonly valueHigh?: number;
+    }
+  | {
+      readonly kind: "flag";
+      readonly axis: "self" | "target" | "scene";
+      readonly flag: string;
+    }
+  | {
+      readonly kind: "tag";
+      readonly axis: "self" | "target" | "scene";
+      readonly tag: string;
+    };
+
+/**
+ * Canonical stat names the engine recognizes. UI dropdowns can
+ * use this list for the "Character stats" pill section.
+ */
+export const ALL_STATS = [
+  // self-only
+  "vitality",
+  "vitality_pct",
+  "vitality_max",
+  "save_dc",
+  "block_value",
+  // self-only — attributes
+  "physical",
+  "mental",
+  "magical",
+  // self-only — practices
+  "prowess",
+  "finesse",
+  "fieldcraft",
+  "awareness",
+  "reason",
+  "knowledge",
+  "influence",
+  "mysticism",
+  "communion",
+  "intuition",
+  // any axis — custom variables live here
+] as const;
+
+export type StatKey = (typeof ALL_STATS)[number];
+
+/**
+ * Canonical character flag names. The picker renders these as
+ * clickable chips.
+ */
+export const ALL_FLAGS = [
+  // self — proficiency
+  "proficient_in(prowess)",
+  "proficient_in(finesse)",
+  "proficient_in(fieldcraft)",
+  "proficient_in(awareness)",
+  "proficient_in(reason)",
+  "proficient_in(knowledge)",
+  "proficient_in(influence)",
+  "proficient_in(mysticism)",
+  "proficient_in(communion)",
+  "proficient_in(intuition)",
+  "not_proficient_in(prowess)",
+  "not_proficient_in(finesse)",
+  "not_proficient_in(fieldcraft)",
+  "not_proficient_in(awareness)",
+  "not_proficient_in(reason)",
+  "not_proficient_in(knowledge)",
+  "not_proficient_in(influence)",
+  "not_proficient_in(mysticism)",
+  "not_proficient_in(communion)",
+  "not_proficient_in(intuition)",
+  // self — status
+  "is_prone",
+  "is_stunned",
+  "is_bleeding",
+  "is_frightened",
+  "is_blinded",
+  "is_charmed",
+  "is_grappled",
+  "is_restrained",
+  "is_sick",
+  "is_wounded",
+  "is_damaged_last_round",
+] as const;
+
+// =============================================================================
+// Engine entry points
+// =============================================================================
+
+/**
+ * Evaluate a v1 condition against a runtime context.
+ *
+ * Returns `true` for `null` and `narrative` conditions (always-fire
+ * safety). Returns `false` only when a predicate (stat / flag / tag
+ * / compound) fails.
+ *
+ * Resolves predicates against the appropriate axis of the context.
+ * If the axis is missing (e.g. self predicate but target is the only
+ * axis provided), the predicate fails-closed (returns false).
+ */
+export function evaluateCondition(
+  condition: ModifierCondition | null | undefined,
+  ctx: ConditionContext,
+): boolean {
+  if (condition === null || condition === undefined) return true;
+  switch (condition.kind) {
+    case "preset":
+      // Legacy preset keys like "actor-below-half-hp" — keep their
+      // pre-i2.6 evaluator. The MVP doesn't add new preset keys;
+      // new use cases use the predicate variant instead.
+      return evaluatePreset(condition.presetKey, ctx);
+    case "tags":
+      // The compound variant auto-emits when pill + operator chains
+      // exist, but plain `tags` rows still come through. Treat each
+      // tag as a self-axis tag check — ALL must match (implicit AND).
+      return evaluateTagsAsPillChain(condition.customTags, ctx);
+    case "compound":
+      return evaluateCompound(condition.tokens, ctx);
+    case "narrative":
+      // Narrative = GM-triggered hint. Never blocks.
+      return true;
+  }
+}
+
+// =============================================================================
+// Preset evaluator (legacy keys)
+// =============================================================================
+
+function evaluatePreset(
+  presetKey: string,
+  ctx: ConditionContext,
+): boolean {
+  // Map legacy preset keys to runtime checks. All read character
+  // state except `target-*` which need a target.
+  switch (presetKey) {
+    case "actor-below-half-hp":
+    case "target-below-half-hp": {
+      const axis = presetKey.startsWith("actor-") ? ctx.character : ctx.target;
+      if (!axis) return false;
+      // For actor: read character.vitality / character.vitalityMax
+      if (presetKey.startsWith("actor-")) {
+        return ctx.character.vitality / Math.max(1, ctx.character.vitalityMax) < 0.5;
+      }
+      // For target: read target.custom.hp_pct (target must
+      // expose this via its custom map).
+      const pct = Number(axis.custom["hp_pct"] ?? 1);
+      return pct < 0.5;
+    }
+    case "actor-prone":
+      return ctx.character.flags.has("is_prone");
+    case "actor-stance":
+      return ctx.character.flags.has("has_stance");
+    case "actor-damaged-last-round":
+      return ctx.character.flags.has("is_damaged_last_round");
+    case "target-prone":
+      return !!ctx.target?.tags.has("prone");
+    case "target-grappled":
+      return !!ctx.target?.tags.has("grappled");
+    case "target-frightened":
+      return !!ctx.target?.tags.has("frightened");
+    case "target-stunned":
+      return !!ctx.target?.tags.has("stunned");
+    case "target-bleeding":
+      return !!ctx.target?.tags.has("bleeding");
+    case "target-has-cover":
+      return !!ctx.target?.tags.has("has_cover");
+    case "scene-dim":
+      return !!ctx.scene?.tags.has("dim");
+    case "scene-loud":
+      return !!ctx.scene?.tags.has("loud");
+    case "scene-has-obstacles":
+      return !!ctx.scene?.tags.has("has_obstacles");
+    case "scene-sacred":
+      return !!ctx.scene?.tags.has("sacred");
+    case "scene-hazardous":
+      return !!ctx.scene?.tags.has("hazardous");
+    default:
+      // Unknown preset — fail-closed.
+      return false;
+  }
+}
+
+// =============================================================================
+// Compound evaluator (pills + AND/OR operators)
+// =============================================================================
+
+/**
+ * Evaluate a compound tokens array. Structure: [pill, op, pill, op, …, pill].
+ * Returns the boolean value of the AND/OR chain.
+ *
+ * Each pill is either:
+ *   - a `stat` predicate (encoded as `self:<stat> <op> <value>`)
+ *   - a `flag` predicate (encoded as `self:<flag>` or `target:<flag>`)
+ *   - a `tag` predicate (encoded as `target:<tag>` / `scene:<tag>`)
+ *
+ * For MVP the encoding reuses the same `<axis>:<label>` shape the
+ * existing condition parser understands. Phase 5 will add a proper
+ * UI for picking each predicate kind.
+ */
+function evaluateCompound(
+  tokens: readonly string[],
+  ctx: ConditionContext,
+): boolean {
+  if (tokens.length === 0) return true;
+  // Evaluate each pill to a boolean.
+  const pillResults: boolean[] = [];
+  const opResults: ("AND" | "OR" | null)[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i]!;
+    if (i % 2 === 0) {
+      // pill slot
+      pillResults.push(evaluatePillToken(t, ctx));
+    } else {
+      // operator slot
+      opResults.push(t === "OR" ? "OR" : "AND");
+    }
+  }
+  // Reduce left-associatively.
+  let acc = pillResults[0]!;
+  for (let i = 1; i < pillResults.length; i++) {
+    const op = opResults[i - 1] ?? "AND";
+    acc = op === "OR" ? acc || pillResults[i]! : acc && pillResults[i]!;
+  }
+  return acc;
+}
+
+/**
+ * Evaluate a single `tags` shape as an implicit-AND pill chain.
+ * Tags are read as `axis:label` strings (e.g. "actor:prone").
+ */
+function evaluateTagsAsPillChain(
+  tags: readonly string[],
+  ctx: ConditionContext,
+): boolean {
+  if (tags.length === 0) return true;
+  return tags.every((t) => evaluatePillToken(t, ctx));
+}
+
+/**
+ * Evaluate a single `<axis>:<label>` pill token against the
+ * appropriate runtime axis. Falls back to checking the character's
+ * boolean flags when the axis is self.
+ */
+function evaluatePillToken(
+  token: string,
+  ctx: ConditionContext,
+): boolean {
+  const sep = token.indexOf(":");
+  if (sep < 0) return false;
+  const axis = token.slice(0, sep);
+  const label = token.slice(sep + 1);
+  switch (axis) {
+    case "self":
+      return checkSelfFlag(label, ctx.character);
+    case "actor":
+      // Alias for self — backwards compat with v1 preset semantics.
+      return checkSelfFlag(label, ctx.character);
+    case "target":
+      return ctx.target?.tags.has(label) ?? false;
+    case "scene":
+      return ctx.scene?.tags.has(label) ?? false;
+    default:
+      return false;
+  }
+}
+
+/**
+ * Resolve a self-axis flag against the character's flag set +
+ * proficiency set. Returns true iff the named flag is set.
+ *
+ * Recognized flag patterns:
+ *   - "proficient_in(<practice>)"    — character has that proficiency
+ *   - "not_proficient_in(<practice>)" — character does NOT have it
+ *   - "is_<status>"                  — character has that status
+ *   - "has_<something>"              — character has that boolean
+ */
+function checkSelfFlag(
+  label: string,
+  character: CharacterConditionState,
+): boolean {
+  if (label.startsWith("proficient_in(")) {
+    const practice = label.slice("proficient_in(".length, -1) as PracticeKey;
+    return character.proficiencies.has(practice);
+  }
+  if (label.startsWith("not_proficient_in(")) {
+    const practice = label.slice("not_proficient_in(".length, -1) as PracticeKey;
+    return !character.proficiencies.has(practice);
+  }
+  // Otherwise treat as a straight character flag.
+  return character.flags.has(label);
+}
+
+// =============================================================================
+// Predicate evaluator (Phase 5 UI produces these)
+// =============================================================================
+
+/**
+ * Evaluate a single predicate against a context. Public so the UI
+ * (Phase 5) can preview "what would this condition return right
+ * now?" in the picker.
+ */
+export function evaluatePredicate(
+  predicate: ConditionPredicate,
+  ctx: ConditionContext,
+): boolean {
+  switch (predicate.kind) {
+    case "stat":
+      return evaluateStatPredicate(predicate, ctx);
+    case "flag":
+      return evaluateFlagPredicate(predicate, ctx);
+    case "tag":
+      return evaluateTagPredicate(predicate, ctx);
+  }
+}
+
+function evaluateStatPredicate(
+  p: Extract<ConditionPredicate, { kind: "stat" }>,
+  ctx: ConditionContext,
+): boolean {
+  const axis = resolveAxis(p.axis, ctx);
+  if (!axis) return false;
+  const actual = readStat(p.stat, axis);
+  if (actual === undefined) return false;
+  switch (p.op) {
+    case "<":
+      return actual < p.value;
+    case "<=":
+      return actual <= p.value;
+    case ">":
+      return actual > p.value;
+    case ">=":
+      return actual >= p.value;
+    case "=":
+      return actual === p.value;
+    case "≠":
+      return actual !== p.value;
+    case "between": {
+      const high = p.valueHigh ?? p.value;
+      return actual >= p.value && actual <= high;
+    }
+  }
+}
+
+function evaluateFlagPredicate(
+  p: Extract<ConditionPredicate, { kind: "flag" }>,
+  ctx: ConditionContext,
+): boolean {
+  if (p.axis === "self") {
+    return checkSelfFlag(p.flag, ctx.character);
+  }
+  if (p.axis === "target") {
+    return ctx.target?.tags.has(p.flag) ?? false;
+  }
+  return ctx.scene?.tags.has(p.flag) ?? false;
+}
+
+function evaluateTagPredicate(
+  p: Extract<ConditionPredicate, { kind: "tag" }>,
+  ctx: ConditionContext,
+): boolean {
+  if (p.axis === "self") {
+    return ctx.character.flags.has(p.tag);
+  }
+  if (p.axis === "target") {
+    return ctx.target?.tags.has(p.tag) ?? false;
+  }
+  return ctx.scene?.tags.has(p.tag) ?? false;
+}
+
+// =============================================================================
+// Context axis resolution + stat reading
+// =============================================================================
+
+type ResolvedAxis = {
+  /** The character's stat map (or target/scene custom) for numeric reads. */
+  readonly character?: CharacterConditionState;
+  readonly target?: TargetConditionState;
+  readonly scene?: SceneConditionState;
+};
+
+function resolveAxis(
+  axis: "self" | "target" | "scene",
+  ctx: ConditionContext,
+): ResolvedAxis | null {
+  if (axis === "self") return { character: ctx.character };
+  if (axis === "target") return ctx.target ? { target: ctx.target } : null;
+  if (axis === "scene") return ctx.scene ? { scene: ctx.scene } : null;
+  return null;
+}
+
+/**
+ * Read a stat value from an axis. Returns `undefined` when the
+ * stat name isn't recognized on that axis.
+ */
+function readStat(
+  stat: string,
+  axis: ResolvedAxis,
+): number | undefined {
+  if (axis.character) {
+    return readCharacterStat(stat, axis.character);
+  }
+  if (axis.target) {
+    const v = axis.target.custom[stat];
+    return typeof v === "number" ? v : undefined;
+  }
+  if (axis.scene) {
+    const v = axis.scene.custom[stat];
+    return typeof v === "number" ? v : undefined;
+  }
+  return undefined;
+}
+
+function readCharacterStat(
+  stat: string,
+  character: CharacterConditionState,
+): number | undefined {
+  switch (stat) {
+    case "vitality":
+      return character.vitality;
+    case "vitality_max":
+      return character.vitalityMax;
+    case "vitality_pct":
+      return character.vitality / Math.max(1, character.vitalityMax);
+    case "save_dc":
+      return character.saveDc;
+    case "block_value":
+      return character.blockValue;
+    case "physical":
+    case "mental":
+    case "magical":
+      return character.attributes[stat];
+    case "prowess":
+    case "finesse":
+    case "fieldcraft":
+    case "awareness":
+    case "reason":
+    case "knowledge":
+    case "influence":
+    case "mysticism":
+    case "communion":
+    case "intuition":
+      return character.practices[stat];
+    default: {
+      // Custom variable — resolved on the character sheet, not the DB.
+      const v = character.custom[stat];
+      return typeof v === "number" ? v : undefined;
+    }
+  }
+}
