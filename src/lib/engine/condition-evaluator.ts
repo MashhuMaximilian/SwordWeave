@@ -113,6 +113,17 @@ export interface ConditionContext {
   readonly character: CharacterConditionState;
   readonly target?: TargetConditionState;
   readonly scene?: SceneConditionState;
+  /**
+   * Phase 8.I i2.6 — engine hint: which practice / attribute
+   * is currently being resolved. Used by dynamic-preset
+   * predicates like `actor:not_proficient` (the engine checks
+   * proficiency against this practice without the author
+   * needing to spell out `not_proficient_in(<practice>)` for
+   * every primitive).
+   *
+   * Optional. When omitted, dynamic presets fail-closed.
+   */
+  readonly currentPractice?: PracticeKey | null;
 }
 
 // =============================================================================
@@ -406,10 +417,10 @@ function evaluatePillToken(
   const label = token.slice(sep + 1);
   switch (axis) {
     case "self":
-      return checkSelfFlag(label, ctx.character);
+      return checkSelfFlag(label, ctx.character, ctx.currentPractice);
     case "actor":
       // Alias for self — backwards compat with v1 preset semantics.
-      return checkSelfFlag(label, ctx.character);
+      return checkSelfFlag(label, ctx.character, ctx.currentPractice);
     case "target":
       return ctx.target?.tags.has(label) ?? false;
     case "scene":
@@ -432,6 +443,7 @@ function evaluatePillToken(
 function checkSelfFlag(
   label: string,
   character: CharacterConditionState,
+  currentPractice: PracticeKey | null | undefined,
 ): boolean {
   if (label.startsWith("proficient_in(")) {
     const practice = label.slice("proficient_in(".length, -1) as PracticeKey;
@@ -440,6 +452,18 @@ function checkSelfFlag(
   if (label.startsWith("not_proficient_in(")) {
     const practice = label.slice("not_proficient_in(".length, -1) as PracticeKey;
     return !character.proficiencies.has(practice);
+  }
+  // Phase 8.I i2.6 (Mashu 2026-08-06): dynamic proficiency check.
+  // Authors can write `actor:not_proficient` (no parens) and the
+  // engine evaluates it against the practice currently being
+  // rolled (currentPractice). Used by Broad Familiarity.
+  if (label === "not_proficient") {
+    if (!currentPractice) return false;
+    return !character.proficiencies.has(currentPractice);
+  }
+  if (label === "proficient") {
+    if (!currentPractice) return false;
+    return character.proficiencies.has(currentPractice);
   }
   // Otherwise treat as a straight character flag.
   return character.flags.has(label);
@@ -501,7 +525,7 @@ function evaluateFlagPredicate(
   ctx: ConditionContext,
 ): boolean {
   if (p.axis === "self") {
-    return checkSelfFlag(p.flag, ctx.character);
+    return checkSelfFlag(p.flag, ctx.character, ctx.currentPractice);
   }
   if (p.axis === "target") {
     return ctx.target?.tags.has(p.flag) ?? false;

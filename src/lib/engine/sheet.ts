@@ -29,6 +29,7 @@ import {
   type VitalityModifier,
 } from "./vitality";
 import { resolveValue, isTypedToken, type ResolveContext } from "./runtime-resolver";
+import { evaluateCondition, type ConditionContext } from "./condition-evaluator";
 import {
   BUAccount,
   BUBalance,
@@ -132,6 +133,23 @@ export type CharacterSheetInput = {
   primitiveLinks: PrimitiveLinkSnapshot[];
   capabilityLinks: CapabilityLinkSnapshot[];
   itemLinks: ItemLinkSnapshot[];
+  /**
+   * Phase 8.I i2.6 (Mashu 2026-08-06): optional runtime context
+   * for evaluating per-modifier conditions. When omitted (the
+   * default), every modifier fires regardless of its condition
+   * — matching the pre-i2.6 behavior so existing tests pass.
+   *
+   * When provided, each primitive's hardModifier is filtered:
+   * if its `condition` evaluates to `false` against this
+   * context, the modifier is skipped. This enables e.g. Broad
+   * Familiarity (half PB to non-proficient checks) to actually
+   * filter its bonus at evaluation time.
+   *
+   * The context is built by callers from the character's
+   * current sheet state (vitality, proficiencies, flags, etc.)
+   * plus optional target/scene state for the relevant axis.
+   */
+  conditionContext?: ConditionContext;
 };
 
 export type CharacterSheet = {
@@ -264,11 +282,24 @@ export function aggregateCharacterSheet(
         target?: string;
         operation?: string;
         value?: unknown;
+        /**
+         * Phase 8.I i2.6 (Mashu 2026-08-06): per-modifier condition.
+         * When input.conditionContext is provided, evaluate the
+         * condition against it; if it fails, skip this modifier.
+         * Defaults to null (no condition) so older rows without
+         * a condition field always fire.
+         */
+        condition?: unknown;
         metadata?: {
           targetScope?: { layer?: unknown; values?: unknown };
         };
       };
       if (String(mod.target ?? "") !== "skill_practice_check") continue;
+
+      // Phase 8.I i2.6: condition filter happens INSIDE the
+      // per-practice walk below (so dynamic predicates like
+      // `actor:not_proficient` can resolve against the practice
+      // currently being rolled).
 
       const scope = mod.metadata?.targetScope;
       const values = Array.isArray(scope?.values)
@@ -317,10 +348,41 @@ export function aggregateCharacterSheet(
 
       if (link.isMirrored === true) delta = -delta;
 
-      // Distribute delta across each practice listed in the sub-target.
+      // Phase 8.I i2.6 (Mashu 2026-08-06): per-practice variable
+      // conditions. When a modifier has a condition that references
+      // the practice being rolled (e.g. Broad Familiarity's
+      // `actor:not_proficient`), the engine needs to evaluate
+      // against the right practice for each application. We move
+      // the condition check INSIDE the per-practice loop and
+      // build a fresh ConditionContext with currentPractice set.
       for (const v of values) {
-        const practiceName = upperToPractice[v.toUpperCase()] ?? (v.toLowerCase() as Practice);
+        const practiceName =
+          upperToPractice[v.toUpperCase()] ?? (v.toLowerCase() as Practice);
         if (!practiceName) continue;
+
+        // Per-practice condition filter. Re-evaluate the
+        // condition with this practice set as currentPractice.
+        // This makes `actor:not_proficient` resolve correctly
+        // for each practice the modifier applies to.
+        if (
+          input.conditionContext !== undefined &&
+          mod.condition !== undefined &&
+          mod.condition !== null
+        ) {
+          const ctxForThisPractice: ConditionContext = {
+            ...input.conditionContext,
+            currentPractice: practiceName,
+          };
+          if (
+            !evaluateCondition(
+              mod.condition as Parameters<typeof evaluateCondition>[0],
+              ctxForThisPractice,
+            )
+          ) {
+            continue;
+          }
+        }
+
         const existing = practiceMap.get(practiceName);
         if (existing) {
           existing.bonus += delta;

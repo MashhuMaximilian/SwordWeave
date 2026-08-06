@@ -217,3 +217,191 @@ describe("aggregateCharacterSheet", () => {
     expect(physicalPractice?.pbContribution).toBe(0);
   });
 });
+import type { ConditionContext } from "../condition-evaluator";
+
+describe("aggregateCharacterSheet — i2.6 condition filter", () => {
+  function makeInputWithCondition(
+    condition: unknown,
+    overrides: Partial<CharacterSheetInput> = {},
+  ): CharacterSheetInput {
+    return baseInput({
+      ...overrides,
+      primitiveLinks: [
+        {
+          primitiveId: 11848,
+          source: "PERSONAL",
+          acquiredAtLevel: 1,
+          isMirrored: false,
+          primitive: {
+            id: 11848,
+            name: "Broad Familiarity (fork)",
+            category: "SHEET_AUGMENT",
+            buCost: 5,
+            isMirrorable: false,
+            mirrorBuCredit: 0,
+            hardModifiers: [
+              {
+                kind: "modify",
+                value: 1, // half PB simplified to +1 for the MVP
+                target: "skill_practice_check",
+                operation: "add",
+                metadata: {
+                  targetScope: {
+                    layer: "PRACTICE",
+                    values: ["FIELDCRAFT"],
+                  },
+                },
+                condition,
+              } as unknown,
+            ],
+          },
+        },
+      ],
+    });
+  }
+
+  const conditionContext = (
+    overrides: {
+      proficient?: "prowess" | "fieldcraft" | null;
+      vitality?: number;
+      vitalityMax?: number;
+      flags?: string[];
+    } = {},
+  ): ConditionContext => ({
+    character: {
+      vitality: overrides.vitality ?? 30,
+      vitalityMax: overrides.vitalityMax ?? 60,
+      saveDc: 14,
+      blockValue: 6,
+      attributes: { physical: 5, mental: 2, magical: 3 },
+      practices: {
+        prowess: 5, finesse: 4, fieldcraft: 5, awareness: 4, reason: 3,
+        knowledge: 4, influence: 3, mysticism: 4, communion: 3, intuition: 5,
+      },
+      proficiencies: new Set(
+        overrides.proficient === "prowess" ? ["prowess"] :
+        overrides.proficient === "fieldcraft" ? ["fieldcraft"] :
+        []
+      ),
+      flags: new Set(overrides.flags ?? []),
+      custom: {},
+    },
+  });
+
+  it("no conditionContext provided → all modifiers fire (legacy default)", () => {
+    // Practice 'fieldcraft' should receive +1 from Broad Familiarity.
+    const sheet = aggregateCharacterSheet(
+      makeInputWithCondition(null) // null condition
+    );
+    const fc = sheet.practices.find(p => p.practice === "fieldcraft");
+    expect(fc).toBeDefined();
+    // The primitive contributes its bonus regardless of proficiency
+    // (no conditionContext = pre-i2.6 default behavior).
+    const bfContribution = fc!.primitiveContributions.find(
+      c => c.primitiveName === "Broad Familiarity (fork)"
+    );
+    expect(bfContribution?.bonus).toBe(1);
+  });
+
+  it("actor:not_proficient applies to ALL non-proficient practices, none for proficient", () => {
+    // Proficient in prowess only. The fixture covers all 10 practices
+    // so we can verify the bonus lands on all 9 non-proficient ones
+    // and skips the proficient one.
+    const ctx = conditionContext({ proficient: "prowess" });
+    const ALL_TEN = [
+      "PROWESS", "FIELDCRAFT", "REASON", "INFLUENCE", "COMMUNION",
+      "INTUITION", "MYSTICISM", "KNOWLEDGE", "AWARENESS", "FINESSE",
+    ];
+    const input: CharacterSheetInput = {
+      ...baseInput({
+        primitiveLinks: [{
+          primitiveId: 11848, source: "PERSONAL", acquiredAtLevel: 1,
+          isMirrored: false,
+          primitive: {
+            id: 11848, name: "Broad Familiarity (fork)",
+            category: "SHEET_AUGMENT", buCost: 5, isMirrorable: false,
+            mirrorBuCredit: 0,
+            hardModifiers: [{
+              kind: "modify", value: 1, target: "skill_practice_check",
+              operation: "add",
+              metadata: {
+                targetScope: { layer: "PRACTICE", values: ALL_TEN },
+              },
+              condition: { kind: "tags", customTags: ["actor:not_proficient"] },
+            }],
+          },
+        }],
+      }),
+      conditionContext: ctx,
+    };
+    const result = aggregateCharacterSheet(input);
+    const allP = ["prowess", "finesse", "fieldcraft", "awareness", "reason",
+      "knowledge", "influence", "mysticism", "communion", "intuition"];
+    for (const p of allP) {
+      const pr = result.practices.find(x => x.practice === p)!;
+      const bf = pr.primitiveContributions.find(
+        c => c.primitiveName === "Broad Familiarity (fork)"
+      );
+      if (p === "prowess") {
+        expect(bf).toBeUndefined();  // proficient → does NOT fire
+      } else {
+        expect(bf?.bonus).toBe(1);    // not proficient → fires
+      }
+    }
+  });
+
+  it("actor:not_proficient (dynamic via currentPractice) fires for non-proficient → bonus applies", () => {
+    // Character is proficient in prowess, NOT fieldcraft.
+    // Condition: "actor:not_proficient" → engine reads
+    // currentPractice from the per-practice walk and checks
+    // against proficiencies. Fieldcraft fires.
+    const ctx = conditionContext({ proficient: "prowess" });
+    const input: CharacterSheetInput = {
+      ...makeInputWithCondition(
+        { kind: "tags", customTags: ["actor:not_proficient"] }
+      ),
+      conditionContext: ctx,
+    };
+    const result = aggregateCharacterSheet(input);
+    const fc = result.practices.find(p => p.practice === "fieldcraft");
+    const bf = fc!.primitiveContributions.find(
+      c => c.primitiveName === "Broad Familiarity (fork)"
+    );
+    expect(bf?.bonus).toBe(1);
+  });
+
+  it("actor:not_proficient does NOT fire when proficient → no bonus", () => {
+    // Character is proficient in fieldcraft — the bonus does not
+    // apply to fieldcraft checks (only to non-proficient ones).
+    const ctx = conditionContext({ proficient: "fieldcraft" });
+    const input: CharacterSheetInput = {
+      ...makeInputWithCondition(
+        { kind: "tags", customTags: ["actor:not_proficient"] }
+      ),
+      conditionContext: ctx,
+    };
+    const result = aggregateCharacterSheet(input);
+    const fc = result.practices.find(p => p.practice === "fieldcraft");
+    const bf = fc!.primitiveContributions.find(
+      c => c.primitiveName === "Broad Familiarity (fork)"
+    );
+    // Condition fails when proficient → Broad Familiarity contributes 0
+    expect(bf).toBeUndefined();
+  });
+
+  it("narrative condition always fires (GM-triggered hint)", () => {
+    const ctx = conditionContext({ proficient: "fieldcraft" }); // even if proficient
+    const input: CharacterSheetInput = {
+      ...makeInputWithCondition(
+        { kind: "narrative", text: "when tracking enemies" }
+      ),
+      conditionContext: ctx,
+    };
+    const result = aggregateCharacterSheet(input);
+    const fc = result.practices.find(p => p.practice === "fieldcraft");
+    const bf = fc!.primitiveContributions.find(
+      c => c.primitiveName === "Broad Familiarity (fork)"
+    );
+    expect(bf?.bonus).toBe(1); // narrative always passes
+  });
+});
