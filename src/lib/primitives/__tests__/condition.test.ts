@@ -966,3 +966,94 @@ describe("buildCondition — axis marker regression (i2.6)", () => {
     });
   });
 });
+
+
+// ---- i2.6 — friendly badge labels (axis-explicit display) ----
+
+describe("conditionToBadges — axis-explicit display (i2.6)", () => {
+  it("bare not_proficient maps to 'not_proficient(any practice)'", () => {
+    const badges = conditionToBadges({
+      kind: "tags",
+      customTags: ["actor:not_proficient"],
+    });
+    expect(badges).toEqual([
+      { kind: "tag", label: "not_proficient(any practice)" },
+    ]);
+  });
+
+  it("bare proficient maps to 'proficient(any practice)'", () => {
+    const badges = conditionToBadges({
+      kind: "tags",
+      customTags: ["actor:proficient"],
+    });
+    expect(badges).toEqual([
+      { kind: "tag", label: "proficient(any practice)" },
+    ]);
+  });
+
+  it("not_proficient_in_attribute(any) maps to 'not_proficient(any attribute)'", () => {
+    const badges = conditionToBadges({
+      kind: "tags",
+      customTags: ["actor:not_proficient_in_attribute(any)"],
+    });
+    expect(badges).toEqual([
+      { kind: "tag", label: "not_proficient(any attribute)" },
+    ]);
+  });
+
+  it("concrete practice name stays verbatim", () => {
+    const badges = conditionToBadges({
+      kind: "tags",
+      customTags: ["actor:proficient_in(prowess)"],
+    });
+    expect(badges).toEqual([
+      { kind: "tag", label: "proficient_in(prowess)" },
+    ]);
+  });
+
+  it("grouped (all_practices) stays verbatim", () => {
+    const badges = conditionToBadges({
+      kind: "tags",
+      customTags: ["actor:not_proficient_in(all_practices)"],
+    });
+    expect(badges).toEqual([
+      { kind: "tag", label: "not_proficient_in(all_practices)" },
+    ]);
+  });
+
+  it("stat pill renders as '<stat> <op> <value>'", () => {
+    const badges = conditionToBadges({
+      kind: "tags",
+      customTags: ["actor:stat|vitality_pct|<|0.5"],
+    });
+    expect(badges).toEqual([
+      { kind: "tag", label: "vitality_pct < 0.5" },
+    ]);
+  });
+
+  it("stat pill with between renders 'between A - B'", () => {
+    const badges = conditionToBadges({
+      kind: "tags",
+      customTags: ["actor:stat|vitality|between|5|15"],
+    });
+    expect(badges).toEqual([
+      { kind: "tag", label: "vitality between 5 - 15" },
+    ]);
+  });
+
+  it("compound variant — each pill is friendly, operators pass through", () => {
+    const badges = conditionToBadges({
+      kind: "compound",
+      tokens: [
+        "actor:not_proficient",
+        "AND",
+        "actor:stat|vitality_pct|<|0.5",
+      ],
+    });
+    expect(badges).toEqual([
+      { kind: "tag", label: "not_proficient(any practice)" },
+      { kind: "tag", label: "AND" },
+      { kind: "tag", label: "vitality_pct < 0.5" },
+    ]);
+  });
+});

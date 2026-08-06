@@ -530,7 +530,10 @@ export function conditionToBadges(
         kind: "preset",
         label: presetLabel(condition.presetKey) ?? condition.presetKey,
       },
-      ...condition.customTags.map((t) => ({ kind: "tag" as const, label: t })),
+      ...condition.customTags.map((t) => ({
+        kind: "tag" as const,
+        label: friendlyConditionLabel(stripCategoryPrefix(t)),
+      })),
     ];
   }
   if (condition.kind === "tags") {
@@ -540,7 +543,7 @@ export function conditionToBadges(
     // surfaced via the surrounding UI section.
     return condition.customTags.map((t) => ({
       kind: "tag" as const,
-      label: stripCategoryPrefix(t),
+      label: friendlyConditionLabel(stripCategoryPrefix(t)),
     }));
   }
   if (condition.kind === "compound") {
@@ -552,8 +555,11 @@ export function conditionToBadges(
     for (let i = 0; i < condition.tokens.length; i++) {
       const token = condition.tokens[i]!;
       if (i % 2 === 0) {
-        // Pill slot — strip category prefix for display
-        badges.push({ kind: "tag", label: stripCategoryPrefix(token) });
+        // Pill slot — strip category prefix + map to friendly label
+        badges.push({
+          kind: "tag",
+          label: friendlyConditionLabel(stripCategoryPrefix(token)),
+        });
       } else {
         // Operator slot — render as inline connector (using
         // the same tag kind so the sheet renders it; future
@@ -573,6 +579,42 @@ export function conditionToBadges(
       condition.kind
     }'`,
   );
+}
+
+/**
+ * Map bare / axis-marker tokens to user-friendly labels for
+ * display in the preview / character sheet. The tokens themselves
+ * remain unchanged on disk — only the display string is mapped.
+ *
+ *   - 'not_proficient'                          → 'not_proficient(any practice)'
+ *   - 'proficient'                              → 'proficient(any practice)'
+ *   - 'not_proficient_in_attribute(any)'        → 'not_proficient(any attribute)'
+ *   - 'proficient_in_attribute(any)'            → 'proficient(any attribute)'
+ *   - 'stat|vitality|<|10'                      → 'vitality < 10'
+ *   - everything else                           → verbatim
+ */
+function friendlyConditionLabel(label: string): string {
+  if (label === "not_proficient") return "not_proficient(any practice)";
+  if (label === "proficient") return "proficient(any practice)";
+  if (label === "not_proficient_in_attribute(any)")
+    return "not_proficient(any attribute)";
+  if (label === "proficient_in_attribute(any)")
+    return "proficient(any attribute)";
+  // Stat-comparison pills — render the operator + value pair.
+  if (label.startsWith("stat|")) {
+    const parts = label.split("|");
+    if (parts.length >= 4) {
+      const stat = parts[1] ?? "";
+      const op = parts[2] ?? "=";
+      const v = parts[3] ?? "0";
+      if (op === "between" && parts.length === 5) {
+        const vh = parts[4] ?? v;
+        return `${stat} between ${v} - ${vh}`;
+      }
+      return `${stat} ${op} ${v}`;
+    }
+  }
+  return label;
 }
 
 // =============================================================================

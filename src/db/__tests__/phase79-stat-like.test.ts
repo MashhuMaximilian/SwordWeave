@@ -25,8 +25,10 @@ interface Proposed {
   readonly name: string;
   readonly operation: HardModifier["operation"];
   readonly target: string;
-  readonly value: number | string;
+  readonly value: number | string | unknown;
   readonly stacking: string;
+  readonly targetScope?: unknown;
+  readonly condition?: unknown;
 }
 
 const PROPOSED: ReadonlyArray<Proposed> = [
@@ -42,7 +44,7 @@ const PROPOSED: ReadonlyArray<Proposed> = [
   { id: 392, name: "Calamity Die Block", operation: "add", target: "action.damage", value: "1d12", stacking: "stack" },
   { id: 393, name: "Existential Tear", operation: "add", target: "action.damage", value: "1d20", stacking: "stack" },
   // PRACTICE_PROGRESSION_AUGMENT (5)
-  { id: 56, name: "Broad Familiarity", operation: "add", target: "skill_practice_check", value: { kind: "derived", which: "pb_half" }, stacking: "stack", targetScope: { layer: "PRACTICE", values: ["PROWESS", "FIELDCRAFT", "REASON", "INFLUENCE", "COMMUNION", "FINESSE", "AWARENESS", "MYSTICISM", "KNOWLEDGE", "INTUITION"] }, condition: { kind: "tags", customTags: ["actor:not_proficient"] } },
+  { id: 56, name: "Broad Familiarity", operation: "add", target: "skill_practice_check", value: { kind: "derived", which: "pb_half" } as const, stacking: "stack", targetScope: { layer: "PRACTICE", values: ["PROWESS", "FIELDCRAFT", "REASON", "INFLUENCE", "COMMUNION", "FINESSE", "AWARENESS", "MYSTICISM", "KNOWLEDGE", "INTUITION"] }, condition: { kind: "tags", customTags: ["actor:not_proficient"] } },
   { id: 57, name: "Focused Edge", operation: "grant", target: "behavior:focused_edge", value: 1, stacking: "unique-by-primitive" },
   { id: 58, name: "Practice Proficiency", operation: "grant", target: "behavior:practice_proficiency", value: 1, stacking: "unique-by-primitive" },
   { id: 59, name: "Expertise Upgrade", operation: "grant", target: "behavior:expertise_upgrade", value: 1, stacking: "unique-by-primitive" },
@@ -98,13 +100,18 @@ describe("Phase 7.9.2 — stat-like migration", () => {
         const m = mods[0]!;
         expect(m.target).toBe(p.target);
         expect(m.operation).toBe(p.operation);
-        if (typeof p.value === "string") {
-          expect(String(m.value)).toBe(p.value);
-        } else if (typeof p.value === "object" && p.value !== null) {
-          // Typed-token shape (Phase 8.I i2.0+).
-          expect(m.value).toEqual(p.value);
+        if (p.value === null || typeof p.value !== "object") {
+          // Scalar comparison — works for the legacy numeric /
+          // string value shapes.
+          if (typeof p.value === "string") {
+            expect(String(m.value)).toBe(p.value);
+          } else {
+            expect(Number(m.value)).toBe(p.value);
+          }
         } else {
-          expect(Number(m.value)).toBe(p.value);
+          // Object value (Phase 8.I i2.0+ typed tokens) — compare
+          // shape with toEqual.
+          expect(m.value).toEqual(p.value);
         }
         expect(m.stacking ?? "stack").toBe(p.stacking);
       });
@@ -139,9 +146,9 @@ describe("Phase 7.9.2 — stat-like migration", () => {
           const result = applyMirror("add", 1); // use numeric placeholder
           expect(result.op).toBe("subtract");
         } else {
-          const once = applyMirror("add", p.value);
+          const once = applyMirror("add", p.value as number);
           const twice = applyMirror(once.op, once.value);
-          expect(twice).toEqual({ op: "add", value: p.value });
+          expect(twice).toEqual({ op: "add", value: p.value as number });
         }
       });
     }
