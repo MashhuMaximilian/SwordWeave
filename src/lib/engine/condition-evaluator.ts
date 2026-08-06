@@ -32,7 +32,7 @@
  */
 
 import type { ModifierCondition } from "@/types/condition";
-import { ALL_PRACTICES, ALL_ATTRIBUTES } from "@/types/modifier";
+import { ALL_PRACTICES, ALL_ATTRIBUTES, type AttributeKey } from "@/types/modifier";
 import type { PracticeKey } from "@/types/modifier";
 
 // =============================================================================
@@ -129,6 +129,9 @@ export interface ConditionContext {
    * Optional. When omitted, dynamic presets fail-closed.
    */
   readonly currentPractice?: PracticeKey | null;
+  /** Same pattern for per-attribute walks. Reserved for future
+   *  per-attribute modifier aggregation (Phase 8.I i2.6+). */
+  readonly currentAttribute?: AttributeKey | null;
 }
 
 // =============================================================================
@@ -452,10 +455,20 @@ function evaluatePillToken(
   // Standard pill — flag / proficiency / tag.
   switch (axis) {
     case "self":
-      return checkSelfFlag(payload, ctx.character, ctx.currentPractice);
+      return checkSelfFlag(
+        payload,
+        ctx.character,
+        ctx.currentPractice,
+        ctx.currentAttribute,
+      );
     case "actor":
       // Alias for self — backwards compat with v1 preset semantics.
-      return checkSelfFlag(payload, ctx.character, ctx.currentPractice);
+      return checkSelfFlag(
+        payload,
+        ctx.character,
+        ctx.currentPractice,
+        ctx.currentAttribute,
+      );
     case "target":
       return ctx.target?.tags.has(payload) ?? false;
     case "scene":
@@ -524,6 +537,7 @@ function checkSelfFlag(
   label: string,
   character: CharacterConditionState,
   currentPractice: PracticeKey | null | undefined,
+  currentAttribute: AttributeKey | null | undefined = null,
 ): boolean {
   // Grouped proficiency checks (Phase 8.I i2.6 — Mashu 2026-08-06).
   // `all_practices` / `all_saves` aggregate over every member of
@@ -553,10 +567,18 @@ function checkSelfFlag(
   }
   if (label.startsWith("proficient_in_attribute(")) {
     const attr = label.slice("proficient_in_attribute(".length, -1);
+    if (attr === "any") {
+      if (!currentAttribute) return false;
+      return character.proficiencies.has(currentAttribute);
+    }
     return character.proficiencies.has(attr);
   }
   if (label.startsWith("not_proficient_in_attribute(")) {
     const attr = label.slice("not_proficient_in_attribute(".length, -1);
+    if (attr === "any") {
+      if (!currentAttribute) return false;
+      return !character.proficiencies.has(currentAttribute);
+    }
     return !character.proficiencies.has(attr);
   }
   // Phase 8.I i2.6 (Mashu 2026-08-06): dynamic proficiency check.
@@ -631,7 +653,12 @@ function evaluateFlagPredicate(
   ctx: ConditionContext,
 ): boolean {
   if (p.axis === "self") {
-    return checkSelfFlag(p.flag, ctx.character, ctx.currentPractice);
+    return checkSelfFlag(
+      p.flag,
+      ctx.character,
+      ctx.currentPractice,
+      ctx.currentAttribute,
+    );
   }
   if (p.axis === "target") {
     return ctx.target?.tags.has(p.flag) ?? false;

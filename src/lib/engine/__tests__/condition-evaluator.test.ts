@@ -46,6 +46,12 @@ function makeCtx(overrides: Partial<ConditionContext> = {}): ConditionContext {
   };
   if (overrides.target !== undefined) (ctx as { target?: unknown }).target = overrides.target;
   if (overrides.scene !== undefined) (ctx as { scene?: unknown }).scene = overrides.scene;
+  if (overrides.currentPractice !== undefined)
+    (ctx as { currentPractice?: unknown }).currentPractice =
+      overrides.currentPractice;
+  if (overrides.currentAttribute !== undefined)
+    (ctx as { currentAttribute?: unknown }).currentAttribute =
+      overrides.currentAttribute;
   return ctx;
 }
 
@@ -730,6 +736,81 @@ describe("evaluateCondition — proficiency groupings (i2.6)", () => {
         {
           kind: "tags",
           customTags: ["actor:proficient_in_attribute(physical)"],
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+});
+
+
+// ---- i2.6 — dynamic attribute checks (currentAttribute) ----
+
+describe("evaluateCondition — dynamic attribute axis (i2.6)", () => {
+  it("not_proficient_in_attribute(any) fires when not proficient in currentAttribute", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        proficiencies: new Set(),  // nothing slotted
+      }),
+      currentAttribute: "physical",
+    });
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["actor:not_proficient_in_attribute(any)"],
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("not_proficient_in_attribute(any) is false when proficient in currentAttribute", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        proficiencies: new Set(["physical"]),
+      }),
+      currentAttribute: "physical",
+    });
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["actor:not_proficient_in_attribute(any)"],
+        },
+        ctx,
+      ),
+    ).toBe(false);
+  });
+
+  it("not_proficient_in_attribute(any) fails-closed when currentAttribute is null", () => {
+    const ctx = makeCtx({
+      character: makeCharacter(),
+      currentAttribute: null,
+    });
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["actor:not_proficient_in_attribute(any)"],
+        },
+        ctx,
+      ),
+    ).toBe(false);
+  });
+
+  it("proficient_in_attribute(any) fires when proficient in currentAttribute", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        proficiencies: new Set(["magical"]),
+      }),
+      currentAttribute: "magical",
+    });
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["actor:proficient_in_attribute(any)"],
         },
         ctx,
       ),

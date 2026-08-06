@@ -207,11 +207,55 @@ describe("pillLabel", () => {
     expect(label).toBe("is_prone");
   });
 
-  it("tag pill defaults to label", () => {
-    const label = pillLabel({
-      category: "actor",
-      label: "unconscious",
-    });
-    expect(label).toBe("unconscious");
+
+
+  it("dynamic not_proficient (any practice) maps to friendly label", () => {
+    expect(
+      pillLabel({
+        category: "actor",
+        label: "not_proficient",
+        kind: "proficiency",
+      }),
+    ).toBe("not_proficient(any practice)");
+  });
+
+  it("dynamic proficient (any practice) maps to friendly label", () => {
+    expect(
+      pillLabel({
+        category: "actor",
+        label: "proficient",
+        kind: "proficiency",
+      }),
+    ).toBe("proficient(any practice)");
+  });
+
+  it("dynamic not_proficient_in_attribute(any) maps to friendly label", () => {
+    expect(
+      pillLabel({
+        category: "actor",
+        label: "not_proficient_in_attribute(any)",
+        kind: "proficiency",
+      }),
+    ).toBe("not_proficient(any attribute)");
+  });
+
+  it("dynamic proficient_in_attribute(any) maps to friendly label", () => {
+    expect(
+      pillLabel({
+        category: "actor",
+        label: "proficient_in_attribute(any)",
+        kind: "proficiency",
+      }),
+    ).toBe("proficient(any attribute)");
+  });
+
+  it("grouped not_proficient_in(all_practices) maps to verbatim label", () => {
+    expect(
+      pillLabel({
+        category: "actor",
+        label: "not_proficient_in(all_practices)",
+        kind: "proficiency",
+      }),
+    ).toBe("not_proficient_in(all_practices)");
   });
 });

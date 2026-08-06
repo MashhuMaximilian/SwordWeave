@@ -233,24 +233,65 @@ export function PickerProficiencySection({
       count={ALL_PRACTICES.length + ALL_ATTRIBUTES.length + 2}
     >
       <div className="mt-1 space-y-1.5">
+        <div className="text-[10px] text-muted-foreground italic">
+          Click <span className="font-bold text-emerald-600">+</span> to add
+          proficient, <span className="font-bold text-orange-600">−</span> to add
+          not_proficient. The single-axis chips
+          ("any practice", "any attribute") resolve at evaluate time; the
+          grouped chips ("all practices", "all saves") require every
+          member to match.
+        </div>
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Dynamic (uses currentPractice at evaluate time)
           </div>
+          {/* Dynamic (any axis) — single click per axis, engine resolves
+              against currentPractice / currentAttribute at evaluate time */}
           <div className="mt-1 flex flex-wrap gap-1">
             <button
               type="button"
-              onClick={() => onAdd("not_proficient", undefined, "practice")}
+              onClick={() => onAdd("not_proficient", "any_practice", "practice")}
               className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-xs text-orange-700 hover:bg-orange-500/20 dark:text-orange-300"
+              title="Fires for any practice the character is not proficient in"
             >
-              not_proficient
+              not_proficient(any practice)
             </button>
             <button
               type="button"
-              onClick={() => onAdd("proficient", undefined, "practice")}
+              onClick={() => onAdd("proficient", "any_practice", "practice")}
               className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300"
+              title="Fires for any practice the character IS proficient in"
             >
-              proficient
+              proficient(any practice)
+            </button>
+            <button
+              type="button"
+              onClick={() => onAdd("not_proficient_in_attribute(any)", "any_attribute", "attribute")}
+              className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-xs text-orange-700 hover:bg-orange-500/20 dark:text-orange-300"
+              title="Fires for any attribute the character is not proficient in"
+            >
+              not_proficient(any attribute)
+            </button>
+            <button
+              type="button"
+              onClick={() => onAdd("proficient_in_attribute(any)", "any_attribute", "attribute")}
+              className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300"
+              title="Fires for any attribute the character IS proficient in"
+            >
+              proficient(any attribute)
+            </button>
+          </div>
+
+          {/* Static grouped (all-of) — fires only when the character
+              is/isn't proficient in EVERY member of the axis */}
+          <div className="mt-1 flex flex-wrap gap-1">
+            <button
+              type="button"
+              onClick={() => onAdd("proficient_in(all_practices)", "all_practices", "practice")}
+              className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300"
+              title="Fires when the character is proficient in EVERY practice"
+            >
+              proficient(all practices)
             </button>
             <button
               type="button"
@@ -259,6 +300,14 @@ export function PickerProficiencySection({
               title="Fires when the character is not proficient in EVERY practice"
             >
               not_proficient(all practices)
+            </button>
+            <button
+              type="button"
+              onClick={() => onAdd("proficient_in(all_saves)", "all_saves", "practice")}
+              className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300"
+              title="Fires when the character is proficient in EVERY save"
+            >
+              proficient(all saves)
             </button>
             <button
               type="button"
@@ -402,7 +451,7 @@ function CustomProficiencyInput({
         disabled={trimmed.length === 0}
         className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-700 hover:bg-emerald-500/25 disabled:opacity-40 dark:text-emerald-300"
       >
-        + add
+        + Prof
       </button>
       <button
         type="button"
@@ -410,7 +459,7 @@ function CustomProficiencyInput({
         disabled={trimmed.length === 0}
         className="rounded-md bg-orange-500/15 px-2 py-0.5 text-xs font-medium text-orange-700 hover:bg-orange-500/25 disabled:opacity-40 dark:text-orange-300"
       >
-        − add
+        + not_prof
       </button>
     </div>
   );
@@ -587,7 +636,20 @@ export function pillLabel(pill: ConditionAuthoring["pills"][number]): string {
       }
       return `${pill.stat ?? pill.label} ${op} ${v}`;
     }
-    case "proficiency":
+    case "proficiency": {
+      // For dynamic axis-based pills the label is the bare
+      // actor:not_proficient / actor:proficient / actor:not_proficient_in_attribute(any) /
+      // actor:proficient_in_attribute(any). Map those to the
+      // user-visible chip text.
+      const label = pill.label;
+      if (label === "not_proficient") return "not_proficient(any practice)";
+      if (label === "proficient") return "proficient(any practice)";
+      if (label === "not_proficient_in_attribute(any)")
+        return "not_proficient(any attribute)";
+      if (label === "proficient_in_attribute(any)")
+        return "proficient(any attribute)";
+      return label;
+    }
     case "flag":
     case "tag":
     default:
