@@ -74,6 +74,45 @@ export const MODIFIER_TARGETS = [
   // When this is selected, the form renders a text input for
   // the behavior name (e.g. "darkvision", "mana_pool").
   "behavior",
+  // ===========================================================
+  // Phase 8.I i2.7 (Mashu 2026-08-06) — new targets from the
+  // Combat / Damage / Upkeep / Encumbrance canonical PDFs.
+  // Each new target either carries a fixed enum (size,
+  // source_type), a numeric axis (carry_capacity, complexity),
+  // or an author-named `{key}` runtime ref (equip_slot,
+  // damage_type, upkeep_cost, maintained_capability).
+  // ===========================================================
+
+  // Combat-action intent (Council Phase declaration).
+  // Boolean — author can grant/deny the ability to declare
+  // a main intent. Used by capability gating primitives.
+  "combat_action",
+  // Creature size tier (Tiny/Small/Medium/Large/Huge/Gargantuan).
+  // Tag enum — author picks the target tier.
+  "size",
+  // Total carry capacity (Encumbrance PDF).
+  // Numeric — capacity = size_capacity + 5×physical_modifier.
+  "carry_capacity",
+  // Equipment slot (Encumbrance PDF).
+  // Author names the slot (e.g. equip_slot:0, equip_slot:weapon).
+  // free-text widget — same pattern as `behavior`.
+  "equip_slot",
+  // Damage type identifier (Damage & Resistance PDF).
+  // Author names the type (e.g. damage_type:fire, damage_type:ice).
+  "damage_type",
+  // Source type for damage / capabilities (Damage & Resistance PDF).
+  // Tag enum — physical / magical / psychic.
+  "source_type",
+  // Per-capability upkeep cost (Upkeep & Interruption PDF).
+  // Author names the capability instance.
+  // numeric with author-named sub-target.
+  "upkeep_cost",
+  // Boolean flag indicating a capability is currently maintained
+  // (Upkeep & Interruption PDF). Author names the capability.
+  "maintained_capability",
+  // Complexity score (Player Loop + Combat Rhythm PDFs).
+  // Numeric — used for capability design and combat placement.
+  "complexity",
 ] as const;
 export type ModifierTarget = (typeof MODIFIER_TARGETS)[number];
 
@@ -515,6 +554,96 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
     layer: null,
     widget: "free-text",
     freeTextPlaceholder: "e.g. darkvision, mana_pool",
+  },
+
+  // ===========================================================
+  // Phase 8.I i2.7 — new targets from canonical PDFs.
+  // See docs/primitive-target-ontology.md for the canonical
+  // mapping + scope-layer rules.
+  // ===========================================================
+
+  combat_action: {
+    target: "combat_action",
+    label: "Combat Action (intent)",
+    layer: null,
+    widget: "none",
+  },
+  size: {
+    target: "size",
+    label: "Size Tier",
+    layer: null,
+    widget: "checklist",
+    options: [
+      "TINY",
+      "SMALL",
+      "MEDIUM",
+      "LARGE",
+      "HUGE",
+      "GARGANTUAN",
+    ],
+    optionLabels: {
+      TINY: "Tiny",
+      SMALL: "Small",
+      MEDIUM: "Medium",
+      LARGE: "Large",
+      HUGE: "Huge",
+      GARGANTUAN: "Gargantuan",
+    },
+  },
+  carry_capacity: {
+    target: "carry_capacity",
+    label: "Carry Capacity",
+    layer: null,
+    widget: "none",
+    valueIsNumeric: true,
+  },
+  equip_slot: {
+    target: "equip_slot",
+    label: "Equip Slot (custom)",
+    layer: null,
+    widget: "free-text",
+    freeTextPlaceholder: "e.g. 0, weapon, armor, ring1",
+  },
+  damage_type: {
+    target: "damage_type",
+    label: "Damage Type (custom)",
+    layer: null,
+    widget: "free-text",
+    freeTextPlaceholder: "e.g. fire, ice, lightning, gravity, force",
+  },
+  source_type: {
+    target: "source_type",
+    label: "Source Type",
+    layer: null,
+    widget: "checklist",
+    options: ["PHYSICAL", "MAGICAL", "PSYCHIC"],
+    optionLabels: {
+      PHYSICAL: "Physical",
+      MAGICAL: "Magical",
+      PSYCHIC: "Psychic",
+    },
+  },
+  upkeep_cost: {
+    target: "upkeep_cost",
+    label: "Upkeep Cost (per capability)",
+    layer: null,
+    widget: "free-text",
+    freeTextPlaceholder: "e.g. fire_shield, mage_armor",
+    valueIsNumeric: true,
+  },
+  maintained_capability: {
+    target: "maintained_capability",
+    label: "Maintained Capability (custom)",
+    layer: null,
+    widget: "free-text",
+    freeTextPlaceholder: "e.g. fire_shield, mage_armor",
+  },
+  complexity: {
+    target: "complexity",
+    label: "Complexity",
+    layer: null,
+    widget: "none",
+    valueIsNumeric: true,
   },
 };
 

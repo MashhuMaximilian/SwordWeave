@@ -33,23 +33,15 @@ import {
 } from "../target-scope";
 
 describe("MODIFIER_TARGETS enum", () => {
-  it("has 14 entries (UX2a-r + UX2b-r)", () => {
-    // Phase-7-E/UX2a-r regression: 5 dedicated speed axes were a
-    // mistake (cluttering the dropdown). Back to one "speed" axis
-    // with locomotion options inside. UX2b-r renames
-    // "action_shape_size" → "targeting". Net count after the pair:
-    //   16 (Phase-7-E baseline)
-    //   +1  (targeting takes the place of action_shape_size; net
-    //        change on the dropdown entry count: 0 since action_
-    //        shape_size is the same idea renamed)
-    //   -4  (5 speed axes removed; "speed" added back, net -4)
-    //   = 13 — but defense_dc and a few others were already at 16.
-    // Real total: 15. Calc: attribute + defense_dc + speed +
-    // max_vitality + current_vitality + proficiency_bonus +
-    // action_roll + skill_practice_check + damage_healing_output +
-    // targeting + duration + strain + item_slot_cost + scene_pace
-    // + behavior (Phase 7.5 escape hatch).
-    expect(MODIFIER_TARGETS.length).toBe(15);
+  it("has 24 entries (i2.7 — 9 new targets from canonical PDFs)", () => {
+    // Phase-7-E/UX2a-r + UX2b-r baseline: 15 entries.
+    // Phase-8.I-i2.7 (Mashu 2026-08-06): 9 new entries from the
+    // Combat / Damage / Upkeep / Encumbrance canonical PDFs:
+    //   combat_action, size, carry_capacity, equip_slot,
+    //   damage_type, source_type, upkeep_cost, maintained_capability,
+    //   complexity
+    // Total: 15 + 9 = 24.
+    expect(MODIFIER_TARGETS.length).toBe(24);
   });
 
   it("consolidates the three Attribute variants into one entry", () => {
@@ -719,6 +711,82 @@ describe("LEGACY_TARGET_MIGRATIONS covers all 22 dashed entries", () => {
       expect(MODIFIER_TARGETS).toContain(migration.target);
       expect(migration.defaultScope.layer === null ||
         ["ATTRIBUTE", "PRACTICE", "METRIC", "DICE", "DURATION", "NARROW_FOCUS"].includes(migration.defaultScope.layer as string)).toBe(true);
+    }
+  });
+});
+
+
+describe("Phase 8.I i2.7 — new targets from canonical PDFs", () => {
+  it("combat_action target has no sub-target widget", () => {
+    const spec = MODIFIER_TARGET_SPEC.combat_action;
+    expect(spec.target).toBe("combat_action");
+    expect(spec.widget).toBe("none");
+  });
+
+  it("size target has the 6-size-tier checklist", () => {
+    const spec = MODIFIER_TARGET_SPEC.size;
+    expect(spec.target).toBe("size");
+    expect(spec.widget).toBe("checklist");
+    expect(spec.options).toEqual([
+      "TINY",
+      "SMALL",
+      "MEDIUM",
+      "LARGE",
+      "HUGE",
+      "GARGANTUAN",
+    ]);
+  });
+
+  it("carry_capacity target is numeric with no widget", () => {
+    const spec = MODIFIER_TARGET_SPEC.carry_capacity;
+    expect(spec.target).toBe("carry_capacity");
+    expect(spec.widget).toBe("none");
+    expect(spec.valueIsNumeric).toBe(true);
+  });
+
+  it("equip_slot target uses free-text widget (author-named key)", () => {
+    const spec = MODIFIER_TARGET_SPEC.equip_slot;
+    expect(spec.target).toBe("equip_slot");
+    expect(spec.widget).toBe("free-text");
+    expect(spec.freeTextPlaceholder).toBeTruthy();
+  });
+
+  it("damage_type target uses free-text widget (author-named key)", () => {
+    const spec = MODIFIER_TARGET_SPEC.damage_type;
+    expect(spec.target).toBe("damage_type");
+    expect(spec.widget).toBe("free-text");
+  });
+
+  it("source_type target has the 3-source-type checklist", () => {
+    const spec = MODIFIER_TARGET_SPEC.source_type;
+    expect(spec.target).toBe("source_type");
+    expect(spec.widget).toBe("checklist");
+    expect(spec.options).toEqual(["PHYSICAL", "MAGICAL", "PSYCHIC"]);
+  });
+
+  it("upkeep_cost target uses free-text + numeric", () => {
+    const spec = MODIFIER_TARGET_SPEC.upkeep_cost;
+    expect(spec.target).toBe("upkeep_cost");
+    expect(spec.widget).toBe("free-text");
+    expect(spec.valueIsNumeric).toBe(true);
+  });
+
+  it("maintained_capability target uses free-text (author-named key)", () => {
+    const spec = MODIFIER_TARGET_SPEC.maintained_capability;
+    expect(spec.target).toBe("maintained_capability");
+    expect(spec.widget).toBe("free-text");
+  });
+
+  it("complexity target is numeric with no widget", () => {
+    const spec = MODIFIER_TARGET_SPEC.complexity;
+    expect(spec.target).toBe("complexity");
+    expect(spec.widget).toBe("none");
+    expect(spec.valueIsNumeric).toBe(true);
+  });
+
+  it("every new target has a spec entry", () => {
+    for (const t of MODIFIER_TARGETS) {
+      expect(MODIFIER_TARGET_SPEC[t]).toBeDefined();
     }
   });
 });
