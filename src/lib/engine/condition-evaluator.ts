@@ -850,7 +850,7 @@ function readCharacterStat(
       return 2; // default Medium
     }
     case "source_type": {
-      // Map enum to numeric tier (physical=1, magical=2, psychic=3).
+      // Map enum to numeric tier (physical=1, magical=2, mental=3).
       const v = character.custom["source_type"];
       if (typeof v === "number") return v;
       return 1;

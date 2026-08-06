@@ -382,21 +382,20 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
     widget: "none",
   },
   speed: {
-    // Phase-7-E/UX2a-r: Speed is one dropdown entry. The five
-    // locomotion types are options in the Target Value widget,
-    // not separate top-level dropdown entries. UI uses a
-    // multi-select CHECKLIST (a modifier can affect one or more
-    // speeds simultaneously — e.g. "+5 to Walking and Swimming").
+    // Phase-7-E/UX2a-r + i2.7: Speed is one dropdown entry.
+    // The five locomotion types are checklist options; "OTHER"
+    // adds a free-text input for any non-canonical speed.
     target: "speed",
     label: "Speed",
     layer: "METRIC",
-    widget: "checklist",
+    widget: "checklist-with-free-text",
     options: [
       "WALKING_SPEED",
       "CLIMBING_SPEED",
       "SWIMMING_SPEED",
       "FLYING_SPEED",
       "BURROWING_SPEED",
+      "OTHER",
     ],
     optionLabels: {
       WALKING_SPEED: "Walking",
@@ -404,7 +403,10 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
       SWIMMING_SPEED: "Swimming",
       FLYING_SPEED: "Flying",
       BURROWING_SPEED: "Burrowing",
+      OTHER: "Other",
     },
+    freeTextPlaceholder:
+      "Other locomotion (e.g. 'Tunneling', 'Phase')",
   },
   max_vitality: {
     target: "max_vitality",
@@ -438,16 +440,13 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
     widget: "none",
   },
   action_roll: {
-    // Phase 8.I i2.0 (Mashu 2026-08-05): per user feedback, action
-    // roll needs 5 sub-targets so authors can target attack rolls,
-    // any of the three saves (physical/mental/magical), or a free
-    // "other" axis (used for proficiencies and other tagged effects
-    // — see R4-Q2 and R5-Q2). The form previously had no sub-target
-    // widget, which forced everything through the single axis.
+    // Phase 8.I i2.0 + i2.7: action_roll has 5 sub-targets
+    // (attack roll, 3 saves, other) plus a free-text input for
+    // author-named axes (proficiencies, custom rolls).
     target: "action_roll",
     label: "Action Roll",
     layer: "METRIC",
-    widget: "checklist",
+    widget: "checklist-with-free-text",
     options: [
       "ATTACK_ROLL",
       "PHYSICAL_SAVE",
@@ -462,6 +461,8 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
       MAGICAL_SAVE: "Magical Save",
       OTHER: "Other",
     },
+    freeTextPlaceholder:
+      "Other action roll (e.g. 'Initiative', 'Profession check')",
   },
   damage_healing_output: {
     // Phase 7.5 v4: Damage / Healing Output has NO target value
@@ -518,8 +519,13 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
     target: "duration",
     label: "Duration",
     layer: "DURATION",
-    widget: "checklist",
-    options: DURATION_VALUES,
+    widget: "checklist-with-free-text",
+    options: [...DURATION_VALUES, "OTHER"],
+    optionLabels: {
+      OTHER: "Other",
+    },
+    freeTextPlaceholder:
+      "Other duration (e.g. 'Until next dawn', 'Until dismissed')",
   },
   strain: {
     target: "strain",
@@ -572,7 +578,7 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
     target: "size",
     label: "Size Tier",
     layer: null,
-    widget: "checklist",
+    widget: "checklist-with-free-text",
     options: [
       "TINY",
       "SMALL",
@@ -580,6 +586,7 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
       "LARGE",
       "HUGE",
       "GARGANTUAN",
+      "OTHER",
     ],
     optionLabels: {
       TINY: "Tiny",
@@ -588,7 +595,10 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
       LARGE: "Large",
       HUGE: "Huge",
       GARGANTUAN: "Gargantuan",
+      OTHER: "Other",
     },
+    freeTextPlaceholder:
+      "Other size tier (e.g. 'Colossal', 'Gargantuan+')",
   },
   carry_capacity: {
     target: "carry_capacity",
@@ -599,14 +609,14 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
   },
   equip_slot: {
     target: "equip_slot",
-    label: "Equip Slot (custom)",
+    label: "Equip Slot",
     layer: null,
     widget: "free-text",
     freeTextPlaceholder: "e.g. 0, weapon, armor, ring1",
   },
   damage_type: {
     target: "damage_type",
-    label: "Damage Type (custom)",
+    label: "Damage Type",
     layer: null,
     widget: "free-text",
     freeTextPlaceholder: "e.g. fire, ice, lightning, gravity, force",
@@ -615,17 +625,20 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
     target: "source_type",
     label: "Source Type",
     layer: null,
-    widget: "checklist",
-    options: ["PHYSICAL", "MAGICAL", "PSYCHIC"],
+    widget: "checklist-with-free-text",
+    options: ["PHYSICAL", "MAGICAL", "MENTAL", "OTHER"],
     optionLabels: {
       PHYSICAL: "Physical",
       MAGICAL: "Magical",
-      PSYCHIC: "Psychic",
+      MENTAL: "Mental",
+      OTHER: "Other",
     },
+    freeTextPlaceholder:
+      "Other source type (e.g. 'Divine', 'Psionic', 'Elemental')",
   },
   upkeep_cost: {
     target: "upkeep_cost",
-    label: "Upkeep Cost (per capability)",
+    label: "Upkeep Cost",
     layer: null,
     widget: "free-text",
     freeTextPlaceholder: "e.g. fire_shield, mage_armor",
@@ -633,7 +646,7 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
   },
   maintained_capability: {
     target: "maintained_capability",
-    label: "Maintained Capability (custom)",
+    label: "Maintained Capability",
     layer: null,
     widget: "free-text",
     freeTextPlaceholder: "e.g. fire_shield, mage_armor",

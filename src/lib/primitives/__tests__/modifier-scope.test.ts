@@ -116,22 +116,17 @@ describe("MODIFIER_TARGET_SPEC", () => {
     expect(spec.label).toBe("Save DC");
   });
 
-  it("speed uses METRIC with multi-select checklist (UX2a-r2)", () => {
+  it("speed uses METRIC with checklist-with-free-text (UX2a-r2 + i2.7)", () => {
     // Phase-7-E/UX2a-r2: Speed is one axis with five locomotion
-    // options in a multi-select checklist widget. A single
-    // modifier can affect one or more speeds simultaneously —
-    // e.g. "+5 Walking and Swimming" — so a checkbox list, not a
-    // radio.
+    // options. Phase-8.I-i2.7: widget became
+    // checklist-with-free-text so authors can add an "OTHER"
+    // option with a custom label.
     const spec = MODIFIER_TARGET_SPEC.speed;
     expect(spec.layer).toBe("METRIC");
-    expect(spec.widget).toBe("checklist");
-    expect(spec.options).toEqual([
-      "WALKING_SPEED",
-      "CLIMBING_SPEED",
-      "SWIMMING_SPEED",
-      "FLYING_SPEED",
-      "BURROWING_SPEED",
-    ]);
+    expect(spec.widget).toBe("checklist-with-free-text");
+    expect(spec.options).toContain("WALKING_SPEED");
+    expect(spec.options).toContain("FLYING_SPEED");
+    expect(spec.options).toContain("OTHER");
     // Display labels are required (the option values look like
     // "WALKING_SPEED" to a user).
     expect(spec.optionLabels?.["WALKING_SPEED"]).toBe("Walking");
@@ -168,11 +163,15 @@ describe("MODIFIER_TARGET_SPEC", () => {
     expect(spec.options).toBeUndefined();
   });
 
-  it("duration uses DURATION checklist", () => {
+  it("duration uses DURATION checklist (i2.7 free-text)", () => {
+    // Phase-8.I-i2.7: widget became checklist-with-free-text
+    // so authors can add an OTHER option with a custom label.
     const spec = MODIFIER_TARGET_SPEC.duration;
     expect(spec.layer).toBe("DURATION");
-    expect(spec.widget).toBe("checklist");
-    expect(spec.options).toEqual(DURATION_VALUES);
+    expect(spec.widget).toBe("checklist-with-free-text");
+    expect(spec.options).toContain("INSTANT");
+    expect(spec.options).toContain("PERMANENT");
+    expect(spec.options).toContain("OTHER");
   });
 
   it("strain has valueIsNumeric flag", () => {
@@ -184,17 +183,19 @@ describe("MODIFIER_TARGET_SPEC", () => {
     expect(MODIFIER_TARGET_SPEC.max_vitality.widget).toBe("none");
     expect(MODIFIER_TARGET_SPEC.current_vitality.widget).toBe("none");
     expect(MODIFIER_TARGET_SPEC.proficiency_bonus.widget).toBe("none");
-    // Phase 8.I i2.0 (Mashu 2026-08-05): action_roll now has 5
-    // sub-targets (attack / physical_save / mental_save / magical_save
-    // / other), so it's a checklist, not a single-axis widget.
-    expect(MODIFIER_TARGET_SPEC.action_roll.widget).toBe("checklist");
+    // Phase 8.I i2.0 (Mashu 2026-08-05): action_roll has 5
+    // sub-targets. Phase 8.I i2.7: widget became
+    // checklist-with-free-text (added "Other" with text input).
+    expect(MODIFIER_TARGET_SPEC.action_roll.widget).toBe(
+      "checklist-with-free-text",
+    );
   });
 
-  it("action_roll has 5 sub-targets (attack + 3 saves + other, i2.0)", () => {
-    // Phase 8.I i2.0 (Mashu 2026-08-05): per user feedback, action
-    // roll needs 5 sub-targets.
+  it("action_roll has 5 sub-targets (i2.0 + i2.7 free-text)", () => {
+    // Phase 8.I i2.0: 5 sub-targets. Phase 8.I i2.7: widget became
+    // checklist-with-free-text.
     const spec = MODIFIER_TARGET_SPEC.action_roll;
-    expect(spec.widget).toBe("checklist");
+    expect(spec.widget).toBe("checklist-with-free-text");
     expect(spec.options).toEqual([
       "ATTACK_ROLL",
       "PHYSICAL_SAVE",
@@ -723,18 +724,14 @@ describe("Phase 8.I i2.7 — new targets from canonical PDFs", () => {
     expect(spec.widget).toBe("none");
   });
 
-  it("size target has the 6-size-tier checklist", () => {
+  it("size target has the 6-size-tier checklist (+ Other i2.7)", () => {
+    // Phase 8.I i2.7: widget became checklist-with-free-text.
     const spec = MODIFIER_TARGET_SPEC.size;
     expect(spec.target).toBe("size");
-    expect(spec.widget).toBe("checklist");
-    expect(spec.options).toEqual([
-      "TINY",
-      "SMALL",
-      "MEDIUM",
-      "LARGE",
-      "HUGE",
-      "GARGANTUAN",
-    ]);
+    expect(spec.widget).toBe("checklist-with-free-text");
+    expect(spec.options).toContain("TINY");
+    expect(spec.options).toContain("GARGANTUAN");
+    expect(spec.options).toContain("OTHER");
   });
 
   it("carry_capacity target is numeric with no widget", () => {
@@ -757,11 +754,17 @@ describe("Phase 8.I i2.7 — new targets from canonical PDFs", () => {
     expect(spec.widget).toBe("free-text");
   });
 
-  it("source_type target has the 3-source-type checklist", () => {
+  it("source_type target has 3 source types (+ Other i2.7)", () => {
+    // Phase 8.I i2.7: PSYCHIC renamed to MENTAL. Widget became
+    // checklist-with-free-text.
     const spec = MODIFIER_TARGET_SPEC.source_type;
     expect(spec.target).toBe("source_type");
-    expect(spec.widget).toBe("checklist");
-    expect(spec.options).toEqual(["PHYSICAL", "MAGICAL", "PSYCHIC"]);
+    expect(spec.widget).toBe("checklist-with-free-text");
+    expect(spec.options).toContain("PHYSICAL");
+    expect(spec.options).toContain("MAGICAL");
+    expect(spec.options).toContain("MENTAL");
+    expect(spec.options).toContain("OTHER");
+    expect(spec.options).not.toContain("PSYCHIC");
   });
 
   it("upkeep_cost target uses free-text + numeric", () => {

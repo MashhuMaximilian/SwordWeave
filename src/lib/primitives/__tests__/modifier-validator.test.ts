@@ -50,13 +50,17 @@ describe("validateModifierDraft — widget rules (Phase 8.I i1, Mashu 2026-08-04
       expect(validateModifierDraft(draft)).toBeNull();
     });
 
-    it("rejects speed with no locomotion chosen", () => {
+    it("rejects speed with no locomotion chosen (i2.7 free-text)", () => {
+      // Phase-8.I-i2.7: speed widget became checklist-with-free-text.
+      // Empty checklist + empty free-text → validator rejects.
       const draft: ModifierDraftForValidation = {
         target: "speed",
         targetValues: [],
         freeTextNarrowFocus: "",
       };
-      expect(validateModifierDraft(draft)).toMatch(/Select at least one value for "Speed"/);
+      expect(validateModifierDraft(draft)).toMatch(
+        /Select at least one value or enter text for "Speed"/,
+      );
     });
 
     it("rejects skill_practice_check with no practice chosen", () => {
@@ -68,13 +72,16 @@ describe("validateModifierDraft — widget rules (Phase 8.I i1, Mashu 2026-08-04
       expect(validateModifierDraft(draft)).toMatch(/Select at least one value for "Skill \/ Practice Check"/);
     });
 
-    it("rejects duration with no duration chosen", () => {
+    it("rejects duration with no duration chosen (i2.7 free-text)", () => {
+      // Phase-8.I-i2.7: duration widget became checklist-with-free-text.
       const draft: ModifierDraftForValidation = {
         target: "duration",
         targetValues: [],
         freeTextNarrowFocus: "",
       };
-      expect(validateModifierDraft(draft)).toMatch(/Select at least one value for "Duration"/);
+      expect(validateModifierDraft(draft)).toMatch(
+        /Select at least one value or enter text for "Duration"/,
+      );
     });
 
     it("accepts targeting with one value", () => {
@@ -218,16 +225,17 @@ describe("validateModifierDraft — widget rules (Phase 8.I i1, Mashu 2026-08-04
       expect(validateModifierDraft(draft)).toBeNull();
     });
 
-    it("requires action_roll to have at least one sub-target (i2.0)", () => {
-      // Phase 8.I i2.0 (Mashu 2026-08-05): action_roll now has 5
-      // sub-targets (attack / physical_save / mental_save / magical_save
-      // / other). The form rejects empty targetValues.
+    it("requires action_roll to have at least one sub-target (i2.0 + i2.7 free-text)", () => {
+      // Phase 8.I i2.0: action_roll has 5 sub-targets.
+      // Phase 8.I i2.7: widget became checklist-with-free-text.
       const draft: ModifierDraftForValidation = {
         target: "action_roll",
         targetValues: [],
         freeTextNarrowFocus: "",
       };
-      expect(validateModifierDraft(draft)).toMatch(/Select at least one value for "Action Roll"/);
+      expect(validateModifierDraft(draft)).toMatch(
+        /Select at least one value or enter text for "Action Roll"/,
+      );
     });
 
     it("accepts action_roll with at least one sub-target (i2.0)", () => {
