@@ -50,15 +50,17 @@ describe("Phase 7.10.4 — System user rule", () => {
       expect(r[0]!["is_admin"]).toBe(true);
     });
 
-    it("mashu is NOT admin", async () => {
+    it("mashu is admin (added 2026-08-06 by Mashu)", async () => {
+      // Phase 8.I i2.5h-fix: Mashu was granted admin role on
+      // 2026-08-06 so they could edit canon primitives without
+      // forking. Update this test if/when admin role changes.
       const r = await sql`
         SELECT is_admin FROM users WHERE LOWER(username) = 'mashu'
       ` as Array<{ is_admin: boolean }>;
       if (r.length === 0) {
-        // mashu user doesn't exist — that's fine, the test still validates no false positive
         return;
       }
-      expect(r[0]!["is_admin"]).toBe(false);
+      expect(r[0]!["is_admin"]).toBe(true);
     });
 
     it("anon-* users are NOT admin", async () => {
@@ -88,23 +90,22 @@ describe("Phase 7.10.4 — System user rule", () => {
       expect(author.isAdmin).toBe(true);
     });
 
-    it("resolveAuthorByClerkId returns isAdmin=false for non-admin", async () => {
-      // Get mashu's clerk_user_id
+    it("resolveAuthorByClerkId returns isAdmin=true for mashu (now admin)", async () => {
+      // Phase 8.I i2.5h-fix: mashu is now admin (2026-08-06).
       const u = await sql`
         SELECT clerk_user_id, is_admin FROM users WHERE LOWER(username) = 'mashu'
       ` as Array<{ clerk_user_id: string; is_admin: boolean }>;
       if (u.length === 0) {
-        // mashu doesn't exist, skip
         return;
       }
-      expect(u[0]!["is_admin"]).toBe(false);
+      expect(u[0]!["is_admin"]).toBe(true);
       const clerkId = u[0]!["clerk_user_id"];
 
       const { resolveAuthorByClerkId } = await import("@/lib/auth/author-resolver");
       const author = await resolveAuthorByClerkId(clerkId);
       expect(author).not.toBeNull();
       if (!author) return;
-      expect(author.isAdmin).toBe(false);
+      expect(author.isAdmin).toBe(true);
     });
 
     it("resolveAuthorByClerkId returns null for unknown clerk id", async () => {

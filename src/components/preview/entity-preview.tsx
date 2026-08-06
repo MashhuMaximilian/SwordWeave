@@ -19,7 +19,6 @@
 // =============================================================================
 
 import { type ReactNode } from "react";
-import { OP_SPECS } from "@/types/modifier";
 import { Markdown } from "@/components/ui/markdown";
 import { IconDisplay } from "@/components/icons/icon-display";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
@@ -33,7 +32,6 @@ import {
   VersionChip,
   VisibilityPill,
   ConditionLine,
-  MirrorPanel,
   opLabel,
   mirrorSummary,
   PreviewActions,
@@ -291,12 +289,49 @@ function ModifierCards({
     // Rich draft value rendering (equation / text / number) — mirrors the
     // build-modal's modifierBlock.
     let valueLine: React.ReactNode;
-    const valueKind = m["valueKind"] as string | undefined;
-    const operands = m["operands"] as Array<Record<string, unknown>> | undefined;
+    // Phase 8.I i2.5h-fix (Mashu 2026-08-06): valueKind is stored
+    // in metadata.valueKind (not at the modifier's top level) for
+    // modifiers saved through the new form. For legacy v1 rows
+    // it's missing entirely. Default to "number" if absent.
+    const meta = m["metadata"] as Record<string, unknown> | undefined;
+    const valueKind = (m["valueKind"] as string | undefined)
+      ?? (meta?.["valueKind"] as string | undefined)
+      ?? "number";
+    const operands = (m["operands"] as Array<Record<string, unknown>> | undefined)
+      ?? (meta?.["operands"] as Array<Record<string, unknown>> | undefined);
     if (valueKind === "equation" && Array.isArray(operands)) {
+      // Phase 8.I i2.5h-fix: each operand is {op, value: OperandValue}.
+      // value is a typed-token OBJECT (e.g. {kind:"number",value:2}).
+      // The previous String(o.value) produced "[object Object]".
       const eqText = operands
-        .map((o) => String(o["text"] ?? o["value"] ?? ""))
-        .join(" ");
+        .map((o) => {
+          const opSym = String(o["op"] ?? "+");
+          const v = o["value"];
+          const tokenStr = (() => {
+            if (typeof v === "number") return String(v);
+            if (typeof v === "string") return v;
+            if (v && typeof v === "object") {
+              const obj = v as Record<string, unknown>;
+              const kind = obj["kind"];
+              if (typeof kind !== "string") return String(v);
+              switch (kind) {
+                case "number": return String(obj["value"] ?? "0");
+                case "derived": return String(obj["which"] ?? "");
+                case "attribute": return String(obj["attribute"] ?? "");
+                case "practice": return String(obj["practice"] ?? "");
+                case "behavior": return String(obj["name"] ?? "");
+                case "dice": return `#${String(obj["expression"] ?? "")}#`;
+                case "keyword": return `[${String(obj["text"] ?? "")}]`;
+                case "runtime": return `/${String(obj["name"] ?? "")}/`;
+                default: return String(v);
+              }
+            }
+            return String(v ?? "");
+          })();
+          return `${opSym} ${tokenStr}`;
+        })
+        .join(" ")
+        .replace(/^\+\s*/, "");  // strip leading +
       valueLine = (
         <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs break-all">
           {eqText || "(empty)"}
@@ -835,33 +870,24 @@ function PrimitiveBody({
         </Section>
       ) : null}
       <ModifierCards row={row} buildModifiers={buildModifiers} />
-      {row.isMirrorable ? (
-        <MirrorPanel
-          op={
-            // Phase 8.I i2.5h-fix (Mashu 2026-08-06): derive the
-            // mirror op from the FIRST mirrorable modifier in
-            // hardModifiers. The previous hardcoded "add" was
-            // wrong for primitives that mirror to revoke, min,
-            // or any other non-subtract op.
-            //
-            // We pick the first modifier with a mirrorable op
-            // (skip set/multiply/divide if non-mirrorable) and
-            // show the actual inverse op.
-            (() => {
-              const mods = buildModifiers ?? (row.hardModifiers as Array<Record<string, unknown>> | undefined) ?? [];
-              for (const m of mods) {
-                const op = String(m["operation"] ?? "") as Parameters<typeof MirrorPanel>[0]["op"];
-                const spec = OP_SPECS[op];
-                if (spec?.mirrorable && spec.mirrorOp) {
-                  return spec.mirrorOp;
-                }
-              }
-              return "add" as Parameters<typeof MirrorPanel>[0]["op"];
-            })()
-          }
-          buCredit={row.mirrorBuCredit}
-          notes={row.mirrorEligibilityNotes}
-        />
+      {/*
+        Phase 8.I i2.5h-fix (Mashu 2026-08-06): removed the
+        separate primitive-level MirrorPanel. The mirror info
+        is already shown per-modifier inside each modifier card
+        (the teal "📊 → Subtract (sign flip)" line under each
+        row). Keeping the MirrorPanel duplicated the information.
+
+        BU credit + mirror eligibility notes are still displayed
+        here as a small summary line so the author knows the
+        mirror budget. The full MirrorPanel can return if we
+        add a primitive-level mirror hint that's distinct from
+        the per-modifier mirror (e.g. a composite op summary).
+      */}
+      {row.isMirrorable && row.mirrorBuCredit > 0 ? (
+        <div className="rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs">
+          <span className="text-muted-foreground">Mirror BU credit:</span>{" "}
+          <span className="font-mono font-semibold">{row.mirrorBuCredit}</span>
+        </div>
       ) : null}
     </div>
   );
