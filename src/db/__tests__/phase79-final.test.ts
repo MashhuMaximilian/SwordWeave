@@ -45,7 +45,7 @@ const PROPOSED: ReadonlyArray<Proposed> = [
   { id: 206, name: "CV Matrix Trap", operation: "grant", target: "behavior:strain_matrix_trap", value: 1, stacking: "unique-by-primitive" },
   // SHEET_AUGMENT (3)
   { id: 55, name: "Defensive Save Upgrade", operation: "grant", target: "behavior:saving_throw_proficiency", value: 1, stacking: "unique-by-primitive" },
-  { id: 64, name: "Focused Presence (Global DC Modifier)", operation: "add", target: "defense_dc", value: { kind: "number", value: 1 }, stacking: "stack" },
+  { id: 64, name: "Focused Presence (Global DC Modifier)", operation: "add", target: "defense_dc", value: 1, stacking: "stack" },
   { id: 65, name: "Precise Vector Alignment (Global Attack Modifier)", operation: "add", target: "action.roll", value: 1, stacking: "stack" },
   // VITALITY (3) — 7.9.3g coda
   { id: 853, name: "Stabilize (Fieldcraft Aid)", operation: "grant", target: "behavior:stabilize_capable", value: 1, stacking: "unique-by-primitive" },
@@ -86,7 +86,21 @@ describe("Phase 7.9.3e+f+g — final migration (closes Phase 7.9)", () => {
         const m = mods[0]!;
         expect(m.target).toBe(p.target);
         expect(m.operation).toBe(p.operation);
-        expect(Number(m.value)).toBe(Number(p.value));
+        // Phase 8.I i2.5 typed-token values can be objects
+        // (e.g. {kind:"number",value:1}). Resolve either shape
+        // to a comparable scalar.
+        const actualValue = (() => {
+          const v = m.value as unknown;
+          if (typeof v === "number") return v;
+          if (typeof v === "string") return Number(v);
+          if (v && typeof v === "object") {
+            const obj = v as { kind?: string; value?: unknown };
+            if (obj.kind === "number") return Number(obj.value);
+          }
+          return NaN;
+        })();
+        const expectedValue = typeof p.value === "object" ? 1 : Number(p.value);
+        expect(actualValue).toBe(expectedValue);
         expect(m.stacking ?? "stack").toBe(p.stacking);
       });
     }

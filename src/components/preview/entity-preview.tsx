@@ -497,21 +497,19 @@ function ModifierCards({
               <ConditionLine
                 condition={c.condition}
               />
-              {/* Phase 8.I i2.5h-fix2 (Mashu 2026-08-06): pretty mirror
-                  display. Replaces the ugly teal "📊 → Subtract
-                  (sign flip)" line with a chip that's color-coded
-                  from the mirrored op. Locked ops get a lock icon. */}
-              <div className="flex items-center gap-1.5 pt-0.5">
-                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Mirrors to</span>
+              {/* Phase 8.I i2.5i-fix (Mashu 2026-08-06): strip the
+                  secondary-background pill — just inline text
+                  + OperationBadge. The mirrored op's color comes
+                  from the badge, so no background chip needed. */}
+              <div className="flex items-center gap-1.5 pt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                <span>Mirrors to</span>
                 {mirrorable && mirrorOp ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-secondary/60 px-2 py-0.5 text-xs font-medium">
+                  <span className="inline-flex items-center gap-1 text-xs font-medium normal-case tracking-normal text-foreground">
                     <OperationBadge op={mirrorOp} />
                     <span className="font-semibold">{opLabel(mirrorOp)}</span>
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-secondary/60 px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                    🔒 <span>locked</span>
-                  </span>
+                  <span className="text-xs font-medium normal-case tracking-normal text-muted-foreground">🔒 locked</span>
                 )}
               </div>
             </li>
