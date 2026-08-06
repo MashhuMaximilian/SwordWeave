@@ -42,7 +42,7 @@ const PROPOSED: ReadonlyArray<Proposed> = [
   { id: 392, name: "Calamity Die Block", operation: "add", target: "action.damage", value: "1d12", stacking: "stack" },
   { id: 393, name: "Existential Tear", operation: "add", target: "action.damage", value: "1d20", stacking: "stack" },
   // PRACTICE_PROGRESSION_AUGMENT (5)
-  { id: 56, name: "Broad Familiarity", operation: "grant", target: "behavior:broad_familiarity", value: 1, stacking: "unique-by-primitive" },
+  { id: 56, name: "Broad Familiarity", operation: "add", target: "skill_practice_check", value: { kind: "derived", which: "pb_half" }, stacking: "stack", targetScope: { layer: "PRACTICE", values: ["PROWESS", "FIELDCRAFT", "REASON", "INFLUENCE", "COMMUNION", "FINESSE", "AWARENESS", "MYSTICISM", "KNOWLEDGE", "INTUITION"] }, condition: { kind: "tags", customTags: ["actor:not_proficient"] } },
   { id: 57, name: "Focused Edge", operation: "grant", target: "behavior:focused_edge", value: 1, stacking: "unique-by-primitive" },
   { id: 58, name: "Practice Proficiency", operation: "grant", target: "behavior:practice_proficiency", value: 1, stacking: "unique-by-primitive" },
   { id: 59, name: "Expertise Upgrade", operation: "grant", target: "behavior:expertise_upgrade", value: 1, stacking: "unique-by-primitive" },
@@ -100,6 +100,9 @@ describe("Phase 7.9.2 — stat-like migration", () => {
         expect(m.operation).toBe(p.operation);
         if (typeof p.value === "string") {
           expect(String(m.value)).toBe(p.value);
+        } else if (typeof p.value === "object" && p.value !== null) {
+          // Typed-token shape (Phase 8.I i2.0+).
+          expect(m.value).toEqual(p.value);
         } else {
           expect(Number(m.value)).toBe(p.value);
         }

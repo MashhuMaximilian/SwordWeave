@@ -847,3 +847,122 @@ describe("buildCondition — structured pills (i2.6)", () => {
     });
   });
 });
+
+
+// ---- i2.6 — axis marker regression tests ----
+//
+// The picker's chip UI sets pill.practice to a "marker" string
+// ('any_practice', 'any_attribute', 'all_practices', 'all_saves')
+// when emitting dynamic / grouped proficiency pills. The
+// serializer must NOT emit these as `_in(<marker>)` — that would
+// produce tokens like `actor:not_proficient_in(any_practice)`
+// which the engine doesn't recognize. The pill.label already
+// encodes the special form, so the serializer passes it through
+// verbatim for these markers.
+
+describe("buildCondition — axis marker regression (i2.6)", () => {
+  it("not_proficient(any practice) chip → emits 'actor:not_proficient'", () => {
+    const result = buildCondition({
+      categories: ["actor"],
+      pills: [
+        {
+          category: "actor",
+          label: "not_proficient",
+          kind: "proficiency",
+          practice: "any_practice", // marker from picker UI
+        },
+      ],
+      operators: [],
+      narrative: "",
+      includeTags: false,
+    });
+    expect(result).toEqual({
+      kind: "tags",
+      customTags: ["actor:not_proficient"],
+    });
+  });
+
+  it("proficient(any practice) chip → emits 'actor:proficient'", () => {
+    const result = buildCondition({
+      categories: ["actor"],
+      pills: [
+        {
+          category: "actor",
+          label: "proficient",
+          kind: "proficiency",
+          practice: "any_practice",
+        },
+      ],
+      operators: [],
+      narrative: "",
+      includeTags: false,
+    });
+    expect(result).toEqual({
+      kind: "tags",
+      customTags: ["actor:proficient"],
+    });
+  });
+
+  it("not_proficient(any attribute) chip → emits 'actor:not_proficient_in_attribute(any)'", () => {
+    const result = buildCondition({
+      categories: ["actor"],
+      pills: [
+        {
+          category: "actor",
+          label: "not_proficient_in_attribute(any)",
+          kind: "proficiency",
+          practice: "any_attribute",
+        },
+      ],
+      operators: [],
+      narrative: "",
+      includeTags: false,
+    });
+    expect(result).toEqual({
+      kind: "tags",
+      customTags: ["actor:not_proficient_in_attribute(any)"],
+    });
+  });
+
+  it("not_proficient(all practices) chip → emits 'actor:not_proficient_in(all_practices)'", () => {
+    const result = buildCondition({
+      categories: ["actor"],
+      pills: [
+        {
+          category: "actor",
+          label: "not_proficient_in(all_practices)",
+          kind: "proficiency",
+          practice: "all_practices",
+        },
+      ],
+      operators: [],
+      narrative: "",
+      includeTags: false,
+    });
+    expect(result).toEqual({
+      kind: "tags",
+      customTags: ["actor:not_proficient_in(all_practices)"],
+    });
+  });
+
+  it("concrete practice name still emits _in(<practice>) (regression check)", () => {
+    const result = buildCondition({
+      categories: ["actor"],
+      pills: [
+        {
+          category: "actor",
+          label: "proficient_in(prowess)",
+          kind: "proficiency",
+          practice: "prowess",
+        },
+      ],
+      operators: [],
+      narrative: "",
+      includeTags: false,
+    });
+    expect(result).toEqual({
+      kind: "tags",
+      customTags: ["actor:proficient_in(prowess)"],
+    });
+  });
+});

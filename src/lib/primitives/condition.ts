@@ -254,16 +254,31 @@ export function serializeConditionPill(pill: {
     case 'flag':
       return `${pill.category}:${pill.flag ?? pill.label}`;
     case 'proficiency': {
-      // If no practice is set, the engine uses currentPractice as
-      // the dynamic practice (the engine's per-practice walk sets
-      // it before evaluating). Tokens emitted without a practice
-      // are dynamic.
+      // The pill's `practice` field is used by the chip UI for
+      // display, but should NOT be emitted as `_in(<practice>)`
+      // when it's one of the special axis markers
+      // ('any_practice', 'any_attribute', 'all_practices',
+      // 'all_saves'). Only emit `_in(<practice>)` for concrete
+      // practice names.
       const op =
         pill.label.startsWith('not') ? 'not_proficient' : 'proficient';
-      if (pill.practice && pill.practice.length > 0) {
-        return `${pill.category}:${op}_in(${pill.practice})`;
+      const practice = pill.practice ?? '';
+      // Special axis markers — emit the appropriate special form
+      // (or fall through to the dynamic bare form).
+      if (
+        practice === 'any_practice' ||
+        practice === 'any_attribute' ||
+        practice === 'all_practices' ||
+        practice === 'all_saves' ||
+        practice === ''
+      ) {
+        // The pill.label encodes the special form already (e.g.
+        // 'not_proficient_in(all_practices)' or
+        // 'proficient_in_attribute(any)').
+        return `${pill.category}:${pill.label}`;
       }
-      return `${pill.category}:${op}`;
+      // Concrete practice name → emit _in(<practice>).
+      return `${pill.category}:${op}_in(${practice})`;
     }
     case 'stat': {
       // Encode stat comparison as a 4- or 5-tuple pipe-separated.
