@@ -594,6 +594,10 @@ function checkSelfFlag(
     return character.proficiencies.has(currentPractice);
   }
   // Otherwise treat as a straight character flag.
+  // Phase 8.I i2.7: the new atoms (combat_action, equipped:<key>,
+  // damage_taken:<key>, etc.) flow through this path as flags.
+  // The character sheet FAB layer will set/clear these flags at
+  // appropriate events (combat round start, item equip, damage).
   return character.flags.has(label);
 }
 
@@ -793,8 +797,70 @@ function readCharacterStat(
       return Math.max(...Object.values(character.practices));
     case "all_practices":
       return Math.min(...Object.values(character.practices));
+
+    // Phase 8.I i2.7 — new atoms from the canonical PDFs.
+    // These resolve against the character's custom variable map
+    // for now (the engine math for these targets isn't wired yet).
+    // The character sheet FAB layer will populate character.custom
+    // with the right values when those targets get real math.
+
+    case "speed":
+      // Encumbrance / Combat Rhythm — per locomotion type. MVP
+      // alias for a generic speed number; full per-locomotion
+      // math comes when the FAB layer is wired.
+      return typeof character.custom["speed"] === "number"
+        ? character.custom["speed"]
+        : 30;
+    case "carry_capacity":
+      return typeof character.custom["carry_capacity"] === "number"
+        ? character.custom["carry_capacity"]
+        : 40;
+    case "load":
+      return typeof character.custom["load"] === "number"
+        ? character.custom["load"]
+        : 0;
+    case "complexity":
+      return typeof character.custom["complexity"] === "number"
+        ? character.custom["complexity"]
+        : 0;
+    case "upkeep_cost":
+      // Generic upkeep — read from custom. For per-capability
+      // upkeep (upkeep_cost:fire_shield), the engine checks
+      // character.custom["upkeep_cost:fire_shield"] via the
+      // default fallthrough.
+      return typeof character.custom["upkeep_cost"] === "number"
+        ? character.custom["upkeep_cost"]
+        : 0;
+
+    // Tag enums — for stat comparisons, we map the enum value
+    // to a numeric tier so comparisons like `actor:size == LARGE`
+    // (encoded as `actor:stat|size|==|4`) work. Tiers ascend
+    // from TINY (0) to GARGANTUAN (5).
+    case "size": {
+      const tier: Readonly<Record<string, number>> = {
+        TINY: 0,
+        SMALL: 1,
+        MEDIUM: 2,
+        LARGE: 3,
+        HUGE: 4,
+        GARGANTUAN: 5,
+      };
+      const v = character.custom["size"];
+      if (typeof v === "number") return v;
+      return 2; // default Medium
+    }
+    case "source_type": {
+      // Map enum to numeric tier (physical=1, magical=2, psychic=3).
+      const v = character.custom["source_type"];
+      if (typeof v === "number") return v;
+      return 1;
+    }
+
     default: {
       // Custom variable — resolved on the character sheet, not the DB.
+      // Covers: equip_slot:<key>, damage_type:<key>,
+      // maintained_capability:<key>, upkeep_cost:<key>,
+      // combat_action (boolean — handled separately as flag).
       const v = character.custom[stat];
       return typeof v === "number" ? v : undefined;
     }

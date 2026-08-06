@@ -817,3 +817,146 @@ describe("evaluateCondition — dynamic attribute axis (i2.6)", () => {
     ).toBe(true);
   });
 });
+
+
+// ---- i2.7 — new atoms from canonical PDFs ----
+
+describe("evaluateCondition — i2.7 atoms (PDFs)", () => {
+  it("speed > 25 fires when character.custom.speed is 30", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        custom: { speed: 30 },
+      }),
+    });
+    expect(
+      evaluateCondition(
+        { kind: "tags", customTags: ["actor:stat|speed|>|25"] },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("carry_capacity < 50 fires when character.custom.carry_capacity is 40", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        custom: { carry_capacity: 40 },
+      }),
+    });
+    expect(
+      evaluateCondition(
+        { kind: "tags", customTags: ["actor:stat|carry_capacity|<|50"] },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("load > 10 fires when character.custom.load is 12", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        custom: { load: 12 },
+      }),
+    });
+    expect(
+      evaluateCondition(
+        { kind: "tags", customTags: ["actor:stat|load|>|10"] },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("size == LARGE fires when character.custom.size is 3", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        custom: { size: 3 },
+      }),
+    });
+    expect(
+      evaluateCondition(
+        { kind: "tags", customTags: ["actor:stat|size|=|3"] },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("size == MEDIUM (default tier 2) fires for fresh character", () => {
+    const ctx = makeCtx({
+      character: makeCharacter(),
+    });
+    expect(
+      evaluateCondition(
+        { kind: "tags", customTags: ["actor:stat|size|=|2"] },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("source_type == MAGICAL fires when character.custom.source_type is 2", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        custom: { source_type: 2 },
+      }),
+    });
+    expect(
+      evaluateCondition(
+        { kind: "tags", customTags: ["actor:stat|source_type|=|2"] },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("complexity >= 4 fires for Heavy Track (Combat Rhythm)", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        custom: { complexity: 4 },
+      }),
+    });
+    expect(
+      evaluateCondition(
+        { kind: "tags", customTags: ["actor:stat|complexity|>=|4"] },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("upkeep_cost < 5 fires for low-upkeep capability", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        custom: { upkeep_cost: 3 },
+      }),
+    });
+    expect(
+      evaluateCondition(
+        { kind: "tags", customTags: ["actor:stat|upkeep_cost|<|5"] },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("custom variable (equip_slot:weapon) reads through custom map", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        custom: { "equip_slot:weapon": 1 },
+      }),
+    });
+    expect(
+      evaluateCondition(
+        { kind: "tags", customTags: ["actor:stat|equip_slot:weapon|=|1"] },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("boolean flag (combat_action) fires when flag set", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        flags: new Set(["combat_action"]),
+      }),
+    });
+    expect(
+      evaluateCondition(
+        { kind: "tags", customTags: ["actor:combat_action"] },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+});

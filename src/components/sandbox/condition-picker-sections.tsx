@@ -52,6 +52,26 @@ export const SELF_STAT_REFS: ReadonlyArray<{
   // Grouped practice refs.
   { value: "any_practice", label: "any practice", tone: "emerald" },
   { value: "all_practices", label: "all practices", tone: "emerald" },
+
+  // ===========================================================
+  // Phase 8.I i2.7 — new atoms from the canonical PDFs.
+  // These appear in the 'Stat references' section so authors
+  // can build conditions like 'vitality < 50%' the same way
+  // they'd build 'speed > 30' or 'carry_capacity >= 50'.
+  // Engine-side readCharacterStat resolves them against
+  // character.custom until the FAB layer wires real math.
+  // ===========================================================
+  { value: "speed", label: "speed", tone: "emerald" },
+  { value: "carry_capacity", label: "carry capacity", tone: "amber" },
+  { value: "load", label: "load", tone: "amber" },
+  { value: "complexity", label: "complexity", tone: "violet" },
+  { value: "upkeep_cost", label: "upkeep cost", tone: "violet" },
+  { value: "size", label: "size", tone: "blue" },
+  { value: "source_type", label: "source type", tone: "blue" },
+  // equip_slot, damage_type, maintained_capability are
+  // sub-target {key} pills — authors type the key after
+  // picking the chip. The picker exposes them via the
+  // free-text input pattern (same as behavior other).
 ];
 
 export const STATUS_FLAGS: readonly string[] = [
@@ -66,6 +86,14 @@ export const STATUS_FLAGS: readonly string[] = [
   "is_sick",
   "is_wounded",
   "is_damaged_last_round",
+  // Phase 8.I i2.7 — new boolean flags from canonical PDFs.
+  // The character sheet FAB layer populates these at appropriate
+  // events (combat round start, item equip, damage taken, etc).
+  "combat_action",
+  "is_equipped",
+  "is_encumbered",
+  "is_in_cover_total",
+  "is_in_cover_half",
 ];
 
 const COMPARE_OPERATORS: ReadonlyArray<{
