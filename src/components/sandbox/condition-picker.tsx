@@ -77,6 +77,7 @@ import {
   PickerProficiencySection,
   PickerStatusFlagsSection,
   useConditionPillAdder,
+  pillLabel,
 } from "./condition-picker-sections";
 
 export function ConditionPicker({
@@ -264,11 +265,11 @@ export function ConditionPicker({
                         key={`${p.category}:${p.label}`}
                         className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-xs"
                       >
-                        {p.label}
+                        {pillLabel(p)}
                         <button
                           type="button"
                           onClick={() => removeCustomPill(p.category, p.label)}
-                          aria-label={`Remove pill ${p.label}`}
+                          aria-label={`Remove pill ${pillLabel(p)}`}
                           className="text-muted-foreground hover:text-foreground"
                         >
                           ×
@@ -396,7 +397,7 @@ function ExpressionSummaryLine({
         key={`p${i}`}
         className="inline-flex items-center rounded-sm border border-border bg-secondary/40 px-1.5 py-0.5 text-[11px] font-medium"
       >
-        {pill.label}
+        {pillLabel(pill)}
       </span>,
     );
     if (i < operators.length) {

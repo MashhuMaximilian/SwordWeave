@@ -46,6 +46,7 @@ import {
   PickerProficiencySection,
   PickerStatusFlagsSection,
   useConditionPillAdder,
+  pillLabel,
 } from "./condition-picker-sections";
 
 const CATEGORY_LABELS: Record<ConditionPresetCategory, string> = {
@@ -365,7 +366,7 @@ return (
 
 interface PillRowWithOperatorProps {
   readonly id: string;
-  readonly pill: { category: ConditionPresetCategory; label: string };
+  readonly pill: ConditionAuthoring["pills"][number];
   readonly operator: "AND" | "OR" | undefined;
   readonly onRemove: () => void;
   readonly onToggleOperator: (() => void) | undefined;
@@ -422,7 +423,7 @@ function PillRowWithOperator({
           ⋮⋮
         </button>
         <span className="min-w-0 flex-1 truncate text-sm font-medium">
-          {pill.label}
+          {pillLabel(pill)}
         </span>
         <span
           className={
@@ -438,7 +439,7 @@ function PillRowWithOperator({
         <button
           type="button"
           onClick={onRemove}
-          aria-label={`Remove pill ${pill.label}`}
+          aria-label={`Remove pill ${pillLabel(pill)}`}
           className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           ×

@@ -119,31 +119,22 @@ export function PickerStatSection({
       count={SELF_STAT_REFS.length}
       defaultOpen
     >
-      <div className="mt-1 flex flex-wrap gap-1">
-        {SELF_STAT_REFS.map((s) => (
-          <button
-            key={s.value}
-            type="button"
-            onClick={() => setChosenStat(s.value)}
-            className={
-              "rounded-full border px-2 py-0.5 text-xs " +
-              (chosenStat === s.value
-                ? "border-primary bg-primary/15 text-primary font-semibold"
-                : "border-border bg-background text-foreground hover:bg-accent")
-            }
-          >
-            + {s.label}
-          </button>
-        ))}
-      </div>
       {chosenStat ? (
-        <div className="mt-2 rounded-md border border-dashed border-border bg-background/30 p-2">
-          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-            <span>Build:</span>
+        <div className="mb-2 rounded-md border-2 border-primary/40 bg-primary/5 p-2">
+          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-primary">
+            <span>Building:</span>
             <code className="font-mono text-foreground">
-              actor:{chosenStat} &lt;op&gt; {val}
+              actor:{chosenStat} {chosenOp} {val}
               {chosenOp === "between" ? ` - ${valHigh}` : ""}
             </code>
+            <button
+              type="button"
+              onClick={() => setChosenStat(null)}
+              className="ml-auto rounded p-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+              title="Clear selection"
+            >
+              ×
+            </button>
           </div>
           <div className="mt-1.5 flex flex-wrap gap-1">
             {COMPARE_OPERATORS.map((op) => (
@@ -168,6 +159,9 @@ export function PickerStatSection({
               type="text"
               value={val}
               onChange={(e) => setVal(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onAddClick();
+              }}
               className="w-20 rounded-md border border-input bg-background px-2 py-0.5 font-mono text-xs"
             />
             {chosenOp === "between" ? (
@@ -177,6 +171,9 @@ export function PickerStatSection({
                   type="text"
                   value={valHigh}
                   onChange={(e) => setValHigh(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") onAddClick();
+                  }}
                   className="w-20 rounded-md border border-input bg-background px-2 py-0.5 font-mono text-xs"
                 />
               </>
@@ -191,6 +188,23 @@ export function PickerStatSection({
           </div>
         </div>
       ) : null}
+      <div className="mt-1 flex flex-wrap gap-1">
+        {SELF_STAT_REFS.map((s) => (
+          <button
+            key={s.value}
+            type="button"
+            onClick={() => setChosenStat(s.value)}
+            className={
+              "rounded-full border px-2 py-0.5 text-xs " +
+              (chosenStat === s.value
+                ? "border-primary bg-primary/15 text-primary font-semibold"
+                : "border-border bg-background text-foreground hover:bg-accent")
+            }
+          >
+            + {s.label}
+          </button>
+        ))}
+      </div>
     </CollapsibleSection>
   );
 }
@@ -466,4 +480,38 @@ export function useConditionPillAdder(
     addStructuredProficiencyPill,
     addStructuredFlagPill,
   };
+}
+
+
+// =============================================================================
+// Pill display helpers — friendly rendering of structured pills
+// =============================================================================
+
+/**
+ * Produce a user-friendly label for a structured pill. Hides the
+ * internal `stat|stat|op|value` token shape and shows the author
+ * what they actually authored.
+ *
+ *   - 'stat' kind       → "<stat> <op> <value>[ - <valueHigh>]"
+ *   - 'proficiency'     → "<label>" (already includes parens / _in)
+ *   - 'flag' / 'tag'    → "<label>"
+ */
+export function pillLabel(pill: ConditionAuthoring["pills"][number]): string {
+  const k = pill.kind ?? "tag";
+  switch (k) {
+    case "stat": {
+      const op = pill.operator ?? "=";
+      const v = pill.value ?? 0;
+      if (op === "between") {
+        const vh = pill.valueHigh ?? v;
+        return `${pill.stat ?? pill.label} ${op} ${v} - ${vh}`;
+      }
+      return `${pill.stat ?? pill.label} ${op} ${v}`;
+    }
+    case "proficiency":
+    case "flag":
+    case "tag":
+    default:
+      return pill.label;
+  }
 }

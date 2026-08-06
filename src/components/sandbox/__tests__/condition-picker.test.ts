@@ -12,6 +12,7 @@ import {
   conditionAuthoringFromLegacy,
   legacyFieldsFromAuthoring,
 } from "../condition-picker";
+import { pillLabel } from "../condition-picker-sections";
 
 describe("conditionAuthoringFromLegacy", () => {
   it("returns an empty authoring when all legacy fields are blank", () => {
@@ -153,5 +154,64 @@ describe("legacyFieldsFromAuthoring", () => {
       conditionOperator: "equals",
       conditionValue: "target:Prone, actor:Stunned",
     });
+  });
+});
+
+// =============================================================================
+// pillLabel helper — friendly rendering of structured pills
+// =============================================================================
+
+describe("pillLabel", () => {
+  it("stat pill with single comparator renders stat op val", () => {
+    const label = pillLabel({
+      category: "actor",
+      label: "vitality_pct",
+      kind: "stat",
+      stat: "vitality_pct",
+      operator: "<",
+      value: 0.5,
+    });
+    expect(label).toBe("vitality_pct < 0.5");
+  });
+
+  it("stat pill with between renders 5-tuple display", () => {
+    const label = pillLabel({
+      category: "actor",
+      label: "vitality",
+      kind: "stat",
+      stat: "vitality",
+      operator: "between",
+      value: 5,
+      valueHigh: 15,
+    });
+    expect(label).toBe("vitality between 5 - 15");
+  });
+
+  it("proficiency pill with practice renders the label verbatim", () => {
+    const label = pillLabel({
+      category: "actor",
+      label: "proficient_in(prowess)",
+      kind: "proficiency",
+      practice: "prowess",
+    });
+    expect(label).toBe("proficient_in(prowess)");
+  });
+
+  it("flag pill renders the flag as label", () => {
+    const label = pillLabel({
+      category: "actor",
+      label: "is_prone",
+      kind: "flag",
+      flag: "is_prone",
+    });
+    expect(label).toBe("is_prone");
+  });
+
+  it("tag pill defaults to label", () => {
+    const label = pillLabel({
+      category: "actor",
+      label: "unconscious",
+    });
+    expect(label).toBe("unconscious");
   });
 });
