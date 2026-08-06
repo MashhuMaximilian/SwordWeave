@@ -26,6 +26,7 @@ import { ChevronRight, History, Link2 } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { computeTransitiveBu } from "@/lib/engine/transitive-bu";
 import { SIZE_LOAD } from "@/lib/engine/encumbrance";
+import { OP_SPECS, type ModifierOperation } from "@/types/modifier";
 import {
   OperationBadge,
   Section,
@@ -33,7 +34,6 @@ import {
   VisibilityPill,
   ConditionLine,
   opLabel,
-  mirrorSummary,
   PreviewActions,
   type PreviewActionProps,
   type PreviewSubLink,
@@ -475,8 +475,14 @@ function ModifierCards({
     <Section heading="Modifier">
       <ul className="rounded-md border">
         {cards.map((c, i) => {
-          const op = c.op as Parameters<typeof OperationBadge>[0]["op"];
-          const mirror = mirrorSummary(op);
+          const op = c.op as ModifierOperation;
+          // Phase 8.I i2.5h-fix2: derive mirrorability + the
+          // mirrored op directly from OP_SPECS. No more emoji +
+          // "(sign flip)" string — the chip carries the op
+          // signal as an OperationBadge instead.
+          const spec = OP_SPECS[op];
+          const mirrorable = Boolean(spec?.mirrorable) && Boolean(spec?.mirrorOp);
+          const mirrorOp = spec?.mirrorOp as ModifierOperation | undefined;
           return (
             <li key={i} className="space-y-1 border-b border-border p-2 text-sm last:border-b-0">
               <div className="flex flex-wrap items-baseline gap-1.5">
@@ -491,10 +497,23 @@ function ModifierCards({
               <ConditionLine
                 condition={c.condition}
               />
-              <p className={`text-[10px] leading-relaxed ${mirror.mirrorable ? "text-cyan-700 dark:text-cyan-300" : "text-muted-foreground"}`}>
-                {mirror.mirrorable ? "📊 " : "🔒 "}
-                {mirror.label}
-              </p>
+              {/* Phase 8.I i2.5h-fix2 (Mashu 2026-08-06): pretty mirror
+                  display. Replaces the ugly teal "📊 → Subtract
+                  (sign flip)" line with a chip that's color-coded
+                  from the mirrored op. Locked ops get a lock icon. */}
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Mirrors to</span>
+                {mirrorable && mirrorOp ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-secondary/60 px-2 py-0.5 text-xs font-medium">
+                    <OperationBadge op={mirrorOp} />
+                    <span className="font-semibold">{opLabel(mirrorOp)}</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-secondary/60 px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    🔒 <span>locked</span>
+                  </span>
+                )}
+              </div>
             </li>
           );
         })}
@@ -870,25 +889,10 @@ function PrimitiveBody({
         </Section>
       ) : null}
       <ModifierCards row={row} buildModifiers={buildModifiers} />
-      {/*
-        Phase 8.I i2.5h-fix (Mashu 2026-08-06): removed the
-        separate primitive-level MirrorPanel. The mirror info
-        is already shown per-modifier inside each modifier card
-        (the teal "📊 → Subtract (sign flip)" line under each
-        row). Keeping the MirrorPanel duplicated the information.
-
-        BU credit + mirror eligibility notes are still displayed
-        here as a small summary line so the author knows the
-        mirror budget. The full MirrorPanel can return if we
-        add a primitive-level mirror hint that's distinct from
-        the per-modifier mirror (e.g. a composite op summary).
-      */}
-      {row.isMirrorable && row.mirrorBuCredit > 0 ? (
-        <div className="rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs">
-          <span className="text-muted-foreground">Mirror BU credit:</span>{" "}
-          <span className="font-mono font-semibold">{row.mirrorBuCredit}</span>
-        </div>
-      ) : null}
+      {/* Phase 8.I i2.5h-fix2 (Mashu 2026-08-06): removed the
+          Mirror BU credit card. The user wanted the modifier
+          card to be the single mirror surface. BU credit info
+          still visible elsewhere (e.g. primitive header). */}
     </div>
   );
 }

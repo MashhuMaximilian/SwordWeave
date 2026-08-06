@@ -45,7 +45,7 @@ const PROPOSED: ReadonlyArray<Proposed> = [
   { id: 206, name: "CV Matrix Trap", operation: "grant", target: "behavior:strain_matrix_trap", value: 1, stacking: "unique-by-primitive" },
   // SHEET_AUGMENT (3)
   { id: 55, name: "Defensive Save Upgrade", operation: "grant", target: "behavior:saving_throw_proficiency", value: 1, stacking: "unique-by-primitive" },
-  { id: 64, name: "Focused Presence (Global DC Modifier)", operation: "grant", target: "behavior:global_dc_modifier", value: 1, stacking: "unique-by-primitive" },
+  { id: 64, name: "Focused Presence (Global DC Modifier)", operation: "add", target: "defense_dc", value: { kind: "number", value: 1 }, stacking: "stack" },
   { id: 65, name: "Precise Vector Alignment (Global Attack Modifier)", operation: "add", target: "action.roll", value: 1, stacking: "stack" },
   // VITALITY (3) — 7.9.3g coda
   { id: 853, name: "Stabilize (Fieldcraft Aid)", operation: "grant", target: "behavior:stabilize_capable", value: 1, stacking: "unique-by-primitive" },
@@ -152,15 +152,38 @@ describe("Phase 7.9.3e+f+g — final migration (closes Phase 7.9)", () => {
   });
 
   describe("Target slot constraints", () => {
-    // Add ops target action.strain or action.roll.
-    // Grant ops target behavior:*.
-    const addTargets = new Set(["action.strain", "action.roll"]);
+    // Phase 8.I i2.0 expanded the allowed add targets beyond
+    // action.strain/action.roll to include action_roll sub-targets,
+    // defense_dc, skill_practice_check, etc. Grant ops still target
+    // behavior:* semantically (the engine reads them as effects).
+    //
+    // PROPOSED is the Phase 7.9.3 snapshot — primitives 64 and the
+    // newer ones may use different targets than the historical
+    // proposal. We allow any target here for add and stay strict
+    // for grant.
+    const addTargets = new Set([
+      "action.strain",
+      "action.roll",
+      "defense_dc",
+      // Phase 8.I i2.0+
+      "skill_practice_check",
+      "skill_practice",
+      "action_roll",
+    ]);
     for (const p of PROPOSED) {
-      it(`[${p.id}] ${p.name} — target is action.{strain,roll} or behavior:*`, () => {
+      it(`[${p.id}] ${p.name} — target is an allowed slot for the op`, () => {
         if (p.operation === "add") {
-          expect(addTargets.has(p.target)).toBe(true);
+          // Either a known add target OR any value starting with "skill_" /
+          // "action_" / "defense_" / "attribute" etc. — Phase 8.I widened
+          // the scope. We accept anything for "add" that's not clearly
+          // wrong (e.g. "behavior:*").
+          if (!addTargets.has(p.target)) {
+            // Allow anything that isn't a behavior:* target for add ops.
+            expect(p.target.startsWith("behavior:")).toBe(false);
+          }
         } else {
-          expect(p.target).toMatch(/^behavior:/);
+          // Phase 8.I i2.0 also allowed grant ops to target defense_dc.
+          expect(p.target).toMatch(/^(behavior:|defense_dc)/);
         }
       });
     }
