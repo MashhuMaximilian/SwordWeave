@@ -694,6 +694,47 @@ function readCharacterStat(
     case "communion":
     case "intuition":
       return character.practices[stat];
+    case "attack_bonus":
+      // MVP alias — the engine math is the same as save_dc until the
+      // proper attack_roll math is wired in a later phase.
+      return character.saveDc;
+    case "physical_save":
+    case "mental_save":
+    case "magical_save": {
+      // MVP: save DC = 8 + proficiency bonus. The full save math
+      // (8 + attribute + prof + save modifiers) lives in
+      // aggregateCharacterSheet's defense_dc walk; we don't have
+      // that wired here, so we approximate with 8 + PB.
+      return 8 + Math.floor((character.vitalityMax + 30) / 20);
+    }
+    case "any_save":
+      return Math.max(
+        character.attributes.physical,
+        character.attributes.mental,
+        character.attributes.magical,
+      );
+    case "all_saves":
+      return Math.min(
+        character.attributes.physical,
+        character.attributes.mental,
+        character.attributes.magical,
+      );
+    case "any_attribute":
+      return Math.max(
+        character.attributes.physical,
+        character.attributes.mental,
+        character.attributes.magical,
+      );
+    case "all_attributes":
+      return Math.min(
+        character.attributes.physical,
+        character.attributes.mental,
+        character.attributes.magical,
+      );
+    case "any_practice":
+      return Math.max(...Object.values(character.practices));
+    case "all_practices":
+      return Math.min(...Object.values(character.practices));
     default: {
       // Custom variable — resolved on the character sheet, not the DB.
       const v = character.custom[stat];

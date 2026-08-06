@@ -41,6 +41,12 @@ import {
   type ConditionAuthoring,
   type ConditionPresetCategory,
 } from "@/types/condition";
+import {
+  PickerStatSection,
+  PickerProficiencySection,
+  PickerStatusFlagsSection,
+  useConditionPillAdder,
+} from "./condition-picker-sections";
 
 const CATEGORY_LABELS: Record<ConditionPresetCategory, string> = {
   target: "Target",
@@ -205,7 +211,14 @@ export function ExpressionEditorModal({
     onChange({ ...value, pills: nextPills, operators: nextOperators });
   };
 
-  return (
+    // i2.6 — structured-pill builders (shared with the picker)
+  const {
+    addStructuredStatPill,
+    addStructuredProficiencyPill,
+    addStructuredFlagPill,
+  } = useConditionPillAdder(value, onChange);
+
+return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
       role="dialog"
@@ -292,6 +305,25 @@ export function ExpressionEditorModal({
                   <CustomPillInput
                     onAdd={(label) => addPillAtEnd(cat, label)}
                   />
+                <PickerStatSection
+                  category={cat}
+                  pills={value.pills}
+                  onAddStat={(stat, op, val, valHigh) =>
+                    addStructuredStatPill(cat, stat, op, val, valHigh)
+                  }
+                />
+                <PickerProficiencySection
+                  category={cat}
+                  pills={value.pills}
+                  onAdd={(label, practice, axis) =>
+                    addStructuredProficiencyPill(cat, label, practice, axis)
+                  }
+                />
+                <PickerStatusFlagsSection
+                  category={cat}
+                  pills={value.pills}
+                  onAdd={(flag) => addStructuredFlagPill(cat, flag)}
+                />
                   {suggestions.length > 0 ? (
                     <div className="mt-2 flex flex-wrap gap-1">
                       {suggestions.map((s) => {

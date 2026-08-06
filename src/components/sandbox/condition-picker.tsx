@@ -50,9 +50,6 @@ import {
   type ConditionPresetCategory,
   type ConditionPresetEntry,
 } from "@/types/condition";
-import {
-  ALL_PRACTICES,
-} from "@/types/modifier";
 import { ExpressionEditorModal } from "./expression-editor-modal";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 
@@ -72,256 +69,15 @@ interface ConditionPickerProps {
   readonly onChange: (next: ConditionAuthoring) => void;
 }
 
-// =============================================================================
-// i2.6 — Structured-pill chip sections
-// =============================================================================
-
-const SELF_STAT_REFS: Array<{ value: string; label: string; tone: string }> = [
-  { value: "vitality",      label: "vitality",     tone: "violet" },
-  { value: "vitality_pct",  label: "vitality %",   tone: "violet" },
-  { value: "save_dc",       label: "save DC",      tone: "violet" },
-  { value: "block_value",   label: "block value",  tone: "amber"  },
-  { value: "physical",      label: "physical",     tone: "blue"    },
-  { value: "mental",        label: "mental",       tone: "blue"    },
-  { value: "magical",       label: "magical",      tone: "blue"    },
-  ...ALL_PRACTICES.map((p) => ({ value: p, label: p, tone: "emerald" })),
-];
-
-const STATUS_FLAGS = [
-  "is_prone",
-  "is_stunned",
-  "is_bleeding",
-  "is_frightened",
-  "is_blinded",
-  "is_charmed",
-  "is_grappled",
-  "is_restrained",
-  "is_sick",
-  "is_wounded",
-  "is_damaged_last_round",
-];
-
-const COMPARE_OPERATORS: Array<{ value: "<" | "<=" | "=" | "!=" | ">=" | ">" | "between"; label: string }> = [
-  { value: "<",  label: "<"  },
-  { value: "<=", label: "≤" },
-  { value: "=",  label: "="  },
-  { value: "!=", label: "≠" },
-  { value: ">=", label: "≥" },
-  { value: ">",  label: ">"  },
-  { value: "between", label: "between" },
-];
-
-function PickerStatSection({
-  category,
-  pills,
-  onAddStat,
-}: {
-  readonly category: ConditionPresetCategory;
-  readonly pills: ConditionAuthoring["pills"];
-  readonly onAddStat: (
-    stat: string,
-    op: "<" | "<=" | "=" | "!=" | ">=" | ">" | "between",
-    value: number,
-    valueHigh: number,
-  ) => void;
-}) {
-  // Only show stat chips for the actor (self) axis — target/scene
-  // stat refs aren't a meaningful UI affordance (the target/scene
-  // tags are descriptive).
-  if (category !== "actor") return null;
-  const [chosenStat, setChosenStat] = useState<string | null>(null);
-  const [chosenOp, setChosenOp] = useState<typeof COMPARE_OPERATORS[number]["value"]>("<");
-  const [val, setVal] = useState("0.5");
-  const [valHigh, setValHigh] = useState("1");
-  const onAddClick = () => {
-    if (!chosenStat) return;
-    const v = parseFloat(val);
-    const vh = parseFloat(valHigh);
-    if (Number.isNaN(v)) return;
-    onAddStat(chosenStat, chosenOp, v, Number.isNaN(vh) ? v : vh);
-  };
-  return (
-    <CollapsibleSection
-      title="Stat references"
-      count={SELF_STAT_REFS.length}
-      defaultOpen
-    >
-      <div className="mt-1 flex flex-wrap gap-1">
-        {SELF_STAT_REFS.map((s) => (
-          <button
-            key={s.value}
-            type="button"
-            onClick={() => setChosenStat(s.value)}
-            className={
-              "rounded-full border px-2 py-0.5 text-xs " +
-              (chosenStat === s.value
-                ? "border-primary bg-primary/15 text-primary font-semibold"
-                : "border-border bg-background text-foreground hover:bg-accent")
-            }
-          >
-            + {s.label}
-          </button>
-        ))}
-      </div>
-      {chosenStat ? (
-        <div className="mt-2 rounded-md border border-dashed border-border bg-background/30 p-2">
-          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-            <span>Build:</span>
-            <code className="font-mono text-foreground">
-              actor:{chosenStat} &lt;op&gt; {val}
-              {chosenOp === "between" ? ` - ${valHigh}` : ""}
-            </code>
-          </div>
-          <div className="mt-1.5 flex flex-wrap gap-1">
-            {COMPARE_OPERATORS.map((op) => (
-              <button
-                key={op.value}
-                type="button"
-                onClick={() => setChosenOp(op.value)}
-                className={
-                  "rounded-full border px-2 py-0.5 text-xs " +
-                  (chosenOp === op.value
-                    ? "border-primary bg-primary/15 text-primary font-semibold"
-                    : "border-border bg-background text-foreground hover:bg-accent")
-                }
-              >
-                {op.label}
-              </button>
-            ))}
-          </div>
-          <div className="mt-1.5 flex items-center gap-1.5 text-xs">
-            <span className="text-muted-foreground">value:</span>
-            <input
-              type="text"
-              value={val}
-              onChange={(e) => setVal(e.target.value)}
-              className="w-20 rounded-md border border-input bg-background px-2 py-0.5 font-mono text-xs"
-            />
-            {chosenOp === "between" ? (
-              <>
-                <span className="text-muted-foreground">high:</span>
-                <input
-                  type="text"
-                  value={valHigh}
-                  onChange={(e) => setValHigh(e.target.value)}
-                  className="w-20 rounded-md border border-input bg-background px-2 py-0.5 font-mono text-xs"
-                />
-              </>
-            ) : null}
-            <button
-              type="button"
-              onClick={onAddClick}
-              className="rounded-md bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              + add pill
-            </button>
-          </div>
-        </div>
-      ) : null}
-    </CollapsibleSection>
-  );
-}
-
-function PickerProficiencySection({
-  category,
-  pills,
-  onAdd,
-}: {
-  readonly category: ConditionPresetCategory;
-  readonly pills: ConditionAuthoring["pills"];
-  readonly onAdd: (label: string, practice?: string) => void;
-}) {
-  if (category !== "actor") return null;
-  return (
-    <CollapsibleSection
-      title="Proficiency"
-      count={ALL_PRACTICES.length * 2 + 2}
-    >
-      <div className="mt-1 space-y-1.5">
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Dynamic (uses currentPractice at evaluate time)
-          </div>
-          <div className="mt-1 flex flex-wrap gap-1">
-            <button
-              type="button"
-              onClick={() => onAdd("not_proficient")}
-              className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-xs text-orange-700 dark:text-orange-300 hover:bg-orange-500/20"
-            >
-              not_proficient
-            </button>
-            <button
-              type="button"
-              onClick={() => onAdd("proficient")}
-              className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20"
-            >
-              proficient
-            </button>
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Static (per practice)
-          </div>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {ALL_PRACTICES.map((p) => (
-              <span key={p} className="inline-flex items-center gap-0.5 rounded-full border border-border bg-background px-2 py-0.5 text-xs">
-                <button
-                  type="button"
-                  onClick={() => onAdd(`proficient_in(${p})`, p)}
-                  className="text-emerald-700 hover:text-emerald-900 dark:text-emerald-300"
-                  title={`Proficient in ${p}`}
-                >
-                  +
-                </button>
-                <span className="font-mono">{p}</span>
-                <button
-                  type="button"
-                  onClick={() => onAdd(`not_proficient_in(${p})`, p)}
-                  className="text-orange-700 hover:text-orange-900 dark:text-orange-300"
-                  title={`Not proficient in ${p}`}
-                >
-                  −
-                </button>
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-    </CollapsibleSection>
-  );
-}
-
-function PickerStatusFlagsSection({
-  category,
-  pills,
-  onAdd,
-}: {
-  readonly category: ConditionPresetCategory;
-  readonly pills: ConditionAuthoring["pills"];
-  readonly onAdd: (flag: string) => void;
-}) {
-  if (category !== "actor") return null;
-  return (
-    <CollapsibleSection
-      title="Status flags"
-      count={STATUS_FLAGS.length}
-    >
-      <div className="mt-1 flex flex-wrap gap-1">
-        {STATUS_FLAGS.map((flag) => (
-          <button
-            key={flag}
-            type="button"
-            onClick={() => onAdd(flag)}
-            className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-xs text-rose-700 dark:text-rose-300 hover:bg-rose-500/20"
-          >
-            + {flag}
-          </button>
-        ))}
-      </div>
-    </CollapsibleSection>
-  );
-}
+// i2.6 — Structured-pill chip sections + adders moved to
+// the shared module so the picker UI and the Edit modal both
+// render identical chips.
+import {
+  PickerStatSection,
+  PickerProficiencySection,
+  PickerStatusFlagsSection,
+  useConditionPillAdder,
+} from "./condition-picker-sections";
 
 export function ConditionPicker({
   value,
@@ -408,70 +164,12 @@ export function ConditionPicker({
     });
   };
 
-  // i2.6 — structured-pill helpers. Each builds a pill with the
-  // right `kind` field and the right metadata for its kind.
-  const addStructuredStatPill = (
-    cat: ConditionPresetCategory,
-    stat: string,
-    op: '<' | '<=' | '=' | '!=' | '>=' | '>' | 'between',
-    statValue: number,
-    statValueHigh: number,
-  ) => {
-    const label = stat;
-    const basePill = {
-      category: cat,
-      label,
-      kind: 'stat' as const,
-      stat,
-      operator: op,
-      value: statValue,
-    };
-    const newPill = op === 'between'
-      ? { ...basePill, valueHigh: statValueHigh }
-      : basePill;
-    const nextPills = [...value.pills, newPill];
-    const nextOperators: ('AND' | 'OR')[] = value.pills.length === 0
-      ? []
-      : [...value.operators, 'OR'];
-    onChange({ ...value, pills: nextPills, operators: nextOperators });
-  };
-
-  const addStructuredProficiencyPill = (
-    cat: ConditionPresetCategory,
-    label: string,
-    practice: string | undefined,
-  ) => {
-    const basePill = {
-      category: cat,
-      label,
-      kind: 'proficiency' as const,
-    };
-    const newPill = practice !== undefined
-      ? { ...basePill, practice }
-      : basePill;
-    const nextPills = [...value.pills, newPill];
-    const nextOperators: ('AND' | 'OR')[] = value.pills.length === 0
-      ? []
-      : [...value.operators, 'OR'];
-    onChange({ ...value, pills: nextPills, operators: nextOperators });
-  };
-
-  const addStructuredFlagPill = (
-    cat: ConditionPresetCategory,
-    flag: string,
-  ) => {
-    const newPill = {
-      category: cat,
-      label: flag,
-      kind: 'flag' as const,
-      flag,
-    };
-    const nextPills = [...value.pills, newPill];
-    const nextOperators: ('AND' | 'OR')[] = value.pills.length === 0
-      ? []
-      : [...value.operators, 'OR'];
-    onChange({ ...value, pills: nextPills, operators: nextOperators });
-  };
+  // i2.6 — use shared hook for structured-pill builders
+  const {
+    addStructuredStatPill,
+    addStructuredProficiencyPill,
+    addStructuredFlagPill,
+  } = useConditionPillAdder(value, onChange);
 
   const showIncludeTagsCheckbox = value.pills.length === 0;
 
@@ -623,8 +321,8 @@ export function ConditionPicker({
                 <PickerProficiencySection
                   category={cat}
                   pills={value.pills}
-                  onAdd={(label, practice) =>
-                    addStructuredProficiencyPill(cat, label, practice)
+                  onAdd={(label, practice, axis) =>
+                    addStructuredProficiencyPill(cat, label, practice, axis)
                   }
                 />
                 <PickerStatusFlagsSection

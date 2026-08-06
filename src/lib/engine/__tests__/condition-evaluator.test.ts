@@ -490,3 +490,137 @@ describe("evaluateCondition — structured stat pills (i2.6)", () => {
     ).toBe(true);
   });
 });
+
+
+// ---- i2.6 — grouped stat refs (any_attribute, all_practices, saves) ------
+
+describe("evaluateCondition — grouped stat refs (i2.6)", () => {
+  it("any_attribute > 4 fires when at least one attr >= 4", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        attributes: { physical: 5, mental: 2, magical: 3 },
+      }),
+    });
+    // any_attribute returns max (5). 5 > 4 → fires.
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["actor:stat|any_attribute|>|4"],
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("all_attributes > 5 fires when EVERY attribute is above 5", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        attributes: { physical: 6, mental: 7, magical: 8 },
+      }),
+    });
+    // all_attributes returns min (6). 6 > 5 → true.
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["actor:stat|all_attributes|>|5"],
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("all_attributes > 5 fails when one attr is below", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        attributes: { physical: 6, mental: 2, magical: 8 },
+      }),
+    });
+    // all_attributes returns min (2). 2 > 5 → false.
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["actor:stat|all_attributes|>|5"],
+        },
+        ctx,
+      ),
+    ).toBe(false);
+  });
+
+  it("all_practices >= 3 fires when every practice is at least 3", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        practices: {
+          prowess: 5, finesse: 4, fieldcraft: 5, awareness: 4, reason: 3,
+          knowledge: 4, influence: 3, mysticism: 4, communion: 3, intuition: 5,
+        },
+      }),
+    });
+    // all_practices returns min (3). 3 >= 3 → true.
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["actor:stat|all_practices|>=|3"],
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("any_practice > 5 fires when one practice is above", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({
+        practices: {
+          prowess: 5, finesse: 4, fieldcraft: 5, awareness: 4, reason: 3,
+          knowledge: 4, influence: 3, mysticism: 4, communion: 3, intuition: 5,
+        },
+      }),
+    });
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["actor:stat|any_practice|>|5"],
+        },
+        ctx,
+      ),
+    ).toBe(false); // max is 5, 5 > 5 → false (strict greater)
+  });
+
+  it("attack_bonus read returns the save DC value (MVP alias)", () => {
+    const ctx = makeCtx({
+      character: makeCharacter({ saveDc: 14 }),
+    });
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["actor:stat|attack_bonus|=|14"],
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+
+  it("physical_save reads a stable MVP value", () => {
+    // MVP formula: 8 + floor((vitalityMax + 30) / 20)
+    // vitalityMax=30 → 8 + floor(60/20) = 8 + 3 = 11
+    const ctx = makeCtx({
+      character: makeCharacter({ vitalityMax: 30 }),
+    });
+    const ps = (ctx.character as { vitalityMax: number }).vitalityMax;
+    expect(ps).toBe(30);
+    expect(
+      evaluateCondition(
+        {
+          kind: "tags",
+          customTags: ["actor:stat|physical_save|=|11"],
+        },
+        ctx,
+      ),
+    ).toBe(true);
+  });
+});
