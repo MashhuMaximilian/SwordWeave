@@ -895,3 +895,147 @@ describe("aggregateCharacterSheet - Wave 2 (speed + carry)", () => {
     expect(sheet.equipSlotsUsed).toBe(2);
   });
 });
+
+
+describe("aggregateCharacterSheet - Wave 5 (size, source_type, complexity, combat_action)", () => {
+  it("size: defaults to MEDIUM when no primitives", () => {
+    const sheet = aggregateCharacterSheet(baseInput());
+    expect(sheet.resolvedSize).toBe("MEDIUM");
+  });
+
+  it("size: +1 LARGE primitive sets resolvedSize to LARGE", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        primitiveLinks: [
+          {
+            primitiveId: 40,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 40,
+              name: "Enlarge",
+              category: "MORPHOLOGICAL",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                { target: "size.large", operation: "set", value: 1 },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    expect(sheet.resolvedSize).toBe("LARGE");
+  });
+
+  it("source_type: set primitive overrides default", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        attrProficient: "PHYSICAL",
+        primitiveLinks: [
+          {
+            primitiveId: 41,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 41,
+              name: "Force Source",
+              category: "MAGICAL",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                { target: "source_type.magical", operation: "set", value: 1 },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    expect(sheet.resolvedSourceType).toBe("MAGICAL");
+  });
+
+  it("complexity: sums numeric primitive contributions", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        primitiveLinks: [
+          {
+            primitiveId: 42,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 42,
+              name: "Complex Cap",
+              category: "CHARACTER_SHEET_AUGMENT",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                { target: "complexity", operation: "add", value: 3 },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    expect(sheet.complexity).toBe(3);
+  });
+
+  it("combat_action: grant primitive sets inCombat=true", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        primitiveLinks: [
+          {
+            primitiveId: 43,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 43,
+              name: "Initiative",
+              category: "TACTICAL",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                { target: "combat_action", operation: "grant", value: 1 },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    expect(sheet.inCombat).toBe(true);
+  });
+
+  it("upkeep_cost: sums numeric primitive contributions", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        primitiveLinks: [
+          {
+            primitiveId: 44,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 44,
+              name: "Maint Cost",
+              category: "CAPABILITY_MAINTENANCE",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                { target: "upkeep_cost", operation: "add", value: 2 },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    expect(sheet.upkeepCost).toBe(2);
+  });
+});

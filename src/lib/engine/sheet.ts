@@ -30,7 +30,7 @@ import {
 } from "./vitality";
 import { resolveValue, isTypedToken, type ResolveContext } from "./runtime-resolver";
 import { evaluateCondition, type ConditionContext } from "./condition-evaluator";
-import { sumPrimitiveContributions } from "./primitive-walk";
+import { sumPrimitiveContributions, walkPrimitiveContributionsForAxis } from "./primitive-walk";
 import { computeAllSavingThrows, computeAllSaveDCs } from "./practices";
 import { SIZE_CAPACITY } from "./encumbrance";
 import {
@@ -224,6 +224,13 @@ export type CharacterSheet = {
   // Phase 8.I i2 finish: equip slots used = item-derived
   // slots + primitive equip_slot contributions.
   readonly equipSlotsUsed: number;
+  // Phase 8.I Wave 5 (Mashu 2026-08-06): size, source_type,
+  // complexity, combat_action, upkeep_cost.
+  readonly resolvedSize: string;
+  readonly resolvedSourceType: string;
+  readonly complexity: number;
+  readonly inCombat: boolean;
+  readonly upkeepCost: number;
 };
 
 /**
@@ -629,6 +636,62 @@ const slotPrimitiveBonus = sumPrimitiveContributions(
 );
 const equipSlotsUsed = slotsUsed + slotPrimitiveBonus;
 
+// Phase 8.I Wave 5 (Mashu 2026-08-06): size, source_type,
+// complexity, combat_action. Tag-enum / boolean axes the
+// drawer displays.
+
+let resolvedSize = (input.size as string | null | undefined) ?? "MEDIUM";
+let resolvedSourceType: string = input.attrProficient === "MAGICAL" ? "MAGICAL" : "PHYSICAL";
+let inCombat = false;
+const SIZE_TIERS = ["tiny", "small", "medium", "large", "huge", "gargantuan"];
+
+for (const l of input.primitiveLinks as Parameters<typeof walkPrimitiveContributionsForAxis>[0]) {
+  const mods = Array.isArray(l.primitive?.hardModifiers)
+    ? (l.primitive.hardModifiers as Array<{
+        target?: unknown;
+        operation?: unknown;
+        value?: unknown;
+      }>)
+    : [];
+  for (const mod of mods) {
+    const target = String(mod.target ?? "");
+    const op = String(mod.operation ?? "");
+    const value = Number(mod.value);
+    const dotIdx = target.indexOf(".");
+    if (dotIdx > 0) {
+      const axis = target.slice(0, dotIdx);
+      const sub = target.slice(dotIdx + 1).toLowerCase();
+      if (axis === "size" && SIZE_TIERS.includes(sub)) {
+        if (op === "set" || op === "grant" || op === "add") {
+          resolvedSize = sub.toUpperCase();
+        }
+      }
+      if (axis === "source_type") {
+        if (op === "set" || op === "grant") {
+          resolvedSourceType = target.slice(dotIdx + 1).toUpperCase();
+        }
+      }
+    }
+    if (target === "combat_action") {
+      if (op === "grant") inCombat = true;
+      if (op === "set") inCombat = value !== 0;
+    }
+  }
+}
+
+const complexity = sumPrimitiveContributions(
+  input.primitiveLinks,
+  "complexity",
+  null,
+  input.conditionContext,
+);
+const upkeepCost = sumPrimitiveContributions(
+  input.primitiveLinks,
+  "upkeep_cost",
+  null,
+  input.conditionContext,
+);
+
   // Volatility (mirror-vector) — per BU Market canon, each character has a
   // level-based ceiling on how much negative BU they can take. We compute the
   // full BU ledger using the engine helpers and project volatility from it.
@@ -682,6 +745,11 @@ const equipSlotsUsed = slotsUsed + slotPrimitiveBonus;
     carryCapacity,
     load: loadTotal,
     equipSlotsUsed,
+    resolvedSize,
+    resolvedSourceType,
+    complexity,
+    inCombat,
+    upkeepCost,
     practiceCount: practices.length,
     capabilityCount: input.capabilityLinks.length,
     equippedItemCount: equippedItems.length,
