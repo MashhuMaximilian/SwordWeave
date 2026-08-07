@@ -1039,3 +1039,170 @@ describe("aggregateCharacterSheet - Wave 5 (size, source_type, complexity, comba
     expect(sheet.upkeepCost).toBe(2);
   });
 });
+
+
+describe("aggregateCharacterSheet - Wave 6 (behavior variables)", () => {
+  it("legendary_resistance: add 1 primitive grants 1 charge", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        primitiveLinks: [
+          {
+            primitiveId: 50,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 50,
+              name: "Legendary Resistance",
+              category: "EXISTENTIAL",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                {
+                  target: "behavior.legendary_resistance",
+                  operation: "add",
+                  value: 1,
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    const lr = sheet.behaviorVariables.find(
+      (b) => b.key === "legendary_resistance",
+    );
+    expect(lr).toBeDefined();
+    expect(lr?.value).toBe(1);
+  });
+
+  it("action_points: subtract 1 primitive consumes a charge", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        primitiveLinks: [
+          {
+            primitiveId: 51,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 51,
+              name: "Action Point",
+              category: "EXISTENTIAL",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                { target: "behavior.action_points", operation: "add", value: 4 },
+              ],
+            },
+          },
+          {
+            primitiveId: 52,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 52,
+              name: "Spent Action",
+              category: "EXISTENTIAL",
+              buCost: 0,
+              isMirrorable: false,
+              mirrorBuCredit: 0,
+              hardModifiers: [
+                { target: "behavior.action_points", operation: "subtract", value: 1 },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    const ap = sheet.behaviorVariables.find(
+      (b) => b.key === "action_points",
+    );
+    expect(ap).toBeDefined();
+    expect(ap?.value).toBe(3); // 4 - 1
+  });
+
+  it("mirrored primitive inverts behavior variable sign", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        primitiveLinks: [
+          {
+            primitiveId: 53,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: true,
+            primitive: {
+              id: 53,
+              name: "Mirrored LR",
+              category: "EXISTENTIAL",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                {
+                  target: "behavior.legendary_resistance",
+                  operation: "add",
+                  value: 2,
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    const lr = sheet.behaviorVariables.find(
+      (b) => b.key === "legendary_resistance",
+    );
+    // Mirrored: +2 -> -2. Variable is present with negative value.
+    expect(lr).toBeDefined();
+    expect(lr?.value).toBe(-2);
+  });
+
+  it("behavior variable omitted when sum is 0", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        primitiveLinks: [
+          {
+            primitiveId: 54,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 54,
+              name: "Add 1",
+              category: "EXISTENTIAL",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                { target: "behavior.x", operation: "add", value: 1 },
+              ],
+            },
+          },
+          {
+            primitiveId: 55,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 55,
+              name: "Subtract 1",
+              category: "EXISTENTIAL",
+              buCost: 0,
+              isMirrorable: false,
+              mirrorBuCredit: 0,
+              hardModifiers: [
+                { target: "behavior.x", operation: "subtract", value: 1 },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    const x = sheet.behaviorVariables.find((b) => b.key === "x");
+    expect(x).toBeUndefined();
+  });
+});

@@ -231,6 +231,20 @@ export type CharacterSheet = {
   readonly complexity: number;
   readonly inCombat: boolean;
   readonly upkeepCost: number;
+  // Phase 8.I Wave 6 (Mashu 2026-08-06): custom behavior
+  // variables (i4 finish). Each entry is a named bucket
+  // the character has via primitives — e.g. legendary
+  // resistance, action points, custom trackers. Authored
+  // as `target=behavior:<key>, op=add, value=1`.
+  readonly behaviorVariables: ReadonlyArray<{
+    readonly key: string;
+    readonly value: number;
+    readonly contributions: ReadonlyArray<{
+      readonly primitiveId: number;
+      readonly primitiveName: string;
+      readonly delta: number;
+    }>;
+  }>;
 };
 
 /**
@@ -692,6 +706,70 @@ const upkeepCost = sumPrimitiveContributions(
   input.conditionContext,
 );
 
+// Phase 8.I Wave 6 (Mashu 2026-08-06) — custom behavior
+// variables (i4 finish). Walk primitives targeting
+// behavior:<key> and bucket the contributions per key.
+// Used for legendary_resistance, action_point, etc.
+const behaviorVariables: Array<{
+  key: string;
+  value: number;
+  contributions: Array<{ primitiveId: number; primitiveName: string; delta: number }>;
+}> = [];
+const behaviorMap = new Map<string, { value: number; contributions: Array<{ primitiveId: number; primitiveName: string; delta: number }> }>();
+
+for (const link of input.primitiveLinks as Parameters<typeof walkPrimitiveContributionsForAxis>[0]) {
+  const mods = Array.isArray(link.primitive?.hardModifiers)
+    ? (link.primitive.hardModifiers as Array<{
+        target?: unknown;
+        operation?: unknown;
+        value?: unknown;
+      }>)
+    : [];
+  for (const mod of mods) {
+    const target = String(mod.target ?? "");
+    if (!target.startsWith("behavior.")) continue;
+    const key = target.slice("behavior.".length);
+    if (key.length === 0) continue;
+    const op = String(mod.operation ?? "");
+    const value = Number(mod.value);
+    if (!Number.isFinite(value)) continue;
+    let delta = 0;
+    if (op === "add") delta = value;
+    else if (op === "subtract") delta = -value;
+    else if (op === "set") delta = value;
+    else if (op === "grant") delta = value;
+    else continue;
+    if (link.isMirrored === true) delta = -delta;
+    const existing = behaviorMap.get(key);
+    if (existing) {
+      existing.value += delta;
+      existing.contributions.push({
+        primitiveId: Number(link.primitive?.id ?? 0),
+        primitiveName: String(link.primitive?.name ?? "Unknown"),
+        delta,
+      });
+    } else {
+      behaviorMap.set(key, {
+        value: delta,
+        contributions: [
+          {
+            primitiveId: Number(link.primitive?.id ?? 0),
+            primitiveName: String(link.primitive?.name ?? "Unknown"),
+            delta,
+          },
+        ],
+      });
+    }
+  }
+}
+
+for (const [key, val] of behaviorMap.entries()) {
+  if (val.value !== 0) {
+    behaviorVariables.push({ key, value: val.value, contributions: val.contributions });
+  }
+}
+behaviorVariables.sort((a, b) => a.key.localeCompare(b.key));
+
   // Volatility (mirror-vector) — per BU Market canon, each character has a
   // level-based ceiling on how much negative BU they can take. We compute the
   // full BU ledger using the engine helpers and project volatility from it.
@@ -750,6 +828,7 @@ const upkeepCost = sumPrimitiveContributions(
     complexity,
     inCombat,
     upkeepCost,
+    behaviorVariables,
     practiceCount: practices.length,
     capabilityCount: input.capabilityLinks.length,
     equippedItemCount: equippedItems.length,

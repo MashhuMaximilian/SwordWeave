@@ -127,6 +127,17 @@ export interface BottomStickyBarProps {
     readonly vulnerability: readonly string[];
     readonly immunity: readonly string[];
   };
+  // Phase 8.I Wave 6 (Mashu 2026-08-06): custom behavior
+  // variables (legendary_resistance, action_points, etc.)
+  readonly behaviorVariables: ReadonlyArray<{
+    readonly key: string;
+    readonly value: number;
+    readonly contributions: ReadonlyArray<{
+      readonly primitiveId: number;
+      readonly primitiveName: string;
+      readonly delta: number;
+    }>;
+  }>;
 }
 
 type ComboKind =
@@ -164,6 +175,7 @@ export function BottomStickyBar({
   speedByType,
   carryCapacity,
   damageModifiers,
+  behaviorVariables,
 }: BottomStickyBarProps) {
   const [hydrated, setHydrated] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -703,6 +715,23 @@ export function BottomStickyBar({
               </div>
             </div>
           )}
+
+          {/* Phase 8.I Wave 6 (Mashu 2026-08-06): custom behavior
+              variables (legendary_resistance, action_points, etc.).
+              Each variable shows its current value + the
+              contributing primitives. */}
+          {behaviorVariables.length > 0 && (
+            <div className="mt-2 rounded-md border border-border bg-card px-2 py-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Behavior Variables
+              </p>
+              <div className="mt-1 space-y-1">
+                {behaviorVariables.map((bv) => (
+                  <BehaviorVariableRow key={bv.key} bv={bv} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1025,6 +1054,47 @@ function DamageModifierRow({
           </span>
         ))}
       </div>
+    </div>
+  );
+}
+
+function BehaviorVariableRow({
+  bv,
+}: {
+  readonly bv: {
+    readonly key: string;
+    readonly value: number;
+    readonly contributions: ReadonlyArray<{
+      readonly primitiveId: number;
+      readonly primitiveName: string;
+      readonly delta: number;
+    }>;
+  };
+}) {
+  // Format the key for display: snake_case -> Title Case
+  const displayKey = bv.key
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+  const valueColor =
+    bv.value === 0
+      ? "text-muted-foreground"
+      : bv.value > 0
+        ? "text-teal-700 dark:text-teal-300"
+        : "text-destructive";
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="text-[11px] font-medium text-foreground">
+        {displayKey}
+      </span>
+      <span
+        className={`font-mono text-xs font-semibold tabular-nums ${valueColor}`}
+        title={bv.contributions
+          .map((c) => `${c.primitiveName} ${c.delta >= 0 ? "+" : ""}${c.delta}`)
+          .join("\n")}
+      >
+        {bv.value > 0 ? `+${bv.value}` : bv.value}
+      </span>
     </div>
   );
 }

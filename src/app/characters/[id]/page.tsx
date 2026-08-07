@@ -422,6 +422,7 @@ export default async function CharacterSheetPage({
       speedByType={sheet.speedByType}
       carryCapacity={sheet.carryCapacity}
       damageModifiers={extractDamageModifiers(row.primitiveLinks)}
+      behaviorVariables={sheet.behaviorVariables}
       buBalance={sheet.buBalance}
       primitiveLinks={row.primitiveLinks.map((l) => ({
         primitiveId: l.primitiveId,

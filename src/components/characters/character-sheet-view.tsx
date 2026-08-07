@@ -294,6 +294,17 @@ export type CharacterSheetProps = {
     readonly vulnerability: readonly string[];
     readonly immunity: readonly string[];
   };
+  // Phase 8.I Wave 6 (Mashu 2026-08-06): custom behavior
+  // variables (legendary_resistance, action_points, etc.)
+  behaviorVariables: ReadonlyArray<{
+    readonly key: string;
+    readonly value: number;
+    readonly contributions: ReadonlyArray<{
+      readonly primitiveId: number;
+      readonly primitiveName: string;
+      readonly delta: number;
+    }>;
+  }>;
   buBalance: {
     progressionSpent: number;
     progressionPool: number;
@@ -984,6 +995,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         speedByType={props.speedByType}
         carryCapacity={props.carryCapacity}
         damageModifiers={props.damageModifiers}
+        behaviorVariables={props.behaviorVariables}
         // Phase 8.4 v25: character size for the encumbrance
         // formula popup. Cast from the loose `string` type on
         // CharacterSheetProps to the literal union the bar
