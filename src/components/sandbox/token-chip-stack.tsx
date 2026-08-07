@@ -284,7 +284,7 @@ function TokenPicker({
             onClick={() => onPick({ kind: "derived", which: d })}
             className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300 hover:bg-amber-500/20"
           >
-                        + {d === "pb_half" ? "PB/2" : d.toUpperCase()}
+                        + {d === "pb_half" ? "PB/2" : d === "pb2" ? "PB×2" : d === "expertise" ? "Expertise" : d === "pb*2" ? "PB×2" : d.toUpperCase()}
           </button>
         ))}
       </div>

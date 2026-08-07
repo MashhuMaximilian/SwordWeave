@@ -94,6 +94,12 @@ export function resolveToken(
           return ctx.pb;
         case "pb_half":
           return ctx.pb / 2;
+        // Phase 8.I i2.7c (Mashu 2026-08-06): pb2 / expertise
+        // / pb*2 alias 2*pb. Authoring shortcut.
+        case "pb2":
+        case "expertise":
+        case "pb*2":
+          return ctx.pb * 2;
         case "level":
           return ctx.level;
       }

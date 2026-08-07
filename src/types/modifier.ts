@@ -339,7 +339,10 @@ export type ModifierValue =
 export type ValueToken =
   | { readonly kind: "attribute"; readonly attribute: AttributeKey }
   | { readonly kind: "practice"; readonly practice: PracticeKey }
-  | { readonly kind: "derived"; readonly which: "pb" | "pb_half" | "level" }
+  | {
+      readonly kind: "derived";
+      readonly which: "pb" | "pb_half" | "pb2" | "expertise" | "pb*2" | "level";
+    }
   | { readonly kind: "behavior"; readonly name: string }
   | { readonly kind: "dice"; readonly expression: string }
   | { readonly kind: "number"; readonly value: number }
@@ -451,7 +454,10 @@ export type OperandValue =
   | { readonly kind: "dice"; readonly expression: string }
   | { readonly kind: "attribute"; readonly attribute: AttributeKey }
   | { readonly kind: "practice"; readonly practice: PracticeKey }
-  | { readonly kind: "derived"; readonly which: "pb" | "pb_half" | "level" }
+  | {
+      readonly kind: "derived";
+      readonly which: "pb" | "pb_half" | "pb2" | "expertise" | "pb*2" | "level";
+    }
   | { readonly kind: "behavior"; readonly name: string }
   | { readonly kind: "keyword"; readonly text: string }
   | { readonly kind: "runtime"; readonly name: string; readonly hint: "number" | "text" }
@@ -680,7 +686,7 @@ export const ALL_ATTRIBUTES = ["physical", "mental", "magical"] as const;
  * | "magic-abstract"` for use in the `ValueToken.attribute` field.
  */
 export type AttributeKey = (typeof ALL_ATTRIBUTES)[number];
-export const ALL_DERIVED = ["pb", "pb_half", "level"] as const;
+export const ALL_DERIVED = ["pb", "pb_half", "pb2", "expertise", "pb*2", "level"] as const;
 
 /**
  * Canonical dice sizes (per the BU Market canon's Intensity
@@ -846,7 +852,10 @@ function coerceSingleValue(raw: unknown): ValueToken | null {
       return { kind: "attribute", attribute: raw as AttributeKey };
     }
     if ((ALL_DERIVED as readonly string[]).includes(raw)) {
-      return { kind: "derived", which: raw as "pb" | "pb_half" | "level" };
+      return {
+        kind: "derived",
+        which: raw as "pb" | "pb_half" | "pb2" | "expertise" | "pb*2" | "level",
+      };
     }
     if ((ALL_PRACTICES as readonly string[]).includes(raw)) {
       return { kind: "practice", practice: raw as PracticeKey };
