@@ -285,7 +285,7 @@ const PRIMITIVES: PrimitiveSpec[] = [
         // Computable condition: fires when vitality < 50%.
         condition: {
           kind: "compound",
-          tokens: ["actor:stat|vitality_pct|<|0.5"],
+          tokens: ["self:stat|vitality_pct|<|0.5"],
         },
         metadata: { targetScope: { layer: "PRACTICE", values: ["AWARENESS"] } },
       },

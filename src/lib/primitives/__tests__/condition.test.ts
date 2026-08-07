@@ -314,7 +314,7 @@ describe("buildCondition", () => {
     });
     expect(result).toEqual({
       kind: "compound",
-      tokens: ["target:Prone", "OR", "target:Grappled", "AND", "actor:Stance"],
+      tokens: ["target:Prone", "OR", "target:Grappled", "AND", "self:Stance"],
     });
   });
 
@@ -392,11 +392,11 @@ describe("parseCondition — compound variant", () => {
   it("accepts valid compound token stream", () => {
     const parsed = parseCondition({
       kind: "compound",
-      tokens: ["target:Prone", "OR", "actor:Stance", "AND", "scene:Dim"],
+      tokens: ["target:Prone", "OR", "self:Stance", "AND", "scene:Dim"],
     });
     expect(parsed).toEqual({
       kind: "compound",
-      tokens: ["target:Prone", "OR", "actor:Stance", "AND", "scene:Dim"],
+      tokens: ["target:Prone", "OR", "self:Stance", "AND", "scene:Dim"],
     });
   });
 
@@ -454,7 +454,7 @@ describe("conditionToBadges — compound variant", () => {
   it("renders alternating pill and operator badges", () => {
     const badges = conditionToBadges({
       kind: "compound",
-      tokens: ["target:Prone", "OR", "actor:Stance"],
+      tokens: ["target:Prone", "OR", "self:Stance"],
     });
     expect(badges).toEqual([
       { kind: "tag", label: "Prone" },
@@ -730,7 +730,7 @@ describe("buildCondition — structured pills (i2.6)", () => {
     });
     expect(result).toEqual({
       kind: "tags",
-      customTags: ["actor:stat|vitality|<|10"],
+      customTags: ["self:stat|vitality|<|10"],
     });
   });
 
@@ -754,7 +754,7 @@ describe("buildCondition — structured pills (i2.6)", () => {
     });
     expect(result).toEqual({
       kind: "tags",
-      customTags: ["actor:stat|vitality|between|5|15"],
+      customTags: ["self:stat|vitality|between|5|15"],
     });
   });
 
@@ -775,7 +775,7 @@ describe("buildCondition — structured pills (i2.6)", () => {
     });
     expect(result).toEqual({
       kind: "tags",
-      customTags: ["actor:proficient_in(prowess)"],
+      customTags: ["self:proficient_in(prowess)"],
     });
   });
 
@@ -795,7 +795,7 @@ describe("buildCondition — structured pills (i2.6)", () => {
     });
     expect(result).toEqual({
       kind: "tags",
-      customTags: ["actor:not_proficient"],
+      customTags: ["self:not_proficient"],
     });
   });
 
@@ -824,7 +824,7 @@ describe("buildCondition — structured pills (i2.6)", () => {
     });
     expect(result).toEqual({
       kind: "compound",
-      tokens: ["actor:stat|vitality|<|10", "AND", "actor:is_prone"],
+      tokens: ["self:stat|vitality|<|10", "AND", "self:is_prone"],
     });
   });
 
@@ -843,7 +843,7 @@ describe("buildCondition — structured pills (i2.6)", () => {
     });
     expect(result).toEqual({
       kind: "tags",
-      customTags: ["actor:unconscious"],
+      customTags: ["self:unconscious"],
     });
   });
 });
@@ -878,7 +878,7 @@ describe("buildCondition — axis marker regression (i2.6)", () => {
     });
     expect(result).toEqual({
       kind: "tags",
-      customTags: ["actor:not_proficient"],
+      customTags: ["self:not_proficient"],
     });
   });
 
@@ -899,7 +899,7 @@ describe("buildCondition — axis marker regression (i2.6)", () => {
     });
     expect(result).toEqual({
       kind: "tags",
-      customTags: ["actor:proficient"],
+      customTags: ["self:proficient"],
     });
   });
 
@@ -920,7 +920,7 @@ describe("buildCondition — axis marker regression (i2.6)", () => {
     });
     expect(result).toEqual({
       kind: "tags",
-      customTags: ["actor:not_proficient_in_attribute(any)"],
+      customTags: ["self:not_proficient_in_attribute(any)"],
     });
   });
 
@@ -941,7 +941,7 @@ describe("buildCondition — axis marker regression (i2.6)", () => {
     });
     expect(result).toEqual({
       kind: "tags",
-      customTags: ["actor:not_proficient_in(all_practices)"],
+      customTags: ["self:not_proficient_in(all_practices)"],
     });
   });
 
@@ -962,7 +962,7 @@ describe("buildCondition — axis marker regression (i2.6)", () => {
     });
     expect(result).toEqual({
       kind: "tags",
-      customTags: ["actor:proficient_in(prowess)"],
+      customTags: ["self:proficient_in(prowess)"],
     });
   });
 });
@@ -974,7 +974,7 @@ describe("conditionToBadges — axis-explicit display (i2.6)", () => {
   it("bare not_proficient maps to 'not_proficient(any practice)'", () => {
     const badges = conditionToBadges({
       kind: "tags",
-      customTags: ["actor:not_proficient"],
+      customTags: ["self:not_proficient"],
     });
     expect(badges).toEqual([
       { kind: "tag", label: "not_proficient(any practice)" },
@@ -984,7 +984,7 @@ describe("conditionToBadges — axis-explicit display (i2.6)", () => {
   it("bare proficient maps to 'proficient(any practice)'", () => {
     const badges = conditionToBadges({
       kind: "tags",
-      customTags: ["actor:proficient"],
+      customTags: ["self:proficient"],
     });
     expect(badges).toEqual([
       { kind: "tag", label: "proficient(any practice)" },
@@ -994,7 +994,7 @@ describe("conditionToBadges — axis-explicit display (i2.6)", () => {
   it("not_proficient_in_attribute(any) maps to 'not_proficient(any attribute)'", () => {
     const badges = conditionToBadges({
       kind: "tags",
-      customTags: ["actor:not_proficient_in_attribute(any)"],
+      customTags: ["self:not_proficient_in_attribute(any)"],
     });
     expect(badges).toEqual([
       { kind: "tag", label: "not_proficient(any attribute)" },
@@ -1004,7 +1004,7 @@ describe("conditionToBadges — axis-explicit display (i2.6)", () => {
   it("concrete practice name stays verbatim", () => {
     const badges = conditionToBadges({
       kind: "tags",
-      customTags: ["actor:proficient_in(prowess)"],
+      customTags: ["self:proficient_in(prowess)"],
     });
     expect(badges).toEqual([
       { kind: "tag", label: "proficient_in(prowess)" },
@@ -1014,7 +1014,7 @@ describe("conditionToBadges — axis-explicit display (i2.6)", () => {
   it("grouped (all_practices) stays verbatim", () => {
     const badges = conditionToBadges({
       kind: "tags",
-      customTags: ["actor:not_proficient_in(all_practices)"],
+      customTags: ["self:not_proficient_in(all_practices)"],
     });
     expect(badges).toEqual([
       { kind: "tag", label: "not_proficient_in(all_practices)" },
@@ -1024,7 +1024,7 @@ describe("conditionToBadges — axis-explicit display (i2.6)", () => {
   it("stat pill renders as '<stat> <op> <value>'", () => {
     const badges = conditionToBadges({
       kind: "tags",
-      customTags: ["actor:stat|vitality_pct|<|0.5"],
+      customTags: ["self:stat|vitality_pct|<|0.5"],
     });
     expect(badges).toEqual([
       { kind: "tag", label: "vitality_pct < 0.5" },
@@ -1034,7 +1034,7 @@ describe("conditionToBadges — axis-explicit display (i2.6)", () => {
   it("stat pill with between renders 'between A - B'", () => {
     const badges = conditionToBadges({
       kind: "tags",
-      customTags: ["actor:stat|vitality|between|5|15"],
+      customTags: ["self:stat|vitality|between|5|15"],
     });
     expect(badges).toEqual([
       { kind: "tag", label: "vitality between 5 - 15" },
@@ -1045,9 +1045,9 @@ describe("conditionToBadges — axis-explicit display (i2.6)", () => {
     const badges = conditionToBadges({
       kind: "compound",
       tokens: [
-        "actor:not_proficient",
+        "self:not_proficient",
         "AND",
-        "actor:stat|vitality_pct|<|0.5",
+        "self:stat|vitality_pct|<|0.5",
       ],
     });
     expect(badges).toEqual([

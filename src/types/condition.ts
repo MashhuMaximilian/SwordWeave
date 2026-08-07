@@ -60,7 +60,7 @@
  * "actor" — about the entity using the modifier (the character
  * themselves, e.g. "I am below half HP").
  */
-export type ConditionPresetCategory = "target" | "scene" | "actor";
+export type ConditionPresetCategory = "target" | "scene" | "actor" | "self";
 
 /**
  * Canonical preset keys.

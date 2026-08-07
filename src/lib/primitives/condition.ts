@@ -155,9 +155,13 @@ export function parseCondition(
 // Compound token validation (Phase 7 Q-B m4)
 // =============================================================================
 
+// Phase 8.I i2.7e (Mashu 2026-08-06): 'self' is the canonical
+// category going forward. 'actor' is kept as an alias so old
+// stored conditions keep validating.
 const VALID_CATEGORIES = new Set<ConditionPresetCategory>([
   "target",
   "actor",
+  "self",
   "scene",
 ]);
 
@@ -247,12 +251,19 @@ export function serializeConditionPill(pill: {
   readonly practice?: string | undefined;
   readonly flag?: string | undefined;
 }): string {
+  // Phase 8.I i2.7e (Mashu 2026-08-06): 'self' is the canonical
+  // category going forward. Normalize 'actor' to 'self' on the
+  // write path so newly-authored conditions emit the canonical
+  // form. The resolver already accepts both, this is just for
+  // storage consistency.
+  const category: ConditionPresetCategory =
+    pill.category === "actor" ? "self" : pill.category;
   const k = pill.kind ?? 'tag';
   switch (k) {
     case 'tag':
-      return `${pill.category}:${pill.label}`;
+      return `${category}:${pill.label}`;
     case 'flag':
-      return `${pill.category}:${pill.flag ?? pill.label}`;
+      return `${category}:${pill.flag ?? pill.label}`;
     case 'proficiency': {
       // The pill's `practice` field is used by the chip UI for
       // display, but should NOT be emitted as `_in(<practice>)`
@@ -275,10 +286,10 @@ export function serializeConditionPill(pill: {
         // The pill.label encodes the special form already (e.g.
         // 'not_proficient_in(all_practices)' or
         // 'proficient_in_attribute(any)').
-        return `${pill.category}:${pill.label}`;
+        return `${category}:${pill.label}`;
       }
       // Concrete practice name → emit _in(<practice>).
-      return `${pill.category}:${op}_in(${practice})`;
+      return `${category}:${op}_in(${practice})`;
     }
     case 'stat': {
       // Encode stat comparison as a 4- or 5-tuple pipe-separated.
@@ -287,9 +298,9 @@ export function serializeConditionPill(pill: {
       const op = pill.operator ?? '=';
       const v = pill.value ?? 0;
       if (op === 'between') {
-        return `${pill.category}:stat|${pill.stat ?? ''}|${op}|${v}|${pill.valueHigh ?? v}`;
+        return `${category}:stat|${pill.stat ?? ''}|${op}|${v}|${pill.valueHigh ?? v}`;
       }
-      return `${pill.category}:stat|${pill.stat ?? ''}|${op}|${v}`;
+      return `${category}:stat|${pill.stat ?? ''}|${op}|${v}`;
     }
   }
 }
@@ -621,7 +632,7 @@ function friendlyConditionLabel(label: string): string {
 // Helpers
 // =============================================================================
 
-const KNOWN_CATEGORY_PREFIXES = new Set(["target", "actor", "scene"]);
+const KNOWN_CATEGORY_PREFIXES = new Set(["target", "actor", "self", "scene"]);
 
 /**
  * Strip the "category:" prefix from a tag pill. If the prefix is
