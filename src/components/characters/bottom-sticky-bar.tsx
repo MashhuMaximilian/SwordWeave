@@ -47,6 +47,13 @@ import {
 import type { ResolvedModifiers } from "@/lib/engine/resolve-modifiers";
 import { SIZE_CAPACITY, SIZE_LOAD, SIZE_BASE_SPEED } from "@/lib/engine/encumbrance";
 
+/** Round 0.5 up (ceiling for positive, floor for negative). */
+function roundUp(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  if (value >= 0) return Math.ceil(value);
+  return Math.floor(value);
+}
+
 /**
  * Reverse PB → level. PB starts at 2 and adds 1 every 4 levels.
  * Returns the lowest level consistent with this PB. Used for
@@ -157,6 +164,7 @@ type ComboKind =
   | "speed"
   | "behavior"
   | "damage"
+  | "damage-type"
   | null;
 
 export function BottomStickyBar({
@@ -196,6 +204,11 @@ export function BottomStickyBar({
     attribute: "physical" | "mental" | "magical";
     total: number;
   } | null>(null);
+  const [comboDamageType, setComboDamageType] = useState<string | null>(null);
+  const openDamageTypeModal = useCallback((type: string) => {
+    setComboDamageType(type);
+    setCombo("damage-type");
+  }, []);
 
   useEffect(() => {
     setHydrated(true);
@@ -707,6 +720,7 @@ export function BottomStickyBar({
                     label="Resistance"
                     types={damageModifiers.resistance}
                     colorClass="text-sky-700 dark:text-sky-300"
+                    onClick={(type) => openDamageTypeModal(type)}
                   />
                 )}
                 {damageModifiers.vulnerability.length > 0 && (
@@ -714,6 +728,7 @@ export function BottomStickyBar({
                     label="Vulnerability"
                     types={damageModifiers.vulnerability}
                     colorClass="text-orange-700 dark:text-orange-300"
+                    onClick={(type) => openDamageTypeModal(type)}
                   />
                 )}
                 {damageModifiers.immunity.length > 0 && (
@@ -721,6 +736,7 @@ export function BottomStickyBar({
                     label="Immunity"
                     types={damageModifiers.immunity}
                     colorClass="text-purple-700 dark:text-purple-300"
+                    onClick={(type) => openDamageTypeModal(type)}
                   />
                 )}
               </div>
@@ -806,10 +822,10 @@ export function BottomStickyBar({
               (comboAttr === "physical" ? physMod : comboAttr === "mental" ? mentMod : magiMod) +
               (proficientAttribute?.toLowerCase() === comboAttr ? pb : 0)
             }
-            formula={`Practice = base ${comboAttr.toUpperCase()} + attribute delta + PB (if proficient)`}
+            formula={`Practice = ${comboAttr.toUpperCase()} attribute (mod) + PB (if proficient) + practice primitive contributions`}
             breakdown={[
               {
-                label: `${comboAttr.toUpperCase()} attribute`,
+                label: `${comboAttr.toUpperCase()} attribute (mod)`,
                 value:
                   comboAttr === "physical" ? physMod : comboAttr === "mental" ? mentMod : magiMod,
               },
@@ -898,11 +914,43 @@ export function BottomStickyBar({
         ) : combo === "speed" ? (
           <FormulaModal
             title="Walking Speed"
-            subtitle="base speed + primitive contributions"
+            subtitle={`base speed (${SIZE_BASE_SPEED[characterSize]} ft for ${characterSize}) + primitive contributions`}
             total={speedByType["WALKING_SPEED"] ?? 0}
-            formula={`Speed = Base (30 ft) + primitive contributions (speed.walking)`}
+            formula={`Speed = Size base (${SIZE_BASE_SPEED[characterSize]} ft for ${characterSize}) + primitive contributions (speed.walking)`}
+            info={{
+              title: "Speed by size",
+              body: (
+                <div>
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Speed by size</p>
+                  <table className="mt-1 w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground">
+                        <th className="py-1 text-left uppercase">Size</th>
+                        <th className="py-1 text-right uppercase">Walk</th>
+                        <th className="py-1 text-right uppercase">Swim</th>
+                        <th className="py-1 text-right uppercase">Climb</th>
+                      </tr>
+                    </thead>
+                    <tbody className="font-mono">
+                      {(["TINY", "SMALL", "MEDIUM", "LARGE", "HUGE", "GARGANTUAN"] as const).map((sz) => (
+                        <tr key={sz} className={sz === characterSize ? "bg-teal-500/10" : ""}>
+                          <td className="py-0.5">{sz.toLowerCase()}</td>
+                          <td className="py-0.5 text-right tabular-nums">{SIZE_BASE_SPEED[sz]}</td>
+                          <td className="py-0.5 text-right tabular-nums">{roundUp(SIZE_BASE_SPEED[sz] / 2)}</td>
+                          <td className="py-0.5 text-right tabular-nums">{roundUp(SIZE_BASE_SPEED[sz] / 2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    Swim and climb speeds default to half the base walking speed (rounded up).
+                    Burrow and flight start at 0 — must be granted by primitives.
+                  </p>
+                </div>
+              ),
+            }}
             breakdown={[
-              { label: "Base Speed", value: 30 },
+              { label: `Size base (${characterSize})`, value: SIZE_BASE_SPEED[characterSize] ?? 30 },
               { label: `WALKING_SPEED primitive total`, value: (resolver_?.totals["speed.walking"] ?? 0) },
             ]}
             onClose={() => setCombo(null)}
@@ -941,6 +989,27 @@ export function BottomStickyBar({
               : []}
             onClose={() => setCombo(null)}
           />
+        ) : combo === "damage-type" && comboDamageType ? (
+          (() => {
+            const dmTarget = `damage_modifier.${comboDamageType}`;
+            const dmContribs = resolver_.byTarget[dmTarget] ?? [];
+            const dmTotal = resolver_.totals[dmTarget] ?? 0;
+            const isResist = damageModifiers.resistance.includes(comboDamageType);
+            const isVuln = damageModifiers.vulnerability.includes(comboDamageType);
+            const isImmune = damageModifiers.immunity.includes(comboDamageType);
+            const label = isImmune ? "Immunity" : isVuln ? "Vulnerability" : isResist ? "Resistance" : "Modifier";
+            const mult = isImmune ? 0 : isVuln ? 2 : isResist ? 0.5 : 1;
+            return (
+              <FormulaModal
+                title={`${comboDamageType.charAt(0).toUpperCase() + comboDamageType.slice(1)} ${label}`}
+                subtitle={`multiplier: ×${mult}`}
+                total={dmTotal}
+                formula={`Damage × ${mult} — ${isResist ? "halved" : isVuln ? "doubled" : isImmune ? "ignored" : "normal"} damage from this type`}
+                breakdown={contributionsToSteps(dmTarget, resolver_)}
+                onClose={() => setCombo(null)}
+              />
+            );
+          })()
         ) : combo === "encumbrance" ? (
           <EncumbranceFormulaModal
             encumbrance={encumbrance}
@@ -1080,7 +1149,7 @@ function DamageModifierRow({
   readonly label: string;
   readonly types: readonly string[];
   readonly colorClass: string;
-  readonly onClick?: () => void;
+  readonly onClick?: (type: string) => void;
 }) {
   return (
     <div className="flex items-center gap-1.5">
@@ -1092,7 +1161,7 @@ function DamageModifierRow({
           <button
             key={t}
             type="button"
-            onClick={onClick}
+            onClick={onClick ? (e: React.MouseEvent<HTMLButtonElement>) => { e.preventDefault(); e.stopPropagation(); onClick(t); } : undefined}
             className={`cursor-pointer rounded-full border border-current/30 bg-current/10 px-1.5 py-0.5 text-[10px] font-medium ${colorClass} hover:bg-current/20`}
             title={`Click to see ${t} damage modifier provenance`}
           >
@@ -1512,6 +1581,13 @@ function PracticeDetailModal({
   const attrTarget = `attribute.${practice.attribute}`;
   const contributions = byTarget[attrTarget] ?? [];
   const attrDelta = attrMod - attrBase;
+  // Practice-specific primitive contributions (e.g. Proficient Fieldcraft,
+  // Iron Will) target `skill_practice_check.<practice>`. These are
+  // SEPARATE from the attribute primitives — both feed into the
+  // practice total.
+  const practiceTarget = `practice.${practice.attribute}`;
+  const practicePrimitiveTotal = byTarget[practiceTarget]
+    ?.reduce((sum, c) => sum + c.value, 0) ?? 0;
   // Mirror-style trace: show the formula
   //   total = attrBase + (PB if prof) + attrDelta
   // It's the same as the Save DC formula except the
@@ -1561,34 +1637,53 @@ function PracticeDetailModal({
               </span>
             </div>
             <p className="mb-2 rounded-md border border-border bg-background p-2 font-mono text-xs leading-relaxed text-foreground">
-              Practice = base {practice.attribute.toUpperCase()} attribute +
-              primitive contributions + PB (if proficient)
+              Practice = {practice.attribute.toUpperCase()} attribute (mod) +
+              practice primitive contributions + PB (if proficient)
             </p>
             <p className="rounded-md border border-dashed border-border bg-background/50 p-2 font-mono text-[11px] text-muted-foreground">
-              {fmt(attrBase)} (attr){" "}
-              <span className="text-muted-foreground/70">(base)</span>{" "}
-              {attrDelta !== 0 && (
+              {fmt(attrMod)} (attr mod){" "}
+              <span className="text-muted-foreground/70">(base + attr primitives)</span>{" "}
+              {isProf ? fmt(pb) : "+0"} (PB){" "}
+              {practicePrimitiveTotal !== 0 && (
                 <>
-                  {fmt(attrDelta)} (primitives){" "}
-                  <span className="text-muted-foreground/70">(delta)</span>{" "}
+                  {fmt(practicePrimitiveTotal)} (practice primitives){" "}
+                  <span className="text-muted-foreground/70">(fieldcraft-specific)</span>{" "}
                 </>
               )}
-              {isProf ? fmt(pb) : "+0"} (PB) = {fmt(practice.total)}
+              = {fmt(practice.total)}
             </p>
           </section>
 
           <section>
             <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Primitive contributions
+              Attribute primitives (affect practice base)
             </p>
             {contributions.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No primitive contributes to this practice. Total = attribute + PB.
+                No attribute primitive contributes to this practice.
               </p>
             ) : (
               <ul className="space-y-2">
                 {contributions.map((c, i) => (
-                  <ContribListItem key={`${c.primitiveId}-${i}`} c={c} />
+                  <ContribListItem key={`attr-${c.primitiveId}-${i}`} c={c} />
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section>
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Practice primitives
+            </p>
+            {byTarget[practiceTarget]?.length === 0 ||
+            !byTarget[practiceTarget] ? (
+              <p className="text-sm text-muted-foreground">
+                No practice-specific primitive contributes here.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {byTarget[practiceTarget]!.map((c, i) => (
+                  <ContribListItem key={`prac-${c.primitiveId}-${i}`} c={c} />
                 ))}
               </ul>
             )}
@@ -1736,7 +1831,25 @@ function EncumbranceFormulaModal({
             )}
           </section>
 
-          {/* Info panel — size table + pouch rule */}
+          {/* Equip Slots card (moved from inside the size table) */}
+
+          <section>
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Reference — Equip slots
+            </p>
+            <div className="rounded-md border border-border bg-background p-2.5 text-sm">
+              <p className="font-mono text-xs">
+                {encumbrance.equipSlotsAvailable} universal equip slots available
+                ({encumbrance.equipSlotsUsed} used).
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                2H items use at least 2 slots depending on bulk.
+                Equipped items also contribute to Load.
+              </p>
+            </div>
+          </section>
+
+          {/* Size table + pouch rule */}
           <section>
             <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               Reference — Size table
@@ -1767,10 +1880,6 @@ function EncumbranceFormulaModal({
               <p className="mt-2 text-[11px] text-muted-foreground">
                 * Tiny items are tracked via pouches: 1 Pouch = up to 1000 Tiny Items
                 = 1 Load. Includes coins, gems, scrolls, nails, etc.
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                6 universal equip slots. 2H items use 2 slots. Equipped items also
-                contribute to Load.
               </p>
             </div>
           </section>

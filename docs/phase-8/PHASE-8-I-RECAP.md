@@ -2,7 +2,7 @@
 
 **Author:** Senku
 **For:** Mashu — this is the FINAL RECAP. Session I is broken into 7 sub-sessions (i1–i7) you can test incrementally. Each sub-session has a clear test plan with what you should author.
-**Status:** 🟢 Recap closing. Rounds 1–5 answered 2026-08-04. Final review pending.
+**Status:** 🟢 Recap complete. Rounds 1–8 done. i3 pre-fixes shipped (conditions, rounding, mirror, size-based speed). i3 proper next.
 **Started:** 2026-08-04
 **Origin:** Session I from the master plan (post-Sessions G + H which closed on 2026-08-04)
 
