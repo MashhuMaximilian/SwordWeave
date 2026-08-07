@@ -496,3 +496,58 @@ but each is more semantic.
 Per your "let's do maths" message — engine math is the
 gating work. Or do you want me to do vulnerability/resistance
 form work first (small surface, fast, immediately testable)?
+
+
+---
+
+# WAVE STATUS — 2026-08-06 (all 6 waves shipped)
+
+| Wave | Status | Commit |
+|---|---|---|
+| 1 — attribute + DC + saving_throw/save_dc walks | ✅ DONE | `a0450f2` |
+| 2 — speed + carry + load + equip_slot walks | ✅ DONE | `5d2e1d7` |
+| 3 — damage_modifier engine (resolveDamage) | ✅ DONE | `8e910d6` |
+| 4 — drawer UI for speed, carry, vulnerability/resistance cards | ✅ DONE | `64e275f` |
+| 5 — size + source_type + upkeep + complexity + combat_action | ✅ DONE | `e969ef4` |
+| 6 — behavior variables walk + drawer cards (i4 finish) | ✅ DONE | `94421f1` |
+
+**Total: 6 commits, ~2227 tests pass (only 2 pre-existing Notion DB failures).**
+
+## What's wired end-to-end now
+
+The character sheet (bottom-sticky-bar drawer) now displays:
+
+- **PB, DC, ATK** (existing)
+- **Vitality** (existing)
+- **Speed card** — walking (default 30) + any other locomotion types
+- **Carry card** — load / capacity with progress bar
+- **Equip slots** (existing)
+- **Damage Modifiers card** — resistance / vulnerability / immunity chips per type
+- **Behavior Variables card** — legendary_resistance, action_points, custom trackers
+
+The engine walks `hardModifiers` for every primitive target axis:
+
+- attribute.<physical|mental|magical>
+- defense_dc.<physical|mental|magical>
+- saving_throw.<physical|mental|magical> (player rolls)
+- save_dc.<physical|mental|magical> (enemies roll against)
+- skill_practice_check (already done)
+- max_vitality (already done)
+- speed.<locomotion>
+- carry_capacity, load, equip_slot
+- size, source_type, complexity, combat_action, upkeep_cost
+- damage_modifier.<type> (multiplies incoming damage)
+- behavior.<key> (custom variables)
+
+## What the user can verify
+
+1. Create a level 18 character for @Mashu
+2. Author primitives with the new targets (vulnerability, speed, complexity, etc.)
+3. Open the character sheet — the drawer shows all the new values
+4. The math sums correctly from primitive `hardModifiers`
+
+## What's still pending (per recap)
+
+- i3 finish — `*` marker on axis + per-cap-toggle gating
+- i5 — second FAB (scratchpad) for play session
+- i6 — small cards zone polish + glyphs + modal traceability
