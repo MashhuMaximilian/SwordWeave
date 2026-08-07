@@ -324,6 +324,12 @@ export function resolveModifiers(
         const eq = resolveEquation(operandsRaw as never, ctx);
         resolvedValue = eq.numeric;
         equationTags = eq.tags;
+      } else if (Array.isArray(mod.value) && mod.value.length > 0) {
+        // Phase 8.I i3: equation stored directly in mod.value
+        // (no metadata.operands wrapper). Resolve via resolveEquation.
+        const eq = resolveEquation(mod.value as never, ctx);
+        resolvedValue = eq.numeric;
+        equationTags = eq.tags;
       } else if (isTypedToken(mod.value)) {
         resolvedValue = resolveValue(mod.value, ctx);
       } else {
