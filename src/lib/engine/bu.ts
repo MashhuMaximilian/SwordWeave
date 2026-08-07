@@ -348,9 +348,10 @@ export function calculatePrimitiveBu(
     return primitive.buCost;
   }
   if (!primitive.isMirrorable) {
-    throw new Error(
-      `Primitive "${primitive.name}" (id=${primitive.id}) is not mirrorable but is being used as mirrored.`,
-    );
+    // Phase 8.I i3 fix: a slot is marked mirrored but the primitive
+    // isn't mirrorable (seed data artifact). Treat as non-mirrored
+    // so the engine doesn't crash on legacy/migrated data.
+    return primitive.buCost;
   }
   return -Math.abs(primitive.mirrorBuCredit);
 }

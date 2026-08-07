@@ -51,6 +51,18 @@ import {
   type PrimitiveInput,
 } from "./bu";
 
+/**
+ * Phase 8.I i3 fix (Mashu): global rounding — no .5 values
+ * anywhere on the sheet. Round 0.5 → up for positive numbers,
+ * down for negative (i.e. Math.ceil on the absolute value).
+ * Applies to modifiers, vitality, carry capacity, speed.
+ */
+function roundUp(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  if (value >= 0) return Math.ceil(value);
+  return Math.floor(value);
+}
+
 export type PrimitiveLinkSnapshot = {
   primitiveId: number;
   source: string;
@@ -622,7 +634,7 @@ for (const locomotion of Object.keys(SPEED_DEFAULTS)) {
     lower,
     input.conditionContext,
   );
-  speedByType[locomotion] = (SPEED_DEFAULTS[locomotion] ?? 0) + primitiveSum;
+  speedByType[locomotion] = roundUp((SPEED_DEFAULTS[locomotion] ?? 0) + primitiveSum);
 }
 
 // Phase 8.I i2 finish - carry capacity = SIZE_CAPACITY[size]
@@ -635,7 +647,7 @@ const carryCapacityBonus = sumPrimitiveContributions(
   null,
   input.conditionContext,
 );
-const carryCapacity = baseCarry + carryCapacityBonus;
+const carryCapacity = roundUp(baseCarry + carryCapacityBonus);
 
 // Load = item-derived + primitive load contributions.
 const itemLoad = encumbrance.load;
@@ -817,7 +829,7 @@ behaviorVariables.sort((a, b) => a.key.localeCompare(b.key));
     practices,
     practiceAttributeMap: PRACTICE_ATTRIBUTE_MAP,
     vitality: {
-      max: maxVitality,
+      max: roundUp(maxVitality),
       current: vitalityCurrent,
       percent: vitalityPercent,
       modifiers: vitalityModifiers,
@@ -826,8 +838,10 @@ behaviorVariables.sort((a, b) => a.key.localeCompare(b.key));
     savingThrows,
     saveDCs,
     encumbrance,
-    speedByType,
-    carryCapacity,
+    speedByType: Object.fromEntries(
+      Object.entries(speedByType).map(([k, v]) => [k, roundUp(v)]),
+    ),
+    carryCapacity: roundUp(carryCapacity),
     load: loadTotal,
     equipSlotsUsed,
     resolvedSize,

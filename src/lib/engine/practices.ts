@@ -16,6 +16,15 @@
  * Pure functions, no DB dependency.
  */
 
+/**
+ * Phase 8.I i3 fix (Mashu): no .5 values anywhere — round 0.5 up.
+ */
+function roundUp(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  if (value >= 0) return Math.ceil(value);
+  return Math.floor(value);
+}
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -299,8 +308,9 @@ export function computePracticeModifier(
     });
   }
 
-  const total =
-    slice + pbContribution + primitiveContributions.reduce((t, p) => t + p.bonus, 0);
+  const total = roundUp(
+    slice + pbContribution + primitiveContributions.reduce((t, p) => t + p.bonus, 0),
+  );
 
   return {
     practice,
@@ -358,8 +368,9 @@ export function computePracticeModifierAtLevel(
     });
   }
 
-  const total =
-    slice + pbContribution + primitiveContributions.reduce((t, p) => t + p.bonus, 0);
+  const total = roundUp(
+    slice + pbContribution + primitiveContributions.reduce((t, p) => t + p.bonus, 0),
+  );
 
   return {
     practice,
@@ -480,30 +491,30 @@ export function computeAllDefensiveDCs(
   readonly magical: number;
 } {
   return {
-    physical: computeDefensiveDC(
+    physical: roundUp(computeDefensiveDC(
       "PHYSICAL",
       attributes,
       attrProficient,
       level,
       primitiveLinks,
       conditionContext,
-    ),
-    mental: computeDefensiveDC(
+    )),
+    mental: roundUp(computeDefensiveDC(
       "MENTAL",
       attributes,
       attrProficient,
       level,
       primitiveLinks,
       conditionContext,
-    ),
-    magical: computeDefensiveDC(
+    )),
+    magical: roundUp(computeDefensiveDC(
       "MAGICAL",
       attributes,
       attrProficient,
       level,
       primitiveLinks,
       conditionContext,
-    ),
+    )),
   };
 }
 
@@ -558,30 +569,30 @@ export function computeAllSavingThrows(
   conditionContext?: unknown,
 ): { physical: number; mental: number; magical: number } {
   return {
-    physical: computeSavingThrow(
+    physical: roundUp(computeSavingThrow(
       "PHYSICAL",
       attributes,
       attrProficient,
       level,
       primitiveLinks,
       conditionContext,
-    ),
-    mental: computeSavingThrow(
+    )),
+    mental: roundUp(computeSavingThrow(
       "MENTAL",
       attributes,
       attrProficient,
       level,
       primitiveLinks,
       conditionContext,
-    ),
-    magical: computeSavingThrow(
+    )),
+    magical: roundUp(computeSavingThrow(
       "MAGICAL",
       attributes,
       attrProficient,
       level,
       primitiveLinks,
       conditionContext,
-    ),
+    )),
   };
 }
 
@@ -628,29 +639,29 @@ export function computeAllSaveDCs(
   conditionContext?: unknown,
 ): { physical: number; mental: number; magical: number } {
   return {
-    physical: computeSaveDC(
+    physical: roundUp(computeSaveDC(
       "PHYSICAL",
       attributes,
       attrProficient,
       level,
       primitiveLinks,
       conditionContext,
-    ),
-    mental: computeSaveDC(
+    )),
+    mental: roundUp(computeSaveDC(
       "MENTAL",
       attributes,
       attrProficient,
       level,
       primitiveLinks,
       conditionContext,
-    ),
-    magical: computeSaveDC(
+    )),
+    magical: roundUp(computeSaveDC(
       "MAGICAL",
       attributes,
       attrProficient,
       level,
       primitiveLinks,
       conditionContext,
-    ),
+    )),
   };
 }

@@ -5,6 +5,7 @@ import { CharacterSheetView } from "@/components/characters/character-sheet-view
 import { db } from "@/db/client";
 import { characters, capabilityEffects, effectPrimitives } from "@/db/schema";
 import { aggregateCharacterSheet } from "@/lib/engine";
+import type { ConditionContext } from "@/lib/engine/condition-evaluator";
 import {
   bulkResolveLatestVersions,
   makeKey,
@@ -265,7 +266,7 @@ export default async function CharacterSheetPage({
   ];
   const latestVersions = await bulkResolveLatestVersions(entityPairs);
 
-  const sheet = aggregateCharacterSheet({
+  const sheetInput = {
     level: row.level,
     attrPhysical: row.attrPhysical,
     attrMental: row.attrMental,
@@ -366,6 +367,47 @@ export default async function CharacterSheetPage({
         isNotEquippable: l.item.isNotEquippable ?? false,
       },
     })),
+  };
+
+  // Pass 1: aggregate without conditions (base state).
+  // We need the base sheet to build a conditionContext, then
+  // re-aggregate with conditions so per-modifier conditions
+  // (e.g. "+2 phys when below 50% vitality") are evaluated
+  // against the *real* sheet state. Vitality-modifying
+  // primitives are almost never themselves conditional, so
+  // pass 1 is stable.
+  let sheet = aggregateCharacterSheet(sheetInput);
+
+  const conditionContext: ConditionContext = {
+    character: {
+      vitality: row.currentVitality ?? sheet.vitality.max,
+      vitalityMax: sheet.vitality.max,
+      saveDc: sheet.saveDCs?.find(
+        (s) => s.attribute === (row.attrProficient ?? "PHYSICAL"),
+      )?.dc ?? 5,
+      blockValue: sheet.behaviorVariables.find((b) => b.key === "blockvalue")?.value ?? 0,
+      attributes: {
+        physical: sheet.attributes.physical,
+        mental: sheet.attributes.mental,
+        magical: sheet.attributes.magical,
+      },
+      practices: Object.fromEntries(
+        sheet.practices.map((p) => [p.practice, p.total]),
+      ) as never,
+      proficiencies: new Set(
+        sheet.practices
+          .filter((p) => p.attribute === (row.attrProficient ?? "PHYSICAL"))
+          .map((p) => p.practice),
+      ),
+      flags: new Set(),
+      custom: {},
+    },
+  };
+
+  // Pass 2: re-aggregate with conditionContext injected.
+  sheet = aggregateCharacterSheet({
+    ...sheetInput,
+    conditionContext,
   });
 
   return (

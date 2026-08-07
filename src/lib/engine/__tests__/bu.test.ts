@@ -237,10 +237,11 @@ describe("calculatePrimitiveBu", () => {
     expect(calculatePrimitiveBu(vulnerableToFire, true)).toBe(-4);
   });
 
-  it("throws when trying to mirror a non-mirrorable primitive", () => {
-    expect(() => calculatePrimitiveBu(strike, true)).toThrow(
-      /not mirrorable/,
-    );
+  it("treats mirrored non-mirrorable primitive as standard (graceful)", () => {
+    // Phase 8.I i3 fix: instead of throwing, non-mirrorable
+    // primitives that are marked mirrored fall back to standard.
+    const result = calculatePrimitiveBu(strike, true);
+    expect(result).toBe(strike.buCost);
   });
 });
 
