@@ -151,6 +151,7 @@ type ComboKind =
   | "encumbrance"
   | "speed"
   | "behavior"
+  | "damage"
   | null;
 
 export function BottomStickyBar({
@@ -673,6 +674,7 @@ export function BottomStickyBar({
               <EquipSlotsPanel
                 slotCount={encumbrance.equipSlotsAvailable}
                 usedSlots={encumbrance.equipSlotsUsed}
+                onClick={openEncumbranceModal}
               />
             </div>
           </div>
@@ -911,6 +913,22 @@ export function BottomStickyBar({
               )}
             onClose={() => setCombo(null)}
           />
+        ) : combo === "damage" ? (
+          <FormulaModal
+            title="Damage Modifiers"
+            subtitle="resistance, vulnerability, immunity multipliers"
+            total={damageModifiers.resistance.length + damageModifiers.vulnerability.length + damageModifiers.immunity.length}
+            formula="Resistance = ×0.5 | Vulnerability = ×2 | Immunity = ×0"
+            breakdown={resolver_
+              ? Object.entries(resolver_.totals)
+                  .filter(([k]) => k.startsWith("damage_modifier."))
+                  .map(([k, v]) => ({
+                    label: k.replace("damage_modifier.", ""),
+                    value: v,
+                  }))
+              : []}
+            onClose={() => setCombo(null)}
+          />
         ) : combo === "encumbrance" ? (
           <EncumbranceFormulaModal
             encumbrance={encumbrance}
@@ -932,9 +950,11 @@ export function BottomStickyBar({
 function EquipSlotsPanel({
   slotCount,
   usedSlots,
+  onClick,
 }: {
   slotCount: number;
   usedSlots: number;
+  onClick?: () => void;
 }) {
   // 6 universal equip slots (2H items use 2 slots). For now
   // this is display-only — when items are equipped the slots
@@ -950,7 +970,14 @@ function EquipSlotsPanel({
   // number above the grid.
   const slots = Array.from({ length: slotCount }, (_, i) => i < usedSlots);
   return (
-    <div className="bg-card p-3">
+    <button
+      type="button"
+      onClick={onClick}
+      className="block w-full bg-card p-3 text-left transition-colors hover:bg-secondary/30"
+      title="Show equip slots formula"
+      aria-label="Show equip slots formula"
+    >
+      <div className="pointer-events-none">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
         Equip
       </p>
@@ -974,7 +1001,8 @@ function EquipSlotsPanel({
       <p className="mt-1 text-[10px] text-muted-foreground">
         2H items use 2 slots
       </p>
-    </div>
+      </div>
+    </button>
   );
 }
 
@@ -1035,10 +1063,12 @@ function DamageModifierRow({
   label,
   types,
   colorClass,
+  onClick,
 }: {
   readonly label: string;
   readonly types: readonly string[];
   readonly colorClass: string;
+  readonly onClick?: () => void;
 }) {
   return (
     <div className="flex items-center gap-1.5">
@@ -1047,12 +1077,15 @@ function DamageModifierRow({
       </span>
       <div className="flex flex-wrap gap-1">
         {types.map((t) => (
-          <span
+          <button
             key={t}
-            className={`rounded-full border border-current/30 bg-current/10 px-1.5 py-0.5 text-[10px] font-medium ${colorClass}`}
+            type="button"
+            onClick={onClick}
+            className={`cursor-pointer rounded-full border border-current/30 bg-current/10 px-1.5 py-0.5 text-[10px] font-medium ${colorClass} hover:bg-current/20`}
+            title={`Click to see ${t} damage modifier provenance`}
           >
             {t}
-          </span>
+          </button>
         ))}
       </div>
     </div>
