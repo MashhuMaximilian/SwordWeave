@@ -160,6 +160,62 @@ function formatVia(c: ModifierContribution): string {
 }
 
 // =============================================================================
+// Helpers
+// =============================================================================
+
+/** Phase 8.I i3: render the Conditions section of the modal, showing which
+ *  contributions are gated and whether their condition is currently active. */
+function renderConditionsSection(breakdown: ReadonlyArray<FormulaStep>): ReactNode {
+  const gated = breakdown.filter((s) => s.contribution);
+  if (gated.length === 0) return null;
+
+  return (
+    <section>
+      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Conditions
+      </p>
+      <ul className="space-y-1">
+        {gated.map((step, i) => {
+          const c = step.contribution!;
+          const isActive = c.conditionActive;
+          const icon = isActive === false
+            ? "✗"
+            : isActive === true
+              ? "✓"
+              : "—";
+          return (
+            <li
+              key={`cond-${step.label}-${i}`}
+              className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-2 py-1"
+            >
+              <span className="text-sm font-medium">{step.label}</span>
+              <span
+                className={`font-mono text-xs ${
+                  isActive === false
+                    ? "text-red-500"
+                    : isActive === true
+                      ? "text-teal-600 dark:text-teal-400"
+                      : "text-muted-foreground"
+                }`}
+                title={
+                  isActive === undefined
+                    ? "No condition"
+                    : isActive
+                      ? "Condition met"
+                      : "Condition not met"
+                }
+              >
+                {icon} {isActive === undefined ? "no condition" : isActive ? "active" : "suppressed"}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+// =============================================================================
 // Component
 // =============================================================================
 
@@ -277,6 +333,10 @@ export function FormulaModal({
             )}
           </section>
 
+          {/* Section 3b — Conditions summary: which contributions are
+              gated and whether their condition is currently active. */}
+          {renderConditionsSection(breakdown)}
+
           {/* Section 3 — Optional info panel */}
           {info && (
             <section>
@@ -330,6 +390,14 @@ function StepRow({ step }: { step: FormulaStep }) {
                 title={`Standard (non-mirrored) value was ${fmt(c.preMirrorValue)} — mirror flipped it`}
               >
                 Mirrored
+              </span>
+            )}
+            {c.conditionActive === false && (
+              <span
+                className="rounded-full bg-slate-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+                title="Condition not met — contribution suppressed"
+              >
+                ⧀ condition
               </span>
             )}
           </div>
