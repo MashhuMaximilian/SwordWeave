@@ -55,14 +55,15 @@ import { CollapsibleSection } from "@/components/ui/collapsible-section";
 
 const CATEGORY_LABELS: Record<ConditionPresetCategory, string> = {
   target: "Target",
-  // The canonical category key is "actor" (matches presetKey
-  // prefixes like actor-stance, actor-below-half-hp). The display
-  // label is "Self" per the user's UX rule.
-  actor: "Self",
+  // Phase 8.I i2.7e (Mashu 2026-08-06): 'self' is the canonical
+  // category key going forward. 'actor' is kept as a deprecated
+  // alias for back-compat with old stored conditions.
+  self: "Self",
+  actor: "Self (legacy)",
   scene: "Scene",
 };
 
-const CATEGORY_ORDER: ConditionPresetCategory[] = ["target", "actor", "scene"];
+const CATEGORY_ORDER: ConditionPresetCategory[] = ["self", "actor", "target", "scene"];
 
 interface ConditionPickerProps {
   readonly value: ConditionAuthoring;

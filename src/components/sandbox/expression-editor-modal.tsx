@@ -52,7 +52,10 @@ import {
 
 const CATEGORY_LABELS: Record<ConditionPresetCategory, string> = {
   target: "Target",
-  actor: "Self",
+  // Phase 8.I i2.7e (Mashu 2026-08-06): 'self' is canonical,
+  // 'actor' is the legacy alias.
+  self: "Self",
+  actor: "Self (legacy)",
   scene: "Scene",
 };
 
