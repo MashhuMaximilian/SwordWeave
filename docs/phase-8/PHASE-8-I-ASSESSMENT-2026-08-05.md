@@ -551,3 +551,111 @@ The engine walks `hardModifiers` for every primitive target axis:
 - i3 finish — `*` marker on axis + per-cap-toggle gating
 - i5 — second FAB (scratchpad) for play session
 - i6 — small cards zone polish + glyphs + modal traceability
+
+
+---
+
+# i3 RECAP — Markers + Traceability (Mashu 2026-08-06)
+
+## What i3 is
+
+i3 is the **display + traceability layer** for the condition math
+we already wired in i2.6. The engine evaluates conditions
+correctly (practice walk calls evaluateCondition, primitive
+walk does too), but the UI doesn't TELL the player that:
+
+- a number has hidden conditions behind it
+- a number has uncomputable conditions (e.g. "when tracking enemies")
+- a number has computable conditions that currently fire (vitality < 50%)
+
+## Display markers
+
+| Marker | Meaning | Example |
+|---|---|---|
+| `*` | "Has unevaluated conditionals" | `fieldcraft +10 *` |
+| `⇈(N)` | Advantage stacked N times | `fieldcraft +10 ⇈(3)` |
+| `⇊(N)` | Disadvantage stacked N times | `fieldcraft +10 ⇊(2)` |
+| `↥ 10` | Set minimum 10 | `fieldcraft ↥ 10` |
+| `↧ 10` | Set maximum 10 | `fieldcraft ↧ 10` |
+
+## Computed value logic
+
+- **Without i3**: drawer shows static sum.
+- **With i3**:
+  - Walk each contributing modifier.
+  - If condition is computable + evaluates true at sheet time →
+    INCLUDE the bonus in the displayed number.
+  - If condition is computable + evaluates false → SKIP.
+  - If condition is NOT computable (table play flag, etc.) →
+    INCLUDE the bonus (assume worst case) + append `*`.
+  - Counter for adv/disadv stacks from primitives that grant them.
+
+## Color conventions
+
+- **Proficiency bonus** — text + number teal (`text-teal-700`)
+- **Expertise** — text + number teal AND bold (`font-bold`)
+- **Half proficiency / pure primitive bonus** — number teal (no bold)
+- **Normal modifier** — default text color
+
+## Per-axis application
+
+Markers apply to ALL numeric axes:
+- attribute (physical/mental/magical)
+- defense_dc
+- saving_throw
+- save_dc
+- skill_practice_check (each of 10 practices)
+- max_vitality
+- speed
+- carry_capacity
+- load
+
+## Modifier paths to proficiency bonus
+
+Mashu noted proficiency can be authored in multiple ways:
+- `[pb]` chip → `{kind: derived, which: pb}` (resolves to PB)
+- `/pb/` custom input → same as above
+- `/pb/2/` → `{kind: derived, which: pb_half}` (resolves to PB/2)
+- `proficiency(practice)` → resolved via condition picker
+- equation `2*pb` → `{kind: equation, ...}` (resolves to 2*PB)
+- `[expertise]` chip → `{kind: derived, which: expertise}` (resolves to 2*PB)
+
+All these should be treated as "from proficiency" so the
+display shows teal text + teal number. The 2*PB variant
+additionally shows bold (expertise).
+
+## What triggers the marker
+
+- `*` (asterisk): at least one contributing modifier has
+  `condition` field and the engine CAN evaluate it OR it
+  has a non-computable condition.
+- `⇈(N)`: N primitives target this axis with `op: grant`
+  on the "advantage" keyword.
+- `⇊(N)`: N primitives target this axis with `op: grant`
+  on the "disadvantage" keyword.
+- `↥ X`: primitives target this axis with `op: set` to
+  establish a floor (smallest value applied).
+- `↧ X`: primitives target this axis with `op: set` to
+  establish a ceiling (largest value applied).
+
+## Modal traceability
+
+Clicking on a number opens a modal that lists:
+- Each contributing primitive (name + delta)
+- Each condition (text + whether it currently fires)
+- The total = base + sum(modifiers)
+- For adv/disadv: which primitives stack
+- For min/max: which primitives set the floor/ceiling
+
+## What's pending in i3
+
+1. Engine helper: per-axis breakdown with marker classification
+   (which modifiers carry a `*`, which grant adv/disadv, which
+   set min/max).
+2. UI: number suffix rendering (`*`, `⇈(N)`, `⇊(N)`, `↥ X`, `↧ X`).
+3. UI: color overrides (teal for prof, teal+bold for expertise,
+   teal for half-prof / pure primitive).
+4. Modal: click-through to "primitive contributions" panel.
+5. Engine: distinguish computable-but-false conditions (don't
+   add `*` if condition resolves to false) vs non-computable
+   (add `*`).
