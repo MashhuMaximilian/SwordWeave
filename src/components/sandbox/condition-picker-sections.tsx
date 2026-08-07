@@ -14,7 +14,7 @@
 //   - PickerProficiencySection   actor-only; dynamic + per-practice pills
 //   - PickerStatusFlagsSection   actor-only; boolean flags
 //
-// All three sections only render when the category is "actor"
+// All three sections only render when the category is "self"
 // (self-axis conditions). Target/scene categories use the legacy
 // preset chip list (unchanged).
 // =============================================================================
@@ -143,7 +143,7 @@ export function PickerStatSection({
     valueHigh: number | string,
   ) => void;
 }): ReactElement | null {
-  if (category !== "actor") return null;
+  if (category !== "self") return null;
   const [chosenStat, setChosenStat] = useState<string | null>(null);
   const [chosenOp, setChosenOp] = useState<
     (typeof COMPARE_OPERATORS)[number]["value"]
@@ -281,7 +281,7 @@ export function PickerProficiencySection({
     axis: "practice" | "attribute",
   ) => void;
 }): ReactElement | null {
-  if (category !== "actor") return null;
+  if (category !== "self") return null;
   return (
     <CollapsibleSection
       title="Proficiency"
@@ -549,7 +549,7 @@ export function PickerDamageModifierSection({
   readonly pills: ConditionAuthoring["pills"];
   readonly onAdd: (flag: string) => void;
 }): ReactElement | null {
-  if (category !== "actor") return null;
+  if (category !== "self") return null;
   const [draftType, setDraftType] = useState("");
   const trimmed = draftType.trim().toLowerCase();
   const submitKind = (kind: "resistance" | "vulnerability" | "immunity") => {
@@ -619,7 +619,7 @@ export function PickerStatusFlagsSection({
   readonly pills: ConditionAuthoring["pills"];
   readonly onAdd: (flag: string) => void;
 }): ReactElement | null {
-  if (category !== "actor") return null;
+  if (category !== "self") return null;
   const [customFlag, setCustomFlag] = useState("");
   const onAddCustom = () => {
     const v = customFlag.trim();

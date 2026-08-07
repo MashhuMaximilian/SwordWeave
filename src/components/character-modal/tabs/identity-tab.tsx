@@ -18,6 +18,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useCharacterModal } from "../character-modal-store";
+import { SIZE_CAPACITY, SIZE_BASE_SPEED } from "@/lib/engine/encumbrance";
 
 const STORAGE_KEY = "swordweave:character-modal:draft:identity";
 const SIZES = ["TINY", "SMALL", "MEDIUM", "LARGE", "HUGE", "GARGANTUAN"] as const;
@@ -144,7 +145,7 @@ export function IdentityTab({ state: controlled, onChange }: IdentityTabProps = 
           >
             {SIZES.map((s) => (
               <option key={s} value={s}>
-                {s}
+                {s} — {SIZE_CAPACITY[s]} load | {SIZE_BASE_SPEED[s]} ft ({Math.ceil(SIZE_BASE_SPEED[s] / 2)} swim/{Math.ceil(SIZE_BASE_SPEED[s] / 2)} climb)
               </option>
             ))}
           </select>

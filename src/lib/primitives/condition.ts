@@ -200,7 +200,7 @@ export function validateCompoundTokens(tokens: readonly string[]): void {
       const category = token.slice(0, colonIdx);
       if (!VALID_CATEGORIES.has(category as ConditionPresetCategory)) {
         throw new Error(
-          `compound condition pill at index ${i} has invalid category '${category}' (expected target/actor/scene).`,
+          `compound condition pill at index ${i} has invalid category '${category}' (expected target/self/scene).`,
         );
       }
       const label = token.slice(colonIdx + 1);

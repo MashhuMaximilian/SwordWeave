@@ -293,7 +293,7 @@ return (
           <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Add to end
           </div>
-          {(["target", "actor", "scene"] as const).map((cat) => {
+          {(["self", "target", "scene"] as const).map((cat) => {
             const pillsInCat = value.pills.filter((p) => p.category === cat);
             const suggestions = CONDITION_PRESETS.filter(
               (p) => p.category === cat,

@@ -63,7 +63,7 @@ const CATEGORY_LABELS: Record<ConditionPresetCategory, string> = {
   scene: "Scene",
 };
 
-const CATEGORY_ORDER: ConditionPresetCategory[] = ["self", "actor", "target", "scene"];
+const CATEGORY_ORDER: ConditionPresetCategory[] = ["self", "target", "scene"];
 
 interface ConditionPickerProps {
   readonly value: ConditionAuthoring;
