@@ -33,15 +33,14 @@ import {
 } from "../target-scope";
 
 describe("MODIFIER_TARGETS enum", () => {
-  it("has 24 entries (i2.7 — 9 new targets from canonical PDFs)", () => {
+  it("has 25 entries (i2.7b — added damage_modifier)", () => {
     // Phase-7-E/UX2a-r + UX2b-r baseline: 15 entries.
-    // Phase-8.I-i2.7 (Mashu 2026-08-06): 9 new entries from the
-    // Combat / Damage / Upkeep / Encumbrance canonical PDFs:
-    //   combat_action, size, carry_capacity, equip_slot,
-    //   damage_type, source_type, upkeep_cost, maintained_capability,
-    //   complexity
-    // Total: 15 + 9 = 24.
-    expect(MODIFIER_TARGETS.length).toBe(24);
+    // Phase-8.I-i2.7: 9 new entries (combat_action, size,
+    // carry_capacity, equip_slot, damage_type, source_type,
+    // upkeep_cost, maintained_capability, complexity) → 24.
+    // Phase-8.I-i2.7b (Mashu 2026-08-06): damage_modifier
+    // added for vulnerability/resistance/immunity → 25.
+    expect(MODIFIER_TARGETS.length).toBe(25);
   });
 
   it("consolidates the three Attribute variants into one entry", () => {
@@ -793,3 +792,20 @@ describe("Phase 8.I i2.7 — new targets from canonical PDFs", () => {
     }
   });
 });
+
+// ---- Phase 8.I i2.7b — damage modifier (vuln/res/immunity) ----
+
+describe("Phase 8.I i2.7b - damage_modifier target", () => {
+  it("damage_modifier uses free-text widget (author-named damage type)", () => {
+    const spec = MODIFIER_TARGET_SPEC.damage_modifier;
+    expect(spec.target).toBe("damage_modifier");
+    expect(spec.widget).toBe("free-text");
+    expect(spec.valueIsNumeric).toBe(true);
+  });
+
+  it("place-holder text names the damage types", () => {
+    const spec = MODIFIER_TARGET_SPEC.damage_modifier;
+    expect(spec.freeTextPlaceholder).toMatch(/fire/);
+  });
+});
+

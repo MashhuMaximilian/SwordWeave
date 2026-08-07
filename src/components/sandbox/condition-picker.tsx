@@ -75,6 +75,7 @@ interface ConditionPickerProps {
 import {
   PickerStatSection,
   PickerProficiencySection,
+  PickerDamageModifierSection,
   PickerStatusFlagsSection,
   useConditionPillAdder,
   pillLabel,
@@ -325,6 +326,11 @@ export function ConditionPicker({
                   onAdd={(label, practice, axis) =>
                     addStructuredProficiencyPill(cat, label, practice, axis)
                   }
+                />
+                <PickerDamageModifierSection
+                  category={cat}
+                  pills={value.pills}
+                  onAdd={(flag) => addStructuredFlagPill(cat, flag)}
                 />
                 <PickerStatusFlagsSection
                   category={cat}

@@ -767,13 +767,14 @@ describe("SUB_CHOICE_KEYWORDS — i2.7 atoms", () => {
     expect(labels).toContain("Complexity");
   });
 
-  it("has new keyword groups (Size / Source Type / Encumbrance / Upkeep / Tier)", () => {
+  it("has new keyword groups (Size / Source Type / Encumbrance / Upkeep / Tier / Damage Modifier)", () => {
     const expectedGroups = [
       "Size",
       "Source Type",
       "Encumbrance",
       "Upkeep",
       "Tier",
+      "Damage Modifier",
     ] as const;
     const groups = new Set(SUB_CHOICE_KEYWORDS.map((k) => k.group));
     for (const g of expectedGroups) {
@@ -839,5 +840,31 @@ describe("SUB_CHOICE_KEYWORDS - Tier 1-6", () => {
   it("all tier keywords share the Tier group", () => {
     const tierKw = SUB_CHOICE_KEYWORDS.filter((k) => k.group === "Tier");
     expect(tierKw.length).toBe(6);
+  });
+});
+
+
+describe("Phase 8.I i2.7b - damage modifier keywords", () => {
+  it("includes Resistance, Vulnerability, Immunity keywords", () => {
+    const labels = SUB_CHOICE_KEYWORDS.map((k) => k.label);
+    expect(labels).toContain("Resistance");
+    expect(labels).toContain("Vulnerability");
+    expect(labels).toContain("Immunity");
+  });
+
+  it("damage modifier keywords share the 'Damage Modifier' group", () => {
+    const dmKw = SUB_CHOICE_KEYWORDS.filter(
+      (k) => k.group === "Damage Modifier",
+    );
+    expect(dmKw.map((k) => k.label).sort()).toEqual([
+      "Immunity",
+      "Resistance",
+      "Vulnerability",
+    ]);
+  });
+
+  it("RUNTIME_VARIABLES includes damage_modifier:<key>", () => {
+    const names = RUNTIME_VARIABLES.map((v) => v.name);
+    expect(names).toContain("damage_modifier:<key>");
   });
 });

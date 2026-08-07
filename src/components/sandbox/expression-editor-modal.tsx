@@ -44,6 +44,7 @@ import {
 import {
   PickerStatSection,
   PickerProficiencySection,
+  PickerDamageModifierSection,
   PickerStatusFlagsSection,
   useConditionPillAdder,
   pillLabel,

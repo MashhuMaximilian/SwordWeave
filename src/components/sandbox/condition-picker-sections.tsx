@@ -521,6 +521,92 @@ function CustomProficiencyInput({
 }
 
 // =============================================================================
+// PickerDamageModifierSection — actor-only (i2.7b)
+// Vulnerability:2x, Resistance:0.5x, Immunity:0x per the
+// Damage & Resistance canonical PDF. Author names the
+// damage type at primitive time. Generates flag pills:
+//   has_resistance:fire
+//   has_vulnerability:cold
+//   has_immunity:poison
+// =============================================================================
+
+const DAMAGE_MODIFIER_KINDS: ReadonlyArray<{
+  readonly kind: "resistance" | "vulnerability" | "immunity";
+  readonly label: string;
+  readonly multiplier: string;
+}> = [
+  { kind: "resistance", label: "Resistance", multiplier: "0.5x" },
+  { kind: "vulnerability", label: "Vulnerability", multiplier: "2x" },
+  { kind: "immunity", label: "Immunity", multiplier: "0x" },
+];
+
+export function PickerDamageModifierSection({
+  category,
+  pills,
+  onAdd,
+}: {
+  readonly category: ConditionPresetCategory;
+  readonly pills: ConditionAuthoring["pills"];
+  readonly onAdd: (flag: string) => void;
+}): ReactElement | null {
+  if (category !== "actor") return null;
+  const [draftType, setDraftType] = useState("");
+  const trimmed = draftType.trim().toLowerCase();
+  const submitKind = (kind: "resistance" | "vulnerability" | "immunity") => {
+    if (trimmed.length === 0) return;
+    onAdd(`has_${kind}:${trimmed}`);
+    setDraftType("");
+  };
+  return (
+    <CollapsibleSection
+      title="Damage Modifiers (resistance / vulnerability / immunity)"
+      count={DAMAGE_MODIFIER_KINDS.length}
+    >
+      <div className="mt-1 space-y-1.5">
+        <div className="text-[10px] text-muted-foreground italic">
+          Type a damage type (e.g. <span className="font-mono">fire</span>)
+          and click a button to add the corresponding flag pill.
+        </div>
+        <div className="mt-1 flex items-center gap-1.5 text-xs">
+          <span className="text-muted-foreground">damage type:</span>
+          <input
+            type="text"
+            value={draftType}
+            onChange={(e) => setDraftType(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submitKind("resistance");
+            }}
+            placeholder="fire, cold, lightning, poison"
+            className="flex-1 rounded-md border border-input bg-background px-2 py-0.5 font-mono text-xs"
+          />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {DAMAGE_MODIFIER_KINDS.map((d) => (
+            <button
+              key={d.kind}
+              type="button"
+              onClick={() => submitKind(d.kind)}
+              disabled={trimmed.length === 0}
+              className={
+                "rounded-md px-2 py-0.5 text-xs font-medium disabled:opacity-40 " +
+                (d.kind === "resistance"
+                  ? "bg-sky-500/15 text-sky-700 hover:bg-sky-500/25 dark:text-sky-300"
+                  : d.kind === "vulnerability"
+                    ? "bg-orange-500/15 text-orange-700 hover:bg-orange-500/25 dark:text-orange-300"
+                    : "bg-purple-500/15 text-purple-700 hover:bg-purple-500/25 dark:text-purple-300")
+              }
+              title={`Add has_${d.kind}:<type> flag (${d.multiplier} damage)`}
+            >
+              + {d.label} ({d.multiplier})
+            </button>
+          ))}
+        </div>
+      </div>
+    </CollapsibleSection>
+  );
+}
+
+// =============================================================================
 // PickerStatusFlagsSection — actor-only
 // =============================================================================
 

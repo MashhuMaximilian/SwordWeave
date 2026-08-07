@@ -520,7 +520,8 @@ export interface SubChoiceKeyword {
     | "Source Type"
     | "Encumbrance"
     | "Upkeep"
-    | "Tier";
+    | "Tier"
+    | "Damage Modifier";
 }
 
 export const SUB_CHOICE_KEYWORDS: readonly SubChoiceKeyword[] = [
@@ -633,6 +634,15 @@ export const SUB_CHOICE_KEYWORDS: readonly SubChoiceKeyword[] = [
   { label: "Upkeep Cost", group: "Upkeep" },
   { label: "Maintained", group: "Upkeep" },
   { label: "Complexity", group: "Upkeep" },
+
+  // Phase 8.I i2.7b (Mashu 2026-08-06): damage modifier
+  // keywords. Author picks the damage_type sub-target at
+  // primitive time; the keyword tag is the multiplier semantic.
+  // Engine applies 2x for vulnerability, 0.5x for resistance,
+  // 0x for immunity (per Damage & Resistance PDF).
+  { label: "Resistance", group: "Damage Modifier" },
+  { label: "Vulnerability", group: "Damage Modifier" },
+  { label: "Immunity", group: "Damage Modifier" },
 ];
 
 /**
@@ -681,6 +691,11 @@ export const RUNTIME_VARIABLES: readonly RuntimeVariable[] = [
   { label: "damage type:<key>", name: "damage_type:<key>", hint: "text", group: "Sub-Target" },
   { label: "maintained:<key>", name: "maintained:<key>", hint: "number", group: "Sub-Target" },
   { label: "upkeep cost:<key>", name: "upkeep_cost:<key>", hint: "number", group: "Sub-Target" },
+  // Phase 8.I i2.7b (Mashu 2026-08-06): damage modifier
+  // multiplier read. Used in equations like
+  //   "base_damage * /damage_modifier:fire/"
+  // to apply vulnerability/resistance/immunity at eval time.
+  { label: "damage modifier:<key>", name: "damage_modifier:<key>", hint: "number", group: "Sub-Target" },
 ];
 
 // =============================================================================

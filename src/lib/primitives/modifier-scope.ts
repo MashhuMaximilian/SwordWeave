@@ -113,6 +113,15 @@ export const MODIFIER_TARGETS = [
   // Complexity score (Player Loop + Combat Rhythm PDFs).
   // Numeric — used for capability design and combat placement.
   "complexity",
+
+  // ===========================================================
+  // Phase 8.I i2.7b (Mashu 2026-08-06) — damage modifier
+  // axis. Vulnerability:2x, Resistance:0.5x, Immunity:0x per
+  // the Damage & Resistance canonical PDF. Author names the
+  // damage_type as the sub-target (free-text {key}, same UX
+  // as equip_slot / damage_type).
+  // ===========================================================
+  "damage_modifier",
 ] as const;
 export type ModifierTarget = (typeof MODIFIER_TARGETS)[number];
 
@@ -656,6 +665,19 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
     label: "Complexity",
     layer: null,
     widget: "none",
+    valueIsNumeric: true,
+  },
+  damage_modifier: {
+    target: "damage_modifier",
+    label: "Damage Modifier",
+    layer: null,
+    // Author names the damage_type sub-target (e.g.
+    // damage_modifier:fire, damage_modifier:cold,
+    // damage_modifier:psychic). Multiplier is the value
+    // (0.5 for resistance, 2 for vulnerability, 0 for immunity).
+    // Engine applies the multiplier during damage resolution.
+    widget: "free-text",
+    freeTextPlaceholder: "e.g. fire, cold, lightning, poison",
     valueIsNumeric: true,
   },
 };
