@@ -122,6 +122,12 @@ export const MODIFIER_TARGETS = [
   // as equip_slot / damage_type).
   // ===========================================================
   "damage_modifier",
+  // Phase 8.I i2 finish (Mashu 2026-08-06) — saving throw
+  // split per R3-Q1. Two separate axes:
+  //   saving_throw.<attr> (player rolls)
+  //   save_dc.<attr> (enemies roll against)
+  "saving_throw",
+  "save_dc",
 ] as const;
 export type ModifierTarget = (typeof MODIFIER_TARGETS)[number];
 
@@ -678,6 +684,31 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
     // Engine applies the multiplier during damage resolution.
     widget: "free-text",
     freeTextPlaceholder: "e.g. fire, cold, lightning, poison",
+    valueIsNumeric: true,
+  },
+
+  // ===========================================================
+  // Phase 8.I i2 finish (Mashu 2026-08-06) — saving throw split.
+  // Per R3-Q1: two separate axes per attribute.
+  //   - saving_throw.<physical|mental|magical> — player rolls
+  //   - save_dc.<physical|mental|magical> — enemies roll against
+  // These are different math (player vs enemy), so they get
+  // separate primitive targets.
+  // ===========================================================
+  saving_throw: {
+    target: "saving_throw",
+    label: "Saving Throw (player rolls)",
+    layer: null,
+    widget: "free-text",
+    freeTextPlaceholder: "physical / mental / magical",
+    valueIsNumeric: true,
+  },
+  save_dc: {
+    target: "save_dc",
+    label: "Save DC (enemies roll against)",
+    layer: null,
+    widget: "free-text",
+    freeTextPlaceholder: "physical / mental / magical",
     valueIsNumeric: true,
   },
 };

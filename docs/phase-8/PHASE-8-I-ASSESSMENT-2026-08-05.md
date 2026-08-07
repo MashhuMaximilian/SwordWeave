@@ -311,3 +311,188 @@ For the recap (PHASE-8-I-RECAP.md, 1662 lines): I'll paste only the specific sec
 - Anything i2.5 or beyond
 
 I need your Q1–Q5 confirmation (or correction) before I touch anything.
+
+
+---
+
+# RECAP — 2026-08-06 (after i2.7 tag-enum work)
+
+**Author:** Senku
+**Context:** Picked up from i2.6 (per-practice condition walk)
+and i2.7 (tag-enum + 9 new targets from canonical PDFs +
+target/value/trigger suggestion parity).
+**Read this first** if you're new — it explains the full arc
+from primitives/modifiers/conditions → character sheet.
+
+## Why we went so deep on primitives/modifiers/conditions
+
+The recap's i1-i7 plan was 7 sub-sessions, each small. What
+actually happened: i2 (engine resolution) became the gating
+sub-session and pulled forward i2.5 (runtime token resolution)
++ i2.6 (per-practice walk) + i2.7 (target atom completeness).
+The reason: **the engine math for the character sheet is
+implemented in the modifier resolution layer.** Every number
+on the character sheet (attribute, defense DC, vitality,
+practice, custom behavior, future: speed/carry/equip/damage)
+is summed from primitive `hardModifiers`. If the modifier
+model doesn't support runtime tokens, tag enums, per-practice
+walks, etc. — the character sheet math breaks for those axes.
+
+So the modifier resolution layer had to grow the same surface
+as the value/trigger pickers. Now it does:
+- Numeric comparisons (vitality, attr mods, practices, ...)
+- Runtime token resolution (PB, level, /physical/, /blockValue/)
+- Per-practice dynamic predicates (Broad Familiarity)
+- Tag-enum string comparisons (source_type, damage_type, etc.)
+- 24 targets in the dropdown (15 legacy + 9 new i2.7)
+- Per-axis / per-tag / per-tier sub-targets
+
+## Original i1-i7 plan vs. what we actually did
+
+| # | Recap sub-session | Recap plan | Actual status (2026-08-06) |
+|---|---|---|---|
+| **i1** | Null validator + warning + mirror test | Save rejects empty sub-target; warning UI | ✅ DONE (commit 5d3c66f) |
+| **i2** | Engine resolution (buCost→hardModifier) | Replace buCost-as-proxy with hardModifier walks | ⚠️ PARTIAL — practices + vitality done (a11581a). Missing: attribute math, defense DC math, runtime tokens |
+| **i2.5** | (NEW) Runtime token resolution | (recap didn't call this out) | ✅ DONE — PB chip, /physical/, /blockValue/, dice, equations all resolve |
+| **i2.6** | (NEW) Per-practice condition walk | (recap didn't call this out) | ✅ DONE — Broad Familiarity / Expertise auto-fire per-practice |
+| **i2.7** | (NEW) Target atom completeness | (recap didn't call this out) | ✅ DONE — 9 new targets (size, carry_capacity, equip_slot, damage_type, source_type, upkeep_cost, maintained_capability, complexity, combat_action), tag-enum string values, runtime variable chips, Tier 1-6 keywords, "Other" sub-target free-text everywhere |
+| **i3** | Conditions runtime + per-toggle gating | Modifier `*` marker on axis; engine suppresses when cap OFF | ⚠️ PARTIAL — engine `evaluateCondition` works (i2.6 wired into practice walk); UI `*` marker NOT wired; per-toggle gating NOT wired |
+| **i4** | Custom behavior variables (blockValue) | `set behavior:blockValue = 6` shows in small cards | ⚠️ PARTIAL — `behavior:<name>` recognized in engine + picker (i2.7); custom behavior BIG CARD NOT built; transient variable math NOT wired |
+| **i5** | Play session scratchpad (second FAB) | Runtime conditions added via modal | ❌ NOT STARTED |
+| **i6** | UI polish (small cards, glyphs, traceability) | Categories per R5-Q2 | ❌ NOT STARTED |
+| **i7** | DB cleanup (Psychic→Mental) | Backfill, schema renames | ✅ DONE — PSYCHIC→MENTAL in source_type target (commit 42021e1) |
+
+## What's next — proper order
+
+| # | What | Why now |
+|---|---|---|
+| **1** | **Attribute math + Defense DC math** (finish i2) | Character sheet still shows raw `attrPhysical/Mental/Magical` for attributes and `computeAllDefensiveDCs` formula for DC — neither reads from `hardModifiers`. A `+1 to Physical` primitive doesn't show. |
+| **2** | **Drawer: speed + carry + equip slot + vulnerabilities** | The targets are wired (i2.7); the display isn't. User explicitly called this out: "we need to add in drawer the movement speed and other tags and small cards especially for custom behaviors. And vulnerabilities and stuff?" |
+| **3** | **Vulnerability/Resistance in form** | User said: "we need to add vulnerability and resistance in both selections in triggers when and the value in modifier. So for your knowledge, vulnerability:2x damage, resistance 0.5x damage." New target = `damage_modifier` (multiplier axis), engine applies 2x/0.5x to incoming damage of matching type. |
+| **4** | **i3 finish** — `*` marker on axis + per-toggle gating | Engine walks conditions per-practice (done). UI marker + per-cap-toggle gating not done. |
+| **5** | **i4 finish** — custom behavior big card + transient variable math | `blockValue` primitives can be authored today; small cards zone isn't rendered yet. |
+| **6** | **i5** — second FAB (scratchpad) | Player-mode use case. |
+| **7** | **i6** — small cards zone, glyphs, modal traceability | Mostly cosmetic. |
+
+## Items 1, 2, 3 in detail
+
+### 1. Attribute math + Defense DC math
+
+**Attribute math (P, ME, MA):**
+- `aggregateCharacterSheet` currently reads `input.attrPhysical` directly (line 205 of sheet.ts).
+- Need: walk each primitive's `hardModifiers` for `target: attribute.physical/mental/magical`, `op: add/subtract`, sum the contributions.
+- Mirror: subtract instead of add when `link.isMirrored`.
+- Conditions: evaluate via `evaluateCondition` against `conditionContext` per modifier (same pattern as i2.6 practice walk).
+- Result: `attributes.physical = input.attrPhysical + sum(primitive mod contributions)`.
+
+**Defense DC math:**
+- `computeAllDefensiveDCs(attributes, attrProficient, level)` (practices.ts:450) computes `5 + attr + PB if proficient`.
+- Need: also walk primitives for `target: defense_dc.<physical|mental|magical>` or per recap's R3-Q1 split: `target: saving_throw.<physical|mental|magical>` and `target: save_dc.<physical|mental|magical>`.
+- User said "remaking the DC and the action roll" — so probably split into two: `saving_throw` (player rolls) and `save_dc` (enemy rolls), with separate primitive targets for each.
+
+**Files:**
+- `src/lib/engine/sheet.ts` — wire attribute walk
+- `src/lib/engine/practices.ts` — extend `computeAllDefensiveDCs` to accept primitive modifier list
+- `src/lib/engine/sheet.test.ts` — new tests
+- `src/components/characters/bottom-sticky-bar.tsx` — display DC + saves (already mostly there)
+
+### 2. Drawer display: speed + carry + equip slot + vulnerabilities
+
+**Speed card:**
+- New card in bottom sticky bar: `Speed: 30 ft (walking)`
+- Source: `character.speeds` (per locomotion type — Walking, Climbing, Swimming, Flying, Burrowing) computed from `target: speed.<locomotion>` primitives with `op: add/set`.
+
+**Carry capacity card:**
+- `Carry Capacity: 65 / 50 (overloaded)`
+- Source: `target: carry_capacity` primitives + `size_capacity` lookup (per Encumbrance PDF).
+
+**Load + equip slots:**
+- Already exists in `encumbrance` prop of BottomStickyBar. Just needs to render.
+
+**Vulnerability / Resistance cards:**
+- New damage modifier system. User explicitly said "vulnerability:2x damage, resistance 0.5x damage."
+- Targets: `damage_modifier:<type>` with op `multiply` (or specific grant/revoke).
+- Engine: when damage of type `<type>` hits the character, multiply by the modifier.
+- Examples: `resistance:fire`, `vulnerability:cold`, `immunity:poison`.
+- Display: small cards in the bottom drawer organized by damage type.
+
+### 3. Vulnerability/Resistance in form (trigger + value picker)
+
+**Triggers when** (condition picker):
+- `actor:has_resistance:fire`
+- `actor:has_vulnerability:cold`
+- `actor:has_immunity:poison`
+
+**Value in modifier** (value picker):
+- New keyword group: `Damage Modifier` with chips `[Resistance: <type>]`, `[Vulnerability: <type>]`, `[Immunity: <type>]`.
+- New runtime variable: `/resistance/<type>/`, `/vulnerability/<type>/`, `/immunity/<type>/`.
+- Author writes: `target=damage_modifier, op=multiply, value=0.5` and the engine halves incoming fire damage.
+
+## Why deep on primitives/modifiers/conditions
+
+The recap's plan was: primitives + capabilities + heritages +
+items compose modifiers. Engine resolves them into character
+stats. Bottom drawer displays the resolved numbers.
+
+But the modifier model is the **substrate**. Every other layer
+(capabilities, effects, heritage bundles, item equip effects,
+play session scratchpad) just composes modifiers. If the
+modifier model can't express runtime tokens, tag enums,
+per-practice walks, custom sub-targets — the bottom drawer
+just shows wrong numbers.
+
+So i2.5/2.6/2.7 are NOT scope creep. They're filling in the
+substrate the recap assumed existed. The recap literally said
+*"PB + (level / 4) [fire]"* is a valid modifier value —
+that's i2.5. The recap said `+1 if grappled` is a valid
+condition — that's i2.6's per-axis walk. The recap said
+`+1 to Fieldcraft` (per-practice) is a valid modifier — that's
+i2.6's per-practice walk.
+
+i2.7 (9 new targets) came from the canonical PDFs the recap
+referenced but didn't enumerate. They're the **next layer**
+of targets after practices/attributes/vitality/defense.
+Without them, the modifier model can't target speed, carry,
+damage type, source type — which the canonical PDFs say it
+must.
+
+## What I'll do next (without further input)
+
+1. **Attribute math** — wire `aggregateCharacterSheet` to walk
+   `hardModifiers` for `target: attribute.<physical|mental|magical>`.
+   Mirror handling. Condition filtering.
+2. **Defense DC math** — extend `computeAllDefensiveDCs` to
+   read primitive modifiers targeting `defense_dc.<physical|mental|magical>`.
+   (Or split into saving_throw + save_dc per R3-Q1 — your call.)
+3. **Speed card in drawer** — read `character.speeds` from the
+   sheet aggregation, render a small card in bottom-sticky-bar.
+4. **Vulnerability/Resistance targets** — add new targets
+   `vulnerability`, `resistance`, `immunity` (each with
+   `<damage_type>` sub-target). Engine applies multiplier
+   during damage resolution.
+5. **Vulnerability/Resistance in picker** — chips in both
+   trigger picker (`actor:has_resistance:<type>`) and value
+   picker (`[Resistance:<type>]`, `[Vulnerability:<type>]`).
+
+Then i3 / i4 / i5 / i6 in order per the original recap.
+
+## Questions for you
+
+**Q1 — Saving throw split?** R3-Q1 (locked) says split into
+`saving_throw` (player rolls) + `save_dc` (enemy rolls).
+Should I do that as part of attribute math, or keep the
+single `defense_dc` for now?
+
+**Q2 — Vulnerability/Resistance target shape?**
+Option A: `target: damage_modifier`, value carries the
+multiplier (0.5 for resistance, 2 for vulnerability, 0 for
+immunity). Clean, single axis.
+Option B: Three separate targets (`target: resistance`,
+`target: vulnerability`, `target: immunity`). Each is a
+boolean flag + implicit multiplier. Slightly more boilerplate
+but each is more semantic.
+
+**Q3 — Start with attribute math + drawer display?**
+Per your "let's do maths" message — engine math is the
+gating work. Or do you want me to do vulnerability/resistance
+form work first (small surface, fast, immediately testable)?

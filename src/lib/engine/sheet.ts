@@ -30,6 +30,8 @@ import {
 } from "./vitality";
 import { resolveValue, isTypedToken, type ResolveContext } from "./runtime-resolver";
 import { evaluateCondition, type ConditionContext } from "./condition-evaluator";
+import { sumPrimitiveContributions } from "./primitive-walk";
+import { computeAllSavingThrows, computeAllSaveDCs } from "./practices";
 import {
   BUAccount,
   BUBalance,
@@ -189,11 +191,24 @@ export type CharacterSheet = {
     readonly attribute: Attribute;
     readonly dc: number;
   }>;
+  // Phase 8.I i2 finish: saving throws (player rolls) +
+  // save DCs (enemies roll against). Separate axes per R3-Q1.
+  readonly savingThrows: ReadonlyArray<{
+    readonly attribute: Attribute;
+    readonly bonus: number;
+  }>;
+  readonly saveDCs: ReadonlyArray<{
+    readonly attribute: Attribute;
+    readonly dc: number;
+  }>;
   readonly encumbrance: EncumbranceBreakdown;
   readonly practiceCount: number;
   readonly capabilityCount: number;
   readonly equippedItemCount: number;
   readonly totalItemCount: number;
+  // Phase 8.I i2 finish (Mashu 2026-08-06): character
+  // attributes including primitive modifier contributions.
+  readonly attributes: Attributes;
 };
 
 /**
@@ -202,10 +217,36 @@ export type CharacterSheet = {
 export function aggregateCharacterSheet(
   input: CharacterSheetInput,
 ): CharacterSheet {
+  // Phase 8.I i2 finish (Mashu 2026-08-06): walk primitive
+  // modifiers for each attribute (P, ME, MA) and sum the
+  // contributions. Previously attributes were read straight
+  // from input.attrPhysical/Mental/Magical — primitive
+  // modifiers targeting attribute.<attr> were ignored.
   const attributes: Attributes = {
-    physical: input.attrPhysical,
-    mental: input.attrMental,
-    magical: input.attrMagical,
+    physical:
+      input.attrPhysical +
+      sumPrimitiveContributions(
+        input.primitiveLinks,
+        "attribute",
+        "physical",
+        input.conditionContext,
+      ),
+    mental:
+      input.attrMental +
+      sumPrimitiveContributions(
+        input.primitiveLinks,
+        "attribute",
+        "mental",
+        input.conditionContext,
+      ),
+    magical:
+      input.attrMagical +
+      sumPrimitiveContributions(
+        input.primitiveLinks,
+        "attribute",
+        "magical",
+        input.conditionContext,
+      ),
   };
   const slices: PracticeSlices = input.practiceSlices ?? {};
 
@@ -434,15 +475,47 @@ export function aggregateCharacterSheet(
       : Math.max(0, Math.min(100, Math.round((vitalityCurrent / maxVitality) * 100)));
 
   // Defensive DCs
+  // Phase 8.I i2 finish (Mashu 2026-08-06): walk primitive
+  // modifiers targeting defense_dc.<physical|mental|magical>
+  // and add to the base DC.
   const dcRecord = computeAllDefensiveDCs(
     attributes,
     input.attrProficient,
     input.level,
+    input.primitiveLinks,
+    input.conditionContext,
   );
   const defensiveDCs: Array<{ attribute: Attribute; dc: number }> = [
     { attribute: "PHYSICAL", dc: dcRecord.physical },
     { attribute: "MENTAL", dc: dcRecord.mental },
     { attribute: "MAGICAL", dc: dcRecord.magical },
+  ];
+
+  // Phase 8.I i2 finish: saving throws (player rolls) and
+  // save DCs (enemies roll against) — separate axes per R3-Q1.
+  const stRecord = computeAllSavingThrows(
+    attributes,
+    input.attrProficient,
+    input.level,
+    input.primitiveLinks,
+    input.conditionContext,
+  );
+  const savingThrows: Array<{ attribute: Attribute; bonus: number }> = [
+    { attribute: "PHYSICAL", bonus: stRecord.physical },
+    { attribute: "MENTAL", bonus: stRecord.mental },
+    { attribute: "MAGICAL", bonus: stRecord.magical },
+  ];
+  const saveDCRecord = computeAllSaveDCs(
+    attributes,
+    input.attrProficient,
+    input.level,
+    input.primitiveLinks,
+    input.conditionContext,
+  );
+  const saveDCs: Array<{ attribute: Attribute; dc: number }> = [
+    { attribute: "PHYSICAL", dc: saveDCRecord.physical },
+    { attribute: "MENTAL", dc: saveDCRecord.mental },
+    { attribute: "MAGICAL", dc: saveDCRecord.magical },
   ];
 
   // Encumbrance
@@ -535,11 +608,16 @@ const encumbrance = computeEncumbrance(
       modifiers: vitalityModifiers,
     },
     defensiveDCs,
+    savingThrows,
+    saveDCs,
     encumbrance,
     practiceCount: practices.length,
     capabilityCount: input.capabilityLinks.length,
     equippedItemCount: equippedItems.length,
     totalItemCount: input.itemLinks.length,
+    // Phase 8.I i2 finish: attributes including primitive
+    // modifier contributions.
+    attributes,
   };
 }
 

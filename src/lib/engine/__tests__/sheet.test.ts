@@ -405,3 +405,314 @@ describe("aggregateCharacterSheet — i2.6 condition filter", () => {
     expect(bf?.bonus).toBe(1); // narrative always passes
   });
 });
+
+
+// ---- Phase 8.I i2 finish — primitive walks for attribute + DC ----
+
+describe("aggregateCharacterSheet — i2 finish (attribute + DC walks)", () => {
+  it("attribute: +1 to physical primitive adds 1 to displayed physical", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        attrPhysical: 3,
+        primitiveLinks: [
+          {
+            primitiveId: 1,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 1,
+              name: "Boost Physical",
+              category: "CHARACTER_SHEET_AUGMENT",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                {
+                  target: "attribute.physical",
+                  operation: "add",
+                  value: 1,
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    expect(sheet.attributes.physical).toBe(4); // 3 + 1
+  });
+
+  it("attribute: +2 to mental primitive adds 2 to displayed mental", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        attrMental: 4,
+        primitiveLinks: [
+          {
+            primitiveId: 2,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 2,
+              name: "Boost Mental",
+              category: "CHARACTER_SHEET_AUGMENT",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                {
+                  target: "attribute.mental",
+                  operation: "add",
+                  value: 2,
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    expect(sheet.attributes.mental).toBe(6); // 4 + 2
+  });
+
+  it("attribute: subtract op subtracts from displayed attribute", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        attrPhysical: 5,
+        primitiveLinks: [
+          {
+            primitiveId: 3,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 3,
+              name: "Cripple Physical",
+              category: "CHARACTER_SHEET_AUGMENT",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                {
+                  target: "attribute.physical",
+                  operation: "subtract",
+                  value: 2,
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    expect(sheet.attributes.physical).toBe(3); // 5 - 2
+  });
+
+  it("attribute: mirrored primitive inverts sign", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        attrPhysical: 3,
+        primitiveLinks: [
+          {
+            primitiveId: 4,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: true,
+            primitive: {
+              id: 4,
+              name: "Boost Physical (mirrored)",
+              category: "CHARACTER_SHEET_AUGMENT",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                {
+                  target: "attribute.physical",
+                  operation: "add",
+                  value: 2,
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    expect(sheet.attributes.physical).toBe(1); // 3 - 2 (mirrored)
+  });
+
+  it("defense_dc: +1 to physical DC primitive adds to base DC", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        attrPhysical: 3,
+        primitiveLinks: [
+          {
+            primitiveId: 1,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 5,
+              name: "Boost Save DC",
+              category: "CHARACTER_SHEET_AUGMENT",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                {
+                  target: "defense_dc.physical",
+                  operation: "add",
+                  value: 1,
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    const physical = sheet.defensiveDCs.find((d) => d.attribute === "PHYSICAL");
+    // Base: 5 + 3 + 2 (PB) = 10. Plus 1 = 11.
+    expect(physical?.dc).toBe(11);
+  });
+
+  it("defense_dc: mental (non-proficient) starts at 5 + attr, plus primitive contributions", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        attrProficient: "PHYSICAL",
+        attrMental: 4,
+        primitiveLinks: [
+          {
+            primitiveId: 6,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 6,
+              name: "Mental DC +2",
+              category: "CHARACTER_SHEET_AUGMENT",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                {
+                  target: "defense_dc.mental",
+                  operation: "add",
+                  value: 2,
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    const mental = sheet.defensiveDCs.find((d) => d.attribute === "MENTAL");
+    // Base: 5 + 4 + 0 (no PB) = 9. Plus 2 = 11.
+    expect(mental?.dc).toBe(11);
+  });
+});
+
+
+describe("aggregateCharacterSheet — saving throws + save DC (R3-Q1 split)", () => {
+  it("savingThrow PHYSICAL = physical + PB (proficient)", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({ attrPhysical: 3, attrProficient: "PHYSICAL" }),
+    );
+    const st = sheet.savingThrows.find((s) => s.attribute === "PHYSICAL");
+    // 3 + 2 (PB) = 5
+    expect(st?.bonus).toBe(5);
+  });
+
+  it("savingThrow MENTAL = mental only (not proficient)", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({ attrMental: 4, attrProficient: "PHYSICAL" }),
+    );
+    const st = sheet.savingThrows.find((s) => s.attribute === "MENTAL");
+    // 4 + 0 = 4
+    expect(st?.bonus).toBe(4);
+  });
+
+  it("saveDC PHYSICAL = 8 + physical + PB (proficient)", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({ attrPhysical: 3, attrProficient: "PHYSICAL" }),
+    );
+    const sdc = sheet.saveDCs.find((s) => s.attribute === "PHYSICAL");
+    // 8 + 3 + 2 = 13
+    expect(sdc?.dc).toBe(13);
+  });
+
+  it("saveDC MENTAL = 8 + mental (not proficient)", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({ attrMental: 4, attrProficient: "PHYSICAL" }),
+    );
+    const sdc = sheet.saveDCs.find((s) => s.attribute === "MENTAL");
+    // 8 + 4 + 0 = 12
+    expect(sdc?.dc).toBe(12);
+  });
+
+  it("savingThrow primitive modifier adds to ST", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        attrPhysical: 3,
+        attrProficient: "PHYSICAL",
+        primitiveLinks: [
+          {
+            primitiveId: 10,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 10,
+              name: "Boost Save Prowess",
+              category: "CHARACTER_SHEET_AUGMENT",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                {
+                  target: "saving_throw.physical",
+                  operation: "add",
+                  value: 2,
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    const st = sheet.savingThrows.find((s) => s.attribute === "PHYSICAL");
+    // (3 + 2 PB) + 2 primitive = 7
+    expect(st?.bonus).toBe(7);
+  });
+
+  it("saveDC primitive modifier adds to DC", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        attrPhysical: 3,
+        attrProficient: "PHYSICAL",
+        primitiveLinks: [
+          {
+            primitiveId: 11,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 11,
+              name: "Boost DC Prowess",
+              category: "CHARACTER_SHEET_AUGMENT",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                {
+                  target: "save_dc.physical",
+                  operation: "add",
+                  value: 1,
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    const sdc = sheet.saveDCs.find((s) => s.attribute === "PHYSICAL");
+    // (8 + 3 + 2 PB) + 1 primitive = 14
+    expect(sdc?.dc).toBe(14);
+  });
+});

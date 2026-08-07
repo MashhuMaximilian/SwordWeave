@@ -20,6 +20,8 @@
 // Types
 // =============================================================================
 
+import { sumPrimitiveContributions } from "@/lib/engine/primitive-walk";
+
 export type Attribute = "PHYSICAL" | "MENTAL" | "MAGICAL";
 
 export type PhysicalPractice = "prowess" | "finesse" | "fieldcraft";
@@ -431,17 +433,36 @@ export function proficiencyBonus(level: number): number {
  * @param attributes Character's attribute scores
  * @param attrProficient Proficient attribute (null = no proficiency)
  * @param level Character level (for PB)
+ * @param primitiveLinks Optional character primitive links. When provided,
+ *   walks hardModifiers targeting `defense_dc.<attr>` and adds the
+ *   sum to the base DC. Phase 8.I i2 finish (Mashu 2026-08-06).
+ * @param conditionContext Optional condition context for evaluating
+ *   per-modifier conditions. Phase 8.I i2.6.
  */
 export function computeDefensiveDC(
   attribute: Attribute,
   attributes: Attributes,
   attrProficient: Attribute | null | undefined,
   level: number,
+  primitiveLinks?: readonly unknown[],
+  conditionContext?: unknown,
 ): number {
   const attrValue = attributes[attribute.toLowerCase() as keyof Attributes];
   const isProficient = attrProficient === attribute;
   const pb = isProficient ? proficiencyBonus(level) : 0;
-  return 5 + attrValue + pb;
+  let dc = 5 + attrValue + pb;
+
+  // Phase 8.I i2 finish: add primitive modifier contributions.
+  if (primitiveLinks !== undefined) {
+    dc += sumPrimitiveContributions(
+      primitiveLinks as Parameters<typeof sumPrimitiveContributions>[0],
+      "defense_dc",
+      attribute.toLowerCase(),
+      conditionContext as Parameters<typeof sumPrimitiveContributions>[3],
+    );
+  }
+
+  return dc;
 }
 
 /**
@@ -451,14 +472,185 @@ export function computeAllDefensiveDCs(
   attributes: Attributes,
   attrProficient: Attribute | null | undefined,
   level: number,
+  primitiveLinks?: readonly unknown[],
+  conditionContext?: unknown,
 ): {
   readonly physical: number;
   readonly mental: number;
   readonly magical: number;
 } {
   return {
-    physical: computeDefensiveDC("PHYSICAL", attributes, attrProficient, level),
-    mental: computeDefensiveDC("MENTAL", attributes, attrProficient, level),
-    magical: computeDefensiveDC("MAGICAL", attributes, attrProficient, level),
+    physical: computeDefensiveDC(
+      "PHYSICAL",
+      attributes,
+      attrProficient,
+      level,
+      primitiveLinks,
+      conditionContext,
+    ),
+    mental: computeDefensiveDC(
+      "MENTAL",
+      attributes,
+      attrProficient,
+      level,
+      primitiveLinks,
+      conditionContext,
+    ),
+    magical: computeDefensiveDC(
+      "MAGICAL",
+      attributes,
+      attrProficient,
+      level,
+      primitiveLinks,
+      conditionContext,
+    ),
+  };
+}
+
+// =============================================================================
+// Saving Throw (player rolls)
+// =============================================================================
+
+/**
+ * Saving throw = attribute modifier + PB (if proficient in that attribute).
+ *
+ * Phase 8.I i2 finish (Mashu 2026-08-06): per R3-Q1, the saving
+ * throw axis is separate from save_dc. Player rolls this number
+ * when subject to a save ("save vs. fire" -> d20 + this).
+ *
+ * @param attribute     which attribute (PHYSICAL/MENTAL/MAGICAL)
+ * @param attributes    character attribute scores
+ * @param attrProficient proficient attribute
+ * @param level         character level
+ * @param primitiveLinks optional primitive links (walked for primitive modifiers
+ *                      targeting saving_throw.<attr>)
+ * @param conditionContext optional condition context
+ */
+export function computeSavingThrow(
+  attribute: Attribute,
+  attributes: Attributes,
+  attrProficient: Attribute | null | undefined,
+  level: number,
+  primitiveLinks?: readonly unknown[],
+  conditionContext?: unknown,
+): number {
+  const attrValue = attributes[attribute.toLowerCase() as keyof Attributes];
+  const isProficient = attrProficient === attribute;
+  const pb = isProficient ? proficiencyBonus(level) : 0;
+  let st = attrValue + pb;
+
+  if (primitiveLinks !== undefined) {
+    st += sumPrimitiveContributions(
+      primitiveLinks as Parameters<typeof sumPrimitiveContributions>[0],
+      "saving_throw",
+      attribute.toLowerCase(),
+      conditionContext as Parameters<typeof sumPrimitiveContributions>[3],
+    );
+  }
+  return st;
+}
+
+export function computeAllSavingThrows(
+  attributes: Attributes,
+  attrProficient: Attribute | null | undefined,
+  level: number,
+  primitiveLinks?: readonly unknown[],
+  conditionContext?: unknown,
+): { physical: number; mental: number; magical: number } {
+  return {
+    physical: computeSavingThrow(
+      "PHYSICAL",
+      attributes,
+      attrProficient,
+      level,
+      primitiveLinks,
+      conditionContext,
+    ),
+    mental: computeSavingThrow(
+      "MENTAL",
+      attributes,
+      attrProficient,
+      level,
+      primitiveLinks,
+      conditionContext,
+    ),
+    magical: computeSavingThrow(
+      "MAGICAL",
+      attributes,
+      attrProficient,
+      level,
+      primitiveLinks,
+      conditionContext,
+    ),
+  };
+}
+
+// =============================================================================
+// Save DC (enemies roll against)
+// =============================================================================
+
+/**
+ * Save DC = 8 + attribute modifier + PB (if proficient in that attribute).
+ *
+ * Phase 8.I i2 finish (Mashu 2026-08-06): per R3-Q1, separate
+ * from saving_throw. Enemies roll against this number when
+ * attacking the character.
+ */
+export function computeSaveDC(
+  attribute: Attribute,
+  attributes: Attributes,
+  attrProficient: Attribute | null | undefined,
+  level: number,
+  primitiveLinks?: readonly unknown[],
+  conditionContext?: unknown,
+): number {
+  const attrValue = attributes[attribute.toLowerCase() as keyof Attributes];
+  const isProficient = attrProficient === attribute;
+  const pb = isProficient ? proficiencyBonus(level) : 0;
+  let dc = 8 + attrValue + pb;
+
+  if (primitiveLinks !== undefined) {
+    dc += sumPrimitiveContributions(
+      primitiveLinks as Parameters<typeof sumPrimitiveContributions>[0],
+      "save_dc",
+      attribute.toLowerCase(),
+      conditionContext as Parameters<typeof sumPrimitiveContributions>[3],
+    );
+  }
+  return dc;
+}
+
+export function computeAllSaveDCs(
+  attributes: Attributes,
+  attrProficient: Attribute | null | undefined,
+  level: number,
+  primitiveLinks?: readonly unknown[],
+  conditionContext?: unknown,
+): { physical: number; mental: number; magical: number } {
+  return {
+    physical: computeSaveDC(
+      "PHYSICAL",
+      attributes,
+      attrProficient,
+      level,
+      primitiveLinks,
+      conditionContext,
+    ),
+    mental: computeSaveDC(
+      "MENTAL",
+      attributes,
+      attrProficient,
+      level,
+      primitiveLinks,
+      conditionContext,
+    ),
+    magical: computeSaveDC(
+      "MAGICAL",
+      attributes,
+      attrProficient,
+      level,
+      primitiveLinks,
+      conditionContext,
+    ),
   };
 }

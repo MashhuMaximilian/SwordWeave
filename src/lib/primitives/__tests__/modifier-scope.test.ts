@@ -33,14 +33,16 @@ import {
 } from "../target-scope";
 
 describe("MODIFIER_TARGETS enum", () => {
-  it("has 25 entries (i2.7b — added damage_modifier)", () => {
+  it("has 27 entries (i2 finish - added saving_throw + save_dc)", () => {
     // Phase-7-E/UX2a-r + UX2b-r baseline: 15 entries.
     // Phase-8.I-i2.7: 9 new entries (combat_action, size,
     // carry_capacity, equip_slot, damage_type, source_type,
     // upkeep_cost, maintained_capability, complexity) → 24.
     // Phase-8.I-i2.7b (Mashu 2026-08-06): damage_modifier
     // added for vulnerability/resistance/immunity → 25.
-    expect(MODIFIER_TARGETS.length).toBe(25);
+    // Phase-8.I-i2 finish: saving_throw + save_dc added per
+    // R3-Q1 split → 27.
+    expect(MODIFIER_TARGETS.length).toBe(27);
   });
 
   it("consolidates the three Attribute variants into one entry", () => {
