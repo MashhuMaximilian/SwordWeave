@@ -407,11 +407,9 @@ async function main() {
     );
   }
 
-  // 5. Initialize currentVitality = null so conditions fire on HP math.
-  await pool.query(
-    `UPDATE characters SET current_vitality = NULL WHERE id = $1`,
-    [characterId],
-  );
+  // 5. Leave currentVitality NULL. The /api/characters/[id]/vitality
+  // and /rest endpoints treat null as "at full HP" so damage/rest
+  // works without a separate initialization step. (i2.7f fix.)
 
   console.log(`✓ Created character ${characterId}`);
   console.log(`  user: ${MASHU_USER_ID}`);

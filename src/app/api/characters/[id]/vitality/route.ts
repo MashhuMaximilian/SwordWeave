@@ -86,7 +86,12 @@ export async function POST(
 
     // Compute max vitality the same way the sheet does.
     const { max } = await loadCharacterMaxVitality(id);
-    const prev = current.currentVitality ?? 0;
+    // Phase 8.I i2.7f (Mashu 2026-08-06): when currentVitality is
+    // null (character at full HP, no init recorded), treat the
+    // prev value as max so damage works. The UI shows the same
+    // number (effectiveCurrent = null ?? max), so the player's
+    // mental model is consistent.
+    const prev = current.currentVitality ?? max;
     const candidate = prev + delta;
     const next = clampVitality(candidate, max);
 

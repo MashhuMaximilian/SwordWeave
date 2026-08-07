@@ -76,7 +76,8 @@ export async function POST(
     }
 
     const { max } = await loadCharacterMaxVitality(id);
-    const prev = current.currentVitality ?? 0;
+    // Phase 8.I i2.7f: null currentVitality = at full HP.
+    const prev = current.currentVitality ?? max;
     let next: number;
     let delta: number;
 

@@ -126,7 +126,7 @@ export function VitalityTracker({
     const delta = dialogMode === "damage" ? -Math.floor(num) : Math.floor(num);
 
     setPending(true);
-    const clamped = Math.max(0, Math.min(max, optimisticCurrent + delta));
+    const clamped = Math.max(0, Math.min(max, (optimisticCurrent ?? 0) + delta));
     setOptimisticCurrent(clamped);
 
     try {
