@@ -118,10 +118,8 @@ const prims: AuditPrimitive[] = [
       },
     ],
   },
-  // 7) Expertise: 2*pb (using the formula operand shape).
-  // The form's equation mode would store this differently;
-  // we use the operand-style shape here to test the
-  // equation resolver.
+  // 7) Expertise: 2*pb stored as full Operand[] (the form's
+  // equation mode serialization per i2.7d fix).
   {
     id: 7,
     name: "Expertise Fieldcraft",
@@ -133,11 +131,11 @@ const prims: AuditPrimitive[] = [
       {
         target: "skill_practice_check",
         operation: "add",
-        // 2*pb = expertise. Stored as a single number = 2
-        // in legacy; the practice math would resolve PB as
-        // an operand. For now, the engine just sums the raw
-        // value (2) when the chip is a number.
-        value: 2,
+        // 2 * pb as an Operand[] (post-i2.7d storage shape).
+        value: [
+          { op: "+", value: { kind: "number", value: 2 } },
+          { op: "*", value: { kind: "derived", which: "pb" } },
+        ],
         metadata: { targetScope: { layer: "PRACTICE", values: ["FIELDCRAFT"] } },
       },
     ],

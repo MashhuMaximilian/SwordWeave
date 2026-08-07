@@ -28,7 +28,8 @@
  * See: docs/phase-8/PHASE-8-I-ASSESSMENT-2026-08-05.md (i2.5)
  */
 
-import type { ValueToken } from "@/types/modifier";
+import type { ValueToken, Operand } from "@/types/modifier";
+import { resolveEquation } from "./equation-resolver";
 import type { PracticeKey } from "@/types/modifier";
 
 // =============================================================================
@@ -246,6 +247,12 @@ export function resolveValue(
 ): number {
   if (isTypedToken(value)) {
     return resolveToken(value, ctx);
+  }
+  if (Array.isArray(value)) {
+    // Phase 8.I i2.7d (Mashu 2026-08-06): equation mode in the
+    // form stores an Operand[] (JSON array of operand objects).
+    // Resolve the full equation rather than dropping operands.
+    return resolveEquation(value as readonly Operand[], ctx).numeric;
   }
   if (typeof value === "number") return value;
   if (typeof value === "string") {

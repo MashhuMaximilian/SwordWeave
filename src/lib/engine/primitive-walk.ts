@@ -23,6 +23,7 @@
  */
 import type { ConditionContext } from "@/lib/engine/condition-evaluator";
 import { evaluateCondition } from "@/lib/engine/condition-evaluator";
+import { resolveValue } from "./runtime-resolver";
 
 /**
  * The shapes we read off each hardModifier. We don't import the full
@@ -102,7 +103,20 @@ export function walkPrimitiveContributionsForAxis(
       const targetAxis = String(rawMod.targetAxis ?? "");
       const targetKey = String(rawMod.targetKey ?? "");
       const op = String(rawMod.operation ?? "");
-      const value = Number(rawMod.value);
+      // Phase 8.I i2.7d (Mashu 2026-08-06): equation values
+      // stored as Operand[] are resolved via resolveValue.
+      // The primitive walk uses a minimal context (pb=0)
+      // because equation values that reference PB / pb*2 only
+      // appear in the practice walk; the rest of the axes
+      // (attribute, defense_dc, speed, etc.) accept plain
+      // numeric values.
+      const value = resolveValue(rawMod.value, {
+        level: 0,
+        pb: 0,
+        attributes: { physical: 0, mental: 0, magical: 0 },
+        practices: {} as never,
+        behaviorVariables: {},
+      });
       if (!Number.isFinite(value)) continue;
 
       // Match the axis prefix.

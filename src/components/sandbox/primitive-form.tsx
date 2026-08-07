@@ -728,10 +728,17 @@ function toHardModifier(modifier: ModifierDraft): import("@/types/swordweave").H
   // For equation mode: stored value = first operand's value.
   // For simple mode: stored value = first token (the typed
   // token object). parseValue is now a FALLBACK only.
+  // Phase 8.I i2.7d (Mashu 2026-08-06): equation mode now
+  // stores the FULL operands array. Previously it stored only
+  // operands[0].value, losing the rest of the expression and
+  // breaking math like 2*pb. HardModifier.value accepts
+  // JsonValue (including arrays) so persisting Operand[] is
+  // type-safe.
   let baseValue: unknown = null;
-  if (modifier.valueKind === "equation" && modifier.operands.length > 0) {
-    // Equation mode: the stored value is the first operand's value.
-    baseValue = modifier.operands[0]?.value ?? 0;
+  if (modifier.valueKind === "equation") {
+    // Equation mode: stored value = full operands array
+    // (single-operand equations store a length-1 array).
+    baseValue = modifier.operands.length > 0 ? modifier.operands : 0;
   } else if (modifier.tokens.length > 0) {
     // Simple mode: stored value is the first token (typed object).
     baseValue = modifier.tokens[0] ?? 0;

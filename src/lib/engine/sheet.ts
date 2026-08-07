@@ -406,6 +406,13 @@ export function aggregateCharacterSheet(
       let value: number;
       if (isTypedToken(mod.value)) {
         value = resolveValue(mod.value, ctx);
+      } else if (Array.isArray(mod.value)) {
+        // Phase 8.I i2.7d (Mashu 2026-08-06): equation mode
+        // stores an Operand[] (the form's full expression).
+        // resolveValue's array branch handles it; duplicate
+        // the dispatch here so the practice walk doesn't drop
+        // it on the floor.
+        value = resolveValue(mod.value, ctx);
       } else if (typeof mod.value === "number") {
         value = mod.value;
       } else if (typeof mod.value === "string") {
