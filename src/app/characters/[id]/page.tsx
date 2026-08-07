@@ -16,6 +16,59 @@ import { enrichItemLinksWithNestedBundle } from "@/lib/api/enrich-item-links";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Phase 8.I i2 finish (Mashu 2026-08-06) — walk the
+ * character's primitiveLinks and bucket damage modifiers
+ * by their multiplier value.
+ *
+ * Multiplier 0.5 -> resistance
+ * Multiplier 2 -> vulnerability
+ * Multiplier 0 -> immunity
+ *
+ * Other multipliers (0.5, 2, 0 only by canonical PDF) all
+ * default to "resistance" bucket since the user can author
+ * arbitrary multipliers.
+ */
+function extractDamageModifiers(
+  primitiveLinks: ReadonlyArray<{
+    primitive: { hardModifiers: ReadonlyArray<{
+      target?: unknown;
+      operation?: unknown;
+      value?: unknown;
+    }> };
+  }>,
+): {
+  resistance: string[];
+  vulnerability: string[];
+  immunity: string[];
+} {
+  const resistance: string[] = [];
+  const vulnerability: string[] = [];
+  const immunity: string[] = [];
+  for (const link of primitiveLinks) {
+    for (const mod of link.primitive.hardModifiers) {
+      const target = String(mod.target ?? "");
+      const op = String(mod.operation ?? "");
+      const value = Number(mod.value);
+      if (op !== "multiply") continue;
+      if (!Number.isFinite(value)) continue;
+      const dotIdx = target.indexOf(".");
+      if (dotIdx <= 0) continue;
+      const axis = target.slice(0, dotIdx);
+      const sub = target.slice(dotIdx + 1);
+      if (axis !== "damage_modifier") continue;
+      if (value === 0) immunity.push(sub);
+      else if (value >= 2) vulnerability.push(sub);
+      else resistance.push(sub);
+    }
+  }
+  return {
+    resistance: [...new Set(resistance)].sort(),
+    vulnerability: [...new Set(vulnerability)].sort(),
+    immunity: [...new Set(immunity)].sort(),
+  };
+}
+
 export default async function CharacterSheetPage({
   params,
 }: {
@@ -364,6 +417,11 @@ export default async function CharacterSheetPage({
       }))}
       vitality={sheet.vitality}
       encumbrance={sheet.encumbrance}
+      // Phase 8.I i2 finish (Mashu 2026-08-06): speed +
+      // carry capacity + damage modifiers from primitive walks.
+      speedByType={sheet.speedByType}
+      carryCapacity={sheet.carryCapacity}
+      damageModifiers={extractDamageModifiers(row.primitiveLinks)}
       buBalance={sheet.buBalance}
       primitiveLinks={row.primitiveLinks.map((l) => ({
         primitiveId: l.primitiveId,

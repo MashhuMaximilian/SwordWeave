@@ -117,6 +117,16 @@ export interface BottomStickyBarProps {
   // Phase 8.4 v25: character size (e.g. "MEDIUM") for the
   // encumbrance formula popup. Drives SIZE_CAPACITY lookup.
   readonly characterSize: "TINY" | "SMALL" | "MEDIUM" | "LARGE" | "HUGE" | "GARGANTUAN";
+
+  // Phase 8.I i2 finish (Mashu 2026-08-06) - speed +
+  // carry capacity + damage modifier cards from primitive walks.
+  readonly speedByType: Readonly<Record<string, number>>;
+  readonly carryCapacity: number;
+  readonly damageModifiers: {
+    readonly resistance: readonly string[];
+    readonly vulnerability: readonly string[];
+    readonly immunity: readonly string[];
+  };
 }
 
 type ComboKind =
@@ -151,6 +161,9 @@ export function BottomStickyBar({
   attrSumValid,
   encumbrance,
   characterSize,
+  speedByType,
+  carryCapacity,
+  damageModifiers,
 }: BottomStickyBarProps) {
   const [hydrated, setHydrated] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -643,6 +656,53 @@ export function BottomStickyBar({
               />
             </div>
           </div>
+
+          {/* Phase 8.I i2 finish (Mashu 2026-08-06): speed +
+              carry capacity cards from primitive walks. */}
+          <div className="mt-2 rounded-md border border-border bg-card overflow-hidden">
+            <div className="grid grid-cols-2 divide-x divide-border">
+              <SpeedCard speedByType={speedByType} />
+              <CarryCard
+                load={encumbrance.load}
+                capacity={carryCapacity}
+              />
+            </div>
+          </div>
+
+          {/* Phase 8.I i2 finish: damage modifier cards
+              (resistance / vulnerability / immunity). */}
+          {(damageModifiers.resistance.length > 0 ||
+            damageModifiers.vulnerability.length > 0 ||
+            damageModifiers.immunity.length > 0) && (
+            <div className="mt-2 rounded-md border border-border bg-card px-2 py-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Damage Modifiers
+              </p>
+              <div className="mt-1 space-y-1">
+                {damageModifiers.resistance.length > 0 && (
+                  <DamageModifierRow
+                    label="Resistance"
+                    types={damageModifiers.resistance}
+                    colorClass="text-sky-700 dark:text-sky-300"
+                  />
+                )}
+                {damageModifiers.vulnerability.length > 0 && (
+                  <DamageModifierRow
+                    label="Vulnerability"
+                    types={damageModifiers.vulnerability}
+                    colorClass="text-orange-700 dark:text-orange-300"
+                  />
+                )}
+                {damageModifiers.immunity.length > 0 && (
+                  <DamageModifierRow
+                    label="Immunity"
+                    types={damageModifiers.immunity}
+                    colorClass="text-purple-700 dark:text-purple-300"
+                  />
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -852,6 +912,119 @@ function EquipSlotsPanel({
       <p className="mt-1 text-[10px] text-muted-foreground">
         2H items use 2 slots
       </p>
+    </div>
+  );
+}
+
+// =============================================================================
+// Phase 8.I i2 finish (Mashu 2026-08-06) — SpeedCard, CarryCard,
+// DamageModifierRow. Small cards showing the i2.7 + i2 finish
+// primitives contributions to the character sheet.
+// =============================================================================
+
+function SpeedCard({
+  speedByType,
+}: {
+  speedByType: Readonly<Record<string, number>>;
+}) {
+  const walking = speedByType["WALKING_SPEED"] ?? 0;
+  const otherLocomotions: Array<{ key: string; value: number }> = [];
+  for (const [key, value] of Object.entries(speedByType)) {
+    if (key === "WALKING_SPEED") continue;
+    if (value > 0) otherLocomotions.push({ key, value });
+  }
+  return (
+    <div className="bg-card p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Speed
+      </p>
+      <p className="mt-1 font-mono text-2xl font-bold tabular-nums">
+        {walking}
+        <span className="ml-1 text-sm font-normal text-muted-foreground">
+          ft walking
+        </span>
+      </p>
+      {otherLocomotions.length > 0 && (
+        <div className="mt-2 space-y-0.5">
+          {otherLocomotions.map(({ key, value }) => (
+            <p
+              key={key}
+              className="text-[11px] text-muted-foreground font-mono"
+            >
+              <span className="font-semibold">{value}</span> ft {key
+                .replace("_SPEED", "")
+                .toLowerCase()}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CarryCard({
+  load,
+  capacity,
+}: {
+  load: number;
+  capacity: number;
+}) {
+  const percent =
+    capacity > 0 ? Math.round((load / capacity) * 100) : 0;
+  return (
+    <div className="bg-card p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Carry
+      </p>
+      <p className="mt-1 font-mono text-2xl font-bold tabular-nums">
+        {load}
+        <span className="ml-1 text-sm font-normal text-muted-foreground">
+          / {capacity}
+        </span>
+      </p>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
+        <div
+          className={`h-full rounded-full transition-all ${
+            percent > 100
+              ? "bg-destructive"
+              : percent > 75
+                ? "bg-amber-500"
+                : "bg-primary"
+          }`}
+          style={{ width: `${Math.min(100, percent)}%` }}
+        />
+      </div>
+      <p className="mt-1 text-[10px] text-muted-foreground">
+        {percent}% capacity
+      </p>
+    </div>
+  );
+}
+
+function DamageModifierRow({
+  label,
+  types,
+  colorClass,
+}: {
+  readonly label: string;
+  readonly types: readonly string[];
+  readonly colorClass: string;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className={`text-[10px] font-semibold uppercase ${colorClass}`}>
+        {label}
+      </span>
+      <div className="flex flex-wrap gap-1">
+        {types.map((t) => (
+          <span
+            key={t}
+            className={`rounded-full border border-current/30 bg-current/10 px-1.5 py-0.5 text-[10px] font-medium ${colorClass}`}
+          >
+            {t}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

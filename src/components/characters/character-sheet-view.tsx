@@ -280,6 +280,20 @@ export type CharacterSheetProps = {
     equipSlotsUsed: number;
     equipSlotsAvailable: number;
   };
+  // Phase 8.I i2 finish (Mashu 2026-08-06) - speed +
+  // carry capacity from the primitive walks.
+  speedByType: Readonly<Record<string, number>>;
+  carryCapacity: number;
+  // Phase 8.I i2 finish - damage modifiers
+  // (resistance / vulnerability / immunity) the character has.
+  // Shape: { resistance: ['fire', 'cold'], vulnerability: [],
+  // immunity: ['poison'] } - populated by walking
+  // damage_modifier.<type> primitives.
+  damageModifiers: {
+    readonly resistance: readonly string[];
+    readonly vulnerability: readonly string[];
+    readonly immunity: readonly string[];
+  };
   buBalance: {
     progressionSpent: number;
     progressionPool: number;
@@ -964,6 +978,12 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           equipSlotsUsed: props.encumbrance.equipSlotsUsed,
           equipSlotsAvailable: props.encumbrance.equipSlotsAvailable,
         }}
+        // Phase 8.I i2 finish (Mashu 2026-08-06) - speed +
+        // carry capacity from primitive walks. Forwarded so
+        // the sticky bar can render speed + carry cards.
+        speedByType={props.speedByType}
+        carryCapacity={props.carryCapacity}
+        damageModifiers={props.damageModifiers}
         // Phase 8.4 v25: character size for the encumbrance
         // formula popup. Cast from the loose `string` type on
         // CharacterSheetProps to the literal union the bar
