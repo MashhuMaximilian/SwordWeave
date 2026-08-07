@@ -942,6 +942,11 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             props.attrMagical +
             (resolver.totals["attribute.magical"] ?? 0),
         }}
+        baseAttributes={{
+          physical: props.attrPhysical,
+          mental: props.attrMental,
+          magical: props.attrMagical,
+        }}
         resolver={resolver}
         practices={props.practices.map((p) => ({
           name: p.practice,

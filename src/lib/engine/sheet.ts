@@ -617,11 +617,26 @@ const encumbrance = computeEncumbrance(
   encumbranceItems,
 );
 
-// Phase 8.I i2 finish (Mashu 2026-08-06) - speed walks per locomotion.
+// Phase 8.I i2 finish (Mashu 2026-08-06) — speed walks per locomotion.
+// Phase 8.I i3 (Mashu): base speed per size — Tiny 15, Small 25,
+// Medium 30, Large 40, Huge 60, Gargantuan 90.
+// Swim + Climb default to half base speed (rounded up).
+// Fly + Burrow default to 0 (must be granted by primitives).
+const SIZE_BASE_SPEED: Record<string, number> = {
+  TINY: 15,
+  SMALL: 25,
+  MEDIUM: 30,
+  LARGE: 40,
+  HUGE: 60,
+  GARGANTUAN: 90,
+};
+const baseWalkSpeed = SIZE_BASE_SPEED[(input.size as CharacterSize) ?? "MEDIUM"] ?? 30;
+const baseSwimClimbSpeed = roundUp(baseWalkSpeed / 2);
+
 const SPEED_DEFAULTS: Record<string, number> = {
-  WALKING_SPEED: 30,
-  CLIMBING_SPEED: 0,
-  SWIMMING_SPEED: 0,
+  WALKING_SPEED: baseWalkSpeed,
+  CLIMBING_SPEED: baseSwimClimbSpeed,
+  SWIMMING_SPEED: baseSwimClimbSpeed,
   FLYING_SPEED: 0,
   BURROWING_SPEED: 0,
 };

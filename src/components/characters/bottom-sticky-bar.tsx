@@ -45,7 +45,7 @@ import {
   type FormulaStep,
 } from "@/components/characters/formula-modal";
 import type { ResolvedModifiers } from "@/lib/engine/resolve-modifiers";
-import { SIZE_CAPACITY, SIZE_LOAD } from "@/lib/engine/encumbrance";
+import { SIZE_CAPACITY, SIZE_LOAD, SIZE_BASE_SPEED } from "@/lib/engine/encumbrance";
 
 /**
  * Reverse PB → level. PB starts at 2 and adds 1 every 4 levels.
@@ -97,6 +97,11 @@ export interface BottomStickyBarProps {
   readonly physical: number;
   readonly mental: number;
   readonly magical: number;
+  /** Raw attribute values BEFORE primitive modifiers. Used by
+   * the provenance modal so the base value matches what the user
+   * set in the character editor, not the computed final mod.
+   * Falls back to `physical`/`mental`/`magical` if not provided. */
+  readonly baseAttributes?: { physical: number; mental: number; magical: number };
   readonly pb: number;
   readonly proficientAttribute: "PHYSICAL" | "MENTAL" | "MAGICAL" | null;
   readonly attributeModifiers?: { physical: number; mental: number; magical: number };
@@ -161,6 +166,7 @@ export function BottomStickyBar({
   physical,
   mental,
   magical,
+  baseAttributes,
   pb,
   proficientAttribute,
   attributeModifiers,
@@ -755,7 +761,13 @@ export function BottomStickyBar({
             attrLabel={`${comboAttr.toUpperCase()} modifier`}
             saveTarget={saveTarget}
             saveLabel={`${comboAttr.toUpperCase()} save`}
-            saveBase={comboAttr === "physical" ? physMod : comboAttr === "mental" ? mentMod : magiMod}
+            saveBase={
+              comboAttr === "physical"
+                ? (baseAttributes?.physical ?? physical)
+                : comboAttr === "mental"
+                  ? (baseAttributes?.mental ?? mental)
+                  : (baseAttributes?.magical ?? magical)
+            }
             pb={pb}
             isProf={proficientAttribute?.toLowerCase() === comboAttr}
             resolver={resolver_}
@@ -1631,10 +1643,12 @@ function EncumbranceFormulaModal({
 
   const sizeCap = SIZE_CAPACITY[characterSize];
   const physBonus = physicalMod * 5;
-  // Item bonuses default to 0 in v25 (not plumbed through
-  // yet — session H will wire it).
-  const itemBonus = 0;
-  const capacity = sizeCap + physBonus + itemBonus;
+  // Use the engine-computed capacity (encumbrance.capacity)
+  // which includes ALL primitive bonuses (Backpack, etc.).
+  // The breakdown below is a formula reference — the total
+  // at the top always matches what the card shows.
+  const capacity = encumbrance.capacity;
+  const primitiveBonus = capacity - sizeCap - physBonus;
   const load = encumbrance.load;
 
   const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
@@ -1696,7 +1710,7 @@ function EncumbranceFormulaModal({
             </div>
             <p className="rounded-md border border-dashed border-border bg-background/50 p-2 font-mono text-[11px] text-muted-foreground">
               {sizeCap} (size: {characterSize}) + {physBonus} (Physical {fmt(physicalMod)} × 5)
-              {itemBonus !== 0 && ` + ${itemBonus} (items)`} = {fmt(capacity)}
+              {primitiveBonus !== 0 ? ` + ${primitiveBonus} (primitives)` : ""} = {fmt(capacity)}
             </p>
           </section>
 

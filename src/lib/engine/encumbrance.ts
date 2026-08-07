@@ -27,6 +27,19 @@ export const SIZE_CAPACITY: Record<CharacterSize, number> = {
 };
 
 /**
+ * Phase 8.I i3 (Mashu): base walking speed per character size.
+ * Swim/climb default to half this value (rounded up).
+ */
+export const SIZE_BASE_SPEED: Record<CharacterSize, number> = {
+  TINY: 15,
+  SMALL: 25,
+  MEDIUM: 30,
+  LARGE: 40,
+  HUGE: 60,
+  GARGANTUAN: 90,
+};
+
+/**
  * SIZE_LOAD — Phase 8.5 / Session H6 (Mashu 2026-08-03)
  *
  * The number of pieces of a given size that fit in ONE
