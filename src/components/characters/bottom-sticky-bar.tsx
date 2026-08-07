@@ -149,6 +149,8 @@ type ComboKind =
   | "practice-detail"
   | "pb"
   | "encumbrance"
+  | "speed"
+  | "behavior"
   | null;
 
 export function BottomStickyBar({
@@ -181,6 +183,7 @@ export function BottomStickyBar({
   const [expanded, setExpanded] = useState(false);
   const [combo, setCombo] = useState<ComboKind>(null);
   const [comboAttr, setComboAttr] = useState<"physical" | "mental" | "magical">("physical");
+  const [comboBehaviorKey, setComboBehaviorKey] = useState<string>("");
   const [comboPractice, setComboPractice] = useState<{
     name: string;
     attribute: "physical" | "mental" | "magical";
@@ -262,6 +265,11 @@ export function BottomStickyBar({
     [],
   );
   const openEncumbranceModal = useCallback(() => setCombo("encumbrance"), []);
+  const openSpeedModal = useCallback(() => setCombo("speed"), []);
+  const openBehaviorModal = useCallback((key: string) => {
+    setComboBehaviorKey(key);
+    setCombo("behavior");
+  }, []);
 
   // Phase 8.4 v8 (Mashu 2026-07-28): per-practice modal —
   // each individual practice row opens a modal showing
@@ -671,14 +679,9 @@ export function BottomStickyBar({
 
           {/* Phase 8.I i2 finish (Mashu 2026-08-06): speed +
               carry capacity cards from primitive walks. */}
+          {/* Speed card only — carry/load handled by LoadCell above. */}
           <div className="mt-2 rounded-md border border-border bg-card overflow-hidden">
-            <div className="grid grid-cols-2 divide-x divide-border">
-              <SpeedCard speedByType={speedByType} />
-              <CarryCard
-                load={encumbrance.load}
-                capacity={carryCapacity}
-              />
-            </div>
+            <SpeedCard speedByType={speedByType} onClick={openSpeedModal} />
           </div>
 
           {/* Phase 8.I i2 finish: damage modifier cards
@@ -727,7 +730,7 @@ export function BottomStickyBar({
               </p>
               <div className="mt-1 space-y-1">
                 {behaviorVariables.map((bv) => (
-                  <BehaviorVariableRow key={bv.key} bv={bv} />
+                  <BehaviorVariableRow key={bv.key} bv={bv} onClick={() => openBehaviorModal(bv.key)} />
                 ))}
               </div>
             </div>
@@ -878,6 +881,36 @@ export function BottomStickyBar({
             }}
             onClose={() => setCombo(null)}
           />
+        ) : combo === "speed" ? (
+          <FormulaModal
+            title="Walking Speed"
+            subtitle="base speed + primitive contributions"
+            total={speedByType["WALKING_SPEED"] ?? 0}
+            formula={`Speed = Base (30 ft) + primitive contributions (speed.walking)`}
+            breakdown={[
+              { label: "Base Speed", value: 30 },
+              { label: `WALKING_SPEED primitive total`, value: (resolver_?.totals["speed.walking"] ?? 0) },
+            ]}
+            onClose={() => setCombo(null)}
+          />
+        ) : combo === "behavior" ? (
+          <FormulaModal
+            title="Behavior Variable"
+            subtitle="primitive contributions to a behavior variable"
+            total={
+              behaviorVariables.find((b) => b.key === comboBehaviorKey)?.value ?? 0
+            }
+            formula="Behavior value = primitive `set` ops targeting behavior"
+            breakdown={behaviorVariables
+              .filter((b) => b.key === comboBehaviorKey)
+              .flatMap((b) =>
+                b.contributions.map((c) => ({
+                  label: c.primitiveName,
+                  value: c.delta,
+                })),
+              )}
+            onClose={() => setCombo(null)}
+          />
         ) : combo === "encumbrance" ? (
           <EncumbranceFormulaModal
             encumbrance={encumbrance}
@@ -946,15 +979,17 @@ function EquipSlotsPanel({
 }
 
 // =============================================================================
-// Phase 8.I i2 finish (Mashu 2026-08-06) — SpeedCard, CarryCard,
+// Phase 8.I i2 finish (Mashu 2026-08-06) — SpeedCard, DamageModifierRow,
 // DamageModifierRow. Small cards showing the i2.7 + i2 finish
 // primitives contributions to the character sheet.
 // =============================================================================
 
 function SpeedCard({
   speedByType,
+  onClick,
 }: {
   speedByType: Readonly<Record<string, number>>;
+  onClick: () => void;
 }) {
   const walking = speedByType["WALKING_SPEED"] ?? 0;
   const otherLocomotions: Array<{ key: string; value: number }> = [];
@@ -963,7 +998,12 @@ function SpeedCard({
     if (value > 0) otherLocomotions.push({ key, value });
   }
   return (
-    <div className="bg-card p-3">
+    <button
+      type="button"
+      onClick={onClick}
+      className="block w-full bg-card p-3 text-left transition-colors hover:bg-secondary/30"
+      title="Show walking speed formula"
+    >
       <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
         Speed
       </p>
@@ -987,46 +1027,7 @@ function SpeedCard({
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function CarryCard({
-  load,
-  capacity,
-}: {
-  load: number;
-  capacity: number;
-}) {
-  const percent =
-    capacity > 0 ? Math.round((load / capacity) * 100) : 0;
-  return (
-    <div className="bg-card p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        Carry
-      </p>
-      <p className="mt-1 font-mono text-2xl font-bold tabular-nums">
-        {load}
-        <span className="ml-1 text-sm font-normal text-muted-foreground">
-          / {capacity}
-        </span>
-      </p>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
-        <div
-          className={`h-full rounded-full transition-all ${
-            percent > 100
-              ? "bg-destructive"
-              : percent > 75
-                ? "bg-amber-500"
-                : "bg-primary"
-          }`}
-          style={{ width: `${Math.min(100, percent)}%` }}
-        />
-      </div>
-      <p className="mt-1 text-[10px] text-muted-foreground">
-        {percent}% capacity
-      </p>
-    </div>
+    </button>
   );
 }
 
@@ -1060,6 +1061,7 @@ function DamageModifierRow({
 
 function BehaviorVariableRow({
   bv,
+  onClick,
 }: {
   readonly bv: {
     readonly key: string;
@@ -1070,6 +1072,7 @@ function BehaviorVariableRow({
       readonly delta: number;
     }>;
   };
+  onClick: () => void;
 }) {
   // Format the key for display: snake_case -> Title Case
   const displayKey = bv.key
@@ -1083,7 +1086,12 @@ function BehaviorVariableRow({
         ? "text-teal-700 dark:text-teal-300"
         : "text-destructive";
   return (
-    <div className="flex items-baseline justify-between gap-2">
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-baseline justify-between gap-2 text-left transition-colors hover:bg-secondary/30"
+      title={`Show ${displayKey} provenance`}
+    >
       <span className="text-[11px] font-medium text-foreground">
         {displayKey}
       </span>
@@ -1095,7 +1103,7 @@ function BehaviorVariableRow({
       >
         {bv.value > 0 ? `+${bv.value}` : bv.value}
       </span>
-    </div>
+    </button>
   );
 }
 
