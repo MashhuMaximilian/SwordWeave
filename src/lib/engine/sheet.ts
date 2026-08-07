@@ -32,6 +32,7 @@ import { resolveValue, isTypedToken, type ResolveContext } from "./runtime-resol
 import { evaluateCondition, type ConditionContext } from "./condition-evaluator";
 import { sumPrimitiveContributions } from "./primitive-walk";
 import { computeAllSavingThrows, computeAllSaveDCs } from "./practices";
+import { SIZE_CAPACITY } from "./encumbrance";
 import {
   BUAccount,
   BUBalance,
@@ -209,6 +210,20 @@ export type CharacterSheet = {
   // Phase 8.I i2 finish (Mashu 2026-08-06): character
   // attributes including primitive modifier contributions.
   readonly attributes: Attributes;
+  // Phase 8.I i2 finish: speed per locomotion type
+  // (WALKING/CLIMBING/SWIMMING/FLYING/BURROWING). Default
+  // 30 walking, 0 for the others; modified by primitives
+  // targeting speed.<locomotion>.
+  readonly speedByType: Readonly<Record<string, number>>;
+  // Phase 8.I i2 finish: carry capacity = size_capacity +
+  // (physical modifier × 5) + primitive contributions.
+  readonly carryCapacity: number;
+  // Phase 8.I i2 finish: total load = item-derived load +
+  // primitive load contributions (set/add ops).
+  readonly load: number;
+  // Phase 8.I i2 finish: equip slots used = item-derived
+  // slots + primitive equip_slot contributions.
+  readonly equipSlotsUsed: number;
 };
 
 /**
@@ -562,6 +577,58 @@ const encumbrance = computeEncumbrance(
   encumbranceItems,
 );
 
+// Phase 8.I i2 finish (Mashu 2026-08-06) - speed walks per locomotion.
+const SPEED_DEFAULTS: Record<string, number> = {
+  WALKING_SPEED: 30,
+  CLIMBING_SPEED: 0,
+  SWIMMING_SPEED: 0,
+  FLYING_SPEED: 0,
+  BURROWING_SPEED: 0,
+};
+const speedByType: Record<string, number> = {};
+for (const locomotion of Object.keys(SPEED_DEFAULTS)) {
+  const lower = locomotion.toLowerCase().replace("_speed", "");
+  const primitiveSum = sumPrimitiveContributions(
+    input.primitiveLinks,
+    "speed",
+    lower,
+    input.conditionContext,
+  );
+  speedByType[locomotion] = (SPEED_DEFAULTS[locomotion] ?? 0) + primitiveSum;
+}
+
+// Phase 8.I i2 finish - carry capacity = SIZE_CAPACITY[size]
+// + (physical × 5) + primitive bonus.
+const charSize = (input.size as CharacterSize) ?? "MEDIUM";
+const baseCarry = SIZE_CAPACITY[charSize] + input.attrPhysical * 5;
+const carryCapacityBonus = sumPrimitiveContributions(
+  input.primitiveLinks,
+  "carry_capacity",
+  null,
+  input.conditionContext,
+);
+const carryCapacity = baseCarry + carryCapacityBonus;
+
+// Load = item-derived + primitive load contributions.
+const itemLoad = encumbrance.load;
+const loadPrimitive = sumPrimitiveContributions(
+  input.primitiveLinks,
+  "load",
+  null,
+  input.conditionContext,
+);
+const loadTotal = itemLoad + loadPrimitive;
+
+// Equip slots = item-derived + primitive equip_slot contributions.
+const slotsUsed = encumbrance.equipSlotsUsed;
+const slotPrimitiveBonus = sumPrimitiveContributions(
+  input.primitiveLinks,
+  "equip_slot",
+  null,
+  input.conditionContext,
+);
+const equipSlotsUsed = slotsUsed + slotPrimitiveBonus;
+
   // Volatility (mirror-vector) — per BU Market canon, each character has a
   // level-based ceiling on how much negative BU they can take. We compute the
   // full BU ledger using the engine helpers and project volatility from it.
@@ -611,6 +678,10 @@ const encumbrance = computeEncumbrance(
     savingThrows,
     saveDCs,
     encumbrance,
+    speedByType,
+    carryCapacity,
+    load: loadTotal,
+    equipSlotsUsed,
     practiceCount: practices.length,
     capabilityCount: input.capabilityLinks.length,
     equippedItemCount: equippedItems.length,

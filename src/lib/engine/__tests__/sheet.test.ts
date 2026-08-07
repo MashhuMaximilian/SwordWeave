@@ -716,3 +716,182 @@ describe("aggregateCharacterSheet — saving throws + save DC (R3-Q1 split)", ()
     expect(sdc?.dc).toBe(14);
   });
 });
+
+
+describe("aggregateCharacterSheet - Wave 2 (speed + carry)", () => {
+  it("speed: walking default = 30 (no primitives)", () => {
+    const sheet = aggregateCharacterSheet(baseInput());
+    expect(sheet.speedByType["WALKING_SPEED"]).toBe(30);
+  });
+
+  it("speed: +10 walking primitive adds to walking speed", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        primitiveLinks: [
+          {
+            primitiveId: 20,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 20,
+              name: "+10 Walking",
+              category: "CHARACTER_SHEET_AUGMENT",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                {
+                  target: "speed.walking",
+                  operation: "add",
+                  value: 10,
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    expect(sheet.speedByType["WALKING_SPEED"]).toBe(40);
+  });
+
+  it("carry_capacity: MEDIUM default = 40 + physical*5", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({ size: "MEDIUM", attrPhysical: 3 }),
+    );
+    // 40 + 3*5 = 55
+    expect(sheet.carryCapacity).toBe(55);
+  });
+
+  it("carry_capacity: +20 primitive adds to base capacity", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        size: "MEDIUM",
+        attrPhysical: 3,
+        primitiveLinks: [
+          {
+            primitiveId: 21,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 21,
+              name: "Backpack",
+              category: "CHARACTER_SHEET_AUGMENT",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                {
+                  target: "carry_capacity",
+                  operation: "add",
+                  value: 20,
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    // (40 + 3*5) + 20 = 75
+    expect(sheet.carryCapacity).toBe(75);
+  });
+
+  it("load: item-derived + primitive load contributions", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        itemLinks: [
+          ...Array.from({ length: 3 }, (_, i) => ({
+            itemId: `item-${i}`,
+            equipped: true,
+            item: {
+              id: `item-${i}`,
+              name: `Medium Item ${i}`,
+              itemType: "ARMOR" as const,
+              rarity: "COMMON" as const,
+              slotCost: 1,
+              isTwoHanded: false,
+              isConsumable: false,
+              buCost: 0,
+              size: "MEDIUM" as const,
+            },
+          })),
+        ],
+        primitiveLinks: [
+          {
+            primitiveId: 22,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 22,
+              name: "Lighten",
+              category: "CHARACTER_SHEET_AUGMENT",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                {
+                  target: "load",
+                  operation: "subtract",
+                  value: 2,
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    // 3 MEDIUM items @ 2 Load each = 6; -2 primitive = 4
+    expect(sheet.load).toBe(4);
+  });
+
+  it("equipSlotsUsed: item slots + primitive equip_slot contributions", () => {
+    const sheet = aggregateCharacterSheet(
+      baseInput({
+        itemLinks: [
+          {
+            itemId: "item-1",
+            equipped: true,
+            item: {
+              id: "item-1",
+              name: "Heavy Item",
+              itemType: "ARMOR" as const,
+              rarity: "COMMON" as const,
+              slotCost: 1,
+              isTwoHanded: false,
+              isConsumable: false,
+              buCost: 0,
+              size: "MEDIUM" as const,
+            },
+          },
+        ],
+        primitiveLinks: [
+          {
+            primitiveId: 23,
+            source: "PERSONAL" as const,
+            acquiredAtLevel: 1,
+            isMirrored: false,
+            primitive: {
+              id: 23,
+              name: "Extra Slot",
+              category: "CHARACTER_SHEET_AUGMENT",
+              buCost: 1,
+              isMirrorable: true,
+              mirrorBuCredit: 1,
+              hardModifiers: [
+                {
+                  target: "equip_slot",
+                  operation: "add",
+                  value: 1,
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    // Item uses 1 slot (MEDIUM × 1); +1 primitive = 2
+    expect(sheet.equipSlotsUsed).toBe(2);
+  });
+});

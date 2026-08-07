@@ -108,20 +108,27 @@ export function walkPrimitiveContributionsForAxis(
       // Match the axis prefix.
       // E.g. axis="attribute" matches targets like "attribute.physical",
       // "attribute.mental", "attribute.magical".
+      // Exact-match (no dot) like target="equip_slot" matches axis="equip_slot"
+      // with subTarget=null (subTarget argument is null = any).
       // The axis comes from either `target` (legacy "attribute.physical")
       // or `targetAxis` + `targetKey` (i2.7 split form).
       let matchedSub: string | null = null;
-      const dotIdx = target.indexOf(".");
-      if (dotIdx > 0) {
-        const candidateAxis = target.slice(0, dotIdx);
-        const candidateSub = target.slice(dotIdx + 1);
-        if (candidateAxis === axis) matchedSub = candidateSub;
+      if (target === axis) {
+        // Exact match (no sub-target). Sub-target axis.
+        matchedSub = "";
+      } else {
+        const dotIdx = target.indexOf(".");
+        if (dotIdx > 0) {
+          const candidateAxis = target.slice(0, dotIdx);
+          const candidateSub = target.slice(dotIdx + 1);
+          if (candidateAxis === axis) matchedSub = candidateSub;
+        }
       }
       if (matchedSub === null && targetAxis === axis && targetKey.length > 0) {
         matchedSub = targetKey;
       }
       if (matchedSub === null) continue;
-      if (subTarget !== null && matchedSub !== subTarget) continue;
+      if (subTarget !== null && matchedSub !== subTarget && matchedSub !== "") continue;
 
       // Operations we sum into numeric contributions.
       let delta = 0;
