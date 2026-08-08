@@ -379,14 +379,17 @@ export function resolveModifiers(
 
       // Phase 8.I i3 (Mashu): condition evaluation + cap toggling.
       // When conditionContext is provided, evaluate the modifier's
-      // condition against it. If it fails, skip the modifier entirely.
-      // When the slot's cap is toggled off, also skip.
+      // condition against it. If it fails, the modifier's VALUE is
+      // suppressed (not applied to totals) but the attribution entry
+      // is still emitted so the modal can show "condition not met".
+      // When the slot's cap is toggled off, skip entirely (no entry).
       const conditionContext = input.conditionContext;
       let conditionActive = true;
+      const hasCondition = !!mod.condition;
       if (conditionContext && mod.condition) {
         conditionActive = evaluateCondition(mod.condition as import("@/types/condition").ModifierCondition, conditionContext);
       }
-      if (!conditionActive) continue;
+      // Cap toggle suppresses the modifier entirely (no attribution).
       if (slot.isToggledOff) continue;
 
       // ---- Behavior variable collection (Pass 1) ---------------
@@ -408,8 +411,8 @@ export function resolveModifiers(
           preMirrorValue,
           tags: equationTags,
           scopedTargets: scopedValuesList.map((v) => `behavior.${v}`),
-          conditionActive: true,
-          hasCondition: !!mod.condition,
+          conditionActive,
+          hasCondition,
         });
       } else {
         entries.push({
@@ -420,8 +423,8 @@ export function resolveModifiers(
           preMirrorValue,
           tags: equationTags,
           scopedTargets: scopedValuesList.map((v) => `${target}.${v}`),
-          conditionActive: true,
-          hasCondition: !!mod.condition,
+          conditionActive,
+          hasCondition,
         });
       }
     }
@@ -436,7 +439,7 @@ export function resolveModifiers(
   // scoped form; legacy callers read the raw target.
   // ----------------------------------------------------------------─
   for (const entry of entries) {
-    const { slot, mod, target, effectiveValue, preMirrorValue, tags, scopedTargets, hasCondition } = entry;
+    const { slot, mod, target, effectiveValue, preMirrorValue, tags, scopedTargets, hasCondition, conditionActive } = entry;
 
     if (!Number.isFinite(effectiveValue)) continue;
 
@@ -455,11 +458,11 @@ export function resolveModifiers(
         value: effectiveValue,
         preMirrorValue,
         tags,
-        // Phase 8.I i3: condition was already evaluated above (if
-        // conditionContext was provided). If we got here, the modifier
-        // is active. Track whether it has a condition for the *
-        // marker on the axis.
-        conditionActive: true,
+        // Phase 8.I i3: condition was already evaluated above.
+        // conditionActive may be false (condition computable but not
+        // met — modifier value suppressed). hasCondition tracks whether
+        // the modifier has a condition for the * marker.
+        conditionActive,
         hasCondition,
         stacking: mod.stacking ?? "stack",
         provenance: {
@@ -478,6 +481,12 @@ export function resolveModifiers(
         effectiveValue,
       );
       totals[t] = numericOr(nextBase, previousBase);
+      // Phase 8.I i3: if the modifier's condition was not active,
+      // suppress its value from the totals (undo applyOperation).
+      // byTarget attribution remains for the modal.
+      if (!conditionActive) {
+        totals[t] = previousBase;
+      }
     }
   }
 
