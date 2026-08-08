@@ -55,13 +55,19 @@ function roundUp(value: number): number {
 }
 
 /** Phase 8.I i3: check whether any contribution to a target carries
- * a condition (hasCondition=true). Returns true if the axis has
- * a condition-gated modifier — the UI shows * to signal this. */
+ * a condition that is either active OR non-computable. The * marker
+ * surfaces when:
+ * - hasCondition=true AND conditionActive=true (condition met, bonus applied)
+ * - hasCondition=true AND conditionComputable=false (can't evaluate at
+ *   sheet time → bonus included with * for table-side resolution)
+ * Computable-false conditions do NOT trigger * (bonus is suppressed). */
 function hasConditionalMarker(
   byTarget: ResolvedModifiers["byTarget"],
   target: string,
 ): boolean {
-  return (byTarget[target] ?? []).some((c) => c.hasCondition === true);
+  return (byTarget[target] ?? []).some(
+    (c) => c.hasCondition === true && (c.conditionActive === true || c.conditionComputable === false),
+  );
 }
 
 /** Phase 8.I i3: count advantage/disadvantage stacks from
@@ -313,14 +319,16 @@ export function BottomStickyBar({
   const primaryDc = 5 + pb + primaryMod + primarySaveDelta;
 
   // Phase 8.5 / Session H6 (Mashu 2026-08-03): Attack Bonus card
-  // mirrors the Save DC card. Default attribute is PHYSICAL (we
-  // don't track weapon/spell selection yet — that's a future phase).
-  // Formula: Attack Bonus = PB + Physical mod + primitive bonuses
-  // keyed by attack_bonus.physical in the resolver.
-  const physicalAttackBonus =
+  // mirrors the Save DC card. Attack bonus scales with the character's
+  // PROFICIENT attribute, not always PHYSICAL — a MENTAL-proficient
+  // character (e.g. wizard casting cantrips) should see their
+  // Mental mod in the attack formula, not Physical.
+  // Formula: Attack Bonus = PB + PrimaryAttribute mod + primitive bonuses
+  // keyed by attack_bonus.<attr> in the resolver.
+  const primaryAttackBonus =
     pb +
-    physMod +
-    (resolver?.totals["attack_bonus.physical"] ?? 0);
+    primaryMod +
+    (resolver?.totals[`attack_bonus.${primaryAttr}`] ?? 0);
 
   const PRACTICE_ATTR_LABEL: Record<"PHYSICAL" | "MENTAL" | "MAGICAL", string> = {
     PHYSICAL: "Physical",
@@ -480,7 +488,7 @@ export function BottomStickyBar({
                 ATK
               </span>
               <span className="font-bold tabular-nums text-teal-700 dark:text-teal-200">
-                {fmt(physicalAttackBonus)}
+                {fmt(primaryAttackBonus)}
               </span>
             </div>
           </div>
@@ -650,7 +658,7 @@ export function BottomStickyBar({
                   </p>
                 </div>
                 <span className="font-mono text-2xl font-bold tabular-nums leading-none text-teal-700 dark:text-teal-200">
-                  {fmt(physicalAttackBonus)}
+                  {fmt(primaryAttackBonus)}
                 </span>
               </div>
             </button>
@@ -961,7 +969,7 @@ export function BottomStickyBar({
           <FormulaModal
             title="Attack Bonus"
             subtitle="PHYSICAL — to-hit roll"
-            total={physicalAttackBonus}
+            total={primaryAttackBonus}
             formula="Attack Bonus = Proficiency Bonus + Physical modifier + attack_bonus.physical primitives"
             breakdown={[
               { label: "Proficiency Bonus", value: pb },
@@ -970,7 +978,7 @@ export function BottomStickyBar({
                 label: "Primitive bonuses (attack_bonus.physical)",
                 value: resolver?.totals["attack_bonus.physical"] ?? 0,
               },
-              { label: "= Attack Bonus", value: physicalAttackBonus },
+              { label: "= Attack Bonus", value: primaryAttackBonus },
             ]}
             info={{
               title: "Scope: PHYSICAL only (v1)",

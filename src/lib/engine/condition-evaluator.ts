@@ -278,6 +278,51 @@ export const ALL_FLAGS = [
  * If the axis is missing (e.g. self predicate but target is the only
  * axis provided), the predicate fails-closed (returns false).
  */
+/**
+ * Phase 8.I i3: determine whether a condition can be fully evaluated
+ * given the available context. Returns false (non-computable) when
+ * the condition references axes (target, scene) that are absent from
+ * the context — these conditions need table-side resolution.
+ *
+ * Non-computable conditions are still included in sheet totals
+ * (with a * marker) because we can't determine if they'd suppress.
+ */
+export function isConditionComputable(
+  condition: ModifierCondition | null | undefined,
+  ctx: ConditionContext,
+): boolean {
+  if (condition === null || condition === undefined) return true;
+  switch (condition.kind) {
+    case "narrative":
+      return true; // narrative = GM hint, never blocks
+    case "preset":
+      // Legacy presets reference self/character state only
+      return true;
+    case "tags":
+      // Tags can reference self, target, or scene axes
+      return (
+        ctx.character !== undefined &&
+        // If tags reference target/scene axes, need those in context
+        (!condition.customTags || condition.customTags.length === 0 ||
+          condition.customTags.every((t) => !t.startsWith("target") && !t.startsWith("scene")))
+      );
+    case "compound":
+      // Check each token's axis against available context
+      if (!condition.tokens || condition.tokens.length === 0) return true;
+      return condition.tokens.every((token) => {
+        const parts = token.split("|");
+        if (parts.length < 2) return true;
+        const axisRef = parts[0]; // e.g. "self", "target", "scene"
+        if (axisRef === "target" && ctx.target === undefined) return false;
+        if (axisRef === "scene" && ctx.scene === undefined) return false;
+        if (axisRef === "self" && ctx.character === undefined) return false;
+        return true;
+      });
+    default:
+      return true;
+  }
+}
+
 export function evaluateCondition(
   condition: ModifierCondition | null | undefined,
   ctx: ConditionContext,

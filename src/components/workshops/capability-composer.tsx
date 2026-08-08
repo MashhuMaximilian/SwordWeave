@@ -159,7 +159,6 @@ export function CapabilityComposer({
         type: editingCapability.type,
         sourceType: editingCapability.sourceType,
         verboseDescription: editingCapability.verboseDescription,
-        sourceOrigin: editingCapability.sourceOrigin ?? "",
         tags: editingCapability.tags.join(", "),
         isPublic: editingCapability.isPublic,
       }
@@ -168,7 +167,6 @@ export function CapabilityComposer({
         type: "ACTIVE",
         sourceType: "PHYSICAL",
         verboseDescription: "",
-        sourceOrigin: "",
         tags: "",
         isPublic: false,
       };
@@ -281,7 +279,6 @@ export function CapabilityComposer({
         type: editingCapability.type,
         sourceType: editingCapability.sourceType,
         verboseDescription: editingCapability.verboseDescription,
-        sourceOrigin: editingCapability.sourceOrigin ?? "",
         tags: editingCapability.tags.join(", "),
         isPublic: editingCapability.isPublic,
       });
@@ -292,7 +289,6 @@ export function CapabilityComposer({
         type: "ACTIVE",
         sourceType: "PHYSICAL",
         verboseDescription: "",
-        sourceOrigin: "",
         tags: "",
         isPublic: false,
       });
@@ -327,7 +323,6 @@ export function CapabilityComposer({
                 type: form.type,
                 sourceType: form.sourceType,
                 verboseDescription: form.verboseDescription.trim(),
-                sourceOrigin: form.sourceOrigin.trim() || null,
                 tags: form.tags
                   .split(",")
                   .map((t) => t.trim())
@@ -367,7 +362,6 @@ export function CapabilityComposer({
             type: form.type,
             sourceType: form.sourceType,
             verboseDescription: form.verboseDescription.trim(),
-            sourceOrigin: form.sourceOrigin.trim() || null,
             tags: form.tags
               .split(",")
               .map((t) => t.trim())
@@ -563,7 +557,7 @@ export function CapabilityComposer({
             </h2>
             {isEditMode && editingCapability && (
               <p className="mt-1 text-xs text-muted-foreground">
-                Editing "{editingCapability.name}" ({editingCapability.sourceOrigin || "original"})
+                Editing "{editingCapability.name}" ({editingCapability.tags.length > 0 ? editingCapability.tags.join(", ") : "original"})
               </p>
             )}
 
@@ -639,38 +633,19 @@ export function CapabilityComposer({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold uppercase text-muted-foreground">
-                    Source Origin
-                  </label>
-                  <input
-                    type="text"
-                    value={form.sourceOrigin}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        sourceOrigin: e.target.value,
-                      }))
-                    }
-                    placeholder="optional"
-                    className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold uppercase text-muted-foreground">
-                    Tags (comma-separated)
-                  </label>
-                  <input
-                    type="text"
-                    value={form.tags}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, tags: e.target.value }))
-                    }
-                    placeholder="combat, fire, aoe"
-                    className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                  />
-                </div>
+              <div>
+                <label className="text-xs font-semibold uppercase text-muted-foreground">
+                  Tags (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  value={form.tags}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, tags: e.target.value }))
+                  }
+                  placeholder="combat, fire, aoe"
+                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                />
               </div>
 
               <div className="flex items-center gap-2">

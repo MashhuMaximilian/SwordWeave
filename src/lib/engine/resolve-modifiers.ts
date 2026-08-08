@@ -70,6 +70,7 @@ import {
 import { resolveEquation } from "./equation-resolver";
 import {
   evaluateCondition,
+  isConditionComputable,
   type ConditionContext,
 } from "./condition-evaluator";
 
@@ -147,6 +148,10 @@ export interface ModifierContribution {
    *  can have a condition that's currently true (active=true,
    *  hasCondition=true). */
   readonly hasCondition: boolean;
+  /** Phase 8.I i3e: whether the condition is computable given the
+   * available context. Non-computable (true) means the bonus is
+   * included with a * marker. */
+  readonly conditionComputable: boolean;
   readonly stacking: HardModifier["stacking"];
   readonly provenance: {
     readonly heritageName: string | null;
@@ -276,6 +281,7 @@ export function resolveModifiers(
     readonly scopedTargets: readonly string[];
     readonly hasCondition: boolean;
     readonly conditionActive: boolean;
+    readonly conditionComputable: boolean;
   }
   const entries: PassEntry[] = [];
 
@@ -386,8 +392,16 @@ export function resolveModifiers(
       const conditionContext = input.conditionContext;
       let conditionActive = true;
       const hasCondition = !!mod.condition;
+      // i3e: distinguish computable vs non-computable conditions.
+      // - Computable + true → include (active)
+      // - Computable + false → suppress value, keep attribution
+      // - Non-computable → include + show * (can't resolve at sheet time)
+      let conditionComputable = true;
       if (conditionContext && mod.condition) {
-        conditionActive = evaluateCondition(mod.condition as import("@/types/condition").ModifierCondition, conditionContext);
+        conditionComputable = isConditionComputable(mod.condition as import("@/types/condition").ModifierCondition, conditionContext);
+        conditionActive = conditionComputable
+          ? evaluateCondition(mod.condition as import("@/types/condition").ModifierCondition, conditionContext)
+          : true; // non-computable → include the bonus
       }
       // Cap toggle suppresses the modifier entirely (no attribution).
       if (slot.isToggledOff) continue;
@@ -413,6 +427,7 @@ export function resolveModifiers(
           scopedTargets: scopedValuesList.map((v) => `behavior.${v}`),
           conditionActive,
           hasCondition,
+          conditionComputable,
         });
       } else {
         entries.push({
@@ -425,6 +440,7 @@ export function resolveModifiers(
           scopedTargets: scopedValuesList.map((v) => `${target}.${v}`),
           conditionActive,
           hasCondition,
+          conditionComputable,
         });
       }
     }
@@ -439,7 +455,7 @@ export function resolveModifiers(
   // scoped form; legacy callers read the raw target.
   // ----------------------------------------------------------------─
   for (const entry of entries) {
-    const { slot, mod, target, effectiveValue, preMirrorValue, tags, scopedTargets, hasCondition, conditionActive } = entry;
+    const { slot, mod, target, effectiveValue, preMirrorValue, tags, scopedTargets, hasCondition, conditionActive, conditionComputable } = entry;
 
     if (!Number.isFinite(effectiveValue)) continue;
 
@@ -464,6 +480,7 @@ export function resolveModifiers(
         // the modifier has a condition for the * marker.
         conditionActive,
         hasCondition,
+        conditionComputable,
         stacking: mod.stacking ?? "stack",
         provenance: {
           heritageName: sourceNames?.get(slot.primitiveId)?.heritageName ?? null,
