@@ -326,6 +326,7 @@ export function BottomStickyBar({
   // Formula: Attack Bonus = PB + PrimaryAttribute mod + primitive bonuses
   // keyed by attack_bonus.<attr> in the resolver.
   const atkFloor = findFloor(resolver?.byTarget ?? {}, `attack_bonus.${primaryAttr}`);
+  const atkCeiling = findCeiling(resolver?.byTarget ?? {}, `attack_bonus.${primaryAttr}`);
   const primaryAttackBonus =
     pb +
     primaryMod +
