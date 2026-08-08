@@ -149,3 +149,18 @@ async function main() {
 }
 
 main().catch(console.error);
+
+// Quick debug after all inserts
+async function debugData() {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const caps = await pool.query("SELECT id, name, type, source_type, verbose_description FROM capabilities ORDER BY created_at DESC LIMIT 5");
+  console.log("\n=== Capabilities in DB ===");
+  caps.rows.forEach((r: any) => console.log(JSON.stringify(r)));
+  
+  const links = await pool.query("SELECT cc.*, c.name as cap_name FROM character_capabilities cc JOIN capabilities c ON cc.capability_id = c.id ORDER BY cc.created_at DESC LIMIT 10");
+  console.log("\n=== Capability Links ===");
+  links.rows.forEach((r: any) => console.log(JSON.stringify(r)));
+  await pool.end();
+}
+
+debugData().catch(console.error);
