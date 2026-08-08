@@ -54,6 +54,16 @@ function roundUp(value: number): number {
   return Math.floor(value);
 }
 
+/** Phase 8.I i3: check whether any contribution to a target carries
+ * a condition (hasCondition=true). Returns true if the axis has
+ * a condition-gated modifier — the UI shows * to signal this. */
+function hasConditionalMarker(
+  byTarget: ResolvedModifiers["byTarget"],
+  target: string,
+): boolean {
+  return (byTarget[target] ?? []).some((c) => c.hasCondition === true);
+}
+
 /**
  * Reverse PB → level. PB starts at 2 and adds 1 every 4 levels.
  * Returns the lowest level consistent with this PB. Used for
@@ -330,11 +340,8 @@ export function BottomStickyBar({
   const practiceTarget = `practice.${comboAttr}`;
   const vitalityTarget = "max_vitality";
 
-  // Phase 8.I i3: check whether any contribution to a target carries
-  // a condition (hasCondition=true). The * marker surfaces this on
-  // axis cards so players know a modifier is condition-gated.
-  const hasConditional = (target: string): boolean =>
-    (byTarget[target] ?? []).some((c) => c.hasCondition === true);
+  // Phase 8.I i3: * marker for conditional modifiers — see
+  // hasConditionalMarker() module-level helper.
 
   return (
     <div
@@ -523,7 +530,7 @@ export function BottomStickyBar({
                     </span>
                     <span className="mt-1 flex items-center justify-center gap-0.5 font-mono text-base font-bold tabular-nums leading-none">
                       {fmt(m)}
-                      {hasConditional(`attribute.${attr}`) && (
+                      {hasConditionalMarker(byTarget, `attribute.${attr}`) && (
                         <span className="text-xs text-amber-500" title="Conditional modifier">*</span>
                       )}
                     </span>
@@ -602,6 +609,9 @@ export function BottomStickyBar({
                 </div>
                 <span className="font-mono text-2xl font-bold tabular-nums leading-none text-teal-700 dark:text-teal-200">
                   {primaryDc}
+                  {hasConditionalMarker(byTarget, dcTarget) && (
+                    <span className="ml-1 text-sm text-amber-500" title="Conditional modifier">*</span>
+                  )}
                 </span>
               </div>
             </button>
@@ -665,13 +675,16 @@ export function BottomStickyBar({
                                   {p.name}
                                 </span>
                                 <span
-                                  className={`shrink-0 font-mono text-xs font-semibold tabular-nums ${
+                                  className={`flex items-center gap-0.5 shrink-0 font-mono text-xs font-semibold tabular-nums ${
                                     isProf
                                       ? "text-teal-700 dark:text-teal-200"
                                       : "text-foreground"
                                   }`}
                                 >
                                   {fmt(p.total)}
+                                  {hasConditionalMarker(byTarget, `practice.${p.attribute.toLowerCase()}`) && (
+                                    <span className="text-amber-500" title="Conditional modifier">*</span>
+                                  )}
                                 </span>
                               </button>
                             </li>
@@ -1384,6 +1397,8 @@ function ModSaveProvenanceModal({
 
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
           <FormulaModalSection
+            target={attrTarget}
+            resolver={resolver}
             title={attrLabel}
             total={attrTotal}
             formula={`${attrLabel} = base attribute value + primitive contributions`}
@@ -1395,6 +1410,8 @@ function ModSaveProvenanceModal({
           />
 
           <FormulaModalSection
+            target={saveTarget}
+            resolver={resolver}
             title={saveLabel}
             total={saveTotal}
             formula={`${saveLabel} = ${attrLabel} + primitive save contributions + PB (if proficient)`}
@@ -1439,12 +1456,16 @@ function FormulaModalSection({
   formula,
   breakdown,
   fallbackMessage,
+  target,
+  resolver,
 }: {
   title: string;
   total: number;
   formula: string;
   breakdown: ReadonlyArray<FormulaStep>;
   fallbackMessage: string;
+  target?: string;
+  resolver: ResolvedModifiers;
 }) {
   const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
   return (
@@ -1455,6 +1476,9 @@ function FormulaModalSection({
         </span>
         <span className="font-mono text-xl font-bold tabular-nums">
           {fmt(total)}
+          {target && hasConditionalMarker(resolver.byTarget, target) && (
+            <span className="ml-1 text-xs text-amber-500" title="Conditional modifier">*</span>
+          )}
         </span>
       </div>
       <p className="mb-2 rounded-md border border-border bg-background p-2 font-mono text-xs leading-relaxed text-foreground">
@@ -1643,6 +1667,9 @@ function PracticeDetailModal({
               </span>
               <span className="font-mono text-xl font-bold tabular-nums">
                 {fmt(practice.total)}
+                {hasConditionalMarker(byTarget, practiceTarget) && (
+                  <span className="ml-1 text-xs text-amber-500" title="Conditional modifier">*</span>
+                )}
               </span>
             </div>
             <p className="mb-2 rounded-md border border-border bg-background p-2 font-mono text-xs leading-relaxed text-foreground">
@@ -1660,6 +1687,9 @@ function PracticeDetailModal({
                 </>
               )}
               = {fmt(practice.total)}
+              {hasConditionalMarker(byTarget, practiceTarget) && (
+                <span className="ml-1 text-xs text-amber-500" title="Conditional modifier">*</span>
+              )}
             </p>
           </section>
 
