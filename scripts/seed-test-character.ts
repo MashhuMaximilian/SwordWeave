@@ -121,15 +121,15 @@ const PRIMITIVES: PrimitiveSpec[] = [
       {
         target: "skill_practice_check",
         operation: "add",
-        // 2 * pb as an Operand[] (i2.7d equation mode storage).
-        value: [
-          { op: "+", value: { kind: "number", value: 2 } },
-          { op: "*", value: { kind: "derived", which: "pb" } },
-        ],
+        value: { kind: "derived", which: "pb" },
         metadata: { targetScope: { layer: "PRACTICE", values: ["FIELDCRAFT"] } },
+        condition: {
+          kind: "compound",
+          tokens: ["self:flag|proficient_in(fieldcraft)"],
+        },
       },
     ],
-    description: "Expertise — adds 2*PB (i.e. +PB on top of prof).",
+    description: "Expertise — +PB on top of proficiency, gated by proficient_in(fieldcraft).",
   },
   {
     name: "Vitality Buff",
