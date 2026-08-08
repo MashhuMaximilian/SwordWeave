@@ -479,6 +479,7 @@ export default async function CharacterSheetPage({
         originHeritageId: l.originHeritageId ?? null,
         originCapabilityId: l.originCapabilityId ?? null,
         originEffectId: l.originEffectId ?? null,
+        isToggledOff: (l as any).isToggledOff ?? false,
         primitive: {
           id: l.primitive.id,
           name: l.primitive.name,
@@ -502,6 +503,7 @@ export default async function CharacterSheetPage({
           hardModifiers: l.primitive.hardModifiers ?? [],
         },
       }))}
+      conditionContext={conditionContext}
       capabilityLinks={row.capabilityLinks.map((l) => {
         // Phase 8.4 v5 (Mashu 2026-07-28): capability.effectLinks
         // is joined from the API but the TS inference for

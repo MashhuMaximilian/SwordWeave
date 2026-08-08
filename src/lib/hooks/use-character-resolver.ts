@@ -25,6 +25,7 @@ import {
   type ResolvedPrimitiveSlot,
   resolveModifiers,
 } from "@/lib/engine/resolve-modifiers";
+import type { ConditionContext } from "@/lib/engine/condition-evaluator";
 
 // =============================================================================
 // Public types
@@ -46,6 +47,7 @@ export interface UseCharacterResolverInput {
     originHeritageId: string | null;
     originCapabilityId: string | null;
     originEffectId: string | null;
+    isToggledOff: boolean;
     primitive: {
       id: number;
       name: string;
@@ -55,6 +57,8 @@ export interface UseCharacterResolverInput {
       hardModifiers: readonly unknown[];
     };
   }>;
+  /** Phase 8.I i3: optional runtime context for condition evaluation. */
+  conditionContext?: ConditionContext | null;
   /**
    * Optional lookup for provenance display. Maps primitiveId
    * → { heritageName, capabilityName, effectName }. Used to
@@ -102,6 +106,7 @@ export function useCharacterResolver(
       originHeritageId: link.originHeritageId,
       originCapabilityId: link.originCapabilityId,
       originEffectId: link.originEffectId,
+      isToggledOff: link.isToggledOff ?? false,
     }));
 
     const resolverInput: ResolvedCharacterInput = {
@@ -111,6 +116,7 @@ export function useCharacterResolver(
       proficientAttribute: input.proficientAttribute,
       attributes: input.attributes,
       slots,
+      conditionContext: input.conditionContext ?? null,
     };
 
     const r = resolveModifiers(resolverInput, input.sourceNames);

@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { DetailModal } from "@/components/ui/detail-modal";
 import type { HardModifier } from "@/types/swordweave";
+import type { ConditionContext } from "@/lib/engine/condition-evaluator";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
 import { OriginBadge } from "@/components/characters/origin-badge";
@@ -109,6 +110,7 @@ type SheetPrimitiveLink = {
   originHeritageId: string | null;
   originCapabilityId: string | null;
   originEffectId: string | null;
+  isToggledOff: boolean;
   primitive: {
     id: number;
     name: string;
@@ -342,6 +344,9 @@ export type CharacterSheetProps = {
     }>;
   };
   primitiveLinks: SheetPrimitiveLink[];
+  /** Phase 8.I i3: runtime condition context for per-modifier
+   *  condition evaluation. */
+  conditionContext?: ConditionContext | null;
   capabilityLinks: SheetCapabilityLink[];
   itemLinks: SheetItemLink[];
   // Phase 8.5 / Session H6 round 7 (Mashu
@@ -472,6 +477,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
       originHeritageId: l.originHeritageId,
       originCapabilityId: l.originCapabilityId,
       originEffectId: l.originEffectId,
+      isToggledOff: l.isToggledOff ?? false,
       primitive: {
         id: l.primitive.id,
         name: l.primitive.name,
@@ -481,6 +487,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         hardModifiers: l.primitive.hardModifiers,
       },
     })),
+    conditionContext: props.conditionContext ?? null,
   });
 
   // Phase 8.1 batch 13.1: lookup maps for resolving the origin chain

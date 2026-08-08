@@ -68,6 +68,10 @@ import {
   type ResolveContext,
 } from "./runtime-resolver";
 import { resolveEquation } from "./equation-resolver";
+import {
+  evaluateCondition,
+  type ConditionContext,
+} from "./condition-evaluator";
 
 // =============================================================================
 // Public types
@@ -92,6 +96,9 @@ export interface ResolvedPrimitiveSlot {
   readonly originHeritageId: string | null;
   readonly originCapabilityId: string | null;
   readonly originEffectId: string | null;
+  /** Phase 8.I i3 (Mashu): if true, this cap is toggled OFF and its
+   *  modifiers are suppressed in the resolver. */
+  readonly isToggledOff?: boolean;
 }
 
 export interface ResolvedCharacterInput {
@@ -105,6 +112,11 @@ export interface ResolvedCharacterInput {
     readonly magical: number;
   };
   readonly slots: readonly ResolvedPrimitiveSlot[];
+  /** Phase 8.I i3: runtime condition context for evaluating per-modifier
+   *  conditions. When provided, modifiers with conditions that evaluate
+   *  false are suppressed. When omitted (undefined), all modifiers fire
+   *  regardless of condition (pre-i3 behavior). */
+  readonly conditionContext?: ConditionContext | null;
 }
 
 /**
@@ -126,9 +138,15 @@ export interface ModifierContribution {
   /** Phase 8.I i2.5: preserved keyword tags from equations
    *  (e.g. [fire], [piercing]). Empty for non-equation values. */
   readonly tags: readonly string[];
-  /** True if the modifier's condition was satisfied (always true
-   *  for v1 conditions per Phase 7 design — they're hints). */
+  /** True if the modifier's condition was satisfied. When
+   *  conditionContext was not provided, always true (pre-i3
+   *  behavior — all modifiers fire unconditionally). */
   readonly conditionActive: boolean;
+  /** True if the modifier HAS a condition (for the * marker on
+   *  the axis card). Separable from conditionActive: a modifier
+   *  can have a condition that's currently true (active=true,
+   *  hasCondition=true). */
+  readonly hasCondition: boolean;
   readonly stacking: HardModifier["stacking"];
   readonly provenance: {
     readonly heritageName: string | null;
@@ -256,6 +274,8 @@ export function resolveModifiers(
      * `attribute.PHYSICAL` lookup and get the contribution.
      */
     readonly scopedTargets: readonly string[];
+    readonly hasCondition: boolean;
+    readonly conditionActive: boolean;
   }
   const entries: PassEntry[] = [];
 
@@ -357,6 +377,18 @@ export function resolveModifiers(
         }
       }
 
+      // Phase 8.I i3 (Mashu): condition evaluation + cap toggling.
+      // When conditionContext is provided, evaluate the modifier's
+      // condition against it. If it fails, skip the modifier entirely.
+      // When the slot's cap is toggled off, also skip.
+      const conditionContext = input.conditionContext;
+      let conditionActive = true;
+      if (conditionContext && mod.condition) {
+        conditionActive = evaluateCondition(mod.condition as import("@/types/condition").ModifierCondition, conditionContext);
+      }
+      if (!conditionActive) continue;
+      if (slot.isToggledOff) continue;
+
       // ---- Behavior variable collection (Pass 1) ---------------
       if (target === "behavior" && behaviorName !== null) {
         // Apply the op to the existing variable (default 0).
@@ -376,6 +408,8 @@ export function resolveModifiers(
           preMirrorValue,
           tags: equationTags,
           scopedTargets: scopedValuesList.map((v) => `behavior.${v}`),
+          conditionActive: true,
+          hasCondition: !!mod.condition,
         });
       } else {
         entries.push({
@@ -386,6 +420,8 @@ export function resolveModifiers(
           preMirrorValue,
           tags: equationTags,
           scopedTargets: scopedValuesList.map((v) => `${target}.${v}`),
+          conditionActive: true,
+          hasCondition: !!mod.condition,
         });
       }
     }
@@ -400,7 +436,7 @@ export function resolveModifiers(
   // scoped form; legacy callers read the raw target.
   // ----------------------------------------------------------------─
   for (const entry of entries) {
-    const { slot, mod, target, effectiveValue, preMirrorValue, tags, scopedTargets } = entry;
+    const { slot, mod, target, effectiveValue, preMirrorValue, tags, scopedTargets, hasCondition } = entry;
 
     if (!Number.isFinite(effectiveValue)) continue;
 
@@ -419,8 +455,12 @@ export function resolveModifiers(
         value: effectiveValue,
         preMirrorValue,
         tags,
-        // Phase 7 design: v1 conditions are hints, always active.
-        conditionActive: !mod.condition || "kind" in (mod.condition ?? {}),
+        // Phase 8.I i3: condition was already evaluated above (if
+        // conditionContext was provided). If we got here, the modifier
+        // is active. Track whether it has a condition for the *
+        // marker on the axis.
+        conditionActive: true,
+        hasCondition,
         stacking: mod.stacking ?? "stack",
         provenance: {
           heritageName: sourceNames?.get(slot.primitiveId)?.heritageName ?? null,
