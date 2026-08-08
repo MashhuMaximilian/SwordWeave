@@ -968,30 +968,30 @@ export function BottomStickyBar({
           // without rewiring.
           <FormulaModal
             title="Attack Bonus"
-            subtitle="PHYSICAL — to-hit roll"
+            subtitle={`${primaryAttrLabel} — to-hit roll`}
             total={primaryAttackBonus}
-            formula="Attack Bonus = Proficiency Bonus + Physical modifier + attack_bonus.physical primitives"
+            formula={`Attack Bonus = PB + ${primaryAttrLabel} modifier + attack_bonus.${primaryAttr} primitives`}
             breakdown={[
               { label: "Proficiency Bonus", value: pb },
               { label: `Physical modifier`, value: physMod },
               {
-                label: "Primitive bonuses (attack_bonus.physical)",
-                value: resolver?.totals["attack_bonus.physical"] ?? 0,
+                label: `Primitive bonuses (attack_bonus.${primaryAttr})`,
+                value: resolver?.totals[`attack_bonus.${primaryAttr}`] ?? 0,
               },
               { label: "= Attack Bonus", value: primaryAttackBonus },
             ]}
             info={{
-              title: "Scope: PHYSICAL only (v1)",
+              title: "Attribute-Driven Attack Bonus",
               body: (
                 <div>
                   <p className="text-[11px] text-muted-foreground mb-2">
-                    Today the attack bonus card defaults to the
-                    PHYSICAL attribute. Future phases will surface
-                    weapon/spell selection so the same card can drive
-                    MENTAL (ranged/cantrip) and MAGICAL (spell) attacks.
-                    The primitive total{" "}
+                    Attack Bonus scales with your PROFICIENT attribute
+                    ({primaryAttrLabel}). Future phases will surface
+                    weapon/spell selection so the same card can drive a
+                    different attribute for specific attacks. The
+                    primitive total{" "}
                     <span className="font-mono text-foreground">
-                      attack_bonus.physical
+                      {`attack_bonus.${primaryAttr}`}
                     </span>{" "}
                     is read from the resolver when present.
                   </p>
