@@ -166,7 +166,7 @@ function formatVia(c: ModifierContribution): string {
 /** Phase 8.I i3: render the Conditions section of the modal, showing which
  *  contributions are gated and whether their condition is currently active. */
 function renderConditionsSection(breakdown: ReadonlyArray<FormulaStep>): ReactNode {
-  const gated = breakdown.filter((s) => s.contribution);
+  const gated = breakdown.filter((s) => s.contribution && (s.contribution.hasCondition || s.contribution.conditionActive === false));
   if (gated.length === 0) return null;
 
   return (
