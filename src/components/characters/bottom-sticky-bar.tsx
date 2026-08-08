@@ -325,6 +325,7 @@ export function BottomStickyBar({
   // Mental mod in the attack formula, not Physical.
   // Formula: Attack Bonus = PB + PrimaryAttribute mod + primitive bonuses
   // keyed by attack_bonus.<attr> in the resolver.
+  const atkFloor = findFloor(resolver?.byTarget ?? {}, `attack_bonus.${primaryAttr}`);
   const primaryAttackBonus =
     pb +
     primaryMod +
@@ -973,11 +974,14 @@ export function BottomStickyBar({
             formula={`Attack Bonus = PB + ${primaryAttrLabel} modifier + attack_bonus.${primaryAttr} primitives`}
             breakdown={[
               { label: "Proficiency Bonus", value: pb },
-              { label: `Physical modifier`, value: physMod },
+              { label: `${primaryAttrLabel} modifier`, value: primaryMod },
               {
                 label: `Primitive bonuses (attack_bonus.${primaryAttr})`,
                 value: resolver?.totals[`attack_bonus.${primaryAttr}`] ?? 0,
               },
+              ...(atkFloor !== null && primaryAttackBonus < atkFloor
+                ? [{ label: `Minimum to-hit (floor ${atkFloor})`, value: atkFloor }]
+                : []),
               { label: "= Attack Bonus", value: primaryAttackBonus },
             ]}
             info={{
