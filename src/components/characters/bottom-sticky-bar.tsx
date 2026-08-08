@@ -64,6 +64,71 @@ function hasConditionalMarker(
   return (byTarget[target] ?? []).some((c) => c.hasCondition === true);
 }
 
+/** Phase 8.I i3: count advantage/disadvantage stacks from
+ * contributions that used `op: grant` with matching tags. */
+function countStacks(
+  byTarget: ResolvedModifiers["byTarget"],
+  target: string,
+  tag: string,
+): number {
+  return (byTarget[target] ?? []).filter((c) =>
+    c.op === "grant" && c.tags.includes(tag),
+  ).length;
+}
+
+/** Phase 8.I i3: find min/max floor/ceiling values from contributions
+ * that used `op: set` with min/max operations. */
+function findFloor(
+  byTarget: ResolvedModifiers["byTarget"],
+  target: string,
+): number | null {
+  const vals = (byTarget[target] ?? []).filter((c) => c.op === "min" || (c.op === "set" && c.tags.includes("min")));
+  if (vals.length === 0) return null;
+  return Math.min(...vals.map((c) => c.value));
+}
+
+function findCeiling(
+  byTarget: ResolvedModifiers["byTarget"],
+  target: string,
+): number | null {
+  const vals = (byTarget[target] ?? []).filter((c) => c.op === "max" || (c.op === "set" && c.tags.includes("max")));
+  if (vals.length === 0) return null;
+  return Math.max(...vals.map((c) => c.value));
+}
+
+/** Phase 8.I i3: render all axis markers (*, adv/disadv, min/max)
+ * as a compact badge group next to the numeric value. */
+function AxisMarkers({
+  byTarget,
+  target,
+}: {
+  byTarget: ResolvedModifiers["byTarget"];
+  target: string;
+}) {
+  const hasCond = hasConditionalMarker(byTarget, target);
+  const adv = countStacks(byTarget, target, "advantage");
+  const disadv = countStacks(byTarget, target, "disadvantage");
+  const floor = findFloor(byTarget, target);
+  const ceiling = findCeiling(byTarget, target);
+  const markers: string[] = [];
+  if (hasCond) markers.push("*");
+  if (adv > 0) markers.push(`\u21c8(${adv})`);
+  if (disadv > 0) markers.push(`\u21ca(${disadv})`);
+  if (floor !== null) markers.push(`\u21a5 ${floor}`);
+  if (ceiling !== null) markers.push(`\u21a7 ${ceiling}`);
+  if (markers.length === 0) return null;
+  return (
+    <span
+      className="ml-1 flex items-center gap-0.5 text-xs text-amber-500"
+      title={markers.join(" ")}
+    >
+      {markers.map((m, i) => (
+        <span key={i}>{m}</span>
+      ))}
+    </span>
+  );
+}
+
 /**
  * Reverse PB → level. PB starts at 2 and adds 1 every 4 levels.
  * Returns the lowest level consistent with this PB. Used for
@@ -530,9 +595,7 @@ export function BottomStickyBar({
                     </span>
                     <span className="mt-1 flex items-center justify-center gap-0.5 font-mono text-base font-bold tabular-nums leading-none">
                       {fmt(m)}
-                      {hasConditionalMarker(byTarget, `attribute.${attr}`) && (
-                        <span className="text-xs text-amber-500" title="Conditional modifier">*</span>
-                      )}
+                      <AxisMarkers byTarget={byTarget} target={`attribute.${attr}`} />
                     </span>
                     <span className="mt-1.5 text-[9px] text-muted-foreground">
                       save: <span className="font-mono font-semibold">{fmt(s)}</span>
@@ -609,9 +672,7 @@ export function BottomStickyBar({
                 </div>
                 <span className="font-mono text-2xl font-bold tabular-nums leading-none text-teal-700 dark:text-teal-200">
                   {primaryDc}
-                  {hasConditionalMarker(byTarget, dcTarget) && (
-                    <span className="ml-1 text-sm text-amber-500" title="Conditional modifier">*</span>
-                  )}
+                  <AxisMarkers byTarget={byTarget} target={dcTarget} />
                 </span>
               </div>
             </button>
@@ -682,9 +743,7 @@ export function BottomStickyBar({
                                   }`}
                                 >
                                   {fmt(p.total)}
-                                  {hasConditionalMarker(byTarget, `practice.${p.attribute.toLowerCase()}`) && (
-                                    <span className="text-amber-500" title="Conditional modifier">*</span>
-                                  )}
+                                  <AxisMarkers byTarget={byTarget} target={`practice.${p.attribute.toLowerCase()}`} />
                                 </span>
                               </button>
                             </li>
@@ -1476,9 +1535,7 @@ function FormulaModalSection({
         </span>
         <span className="font-mono text-xl font-bold tabular-nums">
           {fmt(total)}
-          {target && hasConditionalMarker(resolver.byTarget, target) && (
-            <span className="ml-1 text-xs text-amber-500" title="Conditional modifier">*</span>
-          )}
+          {target && <AxisMarkers byTarget={resolver.byTarget} target={target} />}
         </span>
       </div>
       <p className="mb-2 rounded-md border border-border bg-background p-2 font-mono text-xs leading-relaxed text-foreground">
@@ -1667,9 +1724,7 @@ function PracticeDetailModal({
               </span>
               <span className="font-mono text-xl font-bold tabular-nums">
                 {fmt(practice.total)}
-                {hasConditionalMarker(byTarget, practiceTarget) && (
-                  <span className="ml-1 text-xs text-amber-500" title="Conditional modifier">*</span>
-                )}
+                <AxisMarkers byTarget={byTarget} target={practiceTarget} />
               </span>
             </div>
             <p className="mb-2 rounded-md border border-border bg-background p-2 font-mono text-xs leading-relaxed text-foreground">
@@ -1687,9 +1742,7 @@ function PracticeDetailModal({
                 </>
               )}
               = {fmt(practice.total)}
-              {hasConditionalMarker(byTarget, practiceTarget) && (
-                <span className="ml-1 text-xs text-amber-500" title="Conditional modifier">*</span>
-              )}
+              <AxisMarkers byTarget={byTarget} target={practiceTarget} />
             </p>
           </section>
 
