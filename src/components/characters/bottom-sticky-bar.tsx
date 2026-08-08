@@ -330,6 +330,12 @@ export function BottomStickyBar({
   const practiceTarget = `practice.${comboAttr}`;
   const vitalityTarget = "max_vitality";
 
+  // Phase 8.I i3: check whether any contribution to a target carries
+  // a condition (hasCondition=true). The * marker surfaces this on
+  // axis cards so players know a modifier is condition-gated.
+  const hasConditional = (target: string): boolean =>
+    (byTarget[target] ?? []).some((c) => c.hasCondition === true);
+
   return (
     <div
       className="fixed bottom-12 left-0 right-0 z-30 border-t border-border bg-background/95 backdrop-blur-md"
@@ -515,8 +521,11 @@ export function BottomStickyBar({
                         </span>
                       )}
                     </span>
-                    <span className="mt-1 font-mono text-base font-bold tabular-nums leading-none">
+                    <span className="mt-1 flex items-center justify-center gap-0.5 font-mono text-base font-bold tabular-nums leading-none">
                       {fmt(m)}
+                      {hasConditional(`attribute.${attr}`) && (
+                        <span className="text-xs text-amber-500" title="Conditional modifier">*</span>
+                      )}
                     </span>
                     <span className="mt-1.5 text-[9px] text-muted-foreground">
                       save: <span className="font-mono font-semibold">{fmt(s)}</span>
