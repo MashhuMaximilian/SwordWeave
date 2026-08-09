@@ -204,3 +204,4 @@ export async function GET(
   const resolved: ResolvedModifiers = resolveModifiers(input);
   return NextResponse.json({ characterId: id, resolved });
 }
+// cache bust 1786277250
