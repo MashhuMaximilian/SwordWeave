@@ -491,6 +491,15 @@ export function resolveModifiers(
       });
       byTarget[t] = list;
 
+      // Phase 8.I i2.8 (Mashu): max/min operations are ceiling/floor
+      // LIMITS, not additive modifiers. They are recorded in the
+      // attribution (byTarget) but skipped from the running total.
+      // After all additive modifiers are summed, we apply the limits
+      // as Math.min(total, max) and Math.max(total, min).
+      if (mod.operation === "max" || mod.operation === "min") {
+        continue;
+      }
+
       const previousBase = totals[t] ?? 0;
       const nextBase = applyOperation(
         previousBase,
@@ -507,27 +516,47 @@ export function resolveModifiers(
     }
   }
 
-  // ---- Apply stacking per target --------------------------------
-  // Group by target, apply stacking to all contributions.
+  // ---- Phase 8.I i2.8: apply max/min ceiling & floor limits ----
+  // After additive stacking, apply any max (ceiling) or min (floor)
+  // constraints. max → Math.min(total, value) (can't exceed)
+  // min → Math.max(total, value) (can't go below)
   for (const target of Object.keys(byTarget)) {
     const contribs = byTarget[target];
-    if (!contribs || contribs.length <= 1) continue;
-
-    // Use the first contribution's stacking mode (canonical).
+    if (!contribs || contribs.length === 0) continue;
+    let total = totals[target] ?? 0;
     const firstContrib = contribs[0];
     if (!firstContrib) continue;
     const stackingMode = firstContrib.stacking ?? "stack";
 
-    // Build the list of contribution values for stacking.
-    const values = contribs.map((c) => c.value);
-    const stacked = applyStacking(
-      values as readonly JsonValue[],
-      stackingMode,
-    );
-    const stackedNum = numericValue(stacked);
-    if (Number.isFinite(stackedNum)) {
-      totals[target] = stackedNum;
+    // Apply stacking mode to additive contributions only.
+    const additiveValues = contribs
+      .filter((c) => c.op !== "max" && c.op !== "min")
+      .map((c) => c.value);
+    if (additiveValues.length > 0) {
+      const stacked = applyStacking(
+        additiveValues as readonly JsonValue[],
+        stackingMode,
+      );
+      const stackedNum = numericValue(stacked);
+      if (Number.isFinite(stackedNum)) {
+        total = stackedNum;
+      }
     }
+    // Apply ceiling (max): total cannot exceed the max value.
+    const maxValues = contribs
+      .filter((c) => c.op === "max" && c.conditionActive)
+      .map((c) => c.value);
+    for (const v of maxValues) {
+      total = Math.min(total, v);
+    }
+    // Apply floor (min): total cannot go below the min value.
+    const minValues = contribs
+      .filter((c) => c.op === "min" && c.conditionActive)
+      .map((c) => c.value);
+    for (const v of minValues) {
+      total = Math.max(total, v);
+    }
+    totals[target] = total;
   }
 
   return {
