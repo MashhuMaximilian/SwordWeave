@@ -1,23 +1,45 @@
 /**
- * Phase 8.I i2 verification character seed — Mashu 2026-08-06.
+ * Phase 8.I i3 verification character seed — Mashu 2026-08-08.
  *
  * Creates a L18 test character for @mashu (Clerk id
- * user_3GBKnmCEvgYSjfeFqmAQrzO7cyP) with 24 audit primitives
- * covering every modifier target axis, every operation,
- * conditions (both computable and non-computable), and
- * mirror inversion.
+ * user_3GBKnmCEvgYSjfeFqmAQrzO7cyP) with audit primitives +
+ * capability/effect nesting covering:
  *
- * The character lives in the user's character list, so they
- * can open it in /characters/[id] and verify the engine math
- * + drawer UI for every primitive target.
+ * Primitives (24 audit + 6 new = 30 total):
+ *   - Every modifier target axis, every operation
+ *   - Conditions (computable + non-computable)
+ *   - Mirror inversion
+ *   - Advantage / disadvantage
+ *   - PB/2 (half proficiency)
+ *   - Min roll / max roll (floor/ceiling)
+ *
+ * Capabilities (3, properly nested):
+ *   - "Divine Smite" → Effect("Smite") → Primitives(Smite Damage, Advantage)
+ *   - "Hunter's Mark" → Effect("Marked") → Primitives(Mark of the Hunt, Disadvantage)
+ *   - "Stone's Endurance" → direct primitive(Stone Skin) + Effect("Endure") → Primitive(PB/2)
+ *
+ * Distribution across Lineage / Manifest / Upbringing:
+ *   - Lineage (10 prims): Str Buff, Str Ring, Str Buff Mirrored, Vitality Buff,
+ *     Resilient Phys, Save DC Buff, Defender, Enlarge, Force Source, Complex Cap
+ *   - Manifest (12 prims): Proficient FC, Expertise FC, Iron Will,
+ *     Hunter Bonus, Fast, Lighten, Resist Fire, Vulnerable Cold,
+ *     Immune Poison, Extra Slot, Legendary Resistance, Backpack
+ *   - Upbringing (6 prims): Initiative, Maint Cost, Smite Damage,
+ *     Mark of the Hunt, Stone Skin, PB/2
  *
  * Run via:
- *   export $(cat .env.local | grep -v '^#' | xargs)
+ *   export $(cat .env.local | grep -v '^#' | grep -v '◊' | xargs)
  *   npx tsx scripts/seed-test-character.ts
  */
 import { Pool } from "@neondatabase/serverless";
 
 const MASHU_USER_ID = "user_3GBKnmCEvgYSjfeFqmAQrzO7cyP";
+
+// ── Primitive specs ──────────────────────────────────────────────────────
+// Full primitive definitions with all metadata needed for the DB.
+// Each primitive's `source` determines which accordion it appears under.
+// source: "LINEAGE" | "MANIFEST" | "UPBRINGING" | "PERSONAL"
+// (Personal = manually added by player, not from heritage)
 
 interface HardMod {
   target: string;
@@ -35,11 +57,12 @@ interface PrimitiveSpec {
   mirrorBuCredit: number;
   hardModifiers: HardMod[];
   description?: string;
+  source: "LINEAGE" | "MANIFEST" | "UPBRINGING" | "PERSONAL";
 }
 
-// 24 primitives — every primitive target axis, every op,
-// conditions + mirror inversion.
+// 30 primitives covering every axis + i3 condition cases
 const PRIMITIVES: PrimitiveSpec[] = [
+  // ── Lineage primitives (10) ──────────────────────────────────────
   {
     name: "Str Buff",
     category: "CHARACTER_SHEET_AUGMENT",
@@ -49,7 +72,8 @@ const PRIMITIVES: PrimitiveSpec[] = [
     hardModifiers: [
       { target: "attribute.physical", operation: "add", value: 5 },
     ],
-    description: "+5 to physical attribute (i2 finish audit).",
+    description: "+5 to physical attribute.",
+    source: "LINEAGE",
   },
   {
     name: "Str Ring",
@@ -61,17 +85,17 @@ const PRIMITIVES: PrimitiveSpec[] = [
       { target: "attribute.physical", operation: "add", value: 1 },
     ],
     description: "+1 to physical attribute.",
+    source: "LINEAGE",
   },
   {
-    name: "Defender",
+    name: "Vitality Buff",
     category: "CHARACTER_SHEET_AUGMENT",
     buCost: 1,
     isMirrorable: true,
     mirrorBuCredit: 1,
-    hardModifiers: [
-      { target: "defense_dc.physical", operation: "add", value: 1 },
-    ],
-    description: "+1 to physical defense DC.",
+    hardModifiers: [{ target: "max_vitality", operation: "add", value: 10 }],
+    description: "+10 to max vitality.",
+    source: "LINEAGE",
   },
   {
     name: "Resilient Phys",
@@ -83,6 +107,7 @@ const PRIMITIVES: PrimitiveSpec[] = [
       { target: "saving_throw.physical", operation: "add", value: 1 },
     ],
     description: "+1 to physical saving throw.",
+    source: "LINEAGE",
   },
   {
     name: "Save DC Buff",
@@ -94,7 +119,66 @@ const PRIMITIVES: PrimitiveSpec[] = [
       { target: "save_dc.physical", operation: "add", value: 1 },
     ],
     description: "+1 to physical save DC.",
+    source: "LINEAGE",
   },
+  {
+    name: "Defender",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [
+      { target: "defense_dc.physical", operation: "add", value: 1 },
+    ],
+    description: "+1 to physical defense DC.",
+    source: "LINEAGE",
+  },
+  {
+    name: "Enlarge",
+    category: "METAMORPHOSIS",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [{ target: "size.large", operation: "set", value: 1 }],
+    description: "Set size to LARGE.",
+    source: "LINEAGE",
+  },
+  {
+    name: "Force Source",
+    category: "VERB_TIER",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [
+      { target: "source_type.magical", operation: "set", value: 1 },
+    ],
+    description: "Set source type to MAGICAL.",
+    source: "LINEAGE",
+  },
+  {
+    name: "Complex Cap",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [{ target: "complexity", operation: "add", value: 3 }],
+    description: "+3 complexity.",
+    source: "LINEAGE",
+  },
+  {
+    name: "Mirrored Str Buff",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [
+      { target: "attribute.physical", operation: "add", value: 4 },
+    ],
+    description: "Mirrored +4 physical (sign flips to -4).",
+    source: "LINEAGE",
+  },
+
+  // ── Manifest primitives (12) ─────────────────────────────────────
   {
     name: "Proficient Fieldcraft",
     category: "PRACTICE_PROGRESSION_AUGMENT",
@@ -110,6 +194,7 @@ const PRIMITIVES: PrimitiveSpec[] = [
       },
     ],
     description: "Proficiency in fieldcraft — adds PB to the check.",
+    source: "MANIFEST",
   },
   {
     name: "Expertise Fieldcraft",
@@ -129,147 +214,9 @@ const PRIMITIVES: PrimitiveSpec[] = [
         },
       },
     ],
-    description: "Expertise — +PB on top of proficiency, gated by proficient_in(fieldcraft).",
-  },
-  {
-    name: "Vitality Buff",
-    category: "CHARACTER_SHEET_AUGMENT",
-    buCost: 1,
-    isMirrorable: true,
-    mirrorBuCredit: 1,
-    hardModifiers: [{ target: "max_vitality", operation: "add", value: 10 }],
-    description: "+10 to max vitality.",
-  },
-  {
-    name: "Fast",
-    category: "SPEED_QUICKENING",
-    buCost: 1,
-    isMirrorable: true,
-    mirrorBuCredit: 1,
-    hardModifiers: [{ target: "speed.walking", operation: "add", value: 10 }],
-    description: "+10 ft walking speed.",
-  },
-  {
-    name: "Backpack",
-    category: "ITEM_AUGMENT",
-    buCost: 1,
-    isMirrorable: true,
-    mirrorBuCredit: 1,
-    hardModifiers: [
-      { target: "carry_capacity", operation: "add", value: 20 },
-    ],
-    description: "+20 carry capacity.",
-  },
-  {
-    name: "Lighten",
-    category: "ITEM_AUGMENT",
-    buCost: 1,
-    isMirrorable: true,
-    mirrorBuCredit: 1,
-    hardModifiers: [{ target: "load", operation: "subtract", value: 2 }],
-    description: "-2 effective load (carried weight).",
-  },
-  {
-    name: "Extra Slot",
-    category: "ITEM_AUGMENT",
-    buCost: 1,
-    isMirrorable: true,
-    mirrorBuCredit: 1,
-    hardModifiers: [{ target: "equip_slot", operation: "add", value: 1 }],
-    description: "+1 equip slot.",
-  },
-  {
-    name: "Enlarge",
-    category: "METAMORPHOSIS",
-    buCost: 1,
-    isMirrorable: true,
-    mirrorBuCredit: 1,
-    hardModifiers: [{ target: "size.large", operation: "set", value: 1 }],
-    description: "Set size to LARGE.",
-  },
-  {
-    name: "Force Source",
-    category: "VERB_TIER",
-    buCost: 1,
-    isMirrorable: true,
-    mirrorBuCredit: 1,
-    hardModifiers: [
-      { target: "source_type.magical", operation: "set", value: 1 },
-    ],
-    description: "Set source type to MAGICAL.",
-  },
-  {
-    name: "Complex Cap",
-    category: "CHARACTER_SHEET_AUGMENT",
-    buCost: 1,
-    isMirrorable: true,
-    mirrorBuCredit: 1,
-    hardModifiers: [{ target: "complexity", operation: "add", value: 3 }],
-    description: "+3 complexity (combat placement driver).",
-  },
-  {
-    name: "Initiative",
-    category: "TACTICAL",
-    buCost: 1,
-    isMirrorable: true,
-    mirrorBuCredit: 1,
-    hardModifiers: [
-      { target: "combat_action", operation: "grant", value: 1 },
-    ],
-    description: "Grant combat_action flag (in combat).",
-  },
-  {
-    name: "Maint Cost",
-    category: "ACTION_ECONOMY",
-    buCost: 1,
-    isMirrorable: true,
-    mirrorBuCredit: 1,
-    hardModifiers: [{ target: "upkeep_cost", operation: "add", value: 2 }],
-    description: "+2 upkeep cost (per-capability maintenance).",
-  },
-  {
-    name: "Resist Fire",
-    category: "CHARACTER_SHEET_AUGMENT",
-    buCost: 1,
-    isMirrorable: true,
-    mirrorBuCredit: 1,
-    hardModifiers: [
-      { target: "damage_modifier.fire", operation: "multiply", value: 0.5 },
-    ],
-    description: "Resistance: fire (0.5x incoming fire damage).",
-  },
-  {
-    name: "Vulnerable Cold",
-    category: "CHARACTER_SHEET_AUGMENT",
-    buCost: 1,
-    isMirrorable: true,
-    mirrorBuCredit: 1,
-    hardModifiers: [
-      { target: "damage_modifier.cold", operation: "multiply", value: 2 },
-    ],
-    description: "Vulnerability: cold (2x incoming cold damage).",
-  },
-  {
-    name: "Immune Poison",
-    category: "CHARACTER_SHEET_AUGMENT",
-    buCost: 1,
-    isMirrorable: true,
-    mirrorBuCredit: 1,
-    hardModifiers: [
-      { target: "damage_modifier.poison", operation: "multiply", value: 0 },
-    ],
-    description: "Immunity: poison (no poison damage).",
-  },
-  {
-    name: "Legendary Resistance",
-    category: "VERB_TIER",
-    buCost: 1,
-    isMirrorable: true,
-    mirrorBuCredit: 1,
-    hardModifiers: [
-      { target: "behavior.legendary_resistance", operation: "add", value: 1 },
-    ],
-    description: "+1 legendary resistance charge (drawn in drawer).",
+    description:
+      "Expertise — +PB on top of proficiency, gated by proficient_in(fieldcraft).",
+    source: "MANIFEST",
   },
   {
     name: "Iron Will",
@@ -282,7 +229,6 @@ const PRIMITIVES: PrimitiveSpec[] = [
         target: "skill_practice_check",
         operation: "add",
         value: 5,
-        // Computable condition: fires when vitality < 50%.
         condition: {
           kind: "compound",
           tokens: ["self:stat|vitality_pct|<|0.5"],
@@ -290,7 +236,8 @@ const PRIMITIVES: PrimitiveSpec[] = [
         metadata: { targetScope: { layer: "PRACTICE", values: ["AWARENESS"] } },
       },
     ],
-    description: "+5 awareness when below 50% HP (computable).",
+    description: "+5 awareness when below 50% HP (computable condition).",
+    source: "MANIFEST",
   },
   {
     name: "Hunter Bonus",
@@ -303,7 +250,6 @@ const PRIMITIVES: PrimitiveSpec[] = [
         target: "skill_practice_check",
         operation: "add",
         value: 3,
-        // Non-computable: depends on a narrative flag.
         condition: {
           kind: "compound",
           tokens: ["self:flag|is_tracking"],
@@ -311,39 +257,392 @@ const PRIMITIVES: PrimitiveSpec[] = [
         metadata: { targetScope: { layer: "PRACTICE", values: ["REASON"] } },
       },
     ],
-    description: "+3 reason when tracking enemies (table play).",
+    description: "+3 reason when tracking enemies (table play condition).",
+    source: "MANIFEST",
   },
   {
-    name: "Mirrored Str Buff",
+    name: "Fast",
+    category: "SPEED_QUICKENING",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [{ target: "speed.walking", operation: "add", value: 10 }],
+    description: "+10 ft walking speed.",
+    source: "MANIFEST",
+  },
+  {
+    name: "Lighten",
+    category: "ITEM_AUGMENT",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [{ target: "load", operation: "subtract", value: 2 }],
+    description: "-2 effective load.",
+    source: "MANIFEST",
+  },
+  {
+    name: "Resist Fire",
     category: "CHARACTER_SHEET_AUGMENT",
     buCost: 1,
     isMirrorable: true,
     mirrorBuCredit: 1,
     hardModifiers: [
-      { target: "attribute.physical", operation: "add", value: 4 },
+      { target: "damage_modifier.fire", operation: "multiply", value: 0.5 },
     ],
-    description: "Mirrored +4 physical (sign flips to -4).",
+    description: "Resistance: fire (0.5x incoming fire damage).",
+    source: "MANIFEST",
+  },
+  {
+    name: "Vulnerable Cold",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [
+      { target: "damage_modifier.cold", operation: "multiply", value: 2 },
+    ],
+    description: "Vulnerability: cold (2x incoming cold damage).",
+    source: "MANIFEST",
+  },
+  {
+    name: "Immune Poison",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [
+      { target: "damage_modifier.poison", operation: "multiply", value: 0 },
+    ],
+    description: "Immunity: poison (no poison damage).",
+    source: "MANIFEST",
+  },
+  {
+    name: "Extra Slot",
+    category: "ITEM_AUGMENT",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [{ target: "equip_slot", operation: "add", value: 1 }],
+    description: "+1 equip slot.",
+    source: "MANIFEST",
+  },
+  {
+    name: "Legendary Resistance",
+    category: "VERB_TIER",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [
+      { target: "behavior.legendary_resistance", operation: "grant", value: 1 },
+    ],
+    description: "+1 legendary resistance charge.",
+    source: "MANIFEST",
+  },
+  {
+    name: "Backpack",
+    category: "ITEM_AUGMENT",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [
+      { target: "carry_capacity", operation: "add", value: 20 },
+    ],
+    description: "+20 carry capacity.",
+    source: "MANIFEST",
+  },
+
+  // ── Upbringing primitives (6) ─────────────────────────────────────
+  {
+    name: "Initiative",
+    category: "TACTICAL",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [
+      { target: "combat_action", operation: "grant", value: 1 },
+    ],
+    description: "Grant combat_action flag (in combat).",
+    source: "UPBRINGING",
+  },
+  {
+    name: "Maint Cost",
+    category: "ACTION_ECONOMY",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [{ target: "upkeep_cost", operation: "add", value: 2 }],
+    description: "+2 upkeep cost.",
+    source: "UPBRINGING",
+  },
+  // ── Capability-owned primitives (not directly character-attached) ──
+  {
+    name: "Smite Damage",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [
+      { target: "damage_bonus.radiant", operation: "add", value: 3 },
+    ],
+    description: "+3 radiant damage on smite (gated by low HP).",
+    source: "PERSONAL", // attached via capability, not directly
+  },
+  {
+    name: "Mark of the Hunt",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [
+      { target: "attack_bonus.physical", operation: "add", value: 2 },
+    ],
+    description: "+2 to hit when target is marked.",
+    source: "PERSONAL",
+  },
+  {
+    name: "Stone Skin",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [
+      { target: "defense.physical", operation: "add", value: 2 },
+    ],
+    description: "+2 physical defense (always on).",
+    source: "PERSONAL",
+  },
+  // ── i3 condition case primitives ──────────────────────────────────
+  {
+    name: "Advantage",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      { target: "behavior.advantage", operation: "grant", value: 1 },
+    ],
+    description: "Roll two d20s, take the higher (advantage).",
+    source: "PERSONAL",
+  },
+  {
+    name: "Disadvantage",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      { target: "behavior.disadvantage", operation: "grant", value: 1 },
+    ],
+    description: "Roll two d20s, take the lower (disadvantage).",
+    source: "PERSONAL",
+  },
+  {
+    name: "PB Half",
+    category: "PRACTICE_PROGRESSION_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      {
+        target: "skill_practice_check",
+        operation: "add",
+        value: { kind: "derived", which: "pb" },
+        metadata: { targetScope: { layer: "PRACTICE", values: ["REASON"] } },
+      },
+    ],
+    description: "Half PB to reason practice (PB/2).",
+    source: "PERSONAL",
+  },
+  {
+    name: "Floor 10",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      { target: "skill_practice_check", operation: "min", value: 10 },
+    ],
+    description: "Minimum roll of 10 on any practice check.",
+    source: "PERSONAL",
+  },
+  {
+    name: "Ceiling 18",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      { target: "attribute.physical", operation: "max", value: 18 },
+    ],
+    description: "Physical attribute cannot exceed 18.",
+    source: "PERSONAL",
   },
 ];
+
+// ── Capability specs: capability → effect(s) → primitives ──────────
+// Each capability can have:
+//   - directPrims: primitives linked via capability_primitives table (role: AUGMENT)
+//   - effects: effects linked via capability_effects table, each with its own primitives
+// Primitives NOT in any capability are linked directly to the character via
+// character_primitives with source = their `source` field.
+
+interface EffectSpec {
+  name: string;
+  description: string;
+  primitiveNames: string[];
+}
+
+interface CapabilitySpec {
+  name: string;
+  type: "ACTIVE" | "PASSIVE";
+  sourceType: "PHYSICAL" | "MAGICAL" | "MENTAL";
+  description: string;
+  tags: string[];
+  // Primitives linked directly to capability (role: AUGMENT)
+  directPrimNames: string[];
+  // Effects nested under capability
+  effects: EffectSpec[];
+}
+
+// 4 capabilities demonstrating full nesting:
+const CAPABILITIES: CapabilitySpec[] = [
+  {
+    name: "Divine Smite",
+    type: "ACTIVE",
+    sourceType: "MAGICAL",
+    description:
+      "Channel divine energy for extra radiant damage when health is low. Grants advantage on the attack roll.",
+    tags: ["combat", "divine"],
+    directPrimNames: [],
+    effects: [
+      {
+        name: "Smite",
+        description: "Radiant damage + advantage on smite attack",
+        primitiveNames: ["Smite Damage", "Advantage"],
+      },
+    ],
+  },
+  {
+    name: "Hunter's Mark",
+    type: "ACTIVE",
+    sourceType: "PHYSICAL",
+    description:
+      "+2 to hit when you have marked a target. The mark imposes disadvantage on the target's stealth.",
+    tags: ["combat", "ranged"],
+    directPrimNames: [],
+    effects: [
+      {
+        name: "Marked",
+        description: "+2 attack vs marked target; target disadvantaged on stealth",
+        primitiveNames: ["Mark of the Hunt"],
+      },
+      {
+        name: "Hunted",
+        description: "Target has disadvantage on stealth checks",
+        primitiveNames: ["Disadvantage"],
+      },
+    ],
+  },
+  {
+    name: "Stone's Endurance",
+    type: "PASSIVE",
+    sourceType: "PHYSICAL",
+    description:
+      "+2 physical defense. Also grants a reaction to reduce incoming damage by PB/2.",
+    tags: ["defense"],
+    directPrimNames: ["Stone Skin"],
+    effects: [
+      {
+        name: "Endure",
+        description: "Reactive damage reduction (half PB)",
+        primitiveNames: ["PB Half"],
+      },
+    ],
+  },
+  {
+    name: "Iron Defender",
+    type: "PASSIVE",
+    sourceType: "MAGICAL",
+    description:
+      "Armor plating grants +2 physical defense and a minimum AC of 10 on practice checks.",
+    tags: ["defense", "armor"],
+    directPrimNames: ["Stone Skin"],
+    effects: [
+      {
+        name: "Plating",
+        description: "Minimum 10 on defense rolls",
+        primitiveNames: ["Floor 10"],
+      },
+    ],
+  },
+];
+
+// ── Source mapping: which primitives are direct character primitives
+//    (not from any capability) and which source/accordion they belong to.
+//    Primitives listed in CAPABILITIES are NOT attached directly to the
+//    character — they come through their capability/effect.
+const CAPABILITY_PRIM_NAMES = new Set(
+  CAPABILITIES.flatMap(c => [...c.directPrimNames, ...c.effects.flatMap(e => e.primitiveNames)]),
+);
+
+const CHARACTER_PRIM_NAMES = PRIMITIVES.filter(
+  p => p.source !== "PERSONAL" || (PRIMITIVES.filter(x => x.name === p.name).length > 0 && !CAPABILITY_PRIM_NAMES.has(p.name)),
+).map(p => p.name);
 
 async function main() {
   if (!process.env["DATABASE_URL"]) {
     throw new Error("DATABASE_URL is not set. Run with .env.local exported.");
   }
-  const pool = new Pool({ connectionString: process.env["DATABASE_URL"] });
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
   // 1. Delete any existing test character of this name so re-runs are idempotent.
-  await pool.query(
-    `DELETE FROM characters WHERE user_id = $1 AND name = $2`,
+  const charRes = await pool.query(
+    `SELECT id FROM characters WHERE user_id = $1 AND name = $2 ORDER BY created_at DESC LIMIT 1`,
     [MASHU_USER_ID, "i2 Test Character"],
   );
+  let characterId: string;
+  if ((charRes.rowCount ?? 0) > 0) {
+    characterId = charRes.rows[0].id;
+    // Clean up old links
+    await pool.query(`DELETE FROM character_primitives WHERE character_id = $1::uuid`, [characterId]);
+    await pool.query(`DELETE FROM character_capabilities WHERE character_id = $1::uuid`, [characterId]);
+    await pool.query(`DELETE FROM capability_versions WHERE capability_id IN (SELECT id FROM capabilities WHERE user_id = $1)`, [MASHU_USER_ID]);
+    await pool.query(`DELETE FROM capability_primitives WHERE capability_id IN (SELECT id FROM capabilities WHERE user_id = $1)`, [MASHU_USER_ID]);
+    await pool.query(`DELETE FROM capability_effects WHERE capability_id IN (SELECT id FROM capabilities WHERE user_id = $1)`, [MASHU_USER_ID]);
+    await pool.query(`DELETE FROM effect_primitives WHERE effect_id IN (SELECT id FROM effects WHERE user_id = $1)`, [MASHU_USER_ID]);
+    await pool.query(`DELETE FROM effects WHERE user_id = $1`, [MASHU_USER_ID]);
+    await pool.query(`DELETE FROM capabilities WHERE user_id = $1`, [MASHU_USER_ID]);
+    await pool.query(`DELETE FROM primitives WHERE user_id = $1 AND source_origin = $2`, [MASHU_USER_ID, `user:${MASHU_USER_ID}`]);
+  } else {
+    // Insert new character
+    const res = await pool.query(
+      `INSERT INTO characters
+        (user_id, name, level, size, attr_physical, attr_mental, attr_magical,
+         attr_proficient, practice_slices, starting_bu, bu_spent, dm_bonus_bu,
+         is_mirrored, source_origin, backstory)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb,
+               $10, $11, $12, false, 'manual', '{}'::jsonb)
+       RETURNING id`,
+      [
+        MASHU_USER_ID,
+        "i2 Test Character",
+        18,
+        "MEDIUM",
+        4, 4, 2,         // attr sum = 10
+        "PHYSICAL",
+        JSON.stringify({ FIELDCRAFT: 0, AWARENESS: 0, REASON: 0 }),
+        200, 100, 0,     // starting BU, spent, bonus
+      ],
+    );
+    characterId = res.rows[0].id;
+  }
+  console.log(`✓ Character: i2 Test Character (${characterId})`);
 
-  // 2. Insert the 24 primitives. Use upsert on (name, source_origin)
-  // so re-runs don't create duplicates.
+  // 2. Upsert all 30 primitives
   const sourceOrigin = `user:${MASHU_USER_ID}`;
-  const primitiveIds: number[] = [];
+  const primIds: Record<string, number> = {};
   for (const p of PRIMITIVES) {
-    const result = await pool.query(
+    const r = await pool.query(
       `INSERT INTO primitives
         (name, user_id, is_public, category, bu_cost,
          is_mirrorable, mirror_bu_credit, hard_modifiers,
@@ -354,91 +653,124 @@ async function main() {
        ON CONFLICT (name, source_origin) DO UPDATE
          SET hard_modifiers = EXCLUDED.hard_modifiers,
              bu_cost = EXCLUDED.bu_cost,
+             category = EXCLUDED.category,
+             is_mirrorable = EXCLUDED.is_mirrorable,
+             mirror_bu_credit = EXCLUDED.mirror_bu_credit,
              updated_at = now()
        RETURNING id`,
       [
-        p.name,
-        MASHU_USER_ID,
-        p.category,
-        p.buCost,
-        p.isMirrorable,
-        p.mirrorBuCredit,
-        JSON.stringify(p.hardModifiers),
-        p.description ?? "",
-        sourceOrigin,
+        p.name, MASHU_USER_ID, p.category, p.buCost,
+        p.isMirrorable, p.mirrorBuCredit, JSON.stringify(p.hardModifiers),
+        p.description ?? "", sourceOrigin,
       ],
     );
-    primitiveIds.push(result.rows[0].id);
+    primIds[p.name] = r.rows[0].id;
   }
+  console.log(`✓ Upserted ${PRIMITIVES.length} primitives`);
 
-  // 3. Insert the character (L18, PHYSICAL proficient, attr sum = 10).
-  // The base attrs (4, 4, 2) give plenty of room for the +5 +1 -4
-  // phys sum = 6 net (4 + 2).
-  const characterResult = await pool.query(
-    `INSERT INTO characters
-      (user_id, name, level, size, attr_physical, attr_mental, attr_magical,
-       attr_proficient, practice_slices, starting_bu, bu_spent, dm_bonus_bu,
-       is_mirrored, source_origin, backstory)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb,
-             $10, $11, $12, false, 'manual', '{}'::jsonb)
-     RETURNING id`,
-    [
-      MASHU_USER_ID,
-      "i2 Test Character",
-      18,
-      "MEDIUM",
-      4, 4, 2,
-      "PHYSICAL",
-      JSON.stringify({ FIELDCRAFT: 0, AWARENESS: 0, REASON: 0 }),
-      200, 0, 0, // generous BU so the 24 prims fit comfortably
-    ],
-  );
-  const characterId = characterResult.rows[0].id;
-
-  // 4. Insert character_primitives links for all 24 prims.
-  // Prim 23 (zero-indexed = Mirrored Str Buff) is mirrored.
-  for (let i = 0; i < primitiveIds.length; i++) {
-    const isMirrored = i === 23; // Mirrored Str Buff
+  // 3. Attach direct character primitives (not from capabilities)
+  //    with proper source for accordion placement.
+  const attachedDirect: string[] = [];
+  for (const p of PRIMITIVES) {
+    if (CAPABILITY_PRIM_NAMES.has(p.name)) continue; // skip capability-owned
+    let source = p.source;
     await pool.query(
       `INSERT INTO character_primitives
-        (character_id, primitive_id, source, acquired_at_level, is_mirrored)
-       VALUES ($1, $2, 'PERSONAL', $3, $4)`,
-      [characterId, primitiveIds[i], 1, isMirrored],
+        (character_id, primitive_id, origin_capability_id, is_mirrored,
+         acquired_at_level, source)
+       VALUES ($1::uuid, $2, null, $3, 1, $4)
+       ON CONFLICT (character_id, primitive_id) DO NOTHING`,
+      [characterId, primIds[p.name], p.name === "Mirrored Str Buff", source],
     );
+    attachedDirect.push(p.name);
+  }
+  console.log(`✓ Attached ${attachedDirect.length} direct primitives:`);
+  for (const name of attachedDirect) {
+    const p = PRIMITIVES.find(x => x.name === name)!;
+    console.log(`    [${p.source}] ${p.name}`);
   }
 
-  // 5. Leave currentVitality NULL. The /api/characters/[id]/vitality
-  // and /rest endpoints treat null as "at full HP" so damage/rest
-  // works without a separate initialization step. (i2.7f fix.)
+  // 4. Create capabilities with effect nesting
+  //    capability_primitives → capability_effects → effect_primitives
+  for (const cap of CAPABILITIES) {
+    // Create capability
+    const capRes = await pool.query(
+      `INSERT INTO capabilities
+        (user_id, name, type, source_type, verbose_description, tags, is_public)
+       VALUES ($1, $2, $3, $4, $5, $6, false)
+       ON CONFLICT (name, source_origin) DO UPDATE
+         SET verbose_description = EXCLUDED.verbose_description,
+             tags = EXCLUDED.tags,
+             type = EXCLUDED.type,
+             source_type = EXCLUDED.source_type
+       RETURNING id`,
+      [MASHU_USER_ID, cap.name, cap.type, cap.sourceType, cap.description, cap.tags],
+    );
+    const capId = capRes.rows[0].id;
+    console.log(`  ✓ Capability: ${cap.name} (${capId})`);
 
-  console.log(`✓ Created character ${characterId}`);
-  console.log(`  user: ${MASHU_USER_ID}`);
-  console.log(`  name: i2 Test Character (L18, PHYSICAL proficient)`);
-  console.log(`  primitives: ${primitiveIds.length} attached`);
-  console.log(`  link: /characters/${characterId}`);
-  console.log();
-  console.log("Expected values per axis:");
-  console.log("  physical attr: 4 + 5 + 1 - 4 = 6");
-  console.log("  phys DC: 5 + 6 + 6 + 1 = 18");
-  console.log("  phys save: 6 + 6 + 1 = +13");
-  console.log("  phys save DC: 8 + 6 + 6 + 1 = 21");
-  console.log("  fieldcraft: base 8 + PB 6 + 2*PB 12 = 26");
-  console.log("  speed walking: 30 + 10 = 40 ft");
-  console.log("  carry: 40 + 4*5 + 20 = 80");
-  console.log("  load: -2 (no items)");
-  console.log("  equip slots: 1 (1 from Extra Slot)");
-  console.log("  size: LARGE (Enlarge sets)");
-  console.log("  source type: MAGICAL (Force Source sets)");
-  console.log("  complexity: 3");
-  console.log("  inCombat: true");
-  console.log("  upkeepCost: 2");
-  console.log("  behavior.legendary_resistance: 1");
-  console.log("  damage_modifier.fire: 0.5 (resistance)");
-  console.log("  damage_modifier.cold: 2 (vulnerability)");
-  console.log("  damage_modifier.poison: 0 (immunity)");
-  console.log();
-  console.log("Open /characters/" + characterId + " to verify in the drawer.");
+    // Link capability_primitives (direct primitives with role AUGMENT)
+    for (const primName of cap.directPrimNames) {
+      await pool.query(
+        `INSERT INTO capability_primitives
+          (capability_id, primitive_id, role, sort_order)
+         VALUES ($1, $2, 'AUGMENT', 0)
+         ON CONFLICT DO NOTHING`,
+        [capId, primIds[primName]],
+      );
+      console.log(`    ✓ capability_primitives: ${primName} (role: AUGMENT)`);
+    }
 
+    // Create nested effects + link via capability_effects + effect_primitives
+    for (const eff of cap.effects) {
+      const effRes = await pool.query(
+        `INSERT INTO effects (user_id, name, narrative_description, is_public, tags)
+         VALUES ($1, $2, $3, false, '{}')
+         ON CONFLICT (name, source_origin) DO UPDATE
+           SET narrative_description = EXCLUDED.narrative_description
+         RETURNING id`,
+        [MASHU_USER_ID, eff.name, eff.description],
+      );
+      const effId = effRes.rows[0].id;
+      console.log(`    ✓ Effect: ${eff.name} (${effId})`);
+
+      // Link capability → effect via capability_effects
+      await pool.query(
+        `INSERT INTO capability_effects (capability_id, effect_id, sort_order)
+         VALUES ($1, $2, 0)
+         ON CONFLICT DO NOTHING`,
+        [capId, effId],
+      );
+
+      // Link effect → primitives via effect_primitives
+      for (let i = 0; i < eff.primitiveNames.length; i++) {
+        const primName = eff.primitiveNames[i];
+        await pool.query(
+          `INSERT INTO effect_primitives (effect_id, primitive_id, sort_order)
+           VALUES ($1, $2, $3)
+           ON CONFLICT DO NOTHING`,
+          [effId, primIds[primName], i],
+        );
+        console.log(`      ✓ effect_primitives: ${primName}`);
+      }
+    }
+
+    // Link capability to character via character_capabilities
+    await pool.query(
+      `INSERT INTO character_capabilities
+        (character_id, capability_id, acquired_at_level, version_id)
+       VALUES ($1::uuid, $2, 18, null)
+       ON CONFLICT (character_id, capability_id) DO NOTHING`,
+      [characterId, capId],
+    );
+    console.log(`    ✓ Linked to character`);
+  }
+
+  console.log(`\n✅ Seed complete!`);
+  console.log(`  character: ${characterId}`);
+  console.log(`  primitives: ${PRIMITIVES.length} (direct + capability-owned)`);
+  console.log(`  capabilities: ${CAPABILITIES.length}`);
+  console.log(`  Link: /characters/${characterId}`);
   await pool.end();
 }
 
