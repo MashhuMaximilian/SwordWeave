@@ -75,7 +75,6 @@ export default async function CharacterSheetPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  try {
   const { id } = await params;
   const { userId } = await auth();
 
