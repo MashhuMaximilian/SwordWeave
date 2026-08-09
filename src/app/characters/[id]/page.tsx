@@ -82,7 +82,7 @@ export default async function CharacterSheetPage({
     where: eq(characters.id, id),
     with: {
       primitiveLinks: { with: { primitive: true } },
-      capabilityLinks: { with: { capability: true } },
+      capabilityLinks: { with: { capability: { with: { effectLinks: { with: { effect: true } } } } } },
       itemLinks: { with: { item: true } },
       // Phase 8.1 batch 13.1: include heritage slots for the origin
       // chain badges on the sheet.
@@ -532,7 +532,7 @@ export default async function CharacterSheetPage({
             effect: {
               id: el.effect.id,
               name: el.effect.name,
-              description: el.effect.description ?? "",
+              description: el.effect.narrativeDescription ?? "",
             },
           })),
           capability: {

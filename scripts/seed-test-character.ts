@@ -210,7 +210,7 @@ const PRIMITIVES: PrimitiveSpec[] = [
         metadata: { targetScope: { layer: "PRACTICE", values: ["FIELDCRAFT"] } },
         condition: {
           kind: "compound",
-          tokens: ["self:flag|proficient_in(fieldcraft)"],
+          tokens: ["self:proficient_in(fieldcraft)"],
         },
       },
     ],
@@ -252,7 +252,7 @@ const PRIMITIVES: PrimitiveSpec[] = [
         value: 3,
         condition: {
           kind: "compound",
-          tokens: ["self:flag|is_tracking"],
+          tokens: ["self:is_tracking"],
         },
         metadata: { targetScope: { layer: "PRACTICE", values: ["REASON"] } },
       },
