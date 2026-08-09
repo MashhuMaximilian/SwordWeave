@@ -10,10 +10,9 @@
  *   GET /api/characters/[id]/resolve?target=character.attribute.physical
  *     → just that target's { total, contributions }
  *
- * Phase 8.I i3: Also fetches capability/effect-derived primitive slots:
- *   - character_primitives (direct slots + origin-tracked slots)
- *   All slots with origin_capability_id / origin_effect_id are included
- *   so the resolver sees the full provenance chain.
+ * Phase 8.I i3: Also fetches capability/effect-derived primitive slots
+ * and builds sourceNames + conditionContext for full provenance +
+ * condition evaluation.
  *
  * Cached per (characterId, target) for 30 seconds via the
  * character-resolver-cache LRU. PATCH/POST handlers call
@@ -21,15 +20,25 @@
  */
 
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
-import { characters, characterPrimitives, primitives } from "@/db/schema";
+import {
+  characters,
+  characterPrimitives,
+  primitives,
+  capabilities,
+  effects,
+} from "@/db/schema";
 import {
   type ModifierContribution,
   type ResolvedModifiers,
   type ResolvedPrimitiveSlot,
+  type ResolvedCharacterInput,
   resolveModifiers,
 } from "@/lib/engine/resolve-modifiers";
+import { type ConditionContext } from "@/lib/engine/condition-evaluator";
+import { type PracticeKey } from "@/types/modifier";
+import { ALL_PRACTICES } from "@/types/modifier";
 import {
   ATTR_TARGETS,
   SAVE_TARGETS,
@@ -149,7 +158,121 @@ export async function GET(
     originEffectId: row.originEffectId,
   }));
 
-  const input = {
+  // -----------------------------------------------------------------
+  // Phase 8.I i3: Build sourceNames lookup map for provenance.
+  // Map primitiveId → { capabilityName, effectName, heritageName }.
+  // -----------------------------------------------------------------
+  const sourceNames = new Map<
+    number,
+    { heritageName: string | null; capabilityName: string | null; effectName: string | null }
+  >();
+
+  // Collect all unique capability/effect IDs from slots
+  const capIds = new Set<string>();
+  const effIds = new Set<string>();
+  for (const slot of slots) {
+    if (slot.originCapabilityId) capIds.add(slot.originCapabilityId);
+    if (slot.originEffectId) effIds.add(slot.originEffectId);
+  }
+
+  // Batch lookup capability names
+  const capNameMap = new Map<string, string>();
+  if (capIds.size > 0) {
+    const capRows = await db
+      .select({ id: capabilities.id, name: capabilities.name })
+      .from(capabilities)
+      .where(inArray(capabilities.id, [...capIds]));
+    for (const r of capRows) capNameMap.set(r.id, r.name);
+  }
+
+  // Batch lookup effect names
+  const effNameMap = new Map<string, string>();
+  if (effIds.size > 0) {
+    const effRows = await db
+      .select({ id: effects.id, name: effects.name })
+      .from(effects)
+      .where(inArray(effects.id, [...effIds]));
+    for (const r of effRows) effNameMap.set(r.id, r.name);
+  }
+
+  // Build the sourceNames map
+  for (const slot of slots) {
+    if (slot.originHeritageId || slot.originCapabilityId || slot.originEffectId) {
+      const capabilityName = slot.originCapabilityId ? (capNameMap.get(slot.originCapabilityId) ?? null) : null;
+      const effectName = slot.originEffectId ? (effNameMap.get(slot.originEffectId) ?? null) : null;
+      sourceNames.set(slot.primitiveId, {
+        heritageName: null, // heritage name lookup requires another query — skip for now
+        capabilityName,
+        effectName,
+      });
+    }
+  }
+
+  // -----------------------------------------------------------------
+  // Build conditionContext for condition-gated modifiers.
+  // -----------------------------------------------------------------
+  const maxVit = resolveMaxVitality({
+    characterId: id,
+    level: charRow.level,
+    pb: proficiencyBonus(charRow.level),
+    proficientAttribute: (charRow.attrProficient ?? null) as Attribute | null,
+    attributes: {
+      physical: charRow.attrPhysical,
+      mental: charRow.attrMental,
+      magical: charRow.attrMagical,
+    },
+    slots: [],
+  }).total;
+
+  const currentVit = charRow.currentVitality ?? maxVit;
+
+  // Build proficiency flags
+  const proficiencies = new Set<string>();
+  if (charRow.attrProficient) {
+    proficiencies.add(charRow.attrProficient.toLowerCase());
+    proficiencies.add(charRow.attrProficient.toLowerCase() + "_proficiency");
+  }
+
+  // Scan condition tokens from slot hardModifiers for proficiency flags
+  for (const slot of slots) {
+    for (const mod of slot.hardModifiers) {
+      const cond = mod.condition as unknown as { tokens?: string[] } | undefined;
+      if (cond && Array.isArray(cond.tokens)) {
+        for (const tok of cond.tokens) {
+          const flagName = tok.split("|")[1];
+          if (flagName) {
+            proficiencies.add(flagName);
+          }
+        }
+      }
+    }
+  }
+
+  // Build practice states (all 10 practices, default 0)
+  const practiceStates = {} as Record<PracticeKey, number>;
+  for (const key of ALL_PRACTICES) {
+    practiceStates[key] = 0;
+  }
+
+  const conditionContext: ConditionContext = {
+    character: {
+      vitality: currentVit,
+      vitalityMax: maxVit,
+      saveDc: 0,
+      blockValue: 0,
+      attributes: {
+        physical: charRow.attrPhysical,
+        mental: charRow.attrMental,
+        magical: charRow.attrMagical,
+      },
+      practices: practiceStates,
+      proficiencies,
+      flags: new Set(),
+      custom: {},
+    },
+  };
+
+  const input: ResolvedCharacterInput = {
     characterId: id,
     level: charRow.level,
     pb: proficiencyBonus(charRow.level),
@@ -160,6 +283,7 @@ export async function GET(
       magical: charRow.attrMagical,
     },
     slots,
+    conditionContext,
   };
 
   // -----------------------------------------------------------------
@@ -181,7 +305,7 @@ export async function GET(
         contributions: [],
       };
     } else {
-      const full = resolveModifiers(input);
+      const full = resolveModifiers(input, sourceNames);
       result = {
         total: full.totals[targetFilter] ?? 0,
         contributions: full.byTarget[targetFilter] ?? [],
@@ -201,7 +325,6 @@ export async function GET(
   // -----------------------------------------------------------------
   // Full resolver (no target filter)
   // -----------------------------------------------------------------
-  const resolved: ResolvedModifiers = resolveModifiers(input);
+  const resolved: ResolvedModifiers = resolveModifiers(input, sourceNames);
   return NextResponse.json({ characterId: id, resolved });
 }
-// cache bust 1786277250
