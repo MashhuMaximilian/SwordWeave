@@ -233,15 +233,18 @@ export async function GET(
     proficiencies.add(charRow.attrProficient.toLowerCase() + "_proficiency");
   }
 
-  // Scan condition tokens from slot hardModifiers for proficiency flags
+  // Scan condition tokens from ALL slots (including effect/capacity-derived)
+  // for proficiency flags. Tokens like "self:proficient_in(fieldcraft)"
+  // grant the corresponding practice proficiency.
+  const PRIOF_MATCH = /^self:proficient_in\((\w+)\)/;
   for (const slot of slots) {
     for (const mod of slot.hardModifiers) {
       const cond = mod.condition as unknown as { tokens?: string[] } | undefined;
       if (cond && Array.isArray(cond.tokens)) {
         for (const tok of cond.tokens) {
-          const flagName = tok.split("|")[1];
-          if (flagName) {
-            proficiencies.add(flagName);
+          const m = tok.match(PRIOF_MATCH);
+          if (m) {
+            proficiencies.add(m[1]); // e.g. "fieldcraft"
           }
         }
       }
