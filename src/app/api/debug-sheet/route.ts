@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
     };
     
     const sheet = aggregateCharacterSheet(sheetInput as any);
-    return NextResponse.json({ ok: true, totals: Object.fromEntries(Object.entries(sheet.totals).map(([k,v]) => [k, v])) });
+    return NextResponse.json({ ok: true, practices: sheet.practices.map((p: any) => ({ practice: p.practice, total: p.total, attribute: p.attribute })), vitality: sheet.vitality, encumbrance: sheet.encumbrance });
   } catch (e: any) {
     return NextResponse.json({ error: e.message, stack: e.stack });
   }
