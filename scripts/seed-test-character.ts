@@ -606,13 +606,17 @@ async function main() {
     // Clean up old links
     await pool.query(`DELETE FROM character_primitives WHERE character_id = $1::uuid`, [characterId]);
     await pool.query(`DELETE FROM character_capabilities WHERE character_id = $1::uuid`, [characterId]);
-    await pool.query(`DELETE FROM capability_versions WHERE capability_id IN (SELECT id FROM capabilities WHERE user_id = $1)`, [MASHU_USER_ID]);
-    await pool.query(`DELETE FROM capability_primitives WHERE capability_id IN (SELECT id FROM capabilities WHERE user_id = $1)`, [MASHU_USER_ID]);
+    // Also remove any other character_capabilities rows that reference capabilities owned by this user
+    await pool.query(`DELETE FROM character_capabilities WHERE capability_id IN (SELECT id FROM capabilities WHERE user_id = $1)`, [MASHU_USER_ID]);
     await pool.query(`DELETE FROM capability_effects WHERE capability_id IN (SELECT id FROM capabilities WHERE user_id = $1)`, [MASHU_USER_ID]);
+    await pool.query(`DELETE FROM capability_primitives WHERE capability_id IN (SELECT id FROM capabilities WHERE user_id = $1)`, [MASHU_USER_ID]);
+    await pool.query(`DELETE FROM capability_versions WHERE capability_id IN (SELECT id FROM capabilities WHERE user_id = $1)`, [MASHU_USER_ID]);
+    // Delete effects that are no longer referenced (orphaned)
     await pool.query(`DELETE FROM effect_primitives WHERE effect_id IN (SELECT id FROM effects WHERE user_id = $1)`, [MASHU_USER_ID]);
     await pool.query(`DELETE FROM effects WHERE user_id = $1`, [MASHU_USER_ID]);
     await pool.query(`DELETE FROM capabilities WHERE user_id = $1`, [MASHU_USER_ID]);
-    await pool.query(`DELETE FROM primitives WHERE user_id = $1 AND source_origin = $2`, [MASHU_USER_ID, `user:${MASHU_USER_ID}`]);
+    // Don't delete primitives — they are upserted via ON CONFLICT below.
+    // This avoids FK violations from other characters referencing them.
   } else {
     // Insert new character
     const res = await pool.query(
@@ -673,14 +677,21 @@ async function main() {
   const attachedDirect: string[] = [];
   for (const p of PRIMITIVES) {
     if (CAPABILITY_PRIM_NAMES.has(p.name)) continue; // skip capability-owned
-    let source = p.source;
+    // Check if already linked
+    const existing = await pool.query(
+      `SELECT 1 FROM character_primitives WHERE character_id = $1::uuid AND primitive_id = $2`,
+      [characterId, primIds[p.name]],
+    );
+    if ((existing.rowCount ?? 0) > 0) {
+      attachedDirect.push(p.name);
+      continue; // already linked, skip
+    }
     await pool.query(
       `INSERT INTO character_primitives
         (character_id, primitive_id, origin_capability_id, is_mirrored,
          acquired_at_level, source)
-       VALUES ($1::uuid, $2, null, $3, 1, $4)
-       ON CONFLICT (character_id, primitive_id) DO NOTHING`,
-      [characterId, primIds[p.name], p.name === "Mirrored Str Buff", source],
+       VALUES ($1::uuid, $2, null, $3, 1, $4)`,
+      [characterId, primIds[p.name], p.name === "Mirrored Str Buff", p.source],
     );
     attachedDirect.push(p.name);
   }
@@ -696,15 +707,15 @@ async function main() {
     // Create capability
     const capRes = await pool.query(
       `INSERT INTO capabilities
-        (user_id, name, type, source_type, verbose_description, tags, is_public)
-       VALUES ($1, $2, $3, $4, $5, $6, false)
+        (user_id, name, type, source_type, verbose_description, tags, is_public, source_origin)
+       VALUES ($1, $2, $3, $4, $5, $6, false, $7)
        ON CONFLICT (name, source_origin) DO UPDATE
          SET verbose_description = EXCLUDED.verbose_description,
              tags = EXCLUDED.tags,
              type = EXCLUDED.type,
              source_type = EXCLUDED.source_type
        RETURNING id`,
-      [MASHU_USER_ID, cap.name, cap.type, cap.sourceType, cap.description, cap.tags],
+      [MASHU_USER_ID, cap.name, cap.type, cap.sourceType, cap.description, cap.tags, sourceOrigin],
     );
     const capId = capRes.rows[0].id;
     console.log(`  ✓ Capability: ${cap.name} (${capId})`);
@@ -724,12 +735,12 @@ async function main() {
     // Create nested effects + link via capability_effects + effect_primitives
     for (const eff of cap.effects) {
       const effRes = await pool.query(
-        `INSERT INTO effects (user_id, name, narrative_description, is_public, tags)
-         VALUES ($1, $2, $3, false, '{}')
+        `INSERT INTO effects (user_id, name, narrative_description, is_public, tags, source_origin)
+         VALUES ($1, $2, $3, false, '{}', $4)
          ON CONFLICT (name, source_origin) DO UPDATE
            SET narrative_description = EXCLUDED.narrative_description
          RETURNING id`,
-        [MASHU_USER_ID, eff.name, eff.description],
+        [MASHU_USER_ID, eff.name, eff.description, sourceOrigin],
       );
       const effId = effRes.rows[0].id;
       console.log(`    ✓ Effect: ${eff.name} (${effId})`);
