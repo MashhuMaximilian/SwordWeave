@@ -446,7 +446,7 @@ const PRIMITIVES: PrimitiveSpec[] = [
       {
         target: "skill_practice_check",
         operation: "add",
-        value: { kind: "derived", which: "pb" },
+        value: { kind: "derived", which: "pb_half" },
         metadata: { targetScope: { layer: "PRACTICE", values: ["REASON"] } },
       },
     ],
