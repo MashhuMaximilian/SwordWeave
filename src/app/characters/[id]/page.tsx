@@ -75,10 +75,10 @@ export default async function CharacterSheetPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  try {
   const { id } = await params;
   const { userId } = await auth();
 
-  try {
   const row = await db.query.characters.findFirst({
     where: eq(characters.id, id),
     with: {
