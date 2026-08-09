@@ -775,6 +775,55 @@ async function main() {
       [characterId, capId],
     );
     console.log(`    ✓ Linked to character`);
+
+    // Phase 8.I i3: Expand capability → effect → primitive into
+    // character_primitives with origin tracking, so the resolver
+    // picks them up via the standard character_primitives query.
+    // Direct capability_primitives (role: AUGMENT etc.) → origin_capability_id
+    // Effect primitives via capability_effects → effect_primitives → origin_effect_id + origin_capability_id
+
+    // a) Direct capability_primitives → expand into character_primitives
+    for (const primName of cap.directPrimNames) {
+      await pool.query(
+        `DELETE FROM character_primitives
+         WHERE character_id = $1::uuid AND primitive_id = $2`,
+        [characterId, primIds[primName]],
+      );
+      await pool.query(
+        `INSERT INTO character_primitives
+          (character_id, primitive_id, origin_capability_id, is_mirrored,
+           acquired_at_level, source)
+         VALUES ($1::uuid, $2, $3, false, 18, 'PERSONAL')`,
+        [characterId, primIds[primName], capId],
+      );
+      console.log(`    ✓ Expanded direct primitive: ${primName}`);
+    }
+
+    // b) Effect primitives → expand into character_primitives with origin_effect_id
+    for (const eff of cap.effects) {
+      const effRow = await pool.query(
+        `SELECT id FROM effects WHERE name = $1 AND source_origin = $2`,
+        [eff.name, sourceOrigin],
+      );
+      const effId = effRow.rows[0]?.id;
+      if (!effId) continue;
+
+      for (const primName of eff.primitiveNames) {
+        await pool.query(
+          `DELETE FROM character_primitives
+           WHERE character_id = $1::uuid AND primitive_id = $2`,
+          [characterId, primIds[primName]],
+        );
+        await pool.query(
+          `INSERT INTO character_primitives
+            (character_id, primitive_id, origin_capability_id, origin_effect_id,
+             is_mirrored, acquired_at_level, source)
+           VALUES ($1::uuid, $2, $3, $4, false, 18, 'PERSONAL')`,
+          [characterId, primIds[primName], capId, effId],
+        );
+        console.log(`    ✓ Expanded effect primitive: ${primName} (via ${cap.name} → ${eff.name})`);
+      }
+    }
   }
 
   console.log(`\n✅ Seed complete!`);

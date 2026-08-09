@@ -10,11 +10,10 @@
  *   GET /api/characters/[id]/resolve?target=character.attribute.physical
  *     → just that target's { total, contributions }
  *
- * The resolver needs the character's slotted primitives + their
- * hard_modifiers + provenance. We fetch them via a single
- * Drizzle query (joins primitiveLinks.primitive), then build
- * `ResolvedCharacterInput` and call `resolveModifiers()` from
- * @/lib/engine/resolve-modifiers.
+ * Phase 8.I i3: Also fetches capability/effect-derived primitive slots:
+ *   - character_primitives (direct slots + origin-tracked slots)
+ *   All slots with origin_capability_id / origin_effect_id are included
+ *   so the resolver sees the full provenance chain.
  *
  * Cached per (characterId, target) for 30 seconds via the
  * character-resolver-cache LRU. PATCH/POST handlers call
@@ -52,7 +51,6 @@ import {
 // =============================================================================
 
 function attrKey(attr: Attribute): "physical" | "mental" | "magical" {
-  // Already lowercase; this is just for TS narrowing.
   return attr;
 }
 
@@ -64,11 +62,7 @@ function isValidTarget(t: string): boolean {
     "character.attribute.physical",
     "character.attribute.mental",
     "character.attribute.magical",
-    // Phase 8.I i2.0 (Mashu 2026-08-05): single global Save DC.
     "character.defense.saveDc",
-    // Legacy per-attribute defense keys still resolve (read-only
-    // for backwards compatibility) but are mapped to the single
-    // Save DC axis via modifier-scope.ts:LEGACY_TARGET_MIGRATIONS.
     "character.defense.physicalDc",
     "character.defense.mentalDc",
     "character.defense.magicalDc",
@@ -82,7 +76,7 @@ function attrFromTarget(target: string): Attribute | null {
   if (target === "character.attribute.physical" || target === "character.defense.physicalDc") return "physical";
   if (target === "character.attribute.mental" || target === "character.defense.mentalDc") return "mental";
   if (target === "character.attribute.magical" || target === "character.defense.magicalDc") return "magical";
-  if (target === "character.defense.saveDc") return "physical"; // legacy callers — return any
+  if (target === "character.defense.saveDc") return "physical";
   return null;
 }
 
@@ -98,9 +92,6 @@ export async function GET(
   const url = new URL(request.url);
   const targetFilter = url.searchParams.get("target");
 
-  // -----------------------------------------------------------------
-  // Validate target param
-  // -----------------------------------------------------------------
   if (targetFilter && !isValidTarget(targetFilter)) {
     return NextResponse.json(
       { error: `Unknown target "${targetFilter}".` },
@@ -108,10 +99,6 @@ export async function GET(
     );
   }
 
-  // -----------------------------------------------------------------
-  // Cache check (target-filtered only — the "all" form is less
-  // common and cheaper to recompute).
-  // -----------------------------------------------------------------
   if (targetFilter) {
     const cached = getResolverCache(id, targetFilter);
     if (cached) {
@@ -119,9 +106,6 @@ export async function GET(
     }
   }
 
-  // -----------------------------------------------------------------
-  // Fetch character + primitive slots
-  // -----------------------------------------------------------------
   const charRow = await db.query.characters.findFirst({
     where: eq(characters.id, id),
   });
@@ -130,6 +114,11 @@ export async function GET(
     return NextResponse.json({ error: "Character not found." }, { status: 404 });
   }
 
+  // -----------------------------------------------------------------
+  // Fetch ALL primitive slots for this character from
+  // character_primitives, including those with origin_capability_id
+  // or origin_effect_id set (Phase 8.I i3: capability-derived primitives).
+  // -----------------------------------------------------------------
   const slotRows = await db
     .select({
       primitiveId: characterPrimitives.primitiveId,
@@ -147,9 +136,6 @@ export async function GET(
     .innerJoin(primitives, eq(primitives.id, characterPrimitives.primitiveId))
     .where(eq(characterPrimitives.characterId, id));
 
-  // -----------------------------------------------------------------
-  // Build ResolvedCharacterInput
-  // -----------------------------------------------------------------
   const slots: ResolvedPrimitiveSlot[] = slotRows.map((row) => ({
     primitiveId: row.primitiveId,
     name: row.primitiveName,
@@ -163,10 +149,6 @@ export async function GET(
     originEffectId: row.originEffectId,
   }));
 
-  // The DB stores attribute slices as -1..+5 ints (sum = 10,
-  // per characters_attr_sum_check). The slice IS the modifier
-  // directly (no D&D-style transform). We pass it through
-  // unchanged. See target-registry.ts:resolveAttributeModifier.
   const input = {
     characterId: id,
     level: charRow.level,
@@ -190,24 +172,15 @@ export async function GET(
     if (attr && targetFilter === ATTR_TARGETS[attrKey(attr)]) {
       result = resolveAttributeModifier(input, attr);
     } else if (attr && targetFilter === SAVE_TARGETS[attrKey(attr)]) {
-      // For save targets, "total" is the save VALUE (the d20
-      // modifier the character adds). The provenance modal wants
-      // the save-specific contributions, not the attribute mod.
-      // We resolve save value here but include both attr-mod
-      // contributions + save-target contributions for the modal.
       result = resolveSaveValue(input, attr);
     } else if (targetFilter === VITALITY_TARGETS.max) {
       result = resolveMaxVitality(input);
     } else if (targetFilter === VITALITY_TARGETS.current) {
-      // Current vitality isn't computed by the resolver — it's
-      // the character's tracked runtime value (a separate
-      // /vitality endpoint mutates it). Return a stub.
       result = {
         total: charRow.currentVitality ?? 0,
         contributions: [],
       };
     } else {
-      // Fallback: compute the whole resolver and pluck the target.
       const full = resolveModifiers(input);
       result = {
         total: full.totals[targetFilter] ?? 0,
@@ -215,8 +188,6 @@ export async function GET(
       };
     }
 
-    // For save targets, also include the DC so the modal can show
-    // both the save VALUE (d20 modifier) and the DC (5 + PB + mod).
     let dc: number | undefined;
     if (attr && targetFilter === SAVE_TARGETS[attrKey(attr)]) {
       dc = resolveSaveDc(input, attr).total;
