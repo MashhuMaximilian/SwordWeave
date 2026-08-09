@@ -226,16 +226,14 @@ export async function GET(
 
   const currentVit = charRow.currentVitality ?? maxVit;
 
-  // Build proficiency flags
+  // Build proficiency flags and scan for proficient_in tokens
   const proficiencies = new Set<string>();
   if (charRow.attrProficient) {
     proficiencies.add(charRow.attrProficient.toLowerCase());
     proficiencies.add(charRow.attrProficient.toLowerCase() + "_proficiency");
   }
 
-  // Scan condition tokens from ALL slots (including effect/capacity-derived)
-  // for proficiency flags. Tokens like "self:proficient_in(fieldcraft)"
-  // grant the corresponding practice proficiency.
+  // Scan condition tokens from ALL slots for proficiency flags
   const PRIOF_MATCH = /^self:proficient_in\((\w+)\)/;
   for (const slot of slots) {
     for (const mod of slot.hardModifiers) {
@@ -246,6 +244,19 @@ export async function GET(
           if (m) {
             proficiencies.add(m[1]); // e.g. "fieldcraft"
           }
+        }
+      }
+    }
+  }
+
+  // DEBUG
+  if (process.env.NODE_ENV !== "production") {
+    console.error("[DEBUG-CONDITION] proficiencies:", [...proficiencies].sort(), "attrProficient:", charRow.attrProficient);
+    for (const slot of slots) {
+      for (const mod of slot.hardModifiers) {
+        const cond = mod.condition as unknown as { tokens?: string[] } | undefined;
+        if (cond && Array.isArray(cond.tokens)) {
+          console.error("[DEBUG-CONDITION]", slot.name, "tokens:", JSON.stringify(cond.tokens));
         }
       }
     }
