@@ -656,7 +656,7 @@ export function BottomStickyBar({
                     Attack Bonus
                   </p>
                   <p className="text-[9px] text-muted-foreground">
-                    PHYSICAL
+                    {primaryAttrLabel}
                   </p>
                 </div>
                 <span className="font-mono text-2xl font-bold tabular-nums leading-none text-teal-700 dark:text-teal-200">
