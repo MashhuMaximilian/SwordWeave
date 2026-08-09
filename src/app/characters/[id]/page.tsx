@@ -376,7 +376,13 @@ export default async function CharacterSheetPage({
   // against the *real* sheet state. Vitality-modifying
   // primitives are almost never themselves conditional, so
   // pass 1 is stable.
-  let sheet = aggregateCharacterSheet(sheetInput);
+  let sheet;
+  try {
+    sheet = aggregateCharacterSheet(sheetInput);
+  } catch (e) {
+    console.error("SSR ERROR in aggregateCharacterSheet:", e);
+    throw e;
+  }
 
   const conditionContext: ConditionContext = {
     character: {
