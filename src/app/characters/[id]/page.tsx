@@ -78,6 +78,7 @@ export default async function CharacterSheetPage({
   const { id } = await params;
   const { userId } = await auth();
 
+  try {
   const row = await db.query.characters.findFirst({
     where: eq(characters.id, id),
     with: {

@@ -1,7 +1,7 @@
 import { config } from "dotenv";
 config({ path: ".env.local" });
 
-import { Pool } from "@neodatabase/serverless";
+import { Pool } from "@neondatabase/serverless";
 
 async function main() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
