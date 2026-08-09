@@ -550,7 +550,7 @@ const CAPABILITIES: CapabilitySpec[] = [
     description:
       "+2 physical defense. Also grants a reaction to reduce incoming damage by PB/2.",
     tags: ["defense"],
-    directPrimNames: ["Stone Skin"],
+    directPrimNames: ["Stone Skin"], // owns Stone Skin (Iron Defender defers)
     effects: [
       {
         name: "Endure",
@@ -564,9 +564,10 @@ const CAPABILITIES: CapabilitySpec[] = [
     type: "PASSIVE",
     sourceType: "MAGICAL",
     description:
-      "Armor plating grants +2 physical defense and a minimum AC of 10 on practice checks.",
+      "Armor plating grants a minimum of 10 on defense/practice rolls and " +
+      "Stone Skin protection (shared with Stone's Endurance).",
     tags: ["defense", "armor"],
-    directPrimNames: ["Stone Skin"],
+    directPrimNames: [], // Stone Skin already owned by Stone's Endurance
     effects: [
       {
         name: "Plating",
