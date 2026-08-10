@@ -546,9 +546,9 @@ const PRIMITIVES: PrimitiveSpec[] = [
     isMirrorable: false,
     mirrorBuCredit: 0,
     hardModifiers: [
-      { target: "defense.magical", operation: "add", value: 1 },
+      { target: "save_dc.magical", operation: "add", value: 1 },
     ],
-    description: "+1 to magical defense.",
+    description: "+1 to magical save DC.",
     source: "MANIFEST",
   },
   {
