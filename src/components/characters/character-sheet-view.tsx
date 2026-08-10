@@ -2153,65 +2153,6 @@ function CapabilitiesTab({
             - hardModifiers (target, operation, value, condition)
             - Mirror status + mirrorBuCredit
           Tags differentiate slotted vs inherited. */}
-      {/* Phase 8.J G1+G2: Capabilities grouped by slotTab. Even with
-          0 heritages, capabilities render here (each cap has its own
-          accordion). Direct caps land in their slotTab group via the
-          character_capabilities.slotTab column. */}
-      {capabilities.length > 0 && (
-        <div className="space-y-2">
-          <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Capabilities ({capabilities.length})
-          </p>
-          {(["LINEAGE", "UPBRINGING", "MANIFEST"] as const).map((tab) => {
-            const capsInTab = capabilities.filter((c) => c.slotTab === tab);
-            if (capsInTab.length === 0) return null;
-            const labelMap = { LINEAGE: "Lineage", UPBRINGING: "Upbringing", MANIFEST: "Manifest" };
-            return (
-              <details
-                key={tab}
-                open
-                className="group rounded-md border border-border bg-card"
-              >
-                <summary className="flex items-center justify-between gap-3 px-4 py-2 text-sm font-medium cursor-pointer list-none">
-                  <span className="flex items-center gap-2">
-                    <Swords className="size-4 text-muted-foreground" />
-                    {labelMap[tab]} ({capsInTab.length})
-                  </span>
-                  <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
-                </summary>
-                <div className="px-4 pb-4 pt-3 space-y-2 border-t border-border">
-                  {capsInTab.map((c) => (
-                    <div key={c.id} className="rounded-md border border-border bg-background p-3">
-                      <div className="mb-1 flex items-baseline justify-between gap-2">
-                        <h3 className="text-sm font-semibold">{c.name}</h3>
-                        <span className="font-mono text-[10px] text-muted-foreground">
-                          {c.type} · {c.sourceType}
-                        </span>
-                      </div>
-                      <p className="mb-2 text-xs text-muted-foreground">
-                        {c.verboseDescription}
-                      </p>
-                      {c.effectLinks.length > 0 ? (
-                        <ul className="space-y-1">
-                          {c.effectLinks.map((el) => (
-                            <li key={el.effectId} className="rounded border border-dashed border-border bg-background/50 p-2">
-                              <p className="text-xs font-medium">{el.effect.name}</p>
-                              <p className="text-[10px] text-muted-foreground">
-                                {el.effect.description}
-                              </p>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              </details>
-            );
-          })}
-        </div>
-      )}
-
       <details open className="group rounded-md border border-border bg-card">
         <summary className="flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium cursor-pointer list-none">
           <span className="flex items-center gap-2">
@@ -2330,6 +2271,53 @@ function CapabilitiesTab({
           primitiveLinks={primitiveLinks}
           latestVersions={latestVersions}
         />
+      )}
+
+      {/* ===== Phase 8.K K1 fallback: 0-heritage characters =====
+          HeritageKindAccordion only renders when at least one heritage
+          of that kind exists. For 0-heritage characters, render caps
+          directly using a lightweight CapabilityCard. */}
+      {heritageLinks.length === 0 && capabilities.length > 0 && (
+        <div className="space-y-2">
+          <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Capabilities (direct, no heritage)
+          </p>
+          {(["LINEAGE", "UPBRINGING", "MANIFEST"] as const).map((tab) => {
+            const capsInTab = capabilities.filter((c) => c.slotTab === tab);
+            if (capsInTab.length === 0) return null;
+            const labelMap = { LINEAGE: "Lineage", UPBRINGING: "Upbringing", MANIFEST: "Manifest" };
+            return (
+              <details key={tab} open className="group rounded-md border border-border bg-card">
+                <summary className="flex items-center justify-between gap-3 px-4 py-2 text-sm font-medium cursor-pointer list-none">
+                  <span className="flex items-center gap-2">
+                    <Swords className="size-4 text-muted-foreground" />
+                    {labelMap[tab]} ({capsInTab.length})
+                  </span>
+                  <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="px-4 pb-4 pt-3 space-y-2 border-t border-border">
+                  {capsInTab.map((c) => (
+                    <CapabilityCard
+                      key={c.id}
+                      characterId={characterId}
+                      capability={{
+                        id: c.id,
+                        name: c.name,
+                        type: c.type,
+                        sourceType: c.sourceType,
+                        acquiredAtLevel: c.acquiredAtLevel,
+                        verboseDescription: c.verboseDescription,
+                        versionId: c.versionId,
+                        slotSource: c.slotSource,
+                        latestVersionId: c.latestVersionId,
+                      }}
+                    />
+                  ))}
+                </div>
+              </details>
+            );
+          })}
+        </div>
       )}
 
       {/* ===== Accordion 4: Upbringing (heritage kind = UPBRINGING) ===== */}
