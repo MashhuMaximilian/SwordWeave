@@ -36,7 +36,7 @@ export async function GET(request: Request) {
         const matched: string[] = [];
         for (const tok of cond.tokens) {
           const m = tok.match(PRIOF_MATCH);
-          if (m) {
+          if (m && m[1]) {
             proficiencies.add(m[1]);
             matched.push(m[1]);
           }
