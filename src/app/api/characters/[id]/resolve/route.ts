@@ -326,6 +326,36 @@ export async function GET(
   // -----------------------------------------------------------------
   // Full resolver (no target filter)
   // -----------------------------------------------------------------
-  const resolved: ResolvedModifiers = resolveModifiers(input, sourceNames);
+  const resolvedBase: ResolvedModifiers = resolveModifiers(input, sourceNames);
+
+  // Phase 8.I POST D2: max_vitality baseline formula.
+  // The single-target fast path uses resolveMaxVitality() which applies
+  // `(10 + PB) × level + primitive delta + floor/ceiling limits`.
+  // The full resolve path used to only sum primitive contributions,
+  // missing the baseline. Now we apply the same formula here so the
+  // total returned via the full path matches the single-target path.
+  const baselineMaxVit = (10 + input.pb) * input.level;
+  const primitiveDelta = resolvedBase.totals[VITALITY_TARGETS.max] ?? 0;
+  const maxVitContribs = resolvedBase.byTarget[VITALITY_TARGETS.max] ?? [];
+  const maxVitFloor = maxVitContribs
+    .filter((c) => c.op === "min" || (c.op === "set" && (c.tags ?? []).includes("min")))
+    .reduce((acc: number, c) => Math.max(acc, c.value), -Infinity);
+  const maxVitCeiling = maxVitContribs
+    .filter((c) => c.op === "max" || (c.op === "set" && (c.tags ?? []).includes("max")))
+    .reduce((acc: number, c) => Math.min(acc, c.value), Infinity);
+  let maxVitFinal = baselineMaxVit + primitiveDelta;
+  if (maxVitFloor !== -Infinity) maxVitFinal = Math.max(maxVitFinal, maxVitFloor);
+  if (maxVitCeiling !== Infinity) maxVitFinal = Math.min(maxVitFinal, maxVitCeiling);
+
+  // Build a new resolved object with the patched max_vitality total.
+  // resolvedBase.totals is readonly, so we spread + override.
+  const resolved: ResolvedModifiers = {
+    ...resolvedBase,
+    totals: {
+      ...resolvedBase.totals,
+      [VITALITY_TARGETS.max]: maxVitFinal,
+    },
+  };
+
   return NextResponse.json({ characterId: id, resolved });
 }
