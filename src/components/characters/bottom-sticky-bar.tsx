@@ -36,10 +36,11 @@
  *   - Combined mod + save provenance in a single modal.
  */
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, type ReactNode, useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { humanReadableCondition } from "@/lib/engine/condition-dictionary";
+import { humanReadableCondition, humanReadableToken } from "@/lib/engine/condition-dictionary";
 import { cn } from "@/lib/utils";
+import { formatEquationValue } from "@/lib/engine/equation-formatter";
 import { ChevronDown, ChevronUp, Heart } from "lucide-react";
 import { VitalityTracker } from "@/components/characters/vitality-tracker";
 import {
@@ -128,6 +129,44 @@ function isExpertiseName(name: string): boolean {
 
 function isProficiencyName(name: string): boolean {
   return /^proficient\b/i.test(name);
+}
+
+/**
+ * Phase 8.K K17: render condition tokens as styled chips with
+ * AND/OR as distinct visual elements. AND = cyan chip, OR = amber chip.
+ */
+function renderConditionChips(condition: unknown): ReactNode {
+  const c = condition as { kind?: string; tokens?: string[] };
+  if (!c || !Array.isArray(c.tokens)) return null;
+  return (
+    <>
+      {c.tokens.map((tok, i) => {
+        if (tok === "AND" || tok === "OR") {
+          const isAnd = tok === "AND";
+          return (
+            <span
+              key={i}
+              className={`rounded px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${
+                isAnd
+                  ? "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300"
+                  : "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+              }`}
+            >
+              {tok}
+            </span>
+          );
+        }
+        return (
+          <span
+            key={i}
+            className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] italic text-amber-700 dark:text-amber-300"
+          >
+            {humanReadableToken(tok)}
+          </span>
+        );
+      })}
+    </>
+  );
 }
 
 function AxisMarkers({
@@ -1735,7 +1774,11 @@ function ContribListItem({ c, setRawTokensOpen, isOff }: {
             isProficiencyName(c.primitiveName) && "text-teal-700 dark:text-teal-300",
             isOff && "text-muted-foreground line-through"
           )}>
-            {isLimit ? c.value : fmt(c.value)}
+            {isLimit
+              ? c.value
+              : typeof c.value === "number"
+                ? fmt(c.value)
+                : formatEquationValue(c.value)}
           </span>
         </div>
       </div>
@@ -1905,11 +1948,11 @@ function PracticeDetailModal({
                 <ul className="space-y-1">
                   {allContribs.map((c, i) => (
                     <li key={`cond-${i}`} className="flex items-center justify-between gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-1 text-xs">
-                      <span>
-                        <strong>{c.primitiveName}:</strong>{" "}
+                      <span className="flex flex-wrap items-center gap-1">
+                        <strong>{c.primitiveName}:</strong>
                         {c.condition
-                          ? humanReadableCondition(c.condition as Parameters<typeof humanReadableCondition>[0])
-                          : "no condition"}
+                          ? renderConditionChips(c.condition)
+                          : <span className="italic text-muted-foreground">no condition</span>}
                       </span>
                       <span className={cn("font-mono text-[10px]", c.conditionActive === false ? "text-red-500" : "text-teal-600 dark:text-teal-400")}>
                         {c.conditionActive === false ? "✗ suppressed" : c.conditionActive === true ? "✓ active" : "— ?"}
@@ -1932,7 +1975,7 @@ function PracticeDetailModal({
             ) : (
               <ul className="space-y-2">
                 {contributions.map((c, i) => (
-                  <ContribListItem key={`attr-${c.primitiveId}-${i}`} c={c} setRawTokensOpen={setRawTokensOpen} isOff={offCapabilityIds.has(c.originCapabilityId ?? "")} />
+                  <ContribListItem key={`attr-${c.primitiveId}-${i}`} c={c} setRawTokensOpen={setRawTokensOpen} isOff={offCapabilityIds.has(c.originCapabilityId ?? "") || c.conditionActive === false} />
                 ))}
               </ul>
             )}
@@ -1950,7 +1993,7 @@ function PracticeDetailModal({
             ) : (
               <ul className="space-y-2">
                 {byTarget[practiceTarget]!.map((c, i) => (
-                  <ContribListItem key={`prac-${c.primitiveId}-${i}`} c={c} setRawTokensOpen={setRawTokensOpen} isOff={offCapabilityIds.has(c.originCapabilityId ?? "")} />
+                  <ContribListItem key={`prac-${c.primitiveId}-${i}`} c={c} setRawTokensOpen={setRawTokensOpen} isOff={offCapabilityIds.has(c.originCapabilityId ?? "") || c.conditionActive === false} />
                 ))}
               </ul>
             )}
