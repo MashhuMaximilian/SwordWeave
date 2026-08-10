@@ -48,6 +48,7 @@
 import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type {
   ModifierContribution,
   ResolvedModifiers,
@@ -219,6 +220,46 @@ function renderConditionsSection(breakdown: ReadonlyArray<FormulaStep>): ReactNo
 // Component
 // =============================================================================
 
+// =============================================================================
+// Color-rule helpers (Phase 8.I POST A4-A6)
+// =============================================================================
+
+/**
+ * "PB Half" style primitive — value is derived from PB via division.
+ * Shows the number in teal only (label stays default).
+ */
+function isPbHalfValue(value: unknown): boolean {
+  // Could be {kind:"derived", which:"pb"} with op=multiply value=0.5,
+  // or a numeric primitive named "PB Half" / "PB/2" etc.
+  if (
+    value &&
+    typeof value === "object" &&
+    "kind" in value &&
+    (value as { kind: string }).kind === "derived" &&
+    "which" in value &&
+    ((value as { which: string }).which === "pb" || (value as { which: string }).which === "pb_half")
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * "Expertise ..." primitive — name prefix detected. Renders label AND
+ * number in teal+bold.
+ */
+function isExpertiseName(name: string): boolean {
+  return /^expertise/i.test(name);
+}
+
+/**
+ * "Proficient ..." or any +PB-derived primitive on a non-practice axis
+ * (e.g. "Proficient Save"). Renders label AND number in teal.
+ */
+function isProficiencyName(name: string): boolean {
+  return /^proficient/i.test(name);
+}
+
 const OP_LABEL: Record<string, string> = {
   add: "+",
   subtract: "−",
@@ -368,7 +409,11 @@ function StepRow({ step }: { step: FormulaStep }) {
       <li className="rounded-md border border-border bg-background p-2.5">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium" title={c.primitiveName}>
+            <p className={cn(
+              "truncate text-sm font-medium",
+              isExpertiseName(c.primitiveName) && "font-bold text-teal-700 dark:text-teal-300",
+              isProficiencyName(c.primitiveName) && "text-teal-700 dark:text-teal-300"
+            )} title={c.primitiveName}>
               {step.label}
             </p>
             {step.via && (
@@ -383,7 +428,12 @@ function StepRow({ step }: { step: FormulaStep }) {
                 {OP_LABEL[c.op] ?? c.op}
               </span>
             ) : null}
-            <span className="font-mono font-semibold tabular-nums">
+            <span className={cn(
+              "font-mono font-semibold tabular-nums",
+              isPbHalfValue(c.value) && "text-teal-600 dark:text-teal-400",
+              isExpertiseName(c.primitiveName) && "font-bold text-teal-700 dark:text-teal-300",
+              isProficiencyName(c.primitiveName) && "text-teal-700 dark:text-teal-300"
+            )}>
               {c.op === "min" || c.op === "max" ? c.value : fmt(c.value)}
             </span>
             {c.preMirrorValue !== null && (
