@@ -378,11 +378,13 @@ function StepRow({ step }: { step: FormulaStep }) {
             )}
           </div>
           <div className="flex shrink-0 items-center gap-2 text-sm">
-            <span className="font-mono text-xs text-muted-foreground">
-              {OP_LABEL[c.op] ?? c.op}
-            </span>
+            {c.op !== "min" && c.op !== "max" ? (
+              <span className="font-mono text-xs text-muted-foreground">
+                {OP_LABEL[c.op] ?? c.op}
+              </span>
+            ) : null}
             <span className="font-mono font-semibold tabular-nums">
-              {fmt(c.value)}
+              {c.op === "min" || c.op === "max" ? c.value : fmt(c.value)}
             </span>
             {c.preMirrorValue !== null && (
               <span
