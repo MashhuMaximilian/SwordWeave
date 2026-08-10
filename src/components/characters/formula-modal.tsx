@@ -45,7 +45,7 @@
  * `document.body` restores full-viewport sizing.
  */
 
-import { useEffect, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -167,7 +167,7 @@ function formatVia(c: ModifierContribution): string {
 
 /** Phase 8.I i3: render the Conditions section of the modal, showing which
  *  contributions are gated and whether their condition is currently active. */
-function renderConditionsSection(breakdown: ReadonlyArray<FormulaStep>): ReactNode {
+function renderConditionsSection(breakdown: ReadonlyArray<FormulaStep>, onShowRaw: (cond: unknown) => void): ReactNode {
   const gated = breakdown.filter((s) => s.contribution && (s.contribution.hasCondition || s.contribution.conditionActive === false));
   if (gated.length === 0) return null;
 
@@ -193,12 +193,13 @@ function renderConditionsSection(breakdown: ReadonlyArray<FormulaStep>): ReactNo
               <span className="flex-1 text-sm font-medium">
                 <span>{step.label}</span>
                 {c.condition ? (
-                  <span
-                    className="ml-2 text-xs italic text-muted-foreground"
-                    title={JSON.stringify(c.condition)}
+                  <button
+                    type="button"
+                    className="ml-2 cursor-pointer text-xs italic text-muted-foreground underline-offset-2 hover:underline"
+                    onClick={() => onShowRaw(c.condition)}
                   >
                     when {humanReadableCondition(c.condition as Parameters<typeof humanReadableCondition>[0])}
-                  </span>
+                  </button>
                 ) : null}
               </span>
               <span
@@ -314,99 +315,140 @@ export function FormulaModal({
     };
   }, []);
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Formula for ${title}`}
-    >
+  // Phase 8.I POST C2: click condition text to see raw tokens.
+  const [rawTokensOpen, setRawTokensOpen] = useState<unknown | null>(null);
+
+  return (
+    <Fragment>
+      {createPortal(
+
       <div
-        className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        onClick={onClose}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Formula for ${title}`}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Formula
-            </h2>
-            <p className="mt-0.5 text-base font-semibold">{title}</p>
-            {subtitle && (
-              <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md p-1 transition-colors hover:bg-muted"
-            aria-label="Close"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
-          {/* Section 1 — Static formula */}
-          <section>
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Formula
-            </p>
-            <p className="rounded-md border border-border bg-background p-2.5 font-mono text-sm leading-relaxed">
-              {formula}
-            </p>
-          </section>
-
-          {/* Section 2 — Provenance chain */}
-          <section>
-            <div className="mb-2 flex items-baseline justify-between gap-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Provenance
-              </p>
-              <span className="font-mono text-xl font-bold tabular-nums">
-                {fmt(total)}
-              </span>
+        <div
+          className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Formula
+              </h2>
+              <p className="mt-0.5 text-base font-semibold">{title}</p>
+              {subtitle && (
+                <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
+              )}
             </div>
-            {breakdown.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No contributions — total is the base value only.
-              </p>
-            ) : (
-              <>
-                <ul className="space-y-2">
-                  {breakdown.map((step, i) => (
-                    <StepRow key={`${step.label}-${i}`} step={step} />
-                  ))}
-                </ul>
-                <SummaryLine steps={breakdown} total={total} />
-              </>
-            )}
-          </section>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md p-1 transition-colors hover:bg-muted"
+              aria-label="Close"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
 
-          {/* Section 3b — Conditions summary: which contributions are
-              gated and whether their condition is currently active. */}
-          {renderConditionsSection(breakdown)}
-
-          {/* Section 3 — Optional info panel */}
-          {info && (
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+            {/* Section 1 — Static formula */}
             <section>
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {info.title}
+                Formula
               </p>
-              <div className="rounded-md border border-border bg-background p-2.5 text-sm text-foreground">
-                {info.body}
-              </div>
+              <p className="rounded-md border border-border bg-background p-2.5 font-mono text-sm leading-relaxed">
+                {formula}
+              </p>
             </section>
-          )}
+
+            {/* Section 2 — Provenance chain */}
+            <section>
+              <div className="mb-2 flex items-baseline justify-between gap-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Provenance
+                </p>
+                <span className="font-mono text-xl font-bold tabular-nums">
+                  {fmt(total)}
+                </span>
+              </div>
+              {breakdown.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No contributions — total is the base value only.
+                </p>
+              ) : (
+                <>
+                  <ul className="space-y-2">
+                    {breakdown.map((step, i) => (
+                      <StepRow key={`${step.label}-${i}`} step={step} />
+                    ))}
+                  </ul>
+                  <SummaryLine steps={breakdown} total={total} />
+                </>
+              )}
+            </section>
+
+            {/* Section 3b — Conditions summary: which contributions are
+                gated and whether their condition is currently active. */}
+            {renderConditionsSection(breakdown, setRawTokensOpen)}
+
+            {/* Section 3 — Optional info panel */}
+            {info && (
+              <section>
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {info.title}
+                </p>
+                <div className="rounded-md border border-border bg-background p-2.5 text-sm text-foreground">
+                  {info.body}
+                </div>
+              </section>
+            )}
+          </div>
         </div>
-      </div>
-    </div>,
-    document.body,
+      </div>,
+        document.body,
+      )}
+      {rawTokensOpen !== null
+        ? createPortal(
+<div
+          className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={() => setRawTokensOpen(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Raw condition tokens"
+        >
+          <div
+            className="flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Raw condition tokens
+              </h3>
+              <button
+                type="button"
+                onClick={() => setRawTokensOpen(null)}
+                className="rounded-md p-1 transition-colors hover:bg-muted"
+                aria-label="Close"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <pre className="flex-1 overflow-y-auto px-4 py-3 font-mono text-xs leading-relaxed text-foreground whitespace-pre-wrap break-all">
+              {JSON.stringify(rawTokensOpen, null, 2)}
+            </pre>
+          </div>
+        </div>,
+            document.body,
+          )
+        : null}
+    </Fragment>
   );
 }
-
 // =============================================================================
 // Sub-components
 // =============================================================================
