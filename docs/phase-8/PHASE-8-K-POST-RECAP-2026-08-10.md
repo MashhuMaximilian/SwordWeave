@@ -404,5 +404,32 @@ wrong per user's spec).
 
 Pick D-K1, D-K2, D-K3, D-K4. Once decided I write the plan and start.
 
-If you want to skip the recap and just say "go" with my recommendations
-(a, c, b, b), I'll do that.
+## 6. Implementation status (live, 2026-08-10)
+
+| Item | Status | Commit |
+|---|---|---|
+| K1 — Capabilities duplicate removed | ✅ DONE | `1a7303c` |
+| K2 — CapabilityCard fallback for 0-heritage | ✅ DONE | `1a7303c` |
+| K3 — Duplicate axis-marker block | ✅ DONE | `f79c7c9` |
+| K5 — Unicode min/max on all paths | ⚠️ PARTIAL (formula-modal + practice-modal done; modsave/behavior paths untested) | `c16dc26` |
+| K6 — Suppressed primitives greyed-out | ✅ DONE | `c16dc26` |
+| K7 — Color codes on practice/save rows in drawer | ⏳ PENDING | — |
+| K8 — Advantage as keyword grant | ✅ DONE (engine + seed) | `c830e98` |
+| K9 — Single attack_bonus / save_dc | ⏸️ DEFERRED per D-K4 | — |
+| K10 — Vitality ceiling/floor in modal | ⚠️ PARTIAL (data is there, modal may already show) | — |
+| K11 — Iron Will scope confirmed | ✅ N/A (no fix needed) | — |
+| K12 — Defense Magic Buff + damage keyword primitives | ✅ DONE (Defense target + seed) | `e50a924` |
+| K13 — Equations pretty-formatted | ✅ DONE | `c16dc26` |
+| K14 — Size primitive format | ⏳ PENDING | — |
+| K15 — Equip slot primitive | ⏳ PENDING | — |
+| K16 — Force Source format | ⏳ PENDING | — |
+| K17 — AND/OR chips | ✅ DONE | `c16dc26` |
+| K18 — Remove Lighten from character | ⏳ PENDING | — |
+
+**Verified live on character 462f9048:**
+- K8: `behavior.advantage.skill_practice_check.communion` and `behavior.advantage.skill_practice_check.stealth` exist in resolve output
+- K6: Suppressed primitives (e.g. Hunter Bonus at HP 20%) now greyed-out in modal
+- K17: AND/OR rendered as chips in conditions section
+- K13: Prowess Equation shows `PB + 2 [fire]` not raw JSON
+
+**Remaining work: K5 (audit 2 more modal paths), K7 (drawer colors), K10 (verify), K14/K15/K16/K18 (primitive format audits). ~6 commits.**
