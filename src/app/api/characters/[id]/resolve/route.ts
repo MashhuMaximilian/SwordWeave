@@ -249,17 +249,6 @@ export async function GET(
     }
   }
 
-  // DEBUG (always log to stderr — useful for production debugging)
-  console.error("[DEBUG-CONDITION] proficiencies:", [...proficiencies].sort(), "attrProficient:", charRow.attrProficient);
-  for (const slot of slots) {
-    for (const mod of slot.hardModifiers) {
-      const cond = mod.condition as unknown as { tokens?: string[] } | undefined;
-      if (cond && Array.isArray(cond.tokens)) {
-        console.error("[DEBUG-CONDITION]", slot.name, "tokens:", JSON.stringify(cond.tokens));
-      }
-    }
-  }
-
   // Build practice states (all 10 practices, default 0)
   const practiceStates = {} as Record<PracticeKey, number>;
   for (const key of ALL_PRACTICES) {
@@ -338,12 +327,5 @@ export async function GET(
   // Full resolver (no target filter)
   // -----------------------------------------------------------------
   const resolved: ResolvedModifiers = resolveModifiers(input, sourceNames);
-  return NextResponse.json({
-    characterId: id,
-    resolved,
-    _debug: {
-      proficiencies: [...proficiencies].sort(),
-      attrProficient: charRow.attrProficient,
-    },
-  });
+  return NextResponse.json({ characterId: id, resolved });
 }
