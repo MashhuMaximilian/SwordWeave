@@ -412,7 +412,7 @@ export function BottomStickyBar({
       ? "save_dc.mental"
       : "save_dc.magical";
   const dcTarget = `defense_dc.${primaryAttr}`;
-  const practiceTarget = `practice.${comboAttr}`;
+  const practiceTarget = `skill_practice_check`;
   const vitalityTarget = "max_vitality";
 
   // Phase 8.I i3: * marker for conditional modifiers — see
@@ -753,7 +753,7 @@ export function BottomStickyBar({
                                   }`}
                                 >
                                   {fmt(p.total)}
-                                  <AxisMarkers byTarget={byTarget} target={`practice.${p.attribute.toLowerCase()}`} />
+                                  <AxisMarkers byTarget={byTarget} target={`skill_practice_check.${p.name.toLowerCase()}`} />
                                 </span>
                               </button>
                             </li>
@@ -1688,7 +1688,7 @@ function PracticeDetailModal({
   // Iron Will) target `skill_practice_check.<practice>`. These are
   // SEPARATE from the attribute primitives — both feed into the
   // practice total.
-  const practiceTarget = `practice.${practice.attribute}`;
+  const practiceTarget = `skill_practice_check.${practice.name.toLowerCase()}`;
   const practicePrimitiveTotal = byTarget[practiceTarget]
     ?.reduce((sum, c) => sum + c.value, 0) ?? 0;
   // Mirror-style trace: show the formula
