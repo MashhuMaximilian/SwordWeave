@@ -143,6 +143,11 @@ function AxisMarkers({
   const floor = findFloor(byTarget, target);
   const ceiling = findCeiling(byTarget, target);
   const markers: string[] = [];
+  // Phase 8.J D-2: order is adv, disadv, floor, ceiling, *.
+  if (adv >= 2) markers.push(`\u21c8(${adv})`);
+  if (disadv >= 2) markers.push(`\u21ca(${disadv})`);
+  if (floor !== null) markers.push(`\u21a5 ${floor}`);
+  if (ceiling !== null) markers.push(`\u21a7 ${ceiling}`);
   if (hasCond) markers.push("*");
   if (adv >= 2) markers.push(`\u21c8(${adv})`);
   if (disadv >= 2) markers.push(`\u21ca(${disadv})`);
@@ -1349,6 +1354,13 @@ function BehaviorVariableRow({
       : bv.value > 0
         ? "text-teal-700 dark:text-teal-300"
         : "text-destructive";
+  // Phase 8.J D-2: order adv/disadv first then *
+  // For behavior variables, the value IS the stack count.
+  // Show ⇈(N) for advantage, ⇊(N) for disadvantage, both regardless of count.
+  const isAdv = bv.key === "advantage";
+  const isDisadv = bv.key === "disadvantage";
+  const advIcon = isAdv ? `⇈(${bv.value})` : null;
+  const disadvIcon = isDisadv ? `⇊(${bv.value})` : null;
   return (
     <button
       type="button"
@@ -1365,7 +1377,11 @@ function BehaviorVariableRow({
           .map((c) => `${c.primitiveName} ${c.delta >= 0 ? "+" : ""}${c.delta}`)
           .join("\n")}
       >
-        {bv.value > 0 ? `+${bv.value}` : bv.value}
+        {advIcon ? (
+          <span className="text-emerald-600 dark:text-emerald-400">{advIcon}</span>
+        ) : disadvIcon ? (
+          <span className="text-red-600 dark:text-red-400">{disadvIcon}</span>
+        ) : bv.value > 0 ? `+${bv.value}` : bv.value}
       </span>
     </button>
   );
