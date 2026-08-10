@@ -703,6 +703,7 @@ interface EffectSpec {
 }
 
 interface CapabilitySpec {
+  slotTab?: "LINEAGE" | "UPBRINGING" | "MANIFEST";
   name: string;
   type: "ACTIVE" | "PASSIVE";
   sourceType: "PHYSICAL" | "MAGICAL" | "MENTAL";
@@ -720,6 +721,7 @@ const CAPABILITIES: CapabilitySpec[] = [
     name: "Divine Smite",
     type: "ACTIVE",
     sourceType: "MAGICAL",
+    slotTab: "MANIFEST",
     description:
       "Channel divine energy for extra radiant damage when health is low. Grants advantage on the attack roll.",
     tags: ["combat", "divine"],
@@ -736,6 +738,7 @@ const CAPABILITIES: CapabilitySpec[] = [
     name: "Hunter's Mark",
     type: "ACTIVE",
     sourceType: "PHYSICAL",
+    slotTab: "UPBRINGING",
     description:
       "+2 to hit when you have marked a target. The mark imposes disadvantage on the target's stealth.",
     tags: ["combat", "ranged"],
@@ -757,6 +760,7 @@ const CAPABILITIES: CapabilitySpec[] = [
     name: "Stone's Endurance",
     type: "PASSIVE",
     sourceType: "PHYSICAL",
+    slotTab: "LINEAGE",
     description:
       "+2 physical defense. Also grants a reaction to reduce incoming damage by PB/2.",
     tags: ["defense"],
@@ -773,6 +777,7 @@ const CAPABILITIES: CapabilitySpec[] = [
     name: "Iron Defender",
     type: "PASSIVE",
     sourceType: "MAGICAL",
+    slotTab: "MANIFEST",
     description:
       "Armor plating grants a minimum of 10 on defense/practice rolls and " +
       "Stone Skin protection (shared with Stone's Endurance).",
@@ -980,10 +985,10 @@ async function main() {
     // Link capability to character via character_capabilities
     await pool.query(
       `INSERT INTO character_capabilities
-        (character_id, capability_id, acquired_at_level, version_id)
-       VALUES ($1::uuid, $2, 18, null)
-       ON CONFLICT (character_id, capability_id) DO NOTHING`,
-      [characterId, capId],
+        (character_id, capability_id, acquired_at_level, version_id, slot_tab)
+       VALUES ($1::uuid, $2, 18, null, $3::heritage_kind)
+       ON CONFLICT (character_id, capability_id) DO UPDATE SET slot_tab = EXCLUDED.slot_tab`,
+      [characterId, capId, cap.slotTab ?? "MANIFEST"],
     );
     console.log(`    ✓ Linked to character`);
 
