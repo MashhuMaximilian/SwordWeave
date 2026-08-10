@@ -366,63 +366,136 @@ When a primitive's `target_who != "self"` inside a bundle, the resolver **exclud
 
 ---
 
-## 7. Open questions for round 2 (batch)
+## 7. Decisions confirmed (your feedback round 2, 2026-08-10)
 
-**Group F — Seed data specifics:**
+> *"Max vitality: (10 + PB) × level + Σ primitive contributions (currently returns 10 in engine, should return 298 at level 18). -> in my frontend it displays good though."*
 
-1. **F1 — Heritage names + capabilities:** What should the 3 heritages be called and what capabilities/primitives should they bundle? Suggestions:
-   - **Lineage "Elf"** → Passive: Darkvision; Active: Fey Ancestry (with effect granting advantage on saves vs charm)
-   - **Upbringing "Hunter"** → Primitive: Track +2 Awareness; Capability: Hunter's Mark (already exists, link to existing capability)
-   - **Manifest "Avenger"** → Active: Divine Smite (link to existing); Passive: Aura of Protection
-   Or do you have specific test heritage names in mind?
+**Decision H1/H2:** Max vitality formula confirmed = `(10 + PB) × level + Σ primitive contributions`. Floor/ceiling DO apply to max vitality. **HOWEVER:** your frontend already displays max_vitality correctly (presumably it reads `currentVitality` from the DB and uses it as max). The engine's resolve output `max_vitality: 10` is broken but the frontend doesn't read it. **Question:** Is the engine fix needed at all, or do we just leave the resolve API as-is and let the frontend keep doing its thing? (See open question L1 below.)
 
-2. **F2 — Axis coverage for primitives:** Should we add at least 1 primitive per axis, or just enough to verify the marker/color logic on every axis (which might be ~8-12 primitives total)? Existing direct primitives already cover some axes.
+> *"F1: no. Now you do not create new heritages. I just want to see individual capabilities bundle up in the frontend in the correct accordion in character sheet. if I slot in an actual heritage it works well already."*
 
-**Group G — Color rules clarification:**
+**Decision F1:** **DO NOT create new heritages in this round.** Just verify that the existing 4 capabilities (Divine Smite, Hunter's Mark, Stone's Endurance, Iron Defender) bundle correctly in their respective accordions in the Capabilities tab. The heritage accordion rendering is already working for real heritages.
 
-3. **G1 — "Proficiency bonus (text and modifier teal)" — which primitives count as "proficiency bonus"?** Is `Proficient Fieldcraft` (the +PB on a practice) the only case, or do other "prof_bonus" contributions count? Specifically: should "Proficient Save" (the +PB on a save) also be teal text+modifier?
+> *"F2: yesss. But make sure to make at least one practice with value type equation, and maybe with some and/or chain in values idk just to check it. And don't forget conditions: numbers, and/or chains, with actual numbers and with text and stuff. We need to also stress test it to see what works and does not and how to fix."*
 
-4. **G2 — Bold rule scope:** "Expertise (text and number teal AND bold)" — is the bold only for the number `+6`, or both text AND number? The screenshot showed numbers bold. Confirm.
+**Decision F2:** Add primitives across every axis for stress-test coverage. Must include at least:
+- **One practice with value-type `equation`** (with operands + tags) — verifies the equation engine path
+- **One practice with AND/OR chain in values** — verifies operator chain parsing
+- **Conditions with:**
+  - Numeric comparisons (e.g. `self:stat|vitality_pct|<|0.5`)
+  - AND/OR chains in tokens (e.g. `[self:proficient_in(fieldcraft), AND, self:stat|vitality_pct|>|0.3]`)
+  - Text-based conditions (e.g. `self:not_proficient`)
+  - Mixed: text + number, free-form tags, edge cases
+- **Coverage axes:** physical, mental, magical attributes, all 3 save DCs, all 3 defenses, attack bonus, all 10 practices (or at least 6 covering each attribute), damage modifiers (cold/fire/poison/etc), speed (walking+swimming+climbing), size, max_vitality, equipment slots, load, carry capacity, complexity, action economy, source_type.
 
-5. **G3 — Color in non-modal contexts:** Should the color rules apply to the bottom sticky bar practice rows (Fieldcraft +24), or only the modal breakdowns?
+**Stress-test goal:** Break things on purpose to see what fails. The point is to surface what's NOT working, not to make everything green.
 
-**Group H — Max vitality formula:**
+> *"G1. yes."*
 
-6. **H1 — Confirm the formula:** `Max Vitality = (10 + PB) × level + Σ primitive contributions`. With PB at level 18 = 2+ceil(18/4)=6, max = (10+6)×18 + 10 = 298. If a character has `Vitality Buff +20`, max = 318. Is this the correct formula?
+**Decision G1:** "Proficiency bonus text+modifier teal" applies to ALL +PB-derived primitives, not just practice ones. So:
+- `Proficient Fieldcraft +6` (PB on practice) — teal text + teal modifier
+- `Proficient Save +2` (PB on save) — teal text + teal modifier
+- Any other +PB contribution — teal text + teal modifier
 
-7. **H2 — Does PB cap or floor apply to max vitality?** If `Ceiling 18 max_vitality = 200` exists, does it cap the formula result at 200? Same question for floor.
+> *"G2. bold both."*
 
-**Group I — Conditions dictionary:**
+**Decision G2:** Expertise primitive — **both text AND number are bold AND teal**. The text "Expertise Fieldcraft" is teal+bold, the number "+6" is teal+bold.
 
-8. **I1 — Human-readable mappings:** Should we start with these mappings for round 1?
-   - `self:proficient_in(X)` → `"Proficient in {X}"`
-   - `self:stat|vitality_pct|<|0.5` → `"HP below 50%"`
-   - `self:stat|vitality_pct|>|0.5` → `"HP above 50%"`
-   - `self:is_tracking` → `"Tracking an active mark"`
-   - `self:not_proficient` → `"Not proficient"`
-   - `actor:damaged-last-round` → `"Damaged last round"`
-   - `actor:prone` → `"Prone"`
-   - `target:Prone` → `"Target is prone"`
-   - `scene:Dim` → `"Scene is dimly lit"`
-   
-   Or do you have a different mapping in mind?
+> *"g3. In the practice rows! We need to display the color code, we need to display advantage, min/max etc there too! Like with everything in the bottom drawer. Modal is just to see the general rules, the breakdown of where deoes this number comes from, and conditions (why is there * next to fieldcraft? -> for example because you have extra +10 only when tracking enemies)"*
 
-**Group J — Toggle suppression visual:**
+**Decision G3:** Color codes + markers (advantage/min/max/`*`/etc) MUST show on **every number in the bottom drawer**, not just modals. Specifically:
+- Practice rows (Fieldcraft +24) need teal coloring on PB-related numbers + markers
+- Mod+saves rows need same
+- Defense/attack/save rows need same
+- **Modal purpose:** show the *breakdown* (which primitives contribute), the *general rule*, and the *condition text* explaining why a `*` marker exists. The modal is informational; the bottom drawer is the live readout.
 
-9. **J1 — If cap is OFF, what shows in the modal?** Even though the engine doesn't suppress (B1 decision), should the modal show the primitive greyed-out with "(capability OFF)" subtitle, or completely hide it? If the engine doesn't suppress, the totals would be wrong if we hide them — so probably keep visible with grey marker. Or accept the inconsistency?
+This is **the bigger fix** — the bottom drawer practice rows currently show just `Fieldcraft +24` with no color, no markers. They need the same marker+color treatment as the attributes already have.
+
+> *"H1. yes."*
+
+**Decision H1:** Max vitality formula confirmed = `(10 + PB) × level + Σ primitive contributions`. PB at level 18 = 2+ceil(18/4) = 6, so max = (10+6)×18 + 10 = 298 with Vitality Buff +10.
+
+> *"h2. Yes. Man, the whole purpose of everything we did in primitives form, modifiers, triggers when, self etc is to be able to target everything with everything and be able to construct conditions with everything (even if it does not make sense)."*
+
+**Decision H2:** Floor/ceiling apply to **every axis** including max_vitality. The whole point of the modifier system is to be able to target anything with anything (even nonsensical combinations). Min/max as informational indicators show on every applicable axis (per your A2 decision).
+
+> *"i1. Yes those are good but you must find for everything else."*
+
+**Decision I1:** Human-readable mappings — start with the 9 I proposed, but the implementation phase needs to enumerate **every** token shape the engine can produce. Goal: complete coverage so the user never sees raw tokens in the UI. The engine's full token taxonomy needs to be enumerated during implementation.
+
+> *"j1. we do not hide anything, just greyed-out with '(capability OFF)' subtitle."*
+
+**Decision J1:** When a capability is OFF, the modal shows its primitives **greyed-out** with a "(capability OFF)" subtitle. The primitive still appears in the breakdown (because the engine doesn't suppress it), but visually marked as inactive. The user can see WHY the math is what it is.
 
 ---
 
-## 8. What happens after round 2
+## 8. Open questions for round 3 (L-group — small follow-ups)
 
-Once you answer Group F–J:
-- I update this doc with round-2 decisions inline
+1. **L1 — Engine max_vitality fix needed?** You said the frontend displays max_vitality correctly (probably reads `currentVitality` from the DB). The engine returns 10. Is the engine fix still wanted, or do we leave it and let the frontend keep its own path?
+2. **L2 — Equation value-type example:** For the stress-test practice, what operands + tags should the equation have? e.g. `PB + (level / 4) [fire]`? Or do you have a specific shape in mind for testing?
+3. **L3 — AND/OR chain shape:** The recap mentioned `[self:proficient_in(fieldcraft), AND, self:stat|vitality_pct|>|0.3]`. Is this the shape the engine currently expects, or is there a different format from the i2.7 spec I should reference?
+4. **L4 — Greyed-out primitive styling:** When a capability is OFF, the modal shows the primitive greyed-out. Should the number value also be greyed (e.g. `+6` shown in grey), or just the label "(capability OFF)"?
+5. **L5 — Bottom drawer "conditions" section:** Should the practice rows show the condition text inline (e.g. `Fieldcraft +24 * (when tracking)`), or only the `*` marker with the condition text only in the modal?
+
+---
+
+## 9. Resolved scope (after round 2)
+
+**Round 2 closed 9 questions. Round 3 has 5 small follow-ups (L-group).**
+
+### What we're building (ordered D → A → C → B → E)
+
+**Phase D — Test character data (FIRST):**
+- D-seed-1: ~~Create 3 heritages~~ → **CANCELLED.** Don't create new heritages. Just verify existing 4 capabilities bundle correctly in their accordions.
+- D-seed-2: Add primitives across EVERY axis for stress-test coverage:
+  - One equation-value-type practice
+  - One AND/OR chain in values
+  - Conditions: numeric, AND/OR, text, mixed
+  - All axes: physical/mental/magical attrs, saves, defenses, attack, practices, damage mods, speed, size, vitality, equip slots, load, carry, complexity, action, source type
+
+**Phase A — Math/UI labels:**
+- A-fix-1: `OP_LABEL.max = "↧"`, `OP_LABEL.min = "↥"` in `formula-modal.tsx`.
+- A-fix-2: Modal breakdown shows min/max as informational indicators (no + prefix), not as additive contributions.
+- A-fix-3: Fix target key mismatch in `AxisMarkers` (practice rows).
+- A-color-4: Color-code per the rules:
+  - PB/2: number-only teal
+  - Expertise: text AND number teal AND bold
+  - Proficiency (all +PB): text AND modifier teal
+  - Floor/Ceiling: orange (current)
+  - `*`: amber/orange (current)
+  - Advantage: green; Disadvantage: red
+- A-color-5: **Apply color codes + markers to EVERY number in the bottom drawer** (practice rows, mod rows, save rows, defense rows, etc.) — not just modals.
+- A-target-6: Implement `target_who` override on `capability_primitives` and `effect_primitives`.
+
+**Phase C — Modal UX:**
+- C-fix-1: Human-readable conditions text everywhere (complete token taxonomy coverage).
+- C-fix-2: When capability is OFF, modal shows primitive greyed-out with "(capability OFF)" subtitle.
+
+**Phase B — Lower priority:**
+- (No changes from round 1)
+
+**Phase E — Even lower:**
+- (No changes from round 1)
+
+### What's NOT being built in this round
+- Per-effect toggles (punted)
+- Runtime primitive direction conflict resolver (punted)
+- Heritage `targetWho` override (only capability_primitives and effect_primitives get it)
+- New heritages in seed (cancelled)
+- Engine max_vitality formula fix (pending L1)
+
+---
+
+## 10. What happens after round 3
+
+Once you answer L1-L5:
+- I update this doc with round-3 decisions inline
 - Invoke the `plan` skill to draft a bite-sized implementation plan in `.hermes/plans/`
 - Each task gets its own commit, pushed immediately (Rule 9)
 
 ---
 
-## 9. Files I read to produce this recap (no changes made)
+## 11. Files I read to produce this recap (no changes made)
 
 - `src/app/api/characters/[id]/resolve/route.ts` — resolve API, conditionContext build
 - `src/app/characters/[id]/page.tsx` — page query, heritage/capability/primitive handling
@@ -437,21 +510,9 @@ Once you answer Group F–J:
 - `PHASE-8-I-ASSESSMENT-2026-08-05.md` (status snapshot)
 - `Conversation.pdf` (your i3 PDF)
 
-## 10. Notes for future reference
+## 12. Notes for future reference
 
 - The Vercel build silently falls back to last good build on TypeScript errors. Always run `npx next build` not just `npx tsc --noEmit` before pushing.
 - The `regex literal backslash` trap: in `/.../`, `\\(` matches literal `\` + `(`. To match literal `(`, use `\(`. Always verify regex changes with `node -e` and `xxd`.
 - The seed script upserts via `ON CONFLICT (name, source_origin) DO UPDATE`. Re-run after any change to primitive hard_modifiers JSON shape.
-- The test character has `current_vitality: 60` but `max_vitality: 10` from the resolve. Per D2 decision, the engine should apply `(10 + PB) × level + primitive contributions` = 298 at level 18.
-
-- `src/app/api/characters/[id]/resolve/route.ts` — resolve API, conditionContext build
-- `src/app/characters/[id]/page.tsx` — page query, heritage/capability/primitive handling
-- `src/components/characters/character-sheet-view.tsx` — sheet renderer, capabilities tab, primitives accordion
-- `src/components/characters/bottom-sticky-bar.tsx:107-140` — AxisMarkers component
-- `src/components/characters/formula-modal.tsx:226-235` — OP_LABEL (the bug)
-- `src/components/characters/capability-card.tsx:316-340` — toggle UI
-- `src/app/api/characters/[id]/capabilities/[capabilityId]/toggle/route.ts` — toggle API (no DB write)
-- `src/db/schema/characters.ts` — characterCapabilities has NO `is_toggled_on` column
-- `scripts/seed-test-character.ts` — seed script (no heritage seeding)
-- `PHASE-8-I-RECAP.md` (previous recap)
-- `PHASE-8-I-ASSESSMENT-2026-08-05.md` (status snapshot)
+- The test character has `current_vitality: 60` but `max_vitality: 10` from the resolve. Per D2 decision, the engine should apply `(10 + PB) × level + primitive contributions` = 298 at level 18, but the frontend reads `currentVitality` from the DB directly.
