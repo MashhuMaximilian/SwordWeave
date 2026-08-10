@@ -344,6 +344,13 @@
       "when": 1786300000000,
       "tag": "0051_item_is_not_equippable",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1786400000000,
+      "tag": "0052_target_who",
+      "breakpoints": true
     }
   ]
 }

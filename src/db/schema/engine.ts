@@ -213,6 +213,8 @@ export const effectPrimitives = pgTable(
     // Phase 7 Q-M-UX: per-slot Mirrored flag. Defaults to false so
     // existing rows remain "not mirrored" (the safe initial state).
     isMirrored: boolean("is_mirrored").notNull().default(false),
+    // Phase 8.I POST A12: target_who override (self | target | scene).
+    targetWho: text("target_who").notNull().default("self"),
     ...timestamps,
   },
   (table) => [
@@ -310,6 +312,8 @@ export const capabilityPrimitives = pgTable(
     // Phase 7 Q-M-UX: per-slot Mirrored flag. Same rationale as
     // effect_primitives.is_mirrored above.
     isMirrored: boolean("is_mirrored").notNull().default(false),
+    // Phase 8.I POST A12: target_who override (self | target | scene).
+    targetWho: text("target_who").notNull().default("self"),
     ...timestamps,
   },
   (table) => [
