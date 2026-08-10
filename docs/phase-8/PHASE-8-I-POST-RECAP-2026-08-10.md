@@ -429,69 +429,115 @@ This is **the bigger fix** — the bottom drawer practice rows currently show ju
 
 ---
 
-## 8. Open questions for round 3 (L-group — small follow-ups)
+## 8. Decisions confirmed (your feedback round 3, 2026-08-10)
 
-1. **L1 — Engine max_vitality fix needed?** You said the frontend displays max_vitality correctly (probably reads `currentVitality` from the DB). The engine returns 10. Is the engine fix still wanted, or do we leave it and let the frontend keep its own path?
-2. **L2 — Equation value-type example:** For the stress-test practice, what operands + tags should the equation have? e.g. `PB + (level / 4) [fire]`? Or do you have a specific shape in mind for testing?
-3. **L3 — AND/OR chain shape:** The recap mentioned `[self:proficient_in(fieldcraft), AND, self:stat|vitality_pct|>|0.3]`. Is this the shape the engine currently expects, or is there a different format from the i2.7 spec I should reference?
-4. **L4 — Greyed-out primitive styling:** When a capability is OFF, the modal shows the primitive greyed-out. Should the number value also be greyed (e.g. `+6` shown in grey), or just the label "(capability OFF)"?
-5. **L5 — Bottom drawer "conditions" section:** Should the practice rows show the condition text inline (e.g. `Fieldcraft +24 * (when tracking)`), or only the `*` marker with the condition text only in the modal?
+> *"L1 — Engine max_vitality fix needed? Or leave it since frontend reads DB directly? -> yes, fix so we do not have issues down the road...."*
+
+**Decision L1:** **Fix the engine max_vitality formula.** Even though the frontend reads `currentVitality` from the DB directly today, fixing the engine prevents issues downstream (other consumers, future migration, consistency). Formula: `(10 + PB) × level + Σ primitive contributions`. Floor/ceiling apply as informational limits after the formula computes.
+
+> *"L2 -> no specific shape, but make sure to mix it up so we have /number/ (/2/ as well as /pb/ for example , #dice# and [keywords]). So it is flexible and we can stress test, you should use your imagination."*
+
+**Decision L2:** The stress-test equation primitive should mix value types flexibly. Use Senku's imagination:
+- Operand tokens mixing `/number/`, `/2/`, `/pb/`, `/physical/` (attribute), `/level/` (derived), `/blockValue/`
+- Dice notation: `#1d4#`, `#2d6+3#`
+- Tagged keywords: `[fire]`, `[radiant]`, `[physical]`, `[magical]`
+- Operator chain: `PB + (level / 4) + 2 [fire] - #1d4#` — mixed addition/subtraction, integer division, dice roll, tag
+- The point is to **stress-test** the equation engine — break things on purpose, surface what fails, document what works.
+
+> *"L3 -> uhm... idk.... this was your job. I hope it works and does not need fixing but yeah..."*
+
+**Decision L3:** Use the existing i2.7 token format for AND/OR chains: `[pill1, AND, pill2, OR, pill3]` as a flat array. The implementation phase must:
+- Verify the engine parses this format correctly
+- If it doesn't, fix the engine (not the seed data)
+- Test with at least one AND chain, one OR chain, and one mixed AND/OR chain
+- Document the actual working shape in a test, so future authors know what works
+
+> *"L4 -> I guess number too."*
+
+**Decision L4:** When a capability is OFF, the modal greys out BOTH the primitive name AND the number value. So `Proficient Fieldcraft +6` becomes `Proficient Fieldcraft +6 (greyed)` with `(capability OFF)` subtitle. The user sees the math is still there, just visually marked as inactive.
+
+> *"L5 -> only the * and more details in breakdown (we have limited space, we have to keep as little as possible there like name, modifiers, numbers of advantage, min,max. etc . Also as we count advantage, disadv, if only 1 we do not show, only 2 and up."*
+
+**Decision L5:** Bottom drawer practice rows (and all other axis rows) display ONLY:
+- **Name** (e.g. "Fieldcraft")
+- **Modifier value** (e.g. "+24")
+- **Markers** (in compact form): `*`, `⇈(N)`, `⇊(N)`, `↥ X`, `↧ X`
+
+**Hide `⇈(1)` and `⇊(1)`** — only show stacks of 2 or more. (1 advantage = just the standard roll, no need to indicate.)
+
+Full condition text, full breakdown, full primitive names — all in the modal. The bottom drawer is a tight readout: **name + number + markers**.
 
 ---
 
-## 9. Resolved scope (after round 2)
+## 9. Resolved scope (after round 3)
 
-**Round 2 closed 9 questions. Round 3 has 5 small follow-ups (L-group).**
+**Round 3 closed 5 follow-up questions. Recap is now CLOSED.** All decisions captured.
 
-### What we're building (ordered D → A → C → B → E)
+### Final implementation scope (ordered D → A → C → B → E)
 
 **Phase D — Test character data (FIRST):**
-- D-seed-1: ~~Create 3 heritages~~ → **CANCELLED.** Don't create new heritages. Just verify existing 4 capabilities bundle correctly in their accordions.
-- D-seed-2: Add primitives across EVERY axis for stress-test coverage:
-  - One equation-value-type practice
-  - One AND/OR chain in values
-  - Conditions: numeric, AND/OR, text, mixed
-  - All axes: physical/mental/magical attrs, saves, defenses, attack, practices, damage mods, speed, size, vitality, equip slots, load, carry, complexity, action, source type
+
+1. **D-seed-2: Stress-test seed** — Add primitives across every axis:
+   - One equation-value-type practice with mixed operands (`/number/`, `/2/`, `/pb/`, attribute, dice `#1d4#`, tagged `[fire]`, etc.) per L2
+   - One AND/OR chain in condition tokens per L3
+   - Conditions: numeric comparisons, AND/OR chains, text conditions, mixed
+   - Axes covered: physical/mental/magical attrs, all 3 save DCs, all 3 defenses, attack bonus, all 10 practices (or 6+ covering each attribute), damage modifiers (cold/fire/poison/etc), speed (walking+swimming+climbing), size, max_vitality, equipment slots, load, carry capacity, complexity, action economy, source_type
+
+2. **D-fix-1: Engine max_vitality formula** — `(10 + PB) × level + Σ primitive contributions`. Floor/ceiling as informational limits post-formula.
 
 **Phase A — Math/UI labels:**
-- A-fix-1: `OP_LABEL.max = "↧"`, `OP_LABEL.min = "↥"` in `formula-modal.tsx`.
-- A-fix-2: Modal breakdown shows min/max as informational indicators (no + prefix), not as additive contributions.
-- A-fix-3: Fix target key mismatch in `AxisMarkers` (practice rows).
-- A-color-4: Color-code per the rules:
-  - PB/2: number-only teal
-  - Expertise: text AND number teal AND bold
-  - Proficiency (all +PB): text AND modifier teal
-  - Floor/Ceiling: orange (current)
-  - `*`: amber/orange (current)
-  - Advantage: green; Disadvantage: red
-- A-color-5: **Apply color codes + markers to EVERY number in the bottom drawer** (practice rows, mod rows, save rows, defense rows, etc.) — not just modals.
-- A-target-6: Implement `target_who` override on `capability_primitives` and `effect_primitives`.
+
+3. **A-fix-1: OP_LABEL Unicode** — `OP_LABEL.max = "↧"`, `OP_LABEL.min = "↥"` in `formula-modal.tsx`.
+4. **A-fix-2: Min/max as informational indicators** — no `+` prefix on min/max in modal breakdown.
+5. **A-fix-3: AxisMarkers target key** — fix `practice.fieldcraft` → `skill_practice_check.fieldcraft` (and any other mismatches).
+6. **A-color-1: PB/2 color** — number-only teal.
+7. **A-color-2: Expertise color** — text AND number teal+bold.
+8. **A-color-3: Proficiency color** — text AND modifier teal (all +PB primitives).
+9. **A-color-4: Floor/Ceiling color** — orange (already done, verify).
+10. **A-color-5: `*` color** — amber/orange (already done, verify).
+11. **A-color-6: Advantage/Disadvantage color** — green/red.
+12. **A-drawer-1: Bottom drawer markers** — apply ALL color codes + markers to every number in the bottom drawer (practice rows, mod rows, save rows, defense rows). Compact format per L5.
+13. **A-drawer-2: Hide N=1 stacks** — only show `⇈(N)` / `⇊(N)` when N ≥ 2.
+14. **A-target-1: targetWho override** — add `target_who` enum to `capability_primitives` and `effect_primitives` (default `self`, override to `target`/`scene` excludes from sheet).
 
 **Phase C — Modal UX:**
-- C-fix-1: Human-readable conditions text everywhere (complete token taxonomy coverage).
-- C-fix-2: When capability is OFF, modal shows primitive greyed-out with "(capability OFF)" subtitle.
 
-**Phase B — Lower priority:**
-- (No changes from round 1)
+15. **C-fix-1: Human-readable conditions** — enumerate every token shape, single source of truth for character sheet modals + /atelier preview modals.
+16. **C-fix-2: Raw tokens on click** — sub-modal showing raw token chain when user clicks the human-readable text.
+17. **C-fix-3: Greyed-out OFF primitive** — when capability is OFF, modal greys BOTH name AND number, with `(capability OFF)` subtitle.
+
+**Phase B — Lower priority (LAST):**
+
+18. **No changes from round 1** — localStorage toggle stays as-is.
 
 **Phase E — Even lower:**
-- (No changes from round 1)
+
+19. **No changes from round 1** — cap toggle suppression stays as-is.
 
 ### What's NOT being built in this round
+
 - Per-effect toggles (punted)
 - Runtime primitive direction conflict resolver (punted)
 - Heritage `targetWho` override (only capability_primitives and effect_primitives get it)
 - New heritages in seed (cancelled)
-- Engine max_vitality formula fix (pending L1)
+- Cap toggle suppression in engine (low priority)
 
 ---
 
-## 10. What happens after round 3
+## 10. What happens after this recap closes
 
-Once you answer L1-L5:
-- I update this doc with round-3 decisions inline
-- Invoke the `plan` skill to draft a bite-sized implementation plan in `.hermes/plans/`
-- Each task gets its own commit, pushed immediately (Rule 9)
+**This recap is CLOSED.** Implementation plan time.
+
+1. **You say "ok start" or "go"** → I push the local recap commits (`580b9fa`, `05db283`, `6d0f982`, latest) to `origin/main`
+2. **Invoke the `plan` skill** → produces bite-sized implementation plan at `.hermes/plans/2026-08-10-phase-8-i-post.md`
+3. **Each task lands as its own commit, pushed immediately per Rule 9** (commit + `git push origin main` + `git status -sb` verify)
+
+### Estimated scope
+
+- **Phase D:** 2 tasks (seed + vitality formula fix) — ~3 commits
+- **Phase A:** 12 tasks (5 fixes + 6 colors + 2 drawer) — ~8 commits
+- **Phase C:** 3 tasks (conditions dictionary + click sub-modal + greyed-out) — ~4 commits
+- **Total:** ~15 commits, organized D → A → C → B → E
 
 ---
 
@@ -513,6 +559,22 @@ Once you answer L1-L5:
 ## 12. Notes for future reference
 
 - The Vercel build silently falls back to last good build on TypeScript errors. Always run `npx next build` not just `npx tsc --noEmit` before pushing.
-- The `regex literal backslash` trap: in `/.../`, `\\(` matches literal `\` + `(`. To match literal `(`, use `\(`. Always verify regex changes with `node -e` and `xxd`.
+- The `regex literal backslash` trap: in `/.../`, `\\(` matches literal `\` + `(`. To match literal `(`, use `\\(`. Always verify regex changes with `node -e` and `xxd`.
 - The seed script upserts via `ON CONFLICT (name, source_origin) DO UPDATE`. Re-run after any change to primitive hard_modifiers JSON shape.
-- The test character has `current_vitality: 60` but `max_vitality: 10` from the resolve. Per D2 decision, the engine should apply `(10 + PB) × level + primitive contributions` = 298 at level 18, but the frontend reads `currentVitality` from the DB directly.
+- The bottom drawer is the live readout (name + number + compact markers). The modal is the breakdown (full primitive names + condition text + general rules). Two display surfaces, two purposes.
+- Stack display rule: only show `⇈(N)` / `⇊(N)` when N ≥ 2. Single advantage/disadvantage is the default roll, no indicator needed.
+- Greyed-out primitive styling: when capability OFF, BOTH primitive name AND number value are greyed, with `(capability OFF)` subtitle. Math stays visible, inactive is clear.
+
+- `src/app/api/characters/[id]/resolve/route.ts` — resolve API, conditionContext build
+- `src/app/characters/[id]/page.tsx` — page query, heritage/capability/primitive handling
+- `src/components/characters/character-sheet-view.tsx` — sheet renderer, capabilities tab, primitives accordion
+- `src/components/characters/bottom-sticky-bar.tsx:107-140` — AxisMarkers component
+- `src/components/characters/formula-modal.tsx:226-235` — OP_LABEL (the bug)
+- `src/components/characters/capability-card.tsx:316-340` — toggle UI
+- `src/app/api/characters/[id]/capabilities/[capabilityId]/toggle/route.ts` — toggle API (no DB write)
+- `src/db/schema/characters.ts` — characterCapabilities has NO `is_toggled_on` column
+- `scripts/seed-test-character.ts` — seed script (no heritage seeding)
+- `PHASE-8-I-RECAP.md` (previous recap)
+- `PHASE-8-I-ASSESSMENT-2026-08-05.md` (status snapshot)
+- `Conversation.pdf` (your i3 PDF)
+
