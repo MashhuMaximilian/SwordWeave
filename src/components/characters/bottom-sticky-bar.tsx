@@ -118,19 +118,40 @@ function AxisMarkers({
   const ceiling = findCeiling(byTarget, target);
   const markers: string[] = [];
   if (hasCond) markers.push("*");
-  if (adv > 0) markers.push(`\u21c8(${adv})`);
-  if (disadv > 0) markers.push(`\u21ca(${disadv})`);
+  if (adv >= 2) markers.push(`\u21c8(${adv})`);
+  if (disadv >= 2) markers.push(`\u21ca(${disadv})`);
   if (floor !== null) markers.push(`\u21a5 ${floor}`);
   if (ceiling !== null) markers.push(`\u21a7 ${ceiling}`);
   if (markers.length === 0) return null;
   return (
     <span
-      className="ml-1 flex items-center gap-0.5 text-xs text-amber-500"
+      className="ml-1 flex items-center gap-0.5 text-xs"
       title={markers.join(" ")}
     >
-      {markers.map((m, i) => (
-        <span key={i}>{m}</span>
-      ))}
+      {markers.map((m, i) => {
+        // Color rules (Phase 8.I POST A9):
+        // - ⇈(N) advantage stacks → emerald (green)
+        // - ⇊(N) disadvantage stacks → red
+        // - ↥/↧ floor/ceiling → amber
+        // - * conditional → amber
+        const isAdv = m.startsWith("⇈");
+        const isDisadv = m.startsWith("⇊");
+        const isFloor = m.startsWith("↥");
+        const isCeil = m.startsWith("↧");
+        const isCond = m === "*";
+        const cls = isAdv
+          ? "text-emerald-600 dark:text-emerald-400"
+          : isDisadv
+            ? "text-red-600 dark:text-red-400"
+            : (isFloor || isCeil || isCond)
+              ? "text-amber-600 dark:text-amber-400"
+              : "";
+        return (
+          <span key={i} className={cls}>
+            {m}
+          </span>
+        );
+      })}
     </span>
   );
 }
