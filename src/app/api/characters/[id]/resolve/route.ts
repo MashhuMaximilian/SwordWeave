@@ -335,8 +335,15 @@ export async function GET(
   // missing the baseline. Now we apply the same formula here so the
   // total returned via the full path matches the single-target path.
   const baselineMaxVit = (10 + input.pb) * input.level;
-  const primitiveDelta = resolvedBase.totals[VITALITY_TARGETS.max] ?? 0;
+  // Compute raw primitive delta by summing additive contributions only
+  // (op === "add" / "subtract"). min/max are limits, not additive — we
+  // apply them as floor/ceiling after adding baseline + delta. The engine's
+  // resolvedBase.totals already applied its own min/max limits, so we
+  // can't use that value directly.
   const maxVitContribs = resolvedBase.byTarget[VITALITY_TARGETS.max] ?? [];
+  const primitiveDelta = maxVitContribs
+    .filter((c) => c.op === "add" || c.op === "subtract")
+    .reduce((acc: number, c) => acc + (c.op === "subtract" ? -c.value : c.value), 0);
   const maxVitFloor = maxVitContribs
     .filter((c) => c.op === "min" || (c.op === "set" && (c.tags ?? []).includes("min")))
     .reduce((acc: number, c) => Math.max(acc, c.value), -Infinity);
