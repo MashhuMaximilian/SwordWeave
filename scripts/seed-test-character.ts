@@ -477,6 +477,216 @@ const PRIMITIVES: PrimitiveSpec[] = [
     description: "Physical attribute cannot exceed 18.",
     source: "PERSONAL",
   },
+
+  // ── Phase 8.I POST D1: stress-test coverage primitives ────────────
+  {
+    name: "Mental Buff",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [
+      { target: "attribute.mental", operation: "add", value: 3 },
+    ],
+    description: "+3 to mental attribute. Stress-test coverage.",
+    source: "MANIFEST",
+  },
+  {
+    name: "Magical Buff",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [
+      { target: "attribute.magical", operation: "add", value: 2 },
+    ],
+    description: "+2 to magical attribute. Stress-test coverage.",
+    source: "MANIFEST",
+  },
+  {
+    name: "Save DC Mental Buff",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      { target: "save_dc.mental", operation: "add", value: 1 },
+    ],
+    description: "+1 to mental save DC.",
+    source: "MANIFEST",
+  },
+  {
+    name: "Save DC Magic Buff",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      { target: "save_dc.magical", operation: "add", value: 1 },
+    ],
+    description: "+1 to magical save DC.",
+    source: "MANIFEST",
+  },
+  {
+    name: "Defense Mental Buff",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      { target: "defense.mental", operation: "add", value: 1 },
+    ],
+    description: "+1 to mental defense.",
+    source: "MANIFEST",
+  },
+  {
+    name: "Defense Magic Buff",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      { target: "defense.magical", operation: "add", value: 1 },
+    ],
+    description: "+1 to magical defense.",
+    source: "MANIFEST",
+  },
+  {
+    name: "Speed Swimming",
+    category: "SPEED_QUICKENING",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      { target: "speed.swimming", operation: "add", value: 5 },
+    ],
+    description: "+5 to swimming speed.",
+    source: "PERSONAL",
+  },
+  {
+    name: "Damage Radiant Buff",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      { target: "damage_bonus.radiant", operation: "add", value: 2 },
+    ],
+    description: "+2 radiant damage bonus.",
+    source: "MANIFEST",
+  },
+  {
+    name: "Proficient Save",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      { target: "saving_throw.physical", operation: "add", value: { kind: "derived", which: "pb" } },
+    ],
+    description: "+PB to physical saving throw.",
+    source: "MANIFEST",
+  },
+  {
+    name: "Prowess Equation",
+    category: "PRACTICE_PROGRESSION_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      {
+        target: "skill_practice_check",
+        operation: "add",
+        value: {
+          kind: "equation",
+          operands: [
+            { kind: "derived", which: "pb" },
+            { kind: "number", value: 2 },
+          ],
+          tag: "fire",
+        },
+        metadata: {
+          targetScope: { layer: "PRACTICE", values: ["PROWESS"] },
+        },
+      },
+    ],
+    description: "PB + 2 to Prowess, with [fire] tag. Equation value-type test.",
+    source: "MANIFEST",
+  },
+  {
+    name: "Reason AND Compound",
+    category: "PRACTICE_PROGRESSION_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      {
+        target: "skill_practice_check",
+        operation: "add",
+        value: 3,
+        condition: {
+          kind: "compound",
+          tokens: ["self:is_tracking", "OR", "self:not_proficient"],
+        },
+        metadata: {
+          targetScope: { layer: "PRACTICE", values: ["REASON"] },
+        },
+      },
+    ],
+    description: "+3 Reason when tracking OR not proficient. OR chain test.",
+    source: "PERSONAL",
+  },
+  {
+    name: "Knowledge Mixed",
+    category: "PRACTICE_PROGRESSION_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      {
+        target: "skill_practice_check",
+        operation: "add",
+        value: 2,
+        condition: {
+          kind: "compound",
+          tokens: [
+            "self:not_proficient_in(all_practices)",
+            "AND",
+            "self:actor-prone",
+          ],
+        },
+        metadata: {
+          targetScope: { layer: "PRACTICE", values: ["KNOWLEDGE"] },
+        },
+      },
+    ],
+    description: "+2 Knowledge when not proficient AND prone. Mixed text+stat.",
+    source: "PERSONAL",
+  },
+  {
+    name: "Vitality Floor",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      { target: "max_vitality", operation: "min", value: 50 },
+    ],
+    description: "Max vitality cannot go below 50.",
+    source: "PERSONAL",
+  },
+  {
+    name: "Vitality Ceiling",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      { target: "max_vitality", operation: "max", value: 500 },
+    ],
+    description: "Max vitality cannot exceed 500.",
+    source: "PERSONAL",
+  },
 ];
 
 // ── Capability specs: capability → effect(s) → primitives ──────────
