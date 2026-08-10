@@ -36,7 +36,10 @@
  *   - Combined mod + save provenance in a single modal.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { humanReadableCondition } from "@/lib/engine/condition-dictionary";
+import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronUp, Heart } from "lucide-react";
 import { VitalityTracker } from "@/components/characters/vitality-tracker";
 import {
@@ -104,6 +107,29 @@ function findCeiling(
 
 /** Phase 8.I i3: render all axis markers (*, adv/disadv, min/max)
  * as a compact badge group next to the numeric value. */
+// Phase 8.J: helper functions for color rules and condition text.
+function isPbHalfValue(value: unknown): boolean {
+  if (
+    value &&
+    typeof value === "object" &&
+    "kind" in value &&
+    (value as { kind: string }).kind === "derived" &&
+    "which" in value &&
+    ((value as { which: string }).which === "pb" || (value as { which: string }).which === "pb_half")
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function isExpertiseName(name: string): boolean {
+  return /^expertise\b/i.test(name);
+}
+
+function isProficiencyName(name: string): boolean {
+  return /^proficient\b/i.test(name);
+}
+
 function AxisMarkers({
   byTarget,
   target,
@@ -1625,35 +1651,79 @@ function formatViaForSteps(c: import("@/lib/engine/resolve-modifiers").ModifierC
   return parts.join(" → ");
 }
 
-function ContribListItem({ c }: {
+function ContribListItem({ c, setRawTokensOpen, isOff }: {
   c: import("@/lib/engine/resolve-modifiers").ModifierContribution;
+  setRawTokensOpen: (cond: unknown) => void;
+  isOff: boolean;
 }) {
   const OP_LABEL: Record<string, string> = {
     add: "+",
     subtract: "−",
     set: "=",
-    min: "min",
-    max: "max",
+    min: "↑",
+    max: "↓",
     multiply: "×",
     divide: "÷",
     grant: "grant",
     revoke: "revoke",
   };
   const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
+  // Phase 8.J M1+M7: min/max rows omit prefix and OP_LABEL
+  const isLimit = c.op === "min" || c.op === "max";
+  // Phase 8.J M3: provenance breadcrumb (full chain)
+  const prov = c.provenance;
+  const breadcrumb = [
+    prov.heritageName ? `Heritage '${prov.heritageName}'` : null,
+    prov.capabilityName ? `Capability '${prov.capabilityName}'` : null,
+    prov.effectName ? `Effect '${prov.effectName}'` : null,
+  ].filter(Boolean).join(" > ") || "Direct";
+
+  // Phase 8.J D-5: human-readable condition text
+  const condText = c.condition
+    ? humanReadableCondition(c.condition as Parameters<typeof humanReadableCondition>[0])
+    : null;
   return (
-    <li className="rounded-md border border-border bg-background p-2.5">
-      <div className="flex items-center justify-between gap-2">
+    <li className="rounded-md border border-border bg-background p-1.5">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium" title={c.primitiveName}>
+          <p
+            className={cn(
+              "truncate text-xs font-medium",
+              isExpertiseName(c.primitiveName) && "font-bold text-teal-700 dark:text-teal-300",
+              isProficiencyName(c.primitiveName) && "text-teal-700 dark:text-teal-300",
+              isOff && "text-muted-foreground line-through"
+            )}
+            title={c.primitiveName}
+          >
             {c.primitiveName}
+            {isOff ? <span className="ml-2 text-[9px] uppercase tracking-wide">(capability OFF)</span> : null}
           </p>
+          <p className="mt-0.5 truncate text-[10px] text-muted-foreground/70" title={breadcrumb}>
+            via {breadcrumb}
+          </p>
+          {condText ? (
+            <button
+              type="button"
+              onClick={() => setRawTokensOpen(c.condition)}
+              className="mt-0.5 cursor-pointer text-[10px] italic text-amber-700 dark:text-amber-400 underline-offset-2 hover:underline"
+            >
+              when {condText}
+            </button>
+          ) : null}
         </div>
-        <div className="flex shrink-0 items-center gap-2 text-sm">
-          <span className="font-mono text-xs text-muted-foreground">
-            {OP_LABEL[c.op] ?? c.op}
-          </span>
-          <span className="font-mono font-semibold tabular-nums">
-            {fmt(c.value)}
+        <div className="flex shrink-0 items-center gap-1 text-xs">
+          {!isLimit ? (
+            <span className="font-mono text-[10px] text-muted-foreground">
+              {OP_LABEL[c.op] ?? c.op}
+            </span>
+          ) : null}
+          <span className={cn(
+            "font-mono font-semibold tabular-nums",
+            isExpertiseName(c.primitiveName) && "font-bold text-teal-700 dark:text-teal-300",
+            isProficiencyName(c.primitiveName) && "text-teal-700 dark:text-teal-300",
+            isOff && "text-muted-foreground line-through"
+          )}>
+            {isLimit ? c.value : fmt(c.value)}
           </span>
         </div>
       </div>
@@ -1706,6 +1776,24 @@ function PracticeDetailModal({
     };
   }, []);
 
+  // Phase 8.J D-5 + C2: read OFF caps from localStorage for greyed-out.
+  const [offCapabilityIds, setOffCapabilityIds] = useState<Set<string>>(new Set());
+  const [rawTokensOpen, setRawTokensOpen] = useState<unknown | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const off = new Set<string>();
+      const prefix = "sw:cap:";
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i);
+        if (key && key.startsWith(prefix) && window.localStorage.getItem(key) === "1") {
+          off.add(key.slice(prefix.length));
+        }
+      }
+      setOffCapabilityIds(off);
+    } catch {}
+  }, []);
+
   const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
 
   // The practice's "primitive contributions" are the
@@ -1728,6 +1816,7 @@ function PracticeDetailModal({
   // primitives), not just PB.
 
   return (
+    <Fragment>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
       onClick={onClose}
@@ -1781,12 +1870,43 @@ function PracticeDetailModal({
               {practicePrimitiveTotal !== 0 && (
                 <>
                   {fmt(practicePrimitiveTotal)} (practice primitives){" "}
-                  <span className="text-muted-foreground/70">(fieldcraft-specific)</span>{" "}
+                  <span className="text-muted-foreground/70">({practice.name.toLowerCase()}-specific)</span>{" "}
                 </>
               )}
               = {fmt(practice.total)}
               <AxisMarkers byTarget={byTarget} target={practiceTarget} />
             </p>
+          </section>
+
+          <section>
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Conditions
+            </p>
+            {(() => {
+              const allContribs = [
+                ...(byTarget[attrTarget] ?? []),
+                ...(byTarget[practiceTarget] ?? []),
+              ].filter((c) => c.hasCondition);
+              if (allContribs.length === 0)
+                return <p className="text-xs text-muted-foreground">No active conditions.</p>;
+              return (
+                <ul className="space-y-1">
+                  {allContribs.map((c, i) => (
+                    <li key={`cond-${i}`} className="flex items-center justify-between gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-1 text-xs">
+                      <span>
+                        <strong>{c.primitiveName}:</strong>{" "}
+                        {c.condition
+                          ? humanReadableCondition(c.condition as Parameters<typeof humanReadableCondition>[0])
+                          : "no condition"}
+                      </span>
+                      <span className={cn("font-mono text-[10px]", c.conditionActive === false ? "text-red-500" : "text-teal-600 dark:text-teal-400")}>
+                        {c.conditionActive === false ? "✗ suppressed" : c.conditionActive === true ? "✓ active" : "— ?"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
           </section>
 
           <section>
@@ -1800,7 +1920,7 @@ function PracticeDetailModal({
             ) : (
               <ul className="space-y-2">
                 {contributions.map((c, i) => (
-                  <ContribListItem key={`attr-${c.primitiveId}-${i}`} c={c} />
+                  <ContribListItem key={`attr-${c.primitiveId}-${i}`} c={c} setRawTokensOpen={setRawTokensOpen} isOff={offCapabilityIds.has(c.originCapabilityId ?? "")} />
                 ))}
               </ul>
             )}
@@ -1818,14 +1938,49 @@ function PracticeDetailModal({
             ) : (
               <ul className="space-y-2">
                 {byTarget[practiceTarget]!.map((c, i) => (
-                  <ContribListItem key={`prac-${c.primitiveId}-${i}`} c={c} />
+                  <ContribListItem key={`prac-${c.primitiveId}-${i}`} c={c} setRawTokensOpen={setRawTokensOpen} isOff={offCapabilityIds.has(c.originCapabilityId ?? "")} />
                 ))}
               </ul>
             )}
           </section>
         </div>
       </div>
-    </div>
+    </div>,
+      {rawTokensOpen !== null
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+              onClick={() => setRawTokensOpen(null)}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Raw condition tokens"
+            >
+              <div
+                className="flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    Raw condition tokens
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setRawTokensOpen(null)}
+                    className="rounded-md p-1 transition-colors hover:bg-muted"
+                    aria-label="Close"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <pre className="flex-1 overflow-y-auto px-4 py-3 font-mono text-xs leading-relaxed text-foreground whitespace-pre-wrap break-all">
+                  {JSON.stringify(rawTokensOpen, null, 2)}
+                </pre>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+    </Fragment>
   );
 }
 
