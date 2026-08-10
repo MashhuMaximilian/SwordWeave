@@ -503,6 +503,45 @@ export function resolveModifiers(
       });
       byTarget[t] = list;
 
+      // Phase 8.K K8: keyword grants (e.g. {kind:keyword, value:advantage})
+      // on per-axis targets feed into the per-axis behavior counter.
+      // The marker in the UI (⇈(N)) reads from this counter.
+      if (mod.operation === "grant") {
+        const v = mod.value;
+        if (v && typeof v === "object" && (v as { kind?: string }).kind === "keyword") {
+          const kw = (v as { value?: string }).value;
+          if (kw === "advantage" || kw === "disadvantage") {
+            // Increment per-axis adv/disadv counter
+            const advKey = kw === "advantage" ? "advantage" : "disadvantage";
+            const t2 = `behavior.${advKey}.${t}`;
+            const list2 = byTarget[t2] ?? [];
+            list2.push({
+              target: t2,
+              primitiveId: slot.primitiveId,
+              primitiveName: slot.name,
+              primitiveCategory: slot.category,
+              op: "add",
+              value: 1,
+              preMirrorValue: null,
+              tags: [],
+              condition: conditionRaw,
+              originCapabilityId: slot.originCapabilityId ?? null,
+              conditionActive,
+              hasCondition,
+              conditionComputable,
+              stacking: mod.stacking ?? "stack",
+              provenance: {
+                heritageName: sourceNames?.get(slot.primitiveId)?.heritageName ?? null,
+                capabilityName: sourceNames?.get(slot.primitiveId)?.capabilityName ?? null,
+                effectName: sourceNames?.get(slot.primitiveId)?.effectName ?? null,
+                kind: deriveProvenanceKind(slot),
+              },
+            });
+            byTarget[t2] = list2;
+          }
+        }
+      }
+
       // Phase 8.I i2.8 (Mashu): max/min operations are ceiling/floor
       // LIMITS, not additive modifiers. They are recorded in the
       // attribution (byTarget) but skipped from the running total.

@@ -413,27 +413,39 @@ const PRIMITIVES: PrimitiveSpec[] = [
   },
   // ── i3 condition case primitives ──────────────────────────────────
   {
-    name: "Advantage",
+    name: "Advantage on Communion",
     category: "CHARACTER_SHEET_AUGMENT",
     buCost: 1,
     isMirrorable: false,
     mirrorBuCredit: 0,
     hardModifiers: [
-      { target: "behavior.advantage", operation: "grant", value: 1 },
+      { target: "skill_practice_check.communion", operation: "grant", value: { kind: "keyword", value: "advantage" } },
     ],
-    description: "Roll two d20s, take the higher (advantage).",
+    description: "Roll two d20s, take the higher on Communion checks.",
     source: "PERSONAL",
   },
   {
-    name: "Disadvantage",
+    name: "Disadvantage on Communion",
     category: "CHARACTER_SHEET_AUGMENT",
     buCost: 1,
     isMirrorable: false,
     mirrorBuCredit: 0,
     hardModifiers: [
-      { target: "behavior.disadvantage", operation: "grant", value: 1 },
+      { target: "skill_practice_check.communion", operation: "grant", value: { kind: "keyword", value: "disadvantage" } },
     ],
-    description: "Roll two d20s, take the lower (disadvantage).",
+    description: "Roll two d20s, take the lower on Communion checks.",
+    source: "PERSONAL",
+  },
+  {
+    name: "Advantage on Stealth",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      { target: "skill_practice_check.stealth", operation: "grant", value: { kind: "keyword", value: "advantage" } },
+    ],
+    description: "Roll two d20s, take the higher on Stealth checks.",
     source: "PERSONAL",
   },
   {
@@ -730,7 +742,7 @@ const CAPABILITIES: CapabilitySpec[] = [
       {
         name: "Smite",
         description: "Radiant damage + advantage on smite attack",
-        primitiveNames: ["Smite Damage", "Advantage"],
+        primitiveNames: ["Smite Damage", "Advantage on Communion"],
       },
     ],
   },
@@ -752,7 +764,7 @@ const CAPABILITIES: CapabilitySpec[] = [
       {
         name: "Hunted",
         description: "Target has disadvantage on stealth checks",
-        primitiveNames: ["Disadvantage"],
+        primitiveNames: ["Disadvantage on Communion"],
       },
     ],
   },
