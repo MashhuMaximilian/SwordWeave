@@ -195,69 +195,80 @@ commit + immediate push per Rule 9.
 
 ---
 
-## 5. Open decisions for round 1
+## 5. Decisions confirmed (your feedback round 1, 2026-08-10)
 
-### D-1. Capability accordion layout
+### D-1. Capability accordion layout — **(b)**
 
-When a capability is shown without a heritage (character-level direct
-capability), what section heading does it use?
+> *"D-1 -> b..... man we discussed about this. So, in character edit modal
+> I can put capabilities direct and from heritages. But they should get
+> placed in the correct accordion based on what tab in the edit modal
+> they were placed. I guess from ui this is good, but since this ch is
+> made in db idk....We already have accordions in the ui in character
+> sheet...."*
 
-Options:
-- **(a)** "Character-level capabilities" (single section above heritage accordions)
-- **(b)** "Capabilities" with each cap as a top-level accordion (no parent group)
-- **(c)** "Direct" (since the engine has `kind: "direct" | "heritage" | "capability" | "effect"`)
+**Decision:** Each capability is its own top-level accordion (no parent
+group). The accordion title comes from `slotTab` on `characterCapabilities`
+(when set by the edit modal tab selector — "Manifest", "Lineage", etc.).
+The tab determines the accordion placement. UI already handles this; the
+DB-side test character just needs slotTab values populated.
 
-**Recommended:** (b) — capabilities already have their own accordion
-widget, no need to nest them.
+**Action:**
+1. Inspect `characterCapabilities.slotTab` — confirm the column exists.
+2. For the test character, update `slotTab` on the 4 capabilities to
+   match their natural slot (Hunter's Mark → "Upbringing", Divine Smite →
+   "Manifest", Stone's Endurance → "Lineage", Iron Defender → "Manifest").
+3. In the capabilities tab render, group capabilities by `slotTab` value
+   and render an accordion per group.
 
-### D-2. Practice row display in bottom drawer
+### D-2. Practice row display — **(a), adv/disadv first then `*`**
 
-Currently the practice row shows: `Fieldcraft   +24`
+> *"a but adv/diadv first then *. If more, * is also last"*
 
-What's the final format?
+**Decision:** Render order is `+N ⇈(N) ⇊(N) *` (advantage count,
+disadvantage count, condition asterisk). When multiple markers, `*` is
+always last.
 
-Options:
-- **(a)** `Fieldcraft   +24   *   ⇈` (markers next to number)
-- **(b)** `Fieldcraft   +24*` (asterisk as superscript)
-- **(c)** `Fieldcraft   +24   (3 active)` (count of active primitives)
+**Action:** In AxisMarkers render, ensure the order is fixed: adv →
+disadv → floor/ceiling → `*`.
 
-**Recommended:** (a) — matches AxisMarkers component pattern, consistent
-with attribute/practice row markers.
+### D-3. Provenance breadcrumb format — **(a), full chain**
 
-### D-3. Provenance breadcrumb format
+> *"a. Full chain. a character may have multiple heritages or multiple
+> direct capabilities in heritage tab (Like I could have a primitive from
+> capability in heritage or from an effect within a capability within a
+> Lineage within lineage accordion..."*
 
-When rendering "where this primitive came from":
+**Decision:** Always render the full chain. Empty segments are still
+shown as `<empty>` (or `Direct` for character-level caps). Format:
+`via <heritageName> > <capabilityName> > <effectName>`.
 
-Options:
-- **(a)** Single line under name: `via Heritage 'Elf' > Capability 'Keen Senses' > Effect 'Darkvision'`
-- **(b)** Icon chain: `[heritage] > [capability] > [effect]` (icons instead of words)
-- **(c)** Just one level: `via Capability 'Divine Smite'` (drop empty segments)
+**Action:** Render `via Heritage 'Elf' > Capability 'Keen Senses' >
+Effect 'Darkvision'` regardless of how deep the nesting is. When a
+segment is empty, render it as `Direct` (or `Capability 'X' > Effect 'Y'`
+when heritage is empty).
 
-**Recommended:** (c) — terse, only shows what's actually set.
+### D-4. Modal compactness — **(c), both**
 
-### D-4. Modal compactness target
+> *"C both"*
 
-User said "make everything more compact maybe font size smaller".
+**Decision:** `text-sm` → `text-xs` on formula/calculation blocks. Reduce
+padding from `p-3` to `p-2` on every section.
 
-Options:
-- **(a)** `text-sm` → `text-xs` for formula text + calculation line
-- **(b)** Reduce padding `p-3` → `p-2` everywhere
-- **(c)** Both (a) and (b)
+**Action:** Apply both globally in `formula-modal.tsx`. Also reduce the
+max-width of the modal from `max-w-lg` to `max-w-md` so it occupies less
+horizontal space.
 
-**Recommended:** (c) — the modal is too tall on mobile.
+### D-5. Conditions section placement — **(a), top**
 
-### D-5. Conditions section placement
+> *"A top"*
 
-When user opens the modal, where should the Conditions section appear?
+**Decision:** Conditions section appears at the TOP of the modal, before
+the breakdown. User sees the "why" before the "how".
 
-Options:
-- **(a)** Top, before the breakdown (so user sees WHY before HOW)
-- **(b)** Bottom, after the breakdown (current implementation)
-- **(c)** Only visible when `*` is shown — collapsed by default
-
-**Recommended:** (a) — the user explicitly said "first things up should be
-the conditions" and asked "Why do I have * like the primitive 'advantage
-when condition'?".
+**Action:** Move `renderConditionsSection` call to render before
+`breakdown.map(StepRow)`. When `*` is shown but conditions section is
+empty (e.g. `conditionComputable=false`), still render the section with
+a fallback "Condition not computable — value shown with `*` for awareness".
 
 ---
 
