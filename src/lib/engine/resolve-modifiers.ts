@@ -154,6 +154,9 @@ export interface ModifierContribution {
   readonly conditionComputable: boolean;
   /** Phase 8.I POST C1: raw condition for human-readable display. */
   readonly condition?: unknown;
+  /** Phase 8.I POST C3: originCapabilityId lets the modal grey out
+   * primitives whose capability is toggled OFF. */
+  readonly originCapabilityId: string | null;
   readonly stacking: HardModifier["stacking"];
   readonly provenance: {
     readonly heritageName: string | null;
@@ -481,6 +484,8 @@ export function resolveModifiers(
         // Phase 8.I POST C1: pass the raw condition for human-readable
         // display via condition-dictionary.
         condition: conditionRaw,
+        // Phase 8.I POST C3: pass originCapabilityId for OFF-cap detection.
+        originCapabilityId: slot.originCapabilityId ?? null,
         // Phase 8.I i3: condition was already evaluated above.
         // conditionActive may be false (condition computable but not
         // met — modifier value suppressed). hasCondition tracks whether

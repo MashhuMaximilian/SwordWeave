@@ -908,7 +908,8 @@ export function BottomStickyBar({
             formula="Max Vitality = (10 + PB) × level + vitality primitive contributions"
             breakdown={contributionsToSteps(vitalityTarget, resolver_)}
             onClose={() => setCombo(null)}
-          />
+
+            characterId={characterId}          />
         ) : combo === "dc" ? (
           <FormulaModal
             title={`Save DC (${primaryAttrLabel})`}
@@ -925,7 +926,8 @@ export function BottomStickyBar({
               ...contributionsToSteps(dcTarget, resolver_),
             ]}
             onClose={() => setCombo(null)}
-          />
+
+            characterId={characterId}          />
         ) : combo === "practice" ? (
           <FormulaModal
             title={`${comboAttr.toUpperCase()} practice`}
@@ -947,7 +949,8 @@ export function BottomStickyBar({
                 : []),
             ]}
             onClose={() => setCombo(null)}
-          />
+
+            characterId={characterId}          />
         ) : combo === "practice-detail" && comboPractice ? (
           // PracticeDetailModal keeps its own layout — per-row
           // provenance. It uses FormulaModal for the formula +
@@ -984,7 +987,8 @@ export function BottomStickyBar({
               { label: `Level bonus (floor(${computeLevelFromPb(pb)} / 4))`, value: pb - 2 },
             ]}
             onClose={() => setCombo(null)}
-          />
+
+            characterId={characterId}          />
         ) : combo === "atk" ? (
           // Phase 8.5 H6: Attack Bonus popup. Mirrors the PB popup
           // shape so future attribute/scope options can plug in
@@ -1025,7 +1029,8 @@ export function BottomStickyBar({
               ),
             }}
             onClose={() => setCombo(null)}
-          />
+
+            characterId={characterId}          />
         ) : combo === "speed" ? (
           <FormulaModal
             title="Walking Speed"
@@ -1069,7 +1074,8 @@ export function BottomStickyBar({
               { label: `WALKING_SPEED primitive total`, value: (resolver_?.totals["speed.walking"] ?? 0) },
             ]}
             onClose={() => setCombo(null)}
-          />
+
+            characterId={characterId}          />
         ) : combo === "behavior" ? (
           <FormulaModal
             title="Behavior Variable"
@@ -1087,7 +1093,8 @@ export function BottomStickyBar({
                 })),
               )}
             onClose={() => setCombo(null)}
-          />
+
+            characterId={characterId}          />
         ) : combo === "damage" ? (
           <FormulaModal
             title="Damage Modifiers"
@@ -1103,7 +1110,8 @@ export function BottomStickyBar({
                   }))
               : []}
             onClose={() => setCombo(null)}
-          />
+
+            characterId={characterId}          />
         ) : combo === "damage-type" && comboDamageType ? (
           (() => {
             const dmTarget = `damage_modifier.${comboDamageType}`;
@@ -1122,7 +1130,8 @@ export function BottomStickyBar({
                 formula={`Damage × ${mult} — ${isResist ? "halved" : isVuln ? "doubled" : isImmune ? "ignored" : "normal"} damage from this type`}
                 breakdown={contributionsToSteps(dmTarget, resolver_)}
                 onClose={() => setCombo(null)}
-              />
+
+            characterId={characterId}              />
             );
           })()
         ) : combo === "encumbrance" ? (

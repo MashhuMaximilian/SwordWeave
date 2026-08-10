@@ -111,6 +111,8 @@ export interface FormulaModalProps {
   readonly info?: FormulaInfo | null;
   /** Close handler. */
   readonly onClose: () => void;
+  /** Phase 8.I POST C3: needed to read OFF-capabilities from localStorage. */
+  readonly characterId?: string;
 }
 
 /**
@@ -296,6 +298,7 @@ export function FormulaModal({
   breakdown,
   info,
   onClose,
+  characterId,
 }: FormulaModalProps) {
   // Escape to close
   useEffect(() => {
@@ -317,6 +320,29 @@ export function FormulaModal({
 
   // Phase 8.I POST C2: click condition text to see raw tokens.
   const [rawTokensOpen, setRawTokensOpen] = useState<unknown | null>(null);
+
+  // Phase 8.I POST C3: read OFF capabilities from localStorage.
+  // Storage format: sw:cap:${characterId}:${capabilityId} = "1" when OFF.
+  const [offCapabilityIds, setOffCapabilityIds] = useState<Set<string>>(
+    new Set(),
+  );
+  useEffect(() => {
+    if (typeof window === "undefined" || !characterId) return;
+    try {
+      const off = new Set<string>();
+      const prefix = `sw:cap:${characterId}:`;
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i);
+        if (key && key.startsWith(prefix)) {
+          const capId = key.slice(prefix.length);
+          if (window.localStorage.getItem(key) === "1") off.add(capId);
+        }
+      }
+      setOffCapabilityIds(off);
+    } catch {
+      /* ignore */
+    }
+  }, [characterId]);
 
   return (
     <Fragment>
@@ -384,7 +410,7 @@ export function FormulaModal({
                 <>
                   <ul className="space-y-2">
                     {breakdown.map((step, i) => (
-                      <StepRow key={`${step.label}-${i}`} step={step} />
+                      <StepRow key={`${step.label}-${i}`} step={step} offCapabilityIds={offCapabilityIds} />
                     ))}
                   </ul>
                   <SummaryLine steps={breakdown} total={total} />
@@ -453,7 +479,7 @@ export function FormulaModal({
 // Sub-components
 // =============================================================================
 
-function StepRow({ step }: { step: FormulaStep }) {
+function StepRow({ step, offCapabilityIds }: { step: FormulaStep; offCapabilityIds: Set<string> }) {
   // If this step carries a resolver contribution, render the
   // fancy breadcrumb + mirror pill UI from provenance-modal.
   if (step.contribution) {
@@ -465,9 +491,13 @@ function StepRow({ step }: { step: FormulaStep }) {
             <p className={cn(
               "truncate text-sm font-medium",
               isExpertiseName(c.primitiveName) && "font-bold text-teal-700 dark:text-teal-300",
-              isProficiencyName(c.primitiveName) && "text-teal-700 dark:text-teal-300"
+              isProficiencyName(c.primitiveName) && "text-teal-700 dark:text-teal-300",
+              c.originCapabilityId && offCapabilityIds.has(c.originCapabilityId) && "text-muted-foreground line-through"
             )} title={c.primitiveName}>
               {step.label}
+              {c.originCapabilityId && offCapabilityIds.has(c.originCapabilityId) ? (
+                <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">(capability OFF)</span>
+              ) : null}
             </p>
             {step.via && (
               <p className="mt-0.5 text-[11px] text-muted-foreground">
@@ -485,7 +515,8 @@ function StepRow({ step }: { step: FormulaStep }) {
               "font-mono font-semibold tabular-nums",
               isPbHalfValue(c.value) && "text-teal-600 dark:text-teal-400",
               isExpertiseName(c.primitiveName) && "font-bold text-teal-700 dark:text-teal-300",
-              isProficiencyName(c.primitiveName) && "text-teal-700 dark:text-teal-300"
+              isProficiencyName(c.primitiveName) && "text-teal-700 dark:text-teal-300",
+              c.originCapabilityId && offCapabilityIds.has(c.originCapabilityId) && "text-muted-foreground line-through"
             )}>
               {c.op === "min" || c.op === "max" ? c.value : fmt(c.value)}
             </span>
