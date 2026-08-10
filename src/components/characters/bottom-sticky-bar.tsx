@@ -149,10 +149,6 @@ function AxisMarkers({
   if (floor !== null) markers.push(`\u21a5 ${floor}`);
   if (ceiling !== null) markers.push(`\u21a7 ${ceiling}`);
   if (hasCond) markers.push("*");
-  if (adv >= 2) markers.push(`\u21c8(${adv})`);
-  if (disadv >= 2) markers.push(`\u21ca(${disadv})`);
-  if (floor !== null) markers.push(`\u21a5 ${floor}`);
-  if (ceiling !== null) markers.push(`\u21a7 ${ceiling}`);
   if (markers.length === 0) return null;
   return (
     <span
