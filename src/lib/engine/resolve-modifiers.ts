@@ -152,6 +152,8 @@ export interface ModifierContribution {
    * available context. Non-computable (true) means the bonus is
    * included with a * marker. */
   readonly conditionComputable: boolean;
+  /** Phase 8.I POST C1: raw condition for human-readable display. */
+  readonly condition?: unknown;
   readonly stacking: HardModifier["stacking"];
   readonly provenance: {
     readonly heritageName: string | null;
@@ -456,6 +458,8 @@ export function resolveModifiers(
   // ----------------------------------------------------------------─
   for (const entry of entries) {
     const { slot, mod, target, effectiveValue, preMirrorValue, tags, scopedTargets, hasCondition, conditionActive, conditionComputable } = entry;
+    // Phase 8.I POST C1: capture the raw condition for readable display.
+    const conditionRaw = mod.condition ?? null;
 
     if (!Number.isFinite(effectiveValue)) continue;
 
@@ -474,6 +478,9 @@ export function resolveModifiers(
         value: effectiveValue,
         preMirrorValue,
         tags,
+        // Phase 8.I POST C1: pass the raw condition for human-readable
+        // display via condition-dictionary.
+        condition: conditionRaw,
         // Phase 8.I i3: condition was already evaluated above.
         // conditionActive may be false (condition computable but not
         // met — modifier value suppressed). hasCondition tracks whether

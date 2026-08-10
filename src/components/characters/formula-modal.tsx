@@ -49,6 +49,7 @@ import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { humanReadableCondition } from "@/lib/engine/condition-dictionary";
 import type {
   ModifierContribution,
   ResolvedModifiers,
@@ -189,7 +190,17 @@ function renderConditionsSection(breakdown: ReadonlyArray<FormulaStep>): ReactNo
               key={`cond-${step.label}-${i}`}
               className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-2 py-1"
             >
-              <span className="text-sm font-medium">{step.label}</span>
+              <span className="flex-1 text-sm font-medium">
+                <span>{step.label}</span>
+                {c.condition ? (
+                  <span
+                    className="ml-2 text-xs italic text-muted-foreground"
+                    title={JSON.stringify(c.condition)}
+                  >
+                    when {humanReadableCondition(c.condition as Parameters<typeof humanReadableCondition>[0])}
+                  </span>
+                ) : null}
+              </span>
               <span
                 className={`font-mono text-xs ${
                   isActive === false
