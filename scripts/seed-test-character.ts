@@ -185,6 +185,40 @@ const PRIMITIVES: PrimitiveSpec[] = [
     source: "MANIFEST",
   },
   {
+    name: "Proficient Mysticism",
+    category: "PRACTICE_PROGRESSION_AUGMENT",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [
+      {
+        target: "skill_practice_check",
+        operation: "add",
+        value: { kind: "derived", which: "pb" },
+        metadata: { targetScope: { layer: "PRACTICE", values: ["MYSTICISM"] } },
+      },
+    ],
+    description: "Proficiency in mysticism — adds PB to the check.",
+    source: "MANIFEST",
+  },
+  {
+    name: "PB Half Intuition",
+    category: "PRACTICE_PROGRESSION_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      {
+        target: "skill_practice_check",
+        operation: "add",
+        value: { kind: "derived", which: "pb_half" },
+        metadata: { targetScope: { layer: "PRACTICE", values: ["INTUITION"] } },
+      },
+    ],
+    description: "Half PB to intuition practice (PB/2). Tests the PB/2 drawing color rule.",
+    source: "MANIFEST",
+  },
+  {
     name: "Expertise Fieldcraft",
     category: "PRACTICE_PROGRESSION_AUGMENT",
     buCost: 1,
@@ -424,18 +458,6 @@ const PRIMITIVES: PrimitiveSpec[] = [
       { target: "skill_practice_check.influence", operation: "grant", value: { kind: "keyword", value: "disadvantage" } },
     ],
     description: "Roll two d20s, take the lower on Influence checks.",
-    source: "PERSONAL",
-  },
-  {
-    name: "Disadvantage on Communion",
-    category: "CHARACTER_SHEET_AUGMENT",
-    buCost: 1,
-    isMirrorable: false,
-    mirrorBuCredit: 0,
-    hardModifiers: [
-      { target: "skill_practice_check.communion", operation: "grant", value: { kind: "keyword", value: "disadvantage" } },
-    ],
-    description: "Roll two d20s, take the lower on Communion checks.",
     source: "PERSONAL",
   },
   {
@@ -754,7 +776,7 @@ const CAPABILITIES: CapabilitySpec[] = [
       {
         name: "Hunted",
         description: "Target has disadvantage on stealth checks",
-        primitiveNames: ["Disadvantage on Communion"],
+        primitiveNames: ["Disadvantage on Influence"],
       },
     ],
   },
