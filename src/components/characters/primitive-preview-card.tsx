@@ -239,6 +239,14 @@ export function PrimitivePreviewCard({
           )}
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
+          {primitiveLink.versionId ? (
+            <span
+              className="rounded bg-cyan-500/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300"
+              title={`Pinned version: ${primitiveLink.versionId}`}
+            >
+              v:{primitiveLink.versionId.slice(0, 8)}
+            </span>
+          ) : null}
           <span className="font-mono text-foreground">{p.buCost} BU</span>
         </div>
       </div>
@@ -267,8 +275,10 @@ export function PrimitivePreviewCard({
             <span className="font-mono">{p.buCost} BU</span>
             {" · via "}
             <span>
-              {provenancePath ??
-                `${inheritedFrom}${inheritedKind ? ` (${inheritedKind.toLowerCase()})` : ""}`}
+              {(() => {
+                const raw = provenancePath ?? (inheritedFrom + (inheritedKind ? " (" + inheritedKind.toLowerCase() + ")" : ""));
+                return raw.replace(/^via /, "");
+              })()}
             </span>
           </>
         ) : (
