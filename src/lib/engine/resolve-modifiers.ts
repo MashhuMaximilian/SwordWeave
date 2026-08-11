@@ -369,6 +369,19 @@ export function resolveModifiers(
         equationTags = eq.tags;
       } else if (isTypedToken(mod.value)) {
         resolvedValue = resolveValue(mod.value, ctx);
+      } else if (
+        // Phase 8.L: equation stored as {kind:"equation", operands:[...], tag:"fire"}
+        // in mod.value directly. The UI form uses this canonical shape.
+        // Resolve via resolveEquation against the operands.
+        mod.value && typeof mod.value === "object" &&
+        (mod.value as { kind?: string }).kind === "equation" &&
+        Array.isArray((mod.value as { operands?: unknown[] }).operands) &&
+        (mod.value as { operands?: unknown[] }).operands!.length > 0
+      ) {
+        const eqV = mod.value as { operands?: unknown[]; tag?: string };
+        const eq = resolveEquation(eqV.operands as never, ctx);
+        resolvedValue = eq.numeric;
+        equationTags = eqV.tag ? [eqV.tag] : eq.tags;
       } else {
         resolvedValue = effectiveValue;
       }
