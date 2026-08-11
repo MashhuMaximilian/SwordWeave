@@ -738,9 +738,22 @@ function isEngineModifierValid(mod: HardModifier): boolean {
   if (!spec) return true; // Unknown / legacy → pass-through
 
   const behaviorName = mod.metadata?.["behaviorName"];
+  // Phase 8.L: when target is `size` or `source_type` and the value
+  // is a keyword token like {kind:"keyword", value:"large"}, lift
+  // that string into targetValues so the checklist validator passes.
+  let derivedValues = values;
+  if (
+    (targetRaw === "size" || targetRaw === "source_type") &&
+    mod.value &&
+    typeof mod.value === "object" &&
+    (mod.value as { kind?: string }).kind === "keyword" &&
+    typeof (mod.value as { value?: unknown }).value === "string"
+  ) {
+    derivedValues = [String((mod.value as { value: string }).value).toLowerCase()];
+  }
   const draft: ModifierDraftForValidation = {
     target: targetRaw,
-    targetValues: values,
+    targetValues: derivedValues,
     freeTextNarrowFocus:
       typeof behaviorName === "string" ? String(behaviorName) : "",
   };
