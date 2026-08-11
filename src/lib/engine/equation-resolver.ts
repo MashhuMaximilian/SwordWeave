@@ -145,31 +145,27 @@ export function resolveEquation(
   const tags: string[] = [];
 
   for (const operand of operands) {
-    // Phase 8.L: pass the operand directly (not operand.value) —
-    // the Operand type has `which` for derived/attribute, not
-    // nested `value`. resolveOperandValue expects a ValueToken.
-    const value = resolveOperandValue(operand as unknown as Parameters<typeof resolveOperandValue>[0], ctx);
+    // Operand shape: { op: Operator; value: OperandValue }
+    // OperandValue has the kind discriminator and the payload
+    // (which for derived/attribute, value for number/keyword, etc.).
+    const value = resolveOperandValue(operand.value, ctx);
 
     // Collect keywords (tags) — preserve them on the result.
-    const opAsAny = operand as unknown as { kind: string; value?: string };
-    if (opAsAny.kind === "keyword" && typeof opAsAny.value === "string") {
-      tags.push(opAsAny.value);
+    if (operand.value.kind === "keyword") {
+      tags.push(operand.value.text);
     }
 
     // For paren groups, also collect any inner tags.
-    if (opAsAny.kind === "paren") {
-      const inner = resolveEquation(
-        (operand as unknown as { operands: readonly typeof operand[] }).operands,
-        ctx,
-      );
+    if (operand.value.kind === "paren") {
+      const inner = resolveEquation(operand.value.operands, ctx);
       for (const tag of inner.tags) {
         tags.push(tag);
       }
       // value already includes the inner numeric, but we need
       // to apply the op to the OUTER accumulator.
-      numeric = applyOperator(numeric, ((operand as unknown as { op?: string }).op ?? "+") as Parameters<typeof applyOperator>[1], inner.numeric);
+      numeric = applyOperator(numeric, operand.op, inner.numeric);
     } else {
-      numeric = applyOperator(numeric, ((operand as unknown as { op?: string }).op ?? "+") as Parameters<typeof applyOperator>[1], value);
+      numeric = applyOperator(numeric, operand.op, value);
     }
   }
 
