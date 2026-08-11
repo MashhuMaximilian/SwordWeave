@@ -705,22 +705,35 @@ for (const l of input.primitiveLinks as Parameters<typeof walkPrimitiveContribut
     const target = String(mod.target ?? "");
     const op = String(mod.operation ?? "");
     const value = Number(mod.value);
+    // Phase 8.L: extract keyword value (e.g. {kind:'keyword', value:'large'})
+    const kwValue = mod.value && typeof mod.value === "object" && (mod.value as { kind?: string }).kind === "keyword"
+      ? String((mod.value as { value?: unknown }).value ?? "").toLowerCase()
+      : null;
     const dotIdx = target.indexOf(".");
+    // Phase 8.L K7+K14+K16: support both dotted targets (size.large) AND
+    // plain targets with keyword value (size + {keyword:large}).
+    let axis: string;
+    let sub: string;
     if (dotIdx > 0) {
-      const axis = target.slice(0, dotIdx);
-      const sub = target.slice(dotIdx + 1).toLowerCase();
-      if (axis === "size" && SIZE_TIERS.includes(sub)) {
-        if (op === "set" || op === "grant" || op === "add") {
-          resolvedSize = sub.toUpperCase();
-        }
-      }
-      if (axis === "source_type") {
-        if (op === "set" || op === "grant") {
-          resolvedSourceType = target.slice(dotIdx + 1).toUpperCase();
-        }
+      axis = target.slice(0, dotIdx);
+      sub = target.slice(dotIdx + 1).toLowerCase();
+    } else if (kwValue) {
+      axis = target;
+      sub = kwValue;
+    } else {
+      continue;
+    }
+    if (axis === "size" && SIZE_TIERS.includes(sub)) {
+      if (op === "set" || op === "grant" || op === "add") {
+        resolvedSize = sub.toUpperCase();
       }
     }
-    if (target === "combat_action") {
+    if (axis === "source_type") {
+      if (op === "set" || op === "grant") {
+        resolvedSourceType = sub.toUpperCase();
+      }
+    }
+    if (target === "combat_action" || (axis === "combat_action" && kwValue)) {
       if (op === "grant") inCombat = true;
       if (op === "set") inCombat = value !== 0;
     }

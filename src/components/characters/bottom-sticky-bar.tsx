@@ -704,7 +704,7 @@ export function BottomStickyBar({
                       <AxisMarkers byTarget={byTarget} target={`attribute.${attr}`} />
                     </span>
                     <span className="mt-1.5 text-[9px] text-muted-foreground">
-                      save: <span className="font-mono font-semibold">{fmt(s)}</span>
+                      save: <span className={cn("font-mono font-semibold", (byTarget[`save_dc.${attr}`] ?? []).length > 0 && "text-teal-700 dark:text-teal-300")}>{fmt(s)}</span>
                     </span>
                   </button>
                 );
