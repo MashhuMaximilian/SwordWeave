@@ -706,7 +706,8 @@ function numericOr(v: unknown, fallback: number): number {
  */
 function isEngineModifierValid(mod: HardModifier): boolean {
   const targetRaw = String(mod.target);
-  if (String(mod.target).includes("practice") || (mod.metadata as Record<string, unknown> | undefined)?.targetScope) {
+  const debugMeta = (mod.metadata as Record<string, unknown> | undefined);
+  if (String(mod.target).includes("practice") || debugMeta?.["targetScope"]) {
     console.log("[DEBUG_VALID]", JSON.stringify({ target: mod.target, metadata: mod.metadata, value: mod.value }));
   }
 
