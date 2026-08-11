@@ -379,7 +379,6 @@ export function resolveModifiers(
         const ops = Array.isArray(eqV.operands) ? eqV.operands : [];
         if (ops.length > 0) {
           const eq = resolveEquation(ops as never, ctx);
-          console.log("[DEBUG_PROWESS] eq result:", JSON.stringify(eq), "for slot:", slot.name, "value:", JSON.stringify(mod.value));
           resolvedValue = eq.numeric;
           equationTags = eqV.tag ? [eqV.tag] : eq.tags;
         } else {
@@ -434,6 +433,9 @@ export function resolveModifiers(
       if (slot.isToggledOff) continue;
 
       // ---- Behavior variable collection (Pass 1) ---------------
+      if (String(mod.target) === "skill_practice_check" && slot.name === "Prowess Equation") {
+        console.log("[DEBUG_PE] target:", target, "effectiveValue:", effectiveValue, "resolvedValue:", resolvedValue);
+      }
       if (target === "behavior" && behaviorName !== null) {
         // Apply the op to the existing variable (default 0).
         const prev = behaviorVariables[behaviorName] ?? 0;
