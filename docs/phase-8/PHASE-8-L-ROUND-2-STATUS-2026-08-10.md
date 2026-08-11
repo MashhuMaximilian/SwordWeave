@@ -158,3 +158,41 @@ Currently `primitiveLink.versionId` is null in seeded data. Need to set it when 
 ## 5. Request
 
 Pick D-L19, D-L20, D-L21, D-L22, D-L23, D-L24 and I'll plan + start.
+
+
+## 6. Round 4 critical fixes (engine bugs)
+
+User audit exposed 4 hidden bugs in the engine. **All visible to user as "primitives not working"**:
+
+| Bug | Cause | Fix |
+|---|---|---|
+| Size still MEDIUM | `baseWalkSpeed = SIZE_BASE_SPEED[input.size]` (not resolvedSize) | `720735d` |
+| Extra Slot +1 not in 0/7 | `computeEncumbrance` called without `bonusSlots` | `e8635ff` |
+| Carry capacity +30 opaque | `getCapacityPrimitives` didn't read `carry_capacity` target | `e8635ff`, `09559d9` |
+| Prowess Equation missing | `resolveEquation` called `operand.value.kind` which is undefined for derived/attribute operands | `001471a` |
+| Extra Slot validator reject | `isEngineModifierValid` rejected equip_slot with numeric value (free-text required) | seed uses `metadata.behaviorName` |
+| Resolve endpoint 500 | `resolveEquation` threw on Prowess operands | `001471a` |
+
+### Critical: Vercel deploys were stale
+
+Vercel build cache caused multiple deploys to fail silently. Required:
+- Empty `chore: trigger rebuild` commits (`61d50ab`, `94aec79`, `3243636`)
+- Each waited 90-120s before next push
+- TS errors crashed the route (500) — became visible via curl
+
+### What the user should see after reload
+
+- **Header**: Size pill should show LARGE (was MEDIUM)
+- **Capacity**: `80 base + 30 (phys) + 20 (Backpack) = 130` (was 40 + 30 + 20 = 100 with MEDIUM)
+- **Equip slots**: 0/7 (was 0/6)
+- **Communion**: `+4` practice text + `⇈(2)` markers (adv 2 - 0 disadv = 2 net)
+- **Prowess**: `+8` (was `+12` because Prowess Equation was being silently dropped)
+- **Intuition**: `+4` (was `+4`, now with PB Half Intuition contributing 3)
+- **Mysticism**: `+4` (was `+4`, now with Proficient Mysticism contributing 6)
+
+### Still pending across all phases
+
+- **L6**: ONE global save_dc / attack_bonus (architectural, deferred to Phase 8.M)
+- **L4**: Stone's Endurance bundle JSON error (user may have stale client cache)
+- **L8**: Version pill (versionId is null in seed — version infrastructure doesn't exist)
+- **L22**: Prowess Equation + Communion modal still need VERIFICATION on live page (should appear in practice primitive breakdown)
