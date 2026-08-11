@@ -258,13 +258,36 @@ Options:
 
 ---
 
-## 6. Status
+## 6. Status (updated 2026-08-10)
 
-Phase 8.K commits shipped (1a7303c, f79c7c9, c16dc26, e50a924, c830e98, 3821e01, 104bae9).
-L2 + L3 + L5 fixed in 104bae9.
+Phase 8.L commits shipped (084d4b9, d43214c).
 
-**L6 architectural refactor (single save_dc/attack_bonus) is the biggest
-remaining work.** Tackling it now would unblock the user from constant
-re-architectural complaints.
+| Item | Status | Commit |
+|---|---|---|
+| L1 — Re-target stealth primitive to fieldcraft | ✅ DONE | `084d4b9` |
+| L2 — Keyword display in primitive card | ✅ DONE | `104bae9` (K) |
+| L3 — Equation display in primitive card | ✅ DONE | `104bae9` (K) |
+| L4 — Stone's Endurance bundle JSON error | ⚠️ UNVERIFIED (response is valid now) | — |
+| L5 — K8 adv/disadv markers | ✅ DONE | `104bae9` (K) |
+| L6 — ONE save_dc / attack_bonus axis | ⏸️ DEFERRED per D-L2 (Phase 8.M) | — |
+| L7 — Size + Force Source format | ✅ DONE | `084d4b9` (seed) + `d43214c` (engine) |
+| L8 — Primitive version pill in UI | ✅ DONE | `084d4b9` |
+| L9 — Reseed test character | ✅ DONE | `084d4b9` |
+| L13 — `via via` double-prefix | ✅ DONE | `084d4b9` |
+| L14 — save_dc/attack_bonus migration | ⏸️ Bundled with L6 | — |
+| L15-L17 — K-recap pending | ✅ DONE | `d43214c` (K7+K14+K16) |
+| L18 — Remove Lighten + per-attr save_dc | ✅ DONE | `084d4b9` |
 
-**Pick D-L1, D-L2, D-L3, D-L4 and I'll plan + start.**
+**Architectural refactor L6 deferred to Phase 8.M.** This is the single
+remaining user-visible architectural issue. Will need engine refactor +
+seed migration + manual re-author of test character's save DC primitives.
+
+**L6 needs:**
+1. Define `save_dc` (no attr suffix) and `attack_bonus` (no attr suffix)
+2. New resolver functions `resolveSaveDc(input, attr)` and
+   `resolveAttackBonus(input, attr)` — use proficient attr's modifier + PB
+3. Migration: rename all `save_dc.physical` → `save_dc`, etc.
+4. Update `isValidTarget` in resolve route
+5. Update `bottom-sticky-bar` to use new keys
+6. Resolve conflicts in modal (user can pick which attribute feeds the
+   global save_dc when multiple attribute-related primitives exist)
