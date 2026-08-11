@@ -403,6 +403,30 @@ const PRIMITIVES: PrimitiveSpec[] = [
     source: "PERSONAL",
   },
   {
+    name: "Advantage on Communion 2",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      { target: "skill_practice_check.communion", operation: "grant", value: { kind: "keyword", value: "advantage" } },
+    ],
+    description: "Second advantage on Communion (tests stacking). Was once worshipped as a spirit-bond forming between cleric and the divine.",
+    source: "PERSONAL",
+  },
+  {
+    name: "Disadvantage on Influence",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      { target: "skill_practice_check.influence", operation: "grant", value: { kind: "keyword", value: "disadvantage" } },
+    ],
+    description: "Roll two d20s, take the lower on Influence checks.",
+    source: "PERSONAL",
+  },
+  {
     name: "Disadvantage on Communion",
     category: "CHARACTER_SHEET_AUGMENT",
     buCost: 1,

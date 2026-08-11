@@ -850,7 +850,38 @@ export function BottomStickyBar({
                         </p>
                       ) : (
                         <ul className="space-y-1">
-                          {rows.map((p) => (
+                          {rows.map((p) => {
+                            // L25: detect helper primitive kinds in this
+                            // practice's modifiers. PB/2 detection via
+                            // formula-modal helpers is inlined here.
+                            const practiceContribs = byTarget[`skill_practice_check.${p.name.toLowerCase()}`] ?? [];
+                            const hasExp = practiceContribs.some(
+                              (c) => c.primitiveName.toLowerCase().startsWith("expertise") || c.primitiveName.toLowerCase().includes("expertise"),
+                            );
+                            const hasProf = practiceContribs.some(
+                              (c) => c.primitiveName.toLowerCase().startsWith("proficient") || c.primitiveName.toLowerCase().includes("proficient"),
+                            );
+                            const hasPbHalf = practiceContribs.some(
+                              (c) =>
+                                c.value === 0 &&
+                                !!c.rawValue &&
+                                typeof c.rawValue === "object" &&
+                                (c.rawValue as { kind?: string }).kind === "derived" &&
+                                ((c.rawValue as { which?: string }).which === "pb_half"),
+                            );
+                            const nameCol = hasExp
+                              ? "font-bold text-teal-700 dark:text-teal-200"
+                              : hasProf
+                                ? "text-teal-700 dark:text-teal-200"
+                                : "text-foreground";
+                            const valCol = hasExp
+                              ? "font-bold text-teal-700 dark:text-teal-200"
+                              : hasProf
+                                ? "font-semibold text-teal-700 dark:text-teal-200"
+                                : hasPbHalf
+                                  ? "font-semibold text-teal-700 dark:text-teal-200"
+                                  : "text-foreground";
+                            return (
                             <li key={p.id ?? p.name}>
                               <button
                                 type="button"
@@ -861,22 +892,17 @@ export function BottomStickyBar({
                                 className="flex w-full items-center justify-between gap-1 rounded px-1 py-0.5 text-left hover:bg-secondary/30"
                                 title={`Show provenance for ${p.name}`}
                               >
-                                <span className="truncate text-xs capitalize">
+                                <span className={`truncate text-xs capitalize ${nameCol}`}>
                                   {p.name}
                                 </span>
-                                <span
-                                  className={`flex items-center gap-0.5 shrink-0 font-mono text-xs font-semibold tabular-nums ${
-                                    isProf
-                                      ? "text-teal-700 dark:text-teal-200"
-                                      : "text-foreground"
-                                  }`}
-                                >
+                                <span className={`flex items-center gap-0.5 shrink-0 font-mono text-xs tabular-nums ${valCol}`}>
                                   {fmt(p.total)}
                                   <AxisMarkers byTarget={byTarget} target={`skill_practice_check.${p.name.toLowerCase()}`} />
                                 </span>
                               </button>
                             </li>
-                          ))}
+                            );
+                          })}
                         </ul>
                       )}
                     </button>
