@@ -381,8 +381,6 @@ export function resolveModifiers(
       // "attribute.PHYSICAL"). We normalize to lowercase here
       // so the byTarget key matches.
       const scopedValues = (mod.metadata as Record<string, unknown> | undefined);
-      // DEBUG: log Prowess Equation
-      if (slot.name === 'Prowess Equation') console.log('[DEBUG] Prowess Equation mod:', JSON.stringify(mod), 'scopedValues:', JSON.stringify(scopedValues));
       let scopedValuesList: string[] = [];
       if (scopedValues && typeof scopedValues === "object") {
         const scope = scopedValues["targetScope"];
@@ -706,10 +704,6 @@ function numericOr(v: unknown, fallback: number): number {
  */
 function isEngineModifierValid(mod: HardModifier): boolean {
   const targetRaw = String(mod.target);
-  const debugMeta = (mod.metadata as Record<string, unknown> | undefined);
-  if (String(mod.target).includes("practice") || debugMeta?.["targetScope"]) {
-    console.log("[DEBUG_VALID]", JSON.stringify({ target: mod.target, metadata: mod.metadata, value: mod.value }));
-  }
 
   // Build the validator input. Sub-target comes from
   // metadata.targetScope.values (canonical v7-E+ shape).

@@ -106,7 +106,7 @@ function getCapacityPrimitives(
 ): ReadonlyArray<{ id: number; name: string; op: string; value: number }> {
   if (!byTarget) return [];
   const out: Array<{ id: number; name: string; op: string; value: number }> = [];
-  for (const target of ["capacity", "load", "equip_slot"] as const) {
+  for (const target of ["carry_capacity", "capacity", "load", "equip_slot"] as const) {
     const contribs = byTarget[target] ?? [];
     for (const c of contribs) {
       if (c.op !== "add" && c.op !== "subtract") continue;

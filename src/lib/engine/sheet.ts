@@ -695,6 +695,9 @@ const encumbrance = computeEncumbrance(
   resolvedSize as CharacterSize,
   input.attrPhysical,
   encumbranceItems,
+  // Phase 8.L: Extra Slot primitive adds +1 to available slots.
+  // Previously this was hardcoded 6 (No bonus applied).
+  sumPrimitiveContributions(input.primitiveLinks, "equip_slot", null, input.conditionContext),
 );
 
 // Phase 8.I i2 finish (Mashu 2026-08-06) — speed walks per locomotion.
@@ -734,7 +737,10 @@ for (const locomotion of Object.keys(SPEED_DEFAULTS)) {
 
 // Phase 8.I i2 finish - carry capacity = SIZE_CAPACITY[size]
 // + (physical × 5) + primitive bonus.
-const charSize = (input.size as CharacterSize) ?? "MEDIUM";
+// Phase 8.L: use resolvedSize so the Enlarge primitive reaches the
+// capacity formula. (Without this, charSize was input.size which
+// doesn't reflect primitive transformations.)
+const charSize = resolvedSize as CharacterSize;
 const baseCarry = SIZE_CAPACITY[charSize] + input.attrPhysical * 5;
 const carryCapacityBonus = sumPrimitiveContributions(
   input.primitiveLinks,
