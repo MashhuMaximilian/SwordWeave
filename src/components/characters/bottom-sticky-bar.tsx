@@ -97,6 +97,25 @@ function countStacks(
 
 /** Phase 8.I i3: find min/max floor/ceiling values from contributions
  * that used `op: set` with min/max operations. */
+/**
+ * Phase 8.L L21: filter + sum primitive contributions to capacity.
+ * Targets include "capacity" (direct adds) and "load" (negative).
+ */
+function getCapacityPrimitives(
+  byTarget: ResolvedModifiers["byTarget"] | undefined,
+): ReadonlyArray<{ id: number; name: string; op: string; value: number }> {
+  if (!byTarget) return [];
+  const out: Array<{ id: number; name: string; op: string; value: number }> = [];
+  for (const target of ["capacity", "load", "equip_slot"] as const) {
+    const contribs = byTarget[target] ?? [];
+    for (const c of contribs) {
+      if (c.op !== "add" && c.op !== "subtract") continue;
+      out.push({ id: c.primitiveId, name: c.primitiveName, op: c.op, value: c.value });
+    }
+  }
+  return out;
+}
+
 function findFloor(
   byTarget: ResolvedModifiers["byTarget"],
   target: string,
@@ -1218,6 +1237,7 @@ export function BottomStickyBar({
             encumbrance={encumbrance}
             characterSize={characterSize}
             physicalMod={physMod}
+            primitiveContributions={getCapacityPrimitives(resolver?.byTarget)}
             onClose={() => setCombo(null)}
           />
         ) : null
@@ -2072,11 +2092,19 @@ function EncumbranceFormulaModal({
   characterSize,
   physicalMod,
   onClose,
+  primitiveContributions,
 }: {
   readonly encumbrance: EncumbranceForSticky;
   readonly characterSize: "TINY" | "SMALL" | "MEDIUM" | "LARGE" | "HUGE" | "GARGANTUAN";
   readonly physicalMod: number;
   readonly onClose: () => void;
+  /** Phase 8.L L21: list of primitive contributions to capacity. */
+  readonly primitiveContributions?: ReadonlyArray<{
+    id: number;
+    name: string;
+    op: string;
+    value: number;
+  }>;
 }) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -2165,6 +2193,16 @@ function EncumbranceFormulaModal({
               {sizeCap} (size: {characterSize}) + {physBonus} (Physical {fmt(physicalMod)} × 5)
               {primitiveBonus !== 0 ? ` + ${primitiveBonus} (primitives)` : ""} = {fmt(capacity)}
             </p>
+            {primitiveContributions && primitiveContributions.length > 0 ? (
+              <ul className="mt-2 space-y-0.5 text-[10px] font-mono text-muted-foreground/90">
+                {primitiveContributions.map((p) => (
+                  <li key={p.id} className="flex justify-between gap-1">
+                    <span className="truncate">{p.name}</span>
+                    <span className="shrink-0">{p.value >= 0 ? `+${p.value}` : p.value}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </section>
 
           {/* Load breakdown */}
