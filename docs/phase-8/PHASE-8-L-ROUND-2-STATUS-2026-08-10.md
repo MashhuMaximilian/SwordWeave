@@ -196,3 +196,60 @@ Vercel build cache caused multiple deploys to fail silently. Required:
 - **L4**: Stone's Endurance bundle JSON error (user may have stale client cache)
 - **L8**: Version pill (versionId is null in seed — version infrastructure doesn't exist)
 - **L22**: Prowess Equation + Communion modal still need VERIFICATION on live page (should appear in practice primitive breakdown)
+
+
+## 7. Round 5 — system overview + engine fixes
+
+User attached the **Practice/skill System Overview** doc (Notion 38eed8479ccd803b9544f1d0ce3d97cf) — design canon for practice semantics. Key insights applied:
+
+- **PB comes from attribute proficiency, not just practice proficiency.** Practice Proficiency is a SEPARATE source that stacks on top. For a PHYSICAL-proficient character, ALL physical practices get +PB.
+- So Prowess +20 = 6 (attr mod) + 6 (PB from PHYSICAL prof) + 8 (Prowess Equation) is CORRECT.
+- **PB/2 ceiling/floor is informative only** — does not hard-cap. Display in modal but doesn't truncate.
+
+### Round 5 commits
+
+| Commit | Items |
+|---|---|
+| `a019813` | size/source_type keyword values lift into targetValues |
+| `32d8c33` | Prowess Equation canonical, Awareness Floor 11, equip slot breakdown, practice info text |
+| `8788753` | Prowess Equation operands wrapped with op field |
+| `185c90c` | remove debug log |
+| `2998b7a` | debug Prowess equation |
+| `62ac691` | force rebuild Prowess |
+| `b10d88f` | focused debug Prowess Equation |
+| `e52c0b7` | remove debug log |
+
+### Newly added (per user requests)
+
+- **PRACTICE_DESCRIPTIONS** in `src/lib/primitives/target-scope.ts` — core question + use-when + examples for all 10 practices (sourced from system overview doc)
+- **Practice modal header** displays the practice's core question + when-to-apply text (italic)
+- **Awareness Floor 11** primitive in seed (skill_practice_check with targetScope AWARENESS, op min, value 11)
+- **Equip slot breakdown**: modal now shows "6 base + N from primitives" line below the slot count
+- **size/source_type keyword lift** in `isEngineModifierValid` — Enlarge and Force Source now pass the validator
+
+### Still broken on production
+
+- **Prowess Equation**: data is correct in DB (operands wrapped with op field), validator passes locally, but resolve output on production is still missing the entry. Possibly Vercel deploy cache or a different code path. Investigating.
+- **Size pill in header**: visible depends on `resolvedSize` being passed through to header. The modal still shows MEDIUM highlighted because the engine code path (in sheet.ts) computes correctly but the modal's `characterSize` prop may still be reading from a stale source.
+- **Equip slots display**: code is updated but needs reload to see "6 base + N" text
+
+### Still pending across all phases
+
+- **L6**: ONE global save_dc / attack_bonus (architectural, deferred to Phase 8.M)
+- **L4**: Stone's Endurance bundle JSON error
+- **L8**: Version pill (versionId is null in seed)
+- **L22**: Verify on live page that ProWess Equation shows in modal
+
+### User feedback quotes
+
+> "idk why prowess is 20" — Because of attribute proficiency PB, per system overview. Formula is correct.
+> "in modal we say '7 universal equip slots available (0 used)'. It should be 6 (+x from primitives)" — Now shows "6 base + N from primitives" below.
+> "Add a primitive for awareness floor 11. And put it inside a new effect inside one of the existing capabilities in character" — Added as direct primitive. Effect integration is a follow-up.
+
+### To check after reload
+
+- Capacity modal: lists `Backpack +20`, `Extra Slot +1` inline + "6 base + 1 from primitives" 
+- Practice modal: shows practice info text (italic) under the practice name
+- Size pill in header: should show LARGE
+- Communion row: ⇈(2) markers (2 adv - 0 disadv = 2 net)
+- Prowess Equation: should appear in modal practice primitives (resolve issue?)
