@@ -433,9 +433,6 @@ export function resolveModifiers(
       if (slot.isToggledOff) continue;
 
       // ---- Behavior variable collection (Pass 1) ---------------
-      if (String(mod.target) === "skill_practice_check" && slot.name === "Prowess Equation") {
-        console.log("[DEBUG_PE] target:", target, "effectiveValue:", effectiveValue, "resolvedValue:", resolvedValue);
-      }
       if (target === "behavior" && behaviorName !== null) {
         // Apply the op to the existing variable (default 0).
         const prev = behaviorVariables[behaviorName] ?? 0;
