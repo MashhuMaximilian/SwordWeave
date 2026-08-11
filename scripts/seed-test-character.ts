@@ -334,7 +334,14 @@ const PRIMITIVES: PrimitiveSpec[] = [
     buCost: 1,
     isMirrorable: true,
     mirrorBuCredit: 1,
-    hardModifiers: [{ target: "equip_slot", operation: "add", value: 1 }],
+    hardModifiers: [
+      {
+        target: "equip_slot",
+        operation: "add",
+        value: 1,
+        metadata: { behaviorName: "extraslot" },
+      },
+    ],
     description: "+1 equip slot.",
     source: "MANIFEST",
   },
@@ -621,16 +628,14 @@ const PRIMITIVES: PrimitiveSpec[] = [
       {
         target: "skill_practice_check",
         operation: "add",
-        value: {
-          kind: "equation",
+        value: 8,
+        metadata: {
+          targetScope: { layer: "PRACTICE", values: ["PROWESS"] },
           operands: [
             { kind: "derived", which: "pb" },
             { kind: "number", value: 2 },
           ],
           tag: "fire",
-        },
-        metadata: {
-          targetScope: { layer: "PRACTICE", values: ["PROWESS"] },
         },
       },
     ],

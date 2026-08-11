@@ -713,7 +713,7 @@ const SIZE_BASE_SPEED: Record<string, number> = {
   HUGE: 60,
   GARGANTUAN: 90,
 };
-const baseWalkSpeed = SIZE_BASE_SPEED[(input.size as CharacterSize) ?? "MEDIUM"] ?? 30;
+const baseWalkSpeed = SIZE_BASE_SPEED[(resolvedSize as CharacterSize) ?? "MEDIUM"] ?? 30;
 const baseSwimClimbSpeed = roundUp(baseWalkSpeed / 2);
 
 const SPEED_DEFAULTS: Record<string, number> = {
