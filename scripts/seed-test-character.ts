@@ -628,14 +628,16 @@ const PRIMITIVES: PrimitiveSpec[] = [
       {
         target: "skill_practice_check",
         operation: "add",
-        value: 8,
-        metadata: {
-          targetScope: { layer: "PRACTICE", values: ["PROWESS"] },
+        value: {
+          kind: "equation",
           operands: [
             { kind: "derived", which: "pb" },
             { kind: "number", value: 2 },
           ],
           tag: "fire",
+        },
+        metadata: {
+          targetScope: { layer: "PRACTICE", values: ["PROWESS"] },
         },
       },
     ],
@@ -690,6 +692,25 @@ const PRIMITIVES: PrimitiveSpec[] = [
       },
     ],
     description: "+2 Knowledge when not proficient AND prone. Mixed text+stat.",
+    source: "PERSONAL",
+  },
+  {
+    name: "Awareness Floor 11",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: false,
+    mirrorBuCredit: 0,
+    hardModifiers: [
+      {
+        target: "skill_practice_check",
+        operation: "min",
+        value: 11,
+        metadata: {
+          targetScope: { layer: "PRACTICE", values: ["AWARENESS"] },
+        },
+      },
+    ],
+    description: "Minimum roll of 11 on Awareness checks.",
     source: "PERSONAL",
   },
   {

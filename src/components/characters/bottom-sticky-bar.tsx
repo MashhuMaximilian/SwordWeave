@@ -49,6 +49,7 @@ import {
   type FormulaStep,
 } from "@/components/characters/formula-modal";
 import type { ResolvedModifiers } from "@/lib/engine/resolve-modifiers";
+import { PRACTICE_DESCRIPTIONS, type Practice } from "@/lib/primitives/target-scope";
 import { SIZE_CAPACITY, SIZE_LOAD, SIZE_BASE_SPEED } from "@/lib/engine/encumbrance";
 
 /** Round 0.5 up (ceiling for positive, floor for negative). */
@@ -1951,6 +1952,16 @@ function PracticeDetailModal({
             <p className="mt-0.5 text-xs text-muted-foreground">
               {practice.attribute.toUpperCase()} practice
             </p>
+            {/* Phase 8.L: practice info (core question + when to use) */}
+            {PRACTICE_DESCRIPTIONS[practice.name as Practice] ? (
+              <p className="mt-1 max-w-md text-[11px] italic text-muted-foreground/90">
+                <span className="not-italic font-semibold">
+                  {PRACTICE_DESCRIPTIONS[practice.name as Practice].coreQuestion}
+                </span>
+                {" "}
+                {PRACTICE_DESCRIPTIONS[practice.name as Practice].useWhen}
+              </p>
+            ) : null}
           </div>
           <button
             type="button"
@@ -2262,7 +2273,12 @@ function EncumbranceFormulaModal({
             <div className="rounded-md border border-border bg-background p-2.5 text-sm">
               <p className="font-mono text-xs">
                 {encumbrance.equipSlotsAvailable} universal equip slots available
-                ({encumbrance.equipSlotsUsed} used).
+                ({encumbrance.equipSlotsUsed} used)
+                {encumbrance.equipSlotsAvailable - encumbrance.equipSlotsUsed >
+                encumbrance.equipSlotsUsed + 0 ? "" : ""}.
+              </p>
+              <p className="mt-0.5 font-mono text-[10px] text-muted-foreground/80">
+                6 base + {encumbrance.equipSlotsAvailable - 6} from primitives
               </p>
               <p className="mt-1 text-[11px] text-muted-foreground">
                 2H items use at least 2 slots depending on bulk.

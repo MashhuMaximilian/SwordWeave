@@ -94,6 +94,71 @@ export const PRACTICES = [
 export type Practice = (typeof PRACTICES)[number];
 
 /**
+ * Practice descriptions shown in the practice modal (Phase 8.L).
+ * Sourced from the Practice/skill System Overview doc. Each entry
+ * contains:
+ *   - coreQuestion: the GM's "what is the central question" line
+ *   - useWhen: short summary of when to apply
+ *   - examples: 2-3 representative actions
+ */
+export const PRACTICE_DESCRIPTIONS: Record<Practice, {
+  coreQuestion: string;
+  useWhen: string;
+  examples: readonly string[];
+}> = {
+  PROWESS: {
+    coreQuestion: "Can I generate or withstand enough physical force?",
+    useWhen: "Lifting, pushing, climbing by strength, swimming against currents, grappling, resisting forced movement, enduring pain or weather.",
+    examples: ["Holding a collapsing gate open", "Swimming through a flooded tunnel", "Breaking down a reinforced door"],
+  },
+  FINESSE: {
+    coreQuestion: "Can I execute this precisely or discreetly?",
+    useWhen: "Acrobatics, stealth, sleight of hand, lockpicking, escaping restraints, delicate manual work, balance.",
+    examples: ["Crossing a narrow beam", "Picking a mechanical lock", "Moving silently across broken glass"],
+  },
+  FIELDCRAFT: {
+    coreQuestion: "Can I operate effectively in this environment?",
+    useWhen: "Tracking, navigation, hunting, foraging, reading weather, selecting safe routes, sheltering.",
+    examples: ["Following tracks through a forest", "Finding a safe path across unstable ground", "Establishing shelter before nightfall"],
+  },
+  AWARENESS: {
+    coreQuestion: "What do I notice?",
+    useWhen: "Perception (visual, auditory, olfactory), searching, detecting hidden things, vigilance.",
+    examples: ["Hearing movement behind a door", "Spotting disturbed dust near a floor tile", "Smelling smoke before seeing the fire"],
+  },
+  REASON: {
+    coreQuestion: "What can I determine from the available information?",
+    useWhen: "Investigation, deduction, deciphering codes, diagnosing, comparing accounts, identifying weaknesses.",
+    examples: ["Reconstructing how a murder occurred", "Breaking a written cipher", "Finding the contradiction between two testimonies"],
+  },
+  KNOWLEDGE: {
+    coreQuestion: "What does my character already know?",
+    useWhen: "Recalling facts: history, geography, cultures, languages, anatomy, academic subjects, professions.",
+    examples: ["Recalling which dynasty constructed a fortress", "Recognizing the symptoms of a known disease", "Identifying the language used in a manuscript"],
+  },
+  INFLUENCE: {
+    coreQuestion: "Can I shape another person's response?",
+    useWhen: "Persuasion, deception, intimidation, performance, negotiation, leadership, reassurance.",
+    examples: ["Convincing a guard to allow passage", "Frightening an enemy into surrender", "Negotiating a trade agreement"],
+  },
+  MYSTICISM: {
+    coreQuestion: "What supernatural structure is operating here?",
+    useWhen: "Identifying magical theory, enchantments, supernatural anomalies, ritual structures, wards.",
+    examples: ["Identifying the function of a magical ward", "Understanding the structure of a ritual", "Recognizing that an item is cursed"],
+  },
+  COMMUNION: {
+    coreQuestion: "How do I relate to this living, sacred, or spiritual presence?",
+    useWhen: "Animal behavior, plants, spirits, ancestors, religious practice, sacred traditions, divine presences.",
+    examples: ["Calming a frightened animal", "Understanding the behavior of a supernatural beast", "Recognizing whether a shrine is still spiritually active"],
+  },
+  INTUITION: {
+    coreQuestion: "What hidden meaning or emotion lies beneath the surface?",
+    useWhen: "Reading emotions, sensing concealed motives, interpreting dreams and omens, empathic understanding.",
+    examples: ["Sensing that someone's anger is performed", "Interpreting the emotional meaning of a dream", "Sensing that an apparently ordinary room is spiritually wrong"],
+  },
+};
+
+/**
  * Standalone metrics — numeric axes that aren't practices.
  * Modifiers like "+5 HP" or "+1 to all Attack Rolls" point
  * to these values inside the METRIC layer.
