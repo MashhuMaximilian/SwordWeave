@@ -190,12 +190,16 @@ function AxisMarkers({
   const disadv = countStacks(byTarget, target, "disadvantage");
   const floor = findFloor(byTarget, target);
   const ceiling = findCeiling(byTarget, target);
+  // Phase 8.L L19: net adv/disadv. 1 adv + 1 disadv cancel.
+  // The larger wins; the count shown is the net count.
+  const netAdv = adv - disadv;
   const markers: string[] = [];
-  // Phase 8.J D-2: order is adv, disadv, floor, ceiling, *.
-  if (adv >= 2) markers.push(`\u21c8(${adv})`);
-  if (disadv >= 2) markers.push(`\u21ca(${disadv})`);
-  if (floor !== null) markers.push(`\u21a5 ${floor}`);
-  if (ceiling !== null) markers.push(`\u21a7 ${ceiling}`);
+  if (netAdv === 1) markers.push("⇈");
+  else if (netAdv >= 2) markers.push(`⇈(${netAdv})`);
+  else if (netAdv === -1) markers.push("⇊");
+  else if (netAdv <= -2) markers.push(`⇊(${Math.abs(netAdv)})`);
+  if (floor !== null) markers.push(`↥ ${floor}`);
+  if (ceiling !== null) markers.push(`↧ ${ceiling}`);
   if (hasCond) markers.push("*");
   if (markers.length === 0) return null;
   return (
