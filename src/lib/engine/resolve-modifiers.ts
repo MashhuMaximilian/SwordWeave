@@ -372,16 +372,18 @@ export function resolveModifiers(
       } else if (
         // Phase 8.L: equation stored as {kind:"equation", operands:[...], tag:"fire"}
         // in mod.value directly. The UI form uses this canonical shape.
-        // Resolve via resolveEquation against the operands.
         mod.value && typeof mod.value === "object" &&
-        (mod.value as { kind?: string }).kind === "equation" &&
-        Array.isArray((mod.value as { operands?: unknown[] }).operands) &&
-        (mod.value as { operands?: unknown[] }).operands!.length > 0
+        (mod.value as { kind?: string }).kind === "equation"
       ) {
         const eqV = mod.value as { operands?: unknown[]; tag?: string };
-        const eq = resolveEquation(eqV.operands as never, ctx);
-        resolvedValue = eq.numeric;
-        equationTags = eqV.tag ? [eqV.tag] : eq.tags;
+        const ops = Array.isArray(eqV.operands) ? eqV.operands : [];
+        if (ops.length > 0) {
+          const eq = resolveEquation(ops as never, ctx);
+          resolvedValue = eq.numeric;
+          equationTags = eqV.tag ? [eqV.tag] : eq.tags;
+        } else {
+          resolvedValue = effectiveValue;
+        }
       } else {
         resolvedValue = effectiveValue;
       }
@@ -717,11 +719,6 @@ function numericOr(v: unknown, fallback: number): number {
  */
 function isEngineModifierValid(mod: HardModifier): boolean {
   const targetRaw = String(mod.target);
-  if (targetRaw === "skill_practice_check") {
-    const scope = mod.metadata?.["targetScope"] as { layer?: unknown; values?: unknown } | undefined;
-    const values = Array.isArray(scope?.values) ? (scope!.values as unknown[]).map((v) => String(v)) : [];
-    console.log("[DEBUG_VALID] skill_practice_check targetValues:", JSON.stringify(values), "mod.value.kind:", (mod.value as { kind?: string })?.kind);
-  }
 
   // Build the validator input. Sub-target comes from
   // metadata.targetScope.values (canonical v7-E+ shape).
