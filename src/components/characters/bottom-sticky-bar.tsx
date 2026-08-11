@@ -81,9 +81,18 @@ function countStacks(
   target: string,
   tag: string,
 ): number {
-  return (byTarget[target] ?? []).filter((c) =>
+  // Phase 8.K K8: count from BOTH the local byTarget (legacy op=grant + tag)
+  // AND the per-axis counter at behavior.advantage.<target> /
+  // behavior.disadvantage.<target>.
+  const local = (byTarget[target] ?? []).filter((c) =>
     c.op === "grant" && c.tags.includes(tag),
   ).length;
+  const advKey = `behavior.${tag}.${target}`;
+  const perAxis = (byTarget[advKey] ?? []).reduce(
+    (sum, c) => sum + (c.op === "add" || c.op === "subtract" ? c.value : 0),
+    0,
+  );
+  return local + perAxis;
 }
 
 /** Phase 8.I i3: find min/max floor/ceiling values from contributions

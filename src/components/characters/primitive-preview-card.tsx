@@ -486,9 +486,14 @@ function PrimitiveDetailToggle({
                       case "dice":
                         return String(obj["expression"] ?? "");
                       case "keyword":
-                        return `[${String(obj["text"] ?? "")}]`;
+                        return `[${String(obj["value"] ?? obj["text"] ?? "")}]`;
                       case "runtime":
                         return `/${String(obj["name"] ?? "")}/`;
+                      case "equation": {
+                        // Use the shared equation formatter.
+                        const { formatEquationValue } = require("@/lib/engine/equation-formatter");
+                        return formatEquationValue(raw);
+                      }
                       default:
                         return "?";
                     }
