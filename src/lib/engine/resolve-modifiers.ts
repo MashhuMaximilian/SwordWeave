@@ -379,6 +379,7 @@ export function resolveModifiers(
         const ops = Array.isArray(eqV.operands) ? eqV.operands : [];
         if (ops.length > 0) {
           const eq = resolveEquation(ops as never, ctx);
+          console.log("[DEBUG_PROWESS] eq result:", JSON.stringify(eq), "for slot:", slot.name, "value:", JSON.stringify(mod.value));
           resolvedValue = eq.numeric;
           equationTags = eqV.tag ? [eqV.tag] : eq.tags;
         } else {
