@@ -717,6 +717,11 @@ function numericOr(v: unknown, fallback: number): number {
  */
 function isEngineModifierValid(mod: HardModifier): boolean {
   const targetRaw = String(mod.target);
+  if (targetRaw === "skill_practice_check") {
+    const scope = mod.metadata?.["targetScope"] as { layer?: unknown; values?: unknown } | undefined;
+    const values = Array.isArray(scope?.values) ? (scope!.values as unknown[]).map((v) => String(v)) : [];
+    console.log("[DEBUG_VALID] skill_practice_check targetValues:", JSON.stringify(values), "mod.value.kind:", (mod.value as { kind?: string })?.kind);
+  }
 
   // Build the validator input. Sub-target comes from
   // metadata.targetScope.values (canonical v7-E+ shape).
