@@ -133,6 +133,12 @@ export interface ModifierContribution {
   /** Value AFTER the op is applied to a zero base (i.e. just the
    *  contribution, not the running total). */
   readonly value: number;
+  /**
+   * Phase 8.L: original mod.value (preserves keyword objects, dice, etc).
+   * The `value` field above is the resolved numeric value used for
+   * sums; `rawValue` is the unmodified mod.value for UI formatting.
+   */
+  readonly rawValue?: unknown;
   /** Value BEFORE mirror (for display when the user wants to see
    *  the standard polarity). null when not mirrored. */
   readonly preMirrorValue: number | null;
@@ -479,6 +485,7 @@ export function resolveModifiers(
         primitiveCategory: slot.category,
         op: mod.operation,
         value: effectiveValue,
+        rawValue: mod.value,
         preMirrorValue,
         tags,
         // Phase 8.I POST C1: pass the raw condition for human-readable
@@ -522,6 +529,7 @@ export function resolveModifiers(
               primitiveCategory: slot.category,
               op: "add",
               value: 1,
+              rawValue: mod.value,
               preMirrorValue: null,
               tags: [],
               condition: conditionRaw,

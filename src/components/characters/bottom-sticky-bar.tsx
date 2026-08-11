@@ -1785,9 +1785,9 @@ function ContribListItem({ c, setRawTokensOpen, isOff }: {
           )}>
             {isLimit
               ? c.value
-              : typeof c.value === "number"
+              : typeof c.value === "number" && typeof c.rawValue === "undefined"
                 ? fmt(c.value)
-                : formatEquationValue(c.value)}
+                : formatEquationValue(c.rawValue ?? c.value)}
           </span>
         </div>
       </div>

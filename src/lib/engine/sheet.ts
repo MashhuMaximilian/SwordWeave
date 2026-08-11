@@ -262,6 +262,78 @@ export type CharacterSheet = {
 /**
  * Aggregate all sheet-readiness data for a character.
  */
+
+const SIZE_TIERS = ["tiny", "small", "medium", "large", "huge", "gargantuan"];
+
+/**
+ * Phase 8.L: Walk primitives to extract size/source_type/inCombat.
+ * Runs BEFORE computeEncumbrance so the size reaches the capacity formula.
+ */
+function resolveCharacterAxes(
+  primitiveLinks: ReadonlyArray<unknown>,
+  defaultSize: string | null | undefined,
+  proficientAttribute: string,
+): { resolvedSize: string; resolvedSourceType: string; inCombat: boolean } {
+  let resolvedSize = (defaultSize as string | null | undefined) ?? "MEDIUM";
+  let resolvedSourceType: string = proficientAttribute === "MAGICAL" ? "MAGICAL" : "PHYSICAL";
+  let inCombat = false;
+  for (const l of primitiveLinks as ReadonlyArray<{
+    primitive?: {
+      hardModifiers?: ReadonlyArray<{
+        target?: unknown;
+        operation?: unknown;
+        value?: unknown;
+      }>;
+    };
+  }>) {
+    const mods = Array.isArray(l.primitive?.hardModifiers)
+      ? (l.primitive.hardModifiers as Array<{
+          target?: unknown;
+          operation?: unknown;
+          value?: unknown;
+        }>)
+      : [];
+    for (const mod of mods) {
+      const target = String(mod.target ?? "");
+      const op = String(mod.operation ?? "");
+      const value = Number(mod.value);
+      const kwValue =
+        mod.value &&
+        typeof mod.value === "object" &&
+        (mod.value as { kind?: string }).kind === "keyword"
+          ? String((mod.value as { value?: unknown }).value ?? "").toLowerCase()
+          : null;
+      const dotIdx = target.indexOf(".");
+      let axis: string;
+      let sub: string;
+      if (dotIdx > 0) {
+        axis = target.slice(0, dotIdx);
+        sub = target.slice(dotIdx + 1).toLowerCase();
+      } else if (kwValue) {
+        axis = target;
+        sub = kwValue;
+      } else {
+        continue;
+      }
+      if (axis === "size" && SIZE_TIERS.includes(sub)) {
+        if (op === "set" || op === "grant" || op === "add") {
+          resolvedSize = sub.toUpperCase();
+        }
+      }
+      if (axis === "source_type") {
+        if (op === "set" || op === "grant") {
+          resolvedSourceType = sub.toUpperCase();
+        }
+      }
+      if (target === "combat_action" || (axis === "combat_action" && kwValue)) {
+        if (op === "grant") inCombat = true;
+        if (op === "set") inCombat = value !== 0;
+      }
+    }
+  }
+  return { resolvedSize, resolvedSourceType, inCombat };
+}
+
 export function aggregateCharacterSheet(
   input: CharacterSheetInput,
 ): CharacterSheet {
@@ -611,8 +683,16 @@ const encumbranceItems = input.itemLinks.map((l) => {
   };
 });
 const equippedItems = input.itemLinks.filter((l) => l.equipped);
+// Phase 8.L: resolve size/source_type from primitives BEFORE
+// computeEncumbrance so the resolved size reaches the capacity formula.
+const { resolvedSize, resolvedSourceType, inCombat } = resolveCharacterAxes(
+  input.primitiveLinks,
+  input.size,
+  input.attrProficient ?? "PHYSICAL",
+);
+
 const encumbrance = computeEncumbrance(
-  (input.size as CharacterSize) ?? "MEDIUM",
+  resolvedSize as CharacterSize,
   input.attrPhysical,
   encumbranceItems,
 );
@@ -688,57 +768,9 @@ const equipSlotsUsed = slotsUsed + slotPrimitiveBonus;
 // complexity, combat_action. Tag-enum / boolean axes the
 // drawer displays.
 
-let resolvedSize = (input.size as string | null | undefined) ?? "MEDIUM";
-let resolvedSourceType: string = input.attrProficient === "MAGICAL" ? "MAGICAL" : "PHYSICAL";
-let inCombat = false;
-const SIZE_TIERS = ["tiny", "small", "medium", "large", "huge", "gargantuan"];
-
-for (const l of input.primitiveLinks as Parameters<typeof walkPrimitiveContributionsForAxis>[0]) {
-  const mods = Array.isArray(l.primitive?.hardModifiers)
-    ? (l.primitive.hardModifiers as Array<{
-        target?: unknown;
-        operation?: unknown;
-        value?: unknown;
-      }>)
-    : [];
-  for (const mod of mods) {
-    const target = String(mod.target ?? "");
-    const op = String(mod.operation ?? "");
-    const value = Number(mod.value);
-    // Phase 8.L: extract keyword value (e.g. {kind:'keyword', value:'large'})
-    const kwValue = mod.value && typeof mod.value === "object" && (mod.value as { kind?: string }).kind === "keyword"
-      ? String((mod.value as { value?: unknown }).value ?? "").toLowerCase()
-      : null;
-    const dotIdx = target.indexOf(".");
-    // Phase 8.L K7+K14+K16: support both dotted targets (size.large) AND
-    // plain targets with keyword value (size + {keyword:large}).
-    let axis: string;
-    let sub: string;
-    if (dotIdx > 0) {
-      axis = target.slice(0, dotIdx);
-      sub = target.slice(dotIdx + 1).toLowerCase();
-    } else if (kwValue) {
-      axis = target;
-      sub = kwValue;
-    } else {
-      continue;
-    }
-    if (axis === "size" && SIZE_TIERS.includes(sub)) {
-      if (op === "set" || op === "grant" || op === "add") {
-        resolvedSize = sub.toUpperCase();
-      }
-    }
-    if (axis === "source_type") {
-      if (op === "set" || op === "grant") {
-        resolvedSourceType = sub.toUpperCase();
-      }
-    }
-    if (target === "combat_action" || (axis === "combat_action" && kwValue)) {
-      if (op === "grant") inCombat = true;
-      if (op === "set") inCombat = value !== 0;
-    }
-  }
-}
+// Phase 8.L: size/source_type/inCombat extraction moved into
+// resolveCharacterAxes() helper (declared above aggregateCharacterSheet)
+// so it runs BEFORE computeEncumbrance receives the resolved size.
 
 const complexity = sumPrimitiveContributions(
   input.primitiveLinks,
