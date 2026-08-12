@@ -2015,17 +2015,50 @@ function PracticeDetailModal({
             <p className="mt-0.5 text-xs text-muted-foreground">
               {practice.attribute.toUpperCase()} practice
             </p>
-            {/* Phase 8.L: practice info (core question + when to use) */}
+            {/* Phase 8.L: practice info (full description + core question + examples).
+                Sourced from the Practice/skill System Overview doc. */}
             {(() => {
               const key = practice.name.toUpperCase() as Practice;
               const desc = PRACTICE_DESCRIPTIONS[key];
-              return desc ? (
-                <p className="mt-1 max-w-md text-[11px] italic text-muted-foreground/90">
-                  <span className="not-italic font-semibold">{desc.coreQuestion}</span>
-                  {" "}
-                  {desc.useWhen}
-                </p>
-              ) : null;
+              if (!desc) return null;
+              return (
+                <div className="mt-1 max-w-md space-y-1 text-[11px] text-muted-foreground/90">
+                  <p>
+                    <span className="not-italic font-semibold">{desc.coreQuestion}</span>{" "}
+                    <span className="italic">{desc.description}</span>
+                  </p>
+                  {desc.mayInclude && desc.mayInclude.length > 0 ? (
+                    <details className="rounded border border-border bg-background/40 px-1.5 py-1">
+                      <summary className="cursor-pointer list-none font-semibold uppercase tracking-wide text-[10px] text-muted-foreground">
+                        May include ({desc.mayInclude.length})
+                      </summary>
+                      <ul className="mt-0.5 list-disc pl-4 text-[11px] text-muted-foreground/85">
+                        {desc.mayInclude.map((m, i) => (
+                          <li key={i}>{m}</li>
+                        ))}
+                      </ul>
+                    </details>
+                  ) : null}
+                  {desc.examples && desc.examples.length > 0 ? (
+                    <details className="rounded border border-border bg-background/40 px-1.5 py-1">
+                      <summary className="cursor-pointer list-none font-semibold uppercase tracking-wide text-[10px] text-muted-foreground">
+                        Examples ({desc.examples.length})
+                      </summary>
+                      <ul className="mt-0.5 list-disc pl-4 text-[11px] italic text-muted-foreground/85">
+                        {desc.examples.map((e, i) => (
+                          <li key={i}>{e}</li>
+                        ))}
+                      </ul>
+                    </details>
+                  ) : null}
+                  {desc.versus ? (
+                    <p className="rounded border border-amber-500/30 bg-amber-500/5 px-1.5 py-1 text-[11px] italic text-amber-700 dark:text-amber-300">
+                      <span className="not-italic font-semibold">Boundary:</span>{" "}
+                      {desc.versus}
+                    </p>
+                  ) : null}
+                </div>
+              );
             })()}
           </div>
           <button

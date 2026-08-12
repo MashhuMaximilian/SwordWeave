@@ -498,7 +498,7 @@ export function CapabilityCard({
         onClick={handleCardClick}
       >
         <div className="flex items-start justify-between gap-2">
-          <h4 className="font-semibold">{capability.name}</h4>
+          <button type="button" onClick={(e) => { e.stopPropagation(); void openCapabilityPreview(); }} className="text-left font-semibold hover:underline focus:outline-none focus:ring-2 focus:ring-primary rounded-sm">{capability.name}</button>
           <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
             {capability.type}
           </span>

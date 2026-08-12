@@ -103,58 +103,83 @@ export type Practice = (typeof PRACTICES)[number];
  */
 export const PRACTICE_DESCRIPTIONS: Record<Practice, {
   coreQuestion: string;
-  useWhen: string;
+  short: string;
+  description: string;
+  mayInclude: readonly string[];
   examples: readonly string[];
+  versus?: string;
 }> = {
   PROWESS: {
     coreQuestion: "Can I generate or withstand enough physical force?",
-    useWhen: "Lifting, pushing, climbing by strength, swimming against currents, grappling, resisting forced movement, enduring pain or weather.",
-    examples: ["Holding a collapsing gate open", "Swimming through a flooded tunnel", "Breaking down a reinforced door"],
+    short: "Strength, athletic performance, endurance, bodily force, and physical resistance.",
+    description: "Prowess represents strength, athletic performance, endurance, bodily force, and physical resistance. Use Prowess when the central question is whether the character can generate or withstand enough physical force.",
+    mayInclude: ["Lifting, pushing, pulling, or breaking", "Climbing through strength or endurance", "Swimming against dangerous currents", "Running and jumping", "Grappling or restraining", "Resisting forced movement", "Enduring pain, exhaustion, deprivation, or severe weather", "Sustaining prolonged physical exertion"],
+    examples: ["Holding a collapsing gate open", "Wrestling an enemy away from a lever", "Swimming through a flooded tunnel", "Breaking down a reinforced door", "Continuing to march after extreme exhaustion"],
   },
   FINESSE: {
     coreQuestion: "Can I execute this precisely or discreetly?",
-    useWhen: "Acrobatics, stealth, sleight of hand, lockpicking, escaping restraints, delicate manual work, balance.",
-    examples: ["Crossing a narrow beam", "Picking a mechanical lock", "Moving silently across broken glass"],
+    short: "Precision, coordination, balance, controlled movement, subtlety, and delicate physical execution.",
+    description: "Finesse represents precision, coordination, balance, controlled movement, subtlety, and delicate physical execution. Use Finesse when the central question is whether the character can control their body precisely enough. Finesse describes controlled physical execution. It does not automatically provide knowledge of the environment or explain how a mechanism works.",
+    mayInclude: ["Acrobatics and balance", "Stealth and silent movement", "Sleight of hand", "Lock manipulation", "Escaping restraints", "Delicate manual work", "Navigating unstable or narrow surfaces", "Precise bodily timing", "Concealing a physical action"],
+    examples: ["Crossing a narrow beam", "Taking a key without being noticed", "Moving silently across broken glass", "Picking a mechanical lock", "Catching a fragile object before it falls", "Slipping free from tightly bound rope"],
   },
   FIELDCRAFT: {
     coreQuestion: "Can I operate effectively in this environment?",
-    useWhen: "Tracking, navigation, hunting, foraging, reading weather, selecting safe routes, sheltering.",
-    examples: ["Following tracks through a forest", "Finding a safe path across unstable ground", "Establishing shelter before nightfall"],
+    short: "Practical experience with terrain, wilderness, travel, tracking, weather, and survival.",
+    description: "Fieldcraft represents practical experience with terrain, wilderness, travel, tracking, weather, and survival. Use Fieldcraft when the central question is whether the character knows how to operate effectively in this environment. Fieldcraft is practical and experiential. It does not cover academic ecological knowledge, supernatural communication with nature, or magical manipulation of terrain.",
+    mayInclude: ["Tracking creatures or people", "Concealing or identifying trails", "Navigation", "Hunting and foraging", "Reading weather and terrain", "Selecting safe routes", "Establishing camps and shelters", "Preparing snares or practical wilderness tools", "Identifying environmental hazards through experience", "Managing prolonged journeys"],
+    examples: ["Following tracks through a forest", "Finding a safe path across unstable ground", "Predicting an approaching storm", "Concealing the party's campsite", "Determining where an animal is likely to find water", "Establishing shelter before nightfall"],
   },
   AWARENESS: {
     coreQuestion: "What do I notice?",
-    useWhen: "Perception (visual, auditory, olfactory), searching, detecting hidden things, vigilance.",
-    examples: ["Hearing movement behind a door", "Spotting disturbed dust near a floor tile", "Smelling smoke before seeing the fire"],
+    short: "Attention to immediate, observable reality.",
+    description: "Awareness represents attention to immediate, observable reality. Use Awareness when the central question is what the character notices. Awareness discovers information. It does not automatically explain what the information means.",
+    mayInclude: ["Seeing, hearing, or smelling subtle details", "Detecting hidden creatures or objects", "Searching an area", "Recognizing immediate danger", "Maintaining vigilance", "Noticing physical inconsistencies", "Detecting changes in the environment", "Observing visible behavior"],
+    examples: ["Hearing movement behind a door", "Spotting disturbed dust near a floor tile", "Noticing someone reaching for a concealed weapon", "Finding a hidden compartment", "Detecting an approaching ambush", "Smelling smoke before seeing the fire"],
   },
   REASON: {
     coreQuestion: "What can I determine from the available information?",
-    useWhen: "Investigation, deduction, deciphering codes, diagnosing, comparing accounts, identifying weaknesses.",
-    examples: ["Reconstructing how a murder occurred", "Breaking a written cipher", "Finding the contradiction between two testimonies"],
+    short: "Deduction, interpretation of evidence, technical analysis, diagnosis, and intellectual problem-solving.",
+    description: "Reason represents deduction, interpretation of evidence, technical analysis, diagnosis, and intellectual problem-solving. Use Reason when the central question is what conclusion the character can derive from the available information. Reason does not create plans for the player. Players decide what their characters attempt. A Reason check may provide relevant information, identify constraints, or reveal likely consequences, but it does not tell the player the optimal action. Do not roll Reason to answer 'What should we do?' — roll Reason to answer 'What can my character determine before we decide what to do?'",
+    mayInclude: ["Investigation and deduction", "Deciphering codes", "Reconstructing past events", "Diagnosing injuries or unfamiliar illnesses", "Understanding mechanisms", "Comparing contradictory accounts", "Identifying structural weaknesses", "Interpreting complex written arguments", "Solving character-facing intellectual problems"],
+    examples: ["Reconstructing how a murder occurred", "Determining how a machine operates", "Breaking a written cipher", "Diagnosing an unfamiliar poison", "Finding the contradiction between two testimonies", "Determining why a damaged bridge is unstable"],
   },
   KNOWLEDGE: {
     coreQuestion: "What does my character already know?",
-    useWhen: "Recalling facts: history, geography, cultures, languages, anatomy, academic subjects, professions.",
-    examples: ["Recalling which dynasty constructed a fortress", "Recognizing the symptoms of a known disease", "Identifying the language used in a manuscript"],
+    short: "Education, memory, study, research, and accumulated factual familiarity.",
+    description: "Knowledge represents education, memory, study, research, and accumulated factual familiarity. Use Knowledge when the central question is whether the character already knows something relevant. Knowledge retrieves existing information.",
+    mayInclude: ["History", "Geography", "Cultures and institutions", "Laws and customs", "Languages", "Anatomy and medical theory", "Academic subjects", "Engineering principles", "Recognizing symbols, people, locations, or historical events", "Familiarity with mundane professions and technologies"],
+    examples: ["Recalling which dynasty constructed a fortress", "Recognizing the symptoms of a known disease", "Remembering a kingdom's burial customs", "Identifying the language used in a manuscript", "Knowing the legal authority of a noble title", "Recognizing the uniform of a historical military order"],
+    versus: "Knowledge versus Reason: Knowledge recognizes a known poison; Reason diagnoses an unfamiliar poison from its effects. Knowledge identifies the language in a book; Reason deciphers the code hidden inside the text. Knowledge recalls who built the fortress; Reason determines why its wall is collapsing.",
   },
   INFLUENCE: {
     coreQuestion: "Can I shape another person's response?",
-    useWhen: "Persuasion, deception, intimidation, performance, negotiation, leadership, reassurance.",
-    examples: ["Convincing a guard to allow passage", "Frightening an enemy into surrender", "Negotiating a trade agreement"],
+    short: "Deliberate control over communication, presentation, attention, trust, emotion, fear, and social response.",
+    description: "Influence represents deliberate control over communication, presentation, attention, trust, emotion, fear, and social response. Use Influence when the central question is whether the character can cause another person or audience to respond as intended. Influence does not make every social method identical. The declared intent determines the fictional method and consequences. Persuasion may create genuine agreement. Deception creates a false belief and risks discovery. Intimidation creates compliance but may cause fear or resentment. Performance shapes attention or emotion. The Practice is shared. The narrative result is not.",
+    mayInclude: ["Persuasion", "Deception", "Intimidation", "Performance", "Negotiation", "Leadership", "Reassurance", "Social misdirection", "Commanding attention", "Concealing emotional intent"],
+    examples: ["Convincing a guard to allow passage", "Maintaining a false identity", "Frightening an enemy into surrender", "Inspiring frightened civilians", "Negotiating a trade agreement", "Distracting a crowd through performance", "Calming an angry official"],
   },
   MYSTICISM: {
     coreQuestion: "What supernatural structure is operating here?",
-    useWhen: "Identifying magical theory, enchantments, supernatural anomalies, ritual structures, wards.",
-    examples: ["Identifying the function of a magical ward", "Understanding the structure of a ritual", "Recognizing that an item is cursed"],
+    short: "Understanding of magical systems, supernatural forces, metaphysical structures, and reality-altering phenomena.",
+    description: "Mysticism represents understanding of magical systems, supernatural forces, metaphysical structures, and reality-altering phenomena. Use Mysticism when the central question is what supernatural structure or force is operating here. Mysticism allows a character to recognize or understand magic. It does not automatically allow the character to cast, dispel, or reproduce the effect.",
+    mayInclude: ["Magical theory", "Arcane symbols", "Enchantments and curses", "Supernatural anomalies", "Ritual structures", "Magical items", "Domains and metaphysical forces", "Wards and portals", "Dimensional phenomena", "Reality distortions"],
+    examples: ["Identifying the function of a magical ward", "Determining which Domain shaped an effect", "Understanding the structure of a ritual", "Recognizing that an item is cursed", "Investigating a spatial anomaly", "Interpreting an arcane diagram"],
   },
   COMMUNION: {
     coreQuestion: "How do I relate to this living, sacred, or spiritual presence?",
-    useWhen: "Animal behavior, plants, spirits, ancestors, religious practice, sacred traditions, divine presences.",
-    examples: ["Calming a frightened animal", "Understanding the behavior of a supernatural beast", "Recognizing whether a shrine is still spiritually active"],
+    short: "Relationship, attunement, and understanding involving living, ecological, spiritual, or sacred systems.",
+    description: "Communion represents relationship, attunement, and understanding involving living, ecological, spiritual, or sacred systems. Use Communion when the central question is how the character understands or relates to this being, presence, tradition, or living system. These Practices do not grant magical effects. Actual supernatural actions are constructed through Domains, Verbs, Capabilities, items, or other sources of narrative permission.",
+    mayInclude: ["Animal behavior", "Plants and ecosystems", "Spirits and ancestors", "Religious practice", "Sacred traditions", "Divine presences", "Rituals as lived spiritual acts", "Calming or understanding nonhuman creatures", "Recognizing ecological or spiritual imbalance", "Interpreting sacred customs"],
+    examples: ["Calming a frightened animal", "Understanding the behavior of a supernatural beast", "Recognizing that a forest has become spiritually disturbed", "Interpreting the meaning of a funeral rite", "Identifying whether a shrine is still spiritually active", "Recognizing signs associated with a local spirit"],
+    versus: "Communion versus Knowledge: Knowledge recalls when a temple was constructed. Communion understands what its ritual means to worshippers. Knowledge identifies an animal species. Communion understands why the animal is distressed. Knowledge knows the recorded doctrine of a faith. Communion recognizes whether a sacred presence is responding.",
   },
   INTUITION: {
     coreQuestion: "What hidden meaning or emotion lies beneath the surface?",
-    useWhen: "Reading emotions, sensing concealed motives, interpreting dreams and omens, empathic understanding.",
-    examples: ["Sensing that someone's anger is performed", "Interpreting the emotional meaning of a dream", "Sensing that an apparently ordinary room is spiritually wrong"],
+    short: "Sensitivity to emotion, motive, hidden meaning, resonance, omens, and patterns that are not fully visible or logically established.",
+    description: "Intuition represents sensitivity to emotion, motive, hidden meaning, resonance, omens, and patterns that are not fully visible or logically established. Use Intuition when the central question is what lies beneath what is being shown. Intuition reveals impressions, emotional truths, or hidden pressures. It does not provide perfect factual certainty or automatic lie detection. A successful Intuition check may reveal 'His confidence feels forced. He is concealing fear.' It should not automatically reveal 'He murdered the duke at midnight using a poisoned knife.'",
+    mayInclude: ["Reading emotional states", "Sensing concealed motives", "Recognizing dishonesty or unease", "Interpreting dreams and omens", "Feeling supernatural resonance", "Recognizing meaningful patterns", "Sensing that something is fundamentally wrong", "Empathic understanding"],
+    examples: ["Sensing that someone's anger is performed", "Recognizing that a character is afraid for someone else", "Feeling that an apparently ordinary room is spiritually wrong", "Interpreting the emotional meaning of a dream", "Recognizing tension between two people", "Sensing that an offer carries hidden desperation"],
   },
 };
 
