@@ -468,3 +468,47 @@ Per user feedback (round 10 screenshots):
   provenance: {'heritageName': 'Stone Goliath', 'capabilityName': "Stone's Endurance", 'effectName': 'Heart of Stone', 'kind': 'effect'}
   ```
 - Direct evolution chain: lineage accordion > Stone's Endurance > Heart of Stone.
+
+
+## 13. Round 11 — Accordion visibility + capability preview fix
+
+Per user feedback (round 11 screenshots):
+
+1. **"Upbringing & Manifest accordions missing."** Caused by a
+   `{heritageLinks.filter(hl => hl.heritage.kind === ...).length > 0 && ...}`
+   conditional in `character-sheet-view.tsx` — the accordion
+   only rendered when matching heritages existed. Removed the
+   condition. Now MANIFEST, LINEAGE, and UPBRINGING accordions
+   ALWAYS render (with an italic empty state if no heritages
+   slotted in that kind).
+
+2. **"Capability click does nothing."** Root cause: the
+   `/api/capabilities/[id]` route was returning HTTP 500 with
+   an empty body. Drizzle's relational `db.query.capabilities
+   .findFirst({ with: {...} })` was silently failing — its
+   "Failed query" error contained no underlying postgres
+   detail. Bypassed it entirely with direct `select` + manual
+   inner joins on `capability_primitives` and
+   `capability_effects`. Now returns 200 OK with capability +
+   primitiveLinks + effectLinks.
+
+### Commits shipped (round 11)
+
+| Commit | Item |
+|---|---|
+| `3cda171` | Upbringing & Manifest accordions always visible |
+| `8c659d2` | Added `console.error` to surface the silent 500 |
+| `8aaf362` | Extract full Drizzle error info |
+| `460255a` | Bypass drizzle relational query — use direct joins |
+
+### Verified live after fix
+
+```
+GET /api/capabilities/[Stone's Endurance id] →
+{
+  capability: { ..., computedBu: 3, primitiveLinks: [Stone Skin], effectLinks: [Endure, Heart of Stone] }
+}
+```
+
+Capability preview modal now opens correctly when clicking the
+capability name on the character sheet.
