@@ -360,7 +360,7 @@ if (String(mod.target) === "skill_practice_check" && slot.name === "Prowess Equa
         // Equation path. The runtime resolver reads each operand
         // and applies operators recursively (handles paren
         // groups, keyword tags, mixed expressions like
-        "PB + (level / 4) [fire]").
+        // "PB + (level / 4) [fire]".
         const eq = resolveEquation(operandsRaw as never, ctx);
         if (String(mod.target) === "skill_practice_check" && slot.name === "Prowess Equation") {
           console.log("[DBG_PE_EQ] numeric:", eq.numeric, "tags:", eq.tags);
