@@ -518,6 +518,46 @@ export function BottomStickyBar({
   const primaryAttackBonus =
     pb + primaryMod + (resolver?.totals["attack_bonus"] ?? 0);
 
+  // Phase 8.M: selector state for multi-attribute attack_bonus / save_dc.
+  // Default to the proficient attribute (or physical fallback). User
+  // can change in the modal when multi-attr primitives exist.
+  const [chosenAttackAttr, setChosenAttackAttr] = useState<
+    "physical" | "mental" | "magical"
+  >(
+    (proficientAttribute?.toLowerCase() as
+      | "physical" | "mental" | "magical"
+      | undefined) ?? "physical",
+  );
+  const [chosenSaveAttr, setChosenSaveAttr] = useState<
+    "physical" | "mental" | "magical"
+  >(
+    (proficientAttribute?.toLowerCase() as
+      | "physical" | "mental" | "magical"
+      | undefined) ?? "physical",
+  );
+
+  // Phase 8.M: detect multi-attribute attack_bonus / save_dc
+  // primitives so the modal can show a selector.
+  const atkAttrsWithPrimitives: Array<"physical" | "mental" | "magical"> = [];
+  for (const a of ["physical", "mental", "magical"] as const) {
+    const delta = resolver?.totals[`attack_bonus.${a}`] ?? 0;
+    const list = resolver?.byTarget[`attack_bonus.${a}`] ?? [];
+    if (delta !== 0 || list.length > 0) {
+      if (!atkAttrsWithPrimitives.includes(a)) atkAttrsWithPrimitives.push(a);
+    }
+  }
+  const showAttackSelector = atkAttrsWithPrimitives.length > 1;
+
+  const saveAttrsWithPrimitives: Array<"physical" | "mental" | "magical"> = [];
+  for (const a of ["physical", "mental", "magical"] as const) {
+    const delta = resolver?.totals[`defense_dc.${a}`] ?? 0;
+    const list = resolver?.byTarget[`defense_dc.${a}`] ?? [];
+    if (delta !== 0 || list.length > 0) {
+      if (!saveAttrsWithPrimitives.includes(a)) saveAttrsWithPrimitives.push(a);
+    }
+  }
+  const showSaveSelector = saveAttrsWithPrimitives.length > 1;
+
   const PRACTICE_ATTR_LABEL: Record<"PHYSICAL" | "MENTAL" | "MAGICAL", string> = {
     PHYSICAL: "Physical",
     MENTAL: "Mental",
@@ -1104,23 +1144,55 @@ export function BottomStickyBar({
 
             characterId={characterId}          />
         ) : combo === "dc" ? (
+          // Phase 8.M: when defense_dc primitives target multiple
+          // attributes, the Save DC modal reads from the chosen
+          // attribute (selected via the dropdown below).
+          (() => {
+            const dcAttr = (saveAttrsWithPrimitives.includes(chosenSaveAttr)
+              ? chosenSaveAttr
+              : primaryAttr) as "physical" | "mental" | "magical";
+            const dcAttrLabel =
+              dcAttr === "physical" ? "PHYSICAL" :
+              dcAttr === "mental" ? "MENTAL" : "MAGICAL";
+            const dcMod = dcAttr === "physical" ? physMod :
+              dcAttr === "mental" ? mentMod : magiMod;
+            const dcPrimitiveBonus = resolver?.totals[`defense_dc.${dcAttr}`] ?? 0;
+            const dcTotal = 5 + pb + dcMod + dcPrimitiveBonus;
+            return (
           <FormulaModal
-            title={`Save DC (${primaryAttrLabel})`}
-            subtitle="from your proficient attribute"
-            total={primaryDc}
-            formula="Save DC = 5 + PB + proficient Attribute Mod + primitive contributions"
+            title={`Save DC (${dcAttrLabel})`}
+            subtitle="from the chosen attribute"
+            total={dcTotal}
+            formula={`Save DC = 5 + PB + ${dcAttrLabel} modifier + defense_dc.${dcAttr} primitives`}
             breakdown={[
               { label: "Base", value: 5 },
               { label: `PB`, value: pb },
               {
-                label: `${primaryAttrLabel} modifier`,
-                value: primaryMod,
+                label: `${dcAttrLabel} modifier`,
+                value: dcMod,
               },
-              ...contributionsToSteps(dcTarget, resolver_),
+              ...contributionsToSteps(`defense_dc.${dcAttr}`, resolver_),
             ]}
+            selector={
+              showSaveSelector
+                ? {
+                    label: "Scales with attribute",
+                    value: dcAttr,
+                    options: saveAttrsWithPrimitives.map((a) => ({
+                      value: a,
+                      label:
+                        a === "physical" ? "PHYSICAL" :
+                        a === "mental" ? "MENTAL" : "MAGICAL",
+                    })),
+                    onChange: (v) => setChosenSaveAttr(v as "physical" | "mental" | "magical"),
+                  }
+                : null
+            }
             onClose={() => setCombo(null)}
 
             characterId={characterId}          />
+            );
+          })()
         ) : combo === "practice" ? (
           <FormulaModal
             title={`${comboAttr.toUpperCase()} practice`}
@@ -1183,28 +1255,64 @@ export function BottomStickyBar({
 
             characterId={characterId}          />
         ) : combo === "atk" ? (
+          // Phase 8.M: when primitives target attack_bonus for
+          // multiple attributes, the modal reads from the chosen
+          // attribute (selected via the dropdown below).
+          (() => {
+            const atkAttr = (atkAttrsWithPrimitives.includes(chosenAttackAttr)
+              ? chosenAttackAttr
+              : primaryAttr) as "physical" | "mental" | "magical";
+            const atkAttrLabel =
+              atkAttr === "physical" ? "PHYSICAL" :
+              atkAttr === "mental" ? "MENTAL" : "MAGICAL";
+            const atkMod = atkAttr === "physical" ? physMod :
+              atkAttr === "mental" ? mentMod : magiMod;
+            const atkPrimitiveBonus = resolver?.totals[`attack_bonus.${atkAttr}`] ?? 0;
+            const atkSelectorFloor = findFloor(
+              resolver?.byTarget ?? {}, `attack_bonus.${atkAttr}`,
+            );
+            const atkSelectorCeiling = findCeiling(
+              resolver?.byTarget ?? {}, `attack_bonus.${atkAttr}`,
+            );
+            const atkTotal = pb + atkMod + atkPrimitiveBonus;
+            return (
           // Phase 8.5 H6: Attack Bonus popup. Mirrors the PB popup
           // shape so future attribute/scope options can plug in
           // without rewiring.
           <FormulaModal
             title="Attack Bonus"
-            subtitle={`${primaryAttrLabel} — to-hit roll`}
-            total={primaryAttackBonus}
-            formula={`Attack Bonus = PB + ${primaryAttrLabel} modifier + attack_bonus primitives`}
+            subtitle={`${atkAttrLabel} — to-hit roll`}
+            total={atkTotal}
+            formula={`Attack Bonus = PB + ${atkAttrLabel} modifier + attack_bonus.${atkAttr} primitives`}
             breakdown={[
               { label: "Proficiency Bonus", value: pb },
-              { label: `${primaryAttrLabel} modifier`, value: primaryMod },
-              ...contributionsToSteps("attack_bonus", resolver_, [
+              { label: `${atkAttrLabel} modifier`, value: atkMod },
+              ...contributionsToSteps(`attack_bonus.${atkAttr}`, resolver_, [
                 {
-                  label: `Primitive bonuses (attack_bonus)`,
-                  value: resolver?.totals["attack_bonus"] ?? 0,
+                  label: `Primitive bonuses (attack_bonus.${atkAttr})`,
+                  value: atkPrimitiveBonus,
                 },
               ]),
-              ...(atkFloor !== null && primaryAttackBonus < atkFloor
-                ? [{ label: `Minimum to-hit (floor ${atkFloor})`, value: atkFloor }]
+              ...(atkSelectorFloor !== null && atkTotal < atkSelectorFloor
+                ? [{ label: `Minimum to-hit (floor ${atkSelectorFloor})`, value: atkSelectorFloor }]
                 : []),
-              { label: "= Attack Bonus", value: primaryAttackBonus },
+              { label: "= Attack Bonus", value: atkTotal },
             ]}
+            selector={
+              showAttackSelector
+                ? {
+                    label: "Scales with attribute",
+                    value: atkAttr,
+                    options: atkAttrsWithPrimitives.map((a) => ({
+                      value: a,
+                      label:
+                        a === "physical" ? "PHYSICAL" :
+                        a === "mental" ? "MENTAL" : "MAGICAL",
+                    })),
+                    onChange: (v) => setChosenAttackAttr(v as "physical" | "mental" | "magical"),
+                  }
+                : null
+            }
             info={{
               title: "Attribute-Driven Attack Bonus",
               body: (
@@ -1226,6 +1334,8 @@ export function BottomStickyBar({
             onClose={() => setCombo(null)}
 
             characterId={characterId}          />
+            );
+          })()
         ) : combo === "speed" ? (
           <FormulaModal
             title="Walking Speed"

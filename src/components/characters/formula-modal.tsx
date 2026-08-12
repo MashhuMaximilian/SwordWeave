@@ -113,6 +113,14 @@ export interface FormulaModalProps {
   readonly onClose: () => void;
   /** Phase 8.I POST C3: needed to read OFF-capabilities from localStorage. */
   readonly characterId?: string;
+  /** Phase 8.M: optional selector dropdown (for multi-attr attack_bonus
+   *  / save_dc). Renders below the formula breakdown. */
+  readonly selector?: {
+    readonly label: string;
+    readonly value: string;
+    readonly options: ReadonlyArray<{ readonly value: string; readonly label: string }>;
+    readonly onChange: (next: string) => void;
+  } | null;
 }
 
 /**
@@ -300,6 +308,7 @@ export function FormulaModal({
   info,
   onClose,
   characterId,
+  selector,
 }: FormulaModalProps) {
   // Escape to close
   useEffect(() => {
@@ -422,6 +431,27 @@ export function FormulaModal({
             {/* Section 3b — Conditions summary: which contributions are
                 gated and whether their condition is currently active. */}
             {renderConditionsSection(breakdown, setRawTokensOpen)}
+
+            {/* Phase 8.M — Multi-attribute selector (for attack_bonus /
+                save_dc when primitives target multiple attributes) */}
+            {selector && (
+              <section>
+                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {selector.label}
+                </label>
+                <select
+                  value={selector.value}
+                  onChange={(e) => selector.onChange(e.target.value)}
+                  className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  {selector.options.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </section>
+            )}
 
             {/* Section 3 — Optional info panel */}
             {info && (
