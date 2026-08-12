@@ -353,12 +353,18 @@ export function resolveModifiers(
       const operandsRaw = meta?.["operands"];
       let resolvedValue: number;
       let equationTags: readonly string[] = [];
+if (String(mod.target) === "skill_practice_check" && slot.name === "Prowess Equation") {
+        console.log("[DBG_PE_PATH] operandsRaw:", JSON.stringify(operandsRaw), "isTypedToken:", isTypedToken(mod.value), "value.kind:", (mod.value as { kind?: string })?.kind);
+      }
       if (Array.isArray(operandsRaw) && operandsRaw.length > 0) {
         // Equation path. The runtime resolver reads each operand
         // and applies operators recursively (handles paren
         // groups, keyword tags, mixed expressions like
-        // "PB + (level / 4) [fire]").
+        "PB + (level / 4) [fire]").
         const eq = resolveEquation(operandsRaw as never, ctx);
+        if (String(mod.target) === "skill_practice_check" && slot.name === "Prowess Equation") {
+          console.log("[DBG_PE_EQ] numeric:", eq.numeric, "tags:", eq.tags);
+        }
         resolvedValue = eq.numeric;
         equationTags = eq.tags;
       } else if (Array.isArray(mod.value) && mod.value.length > 0) {
