@@ -50,6 +50,8 @@ import {
 } from "@/components/characters/formula-modal";
 import type { ResolvedModifiers } from "@/lib/engine/resolve-modifiers";
 import { PRACTICE_DESCRIPTIONS, type Practice } from "@/lib/primitives/target-scope";
+// Phase 8.L: open the SAME preview modal the /atelier list uses.
+// See preview-modal.tsx — useEntityPreview wraps sandbox library-preview-pane.
 import { SIZE_CAPACITY, SIZE_LOAD, SIZE_BASE_SPEED } from "@/lib/engine/encumbrance";
 
 /** Round 0.5 up (ceiling for positive, floor for negative). */
@@ -104,14 +106,39 @@ function countStacks(
  */
 function getCapacityPrimitives(
   byTarget: ResolvedModifiers["byTarget"] | undefined,
-): ReadonlyArray<{ id: number; name: string; op: string; value: number }> {
+): ReadonlyArray<{
+  id: number;
+  name: string;
+  op: string;
+  value: number;
+  target: string;
+  provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null };
+}> {
   if (!byTarget) return [];
-  const out: Array<{ id: number; name: string; op: string; value: number }> = [];
-  for (const target of ["carry_capacity", "capacity", "load", "equip_slot"] as const) {
+  const out: Array<{
+    id: number;
+    name: string;
+    op: string;
+    value: number;
+    target: string;
+    provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null };
+  }> = [];
+  for (const target of ["carry_capacity", "capacity", "load", "equip_slot", "size"] as const) {
     const contribs = byTarget[target] ?? [];
     for (const c of contribs) {
       if (c.op !== "add" && c.op !== "subtract") continue;
-      out.push({ id: c.primitiveId, name: c.primitiveName, op: c.op, value: c.value });
+      out.push({
+        id: c.primitiveId,
+        name: c.primitiveName,
+        op: c.op,
+        value: c.value,
+        target: c.target,
+        provenance: {
+          capabilityName: c.provenance.capabilityName ?? null,
+          effectName: c.provenance.effectName ?? null,
+          heritageName: c.provenance.heritageName ?? null,
+        },
+      });
     }
   }
   return out;
@@ -410,6 +437,8 @@ export function BottomStickyBar({
     setComboDamageType(type);
     setCombo("damage-type");
   }, []);
+
+
 
   useEffect(() => {
     setHydrated(true);
@@ -1784,10 +1813,10 @@ function ContribListItem({ c, setRawTokensOpen, isOff }: {
   // Phase 8.J M3: provenance breadcrumb (full chain)
   const prov = c.provenance;
   const breadcrumb = [
-    prov.heritageName ? `Heritage '${prov.heritageName}'` : null,
-    prov.capabilityName ? `Capability '${prov.capabilityName}'` : null,
-    prov.effectName ? `Effect '${prov.effectName}'` : null,
-  ].filter(Boolean).join(" > ") || "Direct";
+    prov.heritageName,
+    prov.capabilityName,
+    prov.effectName,
+  ].filter(Boolean).join(" › ") || "Direct";
 
   // Phase 8.J D-5: human-readable condition text
   const condText = c.condition
@@ -1842,7 +1871,24 @@ function ContribListItem({ c, setRawTokensOpen, isOff }: {
             isLimit && "text-orange-700 dark:text-orange-400",
             isOff && "text-muted-foreground line-through"
           )}>
-            {c.value}
+            {c.op === "grant" && c.rawValue && typeof c.rawValue === "object" && (c.rawValue as { kind?: string }).kind === "keyword" ? (
+              // Phase 8.L: keyword grants (advantage/disadvantage/etc.)
+              // show the keyword as a colored chip, not the literal
+              // `grant 0` text.
+              (() => {
+                const kw = String((c.rawValue as { value?: unknown }).value ?? "").toLowerCase();
+                const isAdv = kw === "advantage";
+                const isDisadv = kw === "disadvantage";
+                const cls = isAdv
+                  ? "rounded bg-emerald-500/20 px-1.5 py-0.5 text-emerald-700 dark:text-emerald-300"
+                  : isDisadv
+                    ? "rounded bg-red-500/20 px-1.5 py-0.5 text-red-700 dark:text-red-300"
+                    : "rounded bg-purple-500/20 px-1.5 py-0.5 text-purple-700 dark:text-purple-300";
+                return <span className={cls}>{kw}</span>;
+              })()
+            ) : (
+              c.value
+            )}
           </span>
         </div>
       </div>
@@ -2043,15 +2089,24 @@ function PracticeDetailModal({
               return (
                 <ul className="space-y-1">
                   {allContribs.map((c, i) => (
-                    <li key={`cond-${i}`} className="flex items-center justify-between gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-1 text-xs">
-                      <span className="flex flex-wrap items-center gap-1">
-                        <strong>{c.primitiveName}:</strong>
-                        {c.condition
-                          ? renderConditionChips(c.condition)
-                          : <span className="italic text-muted-foreground">no condition</span>}
-                      </span>
-                      <span className={cn("font-mono text-[10px]", c.conditionActive === false ? "text-red-500" : "text-teal-600 dark:text-teal-400")}>
-                        {c.conditionActive === false ? "✗ suppressed" : c.conditionActive === true ? "✓ active" : "— ?"}
+                    <li key={`cond-${i}`} className="flex flex-col gap-1 rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-1 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="flex flex-wrap items-center gap-1">
+                          <strong>{c.primitiveName}</strong>
+                          <span className="font-mono text-teal-700 dark:text-teal-300">
+                            {c.value >= 0 ? `+${c.value}` : c.value}
+                          </span>
+                          <span className="font-mono text-[9px] uppercase text-muted-foreground">
+                            ({c.op === "add" ? "add" : c.op === "subtract" ? "subtract" : c.op})
+                          </span>
+                        </span>
+                        <span className={cn("font-mono text-[10px]", c.conditionActive === false ? "text-red-500" : "text-teal-600 dark:text-teal-400")}>
+                          {c.conditionActive === false ? "⛔ Inhibited" : c.conditionActive === true ? "✓ Engaged" : "— inactive"}
+                        </span>
+                      </div>
+                      <span className="flex flex-wrap items-center gap-1 text-[11px] italic text-muted-foreground">
+                        <span className="font-semibold">when</span>
+                        {c.condition ? renderConditionChips(c.condition) : "no condition"}
                       </span>
                     </li>
                   ))}
@@ -2167,6 +2222,8 @@ function EncumbranceFormulaModal({
     name: string;
     op: string;
     value: number;
+    target: string;
+    provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null };
   }>;
 }) {
   useEffect(() => {
@@ -2257,11 +2314,23 @@ function EncumbranceFormulaModal({
               {primitiveBonus !== 0 ? ` + ${primitiveBonus} (primitives)` : ""} = {fmt(capacity)}
             </p>
             {primitiveContributions && primitiveContributions.length > 0 ? (
-              <ul className="mt-2 space-y-0.5 text-[10px] font-mono text-muted-foreground/90">
+              <ul className="mt-2 space-y-1 text-[10px] font-mono text-muted-foreground/90">
                 {primitiveContributions.map((p) => (
-                  <li key={p.id} className="flex justify-between gap-1">
-                    <span className="truncate">{p.name}</span>
-                    <span className="shrink-0">{p.value >= 0 ? `+${p.value}` : p.value}</span>
+                  <li key={`${p.id}-${p.target}`} className="flex flex-col gap-0.5">
+                    <div className="flex justify-between gap-1">
+                      <span className="truncate">{p.name}</span>
+                      <span className="shrink-0">{p.value >= 0 ? `+${p.value}` : p.value}</span>
+                    </div>
+                    {(p.provenance.heritageName || p.provenance.capabilityName || p.provenance.effectName) ? (
+                      <span className="pl-2 text-[9px] italic text-muted-foreground/70">
+                        via{" "}
+                        {[p.provenance.heritageName, p.provenance.capabilityName, p.provenance.effectName]
+                          .filter(Boolean)
+                          .join(" › ")}
+                      </span>
+                    ) : (
+                      <span className="pl-2 text-[9px] italic text-muted-foreground/70">via Direct</span>
+                    )}
                   </li>
                 ))}
               </ul>
