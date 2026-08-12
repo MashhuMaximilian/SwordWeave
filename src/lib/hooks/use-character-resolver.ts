@@ -71,6 +71,7 @@ export interface UseCharacterResolverInput {
       heritageName: string | null;
       capabilityName: string | null;
       effectName: string | null;
+      accordion: string | null;
     }
   >;
 }

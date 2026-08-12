@@ -97,6 +97,10 @@ export interface ResolvedPrimitiveSlot {
   readonly originHeritageId: string | null;
   readonly originCapabilityId: string | null;
   readonly originEffectId: string | null;
+  /** Phase 8.L round 13 (Mashu): slotTab is the accordion
+   *  name (Lineage / Upbringing / Manifest) of the
+   *  capability this primitive belongs to. */
+  readonly slotTab?: string | null;
   /** Phase 8.I i3 (Mashu): if true, this cap is toggled OFF and its
    *  modifiers are suppressed in the resolver. */
   readonly isToggledOff?: boolean;
@@ -168,6 +172,11 @@ export interface ModifierContribution {
     readonly heritageName: string | null;
     readonly capabilityName: string | null;
     readonly effectName: string | null;
+    /** Phase 8.L round 13 (Mashu): accordion name (Lineage /
+     *  Upbringing / Manifest) of the capability this primitive
+     *  belongs to. NULL for direct primitives. Used as the
+     *  OUTERMOST prefix in the inheritance chain. */
+    readonly accordion: string | null;
     /** "direct" | "heritage" | "capability" | "effect" — short
      *  label for the UI. */
     readonly kind: "direct" | "heritage" | "capability" | "effect";
@@ -220,6 +229,7 @@ export function resolveModifiers(
       heritageName: string | null;
       capabilityName: string | null;
       effectName: string | null;
+      accordion: string | null;
     }
   >,
 ): ResolvedModifiers {
@@ -523,6 +533,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
           heritageName: sourceNames?.get(slot.primitiveId)?.heritageName ?? null,
           capabilityName: sourceNames?.get(slot.primitiveId)?.capabilityName ?? null,
           effectName: sourceNames?.get(slot.primitiveId)?.effectName ?? null,
+          accordion: sourceNames?.get(slot.primitiveId)?.accordion ?? null,
           kind: deriveProvenanceKind(slot),
         },
       });
@@ -560,6 +571,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
                 heritageName: sourceNames?.get(slot.primitiveId)?.heritageName ?? null,
                 capabilityName: sourceNames?.get(slot.primitiveId)?.capabilityName ?? null,
                 effectName: sourceNames?.get(slot.primitiveId)?.effectName ?? null,
+                accordion: sourceNames?.get(slot.primitiveId)?.accordion ?? null,
                 kind: deriveProvenanceKind(slot),
               },
             });

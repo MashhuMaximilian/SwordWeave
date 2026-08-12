@@ -306,7 +306,7 @@ describe("resolveModifiers", () => {
       ],
     };
     const sources = new Map([
-      [1, { heritageName: "Mystic", capabilityName: "Aura Detective", effectName: null }],
+      [1, { heritageName: "Mystic", capabilityName: "Aura Detective", effectName: null, accordion: null }],
     ]);
     const r = resolveModifiers(input, sources);
     const c = r.byTarget["character.attribute.physical"]?.[0];

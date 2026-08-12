@@ -24,6 +24,7 @@ import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   characters,
+  characterCapabilities,
   characterPrimitives,
   primitives,
   capabilities,
@@ -146,6 +147,18 @@ export async function GET(
     .innerJoin(primitives, eq(primitives.id, characterPrimitives.primitiveId))
     .where(eq(characterPrimitives.characterId, id));
 
+  // Phase 8.L round 13: query slotTab from character_capabilities
+  // so the provenance chain can include the accordion name
+  // ("Lineage", "Upbringing", "Manifest") as the outermost prefix.
+  const capSlotTabs = new Map<string, string>();
+  const characterCaps = await db
+    .select({ id: characterCapabilities.capabilityId, slotTab: characterCapabilities.slotTab })
+    .from(characterCapabilities)
+    .where(eq(characterCapabilities.characterId, id));
+  for (const c of characterCaps) {
+    if (c.slotTab) capSlotTabs.set(c.id, c.slotTab);
+  }
+
   const slots: ResolvedPrimitiveSlot[] = slotRows.map((row) => ({
     primitiveId: row.primitiveId,
     name: row.primitiveName,
@@ -157,6 +170,7 @@ export async function GET(
     originHeritageId: row.originHeritageId,
     originCapabilityId: row.originCapabilityId,
     originEffectId: row.originEffectId,
+    slotTab: row.originCapabilityId ? capSlotTabs.get(row.originCapabilityId) ?? null : null,
   }));
 
   // -----------------------------------------------------------------
@@ -165,7 +179,15 @@ export async function GET(
   // -----------------------------------------------------------------
   const sourceNames = new Map<
     number,
-    { heritageName: string | null; capabilityName: string | null; effectName: string | null }
+    {
+      heritageName: string | null;
+      capabilityName: string | null;
+      effectName: string | null;
+      // Phase 8.L round 13: accordion (slotTab) is the OUTERMOST
+      // prefix in the inheritance chain.
+      // "Lineage" / "Upbringing" / "Manifest" / null.
+      accordion: string | null;
+    }
   >();
 
   // Collect all unique capability/effect IDs from slots
@@ -218,10 +240,15 @@ export async function GET(
       const heritageName = slot.originHeritageId ? (heritageNameMap.get(slot.originHeritageId) ?? null) : null;
       const capabilityName = slot.originCapabilityId ? (capNameMap.get(slot.originCapabilityId) ?? null) : null;
       const effectName = slot.originEffectId ? (effNameMap.get(slot.originEffectId) ?? null) : null;
+      // The accordion name is derived from the capability's
+      // slotTab — only present when the slot is capability-derived.
+      // Direct (non-capability-derived) primitives have no accordion.
+      const accordion = slot.slotTab ?? null;
       sourceNames.set(slot.primitiveId, {
         heritageName,
         capabilityName,
         effectName,
+        accordion,
       });
     }
   }
