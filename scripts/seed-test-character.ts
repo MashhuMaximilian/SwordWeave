@@ -116,7 +116,11 @@ const PRIMITIVES: PrimitiveSpec[] = [
     isMirrorable: true,
     mirrorBuCredit: 1,
     hardModifiers: [
-      { target: "defense_dc.physical", operation: "add", value: 1 },
+      // Phase 8.M (Mashu 2026-08-12): unified save_dc.<attr>
+      // format. Older primitives used "defense_dc.<attr>" —
+      // that path was kept working via fallback in the modal,
+      // but new code uses the single-axis save_dc form.
+      { target: "save_dc.physical", operation: "add", value: 1 },
     ],
     description: "+1 to physical defense DC.",
     source: "LINEAGE",
