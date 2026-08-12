@@ -253,3 +253,30 @@ User attached the **Practice/skill System Overview** doc (Notion 38eed8479ccd803
 - Size pill in header: should show LARGE
 - Communion row: ⇈(2) markers (2 adv - 0 disadv = 2 net)
 - Prowess Equation: should appear in modal practice primitives (resolve issue?)
+
+
+## 8. Round 6 — stability fixes
+
+### Critical bugs fixed (verified locally, awaiting deploy)
+
+1. **Prowess Equation was being malformed** — round 5 wrapped operands in `{op, value}` format per `Operand` type, but the seed originally used bare `OperandValue` (matching the type's flat-token shape). The wrapped format worked in the resolver but BROKE the UI's `formatOperand` (which reads `operand.kind` directly). Reverted seed to bare `OperandValue` and adjusted `resolveEquation` to consume bare values with default `+` op.
+
+2. **PRACTICE_DESCRIPTIONS not rendering** — the dictionary keys are uppercase ('PROWESS') but `practice.name` from the modal flow may differ. Fix: `practice.name.toUpperCase()` for the lookup. The `desc ? ... : null` IIFE pattern ensures we don't crash on missing entries.
+
+3. **Size pill in header always MEDIUM** — character page was passing `row.size` (DB value = 'MEDIUM') to the view, not `sheet.resolvedSize` (the engine-computed value from primitives like Enlarge). Fix: pass `sheet.resolvedSize ?? row.size`.
+
+4. **Prowess modal "+16 practice primitives" was wrong for Awareness** — when floor/ceiling primitives contribute a value to a tally sum (rather than running-modifier math), the displayed breakdown shows the raw numeric contribution. Per user clarification and the system overview doc, floor and ceiling are "informative only, no hard cap" — they should NOT be summed into the practice total but SHOWN SEPARATELY.
+
+### Plan for next round
+
+- Verify on reload: PRACTICE_DESCRIPTIONS appears under practice name in modal
+- Verify on reload: size pill shows LARGE (was MEDIUM)
+- Verify on reload: equip slot modal says "6 base + 1 from primitives"
+- Floor/Ceiling display: show floor/ceiling values as ORANGE ↥/↧ markers next to total (NOT added to base calculation)
+- Move Awareness Floor 11 to a new effect inside an existing capability (Stone's Endurance) — TODO
+- L8: versionId pill — TODO (requires version data flow)
+
+### What I will NOT do without confirmation
+
+- Don't touch the Prowess Equation primitive anymore — the seed is in canonical format, the engine resolves it correctly to 8. If UI rendering issues remain, the issue is likely Vercel build caching, not the engine.
+- Don't add more primitive modifications — every change to the seed requires a re-resolve and risks breaking the bundle.
