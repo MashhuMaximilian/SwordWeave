@@ -1827,18 +1827,22 @@ function ContribListItem({ c, setRawTokensOpen, isOff }: {
             <span className="font-mono text-[10px] text-muted-foreground">
               {OP_LABEL[c.op] ?? c.op}
             </span>
-          ) : null}
+          ) : (
+            // Phase 8.L: Floor/Ceiling as orange ↥/↧ per the
+            // color rules — limits are informational indicators,
+            // not modifiers.
+            <span className="font-mono text-[10px] font-semibold text-orange-700 dark:text-orange-400">
+              {OP_LABEL[c.op] ?? c.op}
+            </span>
+          )}
           <span className={cn(
             "font-mono font-semibold tabular-nums",
             isExpertiseName(c.primitiveName) && "font-bold text-teal-700 dark:text-teal-300",
             isProficiencyName(c.primitiveName) && "text-teal-700 dark:text-teal-300",
+            isLimit && "text-orange-700 dark:text-orange-400",
             isOff && "text-muted-foreground line-through"
           )}>
-            {isLimit
-              ? c.value
-              : typeof c.value === "number" && typeof c.rawValue === "undefined"
-                ? fmt(c.value)
-                : formatEquationValue(c.rawValue ?? c.value)}
+            {c.value}
           </span>
         </div>
       </div>
@@ -1923,7 +1927,20 @@ function PracticeDetailModal({
   // practice total.
   const practiceTarget = `skill_practice_check.${practice.name.toLowerCase()}`;
   const practicePrimitiveTotal = byTarget[practiceTarget]
-    ?.reduce((sum, c) => sum + c.value, 0) ?? 0;
+    ?.reduce((sum, c) => {
+      // Phase 8.L: floor/ceiling (op=min/max) are informational,
+      // NOT part of the modifier sum per the practice system
+      // overview. Skip them when summing the practice total.
+      if (c.op === "min" || c.op === "max") return sum;
+      return sum + c.value;
+    }, 0) ?? 0;
+  // Also collect min/max separately so the formula line can
+  // show the floor/ceiling indicators after the total.
+  const practiceMin = byTarget[practiceTarget]
+    ?.reduce((min, c) => c.op === "min" && c.value > min ? c.value : min, 0) ?? 0;
+  const practiceMax = byTarget[practiceTarget]
+    ?.reduce((max, c) => c.op === "max" && c.value < max ? c.value : max, Infinity);
+  const practiceMaxDisplay = practiceMax === Infinity ? null : practiceMax;
   // Mirror-style trace: show the formula
   //   total = attrBase + (PB if prof) + attrDelta
   // It's the same as the Save DC formula except the
@@ -2003,6 +2020,13 @@ function PracticeDetailModal({
               = {fmt(practice.total)}
               <AxisMarkers byTarget={byTarget} target={practiceTarget} />
             </p>
+            {(practiceMin > 0 || practiceMaxDisplay !== null) ? (
+              <p className="mt-1 font-mono text-[10px] text-orange-700 dark:text-orange-400">
+                Floor / Ceiling (informational, not summed):
+                {practiceMin > 0 ? <span className="ml-1">↥<strong className="ml-0.5">{practiceMin}</strong></span> : null}
+                {practiceMaxDisplay !== null ? <span className="ml-2">↧<strong className="ml-0.5">{practiceMaxDisplay}</strong></span> : null}
+              </p>
+            ) : null}
           </section>
 
           <section>
