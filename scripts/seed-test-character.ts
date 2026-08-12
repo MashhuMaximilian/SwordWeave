@@ -821,6 +821,12 @@ const CAPABILITIES: CapabilitySpec[] = [
         description: "Reactive damage reduction (half PB)",
         primitiveNames: ["PB Half"],
       },
+      {
+        name: "Heart of Stone",
+        description:
+          "Unwavering focus — Awareness checks cannot roll below 11.",
+        primitiveNames: ["Awareness Floor 11"],
+      },
     ],
   },
   {
