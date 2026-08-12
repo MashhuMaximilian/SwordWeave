@@ -327,3 +327,59 @@ equation path actually fires.
 3. **The user is right:** "can we please not repair one thing and break
    3 more every time?" I need to verify each fix actually works locally
    with a targeted test BEFORE deploying, not after.
+
+
+## 10. Round 8 — Visual polish + provenance + condition format
+
+### User feedback (5 issues)
+
+1. **Size/capacity/equip-slot modal**: no provenance chain shown — primitives
+   appeared out of nowhere. Fixed: `getCapacityPrimitives()` now returns
+   `{heritageName, capabilityName, effectName, target, value, ...}` and
+   the modal renders `via Heritage › Capability › Effect` breadcrumb
+   per primitive line.
+2. **Primitive click → preview modal**: not yet wired (useEntityPreview
+   requires fully-formed sandbox row, complex to assemble from a
+   character page context). Skill descriptions from the system overview
+   doc are stored in `PRACTICE_DESCRIPTIONS` (not primitive-level).
+3. **Advantage/Disadvantage primitives show `grant 0`**: fixed.
+   The `c.value` render now checks `c.op === "grant" && c.rawValue.kind === "keyword"`
+   and renders a teal/red badge with the keyword text instead.
+4. **Audit all modals for missing provenance**: walking speed HAS provenance,
+   other modals were checked — they use the same ContribListItem which
+   always renders `via <breadcrumb>`. The legacy "via Direct" came from
+   provenance.kind === "direct" (no chain available).
+5. **Condition display format**: redesigned. Was:
+   `Knowledge Mixed: not_proficient_in(all_practices) AND actor-prone x suppressed`
+   Now:
+   ```
+   Knowledge Mixed +2 (add) when not_proficient_in(all_practices) AND actor-prone ⛔ Inhibited
+   ```
+   - prefix removed (primitive name in bold)
+   - +modifier value visible in teal
+   - "(op)" tag for clarity
+   - "when" prefix before condition chips
+   - "suppressed" → "Inhibited" (⛔ red), "active" → "Engaged" (✓ teal)
+
+6. **Capability cards**: standalone Preview button REMOVED per user spec.
+   Effects inside capabilities now auto-expand (no click needed).
+
+### Commits shipped
+
+| Commit | Item |
+|---|---|
+| `2339005` | provenance chains + condition format + grant keyword chips |
+| `a00871c` | capability card auto-expand effects, remove Preview button |
+
+### Known gaps remaining (deferred)
+
+- **Issue 2 (primitive click → preview modal)**: the useEntityPreview hook
+  requires a fully-formed SandboxPrimitiveRow with ~15 fields. Building
+  this client-side from character-page data needs a new API endpoint
+  `/api/primitives/[id]` to return a fully-projected row, or a server-side
+  helper that maps `character_primitives` data to the row shape. Skipped
+  for this round to avoid breaking the modal integration. Will tackle
+  next round.
+- **L8**: version pill (deferred)
+- **L4**: Stone's Endurance bundle JSON (deferred)
+- **L6**: architectural refactor (Phase 8.M)
