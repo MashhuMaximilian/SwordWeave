@@ -85,27 +85,52 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-  const row = await db.query.capabilities.findFirst({
-    where: eq(capabilities.id, id),
-    with: {
-      primitiveLinks: {
-        with: {
-          primitive: true,
-        },
-      },
-      effectLinks: {
-        with: {
-          effect: true,
-        },
-      },
-    },
-  });
-
-  if (!row) {
+  // Use a simple direct select first (avoids drizzle's nested
+  // relational query which was silently failing with no error
+  // message). Then load links separately.
+  const capRows = await db
+    .select()
+    .from(capabilities)
+    .where(eq(capabilities.id, id))
+    .limit(1);
+  if (capRows.length === 0) {
     return NextResponse.json({ error: "Capability not found." }, { status: 404 });
   }
+  const capRow = capRows[0];
 
-  // Phase 8.1 batch 13.1 follow-up: attach computedBu + effect
+  const primitiveLinkRows = await db
+    .select({
+      capabilityId: capabilityPrimitives.capabilityId,
+      primitiveId: capabilityPrimitives.primitiveId,
+      role: capabilityPrimitives.role,
+      quantity: capabilityPrimitives.quantity,
+      sortOrder: capabilityPrimitives.sortOrder,
+      slotLabel: capabilityPrimitives.slotLabel,
+      notes: capabilityPrimitives.notes,
+      primitive: primitives,
+    })
+    .from(capabilityPrimitives)
+    .innerJoin(primitives, eq(primitives.id, capabilityPrimitives.primitiveId))
+    .where(eq(capabilityPrimitives.capabilityId, id));
+
+  const effectLinkRows = await db
+    .select({
+      capabilityId: capabilityEffects.capabilityId,
+      effectId: capabilityEffects.effectId,
+      sortOrder: capabilityEffects.sortOrder,
+      slotLabel: capabilityEffects.slotLabel,
+      notes: capabilityEffects.notes,
+      effect: effects,
+    })
+    .from(capabilityEffects)
+    .innerJoin(effects, eq(effects.id, capabilityEffects.effectId))
+    .where(eq(capabilityEffects.capabilityId, id));
+
+  const row = {
+    ...capRow,
+    primitiveLinks: primitiveLinkRows,
+    effectLinks: effectLinkRows,
+  };
   // primitive data via flat queries (avoids the depth-3 Drizzle
   // `with:` join that triggers Postgres's lateral scoping error —
   // see /api/heritage/[id] for the same fix). Effect primitives
