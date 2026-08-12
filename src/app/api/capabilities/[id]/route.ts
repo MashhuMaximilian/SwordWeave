@@ -209,9 +209,17 @@ export async function GET(
 
   return NextResponse.json({ capability: { ...row, computedBu } });
   } catch (err) {
-    console.error("[GET capabilities] failed:", err);
+    console.error("[GET capabilities] FULL ERROR:", err);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    const errCause = err instanceof Error && err.cause ? String(err.cause) : null;
+    const errStack = err instanceof Error ? err.stack : null;
     return NextResponse.json(
-      { error: "Failed to load capability", detail: err instanceof Error ? err.message : String(err) },
+      {
+        error: "Failed to load capability",
+        detail: errMsg,
+        cause: errCause,
+        stack: errStack,
+      },
       { status: 500 }
     );
   }
