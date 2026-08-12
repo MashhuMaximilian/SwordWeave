@@ -344,6 +344,7 @@ export function PrimitivePreviewCard({
         versionId={primitiveLink.versionId ?? null}
         slotSource={primitiveLink.slotSource ?? null}
         latestVersionId={primitiveLink.latestVersionId ?? null}
+        primitiveId={String(p.id)}
       />
       {/* Phase 8.5 / Session H6 (Mashu 2026-08-03):
           SlotSourceBadge now renders inside the EXPANDED
@@ -378,6 +379,7 @@ function PrimitiveDetailToggle({
   versionId,
   slotSource,
   latestVersionId,
+  primitiveId,
 }: {
   readonly inheritedFrom: string | null;
   readonly inheritedKind: string | null;
@@ -390,6 +392,7 @@ function PrimitiveDetailToggle({
   readonly versionId?: string | null;
   readonly slotSource?: SlotSource | null;
   readonly latestVersionId?: string | null;
+  readonly primitiveId: string;
 }) {
   const hasContent =
     Boolean(inheritedFrom) ||
@@ -421,6 +424,8 @@ function PrimitiveDetailToggle({
             slotSource={slotSource ?? null}
             versionId={versionId ?? null}
             latestVersionId={latestVersionId ?? null}
+            targetType="PRIMITIVE"
+            targetId={primitiveId}
           />
         </div>
       )}

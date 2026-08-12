@@ -420,6 +420,8 @@ export function HeritageBundleView({
           slotSource={slotSource}
           versionId={versionId}
           latestVersionId={latestVersionId}
+          targetType={`${heritageKindRaw}_TEMPLATE` as any}
+          targetId={heritageId}
         />
         {isMirrored && (
           <span className="inline-flex items-center gap-1 rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
@@ -596,6 +598,8 @@ export function HeritageBundleView({
                                     slotSource={"PINNED"}
                                     versionId={latestVersions?.get(makeVersionKey("effect", el.effectId)) ?? null}
                                     latestVersionId={null}
+                                    targetType="EFFECT"
+                                    targetId={el.effectId}
                                   />
                                 </div>
                                 {el.effect.description && (

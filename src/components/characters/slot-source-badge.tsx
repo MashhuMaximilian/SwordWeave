@@ -1,5 +1,7 @@
 "use client";
 
+import { resolveVirtualVersionId, type ReactionTargetType } from "@/lib/engagement/version-helpers";
+
 /**
  * SlotSourceBadge — Phase 5 (T5.1).
  *
@@ -62,6 +64,16 @@ export interface SlotSourceBadgeProps {
    * version available).
    */
   latestVersionId?: string | null;
+  /**
+   * Target type for synthesizing a virtual version id when both
+   * versionId and latestVersionId are null (e.g. seeded records that
+   * never went through the library UI's version pipeline).
+   * If provided, the badge will display `v:<virtualId>` instead of
+   * `v:1` when no real version exists.
+   */
+  targetType?: ReactionTargetType;
+  /** Target id paired with targetType for virtual version synthesis. */
+  targetId?: string;
   /** When true, render the "stale" pill. Pass false to suppress. */
   showStale?: boolean;
   /** Compact mode: just the colored dot + version short. */
@@ -79,12 +91,26 @@ export function SlotSourceBadge({
   slotSource,
   versionId,
   latestVersionId,
+  targetType,
+  targetId,
   showStale = true,
   compact = false,
 }: SlotSourceBadgeProps) {
   // Default to PINNED if the field is null (pre-Phase-5 backfill gap).
   const source: SlotSource = slotSource ?? "PINNED";
   const c = COLORS[source];
+  // Phase 8.L round 21: when versionId AND latestVersionId are both
+  // null (e.g. records seeded directly from DB without going through
+  // the library UI), synthesize a stable virtual version id from the
+  // target's type+id. This keeps the badge informative instead of
+  // showing "v:—" (which the user flagged as broken-looking).
+  const virtualVersionId =
+    versionId === null &&
+    (latestVersionId === null || latestVersionId === undefined) &&
+    targetType &&
+    targetId
+      ? resolveVirtualVersionId(targetType, targetId)
+      : null;
   const isStale =
     showStale &&
     latestVersionId !== undefined &&
@@ -96,10 +122,16 @@ export function SlotSourceBadge({
     return (
       <span
         className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${c.bg} ${c.text} ring-1 ring-inset ${c.ring}`}
-        title={versionId ? `v:${versionId} (${c.label})` : `no version (${c.label})`}
+        title={
+          versionId
+            ? `v:${versionId} (${c.label})`
+            : latestVersionId
+              ? `v:${latestVersionId} (${c.label}) - slot source has no pinned version`
+              : `v:1 (${c.label}) - slot source has no version yet`
+        }
       >
         <span className="size-1.5 rounded-full bg-current" aria-hidden />
-        v:{shortId(versionId)}
+        v:{versionId ? shortId(versionId) : latestVersionId ? shortId(latestVersionId) : virtualVersionId ? shortId(virtualVersionId) : "1"}
         {isStale && (
           <span className="ml-0.5 rounded bg-rose-500/20 px-1 text-rose-700 dark:text-rose-300 ring-1 ring-inset ring-rose-500/30">
             stale
@@ -113,13 +145,19 @@ export function SlotSourceBadge({
     <div className="inline-flex flex-wrap items-center gap-1.5 text-xs">
       <span
         className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${c.bg} ${c.text} ring-1 ring-inset ${c.ring}`}
-        title={versionId ? `Slot source: ${c.label}. Pinned to version ${versionId}.` : `Slot source: ${c.label}. No version pinned yet.`}
+        title={
+          versionId
+            ? `Slot source: ${c.label}. Pinned to version ${versionId}.`
+            : latestVersionId
+              ? `Slot source: ${c.label}. No version pinned — using latest v:${latestVersionId}.`
+              : `Slot source: ${c.label}. No version published yet (v:1 implicit).`
+        }
       >
         <span className="size-1.5 rounded-full bg-current" aria-hidden />
         {c.label}
-        {versionId && (
+        {(versionId || latestVersionId || virtualVersionId) && (
           <span className="ml-1 font-mono text-[10px] opacity-75">
-            v:{shortId(versionId)}
+            v:{versionId ? shortId(versionId) : latestVersionId ? shortId(latestVersionId) : virtualVersionId ? shortId(virtualVersionId) : "1"}
           </span>
         )}
       </span>

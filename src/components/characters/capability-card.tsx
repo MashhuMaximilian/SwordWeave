@@ -512,6 +512,8 @@ export function CapabilityCard({
               slotSource={capability.slotSource}
               versionId={capability.versionId}
               latestVersionId={capability.latestVersionId}
+              targetType="CAPABILITY"
+              targetId={capability.id}
             />
           </div>
         </div>

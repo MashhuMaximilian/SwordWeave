@@ -626,6 +626,8 @@ export function ItemCard({
           slotSource={item.slotSource}
           versionId={item.versionId}
           latestVersionId={item.latestVersionId}
+          targetType="ITEM"
+          targetId={item.id}
         />
       </div>
       {item.description && (
@@ -754,6 +756,8 @@ export function ItemCard({
                               slotSource={"PINNED"}
                               versionId={latestVersions?.get(makeVersionKey("capability", cl.capability.id)) ?? null}
                               latestVersionId={null}
+                              targetType="CAPABILITY"
+                              targetId={cl.capability.id}
                             />
                           </div>
                           {cl.capability.verboseDescription && (
@@ -799,6 +803,8 @@ export function ItemCard({
                             slotSource={"PINNED"}
                             versionId={latestVersions?.get(makeVersionKey("effect", el.effectId)) ?? null}
                             latestVersionId={null}
+                            targetType="EFFECT"
+                            targetId={el.effectId}
                           />
                         </div>
                         {el.effect.description && (
@@ -848,6 +854,8 @@ export function ItemCard({
                             slotSource={"PINNED"}
                             versionId={latestVersions?.get(makeVersionKey("primitive", pl.primitiveId)) ?? null}
                             latestVersionId={null}
+                            targetType="PRIMITIVE"
+                            targetId={String(pl.primitiveId)}
                           />
                         </div>
                         {pl.primitive.narrativeRule && (
