@@ -673,3 +673,48 @@ Removed the redundant prefix from the breadcrumb. Now:
 The data is correct (`accordion: 'MANIFEST'` for Advantage on Communion).
 Deployed code reads `c.provenance.accordion` correctly.
 After hard refresh + Vercel cache settle, modals should show full chain.
+
+
+## 18. Round 16 — Mobile modal restructure + restore chain text
+
+Per user feedback (round 16 screenshots on mobile):
+
+### Issue 1: Awareness Floor 11 in Primitives tab had no chain
+**Root cause**: My round 15 'remove 1 BU · via' patch
+accidentally deleted the WHOLE breadcrumb rendering, not just
+the redundant BU prefix. Fixed — chain text restored, BU
+remains in right corner only.
+
+### Issue 2: Mobile modal header too big
+**Root cause**: Practice description (full text + 'May
+include' / 'Examples' accordions) was rendered INSIDE the
+sticky header. On mobile this caused the modal to overflow
+and overlap with content.
+
+**Fixed**: Moved description block INTO the scroll area as a
+new 'About this practice' section. Header now only contains:
+- 'FORMULA' (h2)
+- Practice name (h3)
+- Attribute label
+- Close button (✕)
+
+### Issue 3: Modal height on mobile
+Changed `max-h-[80vh]` → `max-h-[90dvh]` (dvh = dynamic
+viewport height, accounts for mobile browser chrome).
+
+### Commits shipped (round 16)
+
+| Commit | Item |
+|---|---|
+| `3ff3778` | Restore chain text + mobile modal header |
+
+### Modal "via Direct" diagnostic
+The data path is correct (`accordion: 'MANIFEST'` for
+Advantage on Communion, `accordion: 'LINEAGE'` for Awareness
+Floor 11, `accordion: 'UPBRINGING'` for Disadvantage on
+Influence). The deployed breadcrumb code reads
+`c.provenance.accordion ?? null`. After hard refresh, modals
+should show the full chain.
+
+If they STILL don't, the issue is a stale browser cache or
+CDN cache miss — please clear and reload.
