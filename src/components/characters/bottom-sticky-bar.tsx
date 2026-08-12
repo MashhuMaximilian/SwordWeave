@@ -49,6 +49,8 @@ import {
   type FormulaStep,
 } from "@/components/characters/formula-modal";
 import type { ResolvedModifiers } from "@/lib/engine/resolve-modifiers";
+console.log("PHASE8_L20_BUILD_MARKER:", "-5090448014643774033");
+
 import { PRACTICE_DESCRIPTIONS, type Practice } from "@/lib/primitives/target-scope";
 // Phase 8.L: open the SAME preview modal the /atelier list uses.
 // See preview-modal.tsx — useEntityPreview wraps sandbox library-preview-pane.
