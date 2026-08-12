@@ -792,3 +792,39 @@ This appears to be a Vercel-side infrastructure issue
 ### Local development still works
 `npx next build` locally produces correct bundles with accordion
 in all chunks. Code is verified correct on `main` branch.
+
+
+## 21. Round 19 — Found the real bug (hardcoded 'via Direct' in encumbrance modal)
+
+After deeper investigation, found that the EncumbranceModal
+(load primitives + equip-slot primitives) had **hardcoded**
+breadcrumb that read only `heritageName/capabilityName/effectName`
+— **missing the accordion**.
+
+### Fixed
+
+| File | Line | Change |
+|---|---|---|
+| `src/components/characters/bottom-sticky-bar.tsx` | 2428 | Added `accordion` to breadcrumb join |
+| `src/components/characters/bottom-sticky-bar.tsx` | 2488 | Added `accordion` to breadcrumb join |
+| `src/components/characters/bottom-sticky-bar.tsx` | type defs | Updated all 6 provenance types to include `accordion` |
+| `src/components/characters/bottom-sticky-bar.tsx` | splitCapacityPrimitives | Now passes `accordion` through |
+
+### After this commit (86bf0fe)
+
+Every modal in the bottom drawer should show full chain:
+
+```
+Practice modal:        via Lineage › Stone's Endurance › Heart of Stone
+Attribute modal:        via Manifest › Divine Smite › Smite
+Attack bonus modal:     via Lineage › Stone's Endurance › Heart of Stone
+Save DC modal:          via Upbringing › Hunter's Mark › Hunted
+Movement speed modal:   via <chain>
+Encumbrance modal:      via <chain> (was hardcoded "via Direct")
+```
+
+### Hard refresh needed
+
+User MUST clear browser cache (Cmd-Shift-R / Ctrl-Shift-R) to
+get the new chunk hashes. Old chunk: `0-krz0o5nh_jo.js` (no
+accordion) → new chunk: different hash with accordion.
