@@ -1820,6 +1820,8 @@ function FormulaModalSection({
   );
 }
 
+// 2026-08-12 round 19 marker -8679296480564731946 - accordion deployment fix
+
 function formatViaForSteps(c: import("@/lib/engine/resolve-modifiers").ModifierContribution): string {
   const { heritageName, capabilityName, effectName, accordion, kind } = c.provenance;
   if (kind === "direct") return "";
