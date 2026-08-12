@@ -753,3 +753,42 @@ Verified locally with `npx next build`:
 - Bottom-sticky-bar reads `prov.accordion ?? null` in breadcrumb
 
 Once Vercel actually redeploys, modals will show the chain.
+
+
+## 20. Round 18 — Vercel deployment is completely broken
+
+After continued pushes and investigation:
+
+### Latest finding (catastrophic)
+
+The latest Vercel deployments return HTML pages (478KB next/dashboard
+shell) for every JS file request. The production site at
+`https://www.swordweave.quest/characters/[id]` returns HTTP 404.
+
+**Even the deployment-specific URLs** (`https://sword-weave-{hash}-mashus-projects-3b3cfec0.vercel.app/`)
+return HTML for every `_next/static/chunks/*.js` request — the JS
+bundles aren't being served.
+
+### Deployment timeline
+- 30+ deployments created, all marked "success" by Vercel
+- Only ONE deployment (`14e7e21` at 16:05) was assigned the
+  production alias `swordweave.quest`
+- Newer deployments have deployment-specific URLs but those URLs
+  serve broken HTML for all assets
+
+### Recommendation: contact Vercel support
+This appears to be a Vercel-side infrastructure issue
+(project config, build cache, or DNS). User needs to:
+
+1. **Vercel dashboard → sword-weave project → Settings → General**
+   verify project is correctly configured
+2. **Settings → Git** verify GitHub integration still connected
+3. **Deployments tab** try clicking **Promote to Production**
+   on a known-good deployment
+4. If still broken, **contact Vercel support** at
+   https://vercel.com/help with the project ID
+   `prj_e7N4OauIFjxQF8oNGzOhgjvJTImD`
+
+### Local development still works
+`npx next build` locally produces correct bundles with accordion
+in all chunks. Code is verified correct on `main` branch.
