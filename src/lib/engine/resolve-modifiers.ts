@@ -843,3 +843,5 @@ export function parityCheck(input: ResolvedCharacterInput): {
 // Re-export AppliedModifierTrace for callers that want the
 // engine's native trace type.
 export type { AppliedModifierTrace };
+
+// 2026-08-12 rebuild marker: this file was last modified to force Vercel rebuild
