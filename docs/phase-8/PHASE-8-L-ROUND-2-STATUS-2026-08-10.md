@@ -512,3 +512,55 @@ GET /api/capabilities/[Stone's Endurance id] →
 
 Capability preview modal now opens correctly when clicking the
 capability name on the character sheet.
+
+
+## 14. Round 12 — Direct LINEAGE capability + modal polish
+
+Per user feedback (round 12 screenshots):
+
+### Issue 1: Provenance chain `via Stone's Endurance › Stone Goliath` (wrong)
+**Root cause:** `effectById` map in `character-sheet-view.tsx`
+was empty (comment: "Effects aren't yet loaded into props; this
+map stays empty for now"). So effect names never appeared in
+the chain. Now built from `capabilityLinks[].effectLinks[].effect`.
+
+### Issue 2: `Awareness Floor 11` should be `Lineage › Stone's Endurance › Heart of Stone` (no Stone Goliath)
+**Root cause:** seed was incorrectly linking Stone's Endurance to
+a "Stone Goliath" heritage (heritage_capabilities + character_heritages).
+But per user: Stone's Endurance is a DIRECT capability in the
+Lineage accordion, not nested within Stone Goliath. Removed
+that linkage + made `origin_heritage_id = NULL` for slotTab
+LINEAGE/UPBRINGING/MANIFEST caps.
+
+### Issue 3: Accordeon counter only counts heritages
+Was `Lineage ({heritageLinks.length})`. Now:
+`Lineage ({heritageLinks.length + directCapsForKind.length})` —
+counts heritages + direct caps slotted in that kind.
+
+### Issue 4: Encumbrance primitives rendered as grey text
+Now rendered as bordered cards with teal+bold value + italic
+breadcrumb below, matching practice primitives. Equip-slot
+primitives split into their own "Equip-slot primitives" section
+below load primitives.
+
+### Issue 5: Attack Bonus + Walking Speed modals didn't show primitive provenance
+Used manual breakdown arrays that only showed totals. Now uses
+`contributionsToSteps(target, resolver_, baseStep)` which
+includes each primitive's full chain.
+
+### Commits shipped (round 12)
+
+| Commit | Item |
+|---|---|
+| `7e47cf5` | effectById from capabilityLinks + encumbrance modal split |
+| `ad40e24` | seed: Stone's Endurance not nested in Stone Goliath |
+| `6455602` | accordion counter + Attack Bonus/Speed modals |
+
+### Verified live
+
+```
+Awareness Floor 11 provenance:
+{heritageName: None, capabilityName: "Stone's Endurance", effectName: 'Heart of Stone', kind: 'effect'}
+```
+
+Will display as `via Stone's Endurance › Heart of Stone`.
