@@ -828,3 +828,46 @@ Encumbrance modal:      via <chain> (was hardcoded "via Direct")
 User MUST clear browser cache (Cmd-Shift-R / Ctrl-Shift-R) to
 get the new chunk hashes. Old chunk: `0-krz0o5nh_jo.js` (no
 accordion) → new chunk: different hash with accordion.
+
+
+## 22. Round 20 — PRODUCTION DEPLOY IS STUCK on commit 14e7e21 (16:05, 2 hours ago)
+
+### Diagnostic finding (definitive)
+
+Queried Vercel deployments via GitHub Deployments API:
+
+- Latest commit on main: `c0500fb` (build marker + accordion code)
+- **Latest deployment with `swordweave.quest` production alias: `14e7e21` from 2026-08-12T16:05:18Z** — 2+ hours old
+- 14 newer deployments exist with deployment-specific URLs
+  (`sword-weave-{hash}-mashus-projects-3b3cfec0.vercel.app`)
+  but are NOT promoted to `swordweave.quest`
+- Production bundle has ZERO accordion references
+- Production bundle does NOT contain my latest build marker
+
+**Vercel auto-deploy stopped promoting new commits to the
+production alias.**
+
+### Resolution needed from user
+
+1. **Vercel dashboard → sword-weave project → Deployments tab**
+2. **Find the most recent deployment** (top of list, sha `c0500fb` or newer)
+3. **Click ⋯ menu → "Promote to Production"** (NOT just "Redeploy")
+4. This will point `swordweave.quest` to the latest deployment
+
+OR:
+
+1. **Settings → Domains → swordweave.quest → Edit**
+2. **Reassign** to the latest deployment manually
+
+### After promote-to-production
+
+Once production is on `c0500fb` or newer, modals will show
+full chain (`via Manifest › Divine Smite › Smite`, etc.) and
+the lineage tab will continue working.
+
+### Why I can't fix this from CLI
+
+I have no `VERCEL_TOKEN` and GitHub Deployments API cannot
+modify Vercel's production alias mapping — only the
+`vercel` CLI with auth or the Vercel dashboard can promote
+deployments to a domain alias.
