@@ -210,15 +210,28 @@ export async function GET(
   return NextResponse.json({ capability: { ...row, computedBu } });
   } catch (err) {
     console.error("[GET capabilities] FULL ERROR:", err);
-    const errMsg = err instanceof Error ? err.message : String(err);
-    const errCause = err instanceof Error && err.cause ? String(err.cause) : null;
-    const errStack = err instanceof Error ? err.stack : null;
+    // Try EVERY way to extract error info
+    let errorText = "Unknown error";
+    try {
+      if (err instanceof Error) {
+        errorText = err.name + ": " + err.message;
+        if ((err as Error & { query?: string }).query) {
+          errorText += "\nQUERY: " + (err as Error & { query?: string }).query;
+        }
+        if (err.stack) errorText += "\nSTACK: " + err.stack;
+      } else if (typeof err === "string") {
+        errorText = err;
+      } else {
+        errorText = String(err);
+      }
+    } catch (parseErr) {
+      errorText = "Could not parse error: " + String(parseErr);
+    }
+    console.error("[GET capabilities] PARSED:", errorText);
     return NextResponse.json(
       {
         error: "Failed to load capability",
-        detail: errMsg,
-        cause: errCause,
-        stack: errStack,
+        detail: errorText.slice(0, 8000),
       },
       { status: 500 }
     );
