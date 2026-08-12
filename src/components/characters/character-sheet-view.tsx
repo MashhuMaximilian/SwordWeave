@@ -511,11 +511,19 @@ export function CharacterSheetView(props: CharacterSheetProps) {
   }, [props.capabilityLinks]);
   const effectById = useMemo(() => {
     const m = new Map<string, { name: string }>();
-    // Effects aren't yet loaded into props; this map stays empty for
-    // now. Future batches will populate it once effects are joined
-    // onto capability links.
+    // Populate from capability effectLinks (each capability exposes
+    // its nested effects via this prop). Also include effects from
+    // character-level primitiveLinks in case future code surfaces
+    // effects directly on primitives.
+    for (const l of props.capabilityLinks ?? []) {
+      for (const el of l.effectLinks ?? []) {
+        if (el.effect?.id && el.effect?.name) {
+          m.set(el.effect.id, { name: el.effect.name });
+        }
+      }
+    }
     return m;
-  }, []);
+  }, [props.capabilityLinks]);
 
   async function handleLevelUp() {
     startTransition(async () => {

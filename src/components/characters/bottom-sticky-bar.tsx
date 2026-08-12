@@ -104,18 +104,38 @@ function countStacks(
  * Phase 8.L L21: filter + sum primitive contributions to capacity.
  * Targets include "capacity" (direct adds) and "load" (negative).
  */
-function getCapacityPrimitives(
+/**
+ * Split the resolver's capacity-side primitives into:
+ *   - loadPrimitives: target in {carry_capacity, capacity} (capacity adds)
+ *   - equipSlotPrimitives: target in {equip_slot}
+ *   - sizePrimitives: target = size (informational — surfaced separately)
+ *
+ * Per Mashu L10: equip-slot primitives render below load primitives
+ * so the layout reads top-to-bottom: capacity → load primitives →
+ * load total → equip slots.
+ */
+function splitCapacityPrimitives(
   byTarget: ResolvedModifiers["byTarget"] | undefined,
-): ReadonlyArray<{
-  id: number;
-  name: string;
-  op: string;
-  value: number;
-  target: string;
-  provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null };
-}> {
-  if (!byTarget) return [];
-  const out: Array<{
+): {
+  loadPrimitives: ReadonlyArray<{
+    id: number;
+    name: string;
+    op: string;
+    value: number;
+    target: string;
+    provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null };
+  }>;
+  equipSlotPrimitives: ReadonlyArray<{
+    id: number;
+    name: string;
+    op: string;
+    value: number;
+    target: string;
+    provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null };
+  }>;
+} {
+  if (!byTarget) return { loadPrimitives: [], equipSlotPrimitives: [] };
+  const load: Array<{
     id: number;
     name: string;
     op: string;
@@ -123,11 +143,20 @@ function getCapacityPrimitives(
     target: string;
     provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null };
   }> = [];
+  const equip: Array<{
+    id: number;
+    name: string;
+    op: string;
+    value: number;
+    target: string;
+    provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null };
+  }> = [];
+  const capTargets = new Set(["carry_capacity", "capacity", "load"]);
   for (const target of ["carry_capacity", "capacity", "load", "equip_slot", "size"] as const) {
     const contribs = byTarget[target] ?? [];
     for (const c of contribs) {
       if (c.op !== "add" && c.op !== "subtract") continue;
-      out.push({
+      const entry = {
         id: c.primitiveId,
         name: c.primitiveName,
         op: c.op,
@@ -138,10 +167,16 @@ function getCapacityPrimitives(
           effectName: c.provenance.effectName ?? null,
           heritageName: c.provenance.heritageName ?? null,
         },
-      });
+      };
+      if (target === "equip_slot") {
+        equip.push(entry);
+      } else if (capTargets.has(target)) {
+        load.push(entry);
+      }
+      // size target: ignore (handled by the size card separately)
     }
   }
-  return out;
+  return { loadPrimitives: load, equipSlotPrimitives: equip };
 }
 
 function findFloor(
@@ -1293,7 +1328,8 @@ export function BottomStickyBar({
             encumbrance={encumbrance}
             characterSize={characterSize}
             physicalMod={physMod}
-            primitiveContributions={getCapacityPrimitives(resolver?.byTarget)}
+            primitiveContributions={splitCapacityPrimitives(resolver?.byTarget).loadPrimitives}
+            equipSlotContributions={splitCapacityPrimitives(resolver?.byTarget).equipSlotPrimitives}
             onClose={() => setCombo(null)}
           />
         ) : null
@@ -2244,6 +2280,7 @@ function EncumbranceFormulaModal({
   physicalMod,
   onClose,
   primitiveContributions,
+  equipSlotContributions,
 }: {
   readonly encumbrance: EncumbranceForSticky;
   readonly characterSize: "TINY" | "SMALL" | "MEDIUM" | "LARGE" | "HUGE" | "GARGANTUAN";
@@ -2251,6 +2288,15 @@ function EncumbranceFormulaModal({
   readonly onClose: () => void;
   /** Phase 8.L L21: list of primitive contributions to capacity. */
   readonly primitiveContributions?: ReadonlyArray<{
+    id: number;
+    name: string;
+    op: string;
+    value: number;
+    target: string;
+    provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null };
+  }>;
+  /** Phase 8.L L21: list of primitive contributions to equip slots. */
+  readonly equipSlotContributions?: ReadonlyArray<{
     id: number;
     name: string;
     op: string;
@@ -2347,22 +2393,24 @@ function EncumbranceFormulaModal({
               {primitiveBonus !== 0 ? ` + ${primitiveBonus} (primitives)` : ""} = {fmt(capacity)}
             </p>
             {primitiveContributions && primitiveContributions.length > 0 ? (
-              <ul className="mt-2 space-y-1 text-[10px] font-mono text-muted-foreground/90">
+              <ul className="mt-2 space-y-1">
                 {primitiveContributions.map((p) => (
-                  <li key={`${p.id}-${p.target}`} className="flex flex-col gap-0.5">
-                    <div className="flex justify-between gap-1">
-                      <span className="truncate">{p.name}</span>
-                      <span className="shrink-0">{p.value >= 0 ? `+${p.value}` : p.value}</span>
+                  <li key={`${p.id}-${p.target}`} className="rounded-md border border-border bg-background px-2 py-1.5">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="truncate font-medium">{p.name}</span>
+                      <span className="shrink-0 font-mono text-teal-700 dark:text-teal-300">
+                        {p.value >= 0 ? `+${p.value}` : p.value}
+                      </span>
                     </div>
                     {(p.provenance.heritageName || p.provenance.capabilityName || p.provenance.effectName) ? (
-                      <span className="pl-2 text-[9px] italic text-muted-foreground/70">
+                      <span className="pl-1 text-[10px] italic text-muted-foreground">
                         via{" "}
                         {[p.provenance.heritageName, p.provenance.capabilityName, p.provenance.effectName]
                           .filter(Boolean)
                           .join(" › ")}
                       </span>
                     ) : (
-                      <span className="pl-2 text-[9px] italic text-muted-foreground/70">via Direct</span>
+                      <span className="pl-1 text-[10px] italic text-muted-foreground">via Direct</span>
                     )}
                   </li>
                 ))}
@@ -2392,8 +2440,39 @@ function EncumbranceFormulaModal({
             )}
           </section>
 
-          {/* Equip Slots card (moved from inside the size table) */}
+          {/* Equip-slot primitives — separate section below load primitives,
+              per Mashu L10: equip-slot primitives render their own section. */}
+          {equipSlotContributions && equipSlotContributions.length > 0 ? (
+            <section>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Equip-slot primitives
+              </p>
+              <ul className="space-y-1">
+                {equipSlotContributions.map((p) => (
+                  <li key={`${p.id}-${p.target}`} className="rounded-md border border-border bg-background px-2 py-1.5">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="truncate font-medium">{p.name}</span>
+                      <span className="shrink-0 font-mono text-teal-700 dark:text-teal-300">
+                        {p.value >= 0 ? `+${p.value}` : p.value}
+                      </span>
+                    </div>
+                    {(p.provenance.heritageName || p.provenance.capabilityName || p.provenance.effectName) ? (
+                      <span className="pl-1 text-[10px] italic text-muted-foreground">
+                        via{" "}
+                        {[p.provenance.heritageName, p.provenance.capabilityName, p.provenance.effectName]
+                          .filter(Boolean)
+                          .join(" › ")}
+                      </span>
+                    ) : (
+                      <span className="pl-1 text-[10px] italic text-muted-foreground">via Direct</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
 
+          {/* Reference — Equip slots summary */}
           <section>
             <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               Reference — Equip slots
