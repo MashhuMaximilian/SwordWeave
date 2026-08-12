@@ -503,9 +503,9 @@ export function CharacterSheetView(props: CharacterSheetProps) {
     return m;
   }, [props.heritageLinks]);
   const capabilityById = useMemo(() => {
-    const m = new Map<string, { name: string }>();
+    const m = new Map<string, { name: string; slotTab?: string | null }>();
     for (const l of props.capabilityLinks) {
-      m.set(l.capabilityId, { name: l.capability.name });
+      m.set(l.capabilityId, { name: l.capability.name, slotTab: l.slotTab ?? null });
     }
     return m;
   }, [props.capabilityLinks]);
@@ -2053,22 +2053,13 @@ function CapabilitiesTab({
     // Per Mashu: "accordeon name if not direct primitive >
     // heritage name if nested in heritage > Capability > Effect"
     const chain: string[] = [];
-    // Accordion name comes from the capability's slotTab
-    // (looked up via capabilityLinks[i].slotTab). Stored on
-    // the chain as a label-style name.
+    // Per Mashu round 13: chain order is accordion >
+    // heritage > capability > effect.
+    // Accordion name comes from the capability's slotTab.
     const capLink = capabilityById.get(originCapabilityId ?? "") as unknown as { slotTab?: string | null } | undefined;
     if (capLink?.slotTab) {
-      // Capitalize first letter to render as "Lineage" not "LINEAGE"
       const label = capLink.slotTab.charAt(0) + capLink.slotTab.slice(1).toLowerCase();
       chain.push(label);
-    }
-    if (originEffectId) {
-      const e = effectById.get(originEffectId);
-      if (e) chain.push(e.name);
-    }
-    if (originCapabilityId) {
-      const c = capabilityById.get(originCapabilityId);
-      if (c) chain.push(c.name);
     }
     if (originHeritageId) {
       const h = heritageById.get(originHeritageId);
@@ -2080,6 +2071,14 @@ function CapabilitiesTab({
           kind: h.kind,
         };
       }
+    }
+    if (originCapabilityId) {
+      const cap = capabilityById.get(originCapabilityId);
+      if (cap) chain.push(cap.name);
+    }
+    if (originEffectId) {
+      const e = effectById.get(originEffectId);
+      if (e) chain.push(e.name);
     }
     if (chain.length > 0) provenancePath = chain.join(" › ");
     allPrimitives.push({
@@ -2185,7 +2184,7 @@ function CapabilitiesTab({
               No primitives slotted or inherited.
             </p>
           ) : (
-            <ul className="space-y-1.5">
+            <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {allPrimitives
                 .slice()
                 .sort((a, b) => {
