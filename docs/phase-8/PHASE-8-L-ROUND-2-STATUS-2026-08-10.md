@@ -430,3 +430,41 @@ Per user feedback (round 9 screenshots):
   button AND card body. Should fire every time.
 - **L8 / L4 / L6:** all deferred per your earlier "after these small
   fixes" instruction.
+
+
+## 12. Round 10 — capability preview, full provenance chain, compact layout
+
+Per user feedback (round 10 screenshots):
+
+1. **Capability nested effects ALWAYS visible** — replaced
+   `<details open>` with a plain `<div>`. Some browsers were
+   hiding the contents. The Effects accordion is now
+   always-rendered, matching the character-creation modal.
+
+2. **Full provenance chain (heritage > capability > effect).**
+   The resolve route's sourceNames map now resolves heritage
+   names (was previously null). The seed creates a "Stone
+   Goliath" heritage that bundles Stone's Endurance, and
+   character_primitives now sets origin_heritage_id. Result:
+   Awareness Floor 11 displays as
+   `via Stone Goliath > Stone's Endurance > Heart of Stone`.
+
+3. **Capability card compact layout** — Pinned/version chip
+   moved under the TYPE label in the right column. The
+   source + acquired metadata row stays on the left.
+   Source/Origin moved inline near the title.
+
+### Commits shipped
+
+| Commit | Item |
+|---|---|
+| `7b17df9` | effects always visible, full provenance chain, compact card |
+| `d7cc758` | seed: Stone Goliath heritage + origin_heritage_id wiring |
+
+### Verified live
+
+- Resolve output for Awareness Floor 11:
+  ```
+  provenance: {'heritageName': 'Stone Goliath', 'capabilityName': "Stone's Endurance", 'effectName': 'Heart of Stone', 'kind': 'effect'}
+  ```
+- Direct evolution chain: lineage accordion > Stone's Endurance > Heart of Stone.
