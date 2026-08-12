@@ -605,3 +605,44 @@ Awareness Floor 11 provenance:
 ```
 
 Will render as `via LINEAGE › Stone's Endurance › Heart of Stone`.
+
+
+## 16. Round 14 — Primitives grid + chain order fix
+
+Per user feedback (round 14 screenshots):
+
+### Issue 1: Primitives (48) accordion was one-per-row
+**Fixed**: Changed `<ul className="space-y-1.5">` to
+`<ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">`.
+Now 4 primitives per row on xl screens.
+
+### Issue 2: Lineage primitive card chain was wrong order
+**Root cause**: I had chain order `accordion > heritage > effect > capability`
+(effect pushed BEFORE capability). User spec is
+`accordion > heritage > capability > effect`.
+
+**Fixed**: Reordered to push heritage BEFORE capability, and capability
+BEFORE effect. Now `Lineage › Stone's Endurance › Heart of Stone`.
+
+### Issue 3: capabilityById didn't include slotTab
+**Fixed**: Extended the Map type to include `slotTab` and pass it from
+`props.capabilityLinks[i].slotTab`. The chain builder now reads
+`capLink.slotTab` to prepend the accordion name.
+
+### Commits shipped (round 14)
+
+| Commit | Item |
+|---|---|
+| `d628185` | Primitives grid + chain order + capabilityById.slotTab |
+
+### Verified live
+
+For Awareness Floor 11:
+```
+provenance: {heritageName: None, capabilityName: "Stone's Endurance",
+             effectName: 'Heart of Stone', accordion: 'LINEAGE', kind: 'effect'}
+Will render as: 'LINEAGE › Stone's Endurance › Heart of Stone'
+```
+
+For capability tab PrimitivePreviewCard on Awareness Floor 11:
+`via Lineage › Stone's Endurance › Heart of Stone`
