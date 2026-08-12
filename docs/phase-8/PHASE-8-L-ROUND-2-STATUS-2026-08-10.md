@@ -871,3 +871,79 @@ I have no `VERCEL_TOKEN` and GitHub Deployments API cannot
 modify Vercel's production alias mapping — only the
 `vercel` CLI with auth or the Vercel dashboard can promote
 deployments to a domain alias.
+
+
+## 23. Round 21 — L8 Version pill synthesized from target identity
+
+Per Mashu round 21: 'Version id null is weird. I thought
+we solved it. So, if any capability item effect heritage
+primitive etc an have no version. If version id null we
+have to fix it!'
+
+### Root cause
+
+Seeded records (created directly from DB schema, not via
+the library UI's version pipeline) have `versionId: null`
+and `latestVersionId: null`. The SlotSourceBadge showed
+`v:—` for these records — looked broken.
+
+### Fix
+
+When BOTH `versionId` AND `latestVersionId` are null,
+synthesize a stable virtual version id from the target's
+type+id using the existing `resolveVirtualVersionId`
+helper (already used by visibility/flags APIs).
+
+```javascript
+const virtualVersionId =
+  versionId === null &&
+  (latestVersionId === null || latestVersionId === undefined) &&
+  targetType && targetId
+    ? resolveVirtualVersionId(targetType, targetId)
+    : null;
+```
+
+### Consumers updated to pass targetType + targetId
+
+| File | Targets |
+|---|---|
+| `capability-card.tsx` | CAPABILITY |
+| `primitive-preview-card.tsx` | PRIMITIVE (forwarded through PrimitiveDetailToggle) |
+| `item-card.tsx` | ITEM, CAPABILITY, EFFECT, PRIMITIVE |
+| `heritage-bundle-view.tsx` | `${kind}_TEMPLATE` (LINEAGE_TEMPLATE, etc.) |
+
+### After fix
+
+Seeded records now show `v:<8-char-hash>` instead of
+`v:—`. Title tooltip explains:
+- "v:<id> (Pinned)" — real version
+- "v:<id> (Pinned) - slot source has no pinned version" — using latest
+- "v:1 (Pinned) - slot source has no version yet" — fallback
+
+### Commits shipped
+
+- `727b855` — SlotSourceBadge virtual version synthesis
+
+## 24. Round 22 — L6/Phase 8.M design doc shipped (awaiting sign-off)
+
+Per Mashu round 22: 'L6 architectural refactor → yes to only
+have one save dc and one attack bonus. Here the thing is
+that if we will add proficiency to more than one attribute
+we will have to add in the modals of attack bonus and save
+dc a selector of which attribute should count.'
+
+Shipped `docs/architecture/phase-8-m-single-attack-bonus-save-dc.md`
+with:
+- Problem statement (verbatim quote)
+- Behavior matrix (single prof vs multi-prof scenarios)
+- 5 open questions + decisions (scope, defaults, primitives)
+- 4 implementation phases (M.1 engine → M.2 UI → M.3 API → M.4 seed)
+- Session budget: ~3-4 sessions total
+- Review checklist + out-of-scope section
+
+**AWAITING SIGN-OFF** before implementation begins. Key questions
+to confirm:
+1. Scope is `attack_bonus` + `save_dc` only (NOT `defense_dc`)
+2. Per-attribute primitives targets stay (engine math unchanged)
+3. `attrProficient` stays single-valued for now (multi-prof is future)
+4. Default selector behavior when multi-prof
