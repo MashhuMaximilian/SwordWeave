@@ -947,3 +947,62 @@ to confirm:
 2. Per-attribute primitives targets stay (engine math unchanged)
 3. `attrProficient` stays single-valued for now (multi-prof is future)
 4. Default selector behavior when multi-prof
+
+
+## 25. Round 23 — L6/Phase 8.M implementation (engine + UI + API)
+
+Per Mashu round 23: 'L6 architectural refactor (Phase 8.M)
+→ yes to only have one save dc and one attack bonus... We
+should also make another primitive for test character with
+proficiency in magical to see the selector in modal for
+attributes (save DC and attack bonus both scale with
+proficient attribute so we should choose in both of them).
+And primitives to replace the old ones that won't work bc
+we have a single save DC and single attack bonus.'
+
+### Phase 8.M.1 — Engine math (commit `52aa59e`)
+
+- ResolvedModifiers exposes SINGLE `attack_bonus` and
+  `save_dc` totals derived from `input.chosenAttribute`
+  (defaults to `input.proficientAttribute` or 'physical').
+- byTarget mirrors per-attr primitives to single targets.
+- ResolvedCharacterInput accepts `chosenAttribute` override.
+- Empty-totals test updated to expect `{attack_bonus:0,
+  save_dc:0}` instead of `{}`.
+
+### Phase 8.M.2 — UI modal formula (commit `52aa59e`)
+
+- bottom-sticky-bar.tsx: `primaryAttackBonus` reads from
+  `resolver.totals['attack_bonus']` (no attr suffix).
+- `primarySaveDelta` reads from `resolver.totals['save_dc']`.
+- Attack Bonus + Save DC modals: formula + breakdown use
+  SINGLE targets.
+
+### Phase 8.M.3 — Selector UI (commits `dba2332` + `3a54f2e`)
+
+- FormulaModal accepts new `selector` prop:
+  `<select>` dropdown below breakdown.
+- bottom-sticky-bar.tsx detects which attributes have
+  attack_bonus / defense_dc primitives.
+- State: `chosenAttackAttr` + `chosenSaveAttr` (default to
+  proficient).
+- Atk modal: uses `chosenAttackAttr` for per-attr data.
+- Save DC modal: uses `chosenSaveAttr` for per-attr data.
+- Selector renders only when `attrsWithPrimitives.length > 1`.
+- Resolve API accepts `?chosenAttribute=` query param.
+
+### Seed (commit `52aa59e`)
+
+- Added `Arcane Bolt` primitive (+3 to `attack_bonus.magical`).
+- Total primitives now: 49 (was 48).
+
+### After Vercel promotion
+
+- Click ATTACK BONUS in footer → modal opens.
+- If both physical + magical have primitives, dropdown shows
+  'Scales with attribute: PHYSICAL ▼' (default), MAGICAL.
+- Switching to MAGICAL re-computes total: PB + Magical mod +
+  Arcane Bolt's +3.
+- Same for SAVE DC modal.
+
+### Pending: L19 modal inheritance (still blocked on Vercel prod alias)

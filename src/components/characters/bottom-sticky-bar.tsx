@@ -548,11 +548,20 @@ export function BottomStickyBar({
   }
   const showAttackSelector = atkAttrsWithPrimitives.length > 1;
 
+  // Phase 8.M: Save DC primitives can target EITHER:
+  // - defense_dc.<attr> (legacy format, e.g. Defender primitive)
+  // - save_dc.<attr> (newer format, e.g. Defense Magic Buff)
+  // Both contribute to the single Save DC total. Check both.
   const saveAttrsWithPrimitives: Array<"physical" | "mental" | "magical"> = [];
   for (const a of ["physical", "mental", "magical"] as const) {
-    const delta = resolver?.totals[`defense_dc.${a}`] ?? 0;
-    const list = resolver?.byTarget[`defense_dc.${a}`] ?? [];
-    if (delta !== 0 || list.length > 0) {
+    const defenseDelta = resolver?.totals[`defense_dc.${a}`] ?? 0;
+    const defenseList = resolver?.byTarget[`defense_dc.${a}`] ?? [];
+    const saveDelta = resolver?.totals[`save_dc.${a}`] ?? 0;
+    const saveList = resolver?.byTarget[`save_dc.${a}`] ?? [];
+    if (
+      defenseDelta !== 0 || defenseList.length > 0 ||
+      saveDelta !== 0 || saveList.length > 0
+    ) {
       if (!saveAttrsWithPrimitives.includes(a)) saveAttrsWithPrimitives.push(a);
     }
   }
@@ -1156,7 +1165,10 @@ export function BottomStickyBar({
               dcAttr === "mental" ? "MENTAL" : "MAGICAL";
             const dcMod = dcAttr === "physical" ? physMod :
               dcAttr === "mental" ? mentMod : magiMod;
-            const dcPrimitiveBonus = resolver?.totals[`defense_dc.${dcAttr}`] ?? 0;
+            // Check both defense_dc and save_dc target formats
+            const dcPrimitiveBonus =
+              (resolver?.totals[`defense_dc.${dcAttr}`] ?? 0) +
+              (resolver?.totals[`save_dc.${dcAttr}`] ?? 0);
             const dcTotal = 5 + pb + dcMod + dcPrimitiveBonus;
             return (
           <FormulaModal
@@ -1172,6 +1184,7 @@ export function BottomStickyBar({
                 value: dcMod,
               },
               ...contributionsToSteps(`defense_dc.${dcAttr}`, resolver_),
+              ...contributionsToSteps(`save_dc.${dcAttr}`, resolver_),
             ]}
             selector={
               showSaveSelector

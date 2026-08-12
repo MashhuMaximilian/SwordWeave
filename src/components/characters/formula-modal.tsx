@@ -402,6 +402,29 @@ export function FormulaModal({
               </p>
             </section>
 
+            {/* Phase 8.M — Multi-attribute selector (for attack_bonus /
+                save_dc when primitives target multiple attributes).
+                Per Mashu 2026-08-12: must render BEFORE provenance
+                so the user picks the attribute first. */}
+            {selector && (
+              <section>
+                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {selector.label}
+                </label>
+                <select
+                  value={selector.value}
+                  onChange={(e) => selector.onChange(e.target.value)}
+                  className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  {selector.options.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </section>
+            )}
+
             {/* Section 2 — Provenance chain */}
             <section>
               <div className="mb-2 flex items-baseline justify-between gap-2">
@@ -431,27 +454,6 @@ export function FormulaModal({
             {/* Section 3b — Conditions summary: which contributions are
                 gated and whether their condition is currently active. */}
             {renderConditionsSection(breakdown, setRawTokensOpen)}
-
-            {/* Phase 8.M — Multi-attribute selector (for attack_bonus /
-                save_dc when primitives target multiple attributes) */}
-            {selector && (
-              <section>
-                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {selector.label}
-                </label>
-                <select
-                  value={selector.value}
-                  onChange={(e) => selector.onChange(e.target.value)}
-                  className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  {selector.options.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </section>
-            )}
 
             {/* Section 3 — Optional info panel */}
             {info && (
