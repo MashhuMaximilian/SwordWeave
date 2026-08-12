@@ -646,3 +646,30 @@ Will render as: 'LINEAGE › Stone's Endurance › Heart of Stone'
 
 For capability tab PrimitivePreviewCard on Awareness Floor 11:
 `via Lineage › Stone's Endurance › Heart of Stone`
+
+
+## 17. Round 15 — Layout rules per accordion type
+
+Per user feedback (round 15 screenshots):
+
+### Layout rules
+| Section | Per row | Tailwind |
+|---|---|---|
+| Primitives | 4 | `sm:2 lg:3 xl:4` |
+| Heritages | 2 | `sm:2 xl:2` |
+| Direct capabilities | 3 | `sm:2 lg:3 xl:3` |
+| Effects | 1 | unchanged |
+
+### Removed duplicate chain text
+Primitive preview card was showing `1 BU · via Lineage > ...`
+but the BU was already in the right corner of the card.
+Removed the redundant prefix from the breadcrumb. Now:
+`via Lineage › Stone's Endurance › Heart of Stone` (clean).
+
+### Commits shipped
+- `9f503ba` — Layout rules + remove redundant BU text
+
+### Modal "via Direct" issue
+The data is correct (`accordion: 'MANIFEST'` for Advantage on Communion).
+Deployed code reads `c.provenance.accordion` correctly.
+After hard refresh + Vercel cache settle, modals should show full chain.
