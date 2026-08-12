@@ -2490,6 +2490,7 @@ function HeritageKindAccordion({
             No {label.toLowerCase()} heritages slotted yet. Click the button on any heritage in /atelier and choose "Slot into {label}" to add one.
           </p>
         ) : null}
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
         {heritageLinks.map((hl) => {
           const canonCaps = hl.heritage.capabilityLinks ?? [];
           const canonPrims = hl.heritage.primitiveLinks ?? [];
@@ -2545,6 +2546,7 @@ function HeritageKindAccordion({
             />
           );
         })}
+        </div>
         {/* Phase 8.4 v24 (Mashu 2026-07-29): T4 — direct-cap
             card lives at the BOTTOM of the per-kind
             accordion. For MANIFEST only — direct
@@ -2632,7 +2634,7 @@ function DirectCapabilitiesCard({
       <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
         Direct capabilities ({capabilities.length})
       </div>
-      <div className="mt-2 space-y-2">
+      <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
         {capabilities.map((c) => (
           <CapabilityCard
             key={c.id}

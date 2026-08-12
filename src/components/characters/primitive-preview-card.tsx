@@ -273,13 +273,6 @@ export function PrimitivePreviewCard({
         ) : isInherited ? (
           <>
             <span className="font-mono">{p.buCost} BU</span>
-            {" · via "}
-            <span>
-              {(() => {
-                const raw = provenancePath ?? (inheritedFrom + (inheritedKind ? " (" + inheritedKind.toLowerCase() + ")" : ""));
-                return raw.replace(/^via /, "");
-              })()}
-            </span>
           </>
         ) : (
           <>
