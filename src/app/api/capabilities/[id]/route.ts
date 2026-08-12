@@ -84,7 +84,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-
+  try {
   const row = await db.query.capabilities.findFirst({
     where: eq(capabilities.id, id),
     with: {
@@ -208,6 +208,13 @@ export async function GET(
   }).transitiveBu;
 
   return NextResponse.json({ capability: { ...row, computedBu } });
+  } catch (err) {
+    console.error("[GET capabilities] failed:", err);
+    return NextResponse.json(
+      { error: "Failed to load capability", detail: err instanceof Error ? err.message : String(err) },
+      { status: 500 }
+    );
+  }
 }
 
 /**

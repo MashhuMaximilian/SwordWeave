@@ -2242,36 +2242,32 @@ function CapabilitiesTab({
           character has slotted. Per the S6 spec: "Aura
           Detective should be under Manifest (its heritage
           kind), not floating in Capabilities section." */}
-      {heritageLinks.filter((hl) => hl.heritage.kind === "MANIFEST").length > 0 && (
-        <HeritageKindAccordion
-          characterId={characterId}
-          kind="MANIFEST"
-          label="Manifest"
-          icon={<Sparkles className="size-4 text-muted-foreground" />}
-          heritageLinks={heritageLinks.filter(
-            (hl) => hl.heritage.kind === "MANIFEST",
-          )}
-          capabilities={capabilities}
-          primitiveLinks={primitiveLinks}
-          latestVersions={latestVersions}
-        />
-      )}
+      <HeritageKindAccordion
+        characterId={characterId}
+        kind="MANIFEST"
+        label="Manifest"
+        icon={<Sparkles className="size-4 text-muted-foreground" />}
+        heritageLinks={heritageLinks.filter(
+          (hl) => hl.heritage.kind === "MANIFEST",
+        )}
+        capabilities={capabilities}
+        primitiveLinks={primitiveLinks}
+        latestVersions={latestVersions}
+      />
 
       {/* ===== Accordion 3: Lineage (heritage kind = LINEAGE) ===== */}
-      {heritageLinks.filter((hl) => hl.heritage.kind === "LINEAGE").length > 0 && (
-        <HeritageKindAccordion
-          characterId={characterId}
-          kind="LINEAGE"
-          label="Lineage"
-          icon={<Flame className="size-4 text-muted-foreground" />}
-          heritageLinks={heritageLinks.filter(
-            (hl) => hl.heritage.kind === "LINEAGE",
-          )}
-          capabilities={capabilities}
-          primitiveLinks={primitiveLinks}
-          latestVersions={latestVersions}
-        />
-      )}
+      <HeritageKindAccordion
+        characterId={characterId}
+        kind="LINEAGE"
+        label="Lineage"
+        icon={<Flame className="size-4 text-muted-foreground" />}
+        heritageLinks={heritageLinks.filter(
+          (hl) => hl.heritage.kind === "LINEAGE",
+        )}
+        capabilities={capabilities}
+        primitiveLinks={primitiveLinks}
+        latestVersions={latestVersions}
+      />
 
       {/* ===== Phase 8.K K1 fallback: 0-heritage characters =====
           HeritageKindAccordion only renders when at least one heritage
@@ -2321,20 +2317,18 @@ function CapabilitiesTab({
       )}
 
       {/* ===== Accordion 4: Upbringing (heritage kind = UPBRINGING) ===== */}
-      {heritageLinks.filter((hl) => hl.heritage.kind === "UPBRINGING").length > 0 && (
-        <HeritageKindAccordion
-          characterId={characterId}
-          kind="UPBRINGING"
-          label="Upbringing"
-          icon={<BookOpen className="size-4 text-muted-foreground" />}
-          heritageLinks={heritageLinks.filter(
-            (hl) => hl.heritage.kind === "UPBRINGING",
-          )}
-          capabilities={capabilities}
-          primitiveLinks={primitiveLinks}
-          latestVersions={latestVersions}
-        />
-      )}
+      <HeritageKindAccordion
+        characterId={characterId}
+        kind="UPBRINGING"
+        label="Upbringing"
+        icon={<BookOpen className="size-4 text-muted-foreground" />}
+        heritageLinks={heritageLinks.filter(
+          (hl) => hl.heritage.kind === "UPBRINGING",
+        )}
+        capabilities={capabilities}
+        primitiveLinks={primitiveLinks}
+        latestVersions={latestVersions}
+      />
     </div>
   );
 }
@@ -2474,6 +2468,11 @@ function HeritageKindAccordion({
         <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
       </summary>
       <div className="px-4 pb-4 pt-3 space-y-4 border-t border-border">
+        {heritageLinks.length === 0 ? (
+          <p className="text-sm text-muted-foreground italic">
+            No {label.toLowerCase()} heritages slotted yet. Click the button on any heritage in /atelier and choose "Slot into {label}" to add one.
+          </p>
+        ) : null}
         {heritageLinks.map((hl) => {
           const canonCaps = hl.heritage.capabilityLinks ?? [];
           const canonPrims = hl.heritage.primitiveLinks ?? [];
