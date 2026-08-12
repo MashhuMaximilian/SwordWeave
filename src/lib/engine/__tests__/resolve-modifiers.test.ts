@@ -80,8 +80,12 @@ const ADD_TO_SAVE_PHYS: HardModifier = {
 describe("resolveModifiers", () => {
   it("returns empty totals + empty byTarget when no slots are slotted", () => {
     const r = resolveModifiers(BASE_INPUT);
-    expect(r.totals).toEqual({});
-    expect(r.byTarget).toEqual({});
+    // Phase 8.M: engine now exposes SINGLE attack_bonus / save_dc
+    // targets derived from proficientAttribute (or physical fallback).
+    // These start at 0 when no primitives are slotted.
+    expect(r.totals).toEqual({ attack_bonus: 0, save_dc: 0 });
+    expect(r.byTarget.attack_bonus).toEqual([]);
+    expect(r.byTarget.save_dc).toEqual([]);
     expect(r.mirrorCosts).toEqual([]);
   });
 

@@ -502,22 +502,21 @@ export function BottomStickyBar({
     primaryAttr === "physical" ? "PHYSICAL" : primaryAttr === "mental" ? "MENTAL" : "MAGICAL";
   const primaryMod =
     primaryAttr === "physical" ? physMod : primaryAttr === "mental" ? mentMod : magiMod;
-  const primarySaveDelta = resolver?.totals[`defense_dc.${primaryAttr}`] ?? 0;
+  // Phase 8.M (Mashu 2026-08-12): engine now exposes SINGLE
+  // attack_bonus / save_dc targets derived from the chosen
+  // attribute (defaults to proficientAttribute). When the
+  // character has multi-attribute proficiency, the modal
+  // renders a selector to change `chosenAttribute`.
+  const primarySaveDelta = resolver?.totals["save_dc"] ?? 0;
   const primaryDc = 5 + pb + primaryMod + primarySaveDelta;
 
-  // Phase 8.5 / Session H6 (Mashu 2026-08-03): Attack Bonus card
-  // mirrors the Save DC card. Attack bonus scales with the character's
-  // PROFICIENT attribute, not always PHYSICAL — a MENTAL-proficient
-  // character (e.g. wizard casting cantrips) should see their
-  // Mental mod in the attack formula, not Physical.
-  // Formula: Attack Bonus = PB + PrimaryAttribute mod + primitive bonuses
-  // keyed by attack_bonus.<attr> in the resolver.
-  const atkFloor = findFloor(resolver?.byTarget ?? {}, `attack_bonus.${primaryAttr}`);
-  const atkCeiling = findCeiling(resolver?.byTarget ?? {}, `attack_bonus.${primaryAttr}`);
+  // Attack Bonus = PB + PrimaryAttribute mod + primitive bonuses
+  // The single attack_bonus target already includes the primitive
+  // contributions for the chosen attribute.
+  const atkFloor = findFloor(resolver?.byTarget ?? {}, "attack_bonus");
+  const atkCeiling = findCeiling(resolver?.byTarget ?? {}, "attack_bonus");
   const primaryAttackBonus =
-    pb +
-    primaryMod +
-    (resolver?.totals[`attack_bonus.${primaryAttr}`] ?? 0);
+    pb + primaryMod + (resolver?.totals["attack_bonus"] ?? 0);
 
   const PRACTICE_ATTR_LABEL: Record<"PHYSICAL" | "MENTAL" | "MAGICAL", string> = {
     PHYSICAL: "Physical",
@@ -598,7 +597,9 @@ export function BottomStickyBar({
     : comboAttr === "mental"
       ? "save_dc.mental"
       : "save_dc.magical";
-  const dcTarget = `defense_dc.${primaryAttr}`;
+  // Phase 8.M: SINGLE save_dc target (no attr suffix). Engine
+  // routes primitives for the chosen attribute to this target.
+  const dcTarget = "save_dc";
   const practiceTarget = `skill_practice_check`;
   const vitalityTarget = "max_vitality";
 
@@ -1189,14 +1190,14 @@ export function BottomStickyBar({
             title="Attack Bonus"
             subtitle={`${primaryAttrLabel} — to-hit roll`}
             total={primaryAttackBonus}
-            formula={`Attack Bonus = PB + ${primaryAttrLabel} modifier + attack_bonus.${primaryAttr} primitives`}
+            formula={`Attack Bonus = PB + ${primaryAttrLabel} modifier + attack_bonus primitives`}
             breakdown={[
               { label: "Proficiency Bonus", value: pb },
               { label: `${primaryAttrLabel} modifier`, value: primaryMod },
-              ...contributionsToSteps(`attack_bonus.${primaryAttr}`, resolver_, [
+              ...contributionsToSteps("attack_bonus", resolver_, [
                 {
-                  label: `Primitive bonuses (attack_bonus.${primaryAttr})`,
-                  value: resolver?.totals[`attack_bonus.${primaryAttr}`] ?? 0,
+                  label: `Primitive bonuses (attack_bonus)`,
+                  value: resolver?.totals["attack_bonus"] ?? 0,
                 },
               ]),
               ...(atkFloor !== null && primaryAttackBonus < atkFloor
@@ -1215,7 +1216,7 @@ export function BottomStickyBar({
                     different attribute for specific attacks. The
                     primitive total{" "}
                     <span className="font-mono text-foreground">
-                      {`attack_bonus.${primaryAttr}`}
+                      `attack_bonus`
                     </span>{" "}
                     is read from the resolver when present.
                   </p>

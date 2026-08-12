@@ -111,6 +111,11 @@ export interface ResolvedCharacterInput {
   readonly level: number;
   readonly pb: number;
   readonly proficientAttribute: "physical" | "mental" | "magical" | null;
+  /** Phase 8.M (Mashu 2026-08-12): when set, the SINGLE attack_bonus
+   *  and save_dc are computed from this attribute instead of
+   *  proficientAttribute. Used by the modal selector when a
+   *  character has multi-attribute proficiency. */
+  readonly chosenAttribute?: "physical" | "mental" | "magical";
   readonly attributes: {
     readonly physical: number;
     readonly mental: number;
@@ -184,6 +189,10 @@ export interface ModifierContribution {
 }
 
 export interface ResolvedModifiers {
+  /** Phase 8.M (Mashu 2026-08-12): which attribute the SINGLE
+   *  attack_bonus / save_dc totals were computed from. UI uses
+   *  this for the selector default. */
+  chosenAttribute?: "physical" | "mental" | "magical";
   /** Final total per target. Keys are ModifierTarget strings
    *  (e.g. "character.attribute.physical"). Missing keys = no
    *  modifier touched that target. */
@@ -648,11 +657,38 @@ const eq = resolveEquation(operandsRaw as never, ctx);
     totals[target] = total;
   }
 
+  // Phase 8.M (Mashu 2026-08-12): expose a SINGLE attack_bonus
+  // and save_dc target derived from the chosen attribute (defaults
+  // to proficientAttribute; can be overridden by chosenAttribute).
+  // Per-attr primitives targeting attack_bonus.<attr> or
+  // defense_dc.<attr> contribute to the chosen attribute's
+  // single target. UI renders one number with optional selector.
+  const chosenAttr =
+    input.chosenAttribute ?? input.proficientAttribute ?? ("physical" as const);
+
+  // Mirror the scoped per-attr primitives into the SINGLE targets.
+  // We DON'T re-attribute the contributions — we just point the
+  // single-target byTarget list at the per-attr contributions.
+  if (!byTarget["attack_bonus"]) {
+    byTarget["attack_bonus"] = byTarget[`attack_bonus.${chosenAttr}`] ?? [];
+  }
+  if (!byTarget["save_dc"]) {
+    byTarget["save_dc"] = byTarget[`defense_dc.${chosenAttr}`] ?? [];
+  }
+
+  // Compute the SINGLE totals using the chosen attribute's
+  // contribution delta.
+  const atkBase = totals[`attack_bonus.${chosenAttr}`] ?? 0;
+  const saveBase = totals[`defense_dc.${chosenAttr}`] ?? 0;
+  totals["attack_bonus"] = atkBase;
+  totals["save_dc"] = saveBase;
+
   return {
     totals,
     byTarget,
     mirrorCosts,
     computedAt: new Date().toISOString(),
+    chosenAttribute: chosenAttr,
   };
 }
 

@@ -419,6 +419,21 @@ const PRIMITIVES: PrimitiveSpec[] = [
     source: "PERSONAL",
   },
   {
+    // Phase 8.M (Mashu 2026-08-12): magical-attack primitive
+    // so the attack_bonus selector has something to choose
+    // between (physical vs magical).
+    name: "Arcane Bolt",
+    category: "CHARACTER_SHEET_AUGMENT",
+    buCost: 1,
+    isMirrorable: true,
+    mirrorBuCredit: 1,
+    hardModifiers: [
+      { target: "attack_bonus.magical", operation: "add", value: 3 },
+    ],
+    description: "+3 to magical attack roll when casting cantrips.",
+    source: "PERSONAL",
+  },
+  {
     name: "Stone Skin",
     category: "CHARACTER_SHEET_AUGMENT",
     buCost: 1,
