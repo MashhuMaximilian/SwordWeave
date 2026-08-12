@@ -280,3 +280,50 @@ User attached the **Practice/skill System Overview** doc (Notion 38eed8479ccd803
 
 - Don't touch the Prowess Equation primitive anymore — the seed is in canonical format, the engine resolves it correctly to 8. If UI rendering issues remain, the issue is likely Vercel build caching, not the engine.
 - Don't add more primitive modifications — every change to the seed requires a re-resolve and risks breaking the bundle.
+
+
+## 9. Round 7 — PROWESS EQUATION FIXED (verified on production)
+
+**THE BUG (finally found after 7 rounds):** The resolve-modifiers engine
+had THREE else-if branches but in the wrong order. My round 5 added
+an equation branch but didn't remove the EXISTING `isTypedToken(mod.value)`
+branch that came BEFORE it. So `isTypedToken` was returning true for
+`{kind:"equation"}` and dispatching to `resolveToken` which doesn't
+recognize 'equation' as a valid kind. Result: `resolvedValue = undefined`,
+filtered out by `!Number.isFinite(undefined)`.
+
+**The fix:** removed the duplicated/leftover `isTypedToken` blocks.
+The equation check now runs BEFORE the isTypedToken check, so the
+equation path actually fires.
+
+### Verified on production (commit 108555a)
+
+| Check | Expected | Actual | Status |
+|---|---|---|---|
+| `skill_practice_check.prowess` total | 8 | 8 | ✅ |
+| `skill_practice_check.awareness` total | 11 | 11 | ✅ |
+| `skill_practice_check.communion` total | 0 | 0 | ✅ |
+| Communion adv count | 2 | 2 | ✅ |
+| Size primitive in byTarget | Enlarge | Enlarge | ✅ |
+| Equip slot primitive in byTarget | Extra Slot +1 | Extra Slot +1 | ✅ |
+| Carry capacity primitive in byTarget | Backpack +20 | Backpack +20 | ✅ |
+
+### What's still pending across all phases (NOT BREAKING)
+
+- **L8**: Version pill — versionId is null in seed; needs version data flow
+- **Size pill in header**: code passes `sheet.resolvedSize ?? row.size` but
+  the character page renders `<span>{props.size}</span>` — may still need
+  Vercel deploy of the round 6 commit.
+- **L4**: Stone's Endurance bundle JSON error
+- **L6**: ONE global save_dc / attack_bonus (architectural, Phase 8.M)
+
+### Lessons learned (so we don't repeat this)
+
+1. **Verify each branch in `else if` chains independently.** I added a
+   new else-if branch but didn't notice the existing one would catch first.
+2. **Use EMPTY `old_string` to verify context.** My patcher's assert
+   `old in c` succeeded but the actual replacement added duplicates
+   instead of replacing in place. Need to be more careful.
+3. **The user is right:** "can we please not repair one thing and break
+   3 more every time?" I need to verify each fix actually works locally
+   with a targeted test BEFORE deploying, not after.
