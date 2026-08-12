@@ -28,6 +28,7 @@ import {
   primitives,
   capabilities,
   effects,
+  heritage,
 } from "@/db/schema";
 import {
   type ModifierContribution,
@@ -195,13 +196,30 @@ export async function GET(
     for (const r of effRows) effNameMap.set(r.id, r.name);
   }
 
-  // Build the sourceNames map
+  // Phase 8.L: batch-lookup heritage names so the sourceNames
+  // map includes the heritage chain (was previously null, which
+  // made inherited primitives display "Direct").
+  const heritageIds = new Set<string>();
+  for (const slot of slots) {
+    if (slot.originHeritageId) heritageIds.add(slot.originHeritageId);
+  }
+  const heritageNameMap = new Map<string, string>();
+  if (heritageIds.size > 0) {
+    const hRows = await db
+      .select({ id: heritage.id, name: heritage.name })
+      .from(heritage)
+      .where(inArray(heritage.id, [...heritageIds]));
+    for (const r of hRows) heritageNameMap.set(r.id, r.name);
+  }
+
+  // Build the sourceNames map.
   for (const slot of slots) {
     if (slot.originHeritageId || slot.originCapabilityId || slot.originEffectId) {
+      const heritageName = slot.originHeritageId ? (heritageNameMap.get(slot.originHeritageId) ?? null) : null;
       const capabilityName = slot.originCapabilityId ? (capNameMap.get(slot.originCapabilityId) ?? null) : null;
       const effectName = slot.originEffectId ? (effNameMap.get(slot.originEffectId) ?? null) : null;
       sourceNames.set(slot.primitiveId, {
-        heritageName: null, // heritage name lookup requires another query — skip for now
+        heritageName,
         capabilityName,
         effectName,
       });

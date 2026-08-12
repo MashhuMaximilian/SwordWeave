@@ -497,11 +497,23 @@ export function CapabilityCard({
         )}
         onClick={handleCardClick}
       >
+        {/* Phase 8.L (Mashu): compact card layout. The TYPE
+            label + Pinned/version chip live in the top-right
+            column. The active/inactive state lives in the
+            bottom-left near the buttons. Source/Acquired
+            metadata stays on the left under the title. */}
         <div className="flex items-start justify-between gap-2">
           <button type="button" onClick={(e) => { e.stopPropagation(); void openCapabilityPreview(); }} className="text-left font-semibold hover:underline focus:outline-none focus:ring-2 focus:ring-primary rounded-sm">{capability.name}</button>
-          <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
-            {capability.type}
-          </span>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
+              {capability.type}
+            </span>
+            <SlotSourceBadge
+              slotSource={capability.slotSource}
+              versionId={capability.versionId}
+              latestVersionId={capability.latestVersionId}
+            />
+          </div>
         </div>
         <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
           <span>{capability.sourceType}</span>
@@ -509,17 +521,11 @@ export function CapabilityCard({
           <span>Acquired L{capability.acquiredAtLevel}</span>
         </div>
 
-        {/* Slot metadata: badge for source + optional origin chain. */}
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <SlotSourceBadge
-            slotSource={capability.slotSource}
-            versionId={capability.versionId}
-            latestVersionId={capability.latestVersionId}
-          />
-          {capability.originChain && capability.originChain.length > 0 ? (
+        {capability.originChain && capability.originChain.length > 0 ? (
+          <div className="mt-1">
             <OriginBadge chain={capability.originChain} />
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
         {capability.verboseDescription && (
           <p className="mt-2 text-xs leading-relaxed text-muted-foreground line-clamp-3">
@@ -534,13 +540,15 @@ export function CapabilityCard({
             properly like in the character creation/edit
             modal." */}
         {capability.effectLinks && capability.effectLinks.length > 0 && (
-          // Phase 8.L: open by default so nested effects are visible
-          // immediately — matches the character-creation modal.
-          <details open className="mt-2 rounded border border-border bg-muted/30 px-2 py-1 text-xs">
-            <summary className="cursor-pointer list-none font-semibold uppercase tracking-wide text-muted-foreground">
+          // Phase 8.L: nested effects ALWAYS visible (was <details open>
+          // but some browsers had rendering issues). Per user spec —
+          // "we do not display all primitives all capabilities all effects
+          // properly" — effects must be IMMEDIATELY visible on the card.
+          <div className="mt-2 rounded border border-border bg-muted/30 px-2 py-1 text-xs">
+            <div className="mb-1 font-semibold uppercase tracking-wide text-muted-foreground">
               Effects ({capability.effectLinks.length})
-            </summary>
-            <ul className="mt-1 space-y-1">
+            </div>
+            <ul className="space-y-1">
               {capability.effectLinks.map((el) => (
                 <li
                   key={el.effectId}
@@ -567,7 +575,7 @@ export function CapabilityCard({
                 </li>
               ))}
             </ul>
-          </details>
+          </div>
         )}
 
         {/* Phase 8.4 v9 (Mashu 2026-07-28): bundled primitives
@@ -581,11 +589,12 @@ export function CapabilityCard({
             the character creation modal, but more useful for
             actual play)." */}
         {showPrimitives && ((bundledPrims && bundledPrims.length > 0) || bundleLoading) ? (
-          <details open className="mt-2 rounded border border-border bg-muted/30 px-2 py-1 text-xs">
-            <summary className="cursor-pointer list-none font-semibold uppercase tracking-wide text-muted-foreground">
+          // Phase 8.L: always-visible (no details/summary).
+          <div className="mt-2 rounded border border-border bg-muted/30 px-2 py-1 text-xs">
+            <div className="mb-1 font-semibold uppercase tracking-wide text-muted-foreground">
               Primitives ({bundledPrims?.length ?? 0})
-            </summary>
-            <ul className="mt-1 space-y-0.5">
+            </div>
+            <ul className="space-y-0.5">
               {bundledPrims?.map((pl) => (
                 <li
                   key={pl.primitiveId}
@@ -612,7 +621,7 @@ export function CapabilityCard({
                 <li className="text-muted-foreground italic">Loading…</li>
               )}
             </ul>
-          </details>
+          </div>
         ) : null}
 
         {/* Action row */}

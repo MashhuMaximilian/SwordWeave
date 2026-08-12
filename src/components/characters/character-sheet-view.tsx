@@ -2040,30 +2040,30 @@ function CapabilitiesTab({
       kind: string;
     } = "DIRECT";
     let provenancePath: string | null = null;
+    // Phase 8.L: build the FULL inheritance chain so the
+    // primitive card shows "via Heart of Stone (effect) ›
+    // Stone's Endurance (capability) › <heritageName>".
+    const chain: string[] = [];
+    if (originEffectId) {
+      const e = effectById.get(originEffectId);
+      if (e) chain.push(e.name);
+    }
+    if (originCapabilityId) {
+      const c = capabilityById.get(originCapabilityId);
+      if (c) chain.push(c.name);
+    }
     if (originHeritageId) {
       const h = heritageById.get(originHeritageId);
       if (h) {
+        chain.push(h.name);
         origin = {
           heritageId: originHeritageId,
           heritageName: h.name,
           kind: h.kind,
         };
-        provenancePath = h.name;
-      }
-    } else if (originCapabilityId) {
-      const c = capabilityById.get(originCapabilityId);
-      if (c) {
-        // No heritage: cap is on the manifest directly.
-        // Build a synthetic DIRECT-style entry tagged to
-        // the cap so the UI can show "via Cap Name".
-        provenancePath = `via ${c.name}`;
-      }
-    } else if (originEffectId) {
-      const e = effectById.get(originEffectId);
-      if (e) {
-        provenancePath = `via effect ${e.name}`;
       }
     }
+    if (chain.length > 0) provenancePath = chain.join(" › ");
     allPrimitives.push({
       primitiveId: l.primitiveId,
       primitive: l.primitive,
