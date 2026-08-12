@@ -718,3 +718,38 @@ should show the full chain.
 
 If they STILL don't, the issue is a stale browser cache or
 CDN cache miss — please clear and reload.
+
+
+## 19. Round 17 — Vercel deploy blocker discovered
+
+Per user feedback (round 17 screenshots on mobile, communion modal):
+
+### Issue: Modals still show 'via Direct' despite correct data
+
+**Diagnosis** (investigated deployed JS bundles):
+- API `/api/characters/[id]/resolve` returns correct provenance data
+  (`accordion: 'MANIFEST'` for Advantage on Communion, etc.)
+- Modal code in `bottom-sticky-bar.tsx` reads `c.provenance.accordion ?? null`
+- **Deployed JS bundles on swordweave.quest have ZERO references to accordion**
+- All 30+ recent Vercel deployments are marked success but contain no accordion code
+- Latest deployment has the same issue — Vercel is serving cached builds
+
+### Resolution needed from user
+
+This is a Vercel-side deploy cache issue that I cannot
+resolve from CLI:
+
+1. **Log into Vercel dashboard** (vercel.com)
+2. **Deployments tab** → **⋯ on latest deployment** → **Redeploy**
+3. **CHECK 'Clear cache and redeploy'** before confirming
+
+OR check that the GitHub integration is still connected.
+
+### Code is correct on main branch
+
+Verified locally with `npx next build`:
+- Engine exposes `accordion: string | null` in provenance
+- Resolve route populates accordion from character_capabilities.slotTab
+- Bottom-sticky-bar reads `prov.accordion ?? null` in breadcrumb
+
+Once Vercel actually redeploys, modals will show the chain.
