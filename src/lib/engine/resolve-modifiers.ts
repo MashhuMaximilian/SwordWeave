@@ -372,6 +372,9 @@ export function resolveModifiers(
       } else if (
         // Phase 8.L: equation stored as {kind:"equation", operands:[...], tag:"fire"}
         // in mod.value directly. The UI form uses this canonical shape.
+        // MUST come BEFORE isTypedToken check because isTypedToken
+        // returns true for any object with a string kind field
+        // (it doesn't filter to known ValueToken kinds).
         mod.value && typeof mod.value === "object" &&
         (mod.value as { kind?: string }).kind === "equation"
       ) {
@@ -384,6 +387,8 @@ export function resolveModifiers(
         } else {
           resolvedValue = effectiveValue;
         }
+      } else if (isTypedToken(mod.value)) {
+        resolvedValue = resolveValue(mod.value, ctx);
       } else {
         resolvedValue = effectiveValue;
       }
@@ -781,6 +786,7 @@ export function parityCheck(input: ResolvedCharacterInput): {
   // Flatten to a HardModifier[] the engine understands.
   const flat: HardModifier[] = [];
   for (const slot of input.slots) {
+    console.log("[DBG_LOOP] slot:", slot.name, "mods:", slot.hardModifiers.length);
     for (const mod of slot.hardModifiers) {
       if (slot.isMirrored && slot.isMirrorable) {
         // Apply mirror to the value (and op if needed).
