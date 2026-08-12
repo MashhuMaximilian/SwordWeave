@@ -383,3 +383,50 @@ equation path actually fires.
 - **L8**: version pill (deferred)
 - **L4**: Stone's Endurance bundle JSON (deferred)
 - **L6**: architectural refactor (Phase 8.M)
+
+
+## 11. Round 9 — Full practice descriptions + clickable capability names
+
+Per user feedback (round 9 screenshots):
+
+1. **Practice modal: full long-form description.** Was rendering
+   only short `useWhen` strings from PRACTICE_DESCRIPTIONS. Now:
+   - core question (bold) + italic description paragraph
+   - May include collapsible bullet list
+   - Examples collapsible bullet list (italic)
+   - Boundary callout (knowledge vs reason / communion vs knowledge)
+2. **Capability NAME is now a button.** Click anywhere on the
+   capability NAME (e.g. "Hunter's Mark", "Divine Smite") to open
+   the preview modal. Card body still has the same handler as
+   backup. Both routes call `openCapabilityPreview()` which uses
+   `useEntityPreview()` hook from `preview-modal.tsx`.
+3. **Removed standalone Preview button** (already in round 8) per
+   user spec — "we just click on the name of it and the preview
+   modal opens."
+4. **PRACTICE_DESCRIPTIONS schema extended** — added `description`
+   (full long-form text from system overview doc), `mayInclude`
+   (array of bullets), `versus` (boundary callout for adjacent
+   practices).
+
+### Commits shipped
+
+| Commit | Item |
+|---|---|
+| `d9567c7` | full practice descriptions + clickable capability names |
+
+### Still pending (your call)
+
+- **Capability nested effects:** the `<details open>` block IS in
+  the deployed code. If you're not seeing effects nested in
+  capability cards on live, you may need to hard-refresh (Cmd-Shift-R)
+  to bust the browser cache, since Vercel CDN can serve a stale
+  preview while the deployment boundary is still settling.
+- **Awareness Floor 11 "via Direct":** the engine RESOLVES the right
+  provenance (`Stone's Endurance > Heart of Stone`). If the modal
+  still says "via Direct" after a reload + cache bust, the deploy
+  hasn't picked up the latest `bottom-sticky-bar.tsx`. Trigger a
+  rebuild if needed.
+- **Capability click → preview modal:** now wired twice — name
+  button AND card body. Should fire every time.
+- **L8 / L4 / L6:** all deferred per your earlier "after these small
+  fixes" instruction.
