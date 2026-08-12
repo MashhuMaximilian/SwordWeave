@@ -999,31 +999,23 @@ async function main() {
       );
       lineageHer = { rows: inserted.rows };
     }
-    const lineageHerId = lineageHer.rows[0].id;
-    heritageBySlotTab.set("LINEAGE", lineageHerId);
-
-    // Link Stone's Endurance capability to this heritage
-    const stoneEndId = await pool.query(
-      `SELECT id FROM capabilities WHERE name = $1 AND source_origin = $2`,
-      ["Stone's Endurance", sourceOrigin],
-    );
-    if (stoneEndId.rows[0]) {
-      await pool.query(
-        `INSERT INTO heritage_capabilities (heritage_id, capability_id, sort_order)
-         VALUES ($1, $2, 0)
-         ON CONFLICT DO NOTHING`,
-        [lineageHerId, stoneEndId.rows[0].id],
-      );
-    }
-
-    // Link the heritage to the character
-    await pool.query(
-      `INSERT INTO character_heritages (character_id, heritage_id, acquired_at_level)
-       VALUES ($1::uuid, $2, 18)
-       ON CONFLICT (character_id, heritage_id) DO NOTHING`,
-      [characterId, lineageHerId],
-    );
-    console.log(`  ✓ Heritage: Stone Goliath (lineage bundle)`);
+    // NOTE: Per Mashu round 12 — Stone's Endurance is a DIRECT
+    // LINEAGE capability, NOT a capability nested within Stone
+    // Goliath. The heritage row is still created (so the bundle
+    // exists in the data model) but it owns NO capabilities.
+    // Stone's Endurance's primitives get origin_heritage_id = NULL
+    // via the slotTab=LINEAGE → heritageBySlotTab lookup returning
+    // null for that path. Awareness Floor 11's chain becomes:
+    // Lineage (accordion) > Stone's Endurance (capability) > Heart
+    // of Stone (effect).
+    heritageBySlotTab.set("LINEAGE", null);
+    // DO NOT insert into heritage_capabilities — Stone's Endurance
+    // is a direct LINEAGE-tab capability, not a child of Stone
+    // Goliath.
+    // DO NOT insert into character_heritages — same reason. The
+    // heritage row exists only as a placeholder that ships an
+    // empty bundle to /atelier (for testing the UI).
+    console.log(`  ✓ Heritage row created (Stone Goliath — empty bundle, no caps slotted)`);
   }
 
   // 4. Create capabilities with effect nesting
@@ -1108,11 +1100,15 @@ async function main() {
     // Effect primitives via capability_effects → effect_primitives → origin_effect_id + origin_capability_id
 
     // a) Direct capability_primitives → expand into character_primitives
-    // Phase 8.L: include origin_heritage_id when the capability
-    // comes through a heritage bundle (slotTab LINEAGE or UPBRINGING).
-    // Powers the full inheritance chain in the provenance breadcrumb
-    // (Heart of Stone > Stone's Endurance > <heritage>).
-    const heritageId = heritageBySlotTab.get(cap.slotTab ?? "MANIFEST") ?? null;
+    // Phase 8.L round 12 (Mashu): Stone's Endurance is a DIRECT
+    // capability in the LINEAGE accordion — NOT nested within any
+    // heritage. So for slotTab=LINEAGE caps, set origin_heritage_id
+    // to null. The accordion name is surfaced separately (as the
+    // outer frame) when the user inspects the lineage tab.
+    const heritageId =
+      cap.slotTab === "LINEAGE" || cap.slotTab === "UPBRINGING" || cap.slotTab === "MANIFEST"
+        ? null
+        : (heritageBySlotTab.get(cap.slotTab ?? "MANIFEST") ?? null);
     for (const primName of cap.directPrimNames) {
       await pool.query(
         `DELETE FROM character_primitives
