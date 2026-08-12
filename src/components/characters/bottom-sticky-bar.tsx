@@ -1678,7 +1678,7 @@ function ModSaveProvenanceModal({
       aria-label={`Formula for ${attr.toUpperCase()} mod + save`}
     >
       <div
-        className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -2048,11 +2048,11 @@ function PracticeDetailModal({
       aria-label={`Formula for ${practice.name}`}
     >
       <div
-        className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <div>
+        <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-4 py-3 shrink-0">
+          <div className="min-w-0">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Formula
             </h2>
@@ -2060,14 +2060,34 @@ function PracticeDetailModal({
             <p className="mt-0.5 text-xs text-muted-foreground">
               {practice.attribute.toUpperCase()} practice
             </p>
-            {/* Phase 8.L: practice info (full description + core question + examples).
-                Sourced from the Practice/skill System Overview doc. */}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-1 transition-colors hover:bg-muted shrink-0"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+          {/* Phase 8.L round 16: practice description lives
+              INSIDE the scroll area (was in the sticky header
+              and forced the modal to overflow on mobile).
+              Per Mashu: "the header is not part of scroll...
+              Only the name has to be sticky not the
+              description or the accordions." */}
+          <section>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+              About this practice
+            </p>
             {(() => {
               const key = practice.name.toUpperCase() as Practice;
               const desc = PRACTICE_DESCRIPTIONS[key];
               if (!desc) return null;
               return (
-                <div className="mt-1 max-w-md space-y-1 text-[11px] text-muted-foreground/90">
+                <div className="space-y-1 text-[11px] text-muted-foreground">
                   <p>
                     <span className="not-italic font-semibold">{desc.coreQuestion}</span>{" "}
                     <span className="italic">{desc.description}</span>
@@ -2105,18 +2125,7 @@ function PracticeDetailModal({
                 </div>
               );
             })()}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md p-1 transition-colors hover:bg-muted"
-            aria-label="Close"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+          </section>
           <section>
             <div className="mb-2 flex items-baseline justify-between gap-2">
               <span className="text-xs font-semibold uppercase text-muted-foreground">
@@ -2240,7 +2249,7 @@ function PracticeDetailModal({
               aria-label="Raw condition tokens"
             >
               <div
-                className="flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+                className="flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -2351,7 +2360,7 @@ function EncumbranceFormulaModal({
       aria-label={`Formula for Encumbrance`}
     >
       <div
-        className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
