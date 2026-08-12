@@ -534,7 +534,9 @@ export function CapabilityCard({
             properly like in the character creation/edit
             modal." */}
         {capability.effectLinks && capability.effectLinks.length > 0 && (
-          <details className="mt-2 rounded border border-border bg-muted/30 px-2 py-1 text-xs">
+          // Phase 8.L: open by default so nested effects are visible
+          // immediately — matches the character-creation modal.
+          <details open className="mt-2 rounded border border-border bg-muted/30 px-2 py-1 text-xs">
             <summary className="cursor-pointer list-none font-semibold uppercase tracking-wide text-muted-foreground">
               Effects ({capability.effectLinks.length})
             </summary>
@@ -659,29 +661,11 @@ export function CapabilityCard({
             )}
             {triggerFlash ? "Triggered" : triggerPending ? "…" : "Trigger"}
           </button>
-          {/* Preview modal — same EntityPreview used in atelier/library.
-              Hidden in the heritage-accordion variant because the
-              user can already click the card body to open the
-              preview; no need for a second affordance. */}
-          {showPreviewButton && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handlePreviewClick(e);
-              }}
-              disabled={previewLoading}
-              className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
-              title="Open preview modal"
-            >
-              {previewLoading ? (
-                <Loader2 className="size-3 animate-spin" />
-              ) : (
-                <ExternalLink className="size-3" />
-              )}
-              Preview
-            </button>
-          )}
+          {/* Phase 8.L (Mashu): the standalone Preview button is
+              REMOVED. The capability NAME itself opens the same
+              preview modal the /atelier list uses. Clicking anywhere
+              on the card body (other than the Inactive/Trigger
+              buttons) triggers the preview via handleCardClick. */}
         </div>
 
         {triggerFlash && (
