@@ -1953,15 +1953,17 @@ function PracticeDetailModal({
               {practice.attribute.toUpperCase()} practice
             </p>
             {/* Phase 8.L: practice info (core question + when to use) */}
-            {PRACTICE_DESCRIPTIONS[practice.name as Practice] ? (
-              <p className="mt-1 max-w-md text-[11px] italic text-muted-foreground/90">
-                <span className="not-italic font-semibold">
-                  {PRACTICE_DESCRIPTIONS[practice.name as Practice].coreQuestion}
-                </span>
-                {" "}
-                {PRACTICE_DESCRIPTIONS[practice.name as Practice].useWhen}
-              </p>
-            ) : null}
+            {(() => {
+              const key = practice.name.toUpperCase() as Practice;
+              const desc = PRACTICE_DESCRIPTIONS[key];
+              return desc ? (
+                <p className="mt-1 max-w-md text-[11px] italic text-muted-foreground/90">
+                  <span className="not-italic font-semibold">{desc.coreQuestion}</span>
+                  {" "}
+                  {desc.useWhen}
+                </p>
+              ) : null;
+            })()}
           </div>
           <button
             type="button"

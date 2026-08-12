@@ -631,8 +631,8 @@ const PRIMITIVES: PrimitiveSpec[] = [
         value: {
           kind: "equation",
           operands: [
-            { op: "+", value: { kind: "derived", which: "pb" } },
-            { op: "+", value: { kind: "number", value: 2 } },
+            { kind: "derived", which: "pb" },
+            { kind: "number", value: 2 },
           ],
           tag: "fire",
         },

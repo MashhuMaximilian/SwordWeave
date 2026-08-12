@@ -415,7 +415,7 @@ export default async function CharacterSheetPage({
       id={row.id}
       name={row.name}
       level={row.level}
-      size={row.size}
+      size={sheet.resolvedSize ?? row.size}
       portraitUrl={row.portraitUrl}
       notes={row.notes}
       dmNotes={row.dmNotes}
