@@ -553,7 +553,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-5 py-8 pb-32">
+    <div className="mx-auto w-full max-w-screen-2xl px-5 py-8 pb-32">
       {/* Phase 8.4 (Mashu 2026-07-28): the in-page header
           (Pumnu portrait + name + L5 + size + Edit/Level Up/Clone)
           is hidden on mobile because SheetIdentityHeader at the top
@@ -2048,10 +2048,20 @@ function CapabilitiesTab({
       kind: string;
     } = "DIRECT";
     let provenancePath: string | null = null;
-    // Phase 8.L: build the FULL inheritance chain so the
-    // primitive card shows "via Heart of Stone (effect) ›
-    // Stone's Endurance (capability) › <heritageName>".
+    // Phase 8.L round 13: build the FULL inheritance chain
+    // with accordion (slotTab) as the OUTERMOST prefix.
+    // Per Mashu: "accordeon name if not direct primitive >
+    // heritage name if nested in heritage > Capability > Effect"
     const chain: string[] = [];
+    // Accordion name comes from the capability's slotTab
+    // (looked up via capabilityLinks[i].slotTab). Stored on
+    // the chain as a label-style name.
+    const capLink = capabilityById.get(originCapabilityId ?? "") as unknown as { slotTab?: string | null } | undefined;
+    if (capLink?.slotTab) {
+      // Capitalize first letter to render as "Lineage" not "LINEAGE"
+      const label = capLink.slotTab.charAt(0) + capLink.slotTab.slice(1).toLowerCase();
+      chain.push(label);
+    }
     if (originEffectId) {
       const e = effectById.get(originEffectId);
       if (e) chain.push(e.name);
@@ -2758,7 +2768,7 @@ function ItemsTab({
         </span>
         {encumbrance.equipSlotsUsed} / {encumbrance.equipSlotsAvailable}
       </div>
-      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {items.map((i) => (
           <li key={i.id}>
             {/* Phase 8.2 batch 4: each item is now an interactive

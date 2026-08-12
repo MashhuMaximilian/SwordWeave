@@ -1821,13 +1821,14 @@ function FormulaModalSection({
 }
 
 function formatViaForSteps(c: import("@/lib/engine/resolve-modifiers").ModifierContribution): string {
-  const { heritageName, capabilityName, effectName, kind } = c.provenance;
+  const { heritageName, capabilityName, effectName, accordion, kind } = c.provenance;
   if (kind === "direct") return "";
   const parts: string[] = [];
+  if (accordion) parts.push(accordion);
   if (heritageName) parts.push(heritageName);
   if (capabilityName) parts.push(capabilityName);
   if (effectName) parts.push(effectName);
-  if (parts.length === 0) return `from ${kind}`;
+  if (parts.length === 0) return "";
   return parts.join(" → ");
 }
 
@@ -1850,9 +1851,13 @@ function ContribListItem({ c, setRawTokensOpen, isOff }: {
   const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
   // Phase 8.J M1+M7: min/max rows omit prefix and OP_LABEL
   const isLimit = c.op === "min" || c.op === "max";
-  // Phase 8.J M3: provenance breadcrumb (full chain)
+  // Phase 8.J M3 + Phase 8.L round 13: provenance breadcrumb
+  // (full chain incl. accordion as OUTERMOST element).
+  // Per Mashu: "accordeon name if not direct primitive > heritage
+  // name if nested in heritage > Capability > Effect"
   const prov = c.provenance;
   const breadcrumb = [
+    prov.accordion ?? null,
     prov.heritageName,
     prov.capabilityName,
     prov.effectName,

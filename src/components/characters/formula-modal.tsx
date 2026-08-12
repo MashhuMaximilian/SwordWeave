@@ -153,13 +153,14 @@ export function contributionsToSteps(
 }
 
 function formatVia(c: ModifierContribution): string {
-  const { heritageName, capabilityName, effectName, kind } = c.provenance;
+  const { heritageName, capabilityName, effectName, accordion, kind } = c.provenance;
   if (kind === "direct") return "";
   const parts: string[] = [];
+  if (accordion) parts.push(accordion);
   if (heritageName) parts.push(heritageName);
   if (capabilityName) parts.push(capabilityName);
   if (effectName) parts.push(effectName);
-  if (parts.length === 0) return `from ${kind}`;
+  if (parts.length === 0) return "";
   return parts.join(" → ");
 }
 
