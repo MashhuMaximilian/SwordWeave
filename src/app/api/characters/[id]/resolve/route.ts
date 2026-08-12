@@ -102,6 +102,15 @@ export async function GET(
   const { id } = await params;
   const url = new URL(request.url);
   const targetFilter = url.searchParams.get("target");
+  // Phase 8.M (Mashu 2026-08-12): when set, the engine derives
+  // SINGLE attack_bonus / save_dc from this attribute instead of
+  // the character's proficientAttribute. Used by the modal
+  // selector when multi-attr primitives exist.
+  const chosenAttributeRaw = url.searchParams.get("chosenAttribute");
+  const chosenAttribute: Attribute | undefined =
+    chosenAttributeRaw === "physical" || chosenAttributeRaw === "mental" || chosenAttributeRaw === "magical"
+      ? chosenAttributeRaw
+      : undefined;
 
   if (targetFilter && !isValidTarget(targetFilter)) {
     return NextResponse.json(
@@ -261,6 +270,7 @@ export async function GET(
     level: charRow.level,
     pb: proficiencyBonus(charRow.level),
     proficientAttribute: (charRow.attrProficient ?? null) as Attribute | null,
+    ...(chosenAttribute && { chosenAttribute }),
     attributes: {
       physical: charRow.attrPhysical,
       mental: charRow.attrMental,
@@ -323,6 +333,7 @@ export async function GET(
     level: charRow.level,
     pb: proficiencyBonus(charRow.level),
     proficientAttribute: (charRow.attrProficient ?? null) as Attribute | null,
+    ...(chosenAttribute && { chosenAttribute }),
     attributes: {
       physical: charRow.attrPhysical,
       mental: charRow.attrMental,
