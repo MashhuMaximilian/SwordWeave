@@ -564,3 +564,44 @@ Awareness Floor 11 provenance:
 ```
 
 Will display as `via Stone's Endurance › Heart of Stone`.
+
+
+## 15. Round 13 — Accordion prefix in chain + wider layout
+
+Per user feedback (round 13 screenshots):
+
+### Issue 1: Awareness Floor 11 still shows "via Direct"
+**Root cause**: My engine was not exposing the slotTab. The accordion name ("Lineage") comes from the capability's slotTab. Now resolved:
+- resolve route queries `character_capabilities.slotTab` for each capability the character has slotted
+- engine now exposes `accordion: string | null` in the contribution's `provenance`
+- formatVia / formatViaForSteps prepend it to the breadcrumb
+
+### Issue 2: 'via from effect' bug
+Removed the `from ${kind}` fallback. Now returns empty string so the breadcrumb renders nothing for direct primitives (no chain).
+
+### Issue 3: All modals should follow same chain format
+The format is now consistent:
+- Direct primitives: no chain shown
+- Heritage-bundled primitives: `<accordion> › <heritageName>`
+- Capability-derived primitives: `<accordion> › <capabilityName>`
+- Effect-derived primitives: `<accordion> › <capabilityName> › <effectName>`
+
+### Issue 4: Layout - 4 primitives per row on desktop
+- Container: max-w-7xl → max-w-screen-2xl (full width on big screens)
+- Capability grid: sm:2 / lg:3 / xl:4
+
+### Commits shipped (round 13)
+
+| Commit | Item |
+|---|---|
+| `20b6b68` | Add accordion (slotTab) to engine provenance |
+| `954956c` | Prepend accordion to breadcrumb + wider layout |
+
+### Verified live
+
+```
+Awareness Floor 11 provenance:
+{heritageName: None, capabilityName: "Stone's Endurance", effectName: 'Heart of Stone', accordion: 'LINEAGE', kind: 'effect'}
+```
+
+Will render as `via LINEAGE › Stone's Endurance › Heart of Stone`.
