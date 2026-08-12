@@ -123,7 +123,7 @@ function splitCapacityPrimitives(
     op: string;
     value: number;
     target: string;
-    provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null };
+    provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null; accordion: string | null };
   }>;
   equipSlotPrimitives: ReadonlyArray<{
     id: number;
@@ -131,7 +131,7 @@ function splitCapacityPrimitives(
     op: string;
     value: number;
     target: string;
-    provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null };
+    provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null; accordion: string | null };
   }>;
 } {
   if (!byTarget) return { loadPrimitives: [], equipSlotPrimitives: [] };
@@ -141,7 +141,7 @@ function splitCapacityPrimitives(
     op: string;
     value: number;
     target: string;
-    provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null };
+    provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null; accordion: string | null };
   }> = [];
   const equip: Array<{
     id: number;
@@ -149,7 +149,7 @@ function splitCapacityPrimitives(
     op: string;
     value: number;
     target: string;
-    provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null };
+    provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null; accordion: string | null };
   }> = [];
   const capTargets = new Set(["carry_capacity", "capacity", "load"]);
   for (const target of ["carry_capacity", "capacity", "load", "equip_slot", "size"] as const) {
@@ -166,6 +166,7 @@ function splitCapacityPrimitives(
           capabilityName: c.provenance.capabilityName ?? null,
           effectName: c.provenance.effectName ?? null,
           heritageName: c.provenance.heritageName ?? null,
+          accordion: c.provenance.accordion ?? null,
         },
       };
       if (target === "equip_slot") {
@@ -2313,7 +2314,7 @@ function EncumbranceFormulaModal({
     op: string;
     value: number;
     target: string;
-    provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null };
+    provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null; accordion: string | null };
   }>;
   /** Phase 8.L L21: list of primitive contributions to equip slots. */
   readonly equipSlotContributions?: ReadonlyArray<{
@@ -2322,7 +2323,7 @@ function EncumbranceFormulaModal({
     op: string;
     value: number;
     target: string;
-    provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null };
+    provenance: { capabilityName: string | null; effectName: string | null; heritageName: string | null; accordion: string | null };
   }>;
 }) {
   useEffect(() => {
@@ -2425,7 +2426,7 @@ function EncumbranceFormulaModal({
                     {(p.provenance.heritageName || p.provenance.capabilityName || p.provenance.effectName) ? (
                       <span className="pl-1 text-[10px] italic text-muted-foreground">
                         via{" "}
-                        {[p.provenance.heritageName, p.provenance.capabilityName, p.provenance.effectName]
+                        {[p.provenance.accordion ?? null, p.provenance.heritageName, p.provenance.capabilityName, p.provenance.effectName]
                           .filter(Boolean)
                           .join(" › ")}
                       </span>
@@ -2479,7 +2480,7 @@ function EncumbranceFormulaModal({
                     {(p.provenance.heritageName || p.provenance.capabilityName || p.provenance.effectName) ? (
                       <span className="pl-1 text-[10px] italic text-muted-foreground">
                         via{" "}
-                        {[p.provenance.heritageName, p.provenance.capabilityName, p.provenance.effectName]
+                        {[p.provenance.accordion ?? null, p.provenance.heritageName, p.provenance.capabilityName, p.provenance.effectName]
                           .filter(Boolean)
                           .join(" › ")}
                       </span>
