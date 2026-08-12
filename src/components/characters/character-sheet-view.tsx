@@ -2471,7 +2471,7 @@ function HeritageKindAccordion({
       <summary className="flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium cursor-pointer list-none">
         <span className="flex items-center gap-2">
           {icon}
-          {label} ({heritageLinks.length})
+          {label} ({heritageLinks.length + directCapsForKind.length})
         </span>
         <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
       </summary>

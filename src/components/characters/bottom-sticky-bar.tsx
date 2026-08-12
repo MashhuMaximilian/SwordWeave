@@ -1190,10 +1190,12 @@ export function BottomStickyBar({
             breakdown={[
               { label: "Proficiency Bonus", value: pb },
               { label: `${primaryAttrLabel} modifier`, value: primaryMod },
-              {
-                label: `Primitive bonuses (attack_bonus.${primaryAttr})`,
-                value: resolver?.totals[`attack_bonus.${primaryAttr}`] ?? 0,
-              },
+              ...contributionsToSteps(`attack_bonus.${primaryAttr}`, resolver_, [
+                {
+                  label: `Primitive bonuses (attack_bonus.${primaryAttr})`,
+                  value: resolver?.totals[`attack_bonus.${primaryAttr}`] ?? 0,
+                },
+              ]),
               ...(atkFloor !== null && primaryAttackBonus < atkFloor
                 ? [{ label: `Minimum to-hit (floor ${atkFloor})`, value: atkFloor }]
                 : []),
@@ -1260,7 +1262,9 @@ export function BottomStickyBar({
             }}
             breakdown={[
               { label: `Size base (${characterSize})`, value: SIZE_BASE_SPEED[characterSize] ?? 30 },
-              { label: `WALKING_SPEED primitive total`, value: (resolver_?.totals["speed.walking"] ?? 0) },
+              ...contributionsToSteps("speed.walking", resolver_, [
+                { label: `WALKING_SPEED primitive total`, value: (resolver_?.totals["speed.walking"] ?? 0) },
+              ]),
             ]}
             onClose={() => setCombo(null)}
 
