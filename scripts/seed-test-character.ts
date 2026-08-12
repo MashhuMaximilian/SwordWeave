@@ -973,6 +973,59 @@ async function main() {
     console.log(`    [${p.source}] ${p.name}`);
   }
 
+  // 4a. Create heritage rows for the LINEAGE capability bundle.
+  //     Stone's Endurance is acquired via the lineage accordion
+  //     (slotTab: 'LINEAGE'), so it has a heritage parent. We
+  //     create a synthetic "Stone Goliath" heritage that owns
+  //     Stone's Endurance, then link it to the character via
+  //     character_heritages. The heritageId is then used as
+  //     origin_heritage_id on the expanded character_primitives
+  //     to power the full inheritance chain in the provenance
+  //     breadcrumb.
+  const heritageBySlotTab = new Map<string, string>();
+  {
+    // Find existing heritage by name (no unique constraint on
+    // (name, source_origin) so we have to query first).
+    let lineageHer = await pool.query(
+      `SELECT id FROM heritage WHERE name = $1 AND source_origin = $2 LIMIT 1`,
+      ["Stone Goliath", sourceOrigin],
+    );
+    if (lineageHer.rows.length === 0) {
+      const inserted = await pool.query(
+        `INSERT INTO heritage (user_id, name, kind, description, is_public, source_origin)
+         VALUES ($1, $2, $3, $4, false, $5)
+         RETURNING id`,
+        [MASHU_USER_ID, "Stone Goliath", "LINEAGE", "A heritage of stone-skinned giants.", sourceOrigin],
+      );
+      lineageHer = { rows: inserted.rows };
+    }
+    const lineageHerId = lineageHer.rows[0].id;
+    heritageBySlotTab.set("LINEAGE", lineageHerId);
+
+    // Link Stone's Endurance capability to this heritage
+    const stoneEndId = await pool.query(
+      `SELECT id FROM capabilities WHERE name = $1 AND source_origin = $2`,
+      ["Stone's Endurance", sourceOrigin],
+    );
+    if (stoneEndId.rows[0]) {
+      await pool.query(
+        `INSERT INTO heritage_capabilities (heritage_id, capability_id, sort_order)
+         VALUES ($1, $2, 0)
+         ON CONFLICT DO NOTHING`,
+        [lineageHerId, stoneEndId.rows[0].id],
+      );
+    }
+
+    // Link the heritage to the character
+    await pool.query(
+      `INSERT INTO character_heritages (character_id, heritage_id, acquired_at_level)
+       VALUES ($1::uuid, $2, 18)
+       ON CONFLICT (character_id, heritage_id) DO NOTHING`,
+      [characterId, lineageHerId],
+    );
+    console.log(`  ✓ Heritage: Stone Goliath (lineage bundle)`);
+  }
+
   // 4. Create capabilities with effect nesting
   //    capability_primitives → capability_effects → effect_primitives
   for (const cap of CAPABILITIES) {
@@ -1055,6 +1108,11 @@ async function main() {
     // Effect primitives via capability_effects → effect_primitives → origin_effect_id + origin_capability_id
 
     // a) Direct capability_primitives → expand into character_primitives
+    // Phase 8.L: include origin_heritage_id when the capability
+    // comes through a heritage bundle (slotTab LINEAGE or UPBRINGING).
+    // Powers the full inheritance chain in the provenance breadcrumb
+    // (Heart of Stone > Stone's Endurance > <heritage>).
+    const heritageId = heritageBySlotTab.get(cap.slotTab ?? "MANIFEST") ?? null;
     for (const primName of cap.directPrimNames) {
       await pool.query(
         `DELETE FROM character_primitives
@@ -1063,10 +1121,10 @@ async function main() {
       );
       await pool.query(
         `INSERT INTO character_primitives
-          (character_id, primitive_id, origin_capability_id, is_mirrored,
-           acquired_at_level, source)
-         VALUES ($1::uuid, $2, $3, false, 18, 'PERSONAL')`,
-        [characterId, primIds[primName], capId],
+          (character_id, primitive_id, origin_capability_id, origin_heritage_id,
+           is_mirrored, acquired_at_level, source)
+         VALUES ($1::uuid, $2, $3, $4, false, 18, 'PERSONAL')`,
+        [characterId, primIds[primName], capId, heritageId],
       );
       console.log(`    ✓ Expanded direct primitive: ${primName}`);
     }
@@ -1089,9 +1147,9 @@ async function main() {
         await pool.query(
           `INSERT INTO character_primitives
             (character_id, primitive_id, origin_capability_id, origin_effect_id,
-             is_mirrored, acquired_at_level, source)
-           VALUES ($1::uuid, $2, $3, $4, false, 18, 'PERSONAL')`,
-          [characterId, primIds[primName], capId, effId],
+             origin_heritage_id, is_mirrored, acquired_at_level, source)
+           VALUES ($1::uuid, $2, $3, $4, $5, false, 18, 'PERSONAL')`,
+          [characterId, primIds[primName], capId, effId, heritageId],
         );
         console.log(`    ✓ Expanded effect primitive: ${primName} (via ${cap.name} → ${eff.name})`);
       }
