@@ -1236,6 +1236,7 @@ export function BottomStickyBar({
           <PracticeDetailModal
             practice={comboPractice}
             byTarget={byTarget}
+            characterId={characterId}
             pb={pb}
             attrBase={
               comboPractice.attribute === "physical" ? physical :
@@ -1961,10 +1962,17 @@ function formatViaForSteps(c: import("@/lib/engine/resolve-modifiers").ModifierC
   return parts.join(" → ");
 }
 
-function ContribListItem({ c, setRawTokensOpen, isOff }: {
+function ContribListItem({ c, setRawTokensOpen, isOff, offReason }: {
   c: import("@/lib/engine/resolve-modifiers").ModifierContribution;
   setRawTokensOpen: (cond: unknown) => void;
   isOff: boolean;
+  /**
+   * Phase 8.L round 26 (Mashu): WHY isOff is true. Drives the
+   * label so we don't say "(capability OFF)" when the actual
+   * reason is "condition not met" (which affects DIRECT
+   * primitives too, not just capability-owned ones).
+   */
+  offReason?: "capability" | "condition" | null;
 }) {
   const OP_LABEL: Record<string, string> = {
     add: "+",
@@ -2010,7 +2018,12 @@ function ContribListItem({ c, setRawTokensOpen, isOff }: {
             title={c.primitiveName}
           >
             {c.primitiveName}
-            {isOff ? <span className="ml-2 text-[9px] uppercase tracking-wide">(capability OFF)</span> : null}
+            {isOff && offReason === "capability" ? (
+              <span className="ml-2 text-[9px] uppercase tracking-wide">(capability OFF)</span>
+            ) : null}
+            {isOff && offReason === "condition" ? (
+              <span className="ml-2 text-[9px] uppercase tracking-wide">(condition not met)</span>
+            ) : null}
           </p>
           <p className="mt-0.5 truncate text-[10px] text-muted-foreground/70" title={breadcrumb}>
             via {breadcrumb}
@@ -2085,6 +2098,7 @@ function PracticeDetailModal({
   attrBase,
   attrMod,
   isProf,
+  characterId,
   onClose,
 }: {
   readonly practice: {
@@ -2093,6 +2107,7 @@ function PracticeDetailModal({
     total: number;
   };
   readonly byTarget: ResolvedModifiers["byTarget"];
+  readonly characterId: string;
   readonly pb: number;
   readonly attrBase: number;
   readonly attrMod: number;
@@ -2122,7 +2137,12 @@ function PracticeDetailModal({
     if (typeof window === "undefined") return;
     try {
       const off = new Set<string>();
-      const prefix = "sw:cap:";
+      // Phase 8.L round 26 (Mashu): prefix MUST include characterId
+    // so we only read OFF caps for THIS character (capability-card
+    // writes sw:cap:<characterId>:<capabilityId> = "1" when OFF).
+    // The old prefix "sw:cap:" was reading OFF caps from every
+    // character on the device, breaking the per-character toggle.
+    const prefix = `sw:cap:${characterId}:`;
       for (let i = 0; i < window.localStorage.length; i++) {
         const key = window.localStorage.key(i);
         if (key && key.startsWith(prefix) && window.localStorage.getItem(key) === "1") {
@@ -2342,7 +2362,19 @@ function PracticeDetailModal({
             ) : (
               <ul className="space-y-2">
                 {contributions.map((c, i) => (
-                  <ContribListItem key={`attr-${c.primitiveId}-${i}`} c={c} setRawTokensOpen={setRawTokensOpen} isOff={offCapabilityIds.has(c.originCapabilityId ?? "") || c.conditionActive === false} />
+                  <ContribListItem
+                      key={`attr-${c.primitiveId}-${i}`}
+                      c={c}
+                      setRawTokensOpen={setRawTokensOpen}
+                      isOff={offCapabilityIds.has(c.originCapabilityId ?? "") || c.conditionActive === false}
+                      offReason={
+                        offCapabilityIds.has(c.originCapabilityId ?? "")
+                          ? "capability"
+                          : c.conditionActive === false
+                            ? "condition"
+                            : null
+                      }
+                    />
                 ))}
               </ul>
             )}
@@ -2360,7 +2392,19 @@ function PracticeDetailModal({
             ) : (
               <ul className="space-y-2">
                 {byTarget[practiceTarget]!.map((c, i) => (
-                  <ContribListItem key={`prac-${c.primitiveId}-${i}`} c={c} setRawTokensOpen={setRawTokensOpen} isOff={offCapabilityIds.has(c.originCapabilityId ?? "") || c.conditionActive === false} />
+                  <ContribListItem
+                      key={`prac-${c.primitiveId}-${i}`}
+                      c={c}
+                      setRawTokensOpen={setRawTokensOpen}
+                      isOff={offCapabilityIds.has(c.originCapabilityId ?? "") || c.conditionActive === false}
+                      offReason={
+                        offCapabilityIds.has(c.originCapabilityId ?? "")
+                          ? "capability"
+                          : c.conditionActive === false
+                            ? "condition"
+                            : null
+                      }
+                    />
                 ))}
               </ul>
             )}

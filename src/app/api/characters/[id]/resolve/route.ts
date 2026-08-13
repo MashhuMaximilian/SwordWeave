@@ -146,6 +146,13 @@ export async function GET(
       originHeritageId: characterPrimitives.originHeritageId,
       originCapabilityId: characterPrimitives.originCapabilityId,
       originEffectId: characterPrimitives.originEffectId,
+      // Phase 8.L round 26 (Mashu): direct primitives in an
+      // accordion (LINEAGE / UPBRINGING / MANIFEST) need the
+      // accordion as their OUTERMOST chain prefix (just like
+      // capability-derived primitives do). Previously this was
+      // null because slotTab was only populated from
+      // character_capabilities.slot_tab.
+      source: characterPrimitives.source,
       primitiveName: primitives.name,
       primitiveCategory: primitives.category,
       primitiveIsMirrorable: primitives.isMirrorable,
@@ -179,7 +186,15 @@ export async function GET(
     originHeritageId: row.originHeritageId,
     originCapabilityId: row.originCapabilityId,
     originEffectId: row.originEffectId,
-    slotTab: row.originCapabilityId ? capSlotTabs.get(row.originCapabilityId) ?? null : null,
+    // Phase 8.L round 26: for direct primitives, slotTab
+    // falls back to the character_primitives.source (which IS
+    // the accordion LINEAGE/UPBRINGING/MANIFEST). For
+    // capability-derived primitives, the capability's slotTab
+    // wins.
+    slotTab:
+      row.originCapabilityId
+        ? capSlotTabs.get(row.originCapabilityId) ?? null
+        : (row.source ?? null),
   }));
 
   // -----------------------------------------------------------------
