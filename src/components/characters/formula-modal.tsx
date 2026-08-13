@@ -49,7 +49,7 @@ import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { humanReadableCondition } from "@/lib/engine/condition-dictionary";
+import { humanReadableCondition, humanReadableToken } from "@/lib/engine/condition-dictionary";
 import type {
   ModifierContribution,
   ResolvedModifiers,
@@ -181,6 +181,41 @@ function formatVia(c: ModifierContribution): string {
 
 /** Phase 8.I i3: render the Conditions section of the modal, showing which
  *  contributions are gated and whether their condition is currently active. */
+/** Phase 8.L K17: render condition tokens as styled chips with
+ * AND/OR as distinct visual elements. AND = cyan chip, OR = amber chip. */
+function renderConditionChips(condition: unknown): ReactNode {
+  const c = condition as { kind?: string; tokens?: string[] };
+  if (!c || !Array.isArray(c.tokens)) return null;
+  return (
+    <>
+      {c.tokens.map((tok, i) => {
+        if (tok === "AND" || tok === "OR") {
+          const isAnd = tok === "AND";
+          return (
+            <span
+              key={i}
+              className={`rounded px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${
+                isAnd
+                  ? "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300"
+                  : "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+              }`}
+            >
+              {tok}
+            </span>
+          );
+        }
+        return (
+          <span
+            key={i}
+            className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] italic text-amber-700 dark:text-amber-300"
+          >
+            {humanReadableToken(tok)}
+          </span>
+        );
+      })}
+    </>
+  );
+}
 function renderConditionsSection(breakdown: ReadonlyArray<FormulaStep>, onShowRaw: (cond: unknown) => void): ReactNode {
   const gated = breakdown.filter((s) => s.contribution && (s.contribution.hasCondition || s.contribution.conditionActive === false));
   if (gated.length === 0) return null;
@@ -202,37 +237,27 @@ function renderConditionsSection(breakdown: ReadonlyArray<FormulaStep>, onShowRa
           return (
             <li
               key={`cond-${step.label}-${i}`}
-              className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-2 py-1"
+              className="flex flex-col gap-1 rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-1 text-xs"
             >
-              <span className="flex-1 text-sm font-medium">
-                <span>{step.label}</span>
-                {c.condition ? (
-                  <button
-                    type="button"
-                    className="ml-2 cursor-pointer text-xs italic text-muted-foreground underline-offset-2 hover:underline"
-                    onClick={() => onShowRaw(c.condition)}
-                  >
-                    when {humanReadableCondition(c.condition as Parameters<typeof humanReadableCondition>[0])}
-                  </button>
-                ) : null}
-              </span>
-              <span
-                className={`font-mono text-xs ${
-                  isActive === false
-                    ? "text-red-500"
-                    : isActive === true
-                      ? "text-teal-600 dark:text-teal-400"
-                      : "text-muted-foreground"
-                }`}
-                title={
-                  isActive === undefined
-                    ? "No condition"
-                    : isActive
-                      ? "Condition met"
-                      : "Condition not met"
-                }
-              >
-                {icon} {isActive === undefined ? "no condition" : isActive ? "active" : "suppressed"}
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex flex-wrap items-center gap-1">
+                  <strong>{step.label}</strong>
+                  <span className="font-mono text-teal-700 dark:text-teal-300">
+                    {step.value >= 0 ? `+${step.value}` : step.value}
+                  </span>
+                  <span className="font-mono text-[9px] uppercase text-muted-foreground">
+                    ({c.op === "add" ? "add" : c.op === "subtract" ? "subtract" : c.op})
+                  </span>
+                </span>
+                <span className={`font-mono text-[10px] ${
+                  isActive === false ? "text-red-500" : isActive === true ? "text-teal-600 dark:text-teal-400" : "text-muted-foreground"
+                }`}>
+                  {isActive === false ? "⛔ Inhibited" : isActive === true ? "✓ Engaged" : "— inactive"}
+                </span>
+              </div>
+              <span className="flex flex-wrap items-center gap-1 text-[11px] italic text-muted-foreground">
+                <span className="font-semibold">when</span>
+                {c.condition ? renderConditionChips(c.condition) : "no condition"}
               </span>
             </li>
           );
@@ -564,14 +589,21 @@ function StepRow({ step, offCapabilityIds }: { step: FormulaStep; offCapabilityI
                 Mirrored
               </span>
             )}
-            {c.conditionActive === false && (
+            {c.conditionActive === false ? (
               <span
-                className="rounded-full bg-slate-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+                className="font-mono text-[10px] font-semibold text-red-500"
                 title="Condition not met — contribution suppressed"
               >
-                ⧀ condition
+                ⛔ Inhibited
               </span>
-            )}
+            ) : c.conditionActive === true ? (
+              <span
+                className="font-mono text-[10px] font-semibold text-teal-600 dark:text-teal-400"
+                title="Condition met — contribution active"
+              >
+                ✓ Engaged
+              </span>
+            ) : null}
           </div>
         </div>
         {c.preMirrorValue !== null && (
