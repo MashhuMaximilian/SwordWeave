@@ -161,8 +161,11 @@ export function contributionsToSteps(
 }
 
 function formatVia(c: ModifierContribution): string {
-  const { heritageName, capabilityName, effectName, accordion, kind } = c.provenance;
-  if (kind === "direct") return "";
+  const { heritageName, capabilityName, effectName, accordion } = c.provenance;
+  // Phase 8.L round 28 (Mashu 2026-08-13): direct primitives with
+  // a heritage accordion (LINEAGE / UPBRINGING / MANIFEST) still
+  // get the accordion shown. Inherited primitives get the full
+  // chain. Returning "" only when there is nothing to show.
   const parts: string[] = [];
   if (accordion) parts.push(accordion);
   if (heritageName) parts.push(heritageName);

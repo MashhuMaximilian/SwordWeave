@@ -1304,12 +1304,7 @@ export function BottomStickyBar({
             breakdown={[
               { label: "Proficiency Bonus", value: pb },
               { label: `${atkAttrLabel} modifier`, value: atkMod },
-              ...contributionsToSteps(`attack_bonus.${atkAttr}`, resolver_, [
-                {
-                  label: `Primitive bonuses (attack_bonus.${atkAttr})`,
-                  value: atkPrimitiveBonus,
-                },
-              ]),
+              ...contributionsToSteps(`attack_bonus.${atkAttr}`, resolver_),
               ...(atkSelectorFloor !== null && atkTotal < atkSelectorFloor
                 ? [{ label: `Minimum to-hit (floor ${atkSelectorFloor})`, value: atkSelectorFloor }]
                 : []),
