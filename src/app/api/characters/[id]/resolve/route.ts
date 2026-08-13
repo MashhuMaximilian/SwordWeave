@@ -259,22 +259,53 @@ export async function GET(
   }
 
   // Build the sourceNames map.
+  // Phase 8.L round 26 (Mashu): EVERY primitive needs a
+  // sourceNames entry — not just capability-derived ones.
+  // Previously direct primitives were skipped, which made
+  // their accordion (LINEAGE / UPBRINGING / MANIFEST from
+  // character_primitives.source) fall through to null in
+  // the engine's provenance lookup.
+  //
+  // CRITICAL ORDERING: process the slot with the MOST-SPECIFIC
+  // origin LAST so it wins. We do two passes:
+  //   1. Direct slots first (all origin IDs null) — only sets
+  //      accordion for direct primitives (no chain).
+  //   2. Inherited slots (any non-null origin) — sets the full
+  //      chain (accordion + heritage + capability + effect).
+  // For primitives that appear in BOTH paths, pass 2 wins
+  // because the engine merges multiple paths into one
+  // contribution with the most-specific chain.
+  const HERITAGE_ACCORDIONS = new Set(["LINEAGE", "UPBRINGING", "MANIFEST"]);
+  // Pass 1: direct slots (no origin IDs).
   for (const slot of slots) {
-    if (slot.originHeritageId || slot.originCapabilityId || slot.originEffectId) {
-      const heritageName = slot.originHeritageId ? (heritageNameMap.get(slot.originHeritageId) ?? null) : null;
-      const capabilityName = slot.originCapabilityId ? (capNameMap.get(slot.originCapabilityId) ?? null) : null;
-      const effectName = slot.originEffectId ? (effNameMap.get(slot.originEffectId) ?? null) : null;
-      // The accordion name is derived from the capability's
-      // slotTab — only present when the slot is capability-derived.
-      // Direct (non-capability-derived) primitives have no accordion.
-      const accordion = slot.slotTab ?? null;
-      sourceNames.set(slot.primitiveId, {
-        heritageName,
-        capabilityName,
-        effectName,
-        accordion,
-      });
-    }
+    if (slot.originHeritageId || slot.originCapabilityId || slot.originEffectId) continue;
+    const rawAccordion = slot.slotTab ?? null;
+    const accordion = rawAccordion && HERITAGE_ACCORDIONS.has(rawAccordion)
+      ? rawAccordion
+      : null;
+    sourceNames.set(slot.primitiveId, {
+      heritageName: null,
+      capabilityName: null,
+      effectName: null,
+      accordion,
+    });
+  }
+  // Pass 2: inherited slots (with origin IDs).
+  for (const slot of slots) {
+    if (!(slot.originHeritageId || slot.originCapabilityId || slot.originEffectId)) continue;
+    const heritageName = slot.originHeritageId ? (heritageNameMap.get(slot.originHeritageId) ?? null) : null;
+    const capabilityName = slot.originCapabilityId ? (capNameMap.get(slot.originCapabilityId) ?? null) : null;
+    const effectName = slot.originEffectId ? (effNameMap.get(slot.originEffectId) ?? null) : null;
+    const rawAccordion = slot.slotTab ?? null;
+    const accordion = rawAccordion && HERITAGE_ACCORDIONS.has(rawAccordion)
+      ? rawAccordion
+      : null;
+    sourceNames.set(slot.primitiveId, {
+      heritageName,
+      capabilityName,
+      effectName,
+      accordion,
+    });
   }
 
   // -----------------------------------------------------------------
