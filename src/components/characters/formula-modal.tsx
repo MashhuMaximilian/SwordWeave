@@ -673,4 +673,16 @@ function SummaryLine({
       <span className="font-semibold text-foreground">= {fmt(total)}</span>
     </p>
   );
-}
+}// Phase 8.L round 31 (Mashu 2026-08-13): Reverted L30 refactor.
+
+The L30 attempt to unify ALL modals via ContributionsSection
+regressed the existing modals (PB lost Base/Level breakdown,
+Save DC lost formula trace, Behavior Variable lost primitive
+contributions, etc). The migration script dropped the static
+{label, value} entries that lived alongside contributionsToSteps.
+
+This commit reverts the L30 commits and forces a fresh
+build so the modal state goes back to the L29 state:
+  - Engaged/Inhibited terminology in Conditions section
+  - All modals show the same status pills
+  - All modals keep their static breakdown entries
