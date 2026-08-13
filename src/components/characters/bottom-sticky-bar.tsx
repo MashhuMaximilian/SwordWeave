@@ -1,5 +1,8 @@
 "use client";
 
+// Phase 8.L round 26 (Mashu 2026-08-13): Build marker — force Turbopack
+// to hash the chunks differently so the CDN serves the new code.
+
 /**
  * bottom-sticky-bar.tsx — Phase 8.4 (Mashu 2026-07-28)
  *
