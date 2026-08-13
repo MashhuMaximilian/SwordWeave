@@ -448,6 +448,87 @@ export function CharacterSheetView(props: CharacterSheetProps) {
   const attrSum = props.attrPhysical + props.attrMental + props.attrMagical;
   const attrValid = attrSum === 10;
 
+  // Phase 8.1 batch 13.1: lookup maps for resolving the origin chain
+  // shown in OriginBadge. heritageById is built from props.heritageLinks
+  // (now wired through the page); capabilityById and effectById are
+  // built from the same data so the badge can show the full chain
+  // (heritage → capability → effect).
+  const heritageById = useMemo(() => {
+    const m = new Map<string, { name: string; kind: string }>();
+    for (const l of props.heritageLinks) {
+      m.set(l.heritageId, { name: l.heritage.name, kind: l.heritage.kind });
+    }
+    return m;
+  }, [props.heritageLinks]);
+  const capabilityById = useMemo(() => {
+    const m = new Map<string, { name: string; slotTab?: string | null }>();
+    for (const l of props.capabilityLinks) {
+      m.set(l.capabilityId, { name: l.capability.name, slotTab: l.slotTab ?? null });
+    }
+    return m;
+  }, [props.capabilityLinks]);
+  const effectById = useMemo(() => {
+    const m = new Map<string, { name: string }>();
+    // Populate from capability effectLinks (each capability exposes
+    // its nested effects via this prop). Also include effects from
+    // character-level primitiveLinks in case future code surfaces
+    // effects directly on primitives.
+    for (const l of props.capabilityLinks ?? []) {
+      for (const el of l.effectLinks ?? []) {
+        if (el.effect?.id && el.effect?.name) {
+          m.set(el.effect.id, { name: el.effect.name });
+        }
+      }
+    }
+    return m;
+  }, [props.capabilityLinks]);
+
+  // Phase 8.L round 27 (Mashu 2026-08-13): build the sourceNames map
+  // for the client-side resolver so byTarget contributions carry
+  // provenance (heritage / capability / effect / accordion names).
+  // Without this, every contribution in the bottom-drawer modals
+  // renders "via Direct" because the resolver falls back to nulls
+  // when sourceNames is absent. See use-character-resolver.ts.
+  const sourceNames = useMemo(() => {
+    const m = new Map<
+      number,
+      {
+        heritageName: string | null;
+        capabilityName: string | null;
+        effectName: string | null;
+        accordion: string | null;
+      }
+    >();
+    for (const l of props.primitiveLinks) {
+      const heritageName = l.originHeritageId
+        ? heritageById.get(l.originHeritageId)?.name ?? null
+        : null;
+      const capabilityName = l.originCapabilityId
+        ? capabilityById.get(l.originCapabilityId)?.name ?? null
+        : null;
+      const effectName = l.originEffectId
+        ? effectById.get(l.originEffectId)?.name ?? null
+        : null;
+      // Accordion: only when the primitive is direct (no capability)
+      // AND its source is a heritage accordion (LINEAGE / UPBRINGING
+      // / MANIFEST). PERSONAL / TRAINING / LEVEL_UP / DM are not
+      // heritage accordions and would clutter the breadcrumb.
+      const accordion =
+        !l.originCapabilityId &&
+        (l.source === "LINEAGE" ||
+          l.source === "UPBRINGING" ||
+          l.source === "MANIFEST")
+          ? l.source
+          : null;
+      m.set(l.primitive.id, {
+        heritageName,
+        capabilityName,
+        effectName,
+        accordion,
+      });
+    }
+    return m;
+  }, [props.primitiveLinks, heritageById, capabilityById, effectById]);
   // Phase 8.3f S4 (Mashu 2026-07-28): run the canonical resolver
   // once per render. The result drives the BottomStickyBar's
   // attribute modifiers and (in S5) the VitalityCard + provenance
@@ -488,42 +569,8 @@ export function CharacterSheetView(props: CharacterSheetProps) {
       },
     })),
     conditionContext: props.conditionContext ?? null,
+    sourceNames,
   });
-
-  // Phase 8.1 batch 13.1: lookup maps for resolving the origin chain
-  // shown in OriginBadge. heritageById is built from props.heritageLinks
-  // (now wired through the page); capabilityById and effectById are
-  // built from the same data so the badge can show the full chain
-  // (heritage → capability → effect).
-  const heritageById = useMemo(() => {
-    const m = new Map<string, { name: string; kind: string }>();
-    for (const l of props.heritageLinks) {
-      m.set(l.heritageId, { name: l.heritage.name, kind: l.heritage.kind });
-    }
-    return m;
-  }, [props.heritageLinks]);
-  const capabilityById = useMemo(() => {
-    const m = new Map<string, { name: string; slotTab?: string | null }>();
-    for (const l of props.capabilityLinks) {
-      m.set(l.capabilityId, { name: l.capability.name, slotTab: l.slotTab ?? null });
-    }
-    return m;
-  }, [props.capabilityLinks]);
-  const effectById = useMemo(() => {
-    const m = new Map<string, { name: string }>();
-    // Populate from capability effectLinks (each capability exposes
-    // its nested effects via this prop). Also include effects from
-    // character-level primitiveLinks in case future code surfaces
-    // effects directly on primitives.
-    for (const l of props.capabilityLinks ?? []) {
-      for (const el of l.effectLinks ?? []) {
-        if (el.effect?.id && el.effect?.name) {
-          m.set(el.effect.id, { name: el.effect.name });
-        }
-      }
-    }
-    return m;
-  }, [props.capabilityLinks]);
 
   async function handleLevelUp() {
     startTransition(async () => {
