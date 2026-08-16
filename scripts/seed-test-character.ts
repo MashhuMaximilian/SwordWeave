@@ -732,6 +732,17 @@ const PRIMITIVES: PrimitiveSpec[] = [
     description: "Minimum roll of 11 on Awareness checks.",
     source: "PERSONAL",
   },
+  // Phase 8.L round 35 (Mashu 2026-08-13): Vitality Floor and
+  // Ceiling are now slotted under the Vitality Constitution
+  // capability (LINEAGE accordion) so they have a heritage +
+  // capability parent. The previous direct PERSONAL slot
+  // severed the origin and dropped the breadcrumb.
+  //
+  // These primitives still get UPSERTed into the library by
+  // the loop below (so we have an ID to reference from the
+  // capability), but they are NOT attached to the character
+  // directly — they come through Vitality Constitution →
+  // Vitality Bounds.
   {
     name: "Vitality Floor",
     category: "CHARACTER_SHEET_AUGMENT",
@@ -742,7 +753,7 @@ const PRIMITIVES: PrimitiveSpec[] = [
       { target: "max_vitality", operation: "min", value: 50 },
     ],
     description: "Max vitality cannot go below 50.",
-    source: "PERSONAL",
+    source: "LINEAGE",
   },
   {
     name: "Vitality Ceiling",
@@ -754,7 +765,7 @@ const PRIMITIVES: PrimitiveSpec[] = [
       { target: "max_vitality", operation: "max", value: 500 },
     ],
     description: "Max vitality cannot exceed 500.",
-    source: "PERSONAL",
+    source: "LINEAGE",
   },
 ];
 
@@ -863,6 +874,28 @@ const CAPABILITIES: CapabilitySpec[] = [
         name: "Plating",
         description: "Minimum 10 on defense rolls",
         primitiveNames: ["Floor 10"],
+      },
+    ],
+  },
+  {
+    name: "Vitality Constitution",
+    type: "PASSIVE",
+    sourceType: "PHYSICAL",
+    slotTab: "LINEAGE",
+    description:
+      "Lineage-derived durability — caps the character's max vitality so it stays within a survivable range.",
+    tags: ["vitality", "defense"],
+    directPrimNames: [],
+    // Phase 8.L round 35 (Mashu 2026-08-13): Vitality Floor and
+    // Ceiling were previously seeded as direct PERSONAL
+    // primitives, severing the origin and leaving them with no
+    // accordion/breadcrumb. Moving them under this capability
+    // restores the full inheritance chain.
+    effects: [
+      {
+        name: "Vitality Bounds",
+        description: "Floor and ceiling on max vitality",
+        primitiveNames: ["Vitality Floor", "Vitality Ceiling"],
       },
     ],
   },
