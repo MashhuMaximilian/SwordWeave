@@ -185,6 +185,15 @@ function splitCapacityPrimitives(
   return { loadPrimitives: load, equipSlotPrimitives: equip };
 }
 
+function formatViaFromProvenance(p: { heritageName: string | null; capabilityName: string | null; effectName: string | null; accordion: string | null }): string {
+  const parts: string[] = [];
+  if (p.accordion) parts.push(p.accordion);
+  if (p.heritageName) parts.push(p.heritageName);
+  if (p.capabilityName) parts.push(p.capabilityName);
+  if (p.effectName) parts.push(p.effectName);
+  return parts.join(" → ");
+}
+
 function findFloor(
   byTarget: ResolvedModifiers["byTarget"],
   target: string,
@@ -1396,24 +1405,42 @@ export function BottomStickyBar({
 
             characterId={characterId}          />
         ) : combo === "behavior" ? (
-          <FormulaModal
-            title="Behavior Variable"
-            subtitle="primitive contributions to a behavior variable"
-            total={
-              behaviorVariables.find((b) => b.key === comboBehaviorKey)?.value ?? 0
+          // Phase 8.L round 33 (Mashu 2026-08-13): the behavior
+          // variable's `contributions` prop only carries
+          // primitiveName + delta. Look up the full contribution
+          // (with provenance) from the resolver's byTarget so
+          // the inheritance breadcrumb renders.
+          (() => {
+            const bv = behaviorVariables.find((b) => b.key === comboBehaviorKey);
+            const target = bv ? `behavior.${bv.key}` : "";
+            const resolverContribs = target
+              ? (resolver?.byTarget[target] ?? [])
+              : [];
+            // Build a name → contribution lookup so we can attach
+            // the provenance to each bv.contributions entry.
+            const provByName = new Map<string, typeof resolverContribs[number]>();
+            for (const c of resolverContribs) {
+              provByName.set(c.primitiveName, c);
             }
-            formula="Behavior value = primitive `set` ops targeting behavior"
-            breakdown={behaviorVariables
-              .filter((b) => b.key === comboBehaviorKey)
-              .flatMap((b) =>
-                b.contributions.map((c) => ({
-                  label: c.primitiveName,
-                  value: c.delta,
-                })),
-              )}
-            onClose={() => setCombo(null)}
-
-            characterId={characterId}          />
+            return (
+              <FormulaModal
+                title="Behavior Variable"
+                subtitle={`primitive contributions to ${bv?.key ?? comboBehaviorKey}`}
+                total={bv?.value ?? 0}
+                formula="Behavior value = primitive `set` ops targeting behavior"
+                breakdown={bv?.contributions.flatMap((c) => {
+                  const full = provByName.get(c.primitiveName);
+                  if (!full) return [];
+                  const via = formatViaFromProvenance(full.provenance);
+                  return via
+                    ? [{ label: c.primitiveName, value: c.delta, via, contribution: full }]
+                    : [{ label: c.primitiveName, value: c.delta, contribution: full }];
+                }) ?? []}
+                onClose={() => setCombo(null)}
+                characterId={characterId}
+              />
+            );
+          })()
         ) : combo === "damage" ? (
           <FormulaModal
             title="Damage Modifiers"
