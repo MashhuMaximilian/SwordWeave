@@ -509,17 +509,24 @@ export function CharacterSheetView(props: CharacterSheetProps) {
       const effectName = l.originEffectId
         ? effectById.get(l.originEffectId)?.name ?? null
         : null;
-      // Accordion: only when the primitive is direct (no capability)
-      // AND its source is a heritage accordion (LINEAGE / UPBRINGING
-      // / MANIFEST). PERSONAL / TRAINING / LEVEL_UP / DM are not
-      // heritage accordions and would clutter the breadcrumb.
-      const accordion =
-        !l.originCapabilityId &&
-        (l.source === "LINEAGE" ||
-          l.source === "UPBRINGING" ||
-          l.source === "MANIFEST")
-          ? l.source
-          : null;
+      // Accordion: the heritage accordion (LINEAGE / UPBRINGING /
+      // MANIFEST) that this primitive belongs to. Source:
+      //   - direct primitive (no capability): l.source
+      //   - inherited via capability: the capability's slotTab
+      // The capability's slotTab is how the parent capability was
+      // slotted on the character (e.g. Vitality Constitution was
+      // slotted on LINEAGE), which is what makes the
+      // inheritance chain read "via LINEAGE > Vitality Constitution
+      // > Vitality Bounds > Vitality Floor".
+      // Mirrors the API sourceNames two-pass logic in
+      // src/app/api/characters/[id]/resolve/route.ts.
+      const HERITAGE_ACCORDIONS = new Set(["LINEAGE", "UPBRINGING", "MANIFEST"]);
+      const rawAccordion = l.originCapabilityId
+        ? capabilityById.get(l.originCapabilityId)?.slotTab ?? null
+        : l.source;
+      const accordion = rawAccordion && HERITAGE_ACCORDIONS.has(rawAccordion)
+        ? rawAccordion
+        : null;
       m.set(l.primitive.id, {
         heritageName,
         capabilityName,
