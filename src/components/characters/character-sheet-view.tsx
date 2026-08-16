@@ -509,17 +509,20 @@ export function CharacterSheetView(props: CharacterSheetProps) {
       const effectName = l.originEffectId
         ? effectById.get(l.originEffectId)?.name ?? null
         : null;
-      // Accordion: only when the primitive is direct (no capability)
-      // AND its source is a heritage accordion (LINEAGE / UPBRINGING
-      // / MANIFEST). PERSONAL / TRAINING / LEVEL_UP / DM are not
-      // heritage accordions and would clutter the breadcrumb.
-      const accordion =
-        !l.originCapabilityId &&
-        (l.source === "LINEAGE" ||
-          l.source === "UPBRINGING" ||
-          l.source === "MANIFEST")
-          ? l.source
-          : null;
+      // Phase 8.L round 34 (Mashu 2026-08-13): include ALL slot
+      // sources in the breadcrumb (not just heritage accordions).
+      // PERSONAL / TRAINING / LEVEL_UP / DM are slot tabs the
+      // user voluntarily chose — they ARE part of the primitive's
+      // identity. The previous filter wiped them to null and
+      // broke "via" for every non-heritage direct primitive
+      // (e.g. Vitality Floor showing as "Direct" when the
+      // user explicitly slotted it under PERSONAL).
+      // Heritage accordions (LINEAGE / UPBRINGING / MANIFEST)
+      // still use the source value directly. Other sources
+      // get a normalized lower-case form.
+      const accordion = !l.originCapabilityId && l.source
+        ? l.source
+        : null;
       m.set(l.primitive.id, {
         heritageName,
         capabilityName,
