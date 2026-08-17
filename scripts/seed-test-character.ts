@@ -438,15 +438,21 @@ const PRIMITIVES: PrimitiveSpec[] = [
     source: "PERSONAL",
   },
   {
+    // Phase 8.L round 40 (Mashu 2026-08-13): target changed from
+    // defense.physical to save_dc.physical. The L28 cleanup
+    // collapsed defense.X into save_dc.X (single defense DC per
+    // attribute). Stone Skin stayed on the dead target after
+    // the cleanup so it stopped contributing to the Save DC
+    // total. Now it correctly adds +2 to save_dc.physical.
     name: "Stone Skin",
     category: "CHARACTER_SHEET_AUGMENT",
     buCost: 1,
     isMirrorable: true,
     mirrorBuCredit: 1,
     hardModifiers: [
-      { target: "defense.physical", operation: "add", value: 2 },
+      { target: "save_dc.physical", operation: "add", value: 2 },
     ],
-    description: "+2 physical defense (always on).",
+    description: "+2 physical save DC (always on when Stone's Endurance is active).",
     source: "PERSONAL",
   },
   // ── i3 condition case primitives ──────────────────────────────────
@@ -578,15 +584,18 @@ const PRIMITIVES: PrimitiveSpec[] = [
     source: "MANIFEST",
   },
   {
+    // Phase 8.L round 40 (Mashu 2026-08-13): target changed
+    // from defense.mental to save_dc.mental. See Stone Skin
+    // fix above for rationale.
     name: "Defense Mental Buff",
     category: "CHARACTER_SHEET_AUGMENT",
     buCost: 1,
     isMirrorable: false,
     mirrorBuCredit: 0,
     hardModifiers: [
-      { target: "defense.mental", operation: "add", value: 1 },
+      { target: "save_dc.mental", operation: "add", value: 1 },
     ],
-    description: "+1 to mental defense.",
+    description: "+1 to mental save DC (defense roll).",
     source: "MANIFEST",
   },
   {

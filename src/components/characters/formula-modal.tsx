@@ -558,11 +558,11 @@ function StepRow({ step, offCapabilityIds }: { step: FormulaStep; offCapabilityI
               "truncate text-sm font-medium",
               isExpertiseName(c.primitiveName) && "font-bold text-teal-700 dark:text-teal-300",
               isProficiencyName(c.primitiveName) && "text-teal-700 dark:text-teal-300",
-              c.originCapabilityId && offCapabilityIds.has(c.originCapabilityId) && "text-muted-foreground line-through"
+              c.inhibited && "text-muted-foreground line-through"
             )} title={c.primitiveName}>
               {step.label}
-              {c.originCapabilityId && offCapabilityIds.has(c.originCapabilityId) ? (
-                <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">(capability OFF)</span>
+              {c.inhibited ? (
+                <span className="ml-2 text-[10px] uppercase tracking-wide text-red-600 dark:text-red-400">⛔ inhibited</span>
               ) : null}
             </p>
             {step.via && (
@@ -582,7 +582,7 @@ function StepRow({ step, offCapabilityIds }: { step: FormulaStep; offCapabilityI
               isPbHalfValue(c.value) && "text-teal-600 dark:text-teal-400",
               isExpertiseName(c.primitiveName) && "font-bold text-teal-700 dark:text-teal-300",
               isProficiencyName(c.primitiveName) && "text-teal-700 dark:text-teal-300",
-              c.originCapabilityId && offCapabilityIds.has(c.originCapabilityId) && "text-muted-foreground line-through"
+              c.inhibited && "text-muted-foreground line-through"
             )}>
               {c.op === "min" || c.op === "max" ? c.value : fmt(c.value)}
             </span>

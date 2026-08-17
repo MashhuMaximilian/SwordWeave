@@ -173,6 +173,14 @@ export interface ModifierContribution {
    * primitives whose capability is toggled OFF. */
   readonly originCapabilityId: string | null;
   readonly stacking: HardModifier["stacking"];
+  /**
+   * Phase 8.L round 41 (Mashu 2026-08-13): true when this
+   * contribution is suppressed because its parent capability or
+   * effect is toggled OFF. The contribution is still emitted
+   * so the modal can render it with an inhibited badge, but
+   * it does NOT contribute to the totals.
+   */
+  readonly inhibited: boolean;
   readonly provenance: {
     readonly heritageName: string | null;
     readonly capabilityName: string | null;
@@ -312,6 +320,10 @@ export function resolveModifiers(
     readonly hasCondition: boolean;
     readonly conditionActive: boolean;
     readonly conditionComputable: boolean;
+    /** Phase 8.L round 41: true when this entry is suppressed because
+     * its parent capability or effect is toggled OFF. The entry is
+     * still emitted to byTarget but doesn't contribute to totals. */
+    readonly inhibited: boolean;
   }
   const entries: PassEntry[] = [];
 
@@ -451,8 +463,12 @@ const eq = resolveEquation(operandsRaw as never, ctx);
           ? evaluateCondition(mod.condition as import("@/types/condition").ModifierCondition, conditionContext)
           : true; // non-computable → include the bonus
       }
-      // Cap toggle suppresses the modifier entirely (no attribution).
-      if (slot.isToggledOff) continue;
+      // Phase 8.L round 41 (Mashu 2026-08-13): cap/effect toggle
+      // marks the entry as `inhibited` instead of skipping
+      // entirely. The entry is still added to byTarget so the
+      // modal can render it with the (capability OFF) / (effect
+      // OFF) badge, but Pass 2 skips the totals update.
+      const slotInhibited: boolean = slot.isToggledOff ?? false;
 
       // ---- Behavior variable collection (Pass 1) ---------------
       if (target === "behavior" && behaviorName !== null) {
@@ -476,6 +492,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
           conditionActive,
           hasCondition,
           conditionComputable,
+          inhibited: slotInhibited,
         });
       } else {
         entries.push({
@@ -489,6 +506,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
           conditionActive,
           hasCondition,
           conditionComputable,
+          inhibited: slotInhibited,
         });
       }
     }
@@ -508,6 +526,9 @@ const eq = resolveEquation(operandsRaw as never, ctx);
     const conditionRaw = mod.condition ?? null;
 
     if (!Number.isFinite(effectiveValue)) continue;
+    // Phase 8.L round 41: inhibited contributions still land in
+    // byTarget for display, but skip the totals update.
+    const entryInhibited = (entry as { inhibited?: boolean }).inhibited === true;
 
     // Build the list of all byTarget keys this contribution
     // lands on: the raw target + any scoped sub-target keys.
@@ -538,6 +559,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
         hasCondition,
         conditionComputable,
         stacking: mod.stacking ?? "stack",
+        inhibited: entryInhibited,
         provenance: {
           heritageName: sourceNames?.get(slot.primitiveId)?.heritageName ?? null,
           capabilityName: sourceNames?.get(slot.primitiveId)?.capabilityName ?? null,
@@ -576,6 +598,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
               hasCondition,
               conditionComputable,
               stacking: mod.stacking ?? "stack",
+              inhibited: entryInhibited,
               provenance: {
                 heritageName: sourceNames?.get(slot.primitiveId)?.heritageName ?? null,
                 capabilityName: sourceNames?.get(slot.primitiveId)?.capabilityName ?? null,
