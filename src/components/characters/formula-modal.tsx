@@ -594,7 +594,14 @@ function StepRow({ step, offCapabilityIds }: { step: FormulaStep; offCapabilityI
                 Mirrored
               </span>
             )}
-            {c.conditionActive === false ? (
+            {c.inhibited ? (
+              <span
+                className="font-mono text-[10px] font-semibold text-red-500"
+                title="Capability or effect is OFF — primitive suppressed"
+              >
+                ⛔ Inhibited
+              </span>
+            ) : c.conditionActive === false ? (
               <span
                 className="font-mono text-[10px] font-semibold text-red-500"
                 title="Condition not met — contribution suppressed"
@@ -650,6 +657,13 @@ function SummaryLine({
   steps: ReadonlyArray<FormulaStep>;
   total: number;
 }) {
+  // Phase 8.L round 42 (Mashu 2026-08-13): exclude inhibited
+  // contributions from the formula trace. They render with a
+  // strike-through badge in the row but contribute 0 to the
+  // trace sum (which equals `total`).
+  const activeSteps = steps.filter(
+    (s) => !(s.contribution && s.contribution.inhibited),
+  );
   // Build a single-line formula trace. Each step's value is
   // rendered with its sign. Base steps (the first one with
   // label containing "Base" or value matching the chip's
@@ -661,7 +675,7 @@ function SummaryLine({
   // their sign.
   return (
     <p className="mt-3 rounded-md border border-dashed border-border bg-background/50 p-2 font-mono text-[11px] text-muted-foreground">
-      {steps.map((step, i) => {
+      {activeSteps.map((step, i) => {
         const sign = step.value >= 0 ? "+" : "−";
         const abs = Math.abs(step.value);
         const display = i === 0 ? `${step.value}` : `${sign}${abs}`;

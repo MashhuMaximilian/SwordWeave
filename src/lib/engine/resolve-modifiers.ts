@@ -695,14 +695,26 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   if (!byTarget["attack_bonus"]) {
     byTarget["attack_bonus"] = byTarget[`attack_bonus.${chosenAttr}`] ?? [];
   }
+  // Phase 8.L round 43 (Mashu 2026-08-13): L28 unified
+  // defense.X into save_dc.X. The single-target mirror used
+  // defense_dc.<attr> which is now empty (no primitives
+  // target that format after L28). Read from save_dc.<attr>
+  // instead. Fall back to defense_dc.<attr> for legacy
+  // primitive data.
   if (!byTarget["save_dc"]) {
-    byTarget["save_dc"] = byTarget[`defense_dc.${chosenAttr}`] ?? [];
+    byTarget["save_dc"] =
+      byTarget[`save_dc.${chosenAttr}`] ??
+      byTarget[`defense_dc.${chosenAttr}`] ??
+      [];
   }
 
   // Compute the SINGLE totals using the chosen attribute's
   // contribution delta.
   const atkBase = totals[`attack_bonus.${chosenAttr}`] ?? 0;
-  const saveBase = totals[`defense_dc.${chosenAttr}`] ?? 0;
+  const saveBase =
+    totals[`save_dc.${chosenAttr}`] ??
+    totals[`defense_dc.${chosenAttr}`] ??
+    0;
   totals["attack_bonus"] = atkBase;
   totals["save_dc"] = saveBase;
 
