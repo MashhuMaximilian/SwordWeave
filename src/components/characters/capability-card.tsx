@@ -39,6 +39,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Zap, Power, CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { emitCharacterLogAdded } from "@/lib/character/character-events";
+import { notifyToggleChanged } from "@/lib/hooks/use-toggle-state";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { SlotSource } from "@/db/schema/characters";
@@ -148,6 +149,7 @@ function writeToggle(
   active: boolean,
 ) {
   if (typeof window === "undefined") return;
+    notifyToggleChanged();
   try {
     if (active) {
       window.localStorage.setItem(storageKey(characterId, capabilityId), "1");
@@ -320,6 +322,7 @@ export function CapabilityCard({
     // Optimistic UI update — feels instant.
     setActive(next);
     writeToggle(characterId, capability.id, next);
+    notifyToggleChanged();
     setToggling(true);
 
     try {
@@ -336,6 +339,7 @@ export function CapabilityCard({
         // Revert optimistic update on failure.
         setActive(!next);
         writeToggle(characterId, capability.id, !next);
+    notifyToggleChanged();
         const body = await res.json().catch(() => ({}));
         const msg =
           (body as { error?: string }).error ?? "Failed to toggle capability.";
@@ -348,6 +352,7 @@ export function CapabilityCard({
       setActive(data.capability.active);
       writeToggle(characterId, capability.id, data.capability.active);
 
+    notifyToggleChanged();
       showToast(
         next ? `Activated "${capability.name}"` : `Deactivated "${capability.name}"`,
         "success",
@@ -366,6 +371,7 @@ export function CapabilityCard({
     } catch (err) {
       setActive(!next);
       writeToggle(characterId, capability.id, !next);
+    notifyToggleChanged();
       showToast(
         err instanceof Error ? err.message : "Network error.",
         "error",

@@ -60,6 +60,14 @@ export interface UseCharacterResolverInput {
   /** Phase 8.I i3: optional runtime context for condition evaluation. */
   conditionContext?: ConditionContext | null;
   /**
+   * Phase 8.L round 38 (Mashu 2026-08-13): capability + effect
+   * toggles. Primitives originating under an OFF capability (or
+   * OFF effect) are suppressed. Direct primitives (no origin
+   * capability / effect) are unaffected.
+   */
+  offCapabilityIds?: ReadonlySet<string>;
+  offEffectIds?: ReadonlySet<string>;
+  /**
    * Optional lookup for provenance display. Maps primitiveId
    * → { heritageName, capabilityName, effectName }. Used to
    * humanize the per-target attribution list in the provenance
@@ -96,19 +104,37 @@ export function useCharacterResolver(
   input: UseCharacterResolverInput,
 ): UseCharacterResolverResult {
   return useMemo(() => {
-    const slots: ResolvedPrimitiveSlot[] = input.primitiveLinks.map((link) => ({
-      primitiveId: link.primitive.id,
-      name: link.primitive.name,
-      category: link.primitive.category,
-      hardModifiers: (link.primitive.hardModifiers ?? []) as readonly HardModifier[],
-      isMirrored: link.isMirrored,
-      isMirrorable: link.primitive.isMirrorable,
-      mirrorVector: link.primitive.mirrorVector,
-      originHeritageId: link.originHeritageId,
-      originCapabilityId: link.originCapabilityId,
-      originEffectId: link.originEffectId,
-      isToggledOff: link.isToggledOff ?? false,
-    }));
+    const offCap = input.offCapabilityIds ?? new Set<string>();
+    const offEff = input.offEffectIds ?? new Set<string>();
+    const slots: ResolvedPrimitiveSlot[] = input.primitiveLinks.map((link) => {
+      // Phase 8.L round 38: derive live toggle state from the
+      // localStorage-fed sets. A primitive is OFF when:
+      //   - its parent capability is OFF, OR
+      //   - its parent effect is OFF (effect toggle independent
+      //     of capability toggle, per Q4)
+      // Direct primitives (no origin capability/effect) are
+      // always ON.
+      const fromCapOff =
+        link.originCapabilityId !== null &&
+        offCap.has(link.originCapabilityId);
+      const fromEffOff =
+        link.originEffectId !== null &&
+        offEff.has(link.originEffectId);
+      const toggledOff = fromCapOff || fromEffOff;
+      return {
+        primitiveId: link.primitive.id,
+        name: link.primitive.name,
+        category: link.primitive.category,
+        hardModifiers: (link.primitive.hardModifiers ?? []) as readonly HardModifier[],
+        isMirrored: link.isMirrored,
+        isMirrorable: link.primitive.isMirrorable,
+        mirrorVector: link.primitive.mirrorVector,
+        originHeritageId: link.originHeritageId,
+        originCapabilityId: link.originCapabilityId,
+        originEffectId: link.originEffectId,
+        isToggledOff: (link.isToggledOff ?? false) || toggledOff,
+      };
+    });
 
     const resolverInput: ResolvedCharacterInput = {
       characterId: input.characterId,
@@ -137,5 +163,7 @@ export function useCharacterResolver(
     input.attributes.magical,
     input.primitiveLinks,
     input.sourceNames,
+    input.offCapabilityIds,
+    input.offEffectIds,
   ]);
 }

@@ -60,6 +60,7 @@ import { proficiencyBonus } from "@/lib/engine/practices";
 // per-target attribution; we use it for the BottomStickyBar
 // and (in S5) the VitalityCard + provenance modal.
 import { useCharacterResolver } from "@/lib/hooks/use-character-resolver";
+import { useToggleState } from "@/lib/hooks/use-toggle-state";
 import {
   BACKSTORY_FIELDS,
   isBackstoryEmpty,
@@ -536,6 +537,13 @@ export function CharacterSheetView(props: CharacterSheetProps) {
     }
     return m;
   }, [props.primitiveLinks, heritageById, capabilityById, effectById]);
+  // Phase 8.L round 38 (Mashu 2026-08-13): read localStorage
+  // toggle state for capabilities + effects. The resolver
+  // reads this to suppress primitive contributions from inactive
+  // capabilities/effects, so the totals reflect the user-facing
+  // toggle state.
+  const toggleState = useToggleState(props.id);
+
   // Phase 8.3f S4 (Mashu 2026-07-28): run the canonical resolver
   // once per render. The result drives the BottomStickyBar's
   // attribute modifiers and (in S5) the VitalityCard + provenance
@@ -577,6 +585,8 @@ export function CharacterSheetView(props: CharacterSheetProps) {
     })),
     conditionContext: props.conditionContext ?? null,
     sourceNames,
+    offCapabilityIds: toggleState.offCapabilityIds,
+    offEffectIds: toggleState.offEffectIds,
   });
 
   async function handleLevelUp() {
