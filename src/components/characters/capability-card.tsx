@@ -137,6 +137,8 @@ function storageKey(characterId: string, capabilityId: string) {
 function readToggle(characterId: string, capabilityId: string): boolean {
   if (typeof window === "undefined") return false;
   try {
+    // Phase 8.L round 44: returns 'true when OFF' (key = '1').
+    // Default is ACTIVE (no key).
     return window.localStorage.getItem(storageKey(characterId, capabilityId)) === "1";
   } catch {
     return false;
@@ -151,10 +153,15 @@ function writeToggle(
   if (typeof window === "undefined") return;
     notifyToggleChanged();
   try {
+    // Phase 8.L round 44 (Mashu 2026-08-13): flipped convention.
+    // Previously: active=true stored '1', active=false removed.
+    // Now: INACTIVE stores '1', ACTIVE removes. Default = ACTIVE.
+    // This aligns with the resolver hook (use-toggle-state.ts)
+    // which treats sw:cap:* = '1' as OFF.
     if (active) {
-      window.localStorage.setItem(storageKey(characterId, capabilityId), "1");
-    } else {
       window.localStorage.removeItem(storageKey(characterId, capabilityId));
+    } else {
+      window.localStorage.setItem(storageKey(characterId, capabilityId), "1");
     }
   } catch {
     // localStorage might be disabled (private mode, quota); swallow.
@@ -290,7 +297,8 @@ export function CapabilityCard({
   const [previewLoading, setPreviewLoading] = useState(false);
 
   // Local optimistic state. Hydrate from localStorage on mount.
-  const [active, setActive] = useState(false);
+  // Phase 8.L round 44: default ACTIVE (no localStorage key).
+  const [active, setActive] = useState(true);
   // Phase 8.4 v9 (Mashu 2026-07-28): the sheet only carries the
   // capability's effectLinks, not its primitiveLinks. For "actual
   // play" the user wants to see the primitives that come in via
@@ -382,7 +390,8 @@ export function CapabilityCard({
   }, [capability.id, previewData, showToast]);
 
   useEffect(() => {
-    setActive(readToggle(characterId, capability.id));
+    // Phase 8.L round 44: readToggle returns 'is OFF'. Default ACTIVE.
+    setActive(!readToggle(characterId, capability.id));
     setHydrated(true);
   }, [characterId, capability.id]);
 
