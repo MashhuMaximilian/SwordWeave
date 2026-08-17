@@ -659,9 +659,16 @@ const eq = resolveEquation(operandsRaw as never, ctx);
     if (!firstContrib) continue;
     const stackingMode = firstContrib.stacking ?? "stack";
 
-    // Apply stacking mode to additive contributions only.
+    // Phase 8.L round 47 (Mashu 2026-08-13): skip INHIBITED
+    // contributions when computing the stacked total. L46 added
+    // a check inside PASS 2 to undo the totals update for
+    // inhibited entries, but the i2.8 stacking loop runs
+    // AFTER PASS 2 and re-sums the contributions from byTarget
+    // (which includes inhibited ones for display). Without this
+    // filter, the stacking loop re-adds Stone Skin's value 2 to
+    // totals[save_dc.physical], undoing the L46 fix.
     const additiveValues = contribs
-      .filter((c) => c.op !== "max" && c.op !== "min")
+      .filter((c) => c.op !== "max" && c.op !== "min" && !c.inhibited)
       .map((c) => c.value);
     if (additiveValues.length > 0) {
       const stacked = applyStacking(
@@ -674,15 +681,17 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       }
     }
     // Apply ceiling (max): total cannot exceed the max value.
+    // Phase 8.L round 47: also skip inhibited ceilings.
     const maxValues = contribs
-      .filter((c) => c.op === "max" && c.conditionActive)
+      .filter((c) => c.op === "max" && c.conditionActive && !c.inhibited)
       .map((c) => c.value);
     for (const v of maxValues) {
       total = Math.min(total, v);
     }
     // Apply floor (min): total cannot go below the min value.
+    // Phase 8.L round 47: also skip inhibited floors.
     const minValues = contribs
-      .filter((c) => c.op === "min" && c.conditionActive)
+      .filter((c) => c.op === "min" && c.conditionActive && !c.inhibited)
       .map((c) => c.value);
     for (const v of minValues) {
       total = Math.max(total, v);
