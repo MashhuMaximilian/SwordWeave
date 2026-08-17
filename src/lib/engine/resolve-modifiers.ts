@@ -634,6 +634,16 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       if (!conditionActive) {
         totals[t] = previousBase;
       }
+      // Phase 8.L round 46 (Mashu 2026-08-13): also suppress
+      // INHIBITED contributions (cap/effect toggled OFF). The
+      // byTarget entry is still emitted so the modal can render
+      // it with the (⛔ Inhibited) badge, but the value is
+      // not summed into totals. L41 missed this — the trace
+      // filter handled the visual display but the totals kept
+      // counting the inhibited value. Now both are aligned.
+      if (entryInhibited) {
+        totals[t] = previousBase;
+      }
     }
   }
 
