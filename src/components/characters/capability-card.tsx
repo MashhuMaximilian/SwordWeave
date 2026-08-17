@@ -39,7 +39,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Zap, Power, CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { emitCharacterLogAdded } from "@/lib/character/character-events";
-import { notifyToggleChanged } from "@/lib/hooks/use-toggle-state";
+import { notifyToggleChanged, effStorageKey } from "@/lib/hooks/use-toggle-state";
 import { useToasts } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { SlotSource } from "@/db/schema/characters";
@@ -158,6 +158,122 @@ function writeToggle(
     }
   } catch {
     // localStorage might be disabled (private mode, quota); swallow.
+  }
+}
+
+/**
+ * Phase 8.L round 39 (Mashu 2026-08-13): per-effect toggle.
+ *
+ * Each effect sits under a capability. By default the effect is
+ * "ON" (its primitives contribute to the totals). The user can
+ * toggle an effect OFF — its primitives stop contributing even
+ * while the parent capability is ON. This implements Q4 from
+ * Round 24: "Marked can be off even when Hunter's Mark is on".
+ *
+ * Storage: `sw:eff:<characterId>:<effectId>` = "1" when OFF.
+ * The same convention as capability toggles (1 = explicit OFF).
+ */
+function EffectToggleRow({
+  characterId,
+  capabilityId,
+  effectId,
+  effectName,
+  effectDescription,
+  versionId,
+}: {
+  characterId: string;
+  capabilityId: string;
+  effectId: string;
+  effectName: string;
+  effectDescription: string | null;
+  versionId: string | null;
+}) {
+  const [active, setActive] = useState(true);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    // Read initial state from localStorage. Default = active.
+    const off = readEffectToggle(characterId, effectId);
+    setActive(!off);
+    setHydrated(true);
+
+    function onChange() {
+      const next = !readEffectToggle(characterId, effectId);
+      setActive(next);
+    }
+    window.addEventListener("storage", onChange);
+    window.addEventListener("sw:toggle-changed", onChange);
+    return () => {
+      window.removeEventListener("storage", onChange);
+      window.removeEventListener("sw:toggle-changed", onChange);
+    };
+  }, [characterId, effectId]);
+
+  const handleToggle = useCallback(() => {
+    const next = !active;
+    setActive(next);
+    writeEffectToggle(characterId, effectId, !next);
+    notifyToggleChanged();
+  }, [active, characterId, effectId]);
+
+  const isOff = hydrated && !active;
+
+  return (
+    <li
+      className={cn(
+        "rounded border border-border bg-background px-2 py-1",
+        isOff && "opacity-50",
+      )}
+    >
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="font-medium text-foreground">{effectName}</span>
+        <SlotSourceBadge
+          slotSource={"PINNED"}
+          versionId={versionId}
+          latestVersionId={null}
+        />
+        <button
+          type="button"
+          onClick={handleToggle}
+          aria-label={active ? "Deactivate effect" : "Activate effect"}
+          title={active ? "Effect is ON — click to deactivate" : "Effect is OFF — click to activate"}
+          className={cn(
+            "ml-auto inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors",
+            active
+              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25"
+              : "bg-muted text-muted-foreground hover:bg-muted/70",
+          )}
+        >
+          <Power className="size-3" />
+          {active ? "On" : "Off"}
+        </button>
+      </div>
+      {effectDescription ? (
+        <div className="text-muted-foreground italic">{effectDescription}</div>
+      ) : null}
+    </li>
+  );
+}
+
+function readEffectToggle(characterId: string, effectId: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(effStorageKey(characterId, effectId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeEffectToggle(characterId: string, effectId: string, off: boolean) {
+  if (typeof window === "undefined") return;
+  try {
+    if (off) {
+      window.localStorage.setItem(effStorageKey(characterId, effectId), "1");
+    } else {
+      window.localStorage.removeItem(effStorageKey(characterId, effectId));
+    }
+  } catch {
+    // localStorage disabled; swallow.
   }
 }
 
@@ -558,29 +674,15 @@ export function CapabilityCard({
             </div>
             <ul className="space-y-1">
               {capability.effectLinks.map((el) => (
-                <li
+                <EffectToggleRow
                   key={el.effectId}
-                  className="rounded border border-border bg-background px-2 py-1"
-                >
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="font-medium text-foreground">
-                      {el.effect.name}
-                    </span>
-                    {/* Phase 8.5 H6 round 11: SlotSourceBadge
-                        with the effect's latest version id
-                        (resolved from bulk latestVersions). */}
-                    <SlotSourceBadge
-                      slotSource={"PINNED"}
-                      versionId={latestVersions?.get(makeVersionKey("effect", el.effectId)) ?? null}
-                      latestVersionId={null}
-                    />
-                  </div>
-                  {el.effect.description ? (
-                    <div className="text-muted-foreground italic">
-                      {el.effect.description}
-                    </div>
-                  ) : null}
-                </li>
+                  characterId={characterId}
+                  capabilityId={capability.id}
+                  effectId={el.effectId}
+                  effectName={el.effect.name}
+                  effectDescription={el.effect.description ?? null}
+                  versionId={latestVersions?.get(makeVersionKey("effect", el.effectId)) ?? null}
+                />
               ))}
             </ul>
           </div>
