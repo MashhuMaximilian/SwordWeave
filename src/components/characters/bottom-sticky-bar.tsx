@@ -198,7 +198,12 @@ function findFloor(
   byTarget: ResolvedModifiers["byTarget"],
   target: string,
 ): number | null {
-  const vals = (byTarget[target] ?? []).filter((c) => c.op === "min" || (c.op === "set" && c.tags.includes("min")));
+  // Phase 8.L round 45: skip inhibited contributions.
+  const vals = (byTarget[target] ?? []).filter(
+    (c) =>
+      !c.inhibited &&
+      (c.op === "min" || (c.op === "set" && c.tags.includes("min"))),
+  );
   if (vals.length === 0) return null;
   return Math.min(...vals.map((c) => c.value));
 }
@@ -207,7 +212,12 @@ function findCeiling(
   byTarget: ResolvedModifiers["byTarget"],
   target: string,
 ): number | null {
-  const vals = (byTarget[target] ?? []).filter((c) => c.op === "max" || (c.op === "set" && c.tags.includes("max")));
+  // Phase 8.L round 45: skip inhibited contributions.
+  const vals = (byTarget[target] ?? []).filter(
+    (c) =>
+      !c.inhibited &&
+      (c.op === "max" || (c.op === "set" && c.tags.includes("max"))),
+  );
   if (vals.length === 0) return null;
   return Math.max(...vals.map((c) => c.value));
 }
@@ -981,6 +991,34 @@ export function BottomStickyBar({
                       ) : (
                         <ul className="space-y-1">
                           {rows.map((p) => {
+                            // Phase 8.L round 45 (Mashu 2026-08-13):
+                            // compute the practice total from the
+                            // CLIENT resolver (not the server prop).
+                            // The resolver respects the toggle state
+                            // (cap OFF / effect OFF), so primitive
+                            // contributions under an inactive cap
+                            // are excluded from the totals — and now
+                            // from the bottom-drawer cell.
+                            //
+                            // Formula: total = base attr modifier
+                            // + PB (if proficient)
+                            // + resolver.totals["skill_practice_check.<name>"]
+                            //
+                            // The resolver's totals already include
+                            // the floor/ceiling clamping + condition
+                            // gating, so we just add the static
+                            // parts on top.
+                            const practiceAttrMod =
+                              p.attribute === 'PHYSICAL' ? physMod :
+                              p.attribute === 'MENTAL' ? mentMod :
+                              magiMod;
+                            const practiceIsProf =
+                              proficientAttribute === p.attribute;
+                            const practiceTotal =
+                              practiceAttrMod +
+                              (practiceIsProf ? pb : 0) +
+                              (resolver?.totals[`skill_practice_check.${p.name.toLowerCase()}`] ?? 0);
+                            const total = practiceTotal;
                             // L25: detect helper primitive kinds in this
                             // practice's modifiers. PB/2 detection via
                             // formula-modal helpers is inlined here.
@@ -1017,7 +1055,7 @@ export function BottomStickyBar({
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  openPracticeDetailModal(p);
+                                  openPracticeDetailModal({ ...p, total });
                                 }}
                                 className="flex w-full items-center justify-between gap-1 rounded px-1 py-0.5 text-left hover:bg-secondary/30"
                                 title={`Show provenance for ${p.name}`}
@@ -1026,7 +1064,7 @@ export function BottomStickyBar({
                                   {p.name}
                                 </span>
                                 <span className={`flex items-center gap-0.5 shrink-0 font-mono text-xs tabular-nums ${valCol}`}>
-                                  {fmt(p.total)}
+                                  {fmt(total)}
                                   <AxisMarkers byTarget={byTarget} target={`skill_practice_check.${p.name.toLowerCase()}`} />
                                 </span>
                               </button>
@@ -2196,15 +2234,26 @@ function PracticeDetailModal({
       // Phase 8.L: floor/ceiling (op=min/max) are informational,
       // NOT part of the modifier sum per the practice system
       // overview. Skip them when summing the practice total.
+      // Phase 8.L round 45: also skip INHIBITED contributions
+      // (cap/effect toggled OFF). The resolver already excludes
+      // them from totals, but this sum walks byTarget which
+      // includes them for display purposes.
       if (c.op === "min" || c.op === "max") return sum;
+      if (c.inhibited) return sum;
       return sum + c.value;
     }, 0) ?? 0;
   // Also collect min/max separately so the formula line can
   // show the floor/ceiling indicators after the total.
   const practiceMin = byTarget[practiceTarget]
-    ?.reduce((min, c) => c.op === "min" && c.value > min ? c.value : min, 0) ?? 0;
+    ?.reduce((min, c) => {
+      if (c.inhibited) return min;
+      return c.op === "min" && c.value > min ? c.value : min;
+    }, 0) ?? 0;
   const practiceMax = byTarget[practiceTarget]
-    ?.reduce((max, c) => c.op === "max" && c.value < max ? c.value : max, Infinity);
+    ?.reduce((max, c) => {
+      if (c.inhibited) return max;
+      return c.op === "max" && c.value < max ? c.value : max;
+    }, Infinity);
   const practiceMaxDisplay = practiceMax === Infinity ? null : practiceMax;
   // Mirror-style trace: show the formula
   //   total = attrBase + (PB if prof) + attrDelta
