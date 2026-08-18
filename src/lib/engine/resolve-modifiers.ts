@@ -442,6 +442,26 @@ const eq = resolveEquation(operandsRaw as never, ctx);
           }
         }
       }
+      // Phase 8.L round 53 (Mashu 2026-08-14): empty scope = "any
+      // of the layer" = expand to all options on the target's
+      // checklist. Without this, a modifier with target="attribute"
+      // and no checked sub-targets lands on `totals["attribute"]`
+      // (the parent) only — but the character card reads
+      // `totals["attribute.physical"]` etc. The user expectation
+      // is that no checkbox selected = "all". The expansion only
+      // applies to targets with a checklist spec (e.g. attribute,
+      // defense_dc, speed, skill_practice_check). For free-text
+      // targets (behavior, scene_pace, etc.) the empty scope is
+      // left as-is — the modifier still lands on the parent target.
+      if (scopedValuesList.length === 0) {
+        const targetSpec =
+          MODIFIER_TARGET_SPEC[target as ModifierTarget];
+        if (targetSpec && Array.isArray(targetSpec.options) && targetSpec.options.length > 0) {
+          scopedValuesList = targetSpec.options.map((o) =>
+            String(o).toLowerCase(),
+          );
+        }
+      }
 
       // Phase 8.I i3 (Mashu): condition evaluation + cap toggling.
       // When conditionContext is provided, evaluate the modifier's

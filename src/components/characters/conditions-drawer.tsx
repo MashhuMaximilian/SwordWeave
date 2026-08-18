@@ -26,6 +26,10 @@ import {
   type RuntimeCondition,
 } from "@/lib/hooks/use-runtime-conditions";
 import { ConditionComposer } from "@/components/characters/condition-composer";
+import type { HardModifier } from "@/types/swordweave";
+import { MODIFIER_TARGET_SPEC } from "@/lib/primitives/modifier-scope";
+
+type ConditionModifier = HardModifier;
 
 interface ConditionsDrawerProps {
   characterId: string;
@@ -182,13 +186,6 @@ function ConditionCardItem({
   readOnly?: boolean;
 }) {
   const { active, title, description, tags, modifiers, durationTier } = condition;
-  const modifierPreview = modifiers
-    .map((m) => {
-      const op = m.operation === "add" ? "+" : m.operation === "subtract" ? "−" : m.operation;
-      return `${op}${m.value}`;
-    })
-    .join(", ");
-
   const durationLabel =
     durationTier === "long_rest"
       ? "Long rest"
@@ -231,14 +228,16 @@ function ConditionCardItem({
         </button>
       </header>
 
-      {modifierPreview && (
-        <p className="font-mono text-xs text-amber-700 dark:text-amber-300">
-          {modifierPreview}
-        </p>
-      )}
+      {/* Phase 8.L round 53: per-modifier breakdown — target,
+          subtargets, op+value, stacking, triggers when. */}
+      <div className="space-y-2">
+        {modifiers.map((m, i) => (
+          <ModifierSummary key={i} modifier={m} />
+        ))}
+      </div>
 
       {tags.length > 0 && (
-        <div className="mt-1 flex flex-wrap gap-1">
+        <div className="mt-2 flex flex-wrap gap-1">
           {tags.map((t) => (
             <span
               key={t}
@@ -277,4 +276,118 @@ function ConditionCardItem({
       </footer>
     </article>
   );
+}
+
+/**
+ * Format a single modifier for display in the drawer card.
+ * Shows: Target, Sub-targets, Op + value, Stacking, Triggers when.
+ */
+function ModifierSummary({ modifier }: { modifier: ConditionModifier }) {
+  const target = String(modifier.target ?? "attribute");
+  const spec =
+    MODIFIER_TARGET_SPEC[target as keyof typeof MODIFIER_TARGET_SPEC];
+  const targetLabel = spec?.label ?? target;
+
+  // Resolve sub-targets from metadata.targetScope.values
+  const scope = (modifier.metadata as { targetScope?: { values?: string[] } } | null)
+    ?.targetScope;
+  const values = (scope?.values ?? []).map((v) => String(v));
+  const subTargets =
+    values.length > 0
+      ? values
+          .map((v) => {
+            const optLabels = spec?.optionLabels ?? {};
+            return optLabels[v] ?? v.toLowerCase();
+          })
+          .join(", ")
+      : target === "attribute"
+        ? "any attribute"
+        : "any";
+
+  // Operation + value
+  const op = modifier.operation ?? "add";
+  const opGlyph: Record<string, string> = {
+    add: "+",
+    subtract: "−",
+    set: "=",
+    multiply: "×",
+    divide: "÷",
+    min: "⌊",
+    max: "⌈",
+    grant: "grant",
+    revoke: "revoke",
+  };
+  const valueStr = formatValue(modifier.value);
+  const opAndValue = `${opGlyph[op] ?? op}${valueStr}`;
+
+  // Stacking
+  const stacking = (modifier.stacking ?? "stack").toString();
+
+  // Triggers when
+  const cond = modifier.condition as
+    | { key?: string; operator?: string; value?: string | number | boolean }
+    | undefined;
+  const triggersWhen = formatTriggersWhen(cond);
+
+  return (
+    <div className="rounded-md border border-amber-500/20 bg-amber-500/5 p-2 text-[11px]">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-amber-700 dark:text-amber-300">
+          {targetLabel}
+        </span>
+        <span className="text-muted-foreground italic">→ {subTargets}</span>
+        <span className="ml-auto font-mono font-semibold text-amber-700 dark:text-amber-300">
+          {opAndValue}
+        </span>
+      </div>
+      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground">
+        <span>
+          <span className="font-semibold uppercase">Stack:</span> {stacking}
+        </span>
+        <span className="text-border">·</span>
+        <span>
+          <span className="font-semibold uppercase">When:</span> {triggersWhen}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function formatValue(value: ConditionModifier["value"]): string {
+  if (value === null || value === undefined) return "0";
+  if (typeof value === "number") return String(value);
+  if (typeof value === "string") return value;
+  if (typeof value === "boolean") return value ? "true" : "false";
+  // Object tokens — show a friendly summary
+  if (typeof value === "object") {
+    const v = value as { kind?: string; value?: unknown };
+    if (v.kind === "number" && typeof v.value === "number") {
+      return String(v.value);
+    }
+    if (v.kind === "keyword" && typeof v.value === "string") {
+      return `[${v.value}]`;
+    }
+  }
+  return JSON.stringify(value);
+}
+
+function formatTriggersWhen(
+  cond: { key?: string; operator?: string; value?: string | number | boolean } | undefined,
+): string {
+  if (!cond || (!cond.key && !cond.value)) return "always";
+  const op = cond.operator ?? "equals";
+  const valueStr = typeof cond.value === "string" ? cond.value : String(cond.value ?? "");
+  const key = cond.key ?? "";
+  // Compact operator label
+  const opLabel: Record<string, string> = {
+    equals: "=",
+    "not-equals": "≠",
+    "greater-than": ">",
+    "greater-than-or-equal": "≥",
+    "less-than": "<",
+    "less-than-or-equal": "≤",
+    includes: "includes",
+    exists: "exists",
+  };
+  return `${key} ${opLabel[op] ?? op} ${valueStr}`.trim();
 }
