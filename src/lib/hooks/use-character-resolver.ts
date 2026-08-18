@@ -68,6 +68,19 @@ export interface UseCharacterResolverInput {
   offCapabilityIds?: ReadonlySet<string>;
   offEffectIds?: ReadonlySet<string>;
   /**
+   * Phase 8.L round 49 (Mashu 2026-08-14): runtime conditions
+   * (FAB scratchpad). Each active condition contributes its
+   * modifiers as a synthetic primitive link so the resolver
+   * sees them. The provenance will show the condition title
+   * + origin = 'condition' so the user knows it came from the
+   * scratchpad.
+   */
+  runtimeConditions?: ReadonlyArray<{
+    readonly title: string;
+    readonly active: boolean;
+    readonly modifiers: readonly HardModifier[];
+  }>;
+  /**
    * Optional lookup for provenance display. Maps primitiveId
    * → { heritageName, capabilityName, effectName }. Used to
    * humanize the per-target attribution list in the provenance
@@ -106,6 +119,24 @@ export function useCharacterResolver(
   return useMemo(() => {
     const offCap = input.offCapabilityIds ?? new Set<string>();
     const offEff = input.offEffectIds ?? new Set<string>();
+
+    // Phase 8.L round 49: runtime conditions become virtual slots.
+    const conditionSlots: ResolvedPrimitiveSlot[] = (input.runtimeConditions ?? [])
+      .filter((c) => c.active)
+      .map((c, i) => ({
+        primitiveId: -100000 - i,
+        name: c.title || "Untitled condition",
+        category: "RUNTIME_CONDITION",
+        hardModifiers: (c.modifiers ?? []) as readonly HardModifier[],
+        isMirrored: false,
+        isMirrorable: false,
+        mirrorVector: null,
+        originHeritageId: null,
+        originCapabilityId: null,
+        originEffectId: null,
+        isToggledOff: false,
+      }));
+
     const slots: ResolvedPrimitiveSlot[] = input.primitiveLinks.map((link) => {
       // Phase 8.L round 38: derive live toggle state from the
       // localStorage-fed sets. A primitive is OFF when:
@@ -136,13 +167,18 @@ export function useCharacterResolver(
       };
     });
 
+    // Phase 8.L round 49: append the condition slots AFTER the
+    // user-authored primitive links. The resolver sees them as
+    // ordinary contributions.
+    const allSlots: ResolvedPrimitiveSlot[] = [...slots, ...conditionSlots];
+
     const resolverInput: ResolvedCharacterInput = {
       characterId: input.characterId,
       level: input.level,
       pb: input.pb,
       proficientAttribute: input.proficientAttribute,
       attributes: input.attributes,
-      slots,
+      slots: allSlots,
       conditionContext: input.conditionContext ?? null,
     };
 
@@ -165,5 +201,6 @@ export function useCharacterResolver(
     input.sourceNames,
     input.offCapabilityIds,
     input.offEffectIds,
+    input.runtimeConditions,
   ]);
 }

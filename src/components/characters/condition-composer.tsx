@@ -20,7 +20,7 @@
  * They do NOT clear on long/short rest (Mashu explicit in R48).
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import type { HardModifier } from "@/types/swordweave";
 import type { ModifierOperation } from "@/types/swordweave";
@@ -95,7 +95,22 @@ export function ConditionComposer({
   const [durationTier, setDurationTier] = useState<DurationTier>(
     initial?.durationTier ?? "manual",
   );
-  const [modifiers, setModifiers] = useState<ModifierDraft[]>([blankModifier]);
+  const [modifiers, setModifiers] = useState<ModifierDraft[]>(() => {
+    if (initial?.modifiers && initial.modifiers.length > 0) {
+      return initial.modifiers.map((hm, i) => ({
+        id: `modifier-${i + 1}`,
+        target: 'attribute',
+        operation: (hm.operation || 'add'),
+        value: typeof hm.value === 'number' ? String(hm.value) : typeof hm.value === 'string' ? hm.value : '',
+        targetValues: Array.isArray((hm.metadata as { targetScope?: { values?: string[] } } | null)?.targetScope?.values)
+          ? ((hm.metadata as { targetScope?: { values?: string[] } }).targetScope!.values!)
+          : [],
+        freeTextNarrowFocus: '',
+        granularity: 'broad' as const,
+      }));
+    }
+    return [blankModifier];
+  });
 
   const tags = useMemo(
     () =>

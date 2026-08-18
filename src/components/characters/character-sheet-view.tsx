@@ -63,6 +63,7 @@ import { proficiencyBonus } from "@/lib/engine/practices";
 // and (in S5) the VitalityCard + provenance modal.
 import { useCharacterResolver } from "@/lib/hooks/use-character-resolver";
 import { useToggleState } from "@/lib/hooks/use-toggle-state";
+import { useRuntimeConditions } from "@/lib/hooks/use-runtime-conditions";
 import {
   BACKSTORY_FIELDS,
   isBackstoryEmpty,
@@ -545,6 +546,9 @@ export function CharacterSheetView(props: CharacterSheetProps) {
   // capabilities/effects, so the totals reflect the user-facing
   // toggle state.
   const toggleState = useToggleState(props.id);
+  // Phase 8.L round 49: read runtime conditions for the resolver.
+  // The hook also listens for localStorage updates.
+  const { conditions: runtimeConditions } = useRuntimeConditions(props.id);
 
   // Phase 8.3f S4 (Mashu 2026-07-28): run the canonical resolver
   // once per render. The result drives the BottomStickyBar's
@@ -589,6 +593,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
     sourceNames,
     offCapabilityIds: toggleState.offCapabilityIds,
     offEffectIds: toggleState.offEffectIds,
+    runtimeConditions,
   });
 
   async function handleLevelUp() {

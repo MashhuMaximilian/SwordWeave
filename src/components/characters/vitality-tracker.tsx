@@ -197,6 +197,33 @@ export function VitalityTracker({
           ? `${verb} complete. +${restored} vitality.`
           : `${verb} complete. Already at full vitality.`;
       showToast(note, "success");
+
+      // Phase 8.L round 49 (Mashu 2026-08-14): when the player
+      // rests, mark matching runtime conditions as inactive.
+      // Long rest clears long_rest conditions; short rest clears
+      // short_rest conditions. Manual conditions are untouched.
+      try {
+        const matchTier = restType === "long" ? "long_rest" : "short_rest";
+        const prefix = `sw:cond:${characterId}:`;
+        for (let i = 0; i < window.localStorage.length; i++) {
+          const key = window.localStorage.key(i);
+          if (!key || !key.startsWith(prefix)) continue;
+          const raw = window.localStorage.getItem(key);
+          if (!raw) continue;
+          try {
+            const cond = JSON.parse(raw);
+            if (cond.durationTier === matchTier && cond.active) {
+              cond.active = false;
+              window.localStorage.setItem(key, JSON.stringify(cond));
+            }
+          } catch {
+            // skip malformed
+          }
+        }
+        window.dispatchEvent(new CustomEvent("sw:conditions-changed"));
+      } catch {
+        // ignore localStorage errors
+      }
     } catch (err) {
       showToast(
         err instanceof Error ? err.message : "Network error.",
