@@ -31,6 +31,12 @@ import {
   scopeForSelection,
 } from "@/lib/primitives/modifier-scope";
 import {
+  ConditionPicker,
+  conditionAuthoringFromLegacy,
+  legacyFieldsFromAuthoring,
+} from "@/components/sandbox/condition-picker";
+import type { ConditionAuthoring } from "@/types/condition";
+import {
   type RuntimeCondition,
   type DurationTier,
   notifyConditionsChanged,
@@ -48,7 +54,33 @@ interface ModifierDraft {
   targetValues: string[];
   freeTextNarrowFocus: string;
   granularity: "broad" | "narrow" | null;
+  // Phase 8.L round 50 (Mashu 2026-08-14): Triggers when...
+  // Reuses the ConditionPicker from the primitive composer so
+  // the modifier UI matches exactly. v1Condition drives the
+  // picker; the legacy fields stay in sync via
+  // legacyFieldsFromAuthoring so the toHardModifier path works.
+  conditionMode: "always" | "custom";
+  conditionKey: string;
+  conditionOperator:
+    | "equals"
+    | "not-equals"
+    | "greater-than"
+    | "greater-than-or-equal"
+    | "less-than"
+    | "less-than-or-equal"
+    | "includes"
+    | "exists";
+  conditionValue: string;
+  v1Condition: ConditionAuthoring;
 }
+
+const blankV1Condition: ConditionAuthoring = {
+  categories: [],
+  pills: [],
+  operators: [],
+  narrative: "",
+  includeTags: false,
+};
 
 const blankModifier: ModifierDraft = {
   id: "modifier-1",
@@ -58,6 +90,11 @@ const blankModifier: ModifierDraft = {
   targetValues: [],
   freeTextNarrowFocus: "",
   granularity: "broad",
+  conditionMode: "always",
+  conditionKey: "",
+  conditionOperator: "equals",
+  conditionValue: "",
+  v1Condition: blankV1Condition,
 };
 
 const targetOptions: ReadonlyArray<{ label: string; value: string }> =
@@ -97,17 +134,37 @@ export function ConditionComposer({
   );
   const [modifiers, setModifiers] = useState<ModifierDraft[]>(() => {
     if (initial?.modifiers && initial.modifiers.length > 0) {
-      return initial.modifiers.map((hm, i) => ({
-        id: `modifier-${i + 1}`,
-        target: 'attribute',
-        operation: (hm.operation || 'add'),
-        value: typeof hm.value === 'number' ? String(hm.value) : typeof hm.value === 'string' ? hm.value : '',
-        targetValues: Array.isArray((hm.metadata as { targetScope?: { values?: string[] } } | null)?.targetScope?.values)
-          ? ((hm.metadata as { targetScope?: { values?: string[] } }).targetScope!.values!)
-          : [],
-        freeTextNarrowFocus: '',
-        granularity: 'broad' as const,
-      }));
+      return initial.modifiers.map((hm, i) => {
+        // Phase 8.L round 50: rebuild v1Condition from the
+        // saved HardModifier.condition (legacy fields) so the
+        // picker shows the same triggers on edit.
+        const cond = hm.condition as
+          | { conditionKey?: string; conditionOperator?: string; conditionValue?: string }
+          | undefined;
+        const v1Condition = cond
+          ? conditionAuthoringFromLegacy(
+              cond.conditionKey ?? "",
+              cond.conditionOperator ?? "equals",
+              cond.conditionValue ?? "",
+            )
+          : blankV1Condition;
+        return {
+          id: `modifier-${i + 1}`,
+          target: 'attribute',
+          operation: (hm.operation || 'add'),
+          value: typeof hm.value === 'number' ? String(hm.value) : typeof hm.value === 'string' ? hm.value : '',
+          targetValues: Array.isArray((hm.metadata as { targetScope?: { values?: string[] } } | null)?.targetScope?.values)
+            ? ((hm.metadata as { targetScope?: { values?: string[] } }).targetScope!.values!)
+            : [],
+          freeTextNarrowFocus: '',
+          granularity: 'broad' as const,
+          conditionMode: cond ? 'custom' : 'always',
+          conditionKey: cond?.conditionKey ?? '',
+          conditionOperator: (cond?.conditionOperator as ModifierDraft['conditionOperator'] | undefined) ?? 'equals',
+          conditionValue: cond?.conditionValue ?? '',
+          v1Condition,
+        };
+      });
     }
     return [blankModifier];
   });
@@ -176,12 +233,29 @@ export function ConditionComposer({
       const value: HardModifier["value"] = Number.isFinite(numericValue)
         ? numericValue
         : modifier.value;
+      // Phase 8.L round 50: build the HardModifier.condition
+      // from the legacy fields (kept in sync with v1Condition
+      // via legacyFieldsFromAuthoring). The HardModifierCondition
+      // shape uses {key, operator, value} (deprecated legacy
+      // shape). When conditionMode is 'always', omit the condition
+      // so the engine treats the modifier as unconditional.
+      const hardModifierCondition =
+        modifier.conditionMode === 'custom' &&
+        (modifier.conditionKey || modifier.conditionValue)
+          ? {
+              key: modifier.conditionKey,
+              operator: modifier.conditionOperator,
+              value: modifier.conditionValue,
+            }
+          : undefined;
+
       const hardMod = {
         kind: "modify" as const,
         target: canonicalTarget,
         operation: modifier.operation,
         value,
         ...(scopeMetadata ? { metadata: scopeMetadata as unknown as Record<string, HardModifier["value"]> } : {}),
+        ...(hardModifierCondition ? { condition: hardModifierCondition } : {}),
       } as HardModifier;
       return hardMod;
     });
@@ -474,6 +548,43 @@ export function ConditionComposer({
                       inputMode="numeric"
                     />
                   </label>
+
+                  {/* Phase 8.L round 50 (Mashu 2026-08-14): Triggers when...
+                      Reuses ConditionPicker from the primitive composer
+                      so the UX matches the atelier primitive form exactly.
+                      The picker emits ConditionAuthoring; we keep the
+                      legacy conditionKey/Operator/Value fields in sync
+                      via legacyFieldsFromAuthoring so the toHardModifier
+                      path keeps working. */}
+                  <div className="rounded-md border border-border bg-background p-3">
+                    <ConditionPicker
+                      value={modifier.v1Condition}
+                      onChange={(next: ConditionAuthoring) => {
+                        const legacy = legacyFieldsFromAuthoring(next);
+                        updateModifier(modifier.id, "v1Condition", next);
+                        updateModifier(
+                          modifier.id,
+                          "conditionMode",
+                          legacy.conditionMode,
+                        );
+                        updateModifier(
+                          modifier.id,
+                          "conditionKey",
+                          legacy.conditionKey,
+                        );
+                        updateModifier(
+                          modifier.id,
+                          "conditionOperator",
+                          legacy.conditionOperator,
+                        );
+                        updateModifier(
+                          modifier.id,
+                          "conditionValue",
+                          legacy.conditionValue,
+                        );
+                      }}
+                    />
+                  </div>
                 </div>
               );
             })}
