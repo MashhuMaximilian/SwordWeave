@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition, useEffect } from "react";
+import { useState, useMemo, useTransition, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import {
@@ -26,6 +26,7 @@ import {
   Check,
   Trash2,
   ChevronDown,
+  ChevronLeft,
   RotateCcw,
 } from "lucide-react";
 import { DetailModal } from "@/components/ui/detail-modal";
@@ -46,6 +47,7 @@ import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
 import { CharacterEditButton } from "@/components/characters/character-edit-button";
 import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-card";
 import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
+import { ConditionsDrawer } from "@/components/characters/conditions-drawer";
 import { FormulaModal, type FormulaStep } from "@/components/characters/formula-modal";
 import { useDeepPrimitiveClosure } from "@/components/characters/use-deep-primitive-closure";
 import { SheetIdentityHeader } from "@/components/characters/sheet-identity-header";
@@ -616,7 +618,27 @@ export function CharacterSheetView(props: CharacterSheetProps) {
     });
   }
 
+  const [conditionsOpen, setConditionsOpen] = useState(false);
+
   return (
+    <>
+      {/* Phase 8.L round 48 (Mashu 2026-08-14): edge button
+          that opens the conditions drawer. Stays sticky on the
+          right edge, above the global FAB. */}
+      <button
+        type="button"
+        onClick={() => setConditionsOpen(true)}
+        aria-label="Open conditions drawer"
+        title="Open conditions drawer"
+        className="fixed right-0 top-1/2 z-30 -translate-y-1/2 rounded-l-md border border-r-0 border-amber-500/40 bg-amber-500 px-2 py-3 text-xs font-semibold text-white shadow-md transition-colors hover:bg-amber-600"
+      >
+        <ChevronLeft className="size-4" />
+      </button>
+      <ConditionsDrawer
+        characterId={props.id}
+        open={conditionsOpen}
+        onClose={() => setConditionsOpen(false)}
+      />
     <div className="mx-auto w-full max-w-screen-2xl px-5 py-8 pb-32">
       {/* Phase 8.4 (Mashu 2026-07-28): the in-page header
           (Pumnu portrait + name + L5 + size + Edit/Level Up/Clone)
@@ -1095,6 +1117,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         }
       />
     </div>
+    </>
   );
 }
 
