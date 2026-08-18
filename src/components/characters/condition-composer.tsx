@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * condition-composer.tsx — Phase 8.L round 48 (Mashu 2026-08-14)
+ * condition-composer.tsx — Phase 8.L round 52 (Mashu 2026-08-14)
  *
  * Modal for creating or editing a Play Session Scratchpad
  * condition. Per Mashu R48:
@@ -9,109 +9,45 @@
  *  - Title (required, e.g. "Poisoned")
  *  - Description (optional, e.g. "Stung by giant spider")
  *  - Tags (multi-tag free-form chips)
- *  - Modifiers (list, same UI as primitive composer)
- *  - Trigger (when... clause, optional)
+ *  - Modifiers (list, EXACT same UI as primitive composer)
  *  - Duration tier: long_rest | short_rest | manual
  *
- * Reuses MODIFIER_TARGET_SPEC + scopeForSelection from the
- * primitive composer so the modifier UI stays in lockstep.
+ * Round 52 (L52): the modifier card now uses the shared
+ * `ModifierBuilder` component from
+ * src/components/workshops/modifier-builder.tsx — the
+ * SAME component the primitive composer uses. This
+ * gives the condition composer:
+ *   - Target / Change / Value / Stacking / Triggers when
+ *     sections (all 5 — matches primitive composer 1:1)
+ *   - TokenChipStack + EquationPicker for value
+ *   - ConditionPicker for Triggers when
+ *   - Chirality/Mirror swap card
  *
  * Conditions are stored in localStorage via use-runtime-conditions.
  * They do NOT clear on long/short rest (Mashu explicit in R48).
  */
 
-import { useState, useMemo, useEffect } from "react";
-import { X, Plus, Trash2 } from "lucide-react";
+import { useState, useMemo } from "react";
+import { X, Plus } from "lucide-react";
 import type { HardModifier } from "@/types/swordweave";
-import type { ModifierOperation } from "@/types/swordweave";
-import { type ModifierTarget } from "@/lib/primitives/modifier-scope";
 import {
-  MODIFIER_TARGET_SPEC,
   MODIFIER_TARGETS,
   scopeForSelection,
 } from "@/lib/primitives/modifier-scope";
+import { type ModifierTarget } from "@/lib/primitives/modifier-scope";
 import {
-  ConditionPicker,
   conditionAuthoringFromLegacy,
-  legacyFieldsFromAuthoring,
 } from "@/components/sandbox/condition-picker";
-import type { ConditionAuthoring } from "@/types/condition";
+import {
+  ModifierBuilder,
+  blankModifierDraft,
+  type ModifierDraft,
+} from "@/components/workshops/modifier-builder";
 import {
   type RuntimeCondition,
   type DurationTier,
   notifyConditionsChanged,
 } from "@/lib/hooks/use-runtime-conditions";
-
-// ModifierDraft shape mirrors the atelier primitive form so the
-// modifier UI stays in lockstep. The shape is local to this file
-// (we don't import from primitive-registry because that file is
-// huge — better to duplicate the shape than drag in 2000 lines).
-interface ModifierDraft {
-  id: string;
-  target: string; // short axis (matches MODIFIER_TARGETS)
-  operation: ModifierOperation;
-  value: string;
-  targetValues: string[];
-  freeTextNarrowFocus: string;
-  granularity: "broad" | "narrow" | null;
-  // Phase 8.L round 50 (Mashu 2026-08-14): Triggers when...
-  // Reuses the ConditionPicker from the primitive composer so
-  // the modifier UI matches exactly. v1Condition drives the
-  // picker; the legacy fields stay in sync via
-  // legacyFieldsFromAuthoring so the toHardModifier path works.
-  conditionMode: "always" | "custom";
-  conditionKey: string;
-  conditionOperator:
-    | "equals"
-    | "not-equals"
-    | "greater-than"
-    | "greater-than-or-equal"
-    | "less-than"
-    | "less-than-or-equal"
-    | "includes"
-    | "exists";
-  conditionValue: string;
-  v1Condition: ConditionAuthoring;
-}
-
-const blankV1Condition: ConditionAuthoring = {
-  categories: [],
-  pills: [],
-  operators: [],
-  narrative: "",
-  includeTags: false,
-};
-
-const blankModifier: ModifierDraft = {
-  id: "modifier-1",
-  target: "attribute",
-  operation: "add",
-  value: "",
-  targetValues: [],
-  freeTextNarrowFocus: "",
-  granularity: "broad",
-  conditionMode: "always",
-  conditionKey: "",
-  conditionOperator: "equals",
-  conditionValue: "",
-  v1Condition: blankV1Condition,
-};
-
-const targetOptions: ReadonlyArray<{ label: string; value: string }> =
-  MODIFIER_TARGETS.map((t) => ({
-    label: MODIFIER_TARGET_SPEC[t].label,
-    value: t,
-  }));
-
-const operationsList: Array<{ label: string; value: ModifierOperation }> = [
-  { label: "Add (+)", value: "add" },
-  { label: "Subtract (−)", value: "subtract" },
-  { label: "Set (=)", value: "set" },
-  { label: "Multiply (×)", value: "multiply" },
-  { label: "Min (⌊)", value: "min" },
-  { label: "Max (⌈)", value: "max" },
-  { label: "Grant", value: "grant" },
-];
 
 interface ConditionComposerProps {
   characterId: string;
@@ -135,38 +71,55 @@ export function ConditionComposer({
   const [modifiers, setModifiers] = useState<ModifierDraft[]>(() => {
     if (initial?.modifiers && initial.modifiers.length > 0) {
       return initial.modifiers.map((hm, i) => {
-        // Phase 8.L round 50: rebuild v1Condition from the
-        // saved HardModifier.condition (legacy fields) so the
-        // picker shows the same triggers on edit.
+        // Phase 8.L round 52: rebuild v1Condition from saved
+        // HardModifier.condition. The legacy modifier format
+        // is {key, operator, value} (HardModifierCondition).
         const cond = hm.condition as
-          | { conditionKey?: string; conditionOperator?: string; conditionValue?: string }
+          | { key?: string; operator?: string; value?: unknown }
           | undefined;
         const v1Condition = cond
           ? conditionAuthoringFromLegacy(
-              cond.conditionKey ?? "",
-              cond.conditionOperator ?? "equals",
-              cond.conditionValue ?? "",
+              cond.key ?? "",
+              cond.operator ?? "equals",
+              typeof cond.value === "string" ? cond.value : "",
             )
-          : blankV1Condition;
+          : blankModifierDraft(`modifier-${i + 1}`).v1Condition;
+        const targetValues = Array.isArray(
+          (hm.metadata as { targetScope?: { values?: string[] } } | null)
+            ?.targetScope?.values,
+        )
+          ? ((hm.metadata as { targetScope?: { values?: string[] } }).targetScope!.values!)
+          : [];
+
+        // Compute the value for the chip stack. The chip stack
+        // expects ValueToken[]; for simple numeric modifiers we
+        // synthesize a single number token.
+        const valueNum = typeof hm.value === "number" ? hm.value : null;
+        const tokens = valueNum !== null
+          ? [{ kind: "number" as const, value: valueNum }]
+          : [];
+
         return {
           id: `modifier-${i + 1}`,
-          target: 'attribute',
-          operation: (hm.operation || 'add'),
-          value: typeof hm.value === 'number' ? String(hm.value) : typeof hm.value === 'string' ? hm.value : '',
-          targetValues: Array.isArray((hm.metadata as { targetScope?: { values?: string[] } } | null)?.targetScope?.values)
-            ? ((hm.metadata as { targetScope?: { values?: string[] } }).targetScope!.values!)
-            : [],
-          freeTextNarrowFocus: '',
-          granularity: 'broad' as const,
-          conditionMode: cond ? 'custom' : 'always',
-          conditionKey: cond?.conditionKey ?? '',
-          conditionOperator: (cond?.conditionOperator as ModifierDraft['conditionOperator'] | undefined) ?? 'equals',
-          conditionValue: cond?.conditionValue ?? '',
+          target: (hm.target as ModifierTarget) ?? "attribute",
+          operation: (hm.operation || "add") as ModifierDraft["operation"],
+          tokens,
+          value: String(hm.value ?? ""),
+          valueKind: "number" as ModifierDraft["valueKind"],
+          operands: [],
+          targetValues,
+          granularity: "broad",
+          freeTextNarrowFocus: "",
+          conditionMode: cond && (cond.key || cond.value) ? "custom" : "always",
+          conditionKey: cond?.key ?? "",
+          conditionOperator: (cond?.operator as ModifierDraft["conditionOperator"] | undefined) ?? "equals",
+          conditionValue: typeof cond?.value === "string" ? cond.value : "",
+          stacking: (hm.stacking as ModifierDraft["stacking"]) ?? "stack",
           v1Condition,
         };
       });
     }
-    return [blankModifier];
+    return [blankModifierDraft("modifier-1")];
   });
 
   const tags = useMemo(
@@ -178,9 +131,12 @@ export function ConditionComposer({
     [tagsInput],
   );
 
-  const updateModifier = (id: string, field: keyof ModifierDraft, val: unknown) => {
+  // ---------------------------------------------------------------------
+  // ModifierBuilder callbacks
+  // ---------------------------------------------------------------------
+  const updateModifier = (id: string, patch: Partial<ModifierDraft>) => {
     setModifiers((mods) =>
-      mods.map((m) => (m.id === id ? { ...m, [field]: val } : m)),
+      mods.map((m) => (m.id === id ? { ...m, ...patch } : m)),
     );
   };
 
@@ -209,9 +165,38 @@ export function ConditionComposer({
 
   const addModifier = () => {
     const newId = `modifier-${modifiers.length + 1}`;
-    setModifiers((mods) => [...mods, { ...blankModifier, id: newId }]);
+    setModifiers((mods) => [...mods, blankModifierDraft(newId)]);
   };
 
+  /**
+   * Mirror action: swap the modifier's operation to its chiral
+   * pair (Add ↔ Subtract, Multiply ↔ Divide, Min ↔ Max, etc).
+   * For Set To: no-op (not mirrorable).
+   */
+  const mirrorModifier = (id: string) => {
+    const mirrorOps: Partial<Record<ModifierDraft["operation"], ModifierDraft["operation"]>> = {
+      add: "subtract",
+      subtract: "add",
+      multiply: "divide",
+      divide: "multiply",
+      min: "max",
+      max: "min",
+      grant: "revoke",
+      revoke: "grant",
+    };
+    setModifiers((mods) =>
+      mods.map((m) => {
+        if (m.id !== id) return m;
+        const mirrorOp = mirrorOps[m.operation];
+        if (!mirrorOp) return m;
+        return { ...m, operation: mirrorOp };
+      }),
+    );
+  };
+
+  // ---------------------------------------------------------------------
+  // Convert ModifierDraft[] -> HardModifier[] for storage
+  // ---------------------------------------------------------------------
   const buildHardModifiers = (): HardModifier[] => {
     return modifiers.map((modifier) => {
       const targetForScope = (
@@ -223,24 +208,16 @@ export function ConditionComposer({
         scopeForSelection({
           target: targetForScope,
           targetValues: modifier.targetValues,
-          granularity:
-            targetForScope === "skill_practice_check"
-              ? modifier.granularity
-              : null,
+          granularity: null,
           freeTextNarrowFocus: modifier.freeTextNarrowFocus,
         });
       const numericValue = Number(modifier.value);
       const value: HardModifier["value"] = Number.isFinite(numericValue)
         ? numericValue
         : modifier.value;
-      // Phase 8.L round 50: build the HardModifier.condition
-      // from the legacy fields (kept in sync with v1Condition
-      // via legacyFieldsFromAuthoring). The HardModifierCondition
-      // shape uses {key, operator, value} (deprecated legacy
-      // shape). When conditionMode is 'always', omit the condition
-      // so the engine treats the modifier as unconditional.
+
       const hardModifierCondition =
-        modifier.conditionMode === 'custom' &&
+        modifier.conditionMode === "custom" &&
         (modifier.conditionKey || modifier.conditionValue)
           ? {
               key: modifier.conditionKey,
@@ -254,7 +231,14 @@ export function ConditionComposer({
         target: canonicalTarget,
         operation: modifier.operation,
         value,
-        ...(scopeMetadata ? { metadata: scopeMetadata as unknown as Record<string, HardModifier["value"]> } : {}),
+        ...(scopeMetadata
+          ? {
+              metadata: scopeMetadata as unknown as Record<
+                string,
+                HardModifier["value"]
+              >,
+            }
+          : {}),
         ...(hardModifierCondition ? { condition: hardModifierCondition } : {}),
       } as HardModifier;
       return hardMod;
@@ -328,8 +312,8 @@ export function ConditionComposer({
           {initial ? "Edit condition" : "Add condition"}
         </h2>
         <p className="mb-4 text-xs text-muted-foreground">
-          Runtime conditions are tracked locally. They don't auto-clear on rest —
-          press X in the drawer to remove them.
+          Runtime conditions are tracked locally. They don't auto-clear on
+          rest — press X in the drawer to remove them.
         </p>
 
         <div className="space-y-4">
@@ -407,187 +391,17 @@ export function ConditionComposer({
                 Add modifier
               </button>
             </div>
-            {modifiers.map((modifier, index) => {
-              const currentTarget: ModifierTarget = (
-                MODIFIER_TARGETS as readonly string[]
-              ).includes(modifier.target)
-                ? (modifier.target as ModifierTarget)
-                : ("attribute" as ModifierTarget);
-              const spec = MODIFIER_TARGET_SPEC[currentTarget];
-              return (
-                <div
-                  key={modifier.id}
-                  className="space-y-3 rounded-md border border-amber-500/30 bg-background p-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium">
-                      Modifier {index + 1}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => removeModifier(modifier.id)}
-                      className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-destructive/10"
-                    >
-                      <Trash2 className="size-3" />
-                      Remove
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="block text-xs font-medium">
-                      What changes?
-                      <select
-                        className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none ring-ring focus:ring-2"
-                        value={modifier.target}
-                        onChange={(e) =>
-                          updateModifier(
-                            modifier.id,
-                            "target",
-                            e.target.value,
-                          )
-                        }
-                      >
-                        {targetOptions.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label className="block text-xs font-medium">
-                      Operation
-                      <select
-                        className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none ring-ring focus:ring-2"
-                        value={modifier.operation}
-                        onChange={(e) =>
-                          updateModifier(
-                            modifier.id,
-                            "operation",
-                            e.target.value as ModifierOperation,
-                          )
-                        }
-                      >
-                        {operationsList.map((op) => (
-                          <option key={op.value} value={op.value}>
-                            {op.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-
-                  {(spec.widget === "checklist" ||
-                    spec.widget === "checklist-with-free-text") && (
-                    <div className="space-y-2 rounded-md border border-border bg-background/50 p-2">
-                      <p className="text-[10px] font-semibold uppercase text-muted-foreground">
-                        {spec.label} — empty = any
-                      </p>
-                      <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3">
-                        {(spec.options ?? []).map((opt: string) => {
-                          const checked = modifier.targetValues.includes(opt);
-                          const label = spec.optionLabels?.[opt] ?? opt;
-                          return (
-                            <label
-                              key={opt}
-                              className="flex items-center gap-2 text-xs"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={(e) =>
-                                  toggleTargetValue(
-                                    modifier.id,
-                                    opt,
-                                    e.target.checked,
-                                  )
-                                }
-                              />
-                              <span>{label}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {spec.widget === "free-text" && (
-                    <label className="block text-xs font-medium">
-                      {spec.label} details
-                      <input
-                        className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none ring-ring focus:ring-2"
-                        value={modifier.freeTextNarrowFocus}
-                        onChange={(e) =>
-                          updateModifier(
-                            modifier.id,
-                            "freeTextNarrowFocus",
-                            e.target.value,
-                          )
-                        }
-                        placeholder={spec.freeTextPlaceholder ?? ""}
-                      />
-                    </label>
-                  )}
-
-                  {spec.widget === "none" && (
-                    <p className="text-xs text-muted-foreground italic">
-                      Affects all {spec.label.toLowerCase()} by default — set value below.
-                    </p>
-                  )}
-
-                  <label className="block text-xs font-medium">
-                    Value
-                    <input
-                      className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none ring-ring focus:ring-2"
-                      value={modifier.value}
-                      onChange={(e) =>
-                        updateModifier(modifier.id, "value", e.target.value)
-                      }
-                      placeholder="e.g. -1, 0.5, 10"
-                      type="text"
-                      inputMode="numeric"
-                    />
-                  </label>
-
-                  {/* Phase 8.L round 50 (Mashu 2026-08-14): Triggers when...
-                      Reuses ConditionPicker from the primitive composer
-                      so the UX matches the atelier primitive form exactly.
-                      The picker emits ConditionAuthoring; we keep the
-                      legacy conditionKey/Operator/Value fields in sync
-                      via legacyFieldsFromAuthoring so the toHardModifier
-                      path keeps working. */}
-                  <div className="rounded-md border border-border bg-background p-3">
-                    <ConditionPicker
-                      value={modifier.v1Condition}
-                      onChange={(next: ConditionAuthoring) => {
-                        const legacy = legacyFieldsFromAuthoring(next);
-                        updateModifier(modifier.id, "v1Condition", next);
-                        updateModifier(
-                          modifier.id,
-                          "conditionMode",
-                          legacy.conditionMode,
-                        );
-                        updateModifier(
-                          modifier.id,
-                          "conditionKey",
-                          legacy.conditionKey,
-                        );
-                        updateModifier(
-                          modifier.id,
-                          "conditionOperator",
-                          legacy.conditionOperator,
-                        );
-                        updateModifier(
-                          modifier.id,
-                          "conditionValue",
-                          legacy.conditionValue,
-                        );
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+            {modifiers.map((modifier, index) => (
+              <ModifierBuilder
+                key={modifier.id}
+                modifier={modifier}
+                index={index}
+                onUpdate={updateModifier}
+                onRemove={removeModifier}
+                onMirror={mirrorModifier}
+                onToggleTargetValue={toggleTargetValue}
+              />
+            ))}
           </div>
         </div>
 
