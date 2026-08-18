@@ -254,6 +254,17 @@ export function resolveModifiers(
   const totals: Record<string, number> = {};
   const mirrorCosts: MirrorCostAttribution[] = [];
 
+  // Phase 8.L round 54 (Mashu 2026-08-14): SEED BASE ATTRIBUTES into
+  // totals["attribute.X"] so multiply/divide work correctly. Without
+  // this, the engine's applyOperation runs on totals=0, so `0 * 2 = 0`
+  // wipes the base. With the seed, `4 * 2 = 8` correctly doubles the
+  // attribute. The sheets that read these totals must use them
+  // directly (not `props.attrX + totals[attribute.X]`) to avoid
+  // double-counting the base.
+  totals["attribute.physical"] = input.attributes.physical;
+  totals["attribute.mental"] = input.attributes.mental;
+  totals["attribute.magical"] = input.attributes.magical;
+
   // Build the EvaluationContext for evaluateModifiers() so we get
   // parity with the existing engine.
   const context: EvaluationContext = {
@@ -881,6 +892,19 @@ function isEngineModifierValid(mod: HardModifier): boolean {
     typeof (mod.value as { value?: unknown }).value === "string"
   ) {
     derivedValues = [String((mod.value as { value: string }).value).toLowerCase()];
+  }
+  // Phase 8.L round 54 (Mashu 2026-08-14): empty scope = "any of
+  // the layer" = pass through to the L53 expansion that fills in
+  // real values. Previously the validator rejected empty scope
+  // for checklist-with-free-text widgets (e.g. speed with no
+  // specific WALKING_SPEED/FLYING_SPEED selected), which made
+  // the modifier silently disappear. Now "any" is valid.
+  // We only short-circuit for checklist widgets (where empty
+  // means "any"). For free-text widgets (behavior, scene_pace,
+  // duration), the user MUST provide a value — the modifier
+  // still gets dropped.
+  if (derivedValues.length === 0 && spec.widget !== "free-text") {
+    return true;
   }
   const draft: ModifierDraftForValidation = {
     target: targetRaw,

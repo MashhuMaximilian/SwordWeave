@@ -78,14 +78,15 @@ const ADD_TO_SAVE_PHYS: HardModifier = {
 // =============================================================================
 
 describe("resolveModifiers", () => {
-  it("returns empty totals + empty byTarget when no slots are slotted", () => {
+  it("returns seeded base attributes + empty byTarget when no slots are slotted", () => {
     const r = resolveModifiers(BASE_INPUT);
-    // Phase 8.M: engine now exposes SINGLE attack_bonus / save_dc
-    // targets derived from proficientAttribute (or physical fallback).
-    // These start at 0 when no primitives are slotted.
-    expect(r.totals).toEqual({ ["attack_bonus"]: 0, ["save_dc"]: 0 });
-    expect(r.byTarget["attack_bonus"]).toEqual([]);
-    expect(r.byTarget["save_dc"]).toEqual([]);
+    // Phase 8.L round 54: base attributes seeded into totals.
+    // Phase 8.M: SINGLE attack_bonus / save_dc start at 0.
+    expect(r.totals["attribute.physical"]).toBe(10);
+    expect(r.totals["attribute.mental"]).toBe(10);
+    expect(r.totals["attribute.magical"]).toBe(10);
+    expect(r.totals["attack_bonus"]).toBe(0);
+    expect(r.totals["save_dc"]).toBe(0);
     expect(r.mirrorCosts).toEqual([]);
   });
 
@@ -508,7 +509,9 @@ describe("resolveModifiers — i2.5 — runtime token resolution", () => {
     // target-registry lookups (attribute.physical, not
     // attribute.PHYSICAL).
     expect(result.totals["attribute"]).toBe(3);
-    expect(result.totals["attribute.physical"]).toBe(3);
+    // Phase 8.L round 54: attribute.physical is seeded with base (10)
+    // so the add 3 contribution makes it 13.
+    expect(result.totals["attribute.physical"]).toBe(13);
   });
 });
 
@@ -572,11 +575,11 @@ describe("parityCheck", () => {
 // =============================================================================
 
 describe("resolveModifiers — i1 null sub-target drop rule", () => {
-  it("drops an attribute modifier with no sub-target", () => {
-    // v7-E canonical shape: short target "attribute" with no
-    // PHYSICAL/MENTAL/MAGICAL picked in metadata.targetScope.values.
-    // Engine should silently drop — does NOT contribute to any
-    // attribute.
+  it("expands empty ATTRIBUTE scope to all attributes (round 53)", () => {
+    // Phase 8.L round 53: empty scope = "any attribute" = expand
+    // to all attribute sub-targets. Phase 8.L round 54: base
+    // attributes are seeded. Without the modifier, totals = base
+    // (10). With "add 5, any attribute", each attribute gets +5.
     const malformed: HardModifier = {
       kind: "modify",
       target: "attribute",
@@ -589,11 +592,9 @@ describe("resolveModifiers — i1 null sub-target drop rule", () => {
       slots: [makeSlot({ primitiveId: 1, hardModifiers: [malformed] })],
     };
     const result = resolveModifiers(input);
-    // No contribution to any attribute target.
-    expect(result.totals["attribute.physical"]).toBeUndefined();
-    expect(result.totals["attribute.mental"]).toBeUndefined();
-    expect(result.totals["attribute.magical"]).toBeUndefined();
-    expect(result.byTarget["attribute"] ?? []).toHaveLength(0);
+    expect(result.totals["attribute.physical"]).toBe(15); // base 10 + 5
+    expect(result.totals["attribute.mental"]).toBe(15);
+    expect(result.totals["attribute.magical"]).toBe(15);
   });
 
   it("drops a defense_dc modifier with no sub-target", () => {
@@ -614,7 +615,7 @@ describe("resolveModifiers — i1 null sub-target drop rule", () => {
     expect(result.totals["defense_dc.magical"]).toBeUndefined();
   });
 
-  it("drops a speed modifier with no locomotion type", () => {
+  it("expands empty SPEED scope to all locomotion types (round 53, value=30)", () => {
     const malformed: HardModifier = {
       kind: "modify",
       target: "speed",
@@ -627,7 +628,8 @@ describe("resolveModifiers — i1 null sub-target drop rule", () => {
       slots: [makeSlot({ primitiveId: 1, hardModifiers: [malformed] })],
     };
     const result = resolveModifiers(input);
-    expect(result.byTarget["speed"] ?? []).toHaveLength(0);
+    expect(result.totals["speed.walking_speed"]).toBe(30);
+    expect(result.totals["speed.climbing_speed"]).toBe(30);
   });
 
   it("accepts an attribute modifier with PHYSICAL picked", () => {

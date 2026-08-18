@@ -102,12 +102,14 @@ export function resolveAttributeModifier(
   // the SCOPED key (`attribute.physical`, `attribute.mental`,
   // `attribute.magical`) — the unmodified `attribute` is the
   // aggregate that includes all 3 axes. Use the scoped form.
-  const base = input.attributes[attr];
+  // Phase 8.L round 54: totals["attribute.X"] now includes the
+  // base attribute (seeded). Use it directly without re-adding
+  // the base so multiply/divide work correctly.
   const r = resolveModifiers(input);
   const scopedTarget = `${ATTR_TARGETS[attr]}.${attr}`;
-  const primitives = r.totals[scopedTarget] ?? 0;
+  const total = r.totals[scopedTarget] ?? input.attributes[attr];
   const contributions = r.byTarget[scopedTarget] ?? [];
-  return { total: base + primitives, contributions };
+  return { total, contributions };
 }
 
 /**

@@ -1035,18 +1035,19 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         physical={props.attrPhysical}
         mental={props.attrMental}
         magical={props.attrMagical}
-        pb={proficiencyBonus(props.level)}
+        pb={proficiencyBonus(props.level) + (resolver.totals["proficiency_bonus"] ?? 0)}
         proficientAttribute={props.attrProficient}
         attributeModifiers={{
+          // Phase 8.L round 54: resolver.totals["attribute.X"] is
+          // already seeded with the base attribute. Use it directly
+          // so multiply/divide work correctly. The baseAttributes
+          // fallback below handles the "no modifier at all" case.
           physical:
-            props.attrPhysical +
-            (resolver.totals["attribute.physical"] ?? 0),
+            resolver.totals["attribute.physical"] ?? props.attrPhysical,
           mental:
-            props.attrMental +
-            (resolver.totals["attribute.mental"] ?? 0),
+            resolver.totals["attribute.mental"] ?? props.attrMental,
           magical:
-            props.attrMagical +
-            (resolver.totals["attribute.magical"] ?? 0),
+            resolver.totals["attribute.magical"] ?? props.attrMagical,
         }}
         baseAttributes={{
           physical: props.attrPhysical,
