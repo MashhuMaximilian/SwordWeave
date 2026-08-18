@@ -659,25 +659,31 @@ const eq = resolveEquation(operandsRaw as never, ctx);
     if (!firstContrib) continue;
     const stackingMode = firstContrib.stacking ?? "stack";
 
-    // Phase 8.L round 47 (Mashu 2026-08-13): skip INHIBITED
-    // contributions when computing the stacked total. L46 added
-    // a check inside PASS 2 to undo the totals update for
-    // inhibited entries, but the i2.8 stacking loop runs
-    // AFTER PASS 2 and re-sums the contributions from byTarget
-    // (which includes inhibited ones for display). Without this
-    // filter, the stacking loop re-adds Stone Skin's value 2 to
-    // totals[save_dc.physical], undoing the L46 fix.
-    const additiveValues = contribs
-      .filter((c) => c.op !== "max" && c.op !== "min" && !c.inhibited)
-      .map((c) => c.value);
-    if (additiveValues.length > 0) {
-      const stacked = applyStacking(
-        additiveValues as readonly JsonValue[],
-        stackingMode,
-      );
-      const stackedNum = numericValue(stacked);
-      if (Number.isFinite(stackedNum)) {
-        total = stackedNum;
+    // Phase 8.L round 51 (Mashu 2026-08-14): the additive
+    // re-stacking loop used to run unconditionally here, but
+    // it summed byTarget values WITHOUT consulting the
+    // operation — so a subtract +1 condition was being treated
+    // as add +1. PASS 2 already correctly applies each
+    // modifier's operation via applyOperation, so we skip the
+    // re-stacking when stackingMode === "stack" (the default).
+    // For other modes ("highest-only" / "lowest-only" /
+    // "unique-by-target" / "unique-by-primitive"), the stacking
+    // is non-additive so we still need this branch.
+    //
+    // Phase 8.L round 47: also skip inhibited contributions.
+    if (stackingMode !== "stack") {
+      const additiveValues = contribs
+        .filter((c) => c.op !== "max" && c.op !== "min" && !c.inhibited)
+        .map((c) => c.value);
+      if (additiveValues.length > 0) {
+        const stacked = applyStacking(
+          additiveValues as readonly JsonValue[],
+          stackingMode,
+        );
+        const stackedNum = numericValue(stacked);
+        if (Number.isFinite(stackedNum)) {
+          total = stackedNum;
+        }
       }
     }
     // Apply ceiling (max): total cannot exceed the max value.
