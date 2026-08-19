@@ -264,6 +264,12 @@ export function resolveModifiers(
   totals["attribute.physical"] = input.attributes.physical;
   totals["attribute.mental"] = input.attributes.mental;
   totals["attribute.magical"] = input.attributes.magical;
+  // Phase 8.L round 55: seed proficiency_bonus with base PB so
+  // "set" operations on PB actually REPLACE the value (instead of
+  // adding on top of the sheet's separate level-based PB). Callers
+  // must use totals["proficiency_bonus"] directly (not
+  // proficiencyBonus(level) + totals[...]).
+  totals["proficiency_bonus"] = input.pb;
 
   // Build the EvaluationContext for evaluateModifiers() so we get
   // parity with the existing engine.
@@ -703,17 +709,37 @@ const eq = resolveEquation(operandsRaw as never, ctx);
     //
     // Phase 8.L round 47: also skip inhibited contributions.
     if (stackingMode !== "stack") {
+      // Phase 8.L round 55: preserve the seeded base when stacking
+      // non-additive (highest-only, lowest-only, replace,
+      // unique-by-primitive, unique-by-target). The stacked value
+      // represents THE modifier contribution (not the total), so
+      // we add it to the base instead of replacing everything.
+      //
+      // To preserve the base, we need to know what the additive
+      // sum of these modifiers would be (i.e. PASS 2's running
+      // total minus the seed). We approximate by using the
+      // sum of `c.value` (which is contribution AFTER op) as the
+      // baseline delta to undo, then re-apply the stacked value
+      // as the new delta. The seed is preserved by replacing
+      // only the modifier contribution portion.
       const additiveValues = contribs
         .filter((c) => c.op !== "max" && c.op !== "min" && !c.inhibited)
         .map((c) => c.value);
       if (additiveValues.length > 0) {
+        const additiveSum = additiveValues.reduce<number>(
+          (acc, v) => acc + numericValue(v),
+          0,
+        );
         const stacked = applyStacking(
           additiveValues as readonly JsonValue[],
           stackingMode,
         );
         const stackedNum = numericValue(stacked);
         if (Number.isFinite(stackedNum)) {
-          total = stackedNum;
+          // Replace just the modifier contribution portion of total
+          // (undo the additive sum PASS 2 would have computed, then
+          // re-apply as stackedNum). The seed base stays.
+          total = total - additiveSum + stackedNum;
         }
       }
     }

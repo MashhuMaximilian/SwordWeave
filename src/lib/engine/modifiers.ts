@@ -224,6 +224,27 @@ function buildContextLookup(
 }
 
 // =============================================================================
+// Rounding helpers
+// =============================================================================
+
+/**
+ * Phase 8.L round 55: never use decimals, always round up per
+ * Mashu's spec. Practice totals already use this convention
+ * (src/lib/engine/practices.ts roundUp). The engine now applies
+ * the same rule to multiply / divide so 4 * 0.5 = 2 (already
+ * integer), 4 * 0.7 = 2.8 → 3, 5 / 2 = 2.5 → 3.
+ *
+ * Mirrors the practices.ts convention: positive values round UP
+ * (ceiling), negative values round UP toward zero (floor) so the
+ * "round up" semantic is consistent regardless of sign.
+ */
+function roundUp(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  if (value >= 0) return Math.ceil(value);
+  return Math.floor(value);
+}
+
+// =============================================================================
 // Operation application
 // =============================================================================
 
@@ -256,10 +277,13 @@ export function applyOperation(
         case "subtract":
           return b - v;
         case "multiply":
-          return b * v;
+          // Phase 8.L round 55: never use decimals, always round
+          // up per Mashu's spec. 4 * 0.5 = 2 (still integer);
+          // 4 * 0.7 = 2.8 → roundUp = 3; 5 * 0.3 = 1.5 → 2.
+          return roundUp(b * v);
         case "divide":
           if (v === 0) return base;
-          return b / v;
+          return roundUp(b / v);
         case "min":
           return Math.min(b, v);
         case "max":

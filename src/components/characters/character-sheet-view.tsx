@@ -56,6 +56,7 @@ import { onCharacterLogAdded } from "@/lib/character/character-events";
 import { TabErrorBoundary } from "@/components/characters/tab-error-boundary";
 import { HeritageBundleView } from "@/components/characters/heritage-bundle-view";
 import { proficiencyBonus } from "@/lib/engine/practices";
+import { applyOperation } from "@/lib/engine/modifiers";
 // Phase 8.3f S4 (Mashu 2026-07-28): the canonical resolver
 // replaces the presentation-time approximation in
 // `attribute-modifier-delta.ts`. The hook returns totals +
@@ -548,6 +549,62 @@ export function CharacterSheetView(props: CharacterSheetProps) {
   const toggleState = useToggleState(props.id);
   // Phase 8.L round 49: read runtime conditions for the resolver.
   // The hook also listens for localStorage updates.
+
+
+/**
+ * Phase 8.L round 55: compute per-practice deltas contributed by
+ * runtime conditions. Each active condition with a `skill_practice_check`
+ * modifier contributes its op+value to each practice named in the
+ * target scope. Returns a Map<practiceName, delta>.
+ *
+ * The server-side aggregateCharacterSheet doesn't see runtime
+ * conditions (they live in localStorage), so the client's practice
+ * totals need this delta added on top to stay accurate.
+ */
+function computePracticeDeltasFromConditions(
+  runtimeConditions: ReadonlyArray<{ readonly active: boolean; readonly modifiers: readonly HardModifier[] }>,
+): Map<string, number> {
+  const deltas = new Map<string, number>();
+  for (const condition of runtimeConditions) {
+    if (!condition.active) continue;
+    for (const mod of condition.modifiers) {
+      if (String(mod.target ?? "") !== "skill_practice_check") continue;
+      // Skip non-numeric values (typed tokens, equations).
+      // For now, only handle plain numeric values.
+      // Plain numeric value only (typed tokens / equations need
+      // runtime context, which the render path doesn't have).
+      const rawNumeric = Number(mod.value);
+      if (!Number.isFinite(rawNumeric)) continue;
+      const rawValue = rawNumeric;
+
+      const op = mod.operation ?? "add";
+      const scopeValues = (mod.metadata?.["targetScope"] as
+        | { values?: unknown }
+        | undefined)?.values;
+      const practiceList = Array.isArray(scopeValues)
+        ? scopeValues.map((v) => String(v).toLowerCase())
+        : [];
+      if (practiceList.length === 0) continue;
+
+      for (const practice of practiceList) {
+        const current = deltas.get(practice) ?? 0;
+        // applyOperation(base, op, value). The base here is the
+        // running total; we apply op with rawValue starting from
+        // the current delta. roundUp is applied inside applyOp.
+        const next = applyOperation(current, op, rawValue);
+        // applyOperation returns JsonValue; coerce to number for the Map.
+        const nextNum =
+          typeof next === "number"
+            ? next
+            : typeof next === "string" && Number.isFinite(Number(next))
+              ? Number(next)
+              : current;
+        deltas.set(practice, nextNum);
+      }
+    }
+  }
+  return deltas;
+}
   const { conditions: runtimeConditions } = useRuntimeConditions(props.id);
 
   // Phase 8.3f S4 (Mashu 2026-07-28): run the canonical resolver
@@ -1035,7 +1092,9 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         physical={props.attrPhysical}
         mental={props.attrMental}
         magical={props.attrMagical}
-        pb={proficiencyBonus(props.level) + (resolver.totals["proficiency_bonus"] ?? 0)}
+        // Phase 8.L round 55: PB is seeded in totals. Use it
+        // directly so 'set' operations REPLACE the value.
+        pb={resolver.totals["proficiency_bonus"] ?? proficiencyBonus(props.level)}
         proficientAttribute={props.attrProficient}
         attributeModifiers={{
           // Phase 8.L round 54: resolver.totals["attribute.X"] is
@@ -1055,19 +1114,29 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           magical: props.attrMagical,
         }}
         resolver={resolver}
-        practices={props.practices.map((p) => ({
-          name: p.practice,
-          category: "PRACTICE",
-          buCost: 0,
-          attribute: p.attribute as "PHYSICAL" | "MENTAL" | "MAGICAL",
-          total: p.total,
-          isMirrored: false,
-          isMirrorable: false,
-          mirrorVector: null,
-          originHeritageId: null,
-          originCapabilityId: null,
-          originEffectId: null,
-        }))}
+        practices={(() => {
+          // Phase 8.L round 55: include deltas from runtime conditions
+          // (server-side aggregateCharacterSheet doesn't see them since
+          // they live in localStorage).
+          const deltas = computePracticeDeltasFromConditions(runtimeConditions);
+          return props.practices.map((p) => {
+            const practiceLower = p.practice.toLowerCase();
+            const delta = deltas.get(practiceLower) ?? 0;
+            return {
+              name: p.practice,
+              category: "PRACTICE",
+              buCost: 0,
+              attribute: p.attribute as "PHYSICAL" | "MENTAL" | "MAGICAL",
+              total: p.total + delta,
+              isMirrored: false,
+              isMirrorable: false,
+              mirrorVector: null,
+              originHeritageId: null,
+              originCapabilityId: null,
+              originEffectId: null,
+            };
+          });
+        })()}
         // Phase 8.4: identity strip data
         lineageName={props.lineageName}
         lineageDescription={props.lineageDescription}

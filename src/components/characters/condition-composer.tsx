@@ -226,11 +226,17 @@ export function ConditionComposer({
             }
           : undefined;
 
+      // Phase 8.L round 55: include stacking rule (the ModifierBuilder
+      // exposes it; previously the condition composer dropped it on
+      // save, so the engine always defaulted to "stack"). Stacking
+      // modes: stack / highest-only / lowest-only / unique-by-primitive
+      // / unique-by-target / replace.
       const hardMod = {
         kind: "modify" as const,
         target: canonicalTarget,
         operation: modifier.operation,
         value,
+        stacking: modifier.stacking,
         ...(scopeMetadata
           ? {
               metadata: scopeMetadata as unknown as Record<

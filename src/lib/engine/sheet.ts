@@ -30,6 +30,7 @@ import {
 } from "./vitality";
 import { resolveValue, isTypedToken, type ResolveContext } from "./runtime-resolver";
 import { evaluateCondition, type ConditionContext } from "./condition-evaluator";
+import type { HardModifier } from "@/types/swordweave";
 import { sumPrimitiveContributions, walkPrimitiveContributionsForAxis } from "./primitive-walk";
 import { computeAllSavingThrows, computeAllSaveDCs } from "./practices";
 import { SIZE_CAPACITY } from "./encumbrance";
@@ -148,6 +149,18 @@ export type CharacterSheetInput = {
   primitiveLinks: PrimitiveLinkSnapshot[];
   capabilityLinks: CapabilityLinkSnapshot[];
   itemLinks: ItemLinkSnapshot[];
+  /**
+   * Phase 8.L round 55: runtime conditions from the Play Session
+   * Scratchpad (localStorage). Each active condition contributes its
+   * hardModifiers to the sheet math (attributes, practices, PB,
+   * defense DC, attack bonus). The sheet walks them just like
+   * primitiveLinks so the totals and breakdowns stay consistent.
+   */
+  runtimeConditions?: ReadonlyArray<{
+    readonly title: string;
+    readonly active: boolean;
+    readonly modifiers: readonly HardModifier[];
+  }>;
   /**
    * Phase 8.I i2.6 (Mashu 2026-08-06): optional runtime context
    * for evaluating per-modifier conditions. When omitted (the
@@ -425,12 +438,39 @@ export function aggregateCharacterSheet(
   // some point during Phase 7 (per the comment in
   // src/lib/packages/primitive-package.ts) but the engine code
   // wasn\'t updated to handle the legacy alias.
-  for (const link of input.primitiveLinks) {
+  // Phase 8.L round 55: also walk runtime conditions (Play Session
+  // Scratchpad). Each active condition contributes its hardModifiers
+  // to the practice math just like a slotted primitive. We use a
+  // synthetic negative primitiveId so the Map<primitiveId, ...> key
+  // doesn't collide with real primitives.
+  const runtimeConditionLinks = (input.runtimeConditions ?? [])
+    .filter((c) => c.active)
+    .map((c, i): PrimitiveLinkSnapshot => ({
+      primitiveId: -100000 - i,
+      source: "RUNTIME",
+      acquiredAtLevel: 0,
+      isMirrored: false,
+      primitive: {
+        id: -100000 - i,
+        name: c.title || "Untitled condition",
+        category: "RUNTIME_CONDITION",
+        buCost: 0,
+        isMirrorable: false,
+        mirrorBuCredit: 0,
+        hardModifiers: c.modifiers,
+      },
+    }));
+  const allLinks: ReadonlyArray<PrimitiveLinkSnapshot> = [
+    ...input.primitiveLinks,
+    ...runtimeConditionLinks,
+  ];
+  for (const link of allLinks) {
     const p = link.primitive;
     if (
       p.category !== "CHARACTER_SHEET_AUGMENT" &&
       p.category !== "SHEET_AUGMENT" &&
-      p.category !== "PRACTICE_PROGRESSION_AUGMENT"
+      p.category !== "PRACTICE_PROGRESSION_AUGMENT" &&
+      p.category !== "RUNTIME_CONDITION"
     ) {
       continue;
     }
