@@ -32,7 +32,8 @@ import { resolveValue, isTypedToken, type ResolveContext } from "./runtime-resol
 import { evaluateCondition, type ConditionContext } from "./condition-evaluator";
 import type { HardModifier } from "@/types/swordweave";
 import { sumPrimitiveContributions, walkPrimitiveContributionsForAxis } from "./primitive-walk";
-import { computeAllSavingThrows, computeAllSaveDCs } from "./practices";
+import { computeAllSavingThrows, computeAllSaveDCs, proficiencyBonus } from "./practices";
+import { resolveModifiers, type ResolvedPrimitiveSlot } from "./resolve-modifiers";
 import { SIZE_CAPACITY } from "./encumbrance";
 import {
   BUAccount,
@@ -135,6 +136,7 @@ export type ItemLinkSnapshot = {
 };
 
 export type CharacterSheetInput = {
+  characterId?: string;
   level: number;
   attrPhysical: number;
   attrMental: number;
@@ -503,10 +505,13 @@ export function aggregateCharacterSheet(
       // currently being rolled).
 
       const scope = mod.metadata?.targetScope;
-      const values = Array.isArray(scope?.values)
+      // Phase 8.L round 55: empty scope = "any" = apply to every
+      // practice (L53 expansion parity with engine). Previously
+      // we silently dropped these (notably Iron Defender
+      // Plating's "Floor 10" primitive, which has NO metadata).
+      const values = Array.isArray(scope?.values) && scope.values.length > 0
         ? scope.values.map((v) => String(v))
-        : [];
-      if (values.length === 0) continue;
+        : Object.keys(upperToPractice);
 
       // Phase 8.I i2.5c (Mashu 2026-08-05): typed tokens
       // (PB chip, /physical/, etc.) are stored as objects,
@@ -613,12 +618,65 @@ export function aggregateCharacterSheet(
   const buBalance = computeBUBalance(buAccount);
 
   // Practices
+  // Phase 8.L round 55: PB-modifying modifiers (primitive or
+  // runtime) need to flow into practice totals. The sheet runs
+  // its own resolver so we can pick up primitives that target
+  // proficiency_bonus (the server doesn't have the runtime
+  // conditions, but it does have slotted primitives).
+  // Phase 8.L round 55: build synthetic slots from primitiveLinks +
+  // runtimeConditions so the resolver can compute the final PB
+  // (level + all PB-targeting modifiers).
+  const resolverSlots: ResolvedPrimitiveSlot[] = [
+    ...input.primitiveLinks.map<ResolvedPrimitiveSlot>((link) => ({
+      primitiveId: link.primitiveId,
+      name: link.primitive.name,
+      category: link.primitive.category,
+      hardModifiers: (link.primitive.hardModifiers ?? []) as readonly HardModifier[],
+      isMirrored: link.isMirrored,
+      isMirrorable: link.primitive.isMirrorable,
+      mirrorVector: null,
+      originHeritageId: null,
+      originCapabilityId: null,
+      originEffectId: null,
+      isToggledOff: false,
+    })),
+    ...((input.runtimeConditions ?? []).filter((c) => c.active).map<ResolvedPrimitiveSlot>((c, i) => ({
+      primitiveId: -100000 - i,
+      name: c.title || "Untitled condition",
+      category: "RUNTIME_CONDITION",
+      hardModifiers: c.modifiers,
+      isMirrored: false,
+      isMirrorable: false,
+      mirrorVector: null,
+      originHeritageId: null,
+      originCapabilityId: null,
+      originEffectId: null,
+      isToggledOff: false,
+    }))),
+  ];
+  const sheetResolver = resolveModifiers({
+    characterId: input.characterId ?? "",
+    level: input.level,
+    pb: proficiencyBonus(input.level),
+    proficientAttribute:
+      input.attrProficient === null
+        ? null
+        : (input.attrProficient.toLowerCase() as "physical" | "mental" | "magical"),
+    attributes: {
+      physical: input.attrPhysical,
+      mental: input.attrMental,
+      magical: input.attrMagical,
+    },
+    slots: resolverSlots,
+  });
+  const pbOverride = sheetResolver.totals["proficiency_bonus"];
   const practices = computeAllPracticeModifiers(
     attributes,
     slices,
     input.attrProficient,
     input.level,
     primitiveBonuses,
+    pbOverride,
   );
 
   // Vitality
@@ -660,12 +718,15 @@ export function aggregateCharacterSheet(
 
   // Phase 8.I i2 finish: saving throws (player rolls) and
   // save DCs (enemies roll against) — separate axes per R3-Q1.
+  // Phase 8.L round 55: pass the engine-resolved PB so PB-affecting
+  // modifiers propagate to all 3 saving throws.
   const stRecord = computeAllSavingThrows(
     attributes,
     input.attrProficient,
     input.level,
     input.primitiveLinks,
     input.conditionContext,
+    pbOverride,
   );
   const savingThrows: Array<{ attribute: Attribute; bonus: number }> = [
     { attribute: "PHYSICAL", bonus: stRecord.physical },

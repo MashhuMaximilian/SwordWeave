@@ -342,11 +342,22 @@ export function computePracticeModifierAtLevel(
     number,
     ReadonlyMap<Practice, { readonly name: string; readonly bonus: number }>
   > = new Map(),
+  /**
+   * Phase 8.L round 55: override the level-based PB with the
+   * engine-computed PB (level + modifiers). Without this, runtime
+   * conditions (or primitive modifiers) targeting proficiency_bonus
+   * never propagate to practice totals because the practice math
+   * used the level-based PB independently of the engine resolver.
+   */
+  pbOverride?: number,
 ): PracticeModifierBreakdown {
   const attribute = getPracticeAttribute(practice);
   const slice = getPracticeSlice(practice, attributes, slices);
   const isProficient = attrProficient === attribute;
-  const pb = proficiencyBonus(level);
+  // Phase 8.L round 55: use the override PB when provided so
+  // proficiency_bonus modifiers (from conditions or primitives)
+  // actually affect practice totals.
+  const pb = pbOverride ?? proficiencyBonus(level);
   const pbContribution = isProficient ? pb : 0;
 
   // Per-practice filter: only pick up primitives that have an
@@ -394,6 +405,12 @@ export function computeAllPracticeModifiers(
     number,
     ReadonlyMap<Practice, { readonly name: string; readonly bonus: number }>
   > = new Map(),
+  /**
+   * Phase 8.L round 55: pass the engine-resolved PB (level +
+   * modifiers) so PB-affecting modifiers (conditions or primitives
+   * targeting proficiency_bonus) actually move practices.
+   */
+  pbOverride?: number,
 ): ReadonlyArray<PracticeModifierBreakdown> {
   const allPractices: Practice[] = [
     ...PRACTICE_ATTRIBUTE_MAP.PHYSICAL,
@@ -408,6 +425,7 @@ export function computeAllPracticeModifiers(
       attrProficient,
       level,
       primitiveBonuses,
+      pbOverride,
     ),
   );
 }
@@ -544,10 +562,15 @@ export function computeSavingThrow(
   level: number,
   primitiveLinks?: readonly unknown[],
   conditionContext?: unknown,
+  /**
+   * Phase 8.L round 55: override the level-based PB so PB-affecting
+   * modifiers propagate to saving throws too.
+   */
+  pbOverride?: number,
 ): number {
   const attrValue = attributes[attribute.toLowerCase() as keyof Attributes];
   const isProficient = attrProficient === attribute;
-  const pb = isProficient ? proficiencyBonus(level) : 0;
+  const pb = isProficient ? (pbOverride ?? proficiencyBonus(level)) : 0;
   let st = attrValue + pb;
 
   if (primitiveLinks !== undefined) {
@@ -567,6 +590,11 @@ export function computeAllSavingThrows(
   level: number,
   primitiveLinks?: readonly unknown[],
   conditionContext?: unknown,
+  /**
+   * Phase 8.L round 55: pass the engine-resolved PB so PB-affecting
+   * modifiers propagate to all 3 saving throws.
+   */
+  pbOverride?: number,
 ): { physical: number; mental: number; magical: number } {
   return {
     physical: roundUp(computeSavingThrow(
@@ -576,6 +604,7 @@ export function computeAllSavingThrows(
       level,
       primitiveLinks,
       conditionContext,
+      pbOverride,
     )),
     mental: roundUp(computeSavingThrow(
       "MENTAL",

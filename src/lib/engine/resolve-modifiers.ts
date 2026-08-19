@@ -800,6 +800,61 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   totals["attack_bonus"] = atkBase;
   totals["save_dc"] = saveBase;
 
+  // Phase 8.L round 55: when modifiers reference PB-based typed
+  // tokens (pb, pb_half, pb2, etc.), their PASS 2 resolution used
+  // ctx.pb = level-based PB. If something else (a condition or a
+  // primitive) modified PB, the token-derived contribution is now
+  // stale. Walk byTarget and rescale PB-dependent contributions
+  // by the ratio (finalPb / inputPb).
+  const finalPb = totals["proficiency_bonus"] ?? input.pb;
+  if (finalPb !== input.pb && input.pb !== 0) {
+    const ratio = finalPb / input.pb;
+    if (ratio !== 1) {
+      // Rescale the totals for PB-dependent target keys.
+      // We don't know which targets depend on PB from totals
+      // alone — but every modifier value of 0.5 * pb / pb*2 / etc.
+      // is PB-dependent. For simplicity, rescale the totals for
+      // any key where at least one contribution's raw value is a
+      // PB-derived typed token (we can detect by re-resolving).
+      // Since we don't store this, take a different approach:
+      // for each byTarget entry, check if its `op` produced a
+      // value containing the PB-based resolution, and rescale.
+      //
+      // We use a heuristic: any byTarget key whose FIRST
+      // contribution's value is a non-integer fraction of
+      // level_pb is PB-dependent. This catches pb_half (always
+      // half), pb*2 (always double), pb/4 (always quarter).
+      // Rescale totals for any byTarget key whose FIRST contribution
+      // looks like it was derived from input.pb (PB Half = 0.5*pb,
+      // PB*2 = 2*pb, PB = 1*pb, PB/4 = 0.25*pb, etc.). The byTarget
+      // entries stay at their pre-rescale values — the provenance
+      // modal reads those — but the final total reflects the FINAL pb.
+      for (const target of Object.keys(byTarget)) {
+        const contribs = byTarget[target];
+        if (!contribs || contribs.length === 0) continue;
+        const firstContrib = contribs[0];
+        if (!firstContrib) continue;
+        const baseValue = firstContrib.value;
+        const expectedRatios = [0.25, 0.5, 1, 2, 4] as const;
+        for (const r of expectedRatios) {
+          if (Math.abs(baseValue - input.pb * r) < 0.01) {
+            // Replace this target's contribution portion of the total.
+            // The total currently has (seed + contributions). The
+            // "contributions" portion for this target is the sum of
+            // its byTarget entries' values. We rescale that.
+            const contribSum = contribs.reduce(
+              (sum, c) => sum + (Number.isFinite(c.value) ? c.value : 0),
+              0,
+            );
+            const newContribSum = contribSum * ratio;
+            totals[target] = (totals[target] ?? 0) - contribSum + newContribSum;
+            break;
+          }
+        }
+      }
+    }
+  }
+
   return {
     totals,
     byTarget,

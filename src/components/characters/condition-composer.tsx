@@ -99,6 +99,16 @@ export function ConditionComposer({
           ? [{ kind: "number" as const, value: valueNum }]
           : [];
 
+        // Phase 8.L round 55: read behaviorName from metadata so
+        // custom behavior targets (e.g. legendary_resistance)
+        // round-trip through the edit modal without losing the
+        // free-text key.
+        const behaviorName =
+          typeof hm.metadata?.["behaviorName"] === "string"
+            ? (hm.metadata["behaviorName"] as string)
+            : typeof hm.metadata?.["freeTextNarrowFocus"] === "string"
+              ? (hm.metadata["freeTextNarrowFocus"] as string)
+              : "";
         return {
           id: `modifier-${i + 1}`,
           target: (hm.target as ModifierTarget) ?? "attribute",
@@ -109,7 +119,7 @@ export function ConditionComposer({
           operands: [],
           targetValues,
           granularity: "broad",
-          freeTextNarrowFocus: "",
+          freeTextNarrowFocus: behaviorName,
           conditionMode: cond && (cond.key || cond.value) ? "custom" : "always",
           conditionKey: cond?.key ?? "",
           conditionOperator: (cond?.operator as ModifierDraft["conditionOperator"] | undefined) ?? "equals",
@@ -231,6 +241,18 @@ export function ConditionComposer({
       // save, so the engine always defaulted to "stack"). Stacking
       // modes: stack / highest-only / lowest-only / unique-by-primitive
       // / unique-by-target / replace.
+      //
+      // Phase 8.L round 55: also save behaviorName when target is
+      // 'behavior'. The engine reads metadata.behaviorName to
+      // route behavior modifiers to behavior.<key>. Without this
+      // the composer would drop the free-text key on save.
+      const behaviorMetadata =
+        canonicalTarget === "behavior" && modifier.freeTextNarrowFocus.trim()
+          ? {
+              behaviorName: modifier.freeTextNarrowFocus.trim(),
+              freeTextNarrowFocus: modifier.freeTextNarrowFocus.trim(),
+            }
+          : {};
       const hardMod = {
         kind: "modify" as const,
         target: canonicalTarget,
@@ -239,12 +261,14 @@ export function ConditionComposer({
         stacking: modifier.stacking,
         ...(scopeMetadata
           ? {
-              metadata: scopeMetadata as unknown as Record<
-                string,
-                HardModifier["value"]
-              >,
+              metadata: {
+                ...scopeMetadata,
+                ...behaviorMetadata,
+              } as unknown as Record<string, HardModifier["value"]>,
             }
-          : {}),
+          : Object.keys(behaviorMetadata).length > 0
+            ? { metadata: behaviorMetadata as unknown as Record<string, HardModifier["value"]> }
+            : {}),
         ...(hardModifierCondition ? { condition: hardModifierCondition } : {}),
       } as HardModifier;
       return hardMod;
