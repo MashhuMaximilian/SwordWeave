@@ -93,11 +93,75 @@ function syntheticContext(): ConditionContext {
   };
 }
 
+/**
+ * Check if a condition has a NON-COMPUTABLE pill token — i.e. a
+ * `self:<flag>` that the engine doesn't know about. The engine
+ * would return `false` for these flags forever (since they're never
+ * set), so the modifier is effectively dead. The user wants to
+ * manually toggle these.
+ *
+ * Returns true if the condition NEEDS manual toggling.
+ */
 function isConditionEffective(condition: unknown): boolean {
   if (!condition) return false;
-  // No target/scene references → computable, don't show
+  // target/scene references → non-computable (correct)
   const ctx = syntheticContext();
-  return !isConditionComputable(condition as never, ctx);
+  if (!isConditionComputable(condition as never, ctx)) return true;
+  // For compound conditions, check each pill token. If any pill
+  // references a self-flag NOT in ALL_FLAGS, that pill can never
+  // evaluate to true automatically → it's a manual trigger.
+  if (
+    typeof condition === "object" &&
+    condition !== null &&
+    (condition as { kind?: string }).kind === "compound"
+  ) {
+    const tokens = (condition as { tokens?: readonly string[] }).tokens ?? [];
+    const pillTokens = tokens.filter((_t, i) => i % 2 === 0);
+    return pillTokens.some((token) => isManualTriggerToken(token));
+  }
+  return false;
+}
+
+function isManualTriggerToken(token: string): boolean {
+  const sep = token.indexOf(":");
+  if (sep < 0) return false;
+  const axis = token.slice(0, sep);
+  const payload = token.slice(sep + 1);
+  // stat|... is computable (numeric stat read)
+  if (payload.startsWith("stat|")) return false;
+  // target/scene pills are non-computable but already handled by
+  // isConditionComputable.
+  if (axis === "target" || axis === "scene") return true;
+  if (axis !== "self" && axis !== "actor") return false;
+  // actor/self: check if the payload is a known flag.
+  // Known flags include proficiency checks, predicates, status flags.
+  return !isKnownFlag(payload);
+}
+
+function isKnownFlag(label: string): boolean {
+  // Proficiency / not_proficient_in_*: computable
+  if (label.startsWith("proficient_in(")) return true;
+  if (label.startsWith("not_proficient_in(")) return true;
+  if (label.startsWith("proficient_in_attribute(")) return true;
+  if (label.startsWith("not_proficient_in_attribute(")) return true;
+  if (label === "proficient_in(all_practices)") return true;
+  if (label === "not_proficient_in(all_practices)") return true;
+  if (label === "proficient_in(all_saves)") return true;
+  if (label === "not_proficient_in(all_saves)") return true;
+  if (label === "proficient") return true;
+  if (label === "not_proficient") return true;
+  // Status flags — engine would set these from combat events
+  // when the character sheet FAB layer wires up. For now, the
+  // engine KNOWS about them so we treat them as computable.
+  const KNOWN_STATUS_FLAGS = new Set([
+    "is_prone", "is_stunned", "is_bleeding", "is_frightened",
+    "is_blinded", "is_charmed", "is_grappled", "is_restrained",
+    "is_sick", "is_wounded", "is_damaged_last_round",
+    "has_stance", "unconscious", "prone", "stunned", "bleeding",
+    "frightened", "blinded", "charmed", "grappled", "restrained",
+    "sick", "wounded",
+  ]);
+  return KNOWN_STATUS_FLAGS.has(label);
 }
 
 function buildId(prefix: string, sourceId: string, modIndex: number): string {

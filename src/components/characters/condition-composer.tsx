@@ -32,6 +32,7 @@ import { X, Plus } from "lucide-react";
 import type { HardModifier } from "@/types/swordweave";
 import {
   MODIFIER_TARGETS,
+  MODIFIER_TARGET_SPEC,
   scopeForSelection,
 } from "@/lib/primitives/modifier-scope";
 import { type ModifierTarget } from "@/lib/primitives/modifier-scope";
@@ -113,12 +114,15 @@ export function ConditionComposer({
           valueStr = hm.value;
           valueKind = "number";
         } else if (hm.value && typeof hm.value === "object") {
-          const v = hm.value as { kind?: string; which?: string; value?: unknown; operands?: unknown[]; tag?: string };
+          const v = hm.value as { kind?: string; which?: string; value?: unknown; operands?: unknown[]; tag?: string; name?: string; hint?: string };
           if (v.kind === "equation" && Array.isArray(v.operands)) {
             operands = v.operands as never[];
             valueKind = "equation";
           } else if (v.kind === "derived") {
             tokens = [{ kind: "derived", which: v.which ?? "pb" }];
+            valueKind = "text";
+          } else if (v.kind === "runtime") {
+            tokens = [{ kind: "runtime", name: v.name ?? "" }];
             valueKind = "text";
           } else if (v.kind === "keyword") {
             tokens = [{ kind: "keyword", value: v.value ?? "" }];
@@ -134,10 +138,10 @@ export function ConditionComposer({
           // composer reads it from hm.metadata?.tag if needed.
         }
 
-        // Phase 8.L round 55: read behaviorName from metadata so
-        // custom behavior targets (e.g. legendary_resistance)
-        // round-trip through the edit modal without losing the
-        // free-text key.
+        // Phase 8.L round 69: read behaviorName from metadata for
+        // ALL free-text targets (save_dc, attack_bonus, etc.) —
+        // not just 'behavior'. Previously save_dc modifiers lost
+        // the sub-target attribute when re-edited.
         const behaviorName =
           typeof hm.metadata?.["behaviorName"] === "string"
             ? (hm.metadata["behaviorName"] as string)
@@ -240,6 +244,52 @@ export function ConditionComposer({
   };
 
   // ---------------------------------------------------------------------
+  // Convert a single ModifierDraft's value -> the storage shape
+  // the engine understands. Round-trips typed tokens and equations
+  // (Phase 8.L round 69).
+  // ---------------------------------------------------------------------
+  const buildHardModifierValue = (
+    modifier: ModifierDraft,
+  ): HardModifier["value"] => {
+    // Equation form: operands[] exists. Wrap in { kind: "equation",
+    // operands: [...] }. Engine's equation-resolver (L62) reads
+    // both canonical (Operand) and sweep formats.
+    if (modifier.valueKind === "equation" && Array.isArray(modifier.operands) && modifier.operands.length > 0) {
+      return { kind: "equation", operands: modifier.operands } as never;
+    }
+    // Single-token forms: derived, keyword, dice, roll, number.
+    // Token list takes precedence over the string value field.
+    if (Array.isArray(modifier.tokens) && modifier.tokens.length > 0) {
+      const t = modifier.tokens[0] as { kind?: string; which?: string; value?: unknown; tag?: string; faces?: number; count?: number };
+      if (t.kind === "derived") {
+        return { kind: "derived", which: (t.which ?? "pb") as never } as never;
+      }
+      if (t.kind === "keyword") {
+        return { kind: "keyword", text: String(t.value ?? modifier.value) } as never;
+      }
+      if (t.kind === "number") {
+        const n = Number(t.value);
+        if (Number.isFinite(n)) return n;
+      }
+      if (t.kind === "dice" || t.kind === "roll") {
+        return { kind: t.kind, ...t } as never;
+      }
+      if (t.kind === "tag") {
+        return { kind: "keyword", text: String(t.tag ?? t.value ?? "") } as never;
+      }
+    }
+    // Fallback: plain number from the string input.
+    const numericValue = Number(modifier.value);
+    if (Number.isFinite(numericValue)) return numericValue;
+    // Last resort: keyword with the raw text (e.g. "/pb/"). Engine
+    // reads { kind: "keyword", text } via the equation-resolver.
+    if (modifier.value && modifier.value.trim().length > 0) {
+      return { kind: "keyword", text: modifier.value.trim() } as never;
+    }
+    return modifier.value;
+  };
+
+  // ---------------------------------------------------------------------
   // Convert ModifierDraft[] -> HardModifier[] for storage
   // ---------------------------------------------------------------------
   const buildHardModifiers = (): HardModifier[] => {
@@ -256,10 +306,12 @@ export function ConditionComposer({
           granularity: null,
           freeTextNarrowFocus: modifier.freeTextNarrowFocus,
         });
-      const numericValue = Number(modifier.value);
-      const value: HardModifier["value"] = Number.isFinite(numericValue)
-        ? numericValue
-        : modifier.value;
+      // Phase 8.L round 69: preserve typed tokens / equations on
+      // save. Previously the composer only saved plain numbers or
+      // the raw string, dropping the typed-token shape. The engine
+      // can read all of these now (L62 equation-resolver dual
+      // format), so we round-trip the user's chosen shape.
+      const value: HardModifier["value"] = buildHardModifierValue(modifier);
 
       const hardModifierCondition =
         modifier.conditionMode === "custom" &&
@@ -277,17 +329,30 @@ export function ConditionComposer({
       // modes: stack / highest-only / lowest-only / unique-by-primitive
       // / unique-by-target / replace.
       //
-      // Phase 8.L round 55: also save behaviorName when target is
-      // 'behavior'. The engine reads metadata.behaviorName to
-      // route behavior modifiers to behavior.<key>. Without this
-      // the composer would drop the free-text key on save.
+      // Phase 8.L round 69: save behaviorName for ALL free-text
+      // targets (behavior, save_dc, attack_bonus, etc.), not just
+      // 'behavior'. Previously the composer only set
+      // behaviorMetadata for target='behavior', which dropped the
+      // sub-target key on save_dc / attack_bonus modifiers — the
+      // engine then couldn't route the modifier to the right
+      // sub-target.
+      const spec = MODIFIER_TARGET_SPEC[canonicalTarget as never] as
+        | { widget?: string }
+        | undefined;
+      const isFreeTextTarget = spec?.widget === "free-text";
+      const freeTextKey = modifier.freeTextNarrowFocus.trim();
       const behaviorMetadata =
-        canonicalTarget === "behavior" && modifier.freeTextNarrowFocus.trim()
+        isFreeTextTarget && freeTextKey
           ? {
-              behaviorName: modifier.freeTextNarrowFocus.trim(),
-              freeTextNarrowFocus: modifier.freeTextNarrowFocus.trim(),
+              behaviorName: freeTextKey,
+              freeTextNarrowFocus: freeTextKey,
             }
-          : {};
+          : canonicalTarget === "behavior" && freeTextKey
+            ? {
+                behaviorName: freeTextKey,
+                freeTextNarrowFocus: freeTextKey,
+              }
+            : {};
       const hardMod = {
         kind: "modify" as const,
         target: canonicalTarget,

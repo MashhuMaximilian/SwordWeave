@@ -2,15 +2,47 @@
 import { describe, it, expect } from "vitest";
 
 // Mirror the relevant scan logic for testing without React
+function isKnownFlag(label: string): boolean {
+  if (label.startsWith("proficient_in(")) return true;
+  if (label.startsWith("not_proficient_in(")) return true;
+  if (label.startsWith("proficient_in_attribute(")) return true;
+  if (label.startsWith("not_proficient_in_attribute(")) return true;
+  if (label === "proficient_in(all_practices)") return true;
+  if (label === "not_proficient_in(all_practices)") return true;
+  if (label === "proficient_in(all_saves)") return true;
+  if (label === "not_proficient_in(all_saves)") return true;
+  if (label === "proficient") return true;
+  if (label === "not_proficient") return true;
+  const KNOWN = new Set([
+    "is_prone", "is_stunned", "is_bleeding", "is_frightened",
+    "is_blinded", "is_charmed", "is_grappled", "is_restrained",
+    "is_sick", "is_wounded", "is_damaged_last_round",
+    "has_stance", "unconscious", "prone", "stunned", "bleeding",
+    "frightened", "blinded", "charmed", "grappled", "restrained",
+    "sick", "wounded",
+  ]);
+  return KNOWN.has(label);
+}
+
+function isManualTriggerToken(token: string): boolean {
+  const sep = token.indexOf(":");
+  if (sep < 0) return false;
+  const axis = token.slice(0, sep);
+  const payload = token.slice(sep + 1);
+  if (payload.startsWith("stat|")) return false;
+  if (axis === "target" || axis === "scene") return true;
+  if (axis !== "self" && axis !== "actor") return false;
+  return !isKnownFlag(payload);
+}
+
 function isConditionEffective(condition: unknown): boolean {
   if (!condition) return false;
   if (typeof condition !== "object" || condition === null) return false;
   const c = condition as { kind?: string; tokens?: readonly string[] };
   if (c.kind === "narrative") return true;
   if (Array.isArray(c.tokens)) {
-    return c.tokens.some(
-      (tok) => tok.startsWith("target:") || tok.startsWith("scene:"),
-    );
+    const pillTokens = c.tokens.filter((_t, i) => i % 2 === 0);
+    return pillTokens.some((t) => isManualTriggerToken(t));
   }
   return false;
 }
@@ -151,5 +183,131 @@ describe("use-sheet-conditions scanner", () => {
     const first = scanPrimitivesForConditions(primitives);
     const second = scanPrimitivesForConditions(primitives);
     expect(first[0]?.id).toBe(second[0]?.id);
+  });
+
+  it("creates sheet conditions for self:is_tracking (manually-toggled flag)", () => {
+    const result = scanPrimitivesForConditions([
+      {
+        primitiveId: 14103,
+        primitive: {
+          id: 14103,
+          name: "Hunter Bonus",
+          hardModifiers: [
+            {
+              kind: "modify",
+              target: "skill_practice_check",
+              operation: "add",
+              value: 3,
+              condition: {
+                kind: "compound",
+                tokens: ["self:is_tracking"],
+              },
+            },
+          ],
+        },
+      },
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.title).toBe("Hunter Bonus");
+  });
+
+  it("creates sheet conditions for compound with OR'd manual trigger", () => {
+    const result = scanPrimitivesForConditions([
+      {
+        primitiveId: 15519,
+        primitive: {
+          id: 15519,
+          name: "Reason AND Compound",
+          hardModifiers: [
+            {
+              kind: "modify",
+              target: "skill_practice_check",
+              operation: "add",
+              value: 3,
+              condition: {
+                kind: "compound",
+                tokens: ["self:is_tracking", "OR", "self:not_proficient"],
+              },
+            },
+          ],
+        },
+      },
+    ]);
+    expect(result).toHaveLength(1);
+  });
+
+  it("creates sheet conditions for compound with AND'd manual trigger", () => {
+    const result = scanPrimitivesForConditions([
+      {
+        primitiveId: 15520,
+        primitive: {
+          id: 15520,
+          name: "Knowledge Mixed",
+          hardModifiers: [
+            {
+              kind: "modify",
+              target: "skill_practice_check",
+              operation: "add",
+              value: 2,
+              condition: {
+                kind: "compound",
+                tokens: ["self:not_proficient_in(all_practices)", "AND", "self:actor-prone"],
+              },
+            },
+          ],
+        },
+      },
+    ]);
+    expect(result).toHaveLength(1);
+  });
+
+  it("does NOT create sheet conditions for known status flags", () => {
+    const result = scanPrimitivesForConditions([
+      {
+        primitiveId: 1,
+        primitive: {
+          id: 1,
+          name: "Test",
+          hardModifiers: [
+            {
+              kind: "modify",
+              target: "skill_practice_check",
+              operation: "add",
+              value: 2,
+              condition: {
+                kind: "compound",
+                tokens: ["self:is_prone"],
+              },
+            },
+          ],
+        },
+      },
+    ]);
+    expect(result).toHaveLength(0);
+  });
+
+  it("does NOT create sheet conditions for stat-based conditions", () => {
+    const result = scanPrimitivesForConditions([
+      {
+        primitiveId: 14102,
+        primitive: {
+          id: 14102,
+          name: "Iron Will",
+          hardModifiers: [
+            {
+              kind: "modify",
+              target: "skill_practice_check",
+              operation: "add",
+              value: 5,
+              condition: {
+                kind: "compound",
+                tokens: ["self:stat|vitality_pct|<|0.5"],
+              },
+            },
+          ],
+        },
+      },
+    ]);
+    expect(result).toHaveLength(0);
   });
 });
