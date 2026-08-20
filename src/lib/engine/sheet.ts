@@ -763,7 +763,7 @@ export function aggregateCharacterSheet(
       }
     }
   }
-  const practices = computeAllPracticeModifiers(
+  const practicesRaw = computeAllPracticeModifiers(
     attributes,
     slices,
     input.attrProficient,
@@ -771,6 +771,102 @@ export function aggregateCharacterSheet(
     primitiveBonuses,
     pbOverride,
   );
+  const practices = practicesRaw as unknown as Array<{
+    practice: string;
+    total: number;
+    [key: string]: unknown;
+  }>;
+
+  // Phase 8.L round 60 (Mashu): min/max operations on
+  // skill_practice_check (e.g. Plating's "Floor 10") must clamp
+  // the FINAL practice total, not contribute additively.
+  // computeAllPracticeModifiers only handles add/subtract.
+  // Apply min/max as a post-pass over practice totals.
+  const clampSlots: Array<{
+    hardModifiers: unknown;
+    isMirrored: boolean;
+  }> = [
+    ...input.primitiveLinks.map((link) => ({
+      hardModifiers: link.primitive.hardModifiers,
+      isMirrored: link.isMirrored,
+    })),
+    ...((input.runtimeConditions ?? []).filter((c) => c.active).map((c) => ({
+      hardModifiers: c.modifiers,
+      isMirrored: false,
+    }))),
+  ];
+  for (const slot of clampSlots) {
+    const mods = (slot.hardModifiers ?? []) as Array<{
+      target?: unknown;
+      operation?: unknown;
+      value?: unknown;
+    }>;
+    for (const mod of mods) {
+      if (String(mod.target ?? "") !== "skill_practice_check") continue;
+      const op = String(mod.operation ?? "");
+      if (op !== "min" && op !== "max") continue;
+      // Re-resolve value with the final PB ctx.
+      const ctxForClamp = {
+        level: input.level,
+        pb: pbOverride ?? proficiencyBonus(input.level),
+        attributes: {
+          physical: input.attrPhysical,
+          mental: input.attrMental,
+          magical: input.attrMagical,
+        },
+        practices: {},
+        behaviorVariables: {},
+      };
+      let resolvedValue: number;
+      if (isTypedToken(mod.value)) {
+        resolvedValue = resolveValue(mod.value, ctxForClamp as ResolveContext);
+      } else if (Array.isArray(mod.value)) {
+        resolvedValue = resolveValue(mod.value, ctxForClamp as ResolveContext);
+      } else if (typeof mod.value === "number") {
+        resolvedValue = mod.value;
+      } else if (typeof mod.value === "string") {
+        const n = Number(mod.value);
+        if (!Number.isFinite(n)) continue;
+        resolvedValue = n;
+      } else {
+        continue;
+      }
+      if (!Number.isFinite(resolvedValue)) continue;
+      // Determine target practices (same scope expansion as before).
+      const scope = (mod as { metadata?: { targetScope?: { values?: unknown } } })
+        .metadata?.targetScope;
+      const valuesList = Array.isArray(scope?.values) && scope.values.length > 0
+        ? scope.values.map((v: unknown) => String(v))
+        : Object.keys(upperToPractice);
+      for (const upperPractice of valuesList) {
+        const practiceName =
+          upperToPractice[upperPractice] ?? (upperPractice.toLowerCase() as Practice);
+        const practiceIdx = practices.findIndex(
+          (p) => p.practice === practiceName,
+        );
+        if (practiceIdx === -1) continue;
+        const practiceRow = practices[practiceIdx];
+        if (!practiceRow) continue;
+        let sign = 1;
+        if (slot.isMirrored === true) sign = -1;
+        let newTotal = practiceRow.total;
+        if (op === "min") {
+          // Mirror flips min to max (opposite bound).
+          newTotal = sign === 1
+            ? Math.max(practiceRow.total, resolvedValue)
+            : Math.min(practiceRow.total, resolvedValue);
+        } else if (op === "max") {
+          newTotal = sign === 1
+            ? Math.min(practiceRow.total, resolvedValue)
+            : Math.max(practiceRow.total, resolvedValue);
+        }
+        // roundUp so we never emit decimals (Mashu spec).
+        newTotal = newTotal >= 0 ? Math.ceil(newTotal) : Math.floor(newTotal);
+        // Replace the practice row with a mutable copy.
+        practices[practiceIdx] = { ...practiceRow, total: newTotal };
+      }
+    }
+  }
 
   // Vitality
   // Phase 8.I i2 (Mashu 2026-08-04): now reads hardModifiers from
@@ -1023,12 +1119,27 @@ for (const slot of behaviorWalkSlots) {
         target?: unknown;
         operation?: unknown;
         value?: unknown;
+        metadata?: unknown;
       }>)
     : [];
   for (const mod of mods) {
     const target = String(mod.target ?? "");
-    if (!target.startsWith("behavior.")) continue;
-    const key = target.slice("behavior.".length);
+    // Phase 8.L round 60: handle BOTH forms:
+    //   1. dotted: target="behavior.<key>" (e.g. primitives)
+    //   2. canonical: target="behavior" + metadata.behaviorName
+    //      (e.g. conditions via condition-composer)
+    let key = "";
+    if (target.startsWith("behavior.")) {
+      key = target.slice("behavior.".length);
+    } else if (target === "behavior") {
+      const meta = mod.metadata as
+        | { behaviorName?: unknown; freeTextNarrowFocus?: unknown }
+        | undefined;
+      const behaviorNameRaw = meta?.behaviorName ?? meta?.freeTextNarrowFocus;
+      if (typeof behaviorNameRaw === "string") {
+        key = behaviorNameRaw.trim();
+      }
+    }
     if (key.length === 0) continue;
     const op = String(mod.operation ?? "");
     const value = Number(mod.value);
@@ -1107,7 +1218,7 @@ behaviorVariables.sort((a, b) => a.key.localeCompare(b.key));
       mirroredPrimitives,
     },
     buLedger,
-    practices,
+    practices: practices as unknown as ReadonlyArray<import("./practices").PracticeModifierBreakdown>,
     practiceAttributeMap: PRACTICE_ATTRIBUTE_MAP,
     vitality: {
       max: roundUp(maxVitality),
