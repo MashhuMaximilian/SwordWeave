@@ -211,6 +211,11 @@ export interface ResolvedModifiers {
    *  this carries the user-side cost (e.g. extra strain). Empty
    *  when no mirrors are active. */
   readonly mirrorCosts: readonly MirrorCostAttribution[];
+  /** Phase 8.L round 57: behavior variables populated by
+   *  `set` / `add` ops targeting `behavior` (free-text). Keys
+   *  are the user-supplied names (e.g. "legendary_resistance").
+   *  Empty when no behavior modifiers fired. */
+  readonly behaviorVariables: Readonly<Record<string, number>>;
   /** Metadata for debugging / cache busting. */
   readonly computedAt: string;
 }
@@ -790,15 +795,29 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       [];
   }
 
-  // Compute the SINGLE totals using the chosen attribute's
-  // contribution delta.
+  // Phase 8.L round 57: when a modifier targets attack_bonus /
+  // save_dc DIRECTLY (parent, with no sub-target), preserve
+  // PASS 2's contribution. Don't overwrite with the per-attr
+  // mirror. Previously this branch unconditionally overwrote
+  // with the per-attr value, which wiped out modifiers like
+  // "condition: add +2 to attack_bonus (any)".
   const atkBase = totals[`attack_bonus.${chosenAttr}`] ?? 0;
   const saveBase =
     totals[`save_dc.${chosenAttr}`] ??
     totals[`defense_dc.${chosenAttr}`] ??
     0;
-  totals["attack_bonus"] = atkBase;
-  totals["save_dc"] = saveBase;
+  const parentAtkHasDirectModifier = (byTarget["attack_bonus"] ?? []).some(
+    (c) => c.target === "attack_bonus",
+  );
+  if (!parentAtkHasDirectModifier) {
+    totals["attack_bonus"] = atkBase;
+  }
+  const parentSaveHasDirectModifier = (byTarget["save_dc"] ?? []).some(
+    (c) => c.target === "save_dc",
+  );
+  if (!parentSaveHasDirectModifier) {
+    totals["save_dc"] = saveBase;
+  }
 
   // Phase 8.L round 55: when modifiers reference PB-based typed
   // tokens (pb, pb_half, pb2, etc.), their PASS 2 resolution used
@@ -846,7 +865,12 @@ const eq = resolveEquation(operandsRaw as never, ctx);
               (sum, c) => sum + (Number.isFinite(c.value) ? c.value : 0),
               0,
             );
-            const newContribSum = contribSum * ratio;
+            // Phase 8.L round 57: per Mashu's spec, no decimals.
+            // round up the rescaled PB-token contributions.
+            const newContribSum =
+              contribSum * ratio < 0
+                ? Math.floor(contribSum * ratio)
+                : Math.ceil(contribSum * ratio);
             totals[target] = (totals[target] ?? 0) - contribSum + newContribSum;
             break;
           }
@@ -859,6 +883,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
     totals,
     byTarget,
     mirrorCosts,
+    behaviorVariables,
     computedAt: new Date().toISOString(),
     chosenAttribute: chosenAttr,
   };

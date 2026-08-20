@@ -91,13 +91,48 @@ export function ConditionComposer({
           ? ((hm.metadata as { targetScope?: { values?: string[] } }).targetScope!.values!)
           : [];
 
-        // Compute the value for the chip stack. The chip stack
-        // expects ValueToken[]; for simple numeric modifiers we
-        // synthesize a single number token.
-        const valueNum = typeof hm.value === "number" ? hm.value : null;
-        const tokens = valueNum !== null
-          ? [{ kind: "number" as const, value: valueNum }]
-          : [];
+        // Phase 8.L round 57: reconstruct the chip stack from ANY
+        // value shape. Previously the composer only handled plain
+        // numbers and dropped typed tokens (derived / keyword),
+        // equations, and tags on edit, so the user saw an empty
+        // value field.
+        let tokens: Array<{ kind: string; [k: string]: unknown }> = [];
+        let operands: unknown[] = [];
+        let valueKind: ModifierDraft["valueKind"] = "number";
+        let valueStr: string = "";
+        const eqTag: string | undefined = undefined;
+        if (typeof hm.value === "number") {
+          tokens = [{ kind: "number", value: hm.value }];
+          valueStr = String(hm.value);
+          valueKind = "number";
+        } else if (typeof hm.value === "string") {
+          const n = Number(hm.value);
+          tokens = Number.isFinite(n)
+            ? [{ kind: "number", value: n }]
+            : [{ kind: "keyword", value: hm.value }];
+          valueStr = hm.value;
+          valueKind = "number";
+        } else if (hm.value && typeof hm.value === "object") {
+          const v = hm.value as { kind?: string; which?: string; value?: unknown; operands?: unknown[]; tag?: string };
+          if (v.kind === "equation" && Array.isArray(v.operands)) {
+            operands = v.operands as never[];
+            valueKind = "equation";
+          } else if (v.kind === "derived") {
+            tokens = [{ kind: "derived", which: v.which ?? "pb" }];
+            valueKind = "text";
+          } else if (v.kind === "keyword") {
+            tokens = [{ kind: "keyword", value: v.value ?? "" }];
+            valueKind = "text";
+          } else if (v.kind === "dice" || v.kind === "roll") {
+            tokens = [v as never];
+            valueKind = "text";
+          } else if (v.kind === "number" || typeof v.value === "number") {
+            tokens = [{ kind: "number", value: Number(v.value ?? 0) }];
+            valueKind = "number";
+          }
+          // Tag (e.g. fire) is preserved in metadata — the
+          // composer reads it from hm.metadata?.tag if needed.
+        }
 
         // Phase 8.L round 55: read behaviorName from metadata so
         // custom behavior targets (e.g. legendary_resistance)
@@ -113,10 +148,10 @@ export function ConditionComposer({
           id: `modifier-${i + 1}`,
           target: (hm.target as ModifierTarget) ?? "attribute",
           operation: (hm.operation || "add") as ModifierDraft["operation"],
-          tokens,
-          value: String(hm.value ?? ""),
-          valueKind: "number" as ModifierDraft["valueKind"],
-          operands: [],
+          tokens: tokens as never,
+          value: valueStr,
+          valueKind,
+          operands: operands as never,
           targetValues,
           granularity: "broad",
           freeTextNarrowFocus: behaviorName,

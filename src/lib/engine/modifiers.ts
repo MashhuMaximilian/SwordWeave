@@ -273,23 +273,29 @@ export function applyOperation(
 
       switch (operation) {
         case "add":
-          return b + v;
+          // Phase 8.L round 57: per Mashu's spec, "we never use
+          // decimals, always round up". applyOperation rounds up
+          // the FINAL value of every numeric op so decimals never
+          // leak through: 4 + 2.5 = 7 (was 6.5); 4 - 2.5 = 2 (was
+          // 1.5); 4 * 0.7 = 3 (already); 5 / 2 = 3 (was 2.5);
+          // set 2.5 = 3 (was 2.5).
+          return roundUp(b + v);
         case "subtract":
-          return b - v;
+          return roundUp(b - v);
         case "multiply":
-          // Phase 8.L round 55: never use decimals, always round
-          // up per Mashu's spec. 4 * 0.5 = 2 (still integer);
-          // 4 * 0.7 = 2.8 → roundUp = 3; 5 * 0.3 = 1.5 → 2.
           return roundUp(b * v);
         case "divide":
           if (v === 0) return base;
           return roundUp(b / v);
         case "min":
-          return Math.min(b, v);
+          // Min/max set a floor/ceiling; the base value may be
+          // fractional (e.g. coming from another roundUp). Round
+          // up both sides so we never emit decimals.
+          return roundUp(Math.min(b, v));
         case "max":
-          return Math.max(b, v);
+          return roundUp(Math.max(b, v));
         case "set":
-          return v;
+          return roundUp(v);
       }
     }
 
