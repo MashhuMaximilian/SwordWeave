@@ -670,6 +670,99 @@ export function aggregateCharacterSheet(
     slots: resolverSlots,
   });
   const pbOverride = sheetResolver.totals["proficiency_bonus"];
+  // Phase 8.L round 58 (Mashu): the practice walk earlier built
+  // primitiveBonuses with ctx.pb = level-based PB. If a condition
+  // or another primitive modified PB, the PB-token primitives
+  // (Proficient Fieldcraft with /pb/, PB Half with /pb_half/, etc.)
+  // have stale values. Rebuild them with the FINAL pb so the
+  // practice math reflects reality.
+  //
+  // We do this BEFORE computeAllPracticeModifiers so the sheet's
+  // displayed practice totals (which go to the server-rendered
+  // character sheet) match what the client resolver computes.
+  if (pbOverride !== undefined && pbOverride !== proficiencyBonus(input.level)) {
+    const ctxFinalPb: ResolveContext = {
+      level: input.level,
+      pb: pbOverride,
+      attributes: {
+        physical: input.attrPhysical,
+        mental: input.attrMental,
+        magical: input.attrMagical,
+      } as ResolveContext["attributes"],
+      practices: {} as ResolveContext["practices"],
+      behaviorVariables: {} as ResolveContext["behaviorVariables"],
+    };
+    // Walk input.primitiveLinks + runtimeConditions. For each PB-derived
+    // value that target skill_practice_check, re-resolve with finalPb
+    // and OVERWRITE the entry in primitiveBonuses.
+    const allPracticeSlots = [
+      ...input.primitiveLinks.map((link) => ({
+        id: link.primitive.id,
+        name: link.primitive.name,
+        hardModifiers: link.primitive.hardModifiers,
+        isMirrored: link.isMirrored,
+      })),
+      ...((input.runtimeConditions ?? []).filter((c) => c.active).map((c, i) => ({
+        id: -100000 - i,
+        name: c.title || "Untitled condition",
+        hardModifiers: c.modifiers,
+        isMirrored: false,
+      }))),
+    ];
+    for (const sl of allPracticeSlots) {
+      const practiceMap = primitiveBonuses.get(sl.id);
+      if (!practiceMap) continue;
+      const mods = sl.hardModifiers ?? [];
+      for (const rawMod of mods) {
+        const mod = rawMod as {
+          target?: string;
+          operation?: string;
+          value?: unknown;
+        };
+        if (String(mod.target ?? "") !== "skill_practice_check") continue;
+        // Re-resolve the value with finalPb ctx
+        let resolvedValue: number = 0;
+        if (isTypedToken(mod.value)) {
+          resolvedValue = resolveValue(mod.value, ctxFinalPb);
+        } else if (Array.isArray(mod.value)) {
+          resolvedValue = resolveValue(mod.value, ctxFinalPb);
+        } else if (typeof mod.value === "number") {
+          resolvedValue = mod.value;
+        } else if (typeof mod.value === "string") {
+          const n = Number(mod.value);
+          if (!Number.isFinite(n)) continue;
+          resolvedValue = n;
+        } else {
+          continue;
+        }
+        if (!Number.isFinite(resolvedValue)) continue;
+        const op = String(mod.operation ?? "");
+        let delta = 0;
+        if (op === "add") delta = resolvedValue;
+        else if (op === "subtract") delta = -resolvedValue;
+        else continue;
+        if (sl.isMirrored === true) delta = -delta;
+        // Overwrite ALL practices that this modifier targets.
+        // We need the same practice list the original walk used.
+        const scope = (rawMod as { metadata?: { targetScope?: { values?: unknown } } })
+          .metadata?.targetScope;
+        const valuesList = Array.isArray(scope?.values) && scope.values.length > 0
+          ? scope.values.map((v) => String(v))
+          : Object.keys(upperToPractice);
+        const upperToPracticeLocal: Record<string, Practice> = upperToPractice;
+        for (const upperPractice of valuesList) {
+          const practiceName =
+            upperToPracticeLocal[upperPractice] ?? (upperPractice.toLowerCase() as Practice);
+          const entry = practiceMap.get(practiceName);
+          if (entry) {
+            // OVERWRITE — don't accumulate, since this is the
+            // full re-resolution with the final pb.
+            practiceMap.set(practiceName, { name: sl.name, bonus: delta });
+          }
+        }
+      }
+    }
+  }
   const practices = computeAllPracticeModifiers(
     attributes,
     slices,
@@ -903,9 +996,30 @@ const behaviorVariables: Array<{
 }> = [];
 const behaviorMap = new Map<string, { value: number; contributions: Array<{ primitiveId: number; primitiveName: string; delta: number }> }>();
 
-for (const link of input.primitiveLinks as Parameters<typeof walkPrimitiveContributionsForAxis>[0]) {
-  const mods = Array.isArray(link.primitive?.hardModifiers)
-    ? (link.primitive.hardModifiers as Array<{
+// Phase 8.L round 58: include runtimeConditions as virtual slots so
+// conditions targeting behavior.X (e.g. legendary_resistance) are
+// reflected in the server-rendered behavior variables. The walk
+// below handles both slotted primitives and active conditions.
+const behaviorWalkSlots: Array<{
+  primitive: { id: number; name: string; hardModifiers: unknown };
+  isMirrored: boolean;
+}> = [
+  ...input.primitiveLinks.map((link) => ({
+    primitive: { id: link.primitive.id, name: link.primitive.name, hardModifiers: link.primitive.hardModifiers },
+    isMirrored: link.isMirrored,
+  })),
+  ...((input.runtimeConditions ?? []).filter((c) => c.active).map((c, i) => ({
+    primitive: {
+      id: -100000 - i,
+      name: c.title || "Untitled condition",
+      hardModifiers: c.modifiers ?? [],
+    },
+    isMirrored: false,
+  }))),
+];
+for (const slot of behaviorWalkSlots) {
+  const mods = Array.isArray(slot.primitive?.hardModifiers)
+    ? (slot.primitive.hardModifiers as Array<{
         target?: unknown;
         operation?: unknown;
         value?: unknown;
@@ -925,13 +1039,13 @@ for (const link of input.primitiveLinks as Parameters<typeof walkPrimitiveContri
     else if (op === "set") delta = value;
     else if (op === "grant") delta = value;
     else continue;
-    if (link.isMirrored === true) delta = -delta;
+    if (slot.isMirrored === true) delta = -delta;
     const existing = behaviorMap.get(key);
     if (existing) {
       existing.value += delta;
       existing.contributions.push({
-        primitiveId: Number(link.primitive?.id ?? 0),
-        primitiveName: String(link.primitive?.name ?? "Unknown"),
+        primitiveId: Number(slot.primitive?.id ?? 0),
+        primitiveName: String(slot.primitive?.name ?? "Unknown"),
         delta,
       });
     } else {
@@ -939,8 +1053,8 @@ for (const link of input.primitiveLinks as Parameters<typeof walkPrimitiveContri
         value: delta,
         contributions: [
           {
-            primitiveId: Number(link.primitive?.id ?? 0),
-            primitiveName: String(link.primitive?.name ?? "Unknown"),
+            primitiveId: Number(slot.primitive?.id ?? 0),
+            primitiveName: String(slot.primitive?.name ?? "Unknown"),
             delta,
           },
         ],

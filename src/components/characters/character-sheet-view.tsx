@@ -438,6 +438,27 @@ function bestPracticeTotalForAttribute(
   return filtered.reduce((best, p) => Math.max(best, p.total), 0);
 }
 
+export function computeClientPracticeTotal(
+  practiceAttr: "PHYSICAL" | "MENTAL" | "MAGICAL",
+  practiceName: string,
+  proficientAttribute: string | null,
+  resolver: { totals: Readonly<Record<string, number>> } | null | undefined,
+): number | null {
+  if (!resolver) return null;
+  const attrLower = practiceAttr.toLowerCase();
+  const attrModFinal = resolver.totals[`attribute.${attrLower}`];
+  const isProf =
+    proficientAttribute !== null &&
+    proficientAttribute.toUpperCase() === practiceAttr;
+  const finalPb = resolver.totals["proficiency_bonus"] ?? 0;
+  const pbContrib = isProf ? finalPb : 0;
+  const engineContrib =
+    resolver.totals[`skill_practice_check.${practiceName.toLowerCase()}`] ?? 0;
+  if (typeof attrModFinal !== "number") return null;
+  return attrModFinal + pbContrib + engineContrib;
+}
+
+
 export function CharacterSheetView(props: CharacterSheetProps) {
   const [tab, setTab] = useState<Tab>("capabilities");
   const [levelUpConfirm, setLevelUpConfirm] = useState(false);
@@ -647,7 +668,13 @@ const { conditions: runtimeConditions } = useRuntimeConditions(props.id);
         onClick={() => setConditionsOpen(true)}
         aria-label="Open conditions drawer"
         title="Open conditions drawer"
-        className="fixed right-0 bottom-28 z-30 rounded-l-md border border-r-0 border-amber-500/40 bg-amber-500 px-2 py-3 text-xs font-semibold text-white shadow-md transition-colors hover:bg-amber-600 md:bottom-24"
+        // Phase 8.L round 58: arrow positioned ABOVE the bottom
+        // drawer's TOP edge when EXTENDED (drawer can grow to
+        // 70dvh tall). top: 12vh puts it well above even the fully
+        // extended drawer's top edge so the user can always see
+        // and click it. We use top (not bottom) so it stays in
+        // position regardless of how tall the drawer is.
+        className="fixed right-0 top-[12vh] z-30 rounded-l-md border border-r-0 border-amber-500/40 bg-amber-500 px-2 py-3 text-xs font-semibold text-white shadow-md transition-colors hover:bg-amber-600"
       >
         <ChevronLeft className="size-4" />
       </button>
@@ -1040,6 +1067,8 @@ const { conditions: runtimeConditions } = useRuntimeConditions(props.id);
           expandable drawer. The Overview tab has been
           removed because its content (identity strip + load
           stripe) now lives here. */}
+
+
       <BottomStickyBar
         characterId={props.id}
         currentVitality={props.currentVitality}
@@ -1081,58 +1110,39 @@ const { conditions: runtimeConditions } = useRuntimeConditions(props.id);
         //                + (finalPb if proficient)
         //                + resolver.totals[skill_practice_check.X]
         //                + slice (subtracted from server total)
-        practices={(() => {
-          // Phase 8.L round 58 (Mashu): recompute practice
-          // totals client-side so PB-token primitives and
-          // localStorage conditions (invisible to the server)
-          // actually move the main sheet's practice numbers.
-          //
-          // Formula (matches practices.ts computePracticeModifierAtLevel):
-          //   total = slice + attrModFinal + (finalPb if prof) +
-          //           resolver.totals[skill_practice_check.X]
-          //
-          // Where the slice (literal slice value e.g. PHY=4→Prowess=4)
-          // is recovered by subtracting the server's attrMod and PB
-          // contributions from server's total. The SERVER's PB is
-          // level-based (no conditions), so we recompute it here.
-          const isProfAttr = (s: string) =>
-            String(props.attrProficient ?? "").toUpperCase() === s;
-          // Server's PB (level-only, no conditions).
-          const level = Number((props as Record<string, unknown>)["level"] ?? 1);
-          const serverPb = 2 + Math.max(0, Math.floor((level - 1) / 4));
-          // Final PB (with conditions). The resolver seeds it.
-          const finalPb =
-            resolver?.totals["proficiency_bonus"] ?? serverPb;
-          return props.practices.map((p) => {
-            const attrLower = p.attribute.toLowerCase();
-            const propsAny = props as Record<string, unknown>;
-            const attrKey = `attr${attrLower[0]?.toUpperCase()}${attrLower.slice(1)}`;
-            const attrRaw = propsAny[attrKey];
-            const serverAttrMod =
-              typeof attrRaw === "number" ? attrRaw : 0;
-            const serverPbContrib = isProfAttr(p.attribute) ? serverPb : 0;
-            const slice = p.total - serverAttrMod - serverPbContrib;
-            const attrModFinal =
-              resolver?.totals?.[`attribute.${attrLower}`] ?? serverAttrMod;
-            const pbContrib = isProfAttr(p.attribute) ? finalPb : 0;
-            const engineContrib =
-              resolver?.totals?.[`skill_practice_check.${p.practice.toLowerCase()}`] ?? 0;
-            const total = attrModFinal + pbContrib + engineContrib + slice;
-            return {
-              name: p.practice,
-              category: "PRACTICE",
-              buCost: 0,
-              attribute: p.attribute as "PHYSICAL" | "MENTAL" | "MAGICAL",
-              total,
-              isMirrored: false,
-              isMirrorable: false,
-              mirrorVector: null,
-              originHeritageId: null,
-              originCapabilityId: null,
-              originEffectId: null,
-            };
-          });
-        })()}
+        // Phase 8.L round 58: server-side aggregateCharacterSheet
+        // now correctly re-resolves PB-token primitives with the
+        // final PB (via sheet.ts's post-resolver PB rescale pass),
+        // and propagates attribute conditions through the resolver
+        // hook. The values here come straight from the server's
+        // sheet, which IS the source of truth (single computation
+        // path shared with the bottom-sticky bar's resolver).
+
+
+        practices={props.practices.map((p) => {
+          const clientTotal = computeClientPracticeTotal(
+            p.attribute as "PHYSICAL" | "MENTAL" | "MAGICAL",
+            p.practice,
+            props.attrProficient,
+            resolver,
+          );
+          return {
+            name: p.practice,
+            category: "PRACTICE",
+            buCost: 0,
+            attribute: p.attribute as "PHYSICAL" | "MENTAL" | "MAGICAL",
+            // Use client-side total when resolver is available;
+            // fall back to server's value when no resolver (e.g.
+            // before hydration).
+            total: clientTotal ?? p.total,
+            isMirrored: false,
+            isMirrorable: false,
+            mirrorVector: null,
+            originHeritageId: null,
+            originCapabilityId: null,
+            originEffectId: null,
+          };
+        })}
         // Phase 8.4: identity strip data
         lineageName={props.lineageName}
         lineageDescription={props.lineageDescription}

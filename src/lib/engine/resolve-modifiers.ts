@@ -848,6 +848,9 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       // PB*2 = 2*pb, PB = 1*pb, PB/4 = 0.25*pb, etc.). The byTarget
       // entries stay at their pre-rescale values — the provenance
       // modal reads those — but the final total reflects the FINAL pb.
+      // Phase 8.L round 58: also update byTarget entries so downstream
+      // consumers (sheet.ts practice walk that builds
+      // primitiveBonuses) see the rescaled PB-token values.
       for (const target of Object.keys(byTarget)) {
         const contribs = byTarget[target];
         if (!contribs || contribs.length === 0) continue;
@@ -857,21 +860,27 @@ const eq = resolveEquation(operandsRaw as never, ctx);
         const expectedRatios = [0.25, 0.5, 1, 2, 4] as const;
         for (const r of expectedRatios) {
           if (Math.abs(baseValue - input.pb * r) < 0.01) {
-            // Replace this target's contribution portion of the total.
-            // The total currently has (seed + contributions). The
-            // "contributions" portion for this target is the sum of
-            // its byTarget entries' values. We rescale that.
-            const contribSum = contribs.reduce(
-              (sum, c) => sum + (Number.isFinite(c.value) ? c.value : 0),
+            const newBase =
+              (baseValue * ratio) >= 0
+                ? Math.ceil(baseValue * ratio)
+                : Math.floor(baseValue * ratio);
+            // Rebuild byTarget[target] as a mutable array of
+            // contributions with potentially-rescaled values.
+            const newContribs = contribs.map((c) =>
+              Math.abs(c.value - baseValue) < 0.01
+                ? { ...c, value: newBase }
+                : c,
+            );
+            byTarget[target] = newContribs;
+            // Replace the contribution portion of totals.
+            // oldSum uses the original (`contribs`) values; newSum
+            // uses the rebuilt (`newContribs`) values.
+            const oldSum = contribs.reduce(
+              (sum, c) => sum + (Math.abs(c.value - newBase) < 0.01 ? baseValue : c.value),
               0,
             );
-            // Phase 8.L round 57: per Mashu's spec, no decimals.
-            // round up the rescaled PB-token contributions.
-            const newContribSum =
-              contribSum * ratio < 0
-                ? Math.floor(contribSum * ratio)
-                : Math.ceil(contribSum * ratio);
-            totals[target] = (totals[target] ?? 0) - contribSum + newContribSum;
+            const newSum = newContribs.reduce((sum, c) => sum + c.value, 0);
+            totals[target] = (totals[target] ?? 0) - oldSum + newSum;
             break;
           }
         }
