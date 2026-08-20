@@ -144,35 +144,87 @@ export function resolveEquation(
   let numeric = 0;
   const tags: string[] = [];
 
-  // Phase 8.L: bare OperandValue format. Each operand is a
-  // OperandValue (no .op wrapper) — the op defaults to "+" for
-  // concat. Per the type canon (types/modifier.ts OperandValue),
-  // number / keyword / derived / attribute / etc. are flat
-  // tokens with no op, while paren groups nest operand arrays.
+  // Operand = { op: Operator, value: OperandValue }.
+  // Each operand carries its own operator (no implicit "+" for the
+  // first operand — it still uses its declared op). The first
+  // operand's op is conventionally "+" but we don't enforce that;
+  // we just start the accumulator at 0 and apply the op.
   for (let i = 0; i < operands.length; i++) {
-    const operand = operands[i] as unknown as { kind: string; operands?: readonly OperandValue[] };
-    // First operand's op is implicit "+" (start accumulator).
-    // Subsequent operands use explicit op or "+" default.
-    const explicitOp =
-      i === 0 ? "+" : "+"; // Phase 8.L: place-holder for richer op support
+    const operand = operands[i];
+    if (!operand) continue;
 
-    // Collect keywords (tags) — preserve them on the result.
-    if (operand.kind === "keyword") {
-      tags.push((operand as { text?: string }).text ?? String((operand as { value?: unknown }).value ?? ""));
+    // Two operand shapes are supported:
+    //   A. Canonical (types/modifier.ts Operand):
+    //        { op: Operator, value: OperandValue }
+    //   B. Sweep / legacy (sweep.test.ts): bare OperandValue with
+    //      optional {operator: "+"} separator operands between
+    //      values. Format:
+    //        [{kind:"derived",which:"pb"}, {operator:"+"},
+    //         {kind:"number",value:2}]
+    //
+    // Detect which format by checking for .op on the operand.
+    const isCanonical = "op" in operand && typeof operand.op === "string";
+    const isLegacySeparator = "operator" in operand;
+
+    if (isLegacySeparator) {
+      // Pure operator separator — no numeric contribution. The op
+      // is captured when the next operand lands (see legacy path
+      // below).
+      continue;
     }
 
-    let value: number;
-    // For paren groups, also collect any inner tags.
-    if (operand.kind === "paren") {
-      const inner = resolveEquation((operand.operands ?? []) as unknown as Operand[], ctx);
-      for (const tag of inner.tags) {
-        tags.push(tag);
+    if (isCanonical) {
+      // Format A. Read operand.value.kind.
+      const value = operand.value;
+      const kind = value.kind;
+      let resolved: number;
+      if (kind === "keyword") {
+        tags.push(value.text);
+        resolved = 0;
+      } else if (kind === "paren") {
+        const inner = resolveEquation(value.operands, ctx);
+        for (const tag of inner.tags) {
+          tags.push(tag);
+        }
+        resolved = inner.numeric;
+      } else {
+        resolved = resolveOperandValue(value, ctx);
       }
-      value = inner.numeric;
+      numeric = applyOperator(numeric, operand.op, resolved);
     } else {
-      value = resolveOperandValue(operand as unknown as OperandValue, ctx);
+      // Format B — bare OperandValue. Use operand.kind directly.
+      // The operator for this value is whatever separator
+      // precedes it (default "+"). For the first operand, use "+".
+      let op: Operator = "+";
+      // Look at previous operand for legacy separator's operator.
+      if (i > 0) {
+        const prev = operands[i - 1];
+        if (prev && "operator" in prev && typeof prev.operator === "string") {
+          op = prev.operator as Operator;
+        }
+      }
+
+      // Operand IS an OperandValue in format B.
+      const opValue = operand as unknown as OperandValue;
+      const kind = (operand as { kind?: string }).kind;
+      let resolved: number;
+      if (kind === "keyword") {
+        tags.push((operand as { text?: string }).text ?? "");
+        resolved = 0;
+      } else if (kind === "paren") {
+        const inner = resolveEquation(
+          (operand as { operands?: readonly Operand[] }).operands ?? [],
+          ctx,
+        );
+        for (const tag of inner.tags) {
+          tags.push(tag);
+        }
+        resolved = inner.numeric;
+      } else {
+        resolved = resolveOperandValue(opValue, ctx);
+      }
+      numeric = applyOperator(numeric, op, resolved);
     }
-    numeric = applyOperator(numeric, explicitOp as Parameters<typeof applyOperator>[1], value);
   }
 
   return { numeric, tags };

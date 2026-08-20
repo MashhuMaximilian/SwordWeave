@@ -29,6 +29,7 @@ import {
   type VitalityModifier,
 } from "./vitality";
 import { resolveValue, isTypedToken, type ResolveContext } from "./runtime-resolver";
+import { resolveEquation } from "./equation-resolver";
 import { evaluateCondition, type ConditionContext } from "./condition-evaluator";
 import type { HardModifier } from "@/types/swordweave";
 import { sumPrimitiveContributions, walkPrimitiveContributionsForAxis } from "./primitive-walk";
@@ -328,7 +329,11 @@ function resolveCharacterAxes(
         axis = target;
         sub = kwValue;
       } else {
-        continue;
+        // No dot + no keyword — the target IS the axis (e.g. plain
+        // "combat_action" with value=1). Treat the axis as the
+        // target and the sub as the keyword-derived fallback or "".
+        axis = target;
+        sub = "";
       }
       if (axis === "size" && SIZE_TIERS.includes(sub)) {
         if (op === "set" || op === "grant" || op === "add") {
@@ -340,7 +345,9 @@ function resolveCharacterAxes(
           resolvedSourceType = sub.toUpperCase();
         }
       }
-      if (target === "combat_action" || (axis === "combat_action" && kwValue)) {
+      if (axis === "combat_action") {
+        // Plain combat_action or combat_action.<sub> both fire the
+        // inCombat flag for grant/set operations.
         if (op === "grant") inCombat = true;
         if (op === "set") inCombat = value !== 0;
       }
@@ -1075,7 +1082,54 @@ for (const slot of behaviorWalkSlots) {
     }
     if (key.length === 0) continue;
     const op = String(mod.operation ?? "");
-    const value = Number(mod.value);
+    // Build a ResolveContext for typed-token resolution (PB,
+    // /physical/, keywords, dice, equations). Use the level PB
+    // since behavior variables don't depend on PB-modifying
+    // conditions (the resolver sees those separately).
+    const ctxBehaviorWalk: ResolveContext = {
+      level: input.level,
+      pb: 2 + Math.floor((input.level - 1) / 4),
+      attributes: {
+        physical: input.attrPhysical,
+        mental: input.attrMental,
+        magical: input.attrMagical,
+      } as ResolveContext["attributes"],
+      practices: {} as ResolveContext["practices"],
+      behaviorVariables: {} as ResolveContext["behaviorVariables"],
+    };
+    // (replaced value extraction below)
+    // Phase 8.L round 61 (Mashu): typed tokens (PB /, /physical/,
+    // keyword values, dice, equations) must resolve through the
+    // runtime resolver instead of being dropped. Previously
+    // `Number(mod.value)` only handled plain numbers and silently
+    // dropped anything else (e.g. legendary_resistance condition
+    // with `value: /pb/` contributed nothing).
+    let value: number;
+    if (
+      mod.value && typeof mod.value === "object" &&
+      (mod.value as { kind?: string }).kind === "equation" &&
+      Array.isArray((mod.value as { operands?: unknown[] }).operands)
+    ) {
+      // Equation in mod.value.
+      const ops = (mod.value as { operands?: unknown[] }).operands ?? [];
+      const eq = resolveEquation(
+        ops as never,
+        ctxBehaviorWalk as unknown as ResolveContext,
+      );
+      value = eq.numeric;
+    } else if (Array.isArray(mod.value)) {
+      value = resolveValue(mod.value as never, ctxBehaviorWalk as unknown as ResolveContext);
+    } else if (isTypedToken(mod.value)) {
+      value = resolveValue(mod.value, ctxBehaviorWalk as unknown as ResolveContext);
+    } else if (typeof mod.value === "number") {
+      value = mod.value;
+    } else if (typeof mod.value === "string") {
+      const n = Number(mod.value);
+      if (!Number.isFinite(n)) continue;
+      value = n;
+    } else {
+      continue;
+    }
     if (!Number.isFinite(value)) continue;
     let delta = 0;
     if (op === "add") delta = value;

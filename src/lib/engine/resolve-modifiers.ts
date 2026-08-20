@@ -513,11 +513,23 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       const slotInhibited: boolean = slot.isToggledOff ?? false;
 
       // ---- Behavior variable collection (Pass 1) ---------------
-      if (target === "behavior" && behaviorName !== null) {
+      // Support BOTH forms:
+      //   1. Canonical: target="behavior" + metadata.behaviorName
+      //   2. Dotted:    target="behavior.<name>" (primitives)
+      // Both feed into the same behaviorVariables map so the
+      // downstream consumer sees the combined total.
+      let behaviorKey: string | null = null;
+      if (target === "behavior") {
+        behaviorKey = behaviorName;
+      } else if (target.startsWith("behavior.")) {
+        behaviorKey = target.slice("behavior.".length);
+        if (behaviorKey.length === 0) behaviorKey = null;
+      }
+      if (behaviorKey !== null) {
         // Apply the op to the existing variable (default 0).
-        const prev = behaviorVariables[behaviorName] ?? 0;
+        const prev = behaviorVariables[behaviorKey] ?? 0;
         const next = applyOperation(prev, mod.operation, resolvedValue);
-        behaviorVariables[behaviorName] = numericOr(
+        behaviorVariables[behaviorKey] = numericOr(
           next,
           prev,
         );
@@ -526,7 +538,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
         entries.push({
           slot,
           mod,
-          target: `behavior.${behaviorName}`,
+          target: `behavior.${behaviorKey}`,
           effectiveValue: resolvedValue,
           preMirrorValue,
           tags: equationTags,
