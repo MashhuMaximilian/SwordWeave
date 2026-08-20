@@ -1719,11 +1719,11 @@ function PracticesPanel({
     byAttr[p.attribute]?.push(p);
   }
 
-  // Sort practices within each attribute: highest modifier first so
-  // the player's best skills are at the top of each column.
-  const sortByTotal = (rows: PracticeRow[]) =>
-    [...rows].sort((a, b) => b.total - a.total);
-
+  // Phase 8.L round 61 (Mashu): keep the server's order. The
+  // previous sortByTotal rearranged practices whenever conditions
+  // changed totals, making it impossible to find the same practice
+  // after a condition toggle. Fixed order = stable UX.
+  //
   // Phase 8.4 v3 (Mashu 2026-07-28): revert to single-column on
   // mobile (3 columns on desktop). The PROF column is gone —
   // the user wants PROF in the vitality card with the
@@ -1732,7 +1732,7 @@ function PracticesPanel({
     <>
       <div className="grid grid-cols-1 divide-y divide-border border-t border-border md:grid-cols-3 md:divide-x md:divide-y-0 md:gap-0">
         {(["PHYSICAL", "MENTAL", "MAGICAL"] as const).map((attr) => {
-          const rows = sortByTotal(byAttr[attr] ?? []);
+          const rows = byAttr[attr] ?? [];
           const proficient = attrProficient === attr;
           const bestTotal = rows[0]?.total ?? 0;
           return (
