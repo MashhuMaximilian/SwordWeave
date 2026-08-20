@@ -130,8 +130,12 @@ export function ConditionsDrawer({ characterId, open, onClose }: ConditionsDrawe
                   condition={c}
                   onToggle={() => toggle(c.id)}
                   onEdit={() => openComposer(c)}
-                  onRemove={() => remove(c.id)}
-                  readOnly
+                  // Phase 8.L round 68: sheet conditions are
+                  // toggleable now (the user wanted to engage/
+                  // inhibit primitive triggers). Remove is still
+                  // disallowed because the sheet entry will be
+                  // re-created on next render by the scanner.
+                  onRemove={() => undefined}
                 />
               ))}
             </Section>

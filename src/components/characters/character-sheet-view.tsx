@@ -64,6 +64,7 @@ import { proficiencyBonus } from "@/lib/engine/practices";
 import { useCharacterResolver } from "@/lib/hooks/use-character-resolver";
 import { useToggleState } from "@/lib/hooks/use-toggle-state";
 import { useRuntimeConditions } from "@/lib/hooks/use-runtime-conditions";
+import { useSheetConditions } from "@/lib/hooks/use-sheet-conditions";
 import {
   BACKSTORY_FIELDS,
   isBackstoryEmpty,
@@ -734,7 +735,30 @@ export function CharacterSheetView(props: CharacterSheetProps) {
  * conditions (they live in localStorage), so the client's practice
  * totals need this delta added on top to stay accurate.
  */
-const { conditions: runtimeConditions } = useRuntimeConditions(props.id);
+  const { conditions: runtimeConditions } = useRuntimeConditions(props.id);
+
+  // Phase 8.L round 68: sync primitive/capability non-computable
+  // conditions into the right drawer's "From sheet" section so
+  // the user can engage/inhibit them manually.
+  useSheetConditions({
+    characterId: props.id,
+    primitiveLinks: props.primitiveLinks.map((l) => ({
+      primitiveId: l.primitiveId,
+      primitive: {
+        id: l.primitive.id,
+        name: l.primitive.name,
+        hardModifiers: (l.primitive.hardModifiers ?? []) as never,
+      },
+    })),
+    capabilityLinks: props.capabilityLinks.map((l) => ({
+      capabilityId: l.capabilityId,
+      capability: {
+        id: l.capability.id,
+        name: l.capability.name,
+        effects: ((l.capability as { effects?: ReadonlyArray<{ id: string; name: string; hardModifiers?: ReadonlyArray<Record<string, unknown>> }> }).effects ?? []) as never,
+      },
+    })),
+  });
 
   // Phase 8.3f S4 (Mashu 2026-07-28): run the canonical resolver
   // once per render. The result drives the BottomStickyBar's

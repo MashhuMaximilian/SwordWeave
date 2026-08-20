@@ -1,0 +1,262 @@
+"use client";
+
+/**
+ * use-sheet-conditions.ts — Phase 8.L round 68 (Mashu 2026-08-20)
+ *
+ * Sync primitives/capabilities/effects with NON-COMPUTABLE conditions
+ * into the right-drawer's "From sheet" section. The user can toggle
+ * each one ON/OFF to engage or inhibit the underlying modifier.
+ *
+ * WHY:
+ * Per Mashu R68: "Some primitives have 'triggers when ...' Those are
+ * engaged or inhibited or whatever. We need to show those in the
+ * right drawer to check them as true or false too."
+ *
+ * CATEGORIES:
+ * - Computable conditions (HP, attributes) are auto-evaluated by
+ *   the engine. The user doesn't need to toggle them.
+ * - Non-computable conditions (narrative triggers like
+ *   "tracking_animal", "in_dim_light") are always-on by default.
+ *   The user needs to toggle them.
+ *
+ * This hook:
+ * 1. Scans primitives for hardModifiers with non-computable conditions
+ * 2. Creates a sheet-sourced RuntimeCondition for each one (idempotent)
+ * 3. If the user toggles one OFF, the engine respects the override
+ *    (treated as inhibited)
+ *
+ * Storage: localStorage with key `sw:cond:<characterId>:<id>`.
+ * The runtime-conditions hook already reads from this storage.
+ *
+ * The id format is `sheet-primitive-<primitiveId>-<modIndex>` so the
+ * scanner is idempotent — running it multiple times doesn't create
+ * duplicates.
+ */
+
+import { useEffect, useMemo } from "react";
+import {
+  useRuntimeConditions,
+  type RuntimeCondition,
+} from "./use-runtime-conditions";
+import { isConditionComputable } from "@/lib/engine/condition-evaluator";
+import type { ConditionContext } from "@/lib/engine/condition-evaluator";
+
+type PrimitiveLinkInput = {
+  primitiveId: number;
+  primitive: {
+    id: number;
+    name: string;
+    hardModifiers: ReadonlyArray<Record<string, unknown>>;
+  };
+};
+
+type CapabilityLinkInput = {
+  capabilityId: string;
+  capability: {
+    id: string;
+    name: string;
+    effects?: ReadonlyArray<{
+      id: string;
+      name: string;
+      hardModifiers?: ReadonlyArray<Record<string, unknown>>;
+    }>;
+  };
+};
+
+// Cast helper for traversed unknown shapes
+function asRef<T>(v: unknown): T {
+  return v as T;
+}
+
+/**
+ * Build a synthetic ConditionContext for the scanner. We don't need
+ * real character state — we just want to know if a condition is
+ * NON-computable. The scanner only asks: "does this condition
+ * reference target/scene axes that the engine can't evaluate?".
+ */
+function syntheticContext(): ConditionContext {
+  return {
+    character: {
+      vitality: 0,
+      vitalityMax: 0,
+      saveDc: 0,
+      blockValue: 0,
+      attributes: { physical: 0, mental: 0, magical: 0 },
+      practices: {
+        prowess: 0, finesse: 0, fieldcraft: 0, awareness: 0, reason: 0,
+        knowledge: 0, influence: 0, mysticism: 0, communion: 0, intuition: 0,
+      },
+      proficiencies: new Set(),
+      flags: new Set(),
+      custom: {},
+    },
+  };
+}
+
+function isConditionEffective(condition: unknown): boolean {
+  if (!condition) return false;
+  // No target/scene references → computable, don't show
+  const ctx = syntheticContext();
+  return !isConditionComputable(condition as never, ctx);
+}
+
+function buildId(prefix: string, sourceId: string, modIndex: number): string {
+  return `${prefix}-${sourceId}-${modIndex}`;
+}
+
+function makeCondition(
+  id: string,
+  title: string,
+  description: string,
+  modifiers: ReadonlyArray<{
+    kind?: string;
+    target?: string;
+    operation?: string;
+    value?: unknown;
+    metadata?: unknown;
+  }>,
+  sourceEntityId: string,
+  sourceEntityType: "primitive" | "effect",
+): RuntimeCondition {
+  return {
+    id,
+    title,
+    description,
+    active: true,
+    source: "sheet",
+    sourceEntityId,
+    sourceEntityType,
+    modifiers: modifiers.map((m) => ({
+      kind: "modify" as const,
+      target: (m.target ?? "") as never,
+      operation: (m.operation as "add" | "subtract" | "multiply" | "divide" | "set" | "min" | "max" | "grant" | "revoke") ?? "add",
+      value: m.value as never,
+      metadata: m.metadata as never,
+    })),
+    durationTier: "manual",
+    tags: [],
+    createdAt: 0,
+  };
+}
+
+/**
+ * Scan primitives for non-computable conditions and return the
+ * desired sheet conditions. Each unique (primitiveId, modIndex)
+ * becomes one sheet condition.
+ */
+function scanPrimitives(
+  primitives: ReadonlyArray<PrimitiveLinkInput>,
+): RuntimeCondition[] {
+  const out: RuntimeCondition[] = [];
+  for (const link of primitives) {
+    const mods = link.primitive.hardModifiers ?? [];
+    mods.forEach((mod, idx) => {
+      const condition = (mod as Record<string, unknown>)["condition"];
+      if (!condition) return;
+      if (!isConditionEffective(condition)) return;
+      const id = buildId("sheet-primitive", String(link.primitiveId), idx);
+      out.push(
+        makeCondition(
+          id,
+          link.primitive.name,
+          "Toggle to engage or inhibit this modifier.",
+          [mod as unknown as {
+            kind?: string;
+            target?: string;
+            operation?: string;
+            value?: unknown;
+            metadata?: unknown;
+          }],
+          String(link.primitiveId),
+          "primitive",
+        ),
+      );
+    });
+  }
+  return out;
+}
+
+/**
+ * Scan capability effects for non-computable conditions.
+ */
+function scanCapabilities(
+  capabilities: ReadonlyArray<CapabilityLinkInput>,
+): RuntimeCondition[] {
+  const out: RuntimeCondition[] = [];
+  for (const cap of capabilities) {
+    const effects = cap.capability.effects ?? [];
+    for (const eff of effects) {
+      const mods = (eff.hardModifiers ?? []) as ReadonlyArray<Record<string, unknown>>;
+      mods.forEach((mod, idx) => {
+        const condition = (mod as Record<string, unknown>)["condition"];
+        if (!condition) return;
+        if (!isConditionEffective(condition)) return;
+        const id = buildId("sheet-effect", eff.id, idx);
+        out.push(
+          makeCondition(
+            id,
+            `${cap.capability.name} — ${eff.name}`,
+            "Toggle to engage or inhibit this modifier.",
+            [mod as unknown as {
+              kind?: string;
+              target?: string;
+              operation?: string;
+              value?: unknown;
+              metadata?: unknown;
+            }],
+            eff.id,
+            "effect",
+          ),
+        );
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * Sync helper: create missing sheet conditions, leave existing ones
+ * alone (preserves user toggle state). Returns the desired set; the
+ * hook decides what to write.
+ */
+function reconcile(
+  existing: ReadonlyArray<RuntimeCondition>,
+  desired: ReadonlyArray<RuntimeCondition>,
+): { toCreate: RuntimeCondition[]; ids: Set<string> } {
+  const existingIds = new Set(existing.map((c) => c.id));
+  const toCreate = desired.filter((c) => !existingIds.has(c.id));
+  const ids = new Set(desired.map((c) => c.id));
+  return { toCreate, ids };
+}
+
+export function useSheetConditions(input: {
+  characterId: string | null;
+  primitiveLinks: ReadonlyArray<PrimitiveLinkInput>;
+  capabilityLinks: ReadonlyArray<CapabilityLinkInput>;
+}): {
+  sheetConditionIds: ReadonlySet<string>;
+} {
+  const { characterId, primitiveLinks, capabilityLinks } = input;
+  const { conditions, create } = useRuntimeConditions(characterId);
+
+  const desired = useMemo(() => {
+    return [
+      ...scanPrimitives(primitiveLinks),
+      ...scanCapabilities(capabilityLinks),
+    ];
+  }, [primitiveLinks, capabilityLinks]);
+
+  useEffect(() => {
+    if (!characterId) return;
+    const { toCreate } = reconcile(conditions, desired);
+    for (const c of toCreate) {
+      create(c);
+    }
+  }, [characterId, desired, conditions, create]);
+
+  const sheetConditionIds = useMemo(() => {
+    return new Set(conditions.filter((c) => c.source === "sheet").map((c) => c.id));
+  }, [conditions]);
+
+  return { sheetConditionIds };
+}
