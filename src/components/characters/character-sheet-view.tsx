@@ -461,6 +461,52 @@ export function computeClientPracticeTotal(
 
 
 /**
+ * Build condition-aware speedByType from the resolver.
+ * Mirrors computeClientPracticeTotal / buildClientBehaviorVariables:
+ * any value affected by runtime conditions needs an override
+ * because the server's aggregateCharacterSheet doesn't see them.
+ */
+function buildClientSpeedByType(
+  serverSpeedByType: Readonly<Record<string, number>>,
+  resolver: { byTarget: Readonly<Record<string, ReadonlyArray<{op: string; value: number; inhibited: boolean}>>> } | null,
+): Readonly<Record<string, number>> {
+  if (!resolver) return serverSpeedByType;
+  const out: Record<string, number> = {};
+  // Map locomotion types to resolver target keys.
+  // The resolver emits keys as speed.walking_speed, speed.flying_speed, etc.
+  const locomotionToResolverKey: Record<string, string> = {
+    WALKING_SPEED: "speed.walking_speed",
+    CLIMBING_SPEED: "speed.climbing_speed",
+    SWIMMING_SPEED: "speed.swimming_speed",
+    FLYING_SPEED: "speed.flying_speed",
+    BURROWING_SPEED: "speed.burrowing_speed",
+  };
+  for (const [key, serverValue] of Object.entries(serverSpeedByType)) {
+    const resolverKey = locomotionToResolverKey[key];
+    if (!resolverKey) {
+      out[key] = serverValue;
+      continue;
+    }
+    const contribs = resolver.byTarget[resolverKey] ?? [];
+    const activeContribs = contribs.filter(
+      (c) => !c.inhibited && (c.op === "add" || c.op === "subtract"),
+    );
+    if (activeContribs.length === 0) {
+      out[key] = serverValue;
+      continue;
+    }
+    const delta = activeContribs.reduce(
+      (sum, c) => sum + (c.op === "subtract" ? -c.value : c.value),
+      0,
+    );
+    // Resolver doesn't know the base speed (size-based default).
+    // Compute delta-only adjustment: add resolver delta to server value.
+    out[key] = serverValue + delta;
+  }
+  return out;
+}
+
+/**
  * Build the BSB-shaped behavior variables array from the resolver.
  * The resolver sees runtime conditions (from localStorage via
  * useRuntimeConditions). The SERVER's aggregateCharacterSheet
@@ -520,20 +566,45 @@ function buildClientBehaviorVariables(
     const resolverVal = resolver.behaviorVariables[key];
     const serverEntry = serverVars.find((b) => b.key === key);
     const value = resolverVal !== undefined ? resolverVal : (serverEntry?.value ?? 0);
+    // Build a unified contributions list by merging the server's
+    // structured list and the resolver's byTarget entries. The
+    // server's entries have provenance baked in but are missing
+    // condition contributions (server doesn't see localStorage).
+    // The resolver's byTarget has all entries (primitive +
+    // condition) but without structured provenance metadata.
+    //
+    // We merge them so the user sees BOTH the primitive +1 and
+    // the condition +2 in the breakdown.
+    const resolverByTargetEntries = resolver.byTarget[`behavior.${key}`] ?? [];
+    const contributionsMap = new Map<string, {
+      readonly primitiveId: number;
+      readonly primitiveName: string;
+      readonly delta: number;
+    }>();
+    // Start with server's entries (have provenance).
+    for (const s of serverEntry?.contributions ?? []) {
+      contributionsMap.set(`${s.primitiveName}-${s.delta}`, s);
+    }
+    // Add resolver's byTarget entries (condition contributions).
+    for (const r of resolverByTargetEntries) {
+      const key2 = `${r.primitiveName}-${r.value}`;
+      if (!contributionsMap.has(key2)) {
+        contributionsMap.set(key2, {
+          primitiveId: r.primitiveId,
+          primitiveName: r.primitiveName,
+          delta: r.value,
+        });
+      }
+    }
     let contributions: ReadonlyArray<{
       readonly primitiveId: number;
       readonly primitiveName: string;
       readonly delta: number;
-    }>;
-    if (serverEntry && serverEntry.contributions.length > 0) {
-      contributions = serverEntry.contributions;
-    } else {
-      const byTargetEntries = resolver.byTarget[`behavior.${key}`] ?? [];
-      contributions = byTargetEntries.map((c) => ({
-        primitiveId: c.primitiveId,
-        primitiveName: c.primitiveName,
-        delta: c.value,
-      }));
+    }> = Array.from(contributionsMap.values());
+    // If neither has anything, fall back to a synthetic entry so
+    // the row isn't empty (the value still sums from the resolver).
+    if (contributions.length === 0 && value !== 0) {
+      contributions = [{ primitiveId: -1, primitiveName: "Runtime Conditions", delta: value }];
     }
     out.push({ key, value, contributions });
   }
@@ -1261,7 +1332,7 @@ const { conditions: runtimeConditions } = useRuntimeConditions(props.id);
         // Phase 8.I i2 finish (Mashu 2026-08-06) - speed +
         // carry capacity from primitive walks. Forwarded so
         // the sticky bar can render speed + carry cards.
-        speedByType={props.speedByType}
+        speedByType={buildClientSpeedByType(props.speedByType, resolver)}
         carryCapacity={props.carryCapacity}
         damageModifiers={props.damageModifiers}
         behaviorVariables={buildClientBehaviorVariables(props.behaviorVariables, resolver)}

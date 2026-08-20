@@ -364,11 +364,37 @@ export function aggregateCharacterSheet(
   // contributions. Previously attributes were read straight
   // from input.attrPhysical/Mental/Magical — primitive
   // modifiers targeting attribute.<attr> were ignored.
+  // Phase 8.L round 55: also walk runtime conditions (Play Session
+  // Scratchpad). Each active condition contributes its hardModifiers
+  // to the practice math just like a slotted primitive. We use a
+  // synthetic negative primitiveId so the Map<primitiveId, ...> key
+  // doesn't collide with real primitives.
+  const runtimeConditionLinks = (input.runtimeConditions ?? [])
+    .filter((c) => c.active)
+    .map((c, i): PrimitiveLinkSnapshot => ({
+      primitiveId: -100000 - i,
+      source: "RUNTIME",
+      acquiredAtLevel: 0,
+      isMirrored: false,
+      primitive: {
+        id: -100000 - i,
+        name: c.title || "Untitled condition",
+        category: "RUNTIME_CONDITION",
+        buCost: 0,
+        isMirrorable: false,
+        mirrorBuCredit: 0,
+        hardModifiers: c.modifiers,
+      },
+    }));
+  const allLinks: ReadonlyArray<PrimitiveLinkSnapshot> = [
+    ...input.primitiveLinks,
+    ...runtimeConditionLinks,
+  ];
   const attributes: Attributes = {
     physical:
       input.attrPhysical +
       sumPrimitiveContributions(
-        input.primitiveLinks,
+        allLinks,
         "attribute",
         "physical",
         input.conditionContext,
@@ -376,7 +402,7 @@ export function aggregateCharacterSheet(
     mental:
       input.attrMental +
       sumPrimitiveContributions(
-        input.primitiveLinks,
+        allLinks,
         "attribute",
         "mental",
         input.conditionContext,
@@ -384,7 +410,7 @@ export function aggregateCharacterSheet(
     magical:
       input.attrMagical +
       sumPrimitiveContributions(
-        input.primitiveLinks,
+        allLinks,
         "attribute",
         "magical",
         input.conditionContext,
@@ -447,32 +473,7 @@ export function aggregateCharacterSheet(
   // some point during Phase 7 (per the comment in
   // src/lib/packages/primitive-package.ts) but the engine code
   // wasn\'t updated to handle the legacy alias.
-  // Phase 8.L round 55: also walk runtime conditions (Play Session
-  // Scratchpad). Each active condition contributes its hardModifiers
-  // to the practice math just like a slotted primitive. We use a
-  // synthetic negative primitiveId so the Map<primitiveId, ...> key
-  // doesn't collide with real primitives.
-  const runtimeConditionLinks = (input.runtimeConditions ?? [])
-    .filter((c) => c.active)
-    .map((c, i): PrimitiveLinkSnapshot => ({
-      primitiveId: -100000 - i,
-      source: "RUNTIME",
-      acquiredAtLevel: 0,
-      isMirrored: false,
-      primitive: {
-        id: -100000 - i,
-        name: c.title || "Untitled condition",
-        category: "RUNTIME_CONDITION",
-        buCost: 0,
-        isMirrorable: false,
-        mirrorBuCredit: 0,
-        hardModifiers: c.modifiers,
-      },
-    }));
-  const allLinks: ReadonlyArray<PrimitiveLinkSnapshot> = [
-    ...input.primitiveLinks,
-    ...runtimeConditionLinks,
-  ];
+  
   for (const link of allLinks) {
     const p = link.primitive;
     if (
@@ -853,7 +854,7 @@ export function aggregateCharacterSheet(
     attributes,
     input.attrProficient,
     input.level,
-    input.primitiveLinks,
+    allLinks,
     input.conditionContext,
     pbOverride,
   );
@@ -866,7 +867,7 @@ export function aggregateCharacterSheet(
     attributes,
     input.attrProficient,
     input.level,
-    input.primitiveLinks,
+    allLinks,
     input.conditionContext,
   );
   const saveDCs: Array<{ attribute: Attribute; dc: number }> = [
@@ -957,7 +958,7 @@ const speedByType: Record<string, number> = {};
 for (const locomotion of Object.keys(SPEED_DEFAULTS)) {
   const lower = locomotion.toLowerCase().replace("_speed", "");
   const primitiveSum = sumPrimitiveContributions(
-    input.primitiveLinks,
+    allLinks,
     "speed",
     lower,
     input.conditionContext,
@@ -973,7 +974,7 @@ for (const locomotion of Object.keys(SPEED_DEFAULTS)) {
 const charSize = resolvedSize as CharacterSize;
 const baseCarry = SIZE_CAPACITY[charSize] + input.attrPhysical * 5;
 const carryCapacityBonus = sumPrimitiveContributions(
-  input.primitiveLinks,
+  allLinks,
   "carry_capacity",
   null,
   input.conditionContext,
@@ -983,7 +984,7 @@ const carryCapacity = roundUp(baseCarry + carryCapacityBonus);
 // Load = item-derived + primitive load contributions.
 const itemLoad = encumbrance.load;
 const loadPrimitive = sumPrimitiveContributions(
-  input.primitiveLinks,
+  allLinks,
   "load",
   null,
   input.conditionContext,
@@ -993,7 +994,7 @@ const loadTotal = itemLoad + loadPrimitive;
 // Equip slots = item-derived + primitive equip_slot contributions.
 const slotsUsed = encumbrance.equipSlotsUsed;
 const slotPrimitiveBonus = sumPrimitiveContributions(
-  input.primitiveLinks,
+  allLinks,
   "equip_slot",
   null,
   input.conditionContext,
@@ -1009,13 +1010,13 @@ const equipSlotsUsed = slotsUsed + slotPrimitiveBonus;
 // so it runs BEFORE computeEncumbrance receives the resolved size.
 
 const complexity = sumPrimitiveContributions(
-  input.primitiveLinks,
+  allLinks,
   "complexity",
   null,
   input.conditionContext,
 );
 const upkeepCost = sumPrimitiveContributions(
-  input.primitiveLinks,
+  allLinks,
   "upkeep_cost",
   null,
   input.conditionContext,
