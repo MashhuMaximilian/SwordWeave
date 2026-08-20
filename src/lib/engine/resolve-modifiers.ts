@@ -762,19 +762,26 @@ const eq = resolveEquation(operandsRaw as never, ctx);
     }
     // Apply ceiling (max): total cannot exceed the max value.
     // Phase 8.L round 47: also skip inhibited ceilings.
-    const maxValues = contribs
-      .filter((c) => c.op === "max" && c.conditionActive && !c.inhibited)
-      .map((c) => c.value);
-    for (const v of maxValues) {
-      total = Math.min(total, v);
-    }
-    // Apply floor (min): total cannot go below the min value.
-    // Phase 8.L round 47: also skip inhibited floors.
-    const minValues = contribs
-      .filter((c) => c.op === "min" && c.conditionActive && !c.inhibited)
-      .map((c) => c.value);
-    for (const v of minValues) {
-      total = Math.max(total, v);
+    // Phase 8.L round 67 (Mashu 2026-08-20): for skill_practice_check.*
+    // targets, min/max are ROLL constraints (UI shows ⬆/⬇), NOT
+    // modifier clamps. Clamping the displayed total hides the
+    // effect of conditions on practices that fall below the floor
+    // (e.g. exhausted -2 only visibly affects practices whose raw
+    // total exceeds the floor). Skip clamping for these targets.
+    const isPracticeTarget = target.startsWith("skill_practice_check");
+    if (!isPracticeTarget) {
+      const maxValues = contribs
+        .filter((c) => c.op === "max" && c.conditionActive && !c.inhibited)
+        .map((c) => c.value);
+      for (const v of maxValues) {
+        total = Math.min(total, v);
+      }
+      const minValues = contribs
+        .filter((c) => c.op === "min" && c.conditionActive && !c.inhibited)
+        .map((c) => c.value);
+      for (const v of minValues) {
+        total = Math.max(total, v);
+      }
     }
     totals[target] = total;
   }

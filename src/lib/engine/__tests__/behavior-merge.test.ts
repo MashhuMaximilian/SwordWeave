@@ -160,8 +160,8 @@ describe("Speed by type merge (server + resolver)", () => {
       },
     };
     const merged = mergeSpeed(server, resolver);
-    expect(merged.WALKING_SPEED).toBe(40);  // 50 - 10
-    expect(merged.FLYING_SPEED).toBe(0);  // no contrib
+    expect(merged['WALKING_SPEED']).toBe(40);  // 50 - 10
+    expect(merged['FLYING_SPEED']).toBe(0);  // no contrib
   });
 
   it("skips inhibited contributions", () => {
@@ -174,13 +174,13 @@ describe("Speed by type merge (server + resolver)", () => {
       },
     };
     const merged = mergeSpeed(server, resolver);
-    expect(merged.WALKING_SPEED).toBe(50);
+    expect(merged['WALKING_SPEED']).toBe(50);
   });
 
   it("returns server value when resolver is null", () => {
     const server = { WALKING_SPEED: 50 };
     const merged = mergeSpeed(server, null);
-    expect(merged.WALKING_SPEED).toBe(50);
+    expect(merged['WALKING_SPEED']).toBe(50);
   });
 });
 
