@@ -459,6 +459,88 @@ export function computeClientPracticeTotal(
 }
 
 
+
+/**
+ * Build the BSB-shaped behavior variables array from the resolver.
+ * The resolver sees runtime conditions (from localStorage via
+ * useRuntimeConditions). The SERVER's aggregateCharacterSheet
+ * does NOT — page.tsx can't pass them because server components
+ * can't read localStorage. So the server's sheet.behaviorVariables
+ * only contains primitive contributions, missing condition deltas.
+ *
+ * This helper merges the server's structured contributions array
+ * (with provenance) with the resolver's behaviorVariables map
+ * (which includes condition contributions). For each behavior key,
+ * use the resolver's value (condition-aware) and the server's
+ * contribution list (provenance-aware). For keys the server doesn't
+ * know about, build a synthetic contribution list from the
+ * resolver's byTarget.
+ */
+function buildClientBehaviorVariables(
+  serverVars: ReadonlyArray<{
+    readonly key: string;
+    readonly value: number;
+    readonly contributions: ReadonlyArray<{
+      readonly primitiveId: number;
+      readonly primitiveName: string;
+      readonly delta: number;
+    }>;
+  }>,
+  resolver: {
+    behaviorVariables: Readonly<Record<string, number>>;
+    byTarget: Readonly<Record<string, ReadonlyArray<{
+      primitiveId: number;
+      primitiveName: string;
+      value: number;
+    }>>>;
+  } | null,
+): ReadonlyArray<{
+  readonly key: string;
+  readonly value: number;
+  readonly contributions: ReadonlyArray<{
+    readonly primitiveId: number;
+    readonly primitiveName: string;
+    readonly delta: number;
+  }>;
+}> {
+  if (!resolver) return serverVars;
+  const keys = new Set<string>();
+  for (const bv of serverVars) keys.add(bv.key);
+  for (const k of Object.keys(resolver.behaviorVariables)) keys.add(k);
+  const out: Array<{
+    readonly key: string;
+    readonly value: number;
+    readonly contributions: ReadonlyArray<{
+      readonly primitiveId: number;
+      readonly primitiveName: string;
+      readonly delta: number;
+    }>;
+  }> = [];
+  for (const key of keys) {
+    const resolverVal = resolver.behaviorVariables[key];
+    const serverEntry = serverVars.find((b) => b.key === key);
+    const value = resolverVal !== undefined ? resolverVal : (serverEntry?.value ?? 0);
+    let contributions: ReadonlyArray<{
+      readonly primitiveId: number;
+      readonly primitiveName: string;
+      readonly delta: number;
+    }>;
+    if (serverEntry && serverEntry.contributions.length > 0) {
+      contributions = serverEntry.contributions;
+    } else {
+      const byTargetEntries = resolver.byTarget[`behavior.${key}`] ?? [];
+      contributions = byTargetEntries.map((c) => ({
+        primitiveId: c.primitiveId,
+        primitiveName: c.primitiveName,
+        delta: c.value,
+      }));
+    }
+    out.push({ key, value, contributions });
+  }
+  out.sort((a, b) => a.key.localeCompare(b.key));
+  return out;
+}
+
 export function CharacterSheetView(props: CharacterSheetProps) {
   const [tab, setTab] = useState<Tab>("capabilities");
   const [levelUpConfirm, setLevelUpConfirm] = useState(false);
@@ -1182,7 +1264,7 @@ const { conditions: runtimeConditions } = useRuntimeConditions(props.id);
         speedByType={props.speedByType}
         carryCapacity={props.carryCapacity}
         damageModifiers={props.damageModifiers}
-        behaviorVariables={props.behaviorVariables}
+        behaviorVariables={buildClientBehaviorVariables(props.behaviorVariables, resolver)}
         // Phase 8.4 v25: character size for the encumbrance
         // formula popup. Cast from the loose `string` type on
         // CharacterSheetProps to the literal union the bar
