@@ -960,9 +960,15 @@ export function BottomStickyBar({
             ) : (
               <div className="grid grid-cols-3 gap-1.5">
                 {(["PHYSICAL", "MENTAL", "MAGICAL"] as const).map((attr) => {
-                  const rows = practices
-                    .filter((p) => p.attribute === attr)
-                    .sort((a, b) => b.total - a.total);
+                  // Phase 8.L round 68 (Mashu 2026-08-20): keep
+                  // practices in server's canonical order
+                  // (prowess, finesse, fieldcraft, etc.). DON'T
+                  // sort by total — that reorders whenever a
+                  // condition toggles, making it hard to find
+                  // the same practice across sessions.
+                  const rows = practices.filter(
+                    (p) => p.attribute === attr,
+                  );
                   const isProf = proficientAttribute === attr;
                   const attrLower = attr.toLowerCase() as "physical" | "mental" | "magical";
                   return (
