@@ -172,21 +172,10 @@ export function useRuntimeConditions(
 
   const create = useCallback<UseRuntimeConditionsResult["create"]>(
     (input) => {
-      // Phase 8.L round 70: respect caller-supplied ids. The
-      // sheet-condition scanner uses deterministic ids
-      // (sheet-primitive-<id>-<idx>) so reconcile can detect
-      // "already exists" and skip the create. Without this, every
-      // create() overwrote the caller id with a new UUID, the
-      // scanner never saw its own conditions, and an infinite
-      // loop duplicated sheet conditions on every render (the
-      // user saw CONDITIONS (4211)).
-      const callerId = (input as { id?: string }).id;
       const id =
-        callerId && callerId.length > 0
-          ? callerId
-          : typeof crypto !== "undefined" && "randomUUID" in crypto
-            ? crypto.randomUUID()
-            : `c-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `c-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const cond: RuntimeCondition = {
         ...input,
         id,
