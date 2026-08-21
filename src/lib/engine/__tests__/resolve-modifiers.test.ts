@@ -856,7 +856,7 @@ describe("L78 action_roll sub-target mirroring (with seed)", () => {
     expect(result.totals["attack_bonus"]).toBe(8);
   });
 
-  it("mirrors action_roll.physical_save add 2 to totals[save_dc]", () => {
+  it("mirrors action_roll.physical_save add 2 to physical_saving_throw (not save_dc)", () => {
     const slot = makeSlot({
       primitiveId: 101,
       hardModifiers: [{
@@ -868,11 +868,14 @@ describe("L78 action_roll sub-target mirroring (with seed)", () => {
       }],
     });
     const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
-    // Seeded base 21 + 2 = 23
-    expect(result.totals["save_dc"]).toBe(23);
+    // Per Mashu R80: action_roll.<save_sub> is for SAVING THROWS,
+    // not save_dc. PB=3, phys attr=10, seed = 13. Plus 2 = 15.
+    expect(result.totals["physical_saving_throw"]).toBe(15);
+    // save_dc UNCHANGED (no action_roll.<save_sub> contribution).
+    expect(result.totals["save_dc"]).toBe(21);
   });
 
-  it("does NOT mirror mental_save when chosenAttr=physical", () => {
+  it("mental_save mirrors to mental_saving_throw (per-attr, not chosenAttr)", () => {
     const slot = makeSlot({
       primitiveId: 102,
       hardModifiers: [{
@@ -884,10 +887,9 @@ describe("L78 action_roll sub-target mirroring (with seed)", () => {
       }],
     });
     const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
-    // User is proficient in physical; mental_save shouldn't
-    // affect the displayed save_dc (which is seeded to physical's
-    // base 21).
-    expect(result.totals["save_dc"]).toBe(21);
+    // User is proficient in physical, but mental save scales with
+    // mental attr (NOT chosenAttr). PB=3 + men attr=10 = 13. Plus 5.
+    expect(result.totals["mental_saving_throw"]).toBe(18);
   });
 
   it("combines action_roll subtract 5 + direct attack_bonus primitive add 2", () => {

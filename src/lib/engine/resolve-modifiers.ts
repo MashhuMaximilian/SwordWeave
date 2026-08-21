@@ -276,39 +276,44 @@ export function resolveModifiers(
   // proficiencyBonus(level) + totals[...]).
   totals["proficiency_bonus"] = input.pb;
 
-  // Phase 8.L round 79: SEED attack_bonus and save_dc with their
-  // computed base (PB + chosen attribute modifier + 0 for
-  // attack; 8 + PB + chosen attribute modifier for save DC —
-  // wait, the save DC base is `5 + PB + modifier` actually).
-  // Without this seed, multiply/divide on save_dc / attack_bonus
-  // operate on 0 (since the engine stores deltas, not bases),
-  // and divide produces 0/x = 0, which is meaningless.
+  // Phase 8.L round 80: SEED attack_bonus, save_dc, AND the three
+  // per-attribute saving throws. Without these seeds,
+  // multiply/divide on any of these axes operate on delta=0
+  // and produce meaningless results (0/x = 0).
   //
-  // Per Mashu R79: "save dc and attack bonus do not work
-  // [with divide]". The base must be in totals so operations
-  // apply meaningfully.
+  // Per Mashu R80: "We have ONE save DC. ... Each attribute has
+  // its own save (saving_throw) — that's why we have physical
+  // save / mental save / magical save in action_roll."
+  //
+  // Saving throws = the modifier the PLAYER adds when THEY
+  // roll to resist (e.g. DEX save against fireball). D&D 5e
+  // baseline: d20 + PB + attribute modifier. No +8 (that's
+  // only for save DC, the target enemies roll against).
   const chosenAttrForSeed =
     input.chosenAttribute ?? input.proficientAttribute ?? ("physical" as const);
-  const attrModForSeed =
-    chosenAttrForSeed === "physical"
+  const attrModForSeed = (a: "physical" | "mental" | "magical") =>
+    a === "physical"
       ? (input.attributes.physical ?? 0)
-      : chosenAttrForSeed === "mental"
+      : a === "mental"
         ? (input.attributes.mental ?? 0)
         : (input.attributes.magical ?? 0);
-  // Base attack bonus = PB + chosen attribute modifier.
-  const baseAttackBonus = input.pb + attrModForSeed;
-  // Base save DC = 8 + PB + chosen attribute modifier (D&D 5e
-  // baseline: 8 + proficiency + modifier).
-  const baseSaveDc = 8 + input.pb + attrModForSeed;
+  // Attack bonus = PB + chosen attribute modifier (scaled).
+  const baseAttackBonus = input.pb + attrModForSeed(chosenAttrForSeed);
+  // Save DC = 8 + PB + chosen attribute modifier (scaled).
+  const baseSaveDc = 8 + input.pb + attrModForSeed(chosenAttrForSeed);
   totals["attack_bonus"] = baseAttackBonus;
   totals["save_dc"] = baseSaveDc;
-  // Also seed the per-attr versions for consistency.
-  totals["attack_bonus.physical"] = input.pb + (input.attributes.physical ?? 0);
-  totals["attack_bonus.mental"] = input.pb + (input.attributes.mental ?? 0);
-  totals["attack_bonus.magical"] = input.pb + (input.attributes.magical ?? 0);
-  totals["save_dc.physical"] = 8 + input.pb + (input.attributes.physical ?? 0);
-  totals["save_dc.mental"] = 8 + input.pb + (input.attributes.mental ?? 0);
-  totals["save_dc.magical"] = 8 + input.pb + (input.attributes.magical ?? 0);
+  // Per-attribute: each scales with its own modifier, NOT chosenAttr.
+  totals["attack_bonus.physical"] = input.pb + attrModForSeed("physical");
+  totals["attack_bonus.mental"] = input.pb + attrModForSeed("mental");
+  totals["attack_bonus.magical"] = input.pb + attrModForSeed("magical");
+  totals["save_dc.physical"] = 8 + input.pb + attrModForSeed("physical");
+  totals["save_dc.mental"] = 8 + input.pb + attrModForSeed("mental");
+  totals["save_dc.magical"] = 8 + input.pb + attrModForSeed("magical");
+  // Saving throws = PB + per-attribute modifier (no +8).
+  totals["physical_saving_throw"] = input.pb + attrModForSeed("physical");
+  totals["mental_saving_throw"] = input.pb + attrModForSeed("mental");
+  totals["magical_saving_throw"] = input.pb + attrModForSeed("magical");
 
   // Build the EvaluationContext for evaluateModifiers() so we get
   // parity with the existing engine.
@@ -829,46 +834,45 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   const chosenAttr =
     input.chosenAttribute ?? input.proficientAttribute ?? ("physical" as const);
 
-  // Phase 8.L round 78: ACTION_ROLL SUB-TARGET MIRRORING.
+  // Phase 8.L round 80: ACTION_ROLL SUB-TARGET MIRRORING.
   //
-  // Per Mashu R77-R78: action_roll has 4 named sub-targets
-  // (ATTACK_ROLL, PHYSICAL_SAVE, MENTAL_SAVE, MAGICAL_SAVE)
-  // plus OTHER (free-text, no mirror). Each maps to a
-  // user-facing display target:
+  // Per Mashu R80: action_roll has 4 named sub-targets.
+  // Each maps to its own user-facing display target:
   //
-  //   ATTACK_ROLL      → attack_bonus
-  //   PHYSICAL_SAVE    → save_dc (when chosenAttr=physical)
-  //   MENTAL_SAVE      → save_dc (when chosenAttr=mental)
-  //   MAGICAL_SAVE     → save_dc (when chosenAttr=magical)
+  //   ATTACK_ROLL      → attack_bonus (one number, scales with chosen attr)
+  //   PHYSICAL_SAVE    → physical_saving_throw (player DEX save etc.)
+  //   MENTAL_SAVE      → mental_saving_throw (player WIS save etc.)
+  //   MAGICAL_SAVE     → magical_saving_throw (player INT save etc.)
   //
-  // We derive the mapping from MODIFIER_TARGET_SPEC at runtime
-  // so adding a new sub-target to the action_roll spec
-  // automatically gets mirrored without code changes here.
+  // save_dc is its OWN target (not a sub of action_roll). It's the
+  // ONE save DC enemies roll against, scaling with chosen attr.
+  //
+  // We derive the mapping from MODIFIER_TARGET_SPEC at runtime so
+  // adding a new sub-target to the action_roll spec automatically
+  // gets mirrored without code changes here.
   const actionRollSpec = MODIFIER_TARGET_SPEC["action_roll"] as
     | { options?: readonly string[] }
     | undefined;
   const actionRollOptions = actionRollSpec?.options ?? [];
-  // Map each sub-target lowercased → user-facing display key.
-  // Convention: SUB_TARGET_UPPER → "action_roll.sub_target_lower"
-  // The user-facing target name is the option label lowercased
-  // without the suffix "_ROLL" / "_SAVE" (e.g. ATTACK_ROLL →
-  // "attack_bonus"; PHYSICAL_SAVE → "physical" which is the
-  // save_dc sub-axis).
+  // Map each sub-target UPPER → user-facing display target name.
   const SUB_TARGET_TO_DISPLAY: Readonly<Record<string, string>> = {
     ATTACK_ROLL: "attack_bonus",
-    PHYSICAL_SAVE: "physical",
-    MENTAL_SAVE: "mental",
-    MAGICAL_SAVE: "magical",
+    PHYSICAL_SAVE: "physical_saving_throw",
+    MENTAL_SAVE: "mental_saving_throw",
+    MAGICAL_SAVE: "magical_saving_throw",
   };
-  // Build the byTarget mirror map: for each action_roll sub-target,
-  // we want action_roll.<sub_lower> contributions to also live on
-  // the display target's byTarget list.
-  // Display targets: attack_bonus (always), save_dc.<chosenAttr>
-  // (when the chosen attribute matches a save sub-target).
+  // Display targets to mirror into. Always attack_bonus (it's a
+  // SINGLE number — no per-attr split). For saves, mirror into
+  // EACH per-attr saving throw (so the user can have separate
+  // bonuses for physical/mental/magical saves — like in D&D where
+  // a spell affects DEX save differently from WIS save).
   const displayTargetsToMerge: string[] = ["attack_bonus"];
-  if (chosenAttr === "physical") displayTargetsToMerge.push("save_dc");
-  else if (chosenAttr === "mental") displayTargetsToMerge.push("save_dc");
-  else if (chosenAttr === "magical") displayTargetsToMerge.push("save_dc");
+  for (const sub of actionRollOptions) {
+    const disp = SUB_TARGET_TO_DISPLAY[sub];
+    if (disp && disp !== "attack_bonus") {
+      displayTargetsToMerge.push(disp);
+    }
+  }
 
   // Per-target merge: for each display target, collect all
   // relevant action_roll sub-target contributions PLUS any direct
@@ -880,23 +884,35 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       // parent. Don't overwrite (matches L57 behavior).
       continue;
     }
-    const sources: ReadonlyArray<ModifierContribution[] | undefined> =
-      displayTarget === "attack_bonus"
-        ? [
-            byTarget[`attack_bonus.${chosenAttr}`],
-            ...actionRollOptions
-              .filter((o) => SUB_TARGET_TO_DISPLAY[o] === "attack_bonus")
-              .map((o) => byTarget[`action_roll.${o.toLowerCase()}`]),
-          ]
+    // Find all action_roll sub-targets that map to this display
+    // target (e.g. attack_bonus ← ATTACK_ROLL,
+    // physical_saving_throw ← PHYSICAL_SAVE).
+    const matchingSubTargets = actionRollOptions.filter(
+      (o) => SUB_TARGET_TO_DISPLAY[o] === displayTarget,
+    );
+    const sources: ReadonlyArray<ModifierContribution[] | undefined> = [
+      // Direct primitive targets (legacy compat).
+      ...(displayTarget === "attack_bonus"
+        ? [byTarget[`attack_bonus.${chosenAttr}`]]
         : displayTarget === "save_dc"
           ? [
               byTarget[`save_dc.${chosenAttr}`],
               byTarget[`defense_dc.${chosenAttr}`],
-              ...actionRollOptions
-                .filter((o) => SUB_TARGET_TO_DISPLAY[o] === chosenAttr)
-                .map((o) => byTarget[`action_roll.${o.toLowerCase()}`]),
             ]
-          : [];
+          : []),
+      // Direct saving_throw.<attr> primitives (legacy compat).
+      ...(displayTarget === "physical_saving_throw"
+        ? [byTarget["saving_throw.physical"]]
+        : displayTarget === "mental_saving_throw"
+          ? [byTarget["saving_throw.mental"]]
+          : displayTarget === "magical_saving_throw"
+            ? [byTarget["saving_throw.magical"]]
+            : []),
+      // action_roll sub-target contributions.
+      ...matchingSubTargets.map(
+        (o) => byTarget[`action_roll.${o.toLowerCase()}`],
+      ),
+    ];
     const merged: ModifierContribution[] = [];
     const seen = new Set<string>();
     for (const src of sources) {
@@ -916,14 +932,14 @@ const eq = resolveEquation(operandsRaw as never, ctx);
     }
   }
 
-  // Phase 8.L round 78: spec-driven totals aggregation.
+  // Phase 8.L round 80: spec-driven totals aggregation.
   //
-  // For the user-facing totals[attack_bonus] / totals[save_dc],
-  // sum from ALL relevant sources:
-  //   1. Direct parent modifier (attack_bonus / save_dc target)
-  //   2. Per-attr primitive target (attack_bonus.<attr> /
-  //      save_dc.<attr> / defense_dc.<attr>)
-  //   3. action_roll sub-targets (read from MODIFIER_TARGET_SPEC)
+  // For the user-facing totals:
+  //   - totals[attack_bonus] = base + action_roll.attack_roll delta
+  //   - totals[save_dc] = base + direct save_dc modifier delta
+  //     (action_roll.<save_sub> is for SAVING THROWS, not save DC)
+  //   - totals[<attr>_saving_throw] = base + action_roll.<save_sub>
+  //     delta (one per attribute)
   //
   // We derive the action_roll sub-target list from the spec so
   // adding a new sub-target doesn't require code changes here.
@@ -932,12 +948,14 @@ const eq = resolveEquation(operandsRaw as never, ctx);
     | undefined;
   const SUB_TO_DISPLAY_2: Readonly<Record<string, string>> = {
     ATTACK_ROLL: "attack_bonus",
-    PHYSICAL_SAVE: "physical",
-    MENTAL_SAVE: "mental",
-    MAGICAL_SAVE: "magical",
+    PHYSICAL_SAVE: "physical_saving_throw",
+    MENTAL_SAVE: "mental_saving_throw",
+    MAGICAL_SAVE: "magical_saving_throw",
   };
   let actionRollAtkDelta = 0;
-  let actionRollSaveDelta = 0;
+  let actionRollPhysicalSaveDelta = 0;
+  let actionRollMentalSaveDelta = 0;
+  let actionRollMagicalSaveDelta = 0;
   for (const opt of actionRollSpec2?.options ?? []) {
     const display = SUB_TO_DISPLAY_2[opt];
     if (!display) continue;
@@ -945,16 +963,25 @@ const eq = resolveEquation(operandsRaw as never, ctx);
     const delta = totals[key] ?? 0;
     if (display === "attack_bonus") {
       actionRollAtkDelta += delta;
-    } else if (display === chosenAttr) {
-      actionRollSaveDelta += delta;
+    } else if (display === "physical_saving_throw") {
+      actionRollPhysicalSaveDelta += delta;
+    } else if (display === "mental_saving_throw") {
+      actionRollMentalSaveDelta += delta;
+    } else if (display === "magical_saving_throw") {
+      actionRollMagicalSaveDelta += delta;
     }
   }
   const atkBase =
     (totals[`attack_bonus.${chosenAttr}`] ?? 0) + actionRollAtkDelta;
+  // save_dc has NO save sub-target contribution — it's a separate
+  // axis with its own primitives/conditions. Per Mashu R80:
+  // "We have ONE save DC. ... action_roll.<save_sub> is for
+  // saving throws (DEX/WIS/INT saves against spells), NOT for
+  // save_dc."
   const saveBase =
-    (totals[`save_dc.${chosenAttr}`] ??
-      totals[`defense_dc.${chosenAttr}`] ??
-      0) + actionRollSaveDelta;
+    totals[`save_dc.${chosenAttr}`] ??
+    totals[`defense_dc.${chosenAttr}`] ??
+    0;
   const parentAtkHasDirectModifier = (byTarget["attack_bonus"] ?? []).some(
     (c) => c.target === "attack_bonus",
   );
@@ -966,6 +993,81 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   );
   if (!parentSaveHasDirectModifier) {
     totals["save_dc"] = saveBase;
+  }
+
+  // Phase 8.L round 80: write back the seeded saving throws.
+  // Apply each action_roll.<save_sub> contribution's operation
+  // to the seeded base. action_roll.<save_sub> starts at 0
+  // (no seed), so we must apply the op on the seed directly:
+  //   totals[physical_saving_throw] = (PB + phys_mod) OP value
+  //   totals[mental_saving_throw]   = (PB + men_mod) OP value
+  //   totals[magical_saving_throw]  = (PB + mag_mod) OP value
+  // This works for add/subtract/multiply/divide/set uniformly.
+  function applySavingThrowSeed(
+    displayTarget: string,
+    baseAttr: "physical" | "mental" | "magical",
+    op: string,
+    rawValue: unknown,
+  ): number {
+    const base = input.pb + (input.attributes[baseAttr] ?? 0);
+    const value = typeof rawValue === "number" ? rawValue : Number(rawValue);
+    if (!Number.isFinite(value)) return base;
+    switch (op) {
+      case "add": return base + value;
+      case "subtract": return base - value;
+      case "multiply": return base * value;
+      case "divide": return value === 0 ? base : base / value;
+      case "set": return value;
+      case "min": return Math.min(base, value);
+      case "max": return Math.max(base, value);
+      default: return base + value;
+    }
+  }
+  // Helper: find the first matching contribution for a sub-target
+  // and apply the op to the seed.
+  function applySubTargetToSeed(
+    subName: string,
+    displayTarget: string,
+    baseAttr: "physical" | "mental" | "magical",
+  ): number {
+    const key = `action_roll.${subName.toLowerCase()}`;
+    const contribs = byTarget[key] ?? [];
+    const base = input.pb + (input.attributes[baseAttr] ?? 0);
+    if (contribs.length === 0) return base;
+    let cur = base;
+    for (const c of contribs) {
+      const value = typeof c.value === "number" ? c.value : Number(c.value);
+      if (!Number.isFinite(value)) continue;
+      switch (c.op) {
+        case "add": cur = cur + value; break;
+        case "subtract": cur = cur - value; break;
+        case "multiply": cur = cur * value; break;
+        case "divide": if (value !== 0) cur = cur / value; break;
+        case "set": cur = value; break;
+        case "min": cur = Math.min(cur, value); break;
+        case "max": cur = Math.max(cur, value); break;
+      }
+    }
+    return cur;
+  }
+  // Apply each save sub-target's contributions to its seed.
+  const physContribs = byTarget["action_roll.physical_save"] ?? [];
+  if (physContribs.length > 0) {
+    totals["physical_saving_throw"] = applySubTargetToSeed(
+      "PHYSICAL_SAVE", "physical_saving_throw", "physical",
+    );
+  }
+  const menContribs = byTarget["action_roll.mental_save"] ?? [];
+  if (menContribs.length > 0) {
+    totals["mental_saving_throw"] = applySubTargetToSeed(
+      "MENTAL_SAVE", "mental_saving_throw", "mental",
+    );
+  }
+  const magContribs = byTarget["action_roll.magical_save"] ?? [];
+  if (magContribs.length > 0) {
+    totals["magical_saving_throw"] = applySubTargetToSeed(
+      "MAGICAL_SAVE", "magical_saving_throw", "magical",
+    );
   }
 
   // Phase 8.L round 55: when modifiers reference PB-based typed
