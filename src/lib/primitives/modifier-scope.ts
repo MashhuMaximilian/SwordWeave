@@ -50,8 +50,12 @@ import {
 export const MODIFIER_TARGETS = [
   // Physical/Mental/Magical axis (consolidated)
   "attribute",
-  // Physical/Mental/Magical defense DC axis (consolidated)
-  "defense_dc",
+  // Phase 8.L round 76: removed defense_dc from the canonical
+  // list. It was the legacy global-Save-DC target. We now have
+  // save_dc as the single canonical Save DC. defense_dc is kept
+  // in MODIFIER_TARGET_SPEC (typed as ModifierTarget | "defense_dc")
+  // for backward-compat reads of legacy HardModifier rows, but
+  // the dropdown only exposes save_dc.
   // Single Speed axis with five radio options inside (UX2a revert)
   "speed",
   // Single-axis metrics
@@ -122,11 +126,15 @@ export const MODIFIER_TARGETS = [
   // as equip_slot / damage_type).
   // ===========================================================
   "damage_modifier",
-  // Phase 8.I i2 finish (Mashu 2026-08-06) — saving throw
-  // split per R3-Q1. Two separate axes:
-  //   saving_throw.<attr> (player rolls)
-  //   save_dc.<attr> (enemies roll against)
-  "saving_throw",
+  // Phase 8.L round 76: ONE save_dc. No per-attribute split.
+  // Per Mashu: "We have ONLY ONE save DC. It does not exist
+  // .physical or whatever. In very rare cases when you have
+  // 2 proficient attributes you can choose which attribute
+  // to use to calculate save DC, but it is the SAME save DC,
+  // ONE save DC only." Per-attribute saving throws and attack
+  // bonus live under action_roll (sub-targets: Attack Roll,
+  // Physical Save, Mental Save, Magical Save). save_dc is
+  // its own single-axis target.
   "save_dc",
 ] as const;
 export type ModifierTarget = (typeof MODIFIER_TARGETS)[number];
@@ -141,7 +149,7 @@ export type ModifierTarget = (typeof MODIFIER_TARGETS)[number];
  */
 export const LEGACY_TARGET_MIGRATIONS: Record<
   string,
-  { target: ModifierTarget; defaultScope: TargetScopeLite }
+  { target: ModifierTarget | "defense_dc"; defaultScope: TargetScopeLite }
 > = {
   "character.attribute.physical": {
     target: "attribute",
@@ -156,19 +164,17 @@ export const LEGACY_TARGET_MIGRATIONS: Record<
     defaultScope: { layer: "ATTRIBUTE", values: ["MAGICAL"] },
   },
   "character.defense.physicalDc": {
-    // Phase 8.I i2.0 (Mashu 2026-08-05): legacy per-attribute
-    // defense DC keys collapse into the single global Save DC axis.
-    // The previous defaultScope.values=["DEFENSE_ROLL"] was mapped
-    // to the old per-attribute axis; now there's no sub-target.
-    target: "defense_dc",
+    // Phase 8.I i2.0 + L76: legacy per-attribute defense DC
+    // keys collapse into the single global Save DC axis.
+    target: "save_dc" as const,
     defaultScope: { layer: "METRIC", values: [] },
   },
   "character.defense.mentalDc": {
-    target: "defense_dc",
+    target: "save_dc" as const,
     defaultScope: { layer: "METRIC", values: [] },
   },
   "character.defense.magicalDc": {
-    target: "defense_dc",
+    target: "save_dc" as const,
     defaultScope: { layer: "METRIC", values: [] },
   },
   "character.movement.land": {
@@ -351,7 +357,9 @@ export type SkillPracticeGranularity = (typeof SKILL_PRACTICE_GRANULARITIES)[num
  *     in the existing `value` field of HardModifier)
  */
 export interface ModifierTargetSpec {
-  readonly target: ModifierTarget;
+  // Phase 8.L round 76: defense_dc is legacy-only (kept for
+  // backward-compat reads). target type widened to allow it.
+  readonly target: ModifierTarget | "defense_dc";
   readonly label: string;
   readonly layer: ScopeLayer | null;
   readonly widget:
@@ -376,7 +384,10 @@ export interface ModifierTargetSpec {
   readonly valueIsNumeric?: boolean;
 }
 
-export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = {
+// MODIFIER_TARGET_SPEC includes defense_dc as a legacy-only
+// key (no longer in MODIFIER_TARGETS but kept for backward-
+// compat reads of legacy HardModifier rows).
+export const MODIFIER_TARGET_SPEC: Record<ModifierTarget | "defense_dc", ModifierTargetSpec> = {
   attribute: {
     target: "attribute",
     label: "Attribute",
@@ -391,7 +402,7 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
     // Migration: existing modifiers with sub-targets coerce to the
     // single axis (engine reads them all as contributions to the
     // single character.defense.saveDc number).
-    target: "defense_dc",
+    target: "defense_dc" as const,
     label: "Save DC",
     layer: "METRIC",
     widget: "none",
@@ -695,21 +706,17 @@ export const MODIFIER_TARGET_SPEC: Record<ModifierTarget, ModifierTargetSpec> = 
   // These are different math (player vs enemy), so they get
   // separate primitive targets.
   // ===========================================================
-  saving_throw: {
-    target: "saving_throw",
-    label: "Saving Throw (player rolls)",
-    layer: null,
-    widget: "free-text",
-    freeTextPlaceholder: "physical / mental / magical",
-    valueIsNumeric: true,
-  },
   save_dc: {
+    // Phase 8.L round 76: ONE save DC, no sub-target. Per
+    // Mashu: "we have ONLY ONE save DC. We just choose in
+    // the frontend if it scales with one or the other
+    // attribute if proficient in both." Per-attribute
+    // saving throws live under action_roll. Save DC is a
+    // single global axis.
     target: "save_dc",
-    label: "Save DC (enemies roll against)",
-    layer: null,
-    widget: "free-text",
-    freeTextPlaceholder: "physical / mental / magical",
-    valueIsNumeric: true,
+    label: "Save DC",
+    layer: "METRIC",
+    widget: "none",
   },
 };
 
@@ -941,7 +948,9 @@ export function selectionForModifier(modifier: {
     };
   }
   // Legacy dotted fallback.
-  const migration = LEGACY_TARGET_MIGRATIONS[targetRaw];
+  const migration = LEGACY_TARGET_MIGRATIONS[targetRaw] as
+    | { target: ModifierTarget; defaultScope: TargetScopeLite }
+    | undefined;
   if (migration) {
     return {
       target: migration.target,

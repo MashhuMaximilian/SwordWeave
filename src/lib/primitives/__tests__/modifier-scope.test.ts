@@ -42,7 +42,13 @@ describe("MODIFIER_TARGETS enum", () => {
     // added for vulnerability/resistance/immunity → 25.
     // Phase-8.I-i2 finish: saving_throw + save_dc added per
     // R3-Q1 split → 27.
-    expect(MODIFIER_TARGETS.length).toBe(27);
+    // Phase 8.L round 76: removed defense_dc, saving_throw,
+    // and attack_bonus (the latter two were never canonical
+    // in the same way — saving_throw was subsumed by
+    // action_roll's per-attribute saves sub-target, and
+    // attack_bonus was subsumed by action_roll's Attack Roll
+    // sub-target). save_dc remains as the ONE save DC → 26.
+    expect(MODIFIER_TARGETS.length).toBe(25);
   });
 
   it("consolidates the three Attribute variants into one entry", () => {
@@ -52,8 +58,17 @@ describe("MODIFIER_TARGETS enum", () => {
     expect(MODIFIER_TARGETS).not.toContain("attribute_magical");
   });
 
-  it("consolidates the three DC variants into one entry", () => {
-    expect(MODIFIER_TARGETS).toContain("defense_dc");
+  it("has save_dc as the ONE save DC target (no per-attribute split)", () => {
+    // Phase 8.L round 76: there is ONE save DC. Per Mashu:
+    // "WE HAVE ONLY ONE SAVE DC! IT DOES NOT EXIST
+    // .PHYSICAL OR WHATEVER!!!" Per-attribute saves live
+    // under action_roll (Physical Save / Mental Save /
+    // Magical Save sub-targets). defense_dc was removed
+    // from the dropdown — only save_dc is canonical now.
+    expect(MODIFIER_TARGETS).toContain("save_dc");
+    expect(MODIFIER_TARGETS).not.toContain("defense_dc");
+    expect(MODIFIER_TARGETS).not.toContain("saving_throw");
+    expect(MODIFIER_TARGETS).not.toContain("attack_bonus");
   });
 
   it("uses one Speed entry with locomotion inside (UX2a-r)", () => {

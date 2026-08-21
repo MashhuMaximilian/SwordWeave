@@ -329,13 +329,14 @@ export function ConditionComposer({
       // modes: stack / highest-only / lowest-only / unique-by-primitive
       // / unique-by-target / replace.
       //
-      // Phase 8.L round 69: save behaviorName for ALL free-text
-      // targets (behavior, save_dc, attack_bonus, etc.), not just
-      // 'behavior'. Previously the composer only set
-      // behaviorMetadata for target='behavior', which dropped the
-      // sub-target key on save_dc / attack_bonus modifiers — the
-      // engine then couldn't route the modifier to the right
-      // sub-target.
+      // Phase 8.L round 76: save behaviorName for free-text
+      // targets (currently 'behavior' is the only one).
+      // save_dc is widget:none (ONE global Save DC, no
+      // sub-target). Attack bonus lives under action_roll's
+      // Attack Roll sub-target. Per Mashu R76 there is no
+      // per-attribute save_dc / attack_bonus — there's ONE
+      // save DC and ONE attack bonus (scales with whichever
+      // attribute the character is proficient in).
       const spec = MODIFIER_TARGET_SPEC[canonicalTarget as never] as
         | { widget?: string }
         | undefined;
