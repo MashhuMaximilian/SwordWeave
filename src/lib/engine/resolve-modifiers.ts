@@ -878,12 +878,24 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   // relevant action_roll sub-target contributions PLUS any direct
   // legacy primitives (attack_bonus.<attr>, save_dc.<attr>,
   // defense_dc.<attr>).
+  //
+  // Phase 8.L round 81: This mirror runs AFTER PASS 2 (which has
+  // already applied per-attr contributions + direct parent
+  // contributions to the SEEDED totals). The mirror rebuilds
+  // derived display totals like totals[save_dc] from
+  // totals[save_dc.<chosenAttr>] so the card sees the unified
+  // number.
+  //
+  // The CRITICAL bug fixed by L81: previously the mirror said
+  // "don't overwrite if byTarget[save_dc] has any entry". But
+  // the user's direct divide-3 condition was in byTarget[save_dc],
+  // so mirror skipped, and totals[save_dc] stayed at 6 (18/3)
+  // instead of 21/3 = 7. Now we ALWAYS recompute totals[save_dc]
+  // from totals[save_dc.<chosenAttr>] (the post-PASS 2 value
+  // already includes the per-attr contributions) so direct
+  // modifiers on the parent can be RE-APPLIED correctly in the
+  // totals aggregation step below.
   for (const displayTarget of displayTargetsToMerge) {
-    if (byTarget[displayTarget] && byTarget[displayTarget].length > 0) {
-      // Already populated by a direct modifier targeting the
-      // parent. Don't overwrite (matches L57 behavior).
-      continue;
-    }
     // Find all action_roll sub-targets that map to this display
     // target (e.g. attack_bonus ← ATTACK_ROLL,
     // physical_saving_throw ← PHYSICAL_SAVE).
@@ -918,9 +930,6 @@ const eq = resolveEquation(operandsRaw as never, ctx);
     for (const src of sources) {
       if (!src) continue;
       for (const c of src) {
-        // Dedupe by target+primitiveId+value+op so the same
-        // contribution doesn't double-count when mirrored from
-        // multiple sub-targets.
         const key = `${c.target}|${c.primitiveId}|${c.value}|${c.op}`;
         if (seen.has(key)) continue;
         seen.add(key);
@@ -971,29 +980,64 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       actionRollMagicalSaveDelta += delta;
     }
   }
-  const atkBase =
-    (totals[`attack_bonus.${chosenAttr}`] ?? 0) + actionRollAtkDelta;
-  // save_dc has NO save sub-target contribution — it's a separate
-  // axis with its own primitives/conditions. Per Mashu R80:
-  // "We have ONE save DC. ... action_roll.<save_sub> is for
-  // saving throws (DEX/WIS/INT saves against spells), NOT for
-  // save_dc."
-  const saveBase =
+  // Phase 8.L round 81: Always derive parent totals from per-attr
+  // + direct contributions, applying any direct parent's operation
+  // on top.
+  //
+  // Why: the per-attr totals (totals[save_dc.physical]) were
+  // already correctly populated by PASS 2 (seed + per-attr
+  // contributions = 21 in user's case). Direct modifiers targeting
+  // the parent (e.g. user's divide-3 condition) modified
+  // totals[save_dc] independently based on the parent's bare
+  // seed (18), giving 18/3 = 6. We now correct this by:
+  //   1. Re-seeding the parent with the per-attr post-PASS-2
+  //      value (21).
+  //   2. Re-applying the parent's direct contributions (if any).
+  const directAtkContribs = (byTarget["attack_bonus"] ?? []).filter(
+    (c) => c.target === "attack_bonus",
+  );
+  const directSaveContribs = (byTarget["save_dc"] ?? []).filter(
+    (c) => c.target === "save_dc",
+  );
+  const perAttrAtkBase =
+    totals[`attack_bonus.${chosenAttr}`] ?? 0;
+  const perAttrSaveBase =
     totals[`save_dc.${chosenAttr}`] ??
     totals[`defense_dc.${chosenAttr}`] ??
     0;
-  const parentAtkHasDirectModifier = (byTarget["attack_bonus"] ?? []).some(
-    (c) => c.target === "attack_bonus",
-  );
-  if (!parentAtkHasDirectModifier) {
-    totals["attack_bonus"] = atkBase;
+  // Re-apply direct modifiers on top of per-attr value. This
+  // matters for divide/multiply/set where the per-attr value
+  // IS the new base.
+  // Phase 8.L round 81: per Mashu, "we never use decimals,
+  // always round up". applyOperation rounds up the FINAL value
+  // of every numeric op so decimals never leak through:
+  // 4 + 2.5 = 7; 4 - 2.5 = 2; 4 * 0.7 = 3; 5 / 2 = 3; set 2.5 = 3.
+  const roundUp = (n: number) => Math.ceil(n - 1e-9);
+  function reapplyOp(base: number, op: string, value: unknown): number {
+    const v = typeof value === "number" ? value : Number(value);
+    if (!Number.isFinite(v)) return base;
+    switch (op) {
+      case "add": return roundUp(base + v);
+      case "subtract": return roundUp(base - v);
+      case "multiply": return roundUp(base * v);
+      case "divide": return v === 0 ? base : roundUp(base / v);
+      case "set": return roundUp(v);
+      case "min": return Math.min(base, v);
+      case "max": return Math.max(base, v);
+      default: return roundUp(base + v);
+    }
   }
-  const parentSaveHasDirectModifier = (byTarget["save_dc"] ?? []).some(
-    (c) => c.target === "save_dc",
-  );
-  if (!parentSaveHasDirectModifier) {
-    totals["save_dc"] = saveBase;
+  // Chain direct contributions left-to-right.
+  let atkFinal = perAttrAtkBase + actionRollAtkDelta;
+  for (const c of directAtkContribs) {
+    atkFinal = reapplyOp(atkFinal, c.op, c.value);
   }
+  let saveFinal = perAttrSaveBase;
+  for (const c of directSaveContribs) {
+    saveFinal = reapplyOp(saveFinal, c.op, c.value);
+  }
+  totals["attack_bonus"] = atkFinal;
+  totals["save_dc"] = saveFinal;
 
   // Phase 8.L round 80: write back the seeded saving throws.
   // Apply each action_roll.<save_sub> contribution's operation

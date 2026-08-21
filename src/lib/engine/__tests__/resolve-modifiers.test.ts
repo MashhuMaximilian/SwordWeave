@@ -964,3 +964,77 @@ describe("L79 divide/multiply on seeded save_dc / attack_bonus", () => {
     expect(result.totals["save_dc"]).toBe(5);
   });
 });
+describe("L81 parent totals mirror + reapply direct modifier (user data)", () => {
+  it("save_dc divide 3 on a base with per-attr contributions gives base/3", () => {
+    const slot1 = makeSlot({
+      primitiveId: 14062,
+      hardModifiers: [{
+        kind: "modify", target: "save_dc.physical", operation: "add", value: 1,
+      }],
+    });
+    const slot2 = makeSlot({
+      primitiveId: 15215,
+      hardModifiers: [{
+        kind: "modify", target: "save_dc.physical", operation: "add", value: 2,
+      }],
+    });
+    const userCond = makeSlot({
+      primitiveId: -1,
+      hardModifiers: [{
+        kind: "modify", target: "save_dc", operation: "divide", value: 3,
+      }],
+    });
+    const result = resolveModifiers({
+      ...BASE_INPUT,
+      slots: [slot1, slot2, userCond],
+    });
+    // BASE_INPUT: pb=3, attrs=10. save_dc.physical = 8+3+10 = 21.
+    // +1 +2 = 24. /3 = 8.
+    expect(result.totals["save_dc"]).toBe(8);
+  });
+
+  it("attack_roll subtract 5 reaches attack_bonus via mirror", () => {
+    const slot1 = makeSlot({
+      primitiveId: 15214,
+      hardModifiers: [{
+        kind: "modify", target: "attack_bonus.physical", operation: "add", value: 2,
+      }],
+    });
+    const userCond = makeSlot({
+      primitiveId: -1,
+      hardModifiers: [{
+        kind: "modify", target: "action_roll", operation: "subtract", value: 5,
+        metadata: { targetScope: { layer: "METRIC", values: ["ATTACK_ROLL"] } },
+      }],
+    });
+    const result = resolveModifiers({
+      ...BASE_INPUT,
+      slots: [slot1, userCond],
+    });
+    // BASE_INPUT: pb=3, attrs=10. attack_bonus.physical = 3+10 = 13.
+    // +2 = 15. -5 = 10.
+    expect(result.totals["attack_bonus"]).toBe(10);
+    expect(result.byTarget["attack_bonus"]?.length).toBe(2);
+  });
+
+  it("byTarget[save_dc] includes divide-3 condition for provenance modal", () => {
+    const slot1 = makeSlot({
+      primitiveId: 14062,
+      hardModifiers: [{
+        kind: "modify", target: "save_dc.physical", operation: "add", value: 1,
+      }],
+    });
+    const userCond = makeSlot({
+      primitiveId: -1,
+      hardModifiers: [{
+        kind: "modify", target: "save_dc", operation: "divide", value: 3,
+      }],
+    });
+    const result = resolveModifiers({
+      ...BASE_INPUT,
+      slots: [slot1, userCond],
+    });
+    expect((result.byTarget["save_dc"] ?? []).some((c) => c.op === "divide")).toBe(true);
+  });
+});
+
