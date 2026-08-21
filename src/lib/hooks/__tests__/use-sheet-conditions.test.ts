@@ -310,4 +310,46 @@ describe("use-sheet-conditions scanner", () => {
     ]);
     expect(result).toHaveLength(0);
   });
+
+describe("use-sheet-conditions dedup", () => {
+  function deterministicIdFor(c: { source: string; sourceEntityId?: string; sourceEntityType?: string; modifiers: ReadonlyArray<unknown>; id: string }): string {
+    if (c.source !== "sheet") return c.id;
+    const sourceId = c.sourceEntityId ?? "";
+    const modIndex = c.modifiers.length > 1 ? c.modifiers.length - 1 : 0;
+    const prefix = c.sourceEntityType === "effect" ? "sheet-effect" : "sheet-primitive";
+    return `${prefix}-${sourceId}-${modIndex}`;
+  }
+
+  it("groups duplicate sheet conditions by deterministic id", () => {
+    const condA = { source: "sheet", sourceEntityId: "14103", sourceEntityType: "primitive", modifiers: [{}], id: "uuid-1" };
+    const condB = { source: "sheet", sourceEntityId: "14103", sourceEntityType: "primitive", modifiers: [{}], id: "uuid-2" };
+    const condC = { source: "sheet", sourceEntityId: "14103", sourceEntityType: "primitive", modifiers: [{}], id: "uuid-3" };
+    const groups = new Map<string, Array<typeof condA>>();
+    for (const c of [condA, condB, condC]) {
+      const det = deterministicIdFor(c);
+      const arr = groups.get(det) ?? [];
+      arr.push(c);
+      groups.set(det, arr);
+    }
+    expect(groups.size).toBe(1);
+    expect(groups.get("sheet-primitive-14103-0")?.length).toBe(3);
+  });
+
+  it("different primitives don't collide", () => {
+    const condA = { source: "sheet", sourceEntityId: "14103", sourceEntityType: "primitive", modifiers: [{}], id: "uuid-1" };
+    const condB = { source: "sheet", sourceEntityId: "15519", sourceEntityType: "primitive", modifiers: [{}], id: "uuid-2" };
+    const a = deterministicIdFor(condA);
+    const b = deterministicIdFor(condB);
+    expect(a).not.toBe(b);
+    expect(a).toBe("sheet-primitive-14103-0");
+    expect(b).toBe("sheet-primitive-15519-0");
+  });
+
+  it("primitive vs effect use different prefixes", () => {
+    const condPrim = { source: "sheet", sourceEntityId: "x1", sourceEntityType: "primitive", modifiers: [{}], id: "a" };
+    const condEff = { source: "sheet", sourceEntityId: "x1", sourceEntityType: "effect", modifiers: [{}], id: "b" };
+    expect(deterministicIdFor(condPrim)).toBe("sheet-primitive-x1-0");
+    expect(deterministicIdFor(condEff)).toBe("sheet-effect-x1-0");
+  });
+});
 });

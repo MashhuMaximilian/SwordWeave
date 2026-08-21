@@ -109,7 +109,7 @@ export function ConditionsDrawer({ characterId, open, onClose }: ConditionsDrawe
           )}
 
           {customConditions.length > 0 && (
-            <Section title="Conditions">
+            <Section title="Conditions" count={customConditions.length}>
               {customConditions.map((c) => (
                 <ConditionCardItem
                   key={c.id}
@@ -123,7 +123,7 @@ export function ConditionsDrawer({ characterId, open, onClose }: ConditionsDrawe
           )}
 
           {sheetConditions.length > 0 && (
-            <Section title="From sheet">
+            <Section title="From sheet" count={sheetConditions.length}>
               {sheetConditions.map((c) => (
                 <ConditionCardItem
                   key={c.id}
@@ -161,17 +161,37 @@ export function ConditionsDrawer({ characterId, open, onClose }: ConditionsDrawe
 
 function Section({
   title,
+  count,
   children,
+  defaultOpen = true,
 }: {
   title: string;
+  count?: number;
   children: React.ReactNode;
+  defaultOpen?: boolean;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="mb-4">
-      <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {title}
-      </h3>
-      <div className="space-y-2">{children}</div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="mb-2 flex w-full items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
+      >
+        <span className="flex items-center gap-2">
+          <ChevronRight
+            className={`size-3 transition-transform ${open ? "rotate-90" : ""}`}
+          />
+          {title}
+          {typeof count === "number" && (
+            <span className="rounded-full bg-muted px-1.5 text-[10px] font-normal normal-case tracking-normal text-muted-foreground">
+              {count}
+            </span>
+          )}
+        </span>
+      </button>
+      {open && <div className="space-y-2">{children}</div>}
     </div>
   );
 }

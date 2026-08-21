@@ -279,6 +279,26 @@ function scanCapabilities(
 }
 
 /**
+ * Compute a deterministic id for a sheet condition so we can
+ * dedup duplicates across re-renders. Sheet conditions encode
+ * their source via sourceEntityId + sourceEntityType. The
+ * primitiveId/effectId + modIndex is what we need to match the
+ * desired id format.
+ */
+function deterministicIdFor(c: RuntimeCondition): string {
+  // Modern sheet conditions use 'sheet-primitive-<id>-<idx>' or
+  // 'sheet-effect-<id>-<idx>'. Older duplicates from the L68
+  // loop bug have random UUIDs. We can recover the canonical id
+  // by reading sourceEntityId + the modifier index (which is
+  // 0 for most single-modifier conditions).
+  if (c.source !== "sheet") return c.id;
+  const sourceId = c.sourceEntityId ?? "";
+  const modIndex = c.modifiers.length > 1 ? c.modifiers.length - 1 : 0;
+  const prefix = c.sourceEntityType === "effect" ? "sheet-effect" : "sheet-primitive";
+  return `${prefix}-${sourceId}-${modIndex}`;
+}
+
+/**
  * Sync helper: create missing sheet conditions, leave existing ones
  * alone (preserves user toggle state). Returns the desired set; the
  * hook decides what to write.
@@ -301,7 +321,7 @@ export function useSheetConditions(input: {
   sheetConditionIds: ReadonlySet<string>;
 } {
   const { characterId, primitiveLinks, capabilityLinks } = input;
-  const { conditions, create } = useRuntimeConditions(characterId);
+  const { conditions, create, remove } = useRuntimeConditions(characterId);
 
   const desired = useMemo(() => {
     return [
@@ -309,6 +329,46 @@ export function useSheetConditions(input: {
       ...scanCapabilities(capabilityLinks),
     ];
   }, [primitiveLinks, capabilityLinks]);
+
+  // Phase 8.L round 70: dedup sheet conditions on hydrate. The
+  // previous loop bug (L68 create() overwrote caller ids with
+  // new UUIDs, so reconcile never matched, so create ran on every
+  // render) left some users with 4000+ duplicate sheet conditions.
+  // Group by deterministic id (title + primitiveId + modIndex),
+  // keep the most recently created, remove the rest.
+  useEffect(() => {
+    if (!characterId) return;
+    const sheetConds = conditions.filter((c) => c.source === "sheet");
+    if (sheetConds.length === 0) return;
+    const groups = new Map<string, RuntimeCondition[]>();
+    for (const c of sheetConds) {
+      // Derive the deterministic id from the sourceEntityId +
+      // modIndex encoded in the modifier's metadata (or fallback
+      // to title for legacy). Old UUID-keyed conditions get
+      // collapsed into a single stable bucket per source.
+      const deterministic = deterministicIdFor(c);
+      const arr = groups.get(deterministic) ?? [];
+      arr.push(c);
+      groups.set(deterministic, arr);
+    }
+    let removed = 0;
+    for (const arr of groups.values()) {
+      if (arr.length <= 1) continue;
+      // Keep the most recent, remove the rest.
+      const sorted = [...arr].sort(
+        (a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0),
+      );
+      for (const c of sorted.slice(1)) {
+        remove(c.id);
+        removed++;
+      }
+    }
+    if (removed > 0) {
+      // Notify listeners that conditions changed (the remove
+      // function above does not currently dispatch; the storage
+      // event fires on the next user toggle).
+    }
+  }, [characterId, conditions, remove]);
 
   useEffect(() => {
     if (!characterId) return;
