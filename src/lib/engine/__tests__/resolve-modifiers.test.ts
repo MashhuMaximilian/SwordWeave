@@ -831,3 +831,75 @@ describe("resolveModifiers — i1 mirror inheritance through heritage/capability
     expect(result.byTarget["attribute"]?.[0]?.value).toBe(2);
   });
 });
+
+
+describe("L78 action_roll sub-target mirroring", () => {
+  it("mirrors action_roll.attack_roll to totals[attack_bonus]", () => {
+    const slot = makeSlot({
+      primitiveId: 100,
+      hardModifiers: [{
+        kind: "modify",
+        target: "action_roll",
+        operation: "subtract",
+        value: 5,
+        metadata: { targetScope: { layer: "METRIC", values: ["ATTACK_ROLL"] } },
+      }],
+    });
+    const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
+    expect(result.totals["attack_bonus"]).toBe(-5);
+  });
+
+  it("mirrors action_roll.physical_save to totals[save_dc] when chosenAttr=physical", () => {
+    const slot = makeSlot({
+      primitiveId: 101,
+      hardModifiers: [{
+        kind: "modify",
+        target: "action_roll",
+        operation: "add",
+        value: 2,
+        metadata: { targetScope: { layer: "METRIC", values: ["PHYSICAL_SAVE"] } },
+      }],
+    });
+    const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
+    expect(result.totals["save_dc"]).toBe(2);
+  });
+
+  it("does NOT mirror mental_save when chosenAttr=physical", () => {
+    const slot = makeSlot({
+      primitiveId: 102,
+      hardModifiers: [{
+        kind: "modify",
+        target: "action_roll",
+        operation: "add",
+        value: 5,
+        metadata: { targetScope: { layer: "METRIC", values: ["MENTAL_SAVE"] } },
+      }],
+    });
+    const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
+    expect(result.totals["save_dc"]).toBe(0);
+  });
+
+  it("combines action_roll + direct attack_bonus primitive", () => {
+    const slotA = makeSlot({
+      primitiveId: 103,
+      hardModifiers: [{
+        kind: "modify",
+        target: "action_roll",
+        operation: "subtract",
+        value: 5,
+        metadata: { targetScope: { layer: "METRIC", values: ["ATTACK_ROLL"] } },
+      }],
+    });
+    const slotB = makeSlot({
+      primitiveId: 104,
+      hardModifiers: [{
+        kind: "modify",
+        target: "attack_bonus.physical",
+        operation: "add",
+        value: 2,
+      }],
+    });
+    const result = resolveModifiers({ ...BASE_INPUT, slots: [slotA, slotB] });
+    expect(result.totals["attack_bonus"]).toBe(-3);
+  });
+});

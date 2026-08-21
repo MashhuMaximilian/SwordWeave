@@ -795,36 +795,132 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   const chosenAttr =
     input.chosenAttribute ?? input.proficientAttribute ?? ("physical" as const);
 
-  // Mirror the scoped per-attr primitives into the SINGLE targets.
-  // We DON'T re-attribute the contributions — we just point the
-  // single-target byTarget list at the per-attr contributions.
-  if (!byTarget["attack_bonus"]) {
-    byTarget["attack_bonus"] = byTarget[`attack_bonus.${chosenAttr}`] ?? [];
-  }
-  // Phase 8.L round 43 (Mashu 2026-08-13): L28 unified
-  // defense.X into save_dc.X. The single-target mirror used
-  // defense_dc.<attr> which is now empty (no primitives
-  // target that format after L28). Read from save_dc.<attr>
-  // instead. Fall back to defense_dc.<attr> for legacy
-  // primitive data.
-  if (!byTarget["save_dc"]) {
-    byTarget["save_dc"] =
-      byTarget[`save_dc.${chosenAttr}`] ??
-      byTarget[`defense_dc.${chosenAttr}`] ??
-      [];
+  // Phase 8.L round 78: ACTION_ROLL SUB-TARGET MIRRORING.
+  //
+  // Per Mashu R77-R78: action_roll has 4 named sub-targets
+  // (ATTACK_ROLL, PHYSICAL_SAVE, MENTAL_SAVE, MAGICAL_SAVE)
+  // plus OTHER (free-text, no mirror). Each maps to a
+  // user-facing display target:
+  //
+  //   ATTACK_ROLL      → attack_bonus
+  //   PHYSICAL_SAVE    → save_dc (when chosenAttr=physical)
+  //   MENTAL_SAVE      → save_dc (when chosenAttr=mental)
+  //   MAGICAL_SAVE     → save_dc (when chosenAttr=magical)
+  //
+  // We derive the mapping from MODIFIER_TARGET_SPEC at runtime
+  // so adding a new sub-target to the action_roll spec
+  // automatically gets mirrored without code changes here.
+  const actionRollSpec = MODIFIER_TARGET_SPEC["action_roll"] as
+    | { options?: readonly string[] }
+    | undefined;
+  const actionRollOptions = actionRollSpec?.options ?? [];
+  // Map each sub-target lowercased → user-facing display key.
+  // Convention: SUB_TARGET_UPPER → "action_roll.sub_target_lower"
+  // The user-facing target name is the option label lowercased
+  // without the suffix "_ROLL" / "_SAVE" (e.g. ATTACK_ROLL →
+  // "attack_bonus"; PHYSICAL_SAVE → "physical" which is the
+  // save_dc sub-axis).
+  const SUB_TARGET_TO_DISPLAY: Readonly<Record<string, string>> = {
+    ATTACK_ROLL: "attack_bonus",
+    PHYSICAL_SAVE: "physical",
+    MENTAL_SAVE: "mental",
+    MAGICAL_SAVE: "magical",
+  };
+  // Build the byTarget mirror map: for each action_roll sub-target,
+  // we want action_roll.<sub_lower> contributions to also live on
+  // the display target's byTarget list.
+  // Display targets: attack_bonus (always), save_dc.<chosenAttr>
+  // (when the chosen attribute matches a save sub-target).
+  const displayTargetsToMerge: string[] = ["attack_bonus"];
+  if (chosenAttr === "physical") displayTargetsToMerge.push("save_dc");
+  else if (chosenAttr === "mental") displayTargetsToMerge.push("save_dc");
+  else if (chosenAttr === "magical") displayTargetsToMerge.push("save_dc");
+
+  // Per-target merge: for each display target, collect all
+  // relevant action_roll sub-target contributions PLUS any direct
+  // legacy primitives (attack_bonus.<attr>, save_dc.<attr>,
+  // defense_dc.<attr>).
+  for (const displayTarget of displayTargetsToMerge) {
+    if (byTarget[displayTarget] && byTarget[displayTarget].length > 0) {
+      // Already populated by a direct modifier targeting the
+      // parent. Don't overwrite (matches L57 behavior).
+      continue;
+    }
+    const sources: ReadonlyArray<ModifierContribution[] | undefined> =
+      displayTarget === "attack_bonus"
+        ? [
+            byTarget[`attack_bonus.${chosenAttr}`],
+            ...actionRollOptions
+              .filter((o) => SUB_TARGET_TO_DISPLAY[o] === "attack_bonus")
+              .map((o) => byTarget[`action_roll.${o.toLowerCase()}`]),
+          ]
+        : displayTarget === "save_dc"
+          ? [
+              byTarget[`save_dc.${chosenAttr}`],
+              byTarget[`defense_dc.${chosenAttr}`],
+              ...actionRollOptions
+                .filter((o) => SUB_TARGET_TO_DISPLAY[o] === chosenAttr)
+                .map((o) => byTarget[`action_roll.${o.toLowerCase()}`]),
+            ]
+          : [];
+    const merged: ModifierContribution[] = [];
+    const seen = new Set<string>();
+    for (const src of sources) {
+      if (!src) continue;
+      for (const c of src) {
+        // Dedupe by target+primitiveId+value+op so the same
+        // contribution doesn't double-count when mirrored from
+        // multiple sub-targets.
+        const key = `${c.target}|${c.primitiveId}|${c.value}|${c.op}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push(c);
+      }
+    }
+    if (merged.length > 0) {
+      byTarget[displayTarget] = merged;
+    }
   }
 
-  // Phase 8.L round 57: when a modifier targets attack_bonus /
-  // save_dc DIRECTLY (parent, with no sub-target), preserve
-  // PASS 2's contribution. Don't overwrite with the per-attr
-  // mirror. Previously this branch unconditionally overwrote
-  // with the per-attr value, which wiped out modifiers like
-  // "condition: add +2 to attack_bonus (any)".
-  const atkBase = totals[`attack_bonus.${chosenAttr}`] ?? 0;
+  // Phase 8.L round 78: spec-driven totals aggregation.
+  //
+  // For the user-facing totals[attack_bonus] / totals[save_dc],
+  // sum from ALL relevant sources:
+  //   1. Direct parent modifier (attack_bonus / save_dc target)
+  //   2. Per-attr primitive target (attack_bonus.<attr> /
+  //      save_dc.<attr> / defense_dc.<attr>)
+  //   3. action_roll sub-targets (read from MODIFIER_TARGET_SPEC)
+  //
+  // We derive the action_roll sub-target list from the spec so
+  // adding a new sub-target doesn't require code changes here.
+  const actionRollSpec2 = MODIFIER_TARGET_SPEC["action_roll"] as
+    | { options?: readonly string[] }
+    | undefined;
+  const SUB_TO_DISPLAY_2: Readonly<Record<string, string>> = {
+    ATTACK_ROLL: "attack_bonus",
+    PHYSICAL_SAVE: "physical",
+    MENTAL_SAVE: "mental",
+    MAGICAL_SAVE: "magical",
+  };
+  let actionRollAtkDelta = 0;
+  let actionRollSaveDelta = 0;
+  for (const opt of actionRollSpec2?.options ?? []) {
+    const display = SUB_TO_DISPLAY_2[opt];
+    if (!display) continue;
+    const key = `action_roll.${opt.toLowerCase()}`;
+    const delta = totals[key] ?? 0;
+    if (display === "attack_bonus") {
+      actionRollAtkDelta += delta;
+    } else if (display === chosenAttr) {
+      actionRollSaveDelta += delta;
+    }
+  }
+  const atkBase =
+    (totals[`attack_bonus.${chosenAttr}`] ?? 0) + actionRollAtkDelta;
   const saveBase =
-    totals[`save_dc.${chosenAttr}`] ??
-    totals[`defense_dc.${chosenAttr}`] ??
-    0;
+    (totals[`save_dc.${chosenAttr}`] ??
+      totals[`defense_dc.${chosenAttr}`] ??
+      0) + actionRollSaveDelta;
   const parentAtkHasDirectModifier = (byTarget["attack_bonus"] ?? []).some(
     (c) => c.target === "attack_bonus",
   );
