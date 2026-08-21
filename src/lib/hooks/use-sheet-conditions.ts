@@ -298,9 +298,9 @@ function scanCapabilities(
 function dedupeSheetConditionsOnce(
   characterId: string,
   sheetConditions: ReadonlyArray<RuntimeCondition>,
-): boolean {
-  if (typeof window === "undefined") return false;
-  if (sheetConditions.length <= 1) return false;
+): number {
+  if (typeof window === "undefined") return 0;
+  if (sheetConditions.length <= 1) return 0;
   const groups = new Map<string, RuntimeCondition[]>();
   for (const c of sheetConditions) {
     const det = deterministicIdFor(c);
@@ -326,9 +326,8 @@ function dedupeSheetConditionsOnce(
   }
   if (removed > 0) {
     window.dispatchEvent(new CustomEvent("sw:conditions-changed"));
-    return true;
   }
-  return false;
+  return removed;
 }
 
 function deterministicIdFor(c: RuntimeCondition): string {
@@ -371,20 +370,30 @@ export function useSheetConditions(input: {
     ];
   }, [primitiveLinks, capabilityLinks]);
 
-  // Phase 8.L round 70 cleanup: one-shot dedup. Ref guard
-  // prevents re-runs. Cleanup happens before the create effect
-  // so the next reconcile sees the post-cleanup conditions.
+  // Phase 8.L round 73 cleanup: one-shot dedup that runs after
+  // conditions are loaded. The guard fires only AFTER we've
+  // successfully deduped (or determined there's nothing to
+  // dedup). The previous version set dedupRan=true BEFORE
+  // running, so the empty-conditions first render marked
+  // dedup as done — and the 7094-condition refresh that came
+  // 50ms later was skipped. Bug → user kept all 7094 dupes.
+  //
+  // Trace on Mashu's 7094 conditions:
+  // - Mount: conditions=[]; effect runs; nothing to dedup;
+  //   guard NOT set.
+  // - Refresh: conditions=7094; effect runs; dedup removes
+  //   7091; dispatches one event; guard SET.
+  // - Refresh: conditions=3; effect runs; guard set → skip.
+  // - Settled.
   const dedupRan = useRef(false);
   useEffect(() => {
     if (!characterId || dedupRan.current) return;
-    dedupRan.current = true;
     const sheetConds = conditions.filter((c) => c.source === "sheet");
-    dedupeSheetConditionsOnce(characterId, sheetConds);
-    // The dispatch above will trigger refresh() which fires
-    // setConditions. The create effect below will then run
-    // ONCE (because reconcile sees the canonical conditions)
-    // and create at most the missing ones — which is 0 after
-    // cleanup completes.
+    if (sheetConds.length === 0) return;
+    const removed = dedupeSheetConditionsOnce(characterId, sheetConds);
+    if (removed > 0) {
+      dedupRan.current = true;
+    }
   }, [characterId, conditions]);
 
   useEffect(() => {
