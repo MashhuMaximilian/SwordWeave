@@ -33,7 +33,7 @@
  * duplicates.
  */
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   useRuntimeConditions,
   type RuntimeCondition,
@@ -334,18 +334,27 @@ export function useSheetConditions(input: {
   // previous loop bug (L68 create() overwrote caller ids with
   // new UUIDs, so reconcile never matched, so create ran on every
   // render) left some users with 4000+ duplicate sheet conditions.
-  // Group by deterministic id (title + primitiveId + modIndex),
-  // keep the most recently created, remove the rest.
+  //
+  // The dedup uses a guard ref to avoid the infinite-loop trap:
+  // remove() triggers sw:conditions-changed → refresh → re-render
+  // → effect runs again. Without the guard, the effect would
+  // remove() again. The guard only runs dedup once per change,
+  // then settles.
+  const dedupGuard = useRef<{ count: number; signature: string } | null>(null);
   useEffect(() => {
     if (!characterId) return;
     const sheetConds = conditions.filter((c) => c.source === "sheet");
-    if (sheetConds.length === 0) return;
+    if (sheetConds.length === 0) {
+      dedupGuard.current = null;
+      return;
+    }
+    const signature = sheetConds
+      .map((c) => c.id)
+      .sort()
+      .join("|");
+    if (dedupGuard.current?.signature === signature) return;
     const groups = new Map<string, RuntimeCondition[]>();
     for (const c of sheetConds) {
-      // Derive the deterministic id from the sourceEntityId +
-      // modIndex encoded in the modifier's metadata (or fallback
-      // to title for legacy). Old UUID-keyed conditions get
-      // collapsed into a single stable bucket per source.
       const deterministic = deterministicIdFor(c);
       const arr = groups.get(deterministic) ?? [];
       arr.push(c);
@@ -354,7 +363,6 @@ export function useSheetConditions(input: {
     let removed = 0;
     for (const arr of groups.values()) {
       if (arr.length <= 1) continue;
-      // Keep the most recent, remove the rest.
       const sorted = [...arr].sort(
         (a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0),
       );
@@ -364,9 +372,11 @@ export function useSheetConditions(input: {
       }
     }
     if (removed > 0) {
-      // Notify listeners that conditions changed (the remove
-      // function above does not currently dispatch; the storage
-      // event fires on the next user toggle).
+      // Mark the current signature as "in flight" — the next
+      // refresh will have a different signature (fewer ids),
+      // which we want to allow so the dedup can settle. The
+      // signature check guards against re-removing the same set.
+      dedupGuard.current = { count: removed, signature };
     }
   }, [characterId, conditions, remove]);
 
