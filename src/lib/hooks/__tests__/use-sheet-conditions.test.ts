@@ -310,4 +310,55 @@ describe("use-sheet-conditions scanner", () => {
     ]);
     expect(result).toHaveLength(0);
   });
+
+describe("use-sheet-conditions dedup guard timing", () => {
+  it("dedupRan is set ONLY AFTER successful dedup", () => {
+    // Simulating the hook's effect logic:
+    // 1. First render: conditions=[] → dedupRan stays false
+    // 2. Refresh: conditions=[many] → dedup runs → dedupRan=true
+    let dedupRan = false;
+    const seen: Array<{ conditions: number; dedupRan: boolean; deduped: number }> = [];
+
+    const render = (conditions: ReadonlyArray<unknown>) => {
+      if (dedupRan) return;
+      const sheetConds = conditions.filter((c) => {
+        const cc = c as { source?: string };
+        return cc.source === "sheet";
+      });
+      if (sheetConds.length === 0) return;
+      // Simulate dedup with 99% removal rate
+      const removed = sheetConds.length - 1;
+      seen.push({ conditions: conditions.length, dedupRan, deduped: removed });
+      if (removed > 0) dedupRan = true;
+    };
+
+    render([]);
+    render(Array.from({ length: 7094 }, (_, i) => ({ source: "sheet", id: `uuid-${i}` })));
+    render(Array.from({ length: 3 }, (_, i) => ({ source: "sheet", id: `kept-${i}` })));
+    render(Array.from({ length: 3 }, (_, i) => ({ source: "sheet", id: `kept-${i}` })));
+
+    expect(seen.length).toBe(1);
+    expect(seen[0]?.conditions).toBe(7094);
+    expect(seen[0]?.deduped).toBe(7093);
+    expect(dedupRan).toBe(true);
+  });
+
+  it("does NOT mark dedupRan if there's nothing to dedup", () => {
+    let dedupRan = false;
+    const render = (conditions: ReadonlyArray<unknown>) => {
+      if (dedupRan) return;
+      const sheetConds = conditions.filter((c) => {
+        const cc = c as { source?: string };
+        return cc.source === "sheet";
+      });
+      if (sheetConds.length === 0) return;
+      const removed = sheetConds.length - 1; // simulate
+      if (removed > 0) dedupRan = true;
+    };
+
+    render([]); // empty
+    render([{ source: "custom" }, { source: "custom" }]); // no sheet
+    expect(dedupRan).toBe(false);
+  });
+});
 });
