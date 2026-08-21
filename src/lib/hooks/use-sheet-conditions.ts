@@ -33,7 +33,7 @@
  * duplicates.
  */
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   useRuntimeConditions,
   type RuntimeCondition,
@@ -279,6 +279,67 @@ function scanCapabilities(
 }
 
 /**
+ * ONE-SHOT cleanup of duplicate sheet conditions written by the
+ * L68 bug. Runs ONCE per page-load. Bypasses the hook's
+ * remove() chain to avoid render loops. Touches localStorage
+ * directly, then dispatches a single event.
+ *
+ * The L68 loop bug created hundreds or thousands of duplicate
+ * sheet conditions in some users' localStorage. We group them
+ * by deterministic id (sheet-primitive-<id>-<idx>) and keep the
+ * most recent. Anything older gets deleted from localStorage
+ * directly. After bulk delete, we dispatch ONE
+ * sw:conditions-changed event so the UI re-reads localStorage
+ * in a single refresh — no cascading re-renders.
+ *
+ * The ref guard ensures cleanup runs at most once. Subsequent
+ * effect runs early-return without touching localStorage.
+ */
+function dedupeSheetConditionsOnce(
+  characterId: string,
+  sheetConditions: ReadonlyArray<RuntimeCondition>,
+): boolean {
+  if (typeof window === "undefined") return false;
+  if (sheetConditions.length <= 1) return false;
+  const groups = new Map<string, RuntimeCondition[]>();
+  for (const c of sheetConditions) {
+    const det = deterministicIdFor(c);
+    const arr = groups.get(det) ?? [];
+    arr.push(c);
+    groups.set(det, arr);
+  }
+  const prefix = `sw:cond:${characterId}:`;
+  let removed = 0;
+  for (const arr of groups.values()) {
+    if (arr.length <= 1) continue;
+    const sorted = [...arr].sort(
+      (a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0),
+    );
+    for (const c of sorted.slice(1)) {
+      try {
+        window.localStorage.removeItem(prefix + c.id);
+        removed++;
+      } catch {
+        // ignore
+      }
+    }
+  }
+  if (removed > 0) {
+    window.dispatchEvent(new CustomEvent("sw:conditions-changed"));
+    return true;
+  }
+  return false;
+}
+
+function deterministicIdFor(c: RuntimeCondition): string {
+  if (c.source !== "sheet") return c.id;
+  const sourceId = c.sourceEntityId ?? "";
+  const modIndex = c.modifiers.length > 1 ? c.modifiers.length - 1 : 0;
+  const prefix = c.sourceEntityType === "effect" ? "sheet-effect" : "sheet-primitive";
+  return `${prefix}-${sourceId}-${modIndex}`;
+}
+
+/**
  * Sync helper: create missing sheet conditions, leave existing ones
  * alone (preserves user toggle state). Returns the desired set; the
  * hook decides what to write.
@@ -309,6 +370,22 @@ export function useSheetConditions(input: {
       ...scanCapabilities(capabilityLinks),
     ];
   }, [primitiveLinks, capabilityLinks]);
+
+  // Phase 8.L round 70 cleanup: one-shot dedup. Ref guard
+  // prevents re-runs. Cleanup happens before the create effect
+  // so the next reconcile sees the post-cleanup conditions.
+  const dedupRan = useRef(false);
+  useEffect(() => {
+    if (!characterId || dedupRan.current) return;
+    dedupRan.current = true;
+    const sheetConds = conditions.filter((c) => c.source === "sheet");
+    dedupeSheetConditionsOnce(characterId, sheetConds);
+    // The dispatch above will trigger refresh() which fires
+    // setConditions. The create effect below will then run
+    // ONCE (because reconcile sees the canonical conditions)
+    // and create at most the missing ones — which is 0 after
+    // cleanup completes.
+  }, [characterId, conditions]);
 
   useEffect(() => {
     if (!characterId) return;

@@ -172,10 +172,19 @@ export function useRuntimeConditions(
 
   const create = useCallback<UseRuntimeConditionsResult["create"]>(
     (input) => {
+      // Respect caller-supplied ids. The sheet-condition scanner
+      // uses deterministic ids (sheet-primitive-<id>-<idx>) so it
+      // can detect "already exists" and skip the create. Without
+      // this guard, every create() overwrites the caller id with
+      // a fresh UUID and the scanner never matches — producing
+      // an infinite create() loop on every render.
+      const callerId = (input as { id?: string }).id;
       const id =
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `c-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        callerId && callerId.length > 0
+          ? callerId
+          : typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `c-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const cond: RuntimeCondition = {
         ...input,
         id,
