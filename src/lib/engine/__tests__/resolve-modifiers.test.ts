@@ -81,12 +81,16 @@ describe("resolveModifiers", () => {
   it("returns seeded base attributes + empty byTarget when no slots are slotted", () => {
     const r = resolveModifiers(BASE_INPUT);
     // Phase 8.L round 54: base attributes seeded into totals.
-    // Phase 8.M: SINGLE attack_bonus / save_dc start at 0.
+    // Phase 8.L round 79: attack_bonus and save_dc are ALSO
+    // seeded with their base values (PB + chosen attr mod for
+    // attack; 8 + PB + chosen attr mod for save DC). With
+    // BASE_INPUT (pb=3, attrs=10), chosenAttr defaults to
+    // physical, so attack_bonus = 13 and save_dc = 21.
     expect(r.totals["attribute.physical"]).toBe(10);
     expect(r.totals["attribute.mental"]).toBe(10);
     expect(r.totals["attribute.magical"]).toBe(10);
-    expect(r.totals["attack_bonus"]).toBe(0);
-    expect(r.totals["save_dc"]).toBe(0);
+    expect(r.totals["attack_bonus"]).toBe(13);
+    expect(r.totals["save_dc"]).toBe(21);
     expect(r.mirrorCosts).toEqual([]);
   });
 
@@ -833,8 +837,10 @@ describe("resolveModifiers — i1 mirror inheritance through heritage/capability
 });
 
 
-describe("L78 action_roll sub-target mirroring", () => {
-  it("mirrors action_roll.attack_roll to totals[attack_bonus]", () => {
+describe("L78 action_roll sub-target mirroring (with seed)", () => {
+  // BASE_INPUT: pb=3, attrs=10. Seed: attack_bonus = 13, save_dc = 21.
+
+  it("mirrors action_roll.attack_roll subtract 5 to totals[attack_bonus]", () => {
     const slot = makeSlot({
       primitiveId: 100,
       hardModifiers: [{
@@ -846,10 +852,11 @@ describe("L78 action_roll sub-target mirroring", () => {
       }],
     });
     const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
-    expect(result.totals["attack_bonus"]).toBe(-5);
+    // Seeded base 13 - 5 = 8
+    expect(result.totals["attack_bonus"]).toBe(8);
   });
 
-  it("mirrors action_roll.physical_save to totals[save_dc] when chosenAttr=physical", () => {
+  it("mirrors action_roll.physical_save add 2 to totals[save_dc]", () => {
     const slot = makeSlot({
       primitiveId: 101,
       hardModifiers: [{
@@ -861,7 +868,8 @@ describe("L78 action_roll sub-target mirroring", () => {
       }],
     });
     const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
-    expect(result.totals["save_dc"]).toBe(2);
+    // Seeded base 21 + 2 = 23
+    expect(result.totals["save_dc"]).toBe(23);
   });
 
   it("does NOT mirror mental_save when chosenAttr=physical", () => {
@@ -876,10 +884,13 @@ describe("L78 action_roll sub-target mirroring", () => {
       }],
     });
     const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
-    expect(result.totals["save_dc"]).toBe(0);
+    // User is proficient in physical; mental_save shouldn't
+    // affect the displayed save_dc (which is seeded to physical's
+    // base 21).
+    expect(result.totals["save_dc"]).toBe(21);
   });
 
-  it("combines action_roll + direct attack_bonus primitive", () => {
+  it("combines action_roll subtract 5 + direct attack_bonus primitive add 2", () => {
     const slotA = makeSlot({
       primitiveId: 103,
       hardModifiers: [{
@@ -900,6 +911,54 @@ describe("L78 action_roll sub-target mirroring", () => {
       }],
     });
     const result = resolveModifiers({ ...BASE_INPUT, slots: [slotA, slotB] });
-    expect(result.totals["attack_bonus"]).toBe(-3);
+    // Seeded base 13 - 5 + 2 = 10
+    expect(result.totals["attack_bonus"]).toBe(10);
+  });
+});
+
+describe("L79 divide/multiply on seeded save_dc / attack_bonus", () => {
+  // BASE_INPUT: pb=3, attrs=10. Seed: attack_bonus = 13, save_dc = 21.
+
+  it("divide 2 halves save_dc", () => {
+    const slot = makeSlot({
+      primitiveId: 200,
+      hardModifiers: [{
+        kind: "modify",
+        target: "save_dc",
+        operation: "divide",
+        value: 2,
+      }],
+    });
+    const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
+    // 21 / 2 = 10.5 → roundUp → 11
+    expect(result.totals["save_dc"]).toBe(11);
+  });
+
+  it("multiply 2 doubles attack_bonus", () => {
+    const slot = makeSlot({
+      primitiveId: 201,
+      hardModifiers: [{
+        kind: "modify",
+        target: "attack_bonus",
+        operation: "multiply",
+        value: 2,
+      }],
+    });
+    const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
+    expect(result.totals["attack_bonus"]).toBe(26);
+  });
+
+  it("set 5 replaces save_dc", () => {
+    const slot = makeSlot({
+      primitiveId: 202,
+      hardModifiers: [{
+        kind: "modify",
+        target: "save_dc",
+        operation: "set",
+        value: 5,
+      }],
+    });
+    const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
+    expect(result.totals["save_dc"]).toBe(5);
   });
 });

@@ -276,6 +276,40 @@ export function resolveModifiers(
   // proficiencyBonus(level) + totals[...]).
   totals["proficiency_bonus"] = input.pb;
 
+  // Phase 8.L round 79: SEED attack_bonus and save_dc with their
+  // computed base (PB + chosen attribute modifier + 0 for
+  // attack; 8 + PB + chosen attribute modifier for save DC —
+  // wait, the save DC base is `5 + PB + modifier` actually).
+  // Without this seed, multiply/divide on save_dc / attack_bonus
+  // operate on 0 (since the engine stores deltas, not bases),
+  // and divide produces 0/x = 0, which is meaningless.
+  //
+  // Per Mashu R79: "save dc and attack bonus do not work
+  // [with divide]". The base must be in totals so operations
+  // apply meaningfully.
+  const chosenAttrForSeed =
+    input.chosenAttribute ?? input.proficientAttribute ?? ("physical" as const);
+  const attrModForSeed =
+    chosenAttrForSeed === "physical"
+      ? (input.attributes.physical ?? 0)
+      : chosenAttrForSeed === "mental"
+        ? (input.attributes.mental ?? 0)
+        : (input.attributes.magical ?? 0);
+  // Base attack bonus = PB + chosen attribute modifier.
+  const baseAttackBonus = input.pb + attrModForSeed;
+  // Base save DC = 8 + PB + chosen attribute modifier (D&D 5e
+  // baseline: 8 + proficiency + modifier).
+  const baseSaveDc = 8 + input.pb + attrModForSeed;
+  totals["attack_bonus"] = baseAttackBonus;
+  totals["save_dc"] = baseSaveDc;
+  // Also seed the per-attr versions for consistency.
+  totals["attack_bonus.physical"] = input.pb + (input.attributes.physical ?? 0);
+  totals["attack_bonus.mental"] = input.pb + (input.attributes.mental ?? 0);
+  totals["attack_bonus.magical"] = input.pb + (input.attributes.magical ?? 0);
+  totals["save_dc.physical"] = 8 + input.pb + (input.attributes.physical ?? 0);
+  totals["save_dc.mental"] = 8 + input.pb + (input.attributes.mental ?? 0);
+  totals["save_dc.magical"] = 8 + input.pb + (input.attributes.magical ?? 0);
+
   // Build the EvaluationContext for evaluateModifiers() so we get
   // parity with the existing engine.
   const context: EvaluationContext = {

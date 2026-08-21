@@ -529,16 +529,22 @@ export function BottomStickyBar({
   // attribute (defaults to proficientAttribute). When the
   // character has multi-attribute proficiency, the modal
   // renders a selector to change `chosenAttribute`.
-  const primarySaveDelta = resolver?.totals["save_dc"] ?? 0;
-  const primaryDc = 5 + pb + primaryMod + primarySaveDelta;
+  //
+  // Phase 8.L round 79: engine SEEDS totals[attack_bonus] and
+  // totals[save_dc] with their base values (PB + attr mod for
+  // attack; 8 + PB + attr mod for save DC). So the card reads
+  // totals[...] DIRECTLY, without adding the base again. This
+  // also means operations like divide/multiply work correctly
+  // because the engine operates on the seeded base.
+  const primaryDc = resolver?.totals["save_dc"] ?? 8 + pb + primaryMod;
 
   // Attack Bonus = PB + PrimaryAttribute mod + primitive bonuses
   // The single attack_bonus target already includes the primitive
-  // contributions for the chosen attribute.
+  // contributions for the chosen attribute AND is seeded with
+  // the base (PB + chosen attr mod).
   const atkFloor = findFloor(resolver?.byTarget ?? {}, "attack_bonus");
   const atkCeiling = findCeiling(resolver?.byTarget ?? {}, "attack_bonus");
-  const primaryAttackBonus =
-    pb + primaryMod + (resolver?.totals["attack_bonus"] ?? 0);
+  const primaryAttackBonus = resolver?.totals["attack_bonus"] ?? pb + primaryMod;
 
   // Phase 8.M: selector state for multi-attribute attack_bonus / save_dc.
   // Default to the proficient attribute (or physical fallback). User
