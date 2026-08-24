@@ -1342,13 +1342,12 @@ export function BottomStickyBar({
             const atkAttrLabel =
               atkAttr === "physical" ? "PHYSICAL" :
               atkAttr === "mental" ? "MENTAL" : "MAGICAL";
-            // Phase 8.L round 82: atkTotal reads directly from
-            // resolver.totals['attack_bonus'], which the engine
-            // seeds with PB + chosen_attr_mod + per-attr primitives
-            // + direct attack_bonus modifiers. The previous
-            // `pb + atkMod + atkPrimitiveBonus` formula was using
-            // `atkMod = physMod = full attribute value (14)` not
-            // the modifier (2), so it double-counted the base.
+            // Phase 8.L round 83: atkTotal reads directly from
+            // resolver.totals['attack_bonus']. atkMod is the FULL
+            // attribute value (e.g. 14 for phys_attr=14). The
+            // "modifier" computed in the breakdown is (atkMod-10)/2.
+            const atkMod = atkAttr === "physical" ? physMod :
+              atkAttr === "mental" ? mentMod : magiMod;
             const atkTotal = resolver?.totals["attack_bonus"] ?? pb;
             const atkSelectorFloor = findFloor(
               resolver?.byTarget ?? {}, `attack_bonus.${atkAttr}`,
@@ -1366,9 +1365,18 @@ export function BottomStickyBar({
             total={atkTotal}
             formula={`Attack Bonus = ${atkTotal} (= PB + ${atkAttrLabel} modifier + attack_bonus.${atkAttr} primitives)`}
             breakdown={[
-              // Phase 8.L round 82: atkTotal already includes
-              // base (PB + chosen_attr_mod) from the engine seed.
-              // So we only show primitive contributions here.
+              // Phase 8.L round 83: the breakdown shows PB and the
+              // chosen-attribute modifier as separate steps, then
+              // any primitive contributions. The user wants to SEE
+              // the components that make up the total.
+              //
+              // Note: atkMod here is the FULL attribute value
+              // (e.g. 14 for phys_attr=14). The "modifier" is
+              // (attr-10)/2 — that's the D&D formula. So we
+              // compute the modifier inline rather than passing
+              // atkMod (which would be the full attribute).
+              { label: "Proficiency Bonus", value: pb },
+              { label: `${atkAttrLabel} modifier`, value: Math.floor((atkMod - 10) / 2) },
               ...contributionsToSteps(`attack_bonus.${atkAttr}`, resolver_),
               ...(atkSelectorFloor !== null && atkTotal < atkSelectorFloor
                 ? [{ label: `Minimum to-hit (floor ${atkSelectorFloor})`, value: atkSelectorFloor }]

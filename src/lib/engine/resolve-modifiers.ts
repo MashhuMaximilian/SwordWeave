@@ -291,15 +291,25 @@ export function resolveModifiers(
   // only for save DC, the target enemies roll against).
   const chosenAttrForSeed =
     input.chosenAttribute ?? input.proficientAttribute ?? ("physical" as const);
-  const attrModForSeed = (a: "physical" | "mental" | "magical") =>
-    a === "physical"
+  // Phase 8.L round 84: changed the seed to use the D&D
+  // MODIFIER (attr-10)/2, NOT the raw attribute value. The
+  // formula the user expects is:
+  //   Attack Bonus = PB + (attr-10)/2 + primitives
+  //   Save DC = 8 + PB + (attr-10)/2 + primitives
+  // Previously the seed was PB + attr (raw value), which
+  // gave 6+14=20 for phys_attr=14 instead of the user's
+  // expected 6+2=8.
+  const attrModForSeed = (a: "physical" | "mental" | "magical") => {
+    const raw = a === "physical"
       ? (input.attributes.physical ?? 0)
       : a === "mental"
         ? (input.attributes.mental ?? 0)
         : (input.attributes.magical ?? 0);
-  // Attack bonus = PB + chosen attribute modifier (scaled).
+    return Math.floor((raw - 10) / 2);
+  };
+  // Attack bonus = PB + chosen attribute modifier.
   const baseAttackBonus = input.pb + attrModForSeed(chosenAttrForSeed);
-  // Save DC = 8 + PB + chosen attribute modifier (scaled).
+  // Save DC = 8 + PB + chosen attribute modifier.
   const baseSaveDc = 8 + input.pb + attrModForSeed(chosenAttrForSeed);
   totals["attack_bonus"] = baseAttackBonus;
   totals["save_dc"] = baseSaveDc;
@@ -1076,7 +1086,8 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   ): number {
     const key = `action_roll.${subName.toLowerCase()}`;
     const contribs = byTarget[key] ?? [];
-    const base = input.pb + (input.attributes[baseAttr] ?? 0);
+    // L84: use the D&D modifier, not raw attribute.
+    const base = input.pb + Math.floor(((input.attributes[baseAttr] ?? 0) - 10) / 2);
     if (contribs.length === 0) return base;
     let cur = base;
     for (const c of contribs) {
