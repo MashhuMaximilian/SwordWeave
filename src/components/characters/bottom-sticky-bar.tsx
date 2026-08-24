@@ -1225,26 +1225,27 @@ export function BottomStickyBar({
             const dcAttrLabel =
               dcAttr === "physical" ? "PHYSICAL" :
               dcAttr === "mental" ? "MENTAL" : "MAGICAL";
-            const dcMod = dcAttr === "physical" ? physMod :
-              dcAttr === "mental" ? mentMod : magiMod;
-            // Check both defense_dc and save_dc target formats
-            const dcPrimitiveBonus =
-              (resolver?.totals[`defense_dc.${dcAttr}`] ?? 0) +
-              (resolver?.totals[`save_dc.${dcAttr}`] ?? 0);
-            const dcTotal = 5 + pb + dcMod + dcPrimitiveBonus;
+            // Phase 8.L round 82: dcTotal now reads directly from
+            // resolver.totals["save_dc"], which the engine seeds
+            // with 8+PB+attr_mod and includes per-attr + direct
+            // contributions. The previous `5 + pb + dcMod +
+            // dcPrimitiveBonus` formula was double-counting the
+            // base. Note: dcMod was the FULL attribute value (not
+            // the modifier) — another bug masked by the base=5.
+            const dcTotal = resolver?.totals["save_dc"] ?? 8 + pb;
             return (
           <FormulaModal
             title={`Save DC (${dcAttrLabel})`}
             subtitle="from the chosen attribute"
             total={dcTotal}
-            formula={`Save DC = 5 + PB + ${dcAttrLabel} modifier + defense_dc.${dcAttr} primitives`}
+            formula={`Save DC = 8 + PB + ${dcAttrLabel} modifier + save_dc.${dcAttr} primitives`}
             breakdown={[
-              { label: "Base", value: 5 },
+              { label: "Base", value: 8 },
               { label: `PB`, value: pb },
-              {
-                label: `${dcAttrLabel} modifier`,
-                value: dcMod,
-              },
+              // Phase 8.L round 82: dcTotal already includes the
+              // base (8+PB+attr_mod) from the engine seed. So we
+              // only show primitive contributions here, not the
+              // base + PB + modifier (those are baked in).
               ...contributionsToSteps(`defense_dc.${dcAttr}`, resolver_),
               ...contributionsToSteps(`save_dc.${dcAttr}`, resolver_),
             ]}
