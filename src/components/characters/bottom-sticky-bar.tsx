@@ -1238,7 +1238,7 @@ export function BottomStickyBar({
             title={`Save DC (${dcAttrLabel})`}
             subtitle="from the chosen attribute"
             total={dcTotal}
-            formula={`Save DC = 8 + PB + ${dcAttrLabel} modifier + save_dc.${dcAttr} primitives`}
+            formula={`Save DC = ${dcTotal} (= 8 + PB + ${dcAttrLabel} modifier + save_dc.${dcAttr} primitives)`}
             breakdown={[
               { label: "Base", value: 8 },
               { label: `PB`, value: pb },
@@ -1364,7 +1364,7 @@ export function BottomStickyBar({
             title="Attack Bonus"
             subtitle={`${atkAttrLabel} — to-hit roll`}
             total={atkTotal}
-            formula={`Attack Bonus = PB + ${atkAttrLabel} modifier + attack_bonus.${atkAttr} primitives`}
+            formula={`Attack Bonus = ${atkTotal} (= PB + ${atkAttrLabel} modifier + attack_bonus.${atkAttr} primitives)`}
             breakdown={[
               // Phase 8.L round 82: atkTotal already includes
               // base (PB + chosen_attr_mod) from the engine seed.
