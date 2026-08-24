@@ -140,26 +140,27 @@ export function contributionsToSteps(
   const contribs = resolver.byTarget[target] ?? [];
   const out: FormulaStep[] = [...baseSteps];
   for (const c of contribs) {
-    // Phase 8.L round 32 (Mashu 2026-08-13): ALWAYS use formatVia
-    // (L28) so direct primitives with a heritage accordion
-    // (LINEAGE / UPBRINGING / MANIFEST) still get the accordion
-    // shown. The previous `kind === "direct" ? undefined` guard
-    // was suppressing the breadcrumb for direct primitives — the
-    // reason formatVia was introduced in the first place.
+    // Phase 8.L round 90 (Mashu 2026-08-22): render the actual
+    // contribution, not just the raw value. For mirrored
+    // primitives the value comes in as the NEGATED value
+    // (e.g. -4 for a mirrored +4 primitive), but the user wants
+    // to see the source value + a (mirrored) tag. For max/min
+    // primitives the value is the cap, not an addition, so the
+    // label should be like 'Cap at 18' not '+18'.
+    let label = c.primitiveName;
+    let value: number | string | null | undefined = c.value;
+    if (c.op === "max") {
+      label = `Cap at ${c.value} (${c.primitiveName})`;
+    } else if (c.op === "min") {
+      label = `Floor at ${c.value} (${c.primitiveName})`;
+    } else if (c.op === "set") {
+      label = `Set to ${c.value} (${c.primitiveName})`;
+    }
     const via = formatVia(c);
     if (via) {
-      out.push({
-        label: c.primitiveName,
-        value: c.value,
-        via,
-        contribution: c,
-      });
+      out.push({ label, value, via, contribution: c });
     } else {
-      out.push({
-        label: c.primitiveName,
-        value: c.value,
-        contribution: c,
-      });
+      out.push({ label, value, contribution: c });
     }
   }
   return out;
