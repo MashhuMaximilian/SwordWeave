@@ -305,8 +305,8 @@ function AxisMarkers({
   else if (netAdv >= 2) markers.push(`⇈(${netAdv})`);
   else if (netAdv === -1) markers.push("⇊");
   else if (netAdv <= -2) markers.push(`⇊(${Math.abs(netAdv)})`);
-  if (floor !== null) markers.push(`↥ ${floor}`);
-  if (ceiling !== null) markers.push(`↧ ${ceiling}`);
+  if (floor !== null) markers.push(`↧ ${floor}`);
+  if (ceiling !== null) markers.push(`↥ ${ceiling}`);
   if (hasCond) markers.push("*");
   if (markers.length === 0) return null;
   return (

@@ -1048,4 +1048,27 @@ describe("L81 parent totals mirror + reapply direct modifier (user data)", () =>
     expect((result.byTarget["save_dc"] ?? []).some((c) => c.op === "divide")).toBe(true);
   });
 });
-
+describe("L85 saving throw mirrored entries reapplied", () => {
+  it("physical_saving_throw includes both seed and legacy primitives", () => {
+    const slot = makeSlot({
+      primitiveId: 14063,
+      hardModifiers: [{
+        kind: "modify", target: "saving_throw.physical", operation: "add", value: 1,
+      }],
+    });
+    const slot2 = makeSlot({
+      primitiveId: 15517,
+      hardModifiers: [{
+        kind: "modify", target: "saving_throw.physical", operation: "add",
+        value: { kind: "derived", which: "pb" },
+      }],
+    });
+    const result = resolveModifiers({
+      ...BASE_INPUT,
+      slots: [slot, slot2],
+    });
+    // BASE_INPUT: pb=3, phys_mod=0. Seed: PB+mod=3.
+    // Plus Resilient Phys +1 + Proficient Save +PB(3) = 7.
+    expect(result.totals["physical_saving_throw"]).toBe(7);
+  });
+});
