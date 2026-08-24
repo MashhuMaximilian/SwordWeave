@@ -1242,9 +1242,9 @@ export function BottomStickyBar({
             breakdown={[
               { label: "Base", value: 8 },
               { label: `PB`, value: pb },
-              // Phase 8.L round 82: dcTotal already includes the
-              // base (8+PB+attr_mod) from the engine seed. So we
-              // only show primitive contributions here, not the
+              // Phase 8.L round 88: dcTotal already includes the
+              // base (8+PB+chosen_attr) from the engine seed. So
+              // we only show primitive contributions here, not the
               // base + PB + modifier (those are baked in).
               ...contributionsToSteps(`defense_dc.${dcAttr}`, resolver_),
               ...contributionsToSteps(`save_dc.${dcAttr}`, resolver_),
@@ -1375,8 +1375,13 @@ export function BottomStickyBar({
               // (attr-10)/2 — that's the D&D formula. So we
               // compute the modifier inline rather than passing
               // atkMod (which would be the full attribute).
+              // Phase 8.L round 88: in this system, "modifier" means
+              // the FULL attribute value (e.g. 4 for phys_attr=4),
+              // NOT the D&D (attr-10)/2 modifier. The formula text
+              // says "modifier = base attribute value + primitive
+              // contributions" — explicit.
               { label: "Proficiency Bonus", value: pb },
-              { label: `${atkAttrLabel} modifier`, value: Math.floor((atkMod - 10) / 2) },
+              { label: `${atkAttrLabel} attribute`, value: atkMod },
               ...contributionsToSteps(`attack_bonus.${atkAttr}`, resolver_),
               ...(atkSelectorFloor !== null && atkTotal < atkSelectorFloor
                 ? [{ label: `Minimum to-hit (floor ${atkSelectorFloor})`, value: atkSelectorFloor }]

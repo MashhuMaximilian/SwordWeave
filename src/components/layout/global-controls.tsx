@@ -440,6 +440,16 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         active: dark ?? false,
       },
       ...ACCOUNT_LINKS,
+      // Phase 8.L round 89: "Buy me a dice set" link, opens
+      // buymeacoffee.com in a new tab. Placed LAST in the FAB
+      // list so it sits below the Builds / Account entries.
+      {
+        kind: "link",
+        key: "buymeacoffee",
+        label: "Buy me a dice set",
+        href: "https://buymeacoffee.com/mashhul",
+        icon: <span className="text-base leading-none">🎲</span>,
+      },
     );
     return list;
   }, [
