@@ -1049,6 +1049,54 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   totals["attack_bonus"] = atkFinal;
   totals["save_dc"] = saveFinal;
 
+  // Phase 8.L round 85: also apply mirrored entries' ops on the
+  // seeded saving throws. The mirror populates byTarget AFTER PASS 2,
+  // so the entries need a reapply step here.
+  // Mirrored entries for physical_saving_throw include:
+  //   - saving_throw.physical (direct legacy)
+  //   - action_roll.physical_save sub-target
+  // The seed is already PB + per-attr mod. We apply each op on top.
+  function reapplyMirror(
+    base: number,
+    entries: ReadonlyArray<{ op: string; value: unknown }>,
+  ): number {
+    let cur = base;
+    for (const e of entries) {
+      cur = reapplyOp(cur, e.op, e.value);
+    }
+    return cur;
+  }
+  // Apply mirrored entries for each saving throw. The mirror
+  // populates byTarget[physical_saving_throw] AFTER PASS 2, so
+  // we need to reapply those entries' ops here. Note: we DON'T
+  // skip legacy saving_throw.<attr> — those ARE the contributions
+  // we want to apply. The action_roll.<save_sub> mirror is the
+  // other source.
+  function mirroredExcept(
+    target: string,
+    skipDirectTargets: ReadonlyArray<string>,
+  ): Array<{ op: string; value: unknown }> {
+    return (byTarget[target] ?? []).filter(
+      (c) => !skipDirectTargets.includes(c.target),
+    );
+  }
+  // Note: saving_throw.physical contributions are NOT applied via
+  // PASS 2 (because the seed is on physical_saving_throw, not
+  // saving_throw.physical). So we DO want to include them here.
+  // The skip list is empty for these.
+  totals["physical_saving_throw"] = reapplyMirror(
+    totals["physical_saving_throw"] ?? input.pb + ((input.attributes.physical ?? 0) - 10) / 2,
+    byTarget["physical_saving_throw"] ?? [],
+  );
+  totals["mental_saving_throw"] = reapplyMirror(
+    totals["mental_saving_throw"] ?? input.pb + ((input.attributes.mental ?? 0) - 10) / 2,
+    byTarget["mental_saving_throw"] ?? [],
+  );
+  totals["magical_saving_throw"] = reapplyMirror(
+    totals["magical_saving_throw"] ?? input.pb + ((input.attributes.magical ?? 0) - 10) / 2,
+    byTarget["magical_saving_throw"] ?? [],
+  );
+
   // Phase 8.L round 80: write back the seeded saving throws.
   // Apply each action_roll.<save_sub> contribution's operation
   // to the seeded base. action_roll.<save_sub> starts at 0

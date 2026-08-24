@@ -719,7 +719,12 @@ export function BottomStickyBar({
                 <span className="text-[9px] font-semibold uppercase text-muted-foreground">
                   {label}
                 </span>
-                <span className="font-bold tabular-nums">{fmt(mod)}</span>
+                <span
+                  className="font-bold tabular-nums"
+                  title={`Modifier = (${mod} - 10) / 2`}
+                >
+                  {fmt(Math.floor((mod - 10) / 2))}
+                </span>
               </div>
             ))}
           </div>
@@ -868,8 +873,11 @@ export function BottomStickyBar({
                         </span>
                       )}
                     </span>
-                    <span className="mt-1 flex items-center justify-center gap-0.5 font-mono text-base font-bold tabular-nums leading-none">
-                      {fmt(m)}
+                    <span
+                      className="mt-1 flex items-center justify-center gap-0.5 font-mono text-base font-bold tabular-nums leading-none"
+                      title={`Attribute ${attr}: ${m} → modifier ${Math.floor((m - 10) / 2)}`}
+                    >
+                      {fmt(Math.floor((m - 10) / 2))}
                       <AxisMarkers byTarget={byTarget} target={`attribute.${attr}`} />
                     </span>
                     <span className="mt-1.5 text-[9px] text-muted-foreground">
