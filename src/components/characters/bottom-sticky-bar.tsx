@@ -1342,16 +1342,20 @@ export function BottomStickyBar({
             const atkAttrLabel =
               atkAttr === "physical" ? "PHYSICAL" :
               atkAttr === "mental" ? "MENTAL" : "MAGICAL";
-            const atkMod = atkAttr === "physical" ? physMod :
-              atkAttr === "mental" ? mentMod : magiMod;
-            const atkPrimitiveBonus = resolver?.totals[`attack_bonus.${atkAttr}`] ?? 0;
+            // Phase 8.L round 82: atkTotal reads directly from
+            // resolver.totals['attack_bonus'], which the engine
+            // seeds with PB + chosen_attr_mod + per-attr primitives
+            // + direct attack_bonus modifiers. The previous
+            // `pb + atkMod + atkPrimitiveBonus` formula was using
+            // `atkMod = physMod = full attribute value (14)` not
+            // the modifier (2), so it double-counted the base.
+            const atkTotal = resolver?.totals["attack_bonus"] ?? pb;
             const atkSelectorFloor = findFloor(
               resolver?.byTarget ?? {}, `attack_bonus.${atkAttr}`,
             );
             const atkSelectorCeiling = findCeiling(
               resolver?.byTarget ?? {}, `attack_bonus.${atkAttr}`,
             );
-            const atkTotal = pb + atkMod + atkPrimitiveBonus;
             return (
           // Phase 8.5 H6: Attack Bonus popup. Mirrors the PB popup
           // shape so future attribute/scope options can plug in
@@ -1362,8 +1366,9 @@ export function BottomStickyBar({
             total={atkTotal}
             formula={`Attack Bonus = PB + ${atkAttrLabel} modifier + attack_bonus.${atkAttr} primitives`}
             breakdown={[
-              { label: "Proficiency Bonus", value: pb },
-              { label: `${atkAttrLabel} modifier`, value: atkMod },
+              // Phase 8.L round 82: atkTotal already includes
+              // base (PB + chosen_attr_mod) from the engine seed.
+              // So we only show primitive contributions here.
               ...contributionsToSteps(`attack_bonus.${atkAttr}`, resolver_),
               ...(atkSelectorFloor !== null && atkTotal < atkSelectorFloor
                 ? [{ label: `Minimum to-hit (floor ${atkSelectorFloor})`, value: atkSelectorFloor }]
