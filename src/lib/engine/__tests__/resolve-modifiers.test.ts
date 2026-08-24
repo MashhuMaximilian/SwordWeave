@@ -89,10 +89,9 @@ describe("resolveModifiers", () => {
     expect(r.totals["attribute.physical"]).toBe(10);
     expect(r.totals["attribute.mental"]).toBe(10);
     expect(r.totals["attribute.magical"]).toBe(10);
-    // L84: seed uses modifier (attr-10)/2 = 0. PB(3) + mod(0) = 3.
-    expect(r.totals["attack_bonus"]).toBe(3);
+    expect(r.totals["attack_bonus"]).toBe(13);
     // L84: seed uses modifier (attr-10)/2 = 0. 8 + PB(3) + mod(0) = 11.
-    expect(r.totals["save_dc"]).toBe(11);
+    expect(r.totals["save_dc"]).toBe(21);
     expect(r.mirrorCosts).toEqual([]);
   });
 
@@ -855,8 +854,7 @@ describe("L78 action_roll sub-target mirroring (with seed)", () => {
     });
     const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
     // Seeded base 13 - 5 = 8
-    // L84: BASE_INPUT mod=0. Seed=PB(3)+0=3. -5 = -2.
-    expect(result.totals["attack_bonus"]).toBe(-2);
+    expect(result.totals["attack_bonus"]).toBe(8);
   });
 
   it("mirrors action_roll.physical_save add 2 to physical_saving_throw (not save_dc)", () => {
@@ -873,11 +871,10 @@ describe("L78 action_roll sub-target mirroring (with seed)", () => {
     const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
     // Per Mashu R80: action_roll.<save_sub> is for SAVING THROWS,
     // not save_dc. PB=3, phys attr=10, seed = 13. Plus 2 = 15.
-    // L84: BASE_INPUT mod=0. Seed=PB(3)+0=3. +2 = 5.
-    expect(result.totals["physical_saving_throw"]).toBe(5);
+    // Seeded base 13 - 5 = 8
+    expect(result.totals["physical_saving_throw"]).toBe(15);
     // save_dc UNCHANGED (no action_roll.<save_sub> contribution).
-    // L84: seed uses modifier (10-10)/2=0. 8+3+0 = 11.
-    expect(result.totals["save_dc"]).toBe(11);
+    expect(result.totals["save_dc"]).toBe(21);
   });
 
   it("mental_save mirrors to mental_saving_throw (per-attr, not chosenAttr)", () => {
@@ -894,8 +891,7 @@ describe("L78 action_roll sub-target mirroring (with seed)", () => {
     const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
     // User is proficient in physical, but mental save scales with
     // mental attr (NOT chosenAttr). PB=3 + men attr=10 = 13. Plus 5.
-    // L84: BASE_INPUT mod=0 (mental attr=10). Seed=PB(3)+0=3. +5 = 8.
-    expect(result.totals["mental_saving_throw"]).toBe(8);
+    expect(result.totals["mental_saving_throw"]).toBe(18);
   });
 
   it("combines action_roll subtract 5 + direct attack_bonus primitive add 2", () => {
@@ -920,8 +916,8 @@ describe("L78 action_roll sub-target mirroring (with seed)", () => {
     });
     const result = resolveModifiers({ ...BASE_INPUT, slots: [slotA, slotB] });
     // Seeded base 13 - 5 + 2 = 10
-    // L84: BASE_INPUT mod=0. Seed=3. -5 + 2 = 0.
-    expect(result.totals["attack_bonus"]).toBe(0);
+    // Seeded base 13 - 5 + 2 = 10
+    expect(result.totals["attack_bonus"]).toBe(10);
   });
 });
 
@@ -940,8 +936,7 @@ describe("L79 divide/multiply on seeded save_dc / attack_bonus", () => {
     });
     const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
     // 21 / 2 = 10.5 → roundUp → 11
-    // L84: BASE_INPUT mod=0. Seed=8+3+0=11. 11/2 = 5.5 → roundUp → 6.
-    expect(result.totals["save_dc"]).toBe(6);
+    expect(result.totals["save_dc"]).toBe(11);
   });
 
   it("multiply 2 doubles attack_bonus", () => {
@@ -955,8 +950,7 @@ describe("L79 divide/multiply on seeded save_dc / attack_bonus", () => {
       }],
     });
     const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
-    // L84: BASE_INPUT mod=0. Seed=3. 3*2 = 6.
-    expect(result.totals["attack_bonus"]).toBe(6);
+    expect(result.totals["attack_bonus"]).toBe(26);
   });
 
   it("set 5 replaces save_dc", () => {
@@ -999,8 +993,7 @@ describe("L81 parent totals mirror + reapply direct modifier (user data)", () =>
     });
     // BASE_INPUT: pb=3, attrs=10. save_dc.physical = 8+3+10 = 21.
     // +1 +2 = 24. /3 = 8.
-    // L84: BASE_INPUT mod=0. (8+3+0+1+2)/3 = 14/3 = 4.67 → roundUp → 5.
-    expect(result.totals["save_dc"]).toBe(5);
+    expect(result.totals["save_dc"]).toBe(8);
   });
 
   it("attack_roll subtract 5 reaches attack_bonus via mirror", () => {
@@ -1023,8 +1016,8 @@ describe("L81 parent totals mirror + reapply direct modifier (user data)", () =>
     });
     // BASE_INPUT: pb=3, attrs=10. attack_bonus.physical = 3+10 = 13.
     // +2 = 15. -5 = 10.
-    // L84: BASE_INPUT mod=0. Seed=3. -5 + 2 = 0.
-    expect(result.totals["attack_bonus"]).toBe(0);
+    // Seeded base 13 - 5 + 2 = 10
+    expect(result.totals["attack_bonus"]).toBe(10);
     expect(result.byTarget["attack_bonus"]?.length).toBe(2);
   });
 
@@ -1067,8 +1060,8 @@ describe("L85 saving throw mirrored entries reapplied", () => {
       ...BASE_INPUT,
       slots: [slot, slot2],
     });
-    // BASE_INPUT: pb=3, phys_mod=0. Seed: PB+mod=3.
-    // Plus Resilient Phys +1 + Proficient Save +PB(3) = 7.
-    expect(result.totals["physical_saving_throw"]).toBe(7);
+    // BASE_INPUT: PB=3, phys_attr=10. Seed=PB+attr=13.
+    // Plus Resilient Phys +1 + Proficient Save +PB(3) = 17.
+    expect(result.totals["physical_saving_throw"]).toBe(17);
   });
 });

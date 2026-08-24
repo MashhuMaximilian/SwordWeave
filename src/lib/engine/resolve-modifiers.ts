@@ -291,25 +291,28 @@ export function resolveModifiers(
   // only for save DC, the target enemies roll against).
   const chosenAttrForSeed =
     input.chosenAttribute ?? input.proficientAttribute ?? ("physical" as const);
-  // Phase 8.L round 84: changed the seed to use the D&D
-  // MODIFIER (attr-10)/2, NOT the raw attribute value. The
-  // formula the user expects is:
-  //   Attack Bonus = PB + (attr-10)/2 + primitives
-  //   Save DC = 8 + PB + (attr-10)/2 + primitives
-  // Previously the seed was PB + attr (raw value), which
-  // gave 6+14=20 for phys_attr=14 instead of the user's
-  // expected 6+2=8.
-  const attrModForSeed = (a: "physical" | "mental" | "magical") => {
-    const raw = a === "physical"
+  // Phase 8.L round 87 (reverted L84): the seed uses the
+  // FULL attribute value (not the D&D modifier). The user's
+  // formula for modifier is "base attribute + primitive
+  // contributions" — the modifier value shown in the BSB
+  // chip and modal IS the raw attribute, NOT (attr-10)/2.
+  //
+  // For attack_bonus: PB + chosen_attr_value + primitives
+  // For save_dc: 8 + PB + chosen_attr_value + primitives
+  // For saving throws: PB + per_attr_value + primitives
+  //
+  // The "modifier" terminology in the UI is misleading but
+  // it's the convention this system uses. The D&D (attr-10)/2
+  // formula does NOT apply here.
+  const attrModForSeed = (a: "physical" | "mental" | "magical") =>
+    a === "physical"
       ? (input.attributes.physical ?? 0)
       : a === "mental"
         ? (input.attributes.mental ?? 0)
         : (input.attributes.magical ?? 0);
-    return Math.floor((raw - 10) / 2);
-  };
-  // Attack bonus = PB + chosen attribute modifier.
+  // Attack bonus = PB + chosen attribute (full value).
   const baseAttackBonus = input.pb + attrModForSeed(chosenAttrForSeed);
-  // Save DC = 8 + PB + chosen attribute modifier.
+  // Save DC = 8 + PB + chosen attribute (full value).
   const baseSaveDc = 8 + input.pb + attrModForSeed(chosenAttrForSeed);
   totals["attack_bonus"] = baseAttackBonus;
   totals["save_dc"] = baseSaveDc;
@@ -1134,8 +1137,8 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   ): number {
     const key = `action_roll.${subName.toLowerCase()}`;
     const contribs = byTarget[key] ?? [];
-    // L84: use the D&D modifier, not raw attribute.
-    const base = input.pb + Math.floor(((input.attributes[baseAttr] ?? 0) - 10) / 2);
+    // L87: use raw attribute (this system's convention).
+    const base = input.pb + (input.attributes[baseAttr] ?? 0);
     if (contribs.length === 0) return base;
     let cur = base;
     for (const c of contribs) {
