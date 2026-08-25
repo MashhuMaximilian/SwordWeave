@@ -1953,11 +1953,6 @@ function ModSaveProvenanceModal({
             breakdown={[
               { label: "Base attribute", value: saveBase },
               ...contributionsToSteps(attrTarget, resolver),
-              // Phase 8.L round 93: include scoped attribute
-              // keys (attribute.physical, attribute.mental, etc.)
-              // so conditions targeting the chosen attribute show
-              // up in the breakdown.
-              ...contributionsToSteps(`attribute.${attr}`, resolver),
             ]}
             fallbackMessage="No primitive contributes. Base = attribute raw value."
           />
