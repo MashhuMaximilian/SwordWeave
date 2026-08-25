@@ -507,7 +507,7 @@ export function BottomStickyBar({
   const physMod = attributeModifiers?.physical ?? physical;
   const mentMod = attributeModifiers?.mental ?? mental;
   const magiMod = attributeModifiers?.magical ?? magical;
-  const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
+  const fmt = (n: number | null | undefined) => (n === null || n === undefined ? "" : n >= 0 ? `+${n}` : `${n}`);
 
   function saveFor(attr: "physical" | "mental" | "magical", mod: number): number {
     const isProf = proficientAttribute?.toLowerCase() === attr;
@@ -2014,7 +2014,7 @@ function FormulaModalSection({
   target?: string;
   resolver: ResolvedModifiers;
 }) {
-  const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
+  const fmt = (n: number | null | undefined) => (n === null || n === undefined ? "" : n >= 0 ? `+${n}` : `${n}`);
   return (
     <section>
       <div className="mb-2 flex items-baseline justify-between gap-2">
@@ -2096,7 +2096,7 @@ function ContribListItem({ c, setRawTokensOpen, isOff, offReason }: {
     grant: "grant",
     revoke: "revoke",
   };
-  const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
+  const fmt = (n: number | null | undefined) => (n === null || n === undefined ? "" : n >= 0 ? `+${n}` : `${n}`);
   // Phase 8.J M1+M7: min/max rows omit prefix and OP_LABEL
   const isLimit = c.op === "min" || c.op === "max";
   // Phase 8.J M3 + Phase 8.L round 13: provenance breadcrumb
@@ -2264,7 +2264,7 @@ function PracticeDetailModal({
     } catch {}
   }, []);
 
-  const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
+  const fmt = (n: number | null | undefined) => (n === null || n === undefined ? "" : n >= 0 ? `+${n}` : `${n}`);
 
   // The practice's "primitive contributions" are the
   // same as the attribute's primitive contributions —
@@ -2644,7 +2644,7 @@ function EncumbranceFormulaModal({
   const primitiveBonus = capacity - sizeCap - physBonus;
   const load = encumbrance.load;
 
-  const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`);
+  const fmt = (n: number | null | undefined) => (n === null || n === undefined ? "" : n >= 0 ? `+${n}` : `${n}`);
 
   return (
     <div

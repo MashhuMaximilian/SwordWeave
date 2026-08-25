@@ -71,8 +71,8 @@ import type {
 export interface FormulaStep {
   /** Short label for the row (e.g. "Base", "PB L5", "Physical mod", "Focused Presence"). */
   readonly label: string;
-  /** Numeric contribution. Shown as +N / -N. */
-  readonly value: number;
+  /** Numeric contribution. Shown as +N / -N. null/undefined = no value shown (e.g. for caps/floors). */
+  readonly value: number | null;
   /** Optional breadcrumb — e.g. "Heritage 'Elf' → Capability 'Keen Senses'". */
   readonly via?: string;
   /**
@@ -151,10 +151,13 @@ export function contributionsToSteps(
     let value: number | string | null | undefined = c.value;
     if (c.op === "max") {
       label = `Cap at ${c.value} (${c.primitiveName})`;
+      value = null;  // clamp — don't display as +18
     } else if (c.op === "min") {
       label = `Floor at ${c.value} (${c.primitiveName})`;
+      value = null;  // clamp — don't display as +18
     } else if (c.op === "set") {
       label = `Set to ${c.value} (${c.primitiveName})`;
+      value = null;  // set — don't display as +18
     }
     const via = formatVia(c);
     if (via) {
@@ -249,7 +252,7 @@ function renderConditionsSection(breakdown: ReadonlyArray<FormulaStep>, onShowRa
                 <span className="flex flex-wrap items-center gap-1">
                   <strong>{step.label}</strong>
                   <span className="font-mono text-teal-700 dark:text-teal-300">
-                    {step.value >= 0 ? `+${step.value}` : step.value}
+                    {step.value !== null && step.value !== undefined ? (step.value >= 0 ? `+${step.value}` : step.value) : null}
                   </span>
                   <span className="font-mono text-[9px] uppercase text-muted-foreground">
                     ({c.op === "add" ? "add" : c.op === "subtract" ? "subtract" : c.op})
@@ -329,7 +332,8 @@ const OP_LABEL: Record<string, string> = {
   revoke: "revoke",
 };
 
-function fmt(n: number): string {
+function fmt(n: number | null | undefined): string {
+  if (n === null || n === undefined) return "";
   return n >= 0 ? `+${n}` : `${n}`;
 }
 
@@ -677,6 +681,7 @@ function SummaryLine({
   return (
     <p className="mt-3 rounded-md border border-dashed border-border bg-background/50 p-2 font-mono text-[11px] text-muted-foreground">
       {activeSteps.map((step, i) => {
+        if (step.value === null || step.value === undefined) return null;
         const sign = step.value >= 0 ? "+" : "−";
         const abs = Math.abs(step.value);
         const display = i === 0 ? `${step.value}` : `${sign}${abs}`;
