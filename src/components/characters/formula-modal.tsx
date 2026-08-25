@@ -404,7 +404,7 @@ export function FormulaModal({
         aria-label={`Formula for ${title}`}
       >
         <div
-          className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+          className="flex max-h-[95dvh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
