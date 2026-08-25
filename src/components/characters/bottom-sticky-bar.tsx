@@ -511,7 +511,13 @@ export function BottomStickyBar({
 
   function saveFor(attr: "physical" | "mental" | "magical", mod: number): number {
     const isProf = proficientAttribute?.toLowerCase() === attr;
-    return mod + (isProf ? pb : 0);
+    // Phase 8.L round 95 (Mashu): include the engine's
+    // primitive save contribution delta (e.g. Resilient Phys
+    // +1, Proficient Save +PB) so the chip matches the modal
+    // total. The engine seed (PB + per-attr) doesn't include
+    // those, so we add them here.
+    const primitiveDelta = resolver?.totals[`saving_throw.${attr}`] ?? 0;
+    return mod + primitiveDelta + (isProf ? pb : 0);
   }
   const physSave = saveFor("physical", physMod);
   const mentSave = saveFor("mental", mentMod);
