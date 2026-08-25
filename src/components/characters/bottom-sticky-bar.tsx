@@ -2033,7 +2033,12 @@ function FormulaModalSection({
       {breakdown.length === 0 ? (
         <p className="text-sm text-muted-foreground">{fallbackMessage}</p>
       ) : (
-        <ul className="space-y-2">
+        // Phase 8.L round 100 (Mashu): limit breakdown height so
+        // long breakdowns don't push other sections off-screen.
+        // Each <li> is ~50px so 8 items fit comfortably. Modal
+        // body still scrolls for cases where >8 items need to
+        // be visible at once.
+        <ul className="max-h-[40dvh] space-y-2 overflow-y-auto pr-1">
           {breakdown.map((step, i) => (
             <li
               key={`${step.label}-${i}`}
