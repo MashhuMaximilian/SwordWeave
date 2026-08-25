@@ -1918,7 +1918,7 @@ function ModSaveProvenanceModal({
       aria-label={`Formula for ${attr.toUpperCase()} mod + save`}
     >
       <div
-        className="flex max-h-[95dvh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        className="flex max-h-[98vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -2320,7 +2320,7 @@ function PracticeDetailModal({
       aria-label={`Formula for ${practice.name}`}
     >
       <div
-        className="flex max-h-[95dvh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        className="flex max-h-[98vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-4 py-3 shrink-0">
@@ -2656,7 +2656,7 @@ function EncumbranceFormulaModal({
       aria-label={`Formula for Encumbrance`}
     >
       <div
-        className="flex max-h-[95dvh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
+        className="flex max-h-[98vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
