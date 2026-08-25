@@ -1246,8 +1246,16 @@ export function BottomStickyBar({
               // base (8+PB+chosen_attr) from the engine seed. So
               // we only show primitive contributions here, not the
               // base + PB + modifier (those are baked in).
+              //
+              // Phase 8.L round 93: ALSO pull from save_dc (parent)
+              // so conditions targeting save_dc (e.g. dc_min
+              // divide 3) appear in the breakdown. Without this,
+              // the user's divide-by-3 condition would be invisible
+              // and the breakdown sum would not match the displayed
+              // total (which is divided).
               ...contributionsToSteps(`defense_dc.${dcAttr}`, resolver_),
               ...contributionsToSteps(`save_dc.${dcAttr}`, resolver_),
+              ...contributionsToSteps(`save_dc`, resolver_),
             ]}
             selector={
               showSaveSelector
@@ -1383,6 +1391,10 @@ export function BottomStickyBar({
               { label: "Proficiency Bonus", value: pb },
               { label: `${atkAttrLabel} attribute`, value: atkMod },
               ...contributionsToSteps(`attack_bonus.${atkAttr}`, resolver_),
+              // Phase 8.L round 93: also pull from attack_bonus
+              // (parent) so conditions targeting it show in the
+              // breakdown (e.g. "atk -5" subtract 5).
+              ...contributionsToSteps(`attack_bonus`, resolver_),
               ...(atkSelectorFloor !== null && atkTotal < atkSelectorFloor
                 ? [{ label: `Minimum to-hit (floor ${atkSelectorFloor})`, value: atkSelectorFloor }]
                 : []),
@@ -1935,6 +1947,11 @@ function ModSaveProvenanceModal({
             breakdown={[
               { label: "Base attribute", value: saveBase },
               ...contributionsToSteps(attrTarget, resolver),
+              // Phase 8.L round 93: include scoped attribute
+              // keys (attribute.physical, attribute.mental, etc.)
+              // so conditions targeting the chosen attribute show
+              // up in the breakdown.
+              ...contributionsToSteps(`attribute.${attr}`, resolver),
             ]}
             fallbackMessage="No primitive contributes. Base = attribute raw value."
           />
