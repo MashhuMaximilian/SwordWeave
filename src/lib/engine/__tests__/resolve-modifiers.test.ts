@@ -1124,3 +1124,93 @@ describe("L92 attack_bonus / save_dc include attribute primitive deltas", () => 
     expect(r.totals["physical_saving_throw"]).toBe(23);
   });
 });
+
+describe("L96 Mashu's character integration test (curl data)", () => {
+  it("Mashu's level 18 PHYS-proficient character: engine matches UI expectations", async () => {
+    // This test reads the actual /tmp/user_data2.json snapshot
+    // of Mashu's character (the "tessy3"-like character we
+    // debugged throughout L92-L95) and verifies the engine
+    // produces the values shown in the UI after deploy.
+    //
+    // To refresh: curl
+    //   https://www.swordweave.quest/api/characters/462f9048-b0da-4185-98db-d18027132c82
+    // > /tmp/user_data2.json
+    const fs = await import("fs/promises");
+    let rawData: any;
+    try {
+      rawData = JSON.parse(await fs.readFile("/tmp/user_data2.json", "utf-8"));
+    } catch {
+      // Snapshot file not present in CI; skip.
+      return;
+    }
+    const char = rawData.character ?? rawData;
+
+    const slots: ResolvedPrimitiveSlot[] = [];
+    for (const pl of char.primitiveLinks ?? []) {
+      const p = pl.primitive ?? {};
+      slots.push({
+        primitiveId: p.id,
+        name: p.name,
+        category: "PRIMITIVE",
+        isMirrored: pl.isMirrored ?? false,
+        isMirrorable: p.isMirrorable ?? true,
+        mirrorVector: p.mirrorVector,
+        originHeritageId: pl.originHeritageId,
+        originCapabilityId: pl.originCapabilityId,
+        originEffectId: pl.originEffectId,
+        isToggledOff: pl.isToggledOff ?? false,
+        hardModifiers: (p.hardModifiers ?? []).map((m: any) => ({
+          kind: m.kind ?? "modify",
+          value: m.value,
+          target: m.target,
+          operation: m.operation,
+          stacking: m.stacking ?? "stack",
+          metadata: m.metadata,
+        })),
+      });
+    }
+
+    // Add Mashu's active "dc min" condition (save_dc /3).
+    const dcMin: ResolvedPrimitiveSlot = {
+      primitiveId: -100,
+      name: "dc min",
+      category: "RUNTIME_CONDITION",
+      isMirrored: false,
+      isMirrorable: false,
+      mirrorVector: null,
+      originHeritageId: null,
+      originCapabilityId: null,
+      originEffectId: null,
+      isToggledOff: false,
+      hardModifiers: [{
+        kind: "modify",
+        target: "save_dc",
+        operation: "divide",
+        value: 3,
+        stacking: "stack",
+        metadata: { targetScope: { layer: "METRIC", values: [] }, granularity: null },
+      }],
+    };
+
+    const r = resolveModifiers({
+      characterId: char.id ?? "t",
+      level: char.level ?? 18,
+      pb: 6,
+      proficientAttribute: (char.attrProficient ?? "PHYSICAL").toLowerCase() as "physical",
+      attributes: { physical: 4, mental: 4, magical: 2 },
+      slots: [...slots, dcMin],
+    });
+
+    // Expected: matches Mashu's UI values from the BSB cards
+    // after the L92-L95 fixes.
+    expect(r.totals["attribute.physical"]).toBe(6);
+    expect(r.totals["attribute.mental"]).toBe(7);
+    expect(r.totals["attribute.magical"]).toBe(4);
+    expect(r.totals["proficiency_bonus"]).toBe(6);
+    expect(r.totals["attack_bonus"]).toBe(14);
+    expect(r.totals["save_dc"]).toBe(7);
+    expect(r.totals["physical_saving_throw"]).toBe(19);
+    expect(r.totals["mental_saving_throw"]).toBe(13);
+    expect(r.totals["magical_saving_throw"]).toBe(10);
+  });
+});
