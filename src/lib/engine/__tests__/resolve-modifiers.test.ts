@@ -1065,3 +1065,62 @@ describe("L85 saving throw mirrored entries reapplied", () => {
     expect(result.totals["physical_saving_throw"]).toBe(17);
   });
 });
+
+describe("L92 attack_bonus / save_dc include attribute primitive deltas", () => {
+  it("attack_bonus.physical = PB + computed_attr + per-attr primitives", () => {
+    // Phys attr base 10, then add Str Buff +5, Str Ring +1 (so
+    // computed_attr = 16), and Mark of the Hunt +2 to
+    // attack_bonus.physical. Expected total: 3 + 16 + 2 = 21.
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      slots: [
+        makeSlot({
+          primitiveId: 1,
+          hardModifiers: [{ kind: "modify", value: 5, target: "attribute.physical", operation: "add" }],
+        }),
+        makeSlot({
+          primitiveId: 2,
+          hardModifiers: [{ kind: "modify", value: 1, target: "attribute.physical", operation: "add" }],
+        }),
+        makeSlot({
+          primitiveId: 3,
+          hardModifiers: [{ kind: "modify", value: 2, target: "attack_bonus.physical", operation: "add" }],
+        }),
+      ],
+    };
+    const r = resolveModifiers(input);
+    expect(r.totals["attribute.physical"]).toBe(16);
+    // L92: attack_bonus includes the computed attribute (16)
+    // AND Mark of the Hunt +2. So total = 3 (PB) + 16 (computed
+    // attr) + 2 (Mark) = 21. Previously was 3 + 10 (raw) + 2 = 15,
+    // missing the attribute primitive contribution.
+    expect(r.totals["attack_bonus"]).toBe(21);
+    expect(r.totals["attack_bonus.physical"]).toBe(21);
+  });
+
+  it("physical_saving_throw = PB + computed_phys_attr + saving_throw primitives", () => {
+    // Base phys=10, add +6 (so computed=16), then Resilient
+    // Phys +1 and Proficient Save +PB(3). Total: 3 + 16 + 1 + 3 = 23.
+    const input: ResolvedCharacterInput = {
+      ...BASE_INPUT,
+      slots: [
+        makeSlot({
+          primitiveId: 1,
+          hardModifiers: [{ kind: "modify", value: 6, target: "attribute.physical", operation: "add" }],
+        }),
+        makeSlot({
+          primitiveId: 2,
+          hardModifiers: [{ kind: "modify", value: 1, target: "saving_throw.physical", operation: "add" }],
+        }),
+        makeSlot({
+          primitiveId: 3,
+          hardModifiers: [{ kind: "modify", value: { kind: "derived", which: "pb" } as any, target: "saving_throw.physical", operation: "add" }],
+        }),
+      ],
+    };
+    const r = resolveModifiers(input);
+    expect(r.totals["attribute.physical"]).toBe(16);
+    // L92: physical_saving_throw = PB + computed_phys_attr + saving_throw primitives.
+    expect(r.totals["physical_saving_throw"]).toBe(23);
+  });
+});

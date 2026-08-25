@@ -1012,12 +1012,68 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   const directSaveContribs = (byTarget["save_dc"] ?? []).filter(
     (c) => c.target === "save_dc",
   );
+  // Phase 8.L round 92 (Mashu 2026-08-22): the per-attr base
+  // uses input.pb + (raw_attr + sum_of_attribute.<chosenAttr>
+  // primitive contributions). The attribute primitive
+  // contributions to the chosen attribute's modifier
+  // (e.g. Str Buff +5 to phys) are NOT applied to the
+  // attack_bonus seed directly by PASS 2 — they're applied to
+  // attribute.physical which we then add back here.
+  const attrTarget = `attribute.${chosenAttr}`;
+  let attrPrimitiveDelta = 0;
+  for (const c of byTarget[attrTarget] ?? []) {
+    if (c.op === "add" && c.conditionActive !== false && !c.inhibited) {
+      attrPrimitiveDelta += c.value;
+    } else if (c.op === "subtract" && c.conditionActive !== false && !c.inhibited) {
+      attrPrimitiveDelta -= c.value;
+    }
+  }
+  const rawAttr = input.attributes[chosenAttr] ?? 0;
+  // Also include attack_bonus.<chosenAttr> primitive contributions
+  // (e.g. Mark of the Hunt +2) which PASS 2 applied to
+  // totals[attack_bonus.<chosenAttr>] but our new seed overwrites.
+  let perAttrAtkPrimitiveDelta = 0;
+  for (const c of byTarget[`attack_bonus.${chosenAttr}`] ?? []) {
+    if (c.conditionActive !== false && !c.inhibited) {
+      if (c.op === "add") perAttrAtkPrimitiveDelta += c.value;
+      else if (c.op === "subtract") perAttrAtkPrimitiveDelta -= c.value;
+      // multiply/divide/set/max/min handled at higher levels
+    }
+  }
   const perAttrAtkBase =
-    totals[`attack_bonus.${chosenAttr}`] ?? 0;
-  const perAttrSaveBase =
-    totals[`save_dc.${chosenAttr}`] ??
-    totals[`defense_dc.${chosenAttr}`] ??
-    0;
+    input.pb + rawAttr + attrPrimitiveDelta + perAttrAtkPrimitiveDelta;
+  // Phase 8.L round 92 (Mashu): same fix as attack_bonus —
+  // save_dc seed includes the COMPUTED attribute primitive
+  // contributions plus per-attr save_dc primitives (Defender,
+  // Stone Skin, etc.).
+  const saveDcAttrTarget = `attribute.${chosenAttr}`;
+  let saveDcAttrPrimitiveDelta = 0;
+  for (const c of byTarget[saveDcAttrTarget] ?? []) {
+    if (c.op === "add" && c.conditionActive !== false && !c.inhibited) {
+      saveDcAttrPrimitiveDelta += c.value;
+    } else if (c.op === "subtract" && c.conditionActive !== false && !c.inhibited) {
+      saveDcAttrPrimitiveDelta -= c.value;
+    }
+  }
+  // save_dc.physical post-PASS 2 already includes its seed
+  // (8 + PB + raw_attr) AND all per-attr save_dc primitives
+  // (Defender, Stone Skin, Save DC Buff, etc.). We only want
+  // the primitive delta here, not the seed (which is already
+  // in perAttrSaveBase).
+  // save_dc.physical post-PASS 2 already includes its seed
+  // (8 + PB + raw_attr) AND all per-attr save_dc primitives
+  // (Defender, Stone Skin, Save DC Buff, etc.). We only want
+  // the primitive delta here, not the seed (which is already
+  // in perAttrSaveBase).
+  const saveDcSeed = 8 + input.pb + (input.attributes[chosenAttr] ?? 0);
+  const saveDcPerAttrDelta =
+    (totals[`save_dc.${chosenAttr}`] ?? totals[`defense_dc.${chosenAttr}`] ?? 0) - saveDcSeed;
+  // Phase 8.L round 92 (Mashu): save_dc seed uses raw attribute
+  // (NOT computed). The save_dc formula is:
+  //   save_dc = 8 + PB + chosen_attr (raw) + save_dc_primitive_delta
+  // Attribute primitive deltas are NOT included in save_dc.
+  const perAttrSaveBase = saveDcSeed;
+  void saveDcAttrPrimitiveDelta;
   // Re-apply direct modifiers on top of per-attr value. This
   // matters for divide/multiply/set where the per-attr value
   // IS the new base.
@@ -1045,10 +1101,19 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   for (const c of directAtkContribs) {
     atkFinal = reapplyOp(atkFinal, c.op, c.value);
   }
-  let saveFinal = perAttrSaveBase;
+  // Phase 8.L round 92: include save_dc.<attr> primitive
+  // contributions (Defender +1 to defense_dc.physical, Stone
+  // Skin +2 to save_dc.physical, Save DC Buff +1, etc.) on top
+  // of the per-attr seed.
+  let saveFinal = perAttrSaveBase + saveDcPerAttrDelta;
   for (const c of directSaveContribs) {
     saveFinal = reapplyOp(saveFinal, c.op, c.value);
   }
+  // Phase 8.L round 92 (Mashu): also write the per-attr total
+  // so the BSB / sheet shows the right number too. atkFinal
+  // includes the COMPUTED attribute primitive contributions
+  // (was missing before — only Mark was added).
+  totals[`attack_bonus.${chosenAttr}`] = perAttrAtkBase;
   totals["attack_bonus"] = atkFinal;
   totals["save_dc"] = saveFinal;
 
@@ -1083,20 +1148,27 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       (c) => !skipDirectTargets.includes(c.target),
     );
   }
+  // Phase 8.L round 92 (Mashu): use COMPUTED attribute (after
+  // PASS 2, so primitive contributions like Str Buff + Mirrored
+  // Str Buff are included) for the seed base, NOT the raw input
+  // attribute. Same fix as attack_bonus in L81 reapply.
+  const computedPhysAttr92 = totals["attribute.physical"] ?? (input.attributes.physical ?? 0);
+  const computedMentalAttr92 = totals["attribute.mental"] ?? (input.attributes.mental ?? 0);
+  const computedMagicalAttr92 = totals["attribute.magical"] ?? (input.attributes.magical ?? 0);
   // Note: saving_throw.physical contributions are NOT applied via
   // PASS 2 (because the seed is on physical_saving_throw, not
   // saving_throw.physical). So we DO want to include them here.
   // The skip list is empty for these.
   totals["physical_saving_throw"] = reapplyMirror(
-    totals["physical_saving_throw"] ?? input.pb + ((input.attributes.physical ?? 0) - 10) / 2,
+    input.pb + computedPhysAttr92,
     byTarget["physical_saving_throw"] ?? [],
   );
   totals["mental_saving_throw"] = reapplyMirror(
-    totals["mental_saving_throw"] ?? input.pb + ((input.attributes.mental ?? 0) - 10) / 2,
+    input.pb + computedMentalAttr92,
     byTarget["mental_saving_throw"] ?? [],
   );
   totals["magical_saving_throw"] = reapplyMirror(
-    totals["magical_saving_throw"] ?? input.pb + ((input.attributes.magical ?? 0) - 10) / 2,
+    input.pb + computedMagicalAttr92,
     byTarget["magical_saving_throw"] ?? [],
   );
 
