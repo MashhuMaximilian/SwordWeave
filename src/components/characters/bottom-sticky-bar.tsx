@@ -1402,11 +1402,13 @@ export function BottomStickyBar({
               // contributions" — explicit.
               { label: "Proficiency Bonus", value: pb },
               { label: `${atkAttrLabel} attribute`, value: atkMod },
+              // Phase 8.L round 104 (Mashu): Mark of the Hunt was
+              // appearing twice in the breakdown — once from
+              // attack_bonus.physical (per-attr) and once from
+              // attack_bonus (parent). The L81 reapply merges
+              // per-attr entries into the parent, causing the
+              // duplicate. Removed the duplicate.
               ...contributionsToSteps(`attack_bonus.${atkAttr}`, resolver_),
-              // Phase 8.L round 93: also pull from attack_bonus
-              // (parent) so conditions targeting it show in the
-              // breakdown (e.g. "atk -5" subtract 5).
-              ...contributionsToSteps(`attack_bonus`, resolver_),
               ...(atkSelectorFloor !== null && atkTotal < atkSelectorFloor
                 ? [{ label: `Minimum to-hit (floor ${atkSelectorFloor})`, value: atkSelectorFloor }]
                 : []),
