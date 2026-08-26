@@ -1907,24 +1907,46 @@ function ModSaveProvenanceModal({
     };
   }, []);
 
-  // Mod total = base + primitive contributions
+  // Mod total = engine's computed attribute
+  // Phase 8.L round 106 (Mashu 2026-08-26): the engine already
+  // seeds attribute.X with the raw base AND any primitive
+  // contributions. attrTotal = attrDelta directly (NOT saveBase + attrDelta,
+  // which double-counts the base).
   const attrContribs = resolver.byTarget[attrTarget] ?? [];
   const attrDelta = resolver.totals[attrTarget] ?? 0;
-  const attrTotal = saveBase + attrDelta;
+  const attrTotal = attrDelta;
 
   // Save total = mod + primitive save contributions + PB (if proficient)
-  // Phase 8.L round 103 (Mashu): the engine seeds
-  // physical_saving_throw = PB + phys_attr + primitive_save_delta.
-  // The displayed total should be:
+  // Phase 8.L round 107 (Mashu): engine seeds
+  // X_saving_throw = PB + X_attr + primitive_save_delta.
+  // With L106 attrTotal = attrDelta (= X_attr post-PASS-2),
+  // the displayed total should be:
   //   attrTotal + primitive_save_delta + (pb if prof)
-  //   = attrTotal + (saveDelta - PB - phys_attr) + (pb if prof)
-  //   = saveBase + saveDelta (when prof + engine seeds with PB + attr)
-  // For non-prof, similar simplification works for the unproficient attr.
+  // Since engine's saveDelta = PB + attr + primitive_save_delta,
+  //   primitive_save_delta = saveDelta - PB - attr
+  //   saveTotal = attrTotal + (saveDelta - PB - attr) + (pb if prof)
+  // When prof: saveTotal = attrTotal + saveDelta - PB - attr + PB
+  //          = attrTotal + saveDelta - attr
+  //          = attrTotal + (attr + primitive_save_delta + PB) - attr
+  //          = attrTotal + primitive_save_delta + PB  ✓
+  // When NOT prof: saveTotal = attrTotal + (saveDelta - PB - attr)
+  //             = attrTotal + primitive_save_delta  ✓
+  // For proficiency handling, we keep attrTotal + (saveDelta - PB - attr)
+  // when not prof, and attrTotal + (saveDelta - attr) when prof (PB already
+  // shown as a separate step).
+  // Simpler approach: attrTotal + (saveDelta - PB - attr) + (isProf ? PB : 0)
+  // = attrTotal + saveDelta - PB - attr + (isProf ? PB : 0)
+  // = attrTotal + saveDelta - attr + (isProf ? 0 : -PB)
+  // But we WANT a clean formula match. So:
   const saveContribs = resolver.byTarget[saveTarget] ?? [];
-  // saveBase + saveDelta is the right formula because the engine's
-  // saveDelta includes PB + attr + primitives for the chosen attr,
-  // and saveBase covers the base attr that was included in saveDelta.
-  const saveTotal = saveBase + (resolver.totals[saveTarget] ?? 0);
+  // saveDelta includes PB + attr + primitives. attrTotal already = attr.
+  // So primitive_save_only = saveDelta - PB - attr (we subtract PB and attr).
+  // saveTotal = attrTotal + primitive_save_only + (isProf ? PB : 0)
+  // Engine's saveTarget = PB + computed_attr + primitive_save.
+  // primitive_save_only = saveDelta - PB - computed_attr
+  // = saveDelta - PB - attrDelta
+  const primitiveSaveDelta = (resolver.totals[saveTarget] ?? 0) - pb - attrDelta;
+  const saveTotal = attrTotal + primitiveSaveDelta + (isProf ? pb : 0);
 
   return (
     <div
