@@ -1955,14 +1955,15 @@ function ModSaveProvenanceModal({
   // = attrTotal + saveDelta - attr + (isProf ? 0 : -PB)
   // But we WANT a clean formula match. So:
   const saveContribs = resolver.byTarget[saveTarget] ?? [];
-  // saveDelta includes PB + attr + primitives. attrTotal already = attr.
-  // So primitive_save_only = saveDelta - PB - attr (we subtract PB and attr).
-  // saveTotal = attrTotal + primitive_save_only + (isProf ? PB : 0)
-  // Engine's saveTarget = PB + computed_attr + primitive_save.
-  // primitive_save_only = saveDelta - PB - computed_attr
-  // = saveDelta - PB - attrDelta
-  const primitiveSaveDelta = (resolver.totals[saveTarget] ?? 0) - pb - attrDelta;
-  const saveTotal = attrTotal + primitiveSaveDelta + (isProf ? pb : 0);
+  // Phase 8.L round 111 (Mashu 2026-08-26): just use saveDelta
+  // directly. The previous \`primitiveSaveDelta = saveDelta - PB - attr\`
+  // formula assumed primitives are additive, but with
+  // multiply/divide ops (e.g. magi x2 ×2), the math doesn't
+  // work out (16 - 6 - 4 = 6, but actual delta is multiplicative).
+  // Engine already gives the final saveTotal in
+  // resolver.totals[saveTarget]. Trust it.
+  const saveDelta = resolver.totals[saveTarget] ?? (pb + attrDelta);
+  const saveTotal = saveDelta;
 
   return (
     <div
