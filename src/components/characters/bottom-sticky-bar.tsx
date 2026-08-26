@@ -510,42 +510,16 @@ export function BottomStickyBar({
   const fmt = (n: number | null | undefined) => (n === null || n === undefined ? "" : n >= 0 ? `+${n}` : `${n}`);
 
   function saveFor(attr: "physical" | "mental" | "magical", mod: number): number {
-    const isProf = proficientAttribute?.toLowerCase() === attr;
-    // Phase 8.L round 112 (Mashu 2026-08-26): preserve prof-conditional
-    // PB (UI design: PB only if proficient). For non-prof, base
-    // is mod (not PB + mod). This matches the modal formula
-    // text and the user's expectation.
+    // Phase 8.L round 113 (Mashu 2026-08-26): use the engine's
+    // saveTotal directly. Engine seeds `<attr>_saving_throw` =
+    // PB + mod + primitives + sub-target ops (e.g. magi x2 ×2).
+    // Modal also reads saveTotal via L111. Chip = modal = engine.
     //
-    // For primitives, combine:
-    //   - saving_throw.<attr> contributions (legacy direct primitives)
-    //   - action_roll.<attr>_save sub-target contributions
-    //     (e.g. magi x2 ×2 on action_roll.magical_save)
-    //
-    // Phase 8.L round 95 primitiveDelta only read
-    // saving_throw.<attr>, missing action_roll sub-targets. With
-    // magi x2, the chip never updated to reflect the ×2. Now we
-    // include both.
-    const directPrimitiveDelta = resolver?.totals[`saving_throw.${attr}`] ?? 0;
-    // Apply sub-target contributions on top of base. For
-    // multiply/divide ops we apply them here (same math as engine
-    // applySubTargetToSeed).
-    const subKey = `action_roll.${attr === 'physical' ? 'physical_save' : attr === 'mental' ? 'mental_save' : 'magical_save'}`;
-    const subContribs = resolver?.byTarget?.[subKey] ?? [];
-    let cur = mod + directPrimitiveDelta + (isProf ? pb : 0);
-    for (const c of subContribs) {
-      const v = typeof c.value === 'number' ? c.value : Number(c.value);
-      if (!Number.isFinite(v)) continue;
-      switch (c.op) {
-        case 'add': cur += v; break;
-        case 'subtract': cur -= v; break;
-        case 'multiply': cur *= v; break;
-        case 'divide': if (v !== 0) cur /= v; break;
-        case 'set': cur = v; break;
-        case 'min': cur = Math.min(cur, v); break;
-        case 'max': cur = Math.max(cur, v); break;
-      }
-    }
-    return cur;
+    // Note: engine always includes PB. UI formula text says
+    // "PB if prof" — that's a separate inconsistency (engine
+    // design choice, not addressed here).
+    void mod;
+    return resolver?.totals[`${attr}_saving_throw`] ?? pb;
   }
   const physSave = saveFor("physical", physMod);
   const mentSave = saveFor("mental", mentMod);
