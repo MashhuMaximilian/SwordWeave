@@ -1244,16 +1244,32 @@ export function BottomStickyBar({
             // dcPrimitiveBonus` formula was double-counting the
             // base. Note: dcMod was the FULL attribute value (not
             // the modifier) — another bug masked by the base=5.
-            const dcTotal = resolver?.totals["save_dc"] ?? 8 + pb;
+            // Phase 8.L round 109 (Mashu): the engine seeds
+            // save_dc with the RAW attribute (not computed),
+            // so the breakdown needs to include that raw value.
+            const dcAttrBase =
+              dcAttr === "physical"
+                ? baseAttributes?.physical ?? physical
+                : dcAttr === "mental"
+                  ? baseAttributes?.mental ?? mental
+                  : baseAttributes?.magical ?? magical;
+            const dcTotal = resolver?.totals["save_dc"] ?? 8 + pb + dcAttrBase;
             return (
           <FormulaModal
             title={`Save DC (${dcAttrLabel})`}
             subtitle="from the chosen attribute"
             total={dcTotal}
-            formula={`Save DC = ${dcTotal} (= 8 + PB + ${dcAttrLabel} modifier + save_dc.${dcAttr} primitives)`}
+            formula={`Save DC = ${dcTotal} (= 8 + PB + ${dcAttrLabel} attribute + save_dc.${dcAttr} primitives)`}
             breakdown={[
               { label: "Base", value: 8 },
-              { label: `PB`, value: pb },
+              { label: "PB", value: pb },
+              // Phase 8.L round 109 (Mashu): include the raw
+              // attribute value as a step. The engine uses RAW
+              // attr (not computed) for save_dc, so this is the
+              // value the engine adds. Without this step, the
+              // breakdown sum doesn't match the displayed total
+              // when there are save_dc primitives.
+              { label: `${dcAttrLabel} attribute`, value: dcAttrBase },
               // Phase 8.L round 88: dcTotal already includes the
               // base (8+PB+chosen_attr) from the engine seed. So
               // we only show primitive contributions here, not the
@@ -2004,24 +2020,12 @@ function ModSaveProvenanceModal({
             formula={`${saveLabel} = ${attrLabel} + primitive save contributions + PB (if proficient)`}
             breakdown={[
               { label: attrLabel, value: attrTotal },
-              ...saveContribs.map((c) => {
-                const via =
-                  c.provenance?.kind === "direct"
-                    ? undefined
-                    : formatViaForSteps(c);
-                return via
-                  ? {
-                      label: c.primitiveName,
-                      value: c.value,
-                      via,
-                      contribution: c,
-                    }
-                  : {
-                      label: c.primitiveName,
-                      value: c.value,
-                      contribution: c,
-                    };
-              }),
+              // Phase 8.L round 110 (Mashu): use contributionsToSteps
+              // so direct primitives with an accordion (e.g.
+              // Resilient Phys via LINEAGE) get the via label.
+              // The previous inline map dropped via when
+              // kind === "direct", missing the accordion.
+              ...contributionsToSteps(saveTarget, resolver),
               ...(isProf ? [{ label: "PB (proficient)", value: pb }] : []),
             ]}
             fallbackMessage="No primitive contributes to saves. Save = mod + PB (if proficient)."
