@@ -675,11 +675,17 @@ export function BottomStickyBar({
   const totals = resolver_?.totals ?? {};
   const byTarget = resolver_?.byTarget ?? {};
   const attrTarget = `attribute.${comboAttr}`;
+  // Phase 8.L round 102 (Mashu): saveTarget must be the
+  // PHYSICAL_SAVING_THROW target, not save_dc.<attr>!
+  // The previous code was using save_dc.physical which made
+  // the PHYSICAL "save" total = attrTotal + save_dc_total + PB,
+  // double-counting save DC into the save display. Now uses
+  // the dedicated saving_throw target.
   const saveTarget = comboAttr === "physical"
-    ? "save_dc.physical"
+    ? "physical_saving_throw"
     : comboAttr === "mental"
-      ? "save_dc.mental"
-      : "save_dc.magical";
+      ? "mental_saving_throw"
+      : "magical_saving_throw";
   // Phase 8.M: SINGLE save_dc target (no attr suffix). Engine
   // routes primitives for the chosen attribute to this target.
   const dcTarget = "save_dc";
@@ -1904,10 +1910,19 @@ function ModSaveProvenanceModal({
   const attrDelta = resolver.totals[attrTarget] ?? 0;
   const attrTotal = saveBase + attrDelta;
 
-  // Save total = mod + PB (if proficient)
+  // Save total = mod + primitive save contributions + PB (if proficient)
+  // Phase 8.L round 103 (Mashu): the engine seeds
+  // physical_saving_throw = PB + phys_attr + primitive_save_delta.
+  // The displayed total should be:
+  //   attrTotal + primitive_save_delta + (pb if prof)
+  //   = attrTotal + (saveDelta - PB - phys_attr) + (pb if prof)
+  //   = saveBase + saveDelta (when prof + engine seeds with PB + attr)
+  // For non-prof, similar simplification works for the unproficient attr.
   const saveContribs = resolver.byTarget[saveTarget] ?? [];
-  const saveDelta = resolver.totals[saveTarget] ?? 0;
-  const saveTotal = attrTotal + saveDelta + (isProf ? pb : 0);
+  // saveBase + saveDelta is the right formula because the engine's
+  // saveDelta includes PB + attr + primitives for the chosen attr,
+  // and saveBase covers the base attr that was included in saveDelta.
+  const saveTotal = saveBase + (resolver.totals[saveTarget] ?? 0);
 
   return (
     <div
