@@ -158,6 +158,15 @@ export function contributionsToSteps(
     } else if (c.op === "set") {
       label = `Set to ${c.value} (${c.primitiveName})`;
       value = null;  // set — don't display as +18
+    } else if (c.op === "multiply") {
+      // Phase 8.L round 108 (Mashu): multiply ops render as ×N
+      // not +N. The user was confused seeing 'magi x2 +2' — the
+      // step value should display the actual operation.
+      label = `× ${c.value} (${c.primitiveName})`;
+      value = null;  // operator is in label — don't show +2
+    } else if (c.op === "divide") {
+      label = `÷ ${c.value} (${c.primitiveName})`;
+      value = null;  // operator is in label — don't show +3
     }
     const via = formatVia(c);
     if (via) {
