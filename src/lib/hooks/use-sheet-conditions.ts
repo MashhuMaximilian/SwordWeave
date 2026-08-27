@@ -187,6 +187,12 @@ function makeCondition(
     operation?: string;
     value?: unknown;
     metadata?: unknown;
+    // Phase 8.L round 122 (Mashu 2026-08-26): include the
+    // condition so the conditions drawer can show the
+    // 'triggers when' text correctly (previously always
+    // fell through to 'always' because the condition was
+    // missing from the synthetic modifier).
+    condition?: unknown;
   }>,
   sourceEntityId: string,
   sourceEntityType: "primitive" | "effect",
@@ -211,6 +217,7 @@ function makeCondition(
       operation: (m.operation as "add" | "subtract" | "multiply" | "divide" | "set" | "min" | "max" | "grant" | "revoke") ?? "add",
       value: m.value as never,
       metadata: m.metadata as never,
+      condition: m.condition as never,
     })),
     durationTier: "manual",
     tags: [],
@@ -252,13 +259,10 @@ function scanPrimitives(
             operation?: string;
             value?: unknown;
             metadata?: unknown;
+            condition?: unknown;
           }],
           String(link.primitiveId),
           "primitive",
-          // Phase 8.L round 119: sheet conditions default to
-          // Off (user has to opt-in to engage the modifier).
-          // Auto conditions default to the engine's current
-          // evaluation (handled by the engine evaluator).
           false,
           kind === "auto" ? "sheet-auto" : "sheet",
         ),
