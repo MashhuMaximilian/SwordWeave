@@ -453,10 +453,15 @@ function formatTriggersWhen(
     for (let i = 0; i < tokens.length; i++) {
       const tok = String(tokens[i] ?? "");
       if (i % 2 === 0) {
-        // pill token — pipe through humanReadableToken for
-        // friendly output (e.g. "actor-below-half-hp" →
-        // "HP below 50%", "is_tracking" → "is_tracking").
-        parts.push(humanReadableToken(tok));
+        // Phase 8.L round 123 (Mashu): try humanReadableToken
+        // first. If it returns the raw token (i.e. unknown
+        // shape), strip common prefixes (self:/actor:) so the
+        // user at least sees a clean label.
+        let label = humanReadableToken(tok);
+        if (label === tok && (tok.startsWith("self:") || tok.startsWith("actor:"))) {
+          label = tok.replace(/^(self|actor):/, "");
+        }
+        parts.push(label);
       } else {
         // connector (AND / OR)
         parts.push(String(tok).toUpperCase());
