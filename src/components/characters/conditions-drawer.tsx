@@ -280,28 +280,46 @@ function ConditionCardItem({
         : "Manual";
 
   const isReadOnly = !onToggle;
+  // Phase 8.L round 128 (Mashu 2026-08-26): auto-triggered
+  // conditions when OFF should look MORE muted than sheet
+  // conditions when OFF, because the user can't interact with
+  // them and they're informational only. Sheet conditions
+  // get opacity-60; auto OFF gets opacity-40 + muted title.
   return (
     <article
       className={`rounded-md border bg-background p-3 transition-opacity ${
         active
           ? isReadOnly
-            // Phase 8.L round 126: auto-triggered cards get an
-            // emerald border when engaged (engine evaluated the
-            // predicate true). When inhibited, muted border.
             ? "border-emerald-500/40"
             : "border-amber-500/40"
           : isReadOnly
-            ? "border-border"
+            // Phase 8.L round 128: auto-triggered OFF is
+            // dimmer than sheet OFF so the user can tell at
+            // a glance which conditions they can interact
+            // with (sheet) vs which are read-only (auto).
+            ? "border-border opacity-40"
             : "border-border opacity-60"
       }`}
     >
       <header className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h4 className="truncate text-sm font-semibold text-foreground">
+          {/* Phase 8.L round 128: auto-triggered conditions
+              when OFF get a muted title color so they recede
+              visually compared to the still-interactive sheet
+              conditions. */}
+          <h4 className={`truncate text-sm font-semibold ${
+            !active && isReadOnly
+              ? "text-muted-foreground/60"
+              : "text-foreground"
+          }`}>
             {title}
           </h4>
           {description && (
-            <p className="mt-0.5 truncate text-xs italic text-muted-foreground">
+            <p className={`mt-0.5 truncate text-xs italic ${
+              !active && isReadOnly
+                ? "text-muted-foreground/50"
+                : "text-muted-foreground"
+            }`}>
               {description}
             </p>
           )}
