@@ -644,7 +644,11 @@ function StepRow({ step, offCapabilityIds }: { step: FormulaStep; offCapabilityI
     );
   }
 
-  // Plain step — label + value, optional breadcrumb.
+  // Plain step — label + value, optional breadcrumb. For
+  // these "seed" rows (PB, attribute, total), there's no real
+  // operation so we render the value directly without an
+  // operator symbol. Style consistent with the other rows:
+  // smaller gray text, no operator glyph.
   return (
     <li className="rounded-md border border-border bg-background p-2.5">
       <div className="flex items-center justify-between gap-2">
@@ -658,7 +662,7 @@ function StepRow({ step, offCapabilityIds }: { step: FormulaStep; offCapabilityI
             </p>
           )}
         </div>
-        <span className="shrink-0 font-mono font-semibold tabular-nums">
+        <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
           {fmt(step.value)}
         </span>
       </div>

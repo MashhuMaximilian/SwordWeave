@@ -2219,19 +2219,31 @@ function ContribListItem({ c, setRawTokensOpen, isOff, offReason }: {
         </div>
         <div className="flex shrink-0 items-center gap-1 text-xs">
           {!isLimit ? (
-            <span className="font-mono text-[10px] text-muted-foreground">
+            // Phase 8.L round 125 (Mashu 2026-08-26): operator
+            // rendered LARGE color-coded (matches the rest of
+            // the modals); value rendered SMALLER + gray.
+            // Previously the operator was small/gray and the
+            // value was bold — inverted from the desired
+            // treatment.
+            <span className={cn(
+              "font-mono text-base font-bold leading-none",
+              OP_COLOR[c.op] ?? "text-foreground",
+            )}>
               {OP_LABEL[c.op] ?? c.op}
             </span>
           ) : (
             // Phase 8.L: Floor/Ceiling as orange ↥/↧ per the
             // color rules — limits are informational indicators,
             // not modifiers.
-            <span className="font-mono text-[10px] font-semibold text-orange-700 dark:text-orange-400">
+            <span className={cn(
+              "font-mono text-base font-bold leading-none",
+              OP_COLOR[c.op] ?? "text-foreground",
+            )}>
               {OP_LABEL[c.op] ?? c.op}
             </span>
           )}
           <span className={cn(
-            "font-mono font-semibold tabular-nums",
+            "font-mono text-[11px] tabular-nums text-muted-foreground",
             isExpertiseName(c.primitiveName) && "font-bold text-teal-700 dark:text-teal-300",
             isProficiencyName(c.primitiveName) && "text-teal-700 dark:text-teal-300",
             isLimit && "text-orange-700 dark:text-orange-400",
@@ -2253,7 +2265,7 @@ function ContribListItem({ c, setRawTokensOpen, isOff, offReason }: {
                 return <span className={cls}>{kw}</span>;
               })()
             ) : (
-              c.value
+              formatOperandValue(c.value)
             )}
           </span>
         </div>

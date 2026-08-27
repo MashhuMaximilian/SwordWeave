@@ -160,10 +160,14 @@ export function ConditionsDrawer({ characterId, open, onClose }: ConditionsDrawe
           {autoTriggeredConditions.length > 0 && (
             <Section title="Auto-triggered" count={autoTriggeredConditions.length}>
               {autoTriggeredConditions.map((c) => (
+                // Phase 8.L round 125 (Mashu): no onToggle
+                // handler at all — the engine decides the
+                // state. Previously we passed onToggle={() =>
+                // undefined} but that's a truthy function and the
+                // UI rendered the Off button anyway.
                 <ConditionCardItem
                   key={c.id}
                   condition={c}
-                  onToggle={() => undefined}
                   readOnly
                 />
               ))}
@@ -233,7 +237,10 @@ function ConditionCardItem({
   readOnly,
 }: {
   condition: RuntimeCondition;
-  onToggle: () => void;
+  // Phase 8.L round 125 (Mashu 2026-08-26): onToggle is
+  // optional. Auto-triggered conditions don't get a
+  // handler — the engine decides the state.
+  onToggle?: () => void;
   onEdit?: () => void;
   onRemove?: () => void;
   readOnly?: boolean;
