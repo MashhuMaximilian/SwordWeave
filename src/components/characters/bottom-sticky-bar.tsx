@@ -48,6 +48,7 @@ import { ChevronDown, ChevronUp, Heart } from "lucide-react";
 import { VitalityTracker } from "@/components/characters/vitality-tracker";
 import {
   FormulaModal,
+  SummaryLine,
   contributionsToSteps,
   type FormulaStep,
 } from "@/components/characters/formula-modal";
@@ -2107,6 +2108,12 @@ function FormulaModalSection({
           ))}
         </ul>
       )}
+      {/* Phase 8.L round 114 (Mashu 2026-08-26): show equation-style
+          summary line so the user can SEE how the breakdown sums to
+          the total. The standalone FormulaModal already has this; the
+          attribute mod+save modal (which uses FormulaModalSection)
+          was missing it. */}
+      <SummaryLine steps={breakdown} total={total} />
     </section>
   );
 }

@@ -664,7 +664,7 @@ function StepRow({ step, offCapabilityIds }: { step: FormulaStep; offCapabilityI
   );
 }
 
-function SummaryLine({
+export function SummaryLine({
   steps,
   total,
 }: {
@@ -690,7 +690,21 @@ function SummaryLine({
   return (
     <p className="mt-3 rounded-md border border-dashed border-border bg-background/50 p-2 font-mono text-[11px] text-muted-foreground">
       {activeSteps.map((step, i) => {
-        if (step.value === null || step.value === undefined) return null;
+        if (step.value === null || step.value === undefined) {
+          // Phase 8.L round 115 (Mashu): for multiply/divide
+          // ops, value is null and the label already encodes
+          // the operator (e.g. "× 2 (magi x2)").
+          // Render the label as-is so the trace shows it.
+          if (step.label && step.label.includes("×") || step.label?.includes("÷")) {
+            return (
+              <span key={`${step.label}-${i}`}>
+                {i > 0 && " "}
+                <span className="text-muted-foreground/70">({step.label})</span>
+              </span>
+            );
+          }
+          return null;
+        }
         const sign = step.value >= 0 ? "+" : "−";
         const abs = Math.abs(step.value);
         const display = i === 0 ? `${step.value}` : `${sign}${abs}`;
