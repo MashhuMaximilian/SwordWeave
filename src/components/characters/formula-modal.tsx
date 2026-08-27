@@ -341,9 +341,34 @@ const OP_LABEL: Record<string, string> = {
   revoke: "revoke",
 };
 
+// Phase 8.L round 118 (Mashu 2026-08-26): color-code each
+// operator so users can scan a row and instantly see what kind
+// of operation it is.
+const OP_COLOR: Record<string, string> = {
+  add: "text-emerald-600 dark:text-emerald-400",
+  subtract: "text-red-600 dark:text-red-400",
+  multiply: "text-violet-600 dark:text-violet-400",
+  divide: "text-amber-600 dark:text-amber-400",
+  set: "text-yellow-600 dark:text-yellow-400",
+  min: "text-emerald-600 dark:text-emerald-400",
+  max: "text-red-600 dark:text-red-400",
+  grant: "text-sky-600 dark:text-sky-400",
+  revoke: "text-slate-600 dark:text-slate-400",
+};
+
 function fmt(n: number | null | undefined): string {
   if (n === null || n === undefined) return "";
   return n >= 0 ? `+${n}` : `${n}`;
+}
+
+// Phase 8.L round 118 (Mashu 2026-08-26): clean operand value.
+// Bare positive numbers (no leading +); negatives in parens,
+// e.g. (-3). Zero renders as 0.
+function formatOperandValue(n: number | null | undefined): string {
+  if (n === null || n === undefined) return "";
+  if (n === 0) return "0";
+  if (n < 0) return `(${n})`;
+  return String(n);
 }
 
 export function FormulaModal({
@@ -587,18 +612,28 @@ function StepRow({ step, offCapabilityIds }: { step: FormulaStep; offCapabilityI
           </div>
           <div className="flex shrink-0 items-center gap-2 text-sm">
             {c.op !== "min" && c.op !== "max" ? (
-              <span className="font-mono text-xs text-muted-foreground">
+              <span className={cn(
+                "font-mono text-lg font-bold leading-none",
+                OP_COLOR[c.op] ?? "text-foreground",
+              )}>
                 {OP_LABEL[c.op] ?? c.op}
               </span>
-            ) : null}
+            ) : (
+              <span className={cn(
+                "font-mono text-lg font-bold leading-none",
+                OP_COLOR[c.op] ?? "text-foreground",
+              )}>
+                {OP_LABEL[c.op] ?? c.op}
+              </span>
+            )}
             <span className={cn(
-              "font-mono font-semibold tabular-nums",
+              "font-mono text-xs tabular-nums text-muted-foreground",
               isPbHalfValue(c.value) && "text-teal-600 dark:text-teal-400",
               isExpertiseName(c.primitiveName) && "font-bold text-teal-700 dark:text-teal-300",
               isProficiencyName(c.primitiveName) && "text-teal-700 dark:text-teal-300",
               c.inhibited && "text-muted-foreground line-through"
             )}>
-              {c.op === "min" || c.op === "max" ? c.value : fmt(c.value)}
+              {c.op === "min" || c.op === "max" ? c.value : formatOperandValue(c.value)}
             </span>
             {c.preMirrorValue !== null && (
               <span
