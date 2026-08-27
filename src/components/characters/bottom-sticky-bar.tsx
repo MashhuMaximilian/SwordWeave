@@ -2021,18 +2021,22 @@ function ModSaveProvenanceModal({
             resolver={resolver}
             title={saveLabel}
             total={saveTotal}
-            formula={`${saveLabel} = ${attrLabel} + primitive save contributions + PB (if proficient) + action_roll sub-target ops`}
+            formula={`${saveLabel} = ${attrLabel} + PB + primitive save contributions + action_roll sub-target ops`}
             breakdown={[
               { label: attrLabel, value: attrTotal },
+              // Phase 8.L round 116 (Mashu 2026-08-26): show PB
+              // ALWAYS, not just for prof. The engine seeds
+              // <attr>_saving_throw = PB + computed_attr for ALL
+              // attrs (not just prof). Previously the breakdown
+              // omitted PB for non-prof attrs, leaving the
+              // equation untraceable (e.g. MENTAL save: 7 + ? = 13).
+              { label: "PB", value: pb },
               // Phase 8.L round 110 (Mashu): use contributionsToSteps
               // so direct primitives with an accordion (e.g.
               // Resilient Phys via LINEAGE) get the via label.
-              // The previous inline map dropped via when
-              // kind === "direct", missing the accordion.
               ...contributionsToSteps(saveTarget, resolver),
-              ...(isProf ? [{ label: "PB (proficient)", value: pb }] : []),
             ]}
-            fallbackMessage="No primitive contributes to saves. Save = mod + PB (if proficient)."
+            fallbackMessage="No primitive contributes to saves. Save = mod + PB."
           />
         </div>
       </div>
