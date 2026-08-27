@@ -870,9 +870,10 @@ describe("L78 action_roll sub-target mirroring (with seed)", () => {
     });
     const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
     // Per Mashu R80: action_roll.<save_sub> is for SAVING THROWS,
-    // not save_dc. PB=3, phys attr=10, seed = 13. Plus 2 = 15.
-    // Seeded base 13 - 5 = 8
-    expect(result.totals["physical_saving_throw"]).toBe(15);
+    // not save_dc. PB=3, phys attr=10, but BASE_INPUT has
+    // proficientAttribute=null so PB is NOT added to save seed.
+    // Seed = 0 + 10 = 10. Plus 2 = 12.
+    expect(result.totals["physical_saving_throw"]).toBe(12);
     // save_dc UNCHANGED (no action_roll.<save_sub> contribution).
     expect(result.totals["save_dc"]).toBe(21);
   });
@@ -889,9 +890,10 @@ describe("L78 action_roll sub-target mirroring (with seed)", () => {
       }],
     });
     const result = resolveModifiers({ ...BASE_INPUT, slots: [slot] });
-    // User is proficient in physical, but mental save scales with
-    // mental attr (NOT chosenAttr). PB=3 + men attr=10 = 13. Plus 5.
-    expect(result.totals["mental_saving_throw"]).toBe(18);
+    // Mental save scales with mental attr (NOT chosenAttr).
+    // BASE_INPUT has proficientAttribute=null so PB is NOT
+    // added to mental save seed. Seed = 0 + 10 = 10. Plus 5.
+    expect(result.totals["mental_saving_throw"]).toBe(15);
   });
 
   it("combines action_roll subtract 5 + direct attack_bonus primitive add 2", () => {
@@ -1060,9 +1062,10 @@ describe("L85 saving throw mirrored entries reapplied", () => {
       ...BASE_INPUT,
       slots: [slot, slot2],
     });
-    // BASE_INPUT: PB=3, phys_attr=10. Seed=PB+attr=13.
-    // Plus Resilient Phys +1 + Proficient Save +PB(3) = 17.
-    expect(result.totals["physical_saving_throw"]).toBe(17);
+    // BASE_INPUT: PB=3, phys_attr=10. proficientAttribute=null
+    // so PB is NOT added to save seed. Seed = 0 + 10 = 10.
+    // Plus Resilient Phys +1 + Proficient Save +PB(3) = 14.
+    expect(result.totals["physical_saving_throw"]).toBe(14);
   });
 });
 
@@ -1100,7 +1103,9 @@ describe("L92 attack_bonus / save_dc include attribute primitive deltas", () => 
 
   it("physical_saving_throw = PB + computed_phys_attr + saving_throw primitives", () => {
     // Base phys=10, add +6 (so computed=16), then Resilient
-    // Phys +1 and Proficient Save +PB(3). Total: 3 + 16 + 1 + 3 = 23.
+    // Phys +1 and Proficient Save +PB(3). With BASE_INPUT's
+    // proficientAttribute=null, save seed does NOT include PB
+    // (only computed_attr = 16). Plus Resilient +1 + ProfSave +PB(3) = 20.
     const input: ResolvedCharacterInput = {
       ...BASE_INPUT,
       slots: [
@@ -1120,8 +1125,9 @@ describe("L92 attack_bonus / save_dc include attribute primitive deltas", () => 
     };
     const r = resolveModifiers(input);
     expect(r.totals["attribute.physical"]).toBe(16);
-    // L92: physical_saving_throw = PB + computed_phys_attr + saving_throw primitives.
-    expect(r.totals["physical_saving_throw"]).toBe(23);
+    // L129: physical_saving_throw = (PB if prof) + computed_attr + primitives.
+    // BASE_INPUT.proficientAttribute=null so PB seed is 0. 0 + 16 + 1 + 3 = 20.
+    expect(r.totals["physical_saving_throw"]).toBe(20);
   });
 });
 
@@ -1209,8 +1215,13 @@ describe("L96 Mashu's character integration test (curl data)", () => {
     expect(r.totals["proficiency_bonus"]).toBe(6);
     expect(r.totals["attack_bonus"]).toBe(14);
     expect(r.totals["save_dc"]).toBe(7);
+    // L129: only prof attribute's save gets PB in seed.
+    // proficientAttribute=physical. computed phys = 6 (raw 4 + Str Buff 5 + Str Ring 1 - Mirrored 4).
+    // mental: 0 (no PB) + raw(4) + Mental Buff(3) = 7.
+    // magical: 0 (no PB) + raw(2) + Magical Buff(2) = 4.
+    // physical: PB(6) + computed(6) + Resilient(1) + Proficient Save(6) = 19.
     expect(r.totals["physical_saving_throw"]).toBe(19);
-    expect(r.totals["mental_saving_throw"]).toBe(13);
-    expect(r.totals["magical_saving_throw"]).toBe(10);
+    expect(r.totals["mental_saving_throw"]).toBe(7);
+    expect(r.totals["magical_saving_throw"]).toBe(4);
   });
 });

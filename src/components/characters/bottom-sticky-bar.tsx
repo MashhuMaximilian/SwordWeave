@@ -580,32 +580,27 @@ export function BottomStickyBar({
 
   // Phase 8.M: detect multi-attribute attack_bonus / save_dc
   // primitives so the modal can show a selector.
+  // Phase 8.L round 129 (Mashu Q1): the attack bonus
+  // selector shows only attributes the user is proficient
+  // in. Previously it showed any attribute that had
+  // attack_bonus primitives, but the user can only "scale
+  // with" an attribute they're proficient in.
+  const profAttr = proficientAttribute?.toLowerCase() ?? null;
   const atkAttrsWithPrimitives: Array<"physical" | "mental" | "magical"> = [];
-  for (const a of ["physical", "mental", "magical"] as const) {
-    const delta = resolver?.totals[`attack_bonus.${a}`] ?? 0;
-    const list = resolver?.byTarget[`attack_bonus.${a}`] ?? [];
-    if (delta !== 0 || list.length > 0) {
-      if (!atkAttrsWithPrimitives.includes(a)) atkAttrsWithPrimitives.push(a);
-    }
+  if (profAttr === "physical" || profAttr === "mental" || profAttr === "magical") {
+    atkAttrsWithPrimitives.push(profAttr);
   }
   const showAttackSelector = atkAttrsWithPrimitives.length > 1;
 
-  // Phase 8.M: Save DC primitives can target EITHER:
-  // - defense_dc.<attr> (legacy format, e.g. Defender primitive)
-  // - save_dc.<attr> (newer format, e.g. Defense Magic Buff)
-  // Both contribute to the single Save DC total. Check both.
+  // Phase 8.L round 129 (Mashu Q1): the save DC selector
+  // shows only attributes the user is proficient in.
+  // Previously it showed any attribute with DC primitives,
+  // but the user can only "scale with" an attribute they're
+  // proficient in (DC primitives targeting other attributes
+  // are silently ignored).
   const saveAttrsWithPrimitives: Array<"physical" | "mental" | "magical"> = [];
-  for (const a of ["physical", "mental", "magical"] as const) {
-    const defenseDelta = resolver?.totals[`defense_dc.${a}`] ?? 0;
-    const defenseList = resolver?.byTarget[`defense_dc.${a}`] ?? [];
-    const saveDelta = resolver?.totals[`save_dc.${a}`] ?? 0;
-    const saveList = resolver?.byTarget[`save_dc.${a}`] ?? [];
-    if (
-      defenseDelta !== 0 || defenseList.length > 0 ||
-      saveDelta !== 0 || saveList.length > 0
-    ) {
-      if (!saveAttrsWithPrimitives.includes(a)) saveAttrsWithPrimitives.push(a);
-    }
+  if (profAttr === "physical" || profAttr === "mental" || profAttr === "magical") {
+    saveAttrsWithPrimitives.push(profAttr);
   }
   const showSaveSelector = saveAttrsWithPrimitives.length > 1;
 

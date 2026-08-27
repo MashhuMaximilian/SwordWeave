@@ -323,10 +323,19 @@ export function resolveModifiers(
   totals["save_dc.physical"] = 8 + input.pb + attrModForSeed("physical");
   totals["save_dc.mental"] = 8 + input.pb + attrModForSeed("mental");
   totals["save_dc.magical"] = 8 + input.pb + attrModForSeed("magical");
-  // Saving throws = PB + per-attribute modifier (no +8).
-  totals["physical_saving_throw"] = input.pb + attrModForSeed("physical");
-  totals["mental_saving_throw"] = input.pb + attrModForSeed("mental");
-  totals["magical_saving_throw"] = input.pb + attrModForSeed("magical");
+  // Saving throws = (PB if proficient in this attribute) + per-attribute modifier.
+  // Phase 8.L round 129 (Mashu 2026-08-26): save proficiency is
+  // ATTRIBUTE-LINKED — you only get the +PB bonus on the save of
+  // the attribute you're proficient in. Other saves use only
+  // the raw attribute modifier. Previously every save got PB
+  // unconditionally, which inflated non-prof saves and made
+  // Proficient Save (a primitive that also adds PB) cause
+  // double-counting on the prof save.
+  const pbForSave = (attr: "physical" | "mental" | "magical") =>
+    input.proficientAttribute === attr ? input.pb : 0;
+  totals["physical_saving_throw"] = pbForSave("physical") + attrModForSeed("physical");
+  totals["mental_saving_throw"] = pbForSave("mental") + attrModForSeed("mental");
+  totals["magical_saving_throw"] = pbForSave("magical") + attrModForSeed("magical");
 
   // Build the EvaluationContext for evaluateModifiers() so we get
   // parity with the existing engine.
@@ -1164,22 +1173,27 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   // applySubTargetToTotal below (operating on the FULL finished
   // total, not the seed). Otherwise multiply/divide would
   // double-count.
+  // Phase 8.L round 129 (Mashu): only the prof attribute's
+  // save gets PB in the seed (per Q2). Other saves get 0 PB.
+  const physSaveSeed = (input.proficientAttribute === "physical" ? input.pb : 0) + computedPhysAttr92;
   totals["physical_saving_throw"] = reapplyMirror(
-    input.pb + computedPhysAttr92,
+    physSaveSeed,
     mirroredExcept(
       "physical_saving_throw",
       ["action_roll.physical_save"],
     ),
   );
+  const mentalSaveSeed = (input.proficientAttribute === "mental" ? input.pb : 0) + computedMentalAttr92;
   totals["mental_saving_throw"] = reapplyMirror(
-    input.pb + computedMentalAttr92,
+    mentalSaveSeed,
     mirroredExcept(
       "mental_saving_throw",
       ["action_roll.mental_save"],
     ),
   );
+  const magicalSaveSeed = (input.proficientAttribute === "magical" ? input.pb : 0) + computedMagicalAttr92;
   totals["magical_saving_throw"] = reapplyMirror(
-    input.pb + computedMagicalAttr92,
+    magicalSaveSeed,
     mirroredExcept(
       "magical_saving_throw",
       ["action_roll.magical_save"],
@@ -1278,21 +1292,24 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   if (physContribs.length > 0) {
     totals["physical_saving_throw"] = applySubTargetToTotal(
       physContribs,
-      totals["physical_saving_throw"] ?? (input.pb + (input.attributes.physical ?? 0)),
+      // L129: only prof save gets PB in fallback.
+      totals["physical_saving_throw"] ?? ((input.proficientAttribute === "physical" ? input.pb : 0) + (input.attributes.physical ?? 0)),
     );
   }
   const menContribs = byTarget["action_roll.mental_save"] ?? [];
   if (menContribs.length > 0) {
     totals["mental_saving_throw"] = applySubTargetToTotal(
       menContribs,
-      totals["mental_saving_throw"] ?? (input.pb + (input.attributes.mental ?? 0)),
+      // L129: only prof save gets PB in fallback.
+      totals["mental_saving_throw"] ?? ((input.proficientAttribute === "mental" ? input.pb : 0) + (input.attributes.mental ?? 0)),
     );
   }
   const magContribs = byTarget["action_roll.magical_save"] ?? [];
   if (magContribs.length > 0) {
     totals["magical_saving_throw"] = applySubTargetToTotal(
       magContribs,
-      totals["magical_saving_throw"] ?? (input.pb + (input.attributes.magical ?? 0)),
+      // L129: only prof save gets PB in fallback.
+      totals["magical_saving_throw"] ?? ((input.proficientAttribute === "magical" ? input.pb : 0) + (input.attributes.magical ?? 0)),
     );
   }
 
