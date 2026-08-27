@@ -20,7 +20,7 @@
  */
 
 import { useState } from "react";
-import { X, Plus, Power, Pencil, Trash2, ChevronRight, ChevronLeft } from "lucide-react";
+import { X, Plus, Power, Pencil, Trash2, ChevronRight, ChevronLeft, CheckCircle2, MinusCircle } from "lucide-react";
 import {
   useRuntimeConditions,
   type RuntimeCondition,
@@ -253,12 +253,20 @@ function ConditionCardItem({
         ? "Short rest"
         : "Manual";
 
+  const isReadOnly = !onToggle;
   return (
     <article
       className={`rounded-md border bg-background p-3 transition-opacity ${
         active
-          ? "border-amber-500/40"
-          : "border-border opacity-60"
+          ? isReadOnly
+            // Phase 8.L round 126: auto-triggered cards get an
+            // emerald border when engaged (engine evaluated the
+            // predicate true). When inhibited, muted border.
+            ? "border-emerald-500/40"
+            : "border-amber-500/40"
+          : isReadOnly
+            ? "border-border"
+            : "border-border opacity-60"
       }`}
     >
       <header className="mb-2 flex items-start justify-between gap-2">
@@ -276,9 +284,9 @@ function ConditionCardItem({
           // Phase 8.L round 122 (Mashu 2026-08-26): when
           // onToggle is provided (sheet / custom conditions)
           // we render a real toggle button. For auto-triggered
-          // conditions (no onToggle) we render NOTHING — the
-          // card's opacity already indicates active/inactive,
-          // and a hidden on/off button would be misleading.
+          // conditions (no onToggle) we render a read-only
+          // ON/OFF indicator so the user can SEE state without
+          // being able to mutate it.
           <button
             type="button"
             onClick={onToggle}
@@ -293,6 +301,32 @@ function ConditionCardItem({
             <Power className="inline size-3" />
             {active ? "On" : "Off"}
           </button>
+        )}
+        {!onToggle && (
+          // Phase 8.L round 126 (Mashu 2026-08-26): auto-triggered
+          // conditions show a read-only state badge — colored
+          // emerald (engaged) or muted (inhibited). The user
+          // can SEE the engine's current evaluation but cannot
+          // mutate it.
+          <span
+            data-testid="auto-state"
+            aria-label={active ? "Auto-engaged by the engine" : "Auto-inhibited by the engine"}
+            title={active
+              ? "Engine has evaluated this condition as engaged — cannot be toggled manually"
+              : "Engine has evaluated this condition as inhibited — cannot be toggled manually"}
+            className={`shrink-0 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+              active
+                ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {active ? (
+              <CheckCircle2 className="size-3" />
+            ) : (
+              <MinusCircle className="size-3" />
+            )}
+            {active ? "On" : "Off"}
+          </span>
         )}
       </header>
 
