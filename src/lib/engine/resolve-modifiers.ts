@@ -1158,18 +1158,32 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   // Note: saving_throw.physical contributions are NOT applied via
   // PASS 2 (because the seed is on physical_saving_throw, not
   // saving_throw.physical). So we DO want to include them here.
-  // The skip list is empty for these.
+  //
+  // Phase 8.L round 117 (Mashu): action_roll.<save_sub> entries
+  // are SKIPPED here — they're applied as a final step by
+  // applySubTargetToTotal below (operating on the FULL finished
+  // total, not the seed). Otherwise multiply/divide would
+  // double-count.
   totals["physical_saving_throw"] = reapplyMirror(
     input.pb + computedPhysAttr92,
-    byTarget["physical_saving_throw"] ?? [],
+    mirroredExcept(
+      "physical_saving_throw",
+      ["action_roll.physical_save"],
+    ),
   );
   totals["mental_saving_throw"] = reapplyMirror(
     input.pb + computedMentalAttr92,
-    byTarget["mental_saving_throw"] ?? [],
+    mirroredExcept(
+      "mental_saving_throw",
+      ["action_roll.mental_save"],
+    ),
   );
   totals["magical_saving_throw"] = reapplyMirror(
     input.pb + computedMagicalAttr92,
-    byTarget["magical_saving_throw"] ?? [],
+    mirroredExcept(
+      "magical_saving_throw",
+      ["action_roll.magical_save"],
+    ),
   );
 
   // Phase 8.L round 80: write back the seeded saving throws.
@@ -1228,23 +1242,57 @@ const eq = resolveEquation(operandsRaw as never, ctx);
     }
     return cur;
   }
-  // Apply each save sub-target's contributions to its seed.
+  // Phase 8.L round 117 (Mashu 2026-08-26): apply sub-target
+  // ops on top of the FULL post-PASS-2 total (already seeded
+  // by reapplyMirror with PB + computed_attr + direct prims).
+  // Per Mashu: "conditions I add manually are the LAST
+  // calculated applied AFTER all effects". So magi x2 on
+  // magical save should multiply the FULL final magical
+  // save (10 = mod 4 + PB 6), giving 20 — NOT (PB + raw) × 2 = 16.
+  function applySubTargetToTotal(
+    subContribs: ReadonlyArray<ModifierContribution>,
+    baseTotal: number,
+  ): number {
+    if (subContribs.length === 0) return baseTotal;
+    // Filter out primitive contributions from action_roll
+    // that aren't pure operations (e.g. add/sub/mul/div). Right
+    // now subContribs only carries operation modifiers, but be
+    // defensive.
+    let cur = baseTotal;
+    for (const c of subContribs) {
+      const value = typeof c.value === "number" ? c.value : Number(c.value);
+      if (!Number.isFinite(value)) continue;
+      switch (c.op) {
+        case "add": cur = cur + value; break;
+        case "subtract": cur = cur - value; break;
+        case "multiply": cur = cur * value; break;
+        case "divide": if (value !== 0) cur = cur / value; break;
+        case "set": cur = value; break;
+        case "min": cur = Math.min(cur, value); break;
+        case "max": cur = Math.max(cur, value); break;
+      }
+    }
+    return cur;
+  }
   const physContribs = byTarget["action_roll.physical_save"] ?? [];
   if (physContribs.length > 0) {
-    totals["physical_saving_throw"] = applySubTargetToSeed(
-      "PHYSICAL_SAVE", "physical_saving_throw", "physical",
+    totals["physical_saving_throw"] = applySubTargetToTotal(
+      physContribs,
+      totals["physical_saving_throw"] ?? (input.pb + (input.attributes.physical ?? 0)),
     );
   }
   const menContribs = byTarget["action_roll.mental_save"] ?? [];
   if (menContribs.length > 0) {
-    totals["mental_saving_throw"] = applySubTargetToSeed(
-      "MENTAL_SAVE", "mental_saving_throw", "mental",
+    totals["mental_saving_throw"] = applySubTargetToTotal(
+      menContribs,
+      totals["mental_saving_throw"] ?? (input.pb + (input.attributes.mental ?? 0)),
     );
   }
   const magContribs = byTarget["action_roll.magical_save"] ?? [];
   if (magContribs.length > 0) {
-    totals["magical_saving_throw"] = applySubTargetToSeed(
-      "MAGICAL_SAVE", "magical_saving_throw", "magical",
+    totals["magical_saving_throw"] = applySubTargetToTotal(
+      magContribs,
+      totals["magical_saving_throw"] ?? (input.pb + (input.attributes.magical ?? 0)),
     );
   }
 
