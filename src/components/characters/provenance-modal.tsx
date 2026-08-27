@@ -32,6 +32,8 @@
  */
 
 import { useEffect } from "react";
+import { cn } from "@/lib/utils";
+import { OP_LABEL, OP_COLOR, formatOperandValue } from "./operator-symbol";
 import { X } from "lucide-react";
 import type {
   ModifierContribution,
@@ -50,17 +52,6 @@ export interface ProvenanceModalProps {
   onClose: () => void;
 }
 
-const OP_LABEL: Record<string, string> = {
-  add: "+",
-  subtract: "−",
-  set: "=",
-  min: "min",
-  max: "max",
-  multiply: "×",
-  divide: "÷",
-  grant: "grant",
-  revoke: "revoke",
-};
 
 function fmt(n: number): string {
   return n >= 0 ? `+${n}` : `${n}`;
@@ -163,11 +154,27 @@ function ContributionRow({ c }: { c: ModifierContribution }) {
           <ProvenanceBreadcrumb c={c} />
         </div>
         <div className="flex shrink-0 items-center gap-2 text-sm">
-          <span className="font-mono text-xs text-muted-foreground">
-            {OP_LABEL[c.op] ?? c.op}
-          </span>
-          <span className="font-mono font-semibold tabular-nums">
-            {fmt(c.value)}
+          {c.op !== "min" && c.op !== "max" ? (
+            <span
+              className={cn(
+                "font-mono text-lg font-bold leading-none",
+                OP_COLOR[c.op] ?? "text-foreground",
+              )}
+            >
+              {OP_LABEL[c.op] ?? c.op}
+            </span>
+          ) : (
+            <span
+              className={cn(
+                "font-mono text-lg font-bold leading-none",
+                OP_COLOR[c.op] ?? "text-foreground",
+              )}
+            >
+              {OP_LABEL[c.op] ?? c.op}
+            </span>
+          )}
+          <span className="font-mono text-xs tabular-nums text-muted-foreground">
+            {formatOperandValue(c.value)}
           </span>
           {c.preMirrorValue !== null && (
             <span

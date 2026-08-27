@@ -52,6 +52,11 @@ import {
   contributionsToSteps,
   type FormulaStep,
 } from "@/components/characters/formula-modal";
+import {
+  OP_LABEL,
+  OP_COLOR,
+  formatOperandValue,
+} from "@/components/characters/operator-symbol";
 import type { ResolvedModifiers } from "@/lib/engine/resolve-modifiers";
 console.log("PHASE8_L20_BUILD_MARKER:", "-5090448014643774033");
 

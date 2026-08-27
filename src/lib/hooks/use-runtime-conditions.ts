@@ -52,7 +52,7 @@ export interface RuntimeCondition {
   *conditions are read-only (you can engage/disengage but not
   *edit the modifier — go to the character sheet to change).
   */
-  readonly source: "custom" | "sheet";
+  readonly source: "custom" | "sheet" | "sheet-auto";
   /**
   *Phase 8.L round 48: when source === "sheet", the originating
   *entity (capabilityId, effectId, primitiveId, etc.) for the

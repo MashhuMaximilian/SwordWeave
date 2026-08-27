@@ -92,24 +92,21 @@ function syntheticContext(): ConditionContext {
     },
   };
 }
-
 /**
- * Check if a condition has a NON-COMPUTABLE pill token — i.e. a
- * `self:<flag>` that the engine doesn't know about. The engine
- * would return `false` for these flags forever (since they're never
- * set), so the modifier is effectively dead. The user wants to
- * manually toggle these.
- *
- * Returns true if the condition NEEDS manual toggling.
+ * Phase 8.L round 119 + 120 (Mashu 2026-08-26): classify a
+ * condition into "manual" (user toggles), "auto" (engine
+ * evaluates), or "ignore" (not interesting to display).
  */
-function isConditionEffective(condition: unknown): boolean {
-  if (!condition) return false;
-  // target/scene references → non-computable (correct)
+type ConditionKind = "manual" | "auto" | "ignore";
+function classifyCondition(condition: unknown): ConditionKind {
+  if (!condition) return "ignore";
   const ctx = syntheticContext();
-  if (!isConditionComputable(condition as never, ctx)) return true;
-  // For compound conditions, check each pill token. If any pill
-  // references a self-flag NOT in ALL_FLAGS, that pill can never
-  // evaluate to true automatically → it's a manual trigger.
+  // Non-computable -> manual toggle
+  if (!isConditionComputable(condition as never, ctx)) {
+    return "manual";
+  }
+  // Computable compound: if any pill is a manual trigger, the
+  // whole thing needs manual toggle. Otherwise, auto.
   if (
     typeof condition === "object" &&
     condition !== null &&
@@ -117,9 +114,21 @@ function isConditionEffective(condition: unknown): boolean {
   ) {
     const tokens = (condition as { tokens?: readonly string[] }).tokens ?? [];
     const pillTokens = tokens.filter((_t, i) => i % 2 === 0);
-    return pillTokens.some((token) => isManualTriggerToken(token));
+    const anyManual = pillTokens.some((token) => isManualTriggerToken(token));
+    if (anyManual) return "manual";
+    return "auto";
   }
-  return false;
+  // Single computable pill -> auto.
+  return "auto";
+}
+
+/**
+ * Phase 8.L round 119 (Mashu): compat alias returning whether
+ * the condition should appear in the panel (manual OR auto),
+ * false for ignore.
+ */
+function isConditionEffective(condition: unknown): boolean {
+  return classifyCondition(condition) !== "ignore";
 }
 
 function isManualTriggerToken(token: string): boolean {
@@ -181,13 +190,19 @@ function makeCondition(
   }>,
   sourceEntityId: string,
   sourceEntityType: "primitive" | "effect",
+  // Phase 8.L round 119 (Mashu 2026-08-26): sheet conditions
+  // default to OFF. The user has to opt-in to engage the
+  // modifier. Auto conditions still default to OFF — the engine
+  // will turn them on when the predicate is met.
+  active: boolean = false,
+  source: "sheet" | "sheet-auto" = "sheet",
 ): RuntimeCondition {
   return {
     id,
     title,
     description,
-    active: true,
-    source: "sheet",
+    active,
+    source,
     sourceEntityId,
     sourceEntityType,
     modifiers: modifiers.map((m) => ({
@@ -217,13 +232,20 @@ function scanPrimitives(
     mods.forEach((mod, idx) => {
       const condition = (mod as Record<string, unknown>)["condition"];
       if (!condition) return;
-      if (!isConditionEffective(condition)) return;
-      const id = buildId("sheet-primitive", String(link.primitiveId), idx);
+      const kind = classifyCondition(condition);
+      if (kind === "ignore") return;
+      const id = buildId(
+        kind === "auto" ? "sheet-auto-primitive" : "sheet-primitive",
+        String(link.primitiveId),
+        idx,
+      );
       out.push(
         makeCondition(
           id,
           link.primitive.name,
-          "Toggle to engage or inhibit this modifier.",
+          kind === "auto"
+            ? "Auto-evaluated by the engine based on character state."
+            : "Toggle to engage or inhibit this modifier.",
           [mod as unknown as {
             kind?: string;
             target?: string;
@@ -233,6 +255,12 @@ function scanPrimitives(
           }],
           String(link.primitiveId),
           "primitive",
+          // Phase 8.L round 119: sheet conditions default to
+          // Off (user has to opt-in to engage the modifier).
+          // Auto conditions default to the engine's current
+          // evaluation (handled by the engine evaluator).
+          false,
+          kind === "auto" ? "sheet-auto" : "sheet",
         ),
       );
     });
@@ -254,13 +282,20 @@ function scanCapabilities(
       mods.forEach((mod, idx) => {
         const condition = (mod as Record<string, unknown>)["condition"];
         if (!condition) return;
-        if (!isConditionEffective(condition)) return;
-        const id = buildId("sheet-effect", eff.id, idx);
+        const kind = classifyCondition(condition);
+        if (kind === "ignore") return;
+        const id = buildId(
+          kind === "auto" ? "sheet-auto-effect" : "sheet-effect",
+          eff.id,
+          idx,
+        );
         out.push(
           makeCondition(
             id,
             `${cap.capability.name} — ${eff.name}`,
-            "Toggle to engage or inhibit this modifier.",
+            kind === "auto"
+              ? "Auto-evaluated by the engine based on character state."
+              : "Toggle to engage or inhibit this modifier.",
             [mod as unknown as {
               kind?: string;
               target?: string;
@@ -270,6 +305,8 @@ function scanCapabilities(
             }],
             eff.id,
             "effect",
+            false,
+            kind === "auto" ? "sheet-auto" : "sheet",
           ),
         );
       });

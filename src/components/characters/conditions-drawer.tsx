@@ -56,6 +56,14 @@ export function ConditionsDrawer({ characterId, open, onClose }: ConditionsDrawe
 
   const customConditions = conditions.filter((c) => c.source === "custom");
   const sheetConditions = conditions.filter((c) => c.source === "sheet");
+  // Phase 8.L round 120 (Mashu 2026-08-26): conditions whose
+  // source is "sheet-auto" are engine-evaluated (HP thresholds,
+  // proficiencies, predicates). They live in a separate
+  // read-only section so the user can SEE what's currently
+  // engaged without being able to override the engine.
+  const autoTriggeredConditions = conditions.filter(
+    (c) => c.source === "sheet-auto",
+  );
 
   return (
     <>
@@ -129,13 +137,33 @@ export function ConditionsDrawer({ characterId, open, onClose }: ConditionsDrawe
                   key={c.id}
                   condition={c}
                   onToggle={() => toggle(c.id)}
-                  onEdit={() => openComposer(c)}
-                  // Phase 8.L round 68: sheet conditions are
-                  // toggleable now (the user wanted to engage/
-                  // inhibit primitive triggers). Remove is still
-                  // disallowed because the sheet entry will be
-                  // re-created on next render by the scanner.
-                  onRemove={() => undefined}
+                  // Phase 8.L round 119 (Mashu 2026-08-26): sheet
+                  // conditions are read-only — the user can
+                  // ONLY toggle engage/inhibit. Editing or deleting
+                  // doesn't make sense because the source entity
+                  // (primitive / effect) owns the modifier.
+                  readOnly
+                />
+              ))}
+            </Section>
+          )}
+
+          {/* Phase 8.L round 120 (Mashu 2026-08-26):
+              auto-triggered conditions — those whose predicate
+              is COMPUTABLE by the engine (HP thresholds,
+              proficiencies, predicates like is_tracking). They
+              can't be manually toggled — the engine decides
+              Engaged/Inhibited based on character state. We
+              surface them here as read-only so the user knows
+              why a primitive is or isn't currently active. */}
+          {autoTriggeredConditions.length > 0 && (
+            <Section title="Auto-triggered" count={autoTriggeredConditions.length}>
+              {autoTriggeredConditions.map((c) => (
+                <ConditionCardItem
+                  key={c.id}
+                  condition={c}
+                  onToggle={() => undefined}
+                  readOnly
                 />
               ))}
             </Section>
@@ -205,8 +233,8 @@ function ConditionCardItem({
 }: {
   condition: RuntimeCondition;
   onToggle: () => void;
-  onEdit: () => void;
-  onRemove: () => void;
+  onEdit?: () => void;
+  onRemove?: () => void;
   readOnly?: boolean;
 }) {
   const { active, title, description, tags, modifiers, durationTier } = condition;
@@ -236,20 +264,32 @@ function ConditionCardItem({
             </p>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-label={active ? "Deactivate" : "Activate"}
-          title={active ? "Active — click to deactivate" : "Inactive — click to activate"}
-          className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
-            active
-              ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500/30"
-              : "bg-muted text-muted-foreground hover:bg-muted/70"
-          }`}
-        >
-          <Power className="inline size-3" />
-          {active ? "On" : "Off"}
-        </button>
+        {onToggle ? (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-label={active ? "Deactivate" : "Activate"}
+            title={active ? "Active — click to deactivate" : "Inactive — click to activate"}
+            className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+              active
+                ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500/30"
+                : "bg-muted text-muted-foreground hover:bg-muted/70"
+            }`}
+          >
+            <Power className="inline size-3" />
+            {active ? "On" : "Off"}
+          </button>
+        ) : (
+          // Phase 8.L round 120 (Mashu): auto-triggered conditions
+          // show their current engine-evaluated state, not a
+          // user-controllable toggle.
+          <span
+            className="shrink-0 text-[10px] font-medium italic text-muted-foreground"
+            title="Auto-evaluated by the engine based on character state"
+          >
+            {active ? "Engaged" : "Inhibited"}
+          </span>
+        )}
       </header>
 
       {/* Phase 8.L round 53: per-modifier breakdown — target,
@@ -276,7 +316,7 @@ function ConditionCardItem({
       <footer className="mt-2 flex items-center justify-between gap-1 text-[10px] text-muted-foreground">
         <span>{durationLabel}</span>
         <div className="flex items-center gap-1">
-          {!readOnly && (
+          {!readOnly && onEdit && (
             <button
               type="button"
               onClick={onEdit}
@@ -287,15 +327,17 @@ function ConditionCardItem({
               <Pencil className="size-3" />
             </button>
           )}
-          <button
-            type="button"
-            onClick={onRemove}
-            className="rounded p-1 text-destructive transition-colors hover:bg-destructive/10"
-            aria-label="Delete condition"
-            title="Delete"
-          >
-            <Trash2 className="size-3" />
-          </button>
+          {!readOnly && onRemove && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="rounded p-1 text-destructive transition-colors hover:bg-destructive/10"
+              aria-label="Delete condition"
+              title="Delete"
+            >
+              <Trash2 className="size-3" />
+            </button>
+          )}
         </div>
       </footer>
     </article>

@@ -45,7 +45,8 @@
  * `document.body` restores full-viewport sizing.
  */
 
-import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { Fragment, type ReactNode, useEffect, useState } from "react";
+import { OP_LABEL, OP_COLOR, formatOperandValue } from "./operator-symbol";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -329,47 +330,13 @@ function isProficiencyName(name: string): boolean {
   return /^proficient/i.test(name);
 }
 
-const OP_LABEL: Record<string, string> = {
-  add: "+",
-  subtract: "−",
-  set: "=",
-  min: "↑",
-  max: "↓",
-  multiply: "×",
-  divide: "÷",
-  grant: "grant",
-  revoke: "revoke",
-};
-
-// Phase 8.L round 118 (Mashu 2026-08-26): color-code each
-// operator so users can scan a row and instantly see what kind
-// of operation it is.
-const OP_COLOR: Record<string, string> = {
-  add: "text-emerald-600 dark:text-emerald-400",
-  subtract: "text-red-600 dark:text-red-400",
-  multiply: "text-violet-600 dark:text-violet-400",
-  divide: "text-amber-600 dark:text-amber-400",
-  set: "text-yellow-600 dark:text-yellow-400",
-  min: "text-emerald-600 dark:text-emerald-400",
-  max: "text-red-600 dark:text-red-400",
-  grant: "text-sky-600 dark:text-sky-400",
-  revoke: "text-slate-600 dark:text-slate-400",
-};
 
 function fmt(n: number | null | undefined): string {
   if (n === null || n === undefined) return "";
   return n >= 0 ? `+${n}` : `${n}`;
 }
 
-// Phase 8.L round 118 (Mashu 2026-08-26): clean operand value.
-// Bare positive numbers (no leading +); negatives in parens,
-// e.g. (-3). Zero renders as 0.
-function formatOperandValue(n: number | null | undefined): string {
-  if (n === null || n === undefined) return "";
-  if (n === 0) return "0";
-  if (n < 0) return `(${n})`;
-  return String(n);
-}
+// formatOperandValue imported from "./operator-symbol"
 
 export function FormulaModal({
   title,
