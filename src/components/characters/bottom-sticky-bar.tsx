@@ -2479,17 +2479,29 @@ function PracticeDetailModal({
               Practice = {practice.attribute.toUpperCase()} attribute (mod) +
               practice primitive contributions + PB (if proficient)
             </p>
-            <p className="rounded-md border border-dashed border-border bg-background/50 p-2 font-mono text-[11px] text-muted-foreground">
-              {fmt(attrMod)} (attr mod){" "}
-              <span className="text-muted-foreground/70">(base + attr primitives)</span>{" "}
-              {isProf ? fmt(pb) : "+0"} (PB){" "}
-              {practicePrimitiveTotal !== 0 && (
+            <p className="rounded-md border border-dashed border-border bg-background/50 p-2 font-mono text-[11px]">
+              {/* Phase 8.L round 122 (Mashu 2026-08-26): the
+                  practice trace now uses the same color-coded
+                  operator + small-value format as the other
+                  modals. Previously it was a single line of
+                  +6 +6 +8 = +20 with no color, hard to scan. */}
+              <span className="text-muted-foreground">{formatOperandValue(attrMod)}</span>{" "}
+              <span className="text-muted-foreground/70">(attr mod)</span>{" "}
+              {isProf && (
                 <>
-                  {fmt(practicePrimitiveTotal)} (practice primitives){" "}
-                  <span className="text-muted-foreground/70">({practice.name.toLowerCase()}-specific)</span>{" "}
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">+</span>
+                  <span className="text-muted-foreground">{formatOperandValue(pb)}</span>{" "}
+                  <span className="text-muted-foreground/70">(PB)</span>{" "}
                 </>
               )}
-              = {fmt(practice.total)}
+              {practicePrimitiveTotal !== 0 && (
+                <>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">+</span>
+                  <span className="text-muted-foreground">{formatOperandValue(practicePrimitiveTotal)}</span>{" "}
+                  <span className="text-muted-foreground/70">(practice primitives)</span>{" "}
+                </>
+              )}
+              <span className="font-semibold text-foreground">= {fmt(practice.total)}</span>
               <AxisMarkers byTarget={byTarget} target={practiceTarget} />
             </p>
             {(practiceMin > 0 || practiceMaxDisplay !== null) ? (
@@ -2519,11 +2531,17 @@ function PracticeDetailModal({
                       <div className="flex items-center justify-between gap-2">
                         <span className="flex flex-wrap items-center gap-1">
                           <strong>{c.primitiveName}</strong>
-                          <span className="font-mono text-teal-700 dark:text-teal-300">
-                            {c.value >= 0 ? `+${c.value}` : c.value}
+                          {/* Phase 8.L round 122: operator is
+                              color-coded + large, value is small
+                              + gray — same as the breakdown rows. */}
+                          <span className={cn(
+                            "font-mono text-base font-bold leading-none",
+                            OP_COLOR[c.op] ?? "text-foreground",
+                          )}>
+                            {OP_LABEL[c.op] ?? c.op}
                           </span>
-                          <span className="font-mono text-[9px] uppercase text-muted-foreground">
-                            ({c.op === "add" ? "add" : c.op === "subtract" ? "subtract" : c.op})
+                          <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                            {formatOperandValue(c.value)}
                           </span>
                         </span>
                         <span className={cn("font-mono text-[10px]", c.conditionActive === false ? "text-red-500" : "text-teal-600 dark:text-teal-400")}>
@@ -2769,9 +2787,24 @@ function EncumbranceFormulaModal({
                 {fmt(capacity)}
               </span>
             </div>
-            <p className="rounded-md border border-dashed border-border bg-background/50 p-2 font-mono text-[11px] text-muted-foreground">
-              {sizeCap} (size: {characterSize}) + {physBonus} (Physical {fmt(physicalMod)} × 5)
-              {primitiveBonus !== 0 ? ` + ${primitiveBonus} (primitives)` : ""} = {fmt(capacity)}
+            <p className="rounded-md border border-dashed border-border bg-background/50 p-2 font-mono text-[11px]">
+              {/* Phase 8.L round 122 (Mashu 2026-08-26): color-coded
+                  operator + small-value format. × is shown in
+                  violet (multiply color), + is emerald. */}
+              <span className="text-muted-foreground">{formatOperandValue(sizeCap)}</span>{" "}
+              <span className="text-muted-foreground/70">(size: {characterSize})</span>{" "}
+              <span className="font-bold text-emerald-600 dark:text-emerald-400">+</span>
+              <span className="text-muted-foreground">{formatOperandValue(physBonus)}</span>{" "}
+              <span className="text-muted-foreground/70">(Physical value × 5)</span>
+              {primitiveBonus !== 0 && (
+                <>
+                  {" "}
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">+</span>
+                  <span className="text-muted-foreground">{formatOperandValue(primitiveBonus)}</span>{" "}
+                  <span className="text-muted-foreground/70">(primitives)</span>
+                </>
+              )}{" "}
+              <span className="font-semibold text-foreground">= {fmt(capacity)}</span>
             </p>
             {primitiveContributions && primitiveContributions.length > 0 ? (
               <ul className="mt-2 space-y-1">
@@ -2779,9 +2812,17 @@ function EncumbranceFormulaModal({
                   <li key={`${p.id}-${p.target}`} className="rounded-md border border-border bg-background px-2 py-1.5">
                     <div className="flex items-center justify-between gap-1.5">
                       <span className="truncate font-medium">{p.name}</span>
-                      <span className="shrink-0 font-mono text-teal-700 dark:text-teal-300">
-                        {p.value >= 0 ? `+${p.value}` : p.value}
-                      </span>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <span className={cn(
+                          "font-mono text-base font-bold leading-none",
+                          OP_COLOR[p.op] ?? "text-foreground",
+                        )}>
+                          {OP_LABEL[p.op] ?? p.op}
+                        </span>
+                        <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                          {formatOperandValue(p.value)}
+                        </span>
+                      </div>
                     </div>
                     {(p.provenance.heritageName || p.provenance.capabilityName || p.provenance.effectName) ? (
                       <span className="pl-1 text-[10px] italic text-muted-foreground">

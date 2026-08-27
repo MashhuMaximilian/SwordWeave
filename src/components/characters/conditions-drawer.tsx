@@ -28,6 +28,7 @@ import {
 import { ConditionComposer } from "@/components/characters/condition-composer";
 import type { HardModifier } from "@/types/swordweave";
 import { MODIFIER_TARGET_SPEC } from "@/lib/primitives/modifier-scope";
+import { humanReadableToken } from "@/lib/engine/condition-dictionary";
 
 type ConditionModifier = HardModifier;
 
@@ -264,7 +265,13 @@ function ConditionCardItem({
             </p>
           )}
         </div>
-        {onToggle ? (
+        {onToggle && (
+          // Phase 8.L round 122 (Mashu 2026-08-26): when
+          // onToggle is provided (sheet / custom conditions)
+          // we render a real toggle button. For auto-triggered
+          // conditions (no onToggle) we render NOTHING — the
+          // card's opacity already indicates active/inactive,
+          // and a hidden on/off button would be misleading.
           <button
             type="button"
             onClick={onToggle}
@@ -279,16 +286,6 @@ function ConditionCardItem({
             <Power className="inline size-3" />
             {active ? "On" : "Off"}
           </button>
-        ) : (
-          // Phase 8.L round 120 (Mashu): auto-triggered conditions
-          // show their current engine-evaluated state, not a
-          // user-controllable toggle.
-          <span
-            className="shrink-0 text-[10px] font-medium italic text-muted-foreground"
-            title="Auto-evaluated by the engine based on character state"
-          >
-            {active ? "Engaged" : "Inhibited"}
-          </span>
         )}
       </header>
 
@@ -438,22 +435,55 @@ function formatValue(value: ConditionModifier["value"]): string {
 }
 
 function formatTriggersWhen(
-  cond: { key?: string; operator?: string; value?: string | number | boolean } | undefined,
+  cond: unknown,
 ): string {
-  if (!cond || (!cond.key && !cond.value)) return "always";
-  const op = cond.operator ?? "equals";
-  const valueStr = typeof cond.value === "string" ? cond.value : String(cond.value ?? "");
-  const key = cond.key ?? "";
-  // Compact operator label
-  const opLabel: Record<string, string> = {
-    equals: "=",
-    "not-equals": "≠",
-    "greater-than": ">",
-    "greater-than-or-equal": "≥",
-    "less-than": "<",
-    "less-than-or-equal": "≤",
-    includes: "includes",
-    exists: "exists",
-  };
-  return `${key} ${opLabel[op] ?? op} ${valueStr}`.trim();
+  if (!cond) return "always";
+  // Phase 8.L round 122 (Mashu 2026-08-26): the condition
+  // object can be a compound (kind + tokens), a leaf
+  // (key/operator/value), or a stat| token. Previously the
+  // function only handled the leaf shape, so anything else
+  // fell through to "always" — misleading. Now we branch
+  // on shape.
+  if (typeof cond !== "object" || cond === null) return "always";
+  const c = cond as Record<string, unknown>;
+  // Compound: AND/OR of multiple pills.
+  if (c["kind"] === "compound") {
+    const tokens = Array.isArray(c["tokens"]) ? c["tokens"] : [];
+    const parts: string[] = [];
+    for (let i = 0; i < tokens.length; i++) {
+      const tok = String(tokens[i] ?? "");
+      if (i % 2 === 0) {
+        // pill token — pipe through humanReadableToken for
+        // friendly output (e.g. "actor-below-half-hp" →
+        // "HP below 50%", "is_tracking" → "is_tracking").
+        parts.push(humanReadableToken(tok));
+      } else {
+        // connector (AND / OR)
+        parts.push(String(tok).toUpperCase());
+      }
+    }
+    return parts.join(" ");
+  }
+  // Leaf: { key, operator, value }
+  if (typeof c["key"] === "string" || c["value"] !== undefined) {
+    const op = (c["operator"] as string) ?? "equals";
+    const valueStr =
+      typeof c["value"] === "string"
+        ? c["value"]
+        : String(c["value"] ?? "");
+    const key = (c["key"] as string) ?? "";
+    const opLabel: Record<string, string> = {
+      equals: "=",
+      "not-equals": "≠",
+      "greater-than": ">",
+      "greater-than-or-equal": "≥",
+      "less-than": "<",
+      "less-than-or-equal": "≤",
+      includes: "includes",
+      exists: "exists",
+    };
+    return `${key} ${opLabel[op] ?? op} ${valueStr}`.trim();
+  }
+  // stat| token or other — best-effort stringification
+  return String(cond);
 }
