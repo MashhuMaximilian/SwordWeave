@@ -36,9 +36,18 @@ interface ConditionsDrawerProps {
   characterId: string;
   open: boolean;
   onClose: () => void;
+  /**
+   * Phase 8.L round 127 (Mashu 2026-08-26): live evaluation
+   * of each auto-triggered condition by the engine, computed
+   * against the current character state. The drawer uses
+   * this to drive the read-only ON/OFF badge instead of the
+   * stored `active` flag (which is hardcoded `false` for
+   * sheet-auto at creation time and never updated).
+   */
+  autoEvaluated?: ReadonlyMap<string, { active: boolean; computable: boolean }>;
 }
 
-export function ConditionsDrawer({ characterId, open, onClose }: ConditionsDrawerProps) {
+export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: ConditionsDrawerProps) {
   const { conditions, hydrated, create, update, remove, toggle } =
     useRuntimeConditions(open ? characterId : null);
   const [composerInitial, setComposerInitial] = useState<RuntimeCondition | null>(
@@ -165,10 +174,16 @@ export function ConditionsDrawer({ characterId, open, onClose }: ConditionsDrawe
                 // state. Previously we passed onToggle={() =>
                 // undefined} but that's a truthy function and the
                 // UI rendered the Off button anyway.
+                //
+                // Phase 8.L round 127: liveActive comes from
+                // the engine's current evaluation against the
+                // character state, so the ON/OFF badge reflects
+                // reality (e.g. "ON" when HP drops below 50%).
                 <ConditionCardItem
                   key={c.id}
                   condition={c}
                   readOnly
+                  liveActive={autoEvaluated?.get(c.id)?.active ?? false}
                 />
               ))}
             </Section>
@@ -235,6 +250,7 @@ function ConditionCardItem({
   onEdit,
   onRemove,
   readOnly,
+  liveActive,
 }: {
   condition: RuntimeCondition;
   // Phase 8.L round 125 (Mashu 2026-08-26): onToggle is
@@ -244,8 +260,18 @@ function ConditionCardItem({
   onEdit?: () => void;
   onRemove?: () => void;
   readOnly?: boolean;
+  /**
+   * Phase 8.L round 127 (Mashu 2026-08-26): engine-computed
+   * active state for auto-triggered conditions. When provided,
+   * overrides the stored `active` value so the badge reflects
+   * the live evaluation (e.g. HP below 50% predicate).
+   */
+  liveActive?: boolean;
 }) {
-  const { active, title, description, tags, modifiers, durationTier } = condition;
+  const { active: storedActive, title, description, tags, modifiers, durationTier } = condition;
+  // Phase 8.L round 127: for auto-triggered cards, prefer the
+  // engine-computed live state over the stored value.
+  const active = liveActive !== undefined ? liveActive : storedActive;
   const durationLabel =
     durationTier === "long_rest"
       ? "Long rest"

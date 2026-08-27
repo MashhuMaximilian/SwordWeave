@@ -740,8 +740,9 @@ export function CharacterSheetView(props: CharacterSheetProps) {
   // Phase 8.L round 68: sync primitive/capability non-computable
   // conditions into the right drawer's "From sheet" section so
   // the user can engage/inhibit them manually.
-  useSheetConditions({
+  const { sheetConditionIds, autoEvaluated } = useSheetConditions({
     characterId: props.id,
+    conditionContext: props.conditionContext ?? null,
     primitiveLinks: props.primitiveLinks.map((l) => ({
       primitiveId: l.primitiveId,
       primitive: {
@@ -859,6 +860,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         characterId={props.id}
         open={conditionsOpen}
         onClose={() => setConditionsOpen(false)}
+        autoEvaluated={autoEvaluated}
       />
     <div className="mx-auto w-full max-w-screen-2xl px-5 py-8 pb-32">
       {/* Phase 8.4 (Mashu 2026-07-28): the in-page header

@@ -35,11 +35,14 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import {
+  evaluateCondition,
+  isConditionComputable,
+} from "@/lib/engine/condition-evaluator";
+import type { ConditionContext } from "@/lib/engine/condition-evaluator";
+import {
   useRuntimeConditions,
   type RuntimeCondition,
 } from "./use-runtime-conditions";
-import { isConditionComputable } from "@/lib/engine/condition-evaluator";
-import type { ConditionContext } from "@/lib/engine/condition-evaluator";
 
 type PrimitiveLinkInput = {
   primitiveId: number;
@@ -394,14 +397,31 @@ function reconcile(
   return { toCreate, ids };
 }
 
+
+
+export interface AutoEvaluatedConditionState {
+  readonly conditionId: string;
+  readonly active: boolean;
+  readonly computable: boolean;
+}
+
 export function useSheetConditions(input: {
   characterId: string | null;
   primitiveLinks: ReadonlyArray<PrimitiveLinkInput>;
   capabilityLinks: ReadonlyArray<CapabilityLinkInput>;
+  /**
+   * Phase 8.L round 127 (Mashu 2026-08-26): when provided,
+   * the hook re-evaluates each auto-triggered condition
+   * against the current character state and exposes the
+   * results. The conditions drawer uses this to show ON/OFF
+   * state that matches the engine's actual evaluation.
+   */
+  conditionContext?: ConditionContext | null;
 }): {
   sheetConditionIds: ReadonlySet<string>;
+  autoEvaluated: ReadonlyMap<string, AutoEvaluatedConditionState>;
 } {
-  const { characterId, primitiveLinks, capabilityLinks } = input;
+  const { characterId, primitiveLinks, capabilityLinks, conditionContext } = input;
   const { conditions, create } = useRuntimeConditions(characterId);
 
   const desired = useMemo(() => {
@@ -449,5 +469,29 @@ export function useSheetConditions(input: {
     return new Set(conditions.filter((c) => c.source === "sheet").map((c) => c.id));
   }, [conditions]);
 
-  return { sheetConditionIds };
+  // Phase 8.L round 127: re-evaluate each auto-triggered
+  // condition against the current character state.
+  const autoEvaluated = useMemo(() => {
+    const out = new Map<string, AutoEvaluatedConditionState>();
+    for (const cond of desired) {
+      const mod = cond.modifiers[0];
+      if (!mod) continue;
+      const condObj = (mod as unknown as Record<string, unknown>)["condition"];
+      if (!condObj) continue;
+      const condition = condObj as Parameters<typeof evaluateCondition>[0];
+      const computable = conditionContext
+        ? isConditionComputable(condition, conditionContext)
+        : false;
+      const active = conditionContext && computable
+        ? evaluateCondition(condition, conditionContext)
+        : false;
+      out.set(cond.id, { conditionId: cond.id, active, computable });
+    }
+    return out;
+  }, [desired, conditionContext]);
+
+  return {
+    sheetConditionIds,
+    autoEvaluated,
+  };
 }
