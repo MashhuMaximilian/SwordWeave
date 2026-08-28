@@ -560,12 +560,11 @@ export const SUB_CHOICE_KEYWORDS: readonly SubChoiceKeyword[] = [
   // Action.
   { label: "Attack Roll", group: "Action" },
   { label: "Action Roll", group: "Action" },
-  { label: "Proficiency Bonus", group: "Action" },
   { label: "Item Slot Cost", group: "Action" },
-  // Phase 8.L round 133 (Mashu): separate tags for
-  // proficiency and expertise. The engine treats both as
-  // adding PB to the targeted save; expertise stacks with
-  // proficiency (so 2x PB if both are granted).
+  // Phase 8.L round 133/134 (Mashu): [Proficiency] and
+  // [Expertise] are the user-facing labels. Both add PB
+  // to the targeted save; expertise requires existing
+  // prof (otherwise skipped + warning logged).
   { label: "Proficiency", group: "Action" },
   { label: "Expertise", group: "Action" },
   // Phase 8.I i2.5f (Mashu 2026-08-05): Mashu flagged these as

@@ -715,7 +715,7 @@ describe("SUB_CHOICE_KEYWORDS — sub-choice picker", () => {
       // Vitality
       "Max Vitality", "Current Vitality",
       // Action
-      "Attack Roll", "Action Roll", "Proficiency Bonus", "Item Slot Cost",
+      "Attack Roll", "Action Roll", "Item Slot Cost", "Proficiency", "Expertise",
     ];
     for (const label of expectedLabels) {
       expect(SUB_CHOICE_KEYWORDS.find((k) => k.label === label)).toBeDefined();

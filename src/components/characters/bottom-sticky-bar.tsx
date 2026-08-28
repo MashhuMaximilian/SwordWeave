@@ -856,7 +856,20 @@ export function BottomStickyBar({
                   { attr: "magical", label: "MAGI", mod: magiMod, save: magiSave },
                 ] as const
               ).map(({ attr, label, mod: m, save: s }) => {
-                const isProf = proficientAttribute?.toLowerCase() === attr;
+                // Phase 8.L round 134 (Mashu): PROF tag also
+                // appears when proficiency is granted via
+                // conditions (grant keyword [proficiency] /
+                // [proficiency_bonus] / [expertise] / derived
+                // (pb | expertise) on target=attribute.<attr>).
+                // Detected by checking the
+                // <attr>_saving_throw contributions — the
+                // engine materializes each grant as a PB-sized
+                // addition to that target.
+                const saveContribs = resolver?.byTarget?.[`${attr}_saving_throw`] ?? [];
+                const grantedProf = saveContribs.some(
+                  (c) => c.op === "add" && c.value === pb,
+                );
+                const isProf = proficientAttribute?.toLowerCase() === attr || grantedProf;
                 return (
                   <button
                     key={attr}
