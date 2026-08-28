@@ -488,11 +488,27 @@ export function useSheetConditions(input: {
       const condObj = (mod as unknown as Record<string, unknown>)["condition"];
       if (!condObj) continue;
       const condition = condObj as Parameters<typeof evaluateCondition>[0];
-      const computable = conditionContext
-        ? isConditionComputable(condition, conditionContext)
+      // Phase 8.L round 132 (Mashu): extract the target
+      // practice from the modifier metadata so predicates
+      // like \`self:not_proficient\` can evaluate against
+      // the right axis without explicit currentPractice.
+      // Falls back to the page-level context otherwise.
+      const targetScope = (mod as { metadata?: { targetScope?: { layer?: string; values?: readonly string[] } } }).metadata?.targetScope;
+      const inlinePractice = targetScope?.layer === "PRACTICE" ? targetScope.values?.[0]?.toLowerCase() : null;
+      const inlineAttribute = targetScope?.layer === "ATTRIBUTE" ? targetScope.values?.[0]?.toLowerCase() : null;
+      const ctxForEval: typeof conditionContext | undefined =
+        conditionContext && (inlinePractice || inlineAttribute)
+          ? ({
+              ...conditionContext,
+              currentPractice: (inlinePractice as never) ?? conditionContext.currentPractice ?? null,
+              currentAttribute: (inlineAttribute as never) ?? conditionContext.currentAttribute ?? null,
+            } as typeof conditionContext)
+          : conditionContext;
+      const computable = ctxForEval
+        ? isConditionComputable(condition, ctxForEval)
         : false;
-      const active = conditionContext && computable
-        ? evaluateCondition(condition, conditionContext)
+      const active = ctxForEval && computable
+        ? evaluateCondition(condition, ctxForEval)
         : false;
       out.set(cond.id, { conditionId: cond.id, active, computable });
     }
