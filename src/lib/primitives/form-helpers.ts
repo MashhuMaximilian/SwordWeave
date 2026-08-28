@@ -562,6 +562,12 @@ export const SUB_CHOICE_KEYWORDS: readonly SubChoiceKeyword[] = [
   { label: "Action Roll", group: "Action" },
   { label: "Proficiency Bonus", group: "Action" },
   { label: "Item Slot Cost", group: "Action" },
+  // Phase 8.L round 133 (Mashu): separate tags for
+  // proficiency and expertise. The engine treats both as
+  // adding PB to the targeted save; expertise stacks with
+  // proficiency (so 2x PB if both are granted).
+  { label: "Proficiency", group: "Action" },
+  { label: "Expertise", group: "Action" },
   // Phase 8.I i2.5f (Mashu 2026-08-05): Mashu flagged these as
   // missing — the bias op is gone but grant/revoke modifiers
   // still need keyword tags to distinguish them at runtime.

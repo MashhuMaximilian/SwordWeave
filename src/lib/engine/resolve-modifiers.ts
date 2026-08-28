@@ -726,7 +726,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
               },
             });
             byTarget[t2] = list2;
-          } else if (kw === "proficiency_bonus" || kw === "pb") {
+          } else if (kw === "proficiency_bonus" || kw === "pb" || kw === "proficiency" || kw === "expertise") {
             // Phase 8.L round 132 (Mashu): keyword grant
             // \`[proficiency_bonus]\` (or \`pb\`) on an attribute
             // target adds PB to that attribute's saving throw.
@@ -766,6 +766,57 @@ const eq = resolveEquation(operandsRaw as never, ctx);
               });
               byTarget[saveTarget] = list3;
             }
+          }
+        }
+      }
+
+      // Phase 8.L round 133 (Mashu): grant + derived(pb |
+      // expertise) on an attribute target also adds PB to
+      // the corresponding save. Mirrors the keyword grant
+      // (above) so that \`grant{"kind":"derived","which":"pb"}\`
+      // and \`grant{"kind":"derived","which":"expertise"}\` both
+      // produce the same effect as
+      // \`grant{"kind":"keyword","text":"proficiency_bonus"}\`.
+      // The engine treats proficiency and \`+PB\` as equivalent
+      // — both grant proficiency.
+      if (
+        mod.operation === "grant"
+        && mod.value
+        && typeof mod.value === "object"
+        && (mod.value as { kind?: string }).kind === "derived"
+      ) {
+        const which = (mod.value as { which?: string }).which ?? "";
+        if (which === "pb" || which === "expertise") {
+          if (t.startsWith("attribute.")) {
+            const attr = t.slice("attribute.".length);
+            const saveTarget = `${attr}_saving_throw`;
+            const list4 = byTarget[saveTarget] ?? [];
+            list4.push({
+              target: saveTarget,
+              primitiveId: slot.primitiveId,
+              primitiveName: slot.name,
+              primitiveCategory: slot.category,
+              op: "add",
+              value: input.pb,
+              rawValue: mod.value,
+              preMirrorValue: null,
+              tags: [],
+              condition: conditionRaw,
+              originCapabilityId: slot.originCapabilityId ?? null,
+              conditionActive,
+              hasCondition,
+              conditionComputable,
+              stacking: mod.stacking ?? "stack",
+              inhibited: entryInhibited,
+              provenance: {
+                heritageName: sourceNames?.get(slot.primitiveId)?.heritageName ?? null,
+                capabilityName: sourceNames?.get(slot.primitiveId)?.capabilityName ?? null,
+                effectName: sourceNames?.get(slot.primitiveId)?.effectName ?? null,
+                accordion: sourceNames?.get(slot.primitiveId)?.accordion ?? null,
+                kind: deriveProvenanceKind(slot),
+              },
+            });
+            byTarget[saveTarget] = list4;
           }
         }
       }
