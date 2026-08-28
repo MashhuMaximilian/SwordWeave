@@ -778,8 +778,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
                 input.proficientAttribute?.toLowerCase() === attr ||
                 (byTarget[saveTarget] ?? []).some(
                   (c) =>
-                    c.primitiveId !== slot.primitiveId
-                    && c.op === "add"
+                    c.op === "add"
                     && c.value === input.pb
                     && !(c.tags ?? []).includes("expertise"),
                 );
@@ -870,8 +869,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
                 input.proficientAttribute?.toLowerCase() === attr ||
                 (byTarget[saveTarget] ?? []).some(
                   (c) =>
-                    c.primitiveId !== slot.primitiveId
-                    && c.op === "add"
+                    c.op === "add"
                     && c.value === input.pb
                     && !(c.tags ?? []).includes("expertise"),
                 );
