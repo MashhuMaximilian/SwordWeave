@@ -774,10 +774,6 @@ const eq = resolveEquation(operandsRaw as never, ctx);
             if (t.startsWith("attribute.")) {
               const attr = t.slice("attribute.".length);
               const saveTarget = `${attr}_saving_throw`;
-              const existingByTarget = (byTarget[saveTarget] ?? []).map((c) => ({ name: c.primitiveName, val: c.value, tags: c.tags }));
-              if (typeof window !== "undefined") {
-                console.log("[EXP-KW]", "name:", slot.name, "t:", t, "byTarget entries:", JSON.stringify(existingByTarget));
-              }
               const alreadyProf =
                 input.proficientAttribute?.toLowerCase() === attr ||
                 (byTarget[saveTarget] ?? []).some(
@@ -879,7 +875,6 @@ const eq = resolveEquation(operandsRaw as never, ctx);
                 );
               if (!alreadyProf) {
                 if (typeof window !== "undefined") {
-                  console.log("[EXP-TRACE-BLOCKED]", "name:", slot.name, "t:", t, "byTarget entries:", (byTarget[saveTarget] ?? []).map((c) => ({ name: c.primitiveName, val: c.value, tags: c.tags })));
                   try {
                     const wkey = `sw:expertise-blocked:${attr}:${slot.primitiveId}`;
                     if (!window.sessionStorage.getItem(wkey)) {
@@ -1782,7 +1777,6 @@ export function parityCheck(input: ResolvedCharacterInput): {
   // Flatten to a HardModifier[] the engine understands.
   const flat: HardModifier[] = [];
   for (const slot of input.slots) {
-    console.log("[DBG_LOOP] slot:", slot.name, "mods:", slot.hardModifiers.length);
     for (const mod of slot.hardModifiers) {
       if (slot.isMirrored && slot.isMirrorable) {
         // Apply mirror to the value (and op if needed).
