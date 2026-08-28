@@ -108,20 +108,22 @@ function classifyCondition(condition: unknown): ConditionKind {
   if (!isConditionComputable(condition as never, ctx)) {
     return "manual";
   }
-  // Phase 8.L round 130 (Mashu): compound conditions with
-  // mixed pills (one auto-computable, one manual trigger) are
-  // treated as AUTO. The engine evaluates whatever it can;
-  // the user toggles the manual flags separately via the
-  // composer (or future trigger UI). Previously we routed to
-  // the manual section, which forced the user to engage the
-  // entire compound — confusing because the manual pill
-  // (\`is_tracking\`) is part of the condition but doesn't
-  // actually block the modifier from firing.
-  //
-  // If any pill is non-computable we still route to manual,
-  // so the user can engage/inhibit the WHOLE condition. But
-  // once it's engaged, the engine evaluates each pill on its
-  // own merits.
+  // Computable compound: if any pill is a manual trigger,
+  // route to manual section so the user can engage/inhibit
+  // the whole compound. The engine still evaluates each
+  // pill on its own merits once the condition is active.
+  if (
+    typeof condition === "object" &&
+    condition !== null &&
+    (condition as { kind?: string }).kind === "compound"
+  ) {
+    const tokens = (condition as { tokens?: readonly string[] }).tokens ?? [];
+    const pillTokens = tokens.filter((_t, i) => i % 2 === 0);
+    const anyManual = pillTokens.some((token) => isManualTriggerToken(token));
+    if (anyManual) return "manual";
+    return "auto";
+  }
+  // Single computable pill -> auto.
   return "auto";
 }
 
@@ -471,9 +473,16 @@ export function useSheetConditions(input: {
 
   // Phase 8.L round 127: re-evaluate each auto-triggered
   // condition against the current character state.
+  // Phase 8.L round 132 (Mashu): include ALL conditions
+  // (sheet, auto, AND custom user-created) in the
+  // autoEvaluated map so the drawer can show live engine
+  // state for any condition with a computable predicate.
+  // Custom conditions with a condition object get
+  // evaluated just like sheet conditions.
   const autoEvaluated = useMemo(() => {
     const out = new Map<string, AutoEvaluatedConditionState>();
-    for (const cond of desired) {
+    const all = [...desired, ...conditions];
+    for (const cond of all) {
       const mod = cond.modifiers[0];
       if (!mod) continue;
       const condObj = (mod as unknown as Record<string, unknown>)["condition"];
@@ -488,7 +497,7 @@ export function useSheetConditions(input: {
       out.set(cond.id, { conditionId: cond.id, active, computable });
     }
     return out;
-  }, [desired, conditionContext]);
+  }, [desired, conditions, conditionContext]);
 
   return {
     sheetConditionIds,

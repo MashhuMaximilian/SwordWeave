@@ -135,6 +135,12 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
                   onToggle={() => toggle(c.id)}
                   onEdit={() => openComposer(c)}
                   onRemove={() => remove(c.id)}
+                  // Phase 8.L round 132 (Mashu): if the engine
+                  // can compute this condition (e.g. compound
+                  // with all-auto pills), use the live state.
+                  // The user can still toggle it manually
+                  // (overrides) but the default reflects engine.
+                  {...(autoEvaluated?.has(c.id) ? { liveActive: autoEvaluated.get(c.id)!.active } : {})}
                 />
               ))}
             </Section>

@@ -691,7 +691,10 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       if (mod.operation === "grant") {
         const v = mod.value;
         if (v && typeof v === "object" && (v as { kind?: string }).kind === "keyword") {
-          const kw = (v as { value?: string }).value;
+          const kwRaw = (v as { text?: string; value?: string }).text
+            ?? (v as { value?: string }).value
+            ?? "";
+          const kw = kwRaw.replace(/^\[+|\]+$/g, "").trim();
           if (kw === "advantage" || kw === "disadvantage") {
             // Increment per-axis adv/disadv counter
             const advKey = kw === "advantage" ? "advantage" : "disadvantage";
@@ -723,6 +726,46 @@ const eq = resolveEquation(operandsRaw as never, ctx);
               },
             });
             byTarget[t2] = list2;
+          } else if (kw === "proficiency_bonus" || kw === "pb") {
+            // Phase 8.L round 132 (Mashu): keyword grant
+            // \`[proficiency_bonus]\` (or \`pb\`) on an attribute
+            // target adds PB to that attribute's saving throw.
+            // The keyword is a user-facing label; the engine
+            // materializes it as a derived(pb) modifier on the
+            // corresponding save target. This makes custom
+            // conditions like "Prof in mental" work without
+            // adding a new operation.
+            if (t.startsWith("attribute.")) {
+              const attr = t.slice("attribute.".length);
+              const saveTarget = `${attr}_saving_throw`;
+              const list3 = byTarget[saveTarget] ?? [];
+              list3.push({
+                target: saveTarget,
+                primitiveId: slot.primitiveId,
+                primitiveName: slot.name,
+                primitiveCategory: slot.category,
+                op: "add",
+                value: input.pb,
+                rawValue: mod.value,
+                preMirrorValue: null,
+                tags: [],
+                condition: conditionRaw,
+                originCapabilityId: slot.originCapabilityId ?? null,
+                conditionActive,
+                hasCondition,
+                conditionComputable,
+                stacking: mod.stacking ?? "stack",
+                inhibited: entryInhibited,
+                provenance: {
+                  heritageName: sourceNames?.get(slot.primitiveId)?.heritageName ?? null,
+                  capabilityName: sourceNames?.get(slot.primitiveId)?.capabilityName ?? null,
+                  effectName: sourceNames?.get(slot.primitiveId)?.effectName ?? null,
+                  accordion: sourceNames?.get(slot.primitiveId)?.accordion ?? null,
+                  kind: deriveProvenanceKind(slot),
+                },
+              });
+              byTarget[saveTarget] = list3;
+            }
           }
         }
       }

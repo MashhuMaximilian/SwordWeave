@@ -269,7 +269,13 @@ export function ConditionComposer({
         return { kind: "derived", which: (t.which ?? "pb") as never } as never;
       }
       if (t.kind === "keyword") {
-        return { kind: "keyword", text: String(t.value ?? modifier.value) } as never;
+        // Phase 8.L round 132 (Mashu): strip surrounding brackets
+        // so users typing `[proficiency_bonus]` in the input don't
+        // get the brackets stored twice (\`[[proficiency_bonus]]\`
+        // in the chip display).
+        const raw = String(t.value ?? modifier.value);
+        const stripped = raw.replace(/^\[+|\]+$/g, "");
+        return { kind: "keyword", text: stripped } as never;
       }
       if (t.kind === "number") {
         const n = Number(t.value);
