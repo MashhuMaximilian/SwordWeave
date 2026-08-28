@@ -108,20 +108,20 @@ function classifyCondition(condition: unknown): ConditionKind {
   if (!isConditionComputable(condition as never, ctx)) {
     return "manual";
   }
-  // Computable compound: if any pill is a manual trigger, the
-  // whole thing needs manual toggle. Otherwise, auto.
-  if (
-    typeof condition === "object" &&
-    condition !== null &&
-    (condition as { kind?: string }).kind === "compound"
-  ) {
-    const tokens = (condition as { tokens?: readonly string[] }).tokens ?? [];
-    const pillTokens = tokens.filter((_t, i) => i % 2 === 0);
-    const anyManual = pillTokens.some((token) => isManualTriggerToken(token));
-    if (anyManual) return "manual";
-    return "auto";
-  }
-  // Single computable pill -> auto.
+  // Phase 8.L round 130 (Mashu): compound conditions with
+  // mixed pills (one auto-computable, one manual trigger) are
+  // treated as AUTO. The engine evaluates whatever it can;
+  // the user toggles the manual flags separately via the
+  // composer (or future trigger UI). Previously we routed to
+  // the manual section, which forced the user to engage the
+  // entire compound — confusing because the manual pill
+  // (\`is_tracking\`) is part of the condition but doesn't
+  // actually block the modifier from firing.
+  //
+  // If any pill is non-computable we still route to manual,
+  // so the user can engage/inhibit the WHOLE condition. But
+  // once it's engaged, the engine evaluates each pill on its
+  // own merits.
   return "auto";
 }
 

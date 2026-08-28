@@ -512,8 +512,12 @@ function formatValue(value: ConditionModifier["value"]): string {
     if (v.kind === "number" && typeof v.value === "number") {
       return String(v.value);
     }
-    if (v.kind === "keyword" && typeof v.value === "string") {
-      return `[${v.value}]`;
+    if (v.kind === "keyword") {
+      // Phase 8.L round 131 (Mashu): read text OR value (the
+      // composer used to store as \`value\`; the picker writes
+      // \`text\`). Both forms are supported.
+      const kw = (v as { text?: unknown; value?: unknown }).text ?? v.value;
+      if (typeof kw === "string") return `[${kw}]`;
     }
   }
   return JSON.stringify(value);

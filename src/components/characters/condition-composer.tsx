@@ -110,11 +110,11 @@ export function ConditionComposer({
           const n = Number(hm.value);
           tokens = Number.isFinite(n)
             ? [{ kind: "number", value: n }]
-            : [{ kind: "keyword", value: hm.value }];
+            : [{ kind: "keyword", text: hm.value } as never];
           valueStr = hm.value;
           valueKind = "number";
         } else if (hm.value && typeof hm.value === "object") {
-          const v = hm.value as { kind?: string; which?: string; value?: unknown; operands?: unknown[]; tag?: string; name?: string; hint?: string };
+          const v = hm.value as { kind?: string; which?: string; value?: unknown; text?: unknown; operands?: unknown[]; tag?: string; name?: string; hint?: string };
           if (v.kind === "equation" && Array.isArray(v.operands)) {
             operands = v.operands as never[];
             valueKind = "equation";
@@ -125,7 +125,11 @@ export function ConditionComposer({
             tokens = [{ kind: "runtime", name: v.name ?? "" }];
             valueKind = "text";
           } else if (v.kind === "keyword") {
-            tokens = [{ kind: "keyword", value: v.value ?? "" }];
+            // Phase 8.L round 131 (Mashu): use \`text\` to match
+            // the picker's onPick payload. Previously stored as
+            // \`value\`, which left the displayed chip showing
+            // \`[undefined]\` on re-edit.
+            tokens = [{ kind: "keyword", text: v.value ?? v["text"] ?? "" }];
             valueKind = "text";
           } else if (v.kind === "dice" || v.kind === "roll") {
             tokens = [v as never];

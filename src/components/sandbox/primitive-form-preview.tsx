@@ -464,7 +464,8 @@ function typedTokenToString(token: Record<string, unknown>): string {
     case "number":
       return String(token["value"] ?? "0");
     case "keyword":
-      return `[${String(token["text"] ?? "")}]`;
+      // Phase 8.L round 131 (Mashu): read text OR value.
+      return `[${String(token["text"] ?? token["value"] ?? "")}]`;
     case "runtime":
       return `/${String(token["name"] ?? "")}/`;
     default:
