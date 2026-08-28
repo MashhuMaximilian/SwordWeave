@@ -856,20 +856,22 @@ export function BottomStickyBar({
                   { attr: "magical", label: "MAGI", mod: magiMod, save: magiSave },
                 ] as const
               ).map(({ attr, label, mod: m, save: s }) => {
-                // Phase 8.L round 134 (Mashu): PROF tag also
-                // appears when proficiency is granted via
-                // conditions (grant keyword [proficiency] /
-                // [proficiency_bonus] / [expertise] / derived
-                // (pb | expertise) on target=attribute.<attr>).
-                // Detected by checking the
-                // <attr>_saving_throw contributions — the
-                // engine materializes each grant as a PB-sized
-                // addition to that target.
+                // Phase 8.L round 134/135 (Mashu): PROF and
+                // EXPERT tags. PROF appears when proficiency
+                // is granted via primary prof attr OR another
+                // PB-grant primitive (e.g. [proficiency]
+                // keyword, derived(pb)). EXPERT appears when
+                // an expertise contribution is present
+                // ([expertise] keyword, derived.expertise).
+                // PROF + EXPERT = PB counted twice.
                 const saveContribs = resolver?.byTarget?.[`${attr}_saving_throw`] ?? [];
                 const grantedProf = saveContribs.some(
-                  (c) => c.op === "add" && c.value === pb,
+                  (c) => c.op === "add" && c.value === pb && !(c.tags ?? []).includes("expertise"),
                 );
                 const isProf = proficientAttribute?.toLowerCase() === attr || grantedProf;
+                const isExpert = saveContribs.some(
+                  (c) => (c.tags ?? []).includes("expertise"),
+                );
                 return (
                   <button
                     key={attr}
@@ -893,6 +895,11 @@ export function BottomStickyBar({
                       {isProf && (
                         <span className="rounded bg-teal-500/15 px-1 py-0.5 text-[7px] font-bold uppercase text-teal-700 dark:text-teal-300">
                           PROF
+                        </span>
+                      )}
+                      {isExpert && (
+                        <span className="rounded bg-amber-500/15 px-1 py-0.5 text-[7px] font-bold uppercase text-amber-700 dark:text-amber-300">
+                          EXPERT
                         </span>
                       )}
                     </span>
@@ -1230,6 +1237,7 @@ export function BottomStickyBar({
             }
             pb={pb}
             isProf={proficientAttribute?.toLowerCase() === comboAttr}
+            isExpert={(resolver_?.byTarget?.[`${comboAttr}_saving_throw`] ?? []).some((c) => (c.tags ?? []).includes("expertise"))}
             resolver={resolver_}
             onClose={() => setCombo(null)}
           />
@@ -1906,6 +1914,7 @@ function ModSaveProvenanceModal({
   saveBase,
   pb,
   isProf,
+  isExpert,
   resolver,
   onClose,
 }: {
@@ -1920,6 +1929,7 @@ function ModSaveProvenanceModal({
   saveBase: number;
   pb: number;
   isProf: boolean;
+  isExpert: boolean;
   resolver: ResolvedModifiers;
   onClose: () => void;
 }) {
@@ -1928,9 +1938,10 @@ function ModSaveProvenanceModal({
       if (e.key === "Escape") onClose();
     }
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+    };
   }, [onClose]);
-
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -2034,14 +2045,17 @@ function ModSaveProvenanceModal({
             resolver={resolver}
             title={saveLabel}
             total={saveTotal}
-            // Phase 8.L round 129 (Mashu): PB only in seed if
-            // proficient in this attribute. The breakdown
-            // mirrors the engine: show PB only when prof.
-            formula={`${saveLabel} = ${attrLabel} + (PB if proficient) + primitive save contributions + action_roll sub-target ops`}
+            // Phase 8.L round 135 (Mashu): formula reflects
+            // engine's actual contribution. PROF adds PB,
+            // EXPERT adds PB again (stacks = 2*PB).
+            formula={`${saveLabel} = ${attrLabel}${(isProf ? " + PB (proficient)" : "")}${(isExpert ? " + PB (expertise)" : "")} + primitive save contributions + action_roll sub-target ops`}
             breakdown={[
               { label: attrLabel, value: attrTotal },
               ...(isProf
                 ? [{ label: "PB (proficient)", value: pb }]
+                : []),
+              ...(isExpert
+                ? [{ label: "PB (expertise)", value: pb }]
                 : []),
               // Phase 8.L round 110 (Mashu): use contributionsToSteps
               // so direct primitives with an accordion (e.g.
