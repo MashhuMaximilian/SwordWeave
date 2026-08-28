@@ -764,42 +764,80 @@ const eq = resolveEquation(operandsRaw as never, ctx);
               byTarget[saveTarget] = list3;
             }
           } else if (kw === "expertise") {
-            // Phase 8.L round 134/135 (Mashu): expertise
-            // keyword ALWAYS adds PB to the targeted save
-            // (same as proficiency). The "Expert" tag is the
-            // visual indicator; the math double-counts PB
-            // naturally when both prof AND expertise are
-            // granted. The user gets 2*PB total.
+            // Phase 8.L round 136 (Mashu): expertise keyword
+            // ONLY adds PB when the target is ALREADY
+            // proficient (primary prof attr OR another PB-grant
+            // already on the same target). When blocked, the
+            // contribution is skipped AND a one-time warning
+            // is logged so the user can see why their
+            // expertise primitive had no effect.
             if (t.startsWith("attribute.")) {
               const attr = t.slice("attribute.".length);
               const saveTarget = `${attr}_saving_throw`;
-              const list3 = byTarget[saveTarget] ?? [];
-              list3.push({
-                target: saveTarget,
-                primitiveId: slot.primitiveId,
-                primitiveName: slot.name,
-                primitiveCategory: slot.category,
-                op: "add",
-                value: input.pb,
-                rawValue: mod.value,
-                preMirrorValue: null,
-                tags: ["expertise"],
-                condition: conditionRaw,
-                originCapabilityId: slot.originCapabilityId ?? null,
-                conditionActive,
-                hasCondition,
-                conditionComputable,
-                stacking: mod.stacking ?? "stack",
-                inhibited: entryInhibited,
-                provenance: {
-                  heritageName: sourceNames?.get(slot.primitiveId)?.heritageName ?? null,
-                  capabilityName: sourceNames?.get(slot.primitiveId)?.capabilityName ?? null,
-                  effectName: sourceNames?.get(slot.primitiveId)?.effectName ?? null,
-                  accordion: sourceNames?.get(slot.primitiveId)?.accordion ?? null,
-                  kind: deriveProvenanceKind(slot),
-                },
-              });
-              byTarget[saveTarget] = list3;
+              const alreadyProf =
+                input.proficientAttribute?.toLowerCase() === attr ||
+                (byTarget[saveTarget] ?? []).some(
+                  (c) =>
+                    c.primitiveId !== slot.primitiveId
+                    && c.op === "add"
+                    && c.value === input.pb
+                    && !(c.tags ?? []).includes("expertise"),
+                );
+              if (alreadyProf) {
+                const list3 = byTarget[saveTarget] ?? [];
+                list3.push({
+                  target: saveTarget,
+                  primitiveId: slot.primitiveId,
+                  primitiveName: slot.name,
+                  primitiveCategory: slot.category,
+                  op: "add",
+                  value: input.pb,
+                  rawValue: mod.value,
+                  preMirrorValue: null,
+                  tags: ["expertise"],
+                  condition: conditionRaw,
+                  originCapabilityId: slot.originCapabilityId ?? null,
+                  conditionActive,
+                  hasCondition,
+                  conditionComputable,
+                  stacking: mod.stacking ?? "stack",
+                  inhibited: entryInhibited,
+                  provenance: {
+                    heritageName: sourceNames?.get(slot.primitiveId)?.heritageName ?? null,
+                    capabilityName: sourceNames?.get(slot.primitiveId)?.capabilityName ?? null,
+                    effectName: sourceNames?.get(slot.primitiveId)?.effectName ?? null,
+                    accordion: sourceNames?.get(slot.primitiveId)?.accordion ?? null,
+                    kind: deriveProvenanceKind(slot),
+                  },
+                });
+                byTarget[saveTarget] = list3;
+              } else {
+                // Block the contribution and log a one-time
+                // warning so the user understands why it
+                // didn't fire.
+                if (typeof window !== "undefined") {
+                  try {
+                    const wkey = `sw:expertise-blocked:${attr}:${slot.primitiveId}`;
+                    if (!window.sessionStorage.getItem(wkey)) {
+                      window.sessionStorage.setItem(wkey, "1");
+                      const historyKey = "sw:expertise-warnings";
+                      const existing = window.localStorage.getItem(historyKey);
+                      const list = existing ? JSON.parse(existing) : [];
+                      list.push({
+                        at: Date.now(),
+                        primitive: slot.name ?? "?",
+                        attr,
+                        msg: `Expertise (${attr}) only works when already proficient. Add a proficiency grant first.`,
+                      });
+                      window.localStorage.setItem(historyKey, JSON.stringify(list.slice(-20)));
+                    }
+                    // Mark the slot with a blocked-flag for the UI.
+                    (slot as unknown as Record<string, unknown>)["__expertiseBlocked"] = `Add a proficiency grant on ${attr} first.`;
+                  } catch {
+                    // ignore
+                  }
+                }
+              }
             }
           }
         }
@@ -822,37 +860,102 @@ const eq = resolveEquation(operandsRaw as never, ctx);
           if (t.startsWith("attribute.")) {
             const attr = t.slice("attribute.".length);
             const saveTarget = `${attr}_saving_throw`;
-            // Phase 8.L round 135 (Mashu): both `pb` and
-            // `expertise` add PB to the save. They stack —
-            // prof + expertise = 2*PB. The "Expert" tag
-            // distinguishes expertise contributions in the UI.
-            const list4 = byTarget[saveTarget] ?? [];
-            list4.push({
-              target: saveTarget,
-              primitiveId: slot.primitiveId,
-              primitiveName: slot.name,
-              primitiveCategory: slot.category,
-              op: "add",
-              value: input.pb,
-              rawValue: mod.value,
-              preMirrorValue: null,
-              tags: which === "expertise" ? ["expertise"] : [],
-              condition: conditionRaw,
-              originCapabilityId: slot.originCapabilityId ?? null,
-              conditionActive,
-              hasCondition,
-              conditionComputable,
-              stacking: mod.stacking ?? "stack",
-              inhibited: entryInhibited,
-              provenance: {
-                heritageName: sourceNames?.get(slot.primitiveId)?.heritageName ?? null,
-                capabilityName: sourceNames?.get(slot.primitiveId)?.capabilityName ?? null,
-                effectName: sourceNames?.get(slot.primitiveId)?.effectName ?? null,
-                accordion: sourceNames?.get(slot.primitiveId)?.accordion ?? null,
-                kind: deriveProvenanceKind(slot),
-              },
-            });
-            byTarget[saveTarget] = list4;
+            // Phase 8.L round 136 (Mashu): `pb` grant always
+            // works. `expertise` grant requires existing
+            // prof — primary attr OR another PB-grant (not
+            // expertise itself) on the same target. When
+            // blocked we skip + log a one-time warning.
+            if (which === "expertise") {
+              const alreadyProf =
+                input.proficientAttribute?.toLowerCase() === attr ||
+                (byTarget[saveTarget] ?? []).some(
+                  (c) =>
+                    c.primitiveId !== slot.primitiveId
+                    && c.op === "add"
+                    && c.value === input.pb
+                    && !(c.tags ?? []).includes("expertise"),
+                );
+              if (!alreadyProf) {
+                if (typeof window !== "undefined") {
+                  try {
+                    const wkey = `sw:expertise-blocked:${attr}:${slot.primitiveId}`;
+                    if (!window.sessionStorage.getItem(wkey)) {
+                      window.sessionStorage.setItem(wkey, "1");
+                      const historyKey = "sw:expertise-warnings";
+                      const existing = window.localStorage.getItem(historyKey);
+                      const list = existing ? JSON.parse(existing) : [];
+                      list.push({
+                        at: Date.now(),
+                        primitive: slot.name ?? "?",
+                        attr,
+                        msg: `Expertise (${attr}) only works when already proficient. Add a proficiency grant first.`,
+                      });
+                      window.localStorage.setItem(historyKey, JSON.stringify(list.slice(-20)));
+                    }
+                    (slot as unknown as Record<string, unknown>)["__expertiseBlocked"] = `Add a proficiency grant on ${attr} first.`;
+                  } catch {
+                    // ignore
+                  }
+                }
+              } else {
+                const list4 = byTarget[saveTarget] ?? [];
+                list4.push({
+                  target: saveTarget,
+                  primitiveId: slot.primitiveId,
+                  primitiveName: slot.name,
+                  primitiveCategory: slot.category,
+                  op: "add",
+                  value: input.pb,
+                  rawValue: mod.value,
+                  preMirrorValue: null,
+                  tags: ["expertise"],
+                  condition: conditionRaw,
+                  originCapabilityId: slot.originCapabilityId ?? null,
+                  conditionActive,
+                  hasCondition,
+                  conditionComputable,
+                  stacking: mod.stacking ?? "stack",
+                  inhibited: entryInhibited,
+                  provenance: {
+                    heritageName: sourceNames?.get(slot.primitiveId)?.heritageName ?? null,
+                    capabilityName: sourceNames?.get(slot.primitiveId)?.capabilityName ?? null,
+                    effectName: sourceNames?.get(slot.primitiveId)?.effectName ?? null,
+                    accordion: sourceNames?.get(slot.primitiveId)?.accordion ?? null,
+                    kind: deriveProvenanceKind(slot),
+                  },
+                });
+                byTarget[saveTarget] = list4;
+              }
+            } else {
+              // which === "pb" always adds PB.
+              const list4 = byTarget[saveTarget] ?? [];
+              list4.push({
+                target: saveTarget,
+                primitiveId: slot.primitiveId,
+                primitiveName: slot.name,
+                primitiveCategory: slot.category,
+                op: "add",
+                value: input.pb,
+                rawValue: mod.value,
+                preMirrorValue: null,
+                tags: [],
+                condition: conditionRaw,
+                originCapabilityId: slot.originCapabilityId ?? null,
+                conditionActive,
+                hasCondition,
+                conditionComputable,
+                stacking: mod.stacking ?? "stack",
+                inhibited: entryInhibited,
+                provenance: {
+                  heritageName: sourceNames?.get(slot.primitiveId)?.heritageName ?? null,
+                  capabilityName: sourceNames?.get(slot.primitiveId)?.capabilityName ?? null,
+                  effectName: sourceNames?.get(slot.primitiveId)?.effectName ?? null,
+                  accordion: sourceNames?.get(slot.primitiveId)?.accordion ?? null,
+                  kind: deriveProvenanceKind(slot),
+                },
+              });
+              byTarget[saveTarget] = list4;
+            }
           }
         }
       }
