@@ -585,23 +585,34 @@ export function BottomStickyBar({
   // in. Previously it showed any attribute that had
   // attack_bonus primitives, but the user can only "scale
   // with" an attribute they're proficient in.
+  //
+  // Phase 8.L round 137 (Mashu): MULTI-ATTRIBUTE proficiency
+  // — user can be proficient in multiple attrs (e.g.
+  // physical AND mental via custom conditions granting PB).
+  // The selector includes every attribute the user is prof
+  // in (primary prof attr + attrs with PB-grant in their
+  // save target).
   const profAttr = proficientAttribute?.toLowerCase() ?? null;
-  const atkAttrsWithPrimitives: Array<"physical" | "mental" | "magical"> = [];
-  if (profAttr === "physical" || profAttr === "mental" || profAttr === "magical") {
-    atkAttrsWithPrimitives.push(profAttr);
-  }
+  const attrsWithProfGrant = (() => {
+    const out: Array<"physical" | "mental" | "magical"> = [];
+    if (profAttr === "physical" || profAttr === "mental" || profAttr === "magical") {
+      out.push(profAttr);
+    }
+    for (const attr of ["physical", "mental", "magical"] as const) {
+      if (out.includes(attr)) continue;
+      const hasGrant = (resolver?.byTarget?.[`${attr}_saving_throw`] ?? [])
+        .some((c) => c.op === "add" && c.value === pb && !(c.tags ?? []).includes("expertise"));
+      if (hasGrant) out.push(attr);
+    }
+    return out;
+  })();
+  const atkAttrsWithPrimitives = attrsWithProfGrant.slice();
   const showAttackSelector = atkAttrsWithPrimitives.length > 1;
 
   // Phase 8.L round 129 (Mashu Q1): the save DC selector
   // shows only attributes the user is proficient in.
-  // Previously it showed any attribute with DC primitives,
-  // but the user can only "scale with" an attribute they're
-  // proficient in (DC primitives targeting other attributes
-  // are silently ignored).
-  const saveAttrsWithPrimitives: Array<"physical" | "mental" | "magical"> = [];
-  if (profAttr === "physical" || profAttr === "mental" || profAttr === "magical") {
-    saveAttrsWithPrimitives.push(profAttr);
-  }
+  // Phase 8.L round 137 (Mashu): same multi-attr expansion.
+  const saveAttrsWithPrimitives = attrsWithProfGrant.slice();
   const showSaveSelector = saveAttrsWithPrimitives.length > 1;
 
   const PRACTICE_ATTR_LABEL: Record<"PHYSICAL" | "MENTAL" | "MAGICAL", string> = {
