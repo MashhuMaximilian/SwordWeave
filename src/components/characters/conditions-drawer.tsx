@@ -159,6 +159,7 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
                   // doesn't make sense because the source entity
                   // (primitive / effect) owns the modifier.
                   readOnly
+                  {...(autoEvaluated?.has(c.id) ? { liveActive: autoEvaluated.get(c.id)!.active } : {})}
                 />
               ))}
             </Section>
