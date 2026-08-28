@@ -774,6 +774,10 @@ const eq = resolveEquation(operandsRaw as never, ctx);
             if (t.startsWith("attribute.")) {
               const attr = t.slice("attribute.".length);
               const saveTarget = `${attr}_saving_throw`;
+              const existingByTarget = (byTarget[saveTarget] ?? []).map((c) => ({ name: c.primitiveName, val: c.value, tags: c.tags }));
+              if (typeof window !== "undefined") {
+                console.log("[EXP-KW]", "name:", slot.name, "t:", t, "byTarget entries:", JSON.stringify(existingByTarget));
+              }
               const alreadyProf =
                 input.proficientAttribute?.toLowerCase() === attr ||
                 (byTarget[saveTarget] ?? []).some(
