@@ -875,6 +875,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
                 );
               if (!alreadyProf) {
                 if (typeof window !== "undefined") {
+                  console.log("[EXP-TRACE-BLOCKED]", "name:", slot.name, "t:", t, "byTarget entries:", (byTarget[saveTarget] ?? []).map((c) => ({ name: c.primitiveName, val: c.value, tags: c.tags })));
                   try {
                     const wkey = `sw:expertise-blocked:${attr}:${slot.primitiveId}`;
                     if (!window.sessionStorage.getItem(wkey)) {
