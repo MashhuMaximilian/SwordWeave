@@ -1366,10 +1366,11 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   // The seed is already PB + per-attr mod. We apply each op on top.
   function reapplyMirror(
     base: number,
-    entries: ReadonlyArray<{ op: string; value: unknown }>,
+    entries: ReadonlyArray<{ op: string; value: unknown; conditionActive?: boolean; inhibited?: boolean }>,
   ): number {
     let cur = base;
     for (const e of entries) {
+      if (e.conditionActive === false || e.inhibited) continue;
       cur = reapplyOp(cur, e.op, e.value);
     }
     return cur;
