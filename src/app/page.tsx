@@ -1,186 +1,681 @@
 import Link from "next/link";
 import Image from "next/image";
-import {
-  ArrowRight,
-  Boxes,
-  Download,
-  FlaskConical,
-  Library,
-  LogIn,
-  Upload,
-} from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { auth } from "@clerk/nextjs/server";
 import { HomepageAuth } from "@/components/layout/homepage-auth";
 
-const workspaces = [
+// =============================================================================
+// SwordWeave homepage — "The Translation Engine"
+//
+// Editorial / manuscript-meets-instrument aesthetic. Server component for fast
+// first paint + SEO. Auth-aware CTAs are delegated to a small client island
+// (HomepageAuth). Color tokens + fonts (Teko / Magra / teal / forge) come from
+// globals.css and must stay in sync.
+//
+// Sections, in document order:
+//   00. Top marginalia bar — running header, version stamp, "open the codex" link
+//   01. Hero — vertical running head + colossal headline + deck + CTAs
+//   02. System diagram — typographic notation of the BU flow
+//   03. The five layers — specimen cards for Primitives, Effects, Capabilities,
+//       Heritages, Items
+//   04. Fork + version — "Anything can be forked. Everything is versioned."
+//   05. The eight core tenets — editorial column, oversized numerals
+//   06. Codex teaser — primitive / capability strip + entry CTA
+//   07. Bottom marquee — recipe strip scrolling recipes
+//
+// Mobile behavior: every section collapses to single column; the vertical
+// running head flips to a horizontal eyebrow; the diagram becomes vertical;
+// the version timeline collapses to inline tokens.
+// =============================================================================
+
+// Recipe strips used in the bottom marquee and the diagram annotations.
+const RECIPE_STRIPS = [
+  "DAMAGE + FIRE → SEARING BURST",
+  "MOVE + SPACE → WORMHOLE",
+  "HEAL + COMMUNION → VITAL WELL",
+  "CONTROL + MIND → WHISPERED GEAS",
+  "DAMAGE + ICE → GLACIAL FANGS",
+  "MOVE + GRAVITY → WEIGHT OF NAMES",
+  "CONTROL + TIME → DEFERRED BLOW",
+  "HEAL + LIFE → SECOND BREATH",
+] as const;
+
+const LAYERS = [
   {
-    href: "/atelier?build=primitive",
-    title: "Primitive Sandbox",
-    status: "Live",
-    description: "Atomic BU records, mirror vectors, and generated modifiers.",
-    icon: Boxes,
+    n: "01",
+    title: "Primitives",
+    bu: "BU ≡ atomic",
+    body:
+      "The only thing you actually buy. Atomic components — verbs (Damage, Move, Control, Heal), domains (Fire, Space, Mind, Time, Life…), and mechanics. Once owned, a primitive is yours forever and slots into anything else.",
+    example: "FIRE · DAMAGE · AOE · RANGED",
   },
   {
-    href: "/atelier?build=effect",
-    title: "Effect Builder",
-    status: "Next",
-    description: "Reusable states assembled from primitive groups.",
-    icon: FlaskConical,
+    n: "02",
+    title: "Effects",
+    bu: "no BU",
+    body:
+      "Reusable states — a localized blizzard, a kinetic barrier, a summoned wisp. Assembled from primitives. Lasting. Maintainable. Free to write down.",
+    example: "BLIZZARD · AURA · MAINTAINED",
   },
   {
-    href: "/atelier?build=capability",
-    title: "Capability Compiler",
-    status: "Queued",
-    description: "Action cards compiled from verbs, domains, and effects.",
-    icon: ArrowRight,
+    n: "03",
+    title: "Capabilities",
+    bu: "no BU",
+    body:
+      "Your cheat-sheets. Pre-written recipes combining verbs, domains, and effects into action cards — Burning Strike, Wormhole, Whispered Geas. Writing them costs nothing. The ingredients already cost BU.",
+    example: "SEARING BURST · DAMAGE+FIRE+AOE",
   },
   {
-    href: "/library",
-    title: "Library Exchange",
-    status: "Queued",
-    description: "Imports, exports, saved records, and shared packages.",
-    icon: Library,
+    n: "04",
+    title: "Heritages",
+    bu: "BU ≡ transitively summed",
+    body:
+      "Where you came from. Lineage (biology), Upbringing (culture), Manifest (vocation). Every heritage is a bundle of primitives + capabilities — the BU cost is the transitive sum of all primitives it brings.",
+    example: "ELF · ACOLYTE · PYROMANCER",
+  },
+  {
+    n: "05",
+    title: "Items",
+    bu: "BU ≡ slot cost",
+    body:
+      "Capability carriers. Slots accept capabilities, primitives, and effects. A magic sword might slot a Damage primitive plus the Burning capability; an attuned ring might slot a maintained Effect. Items are paid in BU; their inner slots are free to fill.",
+    example: "BURNING BLADE · DAMAGE+CAPABILITY",
+  },
+] as const;
+
+const TENETS = [
+  {
+    n: "01",
+    head: "Consequences are negotiated at the table.",
+    body: "There are no spell slots. You have Vitality. When you push too hard, the world pushes back — and the GM names the cost before you roll. Accept, negotiate smaller, or abort. That moment is the Pivot Point.",
+  },
+  {
+    n: "02",
+    head: "A framework, not a spreadsheet.",
+    body: "Heuristic, not arithmetic. The numbers exist to translate story into stakes, never to halt the game for a rules argument.",
+  },
+  {
+    n: "03",
+    head: "Collaborative storytelling.",
+    body: "Everyone at the table — players and DM — are co-authors. The dice resolve uncertainty; the fiction resolves meaning. The GM is not a computer. The GM is a Translation Engine.",
+  },
+  {
+    n: "04",
+    head: "Rule of cool is king.",
+    body: "Cool things are rarely easy and never free. Wild feats are allowed — they spike the Strain, drain Vitality, and warp the local scene. Let the player pull the rubber band as hard as they want, but make the snap-back visible.",
+  },
+  {
+    n: "05",
+    head: "It all happens in our heads anyway.",
+    body: "Trust the table. If a rule blocks a brilliant dramatic moment, rewrite the rule on the spot. The mechanic is the servant of the fiction, never its master.",
+  },
+  {
+    n: "06",
+    head: "Everything is a guideline.",
+    body: "Bend the system to your world and your playstyle, not the other way around. Fork anything. Version everything. Publish what you love. Discard what you don't.",
+  },
+  {
+    n: "07",
+    head: "Balance is a truce, not a law.",
+    body: "An \"easy\" encounter can TPK on a hot streak of dice. All the engine can do is balance party BU against adversary BU — the rest is the table's shared judgement.",
+  },
+  {
+    n: "08",
+    head: "Build what you intend to play.",
+    body: "Start with the character in your head. Make the primitives, capabilities, effects, and heritages that fit the fiction you want to tell. It is almost always faster than browsing the library for someone else's perfect fit.",
   },
 ] as const;
 
 export default async function HomePage() {
   const { userId } = await auth();
   return (
-    <div className="mx-auto min-h-screen w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
-      <section className="grid gap-5 border-b border-border pb-6 xl:grid-cols-[1fr_360px]">
-        <div className="rounded-md border border-border bg-card p-5 sm:p-6">
-          {/* SwordWeave brand mark — placed here 2026-07-14 at the
-              hero's visual anchor. Theme-aware: /logo-light.png is the
-              teal-on-transparent version (visible against light
-              backgrounds), /logo-dark.png is the white-on-transparent
-              version (visible against dark backgrounds). The flip is
-              CSS-only via `dark:` so no React state is needed and the
-              mark stays above the LCP element. Decorative (alt="") so
-              screen readers fall through to the headline. next/image
-              with priority because the hero is the LCP element. */}
-          <Image
-            src="/logo-light.png"
-            alt=""
-            width={78}
-            height={96}
-            className="mb-4 block dark:hidden"
-            priority
-          />
-          <Image
-            src="/logo-dark.png"
-            alt=""
-            width={78}
-            height={96}
-            className="mb-4 hidden dark:block"
-            priority
-          />
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-sm bg-secondary px-2 py-1 text-xs font-bold uppercase text-secondary-foreground">
-              Engine Workspace
-            </span>
-            <span className="rounded-sm border border-border px-2 py-1 text-xs text-muted-foreground">
-              Primitive-first build
-            </span>
-          </div>
-
-          <h1 className="font-display mt-5 max-w-3xl text-5xl font-semibold uppercase leading-none sm:text-6xl lg:text-7xl">
-            SwordWeave Command Deck
-          </h1>
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
-            Build the shared engine from atomic primitives upward, then reuse
-            the same records across effects, capabilities, sheets, monsters,
-            items, heritage, and JSON packages.
-          </p>
-
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground"
-              href="/atelier?build=primitive"
-            >
-              Open Primitive Sandbox
-              <ArrowRight className="size-4" />
-            </Link>
-            <Link
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-background px-4 text-sm font-bold text-foreground"
-              href="/library"
-            >
-              Review Package Format
-            </Link>
-            <HomepageAuth signedIn={!!userId} />
-          </div>
-        </div>
-
-        <aside className="rounded-md border border-border bg-card p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="font-display text-2xl font-semibold uppercase">
-                Exchange V1
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Import/export foundation
-              </p>
-            </div>
-            <div className="flex gap-2 text-primary">
-              <Upload className="size-4" />
-              <Download className="size-4" />
-            </div>
-          </div>
-          <p className="mt-4 text-sm leading-6 text-muted-foreground">
-            Start with primitive packages, then apply the same versioned envelope
-            to every SwordWeave object.
-          </p>
-          <code className="mt-4 block rounded-md border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
-            swordweave.package.v1
-          </code>
-        </aside>
-      </section>
-
-      <section className="py-6">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="font-display text-3xl font-semibold uppercase">
-            Workbench
-          </h2>
-          <span className="text-xs text-muted-foreground">
-            Build order follows engine dependencies
+    <div className="sw-home relative mx-auto w-full max-w-[1400px] px-4 pb-24 pt-4 sm:px-6 sm:pt-6 lg:px-10 lg:pt-8">
+      {/* ────────────────────────────────────────────────────────────────
+          00. Top marginalia bar — running header, edition stamp, codex link
+          ──────────────────────────────────────────────────────────────── */}
+      <div className="sw-marginalia sw-marginalia--top mb-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-border pb-3 text-[10px] uppercase tracking-[0.22em] text-muted-foreground sm:text-xs">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+          <span className="font-display text-foreground">
+            Sword<span className="text-primary">·</span>Weave
+          </span>
+          <span className="hidden sm:inline">The Translation Engine</span>
+          <span className="hidden md:inline">
+            A modular engine for collaborative storytelling
           </span>
         </div>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+          <span aria-hidden className="text-primary/70">
+            ED. I · v.1
+          </span>
+          <Link
+            href="/codex"
+            className="inline-flex items-center gap-1 hover:text-foreground"
+          >
+            Open the codex
+            <ArrowUpRight className="size-3" />
+          </Link>
+          <Link
+            href="/attributions"
+            className="hidden hover:text-foreground sm:inline"
+          >
+            Attributions
+          </Link>
+        </div>
+      </div>
 
-        <div className="grid gap-3">
-          {workspaces.map((workspace) => {
-            const Icon = workspace.icon;
+      {/* ────────────────────────────────────────────────────────────────
+          01. Hero — vertical running head + colossal headline + CTAs
+          ──────────────────────────────────────────────────────────────── */}
+      <section className="sw-hero relative grid gap-8 pb-16 sm:pb-20 lg:grid-cols-[64px_1fr] lg:gap-10 lg:pb-28">
+        {/* Vertical running head — desktop only */}
+        <div
+          aria-hidden
+          className="sw-running-head hidden lg:block"
+        >
+          <span>SW · ENGINE · I · MMXXVI</span>
+        </div>
 
-            return (
-              <Link
-                className="group grid gap-3 rounded-md border border-border bg-card p-4 transition-colors hover:border-primary sm:grid-cols-[40px_1fr_auto] sm:items-center"
-                href={workspace.href}
-                key={workspace.href}
-              >
-                <div className="flex size-10 items-center justify-center rounded-md border border-border bg-background text-primary">
-                  <Icon className="size-5" />
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-display text-2xl font-semibold uppercase leading-none">
-                      {workspace.title}
-                    </h3>
-                    <span className="rounded-sm bg-secondary px-2 py-1 text-xs font-bold text-secondary-foreground">
-                      {workspace.status}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    {workspace.description}
-                  </p>
-                </div>
-                <span className="inline-flex items-center gap-2 text-sm font-bold text-primary sm:justify-self-end">
-                  Open
-                  <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+        <div className="min-w-0">
+          {/* Mobile horizontal eyebrow */}
+          <div className="mb-3 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-primary lg:hidden">
+            <span className="size-1.5 rounded-full bg-primary" />
+            The Translation Engine
+          </div>
+
+          {/* Brand mark + status row */}
+          <div className="mb-4 flex flex-wrap items-end gap-4">
+            <Image
+              src="/logo-light.png"
+              alt=""
+              width={64}
+              height={78}
+              className="block h-auto w-12 dark:hidden"
+              priority
+            />
+            <Image
+              src="/logo-dark.png"
+              alt=""
+              width={64}
+              height={78}
+              className="hidden h-auto w-12 dark:block"
+              priority
+            />
+            <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-muted-foreground sm:text-xs">
+              <span className="rounded-sm border border-primary/40 bg-primary/10 px-2 py-1 font-bold text-primary">
+                Engine · live
+              </span>
+              <span className="hidden sm:inline">
+                · No classes · No spell slots · Rule of cool is king
+              </span>
+            </div>
+          </div>
+
+          {/* The headline */}
+          <h1 className="sw-headline font-display text-[clamp(2.75rem,9vw,7.5rem)] font-bold uppercase leading-[0.86] tracking-tight">
+            <span className="block">A game</span>
+            <span className="block">
+              you <span className="sw-headline__weave">weave</span>
+            </span>
+            <span className="block text-muted-foreground">
+              from <span className="text-foreground">atomic</span> intent.
+            </span>
+          </h1>
+
+          {/* Deck — the manifesto */}
+          <p className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
+            SwordWeave is not a rulebook. It is a construction language for
+            collaborative storytelling. You buy atomic primitives, assemble
+            them into capabilities and effects, slot them into heritages and
+            items, and tell the story you came to tell — at the table, in your
+            head, with the friends already in the room.
+          </p>
+
+          {/* CTAs */}
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <Link
+              href="/atelier?build=primitive"
+              className="sw-cta-primary group inline-flex h-11 items-center gap-2 bg-primary px-5 text-sm font-bold uppercase tracking-[0.12em] text-primary-foreground"
+            >
+              Open the Atelier
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+            <Link
+              href="/codex"
+              className="sw-cta-ghost inline-flex h-11 items-center gap-2 border border-border bg-card px-5 text-sm font-bold uppercase tracking-[0.12em] text-foreground hover:border-primary/60 hover:text-primary"
+            >
+              Browse the Codex
+            </Link>
+            <Link
+              href="/atelier?build=primitive&intent=primer"
+              className="hidden text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline sm:inline"
+            >
+              Read the 5-minute primer →
+            </Link>
+          </div>
+
+          {/* Auth-aware CTAs (signed-out only) */}
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <HomepageAuth signedIn={!!userId} />
+          </div>
+
+          {/* Marginalia annotations — typographic asides */}
+          <div className="sw-marginalia-grid mt-10 grid grid-cols-1 gap-3 text-[11px] uppercase tracking-[0.18em] text-muted-foreground sm:grid-cols-2 sm:text-xs lg:grid-cols-4">
+            <span className="flex items-baseline gap-2">
+              <span className="text-primary">§00</span> Collaborative · not competitive
+            </span>
+            <span className="flex items-baseline gap-2">
+              <span className="text-primary">§01</span> Buy primitives · everything else is free
+            </span>
+            <span className="flex items-baseline gap-2">
+              <span className="text-primary">§02</span> Fork anything · version everything
+            </span>
+            <span className="flex items-baseline gap-2">
+              <span className="text-primary">§03</span> The DM is a translation engine
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* ────────────────────────────────────────────────────────────────
+          02. System diagram — the BU flow as typographic notation
+          ──────────────────────────────────────────────────────────────── */}
+      <section className="sw-section relative border-y border-border bg-card/40 py-12 sm:py-16 lg:py-20">
+        <SectionHeading
+          index="§10"
+          eyebrow="The notation"
+          title="How the engine composes"
+          deck="Everything in SwordWeave is built from the same atomic alphabet. Primitives are the only thing you actually buy — capabilities, effects, heritages, and items are recipes, slots, and bundles that reuse the primitives you already own."
+        />
+
+        <div className="sw-diagram mt-10 overflow-x-auto pb-2 sm:mt-14">
+          <pre
+            aria-label="SwordWeave composition diagram"
+            className="sw-diagram__canvas font-display text-[8px] leading-[1.5] sm:text-xs lg:text-sm"
+          >
+{`┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│  PRIMITIVE   │  │    EFFECT    │  │  CAPABILITY  │  │   HERITAGE   │  │     ITEM     │
+│  ─────────   │  │  ─────────   │  │  ─────────   │  │  ─────────   │  │  ─────────   │
+│  the only    │  │  reusable    │  │  cheat-sheet │  │  where you   │  │  capability  │
+│  thing you   │─►│  state,      │─►│  recipe:     │─►│  come from.  │─►│  carrier.    │
+│  BUY         │  │  maintained  │  │  verb ×      │  │  lineage +   │  │  slots       │
+│              │  │  bundles     │  │  domain ×    │  │  upbringing  │  │  accept      │
+│  BU ≡ atomic │  │              │  │  effect      │  │  + manifest  │  │  cap/prim/   │
+│              │  │  slot:       │  │              │  │              │  │  effect      │
+│              │  │  [primitive] │  │  slots:      │  │  slots:      │  │              │
+│              │  │              │  │  [primitive] │  │  [primitive] │  │  slots:      │
+│              │  │              │  │  [effect]    │  │  [capability]│  │  [primitive] │
+│              │  │              │  │              │  │              │  │  [capability]│
+│              │  │              │  │              │  │              │  │  [effect]    │
+└──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘
+        ▲                                              ▲                              ▲
+        │                                              │                              │
+        └─────────── primitives are the only thing that costs BU ─────────────────────┘
+`}
+          </pre>
+        </div>
+
+        {/* Quick recipe example */}
+        <div className="sw-recipe mt-10 flex flex-col gap-4 border-t border-border pt-6 sm:mt-14 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-[0.22em] text-primary">
+              Worked example · Burning Strike
+            </p>
+            <p className="mt-1 font-display text-lg uppercase leading-tight sm:text-xl">
+              Damage · Fire · Melee →{" "}
+              <span className="text-primary">Burning Strike</span>
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
+              Buy three primitives once. Write the capability for free. Use them
+              in any other capability, effect, heritage, or item — forever.
+            </p>
+          </div>
+          <Link
+            href="/atelier?build=primitive"
+            className="sw-cta-primary inline-flex h-10 w-fit items-center gap-2 bg-primary px-4 text-xs font-bold uppercase tracking-[0.14em] text-primary-foreground"
+          >
+            Try it
+            <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
+      </section>
+
+      {/* ────────────────────────────────────────────────────────────────
+          03. The five layers — specimen cards
+          ──────────────────────────────────────────────────────────────── */}
+      <section className="sw-section py-14 sm:py-20 lg:py-24">
+        <SectionHeading
+          index="§20"
+          eyebrow="Specimens"
+          title="The five layers"
+          deck="Each layer is a different scale of composition. Only the bottom one — the primitive — costs Build Units. Everything above is structure on top of the primitives you already own."
+        />
+
+        <div className="mt-10 grid gap-px overflow-hidden border border-border bg-border sm:mt-14 lg:grid-cols-2 xl:grid-cols-5">
+          {LAYERS.map((layer) => (
+            <article
+              key={layer.n}
+              className="sw-specimen group relative flex flex-col gap-3 bg-card p-5 transition-colors hover:bg-background sm:p-6"
+            >
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="font-display text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  Layer {layer.n}
                 </span>
-              </Link>
-            );
-          })}
+                <span className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+                  {layer.bu}
+                </span>
+              </div>
+              <h3 className="font-display text-2xl font-bold uppercase leading-none sm:text-3xl">
+                {layer.title}
+              </h3>
+              <p className="text-sm leading-6 text-muted-foreground">
+                {layer.body}
+              </p>
+              <div className="mt-auto border-t border-border pt-3">
+                <code className="block font-display text-[10px] uppercase tracking-[0.16em] text-foreground/80 sm:text-[11px]">
+                  ↳ {layer.example}
+                </code>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        {/* Build budget callout */}
+        <div className="mt-8 grid gap-4 border border-border bg-card p-5 sm:mt-10 sm:grid-cols-[1fr_auto] sm:items-center sm:p-6">
+          <div className="min-w-0">
+            <p className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+              The BU economy
+            </p>
+            <p className="mt-1 text-sm leading-6 text-foreground sm:text-base">
+              Every level grants you a <strong>BU budget</strong>. Spend it on
+              primitives — and only on primitives. Capabilities, effects, and
+              heritages reuse the primitives you have already bought. Take
+              penalties or disadvantages to mirror extra primitives back into
+              your budget.
+            </p>
+          </div>
+          <Link
+            href="/atelier?build=primitive"
+            className="sw-cta-ghost inline-flex h-10 w-fit items-center gap-2 border border-border px-4 text-xs font-bold uppercase tracking-[0.14em] text-foreground hover:border-primary/60 hover:text-primary"
+          >
+            Open the primitive sandbox
+            <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
+      </section>
+
+      {/* ────────────────────────────────────────────────────────────────
+          04. Fork + version
+          ──────────────────────────────────────────────────────────────── */}
+      <section className="sw-section border-y border-border bg-card/40 py-14 sm:py-20 lg:py-24">
+        <SectionHeading
+          index="§30"
+          eyebrow="The version envelope"
+          title="Anything can be forked. Everything is versioned."
+          deck="The library is not a catalogue — it is a forge. Take what someone else made, fork it to your taste, publish your own version, or keep it to your followers. Every primitive, capability, effect, heritage, and item carries a version lineage you can audit, branch from, and roll back."
+        />
+
+        {/* Version timeline */}
+        <div className="sw-timeline mt-10 overflow-x-auto pb-2 sm:mt-14">
+          <ol className="flex min-w-max items-center gap-2 sm:gap-3">
+            {[
+              { tag: "v.1.0", note: "first published", tone: "muted" },
+              { tag: "v.1.1", note: "forked by @user_a", tone: "muted" },
+              { tag: "v.1.2", note: "+2 primitives", tone: "primary" },
+              { tag: "v.1.3", note: "flagged: balance", tone: "muted" },
+              { tag: "v.2.0", note: "rewrite — published", tone: "primary" },
+              { tag: "v.2.1", note: "followers only", tone: "accent" },
+            ].map((step, i) => (
+              <li
+                key={step.tag}
+                className="flex items-center gap-2 sm:gap-3"
+                aria-label={`${step.tag} — ${step.note}`}
+              >
+                <span
+                  className={
+                    "sw-timeline__node inline-flex flex-col gap-1 border px-3 py-2 font-display text-[10px] uppercase tracking-[0.18em] sm:text-[11px] " +
+                    (step.tone === "primary"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : step.tone === "accent"
+                        ? "border-accent bg-accent/10 text-accent-foreground"
+                        : "border-border bg-background text-muted-foreground")
+                  }
+                >
+                  <span className="font-bold">{step.tag}</span>
+                  <span className="text-[9px] tracking-[0.16em] text-muted-foreground sm:text-[10px]">
+                    {step.note}
+                  </span>
+                </span>
+                {i < 5 ? (
+                  <span aria-hidden className="text-muted-foreground/60">
+                    ──►
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        {/* Fork / version / publish — three actions */}
+        <div className="sw-actions mt-10 grid gap-px overflow-hidden border border-border bg-border sm:mt-14 sm:grid-cols-3">
+          {[
+            {
+              n: "I.",
+              title: "Fork",
+              body:
+                "Take anyone's primitive, capability, effect, heritage, or item. Adapt it to your build, your budget, your table. The fork is yours.",
+            },
+            {
+              n: "II.",
+              title: "Version",
+              body:
+                "Publish a new version when your fork changes meaningfully. Old versions stay in the lineage so the table can audit what shifted and why.",
+            },
+            {
+              n: "III.",
+              title: "Publish",
+              body:
+                "Share with the whole codex, your followers only, or keep private. Like, flag, and remix — the community writes the canon together.",
+            },
+          ].map((action) => (
+            <article
+              key={action.n}
+              className="flex flex-col gap-3 bg-card p-5 sm:p-6"
+            >
+              <span className="font-display text-[10px] uppercase tracking-[0.22em] text-primary">
+                {action.n}
+              </span>
+              <h4 className="font-display text-xl font-bold uppercase leading-none sm:text-2xl">
+                {action.title}
+              </h4>
+              <p className="text-sm leading-6 text-muted-foreground">
+                {action.body}
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* ────────────────────────────────────────────────────────────────
+          05. The eight core tenets — editorial column
+          ──────────────────────────────────────────────────────────────── */}
+      <section className="sw-section py-14 sm:py-20 lg:py-24">
+        <SectionHeading
+          index="§40"
+          eyebrow="Core tenets"
+          title="How the table is supposed to feel"
+          deck="SwordWeave is a heuristic, not a spreadsheet. The rules exist to translate imagination into stakes — never to halt the game for a rules argument. These are the eight working truths of the table."
+        />
+
+        <ol className="mt-10 grid gap-x-8 gap-y-8 sm:mt-14 lg:grid-cols-2">
+          {TENETS.map((t) => (
+            <li
+              key={t.n}
+              className="sw-tenet group relative grid grid-cols-[auto_1fr] gap-5 border-t border-border pt-6 sm:gap-6"
+            >
+              <span className="sw-tenet__num font-display text-5xl font-bold leading-none text-primary/70 sm:text-6xl">
+                {t.n}
+              </span>
+              <div className="min-w-0">
+                <h4 className="font-display text-lg font-bold uppercase leading-snug sm:text-xl">
+                  {t.head}
+                </h4>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-[15px] sm:leading-7">
+                  {t.body}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <p className="sw-tenet__signoff mt-12 max-w-2xl border-l-2 border-primary pl-4 font-display text-base uppercase italic text-muted-foreground sm:text-lg">
+          It's a game we play in our minds with friends. Do whatever you want.
+        </p>
+      </section>
+
+      {/* ────────────────────────────────────────────────────────────────
+          06. Codex teaser
+          ──────────────────────────────────────────────────────────────── */}
+      <section className="sw-section border-t border-border py-14 sm:py-20 lg:py-24">
+        <SectionHeading
+          index="§50"
+          eyebrow="The codex"
+          title="Open the library"
+          deck="Find the base primitives, community capabilities, hand-tuned heritages, and itemised gear — for every budget, every level, every table. Fork anything. Publish what you love."
+        />
+
+        <div className="mt-10 grid gap-3 sm:mt-14 sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            {
+              label: "Primitives",
+              meta: "118 published · 4 forks in the last 24h",
+              href: "/codex?kind=primitive",
+            },
+            {
+              label: "Capabilities",
+              meta: "compiled recipes · ready to slot",
+              href: "/codex?kind=capability",
+            },
+            {
+              label: "Effects",
+              meta: "maintained states · aura · barrier · summon",
+              href: "/codex?kind=effect",
+            },
+            {
+              label: "Heritages",
+              meta: "lineage · upbringing · manifest",
+              href: "/codex?kind=heritage",
+            },
+            {
+              label: "Items",
+              meta: "capability carriers · slot anything in",
+              href: "/codex?kind=item",
+            },
+            {
+              label: "Monsters",
+              meta: "symmetrical BU budgeting at the table",
+              href: "/codex?kind=monster",
+            },
+          ].map((entry) => (
+            <Link
+              key={entry.label}
+              href={entry.href}
+              className="sw-codex-card group flex items-baseline justify-between gap-4 border border-border bg-card p-5 transition-colors hover:border-primary/60 sm:p-6"
+            >
+              <div className="min-w-0">
+                <p className="font-display text-2xl font-bold uppercase leading-none sm:text-3xl">
+                  {entry.label}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground sm:text-sm">
+                  {entry.meta}
+                </p>
+              </div>
+              <ArrowRight className="size-4 shrink-0 text-primary transition-transform group-hover:translate-x-1" />
+            </Link>
+          ))}
+        </div>
+
+        <div className="mt-10 flex flex-col items-start gap-4 border border-primary/30 bg-primary/5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div className="min-w-0">
+            <p className="font-display text-xs uppercase tracking-[0.22em] text-primary">
+              First time here?
+            </p>
+            <p className="mt-1 font-display text-lg uppercase leading-tight sm:text-xl">
+              Build a character in 5 minutes.
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Distribute attributes, pick a heritage pack, pick a training pack,
+              spend your remaining BU, finalize vitality.
+            </p>
+          </div>
+          <Link
+            href="/atelier?build=primitive&intent=primer"
+            className="sw-cta-primary inline-flex h-11 w-fit items-center gap-2 bg-primary px-5 text-sm font-bold uppercase tracking-[0.12em] text-primary-foreground"
+          >
+            Start the primer
+            <ArrowRight className="size-4" />
+          </Link>
+        </div>
+      </section>
+
+      {/* ────────────────────────────────────────────────────────────────
+          07. Bottom marquee — recipe strip
+          ──────────────────────────────────────────────────────────────── */}
+      <section
+        aria-hidden
+        className="sw-marquee border-t border-border bg-foreground py-3 text-background dark:bg-primary dark:text-primary-foreground"
+      >
+        <div className="sw-marquee__track">
+          {[...RECIPE_STRIPS, ...RECIPE_STRIPS].map((strip, i) => (
+            <span
+              key={`${strip}-${i}`}
+              className="sw-marquee__item font-display text-sm uppercase tracking-[0.18em] sm:text-base"
+            >
+              <span className="mr-6 text-background/60 dark:text-primary-foreground/60">
+                ·
+              </span>
+              {strip}
+            </span>
+          ))}
         </div>
       </section>
     </div>
   );
 }
-// Updated Tue Jul  7 03:16:10 PM EEST 2026
+
+// =============================================================================
+// SectionHeading — uniform editorial section opener used throughout.
+// Big eyebrow + headline + deck. Server-renderable, no client state.
+// =============================================================================
+function SectionHeading({
+  index,
+  eyebrow,
+  title,
+  deck,
+}: {
+  index: string;
+  eyebrow: string;
+  title: string;
+  deck: string;
+}) {
+  return (
+    <header className="sw-section-head grid gap-4 lg:grid-cols-[64px_1fr] lg:gap-10">
+      <span className="hidden font-display text-xs uppercase tracking-[0.22em] text-primary lg:block">
+        {index}
+      </span>
+      <div className="min-w-0">
+        <span className="font-display text-[10px] uppercase tracking-[0.28em] text-primary lg:hidden">
+          {index} · {eyebrow}
+        </span>
+        <span className="mb-2 hidden text-xs uppercase tracking-[0.22em] text-muted-foreground lg:inline">
+          {eyebrow}
+        </span>
+        <h2 className="font-display text-3xl font-bold uppercase leading-[0.95] tracking-tight sm:text-5xl lg:text-6xl">
+          {title}
+        </h2>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
+          {deck}
+        </p>
+      </div>
+    </header>
+  );
+}

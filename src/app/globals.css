@@ -335,3 +335,308 @@ body {
     outline-color: rgb(8 145 178 / 0);
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * SWORDWEAVE HOMEPAGE — "The Translation Engine" (added 2026-09-05)
+ *
+ * Editorial / manuscript-meets-instrument aesthetic. All rules are prefixed
+ * `.sw-` so they cannot collide with the rest of the app. Color tokens come
+ * from the existing :root / .dark CSS variables (--primary, --foreground,
+ * --background, --border, --card, --accent, --muted-foreground, etc.).
+ *
+ * Concept moves:
+ *  - Hero headline uses Teko (font-display) at huge scale with a stylized
+ *    "weave" word that renders with a strikethrough + accent fill.
+ *  - Vertical running head on desktop (left rail marginalia).
+ *  - Diagram is monospace typographic notation, not graphics.
+ *  - Specimen cards (the five layers) use a hairline grid border so they read
+ *    as a printed page rather than a card stack.
+ *  - Version timeline is a horizontal arrow chain that becomes an inline
+ *    strip on narrow screens.
+ *  - Tenets use oversize numerals as left-axis anchors (editorial column).
+ *  - Bottom marquee is a slow infinite horizontal scroll of recipe strips,
+ *    inverting to primary on dark mode for high contrast.
+ *  - CTAs use near-zero border-radius (--radius override per element) so they
+ *    read as print plates, not buttons.
+ * --------------------------------------------------------------------------- */
+
+/* The "weave" word in the hero headline: a typographic punch — diagonal
+   strikethrough + accent-colored outline treatment so it feels marked-up. */
+.sw-headline__weave {
+  position: relative;
+  color: var(--primary);
+  display: inline-block;
+}
+.sw-headline__weave::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 18% 0;
+  height: 0.18em;
+  background: var(--accent);
+  transform: rotate(-3deg);
+  transform-origin: left center;
+}
+.dark .sw-headline__weave::after {
+  background: var(--accent);
+  opacity: 0.85;
+}
+
+/* Vertical running head — only visible at lg breakpoint. Reads top-to-bottom
+   like a print folio. Sits in the left rail of the hero grid. The default
+   state is `display: none` so Tailwind's `hidden lg:block` utility can
+   override it at the lg breakpoint (and not before). */
+.sw-running-head {
+  display: none;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-family: var(--font-sword-display);
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  border-left: 1px solid var(--border);
+  padding-left: 12px;
+  margin-top: 4px;
+  height: 100%;
+  align-items: flex-start;
+}
+@media (min-width: 1024px) {
+  .sw-running-head {
+    display: flex;
+  }
+}
+
+/* Section spacing helper — keeps a consistent vertical rhythm. */
+.sw-section {
+  position: relative;
+}
+.sw-section + .sw-section {
+  margin-top: 0;
+}
+
+/* Section heading — when eyebrow is rendered, give it a hairline above so
+   it visually separates from the previous section's body. */
+.sw-section-head {
+  align-items: start;
+}
+
+/* Primary CTA — sharp-cornered button plate with a subtle accent corner notch
+   that reads as a folded paper edge. Border-radius is forced to 0 because
+   the brand tokens push 0.5rem; the homepage deliberately avoids it. */
+.sw-cta-primary {
+  border-radius: 0;
+  position: relative;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 0 0 0 var(--primary);
+}
+.sw-cta-primary:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 0 var(--accent);
+}
+.sw-cta-primary:active {
+  transform: translate(0, 0);
+  box-shadow: 0 0 0 0 var(--accent);
+}
+
+/* Ghost CTA — outlined plate, sharp corners. Accent stripe on hover. */
+.sw-cta-ghost {
+  border-radius: 0;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+/* Diagram — typographic notation, monospace, framed in a printed-page card. */
+.sw-diagram {
+  border: 1px solid var(--border);
+  background: var(--background);
+  position: relative;
+}
+.sw-diagram::before,
+.sw-diagram::after {
+  /* Tiny corner ticks that suggest a printer's crop mark — a manuscript
+     gesture that costs nothing and signals "this is the notation." */
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: var(--primary);
+  border-style: solid;
+  pointer-events: none;
+}
+.sw-diagram::before {
+  top: -1px;
+  left: -1px;
+  border-width: 1px 0 0 1px;
+}
+.sw-diagram::after {
+  bottom: -1px;
+  right: -1px;
+  border-width: 0 1px 1px 0;
+}
+.sw-diagram__canvas {
+  color: var(--foreground);
+  white-space: pre;
+  margin: 0;
+  padding: 1.5rem 1rem;
+  font-family: var(--font-sword-body), ui-monospace, "SF Mono", Menlo, Consolas,
+    monospace;
+  letter-spacing: 0;
+  /* Slight background tint so the diagram feels like a notation sheet rather
+     than a code block. */
+  background-image: linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(100% - 1px),
+    var(--border) calc(100% - 1px),
+    var(--border) 100%
+  );
+  background-size: 6ch 100%;
+  background-repeat: repeat-x;
+}
+@media (min-width: 640px) {
+  .sw-diagram__canvas {
+    padding: 2rem;
+    font-size: 0.85rem;
+  }
+}
+@media (min-width: 1024px) {
+  .sw-diagram__canvas {
+    padding: 2.5rem;
+  }
+}
+
+/* Specimen cards — the five layers. Override the default Tailwind hover
+   border-radius / shadow behaviour so they read as a printed grid. */
+.sw-specimen {
+  position: relative;
+}
+.sw-specimen::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 14px 14px;
+  border-color: transparent transparent var(--primary) transparent;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.sw-specimen:hover::before {
+  opacity: 1;
+}
+
+/* Recipe callout under the diagram — the "Burning Strike" worked example. */
+.sw-recipe {
+  /* Print-style rule between the diagram and the recipe — same as a book
+     chapter break. */
+  position: relative;
+}
+
+/* Timeline — the version lineage. Mobile collapses via overflow-x-auto on
+   the parent; on desktop the chain sits centred with arrow glyphs. */
+.sw-timeline__node {
+  white-space: nowrap;
+}
+
+/* Tenets — editorial column. Big numerals anchor the left axis. On hover,
+   the numeral nudges right to suggest an active reader's underline. */
+.sw-tenet {
+  transition: transform 0.2s ease;
+}
+.sw-tenet:hover .sw-tenet__num {
+  transform: translateX(2px);
+  color: var(--primary);
+}
+.sw-tenet__num {
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+/* Codex teaser cards — outlined plate with a hover halo. */
+.sw-codex-card {
+  position: relative;
+  transition: transform 0.15s ease, border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+.sw-codex-card:hover {
+  transform: translateY(-1px);
+}
+
+/* Bottom marquee — slow infinite horizontal scroll. The track duplicates the
+   recipe list so the loop is seamless. Pauses on hover. Respects reduced
+   motion. */
+.sw-marquee {
+  overflow: hidden;
+  position: relative;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black 8%,
+    black 92%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black 8%,
+    black 92%,
+    transparent 100%
+  );
+}
+.sw-marquee__track {
+  display: flex;
+  width: max-content;
+  animation: sw-marquee-scroll 64s linear infinite;
+}
+.sw-marquee:hover .sw-marquee__track {
+  animation-play-state: paused;
+}
+.sw-marquee__item {
+  white-space: nowrap;
+  padding-right: 0.25rem;
+}
+@keyframes sw-marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sw-marquee__track {
+    animation: none;
+  }
+}
+
+/* Marginalia — the top running-header bar and the four §-tags row. */
+.sw-marginalia {
+  font-family: var(--font-sword-body);
+}
+.sw-marginalia--top {
+  position: relative;
+}
+
+/* Hero — give the section a subtle baseline grid in the background so the
+   page reads like graph paper / a manuscript. Pure CSS, no extra DOM. */
+.sw-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(100% - 1px),
+      color-mix(in srgb, var(--border) 50%, transparent) calc(100% - 1px),
+      color-mix(in srgb, var(--border) 50%, transparent) 100%
+    );
+  background-size: 33.3333% 100%;
+  background-repeat: repeat-x;
+  opacity: 0.4;
+  z-index: 0;
+}
+.sw-hero > * {
+  position: relative;
+  z-index: 1;
+}
