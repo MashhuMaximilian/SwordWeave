@@ -774,14 +774,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
             if (t.startsWith("attribute.")) {
               const attr = t.slice("attribute.".length);
               const saveTarget = `${attr}_saving_throw`;
-              const alreadyProf =
-                input.proficientAttribute?.toLowerCase() === attr ||
-                (byTarget[saveTarget] ?? []).some(
-                  (c) =>
-                    c.op === "add"
-                    && c.value === input.pb
-                    && !(c.tags ?? []).includes("expertise"),
-                );
+              const alreadyProf = isAttrProficient(attr, input, byTarget);
               if (alreadyProf) {
                 const list3 = byTarget[saveTarget] ?? [];
                 list3.push({
@@ -865,14 +858,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
             // expertise itself) on the same target. When
             // blocked we skip + log a one-time warning.
             if (which === "expertise") {
-              const alreadyProf =
-                input.proficientAttribute?.toLowerCase() === attr ||
-                (byTarget[saveTarget] ?? []).some(
-                  (c) =>
-                    c.op === "add"
-                    && c.value === input.pb
-                    && !(c.tags ?? []).includes("expertise"),
-                );
+              const alreadyProf = isAttrProficient(attr, input, byTarget);
               if (!alreadyProf) {
                 if (typeof window !== "undefined") {
                   try {
@@ -1669,6 +1655,39 @@ function buildPracticeRollUps(
   // (computeAllPracticeModifiers) into this map. For now, return
   // empty so unknown practice tokens resolve to 0.
   return new Map();
+}
+
+function isAttrProficient(
+  attr: string,
+  input: ResolvedCharacterInput,
+  byTarget: Record<string, ModifierContribution[]>,
+): boolean {
+  if (input.proficientAttribute?.toLowerCase() === attr) return true;
+  const saveTarget = `${attr}_saving_throw`;
+  if ((byTarget[saveTarget] ?? []).some(
+    (c) => c.op === "add" && c.value === input.pb && !(c.tags ?? []).includes("expertise"),
+  )) {
+    return true;
+  }
+  for (const s of input.slots) {
+    if (s.isToggledOff) continue;
+    for (const m of s.hardModifiers) {
+      if (m.operation !== "add" && m.operation !== "grant") continue;
+      const mt = (m.target ?? "").toLowerCase();
+      const targetsAttr = mt === `attribute.${attr}` || mt === saveTarget || mt === "attribute" || mt === "saving_throw";
+      if (!targetsAttr) continue;
+      const isPbVal = m.value === "pb" || (typeof m.value === "object" && m.value !== null && (m.value as any).kind === "derived" && (m.value as any).which === "pb");
+      if (isPbVal) {
+        let condOk = true;
+        if (input.conditionContext && m.condition) {
+          const comp = isConditionComputable(m.condition as any, input.conditionContext);
+          condOk = comp ? evaluateCondition(m.condition as any, input.conditionContext) : true;
+        }
+        if (condOk) return true;
+      }
+    }
+  }
+  return false;
 }
 
 function numericValue(v: unknown): number {
