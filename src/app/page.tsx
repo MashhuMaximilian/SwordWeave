@@ -3,6 +3,7 @@ import Image from "next/image";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { auth } from "@clerk/nextjs/server";
 import { HomepageAuth } from "@/components/layout/homepage-auth";
+import { CompositionDiagram } from "@/components/home/composition-diagram";
 
 // =============================================================================
 // SwordWeave homepage — "The Translation Engine"
@@ -44,42 +45,42 @@ const LAYERS = [
   {
     n: "01",
     title: "Primitives",
-    bu: "BU ≡ atomic",
+    bu: "BU · atomic",
     body:
-      "The only thing you actually buy. Atomic components — verbs (Damage, Move, Control, Heal), domains (Fire, Space, Mind, Time, Life…), and mechanics. Once owned, a primitive is yours forever and slots into anything else.",
-    example: "FIRE · DAMAGE · AOE · RANGED",
+      "The only thing you actually buy. Atomic puzzle pieces: verb tiers (the action shape), domain tiers (the medium, free-use once owned), output dice and status infliction, range and targeting geometry, and your stat baseline. Once owned, a primitive is yours forever and fits into anything you compose.",
+    example: "FIRE · VERB TIER I · 1D8 DAMAGE · CLOSE",
   },
   {
     n: "02",
-    title: "Effects",
-    bu: "no BU",
-    body:
-      "Reusable states — a localized blizzard, a kinetic barrier, a summoned wisp. Assembled from primitives. Lasting. Maintainable. Free to write down.",
-    example: "BLIZZARD · AURA · MAINTAINED",
-  },
-  {
-    n: "03",
     title: "Capabilities",
     bu: "no BU",
     body:
-      "Your cheat-sheets. Pre-written recipes combining verbs, domains, and effects into action cards — Burning Strike, Wormhole, Whispered Geas. Writing them costs nothing. The ingredients already cost BU.",
-    example: "SEARING BURST · DAMAGE+FIRE+AOE",
+      "Compiled lists of primitives. A pre-written cheat-sheet for an action: pick a verb, route it through one or more of your domains, attach your outputs and geometry. Writing one is free because you already paid for the ingredients. Advanced players often skip capabilities entirely and improvise from primitives at the table.",
+    example: "BURNING STRIKE · HIT + FIRE + 2D8 + CLOSE",
+  },
+  {
+    n: "03",
+    title: "Effects",
+    bu: "no BU",
+    body:
+      "Compiled lists of primitives with a duration. Maintained states, a localized blizzard, a kinetic barrier, a summoned wisp. Effects slot INTO capabilities and items. Heritages do not slot effects directly, only via capabilities. Status conditions (Stun, Prone, Blind) are not predefined; the table decides what they mean per fiction.",
+    example: "BLIZZARD · PRIM + SHORT + UPKEEP 1",
   },
   {
     n: "04",
     title: "Heritages",
-    bu: "BU ≡ transitively summed",
+    bu: "no direct BU",
     body:
-      "Where you came from. Lineage (biology), Upbringing (culture), Manifest (vocation). Every heritage is a bundle of primitives + capabilities — the BU cost is the transitive sum of all primitives it brings.",
+      "Where you came from. Lineage (biology), Upbringing (culture), Manifest (vocation). Three flavors of the same slot. Story reasons for why you own your primitives and capabilities (wings because you are an elf, or because your patron gave them, or because of a quest reward). No effects slot here directly, only via the capabilities you bring.",
     example: "ELF · ACOLYTE · PYROMANCER",
   },
   {
     n: "05",
     title: "Items",
-    bu: "BU ≡ slot cost",
+    bu: "BU on the item",
     body:
-      "Capability carriers. Slots accept capabilities, primitives, and effects. A magic sword might slot a Damage primitive plus the Burning capability; an attuned ring might slot a maintained Effect. Items are paid in BU; their inner slots are free to fill.",
-    example: "BURNING BLADE · DAMAGE+CAPABILITY",
+      "Capability carriers. Slots accept primitives, capabilities, AND effects (the only slot that takes all three). A magic sword might slot a Damage primitive plus the Burning capability. An attuned ring might slot a maintained Effect. You pay BU for the item shell, then fill the inside slots with things you already own for free.",
+    example: "BURNING BLADE · 8 BU + FILLED SLOTS",
   },
 ] as const;
 
@@ -87,7 +88,7 @@ const TENETS = [
   {
     n: "01",
     head: "Consequences are negotiated at the table.",
-    body: "There are no spell slots. You have Vitality. When you push too hard, the world pushes back — and the GM names the cost before you roll. Accept, negotiate smaller, or abort. That moment is the Pivot Point.",
+    body: "There are no spell slots. You have Vitality. When you push too hard, the world pushes back, and the GM names the cost before you roll. Accept, negotiate smaller, or abort. That moment is the Pivot Point.",
   },
   {
     n: "02",
@@ -97,12 +98,12 @@ const TENETS = [
   {
     n: "03",
     head: "Collaborative storytelling.",
-    body: "Everyone at the table — players and DM — are co-authors. The dice resolve uncertainty; the fiction resolves meaning. The GM is not a computer. The GM is a Translation Engine.",
+    body: "Everyone at the table, players and DM, are co-authors. The dice resolve uncertainty. The fiction resolves meaning. The GM is not a computer. The GM is a Translation Engine.",
   },
   {
     n: "04",
     head: "Rule of cool is king.",
-    body: "Cool things are rarely easy and never free. Wild feats are allowed — they spike the Strain, drain Vitality, and warp the local scene. Let the player pull the rubber band as hard as they want, but make the snap-back visible.",
+    body: "Cool things are rarely easy and never free. Wild feats are allowed, they spike the Strain, drain Vitality, and warp the local scene. Let the player pull the rubber band as hard as they want, but make the snap-back visible.",
   },
   {
     n: "05",
@@ -112,12 +113,12 @@ const TENETS = [
   {
     n: "06",
     head: "Everything is a guideline.",
-    body: "Bend the system to your world and your playstyle, not the other way around. Fork anything. Version everything. Publish what you love. Discard what you don't.",
+    body: "Bend the system to your world and your playstyle, not the other way around. Fork anything. Version everything. Publish what you love. Discard what you do not.",
   },
   {
     n: "07",
     head: "Balance is a truce, not a law.",
-    body: "An \"easy\" encounter can TPK on a hot streak of dice. All the engine can do is balance party BU against adversary BU — the rest is the table's shared judgement.",
+    body: "An easy encounter can TPK on a hot streak of dice. All the engine can do is balance party BU against adversary BU. The rest is the table's shared judgement.",
   },
   {
     n: "08",
@@ -226,7 +227,7 @@ export default async function HomePage() {
             SwordWeave is not a rulebook. It is a construction language for
             collaborative storytelling. You buy atomic primitives, assemble
             them into capabilities and effects, slot them into heritages and
-            items, and tell the story you came to tell — at the table, in your
+            items, and tell the story you came to tell. At the table, in your
             head, with the friends already in the room.
           </p>
 
@@ -277,56 +278,34 @@ export default async function HomePage() {
       </section>
 
       {/* ────────────────────────────────────────────────────────────────
-          02. System diagram — the BU flow as typographic notation
+          02. System diagram — the composition taxonomy (inline SVG)
           ──────────────────────────────────────────────────────────────── */}
       <section className="sw-section relative border-y border-border bg-card/40 py-12 sm:py-16 lg:py-20">
         <SectionHeading
           index="§10"
           eyebrow="The notation"
           title="How the engine composes"
-          deck="Everything in SwordWeave is built from the same atomic alphabet. Primitives are the only thing you actually buy — capabilities, effects, heritages, and items are recipes, slots, and bundles that reuse the primitives you already own."
+          deck="Primitives are the only thing you actually buy with BU. Everything else is free: compiled lists (capabilities, effects) and composition slots (heritages, items) all reference the primitives you already own. Status conditions are not predefined, the table decides what they mean in the fiction."
         />
 
-        <div className="sw-diagram mt-10 overflow-x-auto pb-2 sm:mt-14">
-          <pre
-            aria-label="SwordWeave composition diagram"
-            className="sw-diagram__canvas font-display text-[8px] leading-[1.5] sm:text-xs lg:text-sm"
-          >
-{`┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│  PRIMITIVE   │  │    EFFECT    │  │  CAPABILITY  │  │   HERITAGE   │  │     ITEM     │
-│  ─────────   │  │  ─────────   │  │  ─────────   │  │  ─────────   │  │  ─────────   │
-│  the only    │  │  reusable    │  │  cheat-sheet │  │  where you   │  │  capability  │
-│  thing you   │─►│  state,      │─►│  recipe:     │─►│  come from.  │─►│  carrier.    │
-│  BUY         │  │  maintained  │  │  verb ×      │  │  lineage +   │  │  slots       │
-│              │  │  bundles     │  │  domain ×    │  │  upbringing  │  │  accept      │
-│  BU ≡ atomic │  │              │  │  effect      │  │  + manifest  │  │  cap/prim/   │
-│              │  │  slot:       │  │              │  │              │  │  effect      │
-│              │  │  [primitive] │  │  slots:      │  │  slots:      │  │              │
-│              │  │              │  │  [primitive] │  │  [primitive] │  │  slots:      │
-│              │  │              │  │  [effect]    │  │  [capability]│  │  [primitive] │
-│              │  │              │  │              │  │              │  │  [capability]│
-│              │  │              │  │              │  │              │  │  [effect]    │
-└──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘
-        ▲                                              ▲                              ▲
-        │                                              │                              │
-        └─────────── primitives are the only thing that costs BU ─────────────────────┘
-`}
-          </pre>
+        <div className="mt-10 sm:mt-14">
+          <CompositionDiagram />
         </div>
 
-        {/* Quick recipe example */}
+        {/* Worked example callout */}
         <div className="sw-recipe mt-10 flex flex-col gap-4 border-t border-border pt-6 sm:mt-14 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-[0.22em] text-primary">
               Worked example · Burning Strike
             </p>
             <p className="mt-1 font-display text-lg uppercase leading-tight sm:text-xl">
-              Damage · Fire · Melee →{" "}
+              Hit + Fire + 1d8 + Close →{" "}
               <span className="text-primary">Burning Strike</span>
             </p>
             <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-              Buy three primitives once. Write the capability for free. Use them
-              in any other capability, effect, heritage, or item — forever.
+              You buy Verb Tier I, Fire Domain, 1d8 output, Close range. One
+              capability writes itself. Use the same primitives in any other
+              capability, effect, heritage, or item, forever.
             </p>
           </div>
           <Link
@@ -347,7 +326,7 @@ export default async function HomePage() {
           index="§20"
           eyebrow="Specimens"
           title="The five layers"
-          deck="Each layer is a different scale of composition. Only the bottom one — the primitive — costs Build Units. Everything above is structure on top of the primitives you already own."
+          deck="Each layer is a different scale of composition. Only the bottom one, the primitive, costs Build Units. Everything above is structure on top of the primitives you already own."
         />
 
         <div className="mt-10 grid gap-px overflow-hidden border border-border bg-border sm:mt-14 lg:grid-cols-2 xl:grid-cols-5">
@@ -387,7 +366,7 @@ export default async function HomePage() {
             </p>
             <p className="mt-1 text-sm leading-6 text-foreground sm:text-base">
               Every level grants you a <strong>BU budget</strong>. Spend it on
-              primitives — and only on primitives. Capabilities, effects, and
+              primitives, and only on primitives. Capabilities, effects, and
               heritages reuse the primitives you have already bought. Take
               penalties or disadvantages to mirror extra primitives back into
               your budget.
@@ -411,7 +390,7 @@ export default async function HomePage() {
           index="§30"
           eyebrow="The version envelope"
           title="Anything can be forked. Everything is versioned."
-          deck="The library is not a catalogue — it is a forge. Take what someone else made, fork it to your taste, publish your own version, or keep it to your followers. Every primitive, capability, effect, heritage, and item carries a version lineage you can audit, branch from, and roll back."
+          deck="The library is not a catalogue, it is a forge. Take what someone else made, fork it to your taste, publish your own version, or keep it to your followers. Every primitive, capability, effect, heritage, and item carries a version lineage you can audit, branch from, and roll back."
         />
 
         {/* Version timeline */}
@@ -422,13 +401,13 @@ export default async function HomePage() {
               { tag: "v.1.1", note: "forked by @user_a", tone: "muted" },
               { tag: "v.1.2", note: "+2 primitives", tone: "primary" },
               { tag: "v.1.3", note: "flagged: balance", tone: "muted" },
-              { tag: "v.2.0", note: "rewrite — published", tone: "primary" },
+              { tag: "v.2.0", note: "rewrite, published", tone: "primary" },
               { tag: "v.2.1", note: "followers only", tone: "accent" },
             ].map((step, i) => (
               <li
                 key={step.tag}
                 className="flex items-center gap-2 sm:gap-3"
-                aria-label={`${step.tag} — ${step.note}`}
+                aria-label={`${step.tag} ${step.note}`}
               >
                 <span
                   className={
@@ -474,7 +453,7 @@ export default async function HomePage() {
               n: "III.",
               title: "Publish",
               body:
-                "Share with the whole codex, your followers only, or keep private. Like, flag, and remix — the community writes the canon together.",
+                "Share with the whole codex, your followers only, or keep private. Like, flag, and remix. The community writes the canon together.",
             },
           ].map((action) => (
             <article
@@ -503,7 +482,7 @@ export default async function HomePage() {
           index="§40"
           eyebrow="Core tenets"
           title="How the table is supposed to feel"
-          deck="SwordWeave is a heuristic, not a spreadsheet. The rules exist to translate imagination into stakes — never to halt the game for a rules argument. These are the eight working truths of the table."
+          deck="SwordWeave is a heuristic, not a spreadsheet. The rules exist to translate imagination into stakes, never to halt the game for a rules argument. These are the eight working truths of the table."
         />
 
         <ol className="mt-10 grid gap-x-8 gap-y-8 sm:mt-14 lg:grid-cols-2">
@@ -540,7 +519,7 @@ export default async function HomePage() {
           index="§50"
           eyebrow="The codex"
           title="Open the library"
-          deck="Find the base primitives, community capabilities, hand-tuned heritages, and itemised gear — for every budget, every level, every table. Fork anything. Publish what you love."
+          deck="Find the base primitives, community capabilities, hand-tuned heritages, and itemised gear. For every budget, every level, every table. Fork anything. Publish what you love."
         />
 
         <div className="mt-10 grid gap-3 sm:mt-14 sm:grid-cols-2 lg:grid-cols-3">
@@ -600,18 +579,18 @@ export default async function HomePage() {
               First time here?
             </p>
             <p className="mt-1 font-display text-lg uppercase leading-tight sm:text-xl">
-              Build a character in 5 minutes.
+              Know who you are, then build everything they can do.
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Distribute attributes, pick a heritage pack, pick a training pack,
-              spend your remaining BU, finalize vitality.
+              Walk the eight steps from intent to first roll. No database, no
+              account, just the system in plain prose.
             </p>
           </div>
           <Link
-            href="/atelier?build=primitive&intent=primer"
+            href="/start"
             className="sw-cta-primary inline-flex h-11 w-fit items-center gap-2 bg-primary px-5 text-sm font-bold uppercase tracking-[0.12em] text-primary-foreground"
           >
-            Start the primer
+            Read the walkthrough
             <ArrowRight className="size-4" />
           </Link>
         </div>
