@@ -3,6 +3,7 @@ import Image from "next/image";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { auth } from "@clerk/nextjs/server";
 import { HomepageAuth } from "@/components/layout/homepage-auth";
+import { PublicNav } from "@/components/home/public-nav";
 import { CompositionDiagram } from "@/components/home/composition-diagram";
 
 // =============================================================================
@@ -130,7 +131,8 @@ const TENETS = [
 export default async function HomePage() {
   const { userId } = await auth();
   return (
-    <div className="sw-home relative mx-auto w-full max-w-[1400px] px-4 pb-24 pt-4 sm:px-6 sm:pt-6 lg:px-10 lg:pt-8">
+    <div className="sw-home relative mx-auto w-full max-w-[1400px] px-4 pb-24 pt-16 sm:px-6 sm:pt-16 lg:px-10 lg:pt-16">
+      <PublicNav />
       {/* ────────────────────────────────────────────────────────────────
           00. Top marginalia bar — running header, edition stamp, codex link
           ──────────────────────────────────────────────────────────────── */}

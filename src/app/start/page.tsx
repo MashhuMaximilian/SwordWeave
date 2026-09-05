@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import type { Metadata } from "next";
 import { CompositionDiagram } from "@/components/home/composition-diagram";
+import { PublicNav } from "@/components/home/public-nav";
 
 // =============================================================================
 // /start — "Know who they are, then build everything they can do."
@@ -159,7 +160,8 @@ const STEPS = [
 
 export default function StartPage() {
   return (
-    <div className="sw-home relative mx-auto w-full max-w-[1400px] px-4 pb-24 pt-4 sm:px-6 sm:pt-6 lg:px-10 lg:pt-8">
+    <div className="sw-home relative mx-auto w-full max-w-[1400px] px-4 pb-24 pt-16 sm:px-6 sm:pt-16 lg:px-10 lg:pt-16">
+      <PublicNav />
       {/* Top marginalia bar — same as homepage */}
       <div className="sw-marginalia sw-marginalia--top mb-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-border pb-3 text-[10px] uppercase tracking-[0.22em] text-muted-foreground sm:text-xs">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1">

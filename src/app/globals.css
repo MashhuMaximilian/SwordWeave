@@ -640,3 +640,272 @@ body {
   position: relative;
   z-index: 1;
 }
+
+/* ---------------------------------------------------------------------------
+ * PublicNav — sticky editorial nav for the front-facing public pages.
+ *
+ * Layered in @layer components so Tailwind utilities (hidden, lg:block,
+ * display, etc.) can override any rule here without !important fights.
+ * ---------------------------------------------------------------------------*/
+@layer components {
+  .sw-public-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    transition: background-color 240ms ease, border-color 240ms ease,
+      backdrop-filter 240ms ease;
+    will-change: transform;
+    background-color: transparent;
+    border-bottom: 1px solid transparent;
+    backdrop-filter: blur(0);
+  }
+  .sw-public-nav.is-scrolled {
+    background-color: color-mix(in srgb, var(--background) 88%, transparent);
+    border-bottom-color: var(--border);
+    backdrop-filter: saturate(140%) blur(16px);
+    -webkit-backdrop-filter: saturate(140%) blur(16px);
+    box-shadow: 0 1px 0 0 color-mix(in srgb, var(--border) 60%, transparent),
+      0 4px 12px -2px color-mix(in srgb, var(--background) 30%, transparent);
+  }
+  .dark .sw-public-nav.is-scrolled {
+    background-color: color-mix(in srgb, var(--background) 92%, transparent);
+  }
+
+  .sw-public-nav__inner {
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.625rem 1rem;
+    max-width: 1400px;
+    font-family: var(--font-sword-body);
+  }
+  @media (min-width: 1024px) {
+    .sw-public-nav__inner {
+      padding: 0.75rem 2.5rem;
+    }
+  }
+
+  .sw-public-nav__logo {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.05rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+  .sw-public-nav__logo:hover {
+    opacity: 0.85;
+  }
+
+  .sw-public-nav__links {
+    display: none;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0 auto 0 1.25rem;
+    padding: 0;
+    list-style: none;
+  }
+  @media (min-width: 1024px) {
+    .sw-public-nav__links {
+      display: flex;
+    }
+  }
+
+  .sw-public-nav__link {
+    position: relative;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.7rem;
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--muted-foreground);
+    text-decoration: none;
+    transition: color 180ms ease;
+    font-weight: 500;
+  }
+  .sw-public-nav__link::after {
+    content: "";
+    position: absolute;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.3rem;
+    height: 1px;
+    background: var(--primary);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 240ms ease;
+  }
+  .sw-public-nav__link:hover {
+    color: var(--foreground);
+  }
+  .sw-public-nav__link.is-active {
+    color: var(--primary);
+  }
+  .sw-public-nav__link.is-active::after {
+    transform: scaleX(1);
+  }
+
+  .sw-public-nav__cta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .sw-public-nav__signin {
+    display: none;
+    align-items: center;
+    height: 2.25rem;
+    padding: 0 1rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--foreground);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--card) 70%, transparent);
+    transition: border-color 180ms ease, color 180ms ease;
+  }
+  @media (min-width: 768px) {
+    .sw-public-nav__signin {
+      display: inline-flex;
+    }
+  }
+  .sw-public-nav__signin:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+  .sw-public-nav__signin--block {
+    display: inline-flex;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .sw-public-nav__signup {
+    display: inline-flex;
+    align-items: center;
+    height: 2.25rem;
+    padding: 0 1rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--primary-foreground);
+    background: var(--primary);
+    text-decoration: none;
+    transition: filter 180ms ease;
+  }
+  .sw-public-nav__signup:hover {
+    filter: brightness(0.92);
+  }
+  .sw-public-nav__signup--block {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .sw-public-nav__burger {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0.625rem 0.5rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    cursor: pointer;
+  }
+  @media (min-width: 1024px) {
+    .sw-public-nav__burger {
+      display: none;
+    }
+  }
+  .sw-public-nav__burger-bar {
+    display: block;
+    width: 100%;
+    height: 1.5px;
+    background: var(--foreground);
+    transition: transform 240ms ease, opacity 200ms ease;
+  }
+  .sw-public-nav__burger-bar.is-open-1 {
+    transform: translateY(5px) rotate(45deg);
+  }
+  .sw-public-nav__burger-bar.is-open-2 {
+    opacity: 0;
+  }
+  .sw-public-nav__burger-bar.is-open-3 {
+    transform: translateY(-5px) rotate(-45deg);
+  }
+
+  .sw-public-nav__drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(360px, 100vw);
+    background: color-mix(in srgb, var(--background) 96%, transparent);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border-left: 1px solid var(--border);
+    z-index: 39;
+    padding: 4rem 1.5rem 1.5rem;
+    overflow-y: auto;
+    animation: sw-drawer-in 220ms ease;
+  }
+  @keyframes sw-drawer-in {
+    from { transform: translateX(8%); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+  }
+
+  .sw-public-nav__drawer-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .sw-public-nav__drawer-link {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.875rem 0;
+    text-decoration: none;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    transition: color 180ms ease;
+  }
+  .sw-public-nav__drawer-link.is-active {
+    color: var(--primary);
+  }
+  .sw-public-nav__drawer-link:hover {
+    color: var(--primary);
+  }
+  .sw-public-nav__drawer-tag {
+    font-family: var(--font-sword-body);
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--muted-foreground);
+  }
+  .sw-public-nav__drawer-label {
+    font-family: var(--font-sword-display);
+    font-size: 1.125rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .sw-public-nav__drawer-foot {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+}
