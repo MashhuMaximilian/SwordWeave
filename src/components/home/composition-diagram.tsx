@@ -108,10 +108,14 @@ export function CompositionDiagram() {
             YOU BUY · BU ONLY
           </text>
 
-          {/* The 5 primitive families */}
+          {/* The 5 primitive families.
+              Tier labels match the codex seed vocabulary: each primitive carries
+              a costTier label (e.g. "Tier 1: Minor", "Tier 2: Standard") and an
+              individual buCost. The ranges below are illustrative anchors, not
+              hard caps — buy any tier at any level as long as you have the BU. */}
           {[
-            { x: 36, label: "VERB TIER", sub: "I-IV · 4-16 BU", note: "action shape" },
-            { x: 200, label: "DOMAIN TIER", sub: "I-IV · 4-16 BU", note: "the medium" },
+            { x: 36, label: "VERB", sub: "tier · varies", note: "action shape" },
+            { x: 200, label: "DOMAIN", sub: "tier · varies", note: "the medium" },
             { x: 364, label: "OUTPUT", sub: "damage · status", note: "what lands" },
             { x: 528, label: "GEOMETRY", sub: "range · targeting", note: "how far, how wide" },
             { x: 692, label: "STAT", sub: "attribute · skill", note: "your baseline" },

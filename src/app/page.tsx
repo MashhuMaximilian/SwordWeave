@@ -49,7 +49,7 @@ const LAYERS = [
     bu: "BU · atomic",
     body:
       "The only thing you actually buy. Atomic puzzle pieces: verb tiers (the action shape), domain tiers (the medium, free-use once owned), output dice and status infliction, range and targeting geometry, and your stat baseline. Once owned, a primitive is yours forever and fits into anything you compose.",
-    example: "FIRE · VERB TIER I · 1D8 DAMAGE · CLOSE",
+    example: "FIRE · STRIKE · 1D8 · CLOSE",
   },
   {
     n: "02",
@@ -305,7 +305,7 @@ export default async function HomePage() {
               <span className="text-primary">Burning Strike</span>
             </p>
             <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-              You buy Verb Tier I, Fire Domain, 1d8 output, Close range. One
+              You buy a Strike verb, Fire domain, 1d8 output, Close range. One
               capability writes itself. Use the same primitives in any other
               capability, effect, heritage, or item, forever.
             </p>

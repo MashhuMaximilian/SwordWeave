@@ -54,29 +54,29 @@ const STEPS = [
   {
     n: "02",
     title: "Pick the verbs you'll need",
-    sub: "you buy verb tiers with BU",
+    sub: "buy the verbs you want, at any tier",
     body: [
-      "A verb is the shape of an action: Hit, Move, Control, Heal. You don't buy individual verbs. You buy the tier.",
-      "Tier I (4 BU) covers basic action shapes. Tier II (8 BU) opens more advanced shapes. Tier III (12 BU) for major feats. Tier IV (16 BU) for reality-warping.",
-      "Once you own a tier, you can use any verb in it. Custom verbs you invent at the table go into whichever tier the GM agrees fits. The tier travels with you.",
+      "A verb is the shape of an action: Hit, Move, Control, Heal. Each verb primitive has its own buCost and a tier label (Minor, Standard, Major, Extreme) that says roughly how big it is.",
+      "You can buy any verb at any tier at any level, as long as you have the BU and the table agrees. Tier is a label, not a gate. Nothing prevents you from buying a Major verb at Level 1 if your budget allows.",
+      "Once you own a verb, you can use it freely. Custom verbs you invent at the table go into whichever tier the GM agrees fits. Buy as many verbs as your budget allows. Advanced players often start here.",
     ],
     example: {
       label: "Lyra buys",
-      lines: ["TIER II  · 8 BU  · Hit, Move, Control", "TIER III · 12 BU · Heal, plus bigger shapes"],
+      lines: ["STRIKE  · 4 BU   · basic impact language", "MOVE    · 4 BU   · repositions and traversal", "CONTROL · 6 BU   · alter state of things"],
     },
   },
   {
     n: "03",
     title: "Pick your domains",
-    sub: "you buy one domain tier with BU",
+    sub: "buy as many domains as you want, at any tier",
     body: [
-      "Domains are the medium you route intent through. Fire, Gravity, Space, Mind, Time, Life, Light, Mind, and a few dozen more.",
-      "Tier I (4 BU) covers basic elements. Tier IV (16 BU) covers advanced conceptual systems. Buy once. Use freely. A domain is not slotted into a capability; it's narrative permission to manipulate that force whenever you want.",
-      "Why one tier? Because the level of a domain determines what you can do with it, not how many you own. Owning Space Tier IV means you can warp local coordinate space any way you can describe it.",
+      "Domains are the medium you route intent through. Fire, Gravity, Space, Mind, Time, Life, Light, and a few dozen more. Each domain primitive has its own buCost and a tier label.",
+      "Buy once. Use freely. A domain is not slotted into a capability; it is narrative permission to manipulate that force whenever you want. You can own Fire and Space at the same time. You can own four tiers of Space if you can afford them. Nothing stops you except the BU.",
+      "You do not need to slot a domain into a capability to use it. Having the domain in your inventory is the permission. The capability just describes how you apply it.",
     ],
     example: {
       label: "Lyra buys",
-      lines: ["SPACE TIER IV · 16 BU · warp local coordinates"],
+      lines: ["FIRE    · 4 BU  · heat, ignition, burn", "SPACE   · 12 BU · fold and warp local coordinates"],
     },
   },
   {
