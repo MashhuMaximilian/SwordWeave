@@ -596,6 +596,28 @@ export default async function HomePage() {
             <ArrowRight className="size-4" />
           </Link>
         </div>
+
+        <div className="mt-3 flex flex-col items-start gap-4 border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div className="min-w-0">
+            <p className="font-display text-xs uppercase tracking-[0.22em] text-muted-foreground">
+              Already know the basics?
+            </p>
+            <p className="mt-1 font-display text-lg uppercase leading-tight sm:text-xl">
+              Take the hit, keep the budget, keep the option.
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Six decisions to a character. The mirror mechanic, BU debt,
+              per-level caps, and a worked example from intent to first roll.
+            </p>
+          </div>
+          <Link
+            href="/character"
+            className="sw-cta-ghost inline-flex h-11 w-fit items-center gap-2 border border-border bg-background px-5 text-sm font-bold uppercase tracking-[0.12em] text-foreground hover:border-primary/60 hover:text-primary"
+          >
+            Create a character
+            <ArrowRight className="size-4" />
+          </Link>
+        </div>
       </section>
 
       {/* ────────────────────────────────────────────────────────────────

@@ -381,6 +381,26 @@ body {
   opacity: 0.85;
 }
 
+/* Underline-only variant — use when the word would read WRONG with the
+   strikethrough treatment above (e.g. "keep the BUDGET" must not look
+   struck through). */
+.sw-headline__under {
+  color: var(--primary);
+  position: relative;
+  display: inline-block;
+  padding-bottom: 0.05em;
+}
+.sw-headline__under::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.05em;
+  height: 0.12em;
+  background: var(--primary);
+  opacity: 0.55;
+}
+
 /* Vertical running head — only visible at lg breakpoint. Reads top-to-bottom
    like a print folio. Sits in the left rail of the hero grid. The default
    state is `display: none` so Tailwind's `hidden lg:block` utility can
