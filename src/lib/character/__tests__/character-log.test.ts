@@ -46,6 +46,13 @@ describe("characterLog table", () => {
       "item_quantity",
       // Phase 8.2 batch 5
       "dm_bonus_change",
+      // Phase 9.1 inline character-builder events
+      "primitive_slotted",
+      "primitive_moved",
+      "primitive_removed",
+      "heritage_formalized",
+      "item_formalized",
+      "mode_changed",
     ]);
   });
 
@@ -60,6 +67,13 @@ describe("characterLog table", () => {
       | "item_unequip"
       | "item_quantity"
       | "dm_bonus_change"
+      // Phase 9.1 inline character-builder events
+      | "primitive_slotted"
+      | "primitive_moved"
+      | "primitive_removed"
+      | "heritage_formalized"
+      | "item_formalized"
+      | "mode_changed"
     >();
   });
 
@@ -76,6 +90,12 @@ describe("characterLog table", () => {
       | { capabilityId: string; capabilityName: string; active: boolean }
       | { itemId: string; itemName: string }
       | { prev: number; next: number; applied: number }
+      // Phase 9.1 inline character-builder payload shapes.
+      | { primitiveId: number; quantity: number; inline: boolean }
+      | { primitiveId: number; instanceId: string }
+      | { heritageId: string; kind: "LINEAGE" | "UPBRINGING" | "MANIFEST"; primitiveCount: number }
+      | { itemId: string; itemName: string; primitiveCount: number }
+      | { fromMode: "BUILD" | "PLAY"; toMode: "BUILD" | "PLAY" }
     >();
   });
 });

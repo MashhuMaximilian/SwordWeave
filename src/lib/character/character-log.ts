@@ -126,6 +126,57 @@ export interface DmBonusChangePayload {
   note?: string;
 }
 
+// Phase 9.1 (Mashu 2026-09-06): inline character-builder audit
+// payloads. Each is a tagged union variant — see appendCharacterLog()
+// callers below for how each kind is invoked.
+export interface PrimitiveSlottedPayload {
+  primitiveId: number;
+  quantity: number;
+  originHeritageId?: string | null;
+  originCapabilityId?: string | null;
+  originEffectId?: string | null;
+  /** True when the primitive was authored inline (vs. slotted from
+   *  an existing primitive row by id). */
+  inline: boolean;
+}
+
+export interface PrimitiveMovedPayload {
+  primitiveId: number;
+  instanceId: string;
+  /** Source: what accordion the chip left. Null = was directly slotted. */
+  fromHeritageId?: string | null;
+  /** Destination: the new accordion. Null = detach (remove from character). */
+  toHeritageId?: string | null;
+  /** Source kind discriminator (LINEAGE / UPBRINGING / MANIFEST / PERSONAL). */
+  fromSource?: string | null;
+  toSource?: string | null;
+}
+
+export interface PrimitiveRemovedPayload {
+  primitiveId: number;
+  instanceId: string;
+}
+
+export interface HeritageFormalizedPayload {
+  heritageId: string;
+  kind: "LINEAGE" | "UPBRINGING" | "MANIFEST";
+  /** The accordion kind that was formalized (= the heritage kind). */
+  accordionKind: "LINEAGE" | "UPBRINGING" | "MANIFEST";
+  /** Snapshot of how many primitives were bundled at formalize-time. */
+  primitiveCount: number;
+}
+
+export interface ItemFormalizedPayload {
+  itemId: string;
+  itemName: string;
+  primitiveCount: number;
+}
+
+export interface ModeChangedPayload {
+  fromMode: "BUILD" | "PLAY";
+  toMode: "BUILD" | "PLAY";
+}
+
 export type CharacterLogPayload =
   | VitalityChangePayload
   | RestPayload
@@ -141,7 +192,14 @@ export type CharacterLogPayload =
   // timeline can show "added 3 healing potions" vs
   // "equipped the longsword".
   | ItemQuantityChangePayload
-  | DmBonusChangePayload;
+  | DmBonusChangePayload
+  // Phase 9.1 inline character-builder events.
+  | PrimitiveSlottedPayload
+  | PrimitiveMovedPayload
+  | PrimitiveRemovedPayload
+  | HeritageFormalizedPayload
+  | ItemFormalizedPayload
+  | ModeChangedPayload;
 
 /**
  * Append an event to the character's log. Fire-and-forget — errors

@@ -122,6 +122,13 @@ export const characters = pgTable(
     // src/components/character-modal/character-modal-store.tsx.
     // Migration: 0039_characters_backstory.sql.
     backstory: jsonb("backstory").notNull().default(sql`'{}'::jsonb`),
+    // Phase 9.1 (Mashu 2026-09-06): BUILD/PLAY mode flag for the new
+    // inline character-builder. 'PLAY' = today's read-only sheet.
+    // 'BUILD' = drag/drop chips + inline authoring + Formalize buttons
+    // on the accordion. New characters default to 'PLAY'; the
+    // /characters/new route redirects to ?mode=BUILD so the creation
+    // flow opens in build mode. Migration 0053 added the column.
+    mode: text("mode").notNull().default("PLAY").$type<"BUILD" | "PLAY">(),
     ...timestamps,
   },
   (table) => [
@@ -608,6 +615,28 @@ export const characterLogKindEnum = pgEnum("character_log_kind", [
   // note? }. Distinct from 'level_up' (which implicitly zeroes
   // dmBonusBu — that's a separate event we could add later).
   "dm_bonus_change",
+  // Phase 9.1 (Mashu 2026-09-06): inline character-builder events.
+  // "primitive_slotted" = a primitive was added inline via
+  //   POST /api/characters/[id]/primitives. Body: { primitiveId,
+  //   quantity, originHeritageId?, inline }.
+  // "primitive_moved" = a primitive was moved between accordions
+  //   via PATCH /api/characters/[id]/primitives/[instanceId].
+  //   Body: { primitiveId, fromHeritageId?, toHeritageId? }.
+  // "primitive_removed" = a primitive instance was removed from
+  //   a character. Body: { primitiveId, instanceId }.
+  // "heritage_formalized" = the user wrapped a lineage/upbringing/
+  //   manifest accordion into a real heritage row. Body:
+  //   { heritageId, kind, accordionKind }.
+  // "item_formalized" = the user wrapped the items accordion into
+  //   a real item row. Body: { itemId, itemName }.
+  // "mode_changed" = the user toggled BUILD ↔ PLAY. Body:
+  //   { fromMode, toMode }.
+  "primitive_slotted",
+  "primitive_moved",
+  "primitive_removed",
+  "heritage_formalized",
+  "item_formalized",
+  "mode_changed",
 ]);
 
 export type CharacterLogKind = (typeof characterLogKindEnum.enumValues)[number];
@@ -665,6 +694,13 @@ export const builds = pgTable(
     upbringingId: uuid("upbringing_id").references(() => heritage.id, {
       onDelete: "set null",
     }),
+    // Phase 9.1 (Mashu 2026-09-06): mirror lineage_id / upbringing_id
+    // for the manifest accordion. Migration 0054 added this column
+    // so the inline character-builder can persist a manifest bundle
+    // with a real FK (instead of relying on the manifestName text
+    // snapshot, which only round-trips the name).
+    manifestId: uuid("manifest_id")
+      .references(() => heritage.id, { onDelete: "set null" }),
     isPublic: boolean("is_public").notNull().default(false),
     sourceOrigin: text("source_origin"),
     // Phase 8: per-entity iconography. Builds previously had only

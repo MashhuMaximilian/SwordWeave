@@ -715,6 +715,10 @@ export default async function CharacterSheetPage({
       backstory={parseBackstory(
         (row as unknown as { backstory?: unknown }).backstory,
       )}
+      // Phase 9.1 (Mashu 2026-09-06): forward the persisted
+      // BUILD/PLAY mode. Default to PLAY when the column is
+      // null/undefined (older rows from before migration 0053).
+      mode={(row.mode ?? "PLAY") as "BUILD" | "PLAY"}
     />
   );
 }

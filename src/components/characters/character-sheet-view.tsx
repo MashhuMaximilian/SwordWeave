@@ -48,6 +48,8 @@ import { CharacterEditButton } from "@/components/characters/character-edit-butt
 import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-card";
 import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
 import { ConditionsDrawer } from "@/components/characters/conditions-drawer";
+import { BuildModeBanner } from "@/components/characters/build-mode-banner";
+import { AccordionFooterActions } from "@/components/characters/accordion-footer-actions";
 import { FormulaModal, type FormulaStep } from "@/components/characters/formula-modal";
 import { useDeepPrimitiveClosure } from "@/components/characters/use-deep-primitive-closure";
 import { SheetIdentityHeader } from "@/components/characters/sheet-identity-header";
@@ -263,6 +265,10 @@ export type CharacterSheetProps = {
   upbringingName: string | null;
   upbringingDescription: string | null;
   manifestName: string | null;
+  // Phase 9.1 (Mashu 2026-09-06): BUILD/PLAY mode flag driving
+  // whether the inline character-builder affordances render on
+  // the accordions. Persisted in characters.mode (migration 0053).
+  mode?: "BUILD" | "PLAY";
   attrPhysical: number;
   attrMental: number;
   attrMagical: number;
@@ -863,6 +869,14 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         autoEvaluated={autoEvaluated}
       />
     <div className="mx-auto w-full max-w-screen-2xl px-5 py-8 pb-32">
+      {/* Phase 9.1 (Mashu 2026-09-06): BUILD/PLAY mode banner. Sits at
+          the top of the sheet so the user always knows which mode
+          they're in. The banner owns the toggle; accordions react
+          to the mode via the `mode` prop below. */}
+      <BuildModeBanner
+        characterId={props.id}
+        initialMode={props.mode ?? "PLAY"}
+      />
       {/* Phase 8.4 (Mashu 2026-07-28): the in-page header
           (Pumnu portrait + name + L5 + size + Edit/Level Up/Clone)
           is hidden on mobile because SheetIdentityHeader at the top
@@ -1039,6 +1053,9 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             heritageById={heritageById}
             capabilityById={capabilityById}
             effectById={effectById}
+            // Phase 9.1: forward BUILD/PLAY mode so accordions
+            // can render their inline authoring affordances.
+            mode={props.mode ?? "PLAY"}
             // Phase 8.2 batch 3: pass all primitive links for the primitives accordion
             primitiveLinks={props.primitiveLinks.map((l) => ({
               primitiveId: l.primitiveId,
@@ -2213,8 +2230,11 @@ function CapabilitiesTab({
   // "update available" stale pill lights up
   // when needed).
   latestVersions,
+  // Phase 9.1 (Mashu 2026-09-06): BUILD/PLAY mode flag.
+  mode,
 }: {
   characterId: string;
+  mode?: "BUILD" | "PLAY";
   heritageLinks: Array<{
     heritageId: string;
     acquiredAtLevel: number;
@@ -2618,6 +2638,25 @@ function CapabilitiesTab({
         primitiveLinks={primitiveLinks}
         latestVersions={latestVersions}
       />
+      {/* Phase 9.1 (Mashu 2026-09-06): BUILD-mode affordances for the
+          manifest accordion. Only renders when the page is in BUILD
+          mode. The "Add primitive" / "Formalize as heritage" buttons
+          open the sheets built for this PR. */}
+      {(mode ?? "PLAY") === "BUILD" && (
+        <div className="ml-2 max-w-prose">
+          <AccordionFooterActions
+            characterId={characterId}
+            accordionKind="MANIFEST"
+            slottedCount={
+              new Set(
+                primitiveLinks
+                  .filter((pl) => pl.source === "MANIFEST")
+                  .map((pl) => pl.primitiveId),
+              ).size
+            }
+          />
+        </div>
+      )}
 
       {/* ===== Accordion 3: Lineage (heritage kind = LINEAGE) ===== */}
       <HeritageKindAccordion
@@ -2632,6 +2671,22 @@ function CapabilitiesTab({
         primitiveLinks={primitiveLinks}
         latestVersions={latestVersions}
       />
+      {/* Phase 9.1 (Mashu 2026-09-06): BUILD-mode affordances for lineage. */}
+      {(mode ?? "PLAY") === "BUILD" && (
+        <div className="ml-2 max-w-prose">
+          <AccordionFooterActions
+            characterId={characterId}
+            accordionKind="LINEAGE"
+            slottedCount={
+              new Set(
+                primitiveLinks
+                  .filter((pl) => pl.source === "LINEAGE")
+                  .map((pl) => pl.primitiveId),
+              ).size
+            }
+          />
+        </div>
+      )}
 
       {/* ===== Phase 8.K K1 fallback: 0-heritage characters =====
           HeritageKindAccordion only renders when at least one heritage
@@ -2693,6 +2748,22 @@ function CapabilitiesTab({
         primitiveLinks={primitiveLinks}
         latestVersions={latestVersions}
       />
+      {/* Phase 9.1 (Mashu 2026-09-06): BUILD-mode affordances for upbringing. */}
+      {(mode ?? "PLAY") === "BUILD" && (
+        <div className="ml-2 max-w-prose">
+          <AccordionFooterActions
+            characterId={characterId}
+            accordionKind="UPBRINGING"
+            slottedCount={
+              new Set(
+                primitiveLinks
+                  .filter((pl) => pl.source === "UPBRINGING")
+                  .map((pl) => pl.primitiveId),
+              ).size
+            }
+          />
+        </div>
+      )}
     </div>
   );
 }

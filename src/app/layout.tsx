@@ -149,7 +149,12 @@ try {
 } catch {}
           `}
         </Script>
-        <ClerkProvider>
+        <ClerkProvider
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+          signInFallbackRedirectUrl="/atelier"
+          signUpFallbackRedirectUrl="/atelier"
+        >
           <FullscreenInit />
           <AppShell>{children}</AppShell>
           {/* Vercel Web Analytics — tracks pageviews, custom events,
