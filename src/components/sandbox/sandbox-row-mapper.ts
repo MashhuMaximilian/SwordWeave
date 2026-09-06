@@ -16,6 +16,17 @@
 
 import type { LibraryItem } from "@/lib/publishing/library-query";
 
+/** Normalise createdAt (string | Date | null) to a Date | null. Phase
+ *  9.1 follow-up (Mashu 2026-09-06): the sandbox server returns
+ *  timestamps as `timestamp({withTimezone:true})` which Drizzle gives
+ *  back as a Date instance, but legacy callers may pass ISO strings. */
+function toDate(v: Date | string | null | undefined): Date | null {
+  if (v == null) return null;
+  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 /**
  * Derive an entity's BU cost from its composed primitive links. Mirrors
  * the formula used by the sandbox preview pane (sandbox-preview-modal.tsx)
@@ -50,6 +61,11 @@ type SandboxPrimitive = {
   iconKey: string | null;
   iconUrl: string | null;
   iconColor: string | null;
+  // Phase 9.1 follow-up (Mashu 2026-09-06): row.createdAt so the
+  // RECENT sort in /atelier can order by true creation time. Without
+  // this, EMPTY_ENGAGEMENT.publishedAt is null for every sandbox row
+  // and the sort degenerates (stable-alphabetical, not chronological).
+  createdAt?: Date | string | null;
 };
 
 type SandboxEffect = {
@@ -66,6 +82,8 @@ type SandboxEffect = {
   /** Composed primitive links — used to derive the effect's BU cost
    *  (same formula the preview pane uses). */
   primitiveLinks?: Array<{ primitive: { buCost: number }; quantity: number }>;
+  // Phase 9.1 follow-up: createdAt for the RECENT sort.
+  createdAt?: Date | string | null;
 };
 
 type SandboxCapability = {
@@ -84,6 +102,8 @@ type SandboxCapability = {
   /** Composed primitive links — used to derive the capability's BU cost
    *  (same formula the preview pane uses). */
   primitiveLinks?: Array<{ primitive: { buCost: number }; quantity: number }>;
+  // Phase 9.1 follow-up: createdAt for the RECENT sort.
+  createdAt?: Date | string | null;
 };
 
 type SandboxTemplate = {
@@ -104,6 +124,8 @@ type SandboxTemplate = {
   /** Composed primitive links — used to derive the template's BU cost
    *  (sum of slotted primitive costs, mirroring heritage-form.tsx). */
   primitiveLinks?: Array<{ primitive: { buCost: number }; quantity: number }>;
+  // Phase 9.1 follow-up: createdAt for the RECENT sort.
+  createdAt?: Date | string | null;
 };
 
 type SandboxItem = {
@@ -122,6 +144,8 @@ type SandboxItem = {
   iconKey: string | null;
   iconUrl: string | null;
   iconColor: string | null;
+  // Phase 9.1 follow-up: createdAt for the RECENT sort.
+  createdAt?: Date | string | null;
 };
 
 type SandboxCharacter = {
@@ -177,7 +201,11 @@ const EMPTY_ENGAGEMENT = {
   dislikesCount: 0,
   forkCount: 0,
   netReactions: 0,
-  publishedAt: null,
+  // publishedAt is intentionally OMITTED here. Each mapper below
+  // overrides it with `row.createdAt ?? null` so the RECENT sort
+  // orders by true creation time. Phase 9.1 follow-up (Mashu
+  // 2026-09-06): previously forced to null, which degenerated
+  // RECENT into stable-alphabetical.
 };
 
 export function primitiveToLibraryItem(
@@ -202,6 +230,9 @@ export function primitiveToLibraryItem(
     iconKey: row.iconKey,
     iconUrl: row.iconUrl,
     iconColor: row.iconColor ?? "#ffffff",
+    // Phase 9.1 follow-up: thread createdAt through to publishedAt so
+    // the RECENT sort orders by true creation time.
+    publishedAt: row.createdAt ? toDate(row.createdAt) : null,
   };
 }
 
@@ -228,6 +259,7 @@ export function effectToLibraryItem(
     iconKey: row.iconKey,
     iconUrl: row.iconUrl,
     iconColor: row.iconColor ?? "#ffffff",
+    publishedAt: row.createdAt ? toDate(row.createdAt) : null,
   };
 }
 
@@ -254,6 +286,7 @@ export function capabilityToLibraryItem(
     iconKey: row.iconKey,
     iconUrl: row.iconUrl,
     iconColor: row.iconColor ?? "#ffffff",
+    publishedAt: row.createdAt ? toDate(row.createdAt) : null,
   };
 }
 
@@ -287,6 +320,7 @@ export function heritageToLibraryItem(
     iconKey: row.iconKey,
     iconUrl: row.iconUrl,
     iconColor: row.iconColor ?? "#ffffff",
+    publishedAt: row.createdAt ? toDate(row.createdAt) : null,
   };
 }
 
@@ -312,6 +346,7 @@ export function itemToLibraryItem(
     iconKey: row.iconKey,
     iconUrl: row.iconUrl,
     iconColor: row.iconColor ?? "#ffffff",
+    publishedAt: row.createdAt ? toDate(row.createdAt) : null,
   };
 }
 
@@ -338,6 +373,7 @@ export function characterToLibraryItem(
     iconKey: null,
     iconUrl: null,
     iconColor: "#ffffff",
+    publishedAt: null,
   };
 }
 
@@ -374,5 +410,6 @@ export function buildToLibraryItem(
     iconKey: row.iconKey,
     iconUrl: row.iconUrl,
     iconColor: row.iconColor ?? "#ffffff",
+    publishedAt: null,
   };
 }

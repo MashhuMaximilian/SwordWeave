@@ -382,10 +382,23 @@ export function HeritageLibrary({
   const filteredItems = useMemo(() => {
     let items = combinedItems;
 
-    // Toolbar text search.
+    // Toolbar text search across ALL discoverable fields (name,
+    // description, tags, category, targetType). Same fix as
+    // grammar-library.tsx — Mashu 2026-09-06.
     if (toolbarState.search) {
       const q = toolbarState.search.toLowerCase();
-      items = items.filter((item) => item.name.toLowerCase().includes(q));
+      items = items.filter((item) => {
+        const haystack = [
+          item.name,
+          item.description ?? "",
+          item.category ?? "",
+          item.targetType,
+          ...(item.tags ?? []),
+        ]
+          .join("\n")
+          .toLowerCase();
+        return haystack.includes(q);
+      });
     }
 
     // Toolbar type filter. "ALL" = everything. Group keys

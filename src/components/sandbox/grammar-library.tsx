@@ -472,10 +472,22 @@ export function GrammarLibrary({
       if (!allowedKeys.includes(item.targetType) && !allowedKeys.includes("ALL")) {
         return false;
       }
-      // Apply toolbar text search.
+      // Apply toolbar text search across ALL discoverable fields
+      // (name, description, tags, category, targetType). Previously
+      // (Mashu 2026-09-06) only `name` was matched — searching for a
+      // tag or a substring of the mechanical output found nothing.
       if (toolbarState.search) {
         const q = toolbarState.search.toLowerCase();
-        if (!item.name.toLowerCase().includes(q)) return false;
+        const haystack = [
+          item.name,
+          item.description ?? "",
+          item.category ?? "",
+          item.targetType,
+          ...(item.tags ?? []),
+        ]
+          .join("\n")
+          .toLowerCase();
+        if (!haystack.includes(q)) return false;
       }
       // Apply type filter. "ALL" = everything available in this build
       // mode. Group keys (GROUP_MECHANICS / GROUP_HERITAGES) match a set
