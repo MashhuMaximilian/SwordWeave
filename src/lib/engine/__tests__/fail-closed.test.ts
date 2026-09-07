@@ -62,10 +62,21 @@ describe("resolveModifiers — fail closed on non-computable conditions", () => 
         character: {
           flags: new Set(),
           custom: {},
-          practices: new Map(),
+          // Phase 9.5 follow-up (Mashu 2026-09-07):
+          // PracticeState is `Readonly<Record<PracticeKey,
+          // number>>`, not a Map. The Map type predates
+          // i2.6's switch to a literal-keyed object.
+          practices: {
+            prowess: 0, finesse: 0, fieldcraft: 0, awareness: 0,
+            reason: 0, knowledge: 0, influence: 0, mysticism: 0,
+            communion: 0, intuition: 0,
+          },
           proficiencies: new Set(),
           vitality: 10,
           vitalityMax: 10,
+          saveDc: 11,
+          blockValue: 0,
+          attributes: { physical: 10, mental: 10, magical: 10 },
         },
         // intentionally NO `target` — fail-closed path
       },
@@ -102,10 +113,17 @@ describe("resolveModifiers — fail closed on non-computable conditions", () => 
         character: {
           flags: new Set(),
           custom: {},
-          practices: new Map(),
+          practices: {
+            prowess: 0, finesse: 0, fieldcraft: 0, awareness: 0,
+            reason: 0, knowledge: 0, influence: 0, mysticism: 0,
+            communion: 0, intuition: 0,
+          },
           proficiencies: new Set(),
           vitality: 10,
           vitalityMax: 10,
+          saveDc: 11,
+          blockValue: 0,
+          attributes: { physical: 10, mental: 10, magical: 10 },
         },
         target: {
           custom: {},

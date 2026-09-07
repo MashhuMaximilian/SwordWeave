@@ -510,7 +510,26 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
     conditions.push(eq(primitives.category, q.category as never));
   }
   if (q.search) {
-    conditions.push(ilike(primitives.name, `%${q.search}%`));
+    // Phase 9.5 follow-up (Mashu 2026-09-07): search must
+    // cover everything mechanical — the user types "knock
+    // prone" expecting to find "Knockdown" primitive whose
+    // hard_modifiers set prone, NOT just the name string.
+    // Capabilities and effects already include their
+    // verbose description; primitives lagged behind because
+    // their narrativeRule field is the closest analog and
+    // it wasn't wired. We OR across (a) name, (b)
+    // narrativeRule (the prose rule), (c) hard_modifiers
+    // JSONB serialised as text (so a user typing "prone"
+    // matches the modifiers[] payload too). JSONB→text is
+    // expensive but the library is small enough that this
+    // stays under the 1s ceiling.
+    conditions.push(
+      or(
+        ilike(primitives.name, `%${q.search}%`),
+        ilike(primitives.narrativeRule, `%${q.search}%`),
+        sql`${primitives.hardModifiers}::text ILIKE ${`%${q.search}%`}`,
+      )!,
+    );
   }
 
   const rows = await db

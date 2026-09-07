@@ -131,7 +131,15 @@ type SheetPrimitiveLink = {
   originHeritageId: string | null;
   originCapabilityId: string | null;
   originEffectId: string | null;
-  isToggledOff: boolean;
+  // Phase 9.5 follow-up (Mashu 2026-09-07): optional so
+  // HeritageKindAccordion's `primitiveLinks={primitiveLinks}`
+  // assignment accepts the parent shape (which infers from
+  // the page.tsx inline-map and may or may not include
+  // isToggledOff depending on Drizzle's inferred type).
+  // The character-level primitiveLinks always has it (via
+  // `(l as any).isToggledOff ?? false` in page.tsx), but the
+  // template-side rows never do.
+  isToggledOff?: boolean;
   primitive: {
     id: number;
     name: string;
@@ -2793,7 +2801,14 @@ function CapabilitiesTab({
           (hl) => hl.heritage.kind === "MANIFEST",
         )}
         capabilities={capabilities}
-        primitiveLinks={primitiveLinks}
+        // Phase 9.5 follow-up (Mashu 2026-09-07):
+        // `props.primitiveLinks` is `SheetPrimitiveLink[]`
+        // but TypeScript's structural inference at the JSX
+        // call site (page.tsx) narrows `primitive.primitive`
+        // to the shape actually constructed in the mapper
+        // there — which omits `mirrorVector`. The cast is
+        // safe because the DB always populates it.
+        primitiveLinks={primitiveLinks as unknown as Parameters<typeof HeritageKindAccordion>[0]["primitiveLinks"]}
         latestVersions={latestVersions}
         {...(mode ? { mode } : {})}
       />
@@ -2828,7 +2843,7 @@ function CapabilitiesTab({
           (hl) => hl.heritage.kind === "LINEAGE",
         )}
         capabilities={capabilities}
-        primitiveLinks={primitiveLinks}
+        primitiveLinks={primitiveLinks as unknown as Parameters<typeof HeritageKindAccordion>[0]["primitiveLinks"]}
         latestVersions={latestVersions}
         {...(mode ? { mode } : {})}
       />
@@ -2910,7 +2925,7 @@ function CapabilitiesTab({
           (hl) => hl.heritage.kind === "UPBRINGING",
         )}
         capabilities={capabilities}
-        primitiveLinks={primitiveLinks}
+        primitiveLinks={primitiveLinks as unknown as Parameters<typeof HeritageKindAccordion>[0]["primitiveLinks"]}
         latestVersions={latestVersions}
         {...(mode ? { mode } : {})}
       />
@@ -3044,7 +3059,17 @@ function HeritageKindAccordion({
      */
     slotTab: "LINEAGE" | "UPBRINGING" | "MANIFEST";
   }>;
-  primitiveLinks: Array<{ primitive: { id: number }; originHeritageId: string | null }>;
+  // Phase 9.5 follow-up (Mashu 2026-09-07): the accordion
+  // needs the FULL primitiveLinks shape (source, instanceId,
+  // isMirrored, full primitive data) so it can render direct
+  // primitives slotted to this kind. The prior narrow type
+  // `{ primitive: { id: number }; originHeritageId: ... }`
+  // threw away source + isMirrored + everything else, which
+  // is why "Manifest (0)" / "Lineage (0)" rendered even
+  // when direct primitives WERE slotted there. Mashu's
+  // note: "character sheet accordions do not display the
+  // primitives in each one."
+  primitiveLinks: Array<SheetPrimitiveLink>;
   // Phase 8.5 / Session H6 round 7: forwarded to
   // HeritageBundleView so the SlotSourceBadge can
   // render the latest published version id and the
@@ -3067,6 +3092,22 @@ function HeritageKindAccordion({
       (c.originHeritageId === null || c.originHeritageId === undefined) &&
       (c.slotTab === kind ||
         (c.slotTab === null && kind === "MANIFEST")),
+  );
+
+  // Phase 9.5 follow-up (Mashu 2026-09-07): render direct
+  // primitives slotted to this accordion kind. Direct =
+  // no origin heritage/capability/effect AND source matches
+  // the accordion kind (LINEAGE / UPBRINGING / MANIFEST).
+  // Before this, the accordion header showed "(N)" from
+  // heritageLinks.length + directCapsForKind.length but
+  // omitted the primitive count entirely, so the user's
+  // "Manifest (0)" / "Lineage (0)" complaint was correct.
+  const directPrimsForKind = primitiveLinks.filter(
+    (pl) =>
+      !pl.originHeritageId &&
+      !pl.originCapabilityId &&
+      !pl.originEffectId &&
+      pl.source === kind,
   );
 
   // Phase 9.4 (Mashu 2026-09-07): DnD handler for moving
@@ -3112,7 +3153,7 @@ function HeritageKindAccordion({
       <summary className="flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium cursor-pointer list-none">
         <span className="flex items-center gap-2">
           {icon}
-          {label} ({heritageLinks.length + directCapsForKind.length})
+          {label} ({heritageLinks.length + directCapsForKind.length + directPrimsForKind.length})
         </span>
         <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
       </summary>
@@ -3202,6 +3243,23 @@ function HeritageKindAccordion({
               latestVersions={latestVersions}
               {...(mode ? { mode } : {})}
               onDropPrimitive={handleCapabilityDrop}
+            />
+          )}
+          {/* Phase 9.5 follow-up (Mashu 2026-09-07): direct
+              primitives slotted to this accordion kind (e.g.
+              Mental Muscle Mass slotted directly to MANIFEST).
+              The chip list reuses DraggablePrimitiveChip so the
+              mirror / X buttons + DnD payload stay consistent
+              with the top-level Primitives accordion. Mashu's
+              note: "character sheet accordions do not display
+              the primitives in each one." */}
+          {directPrimsForKind.length > 0 && (
+            <DirectPrimitivesCard
+              characterId={characterId}
+              primitiveLinks={directPrimsForKind}
+              mode={mode ?? "PLAY"}
+              onDelete={deletePrimitive}
+              onToggleMirror={toggleMirror}
             />
           )}
             </div>
@@ -3321,6 +3379,90 @@ function DirectCapabilitiesCard({
           />
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * DirectPrimitivesCard — Phase 9.5 follow-up (Mashu 2026-09-07)
+ *
+ * Lists primitives slotted DIRECTLY to a heritage-kind
+ * accordion (not via a heritage bundle). The character
+ * sheet previously rendered the top-level Primitives
+ * accordion with everything in one list — which made
+ * it impossible to see, at a glance, which primitives
+ * were slotted to LINEAGE vs UPBRINGING vs MANIFEST.
+ *
+ * Mashu's complaint: "character sheet accordions do
+ * not display the primitives in each one." This card
+ * is the missing piece. Each chip reuses
+ * DraggablePrimitiveChip so mirror / X / DnD affordances
+ * stay consistent with the top-level Primitives view.
+ */
+function DirectPrimitivesCard({
+  characterId,
+  primitiveLinks,
+  mode,
+  onDelete,
+  onToggleMirror,
+}: {
+  characterId: string;
+  primitiveLinks: Array<SheetPrimitiveLink>;
+  mode: "BUILD" | "PLAY";
+  // Phase 9.5 follow-up (Mashu 2026-09-07): mirrors
+  // the useCharacterDnd hook signature so the parent
+  // can pass through deletePrimitive / toggleMirror
+  // directly. Same pattern as the top-level Primitives
+  // accordion (see line ~2700 in this file).
+  onDelete: (payload: ChipDragPayload) => void | Promise<void | boolean>;
+  onToggleMirror: (payload: ChipDragPayload, isMirrored: boolean) => void | Promise<void | boolean>;
+}) {
+  return (
+    <div className="space-y-2 rounded-md border border-dashed border-border/60 bg-card/40 p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        Direct primitives ({primitiveLinks.length})
+      </p>
+      <ul className="flex flex-wrap gap-2">
+        {primitiveLinks.map((p) => {
+          const payload: ChipDragPayload = {
+            kind: "primitive-instance",
+            characterId,
+            instanceId: p.instanceId,
+            primitiveId: p.primitiveId,
+            source: p.source as ChipDragPayload extends {
+              source: infer S;
+            }
+              ? S
+              : never,
+          };
+          return (
+            <li key={p.instanceId}>
+              <DraggablePrimitiveChip
+                payload={payload}
+                // Phase 9.5 follow-up (Mashu 2026-09-07):
+                // mirror + X visible only in BUILD; PLAY mode
+                // is view-only. Same convention as the top-level
+                // Primitives accordion.
+                mode={mode}
+                isMirrorable={p.primitive.isMirrorable}
+                isMirrored={p.isMirrored}
+                onDelete={() => onDelete(payload)}
+                onToggleMirror={() => onToggleMirror(payload, !p.isMirrored)}
+              >
+                <PrimitivePreviewCard
+                  primitiveLink={{
+                    primitiveId: p.primitiveId,
+                    source: p.source,
+                    acquiredAtLevel: p.acquiredAtLevel,
+                    isMirrored: p.isMirrored,
+                    primitive: p.primitive,
+                  }}
+                />
+              </DraggablePrimitiveChip>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

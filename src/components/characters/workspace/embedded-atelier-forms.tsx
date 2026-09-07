@@ -32,7 +32,7 @@
  *   today for primitive slots.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { PrimitiveForm } from "@/components/sandbox/primitive-form";
@@ -248,6 +248,46 @@ export function EmbeddedHeritageForm({
   const [error, setError] = useState<string | null>(null);
   const [attaching, setAttaching] = useState(false);
   const [attachMessage, setAttachMessage] = useState<string | null>(null);
+
+  // Phase 9.5 follow-up (Mashu 2026-09-07): the modal's
+  // header says "Will bundle N primitives" but the form
+  // below was empty until the user clicked "Slot into
+  // build" on each one. Mashu 2026-09-07: "the primitives
+  // nested do not appear there in modal even if it sayd
+  // it will bundle the x primitives. When this happens
+  // the inheritance also changes bc they are not direct
+  // anymore so be careful" — i.e. the user was expecting
+  // the formalize to auto-slot everything it counted.
+  //
+  // Dispatch the slot events exactly once when the form
+  // mounts. HeritageForm's `sw-sandbox-slot` listener
+  // (line 345 of heritage-form.tsx) handles the rest.
+  // We dispatch after a microtask so the listener is
+  // attached by the time the events fire.
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      for (const p of primitives) {
+        window.dispatchEvent(
+          new CustomEvent("sw-sandbox-slot", {
+            detail: { kind: "primitive", id: p.id, label: p.name },
+          }),
+        );
+      }
+      for (const c of capabilities) {
+        window.dispatchEvent(
+          new CustomEvent("sw-sandbox-slot", {
+            detail: { kind: "capability", id: c.id, label: c.name },
+          }),
+        );
+      }
+    }, 0);
+    return () => window.clearTimeout(t);
+  // We intentionally fire on mount once — primitives /
+  // capabilities arriving later shouldn't re-prepopulate
+  // (the user may have already cleared slots). The modal
+  // itself unmounts/remounts on each open so this is fine.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSaved = useCallback(
     async (template: AtelierHeritageRow) => {
