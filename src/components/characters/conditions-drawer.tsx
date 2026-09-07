@@ -246,9 +246,22 @@ function ConditionCardItem({
   sourceKind?: string;
 }) {
   const { active: storedActive, title, description, tags, modifiers, durationTier } = condition;
-  // Phase 8.L round 127: for auto-triggered cards, prefer the
-  // engine-computed live state over the stored value.
-  const active = liveActive !== undefined ? liveActive : storedActive;
+  // Phase 8.L round 127 (Mashu): for auto-triggered cards,
+  // prefer the engine-computed live state over the stored
+  // value — except when the user has explicitly toggled it
+  // off, in which case respect the override (the engine
+  // badge shows the user the engine's view but doesn't
+  // silently flip their toggle).
+  //
+  // Mashu 2026-09-07: "I NEED TO BE ABLE TO TOGGLE THEM
+  // ON AND OFF MANUALLY". The previous implementation
+  // snapped back to the engine's computed value on every
+  // render, which made the button feel broken. Now: when
+  // the stored value is FALSE the user has deliberately
+  // toggled off, so we honor that.
+  const active =
+    liveActive !== undefined && storedActive ? liveActive : storedActive;
+  const engineWantsOn = liveActive === true && !storedActive;
   const durationLabel =
     durationTier === "long_rest"
       ? "Long rest"
@@ -292,6 +305,23 @@ function ConditionCardItem({
               className="inline-flex items-center rounded bg-secondary px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground"
             >
               <Bot className="size-2.5" />
+            </span>
+          )}
+          {/* Phase 9.5 follow-up (Mashu 2026-09-07):
+              when the user has manually toggled OFF but
+              the engine's predicate is ON, show a small
+              "engine: on" hint so the user knows their
+              override is visible but the engine wants
+              the opposite. Previously the badge flipped
+              back without warning — felt broken. */}
+          {engineWantsOn && (
+            <span
+              data-testid="engine-hint"
+              aria-label="Engine wants ON"
+              title="Engine thinks this should be on. Your OFF override is honored until you toggle again."
+              className="rounded bg-amber-500/15 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300"
+            >
+              engine: on
             </span>
           )}
           <button

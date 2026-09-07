@@ -74,11 +74,10 @@ export function LibraryAttachSheet({
       setError(null);
       try {
         // Map entityType → library targetType query string.
-        // The library query's "type" filter accepts the same
-        // string the LibraryItem.targetType field uses, but
-        // heritage is special: the user picks by kind (LINEAGE
-        // / UPBRINGING / MANIFEST). We send kind via `kind=`
-        // instead of `type=`.
+        // The library route reads `targetType=` (NOT `type=`
+        // — that's an unrelated param). Heritages split into
+        // three concrete types; the active accordion decides
+        // which one we ask for.
         const url = new URL(
           `/api/library`,
           typeof window === "undefined"
@@ -87,20 +86,20 @@ export function LibraryAttachSheet({
         );
         if (search.trim()) url.searchParams.set("q", search.trim());
         if (entityType === "heritage") {
-          url.searchParams.set("type", "LINEAGE_TEMPLATE");
-          if (accordion === "LINEAGE") {
-            url.searchParams.set("type", "LINEAGE_TEMPLATE");
-          } else if (accordion === "UPBRINGING") {
-            url.searchParams.set("type", "UPBRINGING_TEMPLATE");
-          } else {
-            url.searchParams.set("type", "MANIFEST_TEMPLATE");
-          }
+          url.searchParams.set(
+            "targetType",
+            accordion === "LINEAGE"
+              ? "LINEAGE_TEMPLATE"
+              : accordion === "UPBRINGING"
+                ? "UPBRINGING_TEMPLATE"
+                : "MANIFEST_TEMPLATE",
+          );
         } else if (entityType === "capability") {
-          url.searchParams.set("type", "CAPABILITY");
+          url.searchParams.set("targetType", "CAPABILITY");
         } else if (entityType === "effect") {
-          url.searchParams.set("type", "EFFECT");
+          url.searchParams.set("targetType", "EFFECT");
         } else if (entityType === "item") {
-          url.searchParams.set("type", "ITEM");
+          url.searchParams.set("targetType", "ITEM");
         }
         url.searchParams.set("limit", "24");
         const res = await fetch(url.pathname + url.search, {

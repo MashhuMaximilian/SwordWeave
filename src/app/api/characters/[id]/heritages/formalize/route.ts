@@ -36,6 +36,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   characters,
+  characterHeritages,
   characterPrimitives,
   heritage,
   heritagePrimitives,
@@ -82,9 +83,21 @@ export async function POST(
     }
     const kind = rawKind;
     const name = String(values["name"] ?? "").trim();
-    if (!name) {
+    const explicitHeritageId =
+      typeof values["heritageId"] === "string" && (values["heritageId"] as string).length > 0
+        ? (values["heritageId"] as string)
+        : null;
+    // Phase 9.5 round 4 (Mashu 2026-09-07): accept either
+    // `name` (legacy "create from scratch using accordion
+    // primitives") OR `heritageId` (new "attach the template
+    // the atelier just saved"). The character-sheet flow
+    // uses heritageId so the user gets the exact template
+    // they composed in EmbeddedHeritageForm — not a
+    // parallel-bundled version made by re-scanning the
+    // accordion.
+    if (!explicitHeritageId && !name) {
       return NextResponse.json(
-        { error: "name is required." },
+        { error: "Either name or heritageId is required." },
         { status: 400 },
       );
     }
@@ -120,131 +133,211 @@ export async function POST(
       );
     }
 
-    // Phase 9.1: pull every primitive instance currently slotted to
-    // this accordion. We dedupe by primitiveId for the heritage's
-    // bundle (the heritage can't represent multiple copies of the
-    // same primitive — that's a character-level concern).
-    const slottedRows = await db
-      .select({ primitiveId: characterPrimitives.primitiveId })
-      .from(characterPrimitives)
-      .where(
-        and(
-          eq(characterPrimitives.characterId, characterId),
-          eq(characterPrimitives.source, KIND_TO_SOURCE[kind]),
+    let resolvedHeritageId: string;
+    let resolvedHeritageName: string;
+    let resolvedDescription: string | null;
+    let resolvedIsPublic: boolean;
+    // Phase 9.5 round 4 (Mashu 2026-09-07): declared at
+    // outer scope so the audit log can read it even when
+    // we took the heritageId branch (where it's unused).
+    let uniquePrimitiveIds: number[] = [];
+
+    if (explicitHeritageId) {
+      // Phase 9.5 round 4 (Mashu 2026-09-07): attach the
+      // template the user just saved in EmbeddedHeritageForm.
+      // We deliberately do NOT re-bundle the accordion — the
+      // template already has its own heritage_primitives
+      // from the atelier save.
+      const templateRow = await db.query.heritage.findFirst({
+        where: eq(heritage.id, explicitHeritageId),
+      });
+      if (!templateRow) {
+        return NextResponse.json(
+          { error: `Heritage ${explicitHeritageId} not found.` },
+          { status: 404 },
+        );
+      }
+      if (templateRow.userId !== userId) {
+        return NextResponse.json(
+          { error: "You do not own this heritage template." },
+          { status: 403 },
+        );
+      }
+      // De-dupe: if this template is already slotted, return
+      // early with 200 (not 201) so the UI treats it as a
+      // no-op refresh instead of duplicating work.
+      const existing = await db.query.characterHeritages.findFirst({
+        where: and(
+          eq(characterHeritages.characterId, characterId),
+          eq(characterHeritages.heritageId, explicitHeritageId),
         ),
+      });
+      if (existing) {
+        bustResolverCache(characterId);
+        return NextResponse.json(
+          {
+            heritage: templateRow,
+            alreadyAttached: true,
+          },
+          { status: 200 },
+        );
+      }
+      resolvedHeritageId = explicitHeritageId;
+      resolvedHeritageName = templateRow.name;
+      resolvedDescription = templateRow.description ?? null;
+      resolvedIsPublic = templateRow.isPublic;
+    } else {
+      // Legacy create-from-scratch flow: bundle every
+      // primitive currently slotted to this accordion into
+      // a brand-new heritage row.
+      const slottedRows = await db
+        .select({ primitiveId: characterPrimitives.primitiveId })
+        .from(characterPrimitives)
+        .where(
+          and(
+            eq(characterPrimitives.characterId, characterId),
+            eq(characterPrimitives.source, KIND_TO_SOURCE[kind]),
+          ),
+        );
+      uniquePrimitiveIds = Array.from(
+        new Set(slottedRows.map((r) => r.primitiveId)),
       );
-    const uniquePrimitiveIds = Array.from(
-      new Set(slottedRows.map((r) => r.primitiveId)),
-    );
-    if (uniquePrimitiveIds.length === 0) {
-      return NextResponse.json(
-        {
-          error: `No primitives slotted to the ${kind} accordion. Add at least one primitive before formalizing.`,
-        },
-        { status: 400 },
+      if (uniquePrimitiveIds.length === 0) {
+        return NextResponse.json(
+          {
+            error: `No primitives slotted to the ${kind} accordion. Add at least one primitive before formalizing.`,
+          },
+          { status: 400 },
+        );
+      }
+      // Verify every primitive still exists (cascade race protection).
+      const existingPrimitives = await db
+        .select({ id: primitives.id })
+        .from(primitives)
+        .where(inArray(primitives.id, uniquePrimitiveIds));
+      const foundIds = new Set(existingPrimitives.map((p) => p.id));
+      const missing = uniquePrimitiveIds.filter((id) => !foundIds.has(id));
+      if (missing.length > 0) {
+        return NextResponse.json(
+          {
+            error: `Some primitives no longer exist: ${missing.join(", ")}. Refresh the page.`,
+          },
+          { status: 409 },
+        );
+      }
+      const sourceOrigin = `user:${userId}`;
+      const nameExistsRows = await db
+        .select({ name: heritage.name })
+        .from(heritage)
+        .where(
+          and(
+            eq(heritage.kind, kind),
+            eq(heritage.sourceOrigin, sourceOrigin),
+          ),
+        );
+      const takenNames = new Set(nameExistsRows.map((r) => r.name));
+      const finalName = await computeUniqueForkName(
+        name,
+        (candidate) => Promise.resolve(takenNames.has(candidate)),
       );
+      const [createdHeritage] = await db
+        .insert(heritage)
+        .values({
+          userId,
+          kind,
+          name: finalName,
+          description: description ?? null,
+          isPublic: isPublic,
+          sourceOrigin,
+        })
+        .returning();
+      if (!createdHeritage) {
+        return NextResponse.json(
+          { error: "Failed to create heritage." },
+          { status: 500 },
+        );
+      }
+      const heritagePrimitiveRows = uniquePrimitiveIds.map(
+        (primitiveId, index) => ({
+          templateId: createdHeritage.id,
+          primitiveId,
+          sortOrder: index,
+          isMirrored: false,
+        }),
+      );
+      await db.insert(heritagePrimitives).values(
+        heritagePrimitiveRows as never,
+      );
+      resolvedHeritageId = createdHeritage.id;
+      resolvedHeritageName = createdHeritage.name;
+      resolvedDescription = createdHeritage.description ?? null;
+      resolvedIsPublic = createdHeritage.isPublic;
     }
 
-    // Verify every primitive still exists (cascade race protection).
-    const existingPrimitives = await db
-      .select({ id: primitives.id })
-      .from(primitives)
-      .where(inArray(primitives.id, uniquePrimitiveIds));
-    const foundIds = new Set(existingPrimitives.map((p) => p.id));
-    const missing = uniquePrimitiveIds.filter((id) => !foundIds.has(id));
-    if (missing.length > 0) {
-      return NextResponse.json(
-        {
-          error: `Some primitives no longer exist: ${missing.join(", ")}. Refresh the page.`,
-        },
-        { status: 409 },
-      );
-    }
-
-    // Compute a unique fork-name (e.g. "Mystic (copy)" / "Mystic (copy) 2").
-    // The heritage's (name, kind, source_origin) unique constraint
-    // will collide if another heritage with the same name + kind
-    // exists; the walker handles this.
-    const sourceOrigin = `user:${userId}`;
-    // Build a nameExists predicate scoped to this kind + source_origin.
-    const nameExistsRows = await db
-      .select({ name: heritage.name })
-      .from(heritage)
-      .where(
-        and(
-          eq(heritage.kind, kind),
-          eq(heritage.sourceOrigin, sourceOrigin),
-        ),
-      );
-    const takenNames = new Set(nameExistsRows.map((r) => r.name));
-    const finalName = await computeUniqueForkName(
-      name,
-      (candidate) => Promise.resolve(takenNames.has(candidate)),
-    );
-
-    // 1. Create the heritage row.
-    const [createdHeritage] = await db
-      .insert(heritage)
-      .values({
-        userId,
-        kind,
-        name: finalName,
-        description,
-        isPublic,
-        sourceOrigin,
-      })
-      .returning();
-    if (!createdHeritage) {
-      return NextResponse.json(
-        { error: "Failed to create heritage." },
-        { status: 500 },
-      );
-    }
-
-    // 2. Insert heritage_primitives for each unique primitive.
-    const heritagePrimitiveRows = uniquePrimitiveIds.map(
-      (primitiveId, index) => ({
-        templateId: createdHeritage.id,
-        primitiveId,
-        sortOrder: index,
-        isMirrored: false,
-      }),
-    );
-    await db.insert(heritagePrimitives).values(
-      heritagePrimitiveRows as never,
-    );
-
-    // 3. Update character lineage_id / upbringing_id / manifest_id.
+    // 3. Update character lineage_id / upbringing_id / manifest_id
+    // (the "primary" heritage pointer used by the sheet's
+    // accordion header) AND insert into character_heritages
+    // (the N:M table the resolver reads to enumerate attached
+    // heritages — without this, the bundle doesn't show up
+    // in the lineage accordion).
+    //
+    // Phase 9.5 round 4 (Mashu 2026-09-07): legacy flow
+    // only updated the FK columns, leaving
+    // character_heritages empty. The resolver then saw
+    // "Lineage (0)" even though lineageId was set. Both
+    // writes now happen.
     const snapshotField = KIND_TO_SNAPSHOT[kind];
-    const snapshotValue = createdHeritage.name;
+    const snapshotValue = resolvedHeritageName;
     const updateSet: Record<string, unknown> = {
-      [KIND_TO_COLUMN[kind]]: createdHeritage.id,
+      [KIND_TO_COLUMN[kind]]: resolvedHeritageId,
       [snapshotField]: snapshotValue,
-      // Phase 9.1: also refresh the description snapshot if the user
-      // supplied one.
-      ...(description
-        ? { [`${kind.toLowerCase()}Description` as string]: description }
+      ...(resolvedDescription
+        ? {
+            [`${kind.toLowerCase()}Description` as string]:
+              resolvedDescription,
+          }
         : {}),
     };
     await db
       .update(characters)
       .set(updateSet)
       .where(eq(characters.id, characterId));
+    await db.insert(characterHeritages).values({
+      characterId,
+      heritageId: resolvedHeritageId,
+      acquiredAtLevel: character.level,
+      isMirrored: false,
+      createdAt: new Date(),
+    });
 
     // 4. Audit log.
     await appendCharacterLog(characterId, "heritage_formalized", {
-      heritageId: createdHeritage.id,
+      heritageId: resolvedHeritageId,
       kind,
       accordionKind: kind,
-      primitiveCount: uniquePrimitiveIds.length,
+      // Phase 9.5 round 4: primitiveCount is now
+      // reflective of what we actually bundled. When
+      // heritageId is supplied we report 0 primitives
+      // here because we don't re-count the template's
+      // heritage_primitives (that's the atelier's job).
+      // The UI still knows the bundle size from the
+      // template row's heritage_primitives array.
+      primitiveCount: explicitHeritageId
+        ? 0
+        : uniquePrimitiveIds.length,
     });
 
     bustResolverCache(characterId);
 
     return NextResponse.json(
       {
-        heritage: createdHeritage,
-        primitiveCount: uniquePrimitiveIds.length,
+        heritage: {
+          id: resolvedHeritageId,
+          name: resolvedHeritageName,
+        },
+        primitiveCount: explicitHeritageId
+          ? 0
+          : uniquePrimitiveIds.length,
       },
       { status: 201 },
     );

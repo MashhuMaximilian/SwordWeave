@@ -20,6 +20,7 @@ import { db } from "@/db/client";
 import {
   capabilities,
   capabilityEffects,
+  capabilityPrimitives,
   effectPrimitives,
   effects,
   items,
@@ -177,8 +178,12 @@ export default async function AtelierSandboxPage({
       orderBy: [asc(capabilities.name)],
       with: {
         primitiveLinks: { with: { primitive: true } },
+        // Phase 9.5 round 4 (Mashu 2026-09-07): shallow
+        // — attach effect→primitiveLinks via flat SELECT
+        // below. The depth-3 with: above silently
+        // returned 0 capability rows.
         effectLinks: {
-          with: { effect: { with: { primitiveLinks: { with: { primitive: true } } } } },
+          with: { effect: { with: {} } },
         },
       },
     });
@@ -188,34 +193,70 @@ export default async function AtelierSandboxPage({
     console.error("[atelier sandbox] capabilities query failed:", err);
   }
 
+  // Phase 9.5 round 4 (Mashu 2026-09-07): attach
+  // effect→primitiveLinks via flat SELECT. Same
+  // depth-3 LATERAL workaround as everywhere else.
+  try {
+    const allEffPairs = capabilityRows.flatMap((c) =>
+      ((c as { effectLinks?: Array<{ effectId: string; effect: { primitiveLinks?: unknown[] } }> }).effectLinks ?? []).map(
+        (el) => ({ link: el, effectId: el.effectId }),
+      ),
+    );
+    if (allEffPairs.length > 0) {
+      const ids = Array.from(new Set(allEffPairs.map((x) => x.effectId)));
+      const epRows = await db
+        .select({
+          effectId: effectPrimitives.effectId,
+          primitiveId: effectPrimitives.primitiveId,
+          sortOrder: effectPrimitives.sortOrder,
+          isMirrored: effectPrimitives.isMirrored,
+          targetWho: effectPrimitives.targetWho,
+          primitive: {
+            id: primitives.id,
+            name: primitives.name,
+            narrativeRule: primitives.narrativeRule,
+            mechanicalOutputText: primitives.mechanicalOutputText,
+            buCost: primitives.buCost,
+          },
+        })
+        .from(effectPrimitives)
+        .leftJoin(primitives, eq(effectPrimitives.primitiveId, primitives.id))
+        .where(inArray(effectPrimitives.effectId, ids));
+      const byEffect = new Map<string, typeof epRows>();
+      for (const r of epRows) {
+        const arr = byEffect.get(r.effectId) ?? [];
+        arr.push(r);
+        byEffect.set(r.effectId, arr);
+      }
+      for (const { link } of allEffPairs) {
+        link.effect.primitiveLinks = byEffect.get(link.effectId) ?? [];
+      }
+    }
+  } catch (err) {
+    console.error("[atelier sandbox] capability effect→primitives attach failed:", err);
+  }
+
   // HERITAGE
   try {
     const rows = await db.query.heritage.findMany({
       orderBy: [asc(heritage.kind), asc(heritage.name)],
       with: {
         primitiveLinks: { with: { primitive: true } },
-        // Phase 8.1 batch 13.5 follow-up: deep-join the capability's
-        // primitiveLinks so the lineage preview can compute the
-        // transitive BU per bundled capability. Mashu 2026-07-22: "I
-        // have a lineage with capability X. Capability X has cost 13
-        // BU for example, but it still shows 3 BU in lineage preview
-        // where capability X is shown bc it either doesn't take the
-        // cost from the mother component or doesn't calculate it
-        // properly."
-        //
-        // NOTE: we deliberately DO NOT nest `capability.effectLinks
-        // → effect.primitiveLinks` inside `with:`. Depth-3 Drizzle
-        // `with:` joins mis-scope Postgres's LEFT JOIN LATERAL and
-        // return zero rows (see the same workaround in
-        // src/app/api/heritage/[id]/route.ts lines 122-128). Effect
-        // primitive data is attached via a separate flat SELECT
-        // below.
+        // Phase 9.5 round 4 follow-up (Mashu 2026-09-07):
+        // the previous query nested
+        //   capabilityLinks → capability → primitiveLinks
+        // inside a single `with:`. That's depth-3 from
+        // heritage and Drizzle's LATERAL scoping bug
+        // silently returns 0 rows. We fetch
+        // capabilityLinks shallow here and attach the
+        // capability primitive data via flat SELECTs
+        // below, matching the pattern used elsewhere in
+        // this file.
         capabilityLinks: {
           with: {
             capability: {
-              with: {
-                primitiveLinks: { with: { primitive: true } },
-              },
+              // shallow — attach primitives via flat SELECT
+              with: {},
             },
           },
         },
@@ -225,6 +266,60 @@ export default async function AtelierSandboxPage({
   } catch (err) {
     dataLoadFailed = true;
     console.error("[atelier sandbox] heritage query failed:", err);
+  }
+
+  // Phase 9.5 round 4 follow-up (Mashu 2026-09-07):
+  // attach each capability's primitiveLinks via a flat
+  // SELECT. Avoids Drizzle's depth-3 LATERAL mis-scoping
+  // bug. See src/app/api/heritage/[id]/route.ts for the
+  // same workaround.
+  try {
+    const allCapPairs = heritageRows.flatMap((h) =>
+      ((h as { capabilityLinks?: Array<{ capabilityId: string; capability: { primitiveLinks?: unknown[] } }> }).capabilityLinks ?? []).map(
+        (cl) => ({
+          link: cl,
+          capabilityId: cl.capabilityId,
+        }),
+      ),
+    );
+    if (allCapPairs.length > 0) {
+      const ids = Array.from(new Set(allCapPairs.map((x) => x.capabilityId)));
+      // Joined shape mirrors capability_primitives +
+      // primitives. We use the explicit PK
+      // (capabilityId, primitiveId, role) since the table
+      // doesn't have a surrogate `id`.
+      const capPrims = await db
+        .select({
+          capabilityId: capabilityPrimitives.capabilityId,
+          primitiveId: capabilityPrimitives.primitiveId,
+          role: capabilityPrimitives.role,
+          sortOrder: capabilityPrimitives.sortOrder,
+          isMirrored: capabilityPrimitives.isMirrored,
+          targetWho: capabilityPrimitives.targetWho,
+          slotLabel: capabilityPrimitives.slotLabel,
+          primitive: {
+            id: primitives.id,
+            name: primitives.name,
+            narrativeRule: primitives.narrativeRule,
+            mechanicalOutputText: primitives.mechanicalOutputText,
+            buCost: primitives.buCost,
+          },
+        })
+        .from(capabilityPrimitives)
+        .leftJoin(primitives, eq(capabilityPrimitives.primitiveId, primitives.id))
+        .where(inArray(capabilityPrimitives.capabilityId, ids));
+      const capPrimsByCap = new Map<string, typeof capPrims>();
+      for (const cp of capPrims) {
+        const arr = capPrimsByCap.get(cp.capabilityId) ?? [];
+        arr.push(cp);
+        capPrimsByCap.set(cp.capabilityId, arr);
+      }
+      for (const { link } of allCapPairs) {
+        link.capability.primitiveLinks = capPrimsByCap.get(link.capabilityId) ?? [];
+      }
+    }
+  } catch (err) {
+    console.error("[atelier sandbox] heritage capability→primitives attach failed:", err);
   }
 
   // Phase 8.1 batch 13.5 follow-up: attach each capability's effect
@@ -330,19 +425,21 @@ export default async function AtelierSandboxPage({
       orderBy: [asc(items.name)],
       with: {
         primitiveLinks: { with: { primitive: true } },
-        effectLinks: { with: { effect: { with: { primitiveLinks: { with: { primitive: true } } } } } },
-        // Phase 8.1 batch 13.5 follow-up: deep-join capability
-        // primitiveLinks so the item preview can compute transitive
-        // BU per bundled capability. We deliberately avoid nesting
-        // effect → primitiveLinks in `with:` (depth-3 Drizzle
-        // mis-scopes — see the heritage workaround above). That data
-        // is attached via a separate flat SELECT below.
+        // Phase 9.5 round 4 (Mashu 2026-09-07): shallow
+        // — attach effect→primitiveLinks via flat SELECT
+        // below. Depth-3 with: silently returned 0 item
+        // rows.
+        effectLinks: {
+          with: { effect: { with: {} } },
+        },
+        // Phase 9.5 round 4 follow-up (Mashu 2026-09-07):
+        // same depth-3 LATERAL bug as the heritage block —
+        // fetch shallow and attach capability primitives
+        // via flat SELECT below.
         capabilityLinks: {
           with: {
             capability: {
-              with: {
-                primitiveLinks: { with: { primitive: true } },
-              },
+              with: {},
             },
           },
         },
@@ -352,6 +449,97 @@ export default async function AtelierSandboxPage({
   } catch (err) {
     dataLoadFailed = true;
     console.error("[atelier sandbox] items query failed:", err);
+  }
+
+  // Phase 9.5 round 4 (Mashu 2026-09-07): attach
+  // each item's effect→primitiveLinks via flat SELECT,
+  // matching the capability block above.
+  try {
+    const allEffPairs = itemRows.flatMap((it) =>
+      ((it as { effectLinks?: Array<{ effectId: string; effect: { primitiveLinks?: unknown[] } }> }).effectLinks ?? []).map(
+        (el) => ({ link: el, effectId: el.effectId }),
+      ),
+    );
+    if (allEffPairs.length > 0) {
+      const ids = Array.from(new Set(allEffPairs.map((x) => x.effectId)));
+      const epRows = await db
+        .select({
+          effectId: effectPrimitives.effectId,
+          primitiveId: effectPrimitives.primitiveId,
+          sortOrder: effectPrimitives.sortOrder,
+          isMirrored: effectPrimitives.isMirrored,
+          targetWho: effectPrimitives.targetWho,
+          primitive: {
+            id: primitives.id,
+            name: primitives.name,
+            narrativeRule: primitives.narrativeRule,
+            mechanicalOutputText: primitives.mechanicalOutputText,
+            buCost: primitives.buCost,
+          },
+        })
+        .from(effectPrimitives)
+        .leftJoin(primitives, eq(effectPrimitives.primitiveId, primitives.id))
+        .where(inArray(effectPrimitives.effectId, ids));
+      const byEffect = new Map<string, typeof epRows>();
+      for (const r of epRows) {
+        const arr = byEffect.get(r.effectId) ?? [];
+        arr.push(r);
+        byEffect.set(r.effectId, arr);
+      }
+      for (const { link } of allEffPairs) {
+        link.effect.primitiveLinks = byEffect.get(link.effectId) ?? [];
+      }
+    }
+  } catch (err) {
+    console.error("[atelier sandbox] item effect→primitives attach failed:", err);
+  }
+
+  // Phase 9.5 round 4 follow-up (Mashu 2026-09-07):
+  // attach each item's capability primitives via flat
+  // SELECT, matching the heritage block above.
+  try {
+    const allCapPairs = itemRows.flatMap((it) =>
+      ((it as { capabilityLinks?: Array<{ capabilityId: string; capability: { primitiveLinks?: unknown[] } }> }).capabilityLinks ?? []).map(
+        (cl) => ({
+          link: cl,
+          capabilityId: cl.capabilityId,
+        }),
+      ),
+    );
+    if (allCapPairs.length > 0) {
+      const ids = Array.from(new Set(allCapPairs.map((x) => x.capabilityId)));
+      const capPrims = await db
+        .select({
+          capabilityId: capabilityPrimitives.capabilityId,
+          primitiveId: capabilityPrimitives.primitiveId,
+          role: capabilityPrimitives.role,
+          sortOrder: capabilityPrimitives.sortOrder,
+          isMirrored: capabilityPrimitives.isMirrored,
+          targetWho: capabilityPrimitives.targetWho,
+          slotLabel: capabilityPrimitives.slotLabel,
+          primitive: {
+            id: primitives.id,
+            name: primitives.name,
+            narrativeRule: primitives.narrativeRule,
+            mechanicalOutputText: primitives.mechanicalOutputText,
+            buCost: primitives.buCost,
+          },
+        })
+        .from(capabilityPrimitives)
+        .leftJoin(primitives, eq(capabilityPrimitives.primitiveId, primitives.id))
+        .where(inArray(capabilityPrimitives.capabilityId, ids));
+      const capPrimsByCap = new Map<string, typeof capPrims>();
+      for (const cp of capPrims) {
+        const arr = capPrimsByCap.get(cp.capabilityId) ?? [];
+        arr.push(cp);
+        capPrimsByCap.set(cp.capabilityId, arr);
+      }
+      for (const { link } of allCapPairs) {
+        link.capability.primitiveLinks = capPrimsByCap.get(link.capabilityId) ?? [];
+      }
+    }
+  } catch (err) {
+    console.error("[atelier sandbox] item capability→primitives attach failed:", err);
   }
 
   // Phase 8.1 batch 13.5 follow-up: attach each item's bundled
