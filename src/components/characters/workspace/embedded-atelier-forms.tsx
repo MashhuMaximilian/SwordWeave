@@ -196,6 +196,13 @@ export function EmbeddedPrimitiveForm({
                 userId: null,
               } as never
             }
+            // Phase 9.4 (Mashu 2026-09-07): Promote tab pre-adds
+            // the chosen condition as a starting ModifierDraft so
+            // it appears as a real row in the modifier list (not
+            // just a name seed).
+            initialModifierDrafts={
+              seed.startingModifier ? [seed.startingModifier] : []
+            }
             onSaved={(p) => void handleSaved(p as AtelierPrimitiveRow)}
           />
         ) : (

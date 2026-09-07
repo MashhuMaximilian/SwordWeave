@@ -2511,18 +2511,46 @@ function CapabilitiesTab({
     });
   }
 
-  if (primitiveLinks.length === 0 && capabilities.length === 0) {
+  // Phase 9.4 (Mashu 2026-09-07): PLAY-mode empty state shows when
+  // the character has nothing slotted. EDIT mode skips this gate
+  // entirely — the user needs to see the 4 empty accordions with
+  // +Add buttons, not a dead-end card.
+  if (
+    (mode ?? "PLAY") === "PLAY" &&
+    primitiveLinks.length === 0 &&
+    capabilities.length === 0
+  ) {
     return (
       <div className="rounded-md border border-dashed border-border bg-card/50 px-6 py-12 text-center">
         <Swords className="mx-auto size-10 text-muted-foreground" />
         <h3 className="mt-4 text-lg font-semibold">No capabilities or primitives yet</h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          Grant capabilities from the Library or assign them via Edit mode.
-          Primitives appear here automatically when slotted.
+          Switch to Edit mode to grant capabilities from the Library or
+          assign primitives to the Lineage, Upbringing, or Manifest
+          accordions.
         </p>
       </div>
     );
   }
+
+  // Phase 9.4 (Mashu 2026-09-07): compute the DIRECT-only primitive
+  // set once here, then thread it through every per-accordion
+  // picker's Promote tab so the condition list is filtered to
+  // DIRECT primitives only (per Mashu: "not those nested in
+  // capabilities and effects"). Keyed by the global primitive id
+  // as a string (condition sourceEntityIds are strings).
+  const directPrimitives = {
+    directPrimitiveIds: new Set(
+      primitiveLinks
+        .filter(
+          (l) =>
+            !l.originHeritageId &&
+            !l.originCapabilityId &&
+            !l.originEffectId,
+        )
+        .map((l) => String(l.primitive.id)),
+    ),
+  };
 
   return (
     <div className="space-y-6">
@@ -2654,6 +2682,7 @@ function CapabilitiesTab({
                   .map((pl) => pl.primitiveId),
               ).size
             }
+            directPrimitives={directPrimitives}
           />
         </div>
       )}
@@ -2684,6 +2713,7 @@ function CapabilitiesTab({
                   .map((pl) => pl.primitiveId),
               ).size
             }
+            directPrimitives={directPrimitives}
           />
         </div>
       )}
@@ -2761,6 +2791,7 @@ function CapabilitiesTab({
                   .map((pl) => pl.primitiveId),
               ).size
             }
+            directPrimitives={directPrimitives}
           />
         </div>
       )}

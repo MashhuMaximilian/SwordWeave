@@ -53,6 +53,7 @@ import {
   EmbeddedCapabilityForm,
   EmbeddedEffectForm,
   EmbeddedPrimitiveForm,
+  type ModifierDraft,
 } from "@/components/characters/workspace/embedded-atelier-forms";
 
 export type AccordionKind = "LINEAGE" | "UPBRINGING" | "MANIFEST" | "PERSONAL";
@@ -74,7 +75,21 @@ export interface CharacterConditionRow {
   id: string;
   title: string;
   description: string | null;
-  tags?: readonly string[];
+  tags: string[];
+  /**
+   * Phase 9.4 (Mashu 2026-09-07): sourceEntityType from
+   * useRuntimeConditions — one of "capability" | "effect" |
+   * "primitive" when source === "sheet" / "sheet-auto". Used by
+   * the Promote tab to filter to conditions from DIRECT
+   * primitives.
+   */
+  sourceEntityType?: "capability" | "effect" | "primitive";
+  /**
+   * Phase 9.4 (Mashu 2026-09-07): the source entity's id as a
+   * string. For primitives this matches the global primitive id
+   * (cast to string). Compared against directPrimitivesIndex.
+   */
+  sourceEntityId?: string;
 }
 
 export type PickerMode =
@@ -83,6 +98,26 @@ export type PickerMode =
   | "promote"
   | "capability"
   | "effect";
+
+/**
+ * DirectPrimitivesIndex — Phase 9.4 (Mashu 2026-09-07).
+ *
+ * A flat set of primitive IDs that are "DIRECT" on the character —
+ * slotted with no origin (no heritage / capability / effect / item).
+ * Used by the Promote tab to filter conditions down to those that
+ * came from a primitive slotted directly on the character (per
+ * Mashu's #2: "only from DIRECT primitives, not those nested in
+ * capabilities and effects").
+ *
+ * `primitiveId` is the global primitive id (integer); not the
+ * character_primitives instance id. Conditions carry their source
+ * entity id as a string, so the matching is by primitive id string.
+ */
+export interface DirectPrimitivesIndex {
+  /** Set of primitive IDs (as strings, since condition sourceEntityIds
+   * are strings) that are direct on the character. */
+  readonly directPrimitiveIds: ReadonlySet<string>;
+}
 
 export interface InlinePrimitiveSheetProps {
   characterId: string;
@@ -96,6 +131,14 @@ export interface InlinePrimitiveSheetProps {
   /** Optional callback after the slot succeeds; used to refetch
    *  the character's accordion chips. */
   onSlot?: () => void;
+  /**
+   * Phase 9.4 (Mashu 2026-09-07): the character's primitive
+   * roster, used by the Promote tab to filter conditions down to
+   * those that came from a DIRECT primitive. Optional — when
+   * omitted, the Promote tab falls back to showing every
+   * condition (legacy behavior).
+   */
+  directPrimitives?: DirectPrimitivesIndex | null;
 }
 
 export function InlinePrimitiveSheet({
@@ -105,6 +148,7 @@ export function InlinePrimitiveSheet({
   onClose,
   onSlot,
   onCreated,
+  directPrimitives,
 }: InlinePrimitiveSheetProps) {
   const [mode, setMode] = useState<PickerMode>("search");
   const [rows, setRows] = useState<PrimitiveLibraryRow[] | null>(null);
@@ -121,6 +165,12 @@ export function InlinePrimitiveSheet({
   const [promoteSeed, setPromoteSeed] = useState<{
     name: string;
     description: string;
+    /**
+     * Phase 9.4 (Mashu 2026-09-07): when present, EmbeddedPrimitiveForm
+     * adds this as a starting ModifierDraft so the user sees a real
+     * "+X to Y when Z" modifier row pre-populated from the condition.
+     */
+    startingModifier?: ModifierDraft;
   } | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
 
@@ -180,6 +230,9 @@ export function InlinePrimitiveSheet({
               title?: string;
               description?: string;
               tags?: string[];
+              sourceEntityType?: "capability" | "effect" | "primitive";
+              sourceEntityId?: string;
+              source?: "custom" | "sheet" | "sheet-auto";
             };
             if (typeof parsed.title === "string" && parsed.id) {
               out.push({
@@ -190,6 +243,12 @@ export function InlinePrimitiveSheet({
                     ? parsed.description
                     : null,
                 tags: Array.isArray(parsed.tags) ? parsed.tags : [],
+                ...(parsed.sourceEntityType
+                  ? { sourceEntityType: parsed.sourceEntityType }
+                  : {}),
+                ...(parsed.sourceEntityId
+                  ? { sourceEntityId: parsed.sourceEntityId }
+                  : {}),
               });
             }
           } catch {
@@ -241,16 +300,41 @@ export function InlinePrimitiveSheet({
     return { authored, public: publicRows, system };
   }, [filtered]);
 
-  const filteredConditions = useMemo(() => {
+  /**
+   * Phase 9.4 (Mashu 2026-09-07): filter the Promote tab to only
+   * conditions that originated from a DIRECT primitive on this
+   * character (per Mashu's #2: "only from DIRECT primitives, not
+   * those nested in capabilities and effects").
+   *
+   * When the directPrimitives index is missing, we fall back to
+   * the legacy behavior of showing every condition (so the picker
+   * still works during the transition window before the sheet
+   * page threads the index down).
+   */
+  const directFilteredConditions = useMemo(() => {
     if (!conditions) return null;
-    const q = query.trim().toLowerCase();
-    if (!q) return conditions;
+    if (!directPrimitives) return conditions;
     return conditions.filter((c) => {
+      // Conditions without a primitive source (custom-authored or
+      // from a capability/effect) are excluded from the Promote
+      // tab in Phase 9.4. The user can still promote them later
+      // by widening the filter (out of scope for this round).
+      if (c.sourceEntityType !== "primitive") return false;
+      if (!c.sourceEntityId) return false;
+      return directPrimitives.directPrimitiveIds.has(c.sourceEntityId);
+    });
+  }, [conditions, directPrimitives]);
+
+  const filteredConditions = useMemo(() => {
+    if (!directFilteredConditions) return null;
+    const q = query.trim().toLowerCase();
+    if (!q) return directFilteredConditions;
+    return directFilteredConditions.filter((c) => {
       if (c.title.toLowerCase().includes(q)) return true;
       if (c.description && c.description.toLowerCase().includes(q)) return true;
       return false;
     });
-  }, [conditions, query]);
+  }, [directFilteredConditions, query]);
 
   const slot = useCallback(
     async (primitiveId: number) => {
@@ -305,7 +389,46 @@ export function InlinePrimitiveSheet({
   // character (they're runtime state). The user can later delete
   // the condition via ConditionsDrawer if they want.
   const promoteFromCondition = useCallback((c: CharacterConditionRow) => {
-    setPromoteSeed({ name: c.title, description: c.description ?? "" });
+    // Phase 9.4 (Mashu 2026-09-07): in addition to seeding the
+    // primitive's name + narrativeRule, build a starter ModifierDraft
+    // so the user sees a real "+1 to physical when [condition title]"
+    // modifier row pre-populated. They can edit / remove it before
+    // saving.
+    //
+    // The shape mirrors the atelier's `blankModifier` (primitive-form
+    // .tsx:290) with three overrides:
+    //   - conditionMode: "custom" — fires when the condition matches
+    //   - conditionKey: "custom" + freeTextNarrowFocus: condition title
+    //     — the form's condition triple treats these as "any custom
+    //     condition whose title equals the focus string"
+    //   - targetValues: ["PHYSICAL"] — defaults to physical, the most
+    //     common attribute axis; user can swap.
+    const startingModifier = {
+      id: "modifier-1",
+      target: "attribute",
+      operation: "add",
+      tokens: [{ kind: "number", value: 1 }],
+      value: "1",
+      valueKind: "number",
+      operands: [],
+      targetValues: ["PHYSICAL"],
+      granularity: "broad" as const,
+      freeTextNarrowFocus: c.title,
+      conditionMode: "custom" as const,
+      conditionKey: "custom",
+      conditionOperator: "equals" as const,
+      // The remaining ModifierDraft fields (conditionValue, stacking,
+      // v1Condition, tags, notes, isActive, trigger, effect) are
+      // filled by blankModifier spread inside the form when this
+      // partial is merged. Cast as never to skip the strict field
+      // check here — the form's blankModifier is the canonical
+      // source of truth for those defaults.
+    } as unknown as ModifierDraft;
+    setPromoteSeed({
+      name: c.title,
+      description: c.description ?? "",
+      startingModifier,
+    });
     setMode("quick");
   }, []);
 
@@ -479,8 +602,22 @@ export function InlinePrimitiveSheet({
               </p>
               {filteredConditions.length === 0 && (
                 <p className="rounded-md border border-dashed border-border bg-card px-3 py-6 text-center text-xs text-muted-foreground">
-                  No conditions on this character yet. Add conditions
-                  from the right-side conditions panel first.
+                  {directPrimitives &&
+                  conditions &&
+                  conditions.length > 0 &&
+                  conditions.length !== filteredConditions.length ? (
+                    <>
+                      No DIRECT-only conditions yet. The Promote tab only
+                      shows conditions that originated from a primitive
+                      slotted directly on this character (not from
+                      capabilities or effects).
+                    </>
+                  ) : (
+                    <>
+                      No conditions on this character yet. Add conditions
+                      from the right-side conditions panel first.
+                    </>
+                  )}
                 </p>
               )}
               <ul className="space-y-1.5">

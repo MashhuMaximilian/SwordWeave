@@ -31,6 +31,11 @@ interface AccordionFooterActionsProps {
   /** Current slotted primitives count, used to gate Formalize (≥ 1). */
   slottedCount: number;
   onAfterChange?: () => void;
+  /**
+   * Phase 9.4 (Mashu 2026-09-07): forwarded to the picker so the
+   * Promote tab filters to DIRECT-only conditions.
+   */
+  directPrimitives?: import("./inline-primitive-sheet").DirectPrimitivesIndex | null;
 }
 
 export function AccordionFooterActions({
@@ -38,6 +43,7 @@ export function AccordionFooterActions({
   accordionKind,
   slottedCount,
   onAfterChange,
+  directPrimitives,
 }: AccordionFooterActionsProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [formalizeOpen, setFormalizeOpen] = useState(false);
@@ -103,6 +109,7 @@ export function AccordionFooterActions({
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
         onSlot={handleSlot}
+        {...(directPrimitives ? { directPrimitives } : {})}
       />
 
       {accordionKind !== "PERSONAL" ? (

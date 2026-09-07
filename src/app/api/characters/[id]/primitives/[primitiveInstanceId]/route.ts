@@ -32,7 +32,9 @@ import { db } from "@/db/client";
 import {
   characters,
   characterCapabilities,
+  characterItems,
   characterPrimitives,
+  effects,
   heritage,
 } from "@/db/schema";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
@@ -80,6 +82,43 @@ export async function PATCH(
       values["toCapabilityId"].length > 0
         ? (values["toCapabilityId"] as string)
         : null;
+
+    // Phase 9.4 (Mashu 2026-09-07): parallel to toCapabilityId, but
+    // the target is an item in the character's inventory. Items nest
+    // primitives / effects / capabilities. originItemId is the new
+    // column added in migration 0057.
+    const toItemId =
+      typeof values["toItemId"] === "string" &&
+      values["toItemId"].length > 0
+        ? (values["toItemId"] as string)
+        : null;
+
+    // Phase 9.4 (Mashu 2026-09-07): parallel to toCapabilityId, but
+    // the target is an effect row in the global effects table. Effects
+    // only nest primitives (one level deep). originEffectId was the
+    // first container origin — we just hadn't exposed it as a move
+    // target until now.
+    const toEffectId =
+      typeof values["toEffectId"] === "string" &&
+      values["toEffectId"].length > 0
+        ? (values["toEffectId"] as string)
+        : null;
+
+    // Sanity: only one container origin at a time.
+    const containerTargetCount = [
+      toCapabilityId,
+      toItemId,
+      toEffectId,
+    ].filter((x) => x !== null).length;
+    if (containerTargetCount > 1) {
+      return NextResponse.json(
+        {
+          error:
+            "Specify at most one of toCapabilityId / toItemId / toEffectId.",
+        },
+        { status: 400 },
+      );
+    }
 
     // Ownership check.
     const character = await db.query.characters.findFirst({
@@ -179,6 +218,47 @@ export async function PATCH(
       resolvedCapabilityId = toCapabilityId;
     }
 
+    // Phase 9.4: validate the target item belongs to this character.
+    // Items live in character_items (junction). The item row itself
+    // is in the global `items` table; the junction carries
+    // quantity + equipped state.
+    let resolvedItemId: string | null = null;
+    if (toItemId) {
+      const link = await db.query.characterItems.findFirst({
+        where: and(
+          eq(characterItems.characterId, characterId),
+          eq(characterItems.itemId, toItemId),
+        ),
+      });
+      if (!link) {
+        return NextResponse.json(
+          {
+            error: "Target item not found on this character.",
+          },
+          { status: 404 },
+        );
+      }
+      resolvedItemId = toItemId;
+    }
+
+    // Phase 9.4: validate the target effect exists in the global
+    // effects table. We don't track per-character effect rows yet —
+    // effects attach to characters via character_primitives.originEffectId
+    // breadcrumb. The effect itself is shared.
+    let resolvedEffectId: string | null = null;
+    if (toEffectId) {
+      const eff = await db.query.effects.findFirst({
+        where: eq(effects.id, toEffectId),
+      });
+      if (!eff) {
+        return NextResponse.json(
+          { error: "Target effect not found." },
+          { status: 404 },
+        );
+      }
+      resolvedEffectId = toEffectId;
+    }
+
     // Update the row.
     //
     // Phase 9.2 (Mashu 2026-09-06): when moving INTO a capability,
@@ -191,13 +271,15 @@ export async function PATCH(
       .set({
         source: to,
         originHeritageId:
-          resolvedCapabilityId != null
+          resolvedCapabilityId != null || resolvedItemId != null ||
+          resolvedEffectId != null
             ? null
             : to === "PERSONAL"
               ? null
               : resolvedHeritageId,
         originCapabilityId: resolvedCapabilityId,
-        originEffectId: null,
+        originEffectId: resolvedEffectId,
+        originItemId: resolvedItemId,
       })
       .where(
         and(
@@ -215,6 +297,10 @@ export async function PATCH(
       toHeritageId: resolvedHeritageId ?? null,
       fromCapabilityId: existing.originCapabilityId ?? null,
       toCapabilityId: resolvedCapabilityId,
+      fromEffectId: existing.originEffectId ?? null,
+      toEffectId: resolvedEffectId,
+      fromItemId: existing.originItemId ?? null,
+      toItemId: resolvedItemId,
       fromSource: existing.source,
       toSource: to,
     });

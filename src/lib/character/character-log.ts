@@ -155,6 +155,16 @@ export interface PrimitiveMovedPayload {
    */
   fromCapabilityId?: string | null;
   toCapabilityId?: string | null;
+  /**
+   * Phase 9.4 (Mashu 2026-09-07): the chip can also move into an
+   * effect (originEffectId) or an item body (originItemId).
+   * Only one of toCapabilityId / toEffectId / toItemId is set per
+   * move; the route enforces that.
+   */
+  fromEffectId?: string | null;
+  toEffectId?: string | null;
+  fromItemId?: string | null;
+  toItemId?: string | null;
   /** Source kind discriminator (LINEAGE / UPBRINGING / MANIFEST / PERSONAL). */
   fromSource?: string | null;
   toSource?: string | null;

@@ -284,6 +284,14 @@ export const characterPrimitives = pgTable(
     originEffectId: uuid("origin_effect_id").references(() => effects.id, {
       onDelete: "set null",
     }),
+    // Phase 9.4 (Mashu 2026-09-07): a primitive can also be slotted
+    // directly onto an item (the character's physical inventory).
+    // Items are containers that nest primitives / effects /
+    // capabilities; a primitive slotted to an item body is walked
+    // via this column. Migration 0057.
+    originItemId: uuid("origin_item_id").references(() => items.id, {
+      onDelete: "set null",
+    }),
     notes: text("notes"),
     ...timestamps,
   },
@@ -309,14 +317,21 @@ export const characterPrimitives = pgTable(
       table.originCapabilityId,
     ),
     index("character_primitives_origin_effect_idx").on(table.originEffectId),
+    // Phase 9.4 (Mashu 2026-09-07): originItemId index for item-body
+    // primitive lookups (the new column added in migration 0057).
+    index("character_primitives_origin_item_idx").on(table.originItemId),
     // Partial unique: inherited (one per char/prim where origin_* set)
     uniqueIndex("character_primitives_inherited_uniq")
       .on(table.characterId, table.primitiveId)
-      .where(sql`${table.originHeritageId} IS NOT NULL OR ${table.originCapabilityId} IS NOT NULL OR ${table.originEffectId} IS NOT NULL`),
+      .where(
+        sql`${table.originHeritageId} IS NOT NULL OR ${table.originCapabilityId} IS NOT NULL OR ${table.originEffectId} IS NOT NULL OR ${table.originItemId} IS NOT NULL`,
+      ),
     // Partial unique: mirror (one per char/prim where is_mirrored + no origin)
     uniqueIndex("character_primitives_mirror_uniq")
       .on(table.characterId, table.primitiveId)
-      .where(sql`${table.isMirrored} = true AND ${table.originHeritageId} IS NULL AND ${table.originCapabilityId} IS NULL AND ${table.originEffectId} IS NULL`),
+      .where(
+        sql`${table.isMirrored} = true AND ${table.originHeritageId} IS NULL AND ${table.originCapabilityId} IS NULL AND ${table.originEffectId} IS NULL AND ${table.originItemId} IS NULL`,
+      ),
   ],
 );
 

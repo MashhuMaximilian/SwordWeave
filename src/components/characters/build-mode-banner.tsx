@@ -69,13 +69,13 @@ export function BuildModeBanner({
           </span>
           <div className="space-y-0.5">
             <p className="text-sm font-semibold text-foreground">
-              Build mode
+              Edit mode
             </p>
             <p className="text-xs leading-5 text-muted-foreground sm:text-sm">
               Add primitives to the Lineage, Upbringing, Manifest, and
               Items accordions. Tap "Formalize as heritage" or "Wrap as
-              item" when a bundle is ready. Finish building when you're
-              done.
+              item" when a bundle is ready. Switch back to Play when
+              you're done editing.
             </p>
           </div>
         </div>
@@ -86,7 +86,7 @@ export function BuildModeBanner({
           className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-primary/40 sm:self-auto"
         >
           {isPending && <Loader2 className="size-4 animate-spin" />}
-          Finish building
+          Finish editing
         </button>
         {error && (
           <p
@@ -111,7 +111,7 @@ export function BuildModeBanner({
             Play mode
           </p>
           <p className="text-xs leading-5 text-muted-foreground sm:text-sm">
-            The character is read-only. Switch to build mode to add or
+            The character is read-only. Switch to edit mode to add or
             move primitives, formalize heritages, or wrap items.
           </p>
         </div>
@@ -123,7 +123,7 @@ export function BuildModeBanner({
         className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-md border border-primary/50 bg-card px-4 py-2 text-sm font-semibold text-primary shadow-sm transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60 sm:self-auto"
       >
         {isPending && <Loader2 className="size-4 animate-spin" />}
-        Open build mode
+        Open edit mode
       </button>
       {error && (
         <p
