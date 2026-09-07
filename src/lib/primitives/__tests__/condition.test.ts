@@ -457,9 +457,9 @@ describe("conditionToBadges — compound variant", () => {
       tokens: ["target:Prone", "OR", "self:Stance"],
     });
     expect(badges).toEqual([
-      { kind: "tag", label: "Prone" },
+      { kind: "axis", label: "Prone", axis: "target" },
       { kind: "tag", label: "OR" },
-      { kind: "tag", label: "Stance" },
+      { kind: "axis", label: "Stance", axis: "self" },
     ]);
   });
 
@@ -469,9 +469,9 @@ describe("conditionToBadges — compound variant", () => {
       tokens: ["target:Target has Cover", "AND", "target:Target is Grappled"],
     });
     expect(badges).toEqual([
-      { kind: "tag", label: "Target has Cover" },
+      { kind: "axis", label: "Target has Cover", axis: "target" },
       { kind: "tag", label: "AND" },
-      { kind: "tag", label: "Target is Grappled" },
+      { kind: "axis", label: "Target is Grappled", axis: "target" },
     ]);
   });
 });
@@ -493,8 +493,8 @@ describe("conditionToBadges", () => {
     });
     expect(badges).toEqual([
       { kind: "preset", label: "Target is Prone" },
-      { kind: "tag", label: "and pinned" },
-      { kind: "tag", label: "helpless" },
+      { kind: "axis", label: "and pinned" },
+      { kind: "axis", label: "helpless" },
     ]);
   });
 
@@ -522,8 +522,8 @@ describe("conditionToBadges", () => {
     expect(
       conditionToBadges({ kind: "tags", customTags: ["solo", "injured"] }),
     ).toEqual([
-      { kind: "tag", label: "solo" },
-      { kind: "tag", label: "injured" },
+      { kind: "axis", label: "solo" },
+      { kind: "axis", label: "injured" },
     ]);
   });
 
@@ -977,7 +977,7 @@ describe("conditionToBadges — axis-explicit display (i2.6)", () => {
       customTags: ["self:not_proficient"],
     });
     expect(badges).toEqual([
-      { kind: "tag", label: "not_proficient(any practice)" },
+      { kind: "axis", label: "not_proficient(any practice)", axis: "self" },
     ]);
   });
 
@@ -987,7 +987,7 @@ describe("conditionToBadges — axis-explicit display (i2.6)", () => {
       customTags: ["self:proficient"],
     });
     expect(badges).toEqual([
-      { kind: "tag", label: "proficient(any practice)" },
+      { kind: "axis", label: "proficient(any practice)", axis: "self" },
     ]);
   });
 
@@ -997,7 +997,7 @@ describe("conditionToBadges — axis-explicit display (i2.6)", () => {
       customTags: ["self:not_proficient_in_attribute(any)"],
     });
     expect(badges).toEqual([
-      { kind: "tag", label: "not_proficient(any attribute)" },
+      { kind: "axis", label: "not_proficient(any attribute)", axis: "self" },
     ]);
   });
 
@@ -1007,7 +1007,7 @@ describe("conditionToBadges — axis-explicit display (i2.6)", () => {
       customTags: ["self:proficient_in(prowess)"],
     });
     expect(badges).toEqual([
-      { kind: "tag", label: "proficient_in(prowess)" },
+      { kind: "axis", label: "proficient_in(prowess)", axis: "self" },
     ]);
   });
 
@@ -1017,7 +1017,7 @@ describe("conditionToBadges — axis-explicit display (i2.6)", () => {
       customTags: ["self:not_proficient_in(all_practices)"],
     });
     expect(badges).toEqual([
-      { kind: "tag", label: "not_proficient_in(all_practices)" },
+      { kind: "axis", label: "not_proficient_in(all_practices)", axis: "self" },
     ]);
   });
 
@@ -1027,7 +1027,7 @@ describe("conditionToBadges — axis-explicit display (i2.6)", () => {
       customTags: ["self:stat|vitality_pct|<|0.5"],
     });
     expect(badges).toEqual([
-      { kind: "tag", label: "vitality_pct < 0.5" },
+      { kind: "axis", label: "vitality_pct < 0.5", axis: "self" },
     ]);
   });
 
@@ -1037,7 +1037,7 @@ describe("conditionToBadges — axis-explicit display (i2.6)", () => {
       customTags: ["self:stat|vitality|between|5|15"],
     });
     expect(badges).toEqual([
-      { kind: "tag", label: "vitality between 5 - 15" },
+      { kind: "axis", label: "vitality between 5 - 15", axis: "self" },
     ]);
   });
 
@@ -1051,9 +1051,9 @@ describe("conditionToBadges — axis-explicit display (i2.6)", () => {
       ],
     });
     expect(badges).toEqual([
-      { kind: "tag", label: "not_proficient(any practice)" },
+      { kind: "axis", label: "not_proficient(any practice)", axis: "self" },
       { kind: "tag", label: "AND" },
-      { kind: "tag", label: "vitality_pct < 0.5" },
+      { kind: "axis", label: "vitality_pct < 0.5", axis: "self" },
     ]);
   });
 });

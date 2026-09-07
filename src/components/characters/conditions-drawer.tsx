@@ -176,21 +176,17 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
           {autoTriggeredConditions.length > 0 && (
             <Section title="Auto-triggered" count={autoTriggeredConditions.length}>
               {autoTriggeredConditions.map((c) => (
-                // Phase 8.L round 125 (Mashu): no onToggle
-                // handler at all — the engine decides the
-                // state. Previously we passed onToggle={() =>
-                // undefined} but that's a truthy function and the
-                // UI rendered the Off button anyway.
-                //
-                // Phase 8.L round 127: liveActive comes from
-                // the engine's current evaluation against the
-                // character state, so the ON/OFF badge reflects
-                // reality (e.g. "ON" when HP drops below 50%).
+                // Phase 9.5 follow-up (Mashu 2026-09-07):
+                // override prior decisions — wire onToggle for
+                // EVERY source including sheet-auto. The
+                // engine's live evaluation is still surfaced
+                // via autoEvaluated / liveActive but the user
+                // can manually toggle anything in the panel.
                 <ConditionCardItem
                   key={c.id}
                   condition={c}
-                  readOnly
-                  liveActive={autoEvaluated?.get(c.id)?.active ?? false}
+                  onToggle={() => toggle(c.id)}
+                  {...(autoEvaluated?.has(c.id) ? { liveActive: autoEvaluated.get(c.id)!.active } : {})}
                 />
               ))}
             </Section>

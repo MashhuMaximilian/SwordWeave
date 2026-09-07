@@ -51,26 +51,42 @@ export async function GET(
     const sourceFilter = kindParam
       ? (kindParam as (typeof ALLOWED_PRIMITIVE_SOURCES)[number])
       : null;
+    // Phase 9.5 follow-up (Mashu 2026-09-07): the formalize
+    // sheet reads `row.primitive.name` (and the Capability
+    // route already does the same). Return the joined primitive
+    // row so the sheet doesn't crash with "Cannot read
+    // properties of undefined (reading 'name')".
+    const selectExpr = {
+      instanceId: characterPrimitives.instanceId,
+      primitiveId: characterPrimitives.primitiveId,
+      source: characterPrimitives.source,
+      originHeritageId: characterPrimitives.originHeritageId,
+      isMirrored: characterPrimitives.isMirrored,
+      primitive: {
+        id: primitives.id,
+        name: primitives.name,
+        category: primitives.category,
+        buCost: primitives.buCost,
+        isMirrorable: primitives.isMirrorable,
+        mirrorBuCredit: primitives.mirrorBuCredit,
+      },
+    };
     const rows = sourceFilter
       ? await db
-          .select({
-            instanceId: characterPrimitives.instanceId,
-            primitiveId: characterPrimitives.primitiveId,
-            source: characterPrimitives.source,
-            originHeritageId: characterPrimitives.originHeritageId,
-            isMirrored: characterPrimitives.isMirrored,
-          })
+          .select(selectExpr)
           .from(characterPrimitives)
+          .innerJoin(
+            primitives,
+            eq(primitives.id, characterPrimitives.primitiveId),
+          )
           .where(and(baseWhere, eq(characterPrimitives.source, sourceFilter)))
       : await db
-          .select({
-            instanceId: characterPrimitives.instanceId,
-            primitiveId: characterPrimitives.primitiveId,
-            source: characterPrimitives.source,
-            originHeritageId: characterPrimitives.originHeritageId,
-            isMirrored: characterPrimitives.isMirrored,
-          })
+          .select(selectExpr)
           .from(characterPrimitives)
+          .innerJoin(
+            primitives,
+            eq(primitives.id, characterPrimitives.primitiveId),
+          )
           .where(baseWhere);
 
     return NextResponse.json({ primitiveInstances: rows }, { status: 200 });

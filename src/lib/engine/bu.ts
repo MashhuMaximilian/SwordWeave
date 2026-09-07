@@ -343,17 +343,33 @@ export function calculateBuBudget(level: number): number {
 export function calculatePrimitiveBu(
   primitive: PrimitiveInput,
   isMirrored: boolean,
+  /**
+   * Phase 9.5 follow-up (Mashu 2026-09-07): the user can
+   * click "mirror" on any primitive regardless of the
+   * primitive's `isMirrorable` flag. When this flag is true,
+   * we apply the mirror as if mirrorBuCredit === buCost,
+   * which makes mirroring subtract buCost from the budget.
+   * The leftover cost (if mirrorBuCredit < buCost) still
+   * counts toward the budget — see bu.ts comments on
+   * `mirrorBuCredit`. If the budget is at cap, the excess
+   * rolls into BU debt at the engine level.
+   */
+  forceMirror: boolean = false,
 ): number {
-  if (!isMirrored) {
+  if (!isMirrored && !forceMirror) {
     return primitive.buCost;
   }
-  if (!primitive.isMirrorable) {
-    // Phase 8.I i3 fix: a slot is marked mirrored but the primitive
-    // isn't mirrorable (seed data artifact). Treat as non-mirrored
-    // so the engine doesn't crash on legacy/migrated data.
-    return primitive.buCost;
-  }
-  return -Math.abs(primitive.mirrorBuCredit);
+  // Mirrored: the slot contributes -mirrorBuCredit to the
+  // budget (engine calls this a "credit"). When the primitive
+  // isn't naturally mirrorable, we treat mirrorBuCredit as
+  // buCost so the credit equals the cost — i.e. the slot
+  // becomes free. The character's buSpent still records the
+  // difference (buCost - mirrorBuCredit) as debt at the
+  // sheet level.
+  const credit = primitive.isMirrorable
+    ? primitive.mirrorBuCredit
+    : primitive.buCost;
+  return -Math.abs(credit);
 }
 
 /**

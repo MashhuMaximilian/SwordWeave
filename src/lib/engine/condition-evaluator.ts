@@ -299,13 +299,25 @@ export function isConditionComputable(
       // Legacy presets reference self/character state only
       return true;
     case "tags":
-      // Tags can reference self, target, or scene axes
-      return (
-        ctx.character !== undefined &&
-        // If tags reference target/scene axes, need those in context
-        (!condition.customTags || condition.customTags.length === 0 ||
-          condition.customTags.every((t) => !t.startsWith("target") && !t.startsWith("scene")))
-      );
+      // Phase 9.5 follow-up (Mashu 2026-09-07): the prior
+      // version said "non-computable if a tag references
+      // target/scene at all" — but that fires even when the
+      // context DOES carry target/scene. The contract is:
+      // computable iff (a) we have character AND (b) for
+      // every tag that references target/scene, that axis
+      // is present in the context.
+      if (ctx.character === undefined) return false;
+      if (!condition.customTags || condition.customTags.length === 0) {
+        return true;
+      }
+      // Tag-prefixed targets: each tag may reference target /
+      // scene / self. Missing the referenced axis → not
+      // computable.
+      return condition.customTags.every((t) => {
+        if (t.startsWith("target")) return ctx.target !== undefined;
+        if (t.startsWith("scene")) return ctx.scene !== undefined;
+        return true;
+      });
     case "compound":
       // Check each token's axis against available context
       if (!condition.tokens || condition.tokens.length === 0) return true;

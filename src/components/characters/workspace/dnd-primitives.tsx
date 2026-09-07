@@ -93,6 +93,17 @@ export type DraggablePrimitiveChipProps = {
   /** Phase 9.5: whether this chip is currently mirrored. Shows
    *  the toggle as "active" so the user can see what state they're in. */
   isMirrored?: boolean | undefined;
+  /** Phase 9.5 follow-up (Mashu 2026-09-07): when false the chip
+   *  omits the mirror button entirely. Mental Muscle Mass and
+   *  other non-mirrorable primitives would otherwise show a
+   *  toggle that silently does nothing. */
+  isMirrorable?: boolean | undefined;
+  /** Phase 9.5 follow-up (Mashu 2026-09-07): character mode
+   *  from the page (BUILD | PLAY). The chip's hover action
+   *  bar (X + mirror) is BUILD-only; PLAY is view-only and
+   *  should not show the bar at all (overrides any callbacks
+   *  the parent may have passed). */
+  mode?: "BUILD" | "PLAY" | undefined;
 };
 
 /**
@@ -107,6 +118,8 @@ export function DraggablePrimitiveChip({
   onDelete,
   onToggleMirror,
   isMirrored,
+  isMirrorable = true,
+  mode = "PLAY",
 }: DraggablePrimitiveChipProps) {
   const [dragging, setDragging] = useState(false);
 
@@ -144,9 +157,14 @@ export function DraggablePrimitiveChip({
           callback. The buttons sit above the chip content with
           a slightly translucent background so they're clickable
           without triggering the chip's preview. */}
-      {(onDelete || onToggleMirror) && (
-        <div className="pointer-events-none absolute right-1 top-1 z-10 flex items-center gap-1 opacity-0 transition group-hover/chip:opacity-100 focus-within:opacity-100">
-          {onToggleMirror && (
+            {/* Phase 9.5 follow-up (Mashu 2026-09-07): the hover
+          action bar (× delete + mirror toggle) is BUILD-only.
+          PLAY mode hides both — even if callbacks were
+          passed. Mashu explicitly requested this override of
+          the prior "always hover-revealed" behavior. */}
+      {mode === "BUILD" && (onDelete || (onToggleMirror && isMirrorable)) && (
+        <div className="pointer-events-none absolute right-1 top-1 z-10 flex items-center gap-1 opacity-30 transition group-hover/chip:opacity-100 focus-within:opacity-100 hover:opacity-100">
+          {onToggleMirror && isMirrorable && (
             <button
               type="button"
               onPointerDown={(e) => e.stopPropagation()}

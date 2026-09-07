@@ -237,11 +237,15 @@ describe("calculatePrimitiveBu", () => {
     expect(calculatePrimitiveBu(vulnerableToFire, true)).toBe(-4);
   });
 
-  it("treats mirrored non-mirrorable primitive as standard (graceful)", () => {
-    // Phase 8.I i3 fix: instead of throwing, non-mirrorable
-    // primitives that are marked mirrored fall back to standard.
+  it("mirrored non-mirrorable primitive returns -buCost (forced mirror grants a full credit)", () => {
+    // Phase 9.5 follow-up (Mashu 2026-09-07): mirroring a
+    // non-mirrorable primitive used to fall back to
+    // buCost (no effect). Mashu wants the user to be able
+    // to mirror anything; mirroring a non-mirrorable
+    // primitive grants a -buCost credit (same as a
+    // mirrorable primitive whose mirrorBuCredit === buCost).
     const result = calculatePrimitiveBu(strike, true);
-    expect(result).toBe(strike.buCost);
+    expect(result).toBe(-strike.buCost);
   });
 });
 

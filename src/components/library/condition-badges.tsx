@@ -55,7 +55,38 @@ export function ConditionBadges({
 
   const presetBadges = badges.filter((b) => b.kind === "preset");
   const tagBadges = badges.filter((b) => b.kind === "tag");
+  const axisBadges = badges.filter((b) => b.kind === "axis");
   const narrativeBadges = badges.filter((b) => b.kind === "narrative");
+
+  // Phase 9.5 follow-up (Mashu 2026-09-07): render the
+  // axis-prefix (self / target / scene / actor) as a
+  // distinct pill so users can SEE which side a modifier
+  // gates on. Mashu's bug: Enfeebling Envenom's
+  // "target:exposed" was being applied even when no target
+  // was exposed because the engine silently treated
+  // non-computable predicates as truthy. Surfacing the
+  // axis here is the user-facing half of the fix.
+  const axisStyle: Record<
+    NonNullable<(typeof axisBadges)[number]["axis"]>,
+    { tone: string; label: string }
+  > = {
+    self: {
+      tone: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+      label: "when self",
+    },
+    actor: {
+      tone: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+      label: "when self",
+    },
+    target: {
+      tone: "border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300",
+      label: "when target",
+    },
+    scene: {
+      tone: "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+      label: "when scene",
+    },
+  };
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-xs">
@@ -68,6 +99,22 @@ export function ConditionBadges({
           {b.label}
         </span>
       ))}
+      {axisBadges.map((b, i) => {
+        const axis = b.axis ?? "self";
+        const meta = axisStyle[axis];
+        return (
+          <span
+            key={`a-${i}-${b.label}-${axis}`}
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${meta.tone}`}
+            title={`Triggers ${axis}`}
+          >
+            <span className="text-[9px] font-semibold uppercase tracking-wider opacity-80">
+              {meta.label}
+            </span>
+            <span className="font-medium">{b.label}</span>
+          </span>
+        );
+      })}
       {tagBadges.map((b, i) => (
         <span
           key={`t-${i}-${b.label}`}

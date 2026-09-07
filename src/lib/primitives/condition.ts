@@ -531,9 +531,35 @@ export function migrateLegacyCondition(legacy: {
  * For `narrative`, returns a single-element array with the text
  * (the character sheet renders narrative as italic, not a badge).
  */
+export type ConditionBadge = {
+  kind: "preset" | "tag" | "narrative" | "axis";
+  label: string;
+  /**
+   * Phase 9.5 follow-up (Mashu 2026-09-07): the axis this
+   * pill belongs to (self / target / scene / actor) so the
+   * sheet preview can render a "when target" pill instead of
+   * stripping the prefix. Null for preset/narrative badges
+   * (those have no axis).
+   */
+  axis?: "self" | "actor" | "target" | "scene" | null;
+};
+
+function extractAxisPrefix(pill: string): {
+  axis: "self" | "actor" | "target" | "scene";
+  body: string;
+} | null {
+  const idx = pill.indexOf(":");
+  if (idx === -1) return null;
+  const prefix = pill.slice(0, idx);
+  if (prefix !== "target" && prefix !== "scene" && prefix !== "self" && prefix !== "actor") {
+    return null;
+  }
+  return { axis: prefix, body: pill.slice(idx + 1) };
+}
+
 export function conditionToBadges(
   condition: ModifierCondition | null,
-): Array<{ kind: "preset" | "tag" | "narrative"; label: string }> {
+): ConditionBadge[] {
   if (!condition) return [];
   if (condition.kind === "preset") {
     return [
@@ -541,40 +567,43 @@ export function conditionToBadges(
         kind: "preset",
         label: presetLabel(condition.presetKey) ?? condition.presetKey,
       },
-      ...condition.customTags.map((t) => ({
-        kind: "tag" as const,
-        label: friendlyConditionLabel(stripCategoryPrefix(t)),
-      })),
+      ...condition.customTags.map((t) => {
+        const extracted = extractAxisPrefix(t);
+        return {
+          kind: "axis" as const,
+          label: friendlyConditionLabel(stripCategoryPrefix(t)),
+          ...(extracted ? { axis: extracted.axis } : {}),
+        } satisfies ConditionBadge;
+      }),
     ];
   }
   if (condition.kind === "tags") {
-    // Each pill may carry a "category:label" prefix (Phase 7 Q-B m3
-    // — author can add custom pills bucketed under Target / Self /
-    // Scene). Strip the prefix for rendering; the category is
-    // surfaced via the surrounding UI section.
-    return condition.customTags.map((t) => ({
-      kind: "tag" as const,
-      label: friendlyConditionLabel(stripCategoryPrefix(t)),
-    }));
+    return condition.customTags.map((t) => {
+      const extracted = extractAxisPrefix(t);
+      return {
+        kind: "axis" as const,
+        label: friendlyConditionLabel(stripCategoryPrefix(t)),
+        ...(extracted ? { axis: extracted.axis } : {}),
+      } satisfies ConditionBadge;
+    });
   }
   if (condition.kind === "compound") {
     // Walk tokens alternately: pill → operator → pill → ...
     // Render each pill as a tag badge and each operator as
     // a connector. The character sheet displays them inline as
     // "Prone OR Grappled AND Stance".
-    const badges: Array<{ kind: "preset" | "tag" | "narrative"; label: string }> = [];
+    const badges: ConditionBadge[] = [];
     for (let i = 0; i < condition.tokens.length; i++) {
       const token = condition.tokens[i]!;
       if (i % 2 === 0) {
-        // Pill slot — strip category prefix + map to friendly label
+        // Pill slot — preserve axis (Phase 9.5 follow-up).
+        const extracted = extractAxisPrefix(token);
         badges.push({
-          kind: "tag",
+          kind: "axis",
           label: friendlyConditionLabel(stripCategoryPrefix(token)),
+          ...(extracted ? { axis: extracted.axis } : {}),
         });
       } else {
-        // Operator slot — render as inline connector (using
-        // the same tag kind so the sheet renders it; future
-        // improvement: introduce a 'connector' badge kind).
         badges.push({ kind: "tag", label: token });
       }
     }
@@ -586,7 +615,7 @@ export function conditionToBadges(
   // Exhaustiveness — should be unreachable
   throw new Error(
     `conditionToBadges: unhandled condition kind '${
-      // @ts-expect-error - exhaustiveness check
+      // @ts-expect-error -- runtime exhaustive check
       condition.kind
     }'`,
   );

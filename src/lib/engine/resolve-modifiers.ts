@@ -559,12 +559,22 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       // - Computable + true → include (active)
       // - Computable + false → suppress value, keep attribution
       // - Non-computable → include + show * (can't resolve at sheet time)
+      // Phase 9.5 follow-up (Mashu 2026-09-07): the sheet must
+      // fail CLOSED when the condition references a context
+      // axis we don't have. Previously a `target:exposed`
+      // modifier would still apply on the character sheet
+      // (because no target context was provided), which made
+      // "triggers when target" silently fire on every roll.
+      // Now non-computable = "cannot prove the predicate,
+      // suppress until table-side adjudication". GM-side
+      // tools can still opt back in via the conditions
+      // drawer.
       let conditionComputable = true;
       if (conditionContext && mod.condition) {
         conditionComputable = isConditionComputable(mod.condition as import("@/types/condition").ModifierCondition, conditionContext);
         conditionActive = conditionComputable
           ? evaluateCondition(mod.condition as import("@/types/condition").ModifierCondition, conditionContext)
-          : true; // non-computable → include the bonus
+          : false; // non-computable → exclude the bonus
       }
       // Phase 8.L round 41 (Mashu 2026-08-13): cap/effect toggle
       // marks the entry as `inhibited` instead of skipping
@@ -1323,8 +1333,14 @@ const eq = resolveEquation(operandsRaw as never, ctx);
     }
   }
   // Chain direct contributions left-to-right.
+  // Phase 9.5 follow-up (Mashu 2026-09-07): skip suppressed
+  // entries (conditionActive === false OR inhibited). The
+  // PASS 2 step above already rolled back the contribution
+  // to totals; the PASS 3 mirror must respect that or the
+  // re-seeding step below re-applies the suppression.
   let atkFinal = perAttrAtkBase + actionRollAtkDelta;
   for (const c of directAtkContribs) {
+    if (c.conditionActive === false || c.inhibited) continue;
     atkFinal = reapplyOp(atkFinal, c.op, c.value);
   }
   // Phase 8.L round 92: include save_dc.<attr> primitive
@@ -1333,6 +1349,12 @@ const eq = resolveEquation(operandsRaw as never, ctx);
   // of the per-attr seed.
   let saveFinal = perAttrSaveBase + saveDcPerAttrDelta;
   for (const c of directSaveContribs) {
+    // Phase 9.5 follow-up (Mashu 2026-09-07): skip suppressed
+    // entries. Otherwise the PASS 3 mirror re-applies a
+    // fail-closed predicate that PASS 2 already rolled back
+    // (the regression that re-applied Enfeebling Envenom on
+    // every roll). Same pattern as directAtkContribs above.
+    if (c.conditionActive === false || c.inhibited) continue;
     saveFinal = reapplyOp(saveFinal, c.op, c.value);
   }
   // Phase 8.L round 92 (Mashu): also write the per-attr total
@@ -1681,7 +1703,13 @@ function isAttrProficient(
         let condOk = true;
         if (input.conditionContext && m.condition) {
           const comp = isConditionComputable(m.condition as any, input.conditionContext);
-          condOk = comp ? evaluateCondition(m.condition as any, input.conditionContext) : true;
+          // Phase 9.5 follow-up (Mashu 2026-09-07): fail closed
+          // when the predicate references an axis we don't
+          // have. Was `comp ? eval : true` — that silently
+          // granted practice bonuses whenever the context
+          // didn't carry target/scene. Mirrors the resolve
+          // path above.
+          condOk = comp ? evaluateCondition(m.condition as any, input.conditionContext) : false;
         }
         if (condOk) return true;
       }

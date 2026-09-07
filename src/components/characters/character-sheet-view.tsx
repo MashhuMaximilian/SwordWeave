@@ -2721,6 +2721,19 @@ function CapabilitiesTab({
                               }
                         }
                         isMirrored={p.isMirrored}
+                        // Phase 9.5 follow-up (Mashu 2026-09-07):
+                        // only show the mirror button when the
+                        // underlying primitive has
+                        // is_mirrorable=true. Mental Muscle
+                        // Mass (#21347) is NOT mirrorable so the
+                        // mirror button silently does nothing for
+                        // it. Hiding the button is the correct
+                        // signal.
+                        isMirrorable={p.primitive.isMirrorable}
+                        // Phase 9.5 follow-up (Mashu 2026-09-07):
+                        // the chip's hover action bar (X + mirror)
+                        // is BUILD-only. PLAY mode is view-only.
+                        mode={(mode ?? "PLAY") as "BUILD" | "PLAY"}
                       >
                       <PrimitivePreviewCard
                         primitiveLink={{

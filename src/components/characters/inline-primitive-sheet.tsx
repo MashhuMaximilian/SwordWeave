@@ -855,6 +855,31 @@ function Bucket({
  * expanded version). [Slot] drops the primitive onto the
  * accordion; [Cancel] closes the modal.
  */
+function ModifierExtras({ mod }: { mod: { [key: string]: unknown } }) {
+  const fields = ["when", "as", "if", "target", "with", "note"];
+  const extras = fields
+    .map((k) => {
+      const v = mod[k];
+      if (v === undefined || v === null) return null;
+      if (typeof v === "string") return [k, v] as const;
+      return [k, JSON.stringify(v)] as const;
+    })
+    .filter((x): x is readonly [string, string] => x !== null);
+  if (extras.length === 0) return null;
+  return (
+    <div className="mt-1 flex flex-wrap gap-1.5 text-[10px]">
+      {extras.map(([k, v]) => (
+        <span
+          key={k}
+          className="rounded-full border border-border bg-card px-1.5 py-0.5 font-mono text-muted-foreground"
+        >
+          {k}: {v}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function PrimitivePreviewModal({
   row,
   pendingSlotId,
@@ -931,9 +956,75 @@ function PrimitivePreviewModal({
               <h4 className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Hard modifiers ({row.hardModifiers.length})
               </h4>
-              <pre className="overflow-x-auto rounded-md border border-border bg-background p-3 text-[11px] leading-relaxed text-foreground">
-                {JSON.stringify(row.hardModifiers, null, 2)}
-              </pre>
+              <ul className="space-y-1.5">
+                {row.hardModifiers.map((mod: unknown, i: number) => {
+                  const m = mod as {
+                    target?: string;
+                    operation?: string;
+                    value?: unknown;
+                  };
+                  const op = m.operation ?? "modify";
+                  const target = m.target ?? "?";
+                  const value = m.value;
+                  const renderValue = (raw: unknown): string => {
+                    if (raw === null || raw === undefined) return "?";
+                    if (typeof raw === "number") return String(raw);
+                    if (typeof raw === "string") return raw;
+                    if (typeof raw === "boolean")
+                      return raw ? "true" : "false";
+                    if (typeof raw === "object") {
+                      const obj = raw as Record<string, unknown>;
+                      const kind = obj["kind"];
+                      if (typeof kind !== "string") return "?";
+                      switch (kind) {
+                        case "number":
+                          return String(obj["value"]);
+                        case "derived":
+                          return String(obj["which"] ?? "");
+                        case "attribute":
+                          return String(obj["attribute"] ?? "");
+                        case "practice":
+                          return String(obj["practice"] ?? "");
+                        case "behavior":
+                          return String(obj["name"] ?? "");
+                        case "dice":
+                          return String(obj["expression"] ?? "");
+                        case "keyword":
+                          return `[${String(obj["value"] ?? obj["text"] ?? "")}]`;
+                        case "runtime":
+                          return `/${String(obj["name"] ?? "")}/`;
+                        default:
+                          return "?";
+                      }
+                    }
+                    return "?";
+                  };
+                  return (
+                    <li
+                      key={i}
+                      className="rounded-md border border-border bg-background px-2.5 py-1.5 text-xs"
+                    >
+                      <div className="flex flex-wrap items-center gap-1.5 font-mono">
+                        <span className="rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                          {op}
+                        </span>
+                        <span className="font-semibold text-foreground">
+                          {target}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {renderValue(value)}
+                        </span>
+                      </div>
+                      {/* Phase 9.5 follow-up (Mashu 2026-09-07):
+                          surface the "as" / "when" / condition
+                          fields too, when present, so the
+                          preview matches the character-sheet
+                          PrimitivePreviewCard. */}
+                      <ModifierExtras mod={m} />
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
           )}
           {/* Phase 9.5: destination picker. The user picks which
