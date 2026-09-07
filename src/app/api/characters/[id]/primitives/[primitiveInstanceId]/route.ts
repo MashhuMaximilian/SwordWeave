@@ -31,6 +31,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   characters,
+  characterCapabilities,
   characterPrimitives,
   heritage,
 } from "@/db/schema";
@@ -66,6 +67,18 @@ export async function PATCH(
       typeof values["toHeritageId"] === "string" &&
       values["toHeritageId"].length > 0
         ? (values["toHeritageId"] as string)
+        : null;
+    // Phase 9.2 (Mashu 2026-09-06): allow moving a primitive instance
+    // into a specific capability. The capability lives ON the character
+    // (character_capabilities row). We record this via
+    // originCapabilityId — the resolver walks this column to know
+    // which primitives belong to which capability body for this
+    // character. Source stays at the same accordion; we just stamp
+    // the capability origin.
+    const toCapabilityId =
+      typeof values["toCapabilityId"] === "string" &&
+      values["toCapabilityId"].length > 0
+        ? (values["toCapabilityId"] as string)
         : null;
 
     // Ownership check.
@@ -141,14 +154,49 @@ export async function PATCH(
       resolvedHeritageId = null;
     }
 
+    // Phase 9.2: validate the target capability belongs to this
+    // character (and isn't soft-deleted, but we don't track soft
+    // deletes on character_capabilities — the cascade-on-character-delete
+    // takes care of it). If specified, the source accordion becomes
+    // PERSONAL (the capability carries its own accordion position),
+    // and originCapabilityId is stamped.
+    let resolvedCapabilityId: string | null = null;
+    if (toCapabilityId) {
+      const cap = await db.query.characterCapabilities.findFirst({
+        where: and(
+          eq(characterCapabilities.characterId, characterId),
+          eq(characterCapabilities.capabilityId, toCapabilityId),
+        ),
+      });
+      if (!cap) {
+        return NextResponse.json(
+          {
+            error: "Target capability not found on this character.",
+          },
+          { status: 404 },
+        );
+      }
+      resolvedCapabilityId = toCapabilityId;
+    }
+
     // Update the row.
+    //
+    // Phase 9.2 (Mashu 2026-09-06): when moving INTO a capability,
+    // we set originCapabilityId and keep originHeritageId cleared
+    // (the capability carries its own accordion placement; the user
+    // can still see the chip's heritage provenance via the chip's
+    // breadcrumb UI).
     const updated = await db
       .update(characterPrimitives)
       .set({
         source: to,
         originHeritageId:
-          to === "PERSONAL" ? null : resolvedHeritageId,
-        originCapabilityId: null,
+          resolvedCapabilityId != null
+            ? null
+            : to === "PERSONAL"
+              ? null
+              : resolvedHeritageId,
+        originCapabilityId: resolvedCapabilityId,
         originEffectId: null,
       })
       .where(
@@ -165,6 +213,8 @@ export async function PATCH(
       instanceId,
       fromHeritageId: existing.originHeritageId ?? null,
       toHeritageId: resolvedHeritageId ?? null,
+      fromCapabilityId: existing.originCapabilityId ?? null,
+      toCapabilityId: resolvedCapabilityId,
       fromSource: existing.source,
       toSource: to,
     });

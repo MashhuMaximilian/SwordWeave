@@ -147,6 +147,14 @@ export interface PrimitiveMovedPayload {
   fromHeritageId?: string | null;
   /** Destination: the new accordion. Null = detach (remove from character). */
   toHeritageId?: string | null;
+  /**
+   * Phase 9.2 (Mashu 2026-09-06): the chip can also move into a
+   * specific capability (a primitive slotted as part of a capability's
+   * body). When set, toHeritageId is null and originCapabilityId
+   * is the destination capability on this character.
+   */
+  fromCapabilityId?: string | null;
+  toCapabilityId?: string | null;
   /** Source kind discriminator (LINEAGE / UPBRINGING / MANIFEST / PERSONAL). */
   fromSource?: string | null;
   toSource?: string | null;
