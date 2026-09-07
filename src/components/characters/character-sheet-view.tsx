@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useTransition, useEffect } from "react";
+import { useState, useMemo, useTransition, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import {
@@ -52,6 +52,16 @@ import { BuildModeBanner } from "@/components/characters/build-mode-banner";
 import { AccordionFooterActions } from "@/components/characters/accordion-footer-actions";
 import { FormulaModal, type FormulaStep } from "@/components/characters/formula-modal";
 import { useDeepPrimitiveClosure } from "@/components/characters/use-deep-primitive-closure";
+import {
+  DraggablePrimitiveChip,
+  DroppableAccordion,
+  DroppableCapabilityCard,
+  TrashZone,
+  encodeChipPayload,
+  decodeChipPayload,
+  type ChipDragPayload,
+} from "@/components/characters/workspace/dnd-primitives";
+import { useCharacterDnd } from "@/components/characters/workspace/use-character-dnd";
 import { SheetIdentityHeader } from "@/components/characters/sheet-identity-header";
 import { CoreStatsCard } from "@/components/characters/core-stats-card";
 import { onCharacterLogAdded } from "@/lib/character/character-events";
@@ -100,6 +110,10 @@ type SlotSource = "OWNED" | "FORKED" | "PINNED";
  */
 
 type SheetPrimitiveLink = {
+  /** Phase 9.4 (Mashu 2026-09-07): the character_primitives
+   * primary key — used as the drag-and-drop payload id so
+   * PATCH /primitives/[instanceId] can route the move. */
+  instanceId: string;
   primitiveId: number;
   source: string;
   acquiredAtLevel: number;
@@ -223,6 +237,11 @@ type SheetItemLink = {
       effect: { id: string; name: string; description: string };
     }>;
     primitiveLinks: Array<{
+      /** Phase 9.4: instanceId is optional on template-side
+       * bundles. Direct-slotted rows have it; template rows
+       * (resolved at walk-time) leave it undefined and DnD
+       * drops from them POST a new instance instead of PATCHing. */
+      instanceId?: string;
       primitiveId: number;
       primitive: {
         id: number;
@@ -393,6 +412,8 @@ export type CharacterSheetProps = {
         };
       }>;
       primitiveLinks: Array<{
+        /** Phase 9.4: optional on template-side bundles. */
+        instanceId?: string;
         primitiveId: number;
         primitive: {
           id: number;
@@ -1058,6 +1079,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             mode={props.mode ?? "PLAY"}
             // Phase 8.2 batch 3: pass all primitive links for the primitives accordion
             primitiveLinks={props.primitiveLinks.map((l) => ({
+              instanceId: l.instanceId,
               primitiveId: l.primitiveId,
               source: l.source,
               acquiredAtLevel: l.acquiredAtLevel,
@@ -2265,6 +2287,8 @@ function CapabilitiesTab({
         };
       }>;
       primitiveLinks: Array<{
+        /** Phase 9.4: optional on template-side bundles. */
+        instanceId?: string;
         primitiveId: number;
         primitive: {
           id: number;
@@ -2311,6 +2335,11 @@ function CapabilitiesTab({
     }>;
   }>;
   primitiveLinks: Array<{
+    // Phase 9.4: instanceId — the character_primitives primary key.
+    // Always populated for rows from character_primitives (set by
+    // the page wrapper). The wrapper's page.tsx mapping at line
+    // ~285 reads `l.instanceId` directly from Drizzle.
+    instanceId: string;
     primitiveId: number;
     source: string;
     acquiredAtLevel: number;
@@ -2348,6 +2377,13 @@ function CapabilitiesTab({
   // API. See the hook definition for the full rationale.
   const deepPrimitives = useDeepPrimitiveClosure(heritageLinks);
 
+  // Phase 9.4 (Mashu 2026-09-07): DnD handler for moving
+  // primitives between accordions / capabilities / effects /
+  // items. Wraps PATCH /api/characters/[id]/primitives with
+  // toast + cache busting. Only wired in BUILD mode — PLAY
+  // mode chips remain non-draggable.
+  const { movePrimitiveTo } = useCharacterDnd(characterId);
+
 
   // Phase 8.4 v6 (Mashu 2026-07-28): the Primitives accordion
   // shows EVERY primitive the character has — slotted (direct)
@@ -2357,6 +2393,11 @@ function CapabilitiesTab({
   // and tag each row with its origin so the user can see why a
   // specific primitive is on the sheet.
   type CombinedPrimitive = {
+    /** Phase 9.4: instanceId for the DnD payload.
+     * For template-side chips (from heritage bundles) this is a
+     * synthetic `template:<heritageId>:<primitiveId>` and a
+     * drop creates a new instance via POST instead of PATCHing. */
+    instanceId: string;
     primitiveId: number;
     primitive: {
       id: number;
@@ -2449,6 +2490,11 @@ function CapabilitiesTab({
     }
     if (chain.length > 0) provenancePath = chain.join(" › ");
     allPrimitives.push({
+      // Phase 9.4: direct-slotted primitives always have a real
+      // instanceId (set by the page wrapper from character_primitives.id).
+      // We assert non-null here because CapabilitiesTab's prop typing
+      // marks it optional (template-side rows also flow through).
+      instanceId: l.instanceId ?? `direct:${l.primitiveId}`,
       primitiveId: l.primitiveId,
       primitive: l.primitive,
       origin,
@@ -2472,6 +2518,10 @@ function CapabilitiesTab({
       seenPrimitiveIds.add(pl.primitive.id);
       const h = hl.heritage;
       allPrimitives.push({
+        // Phase 9.4: template-side chip. Drop on an accordion
+        // creates a new character_primitives row (POST) instead
+        // of PATCHing an existing instance.
+        instanceId: pl.instanceId ?? `template:${hl.heritageId}:${pl.primitiveId}`,
         primitiveId: pl.primitiveId,
         primitive: pl.primitive,
         origin: {
@@ -2497,6 +2547,8 @@ function CapabilitiesTab({
       (hl) => hl.heritageId === dp.heritageId,
     )?.heritage;
     allPrimitives.push({
+      // Phase 9.4: deep-closure chip — also template-side.
+      instanceId: `template:${dp.heritageId}:${dp.primitive.id}`,
       primitiveId: dp.primitive.id,
       primitive: dp.primitive,
       origin: {
@@ -2604,8 +2656,22 @@ function CapabilitiesTab({
                   const isInherited = p.origin !== "DIRECT";
                   const heritageName = isInherited && typeof p.origin === "object" ? p.origin.heritageName : null;
                   const heritageKind = isInherited && typeof p.origin === "object" ? p.origin.kind : null;
+                  // Phase 9.4: wrap each chip in DraggablePrimitiveChip.
+                  // The chip itself is always draggable on desktop
+                  // (HTML5 drag attribute); touch devices get long-press
+                  // via the dnd-primitives fallback. PLAY mode restricts
+                  // to view-only because drops would mutate the sheet.
                   return (
                     <li key={p.primitive.id}>
+                      <DraggablePrimitiveChip
+                        payload={{
+                          kind: "primitive-instance",
+                          characterId,
+                          instanceId: p.instanceId,
+                          primitiveId: p.primitiveId,
+                          source: p.origin === "DIRECT" ? "PERSONAL" : "LINEAGE",
+                        }}
+                      >
                       <PrimitivePreviewCard
                         primitiveLink={{
                           primitiveId: p.primitiveId,
@@ -2639,6 +2705,7 @@ function CapabilitiesTab({
                         inheritedKind={heritageKind}
                         provenancePath={p.provenancePath}
                       />
+                      </DraggablePrimitiveChip>
                     </li>
                   );
                 })}
@@ -2869,6 +2936,8 @@ function HeritageKindAccordion({
         };
       }>;
       primitiveLinks: Array<{
+        /** Phase 9.4: optional on template-side bundles. */
+        instanceId?: string;
         primitiveId: number;
         primitive: {
           id: number;
@@ -2924,6 +2993,29 @@ function HeritageKindAccordion({
         (c.slotTab === null && kind === "MANIFEST")),
   );
 
+  // Phase 9.4 (Mashu 2026-09-07): DnD handler for moving
+  // primitives INTO this accordion. When a chip is dropped
+  // here, its source is set to the matching character_primitives
+  // value (LINEAGE / UPBRINGING / MANIFEST) and originHeritages
+  // are cleared — unless the drop is onto a specific heritage
+  // card (handled inside HeritageBundleView).
+  const { movePrimitiveTo } = useCharacterDnd(characterId);
+
+  const handleAccordionDrop = useCallback(
+    async (payload: ChipDragPayload): Promise<boolean> => {
+      const source = kind === "LINEAGE"
+        ? "LINEAGE"
+        : kind === "UPBRINGING"
+          ? "UPBRINGING"
+          : "MANIFEST";
+      return movePrimitiveTo(
+        { kind: "accordion", accordion: source },
+        payload,
+      );
+    },
+    [kind, movePrimitiveTo],
+  );
+
   return (
     <details className="group rounded-md border border-border bg-card">
       <summary className="flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium cursor-pointer list-none">
@@ -2934,6 +3026,16 @@ function HeritageKindAccordion({
         <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
       </summary>
       <div className="px-4 pb-4 pt-3 space-y-4 border-t border-border">
+        <DroppableAccordion
+          accordion={kind}
+          onDrop={handleAccordionDrop}
+          enabled={true}
+        >
+          {(dropProps) => (
+            <div
+              {...dropProps}
+              className="space-y-4"
+            >
         {heritageLinks.length === 0 ? (
           <p className="text-sm text-muted-foreground italic">
             No {label.toLowerCase()} heritages slotted yet. Click the button on any heritage in /atelier and choose "Slot into {label}" to add one.
@@ -3002,13 +3104,16 @@ function HeritageKindAccordion({
             personal caps conceptually belong to the
             character's manifest, not to their
             lineage/upbringing. */}
-        {directCapsForKind.length > 0 && (
-          <DirectCapabilitiesCard
-            characterId={characterId}
-            capabilities={directCapsForKind}
-            latestVersions={latestVersions}
-          />
-        )}
+          {directCapsForKind.length > 0 && (
+            <DirectCapabilitiesCard
+              characterId={characterId}
+              capabilities={directCapsForKind}
+              latestVersions={latestVersions}
+            />
+          )}
+            </div>
+          )}
+        </DroppableAccordion>
       </div>
     </details>
   );
@@ -3178,6 +3283,11 @@ function ItemsTab({
       effect: { id: string; name: string; description: string };
     }>;
     primitiveLinks: Array<{
+      /** Phase 9.4: instanceId is optional on template-side
+       * bundles. Direct-slotted rows have it; template rows
+       * (resolved at walk-time) leave it undefined and DnD
+       * drops from them POST a new instance instead of PATCHing. */
+      instanceId?: string;
       primitiveId: number;
       primitive: {
         id: number;

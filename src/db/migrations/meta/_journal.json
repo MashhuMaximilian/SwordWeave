@@ -351,6 +351,34 @@
       "when": 1786400000000,
       "tag": "0052_target_who",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1786500000000,
+      "tag": "0053_characters_mode",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1786500100000,
+      "tag": "0054_characters_manifest_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1786500200000,
+      "tag": "0056_character_log_new_kinds",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1786500300000,
+      "tag": "0057_character_primitives_origin_item",
+      "breakpoints": true
     }
   ]
 }

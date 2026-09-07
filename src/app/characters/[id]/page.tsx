@@ -281,6 +281,7 @@ export default async function CharacterSheetPage({
     currentVitality: row.currentVitality,
     size: row.size,
     primitiveLinks: row.primitiveLinks.map((l) => ({
+      instanceId: l.instanceId,
       primitiveId: l.primitive.id,
       source: l.source,
       acquiredAtLevel: l.acquiredAtLevel,
@@ -469,6 +470,7 @@ export default async function CharacterSheetPage({
       behaviorVariables={sheet.behaviorVariables}
       buBalance={sheet.buBalance}
       primitiveLinks={row.primitiveLinks.map((l) => ({
+        instanceId: l.instanceId,
         primitiveId: l.primitiveId,
         source: l.source,
         acquiredAtLevel: l.acquiredAtLevel,
