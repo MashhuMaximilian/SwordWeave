@@ -50,6 +50,7 @@ describe("characterLog table", () => {
       "primitive_slotted",
       "primitive_moved",
       "primitive_removed",
+      "primitive_mirrored",
       "heritage_formalized",
       "item_formalized",
       "mode_changed",
@@ -75,6 +76,7 @@ describe("characterLog table", () => {
       | "primitive_slotted"
       | "primitive_moved"
       | "primitive_removed"
+      | "primitive_mirrored"
       | "heritage_formalized"
       | "item_formalized"
       | "mode_changed"
@@ -101,6 +103,8 @@ describe("characterLog table", () => {
       // Phase 9.1 inline character-builder payload shapes.
       | { primitiveId: number; quantity: number; inline: boolean }
       | { primitiveId: number; instanceId: string }
+      // Phase 9.5 mirror toggle.
+      | { primitiveInstanceId: string; isMirrored: boolean }
       | { heritageId: string; kind: "LINEAGE" | "UPBRINGING" | "MANIFEST"; primitiveCount: number }
       | { itemId: string; itemName: string; primitiveCount: number }
       | { fromMode: "BUILD" | "PLAY"; toMode: "BUILD" | "PLAY" }

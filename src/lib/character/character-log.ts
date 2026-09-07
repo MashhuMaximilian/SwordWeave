@@ -175,6 +175,12 @@ export interface PrimitiveRemovedPayload {
   instanceId: string;
 }
 
+// Phase 9.5 (Mashu 2026-09-07): mirror toggle.
+export interface PrimitiveMirroredPayload {
+  primitiveInstanceId: string;
+  isMirrored: boolean;
+}
+
 export interface HeritageFormalizedPayload {
   heritageId: string;
   kind: "LINEAGE" | "UPBRINGING" | "MANIFEST";
@@ -247,6 +253,7 @@ export type CharacterLogPayload =
   | PrimitiveSlottedPayload
   | PrimitiveMovedPayload
   | PrimitiveRemovedPayload
+  | PrimitiveMirroredPayload
   | HeritageFormalizedPayload
   | ItemFormalizedPayload
   | ModeChangedPayload

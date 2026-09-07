@@ -305,6 +305,10 @@ export async function PATCH(
       toSource: to,
     });
 
+    // Phase 9.5 (Mashu 2026-09-07): a move doesn't change the
+    // primitive set (no add/remove), so the BU total stays the same.
+    // We deliberately skip recomputeBuSpent here — the column is
+    // only affected by slot/remove/mirror operations.
     bustResolverCache(characterId);
 
     return NextResponse.json(
@@ -390,6 +394,14 @@ export async function DELETE(
       primitiveId: existing.primitiveId,
       instanceId,
     });
+
+    // Phase 9.5 (Mashu 2026-09-07): removing a chip frees BU.
+    // Recompute the column so the budget readout updates without
+    // a manual refresh.
+    const { recomputeBuSpent } = await import(
+      "@/lib/engine/recompute-bu-spent"
+    );
+    await recomputeBuSpent(characterId);
 
     bustResolverCache(characterId);
 

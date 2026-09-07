@@ -124,6 +124,12 @@ export interface InlinePrimitiveSheetProps {
   accordionKind: AccordionKind;
   open: boolean;
   onClose: () => void;
+  /** Phase 9.5 (Mashu 2026-09-07): the tab to open by default.
+   * Defaults to "search" (the library browser). The AddPanel routes
+   * to "quick" / "promote" / "capability" / "effect" based on which
+   * mode button the user clicked. The picker resets to this value
+   * every time it re-opens (open: false → true). */
+  initialMode?: PickerMode;
   onCreated?: (info: {
     primitiveId: number;
     accordionKind: AccordionKind;
@@ -131,6 +137,11 @@ export interface InlinePrimitiveSheetProps {
   /** Optional callback after the slot succeeds; used to refetch
    *  the character's accordion chips. */
   onSlot?: () => void;
+  /** Phase 9.5 (Mashu 2026-09-07): when the user changes the
+   *  destination accordion from inside the preview modal, the
+   *  change bubbles up so the panel's picker stays in sync
+   *  (and so the next slot uses the same target). */
+  onAccordionChange?: (next: AccordionKind) => void;
   /**
    * Phase 9.4 (Mashu 2026-09-07): the character's primitive
    * roster, used by the Promote tab to filter conditions down to
@@ -146,11 +157,19 @@ export function InlinePrimitiveSheet({
   accordionKind,
   open,
   onClose,
+  initialMode = "search",
   onSlot,
   onCreated,
+  onAccordionChange,
   directPrimitives,
 }: InlinePrimitiveSheetProps) {
-  const [mode, setMode] = useState<PickerMode>("search");
+  const [mode, setMode] = useState<PickerMode>(initialMode);
+  // Phase 9.5: when the parent closes & reopens the sheet (open flips
+  // false → true), reset to the requested initialMode so the picker
+  // always lands on the right tab for the entry point.
+  useEffect(() => {
+    if (open) setMode(initialMode);
+  }, [open, initialMode]);
   const [rows, setRows] = useState<PrimitiveLibraryRow[] | null>(null);
   const [conditions, setConditions] = useState<CharacterConditionRow[] | null>(
     null,
@@ -279,6 +298,16 @@ export function InlinePrimitiveSheet({
       if (r.name.toLowerCase().includes(q)) return true;
       if (r.description && r.description.toLowerCase().includes(q)) return true;
       if (r.category.toLowerCase().includes(q)) return true;
+      // Phase 9.5 (Mashu 2026-09-07): also search the hard
+      // modifiers. Users often remember a primitive by its
+      // "+1 to physical when X" rather than its name. The
+      // match is a stringified scan — modifiers are objects
+      // with a `target`, `operation`, `value` etc., so we
+      // include all string/number fields.
+      if (r.hardModifiers.length > 0) {
+        const blob = JSON.stringify(r.hardModifiers).toLowerCase();
+        if (blob.includes(q)) return true;
+      }
       return false;
     });
   }, [rows, query]);
@@ -337,10 +366,11 @@ export function InlinePrimitiveSheet({
   }, [directFilteredConditions, query]);
 
   const slot = useCallback(
-    async (primitiveId: number) => {
+    async (primitiveId: number, overrideKind?: AccordionKind) => {
       if (pendingSlotId !== null) return;
       setPendingSlotId(primitiveId);
       setError(null);
+      const targetKind = overrideKind ?? accordionKind;
       try {
         const res = await fetch(
           `/api/characters/${characterId}/primitives`,
@@ -348,7 +378,8 @@ export function InlinePrimitiveSheet({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              accordion: accordionKind,
+              // POST route reads `source` (not `accordion`).
+              source: targetKind,
               primitiveId,
             }),
           },
@@ -678,7 +709,11 @@ export function InlinePrimitiveSheet({
         <PrimitivePreviewModal
           row={previewRow}
           pendingSlotId={pendingSlotId}
-          onSlot={slot}
+          accordionKind={accordionKind}
+          onAccordionChange={onAccordionChange}
+          onSlot={(id: number, overrideKind?: AccordionKind) => {
+            void slot(id, overrideKind);
+          }}
           onClose={() => setPreviewRow(null)}
         />
       )}
@@ -744,23 +779,66 @@ function Bucket({
             <button
               type="button"
               onClick={() => onPreview(r)}
-              className="group flex w-full items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-left transition hover:border-primary/40 hover:bg-primary/5"
+              className="group flex w-full flex-col items-stretch gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-left transition hover:border-primary/40 hover:bg-primary/5"
             >
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-foreground">
-                  {r.name}
-                </p>
-                <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                  {r.description ?? r.category}
-                </p>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-foreground">
+                    {r.name}
+                  </p>
+                  <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                    {r.description ?? r.category}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2 text-[10px] text-muted-foreground">
+                  <span className="rounded-full border border-border bg-card px-2 py-0.5 font-semibold uppercase tracking-wider">
+                    {r.category}
+                  </span>
+                  <span className="font-mono">{r.buCost} BU</span>
+                  <Eye className="size-3.5 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                <span className="rounded-full border border-border bg-card px-2 py-0.5 font-semibold uppercase tracking-wider">
-                  {r.category}
-                </span>
-                <span className="font-mono">{r.buCost} BU</span>
-                <Eye className="size-3.5 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
-              </div>
+              {/* Phase 9.5 (Mashu 2026-09-07): show modifier previews
+                  inline so the user can spot "+1 to physical when X"
+                  without opening the preview modal. Truncated to
+                  2 lines so the row stays compact. */}
+              {r.hardModifiers.length > 0 && (
+                <ul className="flex flex-wrap gap-1 text-[10px]">
+                  {r.hardModifiers.slice(0, 3).map((mod, mi) => {
+                    const m = mod as {
+                      target?: string;
+                      operation?: string;
+                      value?: unknown;
+                    };
+                    const op = m.operation ?? "modify";
+                    const target = m.target ?? "?";
+                    const value = m.value;
+                    const v =
+                      typeof value === "string"
+                        ? value
+                        : typeof value === "number"
+                          ? String(value)
+                          : value && typeof value === "object" && "kind" in value
+                            ? String(
+                                (value as { kind?: string }).kind ?? "?",
+                              )
+                            : "?";
+                    return (
+                      <li
+                        key={mi}
+                        className="rounded-full border border-border bg-card px-2 py-0.5 font-mono text-[10px] text-muted-foreground"
+                      >
+                        {op} {target} {v}
+                      </li>
+                    );
+                  })}
+                  {r.hardModifiers.length > 3 && (
+                    <li className="rounded-full border border-border bg-card px-2 py-0.5 text-[10px] text-muted-foreground">
+                      +{r.hardModifiers.length - 3} more
+                    </li>
+                  )}
+                </ul>
+              )}
             </button>
           </li>
         ))}
@@ -780,14 +858,26 @@ function Bucket({
 function PrimitivePreviewModal({
   row,
   pendingSlotId,
+  accordionKind,
+  onAccordionChange,
   onSlot,
   onClose,
 }: {
   row: PrimitiveLibraryRow;
   pendingSlotId: number | null;
-  onSlot: (id: number) => void;
+  /** Phase 9.5: the destination accordion the slot will land in.
+   *  Mirrors the panel's `targetAccordion` so the user can override
+   *  the destination from the modal. */
+  accordionKind: AccordionKind;
+  onAccordionChange?: ((next: AccordionKind) => void) | undefined;
+  onSlot: (id: number, overrideKind?: AccordionKind) => void;
   onClose: () => void;
 }) {
+  const [localKind, setLocalKind] = useState<AccordionKind>(accordionKind);
+  // Keep local in sync with parent (the panel's accordion picker).
+  useEffect(() => {
+    setLocalKind(accordionKind);
+  }, [accordionKind]);
   return (
     <div
       role="dialog"
@@ -846,6 +936,51 @@ function PrimitivePreviewModal({
               </pre>
             </div>
           )}
+          {/* Phase 9.5: destination picker. The user picks which
+              accordion to slot this primitive into right from the
+              preview modal — saves a round-trip to the panel. */}
+          <div className="mt-2 border-t border-border pt-3">
+            <h4 className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Slot into
+            </h4>
+            <div
+              className="grid grid-cols-2 gap-1 rounded-md border border-border bg-background/60 p-1"
+              role="radiogroup"
+              aria-label="Slot into accordion"
+            >
+              {(["LINEAGE", "UPBRINGING", "MANIFEST", "PERSONAL"] as const).map(
+                (kind) => {
+                  const active = localKind === kind;
+                  return (
+                    <button
+                      key={kind}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => {
+                        setLocalKind(kind);
+                        onAccordionChange?.(kind);
+                      }}
+                      className={
+                        "rounded px-2 py-1 text-xs font-medium transition " +
+                        (active
+                          ? "bg-primary text-primary-foreground shadow"
+                          : "text-muted-foreground hover:bg-card hover:text-foreground")
+                      }
+                    >
+                      {kind === "LINEAGE"
+                        ? "Lineage"
+                        : kind === "UPBRINGING"
+                          ? "Upbringing"
+                          : kind === "MANIFEST"
+                            ? "Manifest"
+                            : "Item (PERSONAL)"}
+                    </button>
+                  );
+                },
+              )}
+            </div>
+          </div>
         </div>
         <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-card/40 px-5 py-3">
           <button
@@ -864,7 +999,13 @@ function PrimitivePreviewModal({
             {pendingSlotId === row.id && (
               <Loader2 className="size-3 animate-spin" />
             )}
-            Slot to accordion
+            Slot to {localKind === "LINEAGE"
+              ? "Lineage"
+              : localKind === "UPBRINGING"
+                ? "Upbringing"
+                : localKind === "MANIFEST"
+                  ? "Manifest"
+                  : "Item"}
           </button>
         </footer>
       </div>

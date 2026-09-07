@@ -2382,7 +2382,20 @@ function CapabilitiesTab({
   // items. Wraps PATCH /api/characters/[id]/primitives with
   // toast + cache busting. Only wired in BUILD mode — PLAY
   // mode chips remain non-draggable.
-  const { movePrimitiveTo } = useCharacterDnd(characterId);
+  const { movePrimitiveTo, deletePrimitive, toggleMirror } = useCharacterDnd(characterId);
+
+  // Phase 9.5 (Mashu 2026-09-07): factory for capability drop
+  // callbacks used by CapabilityCard via the StyleTabAccordion.
+  const handleCapabilityDrop = useCallback(
+    (capabilityId: string) =>
+      async (payload: ChipDragPayload): Promise<boolean> => {
+        return movePrimitiveTo(
+          { kind: "capability", capabilityId },
+          payload,
+        );
+      },
+    [movePrimitiveTo],
+  );
 
 
   // Phase 8.4 v6 (Mashu 2026-07-28): the Primitives accordion
@@ -2671,6 +2684,43 @@ function CapabilitiesTab({
                           primitiveId: p.primitiveId,
                           source: p.origin === "DIRECT" ? "PERSONAL" : "LINEAGE",
                         }}
+                        // Phase 9.5: hover-revealed delete + mirror
+                        // buttons. Both callbacks are no-ops in
+                        // template-side chips (synthetic instanceId
+                        // starts with "template:" / "direct:") so we
+                        // only wire them for real instances.
+                        onDelete={
+                          p.instanceId.startsWith("template:") ||
+                          p.instanceId.startsWith("direct:")
+                            ? undefined
+                            : () => {
+                                void deletePrimitive({
+                                  kind: "primitive-instance",
+                                  characterId,
+                                  instanceId: p.instanceId,
+                                  primitiveId: p.primitiveId,
+                                  source: "PERSONAL",
+                                });
+                              }
+                        }
+                        onToggleMirror={
+                          p.instanceId.startsWith("template:") ||
+                          p.instanceId.startsWith("direct:")
+                            ? undefined
+                            : () => {
+                                void toggleMirror(
+                                  {
+                                    kind: "primitive-instance",
+                                    characterId,
+                                    instanceId: p.instanceId,
+                                    primitiveId: p.primitiveId,
+                                    source: "PERSONAL",
+                                  },
+                                  !p.isMirrored,
+                                );
+                              }
+                        }
+                        isMirrored={p.isMirrored}
                       >
                       <PrimitivePreviewCard
                         primitiveLink={{
@@ -2732,6 +2782,7 @@ function CapabilitiesTab({
         capabilities={capabilities}
         primitiveLinks={primitiveLinks}
         latestVersions={latestVersions}
+        {...(mode ? { mode } : {})}
       />
       {/* Phase 9.1 (Mashu 2026-09-06): BUILD-mode affordances for the
           manifest accordion. Only renders when the page is in BUILD
@@ -2766,6 +2817,7 @@ function CapabilitiesTab({
         capabilities={capabilities}
         primitiveLinks={primitiveLinks}
         latestVersions={latestVersions}
+        {...(mode ? { mode } : {})}
       />
       {/* Phase 9.1 (Mashu 2026-09-06): BUILD-mode affordances for lineage. */}
       {(mode ?? "PLAY") === "BUILD" && (
@@ -2812,6 +2864,9 @@ function CapabilitiesTab({
                     <CapabilityCard
                       key={c.id}
                       characterId={characterId}
+                      {...((mode ?? "PLAY") === "BUILD" && handleCapabilityDrop
+                        ? { dropEnabled: true, onDropPrimitive: handleCapabilityDrop(c.id) }
+                        : {})}
                       capability={{
                         id: c.id,
                         name: c.name,
@@ -2844,6 +2899,7 @@ function CapabilitiesTab({
         capabilities={capabilities}
         primitiveLinks={primitiveLinks}
         latestVersions={latestVersions}
+        {...(mode ? { mode } : {})}
       />
       {/* Phase 9.1 (Mashu 2026-09-06): BUILD-mode affordances for upbringing. */}
       {(mode ?? "PLAY") === "BUILD" && (
@@ -2905,6 +2961,10 @@ function HeritageKindAccordion({
   // heritage has been re-published since the
   // character slotted it.
   latestVersions,
+  // Phase 9.5 (Mashu 2026-09-07): forwarded so the
+  // DirectCapabilitiesCard nested in this accordion
+  // becomes a drop target only in BUILD mode.
+  mode,
 }: {
   characterId: string;
   kind: "MANIFEST" | "LINEAGE" | "UPBRINGING";
@@ -2977,6 +3037,9 @@ function HeritageKindAccordion({
   // render the latest published version id and the
   // "update available" stale pill.
   latestVersions: Map<VersionKey, string>;
+  /** Phase 9.5 (Mashu 2026-09-07): BUILD/PLAY mode. The DirectCaps
+   *  nested in this accordion only become drop targets in BUILD. */
+  mode?: "BUILD" | "PLAY";
 }) {
   void kind; // unused at runtime; kept for type clarity
 
@@ -2999,7 +3062,7 @@ function HeritageKindAccordion({
   // value (LINEAGE / UPBRINGING / MANIFEST) and originHeritages
   // are cleared — unless the drop is onto a specific heritage
   // card (handled inside HeritageBundleView).
-  const { movePrimitiveTo } = useCharacterDnd(characterId);
+  const { movePrimitiveTo, deletePrimitive, toggleMirror } = useCharacterDnd(characterId);
 
   const handleAccordionDrop = useCallback(
     async (payload: ChipDragPayload): Promise<boolean> => {
@@ -3014,6 +3077,21 @@ function HeritageKindAccordion({
       );
     },
     [kind, movePrimitiveTo],
+  );
+
+  // Phase 9.5 (Mashu 2026-09-07): a factory the DirectCapabilitiesCard
+  // uses to wire each card to its own onDropPrimitive callback. The
+  // closure captures the target capabilityId; the returned function
+  // forwards to movePrimitiveTo with kind: "capability".
+  const handleCapabilityDrop = useCallback(
+    (capabilityId: string) =>
+      async (payload: ChipDragPayload): Promise<boolean> => {
+        return movePrimitiveTo(
+          { kind: "capability", capabilityId },
+          payload,
+        );
+      },
+    [movePrimitiveTo],
   );
 
   return (
@@ -3109,6 +3187,8 @@ function HeritageKindAccordion({
               characterId={characterId}
               capabilities={directCapsForKind}
               latestVersions={latestVersions}
+              {...(mode ? { mode } : {})}
+              onDropPrimitive={handleCapabilityDrop}
             />
           )}
             </div>
@@ -3138,6 +3218,8 @@ function DirectCapabilitiesCard({
   characterId,
   capabilities,
   latestVersions,
+  mode = "PLAY",
+  onDropPrimitive,
 }: {
   characterId: string;
   capabilities: Array<{
@@ -3177,6 +3259,15 @@ function DirectCapabilitiesCard({
     }>;
     tags?: string[];
   }>;
+  /** Phase 9.5 (Mashu 2026-09-07): when "BUILD" the cards become
+   *  drop targets. Default is "PLAY" for backward compat. */
+  mode?: "BUILD" | "PLAY";
+  /** Phase 9.5: drop handler for primitive chips dragged onto a
+   *  capability card. When provided, the card wires the DnD attrs
+   *  and calls this with the chip's payload. */
+  onDropPrimitive?: (
+    capabilityId: string,
+  ) => (payload: import("./workspace/dnd-primitives").ChipDragPayload) => Promise<boolean> | boolean;
   // Phase 8.5 / Session H6 round 11 (Mashu
   // 2026-08-03): forwarded so the cap's nested
   // EFFECTS chips can render "Pinned v:XXXX".
@@ -3193,24 +3284,15 @@ function DirectCapabilitiesCard({
           <CapabilityCard
             key={c.id}
             characterId={characterId}
-            // Phase 8.4 v24.9 (Mashu 2026-07-30): explicit
-            // false. CapabilityCard defaults showPrimitives
-            // to true (it's used inside the modal builder
-            // where the primitives accordion isn't shown
-            // separately). On the character sheet, the
-            // Primitives tab already shows every primitive
-            // so the per-cap nested list is redundant — and
-            // Mashu asked: "we don't need the primitives in
-            // them." HeritageBundleView passes false
-            // explicitly on the sheet (it sets the default
-            // of showPrimitives when it instantiates
-            // CapabilityCard for the bundle's caps).
             showPrimitives={false}
-            // Phase 8.5 / Session H6 round 11 (Mashu
-            // 2026-08-03): forwarded so the cap's
-            // nested EFFECTS chips can render
-            // "Pinned v:XXXX" instead of just "Pinned".
             latestVersions={latestVersions}
+            // Phase 9.5 (Mashu 2026-09-07): the card itself is a
+            // drop target in BUILD mode. Drops call movePrimitiveTo
+            // with the capability as the destination, which the
+            // PATCH route turns into originCapabilityId = c.id.
+            {...(mode === "BUILD" && onDropPrimitive
+              ? { dropEnabled: true, onDropPrimitive: onDropPrimitive(c.id) }
+              : {})}
             capability={{
               id: c.id,
               name: c.name,

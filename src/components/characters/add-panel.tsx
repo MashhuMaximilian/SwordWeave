@@ -1,50 +1,46 @@
 "use client";
 
 /**
- * Phase 9.4 (Mashu 2026-09-07): the right-side "Add Panel" + the
+ * Phase 9.4 + 9.5 (Mashu 2026-09-07): the right-side "Add Panel" + the
  * mobile FAB that opens the same content as a bottom sheet.
  *
- * Design goal: a single persistent surface where the user can
- *   - search the primitive library
- *   - quick-author a primitive inline
- *   - promote a runtime condition to a primitive
- *   - author a capability, effect, or item
- *   - formalize the current accordion as a heritage
- *
- * Desktop (≥ lg): a fixed 360px column on the right edge. Slides
- * in from a chevron toggle in the page header. The main content
- * shifts left to make room.
- *
- * Mobile (< lg): collapsed into a FAB (bottom-right, above the
- * sticky bar). Tapping opens the picker as a bottom sheet that
- * takes the lower half of the screen.
- *
- * Why two surfaces (panel + modal):
- *   - The panel supports drag-and-drop on desktop. The user drags
- *     a library row onto an accordion.
- *   - The modal is for mobile / when the user wants the picker
- *     without committing screen real estate. In modal mode, drag
- *     is disabled (modal → background DnD is blocked by the
- *     overlay anyway), so library rows expose a "Slot" button
- *     instead.
+ * Phase 9.5 changes:
+ *   - Each mode button routes to its OWN sheet/tab:
+ *       library     → InlinePrimitiveSheet (search tab)
+ *       quick       → InlinePrimitiveSheet (quick-author tab)
+ *       promote     → InlinePrimitiveSheet (promote-condition tab)
+ *       capability  → InlineCapabilitySheet (EmbeddedCapabilityForm)
+ *       effect      → InlineEffectSheet (EmbeddedEffectForm)
+ *       item        → InlineItemSheet (EmbeddedItemForm)
+ *       formalize   → HeritageFormalizeSheet / ItemFormalizeSheet
+ *   - AddPanel now manages which "active mode" is in use so the next
+ *     time the panel re-opens it remembers the last pick.
+ *   - The accordion-kind target is editable in the panel header so
+ *     library/quick/promote slots land in the right accordion
+ *     (previously the kind was hardcoded to the one from props).
  */
 
 import { useState, useCallback, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import {
   Plus,
   X,
   Library,
-  Search,
   Sparkles,
+  Wand2,
   Layers,
   Zap,
-  Wand2,
   Hammer,
   ScrollText,
 } from "lucide-react";
 import { InlinePrimitiveSheet } from "./inline-primitive-sheet";
 import { HeritageFormalizeSheet } from "./heritage-formalize-sheet";
 import { ItemFormalizeSheet } from "./item-formalize-sheet";
+import {
+  EmbeddedCapabilityForm,
+  EmbeddedEffectForm,
+  EmbeddedItemForm,
+} from "./workspace/embedded-atelier-forms";
 
 export type AccordionKind = "LINEAGE" | "UPBRINGING" | "MANIFEST" | "PERSONAL";
 
@@ -59,9 +55,10 @@ export type AddPanelMode =
 
 export interface AddPanelProps {
   characterId: string;
-  /** Which accordion the panel is targeting right now (for slot/finalize). */
-  targetAccordion: AccordionKind;
-  onTargetAccordionChange?: (next: AccordionKind) => void;
+  /** Which accordion the panel is targeting right now. When omitted
+   *  the panel maintains its own internal target (default MANIFEST). */
+  targetAccordion?: AccordionKind;
+  onTargetAccordionChange?: ((next: AccordionKind) => void) | undefined;
   /**
    * Phase 9.4 (Mashu 2026-09-07): forwarded to the picker's
    * Promote tab so the conditions list is filtered down to
@@ -77,36 +74,142 @@ const MODES: ReadonlyArray<{
   id: AddPanelMode;
   label: string;
   icon: ReactNode;
+  /** The PickerMode to pass as `initialMode` to InlinePrimitiveSheet.
+   *  null for modes that open a different sheet entirely. */
+  primitiveMode:
+    | "search"
+    | "quick"
+    | "promote"
+    | "capability"
+    | "effect"
+    | null;
+  /** Accordion kinds this mode is meaningful for. capability/effect
+   *  /item work for any kind; library/quick/promote respect the
+   *  target accordion. formalize is per-kind. */
+  allowAccordionSwitch: boolean;
 }> = [
-  { id: "library", label: "Library", icon: <Library className="size-3.5" /> },
-  { id: "quick", label: "Quick author", icon: <Sparkles className="size-3.5" /> },
-  { id: "promote", label: "Promote condition", icon: <Wand2 className="size-3.5" /> },
-  { id: "capability", label: "Author capability", icon: <Layers className="size-3.5" /> },
-  { id: "effect", label: "Author effect", icon: <Zap className="size-3.5" /> },
-  { id: "item", label: "Author item", icon: <Hammer className="size-3.5" /> },
-  { id: "formalize", label: "Formalize heritage", icon: <ScrollText className="size-3.5" /> },
+  {
+    id: "library",
+    label: "Library",
+    icon: <Library className="size-3.5" />,
+    primitiveMode: "search",
+    allowAccordionSwitch: true,
+  },
+  {
+    id: "quick",
+    label: "Quick author",
+    icon: <Sparkles className="size-3.5" />,
+    primitiveMode: "quick",
+    allowAccordionSwitch: true,
+  },
+  {
+    id: "promote",
+    label: "Promote condition",
+    icon: <Wand2 className="size-3.5" />,
+    primitiveMode: "promote",
+    allowAccordionSwitch: true,
+  },
+  {
+    id: "capability",
+    label: "Author capability",
+    icon: <Layers className="size-3.5" />,
+    primitiveMode: "capability",
+    allowAccordionSwitch: true,
+  },
+  {
+    id: "effect",
+    label: "Author effect",
+    icon: <Zap className="size-3.5" />,
+    primitiveMode: "effect",
+    allowAccordionSwitch: true,
+  },
+  {
+    id: "item",
+    label: "Author item",
+    icon: <Hammer className="size-3.5" />,
+    primitiveMode: null, // opens ItemForm sheet
+    allowAccordionSwitch: true,
+  },
+  {
+    id: "formalize",
+    label: "Formalize heritage",
+    icon: <ScrollText className="size-3.5" />,
+    primitiveMode: null, // opens formalize sheet
+    allowAccordionSwitch: true,
+  },
 ];
 
 export function AddPanel({
   characterId,
-  targetAccordion,
+  targetAccordion: controlledAccordion,
   onTargetAccordionChange,
   directPrimitives,
 }: AddPanelProps) {
   const [open, setOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerInitialMode, setPickerInitialMode] = useState<
+    "search" | "quick" | "promote" | "capability" | "effect"
+  >("search");
+  const [capabilityOpen, setCapabilityOpen] = useState(false);
+  const [effectOpen, setEffectOpen] = useState(false);
+  const [itemOpen, setItemOpen] = useState(false);
   const [formalizeOpen, setFormalizeOpen] = useState(false);
-
-  const openMode = useCallback(
-    (mode: AddPanelMode) => {
-      if (mode === "formalize") {
-        setFormalizeOpen(true);
-        return;
+  // Phase 9.5: own the target accordion in the panel so the user can
+  // switch the slot destination from the right column without a parent
+  // round-trip. The page can still pass `targetAccordion` + an optional
+  // change callback to keep its own state in sync.
+  const [internalAccordion, setInternalAccordion] =
+    useState<AccordionKind>(controlledAccordion ?? "MANIFEST");
+  const targetAccordion = controlledAccordion ?? internalAccordion;
+  const setTargetAccordion = useCallback(
+    (next: AccordionKind) => {
+      if (onTargetAccordionChange) {
+        onTargetAccordionChange(next);
+      } else {
+        setInternalAccordion(next);
       }
-      setPickerOpen(true);
     },
-    [],
+    [onTargetAccordionChange],
   );
+
+  // Phase 9.5: a single dispatcher that opens the right sheet for
+  // the chosen mode. The right-column buttons + the mobile FAB use
+  // this so they always route to the correct surface.
+  const openMode = useCallback((mode: AddPanelMode) => {
+    const def = MODES.find((m) => m.id === mode);
+    if (!def) return;
+    if (mode === "formalize") {
+      setFormalizeOpen(true);
+      return;
+    }
+    if (mode === "item") {
+      setItemOpen(true);
+      return;
+    }
+    if (mode === "capability") {
+      setCapabilityOpen(true);
+      return;
+    }
+    if (mode === "effect") {
+      setEffectOpen(true);
+      return;
+    }
+    // library / quick / promote all go through the primitive picker
+    if (def.primitiveMode && def.primitiveMode !== "capability" && def.primitiveMode !== "effect") {
+      setPickerInitialMode(def.primitiveMode);
+      setPickerOpen(true);
+      return;
+    }
+    // fall-through for capability/effect (defensive)
+    if (def.primitiveMode === "capability") {
+      setCapabilityOpen(true);
+      return;
+    }
+    if (def.primitiveMode === "effect") {
+      setEffectOpen(true);
+      return;
+    }
+  }, []);
 
   return (
     <>
@@ -119,9 +222,11 @@ export function AddPanel({
         aria-label="Add panel"
       >
         <PanelBody
+          targetAccordion={targetAccordion}
+          onTargetAccordionChange={setTargetAccordion}
           onModeClick={(mode) => {
             openMode(mode);
-            setOpen(true);
+            setOpen(false); // close the side panel once the sheet takes over
           }}
         />
       </aside>
@@ -162,6 +267,8 @@ export function AddPanel({
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
               <PanelBody
+                targetAccordion={targetAccordion}
+                onTargetAccordionChange={setTargetAccordion}
                 onModeClick={(mode) => {
                   openMode(mode);
                   setOpen(false);
@@ -172,16 +279,44 @@ export function AddPanel({
         </div>
       )}
 
-      {/* The picker + formalize sheets are reused from the existing
-          per-accordion footer actions. They open from any entry
-          point (panel button, FAB, per-accordion + button). */}
+      {/* Primitive picker (library / quick / promote) */}
       <InlinePrimitiveSheet
         characterId={characterId}
         accordionKind={targetAccordion}
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
+        initialMode={pickerInitialMode}
+        onAccordionChange={setTargetAccordion}
         {...(directPrimitives ? { directPrimitives } : {})}
       />
+
+      {/* Capability author sheet */}
+      {capabilityOpen && (
+        <CapabilitySheetWrapper
+          characterId={characterId}
+          targetSlotTab={targetAccordion}
+          onClose={() => setCapabilityOpen(false)}
+        />
+      )}
+
+      {/* Effect author sheet */}
+      {effectOpen && (
+        <EffectSheetWrapper
+          characterId={characterId}
+          targetSlotTab={targetAccordion}
+          onClose={() => setEffectOpen(false)}
+        />
+      )}
+
+      {/* Item author sheet */}
+      {itemOpen && (
+        <ItemSheetWrapper
+          characterId={characterId}
+          onClose={() => setItemOpen(false)}
+        />
+      )}
+
+      {/* Formalize sheets */}
       {targetAccordion !== "PERSONAL" ? (
         <HeritageFormalizeSheet
           characterId={characterId}
@@ -196,32 +331,32 @@ export function AddPanel({
           onClose={() => setFormalizeOpen(false)}
         />
       )}
-
-      {/* Hidden search input — placeholder for the library panel
-          content. Wired in task #6 / #8. For now the panel shows
-          only the mode tabs; clicking each opens the same sheet
-          the per-accordion + button opens. */}
-      <input type="hidden" data-add-panel-target={targetAccordion} />
     </>
   );
 }
 
 interface PanelBodyProps {
+  targetAccordion: AccordionKind;
+  onTargetAccordionChange?: ((next: AccordionKind) => void) | undefined;
   onModeClick: (mode: AddPanelMode) => void;
 }
 
-function PanelBody({ onModeClick }: PanelBodyProps) {
+function PanelBody({
+  targetAccordion,
+  onTargetAccordionChange,
+  onModeClick,
+}: PanelBodyProps) {
   return (
     <div className="flex flex-col gap-3 p-4">
-      <div className="flex items-center gap-2">
-        <Search className="size-4 text-muted-foreground" />
-        <h2 className="text-sm font-semibold">Add to character</h2>
-      </div>
+      <h2 className="text-sm font-semibold">Add to character</h2>
       <p className="text-xs text-muted-foreground">
-        Pick a mode to add primitives, capabilities, effects, or items. On
-        desktop you can also drag rows from the Library directly onto an
-        accordion.
+        Pick a target accordion, then choose what to add. On desktop you can
+        also drag rows from the Library directly onto an accordion.
       </p>
+      <AccordionPicker
+        value={targetAccordion}
+        onChange={onTargetAccordionChange ?? (() => {})}
+      />
       <div className="grid grid-cols-2 gap-2">
         {MODES.map((m) => (
           <button
@@ -239,8 +374,186 @@ function PanelBody({ onModeClick }: PanelBodyProps) {
       </div>
       <p className="mt-1 text-[10px] text-muted-foreground">
         Tip: long-press any primitive on a mobile device to move, mirror, or
-        remove it.
+        remove it. Drop targets in each accordion show a blue outline on hover.
       </p>
+    </div>
+  );
+}
+
+const ACCORDION_LABELS: Record<AccordionKind, string> = {
+  LINEAGE: "Lineage",
+  UPBRINGING: "Upbringing",
+  MANIFEST: "Manifest",
+  PERSONAL: "Item (PERSONAL)",
+};
+
+function AccordionPicker({
+  value,
+  onChange,
+}: {
+  value: AccordionKind;
+  onChange: (next: AccordionKind) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Target accordion
+      </span>
+      <div
+        className="grid grid-cols-2 gap-1 rounded-md border border-border bg-background/60 p-1"
+        role="radiogroup"
+        aria-label="Target accordion"
+      >
+        {(Object.keys(ACCORDION_LABELS) as AccordionKind[]).map((kind) => {
+          const active = kind === value;
+          return (
+            <button
+              key={kind}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => onChange(kind)}
+              className={
+                "rounded px-2 py-1 text-xs font-medium transition " +
+                (active
+                  ? "bg-primary text-primary-foreground shadow"
+                  : "text-muted-foreground hover:bg-card hover:text-foreground")
+              }
+            >
+              {ACCORDION_LABELS[kind]}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Wrapper sheets for capability / effect / item
+// ---------------------------------------------------------------------------
+// The embedded forms are designed for the full-screen atelier route, not
+// a bottom-sheet. We wrap them in a minimal modal here so the AddPanel
+// can dispatch to them.
+
+function CapabilitySheetWrapper({
+  characterId,
+  targetSlotTab,
+  onClose,
+}: {
+  characterId: string;
+  targetSlotTab: AccordionKind;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl">
+        <button
+          type="button"
+          onClick={onClose}
+          className="sticky right-3 top-3 z-10 float-right rounded-md border border-border bg-background/90 p-1.5 text-muted-foreground backdrop-blur transition hover:bg-card hover:text-foreground"
+          aria-label="Close"
+        >
+          <X className="size-4" />
+        </button>
+        <div className="p-4">
+          <EmbeddedCapabilityForm
+            characterId={characterId}
+            targetSlotTab={targetSlotTab}
+            onAttached={() => {
+              // Phase 9.5: refresh the page after the capability
+              // attaches so the new card appears in the sheet
+              // without a manual reload.
+              router.refresh();
+              onClose();
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EffectSheetWrapper({
+  characterId,
+  targetSlotTab,
+  onClose,
+}: {
+  characterId: string;
+  targetSlotTab: AccordionKind;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl">
+        <button
+          type="button"
+          onClick={onClose}
+          className="sticky right-3 top-3 z-10 float-right rounded-md border border-border bg-background/90 p-1.5 text-muted-foreground backdrop-blur transition hover:bg-card hover:text-foreground"
+          aria-label="Close"
+        >
+          <X className="size-4" />
+        </button>
+        <div className="p-4">
+          <EmbeddedEffectForm
+            characterId={characterId}
+            onAttached={() => {
+              router.refresh();
+              onClose();
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ItemSheetWrapper({
+  characterId,
+  onClose,
+}: {
+  characterId: string;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl">
+        <button
+          type="button"
+          onClick={onClose}
+          className="sticky right-3 top-3 z-10 float-right rounded-md border border-border bg-background/90 p-1.5 text-muted-foreground backdrop-blur transition hover:bg-card hover:text-foreground"
+          aria-label="Close"
+        >
+          <X className="size-4" />
+        </button>
+        <div className="p-4">
+          <EmbeddedItemForm
+            characterId={characterId}
+            onAttached={() => {
+              router.refresh();
+              onClose();
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 }

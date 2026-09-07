@@ -348,6 +348,15 @@ export async function POST(
       inline: !referenceMode,
     });
 
+    // Phase 9.5 (Mashu 2026-09-07): recompute buSpent after slotting
+    // so the right-side BU budget readout reflects the new total.
+    // Without this the column stayed at its pre-DnD value and the
+    // user saw a stale "X / Y BU" line.
+    const { recomputeBuSpent } = await import(
+      "@/lib/engine/recompute-bu-spent"
+    );
+    await recomputeBuSpent(characterId);
+
     bustResolverCache(characterId);
 
     return NextResponse.json(

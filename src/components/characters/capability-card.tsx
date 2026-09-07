@@ -45,6 +45,11 @@ import { cn } from "@/lib/utils";
 import type { SlotSource } from "@/db/schema/characters";
 import { SlotSourceBadge } from "@/components/characters/slot-source-badge";
 import { OriginBadge } from "@/components/characters/origin-badge";
+import {
+  CHIP_MIME,
+  decodeChipPayload,
+  type ChipDragPayload,
+} from "@/components/characters/workspace/dnd-primitives";
 import { makeKey as makeVersionKey, type VersionKey } from "@/lib/versions/version-key";
 import { useEntityPreview } from "@/components/characters/preview-modal";
 
@@ -97,6 +102,15 @@ export interface CapabilityCardProps {
       };
     }>;
   };
+  /**
+   * Phase 9.5 (Mashu 2026-09-07): when true, the card itself
+   * is a drop target. The parent supplies `onDropPrimitive`
+   * to handle the drop (the card just calls it). The
+   * `dropEnabled` defaults to false so existing call sites
+   * don't accidentally start swallowing drops.
+   */
+  dropEnabled?: boolean;
+  onDropPrimitive?: (payload: import("./workspace/dnd-primitives").ChipDragPayload) => Promise<boolean> | boolean;
   /**
    * Phase 8.4 v11 (Mashu 2026-07-28): hide the "Primitives (N)"
    * accordion. The heritage-accordion variant uses this because
@@ -290,11 +304,56 @@ export function CapabilityCard({
   showPrimitives = true,
   showPreviewButton = true,
   latestVersions,
+  dropEnabled = false,
+  onDropPrimitive,
 }: CapabilityCardProps) {
   const { showToast } = useToasts();
   const { openPreview } = useEntityPreview();
   const [previewData, setPreviewData] = useState<Record<string, unknown> | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+
+  // Phase 9.5 (Mashu 2026-09-07): when dropEnabled, the card is
+  // also a drop target. Track hover state for the dashed outline.
+  const [isDropOver, setIsDropOver] = useState(false);
+  const handleCardDragOver = useCallback(
+    (e: React.DragEvent) => {
+      if (!dropEnabled) return;
+      if (
+        e.dataTransfer.types.includes(CHIP_MIME) ||
+        e.dataTransfer.types.includes("text/plain")
+      ) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        if (!isDropOver) setIsDropOver(true);
+      }
+    },
+    [dropEnabled, isDropOver],
+  );
+  const handleCardDragLeave = useCallback(() => {
+    if (isDropOver) setIsDropOver(false);
+  }, [isDropOver]);
+  const handleCardDrop = useCallback(
+    async (e: React.DragEvent) => {
+      if (!dropEnabled || !onDropPrimitive) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDropOver(false);
+      const raw = e.dataTransfer.getData(CHIP_MIME);
+      const payload: ChipDragPayload | null = raw
+        ? decodeChipPayload(raw)
+        : null;
+      if (!payload) return;
+      try {
+        await onDropPrimitive(payload);
+      } catch (err) {
+        showToast(
+          err instanceof Error ? err.message : "Failed to drop primitive.",
+          "error",
+        );
+      }
+    },
+    [dropEnabled, onDropPrimitive, showToast],
+  );
 
   // Local optimistic state. Hydrate from localStorage on mount.
   // Phase 8.L round 44: default ACTIVE (no localStorage key).
@@ -625,8 +684,12 @@ export function CapabilityCard({
           showActive
             ? "border-primary ring-2 ring-primary/30"
             : "border-border hover:border-primary/50",
+          isDropOver && "ring-2 ring-amber-400/60 border-amber-400/60",
         )}
         onClick={handleCardClick}
+        onDragOver={handleCardDragOver}
+        onDragLeave={handleCardDragLeave}
+        onDrop={handleCardDrop}
       >
         {/* Phase 8.L (Mashu): compact card layout. The TYPE
             label + Pinned/version chip live in the top-right

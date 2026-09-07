@@ -649,6 +649,9 @@ export const characterLogKindEnum = pgEnum("character_log_kind", [
   "primitive_slotted",
   "primitive_moved",
   "primitive_removed",
+  // Phase 9.5 (Mashu 2026-09-07): mirror toggle on a slotted
+  // primitive. Body: { primitiveInstanceId, isMirrored }.
+  "primitive_mirrored",
   "heritage_formalized",
   "item_formalized",
   "mode_changed",

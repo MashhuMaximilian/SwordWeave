@@ -28,7 +28,7 @@ import {
   useCallback,
   useState,
 } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, Copy, X } from "lucide-react";
 
 // =============================================================================
 // Constants
@@ -83,6 +83,16 @@ export type DraggablePrimitiveChipProps = {
   payload: ChipDragPayload;
   className?: string;
   children: React.ReactNode;
+  /** Phase 9.5 (Mashu 2026-09-07): when provided, the chip
+   *  renders a small × delete button in the corner. Clicking
+   *  it calls this handler. Only meaningful in BUILD mode —
+   *  the parent decides whether to pass the callback. */
+  onDelete?: (() => void) | undefined;
+  /** Phase 9.5: small mirror toggle. Same caveat as onDelete. */
+  onToggleMirror?: (() => void) | undefined;
+  /** Phase 9.5: whether this chip is currently mirrored. Shows
+   *  the toggle as "active" so the user can see what state they're in. */
+  isMirrored?: boolean | undefined;
 };
 
 /**
@@ -94,6 +104,9 @@ export function DraggablePrimitiveChip({
   payload,
   className,
   children,
+  onDelete,
+  onToggleMirror,
+  isMirrored,
 }: DraggablePrimitiveChipProps) {
   const [dragging, setDragging] = useState(false);
 
@@ -118,7 +131,7 @@ export function DraggablePrimitiveChip({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       className={
-        "cursor-grab active:cursor-grabbing touch-none select-none" +
+        "group/chip relative cursor-grab active:cursor-grabbing touch-none select-none" +
         (dragging ? " opacity-50 ring-2 ring-amber-400/60 " : " ") +
         (className ?? "")
       }
@@ -126,6 +139,54 @@ export function DraggablePrimitiveChip({
       data-chip-kind={payload.kind}
     >
       {children}
+      {/* Phase 9.5: hover-revealed chip action bar (top-right).
+          Visible whenever the parent supplies a delete/mirror
+          callback. The buttons sit above the chip content with
+          a slightly translucent background so they're clickable
+          without triggering the chip's preview. */}
+      {(onDelete || onToggleMirror) && (
+        <div className="pointer-events-none absolute right-1 top-1 z-10 flex items-center gap-1 opacity-0 transition group-hover/chip:opacity-100 focus-within:opacity-100">
+          {onToggleMirror && (
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onToggleMirror();
+              }}
+              className={
+                "pointer-events-auto flex h-5 w-5 items-center justify-center rounded-full border border-border shadow-sm transition " +
+                (isMirrored
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background/90 text-muted-foreground hover:bg-card hover:text-foreground")
+              }
+              title={isMirrored ? "Unmirror" : "Mirror (don't add to BU)"}
+              aria-label={isMirrored ? "Unmirror" : "Mirror"}
+              data-action="mirror"
+            >
+              <Copy className="size-3" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onDelete();
+              }}
+              className="pointer-events-auto flex h-5 w-5 items-center justify-center rounded-full border border-border bg-background/90 text-muted-foreground shadow-sm transition hover:bg-destructive hover:text-destructive-foreground"
+              title="Remove from character"
+              aria-label="Remove from character"
+              data-action="delete"
+            >
+              <X className="size-3" />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

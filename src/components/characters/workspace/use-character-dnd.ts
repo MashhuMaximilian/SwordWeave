@@ -37,7 +37,8 @@ export type DnDTarget =
   | { kind: "capability"; capabilityId: string }
   | { kind: "item"; itemId: string }
   | { kind: "effect"; effectId: string }
-  | { kind: "delete" };
+  | { kind: "delete" }
+  | { kind: "mirror"; isMirrored: boolean };
 
 export function useCharacterDnd(characterId: string) {
   const router = useRouter();
@@ -77,26 +78,65 @@ export function useCharacterDnd(characterId: string) {
           return true;
         }
 
+        // Mirror toggle (Phase 9.5 — Mashu 2026-09-07): flips the
+        // character_primitives.is_mirrored column via PATCH.
+        if (target.kind === "mirror") {
+          if (payload.kind !== "primitive-instance") {
+            showToast("Library primitives can't be mirrored.", "error");
+            return false;
+          }
+          const res = await fetch(
+            `/api/characters/${characterId}/primitives/${payload.instanceId}/mirror`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                isMirrored: target.isMirrored,
+              }),
+            },
+          );
+          if (!res.ok) {
+            const err = (await res.json().catch(() => ({}))) as {
+              error?: string;
+            };
+            showToast(err.error ?? "Failed to toggle mirror.", "error");
+            return false;
+          }
+          bustResolverCache(characterId);
+          showToast(
+            target.isMirrored
+              ? "Mirrored (no BU cost)."
+              : "Unmirrored (counts toward BU again).",
+            "success",
+          );
+          router.refresh();
+          return true;
+        }
+
         // Slot vs. move semantics:
         //   - primitive-template: the chip is a library row being
         //     slotted for the first time. Use POST.
         //   - primitive-instance: the chip is on this character.
         //     Use PATCH with the new origin.
         if (payload.kind === "primitive-template") {
+          // Phase 9.5: the POST route reads `source` (the accordion
+          // destination) + `originCapabilityId` / `originItemId` /
+          // `originEffectId` for the nesting origin. The hook
+          // translates DnDTarget into that shape.
           const body: Record<string, unknown> = {
             primitiveId: payload.primitiveId,
           };
           if (target.kind === "accordion") {
-            body["accordion"] = target.accordion;
+            body["source"] = target.accordion;
           } else if (target.kind === "capability") {
-            body["accordion"] = "PERSONAL";
-            body["toCapabilityId"] = target.capabilityId;
+            body["source"] = "PERSONAL";
+            body["originCapabilityId"] = target.capabilityId;
           } else if (target.kind === "item") {
-            body["accordion"] = "PERSONAL";
-            body["toItemId"] = target.itemId;
+            body["source"] = "PERSONAL";
+            body["originItemId"] = target.itemId;
           } else if (target.kind === "effect") {
-            body["accordion"] = "PERSONAL";
-            body["toEffectId"] = target.effectId;
+            body["source"] = "PERSONAL";
+            body["originEffectId"] = target.effectId;
           }
           const res = await fetch(
             `/api/characters/${characterId}/primitives`,
@@ -119,9 +159,11 @@ export function useCharacterDnd(characterId: string) {
           return true;
         }
 
-        // primitive-instance path — PATCH.
+        // primitive-instance path — PATCH. The route reads `to`
+        // (the accordion target) plus optional `toCapabilityId` /
+        // `toItemId` / `toEffectId` to stamp the new origin.
         const body: Record<string, unknown> = {
-          source:
+          to:
             target.kind === "accordion" ? target.accordion : "PERSONAL",
         };
         if (target.kind === "capability") {
@@ -170,5 +212,12 @@ export function useCharacterDnd(characterId: string) {
     [movePrimitiveTo],
   );
 
-  return { movePrimitiveTo, deletePrimitive, isPending };
+  const toggleMirror = useCallback(
+    async (payload: ChipDragPayload, isMirrored: boolean): Promise<boolean> => {
+      return movePrimitiveTo({ kind: "mirror", isMirrored }, payload);
+    },
+    [movePrimitiveTo],
+  );
+
+  return { movePrimitiveTo, deletePrimitive, toggleMirror, isPending };
 }

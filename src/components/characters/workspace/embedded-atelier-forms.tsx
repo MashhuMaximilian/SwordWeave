@@ -39,6 +39,7 @@ import { PrimitiveForm } from "@/components/sandbox/primitive-form";
 import { CapabilityForm } from "@/components/sandbox/capability-form";
 import { EffectForm } from "@/components/sandbox/effect-form";
 import { HeritageForm } from "@/components/sandbox/heritage-form";
+import { ItemForm } from "@/components/sandbox/item-form";
 
 import type { ModifierDraft } from "@/components/sandbox/primitive-form";
 import type {
@@ -537,3 +538,68 @@ export function EmbeddedEffectForm({
 
 export type { ModifierDraft, TemplateSlot };
 export type { EffectFormSlot };
+
+// =============================================================================
+// EmbeddedItemForm (Phase 9.5 — Mashu 2026-09-07)
+// =============================================================================
+//
+// Atelier's ItemForm lifted into the picker. Items are a library-level
+// concept today — they don't attach to a character the way capabilities
+// and effects do. Saving an item here just persists it to the library
+// with the current user as author. The user can then drag the new
+// item from the library onto the character's PERSONAL accordion.
+//
+// We intentionally don't call a "character_items attach" route here
+// because (a) no such route exists yet and (b) the character sheet
+// doesn't render attached-items today. This is consistent with the
+// "Author item" mode in the AddPanel: it authors + saves, then the
+// user slots it like any other library entity.
+
+export interface EmbeddedItemFormProps {
+  characterId: string;
+  availablePrimitives?: TemplateSlot[];
+  onAttached?: (info: { itemId: string }) => void;
+}
+
+export function EmbeddedItemForm({
+  characterId: _characterId,
+  availablePrimitives = [],
+  onAttached,
+}: EmbeddedItemFormProps) {
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  const handleSaved = useCallback(
+    (item: { id: string }) => {
+      setSaveMessage("Item saved to library.");
+      onAttached?.({ itemId: item.id });
+    },
+    [onAttached],
+  );
+
+  return (
+    <div>
+      {error && <SheetError message={error} />}
+      <div className={SHEET_FORM_CLASS}>
+        <ItemForm
+          availablePrimitives={availablePrimitives
+            .filter((p) => typeof p.id === "number")
+            .map((p) => ({
+              id: p.id as number,
+              name: p.name,
+              category: p.category,
+              buCost: p.buCost,
+            }))}
+          availableCapabilities={[]}
+          availableEffects={[]}
+          onSaved={(item: { id: string }) => {
+            setSaving(false);
+            handleSaved({ id: item.id });
+          }}
+        />
+      </div>
+      <PostSaveStatus pending={saving} message={saveMessage} />
+    </div>
+  );
+}
