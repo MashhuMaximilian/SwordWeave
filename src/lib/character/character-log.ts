@@ -185,6 +185,38 @@ export interface ModeChangedPayload {
   toMode: "BUILD" | "PLAY";
 }
 
+/**
+ * Phase 9.3 (Mashu 2026-09-06): emitted when a capability is attached
+ * to a character via POST /api/characters/[id]/capabilities/attach.
+ * The capability may have been authored inline (EmbeddedCapabilityForm)
+ * or pulled from the library.
+ */
+export interface CapabilityAttachedPayload {
+  capabilityId: string;
+  capabilityName: string;
+  slotTab: "LINEAGE" | "UPBRINGING" | "MANIFEST" | null;
+  acquiredAtLevel: number;
+}
+
+/**
+ * Phase 9.3 (Mashu 2026-09-06): emitted when an effect is attached to
+ * a character via POST /api/characters/[id]/effects/attach.
+ */
+export interface EffectAttachedPayload {
+  effectId: string;
+  effectName: string;
+}
+
+/**
+ * Phase 9.3 (Mashu 2026-09-06): emitted when an item is attached to a
+ * character via POST /api/characters/[id]/items/attach. Reserved for
+ * the parallel items flow (Phase 9.3 follow-up).
+ */
+export interface ItemAttachedPayload {
+  itemId: string;
+  itemName: string;
+}
+
 export type CharacterLogPayload =
   | VitalityChangePayload
   | RestPayload
@@ -207,7 +239,11 @@ export type CharacterLogPayload =
   | PrimitiveRemovedPayload
   | HeritageFormalizedPayload
   | ItemFormalizedPayload
-  | ModeChangedPayload;
+  | ModeChangedPayload
+  // Phase 9.3 (Mashu 2026-09-06): parallel "attach" events.
+  | CapabilityAttachedPayload
+  | EffectAttachedPayload
+  | ItemAttachedPayload;
 
 /**
  * Append an event to the character's log. Fire-and-forget — errors

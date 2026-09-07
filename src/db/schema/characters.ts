@@ -637,6 +637,12 @@ export const characterLogKindEnum = pgEnum("character_log_kind", [
   "heritage_formalized",
   "item_formalized",
   "mode_changed",
+  // Phase 9.3 (Mashu 2026-09-06): parallel "attach" events for
+  // capabilities and effects (and items). Body payloads mirror
+  // primitive_slotted but for the corresponding entity.
+  "capability_attached",
+  "effect_attached",
+  "item_attached",
 ]);
 
 export type CharacterLogKind = (typeof characterLogKindEnum.enumValues)[number];

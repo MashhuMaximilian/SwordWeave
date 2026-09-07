@@ -46,7 +46,14 @@ import {
   Wand2,
   X,
   Zap,
+  Layers,
+  ZapIcon,
 } from "lucide-react";
+import {
+  EmbeddedCapabilityForm,
+  EmbeddedEffectForm,
+  EmbeddedPrimitiveForm,
+} from "@/components/characters/workspace/embedded-atelier-forms";
 
 export type AccordionKind = "LINEAGE" | "UPBRINGING" | "MANIFEST" | "PERSONAL";
 
@@ -70,7 +77,12 @@ export interface CharacterConditionRow {
   tags?: readonly string[];
 }
 
-export type PickerMode = "search" | "quick" | "promote";
+export type PickerMode =
+  | "search"
+  | "quick"
+  | "promote"
+  | "capability"
+  | "effect";
 
 export interface InlinePrimitiveSheetProps {
   characterId: string;
@@ -363,6 +375,18 @@ export function InlinePrimitiveSheet({
             active={mode === "promote"}
             onClick={() => setMode("promote")}
           />
+          <ModeTab
+            label="Author capability"
+            icon={<Layers className="size-3.5" />}
+            active={mode === "capability"}
+            onClick={() => setMode("capability")}
+          />
+          <ModeTab
+            label="Author effect"
+            icon={<ZapIcon className="size-3.5" />}
+            active={mode === "effect"}
+            onClick={() => setMode("effect")}
+          />
         </div>
 
         {mode !== "promote" && (
@@ -428,15 +452,19 @@ export function InlinePrimitiveSheet({
             </div>
           )}
 
-          {/* QUICK MODE (Phase 9.1 form, with optional pre-fill from
-              the Promote tab). */}
+          {/* QUICK MODE — atelier's PrimitiveForm embedded. Phase 9.3
+              (Mashu 2026-09-06): same UI + same fields + same modifier
+              composer as /atelier. On save, the lifter auto-slots the
+              new primitive onto this accordion. The Promote tab
+              pre-fills name + narrativeRule from a chosen condition. */}
           {!loading && mode === "quick" && (
-            <PrimitiveMiniForm
+            <EmbeddedPrimitiveForm
               characterId={characterId}
               accordionKind={accordionKind}
               seed={promoteSeed}
-              onCreated={handleCreated}
-              onCancel={() => setPromoteSeed(null)}
+              onSlot={({ primitiveId }) =>
+                handleCreated({ primitiveId })
+              }
             />
           )}
 
@@ -482,6 +510,27 @@ export function InlinePrimitiveSheet({
                 ))}
               </ul>
             </div>
+          )}
+
+          {/* AUTHOR CAPABILITY MODE — atelier's CapabilityForm
+              embedded. Phase 9.3 (Mashu 2026-09-06): same UI + same
+              fields + same slot composer as /atelier. On save, the
+              lifter auto-attaches the new capability to this character
+              and routes it to the source accordion via slot_tab. */}
+          {!loading && mode === "capability" && (
+            <EmbeddedCapabilityForm
+              characterId={characterId}
+              targetSlotTab={
+                accordionKind === "PERSONAL" ? null : accordionKind
+              }
+            />
+          )}
+
+          {/* AUTHOR EFFECT MODE — atelier's EffectForm embedded.
+              Same as /atelier; the lifter auto-attaches the new effect
+              via /api/characters/[id]/effects/attach. */}
+          {!loading && mode === "effect" && (
+            <EmbeddedEffectForm characterId={characterId} />
           )}
         </div>
       </div>
@@ -683,225 +732,5 @@ function PrimitivePreviewModal({
         </footer>
       </div>
     </div>
-  );
-}
-
-/**
- * Phase 9.1 (Mashu 2026-09-06): primitive mini-form.
- *
- * Inline authoring form for creating a primitive right inside the
- * sheet picker. Calls POST /api/characters/[id]/primitives in
- * "inline authoring" mode (no primitiveId, just name + category +
- * buCost + description). Phase 9.2: accepts an optional `seed`
- * prop so the Promote tab can pre-fill name + description from
- * the chosen condition.
- */
-
-interface PrimitiveMiniFormProps {
-  characterId: string;
-  accordionKind: AccordionKind;
-  onCancel: () => void;
-  onCreated: (info: { primitiveId: number }) => void;
-  seed?: { name: string; description: string } | null;
-}
-
-const CATEGORIES = [
-  "OUTPUT",
-  "MECHANIC",
-  "TRAIT",
-  "FEATURE",
-  "QUALITY",
-  "FLAW",
-  "DRAWBACK",
-] as const;
-
-export function PrimitiveMiniForm({
-  characterId,
-  accordionKind,
-  onCancel,
-  onCreated,
-  seed,
-}: PrimitiveMiniFormProps) {
-  const [name, setName] = useState(seed?.name ?? "");
-  const [category, setCategory] = useState<typeof CATEGORIES[number]>(
-    "OUTPUT",
-  );
-  const [buCost, setBuCost] = useState(1);
-  const [description, setDescription] = useState(seed?.description ?? "");
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-
-  // Phase 9.2: if a new seed arrives (from Promote), update the
-  // form. This handles the case where the user clicks a condition,
-  // then changes their mind and clicks another.
-  useEffect(() => {
-    if (seed) {
-      setName(seed.name);
-      setDescription(seed.description);
-    }
-  }, [seed]);
-
-  const handleSubmit = useCallback(
-    (e: React.FormEvent<HTMLFormElement>) => {
-      e.preventDefault();
-      if (!name.trim()) {
-        setError("Name is required.");
-        return;
-      }
-      setError(null);
-      startTransition(async () => {
-        try {
-          const res = await fetch(
-            `/api/characters/${characterId}/primitives`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                name: name.trim(),
-                category,
-                buCost,
-                description: description.trim() || undefined,
-                accordion: accordionKind,
-              }),
-            },
-          );
-          if (!res.ok) {
-            const payload = (await res.json().catch(() => ({}))) as {
-              error?: string;
-            };
-            throw new Error(
-              payload.error ?? `Authoring failed (${res.status}).`,
-            );
-          }
-          const data = (await res.json()) as {
-            characterPrimitive?: { primitiveId: number };
-          };
-          const newPrimitiveId = data.characterPrimitive?.primitiveId;
-          if (!newPrimitiveId) {
-            throw new Error("Server did not return a primitive id.");
-          }
-          onCreated({ primitiveId: newPrimitiveId });
-        } catch (err) {
-          setError(
-            err instanceof Error ? err.message : "Failed to author primitive.",
-          );
-        }
-      });
-    },
-    [characterId, accordionKind, name, category, buCost, description, onCreated],
-  );
-
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-3 rounded-md border border-border bg-background p-4"
-      aria-label="Author new primitive"
-    >
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-foreground">
-          {seed ? "Promote condition to primitive" : "Author new primitive"}
-        </h3>
-        {seed && (
-          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
-            <Wand2 className="size-3" />
-            Pre-filled
-          </span>
-        )}
-      </div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <label className="block space-y-1 sm:col-span-2">
-          <span className="text-xs font-medium text-foreground">Name</span>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Endless Breath"
-            required
-            className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </label>
-        <label className="block space-y-1">
-          <span className="text-xs font-medium text-foreground">BU cost</span>
-          <input
-            type="number"
-            min={0}
-            step={1}
-            value={buCost}
-            onChange={(e) =>
-              setBuCost(Math.max(0, Math.floor(parseInt(e.target.value, 10) || 0)))
-            }
-            className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </label>
-      </div>
-      <label className="block space-y-1">
-        <span className="text-xs font-medium text-foreground">Category</span>
-        <select
-          value={category}
-          onChange={(e) =>
-            setCategory(e.target.value as typeof CATEGORIES[number])
-          }
-          className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-        >
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="block space-y-1">
-        <span className="text-xs font-medium text-foreground">
-          Description (optional)
-        </span>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={2}
-          placeholder="What this primitive does in plain language."
-          className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-        />
-      </label>
-      {error && (
-        <p
-          role="alert"
-          className="rounded-md border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-300"
-        >
-          {error}
-        </p>
-      )}
-      <div className="flex items-center justify-end gap-2">
-        {seed && (
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isPending}
-            className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:bg-card hover:text-foreground"
-          >
-            Back to conditions
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={isPending}
-          className={
-            seed
-              ? "hidden"
-              : "rounded-md border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:bg-card hover:text-foreground"
-          }
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={isPending}
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:bg-primary/40"
-        >
-          {isPending && <Loader2 className="size-3 animate-spin" />}
-          {seed ? "Promote & slot" : "Create and slot"}
-        </button>
-      </div>
-    </form>
   );
 }

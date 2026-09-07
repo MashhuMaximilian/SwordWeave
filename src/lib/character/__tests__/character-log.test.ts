@@ -53,6 +53,10 @@ describe("characterLog table", () => {
       "heritage_formalized",
       "item_formalized",
       "mode_changed",
+      // Phase 9.3 parallel attach events
+      "capability_attached",
+      "effect_attached",
+      "item_attached",
     ]);
   });
 
@@ -74,6 +78,10 @@ describe("characterLog table", () => {
       | "heritage_formalized"
       | "item_formalized"
       | "mode_changed"
+      // Phase 9.3 parallel attach events
+      | "capability_attached"
+      | "effect_attached"
+      | "item_attached"
     >();
   });
 
@@ -96,6 +104,10 @@ describe("characterLog table", () => {
       | { heritageId: string; kind: "LINEAGE" | "UPBRINGING" | "MANIFEST"; primitiveCount: number }
       | { itemId: string; itemName: string; primitiveCount: number }
       | { fromMode: "BUILD" | "PLAY"; toMode: "BUILD" | "PLAY" }
+      // Phase 9.3 parallel attach payload shapes
+      | { capabilityId: string; capabilityName: string; slotTab: "LINEAGE" | "UPBRINGING" | "MANIFEST" | null; acquiredAtLevel: number }
+      | { effectId: string; effectName: string }
+      | { itemId: string; itemName: string }
     >();
   });
 });
