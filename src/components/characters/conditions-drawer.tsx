@@ -20,7 +20,7 @@
  */
 
 import { useState } from "react";
-import { X, Plus, Power, Pencil, Trash2, ChevronRight, ChevronLeft, CheckCircle2, MinusCircle } from "lucide-react";
+import { X, Plus, Power, Pencil, Trash2, ChevronRight, ChevronLeft, CheckCircle2, MinusCircle, Bot } from "lucide-react";
 import {
   useRuntimeConditions,
   type RuntimeCondition,
@@ -64,16 +64,16 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
 
   if (!open) return null;
 
-  const customConditions = conditions.filter((c) => c.source === "custom");
-  const sheetConditions = conditions.filter((c) => c.source === "sheet");
-  // Phase 8.L round 120 (Mashu 2026-08-26): conditions whose
-  // source is "sheet-auto" are engine-evaluated (HP thresholds,
-  // proficiencies, predicates). They live in a separate
-  // read-only section so the user can SEE what's currently
-  // engaged without being able to override the engine.
-  const autoTriggeredConditions = conditions.filter(
-    (c) => c.source === "sheet-auto",
-  );
+  // Phase 9.5 follow-up (Mashu 2026-09-07): drop the
+  // 3-section split (Conditions / From sheet / Auto-triggered).
+  // Mashu: "I need to be able to toggle on and off manually
+  // everything there. We had a bunch of rules here that some
+  // are and some are not toggleable, but those make no sense."
+  // The rules tried to surface engine-computed state vs manual
+  // state, but the user only cares that any condition in the
+  // panel is a clickable toggle. We keep the source for the
+  // tiny "engine-managed" hint, but no separate sections.
+  const allConditions = conditions;
 
   return (
     <>
@@ -126,67 +126,34 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
             </p>
           )}
 
-          {customConditions.length > 0 && (
-            <Section title="Conditions" count={customConditions.length}>
-              {customConditions.map((c) => (
+          {allConditions.length > 0 && (
+            <Section title="Conditions" count={allConditions.length}>
+              {allConditions.map((c) => (
                 <ConditionCardItem
                   key={c.id}
                   condition={c}
                   onToggle={() => toggle(c.id)}
-                  onEdit={() => openComposer(c)}
-                  onRemove={() => remove(c.id)}
-                  // Phase 8.L round 132 (Mashu): if the engine
-                  // can compute this condition (e.g. compound
-                  // with all-auto pills), use the live state.
-                  // The user can still toggle it manually
-                  // (overrides) but the default reflects engine.
-                  {...(autoEvaluated?.has(c.id) ? { liveActive: autoEvaluated.get(c.id)!.active } : {})}
-                />
-              ))}
-            </Section>
-          )}
-
-          {sheetConditions.length > 0 && (
-            <Section title="From sheet" count={sheetConditions.length}>
-              {sheetConditions.map((c) => (
-                <ConditionCardItem
-                  key={c.id}
-                  condition={c}
-                  onToggle={() => toggle(c.id)}
-                  // Phase 8.L round 119 (Mashu 2026-08-26): sheet
-                  // conditions are read-only — the user can
-                  // ONLY toggle engage/inhibit. Editing or deleting
-                  // doesn't make sense because the source entity
-                  // (primitive / effect) owns the modifier.
-                  readOnly
-                  {...(autoEvaluated?.has(c.id) ? { liveActive: autoEvaluated.get(c.id)!.active } : {})}
-                />
-              ))}
-            </Section>
-          )}
-
-          {/* Phase 8.L round 120 (Mashu 2026-08-26):
-              auto-triggered conditions — those whose predicate
-              is COMPUTABLE by the engine (HP thresholds,
-              proficiencies, predicates like is_tracking). They
-              can't be manually toggled — the engine decides
-              Engaged/Inhibited based on character state. We
-              surface them here as read-only so the user knows
-              why a primitive is or isn't currently active. */}
-          {autoTriggeredConditions.length > 0 && (
-            <Section title="Auto-triggered" count={autoTriggeredConditions.length}>
-              {autoTriggeredConditions.map((c) => (
-                // Phase 9.5 follow-up (Mashu 2026-09-07):
-                // override prior decisions — wire onToggle for
-                // EVERY source including sheet-auto. The
-                // engine's live evaluation is still surfaced
-                // via autoEvaluated / liveActive but the user
-                // can manually toggle anything in the panel.
-                <ConditionCardItem
-                  key={c.id}
-                  condition={c}
-                  onToggle={() => toggle(c.id)}
-                  {...(autoEvaluated?.has(c.id) ? { liveActive: autoEvaluated.get(c.id)!.active } : {})}
+                  // Custom conditions support edit/remove.
+                  // Sheet + sheet-auto only expose toggle —
+                  // the source entity owns the modifier so
+                  // editing / deleting locally would silently
+                  // desync from the sheet.
+                  {...(c.source === "custom"
+                    ? {
+                        onEdit: () => openComposer(c),
+                        onRemove: () => remove(c.id),
+                      }
+                    : {})}
+                  // Surface the engine's live evaluation as
+                  // a tooltip / badge so the user can see when
+                  // an auto-triggered condition "wants" to be
+                  // on, even if they toggled it off.
+                  {...(autoEvaluated?.has(c.id)
+                    ? {
+                        liveActive: autoEvaluated.get(c.id)!.active,
+                        sourceKind: c.source,
+                      }
+                    : {})}
                 />
               ))}
             </Section>
@@ -252,17 +219,17 @@ function ConditionCardItem({
   onToggle,
   onEdit,
   onRemove,
-  readOnly,
+  // Phase 9.5 follow-up (Mashu 2026-09-07): removed the
+  // `readOnly` prop. Mashu: "those make no sense". All
+  // conditions in the drawer are toggleable; edit/remove
+  // are only exposed for source === "custom".
   liveActive,
+  sourceKind,
 }: {
   condition: RuntimeCondition;
-  // Phase 8.L round 125 (Mashu 2026-08-26): onToggle is
-  // optional. Auto-triggered conditions don't get a
-  // handler — the engine decides the state.
-  onToggle?: () => void;
+  onToggle: () => void;
   onEdit?: () => void;
   onRemove?: () => void;
-  readOnly?: boolean;
   /**
    * Phase 8.L round 127 (Mashu 2026-08-26): engine-computed
    * active state for auto-triggered conditions. When provided,
@@ -270,6 +237,13 @@ function ConditionCardItem({
    * the live evaluation (e.g. HP below 50% predicate).
    */
   liveActive?: boolean;
+  /**
+   * Phase 9.5 follow-up (Mashu 2026-09-07): passed through
+   * for the engine-managed badge so the user can SEE that
+   * the engine will re-evaluate on the next roll. They can
+   * still override, but the badge warns them.
+   */
+  sourceKind?: string;
 }) {
   const { active: storedActive, title, description, tags, modifiers, durationTier } = condition;
   // Phase 8.L round 127: for auto-triggered cards, prefer the
@@ -282,58 +256,44 @@ function ConditionCardItem({
         ? "Short rest"
         : "Manual";
 
-  const isReadOnly = !onToggle;
-  // Phase 8.L round 128 (Mashu 2026-08-26): auto-triggered
-  // conditions when OFF should look MORE muted than sheet
-  // conditions when OFF, because the user can't interact with
-  // them and they're informational only. Sheet conditions
-  // get opacity-60; auto OFF gets opacity-40 + muted title.
   return (
     <article
       className={`rounded-md border bg-background p-3 transition-opacity ${
         active
-          ? isReadOnly
-            ? "border-emerald-500/40"
-            : "border-amber-500/40"
-          : isReadOnly
-            // Phase 8.L round 128: auto-triggered OFF is
-            // dimmer than sheet OFF so the user can tell at
-            // a glance which conditions they can interact
-            // with (sheet) vs which are read-only (auto).
-            ? "border-border opacity-40"
-            : "border-border opacity-60"
+          ? "border-amber-500/40"
+          : "border-border opacity-60"
       }`}
     >
       <header className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          {/* Phase 8.L round 128: auto-triggered conditions
-              when OFF get a muted title color so they recede
-              visually compared to the still-interactive sheet
-              conditions. */}
-          <h4 className={`truncate text-sm font-semibold ${
-            !active && isReadOnly
-              ? "text-muted-foreground/60"
-              : "text-foreground"
-          }`}>
+          <h4 className="truncate text-sm font-semibold text-foreground">
             {title}
           </h4>
           {description && (
-            <p className={`mt-0.5 truncate text-xs italic ${
-              !active && isReadOnly
-                ? "text-muted-foreground/50"
-                : "text-muted-foreground"
-            }`}>
+            <p className="mt-0.5 truncate text-xs italic text-muted-foreground">
               {description}
             </p>
           )}
         </div>
-        {onToggle && (
-          // Phase 8.L round 122 (Mashu 2026-08-26): when
-          // onToggle is provided (sheet / custom conditions)
-          // we render a real toggle button. For auto-triggered
-          // conditions (no onToggle) we render a read-only
-          // ON/OFF indicator so the user can SEE state without
-          // being able to mutate it.
+        {/* Phase 9.5 follow-up (Mashu 2026-09-07): every
+            condition is now toggleable. Render the toggle
+            button unconditionally. The optional engine
+            hint (auto-managed badge) is shown next to it
+            when the engine re-evaluates this condition. */}
+        <div className="flex shrink-0 items-center gap-1">
+          {sourceKind === "sheet-auto" && (
+            // Phase 9.5 follow-up: surface that this is
+            // engine-managed so the user knows their
+            // override is provisional.
+            <span
+              data-testid="auto-state"
+              aria-label="Engine-managed condition"
+              title="Engine-managed — your toggle is an override; the engine will re-evaluate on the next roll."
+              className="inline-flex items-center rounded bg-secondary px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground"
+            >
+              <Bot className="size-2.5" />
+            </span>
+          )}
           <button
             type="button"
             onClick={onToggle}
@@ -348,33 +308,7 @@ function ConditionCardItem({
             <Power className="inline size-3" />
             {active ? "On" : "Off"}
           </button>
-        )}
-        {!onToggle && (
-          // Phase 8.L round 126 (Mashu 2026-08-26): auto-triggered
-          // conditions show a read-only state badge — colored
-          // emerald (engaged) or muted (inhibited). The user
-          // can SEE the engine's current evaluation but cannot
-          // mutate it.
-          <span
-            data-testid="auto-state"
-            aria-label={active ? "Auto-engaged by the engine" : "Auto-inhibited by the engine"}
-            title={active
-              ? "Engine has evaluated this condition as engaged — cannot be toggled manually"
-              : "Engine has evaluated this condition as inhibited — cannot be toggled manually"}
-            className={`shrink-0 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-              active
-                ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
-                : "bg-muted text-muted-foreground"
-            }`}
-          >
-            {active ? (
-              <CheckCircle2 className="size-3" />
-            ) : (
-              <MinusCircle className="size-3" />
-            )}
-            {active ? "On" : "Off"}
-          </span>
-        )}
+        </div>
       </header>
 
       {/* Phase 8.L round 53: per-modifier breakdown — target,
@@ -401,7 +335,7 @@ function ConditionCardItem({
       <footer className="mt-2 flex items-center justify-between gap-1 text-[10px] text-muted-foreground">
         <span>{durationLabel}</span>
         <div className="flex items-center gap-1">
-          {!readOnly && onEdit && (
+          {onEdit && (
             <button
               type="button"
               onClick={onEdit}
@@ -412,7 +346,7 @@ function ConditionCardItem({
               <Pencil className="size-3" />
             </button>
           )}
-          {!readOnly && onRemove && (
+          {onRemove && (
             <button
               type="button"
               onClick={onRemove}

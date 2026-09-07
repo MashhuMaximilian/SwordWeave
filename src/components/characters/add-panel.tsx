@@ -32,10 +32,12 @@ import {
   Zap,
   Hammer,
   ScrollText,
+  Scroll,
 } from "lucide-react";
 import { InlinePrimitiveSheet } from "./inline-primitive-sheet";
 import { HeritageFormalizeSheet } from "./heritage-formalize-sheet";
 import { ItemFormalizeSheet } from "./item-formalize-sheet";
+import { LibraryAttachSheet } from "./library-attach-sheet";
 import {
   EmbeddedCapabilityForm,
   EmbeddedEffectForm,
@@ -46,6 +48,9 @@ export type AccordionKind = "LINEAGE" | "UPBRINGING" | "MANIFEST" | "PERSONAL";
 
 export type AddPanelMode =
   | "library"
+  | "library-heritage"
+  | "library-capability"
+  | "library-effect"
   | "quick"
   | "promote"
   | "capability"
@@ -137,6 +142,35 @@ const MODES: ReadonlyArray<{
     primitiveMode: null, // opens formalize sheet
     allowAccordionSwitch: true,
   },
+  // Phase 9.5 follow-up (Mashu 2026-09-07): "add from
+  // library" for non-primitive entity types. Mashu
+  // explicitly asked for heritage / capability / effect
+  // attachments — previously the right column only had
+  // a Primitive library picker. These open the same
+  // library API but route to the matching attach
+  // endpoint so the user can browse the public corpus
+  // and slot an entry without going through the atelier.
+  {
+    id: "library-heritage",
+    label: "Heritage from library",
+    icon: <Scroll className="size-3.5" />,
+    primitiveMode: null,
+    allowAccordionSwitch: true,
+  },
+  {
+    id: "library-capability",
+    label: "Capability from library",
+    icon: <Layers className="size-3.5" />,
+    primitiveMode: null,
+    allowAccordionSwitch: true,
+  },
+  {
+    id: "library-effect",
+    label: "Effect from library",
+    icon: <Zap className="size-3.5" />,
+    primitiveMode: null,
+    allowAccordionSwitch: true,
+  },
 ];
 
 export function AddPanel({
@@ -145,6 +179,7 @@ export function AddPanel({
   onTargetAccordionChange,
   directPrimitives,
 }: AddPanelProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerInitialMode, setPickerInitialMode] = useState<
@@ -154,6 +189,11 @@ export function AddPanel({
   const [effectOpen, setEffectOpen] = useState(false);
   const [itemOpen, setItemOpen] = useState(false);
   const [formalizeOpen, setFormalizeOpen] = useState(false);
+  // Phase 9.5 follow-up (Mashu 2026-09-07): library
+  // attach sheets for heritage / capability / effect.
+  const [libraryAttachKind, setLibraryAttachKind] = useState<
+    "heritage" | "capability" | "effect" | null
+  >(null);
   // Phase 9.5: own the target accordion in the panel so the user can
   // switch the slot destination from the right column without a parent
   // round-trip. The page can still pass `targetAccordion` + an optional
@@ -180,6 +220,22 @@ export function AddPanel({
     if (!def) return;
     if (mode === "formalize") {
       setFormalizeOpen(true);
+      return;
+    }
+    // Phase 9.5 follow-up (Mashu 2026-09-07): library
+    // attach for non-primitive entity types opens the
+    // dedicated LibraryAttachSheet, not the primitive
+    // picker.
+    if (mode === "library-heritage") {
+      setLibraryAttachKind("heritage");
+      return;
+    }
+    if (mode === "library-capability") {
+      setLibraryAttachKind("capability");
+      return;
+    }
+    if (mode === "library-effect") {
+      setLibraryAttachKind("effect");
       return;
     }
     if (mode === "item") {
@@ -329,6 +385,29 @@ export function AddPanel({
           characterId={characterId}
           open={formalizeOpen}
           onClose={() => setFormalizeOpen(false)}
+        />
+      )}
+
+      {/* Phase 9.5 follow-up (Mashu 2026-09-07): the
+          library-attach sheet for heritage / capability /
+          effect. Personal-only for items because the
+          formalize flow already covers them. */}
+      {libraryAttachKind && (
+        <LibraryAttachSheet
+          characterId={characterId}
+          entityType={libraryAttachKind}
+          accordion={
+            targetAccordion === "PERSONAL" ? "MANIFEST" : targetAccordion
+          }
+          open
+          onClose={() => setLibraryAttachKind(null)}
+          onAttached={() => {
+            setLibraryAttachKind(null);
+            // Refresh the character sheet so the new
+            // heritage / capability / effect appears
+            // immediately.
+            router.refresh();
+          }}
         />
       )}
     </>

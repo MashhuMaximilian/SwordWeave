@@ -68,13 +68,19 @@ export async function POST(
     }
     const values = body as Record<string, unknown>;
 
-    if (!isAccordionKind(values["kind"])) {
+    // Phase 9.5 follow-up (Mashu 2026-09-07): the form
+    // body uses `accordion` not `kind`. The old read
+    // (`values["kind"]`) silently produced the "kind must
+    // be LINEAGE..." 400 and broke "Create Upbringing".
+    // Accept both for forward compat.
+    const rawKind = values["accordion"] ?? values["kind"];
+    if (!isAccordionKind(rawKind)) {
       return NextResponse.json(
         { error: "kind must be LINEAGE, UPBRINGING, or MANIFEST." },
         { status: 400 },
       );
     }
-    const kind = values["kind"] as AccordionKind;
+    const kind = rawKind;
     const name = String(values["name"] ?? "").trim();
     if (!name) {
       return NextResponse.json(
