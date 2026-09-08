@@ -1,4 +1,9 @@
 "use client";
+import { useRuntimeConditions } from "@/lib/hooks/use-runtime-conditions";
+import { useCharacterSupplyGraph } from "@/lib/hooks/use-character-supply-graph";
+import { activeRestrictions } from "@/lib/character/consequences/types";
+import { effectiveAvailability,supplyPaths } from "@/lib/character/workspace/model";
+import { ConsequencePackageAction, type ConsequencePackagePreview } from "./consequence-package-action";
 
 /**
  * CapabilityCard — Phase 8.2 batch 4
@@ -307,6 +312,10 @@ export function CapabilityCard({
   dropEnabled = false,
   onDropPrimitive,
 }: CapabilityCardProps) {
+  const supplyGraph=useCharacterSupplyGraph(characterId);
+  const {conditions:consequences}=useRuntimeConditions(characterId);
+  const access=supplyGraph?effectiveAvailability(`capability:${capability.id}`,supplyPaths(supplyGraph,`capability:${capability.id}`),activeRestrictions(consequences)):null;
+  const blockedReason=access&&!access.available?(access.reasons.join('; ')||'This capability has no available supply path.'):null;
   const { showToast } = useToasts();
   const { openPreview } = useEntityPreview();
   const [previewData, setPreviewData] = useState<Record<string, unknown> | null>(null);
@@ -373,6 +382,7 @@ export function CapabilityCard({
   const [hydrated, setHydrated] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [triggerPending, setTriggerPending] = useState(false);
+  const [consequencePreview,setConsequencePreview] = useState<ConsequencePackagePreview|null>(null);
   // Brief flash to confirm a trigger. Cleared after ~1.2s.
   const [triggerFlash, setTriggerFlash] = useState(false);
 
@@ -574,6 +584,10 @@ export function CapabilityCard({
     window.setTimeout(() => setTriggerFlash(false), 1200);
 
     try {
+      const previewResponse = await fetch(`/api/characters/${characterId}/consequences/apply?key=capability:${capability.id}`,{cache:'no-store'});
+      const preview = await previewResponse.json();
+      if (!previewResponse.ok) throw new Error(preview.error ?? 'This action is unavailable.');
+      if (preview.pieces.length) { setConsequencePreview(preview); setTriggerFlash(false); return; }
       const res = await fetch(
         `/api/characters/${characterId}/capabilities/${capability.id}/trigger`,
         {
@@ -691,6 +705,8 @@ export function CapabilityCard({
         onDragLeave={handleCardDragLeave}
         onDrop={handleCardDrop}
       >
+        {blockedReason&&<p role="status" className="mb-3 rounded border border-amber-500/40 bg-amber-500/10 p-2 text-sm">{blockedReason}</p>}
+        {consequencePreview && <div onClick={e=>e.stopPropagation()}><ConsequencePackageAction characterId={characterId} entityKey={`capability:${capability.id}`} initialPreview={consequencePreview} onClose={()=>setConsequencePreview(null)} /></div>}
         {/* Phase 8.L (Mashu): compact card layout. The TYPE
             label + Pinned/version chip live in the top-right
             column. The active/inactive state lives in the
@@ -840,7 +856,7 @@ export function CapabilityCard({
               e.stopPropagation();
               void handleTrigger();
             }}
-            disabled={triggerPending || toggling}
+            disabled={triggerPending || toggling || !!blockedReason}
             data-testid="capability-trigger"
             className="inline-flex items-center gap-1 rounded-md border border-amber-500/50 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:text-amber-300"
             title="Fire this capability once and log it (state does not persist)"

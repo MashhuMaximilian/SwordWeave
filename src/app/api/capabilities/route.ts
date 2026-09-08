@@ -1,3 +1,4 @@
+import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { asc, eq, inArray } from "drizzle-orm";
@@ -73,7 +74,7 @@ export async function GET() {
  *   - metadata (object, optional — `previewBu` from client is IGNORED)
  *   - primitiveSlots (array of {primitiveId, role, quantity?, sortOrder?, slotLabel?, notes?})
  */
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const { userId } = await auth.protect();
     const body: unknown = await request.json();
@@ -83,6 +84,7 @@ export async function POST(request: Request) {
     }
 
     const values = body as Record<string, unknown>;
+    const membershipOrder=Array.isArray(values["membershipOrder"])?values["membershipOrder"].map(String):null;
     const name = String(values["name"] ?? "").trim();
     const type = parseCapabilityType(values["type"]);
     const sourceType = parseSourceType(values["sourceType"]);
@@ -181,6 +183,7 @@ export async function POST(request: Request) {
       const [created] = await tx
         .insert(capabilities)
         .values({
+          membershipOrder,
           name,
           type,
           sourceType,
@@ -284,6 +287,8 @@ export async function POST(request: Request) {
 
     // Phase 4: compute content hash + auto-snapshot.
     const contentHash = await computeCapabilityContentHash({
+      membershipOrder,
+      iconSource: result.iconSource, iconKey:result.iconKey, iconUrl:result.iconUrl, iconColor:result.iconColor??"#ffffff",
       name: result.name,
       type: result.type,
       sourceType: result.sourceType,
@@ -292,6 +297,7 @@ export async function POST(request: Request) {
       isPublic: result.isPublic,
       primitiveSlots: slots.map((s) => ({
         primitiveId: s.primitiveId,
+        isMirrored: s.isMirrored,
         role: s.role,
         quantity: s.quantity,
         slotLabel: s.slotLabel ?? "",
@@ -300,6 +306,8 @@ export async function POST(request: Request) {
       effectIds: effectSlots.map((s) => s.effectId),
     });
     const canonicalPayload = buildCanonicalCapabilityPayload({
+      membershipOrder,
+      iconSource: result.iconSource, iconKey:result.iconKey, iconUrl:result.iconUrl, iconColor:result.iconColor??"#ffffff",
       name: result.name,
       type: result.type,
       sourceType: result.sourceType,
@@ -308,6 +316,7 @@ export async function POST(request: Request) {
       isPublic: result.isPublic,
       primitiveSlots: slots.map((s) => ({
         primitiveId: s.primitiveId,
+        isMirrored: s.isMirrored,
         role: s.role,
         quantity: s.quantity,
         slotLabel: s.slotLabel ?? "",
@@ -347,4 +356,8 @@ function pickStringOrNull(value: unknown): string | null {
 }
 function pickStringOrDefault(value: unknown, fallback: string): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
+}
+
+export async function POST(...args: Parameters<typeof handlePOST>) {
+  return withPublishingResponse(() => handlePOST(...args));
 }

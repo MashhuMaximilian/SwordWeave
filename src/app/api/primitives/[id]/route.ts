@@ -60,6 +60,7 @@ export async function GET(
     sourceOrigin: row.sourceOrigin ?? null,
     tags: row.tags ?? [],
     hardModifiers: row.hardModifiers ?? [],
+    consequenceBehavior: row.consequenceBehavior,
     iconSource: row.iconSource ?? null,
     iconKey: row.iconKey ?? null,
     iconUrl: row.iconUrl ?? null,

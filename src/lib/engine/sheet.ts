@@ -67,6 +67,9 @@ function roundUp(value: number): number {
 }
 
 export type PrimitiveLinkSnapshot = {
+  instanceId?: string;
+  directSource?: string | null;
+  originItemId?: string | null;
   primitiveId: number;
   source: string;
   acquiredAtLevel: number;
@@ -161,6 +164,7 @@ export type CharacterSheetInput = {
    */
   runtimeConditions?: ReadonlyArray<{
     readonly title: string;
+    readonly primitiveId?: number;
     readonly active: boolean;
     readonly modifiers: readonly HardModifier[];
   }>;
@@ -372,12 +376,12 @@ export function aggregateCharacterSheet(
   const runtimeConditionLinks = (input.runtimeConditions ?? [])
     .filter((c) => c.active)
     .map((c, i): PrimitiveLinkSnapshot => ({
-      primitiveId: -100000 - i,
+      primitiveId: c.primitiveId ?? -100000 - i,
       source: "RUNTIME",
       acquiredAtLevel: 0,
       isMirrored: false,
       primitive: {
-        id: -100000 - i,
+        id: c.primitiveId ?? -100000 - i,
         name: c.title || "Untitled condition",
         category: "RUNTIME_CONDITION",
         buCost: 0,
@@ -649,7 +653,7 @@ export function aggregateCharacterSheet(
       isToggledOff: false,
     })),
     ...((input.runtimeConditions ?? []).filter((c) => c.active).map<ResolvedPrimitiveSlot>((c, i) => ({
-      primitiveId: -100000 - i,
+      primitiveId: c.primitiveId ?? -100000 - i,
       name: c.title || "Untitled condition",
       category: "RUNTIME_CONDITION",
       hardModifiers: c.modifiers,
@@ -721,7 +725,7 @@ export function aggregateCharacterSheet(
         isMirrored: link.isMirrored,
       })),
       ...((input.runtimeConditions ?? []).filter((c) => c.active).map((c, i) => ({
-        id: -100000 - i,
+        id: c.primitiveId ?? -100000 - i,
         name: c.title || "Untitled condition",
         hardModifiers: c.modifiers,
         isMirrored: false,
@@ -1047,7 +1051,7 @@ const behaviorWalkSlots: Array<{
   })),
   ...((input.runtimeConditions ?? []).filter((c) => c.active).map((c, i) => ({
     primitive: {
-      id: -100000 - i,
+      id: c.primitiveId ?? -100000 - i,
       name: c.title || "Untitled condition",
       hardModifiers: c.modifiers ?? [],
     },
@@ -1172,8 +1176,9 @@ behaviorVariables.sort((a, b) => a.key.localeCompare(b.key));
   // Volatility (mirror-vector) — per BU Market canon, each character has a
   // level-based ceiling on how much negative BU they can take. We compute the
   // full BU ledger using the engine helpers and project volatility from it.
-  const ledgerInputs: PrimitiveInput[] = input.primitiveLinks.map((link) => ({
-    id: link.primitive.id,
+  const budgetLinks=input.primitiveLinks.filter(link=>!link.originItemId||link.directSource);
+  const ledgerInputs: PrimitiveInput[] = budgetLinks.map((link,index) => ({
+    id: link.instanceId ?? `${link.primitive.id}:${index}`,
     name: link.primitive.name,
     category: link.primitive.category,
     buCost: link.primitive.buCost,
@@ -1182,7 +1187,7 @@ behaviorVariables.sort((a, b) => a.key.localeCompare(b.key));
     hardModifiers: [],
   }));
   const mirroredIds = new Set(
-    input.primitiveLinks.filter((l) => l.isMirrored).map((l) => l.primitive.id),
+    budgetLinks.flatMap((link,index)=>link.isMirrored?[link.instanceId??`${link.primitive.id}:${index}`]:[]),
   );
   const buLedger = evaluateBuLedger(input.level, ledgerInputs, mirroredIds);
   const ceilingInfo = getVolatilityCeiling(input.level);

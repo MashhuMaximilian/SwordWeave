@@ -27,7 +27,10 @@
  */
 
 import { and, eq, inArray } from "drizzle-orm";
-import type { db as DbType } from "@/db/client";
+import { withExistingTransaction, type db as DbType } from "@/db/client";
+import { readWorkspace } from "@/lib/character/workspace/read";
+import { materializeWorkspace } from "@/lib/character/workspace/materialize";
+import { recomputeBuSpent } from "@/lib/engine/recompute-bu-spent";
 import {
   capabilityEffects,
   capabilityPrimitives,
@@ -35,6 +38,7 @@ import {
   characterHeritages,
   characterItems,
   characterPrimitives,
+  characterEffects,
   effects,
   effectPrimitives,
   heritage,
@@ -432,7 +436,28 @@ export async function saveCharacterBundles(
   // -----------------------------------------------------------------
   // 4. Run the expander.
   // -----------------------------------------------------------------
+  const previousPrimitives=await tx.select().from(characterPrimitives).where(eq(characterPrimitives.characterId,characterId));
+  const previousCapabilities = await tx.select().from(characterCapabilities).where(eq(characterCapabilities.characterId, characterId));
+  const previousHeritages = await tx.select().from(characterHeritages).where(eq(characterHeritages.characterId, characterId));
+  const previousItems = await tx.select().from(characterItems).where(eq(characterItems.characterId, characterId));
+  // The modal represents a shared piece through its bundle. Preserve its
+  // independently added reference, including when that bundle is removed.
+  for (const previous of previousPrimitives) {
+    if (previous.directSource) expansionInput.primitives.push({ primitiveId: previous.primitiveId, source: previous.directSource, isMirrored: previous.isMirrored });
+  }
+  const standaloneEffects=await tx.select().from(characterEffects).where(eq(characterEffects.characterId,characterId));
+  if(standaloneEffects.length){
+    const links=await tx.select().from(effectPrimitives).where(inArray(effectPrimitives.effectId,standaloneEffects.map(e=>e.effectId)));
+    for(const effect of standaloneEffects)expansionInput.effects.push({id:effect.effectId,source:effect.category as BundleExpansionInput['effects'][number]['source'],primitiveLinks:links.filter(p=>p.effectId===effect.effectId).map(p=>({primitiveId:p.primitiveId,isMirrored:p.isMirrored}))});
+  }
   const expansion = expandBundles(expansionInput);
+  const combinedDirectSources=new Map<number,typeof previousPrimitives[number]['source']>();
+  for(const previous of previousPrimitives.filter(p=>p.directSource&&!p.isMirrored)){
+    const inherited=expansion.primitives.find(p=>p.primitiveId===previous.primitiveId&&!p.isMirrored&&(p.originHeritageId||p.originCapabilityId||p.originEffectId));
+    const direct=expansion.primitives.findIndex(p=>p.primitiveId===previous.primitiveId&&!p.isMirrored&&!p.originHeritageId&&!p.originCapabilityId&&!p.originEffectId);
+    if(inherited&&direct>=0){combinedDirectSources.set(previous.primitiveId,expansion.primitives[direct]!.source);expansion.primitives.splice(direct,1);}
+  }
+  const claimedInstances=new Set<string>();
 
   // -----------------------------------------------------------------
   // 5. Validate volatility ceiling BEFORE writing.
@@ -482,6 +507,9 @@ export async function saveCharacterBundles(
     const primMap = new Map(primRows.map((r) => [r.id, r]));
     const slotsWithVersion = await Promise.all(
       expansion.primitives.map(async (p) => {
+        const matches=previousPrimitives.filter(r=>r.primitiveId===p.primitiveId&&r.isMirrored===p.isMirrored&&!claimedInstances.has(r.instanceId));
+        const previous=matches.find(r=>r.originHeritageId===p.originHeritageId&&r.originCapabilityId===p.originCapabilityId&&r.originEffectId===p.originEffectId)??matches[0];
+        if(previous)claimedInstances.add(previous.instanceId);
         const prim = primMap.get(p.primitiveId);
         const versionId = await resolveLatestVersionId(
           "primitive",
@@ -494,13 +522,15 @@ export async function saveCharacterBundles(
             })
           : "PINNED";
         return {
+          ...(previous?{instanceId:previous.instanceId}:{}),
           characterId,
           primitiveId: p.primitiveId,
+          directSource:combinedDirectSources.get(p.primitiveId)??null,
           source: p.source,
-          acquiredAtLevel: level,
+          acquiredAtLevel: previous?.acquiredAtLevel??level,
           isMirrored: p.isMirrored,
-          versionId,
-          slotSource,
+          versionId: previous?.versionId??versionId,
+          slotSource: previous?.slotSource??slotSource,
           originHeritageId: p.originHeritageId,
           originCapabilityId: p.originCapabilityId,
           originEffectId: p.originEffectId,
@@ -550,6 +580,7 @@ export async function saveCharacterBundles(
     const capMap = new Map(capRows.map((r) => [r.id, r]));
     const slotsWithVersion = await Promise.all(
       expansion.capabilities.map(async (c) => {
+        const previous = previousCapabilities.find(row => row.capabilityId === c.capabilityId);
         const cap = capMap.get(c.capabilityId);
         const versionId = await resolveLatestVersionId(
           "capability",
@@ -564,9 +595,9 @@ export async function saveCharacterBundles(
         return {
           characterId,
           capabilityId: c.capabilityId,
-          acquiredAtLevel: level,
-          versionId,
-          slotSource,
+          acquiredAtLevel: previous?.acquiredAtLevel ?? level,
+          versionId: previous?.versionId ?? versionId,
+          slotSource: previous?.slotSource ?? slotSource,
           originHeritageId: c.originHeritageId,
           // Phase 8.4 v24.6 (Mashu 2026-07-29): per-tab
           // accordion routing. For DIRECT caps
@@ -632,6 +663,7 @@ export async function saveCharacterBundles(
   if (expansion.heritages.length > 0) {
     const heritageRowsData = await Promise.all(
       expansion.heritages.map(async (h) => {
+        const previous = previousHeritages.find(row => row.heritageId === h.heritageId);
         const versionId = await resolveLatestVersionId(
           "template",
           h.heritageId,
@@ -639,10 +671,10 @@ export async function saveCharacterBundles(
         return {
           characterId,
           heritageId: h.heritageId,
-          acquiredAtLevel: level,
+          acquiredAtLevel: previous?.acquiredAtLevel ?? level,
           isMirrored: h.isMirrored,
-          versionId,
-          slotSource: "PINNED" as const,
+          versionId: previous?.versionId ?? versionId,
+          slotSource: previous?.slotSource ?? "PINNED" as const,
         };
       }),
     );
@@ -694,6 +726,7 @@ export async function saveCharacterBundles(
     const itemMap = new Map(itemRows.map((r) => [r.id, r]));
     const slotsWithVersion = await Promise.all(
       expandedItemIds.map(async (iid) => {
+        const previous = previousItems.find(row => row.itemId === iid.id);
         const item = itemMap.get(iid.id);
         const versionId = await resolveLatestVersionId("item", iid.id);
         const slotSource = item
@@ -712,14 +745,23 @@ export async function saveCharacterBundles(
           // chosen value here so the modal save round-trips
           // correctly.
           equipped: iid.equipped,
-          versionId,
-          slotSource,
+          versionId: previous?.versionId ?? versionId,
+          slotSource: previous?.slotSource ?? slotSource,
         };
       }),
     );
     await tx.insert(characterItems).values(slotsWithVersion);
   }
 
+  // Keep item contributions and their instance identities when an unrelated
+  // modal edit rebuilds the legacy junctions. Canonical reconciliation removes
+  // any contribution whose item or alternate supply no longer exists.
+  const itemInstances = previousPrimitives.filter(row => row.originItemId && !claimedInstances.has(row.instanceId));
+  if (itemInstances.length) await tx.insert(characterPrimitives).values(itemInstances);
+  await withExistingTransaction(tx, async () => {
+    await materializeWorkspace(await readWorkspace(characterId), userId, level);
+    await recomputeBuSpent(characterId);
+  });
   return expansion;
 }
 

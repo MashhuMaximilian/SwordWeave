@@ -1,4 +1,6 @@
 "use client";
+import { ConsequenceRestrictionsEditor } from "./consequence-restrictions-editor";
+import type { AccessRestriction } from "@/lib/character/consequences/types";
 
 /**
  * condition-composer.tsx — Phase 8.L round 52 (Mashu 2026-08-14)
@@ -63,6 +65,8 @@ export function ConditionComposer({
 }: ConditionComposerProps) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
+  const [restrictions,setRestrictions] = useState<AccessRestriction[]>([...(initial?.restrictions ?? [])]);
+  const [recovery, setRecovery] = useState(initial?.recovery ?? "");
   const [tagsInput, setTagsInput] = useState(
     (initial?.tags ?? []).join(", "),
   );
@@ -172,7 +176,7 @@ export function ConditionComposer({
         };
       });
     }
-    return [blankModifierDraft("modifier-1")];
+    return [];
   });
 
   const tags = useMemo(
@@ -396,7 +400,7 @@ export function ConditionComposer({
         description: description.trim(),
         tags,
         modifiers: hardMods,
-        durationTier,
+        durationTier, recovery, restrictions,
       };
       const key = `sw:cond:${characterId}:${initial.id}`;
       try {
@@ -416,7 +420,7 @@ export function ConditionComposer({
         description: description.trim(),
         tags,
         modifiers: hardMods,
-        durationTier,
+        durationTier, recovery, restrictions,
         active: true,
         createdAt: Date.now(),
         source: "custom",
@@ -450,11 +454,10 @@ export function ConditionComposer({
           <X className="size-4" />
         </button>
         <h2 className="mb-3 text-lg font-semibold text-foreground">
-          {initial ? "Edit condition" : "Add condition"}
+          {initial ? "Edit consequence" : "Add consequence"}
         </h2>
         <p className="mb-4 text-xs text-muted-foreground">
-          Runtime conditions are tracked locally. They don't auto-clear on
-          rest — press X in the drawer to remove them.
+          Consequences sync with your character. Resolve them after recovery; rest does not clear them automatically.
         </p>
 
         <div className="space-y-4">
@@ -488,6 +491,9 @@ export function ConditionComposer({
               placeholder="poison, beast, save_vs_fortitude"
             />
           </label>
+
+          <ConsequenceRestrictionsEditor characterId={characterId} value={restrictions} onChange={setRestrictions} />
+          <label className="block text-sm font-medium">Recovery requirements<textarea className="mt-1 w-full rounded border border-input bg-background p-2" value={recovery} onChange={e => setRecovery(e.target.value)} placeholder="What must happen before this is resolved?" /></label>
 
           <fieldset className="space-y-2">
             <legend className="text-sm font-medium">Duration</legend>
@@ -560,7 +566,7 @@ export function ConditionComposer({
             disabled={!title.trim()}
             className="h-9 rounded-md bg-amber-500 px-4 text-sm font-medium text-white hover:bg-amber-600 disabled:opacity-50"
           >
-            {initial ? "Save" : "Add condition"}
+            {initial ? "Save" : "Add consequence"}
           </button>
         </div>
       </div>

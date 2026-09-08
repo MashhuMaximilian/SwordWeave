@@ -26,6 +26,7 @@ export type HeritageFormState = {
 };
 
 export type TemplateSlot = {
+  isMirrored?: boolean;
   id: number | string;
   name: string;
   category: string;

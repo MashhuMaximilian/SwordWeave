@@ -1,3 +1,7 @@
+import { auth } from "@clerk/nextjs/server";
+import { characterConsequences } from "@/db/schema/workspace";
+import { consequenceAdjustedSlots } from "@/lib/character/consequences/resolve";
+import { readWorkspace } from "@/lib/character/workspace/read";
 /**
  * /api/characters/[id]/resolve — Phase 8.3f S3 (Mashu 2026-07-28)
  *
@@ -119,12 +123,6 @@ export async function GET(
     );
   }
 
-  if (targetFilter) {
-    const cached = getResolverCache(id, targetFilter);
-    if (cached) {
-      return NextResponse.json({ target: targetFilter, ...(cached as object) });
-    }
-  }
 
   const charRow = await db.query.characters.findFirst({
     where: eq(characters.id, id),
@@ -132,6 +130,15 @@ export async function GET(
 
   if (!charRow) {
     return NextResponse.json({ error: "Character not found." }, { status: 404 });
+  }
+
+  const {userId}=await auth.protect();
+  if(charRow.userId!==userId)return NextResponse.json({error:'You do not own this character.'},{status:403});
+  if (targetFilter) {
+    const cached = getResolverCache(id, targetFilter);
+    if (cached) {
+      return NextResponse.json({ target: targetFilter, ...(cached as object) });
+    }
   }
 
   // -----------------------------------------------------------------
@@ -142,6 +149,9 @@ export async function GET(
   const slotRows = await db
     .select({
       primitiveId: characterPrimitives.primitiveId,
+      instanceId: characterPrimitives.instanceId,
+      directSource: characterPrimitives.directSource,
+      originItemId: characterPrimitives.originItemId,
       isMirrored: characterPrimitives.isMirrored,
       originHeritageId: characterPrimitives.originHeritageId,
       originCapabilityId: characterPrimitives.originCapabilityId,
@@ -158,6 +168,7 @@ export async function GET(
       primitiveIsMirrorable: primitives.isMirrorable,
       primitiveMirrorVector: primitives.mirrorVector,
       primitiveHardModifiers: primitives.hardModifiers,
+      consequenceBehavior: primitives.consequenceBehavior,
     })
     .from(characterPrimitives)
     .innerJoin(primitives, eq(primitives.id, characterPrimitives.primitiveId))
@@ -175,11 +186,14 @@ export async function GET(
     if (c.slotTab) capSlotTabs.set(c.id, c.slotTab);
   }
 
-  const slots: ResolvedPrimitiveSlot[] = slotRows.map((row) => ({
+  let slots: ResolvedPrimitiveSlot[] = slotRows.map((row) => ({
     primitiveId: row.primitiveId,
+    instanceId: row.instanceId,
+    directSource: row.directSource,
+    originItemId: row.originItemId,
     name: row.primitiveName,
     category: row.primitiveCategory,
-    hardModifiers: (row.primitiveHardModifiers ?? []) as ResolvedPrimitiveSlot["hardModifiers"],
+    hardModifiers: (row.consequenceBehavior ? [] : row.primitiveHardModifiers ?? []) as ResolvedPrimitiveSlot["hardModifiers"],
     isMirrored: row.isMirrored,
     isMirrorable: row.primitiveIsMirrorable,
     mirrorVector: row.primitiveMirrorVector,
@@ -196,6 +210,9 @@ export async function GET(
         ? capSlotTabs.get(row.originCapabilityId) ?? null
         : (row.source ?? null),
   }));
+
+  const consequenceRecords = await db.select().from(characterConsequences).where(eq(characterConsequences.characterId, id));
+  slots = consequenceAdjustedSlots(slots, await readWorkspace(id), consequenceRecords.filter(r => !r.deletedAt).map(r => r.occurrence));
 
   // -----------------------------------------------------------------
   // Phase 8.I i3: Build sourceNames lookup map for provenance.

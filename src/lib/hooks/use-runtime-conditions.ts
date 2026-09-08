@@ -1,66 +1,14 @@
 "use client";
 
-/**
- * use-runtime-conditions.ts — Phase 8.L round 48 (Mashu 2026-08-14)
- *
- * localStorage-backed CRUD for the Play Session Scratchpad
- * (FAB-launch from R5-Q6). Each character has its own namespace
- * under `sw:cond:<characterId>:<conditionId>`.
- *
- * Storage shape:
- *   sw:cond:<characterId>:<conditionId> = JSON.stringify({
- *     id: string,
- *     title: string,
- *     description: string,
- *     tags: string[],
- *     modifiers: HardModifier[],
- *     durationTier: "long_rest" | "short_rest" | "manual",
- *     active: boolean,         // localStorage "active" state
- *     createdAt: number,       // unix ms
- *   })
- *
- * The hook watches `storage` (cross-tab) + `sw:conditions-changed`
- * (same-tab writer notifications) so all surfaces stay in sync.
- *
- * NOTE: Conditions do NOT clear on long/short rest (per Mashu R48).
- * The user explicitly clicks X to delete. Auto-clear was rejected
- * as overcomplicated.
- *
- * NOTE: Conditions are not migrated to the DB in v1 (per Mashu
- * R48 Q-D: localStorage only). They survive cache clears via
- * browser persistence but are per-device.
- */
+/** Local cache with character-scoped server synchronization. Legacy browser
+ * records are imported idempotently and retained as an acknowledged backup. */
 
 import { useState, useEffect, useCallback } from "react";
-import type { HardModifier } from "@/types/swordweave";
+import { connectConsequenceSync, consequenceSyncError } from "@/lib/character/consequences/client-sync";
 
 export type DurationTier = "long_rest" | "short_rest" | "manual";
 
-export interface RuntimeCondition {
-  readonly id: string;
-  readonly title: string;
-  readonly description: string;
-  readonly tags: readonly string[];
-  readonly modifiers: readonly HardModifier[];
-  readonly durationTier: DurationTier;
-  readonly active: boolean;
-  readonly createdAt: number;
-  /**
-  *Phase 8.L round 48: source label for the condition card.
-  *"custom" = user-authored via composer, "sheet" = picked
-  *from character sheet (capabilities/effects/etc.). Sheet-sourced
-  *conditions are read-only (you can engage/disengage but not
-  *edit the modifier — go to the character sheet to change).
-  */
-  readonly source: "custom" | "sheet" | "sheet-auto";
-  /**
-  *Phase 8.L round 48: when source === "sheet", the originating
-  *entity (capabilityId, effectId, primitiveId, etc.) for the
-  *From-sheet section grouping.
-  */
-  readonly sourceEntityId?: string;
-  readonly sourceEntityType?: "capability" | "effect" | "primitive";
-}
+export type RuntimeCondition = import("@/lib/character/consequences/types").ConsequenceOccurrence;
 
 export function condStorageKey(characterId: string, conditionId: string): string {
   return `sw:cond:${characterId}:${conditionId}`;
@@ -129,6 +77,7 @@ function readAllConditions(characterId: string): RuntimeCondition[] {
 export interface UseRuntimeConditionsResult {
   readonly conditions: readonly RuntimeCondition[];
   readonly hydrated: boolean;
+  readonly syncError: string | null;
   readonly create: (
     input: Omit<RuntimeCondition, "id" | "createdAt" | "active"> & {
       active?: boolean;
@@ -136,7 +85,7 @@ export interface UseRuntimeConditionsResult {
   ) => RuntimeCondition;
   readonly update: (id: string, patch: Partial<RuntimeCondition>) => void;
   readonly remove: (id: string) => void;
-  readonly toggle: (id: string) => void;
+  readonly toggle: (id: string, currentActive?: boolean) => void;
   readonly refresh: () => void;
 }
 
@@ -144,27 +93,37 @@ export function useRuntimeConditions(
   characterId: string | null,
 ): UseRuntimeConditionsResult {
   const [conditions, setConditions] = useState<readonly RuntimeCondition[]>([]);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [loadedCharacterId, setLoadedCharacterId] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
+    setLoadedCharacterId(characterId);
     if (!characterId) {
       setConditions([]);
       setHydrated(true);
       return;
     }
     setConditions(readAllConditions(characterId));
+    setSyncError(consequenceSyncError(characterId));
     setHydrated(true);
   }, [characterId]);
 
   useEffect(() => {
     if (!characterId) return;
+    // Hydrate this external localStorage source after subscribing to a character.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refresh();
     function onChange() {
       refresh();
     }
+    const disconnect = connectConsequenceSync(characterId);
+    window.addEventListener("sw:consequences-sync", onChange);
     window.addEventListener("storage", onChange);
     window.addEventListener("sw:conditions-changed", onChange);
     return () => {
+      disconnect();
+      window.removeEventListener("sw:consequences-sync", onChange);
       window.removeEventListener("storage", onChange);
       window.removeEventListener("sw:conditions-changed", onChange);
     };
@@ -223,16 +182,18 @@ export function useRuntimeConditions(
   );
 
   const toggle = useCallback<UseRuntimeConditionsResult["toggle"]>(
-    (id) => {
+    (id, currentActive) => {
       if (!characterId) return;
       const existing = readCondition(characterId, id);
       if (!existing) return;
-      update(id, { active: !existing.active });
+      const active = !(currentActive ?? existing.manualOverride ?? existing.active);
+      update(id, { manualOverride: active });
     },
     [characterId, update],
   );
 
-  return { conditions, hydrated, create, update, remove, toggle, refresh };
+  return { syncError, conditions: loadedCharacterId === characterId ? conditions : [],
+    hydrated: hydrated && loadedCharacterId === characterId, create, update, remove, toggle, refresh };
 }
 
 /**

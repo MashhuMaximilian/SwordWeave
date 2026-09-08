@@ -46,6 +46,7 @@ export const primitives = pgTable(
     mirrorEligibilityNotes: text("mirror_eligibility_notes")
       .notNull()
       .default(""),
+    consequenceBehavior: jsonb("consequence_behavior").$type<import("@/lib/character/consequences/types").ConsequenceBehavior>(),
     hardModifiers: jsonb("hard_modifiers")
       .$type<readonly HardModifier[]>()
       .notNull()
@@ -174,6 +175,7 @@ export const effects = pgTable(
       .array()
       .notNull()
       .default(sql`ARRAY[]::text[]`),
+    membershipOrder: jsonb("membership_order").$type<string[]>(),
     contentHash: text("content_hash"),
     iconSource: iconSourceEnum("icon_source"),
     iconKey: text("icon_key"),
@@ -269,6 +271,7 @@ export const capabilities = pgTable(
       .$type<Record<string, JsonValue>>()
       .notNull()
       .default(sql`'{}'::jsonb`),
+    membershipOrder: jsonb("membership_order").$type<string[]>(),
     contentHash: text("content_hash"),
     iconSource: iconSourceEnum("icon_source"),
     iconKey: text("icon_key"),

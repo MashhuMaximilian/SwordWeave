@@ -1,3 +1,4 @@
+import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { asc, eq, inArray } from "drizzle-orm";
@@ -140,7 +141,7 @@ export async function GET(request: Request) {
  *   - capabilityIds (array — capabilities granted when equipped)
  *   - effectIds (array — effects granted when equipped)
  */
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const { userId } = await auth.protect();
     const body: unknown = await request.json();
@@ -150,6 +151,7 @@ export async function POST(request: Request) {
     }
 
     const values = body as Record<string, unknown>;
+    const membershipOrder=Array.isArray(values["membershipOrder"])?values["membershipOrder"].map(String):null;
     const name = String(values["name"] ?? "").trim();
     const itemType = parseType(values["itemType"]);
     const rarity = parseRarity(values["rarity"]) ?? "COMMON";
@@ -256,6 +258,7 @@ export async function POST(request: Request) {
       const [created] = await tx
         .insert(items)
         .values({
+          membershipOrder,
           name,
           itemType,
           rarity,
@@ -345,6 +348,8 @@ export async function POST(request: Request) {
 
     // Phase 4: compute content hash + auto-snapshot.
     const canonicalPayload = buildCanonicalItemPayload({
+      membershipOrder,
+      iconSource: result.iconSource, iconKey:result.iconKey, iconUrl:result.iconUrl, iconColor:result.iconColor??"#ffffff",
       name: result.name,
       itemType: result.itemType,
       rarity: result.rarity,
@@ -365,6 +370,8 @@ export async function POST(request: Request) {
       effectIds,
     });
     const contentHash = await computeItemContentHash({
+      membershipOrder,
+      iconSource: result.iconSource, iconKey:result.iconKey, iconUrl:result.iconUrl, iconColor:result.iconColor??"#ffffff",
       name: result.name,
       itemType: result.itemType,
       rarity: result.rarity,
@@ -412,4 +419,7 @@ function pickStringOrNull(value: unknown): string | null {
 }
 function pickStringOrDefault(value: unknown, fallback: string): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
+}
+export async function POST(...args: Parameters<typeof handlePOST>) {
+  return withPublishingResponse(() => handlePOST(...args));
 }

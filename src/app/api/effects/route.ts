@@ -1,3 +1,4 @@
+import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { asc, desc, eq } from "drizzle-orm";
@@ -120,7 +121,7 @@ export async function GET() {
  * (/api/effects/[id]) with the `intent` field in the body — see
  * /api/effects/[id]/route.ts.
  */
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const { userId } = await auth.protect();
     const body: unknown = await request.json();
@@ -130,6 +131,7 @@ export async function POST(request: Request) {
     }
 
     const values = body as Record<string, unknown>;
+    const membershipOrder=Array.isArray(values["membershipOrder"])?values["membershipOrder"].map(String):null;
     const name = String(values["name"] ?? "").trim();
     const narrativeDescription = String(
       values["narrativeDescription"] ?? "",
@@ -143,22 +145,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Effect name is required." }, { status: 400 });
     }
 
-    if (primitiveSlots.length === 0) {
-      return NextResponse.json(
-        { error: "Slot at least one primitive into the effect." },
-        { status: 400 },
-      );
-    }
+
 
     // Build the canonical payload + draftHash so subsequent saves on the
     // same draft can short-circuit (no-op).
     const canonicalPayload = buildCanonicalEffectPayload({
+      membershipOrder,
       name,
       narrativeDescription,
       tags,
       isPublic,
       primitiveSlots: primitiveSlots.map((s) => ({
         primitiveId: s.primitiveId,
+        isMirrored: s.isMirrored,
         quantity: s.quantity,
         notes: s.notes ?? "",
       })),
@@ -176,12 +175,14 @@ export async function POST(request: Request) {
       );
     }
     const contentHash = await computeEffectContentHash({
+      membershipOrder,
       name,
       narrativeDescription,
       tags,
       isPublic,
       primitiveSlots: primitiveSlots.map((s) => ({
         primitiveId: s.primitiveId,
+        isMirrored: s.isMirrored,
         quantity: s.quantity,
         notes: s.notes ?? "",
       })),
@@ -195,6 +196,7 @@ export async function POST(request: Request) {
     const [created] = await db
       .insert(effects)
       .values({
+          membershipOrder,
         name,
         userId,
         narrativeDescription,
@@ -235,7 +237,7 @@ export async function POST(request: Request) {
       }
     }
 
-    await db.insert(effectPrimitives).values(
+    if (primitiveSlots.length) await db.insert(effectPrimitives).values(
       primitiveSlots.map((slot, index) => ({
         effectId: created.id,
         primitiveId: slot.primitiveId,
@@ -289,4 +291,8 @@ function pickStringOrNull(value: unknown): string | null {
 }
 function pickStringOrDefault(value: unknown, fallback: string): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
+}
+
+export async function POST(...args: Parameters<typeof handlePOST>) {
+  return withPublishingResponse(() => handlePOST(...args));
 }

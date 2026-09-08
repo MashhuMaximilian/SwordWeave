@@ -84,6 +84,9 @@ export default async function CreationsPage({
       // "My creations" filter is a single equality on text. Without this
       // row users couldn't see or edit their own builds from /creations.
       db.query.builds.findMany({
+        columns: { id: true, name: true, description: true, level: true,
+          isPublic: true, sourceOrigin: true, iconSource: true, iconKey: true,
+          iconUrl: true, iconColor: true },
         where: eq(builds.userId, userId),
         orderBy: [desc(builds.level), asc(builds.name)],
       }),

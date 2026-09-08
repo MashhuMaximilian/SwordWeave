@@ -1,3 +1,4 @@
+import { withCharacterMutation } from "@/lib/character/mutation-transaction";
 /**
  * POST /api/characters/[id]/vitality
  *
@@ -34,7 +35,7 @@ import {
 import { appendCharacterLog } from "@/lib/character/character-log";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 
-export async function POST(
+async function handlePOST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -146,4 +147,8 @@ export async function POST(
     const message = error instanceof Error ? error.message : "Unknown error.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
+}
+export async function POST(...args:Parameters<typeof handlePOST>){
+ const {id}=await args[1].params;
+ return withCharacterMutation(id,()=>handlePOST(...args));
 }

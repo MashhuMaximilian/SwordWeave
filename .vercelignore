@@ -1,0 +1,13 @@
+.git
+.next
+node_modules
+.env*
+.clerk
+.playwright-cli
+output/playwright
+.migration-backup
+.swordweave-test-account.local
+screenshots
+docs-archive
+scripts/output
+*.tsbuildinfo

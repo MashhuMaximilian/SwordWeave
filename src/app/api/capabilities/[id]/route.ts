@@ -1,3 +1,4 @@
+import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { asc, eq, inArray, and, isNull, or, sql } from "drizzle-orm";
@@ -32,6 +33,7 @@ import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
 import { computeTransitiveBu } from "@/lib/engine/transitive-bu";
 import {
   buildCanonicalCapabilityPayload,
+  hashCapabilityContent,
   isCapabilityDraftEmpty,
   computeCapabilityContentHash,
 } from "@/lib/publishing/hash-content";
@@ -275,7 +277,7 @@ export async function GET(
  * The response shape mirrors the effects route:
  *   { capability, dispatchOutcome: { kind, newId, sourceId, swapTarget } | { kind: "no-op", message } }
  */
-export async function PATCH(
+async function handlePATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -289,6 +291,8 @@ export async function PATCH(
     }
 
     const values = body as Record<string, unknown>;
+    const layoutRow = await db.query.capabilities.findFirst({ where: eq(capabilities.id, id), columns: { membershipOrder: true } });
+    const membershipOrder = values["membershipOrder"] === null ? null : Array.isArray(values["membershipOrder"]) ? (values["membershipOrder"] as unknown[]).map(String) : layoutRow?.membershipOrder ?? null;
 
     // Phase 2: parse intent. If absent, default to "load" (legacy in-place
     // edit behaviour). Forms that fork will send `intent: "fork"`.
@@ -346,6 +350,7 @@ export async function PATCH(
     // (or "" as a placeholder) is fine — the no-op detection only needs
     // a stable value that matches what the form serialized.
     const canonicalPayload = buildCanonicalCapabilityPayload({
+      membershipOrder,
       name,
       type: type ?? "",
       sourceType: sourceType ?? "",
@@ -354,6 +359,7 @@ export async function PATCH(
       isPublic,
       primitiveSlots: primitiveSlots.map((s) => ({
         primitiveId: s.primitiveId,
+        isMirrored: s.isMirrored,
         role: s.role,
         quantity: s.quantity,
         slotLabel: s.slotLabel ?? "",
@@ -368,6 +374,7 @@ export async function PATCH(
     });
     const draftIsEmpty = isCapabilityDraftEmpty(canonicalPayload);
     const draftHash = await computeCapabilityContentHash({
+      membershipOrder,
       name,
       type: type ?? "",
       sourceType: sourceType ?? "",
@@ -376,6 +383,7 @@ export async function PATCH(
       isPublic,
       primitiveSlots: primitiveSlots.map((s) => ({
         primitiveId: s.primitiveId,
+        isMirrored: s.isMirrored,
         role: s.role,
         quantity: s.quantity,
         slotLabel: s.slotLabel ?? "",
@@ -442,6 +450,7 @@ export async function PATCH(
         tags,
         sourceOrigin: sourceCapability.sourceOrigin, // preserve
         contentHash: draftHash,
+          membershipOrder,
         updatedAt: new Date(),
         // Phase 8: per-entity iconography
         iconSource: pickIconSource(values["iconSource"]),
@@ -661,6 +670,9 @@ export async function PATCH(
         )
       : name;
 
+    canonicalPayload.name = baseName;
+    const forkHash = await hashCapabilityContent(canonicalPayload);
+
     const created = await db.transaction(async (tx) => {
       const [inserted] = await tx
         .insert(capabilities)
@@ -678,7 +690,12 @@ export async function PATCH(
           userId,
           sourceOrigin: finalSourceOrigin,
           tags,
-          contentHash: draftHash,
+          contentHash: forkHash,
+          membershipOrder,
+          iconSource: pickIconSource(values["iconSource"]),
+          iconKey: pickStringOrNull(values["iconKey"]),
+          iconUrl: pickStringOrNull(values["iconUrl"]),
+          iconColor: pickStringOrDefault(values["iconColor"], "#ffffff"),
           // metadata is a non-null jsonb column with a default; the
           // default isn't applied at the TypeScript type level. We
           // seed an empty object here, then UPDATE it with the
@@ -806,7 +823,7 @@ export async function PATCH(
     await recordVersion({
       entityKind: "capability",
       entityId: created.id,
-      contentHash: draftHash,
+      contentHash: forkHash,
       snapshot: canonicalPayload as unknown as Record<string, unknown>,
       publishedByUserId: userId,
     });
@@ -933,4 +950,8 @@ function pickStringOrNull(value: unknown): string | null {
 }
 function pickStringOrDefault(value: unknown, fallback: string): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
+}
+
+export async function PATCH(...args: Parameters<typeof handlePATCH>) {
+  return withPublishingResponse(() => handlePATCH(...args));
 }

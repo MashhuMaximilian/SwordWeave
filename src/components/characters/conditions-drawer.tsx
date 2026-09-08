@@ -19,16 +19,21 @@
  *  - Storage is localStorage (per R48 Q-D)
  */
 
+import { resolveConsequenceConflict } from "@/lib/character/consequences/client-sync";
 import { useState } from "react";
-import { X, Plus, Power, Pencil, Trash2, ChevronRight, ChevronLeft, CheckCircle2, MinusCircle, Bot } from "lucide-react";
+import { Plus, Power, Pencil, Trash2, ChevronRight, Bot } from "lucide-react";
 import {
   useRuntimeConditions,
   type RuntimeCondition,
 } from "@/lib/hooks/use-runtime-conditions";
+import { PromoteConsequence } from "./promote-consequence";
 import { ConditionComposer } from "@/components/characters/condition-composer";
 import type { HardModifier } from "@/types/swordweave";
 import { MODIFIER_TARGET_SPEC } from "@/lib/primitives/modifier-scope";
 import { humanReadableToken } from "@/lib/engine/condition-dictionary";
+import { conditionActive } from "@/lib/character/condition-overrides";
+import { formatEquationValue } from "@/lib/engine/equation-formatter";
+import { parseCondition, conditionToBadges } from "@/lib/primitives/condition";
 
 type ConditionModifier = HardModifier;
 
@@ -48,32 +53,33 @@ interface ConditionsDrawerProps {
 }
 
 export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: ConditionsDrawerProps) {
-  const { conditions, hydrated, create, update, remove, toggle } =
+  const { conditions, hydrated, syncError, update, remove, toggle } =
     useRuntimeConditions(open ? characterId : null);
   const [composerInitial, setComposerInitial] = useState<RuntimeCondition | null>(
     null,
   );
   const [composerOpen, setComposerOpen] = useState(false);
+  const [resolving,setResolving]=useState<RuntimeCondition|null>(null);
+  const [recoveryNote,setRecoveryNote]=useState("");
+  const [promoting, setPromoting] = useState<RuntimeCondition | null>(null);
 
   const openComposer = (initial: RuntimeCondition | null = null) => {
     setComposerInitial(initial);
     setComposerOpen(true);
   };
 
-  const closeComposer = () => setComposerOpen(false);
 
   if (!open) return null;
 
-  // Phase 9.5 follow-up (Mashu 2026-09-07): drop the
-  // 3-section split (Conditions / From sheet / Auto-triggered).
-  // Mashu: "I need to be able to toggle on and off manually
-  // everything there. We had a bunch of rules here that some
-  // are and some are not toggleable, but those make no sense."
-  // The rules tried to surface engine-computed state vs manual
-  // state, but the user only cares that any condition in the
-  // panel is a clickable toggle. We keep the source for the
-  // tiny "engine-managed" hint, but no separate sections.
-  const allConditions = conditions;
+  const groups = [
+    { key:'manual',title:'Added manually',entries:conditions.filter(c=>c.source==='custom'&&!c.applicationId) },
+    { key:'sheet',title:'From sheet',entries:conditions.filter(c=>c.source==='sheet') },
+    { key:'automatic',title:'Auto-triggered',entries:conditions.filter(c=>c.source==='sheet-auto') },
+    ...[...new Set(conditions.flatMap(c=>c.applicationId?[c.applicationId]:[]))].map(applicationId=>{
+      const entries=conditions.filter(c=>c.applicationId===applicationId);
+      return {key:applicationId,title:`Action · ${new Date(entries[0]!.createdAt).toLocaleString()}`,entries};
+    }),
+  ];
 
   return (
     <>
@@ -86,13 +92,13 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
 
       <aside
         className="fixed right-0 top-0 z-40 flex h-full w-full max-w-md flex-col border-l border-amber-500/30 bg-card shadow-2xl"
-        aria-label="Conditions drawer"
+        aria-label="Consequences drawer"
       >
         <header className="flex items-center justify-between border-b border-amber-500/30 bg-amber-500/5 px-4 py-3">
           <div className="flex items-center gap-2">
             <ChevronRight className="size-4 text-amber-600 dark:text-amber-400" />
             <h2 className="text-sm font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-              Conditions ({conditions.length})
+              Consequences ({conditions.length})
             </h2>
           </div>
           <button
@@ -112,60 +118,55 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
             className="mb-4 flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-500/10 dark:text-amber-300"
           >
             <Plus className="size-4" />
-            Add condition
+            Add consequence
           </button>
 
+          {syncError && <p role="alert" className="mb-3 text-sm text-destructive">{syncError} Your local changes are retained.<button className="block underline" onClick={() => void resolveConsequenceConflict(characterId, "local")}>Save my local changes against the latest state</button><button className="block underline" onClick={() => void resolveConsequenceConflict(characterId, "server")}>Use synced changes and keep a local backup</button></p>}
           {!hydrated && (
             <p className="text-xs italic text-muted-foreground">Loading…</p>
           )}
 
           {hydrated && conditions.length === 0 && (
             <p className="text-xs italic text-muted-foreground">
-              No conditions yet. Use the button above to track a temporary
-              state like "poisoned" or "exhausted".
+              No consequences yet. Use the button above to track a temporary
+              state like &quot;poisoned&quot; or &quot;exhausted&quot;.
             </p>
           )}
 
-          {allConditions.length > 0 && (
-            <Section title="Conditions" count={allConditions.length}>
-              {allConditions.map((c) => (
-                <ConditionCardItem
-                  key={c.id}
-                  condition={c}
-                  onToggle={() => toggle(c.id)}
-                  // Custom conditions support edit/remove.
-                  // Sheet + sheet-auto only expose toggle —
-                  // the source entity owns the modifier so
-                  // editing / deleting locally would silently
-                  // desync from the sheet.
-                  {...(c.source === "custom"
-                    ? {
-                        onEdit: () => openComposer(c),
-                        onRemove: () => remove(c.id),
-                      }
-                    : {})}
-                  // Surface the engine's live evaluation as
-                  // a tooltip / badge so the user can see when
-                  // an auto-triggered condition "wants" to be
-                  // on, even if they toggled it off.
-                  {...(autoEvaluated?.has(c.id)
-                    ? {
-                        liveActive: autoEvaluated.get(c.id)!.active,
-                        sourceKind: c.source,
-                      }
-                    : {})}
-                />
-              ))}
-            </Section>
-          )}
+          {groups.map(group => {
+            const entries = group.entries;
+            if (!entries.length) return null;
+            return (
+              <Section key={group.key} title={group.title} count={entries.length}>
+                {entries.map(c => (
+                  <ConditionCardItem
+                    key={c.id}
+                    condition={c}
+                    active={conditionActive(c, autoEvaluated?.get(c.id))}
+                    liveActive={autoEvaluated?.get(c.id)?.active}
+                    sourceKind={c.source}
+                    onPromote={() => setPromoting(c)}
+                    onToggle={() => toggle(c.id, conditionActive(c, autoEvaluated?.get(c.id)))}
+                    onReset={typeof c.manualOverride === "boolean" ? () => update(c.id, { manualOverride: undefined }) : undefined}
+                    {...(c.source === "custom" ? {
+                      onEdit: () => openComposer(c), onRemove: () => remove(c.id),
+                      onResolve: () => {setResolving(c);setRecoveryNote(c.recoveryNote??"");},
+                    } : {})}
+                  />
+                ))}
+              </Section>
+            );
+          })}
         </div>
 
         <footer className="border-t border-border bg-background/50 px-4 py-2 text-[10px] text-muted-foreground">
-          Conditions persist locally and don't auto-clear on rest. Press the X
-          to remove.
+          Consequences sync with this character. Rest does not resolve them automatically.
+          Resolving records recovery and does not refund vitality.
         </footer>
       </aside>
 
+      {resolving&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"><div role="dialog" aria-modal="true" aria-label="Record recovery" className="w-full max-w-lg space-y-3 rounded-lg border border-border bg-card p-5"><h2 className="text-xl font-semibold">Resolve {resolving.title}</h2><p>{resolving.recovery||'Record how this consequence was recovered.'}</p><label className="block text-sm">Recovery notes<textarea className="mt-1 w-full rounded border border-border bg-background p-2" value={recoveryNote} onChange={e=>setRecoveryNote(e.target.value)} /></label><p className="text-xs text-muted-foreground">This ends the ongoing effects and records recovery. Previously lost vitality is not refunded.</p><div className="flex gap-2"><button className="rounded bg-primary px-3 py-2 text-primary-foreground" onClick={()=>{update(resolving.id,{status:'resolved',resolvedAt:Date.now(),active:false,recoveryNote});setResolving(null);}}>Record recovery</button><button className="rounded border border-border px-3 py-2" onClick={()=>setResolving(null)}>Cancel</button></div></div></div>}
+      {promoting && <PromoteConsequence characterId={characterId} occurrence={promoting} onClose={() => setPromoting(null)} />}
       {composerOpen && (
         <ConditionComposer
           characterId={characterId}
@@ -214,54 +215,22 @@ function Section({
   );
 }
 
-function ConditionCardItem({
-  condition,
-  onToggle,
-  onEdit,
-  onRemove,
-  // Phase 9.5 follow-up (Mashu 2026-09-07): removed the
-  // `readOnly` prop. Mashu: "those make no sense". All
-  // conditions in the drawer are toggleable; edit/remove
-  // are only exposed for source === "custom".
-  liveActive,
-  sourceKind,
+export function ConditionCardItem({
+  condition, active, onToggle, onEdit, onRemove, onReset, onResolve, onPromote, liveActive, sourceKind,
 }: {
   condition: RuntimeCondition;
+  active: boolean;
   onToggle: () => void;
   onEdit?: () => void;
   onRemove?: () => void;
-  /**
-   * Phase 8.L round 127 (Mashu 2026-08-26): engine-computed
-   * active state for auto-triggered conditions. When provided,
-   * overrides the stored `active` value so the badge reflects
-   * the live evaluation (e.g. HP below 50% predicate).
-   */
-  liveActive?: boolean;
-  /**
-   * Phase 9.5 follow-up (Mashu 2026-09-07): passed through
-   * for the engine-managed badge so the user can SEE that
-   * the engine will re-evaluate on the next roll. They can
-   * still override, but the badge warns them.
-   */
+  onResolve?: () => void;
+  onPromote?: () => void;
+  onReset?: (() => void) | undefined;
+  liveActive?: boolean | undefined;
   sourceKind?: string;
 }) {
-  const { active: storedActive, title, description, tags, modifiers, durationTier } = condition;
-  // Phase 8.L round 127 (Mashu): for auto-triggered cards,
-  // prefer the engine-computed live state over the stored
-  // value — except when the user has explicitly toggled it
-  // off, in which case respect the override (the engine
-  // badge shows the user the engine's view but doesn't
-  // silently flip their toggle).
-  //
-  // Mashu 2026-09-07: "I NEED TO BE ABLE TO TOGGLE THEM
-  // ON AND OFF MANUALLY". The previous implementation
-  // snapped back to the engine's computed value on every
-  // render, which made the button feel broken. Now: when
-  // the stored value is FALSE the user has deliberately
-  // toggled off, so we honor that.
-  const active =
-    liveActive !== undefined && storedActive ? liveActive : storedActive;
-  const engineWantsOn = liveActive === true && !storedActive;
+  const { title, description, tags, modifiers, durationTier } = condition;
+  const engineWantsOn = liveActive === true && !active;
   const durationLabel =
     durationTier === "long_rest"
       ? "Long rest"
@@ -295,13 +264,10 @@ function ConditionCardItem({
             when the engine re-evaluates this condition. */}
         <div className="flex shrink-0 items-center gap-1">
           {sourceKind === "sheet-auto" && (
-            // Phase 9.5 follow-up: surface that this is
-            // engine-managed so the user knows their
-            // override is provisional.
             <span
               data-testid="auto-state"
-              aria-label="Engine-managed condition"
-              title="Engine-managed — your toggle is an override; the engine will re-evaluate on the next roll."
+              aria-label="Automatically evaluated consequence"
+              title="Calculated from the character state. Manual overrides stay in effect until reset."
               className="inline-flex items-center rounded bg-secondary px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground"
             >
               <Bot className="size-2.5" />
@@ -327,6 +293,8 @@ function ConditionCardItem({
           <button
             type="button"
             onClick={onToggle}
+            disabled={condition.status === "resolved"}
+            aria-pressed={active}
             aria-label={active ? "Deactivate" : "Activate"}
             title={active ? "Active — click to deactivate" : "Inactive — click to activate"}
             className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
@@ -349,6 +317,11 @@ function ConditionCardItem({
         ))}
       </div>
 
+      {condition.recovery && <p className="mt-2 text-xs"><strong>Recovery:</strong> {condition.recovery}</p>}
+      {condition.restrictions?.map((restriction, index) => <p key={index} className="mt-1 text-xs">{restriction.reason || `Blocks a ${restriction.kind}`}</p>)}
+      {condition.applicationSnapshot && condition.applicationSnapshot.vitalityDelta!==0 && <p className="mt-2 text-xs">Vitality when applied: {condition.applicationSnapshot.vitalityDelta}</p>}
+      {condition.recoveryNote && <p className="mt-2 text-xs">Recovery notes: {condition.recoveryNote}</p>}
+      {condition.status === "resolved" && <p className="mt-2 text-xs">Resolved {condition.resolvedAt ? new Date(condition.resolvedAt).toLocaleString() : ""}</p>}
       {tags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
           {tags.map((t) => (
@@ -365,12 +338,20 @@ function ConditionCardItem({
       <footer className="mt-2 flex items-center justify-between gap-1 text-[10px] text-muted-foreground">
         <span>{durationLabel}</span>
         <div className="flex items-center gap-1">
+          {condition.promotedPrimitiveId && <a className="rounded px-2 py-1 hover:bg-secondary/40" href={`/library/item/PRIMITIVE:${condition.promotedPrimitiveId}`}>Promoted definition</a>}
+          {onPromote && !condition.promotedPrimitiveId && <button type="button" className="rounded px-2 py-1 hover:bg-secondary/40" onClick={onPromote}>{condition.promotedPrimitiveId ? "Promoted definition" : "Promote to primitive"}</button>}
+          {onResolve && condition.status !== "resolved" && <button type="button" className="rounded px-2 py-1 hover:bg-secondary/40" onClick={onResolve}>Resolve</button>}
+          {onReset && (
+            <button type="button" onClick={onReset} className="rounded px-2 py-1 hover:bg-secondary/40">
+              {sourceKind === "sheet-auto" ? "Use automatic state" : "Clear override"}
+            </button>
+          )}
           {onEdit && (
             <button
               type="button"
               onClick={onEdit}
               className="rounded p-1 transition-colors hover:bg-secondary/40"
-              aria-label="Edit condition"
+              aria-label="Edit consequence"
               title="Edit"
             >
               <Pencil className="size-3" />
@@ -381,7 +362,7 @@ function ConditionCardItem({
               type="button"
               onClick={onRemove}
               className="rounded p-1 text-destructive transition-colors hover:bg-destructive/10"
-              aria-label="Delete condition"
+              aria-label="Delete consequence"
               title="Delete"
             >
               <Trash2 className="size-3" />
@@ -487,13 +468,17 @@ function formatValue(value: ConditionModifier["value"]): string {
       if (typeof kw === "string") return `[${kw}]`;
     }
   }
-  return JSON.stringify(value);
+  return formatEquationValue(value);
 }
 
 function formatTriggersWhen(
   cond: unknown,
 ): string {
   if (!cond) return "always";
+  try {
+    const parsed = parseCondition(cond);
+    if (parsed) return conditionToBadges(parsed).map(b => b.label).join(" ") || "always";
+  } catch { /* Legacy leaves are formatted below. */ }
   // Phase 8.L round 122 (Mashu 2026-08-26): the condition
   // object can be a compound (kind + tokens), a leaf
   // (key/operator/value), or a stat| token. Previously the
@@ -546,5 +531,5 @@ function formatTriggersWhen(
     return `${key} ${opLabel[op] ?? op} ${valueStr}`.trim();
   }
   // stat| token or other — best-effort stringification
-  return String(cond);
+  return "Unrecognized condition";
 }

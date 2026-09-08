@@ -1,3 +1,5 @@
+import { withPublishingResponse } from "@/lib/publishing/save-transaction";
+import { consequenceBehaviorSchema } from "@/lib/character/consequences/validation";
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { asc, or, eq, isNull, and } from "drizzle-orm";
@@ -126,6 +128,7 @@ function buildPrimitiveValues(args: {
   mirrorBuCredit: number;
   mirrorEligibilityNotes: string;
   hardModifiers: readonly HardModifier[];
+  consequenceBehavior: import("@/lib/character/consequences/types").ConsequenceBehavior | null;
   sourceOrigin: string;
   /** Free-form tags. */
   tags: string[];
@@ -149,6 +152,7 @@ function buildPrimitiveValues(args: {
     mirrorBuCredit,
     mirrorEligibilityNotes,
     hardModifiers,
+    consequenceBehavior,
     sourceOrigin,
     tags,
     iconSource,
@@ -172,6 +176,7 @@ function buildPrimitiveValues(args: {
     mirrorBuCredit: isMirrorable ? buCost : 0,
     mirrorEligibilityNotes,
     hardModifiers,
+    consequenceBehavior,
     sourceOrigin,
     tags,
     iconSource,
@@ -200,7 +205,7 @@ function pickStringOrDefault(value: unknown, fallback: string): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const { userId } = await auth.protect();
     const body: unknown = await request.json();
@@ -256,6 +261,7 @@ export async function POST(request: Request) {
       values["mirrorEligibilityNotes"] ?? "",
     ).trim();
     const hardModifiers = parseHardModifiers(values["hardModifiers"]);
+    const consequenceBehavior = values["consequenceBehavior"] == null ? null : consequenceBehaviorSchema.parse(values["consequenceBehavior"]);
     // Phase 9: free-form tags (comma-separated -> array) for the
     // unified preview's Tags section.
     const tagsRaw = typeof values["tags"] === "string" ? (values["tags"] as string) : "";
@@ -314,7 +320,12 @@ export async function POST(request: Request) {
       mirrorBuCredit,
       mirrorEligibilityNotes,
       hardModifiers,
+    consequenceBehavior,
       tags,
+      iconSource: pickIconSource(values["iconSource"]),
+      iconKey: pickStringOrNull(values["iconKey"]),
+      iconUrl: pickStringOrNull(values["iconUrl"]),
+      iconColor: pickStringOrDefault(values["iconColor"], "#ffffff"),
     });
     const draftIsEmpty = isPrimitiveDraftEmpty(serverCanonicalPayload);
 
@@ -345,12 +356,15 @@ export async function POST(request: Request) {
     // pass the flag in explicitly here).
     const callerIsAdmin = await getCallerIsAdmin(userId);
 
+    const { hashPrimitiveContent } = await import("@/lib/publishing/hash-content");
+    let serverDraftHash = await hashPrimitiveContent(serverCanonicalPayload);
+
     const outcome: DispatchOutcome = decideSaveOutcome({
       intent,
       source,
       callerUserId: userId,
       callerIsAdmin,
-      draftHash: clientDraftHash,
+      draftHash: serverDraftHash,
       draftIsEmpty,
     });
 
@@ -374,10 +388,7 @@ export async function POST(request: Request) {
     // Compute the server-side canonical hash for storing on the row.
     // This MUST match what the client sent (when it sent one); if it
     // doesn't, the next save will see sourceHash ≠ draftHash and re-run.
-    const { hashPrimitiveContent } = await import(
-      "@/lib/publishing/hash-content"
-    );
-    const serverDraftHash = await hashPrimitiveContent(serverCanonicalPayload);
+
 
     if (outcome.kind === "version-update") {
       // Caller owns the source AND intent=load → update in place.
@@ -406,6 +417,7 @@ export async function POST(request: Request) {
             mirrorBuCredit,
             mirrorEligibilityNotes,
             hardModifiers,
+    consequenceBehavior,
             sourceOrigin: versionSourceOrigin,
             tags,
             // Phase 8: per-entity iconography
@@ -453,6 +465,12 @@ export async function POST(request: Request) {
           mirrorBuCredit: updated.mirrorBuCredit,
           mirrorEligibilityNotes: updated.mirrorEligibilityNotes ?? "",
           hardModifiers: (updated.hardModifiers ?? []) as HardModifier[],
+          consequenceBehavior: updated.consequenceBehavior,
+          tags: updated.tags,
+          iconSource: updated.iconSource,
+          iconKey: updated.iconKey,
+          iconUrl: updated.iconUrl,
+          iconColor: updated.iconColor,
         }) as unknown as Record<string, unknown>,
         publishedByUserId: userId,
       });
@@ -496,6 +514,9 @@ export async function POST(request: Request) {
           ))
         : name;
 
+    serverCanonicalPayload.name = baseName;
+    serverDraftHash = await hashPrimitiveContent(serverCanonicalPayload);
+
     // For greenfield inserts, honour the user's free-text sourceOrigin
     // (world / book) when provided; otherwise fall back to the computed
     // provenance. Forks always keep the computed fork lineage.
@@ -521,6 +542,7 @@ export async function POST(request: Request) {
           mirrorBuCredit,
           mirrorEligibilityNotes,
           hardModifiers,
+    consequenceBehavior,
           sourceOrigin: insertSourceOrigin,
           tags,
           // Phase 8: per-entity iconography
@@ -553,6 +575,7 @@ export async function POST(request: Request) {
           mirrorBuCredit: isMirrorable ? buCost : 0,
           mirrorEligibilityNotes,
           hardModifiers,
+    consequenceBehavior,
           contentHash: serverDraftHash,
           updatedAt: new Date(),
         },
@@ -608,6 +631,12 @@ export async function POST(request: Request) {
         mirrorBuCredit: created.mirrorBuCredit,
         mirrorEligibilityNotes: created.mirrorEligibilityNotes ?? "",
         hardModifiers: (created.hardModifiers ?? []) as HardModifier[],
+        consequenceBehavior: created.consequenceBehavior,
+        tags: created.tags,
+        iconSource: created.iconSource,
+        iconKey: created.iconKey,
+        iconUrl: created.iconUrl,
+        iconColor: created.iconColor,
       }) as unknown as Record<string, unknown>,
       publishedByUserId: userId,
     });
@@ -629,4 +658,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: message }, { status: 400 });
   }
+}
+export async function POST(...args: Parameters<typeof handlePOST>) {
+  return withPublishingResponse(() => handlePOST(...args));
 }

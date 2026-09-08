@@ -17,7 +17,12 @@
  * when props are stable (Next.js server props should be stable).
  */
 
+import { useCharacterSupplyGraph } from "./use-character-supply-graph";
+import { effectiveAvailability, instanceSupplyPaths } from "@/lib/character/workspace/model";
+import { activeRestrictions } from "@/lib/character/consequences/types";
 import { useMemo } from "react";
+import type { RuntimeCondition } from "./use-runtime-conditions";
+import { applyConditionOverrides, runtimeConditionModifiers } from "@/lib/character/condition-overrides";
 import type { HardModifier } from "@/types/swordweave";
 import {
   type ResolvedCharacterInput,
@@ -42,6 +47,9 @@ export interface UseCharacterResolverInput {
     magical: number;
   };
   primitiveLinks: ReadonlyArray<{
+    instanceId?: string;
+    directSource?: string | null;
+    originItemId?: string | null;
     primitiveId: number;
     isMirrored: boolean;
     originHeritageId: string | null;
@@ -75,11 +83,7 @@ export interface UseCharacterResolverInput {
    * + origin = 'condition' so the user knows it came from the
    * scratchpad.
    */
-  runtimeConditions?: ReadonlyArray<{
-    readonly title: string;
-    readonly active: boolean;
-    readonly modifiers: readonly HardModifier[];
-  }>;
+  runtimeConditions?: readonly RuntimeCondition[];
   /**
    * Optional lookup for provenance display. Maps primitiveId
    * → { heritageName, capabilityName, effectName }. Used to
@@ -98,6 +102,7 @@ export interface UseCharacterResolverInput {
 }
 
 export interface UseCharacterResolverResult {
+  maxVitality?: number;
   /** Resolved totals per target. */
   totals: ResolvedModifiers["totals"];
   /** Per-target attribution list. */
@@ -120,18 +125,20 @@ export interface UseCharacterResolverResult {
 export function useCharacterResolver(
   input: UseCharacterResolverInput,
 ): UseCharacterResolverResult {
+  const graph = useCharacterSupplyGraph(input.characterId);
   return useMemo(() => {
+    const restrictions = activeRestrictions(input.runtimeConditions ?? []);
     const offCap = input.offCapabilityIds ?? new Set<string>();
     const offEff = input.offEffectIds ?? new Set<string>();
 
     // Phase 8.L round 49: runtime conditions become virtual slots.
     const conditionSlots: ResolvedPrimitiveSlot[] = (input.runtimeConditions ?? [])
-      .filter((c) => c.active)
+      .filter((c) => c.source === "custom" && c.status !== "resolved" && (c.manualOverride ?? c.active))
       .map((c, i) => ({
-        primitiveId: -100000 - i,
+        primitiveId: c.applicationId && c.sourceEntityType === "primitive" ? Number(c.sourceEntityId) : -100000 - i,
         name: c.title || "Untitled condition",
         category: "RUNTIME_CONDITION",
-        hardModifiers: (c.modifiers ?? []) as readonly HardModifier[],
+        hardModifiers: runtimeConditionModifiers(c),
         isMirrored: false,
         isMirrorable: false,
         mirrorVector: null,
@@ -155,12 +162,18 @@ export function useCharacterResolver(
       const fromEffOff =
         link.originEffectId !== null &&
         offEff.has(link.originEffectId);
-      const toggledOff = fromCapOff || fromEffOff;
+      const paths = graph ? instanceSupplyPaths(graph, link) : [];
+      const toggledOff = graph
+        ? !effectiveAvailability(`primitive:${link.primitiveId}`, paths, restrictions, offCap, offEff).available
+        : fromCapOff || fromEffOff || restrictions.some(r => r.kind === "primitive" && r.entityId === String(link.primitiveId));
       return {
         primitiveId: link.primitive.id,
         name: link.primitive.name,
         category: link.primitive.category,
-        hardModifiers: (link.primitive.hardModifiers ?? []) as readonly HardModifier[],
+        hardModifiers: applyConditionOverrides(
+          (link.primitive.hardModifiers ?? []) as readonly HardModifier[],
+          input.runtimeConditions ?? [], "primitive", String(link.primitive.id),
+        ),
         isMirrored: link.isMirrored,
         isMirrorable: link.primitive.isMirrorable,
         mirrorVector: link.primitive.mirrorVector,
@@ -188,6 +201,7 @@ export function useCharacterResolver(
 
     const r = resolveModifiers(resolverInput, input.sourceNames);
     return {
+      maxVitality: Math.max(0, Math.ceil((10 + input.pb) * input.level + (r.totals["max_vitality"] ?? 0))),
       totals: r.totals,
       byTarget: r.byTarget,
       mirrorCosts: r.mirrorCosts,
@@ -195,17 +209,17 @@ export function useCharacterResolver(
       computedAt: r.computedAt,
     };
   }, [
+    graph,
     input.characterId,
     input.level,
     input.pb,
     input.proficientAttribute,
-    input.attributes.physical,
-    input.attributes.mental,
-    input.attributes.magical,
+    input.attributes,
     input.primitiveLinks,
     input.sourceNames,
     input.offCapabilityIds,
     input.offEffectIds,
     input.runtimeConditions,
+    input.conditionContext,
   ]);
 }

@@ -914,7 +914,7 @@ export function TabbedCharacterForm() {
         // via /api/characters/[id]/dm-bonus (separate flow). The
         // modal doesn't edit it — sending 0 here would overwrite the
         // server-side value on every save, so we OMIT it instead.
-        currentVitality: initialCurrentVitality,
+        ...(!editCharacterId ? {currentVitality: initialCurrentVitality} : {expectedWorkspaceRevision:seededCharacter?.workspaceRevision}),
         backstory: {
           origin: backstory?.origin.trim() ?? "",
           motivation: backstory?.motivation.trim() ?? "",

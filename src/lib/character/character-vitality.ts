@@ -17,18 +17,7 @@
 
 import { db } from "@/db/client";
 import { eq } from "drizzle-orm";
-import {
-  characterItems,
-  characterPrimitives,
-  characters,
-  items,
-  primitives,
-} from "@/db/schema";
-import {
-  computeMaxVitality,
-  computeVitalityModifiersFromPrimitives,
-  type VitalityModifier,
-} from "@/lib/engine/vitality";
+import { characters } from "@/db/schema";
 
 /**
  * Load every primitive + item that could carry a vitality modifier
@@ -50,52 +39,23 @@ export async function loadCharacterMaxVitality(
     throw new Error(`Character ${characterId} not found.`);
   }
 
-  // Phase 8.3g v5 (Mashu 2026-07-28): use the SAME
-  // engine function as the sheet aggregator. The previous
-  // inline filter+map was independently reimplementing
-  // the heuristic and DROPPING the `isMirrored` flag,
-  // so the rest/damage routes computed max vitality
-  // WITHOUT the mirror sign-flip. Result: a character
-  // with mirrored Vitality Core Augment primitives
-  // would sheet-display max = 268 (with mirrors) but
-  // the rest route would set current to 308 (without).
-  // `computeVitalityModifiersFromPrimitives` is the
-  // canonical engine entry point and respects mirrors.
-  const primMods: VitalityModifier[] = computeVitalityModifiersFromPrimitives(
-    row.primitiveLinks.map((l) => ({
-      buCost: l.primitive.buCost,
-      category: l.primitive.category,
-      name: l.primitive.name,
-      // The critical field — was being dropped before.
-      isMirrored: l.isMirrored ?? false,
-    })),
-  ) as VitalityModifier[];
-
-  // Items don't currently contribute vitality modifiers in the
-  // engine, but be defensive: if any item has "vitality"/"hp"/
-  // "health"/"tough" in its name, treat its buCost as a flat
-  // additive modifier. We're conservative here — items
-  // don't have an isMirrored flag in the schema as of
-  // Phase 8.3g, so they go through as positive.
-  const itemMods: VitalityModifier[] = row.itemLinks
-    .map((l) => ({
-      name: l.item.name,
-      buCost: l.item.buCost ?? 0,
-    }))
-    .filter((i) => {
-      const n = i.name.toLowerCase();
-      return (
-        n.includes("vitality") ||
-        n.includes("hp") ||
-        n.includes("health") ||
-        n.includes("tough")
-      );
-    })
-    .map((i) => ({ source: i.name, amount: i.buCost }));
-
-  const allMods = [...primMods, ...itemMods];
-  const max = computeMaxVitality(row.level, allMods);
-  return { max, current: row.currentVitality ?? 0 };
+  const [{ readWorkspace }, { consequenceAdjustedSlots }, { resolveMaxVitality }, { proficiencyBonus, computeAllPracticeModifiers }] = await Promise.all([
+    import('./workspace/read'), import('./consequences/resolve'), import('@/lib/engine/target-registry'), import('@/lib/engine/practices'),
+  ]);
+  const { characterConsequences } = await import('@/db/schema');
+  const { and,isNull } = await import('drizzle-orm');
+  const records=await db.select().from(characterConsequences).where(and(eq(characterConsequences.characterId,characterId),isNull(characterConsequences.deletedAt)));
+  const graph=await readWorkspace(characterId);
+  const slots=consequenceAdjustedSlots(row.primitiveLinks.map(l=>({
+    instanceId:l.instanceId,directSource:l.directSource,primitiveId:l.primitiveId,name:l.primitive.name,category:l.primitive.category,
+    isMirrored:l.isMirrored,isMirrorable:l.primitive.isMirrorable,mirrorVector:l.primitive.mirrorVector,
+    hardModifiers:l.primitive.consequenceBehavior?[]:l.primitive.hardModifiers??[],originHeritageId:l.originHeritageId,originCapabilityId:l.originCapabilityId,originEffectId:l.originEffectId,originItemId:l.originItemId,
+  })),graph,records.map(r=>r.occurrence));
+  const input={characterId,level:row.level,pb:proficiencyBonus(row.level),proficientAttribute:row.attrProficient?.toLowerCase() as 'physical'|'mental'|'magical'|null,attributes:{physical:row.attrPhysical,mental:row.attrMental,magical:row.attrMagical},slots};
+  const base=resolveMaxVitality({...input,slots:[]}).total;
+  const practices=Object.fromEntries(computeAllPracticeModifiers(input.attributes,row.practiceSlices??{},row.attrProficient,row.level).map(p=>[p.practice,p.total])) as import('@/lib/engine/condition-evaluator').PracticeState;
+  const max=Math.max(0,Math.ceil(resolveMaxVitality({...input,conditionContext:{character:{vitality:row.currentVitality??base,vitalityMax:base,attributes:input.attributes,practices,saveDc:5+input.pb+(input.proficientAttribute?input.attributes[input.proficientAttribute]:0),blockValue:0,proficiencies:new Set(input.proficientAttribute?[input.proficientAttribute]:[]),flags:new Set(),custom:{}}}}).total));
+  return {max,current:row.currentVitality??max};
 }
 
 /**

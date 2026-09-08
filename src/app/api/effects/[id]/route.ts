@@ -1,3 +1,4 @@
+import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { asc, eq, and, isNull, or, sql } from "drizzle-orm";
@@ -14,6 +15,7 @@ import type { ReactionTargetType } from "@/lib/engagement/version-helpers";
 import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
 import {
   buildCanonicalEffectPayload,
+  hashEffectContent,
   isEffectDraftEmpty,
   computeEffectContentHash,
 } from "@/lib/publishing/hash-content";
@@ -97,7 +99,7 @@ export async function GET(
  * The response shape mirrors the primitives route's POST:
  *   { effect, dispatchOutcome: { kind, newId, sourceId, swapTarget } | { kind: "no-op", message } }
  */
-export async function PATCH(
+async function handlePATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -111,6 +113,8 @@ export async function PATCH(
     }
 
     const values = body as Record<string, unknown>;
+    const layoutRow = await db.query.effects.findFirst({ where: eq(effects.id, id), columns: { membershipOrder: true } });
+    const membershipOrder = values["membershipOrder"] === null ? null : Array.isArray(values["membershipOrder"]) ? (values["membershipOrder"] as unknown[]).map(String) : layoutRow?.membershipOrder ?? null;
 
     // Phase 2: parse intent from body. If absent, default to "load" — the
     // semantic for "I want to edit this in place" (the legacy behaviour
@@ -151,22 +155,17 @@ export async function PATCH(
       return NextResponse.json({ error: "Effect name is required." }, { status: 400 });
     }
 
-    if (primitiveSlotsRaw.length === 0) {
-      return NextResponse.json(
-        { error: "Slot at least one primitive into the effect." },
-        { status: 400 },
-      );
-    }
-
     // Build the canonical payload + draftHash. The server's hash is the
     // source of truth for the no-op decision.
     const canonicalPayload = buildCanonicalEffectPayload({
+      membershipOrder,
       name,
       narrativeDescription,
       tags,
       isPublic,
       primitiveSlots: primitiveSlotsRaw.map((s) => ({
         primitiveId: s.primitiveId,
+        isMirrored: s.isMirrored,
         quantity: s.quantity,
         notes: s.notes ?? "",
       })),
@@ -178,12 +177,14 @@ export async function PATCH(
     });
     const draftIsEmpty = isEffectDraftEmpty(canonicalPayload);
     const draftHash = await computeEffectContentHash({
+      membershipOrder,
       name,
       narrativeDescription,
       tags,
       isPublic,
       primitiveSlots: primitiveSlotsRaw.map((s) => ({
         primitiveId: s.primitiveId,
+        isMirrored: s.isMirrored,
         quantity: s.quantity,
         notes: s.notes ?? "",
       })),
@@ -244,6 +245,7 @@ export async function PATCH(
           tags,
           isPublic,
           contentHash: draftHash,
+          membershipOrder,
           updatedAt: new Date(),
           // Phase 8: per-entity iconography
           iconSource: pickIconSource(values["iconSource"]),
@@ -330,6 +332,9 @@ export async function PATCH(
         )
       : name;
 
+    canonicalPayload.name = baseName;
+    const forkHash = await hashEffectContent(canonicalPayload);
+
     const [created] = await db
       .insert(effects)
       .values({
@@ -339,7 +344,12 @@ export async function PATCH(
         sourceOrigin: finalSourceOrigin,
         tags,
         isPublic,
-        contentHash: draftHash,
+        contentHash: forkHash,
+          membershipOrder,
+          iconSource: pickIconSource(values["iconSource"]),
+          iconKey: pickStringOrNull(values["iconKey"]),
+          iconUrl: pickStringOrNull(values["iconUrl"]),
+          iconColor: pickStringOrDefault(values["iconColor"], "#ffffff"),
       })
       .returning();
 
@@ -355,6 +365,7 @@ export async function PATCH(
           quantity: slot.quantity,
           sortOrder: index,
           notes: slot.notes,
+          isMirrored: slot.isMirrored,
         })),
       );
     }
@@ -363,7 +374,7 @@ export async function PATCH(
     await recordVersion({
       entityKind: "effect",
       entityId: created.id,
-      contentHash: draftHash,
+      contentHash: forkHash,
       snapshot: canonicalPayload as unknown as Record<string, unknown>,
       publishedByUserId: userId,
     });
@@ -458,4 +469,8 @@ function pickStringOrNull(value: unknown): string | null {
 }
 function pickStringOrDefault(value: unknown, fallback: string): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
+}
+
+export async function PATCH(...args: Parameters<typeof handlePATCH>) {
+  return withPublishingResponse(() => handlePATCH(...args));
 }

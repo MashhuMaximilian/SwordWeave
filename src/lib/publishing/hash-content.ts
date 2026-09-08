@@ -44,6 +44,7 @@ export interface CanonicalPrimitivePayload {
   mirrorBuCredit: number;
   mirrorEligibilityNotes: string;
   hardModifiers: readonly HardModifier[];
+  consequenceBehavior?: import("@/lib/character/consequences/types").ConsequenceBehavior | null;
   /** Free-form tags (Phase 9). Part of the canonical payload so a tag
    *  change triggers a content-hash diff and therefore a save. */
   tags: readonly string[];
@@ -82,6 +83,7 @@ export function buildCanonicalPrimitivePayload(args: {
   mirrorBuCredit: string | number;
   mirrorEligibilityNotes: string;
   hardModifiers: readonly HardModifier[];
+  consequenceBehavior?: import("@/lib/character/consequences/types").ConsequenceBehavior | null;
   /** Free-form tags (comma-separated -> array). */
   tags?: readonly string[];
   iconSource?: string | null;
@@ -116,6 +118,7 @@ export function buildCanonicalPrimitivePayload(args: {
     mirrorBuCredit: mirrorBuCreditNum,
     mirrorEligibilityNotes: args.mirrorEligibilityNotes,
     hardModifiers: args.hardModifiers,
+    ...(args.consequenceBehavior ? { consequenceBehavior: args.consequenceBehavior } : {}),
     tags: args.tags ?? [],
     iconSource: args.iconSource ?? null,
     iconKey: args.iconKey ?? null,
@@ -213,6 +216,7 @@ export async function computePrimitiveContentHash(args: {
   mirrorBuCredit: string | number;
   mirrorEligibilityNotes: string;
   hardModifiers: readonly HardModifier[];
+  consequenceBehavior?: import("@/lib/character/consequences/types").ConsequenceBehavior | null;
   iconSource?: string | null;
   iconKey?: string | null;
   iconUrl?: string | null;
@@ -249,10 +253,11 @@ export function isPrimitiveDraftEmpty(payload: CanonicalPrimitivePayload): boole
 
 export interface CanonicalEffectPayload {
   name: string;
+  membershipOrder?: readonly string[] | null;
   narrativeDescription: string;
   tags: readonly string[];
   isPublic: boolean;
-  primitiveSlots: readonly { primitiveId: number; quantity: number; notes: string }[];
+  primitiveSlots: readonly { primitiveId: number; isMirrored?: boolean; quantity: number; notes: string }[];
   // Phase 8: per-entity iconography (see CanonicalPrimitivePayload).
   iconSource: string | null;
   iconKey: string | null;
@@ -262,10 +267,11 @@ export interface CanonicalEffectPayload {
 
 export function buildCanonicalEffectPayload(args: {
   name: string;
+  membershipOrder?: readonly string[] | null;
   narrativeDescription: string;
   tags: readonly string[];
   isPublic: boolean;
-  primitiveSlots: readonly { primitiveId: number; quantity: number; notes: string }[];
+  primitiveSlots: readonly { primitiveId: number; isMirrored?: boolean; quantity: number; notes: string }[];
   iconSource?: string | null;
   iconKey?: string | null;
   iconUrl?: string | null;
@@ -278,6 +284,7 @@ export function buildCanonicalEffectPayload(args: {
   const sortedSlots = [...args.primitiveSlots]
     .map((s) => ({
       primitiveId: s.primitiveId,
+      ...(s.isMirrored ? {isMirrored:true} : {}),
       quantity: s.quantity,
       notes: s.notes ?? "",
     }))
@@ -285,6 +292,7 @@ export function buildCanonicalEffectPayload(args: {
 
   return {
     name: args.name.trim(),
+    ...(args.membershipOrder ? { membershipOrder: args.membershipOrder } : {}),
     narrativeDescription: args.narrativeDescription.trim(),
     tags: [...args.tags].map((t) => t.trim()).filter(Boolean).sort(),
     isPublic: Boolean(args.isPublic),
@@ -309,10 +317,11 @@ export async function hashEffectContent(
 
 export async function computeEffectContentHash(args: {
   name: string;
+  membershipOrder?: readonly string[] | null;
   narrativeDescription: string;
   tags: readonly string[];
   isPublic: boolean;
-  primitiveSlots: readonly { primitiveId: number; quantity: number; notes: string }[];
+  primitiveSlots: readonly { primitiveId: number; isMirrored?: boolean; quantity: number; notes: string }[];
   iconSource?: string | null;
   iconKey?: string | null;
   iconUrl?: string | null;
@@ -327,12 +336,13 @@ export async function computeEffectContentHash(args: {
 
 export interface CanonicalCapabilityPayload {
   name: string;
+  membershipOrder?: readonly string[] | null;
   type: string;
   sourceType: string;
   verboseDescription: string;
   tags: readonly string[];
   isPublic: boolean;
-  primitiveSlots: readonly { primitiveId: number; role: string; quantity: number; slotLabel: string; notes: string }[];
+  primitiveSlots: readonly { primitiveId: number; isMirrored?: boolean; role: string; quantity: number; slotLabel: string; notes: string }[];
   /**
    * Effect slots as a flat list of effectIds. Per-effect `slotLabel` and
    * `notes` are NOT part of the canonical content identity — the
@@ -351,12 +361,13 @@ export interface CanonicalCapabilityPayload {
 
 export function buildCanonicalCapabilityPayload(args: {
   name: string;
+  membershipOrder?: readonly string[] | null;
   type: string;
   sourceType: string;
   verboseDescription: string;
   tags: readonly string[];
   isPublic: boolean;
-  primitiveSlots: readonly { primitiveId: number; role: string; quantity: number; slotLabel: string; notes: string }[];
+  primitiveSlots: readonly { primitiveId: number; isMirrored?: boolean; role: string; quantity: number; slotLabel: string; notes: string }[];
   effectIds: readonly string[];
   iconSource?: string | null;
   iconKey?: string | null;
@@ -366,6 +377,7 @@ export function buildCanonicalCapabilityPayload(args: {
   const sortedPrimitives = [...args.primitiveSlots]
     .map((s) => ({
       primitiveId: s.primitiveId,
+      ...(s.isMirrored ? {isMirrored:true} : {}),
       role: s.role,
       quantity: s.quantity,
       slotLabel: s.slotLabel ?? "",
@@ -375,6 +387,7 @@ export function buildCanonicalCapabilityPayload(args: {
 
   return {
     name: args.name.trim(),
+    ...(args.membershipOrder ? { membershipOrder: args.membershipOrder } : {}),
     type: args.type,
     sourceType: args.sourceType,
     verboseDescription: args.verboseDescription.trim(),
@@ -402,12 +415,13 @@ export async function hashCapabilityContent(
 
 export async function computeCapabilityContentHash(args: {
   name: string;
+  membershipOrder?: readonly string[] | null;
   type: string;
   sourceType: string;
   verboseDescription: string;
   tags: readonly string[];
   isPublic: boolean;
-  primitiveSlots: readonly { primitiveId: number; role: string; quantity: number; slotLabel: string; notes: string }[];
+  primitiveSlots: readonly { primitiveId: number; isMirrored?: boolean; role: string; quantity: number; slotLabel: string; notes: string }[];
   effectIds: readonly string[];
   iconSource?: string | null;
   iconKey?: string | null;
@@ -423,6 +437,7 @@ export async function computeCapabilityContentHash(args: {
 
 export interface CanonicalItemPayload {
   name: string;
+  membershipOrder?: readonly string[] | null;
   itemType: string;
   rarity: string;
   // Phase 8.5 / Session H1: size drives encumbrance Load.
@@ -462,6 +477,7 @@ export interface CanonicalItemPayload {
 
 export function buildCanonicalItemPayload(args: {
   name: string;
+  membershipOrder?: readonly string[] | null;
   itemType: string;
   rarity: string;
   // Phase 8.5 H1: optional; defaults to SMALL. Hash must change when
@@ -500,6 +516,7 @@ export function buildCanonicalItemPayload(args: {
   });
   return {
     name: args.name.trim(),
+    ...(args.membershipOrder ? { membershipOrder: args.membershipOrder } : {}),
     itemType: args.itemType,
     rarity: args.rarity,
     size: args.size ?? "SMALL",
@@ -537,6 +554,7 @@ export async function hashItemContent(
 
 export async function computeItemContentHash(args: {
   name: string;
+  membershipOrder?: readonly string[] | null;
   itemType: string;
   rarity: string;
   // Phase 8.5 H1: optional; defaults to SMALL inside buildCanonicalItemPayload.
@@ -573,6 +591,7 @@ export async function computeItemContentHash(args: {
 export interface CanonicalTemplatePayload {
   kind: string;
   name: string;
+  membershipOrder?: readonly string[] | null;
   description: string;
   suggestedTraits: string;
   isPublic: boolean;
@@ -599,6 +618,7 @@ const EMPTY_SLOTS: readonly { primitiveId: number; isMirrored: boolean }[] = [];
 export function buildCanonicalTemplatePayload(args: {
   kind: string;
   name: string;
+  membershipOrder?: readonly string[] | null;
   description: string;
   suggestedTraits: string;
   isPublic: boolean;
@@ -629,6 +649,7 @@ export function buildCanonicalTemplatePayload(args: {
   return {
     kind: args.kind,
     name: args.name.trim(),
+    ...(args.membershipOrder ? { membershipOrder: args.membershipOrder } : {}),
     description: args.description.trim(),
     suggestedTraits: args.suggestedTraits.trim(),
     isPublic: Boolean(args.isPublic),
@@ -656,6 +677,7 @@ export async function hashTemplateContent(
 export async function computeTemplateContentHash(args: {
   kind: string;
   name: string;
+  membershipOrder?: readonly string[] | null;
   description: string;
   suggestedTraits: string;
   isPublic: boolean;

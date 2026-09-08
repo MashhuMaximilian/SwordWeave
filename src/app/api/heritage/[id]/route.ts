@@ -1,3 +1,4 @@
+import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { eq, inArray, and, isNull, or, sql } from "drizzle-orm";
@@ -25,6 +26,7 @@ import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
 import { computeTransitiveBu } from "@/lib/engine/transitive-bu";
 import {
   buildCanonicalTemplatePayload,
+  hashTemplateContent,
   isTemplateDraftEmpty,
   computeTemplateContentHash,
 } from "@/lib/publishing/hash-content";
@@ -377,7 +379,7 @@ export async function GET(
  * Response shape:
  *   { template, dispatchOutcome: { kind, newId, sourceId, swapTarget } | { kind: "no-op", message } }
  */
-export async function PATCH(
+async function handlePATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -391,6 +393,8 @@ export async function PATCH(
     }
 
     const values = body as Record<string, unknown>;
+    const layoutRow = await db.query.heritage.findFirst({ where: eq(heritage.id, id), columns: { membershipOrder: true } });
+    const membershipOrder = values["membershipOrder"] === null ? null : Array.isArray(values["membershipOrder"]) ? (values["membershipOrder"] as unknown[]).map(String) : layoutRow?.membershipOrder ?? null;
 
     // Phase 2: parse intent. Default to "load" (legacy in-place edit
     // behaviour). Forms that fork will send `intent: "fork"`.
@@ -487,6 +491,7 @@ export async function PATCH(
     // -------------------------------------------------------------------
     const kind: HeritageKind = current.kind;
     const canonicalPayload = buildCanonicalTemplatePayload({
+      membershipOrder,
       kind,
       name,
       description: description ?? "",
@@ -503,6 +508,7 @@ export async function PATCH(
     });
     const draftIsEmpty = isTemplateDraftEmpty(canonicalPayload);
     const draftHash = await computeTemplateContentHash({
+      membershipOrder,
       kind,
       name,
       description: description ?? "",
@@ -563,6 +569,7 @@ export async function PATCH(
         sourceOrigin: sourceOrigin ?? current.sourceOrigin,
         tags,
         contentHash: draftHash,
+          membershipOrder,
         updatedAt: new Date(),
         // Phase 8: per-entity iconography
         iconSource: pickIconSource(values["iconSource"]),
@@ -722,6 +729,9 @@ export async function PATCH(
       await buildTemplateTakenNamesSet(name, kind, userId),
     );
 
+    canonicalPayload.name = baseName;
+    const forkHash = await hashTemplateContent(canonicalPayload);
+
     const created = await db.transaction(async (tx) => {
       const [inserted] = await tx
         .insert(heritage)
@@ -740,7 +750,12 @@ export async function PATCH(
           // record; we don't want a user-supplied source origin
           // overriding it).
           tags,
-          contentHash: draftHash,
+          contentHash: forkHash,
+          membershipOrder,
+          iconSource: pickIconSource(values["iconSource"]),
+          iconKey: pickStringOrNull(values["iconKey"]),
+          iconUrl: pickStringOrNull(values["iconUrl"]),
+          iconColor: pickStringOrDefault(values["iconColor"], "#ffffff"),
         })
         .returning();
 
@@ -806,7 +821,7 @@ export async function PATCH(
     await recordVersion({
       entityKind: "template",
       entityId: created.id,
-      contentHash: draftHash,
+      contentHash: forkHash,
       snapshot: canonicalPayload as unknown as Record<string, unknown>,
       publishedByUserId: userId,
     });
@@ -941,4 +956,8 @@ function pickStringOrNull(value: unknown): string | null {
 }
 function pickStringOrDefault(value: unknown, fallback: string): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
+}
+
+export async function PATCH(...args: Parameters<typeof handlePATCH>) {
+  return withPublishingResponse(() => handlePATCH(...args));
 }

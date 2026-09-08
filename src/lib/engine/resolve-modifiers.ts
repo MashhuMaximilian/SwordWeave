@@ -87,6 +87,9 @@ import {
  * have all three = null.
  */
 export interface ResolvedPrimitiveSlot {
+  readonly instanceId?: string;
+  readonly directSource?: string | null;
+  readonly originItemId?: string | null;
   readonly primitiveId: number;
   readonly name: string;
   readonly category: string;

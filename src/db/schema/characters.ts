@@ -226,6 +226,8 @@ export const characterPrimitives = pgTable(
       .notNull()
       .references(() => primitives.id, { onDelete: "restrict" }),
     source: characterPrimitiveSourceEnum("source").notNull().default("PERSONAL"),
+    /** A direct supply retained when its instance also becomes a shared bundle baseline. */
+    directSource: characterPrimitiveSourceEnum("direct_source"),
     acquiredAtLevel: integer("acquired_at_level").notNull().default(1),
     /**
      * True if this primitive was acquired as a mirror vector (negative BU).
@@ -423,6 +425,7 @@ export const heritage = pgTable(
       .array()
       .notNull()
       .default(sql`ARRAY[]::text[]`),
+    membershipOrder: jsonb("membership_order").$type<string[]>(),
     contentHash: text("content_hash"),
     // Phase 8: per-entity iconography (see engine.ts primitives for
     // rationale). Heritage rows share the same icon contract as every

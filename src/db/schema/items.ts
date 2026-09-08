@@ -3,6 +3,7 @@ import {
   boolean,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -58,6 +59,7 @@ export const items = pgTable(
       .array()
       .notNull()
       .default(sql`ARRAY[]::text[]`),
+    membershipOrder: jsonb("membership_order").$type<string[]>(),
     contentHash: text("content_hash"),
     iconSource: iconSourceEnum("icon_source"),
     iconKey: text("icon_key"),

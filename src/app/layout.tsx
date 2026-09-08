@@ -1,3 +1,4 @@
+import { LibraryRefresh } from "@/components/library-refresh";
 import type { Metadata, Viewport } from "next";
 import { Magra, Teko } from "next/font/google";
 import Script from "next/script";
@@ -156,7 +157,7 @@ try {
           signUpFallbackRedirectUrl="/atelier"
         >
           <FullscreenInit />
-          <AppShell>{children}</AppShell>
+          <AppShell><LibraryRefresh />{children}</AppShell>
           {/* Vercel Web Analytics — tracks pageviews, custom events,
               and visitors. Per
               https://vercel.com/docs/analytics/quickstart?framework=nextjs,

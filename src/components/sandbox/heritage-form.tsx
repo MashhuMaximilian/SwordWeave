@@ -1,4 +1,5 @@
 "use client";
+import { SortableBundleList,SortableMember } from "@/components/characters/workspace/sortable-bundle-list";
 
 // HeritageForm: controlled form-only composer for heritage (race/background/archetype).
 // Kind selector switches which primitive category is allowed.
@@ -108,7 +109,12 @@ function kindSingular(kind: string): string {
 
 export function HeritageForm({
   initialTemplate,
+  saveRequest = fetch,
+  slotEvents,
   initialKind,
+  initialPrimitiveIds = [],
+  initialCapabilityIds = [],
+  initialMirroredIds = [],
   availablePrimitives,
   availableCapabilities,
   intent,
@@ -117,8 +123,13 @@ export function HeritageForm({
   onSaved,
   onReset,
 }: {
+  saveRequest?: typeof fetch;
+  slotEvents?: EventTarget;
   initialTemplate?: HeritageRow | null;
   initialKind?: "LINEAGE" | "UPBRINGING" | "MANIFEST" | undefined;
+  initialPrimitiveIds?: number[];
+  initialCapabilityIds?: string[];
+  initialMirroredIds?: number[];
   availablePrimitives: Array<{
     id: number;
     name: string;
@@ -152,14 +163,15 @@ export function HeritageForm({
      */
     isDirty: boolean;
   }) => void;
-  onSaved?: (template: HeritageRow) => void;
+  onSaved?: (template: HeritageRow) => void | boolean | Promise<void | boolean>;
   onReset?: () => void;
 }) {
+  const [orderChanged,setOrderChanged]=useState(false);
   const [form, setForm] = useState<HeritageFormState>({
     ...blankForm,
     kind: initialTemplate?.kind ?? initialKind ?? "LINEAGE",
   });
-  const [primitiveIds, setPrimitiveIds] = useState<number[]>([]);
+  const [primitiveIds, setPrimitiveIds] = useState<number[]>(() => [...new Set(initialPrimitiveIds)]);
   // Phase 7 Q-M-UX: parallel Set tracking which primitive slots are
   // mirrored. Stored as a Set for O(1) lookup; flattened to primitiveSlots
   // at payload-time. Templates keep the flat primitiveIds array because
@@ -167,9 +179,9 @@ export function HeritageForm({
   // already trivially mirrored-aware via the workspace mirror-canonical
   // table — the sandbox shows the toggle in the chip list below).
   const [isMirroredIds, setIsMirroredIds] = useState<Set<number>>(
-    () => new Set<number>(),
+    () => new Set<number>(initialMirroredIds),
   );
-  const [capabilityIds, setCapabilityIds] = useState<string[]>([]);
+  const [capabilityIds, setCapabilityIds] = useState<string[]>(() => [...new Set(initialCapabilityIds)]);
   const [mirroredSet, setMirroredSet] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -337,13 +349,14 @@ export function HeritageForm({
         kind: "primitive" | "effect" | "capability";
         id: number | string;
         label: string;
+        operation?: "add-reference";
       }>;
       if (e.detail.kind === "primitive") {
         const id =
           typeof e.detail.id === "string" ? Number(e.detail.id) : e.detail.id;
         if (!Number.isFinite(id)) return;
         setPrimitiveIds((prev) =>
-          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+          prev.includes(id) ? (e.detail.operation === "add-reference" ? prev : prev.filter((x) => x !== id)) : [...prev, id],
         );
         setIsDirty(true);
         return;
@@ -351,15 +364,15 @@ export function HeritageForm({
       if (e.detail.kind === "capability") {
         const id = String(e.detail.id);
         setCapabilityIds((prev) =>
-          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+          prev.includes(id) ? (e.detail.operation === "add-reference" ? prev : prev.filter((x) => x !== id)) : [...prev, id],
         );
         setIsDirty(true);
         return;
       }
       // effect kind — no-op until template↔effect links ship.
     };
-    window.addEventListener("sw-sandbox-slot", handler);
-    return () => window.removeEventListener("sw-sandbox-slot", handler);
+    (slotEvents ?? window).addEventListener("sw-sandbox-slot", handler);
+    return () => (slotEvents ?? window).removeEventListener("sw-sandbox-slot", handler);
   }, []);
 
   function updateForm(field: keyof HeritageFormState, value: string | boolean) {
@@ -421,6 +434,7 @@ export function HeritageForm({
     }
 
     const body: Record<string, unknown> = {
+      ...(orderChanged?{membershipOrder:[...primitiveIds.map(id=>`primitive:${id}`),...capabilityIds.map(id=>`capability:${id}`)]}:{}),
       kind: form.kind,
       name: form.name.trim(),
       imageUrl: form.imageUrl.trim() || null,
@@ -460,7 +474,7 @@ export function HeritageForm({
     const method = initialTemplate ? "PATCH" : "POST";
 
     startTransition(async () => {
-      const response = await fetch(url, {
+      const response = await saveRequest(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -499,7 +513,7 @@ export function HeritageForm({
           : null;
 
       if (template) {
-        onSaved?.(template);
+        if ((await onSaved?.(template)) === false) return;
       }
       resetEditor();
       router.refresh();
@@ -699,9 +713,9 @@ export function HeritageForm({
             column and use its &ldquo;Slot into build&rdquo; action.
           </p>
         ) : (
-          <ul className="mt-3 space-y-2">
+          <SortableBundleList className="mt-3 space-y-2" ids={primitiveIds.map(String)} onOrder={order=>{setPrimitiveIds(order.map(Number));setOrderChanged(true);setIsDirty(true);}}>
             {slottedPrimitives.map((p) => (
-              <li
+              <SortableMember id={String(p.id)} label={p.name}
                 key={p.id}
                 className="flex flex-col gap-2 rounded-md border border-border bg-card p-3 text-sm sm:flex-row sm:items-center"
               >
@@ -733,9 +747,9 @@ export function HeritageForm({
                     <span className="hidden sm:inline">Remove</span>
                   </button>
                 </div>
-              </li>
+              </SortableMember>
             ))}
-          </ul>
+          </SortableBundleList>
         )}
       </section>
 
@@ -753,9 +767,9 @@ export function HeritageForm({
             column and use its &ldquo;Slot into build&rdquo; action.
           </p>
         ) : (
-          <ul className="mt-3 space-y-2">
+          <SortableBundleList className="mt-3 space-y-2" ids={capabilityIds} onOrder={order=>{setCapabilityIds(order);setOrderChanged(true);setIsDirty(true);}}>
             {slottedCapabilities.map((c) => (
-              <li
+              <SortableMember id={c.id} label={c.name}
                 key={c.id}
                 className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2 text-sm"
               >
@@ -773,9 +787,9 @@ export function HeritageForm({
                   <Trash2 className="size-3.5" />
                   Remove
                 </button>
-              </li>
+              </SortableMember>
             ))}
-          </ul>
+          </SortableBundleList>
         )}
       </section>
 

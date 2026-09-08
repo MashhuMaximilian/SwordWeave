@@ -1,4 +1,5 @@
 "use client";
+import { SortableBundleList,SortableMember } from "@/components/characters/workspace/sortable-bundle-list";
 
 // ItemForm: controlled form-only composer for items.
 // Slots primitives (ITEM_AUGMENT category) + capabilities + effects.
@@ -113,6 +114,11 @@ const blankForm: ItemFormState = {
 
 export function ItemForm({
   initialItem,
+  saveRequest = fetch,
+  slotEvents,
+  initialPrimitiveIds = [],
+  initialEffectIds = [],
+  initialCapabilityIds = [],
   availablePrimitives,
   availableCapabilities,
   availableEffects,
@@ -122,6 +128,11 @@ export function ItemForm({
   onSaved,
   onReset,
 }: {
+  saveRequest?: typeof fetch;
+  slotEvents?: EventTarget;
+  initialPrimitiveIds?: number[];
+  initialEffectIds?: string[];
+  initialCapabilityIds?: string[];
   initialItem?: ItemRow | null;
   availablePrimitives: Array<{
     id: number;
@@ -164,16 +175,17 @@ export function ItemForm({
   onSaved?: (item: ItemRow) => void;
   onReset?: () => void;
 }) {
+  const [orderChanged,setOrderChanged]=useState(false);
   const [form, setForm] = useState<ItemFormState>(blankForm);
-  const [primitiveIds, setPrimitiveIds] = useState<number[]>([]);
+  const [primitiveIds, setPrimitiveIds] = useState<number[]>(initialPrimitiveIds);
   // Phase 7 Q-M-UX: parallel Set tracking which primitive slots are
   // mirrored. Same pattern as the template form — flat primitiveIds for
   // UI, primitiveSlots at payload-time.
   const [isMirroredIds, setIsMirroredIds] = useState<Set<number>>(
     () => new Set<number>(),
   );
-  const [capabilityIds, setCapabilityIds] = useState<string[]>([]);
-  const [effectIds, setEffectIds] = useState<string[]>([]);
+  const [capabilityIds, setCapabilityIds] = useState<string[]>(initialCapabilityIds);
+  const [effectIds, setEffectIds] = useState<string[]>(initialEffectIds);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
@@ -340,13 +352,14 @@ export function ItemForm({
         kind: "primitive" | "effect" | "capability";
         id: number | string;
         label: string;
+        operation?: "add-reference";
       }>;
       if (e.detail.kind === "primitive") {
         const id =
           typeof e.detail.id === "string" ? Number(e.detail.id) : e.detail.id;
         if (!Number.isFinite(id)) return;
         setPrimitiveIds((prev) =>
-          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+          prev.includes(id) ? (e.detail.operation === "add-reference" ? prev : prev.filter((x) => x !== id)) : [...prev, id],
         );
         setIsDirty(true);
         return;
@@ -354,7 +367,7 @@ export function ItemForm({
       if (e.detail.kind === "effect") {
         const id = String(e.detail.id);
         setEffectIds((prev) =>
-          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+          prev.includes(id) ? (e.detail.operation === "add-reference" ? prev : prev.filter((x) => x !== id)) : [...prev, id],
         );
         setIsDirty(true);
         return;
@@ -362,14 +375,14 @@ export function ItemForm({
       if (e.detail.kind === "capability") {
         const id = String(e.detail.id);
         setCapabilityIds((prev) =>
-          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+          prev.includes(id) ? (e.detail.operation === "add-reference" ? prev : prev.filter((x) => x !== id)) : [...prev, id],
         );
         setIsDirty(true);
         return;
       }
     };
-    window.addEventListener("sw-sandbox-slot", handler);
-    return () => window.removeEventListener("sw-sandbox-slot", handler);
+    (slotEvents ?? window).addEventListener("sw-sandbox-slot", handler);
+    return () => (slotEvents ?? window).removeEventListener("sw-sandbox-slot", handler);
   }, []);
 
   function updateForm(field: keyof ItemFormState, value: string | boolean) {
@@ -437,6 +450,7 @@ export function ItemForm({
     }
 
     const body: Record<string, unknown> = {
+      ...(orderChanged?{membershipOrder:[...primitiveIds.map(id=>`primitive:${id}`),...capabilityIds.map(id=>`capability:${id}`) ,...effectIds.map(id=>`effect:${id}`)]}:{}),
       name: form.name.trim(),
       itemType: form.itemType,
       rarity: form.rarity,
@@ -484,7 +498,7 @@ export function ItemForm({
     const method = initialItem ? "PATCH" : "POST";
 
     startTransition(async () => {
-      const response = await fetch(url, {
+      const response = await saveRequest(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -523,7 +537,8 @@ export function ItemForm({
           : null;
 
       if (item) {
-        onSaved?.(item);
+        window.dispatchEvent(new CustomEvent("sw:library-changed"));
+      onSaved?.(item);
       }
       resetEditor();
       router.refresh();
@@ -889,9 +904,9 @@ export function ItemForm({
             Library column and use its &ldquo;Slot into build&rdquo; action.
           </p>
         ) : (
-          <ul className="mt-3 space-y-2">
+          <SortableBundleList className="mt-3 space-y-2" ids={primitiveIds.map(String)} onOrder={order=>{setPrimitiveIds(order.map(Number));setOrderChanged(true);setIsDirty(true);}}>
             {slottedPrimitives.map((p) => (
-              <li
+              <SortableMember id={String(p.id)} label={p.name}
                 key={p.id}
                 className="flex flex-col gap-2 rounded-md border border-border bg-card p-3 text-sm sm:flex-row sm:items-center"
               >
@@ -923,9 +938,9 @@ export function ItemForm({
                     <span className="hidden sm:inline">Remove</span>
                   </button>
                 </div>
-              </li>
+              </SortableMember>
             ))}
-          </ul>
+          </SortableBundleList>
         )}
       </section>
 
@@ -940,12 +955,12 @@ export function ItemForm({
             column and use its &ldquo;Slot into build&rdquo; action.
           </p>
         ) : (
-          <ul className="mt-3 space-y-2">
+          <SortableBundleList className="mt-3 space-y-2" ids={capabilityIds} onOrder={order=>{setCapabilityIds(order);setOrderChanged(true);setIsDirty(true);}}>
             {capabilityIds.map((id) => {
               const cap = availableCapabilities.find((c) => c.id === id);
               if (!cap) return null;
               return (
-                <li
+                <SortableMember id={id} label={cap.name}
                   key={id}
                   className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2 text-sm"
                 >
@@ -963,10 +978,10 @@ export function ItemForm({
                     <Trash2 className="size-3.5" />
                     Remove
                   </button>
-                </li>
+                </SortableMember>
               );
             })}
-          </ul>
+          </SortableBundleList>
         )}
       </section>
 
@@ -981,12 +996,12 @@ export function ItemForm({
             use its &ldquo;Slot into build&rdquo; action.
           </p>
         ) : (
-          <ul className="mt-3 space-y-2">
+          <SortableBundleList className="mt-3 space-y-2" ids={effectIds} onOrder={order=>{setEffectIds(order);setOrderChanged(true);setIsDirty(true);}}>
             {effectIds.map((id) => {
               const eff = availableEffects.find((e) => e.id === id);
               if (!eff) return null;
               return (
-                <li
+                <SortableMember id={id} label={eff.name}
                   key={id}
                   className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2 text-sm"
                 >
@@ -1001,10 +1016,10 @@ export function ItemForm({
                     <Trash2 className="size-3.5" />
                     Remove
                   </button>
-                </li>
+                </SortableMember>
               );
             })}
-          </ul>
+          </SortableBundleList>
         )}
       </section>
 

@@ -1,8 +1,9 @@
+import { withCharacterMutation } from "@/lib/character/mutation-transaction";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { characters } from "@/db/schema";
+import { characters, characterWorkspaceState } from "@/db/schema";
 import { validateAttributes, type Attribute } from "@/lib/engine/practices";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 import { cumulativeBuForLevel } from "@/lib/engine/bu";
@@ -155,7 +156,8 @@ export async function GET(
   // they stay scoped to the item.
   await enrichItemLinksWithNestedBundle(row.itemLinks);
 
-  return NextResponse.json({ character: row });
+  const [workspace]=await db.select().from(characterWorkspaceState).where(eq(characterWorkspaceState.characterId,id));
+  return NextResponse.json({ character: {...row,workspaceRevision:workspace?.revision??0} });
 }
 
 /**
@@ -163,7 +165,7 @@ export async function GET(
  *
  * Updates mutable character fields. Re-validates BU cap if buSpent/level/dmBonusBu/startingBu changed.
  */
-export async function PATCH(
+async function handlePATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -178,6 +180,10 @@ export async function PATCH(
 
     const values = body as Record<string, unknown>;
 
+    if (typeof values['expectedWorkspaceRevision'] === 'number') {
+      const [workspace]=await db.select().from(characterWorkspaceState).where(eq(characterWorkspaceState.characterId,id));
+      if((workspace?.revision??0)!==values['expectedWorkspaceRevision'])return NextResponse.json({error:'This character changed while the modal was open. Your draft is retained; review the latest character before saving.'},{status:409});
+    }
     // Get current state for validation
     const current = await db.query.characters.findFirst({
       where: eq(characters.id, id),
@@ -770,4 +776,12 @@ export async function DELETE(
     const message = error instanceof Error ? error.message : "Unknown error.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
+}
+export async function PATCH(request:Request,context:{params:Promise<{id:string}>}) {
+ const {id}=await context.params;
+ return withCharacterMutation(id,async()=>{
+  const response=await handlePATCH(request,context);
+  if(response.ok)await db.insert(characterWorkspaceState).values({characterId:id,revision:1}).onConflictDoUpdate({target:characterWorkspaceState.characterId,set:{revision:sql`${characterWorkspaceState.revision}+1`}});
+  return response;
+ });
 }

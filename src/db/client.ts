@@ -18,6 +18,7 @@
 // message".
 // =============================================================================
 
+import { AsyncLocalStorage } from "node:async_hooks";
 import { Pool, neonConfig } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { loadEnvConfig } from "@next/env";
@@ -91,8 +92,24 @@ function ensureClient() {
  *
  * Throws a descriptive error if DATABASE_URL is missing.
  */
-export function getDb() {
-  return ensureClient();
+type Database = ReturnType<typeof drizzle<typeof schema>>;
+type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
+const transactionScope = new AsyncLocalStorage<Transaction>();
+
+export function getDb(): Database {
+  return (transactionScope.getStore() ?? ensureClient()) as Database;
+}
+
+/** Existing publishing services participate in the calling character command's
+ * transaction, including snapshots and audit records. Scope is request-local. */
+export async function withDatabaseTransaction<T>(work: (tx: Transaction) => Promise<T>): Promise<T> {
+  const active = transactionScope.getStore();
+  if (active) return work(active);
+  return ensureClient().transaction(tx => transactionScope.run(tx, () => work(tx)));
+}
+
+export function withExistingTransaction<T>(tx: Transaction, work: () => Promise<T>): Promise<T> {
+  return transactionScope.run(tx, work);
 }
 
 /**
@@ -106,7 +123,7 @@ export const db = new Proxy(
   {},
   {
     get(_target, prop, _receiver) {
-      const client = ensureClient() as unknown as Record<PropertyKey, unknown>;
+      const client = getDb() as unknown as Record<PropertyKey, unknown>;
       const value = client[prop];
       return typeof value === "function" ? (value as Function).bind(client) : value;
     },
@@ -116,6 +133,7 @@ export const db = new Proxy(
 export const pool = new Proxy({} as Pool, {
   get(_target, prop, _receiver) {
     if (!_pool) ensureClient();
-    return (_pool as unknown as Record<PropertyKey, unknown>)[prop];
+    const value = (_pool as unknown as Record<PropertyKey, unknown>)[prop];
+    return typeof value === "function" ? value.bind(_pool) : value;
   },
 });

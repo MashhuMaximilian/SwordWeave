@@ -43,6 +43,13 @@ type TypeFilter =
   | "item"
   | "character"
   | "build";
+type CreationTab = "mechanics" | "heritages" | "characters";
+const TAB_TYPES: Record<CreationTab, TypeFilter[]> = {
+  mechanics: ["primitive", "effect", "capability", "item"],
+  heritages: ["template"],
+  characters: ["character", "build"],
+};
+
 type StatusFilter = "all" | "draft";
 // Phase 9 follow-up: fork/creation kind filter. "fork" = rows whose
 // sourceOrigin starts with "fork:" (came from someone else's entity);
@@ -99,12 +106,16 @@ export function CreationsClient({
   const [type, setType] = useState<TypeFilter>(
     (TYPE_CHIPS.find((c) => c.key === initialType)?.key ?? "all") as TypeFilter,
   );
+  const [tab, setTab] = useState<CreationTab>(
+    initialType === "template" ? "heritages" : ["character", "build"].includes(initialType) ? "characters" : "mechanics",
+  );
   const [status, setStatus] = useState<StatusFilter>(
     initialStatus === "draft" ? "draft" : "all",
   );
   // Phase 9 follow-up: two new orthogonal filter dimensions.
   const [kind, setKind] = useState<KindFilter>("all");
   const [visibility, setVisibility] = useState<VisibilityFilter>("all");
+  const [heritageKind, setHeritageKind] = useState("all");
   const [search, setSearch] = useState("");
   // P5R-6: LIST view toggle. LibraryTable already supports both modes; the
   // view prop is just plumbed through. Default LIST (the user said list view
@@ -131,7 +142,6 @@ export function CreationsClient({
     const onChange = (e: MediaQueryListEvent) => {
       if (e.matches) setView("LIST");
     };
-    if (mql.matches) setView("LIST");
     mql.addEventListener("change", onChange);
     return () => mql.removeEventListener("change", onChange);
   }, []);
@@ -172,7 +182,7 @@ export function CreationsClient({
             Type
           </p>
           <div className="flex flex-wrap gap-1.5">
-            {TYPE_CHIPS.map((c) => {
+            {TYPE_CHIPS.filter(c => c.key === "all" || TAB_TYPES[tab].includes(c.key)).map((c) => {
               const active = type === c.key;
               const count = c.key === "all" ? items.length : counts[c.key] ?? 0;
               return (
@@ -310,12 +320,12 @@ export function CreationsClient({
           </div>
         </div>
         <p className="text-[10px] text-muted-foreground/80">
-          Tip: cards open a preview modal. Click "Open source page" inside to
+          Tip: cards open a preview modal. Click &quot;Open source page&quot; inside to
           visit the full canonical detail page.
         </p>
       </div>
     ),
-    [type, status, kind, visibility, items.length, counts],
+    [tab, type, status, kind, visibility, items, counts],
   );
   useFilterSlot(filterSlot);
 
@@ -323,6 +333,8 @@ export function CreationsClient({
     const q = search.toLowerCase().trim();
     return items.filter((item) => {
       const mapped = TARGET_TYPE_MAP[item.targetType] ?? "primitive";
+      if (!TAB_TYPES[tab].includes(mapped)) return false;
+      if (tab === "heritages" && heritageKind !== "all" && item.targetType !== heritageKind) return false;
       if (type !== "all" && mapped !== type) return false;
       // "Drafts only" = unpublished (no publishedAt). LibraryItem doesn't
       // carry isPublic; the query layer fills publishedAt only for public rows.
@@ -348,16 +360,35 @@ export function CreationsClient({
       if (q && !item.name.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [items, type, status, kind, visibility, search]);
+  }, [items, tab, heritageKind, type, status, kind, visibility, search]);
 
   const hasActiveFilters =
     type !== "all" ||
-    status !== "draft" ||
+    status !== "all" ||
     kind !== "all" ||
     visibility !== "all";
 
   return (
     <div className="mt-8 space-y-4">
+      <div role="tablist" aria-label="My creations" className="flex flex-wrap gap-2 border-b border-border pb-3">
+        {([['mechanics', 'Mechanics'], ['heritages', 'Heritages'], ['characters', 'Characters']] as const).map(([key, label]) => (
+          <button key={key} type="button" role="tab" aria-selected={tab === key}
+            onClick={() => { setTab(key); setType('all'); }}
+            className={cn('rounded-md px-4 py-2 text-sm font-medium', tab === key ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:text-foreground')}>
+            {label} ({items.filter(item => TAB_TYPES[key].includes(TARGET_TYPE_MAP[item.targetType] ?? "primitive")).length})
+          </button>
+        ))}
+      </div>
+      {tab === "heritages" && (
+        <div role="group" aria-label="Heritage kind" className="flex flex-wrap gap-2">
+          {([['all', 'All heritages'], ['LINEAGE_TEMPLATE', 'Lineages'], ['MANIFEST_TEMPLATE', 'Manifests'], ['UPBRINGING_TEMPLATE', 'Upbringings']] as const).map(([key, label]) => (
+            <button key={key} type="button" aria-pressed={heritageKind === key} onClick={() => setHeritageKind(key)}
+              className={cn('rounded-full border px-3 py-1 text-xs', heritageKind === key ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground')}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="rounded-md border border-border bg-card p-3">
         <div className="flex items-center gap-2">
           <div className="min-w-0 flex-1">
@@ -411,7 +442,7 @@ export function CreationsClient({
       {items.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-md border border-dashed border-border bg-card/30 p-12 text-center">
           <p className="text-sm font-medium text-muted-foreground">
-            You haven't authored anything yet.
+            You haven&apos;t authored anything yet.
           </p>
           <p className="max-w-sm text-xs text-muted-foreground">
             Start by composing a primitive in the sandbox, or fork an existing

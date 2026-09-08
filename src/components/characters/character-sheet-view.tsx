@@ -47,6 +47,7 @@ import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
 import { CharacterEditButton } from "@/components/characters/character-edit-button";
 import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-card";
 import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
+import { CharacterWorkspace } from "@/components/characters/workspace/character-workspace";
 import { ConditionsDrawer } from "@/components/characters/conditions-drawer";
 import { BuildModeBanner } from "@/components/characters/build-mode-banner";
 import { AccordionFooterActions } from "@/components/characters/accordion-footer-actions";
@@ -110,6 +111,8 @@ type SlotSource = "OWNED" | "FORKED" | "PINNED";
  */
 
 type SheetPrimitiveLink = {
+  directSource?: string | null;
+  originItemId?: string | null;
   /** Phase 9.4 (Mashu 2026-09-07): the character_primitives
    * primary key — used as the drag-and-drop payload id so
    * PATCH /primitives/[instanceId] can route the move. */
@@ -821,6 +824,9 @@ export function CharacterSheetView(props: CharacterSheetProps) {
     },
     primitiveLinks: props.primitiveLinks.map((l) => ({
       primitiveId: l.primitiveId,
+      instanceId: l.instanceId,
+      directSource: l.directSource ?? null,
+      originItemId: l.originItemId ?? null,
       isMirrored: l.isMirrored,
       originHeritageId: l.originHeritageId,
       originCapabilityId: l.originCapabilityId,
@@ -879,8 +885,8 @@ export function CharacterSheetView(props: CharacterSheetProps) {
       <button
         type="button"
         onClick={() => setConditionsOpen(true)}
-        aria-label="Open conditions drawer"
-        title="Open conditions drawer"
+        aria-label="Open Consequences drawer"
+        title="Open Consequences drawer"
         // Phase 8.L round 58: arrow positioned ABOVE the bottom
         // drawer's TOP edge when EXTENDED (drawer can grow to
         // 70dvh tall). top: 12vh puts it well above even the fully
@@ -1047,75 +1053,12 @@ export function CharacterSheetView(props: CharacterSheetProps) {
              white-screen the entire sheet. The error message is
              shown inline so the user can keep using the other tabs. */
           <TabErrorBoundary tabName="Capabilities">
-          <CapabilitiesTab
-            characterId={props.id}
-            heritageLinks={props.heritageLinks}
-            capabilities={props.capabilityLinks.map((l) => ({
-              ...l.capability,
-              acquiredAtLevel: l.acquiredAtLevel,
-              // Phase 5 (T5.C.3): surface slot metadata to the tab.
-              versionId: l.versionId,
-              slotSource: l.slotSource,
-              latestVersionId: l.latestVersionId,
-              // Phase 8.1 batch 13.1: pass through origin for the badge.
-              originHeritageId: l.originHeritageId,
-              // Phase 8.4 v24.6 (Mashu 2026-07-29): per-tab
-              // accordion routing for direct caps. Default
-              // to MANIFEST when the column is null (legacy
-              // rows pre-v24.6).
-              slotTab: l.slotTab ?? "MANIFEST",
-              tags: l.capability.tags ?? [],
-              // Phase 8.4 v5 (Mashu 2026-07-28): forward
-              // effectLinks so the CapabilityCard can render
-              // a nested Effects accordion.
-              effectLinks: l.effectLinks ?? [],
-            }))}
-            // Phase 8.5 / Session H6 round 7 (Mashu
-            // 2026-08-03): forward the latest-version
-            // map so HeritageKindAccordion (and the
-            // heritage header SlotSourceBadge inside
-            // it) can render "Pinned v:XXX" + the
-            // "update available" stale pill when the
-            // heritage has been re-published.
-            latestVersions={latestVersions}
-            // Phase 8.1 batch 13.1: lookup maps for origin chain.
-            heritageById={heritageById}
-            capabilityById={capabilityById}
-            effectById={effectById}
-            // Phase 9.1: forward BUILD/PLAY mode so accordions
-            // can render their inline authoring affordances.
-            mode={props.mode ?? "PLAY"}
-            // Phase 8.2 batch 3: pass all primitive links for the primitives accordion
-            primitiveLinks={props.primitiveLinks.map((l) => ({
-              instanceId: l.instanceId,
-              primitiveId: l.primitiveId,
-              source: l.source,
-              acquiredAtLevel: l.acquiredAtLevel,
-              isMirrored: l.isMirrored ?? false,
-              versionId: l.versionId,
-              slotSource: l.slotSource,
-              latestVersionId: l.latestVersionId,
-              originHeritageId: l.originHeritageId ?? null,
-              originCapabilityId: l.originCapabilityId ?? null,
-              originEffectId: l.originEffectId ?? null,
-              primitive: {
-                id: l.primitive.id,
-                name: l.primitive.name,
-                category: l.primitive.category,
-                buCost: l.primitive.buCost,
-                isMirrorable: l.primitive.isMirrorable,
-                mirrorBuCredit: l.primitive.mirrorBuCredit,
-                narrativeRule: l.primitive.narrativeRule ?? "",
-                // Phase 8.3d (Mashu 2026-07-27): pass-through
-                // hardModifiers from the snapshot so the inner
-                // accordion can render ConditionBadges per row.
-                hardModifiers: l.primitive.hardModifiers,
-              },
-            }))}
-          />
+          <CharacterWorkspace characterId={props.id} mode={props.mode ?? "PLAY"} />
           </TabErrorBoundary>
         )}
         {tab === "items" && (
+          <div className="space-y-6">
+          <CharacterWorkspace characterId={props.id} mode={props.mode ?? "PLAY"} items />
           <ItemsTab
             characterId={props.id}
             items={props.itemLinks.map((l) => ({
@@ -1134,6 +1077,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             // chips can render "Pinned v:XXXX".
             latestVersions={latestVersions}
           />
+          </div>
         )}
         {tab === "notes" && (
           <NotesTab
@@ -1298,7 +1242,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
       <BottomStickyBar
         characterId={props.id}
         currentVitality={props.currentVitality}
-        maxVitality={props.vitality.max}
+        maxVitality={resolver.maxVitality ?? props.vitality.max}
         physical={props.attrPhysical}
         mental={props.attrMental}
         magical={props.attrMagical}

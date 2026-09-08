@@ -69,6 +69,8 @@ export async function recomputeBuSpent(
     .select({
       instanceId: characterPrimitives.instanceId,
       primitiveId: characterPrimitives.primitiveId,
+      originItemId: characterPrimitives.originItemId,
+      directSource: characterPrimitives.directSource,
       buCost: primitives.buCost,
       isMirrorable: primitives.isMirrorable,
       mirrorBuCredit: primitives.mirrorBuCredit,
@@ -83,6 +85,7 @@ export async function recomputeBuSpent(
 
   let positiveSpent = 0;
   for (const r of rows) {
+    if (r.originItemId && !r.directSource) continue;
     const bu = calculatePrimitiveBu(
       {
         id: 0,
@@ -137,6 +140,8 @@ export async function _dryRunRecomputeBuSpent(
     .select({
       instanceId: characterPrimitives.instanceId,
       primitiveId: characterPrimitives.primitiveId,
+      originItemId: characterPrimitives.originItemId,
+      directSource: characterPrimitives.directSource,
       buCost: primitives.buCost,
       isMirrorable: primitives.isMirrorable,
       mirrorBuCredit: primitives.mirrorBuCredit,
@@ -151,6 +156,7 @@ export async function _dryRunRecomputeBuSpent(
 
   let positiveSpent = 0;
   for (const r of rows) {
+    if (r.originItemId && !r.directSource) continue;
     const bu = calculatePrimitiveBu(
       {
         id: 0,

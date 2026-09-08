@@ -1,4 +1,5 @@
 "use client";
+import { SortableBundleList,SortableMember } from "@/components/characters/workspace/sortable-bundle-list";
 
 // CapabilityForm: controlled form-only composer for capabilities.
 // Slots primitives with role + quantity. Save handles both POST (create) and
@@ -114,6 +115,10 @@ const blankForm: CapabilityFormState = {
 
 export function CapabilityForm({
   initialCapability,
+  saveRequest = fetch,
+  slotEvents,
+  initialPrimitiveIds = [],
+  initialEffectIds = [],
   availablePrimitives,
   availableEffects,
   intent,
@@ -122,6 +127,10 @@ export function CapabilityForm({
   onSaved,
   onReset,
 }: {
+  saveRequest?: typeof fetch;
+  slotEvents?: EventTarget;
+  initialPrimitiveIds?: number[];
+  initialEffectIds?: string[];
   initialCapability?: CapabilityRow | null;
   availablePrimitives: Array<{
     id: number;
@@ -154,9 +163,11 @@ export function CapabilityForm({
   onSaved?: (capability: CapabilityRow) => void;
   onReset?: () => void;
 }) {
+  const [orderChanged,setOrderChanged]=useState(false);
   const [form, setForm] = useState<CapabilityFormState>(blankForm);
-  const [slots, setSlots] = useState<CapabilitySlot[]>([]);
-  const [effectIds, setEffectIds] = useState<string[]>([]);
+  const scopedInitial=useRef<typeof initialCapability>(undefined);
+  const [slots, setSlots] = useState<CapabilitySlot[]>(() => initialPrimitiveIds.flatMap((id, index) => { const primitive = availablePrimitives.find(p => p.id === id); return primitive ? [{ primitiveId: id, primitive, quantity: 1, isMirrored: false, role: defaultRoleForCategory(primitive.category), sortOrder: index, slotLabel: null }] : []; }));
+  const [effectIds, setEffectIds] = useState<string[]>(initialEffectIds);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
@@ -171,6 +182,8 @@ export function CapabilityForm({
     if (bootstrappedRef.current === id) return;
     bootstrappedRef.current = id;
     if (!initialCapability) return;
+    if(slotEvents && scopedInitial.current===initialCapability)return;
+    scopedInitial.current=initialCapability;
     // Check for a saved draft (e.g. when the form unmounted in the panel
     // and remounted in the drawer). If a draft exists for this entity,
     // restore the slots/effects from it instead of the initial data.
@@ -286,12 +299,13 @@ export function CapabilityForm({
         kind: "primitive" | "effect" | "capability";
         id: number | string;
         label: string;
+        operation?: "add-reference";
       }>;
       if (e.detail.kind === "primitive") {
         const id =
           typeof e.detail.id === "string" ? Number(e.detail.id) : e.detail.id;
         if (!Number.isFinite(id)) return;
-        addSlot(id);
+        addSlot(id, e.detail.operation === "add-reference");
         return;
       }
       if (e.detail.kind === "effect") {
@@ -304,8 +318,8 @@ export function CapabilityForm({
       }
       // capability kind — not supported on capability form.
     };
-    window.addEventListener("sw-sandbox-slot", handler);
-    return () => window.removeEventListener("sw-sandbox-slot", handler);
+    (slotEvents ?? window).addEventListener("sw-sandbox-slot", handler);
+    return () => (slotEvents ?? window).removeEventListener("sw-sandbox-slot", handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availablePrimitives]);
 
@@ -314,12 +328,12 @@ export function CapabilityForm({
     setForm((current) => ({ ...current, [field]: value }));
   }
 
-  function addSlot(primitiveId: number) {
+  function addSlot(primitiveId: number, referenceOnly = false) {
     const primitive = availablePrimitives.find((p) => p.id === primitiveId);
     if (!primitive) return;
     const role = defaultRoleForCategory(primitive.category);
     setIsDirty(true);
-    setSlots((prev) => [
+    setSlots((prev) => referenceOnly && prev.some(s=>s.primitiveId===primitiveId) ? prev : [
       ...prev,
       {
         primitiveId,
@@ -391,6 +405,7 @@ export function CapabilityForm({
     }
 
     const body: Record<string, unknown> = {
+      ...(orderChanged?{membershipOrder:[...slots.map(s=>`primitive:${s.primitiveId}:${s.role}`),...effectIds.map(id=>`effect:${id}`)]}:{}),
       name: form.name.trim(),
       type: form.type,
       sourceType: form.sourceType,
@@ -430,7 +445,7 @@ export function CapabilityForm({
     const method = initialCapability ? "PATCH" : "POST";
 
     startTransition(async () => {
-      const response = await fetch(url, {
+      const response = await saveRequest(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -469,7 +484,8 @@ export function CapabilityForm({
           : null;
 
       if (capability) {
-        onSaved?.(capability);
+        window.dispatchEvent(new CustomEvent("sw:library-changed"));
+      onSaved?.(capability);
       }
       resetEditor();
       router.refresh();
@@ -636,7 +652,7 @@ export function CapabilityForm({
         />
       </label>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="hidden gap-4 md:grid md:grid-cols-2">
         <label className="block text-sm font-medium">
           Type
           <select
@@ -725,9 +741,9 @@ export function CapabilityForm({
             column and use its &ldquo;Slot into build&rdquo; action.
           </p>
         ) : (
-          <ul className="mt-3 space-y-2">
+          <SortableBundleList className="mt-3 space-y-2" ids={slots.map(s=>`${s.primitiveId}:${s.role}`)} onOrder={order=>{setSlots(order.map(id=>slots.find(s=>`${s.primitiveId}:${s.role}`===id)!));setOrderChanged(true);setIsDirty(true);}}>
             {slots.map((slot, idx) => (
-              <li
+              <SortableMember id={`${slot.primitiveId}:${slot.role}`} label={slot.primitive.name}
                 key={`${slot.primitiveId}-${idx}`}
                 className="flex flex-col gap-2 rounded-md border border-border bg-card p-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2"
               >
@@ -780,9 +796,9 @@ export function CapabilityForm({
                     <span className="hidden sm:inline">Remove</span>
                   </button>
                 </div>
-              </li>
+              </SortableMember>
             ))}
-          </ul>
+          </SortableBundleList>
         )}
       </section>
 
@@ -803,11 +819,11 @@ export function CapabilityForm({
             and use its &ldquo;Slot into build&rdquo; action.
           </p>
         ) : (
-          <ul className="mt-3 space-y-2">
+          <SortableBundleList className="mt-3 space-y-2" ids={effectIds} onOrder={order=>{setEffectIds(order);setOrderChanged(true);setIsDirty(true);}}>
             {effectIds.map((id) => {
               const effect = availableEffects.find((e) => e.id === id);
               return (
-                <li
+                <SortableMember id={id} label={effect?.name ?? id}
                   key={id}
                   className="flex items-center gap-2 rounded-md border border-border bg-card p-2 text-sm"
                 >
@@ -821,10 +837,10 @@ export function CapabilityForm({
                   >
                     <Trash2 className="size-3.5" /> Remove
                   </button>
-                </li>
+                </SortableMember>
               );
             })}
-          </ul>
+          </SortableBundleList>
         )}
       </section>
 

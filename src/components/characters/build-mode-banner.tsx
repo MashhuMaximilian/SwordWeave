@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Hammer, Loader2, ShieldCheck } from "lucide-react";
 
 export type SheetMode = "BUILD" | "PLAY";
@@ -30,6 +31,7 @@ export function BuildModeBanner({
   characterId,
   initialMode,
 }: BuildModeBannerProps) {
+  const router = useRouter();
   const [mode, setMode] = useState<SheetMode>(initialMode);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -52,13 +54,14 @@ export function BuildModeBanner({
           return;
         }
         setMode(next);
+        router.refresh();
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Unexpected error toggling mode.",
         );
       }
     });
-  }, [characterId, mode]);
+  }, [characterId, mode, router]);
 
   if (mode === "BUILD") {
     return (
@@ -72,10 +75,9 @@ export function BuildModeBanner({
               Edit mode
             </p>
             <p className="text-xs leading-5 text-muted-foreground sm:text-sm">
-              Add primitives to the Lineage, Upbringing, Manifest, and
-              Items accordions. Tap "Formalize as heritage" or "Wrap as
-              item" when a bundle is ready. Switch back to Play when
-              you're done editing.
+              Create pieces in the workspace, reuse pieces on this character,
+              or add from the Library. Select pieces to group them. Switch
+              back to Play when you’re ready.
             </p>
           </div>
         </div>
@@ -111,8 +113,8 @@ export function BuildModeBanner({
             Play mode
           </p>
           <p className="text-xs leading-5 text-muted-foreground sm:text-sm">
-            The character is read-only. Switch to edit mode to add or
-            move primitives, formalize heritages, or wrap items.
+            Trigger capabilities, manage availability, and track consequences.
+            Switch to edit mode to change your character’s pieces and bundles.
           </p>
         </div>
       </div>

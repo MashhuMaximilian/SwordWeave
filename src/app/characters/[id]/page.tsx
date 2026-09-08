@@ -2,7 +2,6 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { eq, inArray } from "drizzle-orm";
 import { CharacterSheetView } from "@/components/characters/character-sheet-view";
-import { AddPanel } from "@/components/characters/add-panel";
 import { db } from "@/db/client";
 import { characters, capabilityEffects, effectPrimitives } from "@/db/schema";
 import { aggregateCharacterSheet } from "@/lib/engine";
@@ -282,6 +281,8 @@ export default async function CharacterSheetPage({
     size: row.size,
     primitiveLinks: row.primitiveLinks.map((l) => ({
       instanceId: l.instanceId,
+      directSource: l.directSource,
+      originItemId: l.originItemId,
       primitiveId: l.primitive.id,
       source: l.source,
       acquiredAtLevel: l.acquiredAtLevel,
@@ -313,7 +314,7 @@ export default async function CharacterSheetPage({
         // the aggregator's primitive shape. The aggregator doesn't
         // use them today, but the type requires it. 8.3d commit 2
         // will render them via ConditionBadges on the sheet.
-        hardModifiers: l.primitive.hardModifiers ?? [],
+        hardModifiers: l.primitive.consequenceBehavior ? [] : l.primitive.hardModifiers ?? [],
       },
     })),
     capabilityLinks: row.capabilityLinks.map((l) => ({
@@ -471,6 +472,8 @@ export default async function CharacterSheetPage({
       buBalance={sheet.buBalance}
       primitiveLinks={row.primitiveLinks.map((l) => ({
         instanceId: l.instanceId,
+      directSource: l.directSource,
+      originItemId: l.originItemId,
         primitiveId: l.primitiveId,
         source: l.source,
         acquiredAtLevel: l.acquiredAtLevel,
@@ -504,7 +507,7 @@ export default async function CharacterSheetPage({
           // to [] if not authored. The downstream component
           // (ConditionBadges) parses both legacy and v1 condition
           // shapes, so we pass through the raw array.
-          hardModifiers: l.primitive.hardModifiers ?? [],
+          hardModifiers: l.primitive.consequenceBehavior ? [] : l.primitive.hardModifiers ?? [],
         },
       }))}
       conditionContext={conditionContext}
@@ -723,38 +726,6 @@ export default async function CharacterSheetPage({
       // BUILD/PLAY mode. Default to PLAY when the column is
       // null/undefined (older rows from before migration 0053).
       mode={(row.mode ?? "PLAY") as "BUILD" | "PLAY"}
-    />
-    {/* Phase 9.4 (Mashu 2026-09-07): right-side Add Panel + mobile
-        FAB. Mounted alongside the sheet so the user always has a
-        way to add primitives / capabilities / effects / items,
-        even on an empty character. */}
-    <AddPanel
-      characterId={row.id}
-      targetAccordion="MANIFEST"
-      directPrimitives={{
-        // Phase 9.4 (Mashu 2026-09-07): build the DIRECT-only
-        // primitive set for the Promote tab. A primitive is
-        // DIRECT when it has no origin (heritage / capability /
-        // effect / item) — that's the user's "add to character"
-        // path, not "inherited from a bundle". The set is keyed
-        // by the global primitive id as a string (condition
-        // sourceEntityIds are strings).
-        directPrimitiveIds: new Set(
-          row.primitiveLinks
-            .filter(
-              (l) =>
-                // heritage-bundled primitives have an originHeritageId
-                !l.originHeritageId &&
-                // capability-bundled have originCapabilityId
-                !l.originCapabilityId &&
-                // effect-bundled have originEffectId
-                !l.originEffectId &&
-                // item-bundled have originItemId
-                !l.originItemId,
-            )
-            .map((l) => String(l.primitiveId)),
-        ),
-      }}
     />
     </div>
   );

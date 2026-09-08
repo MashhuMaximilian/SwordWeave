@@ -83,6 +83,7 @@ export interface AttributesDraftSeed {
  * need to keep this file focused.
  */
 export interface CharacterSeed {
+  workspaceRevision?: number;
   id: string;
   name: string;
   size: string | null;
@@ -149,6 +150,7 @@ export interface CharacterSeed {
     originHeritageId: string | null;
     originCapabilityId: string | null;
     originEffectId: string | null;
+    originItemId?: string | null;
     primitive: {
       id: number;
       name: string;
@@ -389,7 +391,7 @@ function seedPrimitiveSlot(
   if (
     link.originHeritageId ||
     link.originCapabilityId ||
-    link.originEffectId
+    link.originEffectId || link.originItemId
   ) {
     return null;
   }

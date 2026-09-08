@@ -1,4 +1,5 @@
 "use client";
+import { ConsequenceRestrictionsEditor } from "@/components/characters/consequence-restrictions-editor";
 
 // PrimitiveForm: controlled form-only composer.
 // Receives optional initial state (for ?edit= pre-fill).
@@ -88,6 +89,7 @@ type PrimitiveRow = {
   mirrorBuCredit: number;
   mirrorEligibilityNotes: string;
   hardModifiers: unknown;
+  consequenceBehavior?: import("@/lib/character/consequences/types").ConsequenceBehavior | null;
   // Phase 8: per-entity iconography. The form's blankForm always sets
   // these with defaults; the optional flag here matches the
   // grammar-sandbox-client's `PrimitiveRow` so the two can be assigned
@@ -840,6 +842,8 @@ function toHardModifier(modifier: ModifierDraft): import("@/types/swordweave").H
 
 export function PrimitiveForm({
   initialPrimitive,
+  saveRequest = fetch,
+  characterId,
   intent,
   sourceId,
   onStateChange,
@@ -862,6 +866,8 @@ export function PrimitiveForm({
   /**
    * If provided, the form opens pre-loaded with this primitive for editing.
    */
+  saveRequest?: typeof fetch;
+  characterId?: string;
   initialPrimitive?: PrimitiveRow | null;
   /**
    * Phase 1 (round 6 of edit-creates-fork): the save-intent flag
@@ -883,6 +889,7 @@ export function PrimitiveForm({
     form: PrimitiveFormState;
     modifiers: ModifierDraft[];
     hardModifiers: unknown[];
+    consequenceBehavior?: import("@/lib/character/consequences/types").ConsequenceBehavior | null;
     /**
      * True once the user has touched the form since the last reset/save/load.
      * Page uses this to decide whether to show the unsaved-changes modal on
@@ -911,6 +918,7 @@ export function PrimitiveForm({
    */
   initialModifierDrafts?: ReadonlyArray<Partial<ModifierDraft>> | null;
 }) {
+  const [consequenceBehavior, setConsequenceBehavior] = useState<import("@/lib/character/consequences/types").ConsequenceBehavior | null>(initialPrimitive?.consequenceBehavior ?? null);
   const [form, setForm] = useState<PrimitiveFormState>(blankForm);
   const [modifierCounter, setModifierCounter] = useState(1);
   // Modifiers are optional. Many primitives (Domain: Darkvision,
@@ -950,6 +958,7 @@ export function PrimitiveForm({
     if (bootstrappedRef.current === id) return;
     bootstrappedRef.current = id;
     if (!initialPrimitive) return;
+    setConsequenceBehavior(initialPrimitive.consequenceBehavior ?? null);
 
     const stored = Array.isArray(initialPrimitive.hardModifiers)
       ? (initialPrimitive.hardModifiers as unknown[]).filter(isHardModifierLike)
@@ -1014,6 +1023,7 @@ export function PrimitiveForm({
       form,
       modifiers,
       hardModifiers: modifiers.map(toHardModifier),
+            consequenceBehavior,
       isDirty,
     });
   }, [form, modifiers, onStateChange, isDirty]);
@@ -1238,6 +1248,7 @@ export function PrimitiveForm({
         mirrorBuCredit: form.mirrorBuCredit,
         mirrorEligibilityNotes: form.mirrorEligibilityNotes,
         hardModifiers: modifiers.map(toHardModifier),
+            consequenceBehavior,
         // Phase 8: per-entity iconography
         iconSource: form.iconSource,
         iconKey: form.iconKey,
@@ -1248,7 +1259,7 @@ export function PrimitiveForm({
       let response: Response;
       let payload: unknown;
       try {
-        response = await fetch("/api/primitives", {
+        response = await saveRequest("/api/primitives", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1271,6 +1282,7 @@ export function PrimitiveForm({
             mirrorVector: form.isMirrorable ? form.mirrorVector : "STANDARD_ONLY",
             mirrorBuCredit: form.isMirrorable ? Number(form.buCost) || 0 : 0,
             hardModifiers: modifiers.map(toHardModifier),
+            consequenceBehavior,
           }),
         });
         payload = await response.json();
@@ -1322,7 +1334,8 @@ export function PrimitiveForm({
       if (primitive) {
         // Phase 1: pass dispatchOutcome through so the parent can
         // swap URL params on fork-path saves.
-        onSaved?.({ ...primitive, dispatchOutcome });
+        window.dispatchEvent(new CustomEvent("sw:library-changed"));
+      onSaved?.({ ...primitive, dispatchOutcome });
       }
       // Phase 1 fork path: if dispatchOutcome.swapTarget is true,
       // the parent has just set editing = newRow via onSaved. Do
@@ -1369,6 +1382,7 @@ export function PrimitiveForm({
         mirrorBuCredit: form.isMirrorable ? Number(form.mirrorBuCredit) || 0 : 0,
         mirrorEligibilityNotes: form.mirrorEligibilityNotes,
         hardModifiers: modifiers.map(toHardModifier),
+            consequenceBehavior,
       },
     ],
   };
@@ -1565,6 +1579,17 @@ export function PrimitiveForm({
           helper="Pick from game-icons.net or upload your own."
         />
       </div>
+
+      <fieldset className="space-y-3 rounded-md border border-border p-3">
+        <legend className="px-1 text-sm font-semibold">Consequence behavior</legend>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!consequenceBehavior} onChange={e => setConsequenceBehavior(e.target.checked ? { timing: "on-use", vitalityDelta: 0, restrictions: [], recovery: "" } : null)} />Apply when an action is used</label>
+        {consequenceBehavior && <>
+          <p className="text-xs text-muted-foreground">The player previews and commits this consequence. Its modifiers are not passive character bonuses.</p>
+          <label className="block text-sm">One-time vitality change<input type="number" className="ml-2 rounded border border-input bg-background p-2" value={consequenceBehavior.vitalityDelta} onChange={e => setConsequenceBehavior({ ...consequenceBehavior, vitalityDelta: Number(e.target.value) })} /></label>
+          <label className="block text-sm">Recovery requirements<textarea className="mt-1 w-full rounded border border-input bg-background p-2" value={consequenceBehavior.recovery} onChange={e => setConsequenceBehavior({ ...consequenceBehavior, recovery: e.target.value })} /></label>
+          <ConsequenceRestrictionsEditor characterId={characterId} value={consequenceBehavior.restrictions} onChange={restrictions=>setConsequenceBehavior({...consequenceBehavior,restrictions})} />
+        </>}
+      </fieldset>
 
       <label className="hidden text-sm font-medium md:block">
         Lexicon Category

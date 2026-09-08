@@ -22,17 +22,24 @@
 
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   characters,
+  characterConsequences,
   characterCapabilities,
   characterItems,
 } from "@/db/schema";
 import { itemCapabilities } from "@/db/schema/items";
 import { appendCharacterLog } from "@/lib/character/character-log";
 
-export async function POST(
+import { readWorkspace } from '@/lib/character/workspace/read';
+import { effectiveAvailability, supplyPaths } from '@/lib/character/workspace/model';
+import { activeRestrictions } from '@/lib/character/consequences/types';
+import { consequencePackage } from '@/lib/character/consequences/package';
+import { withCharacterMutation } from '@/lib/character/mutation-transaction';
+
+async function handlePOST(
   request: Request,
   { params }: { params: Promise<{ id: string; capabilityId: string }> },
 ) {
@@ -115,6 +122,14 @@ export async function POST(
       capabilityName = link.capability?.name ?? "(unknown)";
     }
 
+    const graph = await readWorkspace(id);
+    const records = await db.select().from(characterConsequences).where(and(eq(characterConsequences.characterId,id),isNull(characterConsequences.deletedAt)));
+    const key = `capability:${capabilityId}` as const;
+    const paths = supplyPaths(graph,key).filter(path => !itemId || path.nodes.includes(`item:${itemId}`));
+    const availability = effectiveAvailability(key,paths,activeRestrictions(records.map(record=>record.occurrence)));
+    if (!availability.available) return NextResponse.json({error:availability.reasons.join('; ')||'This capability is unavailable.'},{status:409});
+    if (consequencePackage(graph,key).pieces.length) return NextResponse.json({error:'Preview and commit this capability’s consequence package before triggering it.'},{status:409});
+
     await appendCharacterLog(id, "capability_trigger", {
       capabilityId,
       capabilityName,
@@ -134,4 +149,8 @@ export async function POST(
     const message = error instanceof Error ? error.message : "Unknown error.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
+}
+export async function POST(request:Request,context:{params:Promise<{id:string;capabilityId:string}>}) {
+  const {id}=await context.params;
+  return withCharacterMutation(id,()=>handlePOST(request,context));
 }

@@ -245,52 +245,14 @@ export function EmbeddedHeritageForm({
   capabilities,
   onFormalized,
 }: EmbeddedHeritageFormProps) {
+  const [savedTemplate, setSavedTemplate] = useState<AtelierHeritageRow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attaching, setAttaching] = useState(false);
   const [attachMessage, setAttachMessage] = useState<string | null>(null);
 
-  // Phase 9.5 follow-up (Mashu 2026-09-07): the modal's
-  // header says "Will bundle N primitives" but the form
-  // below was empty until the user clicked "Slot into
-  // build" on each one. Mashu 2026-09-07: "the primitives
-  // nested do not appear there in modal even if it sayd
-  // it will bundle the x primitives. When this happens
-  // the inheritance also changes bc they are not direct
-  // anymore so be careful" — i.e. the user was expecting
-  // the formalize to auto-slot everything it counted.
-  //
-  // Dispatch the slot events exactly once when the form
-  // mounts. HeritageForm's `sw-sandbox-slot` listener
-  // (line 345 of heritage-form.tsx) handles the rest.
-  // We dispatch after a microtask so the listener is
-  // attached by the time the events fire.
-  useEffect(() => {
-    const t = window.setTimeout(() => {
-      for (const p of primitives) {
-        window.dispatchEvent(
-          new CustomEvent("sw-sandbox-slot", {
-            detail: { kind: "primitive", id: p.id, label: p.name },
-          }),
-        );
-      }
-      for (const c of capabilities) {
-        window.dispatchEvent(
-          new CustomEvent("sw-sandbox-slot", {
-            detail: { kind: "capability", id: c.id, label: c.name },
-          }),
-        );
-      }
-    }, 0);
-    return () => window.clearTimeout(t);
-  // We intentionally fire on mount once — primitives /
-  // capabilities arriving later shouldn't re-prepopulate
-  // (the user may have already cleared slots). The modal
-  // itself unmounts/remounts on each open so this is fine.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const handleSaved = useCallback(
     async (template: AtelierHeritageRow) => {
+      setSavedTemplate(template);
       setError(null);
       setAttaching(true);
       setAttachMessage("Attaching to character…");
@@ -319,12 +281,14 @@ export function EmbeddedHeritageForm({
           heritageId: template.id,
           heritageName: template.name,
         });
+        return true;
       } catch (err) {
         setError(
           err instanceof Error
             ? err.message
             : "Failed to attach heritage.",
         );
+        return false;
       } finally {
         setAttaching(false);
       }
@@ -335,9 +299,15 @@ export function EmbeddedHeritageForm({
   return (
     <div>
       {error && <SheetError message={error} />}
-      <div className={SHEET_FORM_CLASS}>
+      {savedTemplate && !attaching && error && (
+        <button type="button" onClick={() => void handleSaved(savedTemplate)} className="mb-3 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground">Retry attachment</button>
+      )}
+      <fieldset disabled={savedTemplate !== null} className={SHEET_FORM_CLASS}>
         <HeritageForm
           initialKind={kind}
+          initialPrimitiveIds={primitives.map((p) => Number(p.id))}
+          initialCapabilityIds={capabilities.map((c) => String(c.id))}
+          initialMirroredIds={primitives.filter((p) => p.isMirrored).map((p) => Number(p.id))}
           availablePrimitives={primitives
             .filter((p) => typeof p.id === "number")
             .map((p) => ({
@@ -354,9 +324,9 @@ export function EmbeddedHeritageForm({
               type: "capability",
               sourceType: "character",
             }))}
-          onSaved={(t) => void handleSaved(t as AtelierHeritageRow)}
+          onSaved={(t) => handleSaved(t as AtelierHeritageRow)}
         />
-      </div>
+      </fieldset>
       <PostSaveStatus pending={attaching} message={attachMessage} />
     </div>
   );

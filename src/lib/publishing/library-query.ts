@@ -417,7 +417,7 @@ function notUnpublished(targetType: string, idExpr: SQL) {
  *   - viewerClerkId: the Clerk user ID of the viewer, or undefined
  *     for "anonymous viewer" (e.g. unauthenticated browse).
  */
-function visibilityCondition(
+export function visibilityCondition(
   targetType: string,
   entityIdExpr: SQL,
   entityUserIdExpr: SQL,

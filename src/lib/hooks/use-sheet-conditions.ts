@@ -33,7 +33,7 @@
  * duplicates.
  */
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import {
   evaluateCondition,
   isConditionComputable,
@@ -42,7 +42,11 @@ import type { ConditionContext } from "@/lib/engine/condition-evaluator";
 import {
   useRuntimeConditions,
   type RuntimeCondition,
+  condStorageKey,
+  notifyConditionsChanged,
 } from "./use-runtime-conditions";
+
+import { reconcileSheetConditions } from "@/lib/character/reconcile-sheet-conditions";
 
 type PrimitiveLinkInput = {
   primitiveId: number;
@@ -324,83 +328,6 @@ function scanCapabilities(
   return out;
 }
 
-/**
- * ONE-SHOT cleanup of duplicate sheet conditions written by the
- * L68 bug. Runs ONCE per page-load. Bypasses the hook's
- * remove() chain to avoid render loops. Touches localStorage
- * directly, then dispatches a single event.
- *
- * The L68 loop bug created hundreds or thousands of duplicate
- * sheet conditions in some users' localStorage. We group them
- * by deterministic id (sheet-primitive-<id>-<idx>) and keep the
- * most recent. Anything older gets deleted from localStorage
- * directly. After bulk delete, we dispatch ONE
- * sw:conditions-changed event so the UI re-reads localStorage
- * in a single refresh — no cascading re-renders.
- *
- * The ref guard ensures cleanup runs at most once. Subsequent
- * effect runs early-return without touching localStorage.
- */
-function dedupeSheetConditionsOnce(
-  characterId: string,
-  sheetConditions: ReadonlyArray<RuntimeCondition>,
-): number {
-  if (typeof window === "undefined") return 0;
-  if (sheetConditions.length <= 1) return 0;
-  const groups = new Map<string, RuntimeCondition[]>();
-  for (const c of sheetConditions) {
-    const det = deterministicIdFor(c);
-    const arr = groups.get(det) ?? [];
-    arr.push(c);
-    groups.set(det, arr);
-  }
-  const prefix = `sw:cond:${characterId}:`;
-  let removed = 0;
-  for (const arr of groups.values()) {
-    if (arr.length <= 1) continue;
-    const sorted = [...arr].sort(
-      (a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0),
-    );
-    for (const c of sorted.slice(1)) {
-      try {
-        window.localStorage.removeItem(prefix + c.id);
-        removed++;
-      } catch {
-        // ignore
-      }
-    }
-  }
-  if (removed > 0) {
-    window.dispatchEvent(new CustomEvent("sw:conditions-changed"));
-  }
-  return removed;
-}
-
-function deterministicIdFor(c: RuntimeCondition): string {
-  if (c.source !== "sheet") return c.id;
-  const sourceId = c.sourceEntityId ?? "";
-  const modIndex = c.modifiers.length > 1 ? c.modifiers.length - 1 : 0;
-  const prefix = c.sourceEntityType === "effect" ? "sheet-effect" : "sheet-primitive";
-  return `${prefix}-${sourceId}-${modIndex}`;
-}
-
-/**
- * Sync helper: create missing sheet conditions, leave existing ones
- * alone (preserves user toggle state). Returns the desired set; the
- * hook decides what to write.
- */
-function reconcile(
-  existing: ReadonlyArray<RuntimeCondition>,
-  desired: ReadonlyArray<RuntimeCondition>,
-): { toCreate: RuntimeCondition[]; ids: Set<string> } {
-  const existingIds = new Set(existing.map((c) => c.id));
-  const toCreate = desired.filter((c) => !existingIds.has(c.id));
-  const ids = new Set(desired.map((c) => c.id));
-  return { toCreate, ids };
-}
-
-
-
 export interface AutoEvaluatedConditionState {
   readonly conditionId: string;
   readonly active: boolean;
@@ -424,7 +351,7 @@ export function useSheetConditions(input: {
   autoEvaluated: ReadonlyMap<string, AutoEvaluatedConditionState>;
 } {
   const { characterId, primitiveLinks, capabilityLinks, conditionContext } = input;
-  const { conditions, create } = useRuntimeConditions(characterId);
+  const { conditions, hydrated } = useRuntimeConditions(characterId);
 
   const desired = useMemo(() => {
     return [
@@ -433,39 +360,25 @@ export function useSheetConditions(input: {
     ];
   }, [primitiveLinks, capabilityLinks]);
 
-  // Phase 8.L round 73 cleanup: one-shot dedup that runs after
-  // conditions are loaded. The guard fires only AFTER we've
-  // successfully deduped (or determined there's nothing to
-  // dedup). The previous version set dedupRan=true BEFORE
-  // running, so the empty-conditions first render marked
-  // dedup as done — and the 7094-condition refresh that came
-  // 50ms later was skipped. Bug → user kept all 7094 dupes.
-  //
-  // Trace on Mashu's 7094 conditions:
-  // - Mount: conditions=[]; effect runs; nothing to dedup;
-  //   guard NOT set.
-  // - Refresh: conditions=7094; effect runs; dedup removes
-  //   7091; dispatches one event; guard SET.
-  // - Refresh: conditions=3; effect runs; guard set → skip.
-  // - Settled.
-  const dedupRan = useRef(false);
   useEffect(() => {
-    if (!characterId || dedupRan.current) return;
-    const sheetConds = conditions.filter((c) => c.source === "sheet");
-    if (sheetConds.length === 0) return;
-    const removed = dedupeSheetConditionsOnce(characterId, sheetConds);
-    if (removed > 0) {
-      dedupRan.current = true;
-    }
-  }, [characterId, conditions]);
-
-  useEffect(() => {
-    if (!characterId) return;
-    const { toCreate } = reconcile(conditions, desired);
-    for (const c of toCreate) {
-      create(c);
-    }
-  }, [characterId, desired, conditions, create]);
+    if (!characterId || !hydrated) return;
+    const next = reconcileSheetConditions(conditions, desired);
+    if (next.length === conditions.length && next.every(c =>
+      JSON.stringify(c) === JSON.stringify(conditions.find(previous => previous.id === c.id))
+    )) return;
+    const nextIds = new Set(next.map(c => c.id));
+    try {
+      for (const condition of conditions) {
+        if (condition.source !== "custom" && !nextIds.has(condition.id)) {
+          window.localStorage.removeItem(condStorageKey(characterId, condition.id));
+        }
+      }
+      for (const condition of next) {
+        window.localStorage.setItem(condStorageKey(characterId, condition.id), JSON.stringify(condition));
+      }
+      notifyConditionsChanged();
+    } catch { /* Storage may be unavailable. */ }
+  }, [characterId, hydrated, desired, conditions]);
 
   const sheetConditionIds = useMemo(() => {
     return new Set(conditions.filter((c) => c.source === "sheet").map((c) => c.id));
@@ -481,7 +394,7 @@ export function useSheetConditions(input: {
   // evaluated just like sheet conditions.
   const autoEvaluated = useMemo(() => {
     const out = new Map<string, AutoEvaluatedConditionState>();
-    const all = [...desired, ...conditions];
+    const all = [...conditions.filter(c => c.source === "custom"), ...desired];
     for (const cond of all) {
       const mod = cond.modifiers[0];
       if (!mod) continue;

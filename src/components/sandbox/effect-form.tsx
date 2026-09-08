@@ -1,4 +1,5 @@
 "use client";
+import { SortableBundleList,SortableMember } from "@/components/characters/workspace/sortable-bundle-list";
 
 // EffectForm: controlled form-only composer for effects.
 // Receives optional initialEffect for ?edit= pre-fill.
@@ -84,6 +85,9 @@ const blankForm: EffectFormState = {
 
 export function EffectForm({
   initialEffect,
+  saveRequest = fetch,
+  slotEvents,
+  initialPrimitiveIds = [],
   availablePrimitives,
   intent,
   sourceId: _sourceId, // Phase 2: kept for the future when forms use sourceId in the body; the PATCH route reads it from the URL.
@@ -91,6 +95,9 @@ export function EffectForm({
   onSaved,
   onReset,
 }: {
+  saveRequest?: typeof fetch;
+  slotEvents?: EventTarget;
+  initialPrimitiveIds?: number[];
   initialEffect?: EffectRow | null;
   /**
    * The list of primitives the user can slot in. Passed from the page so the
@@ -125,8 +132,9 @@ export function EffectForm({
   onSaved?: (effect: EffectRow) => void;
   onReset?: () => void;
 }) {
+  const [orderChanged,setOrderChanged]=useState(false);
   const [form, setForm] = useState<EffectFormState>(blankForm);
-  const [slots, setSlots] = useState<EffectFormSlot[]>([]);
+  const [slots, setSlots] = useState<EffectFormSlot[]>(() => initialPrimitiveIds.flatMap((id, index) => { const primitive = availablePrimitives.find(p => p.id === id); return primitive ? [{ primitiveId: id, primitive, quantity: 1, isMirrored: false }] : []; }));
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
@@ -194,15 +202,16 @@ export function EffectForm({
         kind: "primitive" | "effect" | "capability";
         id: number | string;
         label: string;
+        operation?: "add-reference";
       }>;
       if (e.detail.kind !== "primitive") return;
       const id =
         typeof e.detail.id === "string" ? Number(e.detail.id) : e.detail.id;
       if (!Number.isFinite(id)) return;
-      addSlot(id);
+      addSlot(id, e.detail.operation === "add-reference");
     };
-    window.addEventListener("sw-sandbox-slot", handler);
-    return () => window.removeEventListener("sw-sandbox-slot", handler);
+    (slotEvents ?? window).addEventListener("sw-sandbox-slot", handler);
+    return () => (slotEvents ?? window).removeEventListener("sw-sandbox-slot", handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availablePrimitives]);
 
@@ -211,10 +220,11 @@ export function EffectForm({
     setForm((current) => ({ ...current, [field]: value }));
   }
 
-  function addSlot(primitiveId: number) {
+  function addSlot(primitiveId: number, referenceOnly = false) {
     setIsDirty(true);
     setSlots((current) => {
       const existing = current.find((s) => s.primitiveId === primitiveId);
+      if (existing && referenceOnly) return current;
       if (existing) {
         return current.map((s) =>
           s.primitiveId === primitiveId
@@ -272,6 +282,7 @@ export function EffectForm({
     setMessage("");
 
     const body: Record<string, unknown> = {
+      ...(orderChanged?{membershipOrder:slots.map(s=>`primitive:${s.primitiveId}`)}:{}),
       name: form.name,
       narrativeDescription: form.narrativeDescription,
       sourceOrigin: form.sourceOrigin || null,
@@ -302,7 +313,7 @@ export function EffectForm({
     const method = initialEffect ? "PATCH" : "POST";
 
     startTransition(async () => {
-      const response = await fetch(url, {
+      const response = await saveRequest(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -341,7 +352,8 @@ export function EffectForm({
           : null;
 
       if (effect) {
-        onSaved?.(effect);
+        window.dispatchEvent(new CustomEvent("sw:library-changed"));
+      onSaved?.(effect);
       }
       resetEditor();
       router.refresh();
@@ -536,9 +548,9 @@ export function EffectForm({
             column and use its &ldquo;Slot into build&rdquo; action.
           </p>
         ) : (
-          <ul className="mt-3 space-y-2">
+          <SortableBundleList className="mt-3 space-y-2" ids={slots.map(s=>String(s.primitiveId))} onOrder={order=>{setSlots(order.map(id=>slots.find(s=>String(s.primitiveId)===id)!));setOrderChanged(true);setIsDirty(true);}}>
             {slots.map((slot) => (
-              <li
+              <SortableMember id={String(slot.primitiveId)} label={slot.primitive.name}
                 key={slot.primitiveId}
                 className="flex flex-col gap-3 rounded-md border border-border bg-card p-3 sm:flex-row sm:items-center"
               >
@@ -583,9 +595,9 @@ export function EffectForm({
                     <span className="hidden sm:inline">Remove</span>
                   </button>
                 </div>
-              </li>
+              </SortableMember>
             ))}
-          </ul>
+          </SortableBundleList>
         )}
       </section>
 

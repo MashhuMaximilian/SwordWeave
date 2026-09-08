@@ -44,7 +44,7 @@ export function HeritageFormalizeSheet({
 }: HeritageFormalizeSheetProps) {
   const [primitives, setPrimitives] = useState<TemplateSlot[]>([]);
   const [capabilities, setCapabilities] = useState<TemplateSlot[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Lazy-load accordion + capability data when the sheet opens.
@@ -72,6 +72,7 @@ export function HeritageFormalizeSheet({
         const primData = (await primRes.json()) as {
           primitiveInstances?: Array<{
             primitiveId: number;
+            isMirrored?: boolean;
             primitive: {
               id: number;
               name: string;
@@ -92,6 +93,7 @@ export function HeritageFormalizeSheet({
             name: row.primitive.name,
             category: row.primitive.category,
             buCost: row.primitive.buCost,
+            isMirrored: row.isMirrored ?? false,
           });
         }
         setPrimitives(out);
@@ -181,7 +183,7 @@ export function HeritageFormalizeSheet({
               Loading accordion contents…
             </div>
           )}
-          {!loading && (
+          {!loading && !error && (
             <EmbeddedHeritageForm
               characterId={characterId}
               kind={kind}

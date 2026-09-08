@@ -1,3 +1,4 @@
+import { withPublishingResponse } from "@/lib/publishing/save-transaction";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { asc, desc, eq, inArray, or } from "drizzle-orm";
@@ -102,7 +103,7 @@ export async function GET(request: Request) {
  *   - primitiveIds (array of primitive IDs - only matching category allowed)
  *   - capabilityIds (array of capability IDs)
  */
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const { userId } = await auth.protect();
     const body: unknown = await request.json();
@@ -112,6 +113,7 @@ export async function POST(request: Request) {
     }
 
     const values = body as Record<string, unknown>;
+    const membershipOrder=Array.isArray(values["membershipOrder"])?values["membershipOrder"].map(String):null;
     const kind = parseKind(values["kind"]);
     const name = String(values["name"] ?? "").trim();
     const imageUrl = String(values["imageUrl"] ?? "").trim() || null;
@@ -195,7 +197,9 @@ export async function POST(request: Request) {
       const [created] = await tx
         .insert(heritage)
         .values({
+          membershipOrder,
           kind,
+          userId,
           name,
           imageUrl,
           description,
@@ -284,6 +288,8 @@ export async function POST(request: Request) {
 
     // Phase 4: compute content hash + auto-snapshot.
     const canonicalPayload = buildCanonicalTemplatePayload({
+      membershipOrder,
+      iconSource: result.iconSource, iconKey:result.iconKey, iconUrl:result.iconUrl, iconColor:result.iconColor??"#ffffff",
       kind: result.kind,
       name: result.name,
       description: result.description ?? "",
@@ -294,6 +300,8 @@ export async function POST(request: Request) {
       capabilityIds,
     });
     const contentHash = await computeTemplateContentHash({
+      membershipOrder,
+      iconSource: result.iconSource, iconKey:result.iconKey, iconUrl:result.iconUrl, iconColor:result.iconColor??"#ffffff",
       kind: result.kind,
       name: result.name,
       description: result.description ?? "",
@@ -344,4 +352,7 @@ function pickStringOrNull(value: unknown): string | null {
 }
 function pickStringOrDefault(value: unknown, fallback: string): string {
   return typeof value === "string" && value.length > 0 ? value : fallback;
+}
+export async function POST(...args: Parameters<typeof handlePOST>) {
+  return withPublishingResponse(() => handlePOST(...args));
 }
