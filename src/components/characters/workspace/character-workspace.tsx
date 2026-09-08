@@ -1130,7 +1130,9 @@ export function CharacterWorkspace({
                     .finally(() => setBusy(false));
                 }}
               >
-                Save membership
+                {pending.operation === "detach" ? "Remove from character" : selected
+                  ? `Save ${selected.kind === "heritage" ? String(selected.data["kind"] ?? "heritage").toLowerCase() : selected.kind}`
+                  : "Add to character"}
               </button>
               <button
                 disabled={busy}

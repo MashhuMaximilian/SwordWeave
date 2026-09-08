@@ -90,3 +90,39 @@ Rollback deployment retained: `dpl_GrThhFvvLqU8cr2THkCs5TCTTcvJ`
 
 Never store deployment credentials in source or verification artifacts. All mutating
 pre-release tests use the isolated database `sw_workspace_verify_20260908`.
+
+## Follow-up: upbringing save wording and practice grants
+
+Three reported issues were corrected without changing the workspace layout:
+
+- Container saves name the entity: Save upbringing, Save lineage, Save capability,
+  etc. Direct removal and character attachment retain their own action labels.
+- Practice proficiency/expertise grants now contribute to the canonical practice
+  total and its attribution. Expertise adds one PB when already proficient;
+  proficiency and expertise resolve independently of input order. Repeated grants
+  do not add repeated proficiency tiers. Inactive/inhibited grants contribute zero.
+  Server sheet aggregation and client totals use the same grant calculation.
+- Bottom-drawer contribution rows read both keyword `text` and legacy `value`,
+  displaying the granted keyword instead of an empty chip.
+
+Read-only inspection confirmed the reported Thaumaturgic tracker and Mental
+inclination definitions were valid; their production content was not modified.
+
+Validation: 779 engine/override tests passed (including 8 new regressions),
+TypeScript and scoped new-file lint passed. Authenticated isolated preview verified
+Awareness +8 → +12 on manual expertise On → +8 on Off; the formula showed
+4 attribute + 4 proficiency + 4 practice contribution, and both grant labels were
+visible. A created upbringing displayed Save upbringing and saved its new contents.
+Preview: https://sword-weave-5orao6oda-mashus-projects-3b3cfec0.vercel.app
+
+Follow-up production deployment `dpl_4EiNdi7BTzZzVDG9PCDuq78xifLj` is READY:
+https://sword-weave-27f8driw8-mashus-projects-3b3cfec0.vercel.app
+Vercel confirms both swordweave.quest and www.swordweave.quest aliases. The
+production homepage rendered in the existing browser tab. Authenticated gameplay
+was verified on the isolated preview; production authentication remains unavailable
+in this browser session. Production inherited its existing project environment;
+no migration or production content mutation was needed. Temporary preview access
+was revoked after verification.
+
+Previous deployment retained for rollback: `dpl_4rNpYbpsjQC24nRF3iV9QYKZuB2e`
+(https://sword-weave-3obq0e3cq-mashus-projects-3b3cfec0.vercel.app).

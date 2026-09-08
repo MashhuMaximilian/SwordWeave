@@ -1,4 +1,5 @@
 "use client";
+import { grantedKeyword } from "@/lib/engine/practice-grants";
 
 // Phase 8.L round 26 (Mashu 2026-08-13): Build marker — force Turbopack
 // to hash the chunks differently so the CDN serves the new code.
@@ -1082,10 +1083,12 @@ export function BottomStickyBar({
                             // formula-modal helpers is inlined here.
                             const practiceContribs = byTarget[`skill_practice_check.${p.name.toLowerCase()}`] ?? [];
                             const hasExp = practiceContribs.some(
-                              (c) => c.primitiveName.toLowerCase().startsWith("expertise") || c.primitiveName.toLowerCase().includes("expertise"),
+                              (c) => c.conditionActive && !c.inhibited && c.value !== 0 &&
+                                (c.tags.includes("expertise") || c.primitiveName.toLowerCase().includes("expertise")),
                             );
                             const hasProf = practiceContribs.some(
-                              (c) => c.primitiveName.toLowerCase().startsWith("proficient") || c.primitiveName.toLowerCase().includes("proficient"),
+                              (c) => c.conditionActive && !c.inhibited &&
+                                (c.tags.includes("proficiency") || c.primitiveName.toLowerCase().includes("proficient")),
                             );
                             const hasPbHalf = practiceContribs.some(
                               (c) =>
@@ -2286,7 +2289,7 @@ function ContribListItem({ c, setRawTokensOpen, isOff, offReason }: {
               // show the keyword as a colored chip, not the literal
               // `grant 0` text.
               (() => {
-                const kw = String((c.rawValue as { value?: unknown }).value ?? "").toLowerCase();
+                const kw = grantedKeyword(c.rawValue) ?? "Unknown grant";
                 const isAdv = kw === "advantage";
                 const isDisadv = kw === "disadvantage";
                 const cls = isAdv

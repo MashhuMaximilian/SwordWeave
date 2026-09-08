@@ -35,6 +35,7 @@ import type { HardModifier } from "@/types/swordweave";
 import { sumPrimitiveContributions, walkPrimitiveContributionsForAxis } from "./primitive-walk";
 import { computeAllSavingThrows, computeAllSaveDCs, proficiencyBonus } from "./practices";
 import { resolveModifiers, type ResolvedPrimitiveSlot } from "./resolve-modifiers";
+import { resolvePracticeGrants } from "./practice-grants";
 import { SIZE_CAPACITY } from "./encumbrance";
 import {
   BUAccount,
@@ -811,7 +812,18 @@ export function aggregateCharacterSheet(
     primitiveBonuses,
     pbOverride,
   );
-  const practices = practicesRaw;
+  const practices = practicesRaw.map(practice => {
+    const target = `skill_practice_check.${practice.practice}`;
+    const grants = resolvePracticeGrants(target, sheetResolver.byTarget[target] ?? [],
+      pbOverride ?? proficiencyBonus(input.level), input.attrProficient);
+    return { ...practice, total: practice.total + grants.bonus,
+      primitiveContributions: [...practice.primitiveContributions,
+        ...grants.contributions.filter(c => c.op === "grant" && c.value !== 0 &&
+          (c.tags.includes("expertise") || c.tags.includes("proficiency"))).map(c => ({
+            primitiveId: c.primitiveId, primitiveName: c.primitiveName, bonus: c.value,
+          }))],
+    };
+  });
 
   // Vitality
   // Phase 8.I i2 (Mashu 2026-08-04): now reads hardModifiers from

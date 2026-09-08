@@ -46,6 +46,7 @@
  */
 
 import type { HardModifier, JsonValue } from "@/types/swordweave";
+import { practiceGrant, resolvePracticeGrants } from "./practice-grants";
 import {
   type EvaluationContext,
   type AppliedModifierTrace,
@@ -670,7 +671,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
         primitiveName: slot.name,
         primitiveCategory: slot.category,
         op: mod.operation,
-        value: effectiveValue,
+        value: t.startsWith("skill_practice_check.") && mod.operation === "grant" && practiceGrant(mod.value) ? 0 : effectiveValue,
         rawValue: mod.value,
         preMirrorValue,
         tags,
@@ -966,6 +967,8 @@ const eq = resolveEquation(operandsRaw as never, ctx);
         continue;
       }
 
+      // Resolve proficiency upgrades together, independent of authoring order.
+      if (t.startsWith("skill_practice_check.") && mod.operation === "grant" && practiceGrant(mod.value)) continue;
       const previousBase = totals[t] ?? 0;
       const nextBase = applyOperation(
         previousBase,
@@ -1032,6 +1035,7 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       // only the modifier contribution portion.
       const additiveValues = contribs
         .filter((c) => c.op !== "max" && c.op !== "min" && !c.inhibited)
+        .filter((c) => !(target.startsWith("skill_practice_check.") && c.op === "grant" && practiceGrant(c.rawValue)))
         .map((c) => c.value);
       if (additiveValues.length > 0) {
         const additiveSum = additiveValues.reduce<number>(
@@ -1075,6 +1079,14 @@ const eq = resolveEquation(operandsRaw as never, ctx);
       }
     }
     totals[target] = total;
+  }
+
+  for (const [target, contribs] of Object.entries(byTarget)) {
+    if (!target.startsWith("skill_practice_check.")) continue;
+    const grants = resolvePracticeGrants(target, contribs,
+      totals["proficiency_bonus"] ?? input.pb, input.proficientAttribute);
+    byTarget[target] = grants.contributions;
+    totals[target] = (totals[target] ?? 0) + grants.bonus;
   }
 
   // Phase 8.M (Mashu 2026-08-12): expose a SINGLE attack_bonus
