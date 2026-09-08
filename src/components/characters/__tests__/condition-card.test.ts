@@ -41,3 +41,31 @@ describe("condition drawer card", () => {
     expect(html.toLowerCase()).toContain("prone");
   });
 });
+
+it.each(["self", "target", "scene"])(
+  "shows the %s trigger beside its label",
+  (axis) => {
+    const scoped = {
+      ...condition,
+      modifiers: [
+        {
+          ...condition.modifiers[0]!,
+          condition: { kind: "tags" as const, customTags: [`${axis}:exposed`] },
+        },
+      ],
+    };
+    const html = renderToStaticMarkup(
+      createElement(ConditionCardItem, {
+        condition: scoped,
+        active: true,
+        liveActive: false,
+        onToggle: () => {},
+      }),
+    );
+    expect(html).toContain(
+      `${axis[0]!.toUpperCase()}${axis.slice(1)}: exposed`,
+    );
+    if (axis !== "self")
+      expect(html).toContain("does not change your sheet totals");
+  },
+);

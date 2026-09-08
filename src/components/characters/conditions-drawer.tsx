@@ -1,4 +1,5 @@
 "use client";
+import { hasExternalCondition } from "@/lib/character/condition-scope";
 
 /**
  * conditions-drawer.tsx — Phase 8.L round 48 (Mashu 2026-08-14)
@@ -445,6 +446,7 @@ function ModifierSummary({ modifier }: { modifier: ConditionModifier }) {
           <span className="font-semibold uppercase">When:</span> {triggersWhen}
         </span>
       </div>
+      {hasExternalCondition(modifier.condition) && <p className="mt-2 text-muted-foreground">Applies during the action; does not change your sheet totals.</p>}
     </div>
   );
 }
@@ -477,7 +479,7 @@ function formatTriggersWhen(
   if (!cond) return "always";
   try {
     const parsed = parseCondition(cond);
-    if (parsed) return conditionToBadges(parsed).map(b => b.label).join(" ") || "always";
+    if (parsed) return conditionToBadges(parsed).map(b => b.axis ? `${b.axis === "actor" ? "Self" : b.axis[0]!.toUpperCase() + b.axis.slice(1)}: ${b.label}` : b.label).join(" ") || "always";
   } catch { /* Legacy leaves are formatted below. */ }
   // Phase 8.L round 122 (Mashu 2026-08-26): the condition
   // object can be a compound (kind + tokens), a leaf

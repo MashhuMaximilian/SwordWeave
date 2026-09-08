@@ -53,3 +53,12 @@ describe("isConditionComputable — target axis missing", () => {
     expect(evaluateCondition(cond, ctx)).toBe(true);
   });
 });
+
+it.each(["target", "scene"])("does not evaluate compound %s pills without that context", (axis) => {
+  const ctx: ConditionContext = { character: makeCharacter() };
+  const cond = { kind: "compound" as const, tokens: ["self:exposed", "OR", `${axis}:exposed`] };
+  expect(isConditionComputable(cond, ctx)).toBe(false);
+  const withContext = { ...ctx, [axis]: { tags: new Set(["exposed"]), custom: {} } };
+  expect(isConditionComputable(cond, withContext)).toBe(true);
+  expect(evaluateCondition(cond, withContext)).toBe(true);
+});

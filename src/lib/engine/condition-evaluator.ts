@@ -322,9 +322,9 @@ export function isConditionComputable(
       // Check each token's axis against available context
       if (!condition.tokens || condition.tokens.length === 0) return true;
       return condition.tokens.every((token) => {
-        const parts = token.split("|");
-        if (parts.length < 2) return true;
-        const axisRef = parts[0]; // e.g. "self", "target", "scene"
+        const axisRef = token.split(/[:|]/)[0];
+        // Authored pills use target:exposed or target:stat|...;
+        // older predicate tokens use target|... . Both need context.
         if (axisRef === "target" && ctx.target === undefined) return false;
         if (axisRef === "scene" && ctx.scene === undefined) return false;
         if (axisRef === "self" && ctx.character === undefined) return false;

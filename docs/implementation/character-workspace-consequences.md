@@ -126,3 +126,60 @@ was revoked after verification.
 
 Previous deployment retained for rollback: `dpl_4rNpYbpsjQC24nRF3iV9QYKZuB2e`
 (https://sword-weave-3obq0e3cq-mashus-projects-3b3cfec0.vercel.app).
+
+## Follow-up: cards, authoring dialogs, and condition scope
+
+Replaced the repeated left navigation with category buttons. Grid/List choice and
+category persist. Cards show bundle contents, including nested capabilities and
+effects, before expansion; title clicks open a single dialog with nested Back
+navigation. Expanded rows retain attribution/version details under Details.
+Creation, owned edits, and grouping use the existing composers in the dialog.
+Heritage creation/grouping exposes Lineage, Upbringing, and Manifest and sends the
+chosen category to the transactional save and cost-preview endpoints.
+
+Selection boxes appear after Select pieces. Library rows have independent Preview
+and + Add buttons. Full previews use the shared Atelier renderer; nested library
+previews temporarily replace the visible dialog while preserving the composer
+state. The dialog locks scrolling, traps keyboard focus, supports Escape, and
+restores focus on close. Existing drawers, tabs, Atelier, and build modal remain.
+Mobile creation options and filters use compact menus; corrected the old spacer
+below the mode banner so content begins beneath the fixed identity drawer.
+
+Self/Target/Scene labels now appear in both the consequence drawer and shared
+previews. Manual On preserves Target/Scene predicates rather than stripping them
+into unconditional sheet modifiers. Compound colon-prefixed predicates correctly
+require their target/scene context. Self overrides retain their existing behavior.
+
+Validation: 800 targeted tests across 43 files, TypeScript, and scoped lint passed.
+Authenticated isolated browser journeys verified Target On and Scene On keep DC16;
+Self On changes DC16 to DC15. Heritage cards show their primitives; nested details
+use one visible dialog with Back navigation. Grouping two existing primitives into
+an Upbringing preserved character BU5, and adding a third existing primitive from
+the Library still preserved BU5. Preview/close preserved an unsaved name before
+attachment. Effect creation opened in a dialog and Escape navigation worked.
+All mutating checks used the isolated verification character and database.
+
+Fresh-browser verification exposed a hydration race: automatic sheet entries could
+be created before saved overrides arrived. Scanning now waits for server/cache
+readiness. Canonical JSON comparison also prevents database field-order differences
+from causing repeated no-op consequence writes. Regression tests cover readiness,
+saved overrides, object-key ordering, and meaningful array-order changes.
+Desktop (1440px) and phone (390px) screenshots were inspected, including nested
+mobile dialogs; card headings keep their own line on narrow screens.
+
+Final isolated preview: `dpl_EsMeqpFoXgeBNRe2eFhpinfBg3UX`
+(https://sword-weave-jnmhy9hj2-mashus-projects-3b3cfec0.vercel.app).
+Fresh-browser checks retained all three saved overrides and DC15. Consequence
+revisions remained 758/384/384/384 before opening and after loading/polling the
+character, confirming unchanged conditions no longer generated writes.
+
+Additional condition-hook and consequence-state regressions passed: 17 tests, for
+817 total across 45 files. Temporary preview access was revoked and the test
+browser closed after verification.
+
+Production release: `dpl_7EMFHcsz28DLdsE3dG7Dtj9STBH7`
+(https://sword-weave-fzqbg0cvk-mashus-projects-3b3cfec0.vercel.app).
+Production build passed and the public homepage rendered. Signed-in gameplay and
+mutations were verified on isolated preview data, not on production accounts.
+No migrations or production content repairs were needed. The previous production
+release `dpl_4EiNdi7BTzZzVDG9PCDuq78xifLj` remains available for rollback.

@@ -46,6 +46,7 @@ import {
   notifyConditionsChanged,
 } from "./use-runtime-conditions";
 
+import { consequenceJson } from "@/lib/character/consequences/json";
 import { reconcileSheetConditions } from "@/lib/character/reconcile-sheet-conditions";
 
 type PrimitiveLinkInput = {
@@ -364,7 +365,7 @@ export function useSheetConditions(input: {
     if (!characterId || !hydrated) return;
     const next = reconcileSheetConditions(conditions, desired);
     if (next.length === conditions.length && next.every(c =>
-      JSON.stringify(c) === JSON.stringify(conditions.find(previous => previous.id === c.id))
+      consequenceJson(c) === consequenceJson(conditions.find(previous => previous.id === c.id))
     )) return;
     const nextIds = new Set(next.map(c => c.id));
     try {

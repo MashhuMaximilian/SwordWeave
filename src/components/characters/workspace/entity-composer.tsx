@@ -37,6 +37,7 @@ export function EntityComposer({
   saveRequest: typeof fetch;
   onSaved: () => void;
 }) {
+  const [heritageKind, setHeritageKind] = useState(category);
   const [slotEvents] = useState(() => new EventTarget());
   const [extra, setExtra] = useState<WorkspaceNode[]>([]);
   const [library, setLibrary] = useState(false);
@@ -234,7 +235,7 @@ export function EntityComposer({
               undefined
             >
           }
-          initialKind={category}
+          initialKind={heritageKind}
           availablePrimitives={primitives}
           availableCapabilities={capabilities}
           initialPrimitiveIds={initialPrimitiveIds}
@@ -267,9 +268,26 @@ export function EntityComposer({
   );
   return (
     <div className="space-y-4">
+      {kind === "heritage" && !node && (
+        <label className="flex items-center gap-3 font-medium">
+          Heritage type
+          <select
+            aria-label="Heritage type"
+            className="rounded border border-border bg-card p-2"
+            value={heritageKind}
+            onChange={(e) =>
+              setHeritageKind(e.target.value as typeof heritageKind)
+            }
+          >
+            <option value="LINEAGE">Lineage</option>
+            <option value="UPBRINGING">Upbringing</option>
+            <option value="MANIFEST">Manifest</option>
+          </select>
+        </label>
+      )}
       {kinds.length > 0 && (
         <div className="space-y-2 rounded-lg border border-border bg-card p-3">
-          <p className="text-sm font-medium">Add references to this {kind}</p>
+          <p className="text-sm font-medium">Add to this {kind}</p>
           <div className="flex flex-wrap gap-2">
             <select
               aria-label="Choose existing character content"

@@ -65,7 +65,7 @@ export function BuildModeBanner({
 
   if (mode === "BUILD") {
     return (
-      <div className="flex flex-col gap-3 rounded-2xl border border-primary/40 bg-primary/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
+      <div className="flex flex-row items-center justify-between gap-3 rounded-2xl border border-primary/40 bg-primary/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
         <div className="flex items-start gap-3">
           <span className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
             <Hammer className="size-5" aria-hidden />
@@ -74,7 +74,7 @@ export function BuildModeBanner({
             <p className="text-sm font-semibold text-foreground">
               Edit mode
             </p>
-            <p className="text-xs leading-5 text-muted-foreground sm:text-sm">
+            <p className="hidden text-xs leading-5 text-muted-foreground sm:block sm:text-sm">
               Create pieces in the workspace, reuse pieces on this character,
               or add from the Library. Select pieces to group them. Switch
               back to Play when you’re ready.
@@ -103,7 +103,7 @@ export function BuildModeBanner({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
+    <div className="flex flex-row items-center justify-between gap-3 rounded-2xl border border-border bg-card/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
       <div className="flex items-start gap-3">
         <span className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
           <ShieldCheck className="size-5" aria-hidden />
@@ -112,7 +112,7 @@ export function BuildModeBanner({
           <p className="text-sm font-semibold text-foreground">
             Play mode
           </p>
-          <p className="text-xs leading-5 text-muted-foreground sm:text-sm">
+          <p className="hidden text-xs leading-5 text-muted-foreground sm:block sm:text-sm">
             Trigger capabilities, manage availability, and track consequences.
             Switch to edit mode to change your character’s pieces and bundles.
           </p>

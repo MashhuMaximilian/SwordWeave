@@ -4,7 +4,7 @@
  * records are imported idempotently and retained as an acknowledged backup. */
 
 import { useState, useEffect, useCallback } from "react";
-import { connectConsequenceSync, consequenceSyncError } from "@/lib/character/consequences/client-sync";
+import { connectConsequenceSync, consequenceSyncReady, consequenceSyncError } from "@/lib/character/consequences/client-sync";
 
 export type DurationTier = "long_rest" | "short_rest" | "manual";
 
@@ -106,7 +106,8 @@ export function useRuntimeConditions(
     }
     setConditions(readAllConditions(characterId));
     setSyncError(consequenceSyncError(characterId));
-    setHydrated(true);
+    // The sheet scanner must wait for saved overrides before creating defaults.
+    setHydrated(consequenceSyncReady(characterId));
   }, [characterId]);
 
   useEffect(() => {

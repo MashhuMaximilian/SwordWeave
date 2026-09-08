@@ -1,3 +1,4 @@
+import { consequenceJson } from "./consequences/json";
 import type { RuntimeCondition } from "@/lib/hooks/use-runtime-conditions";
 
 /** Refresh source metadata without resetting a user's explicit override. */
@@ -17,7 +18,7 @@ export function reconcileSheetConditions(
           c.source !== "custom" &&
           c.sourceEntityId === condition.sourceEntityId &&
           c.sourceEntityType === condition.sourceEntityType &&
-          JSON.stringify(c.modifiers) === JSON.stringify(condition.modifiers),
+          consequenceJson(c.modifiers) === consequenceJson(condition.modifiers),
       );
     result.push(
       previous

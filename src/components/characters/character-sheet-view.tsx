@@ -903,7 +903,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         onClose={() => setConditionsOpen(false)}
         autoEvaluated={autoEvaluated}
       />
-    <div className="mx-auto w-full max-w-screen-2xl px-5 py-8 pb-32">
+    <div className="mx-auto w-full max-w-screen-2xl px-5 pt-20 pb-32">
       {/* Phase 9.1 (Mashu 2026-09-06): BUILD/PLAY mode banner. Sits at
           the top of the sheet so the user always knows which mode
           they're in. The banner owns the toggle; accordions react
@@ -977,17 +977,6 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           </Link>
         </div>
       </header>
-      {/* Phase 8.4 v15 (Mashu 2026-07-28): SheetIdentityHeader
-          is fixed at top-of-viewport on ALL screen sizes now.
-          Content needs a top spacer to avoid being hidden.
-          Height = SheetIdentityHeader's collapsed-row height
-          (88px to give the buttons room). */}
-      <div
-        className="h-[88px]"
-        aria-hidden="true"
-        data-testid="sheet-top-spacer"
-      />
-
       {/* Phase 8.4 v2 (Mashu 2026-07-28): the entire BuBudgetFooter
           is hidden on mobile. SheetIdentityHeader's expanded panel
           shows every value the footer exposed (budget, debt, DM

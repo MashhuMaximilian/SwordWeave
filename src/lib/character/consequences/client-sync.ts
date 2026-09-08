@@ -1,4 +1,5 @@
 "use client";
+import { consequenceJson } from "./json";
 import type { ConsequenceOccurrence } from "./types";
 
 type RecordState = {
@@ -20,7 +21,7 @@ type Session = {
 };
 const sessions = new Map<string, Session>();
 const prefix = (id: string) => `sw:cond:${id}:`;
-const encoded = (value: unknown) => JSON.stringify(value ?? null);
+const encoded = consequenceJson;
 function local(id: string): Map<string, ConsequenceOccurrence> {
   const result = new Map<string, ConsequenceOccurrence>();
   for (let i = 0; i < localStorage.length; i++) {
@@ -37,6 +38,9 @@ function local(id: string): Map<string, ConsequenceOccurrence> {
 }
 function announce() {
   window.dispatchEvent(new CustomEvent("sw:consequences-sync"));
+}
+export function consequenceSyncReady(id: string): boolean {
+  return sessions.get(id)?.ready ?? false;
 }
 export function consequenceSyncError(id: string): string | null {
   return sessions.get(id)?.error ?? null;

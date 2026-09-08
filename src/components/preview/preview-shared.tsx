@@ -362,7 +362,7 @@ export function ConditionLine({
                 : "border border-border bg-muted/50 text-muted-foreground"
             }`}
           >
-            {b.label}
+            {b.axis && <span className="mr-1 font-semibold">{b.axis === "actor" ? "Self" : b.axis[0]!.toUpperCase() + b.axis.slice(1)}:</span>}{b.label}
           </span>
         );
       })}

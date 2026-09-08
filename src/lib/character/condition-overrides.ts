@@ -1,4 +1,5 @@
 import type { RuntimeCondition } from "@/lib/hooks/use-runtime-conditions";
+import { hasExternalCondition } from "./condition-scope";
 import type { HardModifier } from "@/types/swordweave";
 
 /** An absent override means the engine still owns the state. */
@@ -41,6 +42,7 @@ export function applyConditionOverrides(
       return [modifier];
     const active = condition.manualOverride ?? condition.active;
     if (!active) return [];
+    if (hasExternalCondition(modifier.condition)) return [modifier];
     const { condition: _condition, ...unconditional } = modifier;
     return [unconditional];
   });
@@ -50,8 +52,10 @@ export function runtimeConditionModifiers(
   condition: RuntimeCondition,
 ): readonly HardModifier[] {
   return condition.manualOverride === true
-    ? condition.modifiers.map(
-        ({ condition: _condition, ...modifier }) => modifier,
-      )
+    ? condition.modifiers.map((modifier) => {
+        if (hasExternalCondition(modifier.condition)) return modifier;
+        const { condition: _condition, ...unconditional } = modifier;
+        return unconditional;
+      })
     : condition.modifiers;
 }

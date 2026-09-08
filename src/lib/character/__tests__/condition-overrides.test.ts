@@ -167,20 +167,115 @@ describe("manual condition overrides", () => {
 
 // Exercise the actual React adapter as well as the pure modifier helper:
 // a sheet condition must modify its source slot, never append a second slot.
-import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { useCharacterResolver } from '@/lib/hooks/use-character-resolver';
-it('applies an enabled sheet condition exactly once through the real hook', () => {
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { useCharacterResolver } from "@/lib/hooks/use-character-resolver";
+it("applies an enabled sheet condition exactly once through the real hook", () => {
   let physical: number | undefined;
   function Probe() {
-    const result = useCharacterResolver({characterId:'test',level:1,pb:2,proficientAttribute:null,
-      attributes:context.character.attributes,conditionContext:context,
-      primitiveLinks:[{primitiveId:42,isMirrored:false,isToggledOff:false,originHeritageId:null,originCapabilityId:null,originEffectId:null,
-        primitive:{id:42,name:'Bonus',category:'TEST',isMirrorable:false,mirrorVector:null,hardModifiers:[modifier]}}],
-      runtimeConditions:[{...condition,active:true,manualOverride:true}],
+    const result = useCharacterResolver({
+      characterId: "test",
+      level: 1,
+      pb: 2,
+      proficientAttribute: null,
+      attributes: context.character.attributes,
+      conditionContext: context,
+      primitiveLinks: [
+        {
+          primitiveId: 42,
+          isMirrored: false,
+          isToggledOff: false,
+          originHeritageId: null,
+          originCapabilityId: null,
+          originEffectId: null,
+          primitive: {
+            id: 42,
+            name: "Bonus",
+            category: "TEST",
+            isMirrorable: false,
+            mirrorVector: null,
+            hardModifiers: [modifier],
+          },
+        },
+      ],
+      runtimeConditions: [{ ...condition, active: true, manualOverride: true }],
     });
-    physical=result.totals['attribute.physical']; return null;
+    physical = result.totals["attribute.physical"];
+    return null;
   }
   renderToStaticMarkup(createElement(Probe));
   expect(physical).toBe(5);
+});
+
+describe("condition scope on the character sheet", () => {
+  it.each(["target", "scene"])(
+    "manual On preserves %s predicates and does not change base totals",
+    (axis) => {
+      const external = {
+        ...modifier,
+        condition: { kind: "tags" as const, customTags: [`${axis}:exposed`] },
+      };
+      const occurrence = {
+        ...condition,
+        modifiers: [external],
+        manualOverride: true,
+      };
+      const adjusted = applyConditionOverrides(
+        [external],
+        [occurrence],
+        "primitive",
+        "42",
+      );
+      expect(adjusted[0]?.condition).toEqual(external.condition);
+      expect(
+        runtimeConditionModifiers({ ...occurrence, source: "custom" })[0]
+          ?.condition,
+      ).toEqual(external.condition);
+      const result = resolveModifiers({
+        characterId: "test",
+        level: 1,
+        pb: 2,
+        proficientAttribute: null,
+        attributes: context.character.attributes,
+        conditionContext: context,
+        slots: [
+          {
+            primitiveId: 42,
+            name: "External",
+            category: "TEST",
+            hardModifiers: adjusted,
+            isMirrored: false,
+            isMirrorable: false,
+            mirrorVector: null,
+            originHeritageId: null,
+            originCapabilityId: null,
+            originEffectId: null,
+          },
+        ],
+      });
+      expect(result.totals["attribute.physical"]).toBe(3);
+    },
+  );
+  it("preserves target presets and mixed self/scene predicates", () => {
+    for (const predicate of [
+      {
+        kind: "preset" as const,
+        presetKey: "target-prone" as const,
+        customTags: [],
+      },
+      {
+        kind: "compound" as const,
+        tokens: ["self:is_prone", "OR", "scene:dim"],
+      },
+    ]) {
+      const m = { ...modifier, condition: predicate };
+      expect(
+        runtimeConditionModifiers({
+          ...condition,
+          modifiers: [m],
+          manualOverride: true,
+        })[0]?.condition,
+      ).toEqual(predicate);
+    }
+  });
 });
