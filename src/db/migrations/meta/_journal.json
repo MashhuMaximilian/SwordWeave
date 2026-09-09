@@ -393,6 +393,20 @@
       "when": 1786600000000,
       "tag": "0059_character_shares",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1786700000000,
+      "tag": "0060_character_proposals",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1786800000000,
+      "tag": "0061_character_shares_shared_by_text",
+      "breakpoints": true
     }
   ]
 }

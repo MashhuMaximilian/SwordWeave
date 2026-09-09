@@ -5,10 +5,13 @@ import { CharacterSheetView } from "@/components/characters/character-sheet-view
 import { AddPanel } from "@/components/characters/add-panel";
 import { db } from "@/db/client";
 import { characters, capabilityEffects, effectPrimitives } from "@/db/schema";
+import { characterShares, characterProposals, users } from "@/db/schema";
 import { publications } from "@/db/schema/engagement";
 import { aggregateCharacterSheet } from "@/lib/engine";
-import { hasActiveShare } from "@/lib/character/has-active-share";
-import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
+import {
+  canResolveCharacterForPage,
+  type CharacterPermission,
+} from "@/lib/character/can-resolve-character";
 import type { ConditionContext } from "@/lib/engine/condition-evaluator";
 import {
   bulkResolveLatestVersions,
@@ -102,20 +105,21 @@ export default async function CharacterSheetPage({
 
   if (!row) notFound();
 
-  // PLAN Eilxina Part B (Mashu 2026-09-09): soften the ownership
-  // redirect for shared-with-me viewers. If the viewer is not the
-  // owner, check the character_shares table; an active grant lets
-  // them open the sheet (view-only for now — Part C's
-  // canResolveCharacter will gate actual writes).
-  let viewerIsShared: { canEdit: boolean } | null = null;
-  if (userId && row.userId !== userId) {
-    const viewerInternalId = await resolveUserIdByClerkId(userId);
-    viewerIsShared = viewerInternalId
-      ? await hasActiveShare(viewerInternalId, id)
-      : null;
-    if (!viewerIsShared) {
+  // PLAN Eilxina Part C (Mashu 2026-09-09): full permission gate.
+  // Replaces the Part B 2-line check with canResolveCharacterForPage
+  // so we can thread the resolved permission down to CharacterSheetView
+  // for share-panel + edit-button visibility.
+  let viewerPermission: CharacterPermission | null = null;
+  if (userId) {
+    const resolved = await canResolveCharacterForPage(userId, id);
+    if (!resolved) {
       redirect("/characters");
     }
+    viewerPermission = resolved.permission;
+  } else {
+    // Anonymous: redirect (existing behavior — public characters
+    // are handled via the library route, not /characters/[id]).
+    redirect("/characters");
   }
 
   // PLAN Eilxina Part A (Mashu 2026-09-09): look up the character's
@@ -138,6 +142,86 @@ export default async function CharacterSheetPage({
     .then((rows) => rows[0] ?? null);
   const publicationVisibility: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC" =
     activePubRow?.visibility ?? "PRIVATE";
+
+  // PLAN Eilxina Part C (Mashu 2026-09-09): resolve the active
+  // shares for the OWNER's CharacterSharePanel. For non-owners,
+  // the panel isn't rendered so we skip the join (zero-cost path).
+  // We resolve shared_with_user_id → users.username + display_name
+  // via a flat lookup to avoid a depth-2 join (per the codebase
+  // join-shape trap — Part B Part C).
+  const activeShareRows =
+    viewerPermission === "OWNER"
+      ? await db
+          .select({
+            id: characterShares.id,
+            sharedWithUserId: characterShares.sharedWithUserId,
+            canEdit: characterShares.canEdit,
+            createdAt: characterShares.createdAt,
+          })
+          .from(characterShares)
+          .where(
+            and(
+              eq(characterShares.characterId, id),
+              isNull(characterShares.revokedAt),
+            ),
+          )
+      : [];
+  // Flat lookup of shared-with usernames.
+  const shareUsers = activeShareRows.length
+    ? await db
+        .select({
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+        })
+        .from(users)
+        .where(
+          inArray(
+            users.id,
+            activeShareRows.map((r) => r.sharedWithUserId),
+          ),
+        )
+    : [];
+  const shareUserMap = new Map(shareUsers.map((u) => [u.id, u]));
+  const ownerShares = activeShareRows.map((r) => {
+    const u = shareUserMap.get(r.sharedWithUserId);
+    return {
+      id: r.id,
+      username: u?.username ?? "(unknown)",
+      displayName: u?.displayName ?? null,
+      canEdit: r.canEdit,
+      createdAt:
+        r.createdAt instanceof Date
+          ? r.createdAt.toISOString()
+          : String(r.createdAt),
+    };
+  });
+
+  // PLAN Eilxina Part C (Mashu 2026-09-09): pending proposal count
+  // for the OWNER's header indicator. Cheap query — character +
+  // status index covers it.
+  const pendingProposalRows =
+    viewerPermission === "OWNER"
+      ? await db
+          .select({
+            id: characterProposals.id,
+            createdAt: characterProposals.createdAt,
+          })
+          .from(characterProposals)
+          .where(
+            and(
+              eq(characterProposals.characterId, id),
+              eq(characterProposals.status, "PENDING"),
+            ),
+          )
+      : [];
+  const pendingCount = pendingProposalRows.length;
+  const firstPendingId =
+    [...pendingProposalRows].sort((a, b) => {
+      const aT = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+      const bT = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+      return bT - aT;
+    })[0]?.id ?? null;
 
   // Phase 8.4 v22 (Mashu 2026-07-29): T2 followup — enrich
   // itemLinks with the nested bundle via flat queries.
@@ -465,6 +549,10 @@ export default async function CharacterSheetPage({
       // PLAN Eilxina Part A (Mashu 2026-09-09): publication tier for
       // the visibility chip in the header.
       publicationVisibility={publicationVisibility}
+      viewerPermission={viewerPermission ?? "VIEWER"}
+      ownerShares={ownerShares}
+      pendingProposalCount={pendingCount}
+      firstPendingProposalId={firstPendingId}
       attrPhysical={row.attrPhysical}
       attrMental={row.attrMental}
       attrMagical={row.attrMagical}

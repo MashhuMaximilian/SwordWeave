@@ -9,8 +9,9 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { characterItems, characters } from "@/db/schema";
+import { characterItems } from "@/db/schema";
 import { bumpSlotVersion } from "@/lib/character/bump-slot-version";
+import { resolveCharacterAccess } from "@/lib/character/resolve-character-access";
 
 export async function POST(
   request: Request,
@@ -27,20 +28,8 @@ export async function POST(
       // empty body OK
     }
 
-    const ownerCheck = await db
-      .select({ userId: characters.userId })
-      .from(characters)
-      .where(eq(characters.id, characterId))
-      .limit(1);
-    if (!ownerCheck[0]) {
-      return NextResponse.json({ error: "Character not found." }, { status: 404 });
-    }
-    if (ownerCheck[0].userId !== userId) {
-      return NextResponse.json(
-        { error: "Only the character owner can bump slot versions." },
-        { status: 403 },
-      );
-    }
+    // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate.
+    await resolveCharacterAccess(userId, characterId, { require: "OWNER" });
 
     const slot = await db
       .select({ itemId: characterItems.itemId })
@@ -65,6 +54,10 @@ export async function POST(
 
     return NextResponse.json({ newVersionId });
   } catch (error) {
+    // PLAN Eilxina Part C (Mashu 2026-09-09): CharacterAccessDenied → 403.
+    if (error instanceof Error && error.name === "CharacterAccessDenied") {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     const message =
       error instanceof Error ? error.message : "Failed to bump slot version.";
     return NextResponse.json({ error: message }, { status: 400 });

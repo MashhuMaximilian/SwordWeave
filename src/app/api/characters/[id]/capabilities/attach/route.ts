@@ -36,6 +36,9 @@ import {
 } from "@/db/schema";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 import { appendCharacterLog } from "@/lib/character/character-log";
+import {
+  resolveCharacterAccess,
+} from "@/lib/character/resolve-character-access";
 
 const ALLOWED_SLOT_TABS = ["LINEAGE", "UPBRINGING", "MANIFEST"] as const;
 
@@ -87,22 +90,10 @@ export async function POST(
       return Math.min(Math.floor(n), 99);
     })();
 
-    // Ownership + mode check.
-    const character = await db.query.characters.findFirst({
-      where: eq(characters.id, characterId),
+    // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate.
+    const { character } = await resolveCharacterAccess(userId, characterId, {
+      require: "OWNER",
     });
-    if (!character) {
-      return NextResponse.json(
-        { error: "Character not found." },
-        { status: 404 },
-      );
-    }
-    if (character.userId !== userId) {
-      return NextResponse.json(
-        { error: "You do not own this character." },
-        { status: 403 },
-      );
-    }
     if (character.mode === "PLAY") {
       return NextResponse.json(
         {
@@ -177,6 +168,11 @@ export async function POST(
       { status: existing ? 200 : 201 },
     );
   } catch (err) {
+    // PLAN Eilxina Part C (Mashu 2026-09-09): CharacterAccessDenied
+    // → 403. Anything else → existing 500 fallback.
+    if (err instanceof Error && err.name === "CharacterAccessDenied") {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
     console.error("[characters capabilities/attach] failed:", err);
     return NextResponse.json(
       {

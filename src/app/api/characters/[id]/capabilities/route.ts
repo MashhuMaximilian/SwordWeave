@@ -25,6 +25,7 @@ import {
   characters,
   heritage,
 } from "@/db/schema";
+import { resolveCharacterAccess } from "@/lib/character/resolve-character-access";
 
 export async function GET(
   request: Request,
@@ -37,21 +38,8 @@ export async function GET(
     const url = new URL(request.url);
     const kind = url.searchParams.get("kind");
 
-    const character = await db.query.characters.findFirst({
-      where: eq(characters.id, characterId),
-    });
-    if (!character) {
-      return NextResponse.json(
-        { error: "Character not found." },
-        { status: 404 },
-      );
-    }
-    if (character.userId !== userId) {
-      return NextResponse.json(
-        { error: "You do not own this character." },
-        { status: 403 },
-      );
-    }
+    // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate.
+    const { character } = await resolveCharacterAccess(userId, characterId, { require: "OWNER" });
 
     const baseRows = await db
       .select({
@@ -134,6 +122,10 @@ export async function GET(
 
     return NextResponse.json({ capabilities: out }, { status: 200 });
   } catch (err) {
+    // PLAN Eilxina Part C (Mashu 2026-09-09): CharacterAccessDenied → 403.
+    if (err instanceof Error && err.name === "CharacterAccessDenied") {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
     console.error("[characters capabilities GET] failed:", err);
     return NextResponse.json(
       {

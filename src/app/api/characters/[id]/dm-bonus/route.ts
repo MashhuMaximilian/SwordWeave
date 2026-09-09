@@ -34,6 +34,9 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { characters } from "@/db/schema";
 import { appendCharacterLog } from "@/lib/character/character-log";
+import {
+  resolveCharacterAccess,
+} from "@/lib/character/resolve-character-access";
 
 export async function POST(
   request: Request,
@@ -60,22 +63,12 @@ export async function POST(
       );
     }
 
-    // Ownership check.
-    const current = await db.query.characters.findFirst({
-      where: eq(characters.id, id),
-    });
-    if (!current) {
-      return NextResponse.json(
-        { error: "Character not found." },
-        { status: 404 },
-      );
-    }
-    if (current.userId !== userId) {
-      return NextResponse.json(
-        { error: "You do not own this character." },
-        { status: 403 },
-      );
-    }
+    // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate.
+    const { character: current } = await resolveCharacterAccess(
+      userId,
+      id,
+      { require: "OWNER" },
+    );
 
     const prev = current.dmBonusBu ?? 0;
     if (prev === next) {
@@ -116,6 +109,12 @@ export async function POST(
       applied: next - prev,
     });
   } catch (error) {
+    if (error instanceof Error && error.name === "CharacterAccessDenied") {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 403 },
+      );
+    }
     const message = error instanceof Error ? error.message : "Unknown error.";
     return NextResponse.json({ error: message }, { status: 400 });
   }

@@ -782,7 +782,94 @@ export const buildCapabilities = pgTable(
   ],
 );
 
-// Re-export engine capabilityPrimitives for relation wiring
+// =============================================================================
+// character_proposals — PLAN Eilxina Part C (Mashu 2026-09-09).
+//
+// Per-character proposal flow: a shared EDITOR proposes a change
+// to a slotted primitive/capability/item (the entity itself, via a
+// new version), and the OWNER approves/rejects. On approve, the
+// slot's versionId is updated to the new version.
+//
+// Lifecycle: PENDING → APPROVED → APPLIED (terminal)
+//                       → REJECTED (terminal, set by reviewer)
+//                       → SUPERSEDED (terminal, auto-set when the
+//                                    slot was bumped by some OTHER
+//                                    path while the proposal was
+//                                    still PENDING — covers the
+//                                    "restore while proposals
+//                                    pending" risk).
+//
+// Scope of Part C: ONLY target_kind in {PRIMITIVE, CAPABILITY, ITEM}.
+// Each proposal points at a single version_id (the new version the
+// proposer wants). proposed_diff is a jsonb of changed fields for
+// the review screen to display — schema is intentionally loose so
+// new proposal kinds (e.g. CHARACTER_EDIT) can be added later.
+// =============================================================================
+
+export const characterProposalStatusEnum = pgEnum(
+  "character_proposal_status",
+  ["PENDING", "APPROVED", "REJECTED", "APPLIED", "SUPERSEDED"] as const,
+);
+
+export const characterProposalTargetKindEnum = pgEnum(
+  "character_proposal_target_kind",
+  ["PRIMITIVE", "CAPABILITY", "ITEM"] as const,
+);
+
+export const characterProposals = pgTable(
+  "character_proposals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    proposerUserId: text("proposer_user_id")
+      .notNull()
+      .references(() => users.clerkUserId, { onDelete: "cascade" }),
+    targetKind: characterProposalTargetKindEnum("target_kind").notNull(),
+    targetId: text("target_id").notNull(),
+    /** versionId of the currently-pinned version on the slot at
+     *  proposal-creation time (for diff display). */
+    currentVersionId: text("current_version_id").notNull(),
+    /** versionId the proposer wants the slot to point at. */
+    proposedVersionId: text("proposed_version_id").notNull(),
+    /** Free-form diff for review display. Shape:
+     *  { fieldChanges: [{ field, from, to, kind: 'primitive'|'capability'|'item' }],
+     *    totalBuDelta?: number }
+     */
+    proposedDiff: jsonb("proposed_diff").notNull(),
+    /** Editor's free-form rationale shown to the owner on the
+     *  review screen. Optional but recommended. */
+    rationale: text("rationale"),
+    status: characterProposalStatusEnum("status").notNull().default("PENDING"),
+    reviewerUserId: text("reviewer_user_id")
+      .references(() => users.clerkUserId, { onDelete: "set null" }),
+    reviewerNote: text("reviewer_note"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    characterIdx: index("character_proposals_character_idx").on(
+      table.characterId,
+    ),
+    proposerIdx: index("character_proposals_proposer_idx").on(
+      table.proposerUserId,
+    ),
+    statusIdx: index("character_proposals_status_idx").on(table.status),
+    // Pending proposals for a character are the most common query
+    // (the owner's review screen, the pending count on the sheet).
+    characterStatusIdx: index("character_proposals_character_status_idx").on(
+      table.characterId,
+      table.status,
+    ),
+  }),
+);
 export { capabilityPrimitives };
 
 // Re-export entities for relation wiring
@@ -824,9 +911,9 @@ export const characterShares = pgTable(
     sharedWithUserId: uuid("shared_with_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    sharedByUserId: uuid("shared_by_user_id")
+    sharedByUserId: text("shared_by_user_id")
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => users.clerkUserId, { onDelete: "cascade" }),
     canEdit: boolean("can_edit").notNull().default(false),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
     ...timestamps,
@@ -844,3 +931,5 @@ export const characterShares = pgTable(
     index("character_shares_shared_by_idx").on(table.sharedByUserId),
   ],
 );
+
+// ======================================...[truncated]

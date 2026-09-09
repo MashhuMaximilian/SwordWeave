@@ -21,6 +21,7 @@ import { db } from "@/db/client";
 import { characters } from "@/db/schema";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 import { appendCharacterLog } from "@/lib/character/character-log";
+import { resolveCharacterAccess } from "@/lib/character/resolve-character-access";
 
 const ALLOWED_MODES = ["BUILD", "PLAY"] as const;
 type Mode = (typeof ALLOWED_MODES)[number];
@@ -53,27 +54,14 @@ export async function POST(
     }
     const newMode: Mode = rawMode;
 
-    const character = await db.query.characters.findFirst({
-      where: eq(characters.id, characterId),
-    });
-    if (!character) {
-      return NextResponse.json(
-        { error: "Character not found." },
-        { status: 404 },
-      );
-    }
-    if (character.userId !== userId) {
-      return NextResponse.json(
-        { error: "You do not own this character." },
-        { status: 403 },
-      );
-    }
+    // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate.
+    const { character: current } = await resolveCharacterAccess(userId, characterId, { require: "OWNER" });
 
-    if (character.mode === newMode) {
+    if (current.mode === newMode) {
       // No-op; respond idempotently.
       return NextResponse.json(
         {
-          character: { id: character.id, mode: character.mode },
+          character: { id: current.id, mode: current.mode },
           changed: false,
         },
         { status: 200 },
@@ -87,7 +75,7 @@ export async function POST(
       .returning();
 
     await appendCharacterLog(characterId, "mode_changed", {
-      fromMode: character.mode,
+      fromMode: current.mode,
       toMode: newMode,
     });
 
@@ -102,6 +90,10 @@ export async function POST(
       { status: 200 },
     );
   } catch (err) {
+    // PLAN Eilxina Part C (Mashu 2026-09-09): CharacterAccessDenied → 403.
+    if (err instanceof Error && err.name === "CharacterAccessDenied") {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
     console.error("[characters POST mode] failed:", err);
     const message =
       err instanceof Error ? err.message : "Unable to update mode.";

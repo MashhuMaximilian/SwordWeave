@@ -46,6 +46,8 @@ import { ItemCard } from "@/components/characters/item-card";
 import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
 import { CharacterEditButton } from "@/components/characters/character-edit-button";
 import { CharacterVisibilityControl } from "@/components/characters/character-visibility-control";
+import { CharacterSharePanel } from "@/components/characters/character-share-panel";
+import { PendingProposalsIndicator } from "@/components/characters/pending-proposals-indicator";
 import { StaleUpdatesIndicator } from "@/components/characters/stale-updates-indicator";
 import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-card";
 import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
@@ -304,6 +306,24 @@ export type CharacterSheetProps = {
   // whether the inline character-builder affordances render on
   // the accordions. Persisted in characters.mode (migration 0053).
   mode?: "BUILD" | "PLAY";
+  // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate for
+  // viewer actions. OWNER sees Share panel + Edit/Clone.
+  // EDITOR sees Propose flow + (currently) Edit/Clone disabled
+  // until Part D wires it. VIEWER sees the sheet read-only.
+  viewerPermission?: "OWNER" | "EDITOR" | "VIEWER";
+  // Active shares for the OWNER's SharePanel. Empty array for
+  // non-owners (the panel isn't rendered).
+  ownerShares?: Array<{
+    id: string;
+    username: string;
+    displayName: string | null;
+    canEdit: boolean;
+    createdAt: string;
+  }>;
+  // Pending proposal count + first pending id for the OWNER's
+  // PendingProposalsIndicator chip.
+  pendingProposalCount?: number;
+  firstPendingProposalId?: string | null;
   attrPhysical: number;
   attrMental: number;
   attrMagical: number;
@@ -1002,6 +1022,26 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             initialVisibility={props.publicationVisibility}
             variant="compact"
           />
+          {/* PLAN Eilxina Part C (Mashu 2026-09-09): Share panel.
+              Mounted only when the viewer is the OWNER. Editors
+              and Viewers don't see this — they can only propose
+              (Editor) or view (Viewer) via Part C routes. */}
+          {props.viewerPermission === "OWNER" && (
+            <CharacterSharePanel
+              characterId={props.id}
+              shares={props.ownerShares ?? []}
+            />
+          )}
+          {/* PLAN Eilxina Part C (Mashu 2026-09-09): pending
+              proposals chip. Click → opens the most recent
+              pending proposal's review screen. */}
+          {props.viewerPermission === "OWNER" && (
+            <PendingProposalsIndicator
+              characterId={props.id}
+              pendingCount={props.pendingProposalCount ?? 0}
+              firstPendingId={props.firstPendingProposalId ?? null}
+            />
+          )}
           {/* PLAN Eilxina Part D (Mashu 2026-09-09): header-level
               stale-updates indicator. PLAY: passive text badge.
               BUILD/EDIT: clickable "update all" — wires to the

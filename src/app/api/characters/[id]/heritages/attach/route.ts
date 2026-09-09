@@ -25,6 +25,9 @@ import { and, eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db/client";
 import {
+  resolveCharacterAccess,
+} from "@/lib/character/resolve-character-access";
+import {
   characterHeritages,
   characters,
   heritage,
@@ -55,21 +58,10 @@ export async function POST(
       );
     }
 
-    const character = await db.query.characters.findFirst({
-      where: eq(characters.id, characterId),
+    // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate.
+    const { character } = await resolveCharacterAccess(userId, characterId, {
+      require: "OWNER",
     });
-    if (!character) {
-      return NextResponse.json(
-        { error: "Character not found." },
-        { status: 404 },
-      );
-    }
-    if (character.userId !== userId) {
-      return NextResponse.json(
-        { error: "You do not own this character." },
-        { status: 403 },
-      );
-    }
     if (character.mode === "PLAY") {
       return NextResponse.json(
         {
@@ -150,6 +142,11 @@ export async function POST(
       { status: 201 },
     );
   } catch (err) {
+    // PLAN Eilxina Part C (Mashu 2026-09-09): CharacterAccessDenied
+    // → 403. Anything else → existing 401/500 logic.
+    if (err instanceof Error && err.name === "CharacterAccessDenied") {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
     console.error("[characters POST heritages/attach] failed:", err);
     const message =
       err instanceof Error ? err.message : "Unable to attach heritage.";

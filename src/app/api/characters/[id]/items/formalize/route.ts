@@ -46,7 +46,6 @@ import { auth } from "@clerk/nextjs/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
-  characters,
   characterItems,
   characterPrimitives,
 } from "@/db/schema/characters";
@@ -58,6 +57,9 @@ import { primitives } from "@/db/schema/engine";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 import { appendCharacterLog } from "@/lib/character/character-log";
 import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
+import {
+  resolveCharacterAccess,
+} from "@/lib/character/resolve-character-access";
 
 const ITEM_TYPES = [
   "WEAPON",
@@ -161,23 +163,13 @@ export async function POST(
     );
     const isPublic = Boolean(values["isPublic"]);
 
-    // Ownership + mode gate.
-    const character = await db.query.characters.findFirst({
-      where: eq(characters.id, characterId),
-    });
-    if (!character) {
-      return NextResponse.json(
-        { error: "Character not found." },
-        { status: 404 },
-      );
-    }
-    if (character.userId !== userId) {
-      return NextResponse.json(
-        { error: "You do not own this character." },
-        { status: 403 },
-      );
-    }
-    if (character.mode === "PLAY") {
+    // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate.
+    const { character: current } = await resolveCharacterAccess(
+      userId,
+      characterId,
+      { require: "OWNER" },
+    );
+    if (current.mode === "PLAY") {
       return NextResponse.json(
         {
           error:
@@ -302,6 +294,10 @@ export async function POST(
     );
   } catch (err) {
     console.error("[characters POST item formalize] failed:", err);
+    // PLAN Eilxina Part C (Mashu 2026-09-09): CharacterAccessDenied → 403.
+    if (err instanceof Error && err.name === "CharacterAccessDenied") {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
     const message =
       err instanceof Error ? err.message : "Unable to wrap item.";
     const code = message.includes("Unauthorized") ? 401 : 500;

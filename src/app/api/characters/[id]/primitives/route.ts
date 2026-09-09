@@ -15,6 +15,22 @@
  *
  * Auth: required; character must be owned by caller.
  */
+
+import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { and, eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { characters, characterPrimitives, primitives } from "@/db/schema";
+import { resolveCharacterAccess } from "@/lib/character/resolve-character-access";
+import { parseHardModifiers } from "@/lib/packages/primitive-package";
+import { isPrimitiveCategory } from "@/lib/packages/primitive-package";
+import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
+import { appendCharacterLog } from "@/lib/character/character-log";
+import {
+  ALLOWED_PRIMITIVE_SOURCES,
+  isPrimitiveSource,
+} from "@/lib/character/inline-builder-types";
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -31,21 +47,8 @@ export async function GET(
       );
     }
 
-    const character = await db.query.characters.findFirst({
-      where: eq(characters.id, characterId),
-    });
-    if (!character) {
-      return NextResponse.json(
-        { error: "Character not found." },
-        { status: 404 },
-      );
-    }
-    if (character.userId !== userId) {
-      return NextResponse.json(
-        { error: "You do not own this character." },
-        { status: 403 },
-      );
-    }
+    // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate.
+    const { character } = await resolveCharacterAccess(userId, characterId, { require: "OWNER" });
 
     const baseWhere = eq(characterPrimitives.characterId, characterId);
     const sourceFilter = kindParam
@@ -91,6 +94,10 @@ export async function GET(
 
     return NextResponse.json({ primitiveInstances: rows }, { status: 200 });
   } catch (err) {
+    // PLAN Eilxina Part C (Mashu 2026-09-09): CharacterAccessDenied → 403.
+    if (err instanceof Error && err.name === "CharacterAccessDenied") {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
     console.error("[characters GET primitives] failed:", err);
     const message =
       err instanceof Error ? err.message : "Unable to list primitives.";
@@ -139,24 +146,6 @@ export async function GET(
  *   { primitive: PrimitiveRow, characterPrimitive: CharacterPrimitiveRow }
  */
 
-import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { and, eq } from "drizzle-orm";
-import { db } from "@/db/client";
-import {
-  characters,
-  characterPrimitives,
-  primitives,
-} from "@/db/schema";
-import { parseHardModifiers } from "@/lib/packages/primitive-package";
-import { isPrimitiveCategory } from "@/lib/packages/primitive-package";
-import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
-import { appendCharacterLog } from "@/lib/character/character-log";
-import {
-  ALLOWED_PRIMITIVE_SOURCES,
-  isPrimitiveSource,
-} from "@/lib/character/inline-builder-types";
-
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -174,22 +163,8 @@ export async function POST(
     }
     const values = body as Record<string, unknown>;
 
-    // Ownership check.
-    const character = await db.query.characters.findFirst({
-      where: eq(characters.id, characterId),
-    });
-    if (!character) {
-      return NextResponse.json(
-        { error: "Character not found." },
-        { status: 404 },
-      );
-    }
-    if (character.userId !== userId) {
-      return NextResponse.json(
-        { error: "You do not own this character." },
-        { status: 403 },
-      );
-    }
+    // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate.
+    const { character } = await resolveCharacterAccess(userId, characterId, { require: "OWNER" });
 
     // Build mode gate (Mashu 2026-09-06): inline authoring only happens
     // when the character is in BUILD mode. PLAY mode is read-only.
@@ -384,6 +359,10 @@ export async function POST(
       { status: 201 },
     );
   } catch (err) {
+    // PLAN Eilxina Part C (Mashu 2026-09-09): CharacterAccessDenied → 403.
+    if (err instanceof Error && err.name === "CharacterAccessDenied") {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
     console.error("[characters POST primitive] failed:", err);
     const message =
       err instanceof Error ? err.message : "Unable to slot primitive.";

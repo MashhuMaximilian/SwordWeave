@@ -31,6 +31,9 @@ import {
 } from "@/db/schema";
 import { itemCapabilities } from "@/db/schema/items";
 import { appendCharacterLog } from "@/lib/character/character-log";
+import {
+  resolveCharacterAccess,
+} from "@/lib/character/resolve-character-access";
 
 export async function POST(
   request: Request,
@@ -49,21 +52,10 @@ export async function POST(
       }
     }
 
-    const character = await db.query.characters.findFirst({
-      where: eq(characters.id, id),
+    // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate.
+    const { character } = await resolveCharacterAccess(userId, id, {
+      require: "OWNER",
     });
-    if (!character) {
-      return NextResponse.json(
-        { error: "Character not found." },
-        { status: 404 },
-      );
-    }
-    if (character.userId !== userId) {
-      return NextResponse.json(
-        { error: "You do not own this character." },
-        { status: 403 },
-      );
-    }
 
     let capabilityName = "(unknown)";
     let itemSlug: string | null = null;
@@ -131,6 +123,9 @@ export async function POST(
       },
     });
   } catch (error) {
+    if (error instanceof Error && error.name === "CharacterAccessDenied") {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     const message = error instanceof Error ? error.message : "Unknown error.";
     return NextResponse.json({ error: message }, { status: 400 });
   }

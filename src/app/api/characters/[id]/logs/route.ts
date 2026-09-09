@@ -18,6 +18,7 @@ import { auth } from "@clerk/nextjs/server";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { characters, characterLog } from "@/db/schema/characters";
+import { resolveCharacterAccess } from "@/lib/character/resolve-character-access";
 
 export async function GET(
   _request: Request,
@@ -27,22 +28,8 @@ export async function GET(
     const { userId } = await auth.protect();
     const { id } = await params;
 
-    // Ownership check.
-    const character = await db.query.characters.findFirst({
-      where: eq(characters.id, id),
-    });
-    if (!character) {
-      return NextResponse.json(
-        { error: "Character not found." },
-        { status: 404 },
-      );
-    }
-    if (character.userId !== userId) {
-      return NextResponse.json(
-        { error: "You do not own this character." },
-        { status: 403 },
-      );
-    }
+    // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate.
+    const { character } = await resolveCharacterAccess(userId, id, { require: "OWNER" });
 
     const rows = await db
       .select({
@@ -70,6 +57,10 @@ export async function GET(
       })),
     });
   } catch (error) {
+    // PLAN Eilxina Part C (Mashu 2026-09-09): CharacterAccessDenied → 403.
+    if (error instanceof Error && error.name === "CharacterAccessDenied") {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     const message = error instanceof Error ? error.message : "Unknown error.";
     return NextResponse.json({ error: message }, { status: 400 });
   }

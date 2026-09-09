@@ -12,6 +12,9 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { characterCapabilities, characters } from "@/db/schema";
 import { bumpSlotVersion } from "@/lib/character/bump-slot-version";
+import {
+  resolveCharacterAccess,
+} from "@/lib/character/resolve-character-access";
 
 export async function POST(
   request: Request,
@@ -28,20 +31,10 @@ export async function POST(
       // empty body OK — defaults to "latest"
     }
 
-    const ownerCheck = await db
-      .select({ userId: characters.userId })
-      .from(characters)
-      .where(eq(characters.id, characterId))
-      .limit(1);
-    if (!ownerCheck[0]) {
-      return NextResponse.json({ error: "Character not found." }, { status: 404 });
-    }
-    if (ownerCheck[0].userId !== userId) {
-      return NextResponse.json(
-        { error: "Only the character owner can bump slot versions." },
-        { status: 403 },
-      );
-    }
+    // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate.
+    await resolveCharacterAccess(userId, characterId, {
+      require: "OWNER",
+    });
 
     // Verify the capability slot row exists.
     const slot = await db

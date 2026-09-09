@@ -17,9 +17,10 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { characterPrimitives, characters } from "@/db/schema/characters";
+import { characterPrimitives } from "@/db/schema/characters";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 import { appendCharacterLog } from "@/lib/character/character-log";
+import { resolveCharacterAccess } from "@/lib/character/resolve-character-access";
 
 export async function PATCH(
   request: Request,
@@ -39,22 +40,13 @@ export async function PATCH(
     const values = body as Record<string, unknown>;
     const isMirrored = Boolean(values["isMirrored"]);
 
-    const character = await db.query.characters.findFirst({
-      where: eq(characters.id, characterId),
-    });
-    if (!character) {
-      return NextResponse.json(
-        { error: "Character not found." },
-        { status: 404 },
-      );
-    }
-    if (character.userId !== userId) {
-      return NextResponse.json(
-        { error: "You do not own this character." },
-        { status: 403 },
-      );
-    }
-    if (character.mode === "PLAY") {
+    // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate.
+    const { character: current } = await resolveCharacterAccess(
+      userId,
+      characterId,
+      { require: "OWNER" },
+    );
+    if (current.mode === "PLAY") {
       return NextResponse.json(
         {
           error:
@@ -102,6 +94,10 @@ export async function PATCH(
     );
   } catch (err) {
     console.error("[characters PATCH primitive mirror] failed:", err);
+    // PLAN Eilxina Part C (Mashu 2026-09-09): CharacterAccessDenied → 403.
+    if (err instanceof Error && err.name === "CharacterAccessDenied") {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
     const message =
       err instanceof Error ? err.message : "Unable to toggle mirror.";
     return NextResponse.json({ error: message }, { status: 500 });
