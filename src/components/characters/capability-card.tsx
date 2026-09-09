@@ -708,6 +708,13 @@ export function CapabilityCard({
               latestVersionId={capability.latestVersionId}
               targetType="CAPABILITY"
               targetId={capability.id}
+              // PLAN Eilxina Part D+ follow-up (Mashu 2026-09-09):
+              // self-bump on stale. characterId already lives on
+              // the card; capability.id is the slot entity id the
+              // bump endpoint expects.
+              characterId={characterId}
+              slotKind="capability"
+              slotEntityId={capability.id}
             />
           </div>
         </div>

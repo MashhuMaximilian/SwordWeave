@@ -48,7 +48,7 @@ import { CharacterEditButton } from "@/components/characters/character-edit-butt
 import { CharacterVisibilityControl } from "@/components/characters/character-visibility-control";
 import { CharacterSharePanel } from "@/components/characters/character-share-panel";
 import { PendingProposalsIndicator } from "@/components/characters/pending-proposals-indicator";
-import { StaleUpdatesIndicator } from "@/components/characters/stale-updates-indicator";
+import { StaleUpdatesIndicatorWithBump } from "@/components/characters/stale-updates-indicator-with-bump";
 import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-card";
 import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
 import { ConditionsDrawer } from "@/components/characters/conditions-drawer";
@@ -1044,15 +1044,15 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           )}
           {/* PLAN Eilxina Part D (Mashu 2026-09-09): header-level
               stale-updates indicator. PLAY: passive text badge.
-              BUILD/EDIT: clickable "update all" — wires to the
-              bump-version endpoint per stale slot. Per-slot pills
-              on each chip use the same logic via SlotSourceBadge. */}
-          <StaleUpdatesIndicator
+              BUILD/EDIT: clickable "update all" — calls the batch
+              endpoint at /api/characters/[id]/slots/bump-all which
+              bumps every stale slot atomically + recomputes BU.
+              Per-slot pills on each chip use the same logic via
+              SlotSourceBadge. */}
+          <StaleUpdatesIndicatorWithBump
+            characterId={props.id}
             count={staleCount}
             mode={props.mode ?? "PLAY"}
-            // onUpdateAll wiring is Part D follow-up (single-button
-            // batch endpoint). For v1 the per-slot pills are the
-            // action surface; the header count is informational.
           />
         </div>
       </header>
@@ -2841,6 +2841,11 @@ function CapabilitiesTab({
                             : "slotted",
                           acquiredAtLevel: 0,
                           isMirrored: p.isMirrored,
+                          // PLAN Eilxina Part D+ follow-up
+                          // (Mashu 2026-09-09): forward the
+                          // slot's instanceId so the preview
+                          // card's SlotSourceBadge can self-bump.
+                          instanceId: p.instanceId ?? undefined,
                           // Phase 8.5 / Session H6 (Mashu
                           // 2026-08-03): forward the
                           // provenance fields through to the
@@ -2865,6 +2870,7 @@ function CapabilitiesTab({
                         inheritedFrom={heritageName}
                         inheritedKind={heritageKind}
                         provenancePath={p.provenancePath}
+                        characterId={characterId}
                       />
                       </DraggablePrimitiveChip>
                     </li>

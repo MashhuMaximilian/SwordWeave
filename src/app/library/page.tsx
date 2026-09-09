@@ -8,6 +8,7 @@ import {
   ScrollText,
   Shield,
   Sparkles,
+  Swords,
   Wand2,
 } from "lucide-react";
 import { db } from "@/db/client";
@@ -18,6 +19,7 @@ import {
   primitives,
   heritage,
 } from "@/db/schema";
+import { queryLibrary } from "@/lib/publishing/library-query";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +74,17 @@ export default async function LibraryHubPage() {
   for (const t of templateRows) {
     templateCount.set(t.kind, (templateCount.get(t.kind) ?? 0) + 1);
   }
+
+  // PLAN Eilxina (Mashu 2026-09-09): /library hub CHARACTER tile.
+  // Uses the same queryLibrary() dispatch the browse page uses,
+  // filtered to targetType=CHARACTER + sort by recency. Limit is
+  // generous (we only need the count + top row for the preview).
+  const characterLibrary = await queryLibrary({
+    targetType: "CHARACTER",
+    sort: "RECENT",
+    limit: 12,
+  });
+  const characterCount = characterLibrary.items.length;
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-8">
@@ -207,6 +220,27 @@ export default async function LibraryHubPage() {
           </p>
           <span className="mt-4 flex items-center gap-2 pt-3 text-sm font-medium text-primary">
             Browse builds
+            <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+          </span>
+        </Link>
+
+        {/* PLAN Eilxina (Mashu 2026-09-09): CHARACTER tile. The codex
+            surface for published characters (Part A wired the query
+            layer; this tile makes it discoverable from the hub).
+            Same skeleton as the other entity tiles — count + link
+            to /library/browse?type=CHARACTER. */}
+        <Link
+          className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
+          href="/library/browse?type=CHARACTER"
+        >
+          <Swords className="size-5 text-primary" />
+          <h2 className="mt-5 text-lg font-semibold">Characters</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {characterCount} public character{characterCount === 1 ? "" : "s"}{" "}
+            shared by the community — fork one to make it your own.
+          </p>
+          <span className="mt-4 flex items-center gap-2 pt-3 text-sm font-medium text-primary">
+            Browse characters
             <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
           </span>
         </Link>
