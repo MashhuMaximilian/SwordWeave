@@ -325,7 +325,7 @@ export default async function VersionHistoryPage({ params }: PageProps) {
  */
 function mapToApiType(
   t: VersionTargetType,
-): "PRIMITIVE" | "EFFECT" | "CAPABILITY" | "ITEM" | "TEMPLATE" | null {
+): "PRIMITIVE" | "EFFECT" | "CAPABILITY" | "ITEM" | "TEMPLATE" | "CHARACTER" | null {
   if (
     t === "LINEAGE_TEMPLATE" ||
     t === "UPBRINGING_TEMPLATE" ||
@@ -333,8 +333,11 @@ function mapToApiType(
   ) {
     return "TEMPLATE";
   }
-  if (t === "CHARACTER") return null;
-  return t as "PRIMITIVE" | "CAPABILITY" | "TEMPLATE";
+  // PLAN Eilxina Part E (Mashu 2026-09-09): characters now restore
+  // via the dedicated /api/characters/[id]/versions/[versionNumber]/restore
+  // route, wired through RestoreButton's CHARACTER branch.
+  if (t === "CHARACTER") return "CHARACTER";
+  return t as "PRIMITIVE" | "CAPABILITY";
 }
 
 function buildSandboxSlotUrl(
@@ -441,7 +444,7 @@ function VersionRow({
           effectPrimitiveLinks={effectPrimitiveLinks}
         />
         {(() => {
-          const apiType: "PRIMITIVE" | "EFFECT" | "CAPABILITY" | "ITEM" | "TEMPLATE" | null = mapToApiType(targetType);
+          const apiType: "PRIMITIVE" | "EFFECT" | "CAPABILITY" | "ITEM" | "TEMPLATE" | "CHARACTER" | null = mapToApiType(targetType);
           if (!apiType) return null;
           return (
             <RestoreButton

@@ -30,6 +30,7 @@ import { db } from "@/db/client";
 import { characterItems, items } from "@/db/schema";
 import { resolveCharacterAccess } from "@/lib/character/resolve-character-access";
 import { appendCharacterLog } from "@/lib/character/character-log";
+import { withCharacterSnapshot } from "@/lib/character/with-character-snapshot";
 
 export async function POST(
   request: Request,
@@ -114,6 +115,10 @@ export async function POST(
         itemName: link.item?.name ?? "(unknown)",
       },
     );
+
+    await withCharacterSnapshot(id, async () => {
+      // Snapshot captures fresh state after the equip toggle
+    }, { publishedByUserId: userId });
 
     return NextResponse.json({
       character: { id, itemId },

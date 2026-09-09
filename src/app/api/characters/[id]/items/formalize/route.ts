@@ -60,6 +60,7 @@ import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
 import {
   resolveCharacterAccess,
 } from "@/lib/character/resolve-character-access";
+import { withCharacterSnapshot } from "@/lib/character/with-character-snapshot";
 
 const ITEM_TYPES = [
   "WEAPON",
@@ -281,6 +282,10 @@ export async function POST(
       itemName: createdItem.name,
       primitiveCount: uniquePrimitiveIds.length,
     });
+
+    await withCharacterSnapshot(characterId, async () => {
+      // Snapshot captures fresh state after the item formalization
+    }, { publishedByUserId: userId });
 
     bustResolverCache(characterId);
 

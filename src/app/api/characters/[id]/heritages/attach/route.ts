@@ -34,6 +34,7 @@ import {
   heritageCapabilities,
   heritagePrimitives,
 } from "@/db/schema";
+import { withCharacterSnapshot } from "@/lib/character/with-character-snapshot";
 
 export async function POST(
   request: Request,
@@ -132,6 +133,10 @@ export async function POST(
     // happens in the resolver, not here.
     void heritagePrimitives;
     void heritageCapabilities;
+
+    await withCharacterSnapshot(characterId, async () => {
+      // Snapshot captures fresh state after the heritage attach
+    }, { publishedByUserId: userId });
 
     return NextResponse.json(
       {

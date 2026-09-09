@@ -48,6 +48,7 @@ import { CharacterEditButton } from "@/components/characters/character-edit-butt
 import { CharacterVisibilityControl } from "@/components/characters/character-visibility-control";
 import { CharacterSharePanel } from "@/components/characters/character-share-panel";
 import { PendingProposalsIndicator } from "@/components/characters/pending-proposals-indicator";
+import { VersionHistoryLink } from "@/components/characters/version-history-link";
 import { StaleUpdatesIndicatorWithBump } from "@/components/characters/stale-updates-indicator-with-bump";
 import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-card";
 import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
@@ -324,6 +325,9 @@ export type CharacterSheetProps = {
   // PendingProposalsIndicator chip.
   pendingProposalCount?: number;
   firstPendingProposalId?: string | null;
+  // PLAN Eilxina Part E (Mashu 2026-09-09): total characterVersions
+  // row count for the header Versions link's count badge.
+  characterVersionCount?: number;
   attrPhysical: number;
   attrMental: number;
   attrMagical: number;
@@ -1021,6 +1025,14 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             characterId={props.id}
             initialVisibility={props.publicationVisibility}
             variant="compact"
+          />
+          {/* PLAN Eilxina Part E (Mashu 2026-09-09): Versions link.
+              Visible to ALL viewers (read-only) so collaborators
+              can audit the character's history. Restoring requires
+              OWNER — gated at the restore endpoint, not the link. */}
+          <VersionHistoryLink
+            characterId={props.id}
+            count={props.characterVersionCount}
           />
           {/* PLAN Eilxina Part C (Mashu 2026-09-09): Share panel.
               Mounted only when the viewer is the OWNER. Editors

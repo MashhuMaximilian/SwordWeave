@@ -6,6 +6,7 @@ import { AddPanel } from "@/components/characters/add-panel";
 import { db } from "@/db/client";
 import { characters, capabilityEffects, effectPrimitives } from "@/db/schema";
 import { characterShares, characterProposals, users } from "@/db/schema";
+import { characterVersions } from "@/db/schema/versions";
 import { publications } from "@/db/schema/engagement";
 import { aggregateCharacterSheet } from "@/lib/engine";
 import {
@@ -222,6 +223,15 @@ export default async function CharacterSheetPage({
       const bT = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
       return bT - aT;
     })[0]?.id ?? null;
+
+  // PLAN Eilxina Part E (Mashu 2026-09-09): cheap character_versions
+  // count for the header Versions link's count badge. Single
+  // indexed lookup on (character_id) — no full row payload needed.
+  const characterVersionRows = await db
+    .select({ id: characterVersions.id })
+    .from(characterVersions)
+    .where(eq(characterVersions.characterId, id));
+  const characterVersionCount = characterVersionRows.length;
 
   // Phase 8.4 v22 (Mashu 2026-07-29): T2 followup — enrich
   // itemLinks with the nested bundle via flat queries.
@@ -553,6 +563,7 @@ export default async function CharacterSheetPage({
       ownerShares={ownerShares}
       pendingProposalCount={pendingCount}
       firstPendingProposalId={firstPendingId}
+      characterVersionCount={characterVersionCount}
       attrPhysical={row.attrPhysical}
       attrMental={row.attrMental}
       attrMagical={row.attrMagical}

@@ -21,6 +21,7 @@ import { characterPrimitives } from "@/db/schema/characters";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 import { appendCharacterLog } from "@/lib/character/character-log";
 import { resolveCharacterAccess } from "@/lib/character/resolve-character-access";
+import { withCharacterSnapshot } from "@/lib/character/with-character-snapshot";
 
 export async function PATCH(
   request: Request,
@@ -85,6 +86,10 @@ export async function PATCH(
       "@/lib/engine/recompute-bu-spent"
     );
     await recomputeBuSpent(characterId);
+
+    await withCharacterSnapshot(characterId, async () => {
+      // Snapshot captures fresh state after the mirror toggle
+    }, { publishedByUserId: userId });
 
     bustResolverCache(characterId);
 

@@ -39,6 +39,7 @@ import { appendCharacterLog } from "@/lib/character/character-log";
 import {
   resolveCharacterAccess,
 } from "@/lib/character/resolve-character-access";
+import { withCharacterSnapshot } from "@/lib/character/with-character-snapshot";
 
 const ALLOWED_SLOT_TABS = ["LINEAGE", "UPBRINGING", "MANIFEST"] as const;
 
@@ -162,6 +163,10 @@ export async function POST(
       slotTab: row?.slotTab ?? null,
       acquiredAtLevel,
     });
+
+    await withCharacterSnapshot(characterId, async () => {
+      // Snapshot captures fresh state after the capability attach
+    }, { publishedByUserId: userId });
 
     return NextResponse.json(
       { characterCapability: row ?? null },

@@ -5,6 +5,7 @@ import { db } from "@/db/client";
 import { characters } from "@/db/schema";
 import { getVolatilityCeiling } from "@/lib/engine/bu";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
+import { withCharacterSnapshot } from "@/lib/character/with-character-snapshot";
 
 /**
  * POST /api/characters/[id]/level-up
@@ -74,6 +75,10 @@ export async function POST(
       .set(updatePayload)
       .where(eq(characters.id, id))
       .returning();
+
+    await withCharacterSnapshot(id, async () => {
+      // Snapshot captures fresh state after the update
+    }, { publishedByUserId: null });
 
     const newCeiling = getVolatilityCeiling(updated?.level ?? 1);
 

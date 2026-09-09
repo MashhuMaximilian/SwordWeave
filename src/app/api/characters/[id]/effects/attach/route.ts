@@ -31,6 +31,7 @@ import { appendCharacterLog } from "@/lib/character/character-log";
 import {
   resolveCharacterAccess,
 } from "@/lib/character/resolve-character-access";
+import { withCharacterSnapshot } from "@/lib/character/with-character-snapshot";
 
 export async function POST(
   request: Request,
@@ -85,6 +86,10 @@ export async function POST(
       effectId: effectIdRaw,
       effectName: effect.name,
     });
+
+    await withCharacterSnapshot(characterId, async () => {
+      // Snapshot captures fresh state after the effect attach attempt
+    }, { publishedByUserId: userId });
 
     return NextResponse.json(
       {

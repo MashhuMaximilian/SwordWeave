@@ -37,6 +37,7 @@ import { appendCharacterLog } from "@/lib/character/character-log";
 import {
   resolveCharacterAccess,
 } from "@/lib/character/resolve-character-access";
+import { withCharacterSnapshot } from "@/lib/character/with-character-snapshot";
 
 export async function POST(
   request: Request,
@@ -101,6 +102,10 @@ export async function POST(
       next,
       applied: next - prev,
     });
+
+    await withCharacterSnapshot(id, async () => {
+      // Snapshot captures fresh state after the DM bonus change
+    }, { publishedByUserId: userId });
 
     return NextResponse.json({
       character: updated,

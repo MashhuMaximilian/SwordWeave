@@ -48,6 +48,7 @@ import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
 import {
   resolveCharacterAccess,
 } from "@/lib/character/resolve-character-access";
+import { withCharacterSnapshot } from "@/lib/character/with-character-snapshot";
 import {
   isAccordionKind,
   KIND_TO_COLUMN,
@@ -317,6 +318,10 @@ export async function POST(
         ? 0
         : uniquePrimitiveIds.length,
     });
+
+    await withCharacterSnapshot(characterId, async () => {
+      // Snapshot captures fresh state after the heritage formalization
+    }, { publishedByUserId: userId });
 
     bustResolverCache(characterId);
 

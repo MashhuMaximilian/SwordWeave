@@ -22,6 +22,7 @@ import { characters } from "@/db/schema";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 import { appendCharacterLog } from "@/lib/character/character-log";
 import { resolveCharacterAccess } from "@/lib/character/resolve-character-access";
+import { withCharacterSnapshot } from "@/lib/character/with-character-snapshot";
 
 const ALLOWED_MODES = ["BUILD", "PLAY"] as const;
 type Mode = (typeof ALLOWED_MODES)[number];
@@ -78,6 +79,10 @@ export async function POST(
       fromMode: current.mode,
       toMode: newMode,
     });
+
+    await withCharacterSnapshot(characterId, async () => {
+      // Snapshot captures fresh state after the mode change
+    }, { publishedByUserId: userId });
 
     bustResolverCache(characterId);
 

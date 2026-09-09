@@ -26,6 +26,7 @@ import { parseHardModifiers } from "@/lib/packages/primitive-package";
 import { isPrimitiveCategory } from "@/lib/packages/primitive-package";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 import { appendCharacterLog } from "@/lib/character/character-log";
+import { withCharacterSnapshot } from "@/lib/character/with-character-snapshot";
 import {
   ALLOWED_PRIMITIVE_SOURCES,
   isPrimitiveSource,
@@ -347,6 +348,10 @@ export async function POST(
       "@/lib/engine/recompute-bu-spent"
     );
     await recomputeBuSpent(characterId);
+
+    await withCharacterSnapshot(characterId, async () => {
+      // Snapshot captures fresh state after the primitive slotting
+    }, { publishedByUserId: userId });
 
     bustResolverCache(characterId);
 

@@ -40,6 +40,7 @@ import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 import { appendCharacterLog } from "@/lib/character/character-log";
 import { isPrimitiveSource } from "@/lib/character/inline-builder-types";
 import { resolveCharacterAccess } from "@/lib/character/resolve-character-access";
+import { withCharacterSnapshot } from "@/lib/character/with-character-snapshot";
 
 export async function PATCH(
   request: Request,
@@ -295,6 +296,10 @@ export async function PATCH(
       toSource: to,
     });
 
+    await withCharacterSnapshot(characterId, async () => {
+      // Snapshot captures fresh state after the primitive move
+    }, { publishedByUserId: userId });
+
     // Phase 9.5 (Mashu 2026-09-07): a move doesn't change the
     // primitive set (no add/remove), so the BU total stays the same.
     // We deliberately skip recomputeBuSpent here — the column is
@@ -387,6 +392,10 @@ export async function DELETE(
       "@/lib/engine/recompute-bu-spent"
     );
     await recomputeBuSpent(characterId);
+
+    await withCharacterSnapshot(characterId, async () => {
+      // Snapshot captures fresh state after the primitive removal
+    }, { publishedByUserId: userId });
 
     bustResolverCache(characterId);
 

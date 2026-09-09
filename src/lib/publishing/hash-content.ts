@@ -669,3 +669,141 @@ export async function computeTemplateContentHash(args: {
 }): Promise<string> {
   return hashTemplateContent(buildCanonicalTemplatePayload(args));
 }
+
+// =============================================================================
+// Character payload + hash — PLAN Eilxina Part E (Mashu 2026-09-09).
+//
+// The character snapshot is the widest of all entity types: it captures
+// the character row + every junction slot + their version pins + the
+// derived BU/vitality state. Restore must reconstruct ALL of these from
+// the snapshot alone.
+//
+// Why hash the WHOLE character (not just the scalars): the user-visible
+// "what changed since v3" answer depends on the slot configuration, not
+// just the name/level. Same scalar change with a different primitive
+// arrangement = different snapshot.
+//
+// Slot pinning vs character versioning (see swordweave-versioning §):
+// this payload INCLUDES the version pins because that's the point — if
+// we re-bumped every pin to "latest" on restore, we'd lose the user's
+// pinned-by-design choices.
+// =============================================================================
+
+export interface CanonicalPrimitiveSlotPayload {
+  readonly instanceId: string;
+  readonly primitiveId: number;
+  readonly source: string;
+  readonly acquiredAtLevel: number;
+  readonly isMirrored: boolean;
+  readonly versionId: string | null;
+  readonly slotSource: string;
+}
+
+export interface CanonicalCapabilitySlotPayload {
+  readonly capabilityId: string;
+  readonly versionId: string | null;
+  readonly slotSource: string;
+}
+
+export interface CanonicalItemSlotPayload {
+  readonly itemId: string;
+  readonly versionId: string | null;
+  readonly slotSource: string;
+  /** Phase 8.4 v24.5 (Mashu 2026-07-30): equip/quantity live here. */
+  readonly equipped: boolean;
+  readonly quantity: number;
+}
+
+export interface CanonicalHeritageSlotPayload {
+  readonly heritageId: string;
+  readonly versionId: string | null;
+  readonly slotSource: string;
+}
+
+export interface CanonicalCharacterPayload {
+  readonly level: number;
+  readonly attrPhysical: number;
+  readonly attrMental: number;
+  readonly attrMagical: number;
+  readonly attrProficient: string | null;
+  readonly currentVitality: number | null;
+  readonly backstory: Record<string, unknown>;
+  readonly dmBonusBu: number;
+  readonly mode: "BUILD" | "PLAY";
+  // Junction slots — sorted for hash stability.
+  readonly primitiveSlots: readonly CanonicalPrimitiveSlotPayload[];
+  readonly capabilitySlots: readonly CanonicalCapabilitySlotPayload[];
+  readonly itemSlots: readonly CanonicalItemSlotPayload[];
+  readonly heritageSlots: readonly CanonicalHeritageSlotPayload[];
+}
+
+export function buildCanonicalCharacterPayload(args: {
+  level: number;
+  attrPhysical: number;
+  attrMental: number;
+  attrMagical: number;
+  attrProficient: string | null;
+  currentVitality: number | null;
+  backstory: Record<string, unknown>;
+  dmBonusBu: number;
+  mode: "BUILD" | "PLAY";
+  primitiveSlots: readonly CanonicalPrimitiveSlotPayload[];
+  capabilitySlots: readonly CanonicalCapabilitySlotPayload[];
+  itemSlots: readonly CanonicalItemSlotPayload[];
+  heritageSlots: readonly CanonicalHeritageSlotPayload[];
+}): CanonicalCharacterPayload {
+  // Sort every junction by its primary key for hash stability
+  // (mirrors the buildCanonicalTemplatePayload pattern).
+  const sortedPrims = [...args.primitiveSlots].sort((a, b) =>
+    a.instanceId < b.instanceId ? -1 : a.instanceId > b.instanceId ? 1 : 0,
+  );
+  const sortedCaps = [...args.capabilitySlots].sort((a, b) =>
+    a.capabilityId < b.capabilityId ? -1 : a.capabilityId > b.capabilityId ? 1 : 0,
+  );
+  const sortedItems = [...args.itemSlots].sort((a, b) =>
+    a.itemId < b.itemId ? -1 : a.itemId > b.itemId ? 1 : 0,
+  );
+  const sortedHeritages = [...args.heritageSlots].sort((a, b) =>
+    a.heritageId < b.heritageId ? -1 : a.heritageId > b.heritageId ? 1 : 0,
+  );
+  return {
+    level: Math.max(0, Math.floor(args.level)),
+    attrPhysical: args.attrPhysical,
+    attrMental: args.attrMental,
+    attrMagical: args.attrMagical,
+    attrProficient: args.attrProficient,
+    currentVitality: args.currentVitality,
+    backstory: args.backstory ?? {},
+    dmBonusBu: Math.max(0, Math.floor(args.dmBonusBu)),
+    mode: args.mode,
+    primitiveSlots: sortedPrims,
+    capabilitySlots: sortedCaps,
+    itemSlots: sortedItems,
+    heritageSlots: sortedHeritages,
+  };
+}
+
+export async function hashCharacterContent(
+  payload: CanonicalCharacterPayload,
+): Promise<string> {
+  const envelope = JSON.stringify({ v: ENVELOPE_VERSION, character: payload });
+  return sha256Hex(envelope);
+}
+
+export async function computeCharacterContentHash(args: {
+  level: number;
+  attrPhysical: number;
+  attrMental: number;
+  attrMagical: number;
+  attrProficient: string | null;
+  currentVitality: number | null;
+  backstory: Record<string, unknown>;
+  dmBonusBu: number;
+  mode: "BUILD" | "PLAY";
+  primitiveSlots: readonly CanonicalPrimitiveSlotPayload[];
+  capabilitySlots: readonly CanonicalCapabilitySlotPayload[];
+  itemSlots: readonly CanonicalItemSlotPayload[];
+  heritageSlots: readonly CanonicalHeritageSlotPayload[];
+}): Promise<string> {
+  return hashCharacterContent(buildCanonicalCharacterPayload(args));
+}
