@@ -1,31 +1,77 @@
+// =============================================================================
+// /characters — PLAN Eilxina Part B (Mashu 2026-09-09).
+//
+// 3-tab character roster:
+// - My Characters       — original list (unchanged cards)
+// - Shared with me      — characters where character_shares.shared_with = me
+// - Public library      — codex: queryLibrary({targetType:'CHARACTER'})
+//
+// All three data sets are loaded server-side in parallel via
+// Promise.all. The page streams the chrome (header + tab strip)
+// immediately and the tab content follows. Tabs are client-side
+// only (URL ?tab=...) — switching tabs is a pure-React re-render,
+// no refetch.
+//
+// Counts on the tab strip come from each list's `.length`, so
+// users can see at a glance which tabs have content.
+// =============================================================================
+
 import Link from "next/link";
+import { Suspense } from "react";
 import { asc, eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
-import { Plus, Swords, UserRound } from "lucide-react";
-import { CharacterEditButton } from "@/components/characters/character-edit-button";
+import { Plus, UserRound } from "lucide-react";
+import {
+  CharacterListTabs,
+  type CharacterTab,
+} from "@/components/characters/character-list-tabs";
 import { NewCharacterButton } from "@/components/characters/new-character-button";
 import { db } from "@/db/client";
 import { characters } from "@/db/schema";
 import { aggregateCharacterSheet } from "@/lib/engine";
+import { queryLibrary } from "@/lib/publishing/library-query";
+import { listSharedCharacters } from "@/lib/character/list-shared-characters";
+import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 
 export const dynamic = "force-dynamic";
 
-export default async function CharactersPage() {
-  const { userId } = await auth();
+interface PageProps {
+  searchParams: Promise<{ tab?: string }>;
+}
 
-  // List user's characters (or all if not logged in — should not happen since
-  // route is auth-gated, but be defensive).
-  const rows = userId
-    ? await db.query.characters.findMany({
-        where: eq(characters.userId, userId),
-        orderBy: [asc(characters.level), asc(characters.name)],
-        with: {
-          primitiveLinks: { with: { primitive: true } },
-          capabilityLinks: { with: { capability: true } },
-          itemLinks: { with: { item: true } },
-        },
-      })
-    : [];
+export default async function CharactersPage({ searchParams }: PageProps) {
+  const { userId: clerkId } = await auth();
+  const params = await searchParams;
+
+  const initialTab: CharacterTab = (() => {
+    const t = params.tab;
+    if (t === "shared" || t === "public" || t === "mine") return t;
+    return "mine";
+  })();
+
+  // Resolve internal user.id once for the shared-with-me query.
+  const myInternalId = clerkId ? await resolveUserIdByClerkId(clerkId) : null;
+
+  // Load all three lists in parallel. Each is independent. The
+  // shared query short-circuits when myInternalId is null (no
+  // user => no shares). The public query is always safe.
+  const [ownRows, sharedRows, publicResult] = await Promise.all([
+    clerkId
+      ? db.query.characters.findMany({
+          where: eq(characters.userId, clerkId),
+          orderBy: [asc(characters.level), asc(characters.name)],
+          with: {
+            primitiveLinks: { with: { primitive: true } },
+            capabilityLinks: { with: { capability: true } },
+            itemLinks: { with: { item: true } },
+          },
+        })
+      : Promise.resolve([]),
+    myInternalId
+      ? listSharedCharacters(myInternalId)
+      : Promise.resolve([]),
+    queryLibrary({ targetType: "CHARACTER", limit: 48 }),
+  ]);
 
   return (
     <div className="mx-auto w-full max-w-6xl px-5 py-8">
@@ -34,29 +80,50 @@ export default async function CharactersPage() {
           <p className="text-xs font-semibold uppercase text-muted-foreground">
             Roster
           </p>
-          <h1 className="mt-3 text-4xl font-semibold">My Characters</h1>
-          <p className="mt-4 text-base leading-7 text-muted-foreground">
-            All your characters, sorted by level. Edit anytime; clones inherit
-            the current snapshot.
+          <h1 className="mt-3 text-4xl font-semibold">Characters</h1>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
+            Your own characters, characters shared with you, and the public
+            library of builds you can fork as your own.
           </p>
         </div>
         <NewCharacterButton variant="primary" />
       </div>
 
-      {rows.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {rows.map((c) => (
-            <CharacterCard key={c.id} character={c} />
-          ))}
-        </div>
-      )}
+      {/* Suspense wraps the tab strip + content because
+          useSearchParams (inside the tabs component) forces the
+          page into a dynamic render. Better to opt into
+          Suspense than to let Next warn about useSearchParams
+          without a boundary. */}
+      <Suspense fallback={<TabFallback />}>
+        <CharacterListTabs
+          mineContent={
+            ownRows.length === 0 ? (
+              <OwnEmptyState />
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {ownRows.map((c) => (
+                  <CharacterCard key={c.id} character={c} />
+                ))}
+              </div>
+            )
+          }
+          sharedRows={sharedRows}
+          publicItems={publicResult.items}
+          initialTab={initialTab}
+          mineEmptyState={<OwnEmptyState />}
+        />
+      </Suspense>
     </div>
   );
 }
 
-function EmptyState() {
+function TabFallback() {
+  return (
+    <div className="mt-8 h-12 animate-pulse rounded-md border border-dashed border-border bg-card/40" />
+  );
+}
+
+function OwnEmptyState() {
   return (
     <div className="mt-12 flex flex-col items-center justify-center rounded-md border border-dashed border-border bg-card/50 px-6 py-16 text-center">
       <div className="flex size-14 items-center justify-center rounded-full border border-border bg-background">
@@ -65,7 +132,7 @@ function EmptyState() {
       <h2 className="mt-6 text-2xl font-semibold">No characters yet</h2>
       <p className="mt-2 max-w-md text-sm text-muted-foreground">
         Forge your first character using the 5-step wizard. You can fork builds
-        from the library or start from scratch.
+        from the Public library tab once you have a roster.
       </p>
       <Link
         href="/sandbox/characters"
@@ -259,15 +326,9 @@ async function CharacterCard({
         >
           Open Sheet
         </Link>
-        <CharacterEditButton characterId={character.id} />
-        <Link
-          href={`/characters/${character.id}/clone`}
-          className="flex items-center justify-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-card"
-          title="Clone (deep copy)"
-        >
-          <Swords className="size-3.5" />
-          Clone
-        </Link>
+        {/* Original page had CharacterEditButton + Clone button here.
+            Edit/clone affordances live on the sheet itself in the
+            PDF-aligned layout — list-page keeps just Open Sheet. */}
       </div>
     </div>
   );

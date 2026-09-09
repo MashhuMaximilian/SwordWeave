@@ -7,6 +7,8 @@ import { db } from "@/db/client";
 import { characters, capabilityEffects, effectPrimitives } from "@/db/schema";
 import { publications } from "@/db/schema/engagement";
 import { aggregateCharacterSheet } from "@/lib/engine";
+import { hasActiveShare } from "@/lib/character/has-active-share";
+import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import type { ConditionContext } from "@/lib/engine/condition-evaluator";
 import {
   bulkResolveLatestVersions,
@@ -100,9 +102,20 @@ export default async function CharacterSheetPage({
 
   if (!row) notFound();
 
-  // Ownership: redirect to list if not owner
+  // PLAN Eilxina Part B (Mashu 2026-09-09): soften the ownership
+  // redirect for shared-with-me viewers. If the viewer is not the
+  // owner, check the character_shares table; an active grant lets
+  // them open the sheet (view-only for now — Part C's
+  // canResolveCharacter will gate actual writes).
+  let viewerIsShared: { canEdit: boolean } | null = null;
   if (userId && row.userId !== userId) {
-    redirect("/characters");
+    const viewerInternalId = await resolveUserIdByClerkId(userId);
+    viewerIsShared = viewerInternalId
+      ? await hasActiveShare(viewerInternalId, id)
+      : null;
+    if (!viewerIsShared) {
+      redirect("/characters");
+    }
   }
 
   // PLAN Eilxina Part A (Mashu 2026-09-09): look up the character's

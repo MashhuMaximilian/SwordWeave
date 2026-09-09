@@ -32,6 +32,7 @@ import { sql } from "drizzle-orm";
 import { iconSourceEnum } from "./enums";
 import { timestamps } from "./common";
 import { entities } from "./entities";
+import { users } from "./profiles";
 import { items } from "./items";
 import {
   capabilities,
@@ -786,3 +787,60 @@ export { capabilityPrimitives };
 
 // Re-export entities for relation wiring
 export { entities };
+
+// =============================================================================
+// character_shares — PLAN Eilxina Part B (Mashu 2026-09-09).
+//
+// Per-character access grants between users. Distinct from `publications`
+// (visibility on the library codex): a share is a discrete grant to one
+// specific user, with or without edit rights, that survives even when the
+// character is private (PUBLIC visibility is orthogonal).
+//
+// Design notes:
+// - Composite uniqueness: (character_id, shared_with_user_id) — a given
+//   user has at most one active grant per character. Re-sharing
+//   updates the existing row rather than creating a duplicate.
+// - can_edit: when true, the invitee can mutate the character directly
+//   (vitals, attrs, slots, etc — gated by canResolveCharacter in Part C).
+//   When false, view-only. We store this as a boolean rather than a
+//   role enum because the codebase doesn't use roles anywhere else;
+//   `canEdit: boolean` is the consistent shape.
+// - revoked_at: soft-delete. We keep the row around for audit
+//   ("Mashu shared X with Steve on 2026-09-09; revoked 2026-09-10")
+//   matching the unpublishedAt pattern in publications.
+// - shared_by_user_id: who created the grant. For auditing. The
+//   character owner is implied via characters.userId; this is the
+//   granting actor (could be the owner OR a co-owner in future).
+// - No version-tracking yet — Part C adds the proposal layer; this
+//   table is just the access-control surface.
+// =============================================================================
+export const characterShares = pgTable(
+  "character_shares",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    sharedWithUserId: uuid("shared_with_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sharedByUserId: uuid("shared_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    canEdit: boolean("can_edit").notNull().default(false),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    // One active grant per (character, invitee). Revoked rows are
+    // excluded via WHERE revoked_at IS NULL in the read query, so
+    // re-sharing after revoke creates a fresh row and the partial
+    // unique index enforces that no two ACTIVE grants collide.
+    uniqueIndex("character_shares_active_unique_idx")
+      .on(table.characterId, table.sharedWithUserId)
+      .where(sql`${table.revokedAt} IS NULL`),
+    index("character_shares_shared_with_idx").on(table.sharedWithUserId),
+    index("character_shares_character_idx").on(table.characterId),
+    index("character_shares_shared_by_idx").on(table.sharedByUserId),
+  ],
+);
