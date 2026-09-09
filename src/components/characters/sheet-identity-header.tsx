@@ -50,6 +50,8 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { CharacterEditButton } from "@/components/characters/character-edit-button";
+import { CharacterVisibilityControl } from "@/components/characters/character-visibility-control";
+import { StaleUpdatesIndicator } from "@/components/characters/stale-updates-indicator";
 import { IdentityCell } from "@/components/characters/identity-cell";
 import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
 import {
@@ -148,6 +150,22 @@ export interface SheetIdentityHeaderProps {
   readonly upbringingName: string | null;
   readonly upbringingDescription: string | null;
   readonly manifestName: string | null;
+  // PLAN Eilxina Part A (Mashu 2026-09-09): current publication tier
+  // for the character, fed by the server-side publication row lookup
+  // in /characters/[id]/page.tsx. Drives the mobile visibility chip
+  // inside the expanded panel.
+  readonly publicationVisibility: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC";
+  // PLAN Eilxina Part D (Mashu 2026-09-09): count of slotted entities
+  // (primitives + capabilities + items) whose versionId is behind
+  // latestVersionId. Drives the header-level stale-updates chip in
+  // the expanded panel (matches the in-page header indicator).
+  readonly staleUpdatesCount: number;
+  // PLAN Eilxina Part D (Mashu 2026-09-09): the | undefined is needed
+  // because exactOptionalPropertyTypes treats optional `?` and explicit
+  // `| undefined` as DIFFERENT types. The character-sheet-view passes
+  // `props.mode` which itself is optional, so we have to accept undefined
+  // here too.
+  readonly mode?: "PLAY" | "BUILD" | undefined;
   /**
    * Phase 8.4 v11 (Mashu 2026-07-28): attribute values
    * for the identity card's "Attributes" cell (sum +
@@ -199,6 +217,13 @@ export function SheetIdentityHeader({
   upbringingName,
   upbringingDescription,
   manifestName,
+  // PLAN Eilxina Part A (Mashu 2026-09-09): publication tier for the
+  // mobile visibility chip.
+  publicationVisibility,
+  // PLAN Eilxina Part D (Mashu 2026-09-09): stale-updates count for
+  // the mobile header indicator.
+  staleUpdatesCount,
+  mode,
   attrSum,
   portraitUrl,
   canLevelUp,
@@ -542,6 +567,22 @@ export function SheetIdentityHeader({
                 Level Up
               </button>
             ) : null}
+            {/* PLAN Eilxina Part A (Mashu 2026-09-09): mobile visibility
+                picker inside the expanded panel. Same component used
+                in the in-page header (desktop); only difference is the
+                variant — compact chips fit in this dense action row. */}
+            <CharacterVisibilityControl
+              characterId={characterId}
+              initialVisibility={publicationVisibility}
+              variant="compact"
+            />
+            {/* PLAN Eilxina Part D (Mashu 2026-09-09): mobile stale-updates
+                chip. Matches the in-page indicator; PLAY shows the count
+                passively, BUILD lets the user click to update all. */}
+            <StaleUpdatesIndicator
+              count={staleUpdatesCount}
+              mode={mode ?? "PLAY"}
+            />
           </div>
           {!canLevelUp ? (
             <p className="mt-2 text-[10px] text-muted-foreground">

@@ -45,6 +45,8 @@ import { CapabilityCard } from "@/components/characters/capability-card";
 import { ItemCard } from "@/components/characters/item-card";
 import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
 import { CharacterEditButton } from "@/components/characters/character-edit-button";
+import { CharacterVisibilityControl } from "@/components/characters/character-visibility-control";
+import { StaleUpdatesIndicator } from "@/components/characters/stale-updates-indicator";
 import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-card";
 import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
 import { ConditionsDrawer } from "@/components/characters/conditions-drawer";
@@ -292,6 +294,12 @@ export type CharacterSheetProps = {
   upbringingName: string | null;
   upbringingDescription: string | null;
   manifestName: string | null;
+  // PLAN Eilxina Part A (Mashu 2026-09-09): current publication
+  // tier for the character. Drives the VisibilitySelect in the
+  // header. PRIVATE means no publications row exists; PUBLIC and
+  // FOLLOWERS_ONLY mean the row is discoverable in the library
+  // (PUBLIC to everyone, FOLLOWERS_ONLY to the author's followers).
+  publicationVisibility: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC";
   // Phase 9.1 (Mashu 2026-09-06): BUILD/PLAY mode flag driving
   // whether the inline character-builder affordances render on
   // the accordions. Persisted in characters.mode (migration 0053).
@@ -654,6 +662,21 @@ export function CharacterSheetView(props: CharacterSheetProps) {
   const [isPending, startTransition] = useTransition();
   const latestVersions = props.latestVersions ?? (new Map<VersionKey, string>());
   const { toasts, showToast, dismissToast } = useToasts();
+  // PLAN Eilxina Part D (Mashu 2026-09-09): count slotted primitives,
+  // capabilities, and items whose versionId is behind latestVersionId.
+  // Drives the header-level "X updates available" indicator — passive in
+  // PLAY, clickable "update all" in BUILD/EDIT. The per-slot pills on
+  // each chip use the same logic via SlotSourceBadge.
+  const staleCount =
+    props.primitiveLinks.filter(
+      (l) => l.latestVersionId && l.versionId !== l.latestVersionId,
+    ).length +
+    props.capabilityLinks.filter(
+      (l) => l.latestVersionId && l.versionId !== l.latestVersionId,
+    ).length +
+    props.itemLinks.filter(
+      (l) => l.latestVersionId && l.versionId !== l.latestVersionId,
+    ).length;
   // Phase 8.2 batch 7: opening edit mode triggers the atelier's
   // character builder modal (pre-filled via openForEdit).
   // Phase 8.2 batch 7 rev 2: clicking Edit now navigates to /atelier
@@ -969,6 +992,28 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             <Swords className="size-4" />
             Clone
           </Link>
+          {/* PLAN Eilxina Part A (Mashu 2026-09-09): visibility tier
+              picker on the character sheet header. Posts to
+              /api/creations/visibility with targetType='CHARACTER'.
+              The server route already enforces authorship and keeps
+              characters.isPublic in sync via our new syncIsPublic case. */}
+          <CharacterVisibilityControl
+            characterId={props.id}
+            initialVisibility={props.publicationVisibility}
+            variant="compact"
+          />
+          {/* PLAN Eilxina Part D (Mashu 2026-09-09): header-level
+              stale-updates indicator. PLAY: passive text badge.
+              BUILD/EDIT: clickable "update all" — wires to the
+              bump-version endpoint per stale slot. Per-slot pills
+              on each chip use the same logic via SlotSourceBadge. */}
+          <StaleUpdatesIndicator
+            count={staleCount}
+            mode={props.mode ?? "PLAY"}
+            // onUpdateAll wiring is Part D follow-up (single-button
+            // batch endpoint). For v1 the per-slot pills are the
+            // action surface; the header count is informational.
+          />
         </div>
       </header>
       {/* Phase 8.4 v15 (Mashu 2026-07-28): SheetIdentityHeader
@@ -1264,6 +1309,11 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         upbringingName={props.upbringingName ?? null}
         upbringingDescription={props.upbringingDescription ?? null}
         manifestName={props.manifestName ?? null}
+        publicationVisibility={props.publicationVisibility}
+        // PLAN Eilxina Part D (Mashu 2026-09-09): stale-updates count
+        // for the mobile header chip.
+        staleUpdatesCount={staleCount}
+        mode={props.mode}
         attrSum={attrSum}
         portraitUrl={props.portraitUrl ?? null}
         canLevelUp={props.level < 20}

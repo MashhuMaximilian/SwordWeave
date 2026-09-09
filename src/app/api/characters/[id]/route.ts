@@ -6,6 +6,8 @@ import { characters } from "@/db/schema";
 import { validateAttributes, type Attribute } from "@/lib/engine/practices";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 import { cumulativeBuForLevel } from "@/lib/engine/bu";
+import { autoPublishOnCreate } from "@/lib/publishing/auto-publish";
+import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import {
   saveCharacterBundles,
   CharacterBundleVolatilityError,
@@ -288,6 +290,14 @@ export async function PATCH(
       updatePayload["enforceTemplateCaps"] = Boolean(values["enforceTemplateCaps"]);
     }
     if ("isPublic" in values) updatePayload["isPublic"] = Boolean(values["isPublic"]);
+    // PLAN Eilxina Part A (Mashu 2026-09-09): capture the visibility
+    // transition so the PATCH handler can call autoPublishOnCreate
+    // after the transaction commits. Without this, a private→public
+    // PATCH updates characters.isPublic but never creates a publications
+    // row, leaving the library visibility filter blind to the new state.
+    const wasPublic = current.isPublic === true;
+    const nowPublic = updatePayload["isPublic"] === true;
+    const isPublicTransition = !wasPublic && nowPublic;
     if ("lineageName" in values) updatePayload["lineageName"] = emptyToNull(values["lineageName"]);
     if ("lineageImageUrl" in values) updatePayload["lineageImageUrl"] = emptyToNull(values["lineageImageUrl"]);
     if ("lineageDescription" in values) updatePayload["lineageDescription"] = emptyToNull(values["lineageDescription"]);
@@ -461,6 +471,29 @@ export async function PATCH(
         // recomputes with the new attribute values, slotted
         // primitives, mirror state, etc.
         bustResolverCache(id);
+        // PLAN Eilxina Part A (Mashu 2026-09-09): if PATCH flipped
+        // the character private→public, ensure a publications row
+        // exists so the library codex picks it up. Same pattern as
+        // the POST handler — non-fatal, the user can still toggle
+        // visibility from the header if this fails.
+        if (isPublicTransition && result) {
+          try {
+            const authorUuid = await resolveUserIdByClerkId(userId);
+            if (authorUuid) {
+              await autoPublishOnCreate({
+                targetType: "CHARACTER",
+                targetId: result.id,
+                authorId: authorUuid,
+                isPublic: true,
+              });
+            }
+          } catch (err) {
+            console.error(
+              "[characters PATCH] autoPublishOnCreate failed (non-fatal):",
+              err,
+            );
+          }
+        }
         return NextResponse.json({ character: result });
       } catch (error) {
         if (error instanceof CharacterBundleVolatilityError) {

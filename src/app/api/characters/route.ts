@@ -22,6 +22,8 @@ import {
 import { validateAttributes, type Attribute } from "@/lib/engine/practices";
 import { validateMirrorSet } from "@/lib/api/volatility";
 import { cumulativeBuForLevel } from "@/lib/engine/bu";
+import { autoPublishOnCreate } from "@/lib/publishing/auto-publish";
+import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import {
   expandBundles,
   type BundleExpansionInput,
@@ -938,6 +940,32 @@ export async function POST(request: Request) {
         },
       });
     });
+
+    // PLAN Eilxina Part A (Mashu 2026-09-09): auto-publish on save.
+    // Mirrors the primitive/capability/effect/item/heritage flow —
+    // if the form sent isPublic=true, ensure a publications row exists
+    // immediately. Otherwise the library visibility filter (which reads
+    // publications FIRST) treats the new character as private even
+    // though characters.isPublic=true. Don't fail the save if this
+    // fails — the user can still flip visibility via the header.
+    if (isPublic) {
+      try {
+        const authorUuid = await resolveUserIdByClerkId(userId);
+        if (authorUuid && result) {
+          await autoPublishOnCreate({
+            targetType: "CHARACTER",
+            targetId: result.id,
+            authorId: authorUuid,
+            isPublic: true,
+          });
+        }
+      } catch (err) {
+        console.error(
+          "[characters POST] autoPublishOnCreate failed (non-fatal):",
+          err,
+        );
+      }
+    }
 
     return NextResponse.json({ character: result }, { status: 201 });
   } catch (error) {

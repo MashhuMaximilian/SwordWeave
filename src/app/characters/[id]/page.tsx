@@ -1,10 +1,11 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { CharacterSheetView } from "@/components/characters/character-sheet-view";
 import { AddPanel } from "@/components/characters/add-panel";
 import { db } from "@/db/client";
 import { characters, capabilityEffects, effectPrimitives } from "@/db/schema";
+import { publications } from "@/db/schema/engagement";
 import { aggregateCharacterSheet } from "@/lib/engine";
 import type { ConditionContext } from "@/lib/engine/condition-evaluator";
 import {
@@ -103,6 +104,27 @@ export default async function CharacterSheetPage({
   if (userId && row.userId !== userId) {
     redirect("/characters");
   }
+
+  // PLAN Eilxina Part A (Mashu 2026-09-09): look up the character's
+  // current publication tier so the visibility chip in the header
+  // shows the right initial state. The publications table is the
+  // source of truth for library visibility — characters.isPublic is
+  // the legacy boolean. We want an ACTIVE publication row
+  // (unpublished_at IS NULL).
+  const activePubRow = await db
+    .select({ visibility: publications.visibility })
+    .from(publications)
+    .where(
+      and(
+        eq(publications.targetType, "CHARACTER"),
+        eq(publications.targetId, row.id),
+        isNull(publications.unpublishedAt),
+      ),
+    )
+    .limit(1)
+    .then((rows) => rows[0] ?? null);
+  const publicationVisibility: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC" =
+    activePubRow?.visibility ?? "PRIVATE";
 
   // Phase 8.4 v22 (Mashu 2026-07-29): T2 followup — enrich
   // itemLinks with the nested bundle via flat queries.
@@ -427,6 +449,9 @@ export default async function CharacterSheetPage({
       upbringingName={row.upbringingName}
       upbringingDescription={row.upbringingDescription}
       manifestName={row.manifestName}
+      // PLAN Eilxina Part A (Mashu 2026-09-09): publication tier for
+      // the visibility chip in the header.
+      publicationVisibility={publicationVisibility}
       attrPhysical={row.attrPhysical}
       attrMental={row.attrMental}
       attrMagical={row.attrMagical}
