@@ -1,6 +1,7 @@
 "use client";
 
 import { resolveVirtualVersionId, type ReactionTargetType } from "@/lib/engagement/version-helpers";
+import { useBumpSlotVersion } from "@/lib/character/use-bump-slot-version";
 
 /**
  * SlotSourceBadge — Phase 5 (T5.1).
@@ -78,6 +79,26 @@ export interface SlotSourceBadgeProps {
   showStale?: boolean;
   /** Compact mode: just the colored dot + version short. */
   compact?: boolean;
+  // PLAN Eilxina Part D (Mashu 2026-09-09): interactive mode lets the
+  // stale pill become a clickable button that fires onUpdate when the
+  // user wants to bump the slot to the latest version. PLAY mode
+  // leaves it as a passive indicator (read-only); BUILD/EDIT mode
+  // (default) shows the clickable "update available → v:..." pill.
+  interactive?: boolean;
+  /** Click handler when interactive=true AND the slot is stale. */
+  onUpdate?: () => void;
+  // PLAN Eilxina Part D+ follow-up (Mashu 2026-09-09): when the badge
+  // sits in a context that knows the character + slot kind + slot
+  // entity id, pass those so the badge can call the bump endpoint
+  // internally without needing the parent to thread an onUpdate
+  // callback through 10 call sites. If onUpdate is provided it
+  // wins; this is a fallback for sites that haven't been wired.
+  // exactOptionalPropertyTypes is on: optional unions require
+  // the explicit "| undefined" so callers can omit the prop
+  // (it'll be undefined, not a missing key).
+  characterId?: string | undefined;
+  slotKind?: "primitive" | "capability" | "item" | undefined;
+  slotEntityId?: string | undefined;
 }
 
 function shortId(id: string | null): string {
@@ -95,7 +116,33 @@ export function SlotSourceBadge({
   targetId,
   showStale = true,
   compact = false,
+  // PLAN Eilxina Part D (Mashu 2026-09-09): clickable stale-pill opt-in.
+  interactive = true,
+  onUpdate,
+  characterId,
+  slotKind,
+  slotEntityId,
 }: SlotSourceBadgeProps) {
+  // PLAN Eilxina Part D+ follow-up (Mashu 2026-09-09): fallback bump
+  // handler. If the parent provides onUpdate, use it. Otherwise,
+  // when characterId + slotKind + slotEntityId are all set, the
+  // badge can call the bump endpoint itself. This makes every
+  // call site capable of being clickable without prop threading.
+  const { bump } = useBumpSlotVersion(characterId ?? "_");
+  const canSelfBump =
+    !onUpdate &&
+    Boolean(characterId) &&
+    Boolean(slotKind) &&
+    Boolean(slotEntityId);
+  const handleClick = () => {
+    if (onUpdate) {
+      onUpdate();
+      return;
+    }
+    if (canSelfBump && slotKind && slotEntityId) {
+      void bump(slotKind, slotEntityId);
+    }
+  };
   // Default to PINNED if the field is null (pre-Phase-5 backfill gap).
   const source: SlotSource = slotSource ?? "PINNED";
   const c = COLORS[source];
@@ -162,16 +209,36 @@ export function SlotSourceBadge({
         )}
       </span>
       {isStale && (
-        <span
-          className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 font-medium text-rose-700 ring-1 ring-inset ring-rose-500/30 dark:text-rose-300"
-          title={`Source has a newer version available: ${latestVersionId}`}
-        >
-          <span className="size-1.5 rounded-full bg-current" aria-hidden />
-          update available
-          <span className="ml-1 font-mono text-[10px] opacity-75">
-            → v:{shortId(latestVersionId!)}
+        // PLAN Eilxina Part D (Mashu 2026-09-09): when interactive=true
+        // AND an onUpdate callback is provided, render the stale pill as
+        // a button so the user can bump the slot to the latest version.
+        // PLAY mode (interactive=false) keeps the read-only span.
+        interactive && (onUpdate || canSelfBump) ? (
+          <button
+            type="button"
+            onClick={handleClick}
+            disabled={!onUpdate && !canSelfBump}
+            className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 font-medium text-rose-700 ring-1 ring-inset ring-rose-500/30 transition-colors hover:bg-rose-500/25 dark:text-rose-300 disabled:opacity-50"
+            title={`Source has a newer version available: ${latestVersionId}. Click to bump.`}
+          >
+            <span className="size-1.5 rounded-full bg-current" aria-hidden />
+            update available
+            <span className="ml-1 font-mono text-[10px] opacity-75">
+              → v:{shortId(latestVersionId!)}
+            </span>
+          </button>
+        ) : (
+          <span
+            className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 font-medium text-rose-700 ring-1 ring-inset ring-rose-500/30 dark:text-rose-300"
+            title={`Source has a newer version available: ${latestVersionId}`}
+          >
+            <span className="size-1.5 rounded-full bg-current" aria-hidden />
+            update available
+            <span className="ml-1 font-mono text-[10px] opacity-75">
+              → v:{shortId(latestVersionId!)}
+            </span>
           </span>
-        </span>
+        )
       )}
     </div>
   );

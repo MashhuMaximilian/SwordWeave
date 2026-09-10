@@ -47,6 +47,7 @@ import { resolveLatestVersionId } from "@/lib/versions/slot-source";
 import { formalizeHeritageBundle } from "@/lib/api/formalize-heritage-bundle";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 import { computeUniqueForkName } from "@/lib/publishing/fork-naming";
+import { withCharacterSnapshot } from "@/lib/character/with-character-snapshot";
 import {
   isAccordionKind,
   KIND_TO_COLUMN,
@@ -334,9 +335,18 @@ export async function POST(
         { status: 201 },
       );
     });
+    await withCharacterSnapshot(characterId, async () => {
+      // Snapshot captures fresh state after the heritage formalization.
+    }, { publishedByUserId: userId });
     bustResolverCache(characterId);
     return response;
   } catch (err) {
+    // PLAN Eilxina Part C (Mashu 2026-09-09): CharacterAccessDenied
+    // → 403. Template authorship check at line 160 still uses
+    // its own inline pattern (different gate).
+    if (err instanceof Error && err.name === "CharacterAccessDenied") {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
     console.error("[characters POST heritage formalize] failed:", err);
     const message =
       err instanceof Error ? err.message : "Unable to formalize heritage.";

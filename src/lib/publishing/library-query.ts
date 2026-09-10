@@ -298,6 +298,14 @@ export async function queryLibrary(q: LibraryQuery): Promise<LibraryResult> {
   if (wantAll || q.targetType === "BUILD_TEMPLATE") {
     fetchJobs.push(fetchBuilds(q));
   }
+  // PLAN Eilxina Part A (Mashu 2026-09-09): surface CHARACTER rows
+  // in the library codex. The type was already in LibraryTargetType
+  // but no fetch branch existed — the dispatch union was lying. With
+  // this addition, /library?targetType=CHARACTER + the browse page
+  // finally return published characters.
+  if (wantAll || q.targetType === "CHARACTER") {
+    fetchJobs.push(fetchCharacters(q));
+  }
   const branches = await Promise.all(fetchJobs);
   const items: LibraryItem[] = branches.flat();
 
@@ -730,6 +738,124 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
       iconKey: icon.iconKey,
       iconUrl: icon.iconUrl,
       iconColor: icon.iconColor,
+    };
+  });
+}
+
+// =============================================================================
+// fetchCharacters — PLAN Eilxina Part A (Mashu 2026-09-09).
+//
+// Mirrors fetchPrimitives / fetchCapabilities but reads from the
+// `characters` table. Visibility is publications-driven (the legacy
+// `isPublic` boolean is sync'd via syncIsPublic in
+// /api/creations/visibility — see the CHARACTER case added in Part A).
+// =============================================================================
+async function fetchCharacters(q: LibraryQuery): Promise<LibraryItem[]> {
+  const conditions: SQL[] = [];
+  if (q.authorClerkId) {
+    conditions.push(eq(characters.userId, q.authorClerkId));
+    conditions.push(
+      visibilityCondition(
+        "CHARACTER",
+        sql`${characters.id}::text`,
+        sql`${characters.userId}`,
+        q.viewerClerkId,
+      ),
+    );
+  } else {
+    // Public library: an active publication row with visibility=PUBLIC
+    // is the canonical "this character is public" signal. The
+    // notUnpublished helper alone is too permissive — it returns
+    // true for rows with NO publication row at all (the EXISTS
+    // subquery is vacuously false). We need both: not-unpublished
+    // AND an active PUBLIC publication row.
+    conditions.push(
+      sql`EXISTS (
+        SELECT 1 FROM publications
+        WHERE target_type = 'CHARACTER'
+          AND target_id = ${characters.id}::text
+          AND unpublished_at IS NULL
+          AND visibility = 'PUBLIC'
+      )`,
+    );
+    if (q.visibility) {
+      conditions.push(eq(sql`true`, q.visibility === "PUBLIC"));
+    }
+  }
+  if (q.search) {
+    conditions.push(ilike(characters.name, `%${q.search}%`));
+  }
+  if (q.authorUsername) {
+    // characters don't carry username directly; resolve via users join below.
+  }
+
+  const rows = await db
+    .select({
+      id: characters.id,
+      name: characters.name,
+      level: characters.level,
+      size: characters.size,
+      attrPhysical: characters.attrPhysical,
+      attrMental: characters.attrMental,
+      attrMagical: characters.attrMagical,
+      attrProficient: characters.attrProficient,
+      lineageName: characters.lineageName,
+      upbringingName: characters.upbringingName,
+      manifestName: characters.manifestName,
+      portraitUrl: characters.portraitUrl,
+      userId: characters.userId,
+      createdAt: characters.createdAt,
+      sourceOrigin: characters.sourceOrigin,
+    })
+    .from(characters)
+    .where(and(...conditions))
+    .limit(500);
+
+  const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
+  const engagementMap = await resolveEngagementMap(
+    rows.map((r) => `CHARACTER:${r.id}`),
+  );
+
+  return rows.map((r) => {
+    const author = r.userId ? authorMap.get(r.userId) : null;
+    const eng = engagementMap.get(`CHARACTER:${r.id}`) ?? {
+      likes: 0,
+      dislikes: 0,
+      forks: 0,
+    };
+    // Phase 9.5-style description: level + size + attributes. Same
+    // shape as the sandbox character mapper so the cards render
+    // identically. No verboseDescription field on characters — we
+    // synthesise it from the structured fields.
+    const description = `L${r.level} ${r.size} · P${r.attrPhysical} M${r.attrMental} Mg${r.attrMagical}${
+      r.attrProficient ? ` (+${r.attrProficient})` : ""
+    }`;
+    return {
+      id: `CHARACTER:${r.id}`,
+      targetType: "CHARACTER" as const,
+      targetId: r.id,
+      name: r.name,
+      description,
+      category: r.size,
+      buCost: null, // characters don't carry a single BU number
+      authorId: r.userId ?? null,
+      authorUsername: author?.username ?? null,
+      authorDisplayName: author?.displayName ?? null,
+      authorAvatarUrl: author?.avatarUrl ?? null,
+      authorIsAdmin: author?.isAdmin ?? false,
+      publishedAt: r.createdAt,
+      likesCount: eng.likes,
+      dislikesCount: eng.dislikes,
+      forkCount: eng.forks,
+      netReactions: eng.likes - eng.dislikes,
+      tags: [],
+      sourceOrigin: r.sourceOrigin ?? null,
+      // Characters don't carry icon columns. portraitUrl would be the
+      // analog but EntityPreview doesn't render portraits as icons.
+      iconSource: null,
+      iconKey: null,
+      iconUrl: null,
+      iconColor: "#ffffff",
     };
   });
 }

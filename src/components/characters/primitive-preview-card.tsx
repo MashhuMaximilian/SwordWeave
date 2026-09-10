@@ -53,6 +53,15 @@ export interface PrimitivePreviewCardProps {
    * Used in the subtitle line to match the character
    * creation modal's "via X > Y > Z" breadcrumb. */
   readonly provenancePath?: string | null;
+  // PLAN Eilxina Part D+ follow-up (Mashu 2026-09-09): when the
+  // preview card is mounted on the character sheet (and therefore
+  // has a character + slot instance), pass these so the embedded
+  // SlotSourceBadge can self-bump without the parent threading
+  // an onUpdate callback. Optional: previews rendered elsewhere
+  // (e.g. atelier) leave them undefined and the badge stays
+  // read-only when stale.
+  readonly characterId?: string;
+  readonly slotInstanceId?: string;
   /** The primitive link data the sheet already has. We use this
    * to render immediately (no fetch needed) and as a fallback
    * if the detail fetch fails. */
@@ -61,6 +70,12 @@ export interface PrimitivePreviewCardProps {
     readonly source: string;
     readonly acquiredAtLevel: number;
     readonly isMirrored: boolean;
+    // PLAN Eilxina Part D+ follow-up (Mashu 2026-09-09):
+    // the slot's instanceId (character_primitives PK) so the
+    // per-slot bump endpoint can be called from inside the
+    // preview card. Optional because atelier/preview contexts
+    // don't slot — they just inspect.
+    readonly instanceId?: string;
     readonly primitive: {
       readonly id: number;
       readonly name: string;
@@ -89,6 +104,8 @@ export function PrimitivePreviewCard({
   inheritedFrom = null,
   inheritedKind = null,
   provenancePath = null,
+  characterId,
+  slotInstanceId,
 }: PrimitivePreviewCardProps) {
   const p = primitiveLink.primitive;
   const isMirrored = primitiveLink.isMirrored;
@@ -345,6 +362,13 @@ export function PrimitivePreviewCard({
         slotSource={primitiveLink.slotSource ?? null}
         latestVersionId={primitiveLink.latestVersionId ?? null}
         primitiveId={String(p.id)}
+        // PLAN Eilxina Part D+ follow-up (Mashu 2026-09-09):
+        // forward the bump context so the inner SlotSourceBadge
+        // can self-bump when the slot is stale.
+        characterId={characterId}
+        slotInstanceId={
+          primitiveLink.instanceId ?? slotInstanceId
+        }
       />
       {/* Phase 8.5 / Session H6 (Mashu 2026-08-03):
           SlotSourceBadge now renders inside the EXPANDED
@@ -380,6 +404,8 @@ function PrimitiveDetailToggle({
   slotSource,
   latestVersionId,
   primitiveId,
+  characterId,
+  slotInstanceId,
 }: {
   readonly inheritedFrom: string | null;
   readonly inheritedKind: string | null;
@@ -393,6 +419,10 @@ function PrimitiveDetailToggle({
   readonly slotSource?: SlotSource | null;
   readonly latestVersionId?: string | null;
   readonly primitiveId: string;
+  // PLAN Eilxina Part D+ follow-up (Mashu 2026-09-09): forward
+  // to SlotSourceBadge so the user can click the stale pill.
+  readonly characterId?: string | undefined;
+  readonly slotInstanceId?: string | undefined;
 }) {
   const hasContent =
     Boolean(inheritedFrom) ||
@@ -426,6 +456,9 @@ function PrimitiveDetailToggle({
             latestVersionId={latestVersionId ?? null}
             targetType="PRIMITIVE"
             targetId={primitiveId}
+            characterId={characterId}
+            slotKind="primitive"
+            slotEntityId={slotInstanceId}
           />
         </div>
       )}

@@ -30,7 +30,6 @@ import { auth } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
-  characters,
   characterCapabilities,
   characterItems,
   characterPrimitives,
@@ -40,6 +39,8 @@ import {
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
 import { appendCharacterLog } from "@/lib/character/character-log";
 import { isPrimitiveSource } from "@/lib/character/inline-builder-types";
+import { resolveCharacterAccess } from "@/lib/character/resolve-character-access";
+import { withCharacterSnapshot } from "@/lib/character/with-character-snapshot";
 
 export async function PATCH(
   request: Request,
@@ -120,23 +121,13 @@ export async function PATCH(
       );
     }
 
-    // Ownership check.
-    const character = await db.query.characters.findFirst({
-      where: eq(characters.id, characterId),
-    });
-    if (!character) {
-      return NextResponse.json(
-        { error: "Character not found." },
-        { status: 404 },
-      );
-    }
-    if (character.userId !== userId) {
-      return NextResponse.json(
-        { error: "You do not own this character." },
-        { status: 403 },
-      );
-    }
-    if (character.mode === "PLAY") {
+    // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate.
+    const { character: current } = await resolveCharacterAccess(
+      userId,
+      characterId,
+      { require: "OWNER" },
+    );
+    if (current.mode === "PLAY") {
       return NextResponse.json(
         {
           error:
@@ -305,6 +296,10 @@ export async function PATCH(
       toSource: to,
     });
 
+    await withCharacterSnapshot(characterId, async () => {
+      // Snapshot captures fresh state after the primitive move
+    }, { publishedByUserId: userId });
+
     // Phase 9.5 (Mashu 2026-09-07): a move doesn't change the
     // primitive set (no add/remove), so the BU total stays the same.
     // We deliberately skip recomputeBuSpent here — the column is
@@ -317,6 +312,10 @@ export async function PATCH(
     );
   } catch (err) {
     console.error("[characters PATCH primitive] failed:", err);
+    // PLAN Eilxina Part C (Mashu 2026-09-09): CharacterAccessDenied → 403.
+    if (err instanceof Error && err.name === "CharacterAccessDenied") {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
     const message =
       err instanceof Error ? err.message : "Unable to move primitive.";
     const code = message.includes("Unauthorized") ? 401 : 500;
@@ -343,22 +342,13 @@ export async function DELETE(
     const { userId } = await auth.protect();
     const { id: characterId, primitiveInstanceId: instanceId } = await params;
 
-    const character = await db.query.characters.findFirst({
-      where: eq(characters.id, characterId),
-    });
-    if (!character) {
-      return NextResponse.json(
-        { error: "Character not found." },
-        { status: 404 },
-      );
-    }
-    if (character.userId !== userId) {
-      return NextResponse.json(
-        { error: "You do not own this character." },
-        { status: 403 },
-      );
-    }
-    if (character.mode === "PLAY") {
+    // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate.
+    const { character: current } = await resolveCharacterAccess(
+      userId,
+      characterId,
+      { require: "OWNER" },
+    );
+    if (current.mode === "PLAY") {
       return NextResponse.json(
         {
           error:
@@ -403,11 +393,19 @@ export async function DELETE(
     );
     await recomputeBuSpent(characterId);
 
+    await withCharacterSnapshot(characterId, async () => {
+      // Snapshot captures fresh state after the primitive removal
+    }, { publishedByUserId: userId });
+
     bustResolverCache(characterId);
 
     return NextResponse.json({ deleted: true }, { status: 200 });
   } catch (err) {
     console.error("[characters DELETE primitive] failed:", err);
+    // PLAN Eilxina Part C (Mashu 2026-09-09): CharacterAccessDenied → 403.
+    if (err instanceof Error && err.name === "CharacterAccessDenied") {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
     const message =
       err instanceof Error ? err.message : "Unable to remove primitive.";
     const code = message.includes("Unauthorized") ? 401 : 500;

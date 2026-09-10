@@ -50,7 +50,13 @@ export type VersionedEntityKind =
   | "effect"
   | "capability"
   | "item"
-  | "template";
+  | "template"
+  // PLAN Eilxina Part E (Mashu 2026-09-09): character versions are
+  // distinct from slot version pins — see swordweave-versioning §
+  // "Slot pinning vs character versioning". Character snapshots
+  // capture the WHOLE character (row + junction links + their
+  // version pins) so a restore can reconstruct the previous state.
+  | "character";
 
 export interface RecordVersionArgs {
   entityKind: VersionedEntityKind;
@@ -134,6 +140,15 @@ function versionTableFor(kind: VersionedEntityKind) {
         isLatest: heritageVersions.isLatest,
         contentHash: heritageVersions.snapshot,
       };
+    case "character":
+      return {
+        table: characterVersions,
+        id: characterVersions.id,
+        versionNumber: characterVersions.versionNumber,
+        foreignKey: characterVersions.characterId,
+        isLatest: characterVersions.isLatest,
+        contentHash: characterVersions.snapshot,
+      };
   }
 }
 
@@ -158,7 +173,11 @@ export async function recordVersion(
   const versionId = resolveContentVersionId(entityKind, entityId, contentHash);
 
   // Compute the foreign key value (primitive = int, others = uuid string).
-  const fkValue = entityKind === "primitive" ? Number(entityId) : String(entityId);
+  // PLAN Eilxina Part E (Mashu 2026-09-09): "character" was added to
+  // the union; its fk is uuid so the same string-id path as
+  // effect/capability/item/template applies.
+  const fkValue =
+    entityKind === "primitive" ? Number(entityId) : String(entityId);
 
   // Direct query via the db client. Imported lazily to avoid a circular
   // dependency with the schema re-exports.
@@ -246,12 +265,19 @@ export async function recordVersion(
 
   // Different content (new versionId). Proceed with the original
   // upsert logic.
+  // PLAN Eilxina Part E (Mashu 2026-09-09): "character" maps to
+  // characterVersions.characterId.
+  const fkColumnName =
+    entityKind === "primitive"
+      ? "primitiveId"
+      : entityKind === "character"
+        ? "characterId"
+        : `${entityKind}Id`;
   await db
     .insert(ref.table)
     .values({
       id: versionId,
-      [entityKind === "primitive" ? "primitiveId" : `${entityKind}Id`]:
-        fkValue,
+      [fkColumnName]: fkValue,
       versionNumber,
       isLatest: true,
       deltaKind,

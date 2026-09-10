@@ -1,10 +1,17 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { CharacterSheetView } from "@/components/characters/character-sheet-view";
 import { db } from "@/db/client";
 import { characters, capabilityEffects, effectPrimitives } from "@/db/schema";
+import { characterShares, characterProposals, users } from "@/db/schema";
+import { characterVersions } from "@/db/schema/versions";
+import { publications } from "@/db/schema/engagement";
 import { aggregateCharacterSheet } from "@/lib/engine";
+import {
+  canResolveCharacterForPage,
+  type CharacterPermission,
+} from "@/lib/character/can-resolve-character";
 import type { ConditionContext } from "@/lib/engine/condition-evaluator";
 import {
   bulkResolveLatestVersions,
@@ -98,10 +105,132 @@ export default async function CharacterSheetPage({
 
   if (!row) notFound();
 
-  // Ownership: redirect to list if not owner
-  if (userId && row.userId !== userId) {
+  // PLAN Eilxina Part C (Mashu 2026-09-09): full permission gate.
+  // Replaces the Part B 2-line check with canResolveCharacterForPage
+  // so we can thread the resolved permission down to CharacterSheetView
+  // for share-panel + edit-button visibility.
+  let viewerPermission: CharacterPermission | null = null;
+  if (userId) {
+    const resolved = await canResolveCharacterForPage(userId, id);
+    if (!resolved) {
+      redirect("/characters");
+    }
+    viewerPermission = resolved.permission;
+  } else {
+    // Anonymous: redirect (existing behavior — public characters
+    // are handled via the library route, not /characters/[id]).
     redirect("/characters");
   }
+
+  // PLAN Eilxina Part A (Mashu 2026-09-09): look up the character's
+  // current publication tier so the visibility chip in the header
+  // shows the right initial state. The publications table is the
+  // source of truth for library visibility — characters.isPublic is
+  // the legacy boolean. We want an ACTIVE publication row
+  // (unpublished_at IS NULL).
+  const activePubRow = await db
+    .select({ visibility: publications.visibility })
+    .from(publications)
+    .where(
+      and(
+        eq(publications.targetType, "CHARACTER"),
+        eq(publications.targetId, row.id),
+        isNull(publications.unpublishedAt),
+      ),
+    )
+    .limit(1)
+    .then((rows) => rows[0] ?? null);
+  const publicationVisibility: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC" =
+    activePubRow?.visibility ?? "PRIVATE";
+
+  // PLAN Eilxina Part C (Mashu 2026-09-09): resolve the active
+  // shares for the OWNER's CharacterSharePanel. For non-owners,
+  // the panel isn't rendered so we skip the join (zero-cost path).
+  // We resolve shared_with_user_id → users.username + display_name
+  // via a flat lookup to avoid a depth-2 join (per the codebase
+  // join-shape trap — Part B Part C).
+  const activeShareRows =
+    viewerPermission === "OWNER"
+      ? await db
+          .select({
+            id: characterShares.id,
+            sharedWithUserId: characterShares.sharedWithUserId,
+            canEdit: characterShares.canEdit,
+            createdAt: characterShares.createdAt,
+          })
+          .from(characterShares)
+          .where(
+            and(
+              eq(characterShares.characterId, id),
+              isNull(characterShares.revokedAt),
+            ),
+          )
+      : [];
+  // Flat lookup of shared-with usernames.
+  const shareUsers = activeShareRows.length
+    ? await db
+        .select({
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+        })
+        .from(users)
+        .where(
+          inArray(
+            users.id,
+            activeShareRows.map((r) => r.sharedWithUserId),
+          ),
+        )
+    : [];
+  const shareUserMap = new Map(shareUsers.map((u) => [u.id, u]));
+  const ownerShares = activeShareRows.map((r) => {
+    const u = shareUserMap.get(r.sharedWithUserId);
+    return {
+      id: r.id,
+      username: u?.username ?? "(unknown)",
+      displayName: u?.displayName ?? null,
+      canEdit: r.canEdit,
+      createdAt:
+        r.createdAt instanceof Date
+          ? r.createdAt.toISOString()
+          : String(r.createdAt),
+    };
+  });
+
+  // PLAN Eilxina Part C (Mashu 2026-09-09): pending proposal count
+  // for the OWNER's header indicator. Cheap query — character +
+  // status index covers it.
+  const pendingProposalRows =
+    viewerPermission === "OWNER"
+      ? await db
+          .select({
+            id: characterProposals.id,
+            createdAt: characterProposals.createdAt,
+          })
+          .from(characterProposals)
+          .where(
+            and(
+              eq(characterProposals.characterId, id),
+              eq(characterProposals.status, "PENDING"),
+            ),
+          )
+      : [];
+  const pendingCount = pendingProposalRows.length;
+  const firstPendingId =
+    [...pendingProposalRows].sort((a, b) => {
+      const aT = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+      const bT = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+      return bT - aT;
+    })[0]?.id ?? null;
+
+  // PLAN Eilxina Part E (Mashu 2026-09-09): cheap character_versions
+  // count for the header Versions link's count badge. Single
+  // indexed lookup on (character_id) — no full row payload needed.
+  const characterVersionRows = await db
+    .select({ id: characterVersions.id })
+    .from(characterVersions)
+    .where(eq(characterVersions.characterId, id));
+  const characterVersionCount = characterVersionRows.length;
 
   // Phase 8.4 v22 (Mashu 2026-07-29): T2 followup — enrich
   // itemLinks with the nested bundle via flat queries.
@@ -428,6 +557,14 @@ export default async function CharacterSheetPage({
       upbringingName={row.upbringingName}
       upbringingDescription={row.upbringingDescription}
       manifestName={row.manifestName}
+      // PLAN Eilxina Part A (Mashu 2026-09-09): publication tier for
+      // the visibility chip in the header.
+      publicationVisibility={publicationVisibility}
+      viewerPermission={viewerPermission ?? "VIEWER"}
+      ownerShares={ownerShares}
+      pendingProposalCount={pendingCount}
+      firstPendingProposalId={firstPendingId}
+      characterVersionCount={characterVersionCount}
       attrPhysical={row.attrPhysical}
       attrMental={row.attrMental}
       attrMagical={row.attrMagical}

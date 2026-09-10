@@ -34,6 +34,10 @@ import {
 } from "@/lib/character/character-vitality";
 import { appendCharacterLog } from "@/lib/character/character-log";
 import { bustResolverCache } from "@/lib/cache/character-resolver-cache";
+import {
+  resolveCharacterAccess,
+  handleCharacterAccessError,
+} from "@/lib/character/resolve-character-access";
 
 async function handlePOST(
   request: Request,
@@ -68,22 +72,14 @@ async function handlePOST(
         ? rawSource
         : "manual";
 
-    // Ownership check + load current state.
-    const current = await db.query.characters.findFirst({
-      where: eq(characters.id, id),
-    });
-    if (!current) {
-      return NextResponse.json(
-        { error: "Character not found." },
-        { status: 404 },
-      );
-    }
-    if (current.userId !== userId) {
-      return NextResponse.json(
-        { error: "You do not own this character." },
-        { status: 403 },
-      );
-    }
+    // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate via
+    // resolveCharacterAccess (require: "OWNER"). Replaces the
+    // 2-line inline ownership check. Editors/Viewers get 403.
+    const { character: current } = await resolveCharacterAccess(
+      userId,
+      id,
+      { require: "OWNER" },
+    );
 
     // Compute max vitality the same way the sheet does.
     const { max } = await loadCharacterMaxVitality(id);
@@ -144,6 +140,17 @@ async function handlePOST(
       delta: { prev, next, applied: next - prev },
     });
   } catch (error) {
+    // PLAN Eilxina Part C (Mashu 2026-09-09): CharacterAccessDenied
+    // → 403. Anything else → generic 400 (existing behavior).
+    if (
+      error instanceof Error &&
+      error.name === "CharacterAccessDenied"
+    ) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 403 },
+      );
+    }
     const message = error instanceof Error ? error.message : "Unknown error.";
     return NextResponse.json({ error: message }, { status: 400 });
   }

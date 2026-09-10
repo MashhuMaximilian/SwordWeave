@@ -20,7 +20,7 @@ import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { publications } from "@/db/schema/engagement";
-import { primitives, effects, capabilities, items, heritage } from "@/db/schema";
+import { primitives, effects, capabilities, items, heritage, characters } from "@/db/schema";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import { resolveVirtualVersionId, isUuid } from "@/lib/engagement/version-helpers";
 
@@ -70,6 +70,14 @@ async function syncIsPublic(
       case "MANIFEST_TEMPLATE":
       case "BUILD_TEMPLATE":
         await db.update(heritage).set({ isPublic }).where(eq(heritage.id, targetId));
+        break;
+      // PLAN Eilxina Part A (Mashu 2026-09-09): wire CHARACTER into the
+      // dual-write sync. The publications table is the source of truth
+      // for the library visibility filter; characters.isPublic is the
+      // legacy boolean that some legacy callers still read. Keep them
+      // in sync.
+      case "CHARACTER":
+        await db.update(characters).set({ isPublic }).where(eq(characters.id, targetId));
         break;
     }
   } catch (err) {

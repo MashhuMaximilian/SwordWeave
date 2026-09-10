@@ -25,6 +25,9 @@ import {
   sanitizeBackstory,
   type CharacterBackstory,
 } from "@/lib/character/character-backstory";
+import {
+  resolveCharacterAccess,
+} from "@/lib/character/resolve-character-access";
 
 export async function POST(
   request: Request,
@@ -53,21 +56,8 @@ export async function POST(
     const parsed: CharacterBackstory = parseBackstory(rawBackstory);
     const cleaned = sanitizeBackstory(parsed);
 
-    const current = await db.query.characters.findFirst({
-      where: eq(characters.id, id),
-    });
-    if (!current) {
-      return NextResponse.json(
-        { error: "Character not found." },
-        { status: 404 },
-      );
-    }
-    if (current.userId !== userId) {
-      return NextResponse.json(
-        { error: "You do not own this character." },
-        { status: 403 },
-      );
-    }
+    // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate.
+    await resolveCharacterAccess(userId, id, { require: "OWNER" });
 
     await db
       .update(characters)
@@ -76,6 +66,12 @@ export async function POST(
 
     return NextResponse.json({ backstory: cleaned });
   } catch (error) {
+    if (error instanceof Error && error.name === "CharacterAccessDenied") {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 403 },
+      );
+    }
     const message = error instanceof Error ? error.message : "Unknown error.";
     return NextResponse.json({ error: message }, { status: 400 });
   }

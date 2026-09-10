@@ -16,7 +16,19 @@ import { useRouter } from "next/navigation";
 import { History, Loader2 } from "lucide-react";
 
 interface RestoreButtonProps {
-  targetType: "PRIMITIVE" | "EFFECT" | "CAPABILITY" | "ITEM" | "TEMPLATE";
+  targetType:
+    | "PRIMITIVE"
+    | "EFFECT"
+    | "CAPABILITY"
+    | "ITEM"
+    | "TEMPLATE"
+    // PLAN Eilxina Part E (Mashu 2026-09-09): characters use the
+    // dedicated /api/characters/[id]/versions/[versionNumber]/restore
+    // route, which atomically reconstructs the entire character
+    // (row + junction tables + version pins). The generic
+    // /api/versions/restore route only handles entity scalars
+    // — wrong fit for characters.
+    | "CHARACTER";
   targetId: string;
   versionNumber: number;
   isLatest: boolean;
@@ -45,10 +57,25 @@ export function RestoreButton({
     setPending(true);
     setError(null);
     try {
-      const res = await fetch("/api/versions/restore", {
+      // PLAN Eilxina Part E (Mashu 2026-09-09): characters route
+      // to the dedicated per-character restore endpoint; everything
+      // else uses the generic entity route.
+      const url =
+        targetType === "CHARACTER"
+          ? `/api/characters/${targetId}/versions/${versionNumber}/restore`
+          : "/api/versions/restore";
+      const body =
+        targetType === "CHARACTER"
+          ? undefined
+          : JSON.stringify({
+              type: targetType,
+              id: targetId,
+              versionNumber,
+            });
+      const res = await fetch(url, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ type: targetType, id: targetId, versionNumber }),
+        ...(body !== undefined ? { body } : {}),
       });
       const json = (await res.json()) as {
         success?: boolean;

@@ -28,6 +28,10 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { characters, effects } from "@/db/schema";
 import { appendCharacterLog } from "@/lib/character/character-log";
+import {
+  resolveCharacterAccess,
+} from "@/lib/character/resolve-character-access";
+import { withCharacterSnapshot } from "@/lib/character/with-character-snapshot";
 
 export async function POST(
   request: Request,
@@ -53,21 +57,10 @@ export async function POST(
       );
     }
 
-    const character = await db.query.characters.findFirst({
-      where: eq(characters.id, characterId),
+    // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate.
+    const { character } = await resolveCharacterAccess(userId, characterId, {
+      require: "OWNER",
     });
-    if (!character) {
-      return NextResponse.json(
-        { error: "Character not found." },
-        { status: 404 },
-      );
-    }
-    if (character.userId !== userId) {
-      return NextResponse.json(
-        { error: "You do not own this character." },
-        { status: 403 },
-      );
-    }
     if (character.mode === "PLAY") {
       return NextResponse.json(
         {
@@ -94,6 +87,10 @@ export async function POST(
       effectName: effect.name,
     });
 
+    await withCharacterSnapshot(characterId, async () => {
+      // Snapshot captures fresh state after the effect attach attempt
+    }, { publishedByUserId: userId });
+
     return NextResponse.json(
       {
         error:
@@ -103,6 +100,9 @@ export async function POST(
       { status: 501 },
     );
   } catch (err) {
+    if (err instanceof Error && err.name === "CharacterAccessDenied") {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
     console.error("[characters effects/attach] failed:", err);
     return NextResponse.json(
       {

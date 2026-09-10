@@ -45,6 +45,11 @@ import { CapabilityCard } from "@/components/characters/capability-card";
 import { ItemCard } from "@/components/characters/item-card";
 import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
 import { CharacterEditButton } from "@/components/characters/character-edit-button";
+import { CharacterVisibilityControl } from "@/components/characters/character-visibility-control";
+import { CharacterSharePanel } from "@/components/characters/character-share-panel";
+import { PendingProposalsIndicator } from "@/components/characters/pending-proposals-indicator";
+import { VersionHistoryLink } from "@/components/characters/version-history-link";
+import { StaleUpdatesIndicatorWithBump } from "@/components/characters/stale-updates-indicator-with-bump";
 import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-card";
 import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
 import { CharacterWorkspace } from "@/components/characters/workspace/character-workspace";
@@ -295,10 +300,37 @@ export type CharacterSheetProps = {
   upbringingName: string | null;
   upbringingDescription: string | null;
   manifestName: string | null;
+  // PLAN Eilxina Part A (Mashu 2026-09-09): current publication
+  // tier for the character. Drives the VisibilitySelect in the
+  // header. PRIVATE means no publications row exists; PUBLIC and
+  // FOLLOWERS_ONLY mean the row is discoverable in the library
+  // (PUBLIC to everyone, FOLLOWERS_ONLY to the author's followers).
+  publicationVisibility: "PRIVATE" | "FOLLOWERS_ONLY" | "PUBLIC";
   // Phase 9.1 (Mashu 2026-09-06): BUILD/PLAY mode flag driving
   // whether the inline character-builder affordances render on
   // the accordions. Persisted in characters.mode (migration 0053).
   mode?: "BUILD" | "PLAY";
+  // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate for
+  // viewer actions. OWNER sees Share panel + Edit/Clone.
+  // EDITOR sees Propose flow + (currently) Edit/Clone disabled
+  // until Part D wires it. VIEWER sees the sheet read-only.
+  viewerPermission?: "OWNER" | "EDITOR" | "VIEWER";
+  // Active shares for the OWNER's SharePanel. Empty array for
+  // non-owners (the panel isn't rendered).
+  ownerShares?: Array<{
+    id: string;
+    username: string;
+    displayName: string | null;
+    canEdit: boolean;
+    createdAt: string;
+  }>;
+  // Pending proposal count + first pending id for the OWNER's
+  // PendingProposalsIndicator chip.
+  pendingProposalCount?: number;
+  firstPendingProposalId?: string | null;
+  // PLAN Eilxina Part E (Mashu 2026-09-09): total characterVersions
+  // row count for the header Versions link's count badge.
+  characterVersionCount?: number;
   attrPhysical: number;
   attrMental: number;
   attrMagical: number;
@@ -657,6 +689,21 @@ export function CharacterSheetView(props: CharacterSheetProps) {
   const [isPending, startTransition] = useTransition();
   const latestVersions = props.latestVersions ?? (new Map<VersionKey, string>());
   const { toasts, showToast, dismissToast } = useToasts();
+  // PLAN Eilxina Part D (Mashu 2026-09-09): count slotted primitives,
+  // capabilities, and items whose versionId is behind latestVersionId.
+  // Drives the header-level "X updates available" indicator — passive in
+  // PLAY, clickable "update all" in BUILD/EDIT. The per-slot pills on
+  // each chip use the same logic via SlotSourceBadge.
+  const staleCount =
+    props.primitiveLinks.filter(
+      (l) => l.latestVersionId && l.versionId !== l.latestVersionId,
+    ).length +
+    props.capabilityLinks.filter(
+      (l) => l.latestVersionId && l.versionId !== l.latestVersionId,
+    ).length +
+    props.itemLinks.filter(
+      (l) => l.latestVersionId && l.versionId !== l.latestVersionId,
+    ).length;
   // Phase 8.2 batch 7: opening edit mode triggers the atelier's
   // character builder modal (pre-filled via openForEdit).
   // Phase 8.2 batch 7 rev 2: clicking Edit now navigates to /atelier
@@ -975,6 +1022,56 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             <Swords className="size-4" />
             Clone
           </Link>
+          {/* PLAN Eilxina Part A (Mashu 2026-09-09): visibility tier
+              picker on the character sheet header. Posts to
+              /api/creations/visibility with targetType='CHARACTER'.
+              The server route already enforces authorship and keeps
+              characters.isPublic in sync via our new syncIsPublic case. */}
+          <CharacterVisibilityControl
+            characterId={props.id}
+            initialVisibility={props.publicationVisibility}
+            variant="compact"
+          />
+          {/* PLAN Eilxina Part E (Mashu 2026-09-09): Versions link.
+              Visible to ALL viewers (read-only) so collaborators
+              can audit the character's history. Restoring requires
+              OWNER — gated at the restore endpoint, not the link. */}
+          <VersionHistoryLink
+            characterId={props.id}
+            count={props.characterVersionCount}
+          />
+          {/* PLAN Eilxina Part C (Mashu 2026-09-09): Share panel.
+              Mounted only when the viewer is the OWNER. Editors
+              and Viewers don't see this — they can only propose
+              (Editor) or view (Viewer) via Part C routes. */}
+          {props.viewerPermission === "OWNER" && (
+            <CharacterSharePanel
+              characterId={props.id}
+              shares={props.ownerShares ?? []}
+            />
+          )}
+          {/* PLAN Eilxina Part C (Mashu 2026-09-09): pending
+              proposals chip. Click → opens the most recent
+              pending proposal's review screen. */}
+          {props.viewerPermission === "OWNER" && (
+            <PendingProposalsIndicator
+              characterId={props.id}
+              pendingCount={props.pendingProposalCount ?? 0}
+              firstPendingId={props.firstPendingProposalId ?? null}
+            />
+          )}
+          {/* PLAN Eilxina Part D (Mashu 2026-09-09): header-level
+              stale-updates indicator. PLAY: passive text badge.
+              BUILD/EDIT: clickable "update all" — calls the batch
+              endpoint at /api/characters/[id]/slots/bump-all which
+              bumps every stale slot atomically + recomputes BU.
+              Per-slot pills on each chip use the same logic via
+              SlotSourceBadge. */}
+          <StaleUpdatesIndicatorWithBump
+            characterId={props.id}
+            count={staleCount}
+            mode={props.mode ?? "PLAY"}
+          />
         </div>
       </header>
       {/* Phase 8.4 v2 (Mashu 2026-07-28): the entire BuBudgetFooter
@@ -1197,6 +1294,11 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         upbringingName={props.upbringingName ?? null}
         upbringingDescription={props.upbringingDescription ?? null}
         manifestName={props.manifestName ?? null}
+        publicationVisibility={props.publicationVisibility}
+        // PLAN Eilxina Part D (Mashu 2026-09-09): stale-updates count
+        // for the mobile header chip.
+        staleUpdatesCount={staleCount}
+        mode={props.mode}
         attrSum={attrSum}
         portraitUrl={props.portraitUrl ?? null}
         canLevelUp={props.level < 20}
@@ -2684,6 +2786,11 @@ function CapabilitiesTab({
                             : "slotted",
                           acquiredAtLevel: 0,
                           isMirrored: p.isMirrored,
+                          // PLAN Eilxina Part D+ follow-up
+                          // (Mashu 2026-09-09): forward the
+                          // slot's instanceId so the preview
+                          // card's SlotSourceBadge can self-bump.
+                          instanceId: p.instanceId ?? undefined,
                           // Phase 8.5 / Session H6 (Mashu
                           // 2026-08-03): forward the
                           // provenance fields through to the
@@ -2708,6 +2815,7 @@ function CapabilitiesTab({
                         inheritedFrom={heritageName}
                         inheritedKind={heritageKind}
                         provenancePath={p.provenancePath}
+                        characterId={characterId}
                       />
                       </DraggablePrimitiveChip>
                     </li>

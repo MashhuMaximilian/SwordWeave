@@ -27,8 +27,10 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { characters, characterItems, items } from "@/db/schema";
+import { characterItems, items } from "@/db/schema";
+import { resolveCharacterAccess } from "@/lib/character/resolve-character-access";
 import { appendCharacterLog } from "@/lib/character/character-log";
+import { withCharacterSnapshot } from "@/lib/character/with-character-snapshot";
 
 export async function POST(
   request: Request,
@@ -55,21 +57,12 @@ export async function POST(
       );
     }
 
-    // Confirm ownership.
-    const [character] = await db
-      .select({ id: characters.id, userId: characters.userId })
-      .from(characters)
-      .where(eq(characters.id, id))
-      .limit(1);
-    if (!character) {
-      return NextResponse.json(
-        { error: "Character not found." },
-        { status: 404 },
-      );
-    }
-    if (character.userId !== userId) {
-      return NextResponse.json({ error: "Forbidden." }, { status: 403 });
-    }
+    // PLAN Eilxina Part C (Mashu 2026-09-09): permission gate.
+    const { character: current } = await resolveCharacterAccess(
+      userId,
+      id,
+      { require: "OWNER" },
+    );
 
     // Confirm the link row exists (and join to item for the
     // log payload — even though we don't need it for the
@@ -130,11 +123,19 @@ export async function POST(
       },
     );
 
+    await withCharacterSnapshot(id, async () => {
+      // Snapshot captures fresh state after the quantity update
+    }, { publishedByUserId: userId });
+
     return NextResponse.json({
       quantity: qty,
       previousQuantity: link.quantity,
     });
   } catch (error) {
+    // PLAN Eilxina Part C (Mashu 2026-09-09): CharacterAccessDenied → 403.
+    if (error instanceof Error && error.name === "CharacterAccessDenied") {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     console.error("[character items quantity] error", error);
     return NextResponse.json(
       { error: "Internal server error." },
