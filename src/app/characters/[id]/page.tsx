@@ -4,7 +4,15 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { CharacterSheetView } from "@/components/characters/character-sheet-view";
 import { AddPanel } from "@/components/characters/add-panel";
 import { db } from "@/db/client";
-import { characters, capabilityEffects, effectPrimitives } from "@/db/schema";
+import {
+  characters,
+  capabilityEffects,
+  effectPrimitives,
+  heritagePrimitives,
+  heritageCapabilities,
+  primitives as primitivesTable,
+  capabilities as capabilitiesTable,
+} from "@/db/schema";
 import { characterShares, characterProposals, users } from "@/db/schema";
 import { characterVersions } from "@/db/schema/versions";
 import { publications } from "@/db/schema/engagement";
@@ -105,6 +113,99 @@ export default async function CharacterSheetPage({
   });
 
   if (!row) notFound();
+
+  // PLAN Eilxina Part E follow-up (Mashu 2026-09-10): flat-attach each
+  // slotted heritage's primitive + capability bundles onto row.heritageLinks[i].heritage.
+  //
+  // The shallow `with: { heritage: true }` on the Drizzle query above only
+  // loads the heritage's scalar columns. HeritageBundleView reads
+  // `hl.heritage.primitiveLinks` and `hl.heritage.capabilityLinks` to render
+  // the bundle's nested "✓ slotted" rows — without this attach, every
+  // heritage card renders "0 bundled — No bundle on this heritage." even
+  // when the template DOES define primitives.
+  //
+  // We deliberately avoid a depth-3 Drizzle `with:` (heritage → primitiveLinks
+  // → primitive) — those generate LEFT JOIN LATERAL queries that get
+  // mis-scoped at depth > 2 (verified in the /api/heritage/[id] route
+  // workaround at lines 105-160 of that file). Instead: 2 small flat
+  // queries keyed by the slotted heritage ids, then attach in JS.
+  if (row.heritageLinks.length > 0) {
+    const heritageIds = row.heritageLinks.map((hl) => hl.heritage.id);
+    const primRows = await db
+      .select({
+        templateId: heritagePrimitives.templateId,
+        primitiveId: heritagePrimitives.primitiveId,
+        sortOrder: heritagePrimitives.sortOrder,
+        isMirrored: heritagePrimitives.isMirrored,
+        primitive: {
+          id: primitivesTable.id,
+          name: primitivesTable.name,
+          category: primitivesTable.category,
+          buCost: primitivesTable.buCost,
+          isMirrorable: primitivesTable.isMirrorable,
+          mirrorBuCredit: primitivesTable.mirrorBuCredit,
+          narrativeRule: primitivesTable.narrativeRule,
+          hardModifiers: primitivesTable.hardModifiers,
+        },
+      })
+      .from(heritagePrimitives)
+      .innerJoin(
+        primitivesTable,
+        eq(heritagePrimitives.primitiveId, primitivesTable.id),
+      )
+      .where(inArray(heritagePrimitives.templateId, heritageIds))
+      .orderBy(heritagePrimitives.sortOrder);
+
+    // Capability rows need an extra join (capabilities has the full row).
+    // Note: heritageCapabilities has no sortOrder or isMirrored columns
+    // (only heritage_primitives does). Capabilities come back in
+    // insertion order from the junction table.
+    const capRows = await db
+      .select({
+        templateId: heritageCapabilities.templateId,
+        capabilityId: heritageCapabilities.capabilityId,
+        capability: {
+          id: capabilitiesTable.id,
+          name: capabilitiesTable.name,
+          type: capabilitiesTable.type,
+          sourceType: capabilitiesTable.sourceType,
+          verboseDescription: capabilitiesTable.verboseDescription,
+        },
+      })
+      .from(heritageCapabilities)
+      .innerJoin(
+        capabilitiesTable,
+        eq(heritageCapabilities.capabilityId, capabilitiesTable.id),
+      )
+      .where(inArray(heritageCapabilities.templateId, heritageIds));
+
+    // Index by heritage id, attach to each heritage row
+    const primMap = new Map<string, typeof primRows>();
+    for (const p of primRows) {
+      const arr = primMap.get(p.templateId) ?? [];
+      arr.push(p);
+      primMap.set(p.templateId, arr);
+    }
+    const capMap = new Map<string, typeof capRows>();
+    for (const c of capRows) {
+      const arr = capMap.get(c.templateId) ?? [];
+      arr.push(c);
+      capMap.set(c.templateId, arr);
+    }
+    for (const hl of row.heritageLinks) {
+      // Cast through unknown: Drizzle's `with: { heritage: true }` types
+      // heritage as a strict scalar row, but HeritageBundleView expects
+      // the relational shape (with primitiveLinks + capabilityLinks).
+      (hl.heritage as unknown as {
+        primitiveLinks: typeof primRows;
+        capabilityLinks: typeof capRows;
+      }).primitiveLinks = primMap.get(hl.heritage.id) ?? [];
+      (hl.heritage as unknown as {
+        primitiveLinks: typeof primRows;
+        capabilityLinks: typeof capRows;
+      }).capabilityLinks = capMap.get(hl.heritage.id) ?? [];
+    }
+  }
 
   // PLAN Eilxina Part C (Mashu 2026-09-09): full permission gate.
   // Replaces the Part B 2-line check with canResolveCharacterForPage
