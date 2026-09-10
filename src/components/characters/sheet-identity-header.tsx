@@ -53,6 +53,7 @@ import { CharacterEditButton } from "@/components/characters/character-edit-butt
 import { CharacterVisibilityControl } from "@/components/characters/character-visibility-control";
 import { CharacterSharePanel } from "@/components/characters/character-share-panel";
 import { StaleUpdatesIndicator } from "@/components/characters/stale-updates-indicator";
+import { UpdateAllModal } from "@/components/characters/update-all-modal";
 import { VersionHistoryLink } from "@/components/characters/version-history-link";
 import { IdentityCell } from "@/components/characters/identity-cell";
 import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
@@ -259,6 +260,12 @@ export function SheetIdentityHeader({
   // explains the formula in the same FormulaModal pattern
   // used by the rest of the sheet.
   const [buPopup, setBuPopup] = useState<"budget" | "debt" | null>(null);
+  // PLAN Eilxina Part F (Mashu 2026-09-10): the "Update all stale slots"
+  // modal opens when the owner taps the stale-updates chip in this drawer.
+  // Reachable from both the expanded panel button AND the in-page header
+  // indicator (the modal mounts at the bottom of the JSX tree so the
+  // identity header stays layout-stable).
+  const [updateModalOpen, setUpdateModalOpen] = useState(false);
 
   useEffect(() => {
     setHydrated(true);
@@ -603,6 +610,9 @@ export function SheetIdentityHeader({
             <StaleUpdatesIndicator
               count={staleUpdatesCount}
               mode={mode ?? "PLAY"}
+              {...((mode ?? "PLAY") !== "PLAY"
+                ? { onUpdateAll: () => setUpdateModalOpen(true) }
+                : {})}
             />
             {/* PLAN Eilxina Part E (Mashu 2026-09-10): Versions link
                 in the drawer. The in-page <header> is hidden by
@@ -662,6 +672,20 @@ export function SheetIdentityHeader({
           onClose={() => setBuPopup(null)}
         />
       ) : null}
+      {/* PLAN Eilxina Part F (Mashu 2026-09-10): Update-all modal.
+          Owner-only. Renders as a portal-style overlay regardless of
+          which trigger opened it (drawer chip, in-page header pill). */}
+      <UpdateAllModal
+        characterId={characterId}
+        open={updateModalOpen}
+        onClose={() => setUpdateModalOpen(false)}
+        onApplied={() => {
+          // Soft refresh — the parent's router.refresh is plumbed
+          // through props. For now, dispatch a hash-based ping so
+          // the in-page StaleUpdatesIndicator sibling re-fetches.
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }

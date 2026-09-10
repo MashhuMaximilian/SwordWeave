@@ -50,6 +50,7 @@ import { CharacterSharePanel } from "@/components/characters/character-share-pan
 import { PendingProposalsIndicator } from "@/components/characters/pending-proposals-indicator";
 import { VersionHistoryLink } from "@/components/characters/version-history-link";
 import { StaleUpdatesIndicatorWithBump } from "@/components/characters/stale-updates-indicator-with-bump";
+import { UpdateAllModal } from "@/components/characters/update-all-modal";
 import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-card";
 import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
 import { ConditionsDrawer } from "@/components/characters/conditions-drawer";
@@ -683,6 +684,11 @@ function buildClientBehaviorVariables(
 export function CharacterSheetView(props: CharacterSheetProps) {
   const [tab, setTab] = useState<Tab>("capabilities");
   const [levelUpConfirm, setLevelUpConfirm] = useState(false);
+  // PLAN Eilxina Part F (Mashu 2026-09-10): the "Update all"
+  // modal shares state across the in-page <header> indicator
+  // AND the SheetIdentityHeader's expanded panel chip. Tapping
+  // either opens the same review modal.
+  const [updateAllModalOpen, setUpdateAllModalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const latestVersions = props.latestVersions ?? (new Map<VersionKey, string>());
   const { toasts, showToast, dismissToast } = useToasts();
@@ -1065,6 +1071,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             characterId={props.id}
             count={staleCount}
             mode={props.mode ?? "PLAY"}
+            onOpenUpdateModal={() => setUpdateAllModalOpen(true)}
           />
         </div>
       </header>
@@ -1539,6 +1546,24 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             | "HUGE"
             | "GARGANTUAN") || "MEDIUM"
         }
+      />
+
+      {/* PLAN Eilxina Part F (Mashu 2026-09-10): the "Update all"
+          review modal. Opens from the in-page <header>'s
+          StaleUpdatesIndicatorWithBump OR from the
+          SheetIdentityHeader's stale chip (which sets the
+          same state via a window event since it lives in a
+          separate component). The modal fetches
+          /api/characters/[id]/slots/stale-diffs and shows the
+          per-row field-level diff before applying. */}
+      <UpdateAllModal
+        characterId={props.id}
+        open={updateAllModalOpen}
+        onClose={() => setUpdateAllModalOpen(false)}
+        onApplied={() => {
+          setUpdateAllModalOpen(false);
+          window.location.reload();
+        }}
       />
     </div>
     </>

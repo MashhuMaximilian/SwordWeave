@@ -22,16 +22,33 @@ interface StaleUpdatesIndicatorWithBumpProps {
   characterId: string;
   count: number;
   mode: "PLAY" | "BUILD" | "EDIT";
+  /**
+   * PLAN Eilxina Part F (Mashu 2026-09-10): when provided, the
+   * "update all" pill routes through this callback instead of
+   * calling useBumpAllSlots directly. The parent will open the
+   * UpdateAllModal which fetches /slots/stale-diffs and shows
+   * per-row diffs before applying.
+   */
+  onOpenUpdateModal?: () => void;
 }
 
 export function StaleUpdatesIndicatorWithBump({
   characterId,
   count,
   mode,
+  onOpenUpdateModal,
 }: StaleUpdatesIndicatorWithBumpProps) {
   const { bumpAll, pending, error } = useBumpAllSlots(characterId);
 
   const interactive = mode !== "PLAY";
+
+  // PLAN Eilxina Part F (Mashu 2026-09-10): if the parent
+  // provided an onOpenUpdateModal callback we route through
+  // it — that opens the new diff-review modal. Fall back to
+  // the silent bumpAll() for callers that didn't wire it (e.g.
+  // the legacy in-page action header before the modal landed).
+  const handleUpdateAll =
+    onOpenUpdateModal ?? (() => void bumpAll());
 
   return (
     <div className="flex flex-col items-end gap-1">
@@ -39,7 +56,7 @@ export function StaleUpdatesIndicatorWithBump({
         count={count}
         mode={mode}
         {...(interactive
-          ? { onUpdateAll: () => void bumpAll() }
+          ? { onUpdateAll: handleUpdateAll }
           : {})}
         pending={pending}
       />
