@@ -53,6 +53,7 @@ import { CharacterEditButton } from "@/components/characters/character-edit-butt
 import { CharacterVisibilityControl } from "@/components/characters/character-visibility-control";
 import { CharacterSharePanel } from "@/components/characters/character-share-panel";
 import { StaleUpdatesIndicator } from "@/components/characters/stale-updates-indicator";
+import { UnversionedSlotsIndicator } from "@/components/characters/unversioned-slots-indicator";
 import { UpdateAllModal } from "@/components/characters/update-all-modal";
 import { VersionHistoryLink } from "@/components/characters/version-history-link";
 import { IdentityCell } from "@/components/characters/identity-cell";
@@ -163,6 +164,11 @@ export interface SheetIdentityHeaderProps {
   // latestVersionId. Drives the header-level stale-updates chip in
   // the expanded panel (matches the in-page header indicator).
   readonly staleUpdatesCount: number;
+  // PLAN Eilxina Part G (Mashu 2026-09-10): count of slotted
+  // entities that have a published latestVersionId but the slot's
+  // own versionId is NULL (legacy pre-Phase-3 slots). Drives the
+  // secondary "X unversioned · Pin all" chip in the header.
+  readonly unversionedCount: number;
   // PLAN Eilxina Part D (Mashu 2026-09-09): the | undefined is needed
   // because exactOptionalPropertyTypes treats optional `?` and explicit
   // `| undefined` as DIFFERENT types. The character-sheet-view passes
@@ -242,6 +248,7 @@ export function SheetIdentityHeader({
   // PLAN Eilxina Part D (Mashu 2026-09-09): stale-updates count for
   // the mobile header indicator.
   staleUpdatesCount,
+  unversionedCount,
   mode,
   attrSum,
   portraitUrl,
@@ -613,6 +620,17 @@ export function SheetIdentityHeader({
               {...((mode ?? "PLAY") !== "PLAY"
                 ? { onUpdateAll: () => setUpdateModalOpen(true) }
                 : {})}
+            />
+            {/* PLAN Eilxina Part G (Mashu 2026-09-10): secondary
+                chip for legacy NULL-versionId slots. Stale chip
+                counts slots that have a pinned version behind the
+                latest; this counts slots that have NO pinned
+                version at all. Click to bulk-pin every unversioned
+                slot to its entity's latest version. */}
+            <UnversionedSlotsIndicator
+              count={unversionedCount}
+              characterId={characterId}
+              mode={mode ?? "PLAY"}
             />
             {/* PLAN Eilxina Part E (Mashu 2026-09-10): Versions link
                 in the drawer. The in-page <header> is hidden by

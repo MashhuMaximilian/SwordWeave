@@ -39,6 +39,13 @@ import { recomputeBuSpentAndBustCache } from "@/lib/engine/recompute-bu-spent";
 const BodySchema = z
   .object({
     kind: z.enum(["ALL", "PRIMITIVE", "CAPABILITY", "ITEM"]).optional(),
+    // PLAN Eilxina Part G (Mashu 2026-09-10): optionally include
+    // slots whose versionId is NULL (i.e. pre-Phase-3 slots that
+    // never got pinned to a version). Default false to preserve
+    // the prior behavior of only bumping slots that ALREADY have
+    // a pinned version behind the latest. Set true to migrate the
+    // legacy NULL rows in one shot.
+    includeUnversioned: z.boolean().optional(),
   })
   .optional();
 
@@ -63,11 +70,16 @@ export async function POST(
       );
     }
     const kind = parsed.data?.kind ?? "ALL";
+    const includeUnversioned = parsed.data?.includeUnversioned ?? false;
 
     const bumped = { primitive: 0, capability: 0, item: 0 };
 
-    // Load the slot rows in a single pass each, then bulk-resolve
-    // their entity latest versions in one roundtrip per kind.
+    // PLAN Eilxina Part G (Mashu 2026-09-10): when includeUnversioned
+    // is true, also pick up rows whose versionId IS NULL (legacy
+    // pre-Phase-3 slots). The default filter is `isNotNull` so the
+    // prior behavior — only bumping slots that ALREADY have a pinned
+    // version behind the latest — is preserved.
+
     if (kind === "ALL" || kind === "PRIMITIVE") {
       const slotRows = await db
         .select({
@@ -77,10 +89,12 @@ export async function POST(
         })
         .from(characterPrimitives)
         .where(
-          and(
-            eq(characterPrimitives.characterId, characterId),
-            isNotNull(characterPrimitives.versionId),
-          ),
+          includeUnversioned
+            ? eq(characterPrimitives.characterId, characterId)
+            : and(
+                eq(characterPrimitives.characterId, characterId),
+                isNotNull(characterPrimitives.versionId),
+              ),
         );
       const latestMap = await bulkResolveLatestVersions(
         slotRows.map((r) => ({ kind: "primitive" as const, id: r.primitiveId })),
@@ -104,10 +118,12 @@ export async function POST(
         })
         .from(characterCapabilities)
         .where(
-          and(
-            eq(characterCapabilities.characterId, characterId),
-            isNotNull(characterCapabilities.versionId),
-          ),
+          includeUnversioned
+            ? eq(characterCapabilities.characterId, characterId)
+            : and(
+                eq(characterCapabilities.characterId, characterId),
+                isNotNull(characterCapabilities.versionId),
+              ),
         );
       const latestMap = await bulkResolveLatestVersions(
         slotRows.map((r) => ({ kind: "capability" as const, id: r.capabilityId })),
@@ -136,10 +152,12 @@ export async function POST(
         })
         .from(characterItems)
         .where(
-          and(
-            eq(characterItems.characterId, characterId),
-            isNotNull(characterItems.versionId),
-          ),
+          includeUnversioned
+            ? eq(characterItems.characterId, characterId)
+            : and(
+                eq(characterItems.characterId, characterId),
+                isNotNull(characterItems.versionId),
+              ),
         );
       const latestMap = await bulkResolveLatestVersions(
         slotRows.map((r) => ({ kind: "item" as const, id: r.itemId })),

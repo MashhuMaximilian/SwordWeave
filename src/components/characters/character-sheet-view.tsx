@@ -50,6 +50,7 @@ import { CharacterSharePanel } from "@/components/characters/character-share-pan
 import { PendingProposalsIndicator } from "@/components/characters/pending-proposals-indicator";
 import { VersionHistoryLink } from "@/components/characters/version-history-link";
 import { StaleUpdatesIndicatorWithBump } from "@/components/characters/stale-updates-indicator-with-bump";
+import { UnversionedSlotsIndicator } from "@/components/characters/unversioned-slots-indicator";
 import { UpdateAllModal } from "@/components/characters/update-all-modal";
 import { PrimitivePreviewCard } from "@/components/characters/primitive-preview-card";
 import { BottomStickyBar } from "@/components/characters/bottom-sticky-bar";
@@ -697,17 +698,51 @@ export function CharacterSheetView(props: CharacterSheetProps) {
   // Drives the header-level "X updates available" indicator — passive in
   // PLAY, clickable "update all" in BUILD/EDIT. The per-slot pills on
   // each chip use the same logic via SlotSourceBadge.
+  // PLAN Eilxina Part G (Mashu 2026-09-10): only count slots where
+  // the slot row actually has a pinned versionId AND the pinned
+  // version is behind the entity's latest version. NULL versionId
+  // means the slot predates versioning (Phase 3) and shouldn't be
+  // reported as "stale" — it's unversioned, not stale. The previous
+  // `versionId !== latestVersionId` test counted NULL rows because
+  // `null !== "uuid"` is true, which made the chip read "17 updates"
+  // even when the API modal found 0 diffs.
   const staleCount =
     props.primitiveLinks.filter(
-      (l) => l.latestVersionId && l.versionId !== l.latestVersionId,
+      (l) =>
+        l.versionId !== null &&
+        l.latestVersionId !== null &&
+        l.versionId !== l.latestVersionId,
     ).length +
     props.capabilityLinks.filter(
-      (l) => l.latestVersionId && l.versionId !== l.latestVersionId,
+      (l) =>
+        l.versionId !== null &&
+        l.latestVersionId !== null &&
+        l.versionId !== l.latestVersionId,
     ).length +
     props.itemLinks.filter(
-      (l) => l.latestVersionId && l.versionId !== l.latestVersionId,
+      (l) =>
+        l.versionId !== null &&
+        l.latestVersionId !== null &&
+        l.versionId !== l.latestVersionId,
     ).length;
-  // Phase 8.2 batch 7: opening edit mode triggers the atelier's
+  // PLAN Eilxina Part G (Mashu 2026-09-10): count slots where
+  // versionId is NULL but the entity has a published latest version.
+  // These are pre-Phase-3 slots that never got pinned. The user
+  // sees them as "17 slots need pinning" with a separate "Pin all"
+  // action that bulk-updates versionId to latestVersionId. Without
+  // this, the previous chip counted them as stale (since `null !==
+  // "uuid"` is true) but the modal showed no diffs (because no
+  // current version exists to diff against) — confusing mismatch.
+  const unversionedCount =
+    props.primitiveLinks.filter(
+      (l) => l.versionId === null && l.latestVersionId !== null,
+    ).length +
+    props.capabilityLinks.filter(
+      (l) => l.versionId === null && l.latestVersionId !== null,
+    ).length +
+    props.itemLinks.filter(
+      (l) => l.versionId === null && l.latestVersionId !== null,
+    ).length;
   // character builder modal (pre-filled via openForEdit).
   // Phase 8.2 batch 7 rev 2: clicking Edit now navigates to /atelier
   // and lets the atelier client boot the modal from localStorage.
@@ -1073,6 +1108,14 @@ export function CharacterSheetView(props: CharacterSheetProps) {
             mode={props.mode ?? "PLAY"}
             onOpenUpdateModal={() => setUpdateAllModalOpen(true)}
           />
+          {/* PLAN Eilxina Part G (Mashu 2026-09-10): companion chip
+              for legacy unversioned slots. Click pins every slot
+              whose versionId is NULL to its entity's latest. */}
+          <UnversionedSlotsIndicator
+            characterId={props.id}
+            count={unversionedCount}
+            mode={props.mode ?? "PLAY"}
+          />
         </div>
       </header>
       {/* Phase 8.4 v15 (Mashu 2026-07-28): SheetIdentityHeader
@@ -1372,6 +1415,10 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         // PLAN Eilxina Part D (Mashu 2026-09-09): stale-updates count
         // for the mobile header chip.
         staleUpdatesCount={staleCount}
+        // PLAN Eilxina Part G (Mashu 2026-09-10): unversioned slots
+        // count — separate from the stale count, drives a different
+        // "Pin all" affordance in the header chip.
+        unversionedCount={unversionedCount}
         mode={props.mode}
         attrSum={attrSum}
         portraitUrl={props.portraitUrl ?? null}

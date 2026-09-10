@@ -30,7 +30,7 @@
 
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   characterPrimitives,
@@ -123,8 +123,23 @@ export async function GET(
       const [latest] = await db
         .select()
         .from(primitiveVersions)
-        .where(eq(primitiveVersions.primitiveId, slot.primitiveId))
-        .orderBy(/* is_latest desc, version desc */ )
+        .where(
+          and(
+            eq(primitiveVersions.primitiveId, slot.primitiveId),
+            // PLAN Eilxina Part G (Mashu 2026-09-10): the previous
+            // query had `.orderBy(/* is_latest desc, version desc */)`
+            // (literally empty parens) and no `isLatest: true` filter,
+            // so it returned whichever row Postgres happened to land
+            // on first — usually the OLDEST version, not the latest.
+            // That made `current.id === latest.id` always true and
+            // the modal showed "nothing to update" even when the
+            // header chip read "17 updates available". Filter to the
+            // actual latest row, ordered by versionNumber as a
+            // tiebreaker.
+            eq(primitiveVersions.isLatest, true),
+          ),
+        )
+        .orderBy(desc(primitiveVersions.versionNumber))
         .limit(1);
       if (!current || !latest || current.id === latest.id) continue;
       items.push({
@@ -175,7 +190,17 @@ export async function GET(
       const [latest] = await db
         .select()
         .from(capabilityVersions)
-        .where(eq(capabilityVersions.capabilityId, slot.capabilityId))
+        .where(
+          and(
+            eq(capabilityVersions.capabilityId, slot.capabilityId),
+            // PLAN Eilxina Part G (Mashu 2026-09-10): same fix as
+            // primitives above — without `isLatest: true` the query
+            // returned a random non-latest row, `current === latest`
+            // matched, and the modal showed no diffs. Filter + sort.
+            eq(capabilityVersions.isLatest, true),
+          ),
+        )
+        .orderBy(desc(capabilityVersions.versionNumber))
         .limit(1);
       if (!current || !latest || current.id === latest.id) continue;
       items.push({
@@ -226,7 +251,14 @@ export async function GET(
       const [latest] = await db
         .select()
         .from(itemVersions)
-        .where(eq(itemVersions.itemId, slot.itemId))
+        .where(
+          and(
+            eq(itemVersions.itemId, slot.itemId),
+            // PLAN Eilxina Part G (Mashu 2026-09-10): same fix.
+            eq(itemVersions.isLatest, true),
+          ),
+        )
+        .orderBy(desc(itemVersions.versionNumber))
         .limit(1);
       if (!current || !latest || current.id === latest.id) continue;
       items.push({
