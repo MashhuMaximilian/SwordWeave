@@ -28,6 +28,8 @@ import { RestoreButton } from "@/components/library/restore-button";
 import { VersionPreviewButton } from "@/components/library/version-preview-button";
 import { IconDisplay } from "@/components/icons/icon-display";
 import { db } from "@/db/client";
+import { characters } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { primitives, effects, capabilities, effectPrimitives } from "@/db/schema";
 import { inArray } from "drizzle-orm";
 
@@ -64,6 +66,24 @@ export default async function VersionHistoryPage({ params }: PageProps) {
 
   const result = await getVersionHistory(parsed.type, parsed.id);
   if (!result) notFound();
+
+  // PLAN Eilxina Part F (Mashu 2026-09-10): if the target is a
+  // CHARACTER with zero published versions, synthesize a virtual
+  // v1 row from the *current* state of the character row so the
+  // page always shows at least one entry. The legacy empty state
+  // message ("No version history yet — initial published version
+  // (v1) will be recorded next time it's edited") was misleading
+  // because characters start life as live edits rather than
+  // publish-bound snapshots.
+  if (
+    parsed.type === "CHARACTER" &&
+    result.versions.length === 0
+  ) {
+    const synthetic = await synthesizeCurrentStateAsV1(parsed.id);
+    if (synthetic) {
+      result.versions.push(synthetic);
+    }
+  }
 
   // Collect all referenced entity IDs from all version payloads so we
   // can bulk-resolve their names for the preview modal.
@@ -589,4 +609,71 @@ function formatDate(d: Date): string {
     month: "short",
     day: "numeric",
   });
+}
+
+/**
+ * Synthesize a virtual v1 row from the *current* state of a
+ * CHARACTER. Used when the character has zero published
+ * character_versions rows — the previous code rendered an empty
+ * state ("No version history yet") which was misleading because
+ * characters live as live-edited rows from the moment of
+ * creation; v1 IS the current state.
+ *
+ * The synthesized entry is read-only — it's not written to the
+ * DB, just rendered inline. It mirrors the VersionEntry shape:
+ *   - id: "synthetic:v1" — distinguishable from real ids
+ *   - versionNumber: 1
+ *   - deltaKind: "FULL"
+ *   - publishedAt: character's createdAt, or now() if null
+ *   - payload: the character's raw row fields
+ *   - changeStats: empty (no prior version to diff against)
+ */
+async function synthesizeCurrentStateAsV1(
+  characterId: string,
+): Promise<VersionEntry | null> {
+  try {
+    const rows = await db
+      .select()
+      .from(characters)
+      .where(eq(characters.id, characterId))
+      .limit(1);
+    if (rows.length === 0) return null;
+    const c = rows[0]!;
+    // Strip the noisy internal columns so the payload matches what
+    // the published-v1 envelope would look like.
+    const payload: Record<string, unknown> = {
+      name: c.name,
+      size: c.size,
+      level: c.level,
+      attrPhysical: c.attrPhysical,
+      attrMental: c.attrMental,
+      attrMagical: c.attrMagical,
+      attrProficient: c.attrProficient,
+      startingBu: c.startingBu,
+      buSpent: c.buSpent,
+      dmBonusBu: c.dmBonusBu,
+      mode: c.mode,
+      lineageName: c.lineageName,
+      lineageDescription: c.lineageDescription,
+      upbringingName: c.upbringingName,
+      upbringingDescription: c.upbringingDescription,
+      manifestName: c.manifestName,
+      notes: c.notes,
+    };
+    return {
+      id: "synthetic:v1",
+      versionNumber: 1,
+      deltaKind: "FULL",
+      publishedAt: c.createdAt ?? new Date(),
+      publishedByUserId: c.userId,
+      // Strip any Clerk-id-looking string out so the UI doesn't
+      // show "user_..." as if it were a username.
+      publishedByUsername: null,
+      publishedByDisplayName: null,
+      payload,
+      changeStats: { added: 0, modified: 0, removed: 0 },
+    };
+  } catch {
+    return null;
+  }
 }

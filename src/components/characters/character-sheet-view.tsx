@@ -3374,6 +3374,16 @@ function HeritageKindAccordion({
               canonPrims={canonPrims}
               slottedCapIds={slottedCapIds}
               slottedPrimIds={slottedPrimIds}
+              // PLAN Eilxina Part F (Mashu 2026-09-10): flip on the
+              // bundled primitives section inside each heritage card.
+              // Prior behaviour hid it because the Primitives accordion
+              // above already lists every slotted primitive — but the
+              // user wanted the template primitives INSIDE the heritage
+              // card itself (with a "template" vs "✓ slotted" badge)
+              // so it's clear what the heritage brings. Both views now
+              // coexist: the accordion for the flat roster, this card
+              // for heritage-attributed detail.
+              showPrimitives={true}
             />
           );
         })}
