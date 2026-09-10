@@ -1385,6 +1385,21 @@ export function CharacterSheetView(props: CharacterSheetProps) {
           exceeded: props.volatility.exceeded,
           mirroredPrimitives: props.volatility.mirroredPrimitives,
         }}
+        // PLAN Eilxina Part E (Mashu 2026-09-10): the in-page
+        // <header> is hidden by default — Versions + Share buttons
+        // live in the SheetIdentityHeader's expanded drawer panel.
+        // ownerShares is just for the OWNER's SharePanel; we only
+        // need the username/canEdit/createdAt fields, not the
+        // internal UUID.
+        characterVersionCount={props.characterVersionCount}
+        ownerShares={props.ownerShares?.map((s) => ({
+          id: s.id,
+          sharedWithUserId: "",
+          sharedWithUsername: s.username,
+          canEdit: s.canEdit,
+          createdAt: s.createdAt,
+        }))}
+        viewerPermission={props.viewerPermission}
       />
 
       {/* Phase 8.4 (Mashu 2026-07-28): BottomStickyBar is
