@@ -112,7 +112,7 @@ export function LibraryMarketRail({
   return (
     <>
       <div className="v12-section-head border-b border-border px-3 py-2 md:hidden">
-        <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Lexicon categories">
+        <div className="v12-mobile-family-tabs flex gap-2 overflow-x-auto pb-1" aria-label="Lexicon categories">
           <button
             type="button"
             aria-pressed={!selected}

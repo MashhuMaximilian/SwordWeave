@@ -31,6 +31,28 @@ import {
 import { LibraryProvenance } from "./library-provenance";
 import { ForkMapButton } from "@/components/engagement/fork-map-button";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
+import { IconDisplay } from "@/components/icons/icon-display";
+
+const ENTITY_ICONS: Record<string, string> = {
+  PRIMITIVE: "delapouite/cube",
+  EFFECT: "lorc/cubes",
+  CAPABILITY: "lorc/cubeforce",
+  LINEAGE_TEMPLATE: "lorc/dna2",
+  UPBRINGING_TEMPLATE: "delapouite/plant-roots",
+  MANIFEST_TEMPLATE: "caro-asercion/tarot-11-justice",
+  ITEM: "lorc/battle-gear",
+};
+
+function LibraryEntityIcon({ item, size = 24 }: { item: LibraryItem; size?: number }) {
+  return <IconDisplay
+    iconSource={item.iconSource ?? "GAME_ICONS"}
+    iconKey={item.iconSource ? item.iconKey : ENTITY_ICONS[item.targetType] ?? "delapouite/cube"}
+    iconUrl={item.iconUrl}
+    iconColor={item.iconSource ? item.iconColor : "#64c7c1"}
+    size={size}
+    alt=""
+  />;
+}
 
 interface Props {
   initialItems: LibraryItem[];
@@ -318,13 +340,14 @@ export function LibraryBrowseClient({
                   role="button"
                   tabIndex={0}
                   onKeyDown={(event) => {
+                    if (event.target !== event.currentTarget) return;
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
                       onRowSelect(item);
                     }
                   }}
                 >
-                  <span className="v12-entry-glyph" aria-hidden="true">◇</span>
+                  <span className="v12-entry-glyph" aria-hidden="true"><LibraryEntityIcon item={item} /></span>
                   <div className="v12-entry-copy">
                     <div className="v12-entry-title-line">
                       <h3>{item.name}</h3>
@@ -384,10 +407,10 @@ export function LibraryBrowseClient({
             {selectedItem ? (
               <>
                 <div className="v12-inspect-orbit" aria-hidden="true">
-                  <span>◇</span>
+                  <span><LibraryEntityIcon item={selectedItem} size={40} /></span>
                 </div>
                 <div className="v12-inspector-tags">
-                  <span className="v12-tag v12-tag--violet">
+                  <span className={`v12-tag ${libraryOrigin(selectedItem) === "community" ? "v12-tag--violet" : "v12-tag--teal"}`}>
                     {libraryOrigin(selectedItem) === "community" ? "Community" : "System"}
                   </span>
                   <span className="v12-tag">
