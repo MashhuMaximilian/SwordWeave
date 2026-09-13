@@ -407,7 +407,7 @@ function VersionRow({
   const summary = buildSummary(version);
   return (
     <li className="rounded-md border border-border bg-card p-4">
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+      <div id={`v${version.versionNumber}`} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <span className="font-mono text-lg font-semibold">
           v{version.versionNumber}
         </span>

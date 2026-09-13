@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { createPortal } from "react-dom";
+
+import { useEffect, useId } from "react";
 import { X } from "lucide-react";
 
 /**
@@ -55,18 +57,19 @@ export function DetailModal({
     return () => window.removeEventListener("keydown", handler);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  const titleId = useId();
+  if (!isOpen || typeof document === "undefined") return null;
 
   const sizeClass =
     size === "sm" ? "max-w-md" : size === "lg" ? "max-w-4xl" : "max-w-2xl";
 
-  return (
+  return createPortal(
     <div
       className="v12-modal-backdrop fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-0 sm:items-center sm:p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="detail-modal-title"
+      aria-labelledby={titleId}
     >
       <div
         className={`v12-modal-surface v12-instrument relative w-full overflow-hidden rounded-t-2xl bg-card shadow-2xl sm:rounded-2xl ${sizeClass} max-h-[95vh] flex flex-col`}
@@ -75,7 +78,7 @@ export function DetailModal({
         <header className="v12-section-head sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border bg-card px-6 py-4">
           <div className="min-w-0 flex-1">
             <h2
-              id="detail-modal-title"
+              id={titleId}
               className="v12-entity-title truncate text-xl font-normal"
             >
               {title}
@@ -98,6 +101,6 @@ export function DetailModal({
 
         <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
       </div>
-    </div>
+    </div>, document.body
   );
 }

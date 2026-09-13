@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { GitFork, LoaderCircle } from "lucide-react";
+import { ForkNodeVersions } from "./fork-node-versions";
 import { DetailModal } from "@/components/ui/detail-modal";
 import type { ForkMapResult, ForkMapNode } from "@/lib/publishing/fork-map";
 import type { ForkTargetType } from "@/lib/publishing/forks-query";
@@ -13,7 +14,7 @@ function nodeHref(node: ForkMapNode) {
 
 function ForkNode({ node, onExplore }: { node: ForkMapNode; onExplore: (node: ForkMapNode) => void }) {
   return (
-    <button
+    <div className="v12-fork-node-shell"><button
       type="button" onClick={() => onExplore(node)}
       className={`v12-fork-node block w-full text-left min-w-0 border px-4 py-3 transition-colors hover:border-primary ${
         node.relation === "selected"
@@ -33,19 +34,28 @@ function ForkNode({ node, onExplore }: { node: ForkMapNode; onExplore: (node: Fo
         </span>
       ) : null}
     </button>
+    {node.relation === "selected" && node.targetType !== "BUILD_TEMPLATE" ? <ForkNodeVersions key={node.key} targetType={node.targetType} targetId={node.targetId} /> : null}
+    </div>
   );
 }
 
 function ForkGraph({ data, explore }: { data: ForkMapResult; explore: (node: ForkMapNode) => void }) {
   const [zoom, setZoom] = useState(1);
+  const [search, setSearch] = useState("");
+  const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const viewport = useRef<HTMLDivElement>(null);
   const height = Math.max(420, data.children.length * 108 + 50);
   const selectedX = data.ancestry.length * 240 + 30;
   const width = selectedX + 500;
   const nodes = [...data.ancestry.map((node, index) => ({ node, x: index * 240 + 30, y: height / 2 - 42 })), { node: data.selected, x: selectedX, y: height / 2 - 42 }, ...data.children.map((node, index) => ({ node, x: selectedX + 240, y: index * 108 + 30 }))];
   return <div className="v12-lineage-layout">
-    <div className="v12-network-toolbar"><button type="button" onClick={() => setZoom(value => Math.max(.25, value - .15))} aria-label="Zoom out">−</button><span>{Math.round(zoom * 100)}%</span><button type="button" onClick={() => setZoom(value => Math.min(2, value + .15))} aria-label="Zoom in">＋</button><button type="button" onClick={() => setZoom(Math.min(1, (viewport.current?.clientWidth ?? width) / width))}>Fit</button><span>◇ Selected source · {data.totalChildren} direct descendants</span></div>
-    <div className="v12-network-viewport" ref={viewport} tabIndex={0} aria-label="Fork lineage graph. Scroll to pan; select a node to explore it.">
+    <div className="v12-network-toolbar"><button type="button" onClick={() => setZoom(value => Math.max(.02, value - .15))} aria-label="Zoom out">−</button><span>{Math.round(zoom * 100)}%</span><button type="button" onClick={() => setZoom(value => Math.min(2, value + .15))} aria-label="Zoom in">＋</button><button type="button" onClick={() => setZoom(Math.min(1, (viewport.current?.clientWidth ?? width) / width, (viewport.current?.clientHeight ?? height) / height))}>Fit</button><span>◇ Selected source · {data.totalChildren} direct descendants</span></div>
+    <div className="v12-network-search"><label>Search loaded nodes<input value={search} onChange={event => setSearch(event.target.value)} placeholder="Entry or author…" /></label>{search.trim() ? <div>{nodes.filter(({node}) => `${node.name ?? ""} ${node.authorName ?? ""}`.toLowerCase().includes(search.toLowerCase().trim())).map(({node,x,y}) => <button key={node.key} type="button" onClick={() => { viewport.current?.scrollTo({left:Math.max(0,x*zoom-30),top:Math.max(0,y*zoom-30),behavior:"smooth"}); }}>{node.name ?? node.key}</button>)}</div> : null}</div>
+    <div className="v12-network-viewport" ref={viewport} onPointerDown={event => {
+      if (event.pointerType === "touch" || (event.target as HTMLElement).closest("button,a,input")) return;
+      drag.current = { x:event.clientX, y:event.clientY, left:event.currentTarget.scrollLeft, top:event.currentTarget.scrollTop };
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }} onPointerMove={event => { if (!drag.current) return; event.currentTarget.scrollLeft = drag.current.left + drag.current.x - event.clientX; event.currentTarget.scrollTop = drag.current.top + drag.current.y - event.clientY; }} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} tabIndex={0} aria-label="Fork lineage graph. Scroll to pan; select a node to explore it.">
       <div style={{ width: width * zoom, height: height * zoom }}><div className="v12-network-world" style={{ width, height, transform: `scale(${zoom})`, transformOrigin: "0 0" }}>
         <svg width={width} height={height} aria-hidden="true">{data.edges.map((edge, index) => { const from = nodes.find(n => n.node.key === edge.from), to = nodes.find(n => n.node.key === edge.to); if (!from || !to) return null; return <path key={`${edge.from}-${edge.to}-${index}`} d={`M ${from.x + 205} ${from.y + 42} C ${from.x + 225} ${from.y + 42}, ${to.x - 25} ${to.y + 42}, ${to.x} ${to.y + 42}`} />; })}</svg>
         {nodes.map(({node,x,y}) => <div key={node.key} style={{ position:"absolute", left:x, top:y, width:205 }}><ForkNode node={node} onExplore={explore} /></div>)}
