@@ -269,8 +269,9 @@ export function SheetIdentityHeader({
       // On desktop it replaces the static in-page header.
       // The content gets a top spacer to clear it (see
       // character-sheet-view.tsx).
-      className="fixed left-0 right-0 top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md"
+      className="v12-instrument fixed left-0 right-0 top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md"
       data-testid="sheet-identity-header"
+      data-character-surface
       data-expanded={expanded}
     >
       <button

@@ -155,13 +155,13 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-5 py-8">
+    <div className="mx-auto w-full max-w-[1500px] px-5 py-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase text-muted-foreground">
+          <p className="v12-kicker">
             Library
           </p>
-          <h1 className="font-display mt-3 text-4xl font-semibold uppercase leading-tight tracking-wide">
+          <h1 className="v12-entity-title mt-3 text-4xl uppercase leading-tight tracking-wide">
             Browse the corpus.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">

@@ -123,14 +123,14 @@ export function RightFilterPanel() {
         aria-modal="true"
         aria-label="Filters"
         className={cn(
-          "fixed inset-y-0 right-0 z-50 flex w-[85vw] max-w-[420px] flex-col border-l border-border bg-card shadow-2xl transition-transform duration-300 ease-out",
+          "v12-instrument fixed inset-y-0 right-0 z-50 flex w-[85vw] max-w-[420px] flex-col border-l border-border bg-card shadow-2xl transition-transform duration-300 ease-out",
           filterPanelOpen ? "translate-x-0" : "translate-x-full",
         )}
       >
-        <header className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3">
+        <header className="v12-section-head flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3">
           <div className="flex items-center gap-2">
             <FilterIcon className="size-4 text-primary" />
-            <h2 className="font-display text-lg font-semibold uppercase tracking-wide">
+            <h2 className="font-display text-lg font-normal uppercase tracking-wide">
               Filters
             </h2>
           </div>

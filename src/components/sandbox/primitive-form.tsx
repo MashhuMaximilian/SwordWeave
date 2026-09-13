@@ -9,7 +9,7 @@ import { ConsequenceRestrictionsEditor } from "@/components/characters/consequen
 // The library list, live preview sidebar, and saved-records grid are NOT in this
 // component. They live in the SandboxLayout columns owned by the page.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import type {
@@ -846,6 +846,7 @@ export function PrimitiveForm({
   characterId,
   intent,
   sourceId,
+  initialCategory,
   onStateChange,
   onSaved,
   onReset,
@@ -869,6 +870,8 @@ export function PrimitiveForm({
   saveRequest?: typeof fetch;
   characterId?: string;
   initialPrimitive?: PrimitiveRow | null;
+  /** Category preselected by a contextual Library create action. */
+  initialCategory?: string | null;
   /**
    * Phase 1 (round 6 of edit-creates-fork): the save-intent flag
    * from ?intent=fork|load. Threads into the save body so the
@@ -919,7 +922,14 @@ export function PrimitiveForm({
   initialModifierDrafts?: ReadonlyArray<Partial<ModifierDraft>> | null;
 }) {
   const [consequenceBehavior, setConsequenceBehavior] = useState<import("@/lib/character/consequences/types").ConsequenceBehavior | null>(initialPrimitive?.consequenceBehavior ?? null);
-  const [form, setForm] = useState<PrimitiveFormState>(blankForm);
+  const contextualBlankForm = useMemo<PrimitiveFormState>(
+    () => ({
+      ...blankForm,
+      category: initialCategory || blankForm.category,
+    }),
+    [initialCategory],
+  );
+  const [form, setForm] = useState<PrimitiveFormState>(() => contextualBlankForm);
   const [modifierCounter, setModifierCounter] = useState(1);
   // Modifiers are optional. Many primitives (Domain: Darkvision,
   // Resistance: Fire, etc.) describe a feature that needs no
@@ -1026,7 +1036,7 @@ export function PrimitiveForm({
             consequenceBehavior,
       isDirty,
     });
-  }, [form, modifiers, onStateChange, isDirty]);
+  }, [form, modifiers, onStateChange, consequenceBehavior, isDirty]);
 
   // Phase 9.4 (Mashu 2026-09-07): on first mount, if the caller
   // supplied initialModifierDrafts (e.g. the Promote tab in the
@@ -1196,7 +1206,7 @@ export function PrimitiveForm({
   }
 
   function resetEditor() {
-    setForm(blankForm);
+    setForm(contextualBlankForm);
     setModifierCounter(1);
     setModifiers([]);
     setShowJsonPreview(false);
@@ -1389,12 +1399,12 @@ export function PrimitiveForm({
 
   return (
     <form
-      className="grid grid-cols-1 gap-4 rounded-md border border-border bg-card p-4 md:grid-cols-2 sm:p-5"
+      className="v12-instrument grid grid-cols-1 gap-4 rounded-md border border-border bg-card p-4 md:grid-cols-2 sm:p-5"
       onSubmit={submitPrimitive}
     >
-      <div className="flex items-center justify-between gap-3 md:col-span-2">
+      <div className="v12-section-head -mx-4 -mt-4 flex items-center justify-between gap-3 px-4 pb-3 pt-5 md:col-span-2 sm:-mx-5 sm:-mt-5 sm:px-5">
         <div className="flex items-center gap-2">
-          <p className="text-xs font-semibold uppercase text-muted-foreground">
+          <p className="v12-kicker text-xs text-muted-foreground">
             {initialPrimitive ? "Inspect Primitive" : "Add New Primitive"}
           </p>
           {/*
@@ -1440,7 +1450,7 @@ export function PrimitiveForm({
           <button
             type="button"
             onClick={resetEditor}
-            className="h-9 rounded-md border border-border bg-background px-3 text-sm font-bold text-foreground"
+            className="v12-metal-button h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground"
           >
             Reset
           </button>
@@ -1502,7 +1512,7 @@ export function PrimitiveForm({
           </label>
         </div>
         <div className="grid grid-cols-3 gap-2">
-          <label className="block text-[11px] font-medium">
+          <label className="block text-xs font-medium">
             Lexicon
             <select
               className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none ring-ring focus:ring-2"
@@ -1516,7 +1526,7 @@ export function PrimitiveForm({
               ))}
             </select>
           </label>
-          <label className="block text-[11px] font-medium">
+          <label className="block text-xs font-medium">
             Tier
             <select
               className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none ring-ring focus:ring-2"
@@ -1530,7 +1540,7 @@ export function PrimitiveForm({
               ))}
             </select>
           </label>
-          <label className="block text-[11px] font-medium">
+          <label className="block text-xs font-medium">
             Cost (BU)
             <input
               className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none ring-ring focus:ring-2"
@@ -1580,7 +1590,7 @@ export function PrimitiveForm({
         />
       </div>
 
-      <fieldset className="space-y-3 rounded-md border border-border p-3">
+      <fieldset className="v12-rule space-y-3 rounded-md border border-border p-3">
         <legend className="px-1 text-sm font-semibold">Consequence behavior</legend>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!consequenceBehavior} onChange={e => setConsequenceBehavior(e.target.checked ? { timing: "on-use", vitalityDelta: 0, restrictions: [], recovery: "" } : null)} />Apply when an action is used</label>
         {consequenceBehavior && <>
@@ -1643,7 +1653,7 @@ export function PrimitiveForm({
           value={form.isPublic ? "PUBLIC" : "PRIVATE"}
           onChange={(next) => updateForm("isPublic", next === "PUBLIC")}
         />
-        <span className="text-[10px] font-normal text-muted-foreground">
+        <span className="text-xs font-normal text-muted-foreground">
           Public entries appear in the Library. Private and Followers-only
           entries can be promoted to Public from the My Creations page.
         </span>
@@ -1705,7 +1715,34 @@ export function PrimitiveForm({
           form. Mirror logic moves to capability/affect layer
           (Phase 8). The primitive no longer carries mirror state. */}
 
-      <fieldset className="space-y-3 rounded-md border border-border bg-background p-4 md:col-span-2">
+      <fieldset className="v12-rule space-y-3 rounded-md border border-border bg-background p-4 md:col-span-2">
+        <div className="v12-sentence rounded-md px-4 py-3 text-base leading-relaxed" data-readable-rule>
+          {modifiers[0] ? (
+            <>
+              <span>Change </span>
+              <span className="v12-sentence__target px-1">
+                {modifiers[0].target.split(".").pop()?.replaceAll("_", " ") || "behavior"}
+              </span>
+              <span> by </span>
+              <span className="v12-sentence__operation px-1">
+                {modifiers[0].operation.replaceAll("_", " ") || "changing"}
+              </span>
+              <span> </span>
+              <span className="v12-sentence__value px-1">
+                {modifiers[0].value || "a value"}
+              </span>
+              <span> for </span>
+              <span className="v12-sentence__scope px-1">
+                {modifiers[0].targetValues?.join(", ") || "Self"}
+              </span>
+              <span>.</span>
+            </>
+          ) : (
+            <span className="text-muted-foreground">
+              Add a modifier to compose its mechanical sentence.
+            </span>
+          )}
+        </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <legend className="text-sm font-semibold">Modifier Builder</legend>

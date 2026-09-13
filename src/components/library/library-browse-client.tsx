@@ -23,6 +23,8 @@ import { useGlobalControls } from "@/components/layout/global-controls";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import type { LibraryEngagement } from "@/components/library/library-table";
 import type { LibraryToolbarState } from "@/components/library/library-toolbar";
+import { LibraryMarketRail } from "@/components/library/library-market-rail";
+import { ForkMapButton } from "@/components/engagement/fork-map-button";
 
 interface Props {
   initialItems: LibraryItem[];
@@ -155,8 +157,8 @@ export function LibraryBrowseClient({
     state.sort !== "ENGAGEMENT";
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="shrink-0 border-b border-border bg-card px-4 py-3">
+    <div className="v12-instrument flex h-full min-h-0 flex-col overflow-hidden" data-library-surface>
+      <div className="v12-section-head shrink-0 border-b border-border bg-card px-4 py-3">
         <ColumnSearchBar
           search={state.search}
           onSearchChange={(s: string) =>
@@ -166,28 +168,41 @@ export function LibraryBrowseClient({
           hasActiveFilters={hasActiveFilters}
         />
       </div>
-      <div className="min-h-0 flex-1 overflow-auto">
-        <LibraryTable
-          items={initialItems}
-          view={state.view}
-          engagement={engagement}
-          currentUserInternalId={currentUserInternalId}
-          onSelect={onRowSelect}
-          selectedKey={selectedItem?.id ?? null}
-          pagination={
-            totalPages > 1 ? (
-              <Pagination
-                page={page}
-                totalPages={totalPages}
-                total={total}
-                onPageChange={onPageChange}
-              />
-            ) : null
+      <div className="grid min-h-0 flex-1 md:grid-cols-[18rem_minmax(0,1fr)]">
+        <LibraryMarketRail
+          categories={primitiveCategories}
+          selected={state.category}
+          onSelect={(category) =>
+            onStateChange({
+              ...state,
+              typeFilter: category ? "PRIMITIVE" : state.typeFilter,
+              category,
+            })
           }
-          showClearFilters={false}
-          emptyTitle="No entries match"
-          emptyDescription="Try a different filter, broader search, or another sort."
         />
+        <div className="min-h-0 overflow-auto">
+          <LibraryTable
+            items={initialItems}
+            view={state.view}
+            engagement={engagement}
+            currentUserInternalId={currentUserInternalId}
+            onSelect={onRowSelect}
+            selectedKey={selectedItem?.id ?? null}
+            pagination={
+              totalPages > 1 ? (
+                <Pagination
+                  page={page}
+                  totalPages={totalPages}
+                  total={total}
+                  onPageChange={onPageChange}
+                />
+              ) : null
+            }
+            showClearFilters={false}
+            emptyTitle="No entries match"
+            emptyDescription="Try a different filter, broader search, or another sort."
+          />
+        </div>
       </div>
 
       {/* Iframe detail modal — renders the full canonical detail page when
@@ -210,7 +225,7 @@ export function LibraryBrowseClient({
           // The summary shows: name, description, BU, tags, author,
           // engagement counts, and an "Open full page" link for the
           // canonical detail view.
-          <div className="space-y-4">
+          <div className="space-y-4" data-provenance>
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-primary/10 px-3 py-1 font-mono text-sm font-semibold text-primary">
                 {selectedItem.buCost ?? 0} BU
@@ -253,13 +268,18 @@ export function LibraryBrowseClient({
               <span>♥ {selectedItem.likesCount}</span>
               <span>★ {selectedItem.forkCount} forks</span>
             </div>
-            <div className="border-t border-border pt-3">
+            <div className="flex flex-wrap gap-2 border-t border-border pt-3">
               <a
                 href={`/library/item/${selectedItem.id}`}
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                className="v12-metal-button v12-metal-button--primary inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 Open full source page →
               </a>
+              <ForkMapButton
+                targetType={selectedItem.targetType}
+                targetId={selectedItem.targetId}
+                targetName={selectedItem.name}
+              />
             </div>
           </div>
         ) : null}

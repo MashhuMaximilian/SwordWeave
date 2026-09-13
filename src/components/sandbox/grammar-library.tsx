@@ -52,6 +52,8 @@ import {
   type SlotEvent,
 } from "@/lib/sandbox/slot-events";
 import { cn } from "@/lib/utils";
+import { ForkMapButton } from "@/components/engagement/fork-map-button";
+import type { ForkTargetType } from "@/lib/publishing/forks-query";
 
 // The Mechanics tab collapses primitive/effect/capability into one tab.
 // The library still distinguishes the concrete kinds for chips + select,
@@ -1198,6 +1200,14 @@ function SandboxPreviewBody({
         }
       : {}),
     openSourceHref: `/library/item/${compositeId}`,
+    forkMap: (
+      <ForkMapButton
+        targetType={(libraryItem?.targetType ?? item.kind.toUpperCase()) as ForkTargetType}
+        targetId={compositeId}
+        targetName={item.row.name}
+        className="min-w-0 flex-1 justify-center px-1.5 py-2 text-xs"
+      />
+    ),
     versionHistoryHref: `/library/item/${compositeId}/versions`,
   };
 

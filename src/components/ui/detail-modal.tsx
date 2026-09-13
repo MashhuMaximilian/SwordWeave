@@ -69,14 +69,14 @@ export function DetailModal({
       aria-labelledby="detail-modal-title"
     >
       <div
-        className={`relative w-full overflow-hidden rounded-t-2xl bg-card shadow-2xl sm:rounded-2xl ${sizeClass} max-h-[95vh] flex flex-col`}
+        className={`v12-instrument relative w-full overflow-hidden rounded-t-2xl bg-card shadow-2xl sm:rounded-2xl ${sizeClass} max-h-[95vh] flex flex-col`}
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border bg-card px-6 py-4">
+        <header className="v12-section-head sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border bg-card px-6 py-4">
           <div className="min-w-0 flex-1">
             <h2
               id="detail-modal-title"
-              className="truncate text-xl font-semibold"
+              className="v12-entity-title truncate text-xl font-normal"
             >
               {title}
             </h2>

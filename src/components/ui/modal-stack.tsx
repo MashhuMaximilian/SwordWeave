@@ -187,7 +187,7 @@ function ModalStackRenderer() {
             >
               <div
                 className={cn(
-                  "relative flex h-full w-[420px] max-w-[42vw] flex-col overflow-hidden border-r border-border bg-card shadow-2xl",
+                  "v12-instrument relative flex h-full w-[420px] max-w-[42vw] flex-col overflow-hidden border-r border-border bg-card shadow-2xl",
                   !isTop && "w-[360px] opacity-95",
                 )}
               >
@@ -218,7 +218,7 @@ function ModalStackRenderer() {
           >
             <div
               className={cn(
-                "relative flex w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-card shadow-2xl sm:rounded-2xl",
+                "v12-instrument relative flex w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-card shadow-2xl sm:rounded-2xl",
                 // Mobile: explicit top + bottom positioning so the modal
                 // never moves with body scroll. sm+: cap height with dvh
                 // and center vertically via the parent's `items-center`.
@@ -276,7 +276,7 @@ function renderModalBody(
           UI — the user closes each modal independently by clicking
           its X button. */}
       <div className="min-h-0 flex-1 overflow-y-auto text-sm">
-        <header className="sticky top-0 z-20 flex h-10 items-center justify-between gap-2 border-b border-border bg-card px-4">
+        <header className="v12-section-head sticky top-0 z-20 flex h-10 items-center justify-between gap-2 border-b border-border bg-card px-4">
           {/* Phase 9 round-3: header now shows only the CATEGORY (uppercase
               muted). The entity name is rendered inside the body (above
               the type chips) so the user sees "PRIMITIVE" in the header

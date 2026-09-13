@@ -38,7 +38,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <ModalStackHost>
         <GlobalControls>
           <main className="min-w-0 pb-2">{children}</main>
-          <footer className="border-t border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+          <footer className="v12-section-head border-t border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
             <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">
               <span>
                 SwordWeave · Open-source TTRPG engine

@@ -1,5 +1,6 @@
 import { LibraryRefresh } from "@/components/library-refresh";
 import type { Metadata, Viewport } from "next";
+import localFont from "next/font/local";
 import { Magra, Teko } from "next/font/google";
 import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
@@ -8,17 +9,58 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AppShell } from "@/components/layout/app-shell";
 import { FullscreenInit } from "@/components/layout/fullscreen-init";
 import "./globals.css";
+import "./v12.css";
 
-const teko = Teko({
+// Retain the previous typefaces behind the data-ui switch so setting
+// NEXT_PUBLIC_SW_UI_VERSION=legacy is a complete visual rollback.
+const legacyDisplay = Teko({
   subsets: ["latin"],
-  variable: "--font-sword-display",
+  variable: "--font-sword-display-legacy",
   weight: ["400", "700"],
 });
 
-const magra = Magra({
+const legacyBody = Magra({
   subsets: ["latin"],
-  variable: "--font-sword-body",
+  variable: "--font-sword-body-legacy",
   weight: ["400", "700"],
+});
+
+const unicaOne = localFont({
+  src: "./fonts/unica-one-400-latin-f1708315.woff2",
+  variable: "--font-v12-title",
+  weight: "400",
+  display: "swap",
+});
+
+const oxanium = localFont({
+  src: "./fonts/oxanium-500-latin-320e2c0e.woff2",
+  variable: "--font-v12-subtitle",
+  weight: "500",
+  display: "swap",
+});
+
+const aubrey = localFont({
+  src: "./fonts/aubrey-400-latin-e006e0e2.woff2",
+  variable: "--font-v12-body",
+  weight: "400",
+  display: "swap",
+});
+
+const syne = localFont({
+  src: "./fonts/syne-600-latin-48dc6652.woff2",
+  variable: "--font-v12-system",
+  weight: "400 800",
+  display: "swap",
+});
+
+const ibmPlexMono = localFont({
+  src: [
+    { path: "./fonts/ibm-plex-mono-400-latin-bc87d8e0.woff2", weight: "400" },
+    { path: "./fonts/ibm-plex-mono-500-latin-a80b2cab.woff2", weight: "500" },
+    { path: "./fonts/ibm-plex-mono-600-latin-2137a53a.woff2", weight: "600" },
+  ],
+  variable: "--font-v12-technical",
+  display: "swap",
 });
 
 // Next.js 16: themeColor moved out of metadata. Putting it in metadata
@@ -37,7 +79,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0a",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#aebdc5" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0a0f" },
+  ],
 };
 
 export default function RootLayout({
@@ -138,7 +183,10 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
         <link rel="preconnect" href="https://cdn.jsdelivr.net" />
       </head>
-      <body className={`${teko.variable} ${magra.variable}`}>
+      <body
+        data-ui={process.env["NEXT_PUBLIC_SW_UI_VERSION"] ?? "v12"}
+        className={`${legacyDisplay.variable} ${legacyBody.variable} ${unicaOne.variable} ${oxanium.variable} ${aubrey.variable} ${syne.variable} ${ibmPlexMono.variable}`}
+      >
         <Script id="swordweave-theme" strategy="beforeInteractive">
           {`
 try {

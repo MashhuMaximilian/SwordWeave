@@ -712,8 +712,9 @@ export function BottomStickyBar({
 
   return (
     <div
-      className="fixed bottom-12 left-0 right-0 z-30 border-t border-border bg-background/95 backdrop-blur-md"
+      className="v12-instrument fixed bottom-12 left-0 right-0 z-30 border-t border-border bg-background/95 backdrop-blur-md"
       data-testid="bottom-sticky-bar"
+      data-character-surface
       data-expanded={expanded}
     >
       {/* Header bar — always visible. The TOGGLE.

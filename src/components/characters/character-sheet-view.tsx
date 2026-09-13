@@ -950,7 +950,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         onClose={() => setConditionsOpen(false)}
         autoEvaluated={autoEvaluated}
       />
-    <div className="mx-auto w-full max-w-screen-2xl px-5 pt-20 pb-32">
+    <div className="mx-auto w-full max-w-screen-2xl px-5 pt-20 pb-32" data-character-surface>
       {/* Phase 9.1 (Mashu 2026-09-06): BUILD/PLAY mode banner. Sits at
           the top of the sheet so the user always knows which mode
           they're in. The banner owns the toggle; accordions react

@@ -361,7 +361,7 @@ async function resolveSourceAuthor(
   return { username: row.username, displayName: row.displayName };
 }
 
-async function resolveTargetName(
+export async function resolveTargetName(
   targetType: string,
   targetId: string,
 ): Promise<string | null> {

@@ -92,10 +92,11 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
       />
 
       <aside
-        className="fixed right-0 top-0 z-40 flex h-full w-full max-w-md flex-col border-l border-amber-500/30 bg-card shadow-2xl"
+        className="v12-instrument fixed right-0 top-0 z-40 flex h-full w-full max-w-md flex-col border-l border-amber-500/30 bg-card shadow-2xl"
+        data-character-surface
         aria-label="Consequences drawer"
       >
-        <header className="flex items-center justify-between border-b border-amber-500/30 bg-amber-500/5 px-4 py-3">
+        <header className="v12-section-head flex items-center justify-between border-b border-amber-500/30 bg-amber-500/5 px-4 py-3">
           <div className="flex items-center gap-2">
             <ChevronRight className="size-4 text-amber-600 dark:text-amber-400" />
             <h2 className="text-sm font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
@@ -160,7 +161,7 @@ export function ConditionsDrawer({ characterId, open, onClose, autoEvaluated }: 
           })}
         </div>
 
-        <footer className="border-t border-border bg-background/50 px-4 py-2 text-[10px] text-muted-foreground">
+        <footer className="border-t border-border bg-background/50 px-4 py-2 text-xs text-muted-foreground">
           Consequences sync with this character. Rest does not resolve them automatically.
           Resolving records recovery and does not refund vitality.
         </footer>

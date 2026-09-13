@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1200" viewBox="0 0 1800 1200" fill="none">
+  <g stroke="#d7b36f" stroke-opacity=".20">
+    <circle cx="920" cy="188" r="126"/><circle cx="920" cy="188" r="194"/><circle cx="920" cy="188" r="286"/>
+    <ellipse cx="920" cy="188" rx="410" ry="126" transform="rotate(-13 920 188)"/>
+    <ellipse cx="920" cy="188" rx="496" ry="182" transform="rotate(17 920 188)"/>
+    <path d="M104 188H1696M920 0V620M310 54L1530 488M430 500L1450 12"/>
+    <path d="M920 34l16 30 30 16-30 16-16 30-16-30-30-16 30-16 16-30Z"/>
+    <path d="M212 842c196-180 392-180 588 0s392 180 588 0 294-180 400-94"/>
+    <path d="M132 912c226-212 452-212 678 0s452 212 678 0"/>
+  </g>
+  <g stroke="#70d2cd" stroke-opacity=".13">
+    <circle cx="242" cy="778" r="82"/><circle cx="242" cy="778" r="132"/>
+    <circle cx="1540" cy="734" r="96"/><circle cx="1540" cy="734" r="158"/>
+    <path d="M110 778H374M242 646V910M1382 734H1698M1540 576V892"/>
+  </g>
+  <g stroke="#c1cbd0" stroke-opacity=".11">
+    <path d="M24 1000C260 860 420 860 656 1000S1052 1140 1288 1000s396-140 488 0"/>
+    <path d="M0 1044H1800M0 1080H1800"/>
+    <path d="M62 1044l18-18 18 18-18 18-18-18Zm1640 0 18-18 18 18-18 18-18-18Z"/>
+  </g>
+  <g fill="#f0d79f">
+    <circle cx="342" cy="132" r="1.5" opacity=".65"/><circle cx="1288" cy="92" r="1.2" opacity=".55"/><circle cx="1466" cy="344" r="1.6" opacity=".6"/><circle cx="626" cy="452" r="1.2" opacity=".5"/><circle cx="172" cy="548" r="1.5" opacity=".5"/><circle cx="1178" cy="618" r="1.4" opacity=".55"/><circle cx="842" cy="868" r="1.2" opacity=".5"/>
+  </g>
+</svg>

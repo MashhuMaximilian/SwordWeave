@@ -322,6 +322,7 @@ export function SandboxLayout({
           className,
         )}
         data-sandbox-layout
+        data-atelier-surface
       >
         {topBar ? <div className="shrink-0 border-b">{topBar}</div> : null}
 
@@ -952,7 +953,7 @@ function MobileColumnChrome({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex h-9 shrink-0 items-center gap-2 border-b bg-muted/30 px-3 text-sm font-medium">
+    <div className="v12-section-head flex h-9 shrink-0 items-center gap-2 border-b bg-muted/30 px-3 text-sm font-medium">
       <span className="text-muted-foreground">{icon}</span>
       <span className="truncate">{title}</span>
       {action}
@@ -1044,7 +1045,7 @@ function ColumnChrome({
     <div
       data-column-chrome={columnKey}
       className={cn(
-        "flex h-10 shrink-0 items-center gap-2 border-b bg-muted/30 px-3",
+        "v12-section-head flex h-10 shrink-0 items-center gap-2 border-b bg-muted/30 px-3",
         "text-sm font-medium",
         isHidden && "justify-center px-2",
       )}

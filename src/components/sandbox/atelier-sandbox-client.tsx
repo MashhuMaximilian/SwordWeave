@@ -49,7 +49,8 @@ import { useIsDark } from "@/lib/hooks/use-is-dark";
 import { IconDisplay } from "@/components/icons/icon-display";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import type { SaveIntent } from "@/lib/publishing/save-intent";
-import type { ModifierDraft } from "./primitive-form-preview";
+import type { ModifierDraft, PrimitiveFormState } from "./primitive-form-preview";
+import type { ConsequenceBehavior } from "@/lib/character/consequences/types";
 
 export type AtelierTab =
   | "mechanics"
@@ -287,6 +288,8 @@ export function AtelierSandboxClient({
   // Deep-linked mechanics sub-kind (primitive/effect/capability) so a
   // fresh /atelier?build=effect opens the Effect form blank.
   initialMechanicsKind = "primitive",
+  initialNew = false,
+  initialCategory = null,
   dataLoadFailed = false,
   primitives,
   effects,
@@ -308,6 +311,8 @@ export function AtelierSandboxClient({
   initialIntent?: SaveIntent | undefined;
   initialSourceId?: string | null | undefined;
   initialMechanicsKind?: "primitive" | "effect" | "capability" | undefined;
+  initialNew?: boolean;
+  initialCategory?: string | null;
   dataLoadFailed?: boolean | undefined;
   primitives: PrimitiveRow[];
   effects: EffectRow[];
@@ -326,7 +331,9 @@ export function AtelierSandboxClient({
   const [build, setBuild] = useState<AtelierTab>(initialBuild);
   const [editing, setEditing] = useState<EditingState>(initialEditing);
   const [formIsDirty, setFormIsDirty] = useState(false);
-  const [buildStarted, setBuildStarted] = useState(initialEditing !== null);
+  const [buildStarted, setBuildStarted] = useState(
+    initialEditing !== null || initialNew,
+  );
   // Intent (fork | load) shown as a chip on the build form. We keep it in
   // React state (not just the URL) because router.push/replace to the SAME
   // pathname does NOT reliably update Next's useSearchParams / address bar
@@ -590,9 +597,10 @@ export function AtelierSandboxClient({
     return () => window.removeEventListener("sw-open-new-entity", onOpenNew);
   }, [editing, buildStarted, openBuildPanel]);
 
-  // Auto-open build panel on server-routed loads (?edit=<id>) — mobile only.
+  // Auto-open build panel on server-routed loads (?edit=<id>) and explicit
+  // contextual Library creates (?new=1) — mobile only.
   useEffect(() => {
-    if (initialEditing === null) return;
+    if (initialEditing === null && !initialNew) return;
     if (!isMobile) return;
     if (sandboxSplit) {
       setSandboxBottomTab("build");
@@ -600,7 +608,7 @@ export function AtelierSandboxClient({
       openDrawer("build");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialEditing, sandboxSplit, openDrawer, setSandboxBottomTab, isMobile]);
+  }, [initialEditing, initialNew, sandboxSplit, openDrawer, setSandboxBottomTab, isMobile]);
 
   const applyPendingAction = useCallback(
 
@@ -825,6 +833,31 @@ export function AtelierSandboxClient({
     setPendingAction({ kind: "loadFromLibrary", entityType, id, intent });
   }
 
+  // PrimitiveForm publishes live preview state from an effect. Keep this
+  // callback stable so updating the parent snapshot does not manufacture a
+  // new callback and retrigger that child effect indefinitely.
+  const handlePrimitiveStateChange = useCallback(
+    (state: {
+      form: PrimitiveFormState;
+      modifiers: ModifierDraft[];
+      hardModifiers: unknown[];
+      consequenceBehavior?: ConsequenceBehavior | null;
+      isDirty: boolean;
+    }) => {
+      setFormIsDirty(state.isDirty);
+      setFormSnapshot({
+        form: state.form as unknown as Record<string, unknown>,
+        slots: [],
+        effectIds: [],
+        primitiveIds: [],
+        mirroredPrimitiveIds: [],
+        capabilityIds: [],
+        modifiers: state.modifiers,
+      });
+    },
+    [],
+  );
+
   const builderNode = useMemo(() => {
     const urlIntent = (currentSearchParams?.get("intent") ?? null) as
       | "fork"
@@ -858,20 +891,17 @@ export function AtelierSandboxClient({
     if (formKind === "primitive") {
       return (
         <PrimitiveForm
+          key={`primitive:${editing?.kind === "primitive" ? editing.row.id : "new"}:${initialCategory ?? "default"}`}
           initialPrimitive={editing?.kind === "primitive" ? editing.row : null}
+          initialCategory={
+            initialNew &&
+            initialCategory &&
+            primitiveCategories.some((category) => category.value === initialCategory)
+              ? initialCategory
+              : null
+          }
           {...formCommon}
-          onStateChange={(state) => {
-            setFormIsDirty(state.isDirty);
-            setFormSnapshot({
-              form: state.form as unknown as Record<string, unknown>,
-              slots: [],
-              effectIds: [],
-              primitiveIds: [],
-              mirroredPrimitiveIds: [],
-              capabilityIds: [],
-              modifiers: state.modifiers,
-            });
-          }}
+          onStateChange={handlePrimitiveStateChange}
           onSaved={(saved) => {
             const outcome = (saved as { dispatchOutcome?: { swapTarget: boolean; newId: string | number } }).dispatchOutcome;
             if (outcome?.swapTarget && outcome.newId != null) {
@@ -1116,11 +1146,14 @@ export function AtelierSandboxClient({
     effects,
     capabilities,
     initialKind,
+    initialNew,
+    initialCategory,
     initialIntent,
     initialSourceId,
     currentSearchParams,
     pathname,
     router,
+    handlePrimitiveStateChange,
   ]);
 
   const previewNode = useMemo(() => {
@@ -1591,7 +1624,7 @@ export function AtelierSandboxClient({
           Lives at the top of the atelier so it's visible to authors
           editing primitives. NOT in the drawer — drawer follows
           sheet logic (engine drops invalid modifiers silently). */}
-      <div className="border-b border-border bg-card/30 px-4 py-2">
+      <div className="v12-section-head border-b border-border bg-card/30 px-4 py-2" data-atelier-surface>
         <DataQualityPanel />
       </div>
       <SandboxLayout
@@ -1714,15 +1747,15 @@ function BuilderPane({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3 py-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="flex h-full min-h-0 flex-col" data-atelier-surface>
+      <div className="v12-section-head flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3 py-2">
+        <span className="v12-kicker text-xs text-muted-foreground">
           Build
         </span>
         <button
           type="button"
           onClick={onNew}
-          className="flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+          className="v12-metal-button v12-metal-button--primary flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent"
         >
           <span className="text-base leading-none">+</span>
           New entity
@@ -1750,14 +1783,14 @@ function NewEntityModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl"
+        className="v12-instrument w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label="New entity"
       >
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h2 className="text-sm font-semibold">Start a new entity</h2>
+        <div className="v12-section-head flex items-center justify-between border-b border-border px-4 py-3">
+          <h2 className="text-sm font-normal">Start a new entity</h2>
           <button
             type="button"
             onClick={onClose}
@@ -1770,7 +1803,7 @@ function NewEntityModal({
         <div className="max-h-[60vh] space-y-4 overflow-y-auto p-4">
           {NEW_ENTITY_GROUPS.map((group) => (
             <div key={group.heading}>
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              <p className="v12-kicker mb-2 text-xs text-muted-foreground">
                 {group.heading}
               </p>
               <div className="grid grid-cols-1 gap-1.5">

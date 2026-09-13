@@ -91,8 +91,8 @@
   --color-panel: var(--panel);
   --color-success: var(--success);
   --color-warning: var(--warning);
-  --font-display: var(--font-sword-display);
-  --font-body: var(--font-sword-body);
+  --font-display: var(--font-sword-display, var(--font-sword-display-legacy));
+  --font-body: var(--font-sword-body, var(--font-sword-body-legacy));
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

@@ -80,6 +80,8 @@ export default async function AtelierSandboxPage({
     edit?: string;
     version?: string;
     intent?: string;
+    new?: string;
+    category?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -92,6 +94,7 @@ export default async function AtelierSandboxPage({
   const editId = params.edit;
   const intent: SaveIntent = parseSaveIntent(params.intent);
   const versionNumber = params.version ? Number(params.version) : Number.NaN;
+  const initialNew = params.new === "1" && rawBuild === "primitive";
   const initialMechanicsKindRaw =
     rawBuild === "effect" || rawBuild === "capability" ? rawBuild : "primitive";
   let initialMechanicsKind: "primitive" | "effect" | "capability" =
@@ -876,6 +879,8 @@ export default async function AtelierSandboxPage({
       initialIntent={intent}
       initialSourceId={editId ?? null}
       initialMechanicsKind={initialMechanicsKind}
+      initialNew={initialNew}
+      initialCategory={params.category ?? null}
       dataLoadFailed={dataLoadFailed}
       primitives={(primitiveRows as never[]).map((p) => {
         const row = p as {

@@ -74,7 +74,7 @@ export function FlagAndForkFooter(props: {
           {props.tags.map((tag) => (
             <span
               key={tag}
-              className="rounded-full bg-secondary px-2 py-0.5 text-[10px] uppercase tracking-wide text-secondary-foreground"
+              className="v12-tag rounded-full bg-secondary px-2 py-0.5 text-xs uppercase tracking-wide text-secondary-foreground"
             >
               {tag}
             </span>

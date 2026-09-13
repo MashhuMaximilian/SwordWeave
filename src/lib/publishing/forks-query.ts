@@ -59,6 +59,10 @@ export interface ForkQueryResult {
   totalForks: number;
 }
 
+export interface ForkQueryPage extends ForkQueryResult {
+  nextCursor: string | null;
+}
+
 /**
  * List all forks taken FROM a specific source target.
  *
@@ -120,6 +124,82 @@ export async function listBySource(
   });
 
   return { forks: entries, totalForks };
+}
+
+/** Cursor-paged direct children for the visual fork map. The cursor is an
+ * opaque offset token so callers never depend on database ordering details. */
+export async function listBySourcePage(
+  targetType: ForkTargetType,
+  targetId: string,
+  limit = 20,
+  cursor?: string | null,
+): Promise<ForkQueryPage> {
+  const cappedLimit = Math.min(Math.max(limit, 1), 50);
+  let pageOffset = 0;
+  if (cursor) {
+    try {
+      const decoded = JSON.parse(
+        Buffer.from(cursor, "base64url").toString("utf8"),
+      ) as { offset?: unknown };
+      if (
+        typeof decoded.offset === "number" &&
+        Number.isInteger(decoded.offset) &&
+        decoded.offset >= 0
+      ) {
+        pageOffset = decoded.offset;
+      }
+    } catch {
+      pageOffset = 0;
+    }
+  }
+
+  const rows = await db
+    .select({
+      id: forks.id,
+      forkedByUserId: forks.forkedByUserId,
+      forkedTargetType: forks.forkedTargetType,
+      forkedTargetId: forks.forkedTargetId,
+      sourceTargetType: forks.sourceTargetType,
+      sourceTargetId: forks.sourceTargetId,
+      sourceVersionId: forks.sourceVersionId,
+      createdAt: forks.createdAt,
+      forkerClerkId: users.clerkUserId,
+      forkerUsername: users.username,
+      forkerDisplayName: users.displayName,
+      forkerAvatarUrl: users.avatarUrl,
+      forkerIsAnonymized: users.isAnonymized,
+      forkerDeletedAt: users.deletedAt,
+    })
+    .from(forks)
+    .innerJoin(users, eq(users.id, forks.forkedByUserId))
+    .where(
+      and(
+        eq(forks.sourceTargetType, targetType),
+        eq(forks.sourceTargetId, targetId),
+      ),
+    )
+    .orderBy(desc(forks.createdAt), desc(forks.id))
+    .offset(pageOffset)
+    .limit(cappedLimit + 1);
+
+  const hasMore = rows.length > cappedLimit;
+  const visibleRows = rows.slice(0, cappedLimit);
+  const [entries, totalForks] = await Promise.all([
+    enrichEntries(visibleRows, {
+      forkerClerkId: visibleRows.map((row) => row.forkerClerkId),
+    }),
+    getAggregateCount(targetType, targetId),
+  ]);
+
+  return {
+    forks: entries,
+    totalForks,
+    nextCursor: hasMore
+      ? Buffer.from(
+          JSON.stringify({ offset: pageOffset + cappedLimit }),
+        ).toString("base64url")
+      : null,
+  };
 }
 
 /**

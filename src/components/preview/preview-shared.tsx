@@ -423,6 +423,10 @@ export type PreviewActionProps = {
    *  (e.g. "Load into build"). When present the grid becomes 4 columns and
    *  the row is pinned to the bottom of the modal. */
   loadIntoBuild?: { label: string; onClick?: () => void };
+  /** Optional read-only lineage control. Kept in the shared action row so
+   *  Atelier and Library expose the same navigation without replacing any
+   *  existing edit, source, version, slot, or load action. */
+  forkMap?: ReactNode;
   onEdit?: () => void;
   openSourceHref?: string;
   versionHistoryHref?: string;
@@ -442,6 +446,7 @@ export function PreviewActions(props: PreviewActionProps) {
     primarySecondary,
     primaryTertiary,
     loadIntoBuild,
+    forkMap,
     onEdit,
     openSourceHref,
     versionHistoryHref,
@@ -566,6 +571,7 @@ export function PreviewActions(props: PreviewActionProps) {
             <span className="truncate">Source</span>
           </a>
         ) : null}
+        {forkMap}
         {versionHistoryHref ? (
           <a
             href={versionHistoryHref}

@@ -91,6 +91,7 @@ export function WorkspaceSurface({
         aria-hidden={covered || undefined}
         style={covered ? { visibility: "hidden" } : undefined}
         className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 sm:items-center sm:p-5"
+        data-character-surface
         onClick={onClose}
       >
         <div
@@ -99,11 +100,11 @@ export function WorkspaceSurface({
           role="dialog"
           aria-modal="true"
           aria-label={title}
-          className="flex max-h-[94dvh] w-full max-w-6xl flex-col overflow-hidden rounded-t-2xl border border-border bg-background shadow-2xl outline-none sm:rounded-2xl"
+          className="v12-instrument flex max-h-[94dvh] w-full max-w-6xl flex-col overflow-hidden rounded-t-2xl border border-border bg-background shadow-2xl outline-none sm:rounded-2xl"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between border-b border-border px-5 py-3">
-            <span className="font-semibold">{title}</span>
+          <div className="v12-section-head flex items-center justify-between border-b border-border px-5 py-3">
+            <span className="font-subtitle font-medium">{title}</span>
             <button
               type="button"
               onClick={onClose}

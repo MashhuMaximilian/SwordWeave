@@ -188,7 +188,7 @@ export function FabSpeedDial({
     >
       {open ? (
         <div
-          className="flex max-h-[80vh] w-[min(280px,calc(100vw-1.5rem))] flex-col items-stretch gap-0.5 overflow-y-auto rounded-xl border border-border bg-background/95 p-1.5 shadow-2xl backdrop-blur-md"
+          className="v12-instrument flex max-h-[80vh] w-[min(280px,calc(100vw-1.5rem))] flex-col items-stretch gap-0.5 overflow-y-auto rounded-xl border border-border bg-background/95 p-1.5 shadow-2xl backdrop-blur-md"
           // Stop the close-on-outside-pointer from racing the click when the
           // user taps inside the dial. pointerdown bubbles up; without this
           // guard the dial closes before the click handler can fire (which

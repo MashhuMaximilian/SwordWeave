@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1200" viewBox="0 0 1800 1200" fill="none">
+  <g stroke="#46565e" stroke-opacity=".18">
+    <circle cx="920" cy="188" r="126"/><circle cx="920" cy="188" r="194"/><circle cx="920" cy="188" r="286"/>
+    <ellipse cx="920" cy="188" rx="410" ry="126" transform="rotate(-13 920 188)"/>
+    <ellipse cx="920" cy="188" rx="496" ry="182" transform="rotate(17 920 188)"/>
+    <path d="M104 188H1696M920 0V620M310 54L1530 488M430 500L1450 12"/>
+    <path d="M920 34l16 30 30 16-30 16-16 30-16-30-30-16 30-16 16-30Z"/>
+    <path d="M212 842c196-180 392-180 588 0s392 180 588 0 294-180 400-94"/>
+    <path d="M132 912c226-212 452-212 678 0s452 212 678 0"/>
+  </g>
+  <g stroke="#0c6662" stroke-opacity=".11">
+    <circle cx="242" cy="778" r="82"/><circle cx="242" cy="778" r="132"/>
+    <circle cx="1540" cy="734" r="96"/><circle cx="1540" cy="734" r="158"/>
+    <path d="M110 778H374M242 646V910M1382 734H1698M1540 576V892"/>
+  </g>
+  <g stroke="#75531a" stroke-opacity=".10">
+    <path d="M24 1000C260 860 420 860 656 1000S1052 1140 1288 1000s396-140 488 0"/>
+    <path d="M0 1044H1800M0 1080H1800"/>
+    <path d="M62 1044l18-18 18 18-18 18-18-18Zm1640 0 18-18 18 18-18 18-18-18Z"/>
+  </g>
+</svg>

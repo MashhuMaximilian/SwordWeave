@@ -27,6 +27,7 @@ import {
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 import { EntityPreview } from "@/components/preview/entity-preview";
 import { ForksList } from "@/components/engagement/forks-list";
+import { ForkMapButton } from "@/components/engagement/fork-map-button";
 import { FlagAndForkFooter } from "@/components/engagement/flag-and-fork-footer";
 import type { ForkTargetType } from "@/lib/publishing/forks-query";
 import { isSystemAuthoredServer } from "@/lib/publishing/author-display";
@@ -630,7 +631,7 @@ function DetailShell({
     currentUserId !== null &&
     ownerId === currentUserId;
   return (
-    <div className="mx-auto w-full max-w-4xl px-5 py-8">
+    <div className="mx-auto w-full max-w-5xl px-5 py-8" data-library-surface>
       <Link
         href={backHref}
         className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -638,9 +639,9 @@ function DetailShell({
         <ArrowLeft className="size-3.5" /> Back to library
       </Link>
 
-      <article className="rounded-md border border-border bg-card p-6">
-        <header className="border-b border-border pb-4">
-          <p className="text-xs font-semibold uppercase text-muted-foreground">
+      <article className="v12-instrument rounded-md border border-border bg-card p-6">
+        <header className="v12-section-head -mx-6 -mt-6 border-b border-border px-6 pb-4 pt-6">
+          <p className="v12-kicker text-xs text-muted-foreground">
             {typeLabel}
             {category ? ` · ${category.replace(/_/g, " ")}` : ""}
           </p>
@@ -788,6 +789,13 @@ function DetailShell({
             flagNotes={flagNotes}
             forkSource={forkSource}
           />
+          <div className="mt-3 flex justify-end">
+            <ForkMapButton
+              targetType={targetType as ForkTargetType}
+              targetId={targetId}
+              targetName={name}
+            />
+          </div>
           {/* ForksList rendered as a sibling (server component) — cannot be
               a child of <FlagAndForkFooter> because that's a "use client"
               component and would inline the DB query into the browser

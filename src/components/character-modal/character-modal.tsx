@@ -233,7 +233,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
     >
       <div
         className={cn(
-          "relative flex w-full flex-col overflow-hidden bg-card shadow-2xl sm:rounded-2xl",
+          "v12-instrument relative flex w-full flex-col overflow-hidden bg-card shadow-2xl sm:rounded-2xl",
           // Mobile: explicit top + bottom so the modal never moves with
           // body scroll. sm+: cap height with dvh, center vertically.
           "inset-x-0 bottom-0 top-2 sm:inset-auto sm:max-h-[90dvh]",
@@ -244,7 +244,7 @@ export function CharacterModal({ children }: CharacterModalProps) {
         {/* Scroll container — header is INSIDE so it sticks when content
             scrolls (Phase 9 round-2 lesson). */}
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto text-sm">
-          <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-4">
+          <header className="v12-section-head sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-4">
             <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {titleText}
             </span>
