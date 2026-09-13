@@ -2059,3 +2059,10 @@ body[data-ui="v12"] .v12-expression-direct > header { display:flex; align-items:
 body[data-ui="v12"] .v12-expression-direct .v12-expression-rule { padding:8px 0; border-left:0; }
 body[data-ui="v12"] .v12-expression-grid > :only-child { grid-column:1 / -1; }
 @media(max-width:767px) { body[data-ui="v12"] .v12-expression-direct { padding:12px; } }
+
+body[data-ui="v12"] .v12-expression-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+body[data-ui="v12"] .v12-expression-recipe { display:flex; flex-wrap:wrap; gap:7px; margin:12px 0; }
+body[data-ui="v12"] .v12-expression-recipe button { padding:4px 8px; border:1px solid var(--v12-copper); border-radius:7px; background:var(--v12-inset); color:var(--foreground); font:400 15px/1.4 var(--font-system); }
+body[data-ui="v12"] .v12-expression-piece[data-expression-kind="effect"] { padding:8px 12px; border-top:0; border-left:2px solid var(--v12-rose); background:transparent; }
+body[data-ui="v12"] .v12-expression-piece[data-expression-kind="effect"] .v12-expression-rule { border-left:0; padding-left:0; }
+body[data-ui="v12"] .v12-expression-piece[data-expression-kind="effect"] .v12-expression-rule :is(button,p) { color:var(--v12-rose); }

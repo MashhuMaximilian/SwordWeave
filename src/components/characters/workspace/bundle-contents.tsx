@@ -1,4 +1,5 @@
 "use client";
+import { bundleBu } from "@/lib/character/workspace/model";
 import type { WorkspaceNode, WorkspaceGraph, WorkspaceEdge, EntityKey } from "@/lib/character/workspace/model";
 
 export function BundleContents({
@@ -24,23 +25,31 @@ export function BundleContents({
         return (
           <div
             key={edge.id}
+            data-expression-kind={child.kind}
             className={
               child.kind !== "primitive"
                 ? "v12-expression-piece"
                 : "v12-expression-rule"
             }
           >
+            {child.kind !== "primitive" && <div className="v12-expression-heading"><p className="v12-kicker">{child.kind}{typeof child.data["type"] === "string" ? ` · ${child.data["type"]}` : ""}</p><span className="v12-tag">{bundleBu(graph, child.key)} BU</span></div>}
             <button
               className="py-1 text-left text-primary hover:underline"
               onClick={() => onOpen(edge, ancestors)}
             >
-              {child.name}
+              {child.name}{" "}
               <span className="ml-2 text-xs text-muted-foreground">
                 {child.kind === "primitive" ? "Primitive" : child.kind}
               </span>
             </button>
             {child.kind === "primitive" && typeof child.data["mechanicalOutputText"] === "string" && child.data["mechanicalOutputText"] && child.data["mechanicalOutputText"] !== child.description && <p className="v12-rule-text">{child.data["mechanicalOutputText"]}</p>}
             {child.description && child.description !== "null" && <p className={child.kind === "primitive" ? "v12-rule-text" : "v12-expression-description"}>{child.description}</p>}
+            {child.kind === "capability" && <div className="v12-expression-recipe" aria-label={`${child.name} recipe`}>
+              {graph.edges.filter(piece => piece.parent === child.key).sort((a,b)=>a.order-b.order).map(piece => {
+                const ingredient=graph.nodes.find(candidate=>candidate.key===piece.child);
+                return ingredient ? <button key={piece.id} onClick={()=>onOpen(piece,[...ancestors,edge.id])}>{ingredient.name}{ingredient.kind === "effect" ? " · effect" : ""}</button> : null;
+              })}
+            </div>}
             {child.kind !== "primitive" && (
               <BundleContents
                 node={child}
