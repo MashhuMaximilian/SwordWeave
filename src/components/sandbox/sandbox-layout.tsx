@@ -149,8 +149,8 @@ function writeStorage(key: string, layout: StoredLayout) {
 }
 
 const DEFAULT_WIDTHS: Record<ColumnKey, number> = {
-  library: 32,
-  builder: 44,
+  library: 22,
+  builder: 53,
   preview: 24,
 };
 
@@ -318,13 +318,13 @@ export function SandboxLayout({
           // (topbar was removed when the FAB took over navigation),
           // producing a visible 64px dark void at the top of the
           // sandbox on every page.
-          "relative flex h-[100dvh] w-full flex-col bg-background",
+          "v12-atelier-shell relative flex h-[100dvh] w-full flex-col",
           className,
         )}
         data-sandbox-layout
         data-atelier-surface
       >
-        {topBar ? <div className="shrink-0 border-b">{topBar}</div> : null}
+        {topBar ? <div className="v12-atelier-top shrink-0">{topBar}</div> : null}
 
         {/* Floating restore buttons — desktop only, and only after viewport is ready. */}
         {viewportReady && viewport === "desktop" && hiddenColumns.has("library") ? (
@@ -341,7 +341,7 @@ export function SandboxLayout({
             Tablet/Desktop only mount after `viewportReady` is true so we never
             have SSR emit a desktop tree and then unmount it on the client. */}
         {!viewportReady || viewport === "mobile" ? (
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="v12-atelier-stage flex min-h-0 flex-1 flex-col">
             <MobileSandboxLayout
               library={library}
               builder={builder}
@@ -424,7 +424,7 @@ function DesktopSandboxLayout({
       id={groupId}
       orientation="horizontal"
       onLayoutChanged={onLayoutChanged}
-      className="flex h-full min-h-0"
+      className="v12-studio flex h-full min-h-0"
     >
       {/* LIBRARY PANEL — fully unmounted when hidden so the group rebalances. */}
       {libraryHidden ? null : (
@@ -435,7 +435,7 @@ function DesktopSandboxLayout({
           collapsedSize={COLLAPSED_STRIP_PX}
           minSize={22}
           defaultSize={storedWidths.library ?? DEFAULT_WIDTHS.library}
-          className="flex h-full min-h-0 flex-col"
+          className="v12-studio-panel v12-studio-source flex h-full min-h-0 flex-col"
         >
           <ColumnChrome
             columnKey="library"
@@ -445,13 +445,13 @@ function DesktopSandboxLayout({
             isFirst
             hydrated={hydrated}
           />
-          <div className="flex-1 min-h-0 overflow-auto">{library}</div>
+          <div className="v12-studio-body flex-1 min-h-0 overflow-auto">{library}</div>
         </Panel>
       )}
 
       {/* Separator between library and builder — only renders when both panels exist. */}
       {libraryHidden ? null : (
-        <Separator className="group relative w-2 shrink-0 bg-border transition-colors hover:bg-zinc-500 data-[separator=drag]:bg-zinc-400">
+        <Separator className="v12-studio-separator group relative w-2 shrink-0 transition-colors">
           <span className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 flex w-0.5 items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
             <span className="h-8 w-0.5 rounded-full bg-zinc-300" />
           </span>
@@ -466,7 +466,7 @@ function DesktopSandboxLayout({
         collapsedSize={COLLAPSED_STRIP_PX}
         minSize={25}
         defaultSize={storedWidths.builder ?? DEFAULT_WIDTHS.builder}
-        className="flex h-full min-h-0 flex-col"
+        className="v12-studio-panel v12-studio-build flex h-full min-h-0 flex-col"
       >
         <ColumnChrome
           columnKey="builder"
@@ -483,12 +483,12 @@ function DesktopSandboxLayout({
           isHidden={false}
           hydrated={hydrated}
         />
-        <div className="flex-1 min-h-0 overflow-auto">{builder}</div>
+        <div className="v12-studio-body flex-1 min-h-0 overflow-auto">{builder}</div>
       </Panel>
 
       {/* Separator between builder and preview. */}
       {previewHidden ? null : (
-        <Separator className="group relative w-2 shrink-0 bg-border transition-colors hover:bg-zinc-500 data-[separator=drag]:bg-zinc-400">
+        <Separator className="v12-studio-separator group relative w-2 shrink-0 transition-colors">
           <span className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 flex w-0.5 items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
             <span className="h-8 w-0.5 rounded-full bg-zinc-300" />
           </span>
@@ -504,7 +504,7 @@ function DesktopSandboxLayout({
           collapsedSize={COLLAPSED_STRIP_PX}
           minSize={15}
           defaultSize={storedWidths.preview ?? DEFAULT_WIDTHS.preview}
-          className="flex h-full min-h-0 flex-col"
+          className="v12-studio-panel v12-studio-preview flex h-full min-h-0 flex-col"
         >
           <ColumnChrome
             columnKey="preview"
@@ -514,7 +514,7 @@ function DesktopSandboxLayout({
             isLast
             hydrated={hydrated}
           />
-          <div className="flex-1 min-h-0 overflow-auto">{preview}</div>
+          <div className="v12-studio-body flex-1 min-h-0 overflow-auto">{preview}</div>
         </Panel>
       )}
     </Group>
@@ -1040,18 +1040,34 @@ function ColumnChrome({
     : isLast
       ? ChevronRight
       : null;
+  const eyebrow =
+    columnKey === "library"
+      ? "Add to build"
+      : columnKey === "builder"
+        ? "Recipe"
+        : "Live preview";
+  const displayTitle =
+    columnKey === "library"
+      ? "Library sources"
+      : columnKey === "builder"
+        ? "What this entity stores"
+        : "Exact result";
 
   return (
     <div
       data-column-chrome={columnKey}
       className={cn(
-        "v12-section-head flex h-10 shrink-0 items-center gap-2 border-b bg-muted/30 px-3",
-        "text-sm font-medium",
+        "v12-studio-head v12-section-head flex min-h-[4.4rem] shrink-0 items-center gap-3 border-b px-4 py-3",
         isHidden && "justify-center px-2",
       )}
     >
-      <span className="text-muted-foreground">{icon}</span>
-      {!isHidden && <span className="truncate">{title}</span>}
+      <span className="v12-studio-head-icon">{icon}</span>
+      {!isHidden && (
+        <span className="min-w-0 flex-1">
+          <span className="v12-kicker block truncate">{eyebrow}</span>
+          <span className="v12-studio-head-title block truncate">{displayTitle}</span>
+        </span>
+      )}
       {!isHidden && CollapseIcon && hydrated ? (
         <div className="ml-auto flex items-center gap-0.5">
           <button

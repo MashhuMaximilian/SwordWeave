@@ -1618,6 +1618,28 @@ export function AtelierSandboxClient({
     guardedLibrarySelect,
   ]);
 
+  const activeEditorKind =
+    editing?.kind ??
+    mechanicsDraftKind ??
+    (heritageKind ? "heritage" : itemDraftStarted ? "item" : null);
+  const activeEditorName =
+    (formSnapshot?.form?.["name"] as string | undefined)?.trim() ||
+    (editing?.row as { name?: string } | undefined)?.name ||
+    (activeEditorKind
+      ? `Untitled ${activeEditorKind}`
+      : "Choose what to build");
+  const activeEditorBu = Number(formSnapshot?.form?.["buCost"] ?? 0);
+  const sourceLabel =
+    activeEditorKind === "capability"
+      ? "Primitives and effects"
+      : activeEditorKind === "effect"
+        ? "Primitives"
+        : activeEditorKind === "heritage"
+          ? "Primitives and capabilities"
+          : activeEditorKind === "item"
+            ? "Primitives, effects and capabilities"
+            : "Library corpus";
+
   return (
     <>
       {/* Phase 8.I i1 (Mashu 2026-08-04): malformed-modifier audit.
@@ -1628,7 +1650,66 @@ export function AtelierSandboxClient({
         <DataQualityPanel />
       </div>
       <SandboxLayout
-        storageKey="atelier"
+        storageKey="atelier-v12"
+        topBar={
+          <div className="v12-atelier-intro">
+            <div className="v12-atelier-hero">
+              <div>
+                <p className="v12-kicker">
+                  {activeEditorKind
+                    ? `${activeEditorKind} studio`
+                    : "SwordWeave atelier"}
+                </p>
+                <h1>{activeEditorName}</h1>
+                <p>
+                  Browse the compact Library, inspect an exact entry, then load
+                  or slot it into the active build without leaving the studio.
+                </p>
+              </div>
+              <div className="v12-atelier-hero-actions">
+                {activeEditorBu > 0 ? (
+                  <span className="v12-tag v12-tag--teal">{activeEditorBu} BU</span>
+                ) : null}
+                <button
+                  type="button"
+                  className="v12-metal-button"
+                  onClick={() => setShowNewModal(true)}
+                >
+                  New entity
+                </button>
+                {activeEditorKind ? (
+                  <button
+                    type="button"
+                    className="v12-metal-button v12-metal-button--primary"
+                    onClick={() => {
+                      const form = document.querySelector<HTMLFormElement>(
+                        "[data-sandbox-layout] form",
+                      );
+                      form?.requestSubmit();
+                    }}
+                  >
+                    Save {activeEditorKind}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            <div className="v12-context-ribbon">
+              <div>
+                <span className="v12-tag v12-tag--teal">
+                  Workspace · {buildLabel(build)}
+                </span>
+                <span className="v12-tag v12-tag--violet">
+                  Editor · {activeEditorKind ?? "Empty"}
+                </span>
+              </div>
+              <p>
+                The source column currently offers {sourceLabel}. Selecting a
+                different workspace changes the available sources without
+                discarding the build.
+              </p>
+            </div>
+          </div>
+        }
         library={libraryNode}
         builder={
           <BuilderPane
@@ -1636,6 +1717,7 @@ export function AtelierSandboxClient({
             showNewModal={showNewModal}
             onPickNew={startNewEntity}
             onCloseNew={() => setShowNewModal(false)}
+            activeKind={activeEditorKind}
           >
             {builderNode}
           </BuilderPane>
@@ -1738,19 +1820,21 @@ function BuilderPane({
   showNewModal,
   onPickNew,
   onCloseNew,
+  activeKind,
   children,
 }: {
   onNew: () => void;
   showNewModal: boolean;
   onPickNew: (choice: NewEntityChoice) => void;
   onCloseNew: () => void;
+  activeKind: AtelierEntityKind | null;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col" data-atelier-surface>
       <div className="v12-section-head flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3 py-2">
         <span className="v12-kicker text-xs text-muted-foreground">
-          Build
+          Mechanic type · {activeKind ?? "choose"}
         </span>
         <button
           type="button"

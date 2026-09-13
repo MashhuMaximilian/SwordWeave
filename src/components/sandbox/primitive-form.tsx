@@ -1402,10 +1402,10 @@ export function PrimitiveForm({
       className="v12-instrument grid grid-cols-1 gap-4 rounded-md border border-border bg-card p-4 md:grid-cols-2 sm:p-5"
       onSubmit={submitPrimitive}
     >
-      <div className="v12-section-head -mx-4 -mt-4 flex items-center justify-between gap-3 px-4 pb-3 pt-5 md:col-span-2 sm:-mx-5 sm:-mt-5 sm:px-5">
+      <div className="v12-primitive-identity-head v12-section-head -mx-4 -mt-4 flex items-center justify-between gap-3 px-4 pb-3 pt-5 md:col-span-2 sm:-mx-5 sm:-mt-5 sm:px-5">
         <div className="flex items-center gap-2">
           <p className="v12-kicker text-xs text-muted-foreground">
-            {initialPrimitive ? "Inspect Primitive" : "Add New Primitive"}
+            Identity · {initialPrimitive ? "exact primitive" : "new primitive"}
           </p>
           {/*
             Phase 1 (round 6 of edit-creates-fork): surface the intent
@@ -1557,7 +1557,7 @@ export function PrimitiveForm({
 
       {/* Desktop layout — original full-width stack.
           Hidden on mobile, shown on md+. */}
-      <label className="hidden text-sm font-medium md:block md:col-span-2">
+      <label className="v12-field-name hidden text-sm font-medium md:block md:col-span-2">
         Name
         <input
           className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
@@ -1569,7 +1569,7 @@ export function PrimitiveForm({
       </label>
 
       {/* Phase 8: per-entity iconography */}
-      <div className="hidden md:block md:col-span-2">
+      <div className="v12-field-icon hidden md:block md:col-span-2">
         <IconSlot
           iconSource={(form.iconSource as IconSource | null) ?? null}
           iconKey={form.iconKey ?? null}
@@ -1590,7 +1590,7 @@ export function PrimitiveForm({
         />
       </div>
 
-      <fieldset className="v12-rule space-y-3 rounded-md border border-border p-3">
+      <fieldset className="v12-field-consequence v12-rule space-y-3 rounded-md border border-border p-3">
         <legend className="px-1 text-sm font-semibold">Consequence behavior</legend>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!consequenceBehavior} onChange={e => setConsequenceBehavior(e.target.checked ? { timing: "on-use", vitalityDelta: 0, restrictions: [], recovery: "" } : null)} />Apply when an action is used</label>
         {consequenceBehavior && <>
@@ -1601,7 +1601,12 @@ export function PrimitiveForm({
         </>}
       </fieldset>
 
-      <label className="hidden text-sm font-medium md:block">
+      <div className="v12-market-identity-head hidden md:block md:col-span-2">
+        <p className="v12-kicker">Market identity and provenance</p>
+        <h2>Where this primitive belongs</h2>
+      </div>
+
+      <label className="v12-field-market hidden text-sm font-medium md:block">
         Lexicon Category
         <select
           className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
@@ -1616,7 +1621,7 @@ export function PrimitiveForm({
         </select>
       </label>
 
-      <label className="hidden text-sm font-medium md:block">
+      <label className="v12-field-market hidden text-sm font-medium md:block">
         Cost Tier Bracket
         <select
           className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
@@ -1631,7 +1636,7 @@ export function PrimitiveForm({
         </select>
       </label>
 
-      <label className="hidden text-sm font-medium md:block">
+      <label className="v12-field-market hidden text-sm font-medium md:block">
         Exact BU
         <input
           className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
@@ -1644,7 +1649,7 @@ export function PrimitiveForm({
         />
       </label>
 
-      <label className="flex flex-col gap-2 rounded-md border border-border bg-background p-3 text-sm font-medium md:col-span-2">
+      <label className="v12-field-market flex flex-col gap-2 rounded-md border border-border bg-background p-3 text-sm font-medium md:col-span-2">
         <span className="text-xs font-semibold uppercase text-muted-foreground">
           Visibility
         </span>
@@ -1659,7 +1664,7 @@ export function PrimitiveForm({
         </span>
       </label>
 
-      <label className="block text-sm font-medium md:col-span-2">
+      <label className="v12-field-resolver block text-sm font-medium md:col-span-2">
         Mechanical Output Text
         <textarea
           className="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
@@ -1671,7 +1676,7 @@ export function PrimitiveForm({
         />
       </label>
 
-      <label className="block text-sm font-medium md:col-span-2">
+      <label className="v12-field-narrative block text-sm font-medium md:col-span-2">
         Verbose Narrative Rule
         <textarea
           className="mt-2 min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
@@ -1685,7 +1690,7 @@ export function PrimitiveForm({
           (matches effects / capabilities / items). tags is comma-separated
           in the form, split to an array on save. sourceOrigin is free text
           (a world / book / setting the primitive belongs to). */}
-      <label className="block text-sm font-medium md:col-span-2">
+      <label className="v12-field-market block text-sm font-medium md:col-span-2">
         Tags
         <span className="ml-2 text-xs font-normal text-muted-foreground">
           Comma-separated, e.g. "fire, ranged, condition"
@@ -1698,7 +1703,7 @@ export function PrimitiveForm({
         />
       </label>
 
-      <label className="block text-sm font-medium md:col-span-2">
+      <label className="v12-field-market block text-sm font-medium md:col-span-2">
         Source origin
         <span className="ml-2 text-xs font-normal text-muted-foreground">
           World, book, or setting this belongs to
@@ -1715,7 +1720,11 @@ export function PrimitiveForm({
           form. Mirror logic moves to capability/affect layer
           (Phase 8). The primitive no longer carries mirror state. */}
 
-      <fieldset className="v12-rule space-y-3 rounded-md border border-border bg-background p-4 md:col-span-2">
+      <fieldset className="v12-mechanical-rule v12-rule space-y-3 rounded-md border border-border bg-background p-4 md:col-span-2">
+        <div className="v12-mechanical-rule-head">
+          <p className="v12-kicker">Mechanical rule · exactly one modifier</p>
+          <h2>Write one rule</h2>
+        </div>
         <div className="v12-sentence rounded-md px-4 py-3 text-base leading-relaxed" data-readable-rule>
           {modifiers[0] ? (
             <>
@@ -2107,7 +2116,7 @@ export function PrimitiveForm({
       </fieldset>
 
       <details
-        className="rounded-md border border-border bg-background p-4 md:col-span-2"
+        className="v12-resolver-details rounded-md border border-border bg-background p-4 md:col-span-2"
         open={showJsonPreview}
         onToggle={(event) => setShowJsonPreview(event.currentTarget.open)}
       >
@@ -2119,7 +2128,7 @@ export function PrimitiveForm({
         </pre>
       </details>
 
-      <div className="flex flex-wrap items-center gap-3 md:col-span-2">
+      <div className="v12-form-actions flex flex-wrap items-center gap-3 md:col-span-2">
         <button
           className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-60"
           disabled={isSaving}

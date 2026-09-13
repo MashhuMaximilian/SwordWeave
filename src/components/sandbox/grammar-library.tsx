@@ -54,6 +54,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ForkMapButton } from "@/components/engagement/fork-map-button";
 import type { ForkTargetType } from "@/lib/publishing/forks-query";
+import { libraryFamilyLabel } from "@/components/library/library-market-rail";
 
 // The Mechanics tab collapses primitive/effect/capability into one tab.
 // The library still distinguishes the concrete kinds for chips + select,
@@ -708,8 +709,8 @@ export function GrammarLibrary({
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="shrink-0 border-b border-border p-3">
+    <div className="v12-source-browser flex h-full flex-col">
+      <div className="v12-source-search shrink-0 p-3">
         <ColumnSearchBar
           search={toolbarState.search}
           onSearchChange={(s: string) =>
@@ -721,7 +722,7 @@ export function GrammarLibrary({
         {/* Collapsed Mechanics tab: quick-filter chips for the concrete
             kinds (mirrors the Heritage tab's chip row). */}
         {build === "mechanics" ? (
-          <div className="-mx-1 mt-2 flex flex-nowrap gap-1.5 overflow-x-auto px-1">
+          <div className="v12-source-tabs -mx-1 mt-2 flex flex-nowrap gap-1 overflow-x-auto px-1">
             {(
               [
                 { key: "ALL", label: "All" },
@@ -743,10 +744,10 @@ export function GrammarLibrary({
                     }))
                   }
                   className={cn(
-                    "whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    "whitespace-nowrap border-b-2 px-3 py-2 text-sm transition-colors",
                     active
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card text-foreground hover:border-primary hover:text-primary",
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:border-primary hover:text-foreground",
                   )}
                 >
                   {chip.label}
@@ -757,7 +758,46 @@ export function GrammarLibrary({
         ) : null}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto p-3">
+      <div className="v12-source-scroll min-h-0 flex-1 overflow-auto px-3 pb-3">
+        {(toolbarState.typeFilter === "PRIMITIVE" ||
+          toolbarState.typeFilter === "ALL" ||
+          toolbarState.typeFilter === "GROUP_MECHANICS") &&
+        primitiveCategories.length > 0 ? (
+          <section className="v12-source-families">
+            <p className="v12-kicker">Lexicon categories · market families</p>
+            <div className="v12-source-family-list">
+              {primitiveCategories.map((category) => {
+                const active = toolbarState.category === category.value;
+                return (
+                  <button
+                    key={category.value}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() =>
+                      setToolbarState((prev) => ({
+                        ...prev,
+                        typeFilter: "PRIMITIVE",
+                        category: active ? "" : category.value,
+                      }))
+                    }
+                    className={cn(
+                      "v12-source-family",
+                      active && "is-active",
+                    )}
+                  >
+                    <span aria-hidden="true">◇</span>
+                    <span>{libraryFamilyLabel(category)}</span>
+                    <small>{category.count}</small>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+        <div className="v12-source-results-head">
+          <p className="v12-kicker">Exact entries · canonical + community</p>
+          <span>{filteredItems.length}</span>
+        </div>
         <LibraryTable
           items={filteredItems}
           view={toolbarState.view}

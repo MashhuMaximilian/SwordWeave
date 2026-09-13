@@ -6,6 +6,37 @@ import { cn } from "@/lib/utils";
 
 type Category = { value: string; label: string; count: number };
 
+const FAMILY_LABELS: Record<string, string> = {
+  VERB_TIER: "Verb Access",
+  DOMAIN: "Domain Access",
+  SIZING: "Size Tier and Scale",
+  TARGETING: "Targeting",
+  TARGETING_AOE: "Targeting and Sizing",
+  RANGE: "Range Scaling",
+  DURATION: "Duration and Persistence",
+  SPEED_QUICKENING: "Speed and Quickening",
+  INTENSITY_DICE: "Intensity and Damage Dice",
+  PERCEPTION_QUALIFIER: "Perception and Detection Qualifiers",
+  PRACTICE_PROGRESSION_AUGMENT: "Practice and Character Core Progression",
+  TRIGGER_HOOK: "Runtime Trigger Hooks",
+  VITALITY: "Vitality Extension",
+  DEFENSIVE: "Defense and Resistance",
+  PROBABILITY_BIAS: "Probability Bias",
+  ACTION_ECONOMY: "Action Economy",
+  EVALUATION_STRAIN: "Evaluation and Strain",
+  TEMPORAL_CHRONOLOGICAL: "Time and Chronology",
+};
+
+export function libraryFamilyLabel(category: Pick<Category, "value" | "label">): string {
+  return (
+    FAMILY_LABELS[category.value] ??
+    category.label
+      .toLowerCase()
+      .replaceAll("_", " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase())
+  );
+}
+
 const GROUPS: Array<{ label: string; values: string[] }> = [
   {
     label: "Construction language",
@@ -92,7 +123,7 @@ export function LibraryMarketRail({
                 selected === category.value && "bg-primary text-primary-foreground",
               )}
             >
-              {category.label} · {category.count}
+              {libraryFamilyLabel(category)} · {category.count}
             </button>
           ))}
         </div>
@@ -145,7 +176,7 @@ export function LibraryMarketRail({
                         )}
                       >
                         <span aria-hidden="true" className="text-primary">◇</span>
-                        <span className="min-w-0 flex-1 leading-snug">{category.label}</span>
+                        <span className="min-w-0 flex-1 leading-snug">{libraryFamilyLabel(category)}</span>
                         <span className="shrink-0 text-xs opacity-75">{category.count}</span>
                       </button>
                       {active ? (

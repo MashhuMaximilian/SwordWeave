@@ -87,12 +87,12 @@ export default async function LibraryHubPage() {
   const characterCount = characterLibrary.items.length;
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-5 py-8">
-      <div className="max-w-3xl">
-        <p className="text-xs font-semibold uppercase text-muted-foreground">
-          Library Hub
+    <div className="v12-library-hub mx-auto w-full max-w-[1480px] px-5 py-8">
+      <div className="v12-library-hub-title max-w-3xl">
+        <p className="v12-kicker">
+          Canonical records · community expressions
         </p>
-        <h1 className="font-display mt-3 text-4xl font-semibold uppercase leading-tight tracking-wide">Public records.</h1>
+        <h1>The SwordWeave Library</h1>
         <p className="mt-4 text-base leading-7 text-muted-foreground">
           Browse, filter, and clone public primitives, effects, capabilities,
           races, backgrounds, and archetypes contributed by the SwordWeave
@@ -100,9 +100,9 @@ export default async function LibraryHubPage() {
         </p>
       </div>
 
-      <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="v12-library-hub-grid mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Link
-          className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
+          className="v12-library-hub-card v12-instrument group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
           href="/library/browse?type=PRIMITIVE"
         >
           <CircuitBoard className="size-5 text-primary" />
@@ -131,7 +131,7 @@ export default async function LibraryHubPage() {
         </Link>
 
         <Link
-          className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
+          className="v12-library-hub-card v12-instrument group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
           href="/library/browse?type=EFFECT"
         >
           <Sparkles className="size-5 text-primary" />
@@ -146,7 +146,7 @@ export default async function LibraryHubPage() {
         </Link>
 
         <Link
-          className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
+          className="v12-library-hub-card v12-instrument group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
           href="/library/browse?type=CAPABILITY"
         >
           <Library className="size-5 text-primary" />
@@ -161,7 +161,7 @@ export default async function LibraryHubPage() {
         </Link>
 
         <Link
-          className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
+          className="v12-library-hub-card v12-instrument group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
           href="/library/browse?type=LINEAGE_TEMPLATE"
         >
           <Shield className="size-5 text-primary" />
@@ -176,7 +176,7 @@ export default async function LibraryHubPage() {
         </Link>
 
         <Link
-          className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
+          className="v12-library-hub-card v12-instrument group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
           href="/library/browse?type=UPBRINGING_TEMPLATE"
         >
           <ScrollText className="size-5 text-primary" />
@@ -191,7 +191,7 @@ export default async function LibraryHubPage() {
         </Link>
 
         <Link
-          className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
+          className="v12-library-hub-card v12-instrument group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
           href="/library/browse?type=MANIFEST_TEMPLATE"
         >
           <Wand2 className="size-5 text-primary" />
@@ -210,7 +210,7 @@ export default async function LibraryHubPage() {
             to the same /library/browse browser the other entity cards
             use, filtered by type=BUILD_TEMPLATE. */}
         <Link
-          className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
+          className="v12-library-hub-card v12-instrument group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
           href="/library/browse?type=BUILD_TEMPLATE"
         >
           <Crown className="size-5 text-primary" />
@@ -230,7 +230,7 @@ export default async function LibraryHubPage() {
             Same skeleton as the other entity tiles — count + link
             to /library/browse?type=CHARACTER. */}
         <Link
-          className="group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
+          className="v12-library-hub-card v12-instrument group rounded-md border border-border bg-card p-5 transition-colors hover:border-primary"
           href="/library/browse?type=CHARACTER"
         >
           <Swords className="size-5 text-primary" />
@@ -246,7 +246,7 @@ export default async function LibraryHubPage() {
         </Link>
       </div>
 
-      <div className="mt-8 rounded-md border border-primary/20 bg-primary/5 p-5">
+      <div className="v12-library-hub-callout v12-instrument mt-8 rounded-md border border-primary/20 bg-primary/5 p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="flex items-center gap-2 text-lg font-semibold">
@@ -285,7 +285,7 @@ export default async function LibraryHubPage() {
             return (
               <article
                 key={cap.id}
-                className="rounded-md border border-border bg-card p-4"
+                className="v12-library-reference-row rounded-md border border-border bg-card p-4"
               >
                 <header className="flex items-start justify-between gap-2">
                   <h3 className="font-semibold">{cap.name}</h3>

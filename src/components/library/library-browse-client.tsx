@@ -52,6 +52,11 @@ interface Props {
   currentUserInternalId: string | null;
 }
 
+function atelierBuildForTarget(targetType: LibraryItem["targetType"]): string {
+  if (targetType.endsWith("_TEMPLATE")) return "heritage";
+  return targetType.toLowerCase();
+}
+
 export function LibraryBrowseClient({
   initialItems,
   total,
@@ -66,7 +71,10 @@ export function LibraryBrowseClient({
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [selectedItem, setSelectedItem] = useState<LibraryItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<LibraryItem | null>(
+    initialItems[0] ?? null,
+  );
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const state = useMemo<LibraryToolbarState>(() => initialState, [initialState]);
 
@@ -116,6 +124,9 @@ export function LibraryBrowseClient({
   // When the user clicks a row, open the iframe detail modal.
   const onRowSelect = useCallback((item: LibraryItem) => {
     setSelectedItem(item);
+    if (typeof window !== "undefined" && window.innerWidth < 1050) {
+      setDetailOpen(true);
+    }
   }, []);
 
   // Right-side filter panel slot: full toolbar lives inside the panel.
@@ -157,8 +168,8 @@ export function LibraryBrowseClient({
     state.sort !== "ENGAGEMENT";
 
   return (
-    <div className="v12-instrument flex h-full min-h-0 flex-col overflow-hidden" data-library-surface>
-      <div className="v12-section-head shrink-0 border-b border-border bg-card px-4 py-3">
+    <div className="v12-library-browser flex h-full min-h-0 flex-col" data-library-surface>
+      <div className="v12-library-search shrink-0">
         <ColumnSearchBar
           search={state.search}
           onSearchChange={(s: string) =>
@@ -168,7 +179,7 @@ export function LibraryBrowseClient({
           hasActiveFilters={hasActiveFilters}
         />
       </div>
-      <div className="grid min-h-0 flex-1 md:grid-cols-[18rem_minmax(0,1fr)]">
+      <div className="v12-library-workbench min-h-0 flex-1">
         <LibraryMarketRail
           categories={primitiveCategories}
           selected={state.category}
@@ -180,7 +191,48 @@ export function LibraryBrowseClient({
             })
           }
         />
-        <div className="min-h-0 overflow-auto">
+        <main className="v12-library-results min-h-0 overflow-auto">
+          <div className="v12-market-hero">
+            <div>
+              <p className="v12-kicker">Lexicon category · canonical family</p>
+              <h2>
+                {primitiveCategories.find((c) => c.value === state.category)?.label ??
+                  (state.typeFilter === "ALL"
+                    ? "The complete SwordWeave corpus"
+                    : state.typeFilter.replaceAll("_", " ").toLowerCase())}
+              </h2>
+              <p>
+                Browse exact versions, inspect provenance, and carry the chosen
+                record into the Atelier without losing its source lineage.
+              </p>
+            </div>
+            {state.category ? (
+              <a
+                href={`/atelier?build=primitive&new=1&category=${encodeURIComponent(state.category)}`}
+                className="v12-metal-button v12-metal-button--primary"
+              >
+                + Create primitive
+              </a>
+            ) : null}
+          </div>
+          {state.category ? (
+            <div className="v12-tier-ladder" aria-label="Canonical cost tiers">
+              {[4, 8, 12, 16].map((bu, index) => (
+                <div key={bu}>
+                  <span>T{index + 1}</span>
+                  <b>{["Concrete / minor", "Systemic / standard", "Abstract / major", "Reality-defining"][index]}</b>
+                  <em>{bu} BU</em>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <div className="v12-results-heading">
+            <div>
+              <p className="v12-kicker">Exact entries</p>
+              <h3>Canonical references and community expressions</h3>
+            </div>
+            <span>{total.toLocaleString()} records</span>
+          </div>
           <LibraryTable
             items={initialItems}
             view={state.view}
@@ -202,14 +254,89 @@ export function LibraryBrowseClient({
             emptyTitle="No entries match"
             emptyDescription="Try a different filter, broader search, or another sort."
           />
-        </div>
+        </main>
+        <aside className="v12-library-inspector">
+          <div className="v12-section-head">
+            <div>
+              <p className="v12-kicker">Exact entry preview</p>
+              <h2>{selectedItem?.name ?? "Select an entry"}</h2>
+            </div>
+            {selectedItem ? (
+              <button
+                type="button"
+                className="v12-metal-button"
+                onClick={() => setDetailOpen(true)}
+                aria-label="Open full preview"
+              >
+                ↗
+              </button>
+            ) : null}
+          </div>
+          <div className="v12-inspector-body">
+            {selectedItem ? (
+              <>
+                <div className="v12-inspect-orbit" aria-hidden="true">
+                  <span>◇</span>
+                </div>
+                <div className="v12-inspector-tags">
+                  <span className="v12-tag v12-tag--violet">
+                    {selectedItem.authorUsername ? "Community" : "Canonical"}
+                  </span>
+                  <span className="v12-tag">
+                    {selectedItem.category?.replaceAll("_", " ") ??
+                      selectedItem.targetType.replaceAll("_", " ")}
+                  </span>
+                  <span className="v12-tag v12-tag--teal">
+                    {selectedItem.buCost ?? 0} BU
+                  </span>
+                </div>
+                <div className="v12-rule" data-readable-rule>
+                  {selectedItem.description || "No public description."}
+                </div>
+                <div className="v12-provenance-path">
+                  <div><b>Canonical family</b><span>{selectedItem.category?.replaceAll("_", " ") ?? selectedItem.targetType}</span></div>
+                  <div><b>Current expression</b><span>{selectedItem.name}</span></div>
+                  <div><b>Author</b><span>{selectedItem.authorDisplayName ?? selectedItem.authorUsername ?? "System"}</span></div>
+                </div>
+                <div className="v12-inspector-actions">
+                  <a
+                    href={`/atelier?build=${atelierBuildForTarget(selectedItem.targetType)}&edit=${selectedItem.targetId}&intent=load`}
+                    className="v12-metal-button v12-metal-button--primary"
+                  >
+                    Use exact entry
+                  </a>
+                  <a
+                    href={`/library/item/${selectedItem.id}`}
+                    className="v12-metal-button"
+                  >
+                    Source page
+                  </a>
+                  <ForkMapButton
+                    targetType={selectedItem.targetType}
+                    targetId={selectedItem.targetId}
+                    targetName={selectedItem.name}
+                  />
+                </div>
+                <div className="v12-inspector-engagement">
+                  <span>♡ {selectedItem.likesCount}</span>
+                  <span>⑂ {selectedItem.forkCount}</span>
+                </div>
+              </>
+            ) : (
+              <p className="text-muted-foreground">
+                Choose a row to inspect its exact rule, author, cost, and fork
+                lineage here.
+              </p>
+            )}
+          </div>
+        </aside>
       </div>
 
       {/* Iframe detail modal — renders the full canonical detail page when
           the user taps a row. ESC / backdrop / close button dismiss. */}
       <DetailModal
-        isOpen={selectedItem !== null}
-        onClose={() => setSelectedItem(null)}
+        isOpen={detailOpen && selectedItem !== null}
+        onClose={() => setDetailOpen(false)}
         title={selectedItem?.name ?? ""}
         size="lg"
       >

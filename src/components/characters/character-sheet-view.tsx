@@ -991,7 +991,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         onClose={() => setConditionsOpen(false)}
         autoEvaluated={autoEvaluated}
       />
-    <div className="mx-auto w-full max-w-screen-2xl px-5 pt-20 pb-32" data-character-surface>
+    <div className="v12-character-page mx-auto w-full max-w-[1480px] px-5 pt-20 pb-32" data-character-surface>
       {/* Phase 9.1 (Mashu 2026-09-06): BUILD/PLAY mode banner. Sits at
           the top of the sheet so the user always knows which mode
           they're in. The banner owns the toggle; accordions react
@@ -1000,6 +1000,83 @@ export function CharacterSheetView(props: CharacterSheetProps) {
         characterId={props.id}
         initialMode={props.mode ?? "PLAY"}
       />
+      <section className="v12-character-core" aria-label="Character possibility instrument">
+        <div className="v12-core-axis">
+          <span>
+            <small>Physical</small>
+            <strong>{resolver.totals["attribute.physical"] ?? props.attrPhysical}</strong>
+          </span>
+          <span>
+            <small>Mental</small>
+            <strong>{resolver.totals["attribute.mental"] ?? props.attrMental}</strong>
+          </span>
+          <span>
+            <small>Magical</small>
+            <strong>{resolver.totals["attribute.magical"] ?? props.attrMagical}</strong>
+          </span>
+        </div>
+        <div className="v12-core-identity">
+          {props.portraitUrl ? (
+            <img src={props.portraitUrl} alt="" />
+          ) : (
+            <span>{props.name.slice(0, 2).toUpperCase()}</span>
+          )}
+          <p className="v12-kicker">Personal possibility instrument</p>
+          <h1>{props.name}</h1>
+          <small>Level {props.level} · {props.size}</small>
+        </div>
+        <div className="v12-core-axis v12-core-axis--right">
+          <span>
+            <small>Vitality</small>
+            <strong>{resolver.maxVitality ?? props.vitality.max}</strong>
+          </span>
+          <span>
+            <small>Primitives</small>
+            <strong>{props.primitiveLinks.length}</strong>
+          </span>
+          <span>
+            <small>Bundles</small>
+            <strong>{props.capabilityLinks.length + props.heritageLinks.length}</strong>
+          </span>
+        </div>
+      </section>
+
+      <div className="v12-character-intent">
+        <span aria-hidden="true">✦</span>
+        <div>
+          <b>Build an at-table declaration</b>
+          <p>Select owned primitives, inspect their source paths, and compose the action.</p>
+        </div>
+        <CharacterEditButton
+          characterId={props.id}
+          className="v12-metal-button v12-metal-button--primary"
+          title="Open this character in the Atelier"
+        />
+      </div>
+
+      <nav className="v12-character-lenses" aria-label="Character sheet sections">
+        <div>
+          {TABS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                aria-pressed={tab === item.id}
+                onClick={() => setTab(item.id)}
+              >
+                <Icon className="size-4" />
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+        <p>
+          {tab === "capabilities"
+            ? "Capabilities, effects, and primitive paths grouped by what grants them."
+            : `Character ${tab} and its attached source records.`}
+        </p>
+      </nav>
       {/* Phase 8.4 (Mashu 2026-07-28): the in-page header
           (Pumnu portrait + name + L5 + size + Edit/Level Up/Clone)
           is hidden on mobile because SheetIdentityHeader at the top
@@ -1181,7 +1258,24 @@ export function CharacterSheetView(props: CharacterSheetProps) {
       </nav>
 
       {/* Content */}
-      <div className="mt-6">
+      <div className="v12-character-content mt-6">
+        <div className="v12-character-section-title">
+          <div>
+            <p className="v12-kicker">
+              {tab === "capabilities" ? "Capabilities and traits" : tab}
+            </p>
+            <h2>
+              {tab === "capabilities"
+                ? "Grouped by what grants them"
+                : TABS.find((item) => item.id === tab)?.label}
+            </h2>
+          </div>
+          {tab === "capabilities" ? (
+            <span className="v12-tag v12-tag--teal">
+              {props.capabilityLinks.length} direct capabilities
+            </span>
+          ) : null}
+        </div>
         {tab === "capabilities" && (
           /* Phase 8.4 (Mashu 2026-07-28): wrap the Capabilities tab
              in a TabErrorBoundary so a single bad capability

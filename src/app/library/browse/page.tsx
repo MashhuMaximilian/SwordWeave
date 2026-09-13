@@ -155,18 +155,18 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] px-5 py-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="v12-library-page mx-auto w-full max-w-[1680px] px-5 py-6">
+      <div className="v12-library-title flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <p className="v12-kicker">
-            Library
+            Public mechanics registry
           </p>
-          <h1 className="v12-entity-title mt-3 text-4xl uppercase leading-tight tracking-wide">
-            Browse the corpus.
+          <h1 className="v12-entity-title mt-2 text-4xl leading-tight tracking-wide">
+            The SwordWeave Library
           </h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
-            {result.total.toLocaleString()} public entries from the SwordWeave
-            corpus. Sort, filter, fork what you like.
+          <p className="mt-2 max-w-3xl text-base leading-7 text-muted-foreground">
+            Canonical roots, public expressions, authored bundles, and their
+            complete version and fork provenance.
           </p>
         </div>
         <Link
@@ -177,7 +177,17 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
         </Link>
       </div>
 
-      <div className="mt-8 flex min-h-[calc(100dvh-12rem)] flex-col md:h-[calc(100vh-12rem)] md:min-h-0">
+      <nav className="v12-library-modes" aria-label="Library record groups">
+        <Link className={targetType === "PRIMITIVE" || targetType === "ALL" ? "is-active" : ""} href="/library/browse?type=PRIMITIVE">
+          Market primitives
+        </Link>
+        <Link className={["EFFECT", "CAPABILITY", "LINEAGE_TEMPLATE", "UPBRINGING_TEMPLATE", "MANIFEST_TEMPLATE", "ITEM"].includes(targetType) ? "is-active" : ""} href="/library/browse?type=CAPABILITY">
+          Creations
+        </Link>
+        <Link href="/creations">My collection</Link>
+      </nav>
+
+      <div className="mt-3 flex min-h-[calc(100dvh-13rem)] flex-col md:h-[calc(100vh-13rem)] md:min-h-0">
         <LibraryBrowseClient
           initialItems={result.items}
           total={result.total}

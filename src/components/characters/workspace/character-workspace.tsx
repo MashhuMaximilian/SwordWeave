@@ -523,10 +523,10 @@ export function CharacterWorkspace({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="v12-character-workspace space-y-5">
       <nav
         aria-label="Character categories"
-        className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"
+        className="v12-character-workspace-tabs grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"
       >
         {(items ? [["ITEM", "Items"]] : categories).map(([key, label]) => (
           <button
@@ -560,7 +560,7 @@ export function CharacterWorkspace({
           setPending(null);
         }}
       >
-        <section className="min-w-0 space-y-4" aria-label="Selected workspace">
+        <section className="v12-character-workspace-surface min-w-0 space-y-4" aria-label="Selected workspace">
           <div
             className={
               path.length
@@ -1042,6 +1042,7 @@ export function CharacterWorkspace({
                     </details>
                   </div>
                   <div
+                    data-v12-source-grid
                     className={
                       layout === "grid"
                         ? "grid grid-cols-1 items-start gap-3 lg:grid-cols-2 2xl:grid-cols-3"
@@ -1321,6 +1322,7 @@ function WorkspaceRow({
   return (
     <article
       key={id}
+      data-v12-workspace-row
       className={`rounded-lg border bg-card ${validDrop ? "border-primary ring-1 ring-primary" : "border-border"}`}
       draggable={mode === "BUILD"}
       onDragEnd={() => setDragged(null)}
