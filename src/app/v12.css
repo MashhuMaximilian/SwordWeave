@@ -2080,3 +2080,7 @@ body[data-ui="v12"] .v12-network-minimap .v12-minimap-view { fill:color-mix(in s
  body[data-ui="v12"] .v12-network-minimap { grid-column:1; grid-row:4; }
  body[data-ui="v12"] .v12-network-inspector { grid-column:2; grid-row:3 / 5; }
 }
+
+body[data-ui="v12"] .v12-picker-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+body[data-ui="v12"] .v12-picker-heading > button { flex:0 0 36px; min-width:36px; min-height:36px; }
+body[data-ui="v12"] .v12-picker-heading > span { min-width:0; overflow-wrap:anywhere; }
