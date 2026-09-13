@@ -72,7 +72,7 @@ export function BundleContents({
       {node.kind === "heritage" ? <>
         {grantedEntries.length > 0 && <div className="v12-expression-grants">{grantedEntries.map(renderEntry)}</div>}
         {directRules.length > 0 && <section className="v12-expression-direct">
-          <header><p className="v12-kicker">Direct {sourceLabel} primitives</p><span className="v12-tag">{directRules.length} rules</span></header>
+          <header><p className="v12-kicker">Direct {sourceLabel} primitives</p><span className="v12-tag">{directRules.length} {directRules.length === 1 ? "rule" : "rules"}</span></header>
           <div>{directRules.map(renderEntry)}</div>
         </section>}
       </> : contents.map(renderEntry)}
