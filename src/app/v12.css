@@ -1815,3 +1815,38 @@ body[data-ui="v12"] .v12-author-chapters li:has(.v12-recipe-copy) { flex-directi
   body[data-ui="v12"] .v12-editor-kind > button { flex:1; min-width:0; padding:8px; }
   body[data-ui="v12"] .v12-author-chapters li > .v12-recipe-copy { flex-basis:calc(100% - 70px); }
 }
+
+/* V12's navigation and unified category instrument frame. */
+body[data-ui="v12"] .v12-navigation { display:flex; flex-shrink:0; align-items:center; justify-content:space-between; gap:24px; min-height:66px; padding:10px 24px; border-bottom:1px solid transparent; background:linear-gradient(var(--background),var(--background)) padding-box,var(--v12-brass-edge) border-box; }
+body[data-ui="v12"] .v12-navigation-brand { display:flex; align-items:center; gap:12px; white-space:nowrap; font:400 20px/1.2 var(--font-title); letter-spacing:.1em; text-transform:uppercase; text-decoration:none; }
+body[data-ui="v12"] .v12-navigation-brand > span { display:grid; place-items:center; width:38px; height:38px; border:1px solid transparent; border-radius:50%; background:radial-gradient(circle at 35% 25%,var(--v12-raised),var(--v12-inset)) padding-box,var(--v12-brass-edge) border-box; color:var(--v12-brass); }
+body[data-ui="v12"] .v12-navigation-brand i { font-style:normal; color:var(--v12-faint); }
+body[data-ui="v12"] .v12-navigation nav { display:flex; align-items:center; gap:8px; }
+body[data-ui="v12"] .v12-navigation nav a { padding:10px 12px; font:500 15px/1.3 var(--font-system); text-decoration:none; color:var(--v12-soft); white-space:nowrap; }
+body[data-ui="v12"] .v12-navigation nav a[aria-current="page"] { color:var(--v12-teal); border-bottom:2px solid var(--v12-teal); background:linear-gradient(color-mix(in srgb,var(--v12-teal) 9%,transparent),transparent); }
+body[data-ui="v12"] .v12-navigation .v12-navigation-collection { border:1px solid transparent; border-radius:4px; background:linear-gradient(var(--v12-raised),var(--v12-inset)) padding-box,var(--v12-silver-edge) border-box; }
+body[data-ui="v12"] .v12-family-panel { border:1px solid transparent; border-radius:8px; padding:0 14px 14px; overflow:hidden; background:linear-gradient(var(--card),var(--card)) padding-box,var(--v12-brass-edge) border-box; box-shadow:inset 0 0 0 5px color-mix(in srgb,var(--v12-silver) 5%,transparent); }
+body[data-ui="v12"] .v12-family-panel .v12-market-hero { border:0; border-radius:0; margin:0 -14px; padding:16px 18px; box-shadow:none; background:linear-gradient(105deg,color-mix(in srgb,var(--v12-silver) 7%,var(--card)),var(--card) 70%,color-mix(in srgb,var(--v12-brass) 9%,var(--card))); }
+body[data-ui="v12"] .v12-family-panel .v12-tier-ladder { border:0; border-radius:14px; margin:0; }
+body[data-ui="v12"] .v12-family-panel .v12-tier-ladder:empty { display:none; }
+body[data-ui="v12"] .v12-family-panel .v12-tier-ladder > div { min-height:66px; background:linear-gradient(105deg,var(--v12-raised),var(--v12-inset)) padding-box,var(--v12-silver-edge) border-box; }
+@media(max-width:767px) {
+  body[data-ui="v12"] .v12-navigation { display:block; padding:8px 12px; min-height:0; }
+  body[data-ui="v12"] .v12-navigation-brand { font-size:17px; }
+  body[data-ui="v12"] .v12-navigation-brand > span { width:28px; height:28px; }
+  body[data-ui="v12"] .v12-navigation nav { overflow-x:auto; margin-top:6px; }
+  body[data-ui="v12"] .v12-navigation nav a { padding:8px; font-size:13px; }
+  body[data-ui="v12"] .v12-navigation nav > button { flex-shrink:0; }
+}
+body[data-ui="v12"] .v12-provenance-chain { position:relative; padding-left:20px; margin:18px 0; }
+body[data-ui="v12"] .v12-provenance-chain::before { content:""; position:absolute; left:0; top:0; bottom:0; width:6px; border-radius:6px; background:linear-gradient(var(--v12-brass),var(--v12-teal) 45%,var(--v12-copper)); }
+body[data-ui="v12"] .v12-provenance-chain > div { display:grid; gap:3px; margin-bottom:16px; }
+body[data-ui="v12"] .v12-provenance-chain b { font:400 19px/1.3 var(--font-body); }
+body[data-ui="v12"] .v12-provenance-chain :is(a,span,small,p) { color:var(--v12-faint); font:400 14px/1.4 var(--font-body); }
+body[data-ui="v12"] .v12-provenance-chain a:hover { color:var(--v12-teal); }
+@media(max-width:767px) {
+  body[data-ui="v12"] .v12-family-panel .v12-market-hero { display:block; padding:14px; }
+  body[data-ui="v12"] .v12-family-panel .v12-market-hero > .v12-metal-button { display:none; } /* The mobile family selector already exposes this exact action. */
+  body[data-ui="v12"] .v12-family-panel .v12-market-hero h2 { font-size:28px; }
+  body[data-ui="v12"] .v12-family-panel .v12-market-hero p { max-width:none; }
+}

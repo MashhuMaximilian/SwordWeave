@@ -30,6 +30,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { V12Navigation } from "@/components/layout/v12-navigation";
 import { cn } from "@/lib/utils";
 import { IconDisplay } from "@/components/icons/icon-display";
 import { useIsDark } from "@/lib/hooks/use-is-dark";
@@ -330,6 +331,7 @@ export function SandboxLayout({
         data-sandbox-layout
         data-atelier-surface
       >
+        <V12Navigation page="Atelier" />
         {topBar ? <div className="v12-atelier-top shrink-0">{topBar}</div> : null}
 
         {/* Floating restore buttons — desktop only, and only after viewport is ready. */}

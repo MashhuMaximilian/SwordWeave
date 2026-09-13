@@ -5,6 +5,7 @@
 // =============================================================================
 
 import Link from "next/link";
+import { V12Navigation } from "@/components/layout/v12-navigation";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db/client";
 import {
@@ -161,7 +162,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
   };
 
   return (
-    <div className="v12-library-page mx-auto w-full max-w-[1680px] px-5 py-6">
+    <><V12Navigation page="Library" /><div className="v12-library-page mx-auto w-full max-w-[1680px] px-5 py-6">
       <div className="v12-library-title flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <p className="v12-kicker">
@@ -228,6 +229,6 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
           currentUserInternalId={currentUserInternalId}
         />
       </div>
-    </div>
+    </div></>
   );
 }

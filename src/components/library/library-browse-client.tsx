@@ -28,6 +28,7 @@ import {
   LibraryMarketRail,
   libraryFamilyLabel,
 } from "@/components/library/library-market-rail";
+import { LibraryProvenance } from "./library-provenance";
 import { ForkMapButton } from "@/components/engagement/fork-map-button";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 
@@ -248,6 +249,7 @@ export function LibraryBrowseClient({
         ) : null}
         {isPrimitiveMode ? <div className="v12-library-resizer" role="separator" aria-label="Resize category column" onPointerDown={(event) => startResize("left", event)} /> : null}
         <main className="v12-library-results min-h-0 overflow-auto">
+          <section className="v12-family-panel" aria-label="Selected market family">
           <div className="v12-market-hero">
             <div>
               <p className="v12-kicker">Lexicon category · canonical family</p>
@@ -282,6 +284,7 @@ export function LibraryBrowseClient({
               ))}
             </div>
           ) : null}
+          </section>
           {effectiveCategory && isPrimitiveMode ? (
             <aside className="v12-family-note">
               <span aria-hidden="true">⌘</span>
@@ -399,11 +402,7 @@ export function LibraryBrowseClient({
                 <div className="v12-rule" data-readable-rule>
                   {selectedItem.description || "No public description."}
                 </div>
-                <div className="v12-provenance-path">
-                  <div><b>Canonical family</b><span>{selectedItem.category?.replaceAll("_", " ") ?? selectedItem.targetType}</span></div>
-                  <div><b>Current expression</b><span>{selectedItem.name}</span></div>
-                  <div><b>Author</b><span>{selectedItem.authorDisplayName ?? selectedItem.authorUsername ?? "System"}</span></div>
-                </div>
+                <LibraryProvenance targetType={selectedItem.targetType} targetId={selectedItem.targetId} name={selectedItem.name} author={selectedItem.authorDisplayName ?? selectedItem.authorUsername ?? "System"} />
                 <div className="v12-inspector-actions">
                   <a
                     href={`/atelier?build=${atelierBuildForTarget(selectedItem.targetType)}&edit=${selectedItem.targetId}&intent=load`}
