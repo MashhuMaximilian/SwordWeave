@@ -120,3 +120,8 @@ Combined Character header browser verification: mounted actual CharacterWorkspac
 - Replaced the monolithic When button with inline clauses, visible AND/OR joins, clause removal, narrative, and an add-condition action. Existing ConditionPicker remains the editor; all state and legacy fields update together.
 - Clause removal retains the remaining joins, structured pill objects, narrative and category metadata; added boundary tests. TypeScript and 23 condition/sentence tests pass.
 - Local interactive component fixture at 390px verified join toggling, middle-clause removal, picker opening, narrative preservation and no horizontal overflow. Dark/light screenshots reviewed; corrected weak light remove-button contrast. Fixture removed; no database writes. Not yet deployed; full parity remains active.
+
+### Primitive target and operation phrases
+- Target preset checkboxes are now searchable V12 phrase choices. Multi-selection uses the original target-value setter. Selected legacy/custom values remain visible outside the current catalog and search results. Free-text values remain editable in their existing field.
+- All nine operations are directly selectable phrases; existing mirror card and behavior remain.
+- TypeScript and 134 helper/sentence tests passed. Interactive 390px fixture verified selections persist through search, multiple choices work, legacy values can be removed, and no page overflow. Dark/light renders inspected; light selected phrase fill adjusted to retain readable metallic teal contrast. Fixture removed. Not deployed yet.

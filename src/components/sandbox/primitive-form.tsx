@@ -31,6 +31,7 @@ import {
 } from "./condition-picker";
 import type { ConditionAuthoring } from "@/types/condition";
 import { PrimitiveSentenceConditions } from "./primitive-sentence-conditions";
+import { PrimitiveTargetChoices } from "./primitive-target-choices";
 import { buildCondition } from "@/lib/primitives/condition";
 import {
   MODIFIER_TARGET_SPEC,
@@ -1818,34 +1819,7 @@ export function PrimitiveForm({
                 const optionLabels = spec.optionLabels ?? {};
                 return (
                   <div className="space-y-2 rounded-md border border-dashed border-border bg-background p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      {spec.label} — leave empty for "any"
-                    </p>
-                    <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3">
-                      {options.map((opt) => {
-                        const checked = modifier.targetValues.includes(opt);
-                        const label = optionLabels[opt] ?? opt;
-                        return (
-                          <label
-                            key={opt}
-                            className="flex items-center gap-2 text-sm"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={(event) =>
-                                toggleTargetValue(
-                                  modifier.id,
-                                  opt,
-                                  event.target.checked,
-                                )
-                              }
-                            />
-                            <span>{label}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
+                    <PrimitiveTargetChoices key={modifier.target} label={spec.label} options={options} labels={optionLabels} selected={modifier.targetValues} onToggle={(value, checked) => toggleTargetValue(modifier.id, value, checked)} />
                     {spec.widget === "checklist-with-free-text" ? (
                       <label className="block text-sm font-medium">
                         Other (describe)
@@ -1879,22 +1853,9 @@ export function PrimitiveForm({
               <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Change
               </legend>
-              <label className="block text-sm font-medium">
-                Operation
-                <select
-                  className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                  value={modifier.operation}
-                  onChange={(event) =>
-                    updateModifier(modifier.id, "operation", event.target.value)
-                  }
-                >
-                  {operations.map((operation) => (
-                    <option key={operation.value} value={operation.value}>
-                      {operation.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className="v12-choice-chips" aria-label="Rule operation">
+                {operations.map(operation => <button key={operation.value} type="button" aria-pressed={modifier.operation === operation.value} onClick={() => updateModifier(modifier.id, "operation", operation.value)}>{operation.label}</button>)}
+              </div>
 
               {/* Chirality / mirror indicator. Clickable badge that
                   swaps the modifier to its mirror op (Add ↔ Subtract,

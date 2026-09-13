@@ -1776,6 +1776,7 @@ html:not(.dark) body[data-ui="v12"] .v12-tag--teal { color:#f2ffff; background:l
 html:not(.dark) body[data-ui="v12"] .v12-tag--violet { color:#fff; background:linear-gradient(#7181a1,#46536e) padding-box,var(--v12-silver-edge) border-box; }
 html:not(.dark) body[data-ui="v12"] .v12-source-family.is-active,
 html:not(.dark) body[data-ui="v12"] .v12-library-rail-column > aside button[aria-pressed="true"],
+html:not(.dark) body[data-ui="v12"] .v12-choice-chips button[aria-pressed="true"],
 html:not(.dark) body[data-ui="v12"] .v12-mobile-family-tabs button[aria-pressed="true"] { color:#f3ffff; background:linear-gradient(#247d83,#084c53) padding-box,var(--v12-teal-edge) border-box; }
 html:not(.dark) body[data-ui="v12"] .v12-recipe-copy [data-readable-rule] { color:#6c4333; }
 @media(max-width:767px) { body[data-ui="v12"] .v12-atelier-hero { flex-wrap:wrap; } body[data-ui="v12"] .v12-primitive-author { grid-template-columns:minmax(0,1fr); } body[data-ui="v12"] .v12-primitive-author > * { grid-column:1 !important; } body[data-ui="v12"] .v12-author-tabs button { padding:9px 10px; white-space:nowrap; } body[data-ui="v12"] .v12-context-ribbon { display:flex; flex-wrap:wrap; } }
