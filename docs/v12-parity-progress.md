@@ -130,3 +130,7 @@ Combined Character header browser verification: mounted actual CharacterWorkspac
 - Local optimized build passed compilation, TypeScript and 37 static pages. Vercel repeated those checks successfully.
 - Deployment dpl_4P7Kr1THPkWhaRwpykmTM8Uzbzxx is READY, production URL https://sword-weave-41zqiskcg-mashus-projects-3b3cfec0.vercel.app, alias https://www.swordweave.quest. CLI exited 0.
 - Includes Character central source-header/lens changes, Library entity medallions and metallic mobile selection, inline primitive conditions, and searchable target/operation phrases. Character drawers were not edited. Full V12 parity remains in progress.
+
+### Compact fork canvas and inspector versions
+- Moved selected-entry versions out of the canvas node into the inspector, matching V12. Version selection still opens the existing version inspector. Reduced row spacing from 290 to 150px now that nodes do not contain expandable lists.
+- Three progressive graph tests pass; local browser fixture verified inspector-only version controls, Fit, and 390px containment. Desktop render reviewed. A duplicate React sibling key exposed during verification was fixed with a distinct versions key. Fixture removed. Not deployed yet.

@@ -33,6 +33,6 @@ export function layoutForkMap(session: ForkMapSession) {
   return session.nodes.map(node => {
     const column = depth(node.key), row = rows.get(column) ?? 0;
     rows.set(column,row+1);
-    return {node,x:30+column*250,y:30+row*290};
+    return {node,x:30+column*250,y:30+row*150};
   });
 }

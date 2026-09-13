@@ -15,7 +15,7 @@ function nodeHref(node: ForkMapNode) {
   return `/library/item/${node.targetType}:${encodeURIComponent(node.targetId)}`;
 }
 
-function ForkNode({ node, onExplore, onVersion, selectedVersion }: { node: ForkMapNode; onExplore: (node: ForkMapNode) => void; onVersion: (version:number) => void; selectedVersion:number|null }) {
+function ForkNode({ node, onExplore }: { node: ForkMapNode; onExplore: (node: ForkMapNode) => void }) {
   return (
     <div className="v12-fork-node-shell"><button
       type="button" onClick={() => onExplore(node)}
@@ -28,16 +28,15 @@ function ForkNode({ node, onExplore, onVersion, selectedVersion }: { node: ForkM
       <span className="v12-kicker block text-[0.72rem]">
         {node.relation === "selected" ? "Selected source" : node.targetType.replaceAll("_", " ")}
       </span>
-      <strong className="mt-1 block truncate font-normal">
+      <strong className="mt-1 block truncate font-normal" title={node.name ?? `${node.targetType} ${node.targetId}`}>
         {node.name ?? `${node.targetType} ${node.targetId}`}
       </strong>
       {node.authorName ? (
-        <span className="mt-1 block truncate text-xs text-muted-foreground">
+        <span className="mt-1 block truncate text-xs text-muted-foreground" title={node.authorName}>
           by {node.authorName}
         </span>
       ) : null}
     </button>
-    {node.relation === "selected" && node.targetType !== "BUILD_TEMPLATE" ? <ForkNodeVersions key={node.key} targetType={node.targetType} targetId={node.targetId} onSelect={onVersion} selectedVersion={selectedVersion} /> : null}
     </div>
   );
 }
@@ -66,7 +65,7 @@ export function ForkGraph({ data, session, explore }: { data: ForkMapResult; ses
     return () => {observer.disconnect();element.removeEventListener("scroll",update);};
   }, []);
   const nodes = layoutForkMap(session);
-  const height = Math.max(420, ...nodes.map(n => n.y + 280));
+  const height = Math.max(420, ...nodes.map(n => n.y + 140));
   const width = Math.max(600, ...nodes.map(n => n.x + 235));
   const fit = () => {
     setZoom(Math.min(1, (viewport.current?.clientWidth ?? width) / width, (viewport.current?.clientHeight ?? height) / height));
@@ -83,7 +82,7 @@ export function ForkGraph({ data, session, explore }: { data: ForkMapResult; ses
     }} onPointerMove={event => { if (!drag.current) return; event.currentTarget.scrollLeft = drag.current.left + drag.current.x - event.clientX; event.currentTarget.scrollTop = drag.current.top + drag.current.y - event.clientY; }} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} tabIndex={0} aria-label="Fork lineage graph. Scroll to pan; select a node to explore it.">
       <div style={{ width: width * zoom, height: height * zoom }}><div className="v12-network-world" style={{ width, height, transform: `scale(${zoom})`, transformOrigin: "0 0" }}>
         <svg width={width} height={height} aria-hidden="true">{session.edges.map((edge, index) => { const from = nodes.find(n => n.node.key === edge.from), to = nodes.find(n => n.node.key === edge.to); if (!from || !to) return null; return <path key={`${edge.from}-${edge.to}-${index}`} d={`M ${from.x + 205} ${from.y + 42} C ${from.x + 225} ${from.y + 42}, ${to.x - 25} ${to.y + 42}, ${to.x} ${to.y + 42}`} />; })}</svg>
-        {nodes.map(({node,x,y}) => <div key={node.key} style={{ position:"absolute", left:x, top:y, width:205 }}><ForkNode node={node} onExplore={explore} selectedVersion={selectedVersion} onVersion={number => setVersion({key:node.key,number})} /></div>)}
+        {nodes.map(({node,x,y}) => <div key={node.key} style={{ position:"absolute", left:x, top:y, width:205 }}><ForkNode node={node} onExplore={explore} /></div>)}
       </div></div>
     </div>
     <nav className="v12-network-minimap" aria-label="Lineage overview">
@@ -94,7 +93,7 @@ export function ForkGraph({ data, session, explore }: { data: ForkMapResult; ses
         {nodes.map(({node,x,y})=><rect key={node.key} className={node.key===data.selected.key ? "selected" : ""} x={x} y={y} width={205} height={100} rx={12} role="button" tabIndex={0} aria-label={`Center ${node.name ?? node.key}`} onClick={()=>centerNode(x,y)} onKeyDown={event=>{if(event.key==="Enter" || event.key===" "){event.preventDefault();centerNode(x,y);}}}><title>{node.name ?? node.key}</title></rect>)}
       </svg>
     </nav>
-    <aside className="v12-network-inspector"><p className="v12-kicker">Selected node</p><h3>{data.selected.name}</h3><p>{data.ancestry.length} ancestors · {data.totalChildren} direct forks</p><p>Forks create new entries. Versions remain part of each entry.</p>{selectedVersion ? <><button type="button" onClick={() => setVersion(null)}>Back to current entry</button><ForkVersionInspector key={`${data.selected.key}:v${selectedVersion}`} targetType={data.selected.targetType} targetId={data.selected.targetId} versionNumber={selectedVersion} /></> : null}{!["CHARACTER", "BUILD_TEMPLATE"].includes(data.selected.targetType) ? <SelectedEntryPreview key={data.selected.key} node={data.selected} /> : null}<Link className="v12-metal-button" href={nodeHref(data.selected)}>Full source and versions ↗</Link></aside>
+    <aside className="v12-network-inspector"><p className="v12-kicker">Selected node</p><h3>{data.selected.name}</h3><p>{data.ancestry.length} ancestors · {data.totalChildren} direct forks</p><p>Forks create new entries. Versions remain part of each entry.</p>{data.selected.targetType !== "BUILD_TEMPLATE" ? <ForkNodeVersions key={`versions:${data.selected.key}`} targetType={data.selected.targetType} targetId={data.selected.targetId} onSelect={number => setVersion({key:data.selected.key,number})} selectedVersion={selectedVersion} /> : null}{selectedVersion ? <><button type="button" onClick={() => setVersion(null)}>Back to current entry</button><ForkVersionInspector key={`${data.selected.key}:v${selectedVersion}`} targetType={data.selected.targetType} targetId={data.selected.targetId} versionNumber={selectedVersion} /></> : null}{!["CHARACTER", "BUILD_TEMPLATE"].includes(data.selected.targetType) ? <SelectedEntryPreview key={data.selected.key} node={data.selected} /> : null}<Link className="v12-metal-button" href={nodeHref(data.selected)}>Full source and versions ↗</Link></aside>
   </div>;
 }
 
