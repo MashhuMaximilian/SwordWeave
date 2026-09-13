@@ -1351,6 +1351,7 @@ function WorkspaceRow({
     <article
       key={id}
       data-v12-workspace-row
+      data-workspace-kind={node.kind}
       className={`rounded-lg border bg-card ${validDrop ? "border-primary ring-1 ring-primary" : "border-border"}`}
       draggable={mode === "BUILD"}
       onDragEnd={() => setDragged(null)}
@@ -1385,7 +1386,7 @@ function WorkspaceRow({
           Drop to add a reference
         </p>
       )}
-      <div className="flex flex-wrap items-center gap-2 px-3 py-3">
+      <div className="v12-workspace-row-head flex flex-wrap items-center gap-2 px-3 py-3">
         {mode === "BUILD" && selecting && (
           <input
             type="checkbox"
@@ -1401,7 +1402,7 @@ function WorkspaceRow({
           />
         )}
         <button
-          className="rounded p-1 hover:bg-secondary"
+          className={`rounded p-1 hover:bg-secondary ${node.kind === "heritage" ? "v12-source-medallion" : ""}`}
           aria-label={`${open ? "Collapse" : "Expand"} ${node.name}`}
           aria-expanded={open}
           onClick={() =>
@@ -1410,7 +1411,7 @@ function WorkspaceRow({
             )
           }
         >
-          <ChevronRight className={`size-4 ${open ? "rotate-90" : ""}`} />
+          {node.kind === "heritage" ? <span aria-hidden="true">{String(node.data["kind"]).toUpperCase() === "LINEAGE" ? "♜" : String(node.data["kind"]).toUpperCase() === "UPBRINGING" ? "⚔" : "✦"}</span> : <ChevronRight className={`size-4 ${open ? "rotate-90" : ""}`} />}
         </button>
         <button
           className="min-w-0 flex-1 text-left font-medium hover:text-primary"
@@ -1423,10 +1424,11 @@ function WorkspaceRow({
             setPreview(false);
           }}
         >
-          {node.name}
+          {node.kind === "heritage" && <span className="v12-kicker block">{String(node.data["kind"] ?? "Heritage").replaceAll("_", " ")}</span>}
+          <span className="v12-workspace-entry-name">{node.name}</span>
         </button>
         <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
-          <span className="text-xs text-muted-foreground">
+          <span className="v12-workspace-kind text-xs text-muted-foreground">
             {node.kind === "primitive"
               ? String(node.data["category"]).replaceAll("_", " ").toLowerCase()
               : node.kind}
