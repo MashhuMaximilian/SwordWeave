@@ -1980,3 +1980,18 @@ html:not(.dark) body[data-ui="v12"] :is(.v12-library-page,.v12-atelier-shell) .v
 html:not(.dark) body[data-ui="v12"] .v12-navigation { background:linear-gradient(112deg,transparent 0 39%,rgba(255,255,255,.55) 49%,transparent 60%),linear-gradient(180deg,rgba(255,255,255,.96),rgba(219,229,231,.96)); border-image:var(--v12-silver-edge) 1; box-shadow:inset 0 1px #fff,0 7px 22px rgba(18,38,45,.16); }
 html:not(.dark) body[data-ui="v12"] .v12-library-rail-column button[aria-pressed="true"] .v12-family-glyph { color:#d8ffff; }
 body[data-ui="v12"] .v12-library-rail-column .v12-family-rail-head { padding-right:46px; }
+/* V12 recipe hierarchy: primitive identity above membership controls. */
+body[data-ui="v12"] .v12-author-recipe-piece { border:1px solid transparent; background:linear-gradient(var(--v12-inset),var(--v12-inset)) padding-box,var(--v12-copper-edge) border-box; }
+body[data-ui="v12"] .v12-recipe-identity { display:grid; grid-template-columns:48px minmax(0,1fr); align-items:start; gap:12px; width:100%; }
+body[data-ui="v12"] .v12-recipe-medallion { display:grid; place-items:center; width:48px; height:48px; border:1px solid transparent; border-radius:50%; color:var(--v12-teal); background:radial-gradient(circle at 35% 27%,var(--v12-raised),var(--v12-inset) 70%) padding-box,var(--v12-brass-edge) border-box; box-shadow:inset 0 0 0 3px var(--v12-inset); font-size:22px; }
+body[data-ui="v12"] .v12-recipe-copy .v12-recipe-family { color:var(--v12-faint); font-family:var(--font-body); font-size:16px; margin:5px 0; }
+body[data-ui="v12"] .v12-recipe-copy > details > summary { cursor:pointer; font-size:14px; color:var(--v12-soft); padding-block:4px; }
+body[data-ui="v12"] .v12-recipe-member-controls { border-top:1px solid var(--v12-line-subtle); padding-top:10px; justify-content:flex-end; }
+body[data-ui="v12"] .v12-recipe-copy .v12-fetched-preview { max-width:100%; overflow-wrap:anywhere; padding-top:12px; }
+@media(max-width:600px) { body[data-ui="v12"] .v12-recipe-identity { grid-template-columns:38px minmax(0,1fr); gap:9px; } body[data-ui="v12"] .v12-recipe-medallion { width:38px; height:38px; } }
+body[data-ui="v12"] .v12-author-chapters li.v12-author-recipe-piece { display:grid; grid-template-columns:40px minmax(0,1fr); align-items:start; gap:12px; }
+body[data-ui="v12"] .v12-author-chapters li.v12-author-recipe-piece > .v12-recipe-member-controls { grid-column:1/-1; }
+@media(max-width:600px) {
+  body[data-ui="v12"] .v12-author-chapters li.v12-author-recipe-piece { grid-template-columns:minmax(0,1fr); }
+  body[data-ui="v12"] .v12-author-chapters li.v12-author-recipe-piece > div:first-child { justify-self:end; }
+}

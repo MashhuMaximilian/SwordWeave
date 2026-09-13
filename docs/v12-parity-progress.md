@@ -44,3 +44,9 @@ Last production baseline: `6fd6895`. Later local navigation, unified family pane
 - Restored family-specific category glyphs in both source rails. Compact Library introduction now places record-group navigation alongside it; all destinations retained. Rail/family headers are compressed, with Oxanium subtitle treatment.
 - Platinum Frost+ navigation and teal primary action materials now match the reference direction. Screenshots `v12-library-matched-frame.png` and `v12-library-platinum-frame.png` precede the final small heading/teal corrections; they are progress evidence, not final parity proof.
 - Mobile Library document width remains 390px; all four record-group links verified. No save/load/slot handlers changed. Signed-in Atelier and full visual audit remain outstanding.
+
+### Composite primitive recipe identity pass (local)
+
+- Effects, capabilities and heritages now share a primitive identity block with Market-family medallion, title, readable mechanical rule, family and expandable complete source preview. Narrative detail is retained. Existing stored slot identity takes precedence over lookup identity.
+- Membership controls remain attached to their existing handlers. A local EffectForm fixture verified quantity 1→2 updates 3 BU→6 BU. Mobile inherited row layout was corrected; final computed card uses one 286px column and document width is 390px.
+- Screenshot: `output/playwright/v12-effect-recipe-mobile-fixed.png`. Fixture removed; this does not substitute for signed-in save/reload verification. Drawer components were not changed.

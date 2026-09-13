@@ -1,5 +1,6 @@
 "use client";
 import { RecipeComposition, type RecipePrimitiveLink, type RecipeEffectLink } from "./recipe-composition";
+import { RecipePrimitiveIdentity } from "./recipe-primitive-identity";
 import { AuthorChapters, AuthorChapter } from "./author-chapters";
 import { SortableBundleList,SortableMember } from "@/components/characters/workspace/sortable-bundle-list";
 
@@ -621,12 +622,10 @@ export function HeritageForm({
             {slottedPrimitives.map((p) => (
               <SortableMember id={String(p.id)} label={p.name}
                 key={p.id}
-                className="flex flex-col gap-2 rounded-md border border-border bg-card p-3 text-sm sm:flex-row sm:items-center"
+                className="v12-author-recipe-piece flex flex-col gap-3 rounded-md border border-border bg-card p-3 text-sm"
               >
-                <div className="v12-recipe-copy min-w-0 flex-1">
-                  <p className="v12-kicker">Direct primitive · {p.category.replaceAll("_", " ")}</p><h3>{p.name}</h3><p data-readable-rule>{p.mechanicalOutputText || p.narrativeRule}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <RecipePrimitiveIdentity primitive={p} />
+                <div className="v12-recipe-member-controls flex flex-wrap items-center gap-2">
                   <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 font-mono text-xs">
                     {p.buCost} BU
                   </span>

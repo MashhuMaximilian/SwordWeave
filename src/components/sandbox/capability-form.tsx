@@ -1,4 +1,5 @@
 "use client";
+import { RecipePrimitiveIdentity } from "./recipe-primitive-identity";
 import { AuthorChapters, AuthorChapter } from "./author-chapters";
 import { SortableBundleList,SortableMember } from "@/components/characters/workspace/sortable-bundle-list";
 
@@ -572,10 +573,10 @@ export function CapabilityForm({
             {slots.map((slot, idx) => (
               <SortableMember id={`${slot.primitiveId}:${slot.role}`} label={slot.primitive.name}
                 key={`${slot.primitiveId}-${idx}`}
-                className="flex flex-col gap-2 rounded-md border border-border bg-card p-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2"
+                className="v12-author-recipe-piece flex flex-col gap-3 rounded-md border border-border bg-card p-3"
               >
-                <div className="v12-recipe-copy min-w-0 flex-1"><p className="v12-kicker">Direct primitive · {slot.primitive.category.replaceAll("_", " ")}</p><h3>{slot.primitive.name}</h3><p data-readable-rule>{availablePrimitives.find(p => p.id === slot.primitiveId)?.mechanicalOutputText || availablePrimitives.find(p => p.id === slot.primitiveId)?.narrativeRule}</p></div>
-                <div className="flex flex-wrap items-center gap-2">
+                <RecipePrimitiveIdentity primitive={{...availablePrimitives.find(p => p.id === slot.primitiveId),...slot.primitive,id:slot.primitiveId}} />
+                <div className="v12-recipe-member-controls flex flex-wrap items-center gap-2">
                   <select
                     value={slot.role}
                     onChange={(e) => updateSlotRole(idx, e.target.value)}

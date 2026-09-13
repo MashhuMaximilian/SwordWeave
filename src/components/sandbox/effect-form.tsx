@@ -1,4 +1,5 @@
 "use client";
+import { RecipePrimitiveIdentity } from "./recipe-primitive-identity";
 import { AuthorChapters, AuthorChapter } from "./author-chapters";
 import { SortableBundleList,SortableMember } from "@/components/characters/workspace/sortable-bundle-list";
 
@@ -433,15 +434,11 @@ export function EffectForm({
             {slots.map((slot) => (
               <SortableMember id={String(slot.primitiveId)} label={slot.primitive.name}
                 key={slot.primitiveId}
-                className="flex flex-col gap-3 rounded-md border border-border bg-card p-3 sm:flex-row sm:items-center"
+                className="v12-author-recipe-piece flex flex-col gap-3 rounded-md border border-border bg-card p-3"
               >
-                <div className="min-w-0 flex-1">
-                  <p className="v12-kicker">Direct primitive · {slot.primitive.category.replaceAll("_", " ")}</p><h3>{slot.primitive.name}</h3><p data-readable-rule>{availablePrimitives.find(p => p.id === slot.primitiveId)?.mechanicalOutputText || availablePrimitives.find(p => p.id === slot.primitiveId)?.narrativeRule}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {slot.primitive.buCost} BU each
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
+                <RecipePrimitiveIdentity primitive={{...availablePrimitives.find(p => p.id === slot.primitiveId),...slot.primitive,id:slot.primitiveId}} />
+                <div className="v12-recipe-member-controls flex flex-wrap items-center gap-2">
+                  <span className="v12-tag">{slot.primitive.buCost} BU each</span>
                   <input
                     aria-label="Quantity"
                     className="h-9 w-20 rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
@@ -470,6 +467,7 @@ export function EffectForm({
                   <button
                     type="button"
                     onClick={() => removeSlot(slot.primitiveId)}
+                    aria-label={`Remove ${slot.primitive.name}`}
                     className="inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-md border border-border px-3 text-xs font-medium text-muted-foreground hover:bg-accent"
                   >
                     <Trash2 className="size-3.5" />
