@@ -2051,3 +2051,11 @@ body[data-ui="v12"] .v12-tablet-studio { gap:10px; padding:10px 10px 70px; }
   body[data-ui="v12"] .v12-primitive-author { grid-template-columns:minmax(0,1fr); }
   body[data-ui="v12"] .v12-primitive-author > * { grid-column:1 !important; }
 }
+
+/* V12 Expressions: each source has granted expressions beside one direct-rule ledger. */
+body[data-ui="v12"] .v12-expression-grants { display:grid; align-content:start; gap:10px; min-width:0; }
+body[data-ui="v12"] .v12-expression-direct { min-width:0; padding:16px; background:var(--v12-inset); border-left:2px solid var(--v12-copper); border-top:1px solid transparent; border-image:var(--v12-copper-edge) 1; }
+body[data-ui="v12"] .v12-expression-direct > header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+body[data-ui="v12"] .v12-expression-direct .v12-expression-rule { padding:8px 0; border-left:0; }
+body[data-ui="v12"] .v12-expression-grid > :only-child { grid-column:1 / -1; }
+@media(max-width:767px) { body[data-ui="v12"] .v12-expression-direct { padding:12px; } }
