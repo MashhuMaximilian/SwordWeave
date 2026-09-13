@@ -1995,3 +1995,7 @@ body[data-ui="v12"] .v12-author-chapters li.v12-author-recipe-piece > .v12-recip
   body[data-ui="v12"] .v12-author-chapters li.v12-author-recipe-piece { grid-template-columns:minmax(0,1fr); }
   body[data-ui="v12"] .v12-author-chapters li.v12-author-recipe-piece > div:first-child { justify-self:end; }
 }
+
+body[data-ui="v12"] .v12-cluster-identity { margin: 3px 0 0; font: 400 15px/1.45 var(--font-body); color: var(--v12-copper-hi); overflow-wrap: anywhere; }
+body[data-ui="v12"] .v12-entry-cluster > header > div { min-width: 0; }
+body[data-ui="v12"] .v12-entry-cluster > header h3 { overflow-wrap: anywhere; }

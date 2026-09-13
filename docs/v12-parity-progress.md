@@ -56,3 +56,10 @@ Last production baseline: `6fd6895`. Later local navigation, unified family pane
 - Item author now uses Pieces / Identity / At the table / Publish with mounted fields. All former fields and save/reorder/mirror/slot handlers retained. Primitive identities use the shared recipe block; granted capability/effect detail is available without leaving the composer.
 - Local 390px fixture verified missing-name submit selects Identity and focuses Name, edited name persists across chapters, and Two-handed changes equipped slots 1→2. Document width remains 390px. No item was saved; fixture removed.
 - Screenshot `output/playwright/v12-item-table-mobile.png` predates removal of the implementation-note helper copy. Full signed-in save/reload and exact visual review remain required.
+
+### Library identity grouping follow-up (local)
+
+- Explicit domain keys take precedence over general scope and normalize case/whitespace. Group identity uses separate category/tier/key fields; all-tier results order by tier while preserving result order inside groups. Headers lead with the group name, with provenance fields beneath and honest page-local counts.
+- Default browse opens Primitive Market. Explicit ALL remains available as a mixed-record view, preventing item/heritage rows appearing inside primitive tier clusters.
+- Five classification tests pass. Local real-data Domain browse has 390px document width at 390px viewport; screenshot `output/playwright/v12-library-cluster-mobile.png` (before final tier ordering). Existing Domain records without stored scope/key remain Unclassified rather than inferring identity from names.
+- Accumulated implementation passed production build before this grouping follow-up. Final typecheck and deployment remain separate checks; signed-in author/save coverage and full parity are still outstanding.

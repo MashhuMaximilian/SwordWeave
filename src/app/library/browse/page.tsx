@@ -64,7 +64,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
   const prefs = await readLibraryPreferences();
   const sort = parseSort(params.sort ?? null) ?? prefs.sort;
   const view = parseView(params.view ?? null) ?? prefs.view;
-  const targetType = parseType(params.type ?? null);
+  const targetType = parseType(params.type ?? "PRIMITIVE");
   const page = Math.max(0, parseInt(params.page ?? "0", 10) || 0);
   const offset = page * PAGE_SIZE;
   const search = params.q ?? "";
@@ -180,7 +180,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
       </div>
 
       <nav className="v12-library-modes" aria-label="Library record groups">
-        <Link className={targetType === "PRIMITIVE" || targetType === "ALL" ? "is-active" : ""} href="/library/browse?type=PRIMITIVE">
+        <Link className={targetType === "PRIMITIVE" ? "is-active" : ""} href="/library/browse?type=PRIMITIVE">
           Market primitives
         </Link>
         <Link className={["EFFECT", "CAPABILITY", "LINEAGE_TEMPLATE", "UPBRINGING_TEMPLATE", "MANIFEST_TEMPLATE", "ITEM"].includes(targetType) ? "is-active" : ""} href="/library/browse?type=CAPABILITY">

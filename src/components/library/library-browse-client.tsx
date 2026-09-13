@@ -12,7 +12,7 @@
 // keeping the browse list visible behind. ESC / backdrop click closes it.
 // =============================================================================
 
-import { libraryOrigin, libraryTier } from "@/lib/publishing/library-classification";
+import { groupLibraryEntries, libraryOrigin, libraryTier } from "@/lib/publishing/library-classification";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { LibraryToolbar } from "@/components/library/library-toolbar";
@@ -88,7 +88,7 @@ export function LibraryBrowseClient({
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const state = useMemo<LibraryToolbarState>(() => initialState, [initialState]);
   const isPrimitiveMode =
-    state.typeFilter === "PRIMITIVE" || state.typeFilter === "ALL";
+    state.typeFilter === "PRIMITIVE";
   const effectiveCategory = isPrimitiveMode
     ? state.category || ""
     : "";
@@ -309,7 +309,7 @@ export function LibraryBrowseClient({
           </div>
           {initialItems.length ? (
             <div className={isPrimitiveMode ? "v12-cluster-list" : "v12-creation-grid"}>
-              {Object.entries(initialItems.reduce<Record<string, LibraryItem[]>>((groups, item) => { const key = isPrimitiveMode ? `${item.category?.replaceAll("_", " ") ?? "Primitives"} · ${libraryTier(item) ? `Tier ${libraryTier(item)}` : "Untiered"} · ${item.groupKey ?? "Unclassified"}` : "Creations"; (groups[key] ??= []).push(item); return groups; }, {})).map(([group, entries]) => <section className="v12-entry-cluster" key={group}>{isPrimitiveMode ? <header className="v12-section-head"><h3>{group}</h3><span>{entries?.length} expressions</span></header> : null}{entries?.map((item) => (
+              {(isPrimitiveMode ? groupLibraryEntries(initialItems) : [{ id: "creations", category: null, tier: null, key: "Creations", entries: initialItems }]).map(({ id, category, tier, key, entries }) => <section className="v12-entry-cluster" key={id}>{isPrimitiveMode ? <header className="v12-section-head"><div><h3>{key.charAt(0).toUpperCase() + key.slice(1)}</h3><p className="v12-cluster-identity">{category ? libraryFamilyLabel({ value: category, label: category.replaceAll("_", " ") }) : "Primitives"} · {tier ? `Tier ${tier}` : "Untiered"}{category === "DOMAIN" && key !== "Unclassified" ? ` · domain_key=${key}` : ""}</p></div><span>{entries.length} {entries.length === 1 ? "expression" : "expressions"} on this page</span></header> : null}{entries.map((item) => (
                 <article
                   key={item.id}
                   data-library-row-id={item.id}
