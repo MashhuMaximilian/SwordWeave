@@ -2,8 +2,8 @@
 
 // Live preview for the capability being composed in CapabilityForm.
 
-import { Markdown } from "@/components/ui/markdown";
-import { dispatchOpenPreview } from "@/lib/sandbox/slot-events";
+import { computeTransitiveBu } from "@/lib/engine/transitive-bu";
+import { LiveRecipeCard, LivePrimitiveRules, LiveEffectRules, LiveMechanicalSummary, type LivePrimitive, type LiveEffect } from "./live-recipe-card";
 
 export type CapabilityFormState = {
   name: string;
@@ -38,211 +38,25 @@ export type CapabilitySlot = {
    * own BU cost.
    */
   isMirrored: boolean;
-  primitive: {
-    id: number;
-    name: string;
-    category: string;
-    buCost: number;
-  };
+  primitive: LivePrimitive;
 };
 
 /** Effect summary used by the preview — name + narrative description. */
-export type CapabilityEffectRef = {
-  id: string;
-  name: string;
-  narrativeDescription: string;
-};
+export type CapabilityEffectRef = LiveEffect;
 
-export function CapabilityFormPreview({
-  form,
-  slots,
-  effects,
-}: {
-  form: CapabilityFormState;
-  slots: CapabilitySlot[];
-  effects?: CapabilityEffectRef[];
+export function CapabilityFormPreview({ form, slots, effects = [] }: {
+  form: CapabilityFormState; slots: CapabilitySlot[]; effects?: CapabilityEffectRef[];
 }) {
-  const isEmpty =
-    !form.name &&
-    !form.verboseDescription &&
-    slots.length === 0 &&
-    (effects?.length ?? 0) === 0;
-  const tags = (form.tags ?? "")
-    .split(",")
-    .map((t) => t.trim())
-    .filter(Boolean);
-  const totalBu = slots.reduce(
-    (sum, slot) => sum + Math.abs(slot.primitive.buCost * slot.quantity),
-    0,
-  );
-
-  if (isEmpty) {
-    return (
-      <div className="flex h-full items-center justify-center p-6 text-center">
-        <div className="max-w-xs space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">
-            No capability yet
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Fill in the Build panel. The card updates as you type and slot
-            primitives.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-5 p-4">
-      <header className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {form.type} - {form.sourceType}
-        </p>
-        <h2 className="text-base font-semibold leading-tight text-foreground">
-          {form.name || "Unnamed Capability"}
-        </h2>
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">
-            {totalBu} BU
-          </span>
-          <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-            {slots.length} slots
-          </span>
-          {(effects?.length ?? 0) > 0 ? (
-            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-              {effects!.length} effects
-            </span>
-          ) : null}
-          {form.sourceOrigin ? (
-            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-              {form.sourceOrigin}
-            </span>
-          ) : null}
-          <span
-            className={
-              "rounded-full px-2 py-0.5 font-medium " +
-              (form.isPublic
-                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                : "bg-amber-500/10 text-amber-600 dark:text-amber-400")
-            }
-          >
-            {form.isPublic ? "Public" : "Draft"}
-          </span>
-        </div>
-      </header>
-
-      {form.verboseDescription ? (
-        <section>
-          <h3 className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
-            Description
-          </h3>
-          <div className="prose prose-invert prose-sm max-w-none break-words text-sm leading-7">
-            <Markdown>{form.verboseDescription}</Markdown>
-          </div>
-        </section>
-      ) : null}
-
-      {tags.length > 0 ? (
-        <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-            Tags
-          </h3>
-          <div className="flex flex-wrap gap-1">
-            {tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-sm border border-border bg-background px-2 py-0.5 text-xs"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {slots.length > 0 ? (
-        <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-            Primitive slots ({slots.length})
-          </h3>
-          <ul className="divide-y divide-border rounded-md border">
-            {slots.map((slot, i) => (
-              <li
-                key={`${slot.primitiveId}-${i}`}
-                className="flex items-center justify-between gap-2 p-2 text-sm"
-              >
-                <button
-                  type="button"
-                  onClick={() =>
-                    dispatchOpenPreview({
-                      targetType: "PRIMITIVE",
-                      targetId: String(slot.primitive.id),
-                      label: slot.primitive.name,
-                    })
-                  }
-                  className="min-w-0 flex-1 truncate text-left font-medium text-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
-                  title={`Open ${slot.primitive.name} in preview`}
-                >
-                  {slot.primitive.name}
-                </button>
-                {slot.isMirrored ? (
-                  <span
-                    className="shrink-0 rounded-sm border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400"
-                    title="This slot is mirrored — consumer pays BU debt at template/character-creation time"
-                  >
-                    Mirrored
-                  </span>
-                ) : null}
-                <span className="shrink-0 rounded-sm border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                  {slot.role}
-                </span>
-                <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
-                  ×{slot.quantity}
-                </span>
-                <span className="shrink-0 font-mono text-[10px] text-foreground">
-                  {Math.abs(slot.primitive.buCost * slot.quantity)} BU
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {(effects?.length ?? 0) > 0 ? (
-        <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-            Effects ({effects!.length})
-          </h3>
-          <ul className="space-y-2">
-            {effects!.map((effect) => (
-              <li
-                key={effect.id}
-                className="rounded-md border border-border bg-card/50 p-2.5"
-              >
-                <button
-                  type="button"
-                  onClick={() =>
-                    dispatchOpenPreview({
-                      targetType: "EFFECT",
-                      targetId: effect.id,
-                      label: effect.name,
-                    })
-                  }
-                  className="text-left text-sm font-semibold text-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
-                  title={`Open ${effect.name} in preview`}
-                >
-                  {effect.name}
-                </button>
-                {effect.narrativeDescription ? (
-                  <div className="mt-1 rounded border border-border/40 bg-background/40 p-2 text-[11px] leading-relaxed text-muted-foreground">
-                    <Markdown>{effect.narrativeDescription}</Markdown>
-                  </div>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-    </div>
-  );
+  const allSlots = [...slots, ...effects.flatMap(effect => effect.primitiveLinks ?? [])];
+  const completeCost = effects.every(effect => effect.primitiveLinks !== undefined);
+  const { transitiveBu: totalBu } = computeTransitiveBu({ primitiveLinks: slots, effectLinks: effects.map(effect => ({effectId: effect.id, ...(effect.primitiveLinks ? {primitiveLinks: effect.primitiveLinks} : {})})) });
+  return <LiveRecipeCard name={form.name} kind="Capability" icon={form} description={form.verboseDescription} sourceOrigin={form.sourceOrigin} tags={form.tags} badges={<>
+    <span data-tone="violet">{form.type}</span><span>{form.sourceType}</span><span data-tone="teal">{form.isPublic ? "Public" : "Private draft"}</span><span>{totalBu} BU{completeCost ? "" : " · direct rules"}</span>
+  </>}>
+    <LiveMechanicalSummary slots={allSlots} />
+    <details className="v12-live-composition" open><summary>Composition · {allSlots.length} primitive rules{completeCost ? "" : " loaded"}</summary>
+      <LivePrimitiveRules slots={slots} /><LiveEffectRules effects={effects} />
+      {!allSlots.length && !effects.length ? <p className="v12-live-note">Add primitives or effects from the Library to compose this capability.</p> : null}
+    </details>
+  </LiveRecipeCard>;
 }

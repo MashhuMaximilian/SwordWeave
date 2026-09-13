@@ -1999,3 +1999,43 @@ body[data-ui="v12"] .v12-author-chapters li.v12-author-recipe-piece > .v12-recip
 body[data-ui="v12"] .v12-cluster-identity { margin: 3px 0 0; font: 400 15px/1.45 var(--font-body); color: var(--v12-copper-hi); overflow-wrap: anywhere; }
 body[data-ui="v12"] .v12-entry-cluster > header > div { min-width: 0; }
 body[data-ui="v12"] .v12-entry-cluster > header h3 { overflow-wrap: anywhere; }
+
+/* V12 live player cards: the same recipe hierarchy as the author reference. */
+body[data-ui="v12"] .v12-live-recipe { padding: 18px; min-height: 100%; color: var(--foreground); font: 400 17px/1.5 var(--font-body); }
+body[data-ui="v12"] .v12-live-emblem { display:grid; place-items:center; width:140px; height:140px; margin:6px auto 22px; border:1px solid transparent; border-radius:50%; background:radial-gradient(circle at 37% 28%,var(--v12-raised),var(--v12-inset) 70%) padding-box,var(--v12-brass-edge) border-box; position:relative; box-shadow:inset 0 0 0 20px color-mix(in srgb,var(--v12-silver) 7%,transparent); }
+body[data-ui="v12"] .v12-live-identity h2 { margin:4px 0 12px; font:400 28px/1.15 var(--font-title); overflow-wrap:anywhere; }
+body[data-ui="v12"] .v12-live-badges { display:flex; flex-wrap:wrap; align-items:center; gap:7px; }
+body[data-ui="v12"] .v12-live-badges > span { padding:4px 9px; border:1px solid transparent; border-radius:99px; background:linear-gradient(var(--v12-inset),var(--card)) padding-box,var(--v12-silver-edge) border-box; color:var(--foreground); font:500 13px/1.35 var(--font-system); overflow-wrap:anywhere; }
+body[data-ui="v12"] .v12-live-badges > [data-tone="violet"] { background:linear-gradient(color-mix(in srgb,var(--v12-violet) 15%,var(--v12-inset)),var(--v12-inset)) padding-box,linear-gradient(115deg,var(--v12-violet),var(--v12-silver),var(--v12-violet)) border-box; color:var(--v12-violet); }
+body[data-ui="v12"] .v12-live-badges > [data-tone="teal"] { background:linear-gradient(color-mix(in srgb,var(--v12-teal) 13%,var(--v12-inset)),var(--v12-inset)) padding-box,var(--v12-teal-edge) border-box; color:var(--v12-teal); }
+body[data-ui="v12"] .v12-live-description { margin:14px 0; color:var(--v12-soft); overflow-wrap:anywhere; }
+body[data-ui="v12"] .v12-live-mechanics { margin:16px 0; padding:13px; border:1px solid transparent; border-radius:6px; background:linear-gradient(var(--v12-inset),var(--v12-inset)) padding-box,var(--v12-copper-edge) border-box; color:var(--v12-copper-hi); }
+body[data-ui="v12"] .v12-live-mechanics > div + div { margin-top:7px; }
+body[data-ui="v12"] .v12-live-composition { border-top:1px solid var(--v12-line-subtle); margin-top:16px; padding-top:12px; }
+body[data-ui="v12"] .v12-live-composition > summary { cursor:pointer; color:var(--v12-soft); margin-bottom:10px; }
+body[data-ui="v12"] .v12-live-rules { display:grid; gap:8px; }
+body[data-ui="v12"] .v12-live-rule { padding:11px; background:var(--v12-inset); border-left:2px solid var(--v12-line-subtle); min-width:0; }
+body[data-ui="v12"] .v12-live-rule-head { display:flex; align-items:start; gap:8px; justify-content:space-between; }
+body[data-ui="v12"] .v12-live-rule-head > button { background:none; border:0; padding:0; min-width:0; text-align:left; color:var(--foreground); font:500 16px/1.4 var(--font-subtitle); overflow-wrap:anywhere; box-shadow:none; }
+body[data-ui="v12"] .v12-live-rule-head > button:hover { text-decoration:underline; }
+body[data-ui="v12"] .v12-live-rule-head > span { white-space:nowrap; color:var(--v12-soft); font:500 13px/1.5 var(--font-system); }
+body[data-ui="v12"] .v12-live-rule [data-readable-rule] { color:var(--v12-copper-hi); margin-top:5px; overflow-wrap:anywhere; }
+body[data-ui="v12"] .v12-live-rule-meta { display:flex; flex-wrap:wrap; gap:8px; color:var(--v12-soft); font:400 14px/1.5 var(--font-body); }
+body[data-ui="v12"] .v12-live-rule-meta:empty { display:none; }
+body[data-ui="v12"] .v12-live-note { margin:9px 0; color:var(--v12-soft); }
+body[data-ui="v12"] .v12-live-effect { margin-top:12px; border:1px solid transparent; border-radius:6px; padding:11px; background:linear-gradient(var(--card),var(--v12-inset)) padding-box,var(--v12-copper-edge) border-box; }
+body[data-ui="v12"] .v12-live-effect > summary { cursor:pointer; }
+body[data-ui="v12"] .v12-live-effect > summary :is(strong,small) { display:block; }
+body[data-ui="v12"] .v12-live-effect > summary strong { font:500 17px/1.4 var(--font-subtitle); }
+body[data-ui="v12"] .v12-live-effect > summary small { font-size:14px; color:var(--v12-soft); }
+body[data-ui="v12"] .v12-live-inspect { margin-top:10px; font:500 13px/1.5 var(--font-system); padding:7px 10px; }
+body[data-ui="v12"] .v12-live-provenance { margin-top:18px; border-top:1px solid var(--v12-line-subtle); padding-top:12px; }
+body[data-ui="v12"] .v12-live-provenance p > span { display:block; }
+
+html:not(.dark) body[data-ui="v12"] .v12-live-recipe :is(.v12-live-mechanics,[data-readable-rule]) { color:var(--v12-copper-low); }
+
+body[data-ui="v12"] .v12-live-emblem::after { content:""; position:absolute; inset:20px; border:1px solid color-mix(in srgb,var(--v12-brass) 45%,transparent); border-radius:50%; pointer-events:none; }
+
+body[data-ui="v12"] .v12-live-portrait { width:100%; height:auto; border-radius:6px; margin:14px 0; }
+/* The desktop panel already supplies the live card's title and context. */
+body[data-ui="v12"] .v12-studio-preview .v12-live-identity > :is(h2,.v12-kicker) { display:none; }

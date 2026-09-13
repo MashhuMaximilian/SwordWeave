@@ -1310,7 +1310,7 @@ export function AtelierSandboxClient({
         primitive: link.primitive,
       })) : []);
       if (!form) return null;
-      return <EffectFormPreview form={form} slots={slots} />;
+      return <EffectFormPreview form={form} slots={slots.map(slot => ({...slot, primitive: {...primitives.find(p => p.id === slot.primitiveId), ...slot.primitive}}))} />;
     }
     if (formKind === "capability") {
       const snapForm = formSnapshot?.form as
@@ -1367,15 +1367,20 @@ export function AtelierSandboxClient({
         isMirrored: link.isMirrored ?? false,
         primitive: link.primitive,
       })) : []);
-      const effectRefs = snapEffectIds
-        ? snapEffectIds
-            .map((id) => effects.find((e) => e.id === id))
-            .filter((e): e is EffectRow => Boolean(e))
-            .map((e) => ({ id: e.id, name: e.name, narrativeDescription: e.narrativeDescription }))
-        : [];
+      const effectRefs = (snapEffectIds ?? row?.effectLinks.map(link => link.effectId) ?? []).map(id => {
+        const stored = row?.effectLinks.find(link => link.effectId === id)?.effect;
+        const effect = effects.find(effect => effect.id === id);
+        const source = stored && !snapEffectIds ? stored : effect ?? stored;
+        return {
+          id,
+          name: source?.name ?? "Unavailable effect",
+          narrativeDescription: source?.narrativeDescription ?? "",
+          ...(source?.primitiveLinks ? {primitiveLinks: source.primitiveLinks.map(link => ({...link, primitive: {...primitives.find(p => p.id === link.primitiveId), ...link.primitive}}))} : {}),
+        };
+      });
       if (!formWithDefaults) return null;
       return (
-        <CapabilityFormPreview form={formWithDefaults} slots={slots} effects={effectRefs} />
+        <CapabilityFormPreview form={formWithDefaults} slots={slots.map(slot => ({...slot, primitive: {...primitives.find(p => p.id === slot.primitiveId), ...slot.primitive}}))} effects={effectRefs} />
       );
     }
     if (formKind === "heritage") {
@@ -1425,14 +1430,19 @@ export function AtelierSandboxClient({
         ? snapPrimitiveIds
             .map((id) => primitives.find((p) => String(p.id) === id))
             .filter((p): p is PrimitiveRow => Boolean(p))
-            .map((p) => ({ id: p.id, name: p.name, category: p.category, buCost: p.buCost }))
-        : (row ? row.primitiveLinks.map((link) => ({ id: link.primitiveId, name: link.primitive.name, category: link.primitive.category, buCost: link.primitive.buCost })) : []);
-      const capabilitySlots = snapCapabilityIds
-        ? snapCapabilityIds
-            .map((id) => capabilities.find((c) => String(c.id) === id))
-            .filter((c): c is CapabilityRow => Boolean(c))
-            .map((c) => ({ id: c.id, name: c.name, category: c.type, buCost: 0 }))
-        : (row ? row.capabilityLinks.map((link) => ({ id: link.capabilityId, name: link.capability.name, category: link.capability.type, buCost: 0 })) : []);
+            .map((p) => ({ id: p.id, name: p.name, category: p.category, buCost: p.buCost, mechanicalOutputText:p.mechanicalOutputText, narrativeRule:p.narrativeRule }))
+        : (row ? row.primitiveLinks.map((link) => ({ ...primitives.find(p => p.id === link.primitiveId), ...link.primitive, id: link.primitiveId })) : []);
+      const capabilitySlots = (snapCapabilityIds ?? row?.capabilityLinks.map(link => link.capabilityId) ?? []).map(id => {
+        const capability = capabilities.find(capability => capability.id === id);
+        const stored = row?.capabilityLinks.find(link => link.capabilityId === id)?.capability;
+        return {
+          id, name: capability?.name ?? stored?.name ?? "Unavailable capability", category:capability?.type ?? stored?.type ?? "Capability", buCost:0,
+          ...(capability ? {description:capability.verboseDescription, primitiveLinks:capability.primitiveLinks.map(link => ({...link,primitive:{...primitives.find(p=>p.id===link.primitiveId),...link.primitive}})), effects:capability.effectLinks.map(link => {
+            const effect = effects.find(effect => effect.id === link.effectId);
+            return {...effect,...link.effect,id:link.effectId,...(link.effect.primitiveLinks ?? effect?.primitiveLinks ? {primitiveLinks:(link.effect.primitiveLinks ?? effect?.primitiveLinks ?? []).map(primitive=>({...primitive,primitive:{...primitives.find(p=>p.id===primitive.primitiveId),...primitive.primitive}}))}:{})};
+          })} : stored?.primitiveLinks ? {primitiveLinks:stored.primitiveLinks.map(link=>({...link,primitive:{...primitives.find(p=>p.id===link.primitiveId),...link.primitive}}))} : {}),
+        };
+      });
       if (!form) return null;
       return <HeritageFormPreview form={form} primitives={primitiveSlots} capabilities={capabilitySlots} />;
     }

@@ -4,6 +4,8 @@
 
 import { Markdown } from "@/components/ui/markdown";
 import { dispatchOpenPreview } from "@/lib/sandbox/slot-events";
+import { computeTransitiveBu } from "@/lib/engine/transitive-bu";
+import { LiveRecipeCard, LivePrimitiveRules, LiveEffectRules, LiveMechanicalSummary, type LivePrimitiveSlot, type LiveEffect } from "./live-recipe-card";
 
 export type HeritageFormState = {
   kind: "LINEAGE" | "UPBRINGING" | "MANIFEST";
@@ -31,6 +33,11 @@ export type TemplateSlot = {
   name: string;
   category: string;
   buCost: number;
+  mechanicalOutputText?: string | null;
+  narrativeRule?: string | null;
+  description?: string | null;
+  primitiveLinks?: LivePrimitiveSlot[];
+  effects?: LiveEffect[];
 };
 
 function kindLabel(kind: string): string {
@@ -40,170 +47,25 @@ function kindLabel(kind: string): string {
   return kind;
 }
 
-function expectedCategory(kind: string): string {
-  if (kind === "LINEAGE") return "HERITAGE_AUGMENT";
-  if (kind === "UPBRINGING") return "BACKGROUND_AUGMENT";
-  if (kind === "MANIFEST") return "CHARACTER_SHEET_AUGMENT";
-  return "";
-}
-
-export function HeritageFormPreview({
-  form,
-  primitives,
-  capabilities,
-}: {
-  form: HeritageFormState;
-  primitives: TemplateSlot[];
-  capabilities: TemplateSlot[];
+export function HeritageFormPreview({form, primitives, capabilities}: {
+  form: HeritageFormState; primitives: TemplateSlot[]; capabilities: TemplateSlot[];
 }) {
-  const isEmpty = !form.name && primitives.length === 0 && capabilities.length === 0;
-  const totalBu = primitives.reduce((sum, p) => sum + p.buCost, 0);
-
-  if (isEmpty) {
-    return (
-      <div className="flex h-full items-center justify-center p-6 text-center">
-        <div className="max-w-xs space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">
-            No template yet
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Pick a kind, name it, slot in primitives. The card updates as you
-            build.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-5 p-4">
-      <header className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {kindLabel(form.kind)} Template
-        </p>
-        <h2 className="text-base font-semibold leading-tight text-foreground">
-          {form.name || "Unnamed Template"}
-        </h2>
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">
-            {totalBu} BU
-          </span>
-          <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-            {primitives.length} primitive{primitives.length === 1 ? "" : "s"}
-          </span>
-          {capabilities.length > 0 ? (
-            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-              {capabilities.length} capabilit
-              {capabilities.length === 1 ? "y" : "ies"}
-            </span>
-          ) : null}
-          <span
-            className={
-              "rounded-full px-2 py-0.5 font-medium " +
-              (form.isPublic
-                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                : "bg-amber-500/10 text-amber-600 dark:text-amber-400")
-            }
-          >
-            {form.isPublic ? "Public" : "Draft"}
-          </span>
-        </div>
-      </header>
-
-      {form.imageUrl ? (
-        <img
-          src={form.imageUrl}
-          alt={form.name}
-          className="w-full max-w-md rounded-md border"
-        />
-      ) : null}
-
-      {form.description ? (
-        <section>
-          <h3 className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
-            Description
-          </h3>
-          <div className="prose prose-invert prose-sm max-w-none break-words text-sm leading-7">
-            <Markdown>{form.description}</Markdown>
-          </div>
-        </section>
-      ) : null}
-
-      {form.suggestedTraits ? (
-        <section>
-          <h3 className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
-            Suggested traits
-          </h3>
-          <div className="prose prose-invert prose-sm max-w-none break-words text-sm leading-7">
-            <Markdown>{form.suggestedTraits}</Markdown>
-          </div>
-        </section>
-      ) : null}
-
-      {primitives.length > 0 ? (
-        <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-            Bundled primitives ({primitives.length})
-          </h3>
-          <ul className="divide-y divide-border rounded-md border">
-            {primitives.map((p) => (
-              <li
-                key={p.id}
-                className="flex items-center justify-between gap-2 p-2 text-sm"
-              >
-                <button
-                  type="button"
-                  onClick={() =>
-                    dispatchOpenPreview({
-                      targetType: "PRIMITIVE",
-                      targetId: String(p.id),
-                      label: p.name,
-                    })
-                  }
-                  className="min-w-0 flex-1 truncate text-left font-medium text-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
-                  title={`Open ${p.name} in preview`}
-                >
-                  {p.name}
-                </button>
-                <span className="shrink-0 font-mono text-[10px] text-foreground">
-                  {p.buCost} BU
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {capabilities.length > 0 ? (
-        <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-            Bundled capabilities ({capabilities.length})
-          </h3>
-          <ul className="divide-y divide-border rounded-md border">
-            {capabilities.map((c) => (
-              <li
-                key={c.id}
-                className="flex items-center justify-between gap-2 p-2 text-sm"
-              >
-                <button
-                  type="button"
-                  onClick={() =>
-                    dispatchOpenPreview({
-                      targetType: "CAPABILITY",
-                      targetId: String(c.id),
-                      label: c.name,
-                    })
-                  }
-                  className="min-w-0 flex-1 truncate text-left font-medium text-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
-                  title={`Open ${c.name} in preview`}
-                >
-                  {c.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-    </div>
-  );
+  const directSlots = primitives.map(primitive => ({primitiveId:Number(primitive.id), ...(primitive.isMirrored !== undefined ? {isMirrored:primitive.isMirrored}:{}), primitive:{...primitive,id:Number(primitive.id)}}));
+  const allSlots = [...directSlots, ...capabilities.flatMap(capability => [...(capability.primitiveLinks ?? []), ...(capability.effects ?? []).flatMap(effect => effect.primitiveLinks ?? [])])];
+  const completeCost = capabilities.every(capability => capability.primitiveLinks !== undefined && capability.effects !== undefined && capability.effects.every(effect => effect.primitiveLinks !== undefined));
+  const {transitiveBu} = computeTransitiveBu({primitiveLinks: allSlots});
+  return <LiveRecipeCard name={form.name} kind={kindLabel(form.kind)} icon={form} description={form.description} sourceOrigin={form.sourceOrigin} tags={form.tags} badges={<>
+    <span data-tone="violet">{kindLabel(form.kind)}</span><span data-tone="teal">{form.isPublic ? "Public" : "Private draft"}</span><span>{transitiveBu} BU{completeCost ? "" : " · loaded rules"}</span>
+  </>}>
+    {form.imageUrl ? <img src={form.imageUrl} alt={form.name} className="v12-live-portrait" /> : null}
+    <LiveMechanicalSummary slots={allSlots} />
+    {capabilities.length ? <section className="v12-live-composition"><h3 className="v12-kicker">Granted capabilities · {capabilities.length}</h3>{capabilities.map((capability,index)=><details className="v12-live-effect" open key={`${capability.id}:${index}`}><summary><span className="v12-kicker">Capability · {capability.category}</span><strong>{capability.name}</strong></summary>
+      {capability.description ? <div className="v12-live-description"><Markdown>{capability.description}</Markdown></div> : null}
+      <LivePrimitiveRules slots={capability.primitiveLinks ?? []} /><LiveEffectRules effects={capability.effects ?? []} />
+      {capability.isMirrored ? <p className="v12-live-note">Mirrored</p> : null}
+      <button type="button" className="v12-live-inspect" onClick={()=>dispatchOpenPreview({targetType:"CAPABILITY",targetId:String(capability.id),label:capability.name})}>Inspect capability and provenance</button>
+    </details>)}</section> : null}
+    <details className="v12-live-composition" open><summary>Direct {kindLabel(form.kind).toLowerCase()} primitives · {directSlots.length}</summary><LivePrimitiveRules slots={directSlots} />{!directSlots.length ? <p className="v12-live-note">No direct primitives added.</p> : null}</details>
+    {form.suggestedTraits ? <section className="v12-live-composition"><h3 className="v12-kicker">Suggested traits</h3><Markdown>{form.suggestedTraits}</Markdown></section> : null}
+  </LiveRecipeCard>;
 }
