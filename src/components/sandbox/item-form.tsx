@@ -1,4 +1,7 @@
 "use client";
+import { AuthorChapters, AuthorChapter } from "./author-chapters";
+import { RecipePrimitiveIdentity } from "./recipe-primitive-identity";
+import { RecipeComposition, RecipeEntryDetails, type RecipePrimitiveLink, type RecipeEffectLink } from "./recipe-composition";
 import { SortableBundleList,SortableMember } from "@/components/characters/workspace/sortable-bundle-list";
 
 // ItemForm: controlled form-only composer for items.
@@ -139,12 +142,17 @@ export function ItemForm({
     name: string;
     category: string;
     buCost: number;
+    mechanicalOutputText?: string | null;
+    narrativeRule?: string | null;
   }>;
   availableCapabilities: Array<{
     id: string;
     name: string;
     type: string;
     sourceType: string;
+    verboseDescription?: string | null;
+    primitiveLinks?: RecipePrimitiveLink[];
+    effectLinks?: RecipeEffectLink[];
   }>;
   availableEffects: Array<{
     id: string;
@@ -554,7 +562,7 @@ export function ItemForm({
 
   return (
     <form
-      className="grid grid-cols-1 gap-4 rounded-md border border-border bg-card p-4 sm:p-5"
+      className="v12-instrument grid grid-cols-1 gap-4 rounded-md border border-border bg-card p-4 sm:p-5"
       onSubmit={submitItem}
     >
       <div className="flex items-center justify-between gap-3">
@@ -574,8 +582,8 @@ export function ItemForm({
                 data-testid="save-intent-chip"
                 className={
                   isFork
-                    ? "inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary"
-                    : "inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                    ? "inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[13px] font-medium uppercase tracking-wide text-primary"
+                    : "inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[13px] font-medium uppercase tracking-wide text-muted-foreground"
                 }
                 title={
                   isFork
@@ -597,6 +605,142 @@ export function ItemForm({
         </button>
       </div>
 
+      <AuthorChapters>
+        <AuthorChapter id="pieces" title="Pieces">
+      <section className="rounded-md border border-border bg-background p-4">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-bold">Item-augment Primitives</h3>
+          <span className="rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
+            {computedBu} BU
+          </span>
+        </div>
+
+        {primitiveIds.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            No item-augment primitives slotted. Pick a primitive from the
+            Library column and use its &ldquo;Slot into build&rdquo; action.
+          </p>
+        ) : (
+          <SortableBundleList className="mt-3 space-y-2" ids={primitiveIds.map(String)} onOrder={order=>{setPrimitiveIds(order.map(Number));setOrderChanged(true);setIsDirty(true);}}>
+            {slottedPrimitives.map((p) => (
+              <SortableMember id={String(p.id)} label={p.name}
+                key={p.id}
+                className="v12-author-recipe-piece flex flex-col gap-3 rounded-md border border-border bg-card p-3 text-sm"
+              >
+                <RecipePrimitiveIdentity primitive={p} />
+                <div className="v12-recipe-member-controls flex flex-wrap items-center gap-2">
+                  <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 font-mono text-xs">
+                    {p.buCost} BU
+                  </span>
+                  <label
+                    className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs"
+                    title="When this slot is mirrored, the consumer pays BU debt at template/character-creation time."
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isMirroredIds.has(p.id)}
+                      onChange={() => toggleSlotMirror(p.id)}
+                      className="size-3.5"
+                    />
+                    <span>Mirror</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => togglePrimitive(p.id)}
+                    aria-label={`Remove ${p.name}`}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
+                  >
+                    <Trash2 className="size-3.5" />
+                    <span className="hidden sm:inline">Remove</span>
+                  </button>
+                </div>
+              </SortableMember>
+            ))}
+          </SortableBundleList>
+        )}
+      </section>
+
+      <section className="rounded-md border border-border bg-background p-4">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-bold">Granted Capabilities</h3>
+        </div>
+
+        {capabilityIds.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            No capabilities granted. Pick a capability from the Library
+            column and use its &ldquo;Slot into build&rdquo; action.
+          </p>
+        ) : (
+          <SortableBundleList className="mt-3 space-y-2" ids={capabilityIds} onOrder={order=>{setCapabilityIds(order);setOrderChanged(true);setIsDirty(true);}}>
+            {capabilityIds.map((id) => {
+              const cap = availableCapabilities.find((c) => c.id === id);
+              if (!cap) return null;
+              return (
+                <SortableMember id={id} label={cap.name}
+                  key={id}
+                  className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2 text-sm"
+                >
+                  <div className="min-w-0 flex-1">
+                    <h3>{cap.name}</h3>
+                    <p className="text-xs text-muted-foreground">
+                      {cap.type} · {cap.sourceType}
+                    </p>
+                    {cap.verboseDescription ? <p>{cap.verboseDescription}</p> : null}
+                    <RecipeComposition id={id} {...(cap.primitiveLinks ? {primitiveLinks:cap.primitiveLinks} : {})} {...(cap.effectLinks ? {effectLinks:cap.effectLinks} : {})} />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleCapability(id)}
+                    className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
+                  >
+                    <Trash2 className="size-3.5" />
+                    Remove
+                  </button>
+                </SortableMember>
+              );
+            })}
+          </SortableBundleList>
+        )}
+      </section>
+
+      <section className="rounded-md border border-border bg-background p-4">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-bold">Granted Effects</h3>
+        </div>
+
+        {effectIds.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            No effects granted. Pick an effect from the Library column and
+            use its &ldquo;Slot into build&rdquo; action.
+          </p>
+        ) : (
+          <SortableBundleList className="mt-3 space-y-2" ids={effectIds} onOrder={order=>{setEffectIds(order);setOrderChanged(true);setIsDirty(true);}}>
+            {effectIds.map((id) => {
+              const eff = availableEffects.find((e) => e.id === id);
+              if (!eff) return null;
+              return (
+                <SortableMember id={id} label={eff.name}
+                  key={id}
+                  className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2 text-sm"
+                >
+                  <div className="v12-recipe-copy min-w-0 flex-1"><p className="v12-kicker">Granted effect</p><h3>{eff.name}</h3><RecipeEntryDetails targetType="EFFECT" id={id} label="Full effect composition" /></div>
+                  <button
+                    type="button"
+                    onClick={() => toggleEffect(id)}
+                    className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
+                  >
+                    <Trash2 className="size-3.5" />
+                    Remove
+                  </button>
+                </SortableMember>
+              );
+            })}
+          </SortableBundleList>
+        )}
+      </section>
+
+        </AuthorChapter>
+        <AuthorChapter id="identity" title="Identity">
       {/* Phase 8: per-entity iconography */}
       <IconSlot
         iconSource={(form.iconSource as IconSource | null) ?? null}
@@ -659,8 +803,21 @@ export function ItemForm({
         </label>
       </div>
 
+      <label className="block text-sm font-medium">
+        Description
+        <textarea
+          className="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
+          value={form.description}
+          onChange={(e) => updateForm("description", e.target.value)}
+          placeholder="Lore, mechanics, anything notable..."
+          rows={3}
+        />
+      </label>
+
+        </AuthorChapter>
+        <AuthorChapter id="table" title="At the table">
       {/* Phase 8.5 H3-rev: 3 booleans row right under Type/Rarity. */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Checkbox
           label="Two-handed"
           checked={form.isTwoHanded}
@@ -698,7 +855,7 @@ export function ItemForm({
           explicit "same row even on mobile" requirement. This
           uses grid-cols-3 unconditionally; on very narrow phones
           the columns get tight, that's intentional. */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {/* Phase 8.5 / Session H1: size drives encumbrance Load. */}
         <label className="block text-sm font-medium">
           Size
@@ -716,11 +873,11 @@ export function ItemForm({
           </select>
           {/* Phase 8.5 H4-rev2: pouch-system hint when TINY is selected. */}
           {form.size === "TINY" ? (
-            <span className="mt-1 block text-[11px] text-muted-foreground">
+            <span className="mt-1 block text-[13px] text-muted-foreground">
               1000 tiny items = 1 Load (pouch system).
             </span>
           ) : (
-            <span className="mt-1 block text-[11px] text-muted-foreground">
+            <span className="mt-1 block text-[13px] text-muted-foreground">
               {SIZE_LOAD[form.size as keyof typeof SIZE_LOAD] ?? 0} Load per item.
             </span>
           )}
@@ -787,7 +944,7 @@ export function ItemForm({
             />
             <span>{form.isNotEquippable ? "Yes" : "No"}</span>
           </label>
-          <span className="mt-1 block text-[11px] text-muted-foreground">
+          <span className="mt-1 block text-[13px] text-muted-foreground">
             Carried but never equipped. Hides the Equip button on
             the character sheet and skips equip-slot accounting.
           </span>
@@ -817,7 +974,7 @@ export function ItemForm({
               ceil(quantity / size_load). The number input
               above lets the user pick how many pieces
               (per Load). */}
-          <span className="mt-1 block text-[11px] text-muted-foreground">
+          <span className="mt-1 block text-[13px] text-muted-foreground">
             How many pieces of this item fit in {SIZE_LOAD[(form.size as CharacterSize) ?? "SMALL"]}{" "}
             Load. Total Load contribution = {Math.ceil(Number(form.quantity) / Math.max(1, SIZE_LOAD[(form.size as CharacterSize) ?? "SMALL"]))}.
           </span>
@@ -835,23 +992,14 @@ export function ItemForm({
               the proper integration with the deduped primitive
               total is parked in Session J / T16 (see
               swordweave-character-items SKILL "Open followup #2"). */}
-          <span className="mt-1 block text-[11px] text-muted-foreground">
-            Adds to the summed total of primitives (T16/Session J rework).
+          <span className="mt-1 block text-[13px] text-muted-foreground">
+            Additional item cost, beyond its primitive cost.
           </span>
         </label>
       </div>
 
-      <label className="block text-sm font-medium">
-        Description
-        <textarea
-          className="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
-          value={form.description}
-          onChange={(e) => updateForm("description", e.target.value)}
-          placeholder="Lore, mechanics, anything notable..."
-          rows={3}
-        />
-      </label>
-
+        </AuthorChapter>
+        <AuthorChapter id="publish" title="Publish">
       <label className="block text-sm font-medium">
         Tags (comma separated)
         <input
@@ -884,145 +1032,14 @@ export function ItemForm({
           value={form.isPublic ? "PUBLIC" : "PRIVATE"}
           onChange={(next) => updateForm("isPublic", next === "PUBLIC")}
         />
-        <p className="mt-2 text-[10px] font-normal text-muted-foreground">
+        <p className="mt-2 text-[13px] font-normal text-muted-foreground">
           Public entries appear in the Library. Private and Followers-only
           entries can be promoted to Public from the My Creations page.
         </p>
       </div>
 
-      <section className="rounded-md border border-border bg-background p-4">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-bold">Item-augment Primitives</h3>
-          <span className="rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
-            {computedBu} BU
-          </span>
-        </div>
-
-        {primitiveIds.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            No item-augment primitives slotted. Pick a primitive from the
-            Library column and use its &ldquo;Slot into build&rdquo; action.
-          </p>
-        ) : (
-          <SortableBundleList className="mt-3 space-y-2" ids={primitiveIds.map(String)} onOrder={order=>{setPrimitiveIds(order.map(Number));setOrderChanged(true);setIsDirty(true);}}>
-            {slottedPrimitives.map((p) => (
-              <SortableMember id={String(p.id)} label={p.name}
-                key={p.id}
-                className="flex flex-col gap-2 rounded-md border border-border bg-card p-3 text-sm sm:flex-row sm:items-center"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{p.name}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 font-mono text-xs">
-                    {p.buCost} BU
-                  </span>
-                  <label
-                    className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs"
-                    title="When this slot is mirrored, the consumer pays BU debt at template/character-creation time."
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isMirroredIds.has(p.id)}
-                      onChange={() => toggleSlotMirror(p.id)}
-                      className="size-3.5"
-                    />
-                    <span>Mirror</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => togglePrimitive(p.id)}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
-                  >
-                    <Trash2 className="size-3.5" />
-                    <span className="hidden sm:inline">Remove</span>
-                  </button>
-                </div>
-              </SortableMember>
-            ))}
-          </SortableBundleList>
-        )}
-      </section>
-
-      <section className="rounded-md border border-border bg-background p-4">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-bold">Granted Capabilities</h3>
-        </div>
-
-        {capabilityIds.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            No capabilities granted. Pick a capability from the Library
-            column and use its &ldquo;Slot into build&rdquo; action.
-          </p>
-        ) : (
-          <SortableBundleList className="mt-3 space-y-2" ids={capabilityIds} onOrder={order=>{setCapabilityIds(order);setOrderChanged(true);setIsDirty(true);}}>
-            {capabilityIds.map((id) => {
-              const cap = availableCapabilities.find((c) => c.id === id);
-              if (!cap) return null;
-              return (
-                <SortableMember id={id} label={cap.name}
-                  key={id}
-                  className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2 text-sm"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{cap.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {cap.type} · {cap.sourceType}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleCapability(id)}
-                    className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
-                  >
-                    <Trash2 className="size-3.5" />
-                    Remove
-                  </button>
-                </SortableMember>
-              );
-            })}
-          </SortableBundleList>
-        )}
-      </section>
-
-      <section className="rounded-md border border-border bg-background p-4">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-bold">Granted Effects</h3>
-        </div>
-
-        {effectIds.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            No effects granted. Pick an effect from the Library column and
-            use its &ldquo;Slot into build&rdquo; action.
-          </p>
-        ) : (
-          <SortableBundleList className="mt-3 space-y-2" ids={effectIds} onOrder={order=>{setEffectIds(order);setOrderChanged(true);setIsDirty(true);}}>
-            {effectIds.map((id) => {
-              const eff = availableEffects.find((e) => e.id === id);
-              if (!eff) return null;
-              return (
-                <SortableMember id={id} label={eff.name}
-                  key={id}
-                  className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2 text-sm"
-                >
-                  <span className="min-w-0 flex-1 truncate font-medium">
-                    {eff.name}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => toggleEffect(id)}
-                    className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
-                  >
-                    <Trash2 className="size-3.5" />
-                    Remove
-                  </button>
-                </SortableMember>
-              );
-            })}
-          </SortableBundleList>
-        )}
-      </section>
-
+        </AuthorChapter>
+      </AuthorChapters>
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"

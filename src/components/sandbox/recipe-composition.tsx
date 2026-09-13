@@ -14,3 +14,8 @@ export function RecipeComposition({ id, primitiveLinks, effectLinks }: { id: str
     <details onToggle={event => setInspect(event.currentTarget.open)}><summary>Full capability details</summary>{inspect ? <FetchedEntityPreview targetType="CAPABILITY" targetId={id} /> : null}</details>
   </div>;
 }
+
+export function RecipeEntryDetails({targetType,id,label}:{targetType:string;id:string;label:string}) {
+  const [open,setOpen]=useState(false);
+  return <details onToggle={event=>setOpen(event.currentTarget.open)}><summary>{label}</summary>{open ? <FetchedEntityPreview targetType={targetType} targetId={id}/> : null}</details>;
+}

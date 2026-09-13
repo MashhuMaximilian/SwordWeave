@@ -50,3 +50,9 @@ Last production baseline: `6fd6895`. Later local navigation, unified family pane
 - Effects, capabilities and heritages now share a primitive identity block with Market-family medallion, title, readable mechanical rule, family and expandable complete source preview. Narrative detail is retained. Existing stored slot identity takes precedence over lookup identity.
 - Membership controls remain attached to their existing handlers. A local EffectForm fixture verified quantity 1→2 updates 3 BU→6 BU. Mobile inherited row layout was corrected; final computed card uses one 286px column and document width is 390px.
 - Screenshot: `output/playwright/v12-effect-recipe-mobile-fixed.png`. Fixture removed; this does not substitute for signed-in save/reload verification. Drawer components were not changed.
+
+### Item author chapters (local)
+
+- Item author now uses Pieces / Identity / At the table / Publish with mounted fields. All former fields and save/reorder/mirror/slot handlers retained. Primitive identities use the shared recipe block; granted capability/effect detail is available without leaving the composer.
+- Local 390px fixture verified missing-name submit selects Identity and focuses Name, edited name persists across chapters, and Two-handed changes equipped slots 1→2. Document width remains 390px. No item was saved; fixture removed.
+- Screenshot `output/playwright/v12-item-table-mobile.png` predates removal of the implementation-note helper copy. Full signed-in save/reload and exact visual review remain required.
