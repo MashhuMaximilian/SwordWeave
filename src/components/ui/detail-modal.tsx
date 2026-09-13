@@ -10,7 +10,7 @@ import { X } from "lucide-react";
  * and any other detail-on-demand UI.
  *
  * Features:
- * - Three size variants (sm/md/lg)
+ * - Four size variants (sm/md/lg/xl)
  * - Mobile-first bottom sheet styling (rounded-t-2xl on small screens)
  * - Body scroll lock while open
  * - Escape key + backdrop click to close
@@ -24,7 +24,7 @@ interface DetailModalProps {
   title: string;
   subtitle?: string | null;
   children: React.ReactNode;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
 }
 
 export function DetailModal({
@@ -61,7 +61,7 @@ export function DetailModal({
   if (!isOpen || typeof document === "undefined") return null;
 
   const sizeClass =
-    size === "sm" ? "max-w-md" : size === "lg" ? "max-w-4xl" : "max-w-2xl";
+    size === "xl" ? "max-w-[1400px]" : size === "sm" ? "max-w-md" : size === "lg" ? "max-w-4xl" : "max-w-2xl";
 
   return createPortal(
     <div

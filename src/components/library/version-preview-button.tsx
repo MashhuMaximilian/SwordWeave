@@ -34,7 +34,7 @@ interface VersionPreviewButtonProps {
   effectPrimitiveLinks?: Record<string, Array<{ primitiveId: number; quantity: number }>>;
 }
 
-function mapPayloadToPreviewItem(
+export function mapPayloadToPreviewItem(
   targetType: string,
   targetId: string,
   payload: Record<string, unknown>,

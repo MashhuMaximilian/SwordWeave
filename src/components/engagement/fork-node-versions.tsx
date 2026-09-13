@@ -3,7 +3,7 @@ import { useState } from "react";
 
 type VersionPage = { versions: Array<{ id: string; versionNumber: number; publishedAt: string }>; nextBefore: number | null };
 
-export function ForkNodeVersions({ targetType, targetId }: { targetType: string; targetId: string }) {
+export function ForkNodeVersions({ targetType, targetId, onSelect, selectedVersion }: { targetType: string; targetId: string; onSelect: (version: number) => void; selectedVersion: number | null }) {
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState<VersionPage | null>(null);
   const [loading, setLoading] = useState(false);
@@ -22,7 +22,7 @@ export function ForkNodeVersions({ targetType, targetId }: { targetType: string;
   return <div className="v12-node-versions">
     <button type="button" aria-expanded={open} onClick={() => { setOpen(!open); if (!open && !page && !loading) void load(); }}>Versions {open ? "▴" : "▾"}</button>
     {open ? <div className="v12-node-version-list">
-      {page?.versions.map(version => <a key={version.id} href={`/library/item/${targetType}:${targetId}/versions#v${version.versionNumber}`}><b>v{version.versionNumber}</b><time dateTime={version.publishedAt}>{new Date(version.publishedAt).toLocaleDateString()}</time></a>)}
+      {page?.versions.map(version => <button type="button" key={version.id} aria-pressed={selectedVersion === version.versionNumber} onClick={() => onSelect(version.versionNumber)}><b>v{version.versionNumber}</b><time dateTime={version.publishedAt}>{new Date(version.publishedAt).toLocaleDateString()}</time></button>)}
       {page?.versions.length === 0 ? <p>No published versions yet.</p> : null}
       {error ? <button type="button" onClick={() => void load(page?.nextBefore ?? undefined)}>Retry loading versions</button> : null}
       {loading ? <p role="status">Loading versions…</p> : page?.nextBefore ? <button type="button" onClick={() => void load(page.nextBefore!)}>Earlier versions</button> : null}
