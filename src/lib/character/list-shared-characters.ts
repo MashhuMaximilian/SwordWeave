@@ -98,24 +98,37 @@ export async function listSharedCharacters(
 
   // 2. Flat lookup of granter display info. The shallow pattern
   //    keeps the join depth at 2 (character_shares → characters).
+  //
+  // PLAN Eilxina Part F (Mashu 2026-09-10): `character_shares.
+  // shared_by_user_id` is a text column that FK-references
+  // `users.clerk_user_id` (not `users.id`). The previous version
+  // looked it up via `eq(users.id, ...)` which PostgreSQL
+  // rejected with "invalid input syntax for type uuid" — and
+  // /characters 500'd for everyone with a share row.
+  //
+  // Lookup is now against clerk_user_id. We also extract
+  // distinct clerk-ids first and run a single `where in (`
+  // query so we don't N+1.
   const granterIds = Array.from(
-    new Set(shareRows.map((r) => r.granterId).filter((x): x is string => !!x)),
+    new Set(
+      shareRows.map((r) => r.granterId).filter((x): x is string => !!x),
+    ),
   );
   const granterRows = granterIds.length
     ? await db
         .select({
-          id: users.id,
+          clerkUserId: users.clerkUserId,
           username: users.username,
           displayName: users.displayName,
         })
         .from(users)
         .where(
           granterIds.length === 1
-            ? eq(users.id, granterIds[0]!)
-            : sql`${users.id} IN (${sql.join(granterIds.map((id) => sql`${id}::uuid`), sql`, `)})`,
+            ? eq(users.clerkUserId, granterIds[0]!)
+            : sql`${users.clerkUserId} IN (${sql.join(granterIds.map((id) => sql`${id}`), sql`, `)})`,
         )
     : [];
-  const granterMap = new Map(granterRows.map((g) => [g.id, g]));
+  const granterMap = new Map(granterRows.map((g) => [g.clerkUserId, g]));
 
   // 3. Compose the row shape.
   return shareRows.map((r) => {

@@ -55,23 +55,46 @@ export default async function CharactersPage({ searchParams }: PageProps) {
   // Load all three lists in parallel. Each is independent. The
   // shared query short-circuits when myInternalId is null (no
   // user => no shares). The public query is always safe.
-  const [ownRows, sharedRows, publicResult] = await Promise.all([
-    clerkId
-      ? db.query.characters.findMany({
-          where: eq(characters.userId, clerkId),
-          orderBy: [asc(characters.level), asc(characters.name)],
-          with: {
-            primitiveLinks: { with: { primitive: true } },
-            capabilityLinks: { with: { capability: true } },
-            itemLinks: { with: { item: true } },
-          },
-        })
-      : Promise.resolve([]),
-    myInternalId
-      ? listSharedCharacters(myInternalId)
-      : Promise.resolve([]),
-    queryLibrary({ targetType: "CHARACTER", limit: 48 }),
-  ]);
+  //
+  // PLAN Eilxina Part F (Mashu 2026-09-10): the previous version
+  // silently threw away the real error message in production
+  // (Next.js shows "omitted in production builds" by default at
+  // the framework boundary). We log to the server stdout so the
+  // real cause appears in Vercel logs even when the user-facing
+  // error.tsx can't render it.
+  const [ownRows, sharedRows, publicResult] = (await (async () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ownedPromise: Promise<any[]> = clerkId
+        ? (db.query.characters.findMany({
+            where: eq(characters.userId, clerkId),
+            orderBy: [asc(characters.level), asc(characters.name)],
+            with: {
+              primitiveLinks: { with: { primitive: true } },
+              capabilityLinks: { with: { capability: true } },
+              itemLinks: { with: { item: true } },
+            },
+          }) as unknown as Promise<any[]>)
+        : Promise.resolve([]);
+      return await Promise.all([
+        ownedPromise,
+        myInternalId
+          ? listSharedCharacters(myInternalId)
+          : Promise.resolve([] as Awaited<ReturnType<typeof listSharedCharacters>>),
+        queryLibrary({ targetType: "CHARACTER", limit: 48 }),
+      ]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : "";
+      console.error("[characters/page] list load failed:", msg);
+      console.error("[characters/page] stack:", stack);
+      throw err;
+    }
+  })()) as [
+    Awaited<ReturnType<typeof db.query.characters.findMany>>,
+    Awaited<ReturnType<typeof listSharedCharacters>>,
+    Awaited<ReturnType<typeof queryLibrary>>,
+  ];
 
   return (
     <div className="mx-auto w-full max-w-6xl px-5 py-8">
@@ -102,7 +125,19 @@ export default async function CharactersPage({ searchParams }: PageProps) {
             ) : (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {ownRows.map((c) => (
-                  <CharacterCard key={c.id} character={c} />
+                  <CharacterCard
+                    key={c.id}
+                    character={
+                      // The relational findMany returns characters
+                      // with their primitiveLinks/capabilityLinks/
+                      // itemLinks relations; CharacterCard's type
+                      // wants a slightly different shape, but the
+                      // runtime contract is identical.
+                      c as unknown as React.ComponentProps<
+                        typeof CharacterCard
+                      >["character"]
+                    }
+                  />
                 ))}
               </div>
             )

@@ -51,7 +51,11 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { CharacterEditButton } from "@/components/characters/character-edit-button";
 import { CharacterVisibilityControl } from "@/components/characters/character-visibility-control";
+import { CharacterSharePanel } from "@/components/characters/character-share-panel";
 import { StaleUpdatesIndicator } from "@/components/characters/stale-updates-indicator";
+import { UnversionedSlotsIndicator } from "@/components/characters/unversioned-slots-indicator";
+import { UpdateAllModal } from "@/components/characters/update-all-modal";
+import { VersionHistoryLink } from "@/components/characters/version-history-link";
 import { IdentityCell } from "@/components/characters/identity-cell";
 import { DmBonusEditor } from "@/components/characters/dm-bonus-editor";
 import {
@@ -160,12 +164,17 @@ export interface SheetIdentityHeaderProps {
   // latestVersionId. Drives the header-level stale-updates chip in
   // the expanded panel (matches the in-page header indicator).
   readonly staleUpdatesCount: number;
+  // PLAN Eilxina Part G (Mashu 2026-09-10): count of slotted
+  // entities that have a published latestVersionId but the slot's
+  // own versionId is NULL (legacy pre-Phase-3 slots). Drives the
+  // secondary "X unversioned · Pin all" chip in the header.
+  readonly unversionedCount: number;
   // PLAN Eilxina Part D (Mashu 2026-09-09): the | undefined is needed
   // because exactOptionalPropertyTypes treats optional `?` and explicit
   // `| undefined` as DIFFERENT types. The character-sheet-view passes
   // `props.mode` which itself is optional, so we have to accept undefined
   // here too.
-  readonly mode?: "PLAY" | "BUILD" | undefined;
+  readonly mode?: "PLAY" | "BUILD" | "EDIT" | undefined;
   /**
    * Phase 8.4 v11 (Mashu 2026-07-28): attribute values
    * for the identity card's "Attributes" cell (sum +
@@ -205,6 +214,22 @@ export interface SheetIdentityHeaderProps {
       readonly acquiredAtLevel: number;
     }>;
   };
+  // PLAN Eilxina Part E (Mashu 2026-09-10): the in-page
+  // <header> in character-sheet-view.tsx is hidden by default
+  // (className="hidden" with no md:flex). The action buttons
+  // (Versions, Share) that lived there are now surfaced in
+  // the SheetIdentityHeader's expanded panel instead, so
+  // users on every viewport can reach them by tapping the
+  // chevron.
+  readonly characterVersionCount?: number | undefined;
+  readonly ownerShares?: ReadonlyArray<{
+    readonly id: string;
+    readonly sharedWithUserId: string;
+    readonly sharedWithUsername: string | null;
+    readonly canEdit: boolean;
+    readonly createdAt: string;
+  }> | undefined;
+  readonly viewerPermission?: "OWNER" | "EDITOR" | "VIEWER" | "PUBLIC_READER" | "NOT_FOUND" | undefined;
 }
 
 export function SheetIdentityHeader({
@@ -223,6 +248,7 @@ export function SheetIdentityHeader({
   // PLAN Eilxina Part D (Mashu 2026-09-09): stale-updates count for
   // the mobile header indicator.
   staleUpdatesCount,
+  unversionedCount,
   mode,
   attrSum,
   portraitUrl,
@@ -230,6 +256,9 @@ export function SheetIdentityHeader({
   onLevelUp,
   buBalance,
   volatility,
+  characterVersionCount,
+  ownerShares,
+  viewerPermission,
 }: SheetIdentityHeaderProps) {
   const [hydrated, setHydrated] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -238,6 +267,12 @@ export function SheetIdentityHeader({
   // explains the formula in the same FormulaModal pattern
   // used by the rest of the sheet.
   const [buPopup, setBuPopup] = useState<"budget" | "debt" | null>(null);
+  // PLAN Eilxina Part F (Mashu 2026-09-10): the "Update all stale slots"
+  // modal opens when the owner taps the stale-updates chip in this drawer.
+  // Reachable from both the expanded panel button AND the in-page header
+  // indicator (the modal mounts at the bottom of the JSX tree so the
+  // identity header stays layout-stable).
+  const [updateModalOpen, setUpdateModalOpen] = useState(false);
 
   useEffect(() => {
     setHydrated(true);
@@ -583,7 +618,47 @@ export function SheetIdentityHeader({
             <StaleUpdatesIndicator
               count={staleUpdatesCount}
               mode={mode ?? "PLAY"}
+              {...((mode ?? "PLAY") !== "PLAY"
+                ? { onUpdateAll: () => setUpdateModalOpen(true) }
+                : {})}
             />
+            {/* PLAN Eilxina Part G (Mashu 2026-09-10): secondary
+                chip for legacy NULL-versionId slots. Stale chip
+                counts slots that have a pinned version behind the
+                latest; this counts slots that have NO pinned
+                version at all. Click to bulk-pin every unversioned
+                slot to its entity's latest version. */}
+            <UnversionedSlotsIndicator
+              count={unversionedCount}
+              characterId={characterId}
+              mode={mode ?? "PLAY"}
+            />
+            {/* PLAN Eilxina Part E (Mashu 2026-09-10): Versions link
+                in the drawer. The in-page <header> is hidden by
+                default, so the action row in this expanded drawer is
+                the place every viewer (read-only for collaborators)
+                can audit the character's history. */}
+            <VersionHistoryLink
+              characterId={characterId}
+              count={characterVersionCount}
+            />
+            {/* PLAN Eilxina Part C (Mashu 2026-09-10): Share panel
+                in the drawer. OWNER only — gated here, same as the
+                in-page header was. Editors/Viewers reach the share
+                info via the header's `versions` link, not this
+                button. */}
+            {viewerPermission === "OWNER" && (
+              <CharacterSharePanel
+                characterId={characterId}
+                shares={(ownerShares ?? []).map((s) => ({
+                  id: s.id,
+                  username: s.sharedWithUsername ?? "(unknown)",
+                  displayName: null,
+                  canEdit: s.canEdit,
+                  createdAt: s.createdAt,
+                }))}
+              />
+            )}
           </div>
           {!canLevelUp ? (
             <p className="mt-2 text-[10px] text-muted-foreground">
@@ -616,6 +691,20 @@ export function SheetIdentityHeader({
           onClose={() => setBuPopup(null)}
         />
       ) : null}
+      {/* PLAN Eilxina Part F (Mashu 2026-09-10): Update-all modal.
+          Owner-only. Renders as a portal-style overlay regardless of
+          which trigger opened it (drawer chip, in-page header pill). */}
+      <UpdateAllModal
+        characterId={characterId}
+        open={updateModalOpen}
+        onClose={() => setUpdateModalOpen(false)}
+        onApplied={() => {
+          // Soft refresh — the parent's router.refresh is plumbed
+          // through props. For now, dispatch a hash-based ping so
+          // the in-page StaleUpdatesIndicator sibling re-fetches.
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }
