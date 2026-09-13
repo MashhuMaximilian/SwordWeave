@@ -77,3 +77,7 @@ Last production baseline: `6fd6895`. Later local navigation, unified family pane
 - Displayed recipe BU uses the existing transitive helper plus the separately stored extra item cost. Unknown nested recipes are explicitly marked partial. Updated the obsolete quantity helper copy to match the current engine; no engine or save contract changed.
 - 15 live-card/transitive-BU tests passed, including tiny pouches and shared primitive deduplication. Local dark/light item fixtures both remain 390px wide at 390px viewport. Screenshots `v12-live-item-mobile.png` and `v12-live-item-light-mobile.png`. Fixture removed; no records saved.
 - Full production build passed with all accumulated local changes. Signed-in production inspection remains required; it is still not a complete parity certificate.
+
+## Production check and tablet correction
+
+Commit dd2a387 deployed successfully to www.swordweave.quest (dpl_EVCAR6CvJ3D4ZHsTN1D667y4ZqgU). Signed-in in-app reload confirms new navigation and live preview. At 847px the legacy tablet branch still squeezed three columns and omitted the V12 panel chrome. Updated it to show source/editor or editor/preview, retaining the mounted editor and source state; supplied the same contextual V12 headings and surfaces. Added a 480px container query for primitive identity fields in independently narrowed editor panels. TypeScript passes. This correction still requires deployed visual verification; overall parity remains incomplete.

@@ -368,6 +368,7 @@ export function SandboxLayout({
               builder={builder}
               preview={preview}
               previewVisible={previewVisible}
+              columnMeta={columnMeta}
               onPreviewToggle={togglePreview}
             />
             {bottomBar ? (
@@ -543,6 +544,7 @@ function DesktopSandboxLayout({
 // ----------------------------------------------------------------------------
 
 type TabletProps = {
+  columnMeta?: SandboxLayoutProps["columnMeta"];
   library: ReactNode;
   builder: ReactNode;
   preview: ReactNode;
@@ -551,6 +553,7 @@ type TabletProps = {
 };
 
 function TabletSandboxLayout({
+  columnMeta,
   library,
   builder,
   preview,
@@ -573,19 +576,20 @@ function TabletSandboxLayout({
           )}
         >
           <Eye className="size-3.5" />
-          {previewVisible ? "Hide Preview" : "Show Preview"}
+          {previewVisible ? "Browse sources" : "Show Preview"}
         </button>
       </div>
 
-      {/* Body — Library + Builder (always), Preview (conditional). */}
-      <div className="flex flex-1 min-h-0">
-        <div className="flex h-full min-h-0 w-[36%] max-w-[360px] min-w-[240px] flex-col border-r">
-          <TabletColumnChrome title="Codex" icon={<CodexIcon />} />
+      {/* Two usable columns: keep the editor mounted while switching its companion. */}
+      <div className="v12-studio v12-tablet-studio flex flex-1 min-h-0">
+        <div hidden={previewVisible} className="v12-studio-panel v12-studio-source flex h-full min-h-0 w-[38%] shrink-0 flex-col">
+          <TabletColumnChrome title={columnMeta?.sourceTitle ?? "Library sources"} kicker={columnMeta?.sourceKicker ?? "Add to build"} icon={<CodexIcon />} />
           <div className="flex-1 min-h-0 overflow-auto">{library}</div>
         </div>
-        <div className="flex h-full min-h-0 flex-1 flex-col">
+        <div className="v12-studio-panel v12-studio-build flex h-full min-h-0 min-w-0 flex-1 flex-col">
           <TabletColumnChrome
-            title="Build"
+            title={columnMeta?.buildTitle ?? "What this entity stores"}
+            kicker={columnMeta?.buildKicker ?? "Recipe"}
             icon={
               <IconDisplay
                 iconSource="GAME_ICONS"
@@ -599,8 +603,8 @@ function TabletSandboxLayout({
           <div className="flex-1 min-h-0 overflow-auto">{builder}</div>
         </div>
         {previewVisible ? (
-          <div className="flex h-full min-h-0 w-[36%] max-w-[360px] min-w-[240px] flex-col border-l">
-            <TabletColumnChrome title="Preview" icon={<Eye className="size-4" />} />
+          <div className="v12-studio-panel v12-studio-preview flex h-full min-h-0 w-[40%] shrink-0 flex-col">
+            <TabletColumnChrome title={columnMeta?.previewTitle ?? "Exact result"} kicker={columnMeta?.previewKicker ?? "Live build preview"} icon={<Eye className="size-4" />} />
             <div className="flex-1 min-h-0 overflow-auto">{preview}</div>
           </div>
         ) : null}
@@ -611,15 +615,17 @@ function TabletSandboxLayout({
 
 function TabletColumnChrome({
   title,
+  kicker,
   icon,
 }: {
   title: string;
+  kicker: string;
   icon: ReactNode;
 }) {
   return (
-    <div className="flex h-10 shrink-0 items-center gap-2 border-b bg-muted/30 px-3 text-sm font-medium">
+    <div className="v12-studio-head v12-section-head flex min-h-20 shrink-0 items-center gap-2 border-b bg-muted/30 px-3 text-sm font-medium">
       <span className="text-muted-foreground">{icon}</span>
-      <span className="truncate">{title}</span>
+      <span className="min-w-0"><span className="v12-kicker block truncate">{kicker}</span><span className="v12-studio-head-title block truncate">{title}</span></span>
     </div>
   );
 }

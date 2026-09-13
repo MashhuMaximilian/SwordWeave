@@ -2043,3 +2043,11 @@ body[data-ui="v12"] .v12-live-item-facts { display:grid; grid-template-columns:1
 body[data-ui="v12"] .v12-live-item-facts > div { padding:10px; background:var(--v12-inset); border-bottom:1px solid var(--v12-line-subtle); min-width:0; }
 body[data-ui="v12"] .v12-live-item-facts dt { font:500 13px/1.4 var(--font-system); color:var(--v12-soft); }
 body[data-ui="v12"] .v12-live-item-facts dd { margin:4px 0 0; font:500 18px/1.4 var(--font-subtitle); overflow-wrap:anywhere; }
+
+/* Panels can be narrowed independently of the viewport. */
+body[data-ui="v12"] .v12-studio-build { container-type:inline-size; }
+body[data-ui="v12"] .v12-tablet-studio { gap:10px; padding:10px 10px 70px; }
+@container (max-width: 480px) {
+  body[data-ui="v12"] .v12-primitive-author { grid-template-columns:minmax(0,1fr); }
+  body[data-ui="v12"] .v12-primitive-author > * { grid-column:1 !important; }
+}
