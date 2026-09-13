@@ -211,12 +211,14 @@ export default async function AtelierSandboxPage({
         .select({
           effectId: effectPrimitives.effectId,
           primitiveId: effectPrimitives.primitiveId,
+          quantity: effectPrimitives.quantity,
           sortOrder: effectPrimitives.sortOrder,
           isMirrored: effectPrimitives.isMirrored,
           targetWho: effectPrimitives.targetWho,
           primitive: {
             id: primitives.id,
             name: primitives.name,
+            category: primitives.category,
             narrativeRule: primitives.narrativeRule,
             mechanicalOutputText: primitives.mechanicalOutputText,
             buCost: primitives.buCost,
@@ -303,6 +305,7 @@ export default async function AtelierSandboxPage({
           primitive: {
             id: primitives.id,
             name: primitives.name,
+            category: primitives.category,
             narrativeRule: primitives.narrativeRule,
             mechanicalOutputText: primitives.mechanicalOutputText,
             buCost: primitives.buCost,
@@ -469,12 +472,14 @@ export default async function AtelierSandboxPage({
         .select({
           effectId: effectPrimitives.effectId,
           primitiveId: effectPrimitives.primitiveId,
+          quantity: effectPrimitives.quantity,
           sortOrder: effectPrimitives.sortOrder,
           isMirrored: effectPrimitives.isMirrored,
           targetWho: effectPrimitives.targetWho,
           primitive: {
             id: primitives.id,
             name: primitives.name,
+            category: primitives.category,
             narrativeRule: primitives.narrativeRule,
             mechanicalOutputText: primitives.mechanicalOutputText,
             buCost: primitives.buCost,
@@ -523,6 +528,7 @@ export default async function AtelierSandboxPage({
           primitive: {
             id: primitives.id,
             name: primitives.name,
+            category: primitives.category,
             narrativeRule: primitives.narrativeRule,
             mechanicalOutputText: primitives.mechanicalOutputText,
             buCost: primitives.buCost,

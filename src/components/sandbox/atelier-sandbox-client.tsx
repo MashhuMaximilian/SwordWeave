@@ -137,7 +137,7 @@ type EffectRow = {
     primitiveId: number;
     quantity: number;
     isMirrored?: boolean;
-    primitive: { id: number; name: string; category: string; buCost: number };
+    primitive: { id: number; name: string; category: string; buCost: number; mechanicalOutputText?: string; narrativeRule?: string };
   }>;
   iconSource: string | null;
   iconKey: string | null;
@@ -166,14 +166,14 @@ type CapabilityRow = {
     sortOrder: number;
     slotLabel: string | null;
     isMirrored?: boolean;
-    primitive: { id: number; name: string; category: string; buCost: number };
+    primitive: { id: number; name: string; category: string; buCost: number; mechanicalOutputText?: string; narrativeRule?: string };
   }>;
   effectLinks: Array<{
     effectId: string;
     sortOrder: number;
     slotLabel: string | null;
     notes: string | null;
-    effect: { id: string; name: string; narrativeDescription: string | null; sourceOrigin: string | null };
+    effect: { id: string; name: string; narrativeDescription: string | null; sourceOrigin: string | null; primitiveLinks?: Array<{ primitiveId: number; quantity: number; primitive: { id: number; name: string; category: string; buCost: number; mechanicalOutputText?: string; narrativeRule?: string } }> };
   }>;
   iconSource: string | null;
   iconKey: string | null;
@@ -200,7 +200,7 @@ type HeritageRow = {
   tags?: string[] | null;
   primitiveLinks: Array<{
     primitiveId: number;
-    primitive: { id: number; name: string; category: string; buCost: number };
+    primitive: { id: number; name: string; category: string; buCost: number; mechanicalOutputText?: string; narrativeRule?: string };
   }>;
   capabilityLinks: Array<{
     capabilityId: string;
@@ -236,7 +236,7 @@ type ItemRow = {
   tags: string[];
   primitiveLinks: Array<{
     primitiveId: number;
-    primitive: { id: number; name: string; category: string; buCost: number };
+    primitive: { id: number; name: string; category: string; buCost: number; mechanicalOutputText?: string; narrativeRule?: string };
   }>;
   effectLinks: Array<{
     effectId: string;

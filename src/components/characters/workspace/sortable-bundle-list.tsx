@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, type ReactNode } from "react";
+import { useId, createContext, useContext, type ReactNode } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -32,6 +32,7 @@ export function SortableBundleList({
   children: ReactNode;
   className?: string;
 }) {
+  const contextId = useId();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, {
@@ -41,6 +42,7 @@ export function SortableBundleList({
   return (
     <Ordering.Provider value={{ ids, onOrder }}>
       <DndContext
+        id={contextId}
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={({ active, over }) => {

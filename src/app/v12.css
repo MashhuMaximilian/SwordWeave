@@ -1864,3 +1864,7 @@ body[data-ui="v12"] .v12-network-viewport { cursor:grab; }
 body[data-ui="v12"] .v12-network-viewport:active { cursor:grabbing; }
 body[data-ui="v12"] .v12-fork-node { display:block; }
 body[data-ui="v12"] .v12-fork-node strong { white-space:normal; font:400 19px/1.3 var(--font-body); }
+body[data-ui="v12"] .v12-recipe-composition { margin-top:12px; }
+body[data-ui="v12"] .v12-recipe-composition summary { cursor:pointer; padding:8px 0; color:var(--v12-soft); font:500 14px/1.4 var(--font-system); }
+body[data-ui="v12"] .v12-recipe-composition .v12-recipe-effect { border-top:1px solid var(--v12-line-subtle); margin-top:8px; }
+body[data-ui="v12"] .v12-recipe-composition .v12-nested-rule b { font:400 18px/1.4 var(--font-body); }

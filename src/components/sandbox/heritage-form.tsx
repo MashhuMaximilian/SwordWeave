@@ -1,4 +1,5 @@
 "use client";
+import { RecipeComposition, type RecipePrimitiveLink, type RecipeEffectLink } from "./recipe-composition";
 import { AuthorChapters, AuthorChapter } from "./author-chapters";
 import { SortableBundleList,SortableMember } from "@/components/characters/workspace/sortable-bundle-list";
 
@@ -144,6 +145,9 @@ export function HeritageForm({
     name: string;
     type: string;
     sourceType: string;
+    verboseDescription?: string;
+    primitiveLinks?: RecipePrimitiveLink[];
+    effectLinks?: RecipeEffectLink[];
   }>;
   /**
    * Phase 2: the save intent from `?intent=fork|load`. The PATCH route
@@ -619,7 +623,7 @@ export function HeritageForm({
                 key={p.id}
                 className="flex flex-col gap-2 rounded-md border border-border bg-card p-3 text-sm sm:flex-row sm:items-center"
               >
-                <div className="min-w-0 flex-1">
+                <div className="v12-recipe-copy min-w-0 flex-1">
                   <p className="v12-kicker">Direct primitive · {p.category.replaceAll("_", " ")}</p><h3>{p.name}</h3><p data-readable-rule>{p.mechanicalOutputText || p.narrativeRule}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -673,11 +677,11 @@ export function HeritageForm({
                 key={c.id}
                 className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2 text-sm"
               >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{c.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {c.type} · {c.sourceType}
-                  </p>
+                <div className="v12-recipe-copy min-w-0 flex-1">
+                  <p className="v12-kicker">Granted capability · {c.type} · {c.sourceType}</p>
+                  <h3>{c.name}</h3>
+                  {c.verboseDescription ? <p>{c.verboseDescription}</p> : null}
+                  <RecipeComposition id={c.id} {...(c.primitiveLinks ? { primitiveLinks: c.primitiveLinks } : {})} {...(c.effectLinks ? { effectLinks: c.effectLinks } : {})} />
                 </div>
                 <button
                   type="button"
