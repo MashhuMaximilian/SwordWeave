@@ -260,8 +260,7 @@ export function LibraryBrowseClient({
                     : state.typeFilter.replaceAll("_", " ").toLowerCase())}
               </h2>
               <p>
-                Browse exact versions, inspect provenance, and carry the chosen
-                record into the Atelier without losing its source lineage.
+                {isPrimitiveMode && effectiveCategory ? "The rows define canonical tiers. Creating here opens the general primitive author with this family prefilled." : "Browse exact versions, inspect provenance, and carry the chosen record into the Atelier without losing its source lineage."}
               </p>
             </div>
             {isPrimitiveMode && effectiveCategory ? (

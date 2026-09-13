@@ -55,7 +55,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ForkMapButton } from "@/components/engagement/fork-map-button";
 import type { ForkTargetType } from "@/lib/publishing/forks-query";
-import { libraryFamilyLabel } from "@/components/library/library-market-rail";
+import { libraryFamilyLabel, libraryFamilyGlyph } from "@/components/library/library-market-rail";
 
 // The Mechanics tab collapses primitive/effect/capability into one tab.
 // The library still distinguishes the concrete kinds for chips + select,
@@ -790,7 +790,7 @@ export function GrammarLibrary({
                       active && "is-active",
                     )}
                   >
-                    <span aria-hidden="true">◇</span>
+                    <span aria-hidden="true">{libraryFamilyGlyph(category.value)}</span>
                     <span>{libraryFamilyLabel(category)}</span>
                     <small>{category.count}</small>
                   </button>

@@ -6,6 +6,15 @@ import { cn } from "@/lib/utils";
 
 type Category = { value: string; label: string; count: number };
 
+const FAMILY_GLYPHS: Record<string,string> = {
+  VERB_TIER:"↗", DOMAIN:"◈", STRUCTURAL:"⌁", RANGE:"↔", SPEED_QUICKENING:"ϟ",
+  DURATION:"◷", TARGETING:"⌖", TARGETING_AOE:"⌖", INTENSITY_DICE:"d8",
+  PERCEPTION_QUALIFIER:"◉", PRACTICE_PROGRESSION:"△", PRACTICE_PROGRESSION_AUGMENT:"△",
+  TRIGGER_HOOK:"⌁", VITALITY:"♥", DEFENSE:"◎", DEFENSIVE:"◎",
+  SIZING:"↟", PROBABILITY_BIAS:"±", ACTION_ECONOMY:"⌘", TEMPORAL_CHRONOLOGICAL:"◷",
+};
+export function libraryFamilyGlyph(value:string):string { return FAMILY_GLYPHS[value] ?? "◇"; }
+
 const FAMILY_LABELS: Record<string, string> = {
   VERB_TIER: "Verb Access",
   DOMAIN: "Domain Access",
@@ -137,10 +146,9 @@ export function LibraryMarketRail({
         ) : null}
       </div>
       <aside className="v12-instrument hidden min-h-0 overflow-hidden md:flex md:flex-col" aria-label="Lexicon categories">
-      <header className="v12-section-head shrink-0 px-4 pb-3 pt-5">
-        <p className="v12-kicker">Lexicon categories</p>
-        <div className="mt-1 flex items-center justify-between gap-3">
-          <h2 className="text-lg">{categories.length} Market families</h2>
+      <header className="v12-section-head v12-family-rail-head shrink-0">
+        <div><p className="v12-kicker">Lexicon categories</p>
+          <h2>{categories.length} Market families</h2></div>
           <button
             type="button"
             onClick={() => onSelect("")}
@@ -150,7 +158,6 @@ export function LibraryMarketRail({
           >
             <Shapes className="size-4" />
           </button>
-        </div>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         {groups.map((group) => {
@@ -175,7 +182,7 @@ export function LibraryMarketRail({
                             : "hover:bg-primary/5",
                         )}
                       >
-                        <span aria-hidden="true" className="text-primary">◇</span>
+                        <span aria-hidden="true" className="v12-family-glyph">{libraryFamilyGlyph(category.value)}</span>
                         <span className="min-w-0 flex-1 leading-snug">{libraryFamilyLabel(category)}</span>
                         <span className="shrink-0 text-xs opacity-75">{category.count}</span>
                       </button>

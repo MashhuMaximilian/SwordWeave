@@ -163,25 +163,20 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
 
   return (
     <><V12Navigation page="Library" /><div className="v12-library-page mx-auto w-full max-w-[1680px] px-5 py-6">
-      <div className="v12-library-title flex flex-wrap items-end justify-between gap-4">
+      <header className="v12-library-heading">
+      <div className="v12-library-title">
         <div className="min-w-0">
           <p className="v12-kicker">
-            Public mechanics registry
+            Public knowledge instrument
           </p>
           <h1 className="v12-entity-title mt-2 text-4xl leading-tight tracking-wide">
-            The SwordWeave Library
+            Find a possibility. Choose an exact expression.
           </h1>
           <p className="mt-2 max-w-3xl text-base leading-7 text-muted-foreground">
-            Canonical roots, public expressions, authored bundles, and their
-            complete version and fork provenance.
+            BU Market families are the Lexicon Categories. Canonical components and community expressions share one stable index.
           </p>
         </div>
-        <Link
-          href="/library"
-          className="shrink-0 text-sm text-muted-foreground hover:text-foreground"
-        >
-          ← Library hub
-        </Link>
+
       </div>
 
       <nav className="v12-library-modes" aria-label="Library record groups">
@@ -192,7 +187,9 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
           Creations
         </Link>
         <Link href="/creations">My collection</Link>
+        <Link href="/library">Library hub ↗</Link>
       </nav>
+      </header>
 
       {targetType !== "PRIMITIVE" && targetType !== "ALL" ? (
         <nav className="v12-library-submodes" aria-label="Creation types">

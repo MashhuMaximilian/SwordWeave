@@ -37,3 +37,10 @@ Last production baseline: `6fd6895`. Later local navigation, unified family pane
 - Node version selection uses the existing visibility policy before querying version snapshots. Reconstruction starts at the nearest FULL snapshot and applies only the required chain; missing/broken chains return errors rather than current data.
 - Added an opt-in XL detail-modal size for the graph; existing modal sizes and Character drawers are unchanged.
 - Screenshot: `output/playwright/v12-fork-version-inspector.png` (before the final XL width adjustment). A real v1 snapshot loaded successfully; mobile DOM width stayed 390px.
+
+### Direct reference material and Library density pass (local)
+
+- Compared production and reference Library at 1600×1000. Ported V12 surface glass, mixed-metal edge, inset engraving and header finish into Library/Atelier panels; modal surfaces and Character drawers excluded.
+- Restored family-specific category glyphs in both source rails. Compact Library introduction now places record-group navigation alongside it; all destinations retained. Rail/family headers are compressed, with Oxanium subtitle treatment.
+- Platinum Frost+ navigation and teal primary action materials now match the reference direction. Screenshots `v12-library-matched-frame.png` and `v12-library-platinum-frame.png` precede the final small heading/teal corrections; they are progress evidence, not final parity proof.
+- Mobile Library document width remains 390px; all four record-group links verified. No save/load/slot handlers changed. Signed-in Atelier and full visual audit remain outstanding.
