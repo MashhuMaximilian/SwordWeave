@@ -115,3 +115,8 @@ Combined Character header browser verification: mounted actual CharacterWorkspac
 - Mobile category selection now shares the desktop metallic teal material. Chromium at 390px reports document width 390px; all eight Domain row icons loaded and selected preview icon matches.
 - Nested row actions no longer bubble keyboard activation into parent selection. Verified with a synthetic keydown without activating a reaction or changing stored data.
 - TypeScript and six focused Library classification/Character bundle tests passed before the final class-only mobile adjustment. This is a local follow-up, not yet deployed. Full V12 parity remains in progress.
+
+### Primitive sentence condition clauses
+- Replaced the monolithic When button with inline clauses, visible AND/OR joins, clause removal, narrative, and an add-condition action. Existing ConditionPicker remains the editor; all state and legacy fields update together.
+- Clause removal retains the remaining joins, structured pill objects, narrative and category metadata; added boundary tests. TypeScript and 23 condition/sentence tests pass.
+- Local interactive component fixture at 390px verified join toggling, middle-clause removal, picker opening, narrative preservation and no horizontal overflow. Dark/light screenshots reviewed; corrected weak light remove-button contrast. Fixture removed; no database writes. Not yet deployed; full parity remains active.

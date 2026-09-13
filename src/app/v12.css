@@ -1364,6 +1364,12 @@ body[data-ui="v12"] .v12-entry-glyph {
   color: var(--v12-teal);
   background: var(--v12-inset);
 }
+body[data-ui="v12"] .v12-inline-clause { display: inline-flex; align-items: baseline; gap: 6px; flex-wrap: wrap; max-width: 100%; }
+body[data-ui="v12"] .v12-condition-join { color: var(--v12-brass); font-family: var(--font-system); font-size: .85em; letter-spacing: .06em; text-transform: uppercase; }
+body[data-ui="v12"] button.v12-condition-join { border: 0; background: transparent; box-shadow: none; padding: 6px; min-height: 36px; }
+body[data-ui="v12"] .v12-clause-remove { display: inline-grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; padding: 0; border: 1px solid var(--v12-rose); border-radius: 50%; background: var(--v12-inset); color: var(--v12-rose); box-shadow: none; font-family: var(--font-system); font-size: 18px; }
+html:not(.dark) body[data-ui="v12"] .v12-sentence button.v12-clause-remove { color: #7a304d; background: #f4e9ef; border-color: #9b637a; }
+html:not(.dark) body[data-ui="v12"] .v12-inline-clause .v12-phrase { color: #155b60; }
 body[data-ui="v12"] .v12-entry-title-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 body[data-ui="v12"] .v12-entry-title-line h3 { font-family: var(--font-subtitle); font-weight: 500; }
 body[data-ui="v12"] .v12-entry-copy > p { margin-top: 3px; color: var(--v12-copper); }

@@ -30,6 +30,7 @@ import {
   legacyFieldsFromAuthoring,
 } from "./condition-picker";
 import type { ConditionAuthoring } from "@/types/condition";
+import { PrimitiveSentenceConditions } from "./primitive-sentence-conditions";
 import { buildCondition } from "@/lib/primitives/condition";
 import {
   MODIFIER_TARGET_SPEC,
@@ -1101,6 +1102,16 @@ export function PrimitiveForm({
     );
   }
 
+  function updateModifierCondition(id: string, next: ConditionAuthoring) {
+    const legacy = legacyFieldsFromAuthoring(next);
+    setIsDirty(true);
+    setModifiers(current => current.map(modifier => modifier.id === id ? {
+      ...modifier,
+      v1Condition: next,
+      ...legacy,
+    } : modifier));
+  }
+
   // Phase-7-E: typed setters for the multi-select Target Value
   // widget. updateModifier accepts string-only because its callers
   // are mostly string fields; targetValues is an array, so we route
@@ -1730,7 +1741,7 @@ export function PrimitiveForm({
             <span> {sentenceParts?.join} </span>
             <button type="button" className="v12-phrase v12-sentence__operation" aria-expanded={phrasePicker === "operation"} onClick={() => setPhrasePicker(phrasePicker === "operation" ? null : "operation")}>{sentenceParts?.label}</button>
             <button type="button" className="v12-phrase v12-sentence__value" aria-expanded={phrasePicker === "value"} onClick={() => setPhrasePicker(phrasePicker === "value" ? null : "value")}>{sentenceParts?.value || "choose value"}</button>
-            <button type="button" className="v12-metal-button" aria-expanded={phrasePicker === "condition"} onClick={() => setPhrasePicker(phrasePicker === "condition" ? null : "condition")}>{sentenceParts?.when ? `When ${sentenceParts.when}` : "+ when"}</button><span>.</span>
+            <PrimitiveSentenceConditions value={modifiers[0].v1Condition} expanded={phrasePicker === "condition"} onEdit={() => setPhrasePicker(phrasePicker === "condition" ? null : "condition")} onChange={next => updateModifierCondition(modifiers[0]!.id, next)} /><span>.</span>
           </> : <button type="button" className="v12-metal-button" onClick={() => { addModifier(); setPhrasePicker("target"); }}>Compose a mechanical rule</button>}
         </div>
         {phrasePicker ? <div className="v12-picker-heading"><span className="v12-kicker">{phrasePicker === "target" ? "Choose what changes" : phrasePicker === "condition" ? "Conditions · when this applies" : phrasePicker === "resolver" ? "Resolver mapping" : `Choose the ${phrasePicker}`}</span><button type="button" className="v12-metal-button" onClick={() => setPhrasePicker(null)} aria-label="Close phrase choices">×</button></div> : null}
@@ -2021,14 +2032,7 @@ export function PrimitiveForm({
             <div hidden={phrasePicker !== "condition"} className="rounded-md border border-border bg-background p-3">
               <ConditionPicker
                 value={modifier.v1Condition}
-                onChange={(next: ConditionAuthoring) => {
-                  const legacy = legacyFieldsFromAuthoring(next);
-                  updateModifier(modifier.id, "v1Condition", next);
-                  updateModifier(modifier.id, "conditionMode", legacy.conditionMode);
-                  updateModifier(modifier.id, "conditionKey", legacy.conditionKey);
-                  updateModifier(modifier.id, "conditionOperator", legacy.conditionOperator);
-                  updateModifier(modifier.id, "conditionValue", legacy.conditionValue);
-                }}
+                onChange={(next: ConditionAuthoring) => updateModifierCondition(modifier.id, next)}
               />
             </div>
           </div>
