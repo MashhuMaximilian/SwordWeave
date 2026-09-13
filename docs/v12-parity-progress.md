@@ -134,3 +134,7 @@ Combined Character header browser verification: mounted actual CharacterWorkspac
 ### Compact fork canvas and inspector versions
 - Moved selected-entry versions out of the canvas node into the inspector, matching V12. Version selection still opens the existing version inspector. Reduced row spacing from 290 to 150px now that nodes do not contain expandable lists.
 - Three progressive graph tests pass; local browser fixture verified inspector-only version controls, Fit, and 390px containment. Desktop render reviewed. A duplicate React sibling key exposed during verification was fixed with a distinct versions key. Fixture removed. Not deployed yet.
+
+### Fork inspector material and hierarchy
+- Added selected-entry identity header, metallic stat tiles for actual direct forks and loaded ancestry, opaque inset surface, and full-width version/source actions. Retained all preview/version behavior.
+- TypeScript passed. Actual local Library modal with existing Domain record rendered without browser errors; version request completed without retry state. Mobile modal remains within 390px and inspector scrolls into view. No data writes. Not deployed yet.

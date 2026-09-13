@@ -1795,8 +1795,16 @@ body[data-ui="v12"] .v12-network-viewport { position:relative; max-height:55vh; 
 body[data-ui="v12"] .v12-network-world { position:relative; }
 body[data-ui="v12"] .v12-network-world svg { position:absolute; inset:0; pointer-events:none; }
 body[data-ui="v12"] .v12-network-world path { fill:none; stroke:var(--v12-brass); stroke-width:1.5; }
-body[data-ui="v12"] .v12-network-inspector { display:flex; flex-direction:column; align-items:start; gap:14px; border-left:1px solid var(--v12-line-subtle); padding:12px; }
+body[data-ui="v12"] .v12-network-inspector { display:flex; flex-direction:column; align-items:stretch; gap:14px; border:1px solid transparent; border-radius:7px; background:linear-gradient(var(--v12-inset),var(--v12-inset)) padding-box,var(--v12-silver-edge) border-box; padding:16px; }
 body[data-ui="v12"] .v12-network-inspector h3 { font:400 24px var(--font-title); }
+body[data-ui="v12"] .v12-network-identity { padding-bottom:12px; border-bottom:1px solid transparent; border-image:var(--v12-brass-edge) 1; }
+body[data-ui="v12"] .v12-network-identity h3 { margin-top:7px; }
+body[data-ui="v12"] .v12-network-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:0; }
+body[data-ui="v12"] .v12-network-stats > div { padding:10px; border:1px solid transparent; border-radius:4px; background:linear-gradient(var(--v12-raised),var(--v12-inset)) padding-box,var(--v12-silver-edge) border-box; }
+body[data-ui="v12"] .v12-network-stats dt { font:500 13px/1.4 var(--font-system); color:var(--v12-soft); }
+body[data-ui="v12"] .v12-network-stats dd { margin:4px 0 0; font:500 26px/1.2 var(--font-subtitle); color:var(--foreground); }
+body[data-ui="v12"] .v12-network-inspector > .v12-node-versions > button,
+body[data-ui="v12"] .v12-network-inspector > a { width:100%; padding:10px 12px; text-align:center; }
 @media(max-width:767px) { body[data-ui="v12"] .v12-lineage-layout { grid-template-columns:minmax(0,1fr); } body[data-ui="v12"] .v12-network-inspector { border-left:0; border-top:1px solid var(--v12-line-subtle); } body[data-ui="v12"] .v12-source-split { min-height:420px; } }
 
 body[data-ui="v12"] .v12-entity-preview :is(p,li,.prose) { font:400 16px/1.5 var(--font-body); }
