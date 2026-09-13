@@ -2066,3 +2066,17 @@ body[data-ui="v12"] .v12-expression-recipe button { padding:4px 8px; border:1px 
 body[data-ui="v12"] .v12-expression-piece[data-expression-kind="effect"] { padding:8px 12px; border-top:0; border-left:2px solid var(--v12-rose); background:transparent; }
 body[data-ui="v12"] .v12-expression-piece[data-expression-kind="effect"] .v12-expression-rule { border-left:0; padding-left:0; }
 body[data-ui="v12"] .v12-expression-piece[data-expression-kind="effect"] .v12-expression-rule :is(button,p) { color:var(--v12-rose); }
+
+body[data-ui="v12"] .v12-network-minimap { grid-column:1; min-width:0; padding:10px 14px; border:1px solid var(--v12-line-subtle); background:var(--v12-inset); }
+body[data-ui="v12"] .v12-network-minimap svg { display:block; width:100%; height:120px; }
+body[data-ui="v12"] .v12-network-minimap path { fill:none; stroke:var(--v12-copper); stroke-width:5; }
+body[data-ui="v12"] .v12-network-minimap rect[role="button"] { fill:var(--v12-raised); stroke:var(--v12-silver); stroke-width:5; cursor:pointer; }
+body[data-ui="v12"] .v12-network-minimap rect.selected { fill:var(--v12-teal); }
+body[data-ui="v12"] .v12-network-minimap rect[role="button"]:focus { stroke:var(--v12-brass); stroke-width:10; outline:none; }
+body[data-ui="v12"] .v12-network-minimap .v12-minimap-view { fill:color-mix(in srgb,var(--v12-teal) 12%,transparent); stroke:var(--v12-teal); stroke-width:4; pointer-events:none; }
+
+@media(min-width:768px) {
+ body[data-ui="v12"] .v12-network-viewport { grid-column:1; grid-row:3; }
+ body[data-ui="v12"] .v12-network-minimap { grid-column:1; grid-row:4; }
+ body[data-ui="v12"] .v12-network-inspector { grid-column:2; grid-row:3 / 5; }
+}
