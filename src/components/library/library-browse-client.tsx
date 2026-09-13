@@ -12,10 +12,12 @@
 // keeping the browse list visible behind. ESC / backdrop click closes it.
 // =============================================================================
 
+import { libraryOrigin, libraryTier } from "@/lib/publishing/library-classification";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { LibraryToolbar } from "@/components/library/library-toolbar";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
+import { FetchedEntityPreview } from "@/components/preview/entity-preview";
 import { DetailModal } from "@/components/ui/detail-modal";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
@@ -73,9 +75,10 @@ export function LibraryBrowseClient({
   currentUserInternalId,
 }: Props) {
   const router = useRouter();
-  const [selectedItem, setSelectedItem] = useState<LibraryItem | null>(
+  const [selection, setSelectedItem] = useState<LibraryItem | null>(
     initialItems[0] ?? null,
   );
+  const selectedItem = initialItems.find(item => item.id === selection?.id) ?? initialItems[0] ?? null;
   const [detailOpen, setDetailOpen] = useState(false);
   const workbenchRef = useRef<HTMLDivElement>(null);
   const [leftWidth, setLeftWidth] = useState(270);
@@ -86,7 +89,7 @@ export function LibraryBrowseClient({
   const isPrimitiveMode =
     state.typeFilter === "PRIMITIVE" || state.typeFilter === "ALL";
   const effectiveCategory = isPrimitiveMode
-    ? state.category || selectedItem?.category || ""
+    ? state.category || ""
     : "";
   const effectiveCategoryRecord = primitiveCategories.find(
     (category) => category.value === effectiveCategory,
@@ -98,6 +101,8 @@ export function LibraryBrowseClient({
   const pushUrl = useCallback(
     (next: LibraryToolbarState, overridePage?: number) => {
       const params = new URLSearchParams();
+      if (next.origin && next.origin !== "all") params.set("origin", next.origin);
+      if (next.tier) params.set("tier", next.tier);
       if (next.typeFilter !== "ALL") params.set("type", next.typeFilter);
       if (next.category) params.set("category", next.category);
       if (next.search) params.set("q", next.search);
@@ -268,10 +273,10 @@ export function LibraryBrowseClient({
           </div>
           {effectiveCategory && isPrimitiveMode ? (
             <div className="v12-tier-ladder" aria-label="Canonical cost tiers">
-              {[4, 8, 12, 16].map((bu, index) => (
+              {(effectiveCategory === "DOMAIN" ? [4, 8, 12, 16] : []).map((bu, index) => (
                 <div key={bu}>
                   <span>T{index + 1}</span>
-                  <b>{["Concrete / minor", "Systemic / standard", "Abstract / major", "Reality-defining"][index]}</b>
+                  <div><b>{["Concrete / physical", "Hybrid / systemic", "Abstract / relational", "Reality-defining"][index]}</b><p>{["Fire, water, air, metal, light, motion…", "Life, decay, memory, space, resonance…", "Identity, will, belief, probability, law…", "Existence, causality, paradox, fundamental laws…"][index]}</p></div>
                   <em>{bu} BU</em>
                 </div>
               ))}
@@ -296,9 +301,13 @@ export function LibraryBrowseClient({
             </div>
             <span>{total.toLocaleString()} records</span>
           </div>
+          <div className="v12-browse-controls">
+            {isPrimitiveMode ? <div className="v12-tier-tabs" aria-label="Exact entry tiers">{["", "1", "2", "3", "4", "5"].map(tier => <button key={tier} type="button" aria-pressed={(state.tier ?? "") === tier} onClick={() => onStateChange({ ...state, tier })}>{tier ? `Tier ${["", "I", "II", "III", "IV", "V"][Number(tier)]}` : "All tiers"}</button>)}</div> : null}
+            <div className="v12-origin-tabs" aria-label="Entry origin">{(["all", "system", "community"] as const).map(origin => <button type="button" key={origin} aria-pressed={(state.origin ?? "all") === origin} onClick={() => onStateChange({ ...state, origin })}>{origin === "all" ? "All origins" : origin === "system" ? "System" : "Community"}</button>)}</div>
+          </div>
           {initialItems.length ? (
             <div className={isPrimitiveMode ? "v12-cluster-list" : "v12-creation-grid"}>
-              {initialItems.map((item) => (
+              {Object.entries(initialItems.reduce<Record<string, LibraryItem[]>>((groups, item) => { const key = isPrimitiveMode ? `${item.category?.replaceAll("_", " ") ?? "Primitives"} · ${libraryTier(item) ? `Tier ${libraryTier(item)}` : "Untiered"} · ${item.groupKey ?? "Unclassified"}` : "Creations"; (groups[key] ??= []).push(item); return groups; }, {})).map(([group, entries]) => <section className="v12-entry-cluster" key={group}>{isPrimitiveMode ? <header className="v12-section-head"><h3>{group}</h3><span>{entries?.length} expressions</span></header> : null}{entries?.map((item) => (
                 <article
                   key={item.id}
                   data-library-row-id={item.id}
@@ -317,8 +326,8 @@ export function LibraryBrowseClient({
                   <div className="v12-entry-copy">
                     <div className="v12-entry-title-line">
                       <h3>{item.name}</h3>
-                      <span className={`v12-tag ${item.authorUsername ? "v12-tag--violet" : "v12-tag--teal"}`}>
-                        {item.authorUsername ? "Community" : "Canonical"}
+                      <span className={`v12-tag ${libraryOrigin(item) === "community" ? "v12-tag--violet" : "v12-tag--teal"}`}>
+                        {libraryOrigin(item) === "community" ? "Community" : "System"}
                       </span>
                     </div>
                     <p data-readable-rule>{item.description || "No public description."}</p>
@@ -343,7 +352,7 @@ export function LibraryBrowseClient({
                   </div>
                   <span className="v12-tag">{item.buCost ?? 0} BU</span>
                 </article>
-              ))}
+              ))}</section>)}
             </div>
           ) : (
             <div className="v12-empty-state"><h3>No entries match</h3><p>Try a different filter, broader search, or another sort.</p></div>
@@ -377,7 +386,7 @@ export function LibraryBrowseClient({
                 </div>
                 <div className="v12-inspector-tags">
                   <span className="v12-tag v12-tag--violet">
-                    {selectedItem.authorUsername ? "Community" : "Canonical"}
+                    {libraryOrigin(selectedItem) === "community" ? "Community" : "System"}
                   </span>
                   <span className="v12-tag">
                     {selectedItem.category?.replaceAll("_", " ") ??
@@ -408,7 +417,7 @@ export function LibraryBrowseClient({
                   >
                     Source page
                   </a>
-                  <ForkMapButton
+                  <ForkMapButton key={selectedItem.id}
                     targetType={selectedItem.targetType}
                     targetId={selectedItem.targetId}
                     targetName={selectedItem.name}
@@ -438,74 +447,7 @@ export function LibraryBrowseClient({
         size="lg"
       >
         {selectedItem ? (
-          // Inline detail preview (was previously an iframe loading
-          // /library/item/<id>). The iframe was susceptible to a class
-          // of cache/iframe-related rendering issues — and on Vercel
-          // + Clerk + iframes, certain request contexts got stuck on
-          // a stale DATABASE_URL error even after the server was
-          // healthy. Inline rendering eliminates that entire failure
-          // mode.
-          //
-          // The summary shows: name, description, BU, tags, author,
-          // engagement counts, and an "Open full page" link for the
-          // canonical detail view.
-          <div className="space-y-4" data-provenance>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-primary/10 px-3 py-1 font-mono text-sm font-semibold text-primary">
-                {selectedItem.buCost ?? 0} BU
-              </span>
-              <span className="rounded-full bg-secondary px-3 py-1 text-xs uppercase tracking-wide">
-                {selectedItem.targetType.replace(/_/g, " ").toLowerCase()}
-              </span>
-              {selectedItem.category && (
-                <span className="rounded-full bg-secondary px-3 py-1 text-xs uppercase tracking-wide">
-                  {selectedItem.category.replace(/_/g, " ")}
-                </span>
-              )}
-            </div>
-            {selectedItem.description && (
-              <div className="text-sm leading-relaxed text-foreground">
-                {selectedItem.description}
-              </div>
-            )}
-            {selectedItem.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {selectedItem.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full bg-secondary px-2 py-0.5 text-xs"
-                  >
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            )}
-            {selectedItem.authorUsername && (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span>by</span>
-                <span className="font-semibold">
-                  {selectedItem.authorDisplayName ?? selectedItem.authorUsername}
-                </span>
-              </div>
-            )}
-            <div className="flex flex-wrap gap-3 border-t border-border pt-3 text-xs text-muted-foreground">
-              <span>♥ {selectedItem.likesCount}</span>
-              <span>★ {selectedItem.forkCount} forks</span>
-            </div>
-            <div className="flex flex-wrap gap-2 border-t border-border pt-3">
-              <a
-                href={`/library/item/${selectedItem.id}`}
-                className="v12-metal-button v12-metal-button--primary inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-              >
-                Open full source page →
-              </a>
-              <ForkMapButton
-                targetType={selectedItem.targetType}
-                targetId={selectedItem.targetId}
-                targetName={selectedItem.name}
-              />
-            </div>
-          </div>
+          <FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:selectedItem.authorUsername, authorDisplayName:selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:selectedItem.sourceOrigin }} />
         ) : null}
       </DetailModal>
     </div>

@@ -1,4 +1,5 @@
 "use client";
+import { AuthorChapters, AuthorChapter } from "./author-chapters";
 import { SortableBundleList,SortableMember } from "@/components/characters/workspace/sortable-bundle-list";
 
 // EffectForm: controlled form-only composer for effects.
@@ -108,6 +109,8 @@ export function EffectForm({
     name: string;
     category: string;
     buCost: number;
+    mechanicalOutputText?: string | null;
+    narrativeRule?: string | null;
   }>;
   /**
    * Phase 2: the save intent from `?intent=fork|load`. The PATCH route
@@ -368,7 +371,7 @@ export function EffectForm({
 
   return (
     <form
-      className="grid grid-cols-1 gap-4 rounded-md border border-border bg-card p-4 sm:p-5"
+      className="v12-effect-author grid grid-cols-1 gap-4 rounded-md border border-border bg-card p-4 sm:p-5"
       onSubmit={submitEffect}
     >
       <div className="flex items-center justify-between gap-3">
@@ -388,8 +391,8 @@ export function EffectForm({
                 data-testid="save-intent-chip"
                 className={
                   isFork
-                    ? "inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary"
-                    : "inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                    ? "inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-primary"
+                    : "inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground"
                 }
                 title={
                   isFork
@@ -411,6 +414,76 @@ export function EffectForm({
         </button>
       </div>
 
+      <AuthorChapters>
+        <AuthorChapter id="pieces" title="Pieces">
+      <section className="rounded-md border border-border bg-background p-4">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-bold">Slotted Primitives</h3>
+          <span className="rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
+            {totalBu} BU
+          </span>
+        </div>
+        {slots.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            No primitives slotted yet. Pick a primitive from the Library
+            column and use its &ldquo;Slot into build&rdquo; action.
+          </p>
+        ) : (
+          <SortableBundleList className="mt-3 space-y-2" ids={slots.map(s=>String(s.primitiveId))} onOrder={order=>{setSlots(order.map(id=>slots.find(s=>String(s.primitiveId)===id)!));setOrderChanged(true);setIsDirty(true);}}>
+            {slots.map((slot) => (
+              <SortableMember id={String(slot.primitiveId)} label={slot.primitive.name}
+                key={slot.primitiveId}
+                className="flex flex-col gap-3 rounded-md border border-border bg-card p-3 sm:flex-row sm:items-center"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="v12-kicker">Direct primitive · {slot.primitive.category.replaceAll("_", " ")}</p><h3>{slot.primitive.name}</h3><p data-readable-rule>{availablePrimitives.find(p => p.id === slot.primitiveId)?.mechanicalOutputText || availablePrimitives.find(p => p.id === slot.primitiveId)?.narrativeRule}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {slot.primitive.buCost} BU each
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    aria-label="Quantity"
+                    className="h-9 w-20 rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+                    min={1}
+                    type="number"
+                    value={slot.quantity}
+                    onChange={(event) =>
+                      updateQuantity(
+                        slot.primitiveId,
+                        Number(event.target.value),
+                      )
+                    }
+                  />
+                  <label
+                    className="flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2 text-xs"
+                    title="When this slot is mirrored, the consumer pays BU debt at template/character-creation time."
+                  >
+                    <input
+                      type="checkbox"
+                      checked={slot.isMirrored}
+                      onChange={() => toggleSlotMirror(slot.primitiveId)}
+                      className="size-3.5"
+                    />
+                    <span>Mirror</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => removeSlot(slot.primitiveId)}
+                    className="inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-md border border-border px-3 text-xs font-medium text-muted-foreground hover:bg-accent"
+                  >
+                    <Trash2 className="size-3.5" />
+                    <span className="hidden sm:inline">Remove</span>
+                  </button>
+                </div>
+              </SortableMember>
+            ))}
+          </SortableBundleList>
+        )}
+      </section>
+
+        </AuthorChapter>
+        <AuthorChapter id="identity" title="Identity">
       {/* Phase 7.5 v4-rev: mobile layout — Icon + Name on
           one row. Mashu: "And in effects just the name and
           icon on the same row." */}
@@ -481,6 +554,22 @@ export function EffectForm({
         />
       </label>
 
+        </AuthorChapter>
+        <AuthorChapter id="table" title="At the table">
+      <label className="block text-sm font-medium">
+        Narrative Rule
+        <textarea
+          className="mt-2 min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
+          value={form.narrativeDescription}
+          onChange={(event) =>
+            updateForm("narrativeDescription", event.target.value)
+          }
+          placeholder="The target loses spatial certainty and struggles to keep balance..."
+        />
+      </label>
+
+        </AuthorChapter>
+        <AuthorChapter id="publish" title="Publish">
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block text-sm font-medium">
           Source Origin
@@ -517,90 +606,14 @@ export function EffectForm({
             updateForm("isPublic", next === "PUBLIC");
           }}
         />
-        <span className="text-[10px] font-normal text-muted-foreground">
+        <span className="text-xs font-normal text-muted-foreground">
           Public entries appear in the Library. Private and Followers-only
           entries can be promoted to Public from the My Creations page.
         </span>
       </label>
 
-      <label className="block text-sm font-medium">
-        Narrative Rule
-        <textarea
-          className="mt-2 min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
-          value={form.narrativeDescription}
-          onChange={(event) =>
-            updateForm("narrativeDescription", event.target.value)
-          }
-          placeholder="The target loses spatial certainty and struggles to keep balance..."
-        />
-      </label>
-
-      <section className="rounded-md border border-border bg-background p-4">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-bold">Slotted Primitives</h3>
-          <span className="rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
-            {totalBu} BU
-          </span>
-        </div>
-        {slots.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            No primitives slotted yet. Pick a primitive from the Library
-            column and use its &ldquo;Slot into build&rdquo; action.
-          </p>
-        ) : (
-          <SortableBundleList className="mt-3 space-y-2" ids={slots.map(s=>String(s.primitiveId))} onOrder={order=>{setSlots(order.map(id=>slots.find(s=>String(s.primitiveId)===id)!));setOrderChanged(true);setIsDirty(true);}}>
-            {slots.map((slot) => (
-              <SortableMember id={String(slot.primitiveId)} label={slot.primitive.name}
-                key={slot.primitiveId}
-                className="flex flex-col gap-3 rounded-md border border-border bg-card p-3 sm:flex-row sm:items-center"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold">{slot.primitive.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {slot.primitive.buCost} BU each
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    aria-label="Quantity"
-                    className="h-9 w-20 rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-                    min={1}
-                    type="number"
-                    value={slot.quantity}
-                    onChange={(event) =>
-                      updateQuantity(
-                        slot.primitiveId,
-                        Number(event.target.value),
-                      )
-                    }
-                  />
-                  <label
-                    className="flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2 text-xs"
-                    title="When this slot is mirrored, the consumer pays BU debt at template/character-creation time."
-                  >
-                    <input
-                      type="checkbox"
-                      checked={slot.isMirrored}
-                      onChange={() => toggleSlotMirror(slot.primitiveId)}
-                      className="size-3.5"
-                    />
-                    <span>Mirror</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => removeSlot(slot.primitiveId)}
-                    className="inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-md border border-border px-3 text-xs font-medium text-muted-foreground hover:bg-accent"
-                  >
-                    <Trash2 className="size-3.5" />
-                    <span className="hidden sm:inline">Remove</span>
-                  </button>
-                </div>
-              </SortableMember>
-            ))}
-          </SortableBundleList>
-        )}
-      </section>
-
+        </AuthorChapter>
+      </AuthorChapters>
       <div className="flex flex-wrap items-center gap-3">
         <button
           className="h-10 rounded-md bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-60"

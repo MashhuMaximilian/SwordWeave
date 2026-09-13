@@ -11,3 +11,7 @@ screenshots
 docs-archive
 scripts/output
 *.tsbuildinfo
+
+# Local design references and review artifacts
+mockups
+output

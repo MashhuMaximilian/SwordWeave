@@ -170,7 +170,7 @@ function ModalStackRenderer() {
     <>
       {stack.map((entry, idx) => {
         const isTop = idx === stack.length - 1;
-        const z = 60 + idx;
+        const z = 160 + idx;
 
         if (isDesktop) {
           return (

@@ -33,6 +33,8 @@ export const dynamic = "force-dynamic";
 
 interface PageProps {
   searchParams: Promise<{
+    origin?: string;
+    tier?: string;
     type?: string;
     sort?: string;
     view?: string;
@@ -103,6 +105,8 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
       ...(search ? { search } : {}),
       ...(params.author ? { authorUsername: params.author } : {}),
       ...(params.minLikes ? { minLikes: parseInt(params.minLikes, 10) } : {}),
+      origin: params.origin === "system" || params.origin === "community" ? params.origin : "all",
+      ...(Number(params.tier) > 0 ? { tier: Number(params.tier) } : {}),
       hasForks: params.hasForks === "1",
       // Tag filter — only honoured for ITEM target type. Other types
       // (primitive/capability/effect/template) don't have a tag array
@@ -139,6 +143,8 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
 
   const initialState: LibraryToolbarState = {
     ...EMPTY_LIBRARY_TOOLBAR_STATE,
+    origin: params.origin === "system" || params.origin === "community" ? params.origin : "all",
+    tier: params.tier ?? "",
     search,
     sort,
     view,

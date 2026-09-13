@@ -1,4 +1,5 @@
 "use client";
+import { AuthorChapters, AuthorChapter } from "./author-chapters";
 import { SortableBundleList,SortableMember } from "@/components/characters/workspace/sortable-bundle-list";
 
 // CapabilityForm: controlled form-only composer for capabilities.
@@ -137,8 +138,10 @@ export function CapabilityForm({
     name: string;
     category: string;
     buCost: number;
+    mechanicalOutputText?: string | null;
+    narrativeRule?: string | null;
   }>;
-  availableEffects: Array<{ id: string; name: string }>;
+  availableEffects: Array<{ id: string; name: string; narrativeDescription?: string | null; primitiveLinks?: Array<{ primitiveId: number; primitive: { name: string; buCost: number; mechanicalOutputText?: string | null } }> }>;
   /**
    * Phase 2: the save intent from `?intent=fork|load`. The PATCH route
    * reads this from the body to decide between fork-on-save and
@@ -520,8 +523,8 @@ export function CapabilityForm({
                 data-testid="save-intent-chip"
                 className={
                   isFork
-                    ? "inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary"
-                    : "inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                    ? "inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-primary"
+                    : "inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground"
                 }
                 title={
                   isFork
@@ -549,15 +552,128 @@ export function CapabilityForm({
         <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("sw-start-new-entity", { detail: "effect" }))}>Effect</button>
         <button type="button" className="is-active">Capability</button>
       </div>
-      <nav className="v12-author-tabs" aria-label="Capability author sections">
-        <button type="button" className="is-active" onClick={() => document.querySelector(".v12-capability-pieces")?.scrollIntoView({ block: "start", behavior: "smooth" })}>Pieces</button>
-        <button type="button" onClick={() => document.querySelector(".v12-capability-identity")?.scrollIntoView({ block: "start", behavior: "smooth" })}>Identity</button>
-        <button type="button" onClick={() => document.querySelector(".v12-capability-description")?.scrollIntoView({ block: "start", behavior: "smooth" })}>At the table</button>
-        <button type="button" onClick={() => document.querySelector(".v12-capability-publish")?.scrollIntoView({ block: "start", behavior: "smooth" })}>Publish</button>
-      </nav>
-      <div className="v12-capability-pieces v12-form-chapter"><p className="v12-kicker">Recipe</p><h2>Direct primitives and effects</h2></div>
-      <div className="v12-capability-identity v12-form-chapter"><p className="v12-kicker">Identity</p><h2>What players call this capability</h2></div>
+      <AuthorChapters>
+        <AuthorChapter id="pieces" title="Pieces">
+      <section className="v12-capability-primitives rounded-md border border-border bg-background p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-sm font-bold">Primitive Slots</h3>
+          <span className="rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
+            {previewBu} BU
+          </span>
+        </div>
 
+        {slots.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            No primitives slotted yet. Pick a primitive from the Library
+            column and use its &ldquo;Slot into build&rdquo; action.
+          </p>
+        ) : (
+          <SortableBundleList className="mt-3 space-y-2" ids={slots.map(s=>`${s.primitiveId}:${s.role}`)} onOrder={order=>{setSlots(order.map(id=>slots.find(s=>`${s.primitiveId}:${s.role}`===id)!));setOrderChanged(true);setIsDirty(true);}}>
+            {slots.map((slot, idx) => (
+              <SortableMember id={`${slot.primitiveId}:${slot.role}`} label={slot.primitive.name}
+                key={`${slot.primitiveId}-${idx}`}
+                className="flex flex-col gap-2 rounded-md border border-border bg-card p-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2"
+              >
+                <div className="v12-recipe-copy min-w-0 flex-1"><p className="v12-kicker">Direct primitive · {slot.primitive.category.replaceAll("_", " ")}</p><h3>{slot.primitive.name}</h3><p data-readable-rule>{availablePrimitives.find(p => p.id === slot.primitiveId)?.mechanicalOutputText || availablePrimitives.find(p => p.id === slot.primitiveId)?.narrativeRule}</p></div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={slot.role}
+                    onChange={(e) => updateSlotRole(idx, e.target.value)}
+                    className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+                  >
+                    {SLOT_ROLES.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min={1}
+                    value={slot.quantity}
+                    onChange={(e) =>
+                      updateSlotQuantity(idx, Number(e.target.value) || 1)
+                    }
+                    aria-label="Quantity"
+                    className="w-14 rounded-md border border-border bg-background px-2 py-1 text-center text-xs"
+                  />
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {Math.abs(slot.primitive.buCost * slot.quantity)} BU
+                  </span>
+                  <label
+                    className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs"
+                    title="When this slot is mirrored, the consumer pays BU debt at template/character-creation time."
+                  >
+                    <input
+                      type="checkbox"
+                      checked={slot.isMirrored}
+                      onChange={() => toggleSlotMirror(idx)}
+                      className="size-3.5"
+                    />
+                    <span>Mirror</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => removeSlot(idx)}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
+                  >
+                    <Trash2 className="size-3.5" />
+                    <span className="hidden sm:inline">Remove</span>
+                  </button>
+                </div>
+              </SortableMember>
+            ))}
+          </SortableBundleList>
+        )}
+      </section>
+
+      <section className="v12-capability-effects rounded-md border border-border bg-background p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold">Bundled Effects</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Effects nested inside this capability. Pick from the library or
+              use the &ldquo;Slot into build&rdquo; action on a library card.
+            </p>
+          </div>
+        </div>
+
+        {effectIds.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            No effects bundled yet. Pick an effect from the Library column
+            and use its &ldquo;Slot into build&rdquo; action.
+          </p>
+        ) : (
+          <SortableBundleList className="mt-3 space-y-2" ids={effectIds} onOrder={order=>{setEffectIds(order);setOrderChanged(true);setIsDirty(true);}}>
+            {effectIds.map((id) => {
+              const effect = availableEffects.find((e) => e.id === id);
+              return (
+                <SortableMember id={id} label={effect?.name ?? id}
+                  key={id}
+                  className="flex items-center gap-2 rounded-md border border-border bg-card p-2 text-sm"
+                >
+                  <div className="v12-recipe-copy min-w-0 flex-1">
+                    <p className="v12-kicker">Bundled effect · {effect?.primitiveLinks?.length ?? 0} primitives</p>
+                    <h3>{effect?.name ?? id}</h3>
+                    {effect?.narrativeDescription ? <p>{effect.narrativeDescription}</p> : null}
+                    {effect?.primitiveLinks?.length ? <details><summary>Composition</summary>{effect.primitiveLinks.map((link, index) => <div key={`${link.primitiveId}:${index}`} className="v12-nested-rule"><b>{link.primitive.name}</b><span>{link.primitive.buCost} BU</span><p>{link.primitive.mechanicalOutputText}</p></div>)}</details> : null}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeEffect(id)}
+                    className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
+                  >
+                    <Trash2 className="size-3.5" /> Remove
+                  </button>
+                </SortableMember>
+              );
+            })}
+          </SortableBundleList>
+        )}
+      </section>
+
+        </AuthorChapter>
+        <AuthorChapter id="identity" title="Identity">
       {/*
         Mobile compact layout. Mashu (round 3): "In
         capability build the type and source should be
@@ -695,6 +811,8 @@ export function CapabilityForm({
         </label>
       </div>
 
+        </AuthorChapter>
+        <AuthorChapter id="table" title="At the table">
       <label className="v12-capability-description block text-sm font-medium">
         Verbose Description
         <textarea
@@ -706,6 +824,8 @@ export function CapabilityForm({
         />
       </label>
 
+        </AuthorChapter>
+        <AuthorChapter id="publish" title="Publish">
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block text-sm font-medium">
           Source Origin
@@ -736,129 +856,14 @@ export function CapabilityForm({
           value={form.isPublic ? "PUBLIC" : "PRIVATE"}
           onChange={(next) => updateForm("isPublic", next === "PUBLIC")}
         />
-        <span className="text-[10px] font-normal text-muted-foreground">
+        <span className="text-xs font-normal text-muted-foreground">
           Public entries appear in the Library. Private and Followers-only
           entries can be promoted to Public from the My Creations page.
         </span>
       </label>
 
-      <section className="v12-capability-primitives rounded-md border border-border bg-background p-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-sm font-bold">Primitive Slots</h3>
-          <span className="rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
-            {previewBu} BU
-          </span>
-        </div>
-
-        {slots.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            No primitives slotted yet. Pick a primitive from the Library
-            column and use its &ldquo;Slot into build&rdquo; action.
-          </p>
-        ) : (
-          <SortableBundleList className="mt-3 space-y-2" ids={slots.map(s=>`${s.primitiveId}:${s.role}`)} onOrder={order=>{setSlots(order.map(id=>slots.find(s=>`${s.primitiveId}:${s.role}`===id)!));setOrderChanged(true);setIsDirty(true);}}>
-            {slots.map((slot, idx) => (
-              <SortableMember id={`${slot.primitiveId}:${slot.role}`} label={slot.primitive.name}
-                key={`${slot.primitiveId}-${idx}`}
-                className="flex flex-col gap-2 rounded-md border border-border bg-card p-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2"
-              >
-                <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                  {slot.primitive.name}
-                </span>
-                <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    value={slot.role}
-                    onChange={(e) => updateSlotRole(idx, e.target.value)}
-                    className="rounded-md border border-border bg-background px-2 py-1 text-xs"
-                  >
-                    {SLOT_ROLES.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    min={1}
-                    value={slot.quantity}
-                    onChange={(e) =>
-                      updateSlotQuantity(idx, Number(e.target.value) || 1)
-                    }
-                    aria-label="Quantity"
-                    className="w-14 rounded-md border border-border bg-background px-2 py-1 text-center text-xs"
-                  />
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {Math.abs(slot.primitive.buCost * slot.quantity)} BU
-                  </span>
-                  <label
-                    className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs"
-                    title="When this slot is mirrored, the consumer pays BU debt at template/character-creation time."
-                  >
-                    <input
-                      type="checkbox"
-                      checked={slot.isMirrored}
-                      onChange={() => toggleSlotMirror(idx)}
-                      className="size-3.5"
-                    />
-                    <span>Mirror</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => removeSlot(idx)}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
-                  >
-                    <Trash2 className="size-3.5" />
-                    <span className="hidden sm:inline">Remove</span>
-                  </button>
-                </div>
-              </SortableMember>
-            ))}
-          </SortableBundleList>
-        )}
-      </section>
-
-      <section className="v12-capability-effects rounded-md border border-border bg-background p-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-bold">Bundled Effects</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Effects nested inside this capability. Pick from the library or
-              use the &ldquo;Slot into build&rdquo; action on a library card.
-            </p>
-          </div>
-        </div>
-
-        {effectIds.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            No effects bundled yet. Pick an effect from the Library column
-            and use its &ldquo;Slot into build&rdquo; action.
-          </p>
-        ) : (
-          <SortableBundleList className="mt-3 space-y-2" ids={effectIds} onOrder={order=>{setEffectIds(order);setOrderChanged(true);setIsDirty(true);}}>
-            {effectIds.map((id) => {
-              const effect = availableEffects.find((e) => e.id === id);
-              return (
-                <SortableMember id={id} label={effect?.name ?? id}
-                  key={id}
-                  className="flex items-center gap-2 rounded-md border border-border bg-card p-2 text-sm"
-                >
-                  <span className="min-w-0 flex-1 truncate font-medium">
-                    {effect?.name ?? id}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeEffect(id)}
-                    className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
-                  >
-                    <Trash2 className="size-3.5" /> Remove
-                  </button>
-                </SortableMember>
-              );
-            })}
-          </SortableBundleList>
-        )}
-      </section>
-
+        </AuthorChapter>
+      </AuthorChapters>
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"

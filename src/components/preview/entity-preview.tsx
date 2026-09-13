@@ -18,11 +18,11 @@
 // NOT displayed.
 // =============================================================================
 
-import { type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Markdown } from "@/components/ui/markdown";
 import { IconDisplay } from "@/components/icons/icon-display";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
-import { ChevronRight, History, Link2 } from "lucide-react";
+import { ChevronRight, History } from "lucide-react";
 import { useModalStack } from "@/components/ui/modal-stack";
 import { computeTransitiveBu } from "@/lib/engine/transitive-bu";
 import { SIZE_LOAD } from "@/lib/engine/encumbrance";
@@ -166,14 +166,9 @@ function IconTile({ row }: { row: { iconSource: string | null; iconKey: string |
       />
     );
   }
-  return (
-    <div
-      aria-hidden="true"
-      className="flex size-10 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
-    >
-      {row.fallback}
-    </div>
-  );
+  const icon = ({ PRI: "delapouite/cube", EFF: "lorc/cubes", CAP: "lorc/cubeforce", LIN: "lorc/dna2", UPB: "delapouite/plant-roots", MAN: "caro-asercion/tarot-11-justice", ITEM: "lorc/battle-gear" } as Record<string,string>)[row.fallback.toUpperCase()] ?? "delapouite/cube";
+  return <IconDisplay iconSource="GAME_ICONS" iconKey={icon} iconColor="#64c7c1" size={40} className="shrink-0" alt="" />;
+
 }
 
 // ---- composed-entity drill-down list (primitives/effects/caps/items) -------
@@ -443,7 +438,7 @@ function ModifierCards({
     let scope: React.ReactNode = null;
     if (tv.length > 0 || narrow.length > 0) {
       scope = (
-        <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
           <span className="font-semibold uppercase tracking-wide text-muted-foreground">Scope:</span>
           {tv.length > 0
             ? tv.map((v) => (
@@ -489,7 +484,7 @@ function ModifierCards({
                 <span className="font-mono text-xs font-semibold">{c.target}</span>
                 <OperationBadge op={op} />
                 {c.valueLine}
-                <span className="ml-auto shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground">
+                <span className="ml-auto shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
                   {c.stacking}
                 </span>
               </div>
@@ -501,7 +496,7 @@ function ModifierCards({
                   secondary-background pill — just inline text
                   + OperationBadge. The mirrored op's color comes
                   from the badge, so no background chip needed. */}
-              <div className="flex items-center gap-1.5 pt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+              <div className="flex items-center gap-1.5 pt-0.5 text-xs uppercase tracking-wide text-muted-foreground">
                 <span>Mirrors to</span>
                 {mirrorable && mirrorOp ? (
                   <span className="inline-flex items-center gap-1 text-xs font-medium normal-case tracking-normal text-foreground">
@@ -543,23 +538,11 @@ export function EntityPreview({
       return;
     }
     if (!stack.canPush) return;
-    const url = `/library/item/${link.targetType}:${link.targetId}`;
     stack.push({
       key: `sublink:${link.targetType}:${link.targetId}`,
       label: link.label,
       category: link.targetType,
-      content: (
-        <div className="space-y-3 p-1">
-          <p className="text-sm text-muted-foreground">{link.label} — full details open in a new modal.</p>
-          <a
-            href={url}
-            className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-          >
-            <Link2 className="size-3.5" />
-            Open in library
-          </a>
-        </div>
-      ),
+      content: <FetchedEntityPreview targetType={link.targetType} targetId={String(link.targetId)} />,
     });
   };
 
@@ -679,7 +662,7 @@ export function EntityPreview({
       );
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="v12-entity-preview flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         {body}
         {/* OwnerBar MOVED OUT of the body area — it now lives between the
@@ -759,7 +742,7 @@ function OwnerBar({ owner }: { owner: NonNullable<EntityPreviewProps["owner"]> }
       )}
       {owner.sourceOrigin ? (
         <span
-          className="truncate rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-secondary-foreground"
+          className="truncate rounded-full bg-secondary px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-secondary-foreground"
           title={owner.sourceOrigin}
         >
           Source: {owner.sourceOrigin}
@@ -876,7 +859,7 @@ function PrimitiveBody({
       ) : null}
       {row.mechanicalOutputText ? (
         <Section heading="Mechanical output">
-          <div className="rounded-md border border-border bg-green-500/15 p-3 font-mono text-xs leading-5 text-foreground [&_p]:mb-2 [&_p]:text-xs [&_p]:leading-5 [&_ul]:text-xs [&_ul]:leading-5">
+          <div className="v12-mechanical-rule">
             <Markdown>{row.mechanicalOutputText}</Markdown>
           </div>
         </Section>
@@ -1397,12 +1380,12 @@ function Header({
   chips: ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <IconTile
+    <div className="v12-preview-identity flex items-center gap-2">
+      <div className="v12-preview-medallion"><IconTile
         row={{ iconSource, iconKey, iconUrl, iconColor, fallback }}
-      />
+      /></div>
       <div className="flex flex-1 flex-wrap items-center gap-2 text-xs">
-        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+        <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           {label}
         </span>
         <span className="flex flex-wrap items-center gap-2">{chips}</span>
@@ -1426,4 +1409,28 @@ function rarityClass(rarity: string): string {
     default:
       return "bg-secondary";
   }
+}
+
+/** Loads the same complete record used by the author and source page. */
+export function FetchedEntityPreview({ targetType, targetId, owner }: { targetType: string; targetId: string; owner?: EntityPreviewOwner }) {
+  const [result, setResult] = useState<{ key: string; item?: SandboxPreviewItem; error?: string } | null>(null);
+  const key = `${targetType}:${targetId}`;
+  useEffect(() => {
+    const controller = new AbortController();
+    const kind = targetType.endsWith("_TEMPLATE") || ["LINEAGE", "UPBRINGING", "MANIFEST"].includes(targetType) ? "heritage" : targetType.toLowerCase();
+    const endpoint = ({ primitive: "primitives", effect: "effects", capability: "capabilities", heritage: "heritage", item: "items" } as Record<string, string>)[kind];
+    if (!endpoint) return;
+    fetch(`/api/${endpoint}/${encodeURIComponent(targetId)}`, { signal: controller.signal })
+      .then(async response => { if (!response.ok) throw new Error("Unable to load this record."); return response.json(); })
+      .then(data => {
+        const row = data[kind === "heritage" ? "template" : kind];
+        if (!row) throw new Error("The record is unavailable.");
+        setResult({ key, item: { kind, row } as SandboxPreviewItem });
+      }).catch(error => { if (!controller.signal.aborted) setResult({ key, error: String(error.message) }); });
+    return () => controller.abort();
+  }, [key, targetId, targetType]);
+  return <div className="v12-fetched-preview">
+    {result?.key === key ? result.item ? <EntityPreview item={result.item} {...(owner ? { owner } : {})} /> : <p role="alert">{result.error}</p> : <p role="status">Loading the complete record…</p>}
+    <a className="v12-metal-button" href={`/library/item/${key}`}>Open source page</a>
+  </div>;
 }

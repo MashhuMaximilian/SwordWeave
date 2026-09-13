@@ -1,4 +1,5 @@
 "use client";
+import { describePrimitiveDraft } from "@/lib/primitives/describe-draft";
 import { ConsequenceRestrictionsEditor } from "@/components/characters/consequence-restrictions-editor";
 
 // PrimitiveForm: controlled form-only composer.
@@ -371,7 +372,7 @@ function ChiralityBadge({
   if (isSetTo) {
     return (
       <span
-        className="inline-flex items-center gap-1 rounded-sm border border-slate-500/30 bg-slate-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300"
+        className="inline-flex items-center gap-1 rounded-sm border border-slate-500/30 bg-slate-500/10 px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300"
         title="Set To is permission-locked; cannot be inverted."
       >
         🏛 Permission
@@ -381,7 +382,7 @@ function ChiralityBadge({
   if (mirrorable) {
     return (
       <span
-        className="inline-flex items-center gap-1 rounded-sm border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300"
+        className="inline-flex items-center gap-1 rounded-sm border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300"
         title="Variable Vector — mirrorable per OP_SPECS."
       >
         📊 Variable
@@ -390,7 +391,7 @@ function ChiralityBadge({
   }
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-sm border border-slate-500/30 bg-slate-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300"
+      className="inline-flex items-center gap-1 rounded-sm border border-slate-500/30 bg-slate-500/10 px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300"
     >
       🏛 Permission
     </span>
@@ -436,7 +437,7 @@ function MirrorSwapCard({
     >
       <div className="flex flex-col gap-1.5">
         <ChiralityBadge op={op} mirrorable={mirrorable} />
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {mirrorable && mirrorOp && mirrorLabel
             ? `Mirrorable — flips to ${mirrorLabel} when inverted (sign/reciprocal flipped per OP_SPECS).`
             : "Not mirrorable (permission-locked). Set To has no meaningful inverse."}
@@ -936,6 +937,8 @@ export function PrimitiveForm({
   const [modifiers, setModifiers] = useState<ModifierDraft[]>([
     { ...blankModifier, tokens: [...blankModifier.tokens], targetValues: [] },
   ]);
+  const [phrasePicker, setPhrasePicker] = useState<"target" | "operation" | "value" | "condition" | "resolver" | null>(null);
+  const [targetSearch, setTargetSearch] = useState("");
   const [showJsonPreview, setShowJsonPreview] = useState(false);
   const [message, setMessage] = useState("");
   // Local pending flag — independent of useTransition. The previous
@@ -1026,16 +1029,18 @@ export function PrimitiveForm({
     );
   }, [initialPrimitive, openGlobalDrawer]);
 
+  const mechanicalSentence = useMemo(() => modifiers.length ? modifiers.map(describePrimitiveDraft).join(" ") : form.mechanicalOutputText, [modifiers, form.mechanicalOutputText]);
+
   // Fire onStateChange on every form/modifier change.
   useEffect(() => {
     onStateChange?.({
-      form,
+      form: { ...form, mechanicalOutputText: mechanicalSentence },
       modifiers,
       hardModifiers: modifiers.map(toHardModifier),
             consequenceBehavior,
       isDirty,
     });
-  }, [form, modifiers, onStateChange, consequenceBehavior, isDirty]);
+  }, [form, modifiers, mechanicalSentence, onStateChange, consequenceBehavior, isDirty]);
 
   // Phase 9.4 (Mashu 2026-09-07): on first mount, if the caller
   // supplied initialModifierDrafts (e.g. the Promote tab in the
@@ -1065,9 +1070,7 @@ export function PrimitiveForm({
         id: `seeded-modifier-${i + 1}`,
       }),
     );
-    setModifiers((current) =>
-      current.length > 0 ? current : seeded,
-    );
+    setModifiers(seeded);
     setModifierCounter((c) => Math.max(c, seeded.length));
   }, [initialModifierDrafts]);
 
@@ -1251,7 +1254,7 @@ export function PrimitiveForm({
         category: form.category,
         costTier: form.costTier,
         buCost: form.buCost,
-        mechanicalOutputText: form.mechanicalOutputText,
+        mechanicalOutputText: mechanicalSentence,
         narrativeRule: form.narrativeRule,
         isPublic: form.isPublic,
         isMirrorable: form.isMirrorable,
@@ -1287,6 +1290,7 @@ export function PrimitiveForm({
               : {}),
             draftHash,
             ...form,
+            mechanicalOutputText: mechanicalSentence,
             // Phase 7 Q-M: auto-derive mirror_bu_credit = bu_cost when
             // mirrorable. The server enforces this anyway, but we send the
             // canonical value so the content hash matches what's stored.
@@ -1386,7 +1390,7 @@ export function PrimitiveForm({
         isPublic: form.isPublic,
         costTier: form.costTier,
         buCost: Number(form.buCost) || 0,
-        mechanicalOutputText: form.mechanicalOutputText,
+        mechanicalOutputText: mechanicalSentence,
         narrativeRule: form.narrativeRule,
         isMirrorable: form.isMirrorable,
         mirrorVector: form.isMirrorable ? form.mirrorVector : "STANDARD_ONLY",
@@ -1430,8 +1434,8 @@ export function PrimitiveForm({
                 data-testid="save-intent-chip"
                 className={
                   isFork
-                    ? "inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary"
-                    : "inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                    ? "inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-primary"
+                    : "inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground"
                 }
                 title={
                   isFork
@@ -1665,17 +1669,7 @@ export function PrimitiveForm({
         </span>
       </label>
 
-      <label className="v12-field-resolver block text-sm font-medium md:col-span-2">
-        Mechanical Output Text
-        <textarea
-          className="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
-          value={form.mechanicalOutputText}
-          onChange={(event) =>
-            updateForm("mechanicalOutputText", event.target.value)
-          }
-          placeholder="Reduces target movement coordinates to 0."
-        />
-      </label>
+      {form.mechanicalOutputText ? <details className="v12-field-resolver md:col-span-2"><summary>Original mechanical description</summary><p data-readable-rule>{form.mechanicalOutputText}</p></details> : null}
 
       <label className="v12-field-narrative block text-sm font-medium md:col-span-2">
         Verbose Narrative Rule
@@ -1726,104 +1720,25 @@ export function PrimitiveForm({
           <p className="v12-kicker">Mechanical rule · exactly one modifier</p>
           <h2>Write one rule</h2>
         </div>
-        <div className="v12-sentence rounded-md px-4 py-3 text-base leading-relaxed" data-readable-rule>
-          {modifiers[0] ? (
-            <>
-              <span>Change </span>
-              <select
-                aria-label="What changes"
-                className="v12-sentence-control v12-sentence__target"
-                value={(MODIFIER_TARGETS as readonly string[]).includes(String(modifiers[0]!.target)) ? String(modifiers[0]!.target) : "attribute"}
-                onChange={(event) => updateModifier(modifiers[0]!.id, "target", event.target.value)}
-              >
-                {targetOptions.map((target) => <option key={target.value} value={target.value}>{target.label}</option>)}
-              </select>
-              <span> by </span>
-              <select
-                aria-label="Operation"
-                className="v12-sentence-control v12-sentence__operation"
-                value={modifiers[0]!.operation}
-                onChange={(event) => updateModifier(modifiers[0]!.id, "operation", event.target.value)}
-              >
-                {operations.map((operation) => <option key={operation.value} value={operation.value}>{operation.label}</option>)}
-              </select>
-              <span> </span>
-              <input
-                aria-label="Rule value"
-                className="v12-sentence-control v12-sentence-value-input v12-sentence__value"
-                value={modifiers[0]!.value}
-                onChange={(event) => {
-                  updateModifier(modifiers[0]!.id, "tokens", []);
-                  updateModifier(modifiers[0]!.id, "value", event.target.value);
-                }}
-              />
-              <span> for </span>
-              <input
-                aria-label="Rule scope"
-                className="v12-sentence-control v12-sentence-scope-input v12-sentence__scope"
-                value={modifiers[0]!.targetValues?.join(", ") || ""}
-                placeholder="Self / any"
-                onChange={(event) => {
-                  const targetValues = event.target.value.split(",").map((value) => value.trim()).filter(Boolean);
-                  setModifiers((current) => current.map((modifier, index) => index === 0 ? { ...modifier, targetValues } : modifier));
-                }}
-              />
-              <span>.</span>
-            </>
-          ) : (
-            <span className="text-muted-foreground">
-              Add a modifier to compose its mechanical sentence.
-            </span>
-          )}
+        <div className="v12-sentence" aria-label="Mechanical rule sentence">
+          {modifiers[0] ? <>
+            <span>Change </span>
+            <button type="button" className="v12-phrase v12-sentence__target" aria-expanded={phrasePicker === "target"} onClick={() => setPhrasePicker(phrasePicker === "target" ? null : "target")}>
+              {modifiers[0].targetValues.join(" / ") || modifiers[0].freeTextNarrowFocus || targetOptions.find(t => t.value === modifiers[0]!.target)?.label || "choose a target"}
+            </button>
+            <span> by </span>
+            <button type="button" className="v12-phrase v12-sentence__operation" aria-expanded={phrasePicker === "operation"} onClick={() => setPhrasePicker(phrasePicker === "operation" ? null : "operation")}>{operations.find(o => o.value === modifiers[0]!.operation)?.label || modifiers[0].operation}</button>
+            <button type="button" className="v12-phrase v12-sentence__value" aria-expanded={phrasePicker === "value"} onClick={() => setPhrasePicker(phrasePicker === "value" ? null : "value")}>{modifiers[0].tokens.map(tokenLabel).join(" + ") || modifiers[0].value || "choose value"}</button>
+            <button type="button" className="v12-metal-button" aria-expanded={phrasePicker === "condition"} onClick={() => setPhrasePicker(phrasePicker === "condition" ? null : "condition")}>{modifiers[0].v1Condition.pills.length || modifiers[0].v1Condition.narrative ? `When ${modifiers[0].v1Condition.pills.map(pill => pill.label).join(" · ") || modifiers[0].v1Condition.narrative}` : "+ when"}</button><span>.</span>
+          </> : <button type="button" className="v12-metal-button" onClick={() => { addModifier(); setPhrasePicker("target"); }}>Compose a mechanical rule</button>}
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <legend className="text-sm font-semibold">Modifier Builder</legend>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Describe what this primitive changes. The app creates the JSON.
-            </p>
-          </div>
-          <button
-            aria-disabled={modifiers.length >= 1}
-            className="h-9 rounded-md border border-border px-3 text-sm font-medium disabled:opacity-50"
-            disabled={modifiers.length >= 1}
-            onClick={addModifier}
-            title={
-              modifiers.length >= 1
-                ? "A primitive houses exactly one mechanical payload. (Phase-7 atomic rule.)"
-                : "Add a modifier to this primitive (optional — primitives may be trigger-only)"
-            }
-            type="button"
-          >
-            {modifiers.length >= 1 ? "Modifier Set" : "Add Modifier"}
-          </button>
-        </div>
-
-        {modifiers.length === 0 ? (
-          <div className="rounded-md border border-dashed border-border bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
-            No modifiers yet. Many primitives (Darkvision, Resistance,
-            Domain features) only need a narrative rule above. Add a
-            modifier if this primitive grants a numerical mechanical
-            bonus.
-          </div>
-        ) : null}
-
-        {modifiers.map((modifier, index) => (
+        {phrasePicker ? <div className="v12-picker-heading"><span className="v12-kicker">{phrasePicker === "target" ? "Choose what changes" : phrasePicker === "condition" ? "Conditions · when this applies" : phrasePicker === "resolver" ? "Resolver mapping" : `Choose the ${phrasePicker}`}</span><button type="button" className="v12-metal-button" onClick={() => setPhrasePicker(null)} aria-label="Close phrase choices">×</button></div> : null}
+        {modifiers.map((modifier) => (
           <div
-            className="grid gap-3 rounded-md border border-border bg-card p-3"
+            className="v12-phrase-picker grid gap-3"
+            hidden={!phrasePicker}
             key={modifier.id}
           >
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium">Modifier {index + 1}</p>
-              <button
-                className="h-8 rounded-md border border-border px-2 text-xs text-muted-foreground disabled:opacity-40"
-                onClick={() => removeModifier(modifier.id)}
-                type="button"
-              >
-                Remove
-              </button>
-            </div>
-
             {/* ============================================================
                 SECTION 1 — TARGET
                 "What changes?" dropdown first, then the per-axis
@@ -1834,33 +1749,13 @@ export function PrimitiveForm({
                 "walking speed"). It's distinct from the modifier value
                 (e.g. 60, +2, true) which lives in SECTION 3.
                 ============================================================ */}
-            <fieldset className="space-y-3 rounded-md border border-border bg-background p-3">
+            <fieldset hidden={phrasePicker !== "target"} className="space-y-3 rounded-md border border-border bg-background p-3">
               <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Target
               </legend>
 
-              <label className="block text-sm font-medium">
-                What changes?
-                <select
-                  className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                  value={
-                    (MODIFIER_TARGETS as readonly string[]).includes(
-                      String(modifier.target),
-                    )
-                      ? String(modifier.target)
-                      : "attribute"
-                  }
-                  onChange={(event) =>
-                    updateModifier(modifier.id, "target", event.target.value)
-                  }
-                >
-                  {targetOptions.map((target) => (
-                    <option key={target.value} value={target.value}>
-                      {target.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <input aria-label="Search rule categories" placeholder="Search categories…" value={targetSearch} onChange={event => setTargetSearch(event.target.value)} />
+              <div className="v12-choice-chips">{targetOptions.filter(target => target.label.toLowerCase().includes(targetSearch.toLowerCase())).map(target => <button key={target.value} type="button" aria-pressed={modifier.target === target.value} onClick={() => { updateModifier(modifier.id, "target", target.value); }}>{target.label}</button>)}</div>
 
               {(() => {
                 // Phase-7-E: render the dynamic Target Value widget
@@ -1911,7 +1806,7 @@ export function PrimitiveForm({
                 const optionLabels = spec.optionLabels ?? {};
                 return (
                   <div className="space-y-2 rounded-md border border-dashed border-border bg-background p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       {spec.label} — leave empty for "any"
                     </p>
                     <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3">
@@ -1968,7 +1863,7 @@ export function PrimitiveForm({
                 Operation dropdown first, then chirality/mirror UI below
                 (also stacked — the previous 2-column layout was cramped).
                 ============================================================ */}
-            <fieldset className="space-y-3 rounded-md border border-border bg-background p-3">
+            <fieldset hidden={phrasePicker !== "operation"} className="space-y-3 rounded-md border border-border bg-background p-3">
               <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Change
               </legend>
@@ -2007,7 +1902,7 @@ export function PrimitiveForm({
                 The Value Type dropdown drives which sections render in
                 the chip-stack picker AND how typed text classifies.
                 ============================================================ */}
-            <fieldset className="space-y-2 rounded-md border border-border bg-background p-3">
+            <fieldset hidden={phrasePicker !== "value"} className="space-y-2 rounded-md border border-border bg-background p-3">
               <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Value
               </legend>
@@ -2085,7 +1980,7 @@ export function PrimitiveForm({
             {/* Stacking + Condition are part of the modifier card but
                 live outside the three core sections (Target / Change /
                 Value) — they're configuration rather than definition. */}
-            <div className="grid gap-3 md:grid-cols-2">
+            <div hidden={phrasePicker !== "resolver"} className="grid gap-3 md:grid-cols-2">
               <label className="block text-sm font-medium">
                 Stacking Rule
                 <select
@@ -2102,7 +1997,7 @@ export function PrimitiveForm({
                   ))}
                 </select>
               </label>
-              <div className="rounded-md border border-dashed border-border bg-background p-3 text-[10px] text-muted-foreground">
+              <div className="rounded-md border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
                 <p className="font-semibold uppercase tracking-wide">
                   How does this compose?
                 </p>
@@ -2122,7 +2017,7 @@ export function PrimitiveForm({
                 conditionKey/Operator/Value fields in sync via
                 legacyFieldsFromAuthoring so the toHardModifier path
                 still works without a separate code path. */}
-            <div className="rounded-md border border-border bg-background p-3">
+            <div hidden={phrasePicker !== "condition"} className="rounded-md border border-border bg-background p-3">
               <ConditionPicker
                 value={modifier.v1Condition}
                 onChange={(next: ConditionAuthoring) => {
@@ -2137,6 +2032,7 @@ export function PrimitiveForm({
             </div>
           </div>
         ))}
+        <div className="v12-rule-tools"><button type="button" onClick={() => setPhrasePicker(phrasePicker === "resolver" ? null : "resolver")}>Resolver mapping · stacking · mirror</button>{modifiers[0] ? <button type="button" onClick={() => removeModifier(modifiers[0]!.id)}>Clear mechanical rule</button> : null}</div>
       </fieldset>
 
       <details

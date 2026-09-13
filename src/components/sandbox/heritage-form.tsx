@@ -1,4 +1,5 @@
 "use client";
+import { AuthorChapters, AuthorChapter } from "./author-chapters";
 import { SortableBundleList,SortableMember } from "@/components/characters/workspace/sortable-bundle-list";
 
 // HeritageForm: controlled form-only composer for heritage (race/background/archetype).
@@ -135,6 +136,8 @@ export function HeritageForm({
     name: string;
     category: string;
     buCost: number;
+    mechanicalOutputText?: string | null;
+    narrativeRule?: string | null;
   }>;
   availableCapabilities: Array<{
     id: string;
@@ -529,7 +532,7 @@ export function HeritageForm({
 
   return (
     <form
-      className="grid grid-cols-1 gap-4 rounded-md border border-border bg-card p-4 sm:p-5"
+      className="v12-heritage-author grid grid-cols-1 gap-4 rounded-md border border-border bg-card p-4 sm:p-5"
       onSubmit={submitTemplate}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -551,8 +554,8 @@ export function HeritageForm({
                 data-testid="save-intent-chip"
                 className={
                   isFork
-                    ? "inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary"
-                    : "inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                    ? "inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-primary"
+                    : "inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground"
                 }
                 title={
                   isFork
@@ -589,111 +592,8 @@ export function HeritageForm({
         </div>
       </div>
 
-      {/* Phase 8: per-entity iconography */}
-      <IconSlot
-        iconSource={(form.iconSource as IconSource | null) ?? null}
-        iconKey={form.iconKey}
-        iconUrl={form.iconUrl}
-        iconColor={form.iconColor}
-        onChange={(next) =>
-          setForm({
-            ...form,
-            iconSource: next.iconSource,
-            iconKey: next.iconKey ?? null,
-            iconUrl: next.iconUrl ?? null,
-            iconColor: next.iconColor,
-          })
-        }
-        size={56}
-        label="Icon"
-        helper="Pick from game-icons.net or upload your own."
-      />
-
-      <label className="block text-sm font-medium">
-        Name
-        <input
-          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-          value={form.name}
-          onChange={(e) => updateForm("name", e.target.value)}
-          placeholder={`e.g. ${form.kind === "LINEAGE" ? "High Elf" : form.kind === "UPBRINGING" ? "Sellsword" : "Glass Cannon Mage"}`}
-          required
-        />
-      </label>
-
-      <label className="block text-sm font-medium">
-        Image URL (optional)
-        <input
-          type="url"
-          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-          value={form.imageUrl}
-          onChange={(e) => updateForm("imageUrl", e.target.value)}
-          placeholder="https://..."
-        />
-      </label>
-
-      <label className="block text-sm font-medium">
-        Description / Lore
-        <textarea
-          className="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
-          value={form.description}
-          onChange={(e) => updateForm("description", e.target.value)}
-          placeholder="Lore, mechanics summary, anything notable..."
-          rows={4}
-        />
-      </label>
-
-      <label className="block text-sm font-medium">
-        Suggested Traits (markdown)
-        <textarea
-          className="mt-2 min-h-20 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
-          value={form.suggestedTraits}
-          onChange={(e) => updateForm("suggestedTraits", e.target.value)}
-          placeholder="Personality traits, hooks, suggested names..."
-          rows={3}
-        />
-      </label>
-
-      {/* Phase 8 rev 10: heritage parity — sourceOrigin + tags inputs.
-          These were missing from the form (the columns exist in the DB
-          schema but the form never exposed them). Now heritage has the
-          same metadata shape as items/capabilities/effects. Tags are
-          comma-separated in the form and split into a string[] on save
-          (matches item-form.tsx:639-645). */}
-      <label className="block text-sm font-medium">
-        Tags (comma separated)
-        <input
-          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-          value={form.tags}
-          onChange={(e) => updateForm("tags", e.target.value)}
-          placeholder="fire, knight, focus"
-        />
-      </label>
-
-      <label className="block text-sm font-medium">
-        Source origin
-        <input
-          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-          value={form.sourceOrigin}
-          onChange={(e) => updateForm("sourceOrigin", e.target.value)}
-          placeholder="manual | build:<id> | ..."
-        />
-      </label>
-
-      <label className="flex flex-col gap-2 rounded-md border border-border bg-background p-3 text-sm font-medium">
-        <span className="text-xs font-semibold uppercase text-muted-foreground">
-          Visibility
-        </span>
-        <VisibilitySelect
-          compact
-          value={form.isPublic ? "PUBLIC" : "PRIVATE"}
-          onChange={(next) => updateForm("isPublic", next === "PUBLIC")}
-        />
-        <span className="text-[10px] font-normal text-muted-foreground">
-          Public entries appear in the Library. Private and Followers-only
-          entries can be promoted to Public from the My Creations page.
-        </span>
-      </label>
-
+      <AuthorChapters>
+        <AuthorChapter id="pieces" title="Pieces">
       <section className="rounded-md border border-border bg-background p-4">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-bold">
@@ -720,7 +620,7 @@ export function HeritageForm({
                 className="flex flex-col gap-2 rounded-md border border-border bg-card p-3 text-sm sm:flex-row sm:items-center"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{p.name}</p>
+                  <p className="v12-kicker">Direct primitive · {p.category.replaceAll("_", " ")}</p><h3>{p.name}</h3><p data-readable-rule>{p.mechanicalOutputText || p.narrativeRule}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 font-mono text-xs">
@@ -793,6 +693,119 @@ export function HeritageForm({
         )}
       </section>
 
+        </AuthorChapter>
+        <AuthorChapter id="identity" title="Identity">
+      {/* Phase 8: per-entity iconography */}
+      <IconSlot
+        iconSource={(form.iconSource as IconSource | null) ?? null}
+        iconKey={form.iconKey}
+        iconUrl={form.iconUrl}
+        iconColor={form.iconColor}
+        onChange={(next) =>
+          setForm({
+            ...form,
+            iconSource: next.iconSource,
+            iconKey: next.iconKey ?? null,
+            iconUrl: next.iconUrl ?? null,
+            iconColor: next.iconColor,
+          })
+        }
+        size={56}
+        label="Icon"
+        helper="Pick from game-icons.net or upload your own."
+      />
+
+      <label className="block text-sm font-medium">
+        Name
+        <input
+          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+          value={form.name}
+          onChange={(e) => updateForm("name", e.target.value)}
+          placeholder={`e.g. ${form.kind === "LINEAGE" ? "High Elf" : form.kind === "UPBRINGING" ? "Sellsword" : "Glass Cannon Mage"}`}
+          required
+        />
+      </label>
+
+      <label className="block text-sm font-medium">
+        Image URL (optional)
+        <input
+          type="url"
+          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+          value={form.imageUrl}
+          onChange={(e) => updateForm("imageUrl", e.target.value)}
+          placeholder="https://..."
+        />
+      </label>
+
+        </AuthorChapter>
+        <AuthorChapter id="table" title="At the table">
+      <label className="block text-sm font-medium">
+        Description / Lore
+        <textarea
+          className="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
+          value={form.description}
+          onChange={(e) => updateForm("description", e.target.value)}
+          placeholder="Lore, mechanics summary, anything notable..."
+          rows={4}
+        />
+      </label>
+
+      <label className="block text-sm font-medium">
+        Suggested Traits (markdown)
+        <textarea
+          className="mt-2 min-h-20 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
+          value={form.suggestedTraits}
+          onChange={(e) => updateForm("suggestedTraits", e.target.value)}
+          placeholder="Personality traits, hooks, suggested names..."
+          rows={3}
+        />
+      </label>
+
+        </AuthorChapter>
+        <AuthorChapter id="publish" title="Publish">
+      {/* Phase 8 rev 10: heritage parity — sourceOrigin + tags inputs.
+          These were missing from the form (the columns exist in the DB
+          schema but the form never exposed them). Now heritage has the
+          same metadata shape as items/capabilities/effects. Tags are
+          comma-separated in the form and split into a string[] on save
+          (matches item-form.tsx:639-645). */}
+      <label className="block text-sm font-medium">
+        Tags (comma separated)
+        <input
+          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+          value={form.tags}
+          onChange={(e) => updateForm("tags", e.target.value)}
+          placeholder="fire, knight, focus"
+        />
+      </label>
+
+      <label className="block text-sm font-medium">
+        Source origin
+        <input
+          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+          value={form.sourceOrigin}
+          onChange={(e) => updateForm("sourceOrigin", e.target.value)}
+          placeholder="manual | build:<id> | ..."
+        />
+      </label>
+
+      <label className="flex flex-col gap-2 rounded-md border border-border bg-background p-3 text-sm font-medium">
+        <span className="text-xs font-semibold uppercase text-muted-foreground">
+          Visibility
+        </span>
+        <VisibilitySelect
+          compact
+          value={form.isPublic ? "PUBLIC" : "PRIVATE"}
+          onChange={(next) => updateForm("isPublic", next === "PUBLIC")}
+        />
+        <span className="text-xs font-normal text-muted-foreground">
+          Public entries appear in the Library. Private and Followers-only
+          entries can be promoted to Public from the My Creations page.
+        </span>
+      </label>
+
+        </AuthorChapter>
+      </AuthorChapters>
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"

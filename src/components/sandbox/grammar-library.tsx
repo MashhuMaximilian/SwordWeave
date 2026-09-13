@@ -14,6 +14,7 @@
 // Pristine mode: clicks swap silently via the parent's onSelect.
 // Dirty mode: parent's guardedLibrarySelect opens the unsaved modal.
 
+import { libraryOrigin, libraryTier } from "@/lib/publishing/library-classification";
 import { useEffect, useMemo, useState } from "react";
 import { useSandboxSaveHandler } from "./use-sandbox-save-handler";
 import { useRouter } from "next/navigation";
@@ -470,6 +471,8 @@ export function GrammarLibrary({
 
   const filteredItems = useMemo(() => {
     const filtered = combinedItems.filter((item) => {
+      if (toolbarState.origin && toolbarState.origin !== "all" && libraryOrigin(item) !== toolbarState.origin) return false;
+      if (toolbarState.tier && libraryTier({ costTier: primitives.find(p => String(p.id) === item.targetId)?.costTier ?? null }) !== Number(toolbarState.tier)) return false;
       // Only show items of the types available in this build mode.
       const allowedKeys = availableTypes.map((t) => t.key);
       if (!allowedKeys.includes(item.targetType) && !allowedKeys.includes("ALL")) {
@@ -558,7 +561,7 @@ export function GrammarLibrary({
       return true;
     });
     return sortLibraryItems(filtered, toolbarState.sort);
-  }, [combinedItems, availableTypes, toolbarState]);
+  }, [combinedItems, availableTypes, toolbarState, primitives]);
 
   // Right-side filter panel slot: render the full toolbar inside it.
   // The search bar is duplicated in the column header for quick access.
@@ -736,11 +739,13 @@ export function GrammarLibrary({
               return (
                 <button
                   key={chip.key}
+                  aria-pressed={active}
                   type="button"
                   onClick={() =>
                     setToolbarState((prev) => ({
                       ...prev,
                       typeFilter: active ? "ALL" : chip.key,
+                      category: "", tier: "",
                     }))
                   }
                   className={cn(
@@ -795,6 +800,8 @@ export function GrammarLibrary({
           </section>
         ) : null}
         <section className="v12-source-entries min-h-0 overflow-auto">
+          {(toolbarState.typeFilter === "PRIMITIVE" || toolbarState.category) ? <div className="v12-tier-tabs" aria-label="Source tiers">{["", "1", "2", "3", "4", "5"].map(tier => <button type="button" key={tier} aria-pressed={(toolbarState.tier ?? "") === tier} onClick={() => setToolbarState(prev => ({ ...prev, tier }))}>{tier ? `Tier ${["", "I", "II", "III", "IV", "V"][Number(tier)]}` : "All"}</button>)}</div> : null}
+          <div className="v12-origin-tabs" aria-label="Source origin">{(["all", "system", "community"] as const).map(origin => <button type="button" key={origin} aria-pressed={(toolbarState.origin ?? "all") === origin} onClick={() => setToolbarState(prev => ({ ...prev, origin }))}>{origin === "all" ? "All origins" : origin === "system" ? "System" : "Community"}</button>)}</div>
           <div className="v12-source-results-head">
             <p className="v12-kicker">Exact entries · canonical + community</p>
             <span>{filteredItems.length}</span>

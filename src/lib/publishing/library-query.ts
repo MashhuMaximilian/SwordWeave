@@ -1,3 +1,4 @@
+import { libraryOrigin, libraryTier, primitiveGroupKey } from "./library-classification";
 // =============================================================================
 // Library query service — Phase 5 Commit B + C
 //
@@ -71,6 +72,8 @@ export type LibraryTargetType =
   | "BUILD_TEMPLATE";
 
 export interface LibraryQuery {
+  origin?: "all" | "system" | "community";
+  tier?: number;
   targetType?: LibraryTargetType;
   category?: string;
   search?: string;
@@ -132,6 +135,8 @@ export interface LibraryQuery {
 }
 
 export interface LibraryItem {
+  costTier?: string | null;
+  groupKey?: string;
   /** Composite ID: `<type>:<id>` for routing */
   id: string;
   targetType: LibraryTargetType;
@@ -314,6 +319,8 @@ export async function queryLibrary(q: LibraryQuery): Promise<LibraryResult> {
 
   // Apply post-fetch engagement filters (uses joined aggregates)
   const filtered = items.filter((it) => {
+    if (q.origin && q.origin !== "all" && libraryOrigin(it) !== q.origin) return false;
+    if (q.tier && libraryTier(it) !== q.tier) return false;
     if (q.minLikes !== undefined && it.likesCount < q.minLikes) return false;
     if (q.hasForks && it.forkCount === 0) return false;
     return true;
@@ -546,6 +553,9 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       name: primitives.name,
       category: primitives.category,
       buCost: primitives.buCost,
+      costTier: primitives.costTier,
+      hardModifiers: primitives.hardModifiers,
+      mechanicalOutputText: primitives.mechanicalOutputText,
       narrativeRule: primitives.narrativeRule,
       userId: primitives.userId,
       createdAt: primitives.createdAt,
@@ -583,7 +593,9 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       targetType: "PRIMITIVE" as const,
       targetId: String(r.id),
       name: r.name,
-      description: r.narrativeRule || null,
+      description: r.mechanicalOutputText || r.narrativeRule || null,
+      costTier: r.costTier,
+      groupKey: primitiveGroupKey(r.category, r.hardModifiers),
       category: r.category,
       buCost: r.buCost,
       authorId: r.userId ?? null,

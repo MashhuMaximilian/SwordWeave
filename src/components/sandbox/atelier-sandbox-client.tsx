@@ -983,6 +983,8 @@ export function AtelierSandboxClient({
             name: p.name,
             category: p.category,
             buCost: p.buCost,
+            mechanicalOutputText: p.mechanicalOutputText,
+            narrativeRule: p.narrativeRule,
           }))}
           onStateChange={(state) => {
             setFormIsDirty(state.isDirty);
@@ -1029,8 +1031,10 @@ export function AtelierSandboxClient({
             name: p.name,
             category: p.category,
             buCost: p.buCost,
+            mechanicalOutputText: p.mechanicalOutputText,
+            narrativeRule: p.narrativeRule,
           }))}
-          availableEffects={effects.map((e) => ({ id: e.id, name: e.name }))}
+          availableEffects={effects}
           onStateChange={(state) => {
             setFormIsDirty(state.isDirty);
             setFormSnapshot({

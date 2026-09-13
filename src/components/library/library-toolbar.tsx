@@ -25,6 +25,8 @@ import type { LibrarySort } from "@/lib/publishing/library-query";
 import type { LibraryView } from "@/lib/preferences/library-prefs";
 
 export interface LibraryToolbarState {
+  origin?: "all" | "system" | "community";
+  tier?: string;
   search: string;
   sort: LibrarySort;
   view: LibraryView;
