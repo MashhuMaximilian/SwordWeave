@@ -1,5 +1,5 @@
 "use client";
-import { describePrimitiveDraft } from "@/lib/primitives/describe-draft";
+import { describePrimitiveDraft, primitiveSentenceParts } from "@/lib/primitives/describe-draft";
 import { ConsequenceRestrictionsEditor } from "@/components/characters/consequence-restrictions-editor";
 
 // PrimitiveForm: controlled form-only composer.
@@ -1029,6 +1029,7 @@ export function PrimitiveForm({
     );
   }, [initialPrimitive, openGlobalDrawer]);
 
+  const sentenceParts = modifiers[0] ? primitiveSentenceParts(modifiers[0]) : null;
   const mechanicalSentence = useMemo(() => modifiers.length ? modifiers.map(describePrimitiveDraft).join(" ") : form.mechanicalOutputText, [modifiers, form.mechanicalOutputText]);
 
   // Fire onStateChange on every form/modifier change.
@@ -1722,14 +1723,14 @@ export function PrimitiveForm({
         </div>
         <div className="v12-sentence" aria-label="Mechanical rule sentence">
           {modifiers[0] ? <>
-            <span>Change </span>
+            <span>{sentenceParts?.lead} </span>
             <button type="button" className="v12-phrase v12-sentence__target" aria-expanded={phrasePicker === "target"} onClick={() => setPhrasePicker(phrasePicker === "target" ? null : "target")}>
               {modifiers[0].targetValues.join(" / ") || modifiers[0].freeTextNarrowFocus || targetOptions.find(t => t.value === modifiers[0]!.target)?.label || "choose a target"}
             </button>
-            <span> by </span>
-            <button type="button" className="v12-phrase v12-sentence__operation" aria-expanded={phrasePicker === "operation"} onClick={() => setPhrasePicker(phrasePicker === "operation" ? null : "operation")}>{operations.find(o => o.value === modifiers[0]!.operation)?.label || modifiers[0].operation}</button>
-            <button type="button" className="v12-phrase v12-sentence__value" aria-expanded={phrasePicker === "value"} onClick={() => setPhrasePicker(phrasePicker === "value" ? null : "value")}>{modifiers[0].tokens.map(tokenLabel).join(" + ") || modifiers[0].value || "choose value"}</button>
-            <button type="button" className="v12-metal-button" aria-expanded={phrasePicker === "condition"} onClick={() => setPhrasePicker(phrasePicker === "condition" ? null : "condition")}>{modifiers[0].v1Condition.pills.length || modifiers[0].v1Condition.narrative ? `When ${modifiers[0].v1Condition.pills.map(pill => pill.label).join(" · ") || modifiers[0].v1Condition.narrative}` : "+ when"}</button><span>.</span>
+            <span> {sentenceParts?.join} </span>
+            <button type="button" className="v12-phrase v12-sentence__operation" aria-expanded={phrasePicker === "operation"} onClick={() => setPhrasePicker(phrasePicker === "operation" ? null : "operation")}>{sentenceParts?.label}</button>
+            <button type="button" className="v12-phrase v12-sentence__value" aria-expanded={phrasePicker === "value"} onClick={() => setPhrasePicker(phrasePicker === "value" ? null : "value")}>{sentenceParts?.value || "choose value"}</button>
+            <button type="button" className="v12-metal-button" aria-expanded={phrasePicker === "condition"} onClick={() => setPhrasePicker(phrasePicker === "condition" ? null : "condition")}>{sentenceParts?.when ? `When ${sentenceParts.when}` : "+ when"}</button><span>.</span>
           </> : <button type="button" className="v12-metal-button" onClick={() => { addModifier(); setPhrasePicker("target"); }}>Compose a mechanical rule</button>}
         </div>
         {phrasePicker ? <div className="v12-picker-heading"><span className="v12-kicker">{phrasePicker === "target" ? "Choose what changes" : phrasePicker === "condition" ? "Conditions · when this applies" : phrasePicker === "resolver" ? "Resolver mapping" : `Choose the ${phrasePicker}`}</span><button type="button" className="v12-metal-button" onClick={() => setPhrasePicker(null)} aria-label="Close phrase choices">×</button></div> : null}

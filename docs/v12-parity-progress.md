@@ -93,3 +93,7 @@ Character source renderer browser verification: desktop 1200px shows capability 
 ## Fork-map overview navigator
 
 Implemented the V12 Library reference’s specified production minimap: loaded-node overview, selected-node highlight, visible viewport rectangle, click/keyboard centering. Fit now resets pan as well as scale. ResizeObserver and scroll listener keep the overview synchronized and clean up on unmount. Desktop inspector explicitly spans graph and overview; mobile stacks. Browser fixture with twelve generations at 390px: centering final entry reached scrollLeft 2667, Fit returned 0, document width remained390. Screenshot output/playwright/fork-minimap-mobile.png inspected. Three progressive-session tests and TypeScript pass; temporary fixture removed/dev stopped. Not yet deployed; full graph/authenticated parity still pending.
+
+## Primitive phrase fidelity
+
+Found visible value phrase ignored equation operands and condition phrase replaced AND/OR with dots or omitted narrative when pills existed. Shared primitiveSentenceParts now formats the editable operation/value/when phrases and generated mechanical description from identical data, with V12 Change/by/adding and Set/to/minimum/maximum grammar. Fixed old operation-label lookup treating an array as a keyed object. Saved resolver fields unchanged. Two targeted tests pass (OR+narrative; parenthesized equation taking precedence over stale numeric/tokens and no mutation), TypeScript passes. Browser verification and deployment pending. Full objective remains incomplete.
