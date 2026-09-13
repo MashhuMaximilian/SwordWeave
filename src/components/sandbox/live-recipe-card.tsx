@@ -25,7 +25,7 @@ export function LiveRecipeCard({ name, kind, icon, badges, description, sourceOr
   badges: ReactNode; description?: string; sourceOrigin: string; tags: string;
   children: ReactNode;
 }) {
-  const fallback = kind === "Effect" ? "lorc/cubes" : kind === "Capability" ? "lorc/cubeforce" : kind === "Lineage" ? "lorc/dna2" : kind === "Upbringing" ? "delapouite/plant-roots" : "caro-asercion/tarot-11-justice";
+  const fallback = kind === "Item" ? "lorc/battle-gear" : kind === "Effect" ? "lorc/cubes" : kind === "Capability" ? "lorc/cubeforce" : kind === "Lineage" ? "lorc/dna2" : kind === "Upbringing" ? "delapouite/plant-roots" : "caro-asercion/tarot-11-justice";
   return <article className="v12-live-recipe">
     <div className="v12-live-emblem" aria-hidden="true"><IconDisplay iconSource={icon.iconSource === "UPLOAD" ? "UPLOAD" : "GAME_ICONS"} iconKey={icon.iconSource ? icon.iconKey : fallback} iconUrl={icon.iconUrl} iconColor={icon.iconSource ? icon.iconColor : "#64c7c1"} size={48} alt="" /></div>
     <header className="v12-live-identity"><p className="v12-kicker">{kind} · live draft</p><h2>{name || `Untitled ${kind.toLowerCase()}`}</h2><div className="v12-live-badges">{badges}</div></header>

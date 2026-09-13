@@ -4,7 +4,9 @@
 
 import { Markdown } from "@/components/ui/markdown";
 import { dispatchOpenPreview } from "@/lib/sandbox/slot-events";
-import { SIZE_LOAD } from "@/lib/engine/encumbrance";
+import { SIZE_LOAD, computeLoad, type CharacterSize } from "@/lib/engine/encumbrance";
+import { computeTransitiveBu } from "@/lib/engine/transitive-bu";
+import { LiveRecipeCard, LivePrimitiveRules, LiveEffectRules, LiveMechanicalSummary, type LivePrimitive, type LivePrimitiveSlot, type LiveEffect } from "./live-recipe-card";
 
 export type ItemFormState = {
   name: string;
@@ -46,12 +48,7 @@ export type ItemPrimitiveSlot = {
    * template/character-creation time when this item is consumed.
    */
   isMirrored?: boolean | undefined;
-  primitive: {
-    id: number;
-    name: string;
-    category: string;
-    buCost: number;
-  };
+  primitive: LivePrimitive;
 };
 
 export type ItemCapabilitySlot = {
@@ -59,272 +56,32 @@ export type ItemCapabilitySlot = {
   name: string;
   type: string;
   sourceType: string;
+  description?: string | null;
+  primitiveLinks?: LivePrimitiveSlot[];
+  effects?: LiveEffect[];
 };
 
-export type ItemEffectSlot = {
-  id: string;
-  name: string;
-};
+export type ItemEffectSlot = LiveEffect;
 
-const RARITY_COLOR: Record<string, string> = {
-  COMMON: "bg-secondary text-secondary-foreground",
-  RARE: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  EPIC: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-  LEGENDARY: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-};
-
-function rarityClass(rarity: string): string {
-  return RARITY_COLOR[rarity] ?? RARITY_COLOR["COMMON"] ?? "bg-secondary";
-}
-
-export function ItemFormPreview({
-  form,
-  primitiveSlots,
-  capabilitySlots,
-  effectSlots,
-}: {
-  form: ItemFormState;
-  primitiveSlots: ItemPrimitiveSlot[];
-  capabilitySlots: ItemCapabilitySlot[];
-  effectSlots: ItemEffectSlot[];
+export function ItemFormPreview({form, primitiveSlots, capabilitySlots, effectSlots}: {
+  form:ItemFormState; primitiveSlots:ItemPrimitiveSlot[]; capabilitySlots:ItemCapabilitySlot[]; effectSlots:ItemEffectSlot[];
 }) {
-  const isEmpty =
-    !form.name &&
-    primitiveSlots.length === 0 &&
-    capabilitySlots.length === 0 &&
-    effectSlots.length === 0;
-  const totalBu = primitiveSlots.reduce(
-    (sum, slot) => sum + slot.primitive.buCost,
-    0,
-  );
-  const tags = (form.tags ?? "")
-    .split(",")
-    .map((t) => t.trim())
-    .filter(Boolean);
-
-  if (isEmpty) {
-    return (
-      <div className="flex h-full items-center justify-center p-6 text-center">
-        <div className="max-w-xs space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">No item yet</p>
-          <p className="text-xs text-muted-foreground">
-            Fill in the Build panel. The card updates as you type and slot
-            primitives/capabilities/effects.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const rarityClassName = rarityClass(form.rarity);
-
-  return (
-    <div className="space-y-5 p-4">
-      <header className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {form.itemType} Item
-        </p>
-        <h2 className="text-base font-semibold leading-tight text-foreground">
-          {form.name || "Unnamed Item"}
-        </h2>
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">
-            {totalBu} BU
-          </span>
-          <span
-            className={`rounded-full px-2 py-0.5 font-medium ${rarityClassName}`}
-          >
-            {form.rarity}
-          </span>
-          <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-            Equipped slots • {form.slotCost || 1}
-          </span>
-          {form.size ? (
-            <span
-              className="rounded-full bg-secondary px-2 py-0.5 font-medium"
-              title={
-                form.size === "TINY"
-                  ? "Tiny items use the pouch system: 1000 tiny items = 1 Load."
-                  : `Encumbrance: ${SIZE_LOAD[form.size as keyof typeof SIZE_LOAD] ?? 0} Load per item`
-              }
-            >
-              Size {form.size}
-              {form.size === "TINY"
-                ? " (pouch · 1000 = 1 Load)"
-                : ` • ${SIZE_LOAD[form.size as keyof typeof SIZE_LOAD] ?? 0} Load`}
-            </span>
-          ) : null}
-          {Number(form.quantity) > 1 ? (
-            <span
-              className="rounded-full bg-secondary px-2 py-0.5 font-medium"
-              title={`Quantity multiplies Load/Capacity per item (×${form.quantity})`}
-            >
-              Quantity ×{form.quantity}
-            </span>
-          ) : null}
-          {form.isTwoHanded ? (
-            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-              Two-handed
-            </span>
-          ) : null}
-          {form.isConsumable ? (
-            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-              Consumable
-            </span>
-          ) : null}
-          {form.actsAsFocus ? (
-            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">
-              Focus
-            </span>
-          ) : null}
-          <span
-            className={
-              "rounded-full px-2 py-0.5 font-medium " +
-              (form.isPublic
-                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                : "bg-amber-500/10 text-amber-600 dark:text-amber-400")
-            }
-          >
-            {form.isPublic ? "Public" : "Draft"}
-          </span>
-        </div>
-      </header>
-
-      {form.description ? (
-        <section>
-          <h3 className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
-            Description
-          </h3>
-          <div className="prose prose-invert prose-sm max-w-none break-words text-sm leading-7">
-            <Markdown>{form.description}</Markdown>
-          </div>
-        </section>
-      ) : null}
-
-      {tags.length > 0 ? (
-        <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-            Tags
-          </h3>
-          <div className="flex flex-wrap gap-1">
-            {tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-sm border border-border bg-background px-2 py-0.5 text-xs"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {primitiveSlots.length > 0 ? (
-        <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-            Item-augment primitives ({primitiveSlots.length})
-          </h3>
-          <ul className="divide-y divide-border rounded-md border">
-            {primitiveSlots.map((slot) => (
-              <li
-                key={slot.primitiveId}
-                className="flex items-center justify-between gap-2 p-2 text-sm"
-              >
-                <button
-                  type="button"
-                  onClick={() =>
-                    dispatchOpenPreview({
-                      targetType: "PRIMITIVE",
-                      targetId: String(slot.primitive.id),
-                      label: slot.primitive.name,
-                    })
-                  }
-                  className="min-w-0 flex-1 truncate text-left font-medium text-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
-                  title={`Open ${slot.primitive.name} in preview`}
-                >
-                  {slot.primitive.name}
-                </button>
-                {slot.isMirrored ? (
-                  <span
-                    className="shrink-0 rounded-sm border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400"
-                    title="This slot is mirrored — consumer pays BU debt at template/character-creation time"
-                  >
-                    Mirrored
-                  </span>
-                ) : null}
-                <span className="shrink-0 font-mono text-[10px] text-foreground">
-                  {slot.primitive.buCost} BU
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {capabilitySlots.length > 0 ? (
-        <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-            Granted capabilities ({capabilitySlots.length})
-          </h3>
-          <ul className="divide-y divide-border rounded-md border">
-            {capabilitySlots.map((c) => (
-              <li
-                key={c.id}
-                className="flex items-center justify-between gap-2 p-2 text-sm"
-              >
-                <button
-                  type="button"
-                  onClick={() =>
-                    dispatchOpenPreview({
-                      targetType: "CAPABILITY",
-                      targetId: c.id,
-                      label: c.name,
-                    })
-                  }
-                  className="min-w-0 flex-1 truncate text-left font-medium text-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
-                  title={`Open ${c.name} in preview`}
-                >
-                  {c.name}
-                </button>
-                <span className="shrink-0 text-[10px] text-muted-foreground">
-                  {c.type}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {effectSlots.length > 0 ? (
-        <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-            Granted effects ({effectSlots.length})
-          </h3>
-          <ul className="divide-y divide-border rounded-md border">
-            {effectSlots.map((e) => (
-              <li
-                key={e.id}
-                className="flex items-center justify-between gap-2 p-2 text-sm"
-              >
-                <button
-                  type="button"
-                  onClick={() =>
-                    dispatchOpenPreview({
-                      targetType: "EFFECT",
-                      targetId: e.id,
-                      label: e.name,
-                    })
-                  }
-                  className="min-w-0 flex-1 truncate text-left font-medium text-foreground underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none"
-                  title={`Open ${e.name} in preview`}
-                >
-                  {e.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-    </div>
-  );
+  const allSlots = [...primitiveSlots, ...effectSlots.flatMap(effect=>effect.primitiveLinks ?? []), ...capabilitySlots.flatMap(capability=>[...(capability.primitiveLinks ?? []), ...(capability.effects ?? []).flatMap(effect=>effect.primitiveLinks ?? [])])];
+  const completeCost = effectSlots.every(effect=>effect.primitiveLinks !== undefined) && capabilitySlots.every(capability=>capability.primitiveLinks !== undefined && capability.effects !== undefined && capability.effects.every(effect=>effect.primitiveLinks !== undefined));
+  const {transitiveBu} = computeTransitiveBu({primitiveLinks:allSlots});
+  const extraBu = Math.max(0,Number(form.buCost)||0);
+  const quantity = Math.max(1,Number(form.quantity)||1);
+  const size = (Object.hasOwn(SIZE_LOAD,form.size) ? form.size : "SMALL") as CharacterSize;
+  const load = computeLoad([{size,loadValue:SIZE_LOAD[size],quantity,slotCount:0,capacityBonus:0,ignoreLoadBonus:0,equipped:false}]);
+  return <LiveRecipeCard name={form.name} kind="Item" icon={form} description={form.description} sourceOrigin={form.sourceOrigin} tags={form.tags} badges={<>
+    <span data-tone="violet">{form.itemType}</span><span>{form.rarity}</span><span data-tone="teal">{form.isPublic ? "Public" : "Private draft"}</span><span>{transitiveBu+extraBu} BU{completeCost ? "" : " · loaded rules"}</span>
+  </>}>
+    <dl className="v12-live-item-facts"><div><dt>Equip slots</dt><dd>{form.isNotEquippable ? "Not equippable" : form.slotCost || "1"}</dd></div><div><dt>Total Load</dt><dd>{load}</dd></div><div><dt>Size</dt><dd>{size.toLowerCase()}</dd></div><div><dt>Quantity</dt><dd>×{quantity}</dd></div></dl>
+    {size === "TINY" ? <p className="v12-live-note">Pouch system · 1,000 tiny items per Load.</p> : <p className="v12-live-note">{SIZE_LOAD[size]} Load per item.</p>}
+    <div className="v12-live-badges">{form.isTwoHanded ? <span>Two-handed</span> : null}{form.isConsumable ? <span>Consumable</span> : null}{form.actsAsFocus ? <span>Focus</span> : null}{extraBu ? <span>Extra cost · {extraBu} BU</span> : null}</div>
+    <LiveMechanicalSummary slots={allSlots} />
+    <details className="v12-live-composition" open><summary>Item-augment primitives · {primitiveSlots.length}</summary><LivePrimitiveRules slots={primitiveSlots}/></details>
+    {effectSlots.length ? <section className="v12-live-composition"><h3 className="v12-kicker">Granted effects · {effectSlots.length}</h3><LiveEffectRules effects={effectSlots}/></section> : null}
+    {capabilitySlots.length ? <section className="v12-live-composition"><h3 className="v12-kicker">Granted capabilities · {capabilitySlots.length}</h3>{capabilitySlots.map((capability,index)=><details className="v12-live-effect" open key={`${capability.id}:${index}`}><summary><span className="v12-kicker">{capability.type} · {capability.sourceType}</span><strong>{capability.name}</strong></summary>{capability.description ? <div className="v12-live-description"><Markdown>{capability.description}</Markdown></div> : null}<LivePrimitiveRules slots={capability.primitiveLinks ?? []}/><LiveEffectRules effects={capability.effects ?? []}/><button type="button" className="v12-live-inspect" onClick={()=>dispatchOpenPreview({targetType:"CAPABILITY",targetId:capability.id,label:capability.name})}>Inspect capability and provenance</button></details>)}</section> : null}
+  </LiveRecipeCard>;
 }

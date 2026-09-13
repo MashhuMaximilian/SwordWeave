@@ -2039,3 +2039,7 @@ body[data-ui="v12"] .v12-live-emblem::after { content:""; position:absolute; ins
 body[data-ui="v12"] .v12-live-portrait { width:100%; height:auto; border-radius:6px; margin:14px 0; }
 /* The desktop panel already supplies the live card's title and context. */
 body[data-ui="v12"] .v12-studio-preview .v12-live-identity > :is(h2,.v12-kicker) { display:none; }
+body[data-ui="v12"] .v12-live-item-facts { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:16px 0 8px; }
+body[data-ui="v12"] .v12-live-item-facts > div { padding:10px; background:var(--v12-inset); border-bottom:1px solid var(--v12-line-subtle); min-width:0; }
+body[data-ui="v12"] .v12-live-item-facts dt { font:500 13px/1.4 var(--font-system); color:var(--v12-soft); }
+body[data-ui="v12"] .v12-live-item-facts dd { margin:4px 0 0; font:500 18px/1.4 var(--font-subtitle); overflow-wrap:anywhere; }

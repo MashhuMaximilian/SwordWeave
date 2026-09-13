@@ -1495,6 +1495,7 @@ export function AtelierSandboxClient({
         isTwoHanded: row.isTwoHanded,
         isConsumable: row.isConsumable,
         actsAsFocus: row.actsAsFocus,
+        isNotEquippable: row.isNotEquippable ?? false,
         isPublic: row.isPublic,
         sourceOrigin: row.sourceOrigin ?? "",
         tags: row.tags.join(", "),
@@ -1521,14 +1522,25 @@ export function AtelierSandboxClient({
       const primitiveSlots = snapPrimitiveIds
         ? snapPrimitiveIds.map((id) => primitives.find((p) => String(p.id) === id)).filter((p): p is PrimitiveRow => Boolean(p)).map((p) => ({ primitiveId: p.id, isMirrored: snapMirroredIds.has(p.id), primitive: p }))
         : (row ? row.primitiveLinks.map((link) => ({ primitiveId: link.primitiveId, isMirrored: (link as { isMirrored?: boolean }).isMirrored, primitive: link.primitive })) : []);
-      const capabilitySlots = snapCapabilityIds
-        ? snapCapabilityIds.map((id) => capabilities.find((c) => String(c.id) === id)).filter((c): c is CapabilityRow => Boolean(c)).map((c) => ({ id: c.id, name: c.name, type: c.type, sourceType: c.sourceType }))
-        : [];
-      const effectSlots = snapEffectIds
-        ? snapEffectIds.map((id) => effects.find((e) => e.id === id)).filter((e): e is EffectRow => Boolean(e)).map((e) => ({ id: e.id, name: e.name }))
-        : [];
+      const capabilitySlots = (snapCapabilityIds ?? row?.capabilityLinks.map(link=>link.capabilityId) ?? []).map(id=>{
+        const capability=capabilities.find(capability=>capability.id===id);
+        const stored=row?.capabilityLinks.find(link=>link.capabilityId===id)?.capability;
+        return {id,name:capability?.name ?? stored?.name ?? "Unavailable capability",type:capability?.type ?? stored?.type ?? "Capability",sourceType:capability?.sourceType ?? "",
+          ...(capability ? {description:capability.verboseDescription,primitiveLinks:capability.primitiveLinks.map(link=>({...link,primitive:{...primitives.find(p=>p.id===link.primitiveId),...link.primitive}})),effects:capability.effectLinks.map(link=>{
+            const effect=effects.find(effect=>effect.id===link.effectId);
+            const primitiveLinks=link.effect.primitiveLinks ?? effect?.primitiveLinks;
+            return {...effect,...link.effect,id:link.effectId,...(primitiveLinks ? {primitiveLinks:primitiveLinks.map(primitive=>({...primitive,primitive:{...primitives.find(p=>p.id===primitive.primitiveId),...primitive.primitive}}))}:{})};
+          })}:stored?.primitiveLinks ? {primitiveLinks:stored.primitiveLinks.map(link=>({...link,primitive:{...primitives.find(p=>p.id===link.primitiveId),...link.primitive}}))}:{}),
+        };
+      });
+      const effectSlots = (snapEffectIds ?? row?.effectLinks.map(link=>link.effectId) ?? []).map(id=>{
+        const effect=effects.find(effect=>effect.id===id);
+        const stored=row?.effectLinks.find(link=>link.effectId===id)?.effect;
+        const source=effect ?? stored;
+        return {id,name:source?.name ?? "Unavailable effect",narrativeDescription:source?.narrativeDescription ?? "",...(source?.primitiveLinks ? {primitiveLinks:source.primitiveLinks.map(link=>({...link,primitive:{...primitives.find(p=>p.id===link.primitiveId),...link.primitive}}))}:{})};
+      });
       if (!formWithDefaults) return null;
-      return <ItemFormPreview form={formWithDefaults} primitiveSlots={primitiveSlots} capabilitySlots={capabilitySlots} effectSlots={effectSlots} />;
+      return <ItemFormPreview form={formWithDefaults} primitiveSlots={primitiveSlots.map(slot=>({...slot,primitive:{...primitives.find(p=>p.id===slot.primitiveId),...slot.primitive}}))} capabilitySlots={capabilitySlots} effectSlots={effectSlots} />;
     }
     return emptyPreview("Monster preview not yet implemented.", "The monster composer is queued.");
   }, [build, editing, formSnapshot, primitives, capabilities, effects]);

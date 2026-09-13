@@ -961,22 +961,10 @@ export function ItemForm({
             className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
             value={form.quantity}
             onChange={(e) => updateForm("quantity", e.target.value)}
-            title="How many pieces of this item fit in 1 Load (per the chosen Size)."
+            title="Number of items carried. Quantity and size determine total Load."
           />
-          {/* Phase 8.5 / Session H6 (Mashu 2026-08-03):
-              helper text below the field explains the
-              size-load relationship the engine uses. The
-              user previously thought "Load = size *
-              quantity" but the canonical rule (per the
-              encumbrance spec) is "1 Load fits N items of
-              this size" — i.e. size_load is the max
-              quantity per Load, and Load contribution =
-              ceil(quantity / size_load). The number input
-              above lets the user pick how many pieces
-              (per Load). */}
           <span className="mt-1 block text-[13px] text-muted-foreground">
-            How many pieces of this item fit in {SIZE_LOAD[(form.size as CharacterSize) ?? "SMALL"]}{" "}
-            Load. Total Load contribution = {Math.ceil(Number(form.quantity) / Math.max(1, SIZE_LOAD[(form.size as CharacterSize) ?? "SMALL"]))}.
+            {form.size === "TINY" ? "Tiny items use the pouch system: 1,000 items per Load." : `${SIZE_LOAD[(form.size as CharacterSize) ?? "SMALL"]} Load per item. Quantity multiplies the total Load.`}
           </span>
         </label>
         <label className="block text-sm font-medium">
