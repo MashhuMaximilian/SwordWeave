@@ -125,3 +125,8 @@ Combined Character header browser verification: mounted actual CharacterWorkspac
 - Target preset checkboxes are now searchable V12 phrase choices. Multi-selection uses the original target-value setter. Selected legacy/custom values remain visible outside the current catalog and search results. Free-text values remain editable in their existing field.
 - All nine operations are directly selectable phrases; existing mirror card and behavior remain.
 - TypeScript and 134 helper/sentence tests passed. Interactive 390px fixture verified selections persist through search, multiple choices work, legacy values can be removed, and no page overflow. Dark/light renders inspected; light selected phrase fill adjusted to retain readable metallic teal contrast. Fixture removed. Not deployed yet.
+
+### Production deployment ba662b4
+- Local optimized build passed compilation, TypeScript and 37 static pages. Vercel repeated those checks successfully.
+- Deployment dpl_4P7Kr1THPkWhaRwpykmTM8Uzbzxx is READY, production URL https://sword-weave-41zqiskcg-mashus-projects-3b3cfec0.vercel.app, alias https://www.swordweave.quest. CLI exited 0.
+- Includes Character central source-header/lens changes, Library entity medallions and metallic mobile selection, inline primitive conditions, and searchable target/operation phrases. Character drawers were not edited. Full V12 parity remains in progress.
