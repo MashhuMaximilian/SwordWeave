@@ -36,6 +36,7 @@ import {
   type WorkspaceEdge,
 } from "@/lib/character/workspace/model";
 import type { SlotSource } from "@/lib/versions/slot-source";
+import { libraryFamilyLabel } from "@/components/library/library-market-rail";
 import { formatEquationValue } from "@/lib/engine/equation-formatter";
 
 const categories = [
@@ -63,6 +64,7 @@ export function CharacterWorkspace({
   );
   const [path, setPath] = useState<string[]>([]);
   const [query, setQuery] = useState("");
+  const [lens, setLens] = useState<"expressions" | "mastery">("expressions");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [availability, setAvailability] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -416,12 +418,12 @@ export function CharacterWorkspace({
           edge: e,
         }))
         .filter((r) => r.node)
-    : category === "ALL"
+    : !items && lens === "mastery"
       ? graph.nodes
-          .filter((n) => n.kind === "primitive")
+          .filter((n) => n.kind === "primitive" && (category === "ALL" || supplyPaths(graph, n.key).some(p => p.edges[0]?.category === category)))
           .map((node) => ({ node, edge: undefined }))
       : roots
-          .filter((e) => e.category === category)
+          .filter((e) => category === "ALL" || e.category === category)
           .map((edge) => ({
             node: graph.nodes.find((n) => n.key === edge.child)!,
             edge,
@@ -439,7 +441,7 @@ export function CharacterWorkspace({
     return (
       node.name.toLowerCase().includes(query.toLowerCase()) &&
       (typeFilter === "all" ||
-        (category === "ALL" && !selected
+        (lens === "mastery" && !selected
           ? String(node.data["category"]) === typeFilter
           : node.kind === typeFilter)) &&
       (availability === "all" ||
@@ -523,7 +525,13 @@ export function CharacterWorkspace({
   };
 
   return (
-    <div className="v12-character-workspace space-y-5">
+    <div className="v12-character-workspace space-y-5" data-layout={layout}>
+      {!items && <nav className="v12-projection-tabs" aria-label="Character information view">
+        {(["expressions", "mastery"] as const).map(value => <button key={value} aria-pressed={lens === value} onClick={() => { setLens(value); chooseCategory("ALL"); setTypeFilter("all"); }}>
+          {value === "expressions" ? "Capabilities and traits" : "All primitives"}
+        </button>)}
+        <p>{lens === "expressions" ? "Grouped by what grants them" : "Grouped by Lexicon Category / Market family"}</p>
+      </nav>}
       <nav
         aria-label="Character categories"
         className="v12-character-workspace-tabs grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"
@@ -535,7 +543,7 @@ export function CharacterWorkspace({
             aria-pressed={category === key}
             onClick={() => chooseCategory(key as WorkspaceCategory)}
           >
-            {label}
+            {key === "ALL" ? "All sources" : label}
           </button>
         ))}
       </nav>
@@ -607,7 +615,7 @@ export function CharacterWorkspace({
                   : (selected?.name ??
                     (items
                       ? "Items"
-                      : categories.find((c) => c[0] === category)?.[1]))}
+                      : category === "ALL" ? (lens === "mastery" ? "Flat primitive ledger" : "Granted expressions") : categories.find((c) => c[0] === category)?.[1]))}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 {composer
@@ -1019,7 +1027,7 @@ export function CharacterWorkspace({
                           onChange={(e) => setTypeFilter(e.target.value)}
                         >
                           <option value="all">All types</option>
-                          {(category === "ALL" && !selected
+                          {(lens === "mastery" && !selected
                             ? [
                                 ...new Set(
                                   graph.nodes
@@ -1044,7 +1052,7 @@ export function CharacterWorkspace({
                   <div
                     data-v12-source-grid
                     className={
-                      layout === "grid"
+                      !selected && !items && lens === "expressions" ? "v12-expression-sources space-y-4" : layout === "grid"
                         ? "grid grid-cols-1 items-start gap-3 lg:grid-cols-2 2xl:grid-cols-3"
                         : "space-y-3"
                     }
@@ -1069,7 +1077,26 @@ export function CharacterWorkspace({
                         setPending({ child, operation: "add-reference" });
                     }}
                   >
-                    {visible.map(({ node, edge }) => (
+                    {!selected && !items && lens === "mastery" ? (
+                      <div className="v12-mastery-ledger">
+                        {Array.from(new Set(visible.map(({ node }) => String(node.data["category"] ?? "UNCLASSIFIED")))).map(family => {
+                          const members = visible.filter(({ node }) => String(node.data["category"] ?? "UNCLASSIFIED") === family);
+                          return <section className="v12-mastery-family" key={family}>
+                            <header><div><p className="v12-kicker">Lexicon Category</p><h3>{libraryFamilyLabel({value: family, label: family})}</h3></div><span className="v12-tag">{members.length}</span></header>
+                            {members.map(({node}) => <div className="v12-mastery-entry" key={node.key}>
+                              <WorkspaceRow node={node} context={rowContext} />
+                              <div className="v12-mastery-paths" aria-label={`Supply paths for ${node.name}`}>
+                                {supplyPaths(graph, node.key).map(supply => <button key={supply.edges.map(e => e.id).join("/")} onClick={() => { setPath(supply.edges.map(e => e.id)); setPreview(false); }}>
+                                  {supply.nodes.slice(0, -1).map(key => graph.nodes.find(n => n.key === key)?.name ?? key).join(" → ") || "Direct mastery"}
+                                  {supply.edges.some(e => e.isMirrored) ? " · Mirrored" : ""}
+                                  {supply.edges.at(-1)?.versionId ? " · Pinned version" : ""}
+                                </button>)}
+                              </div>
+                            </div>)}
+                          </section>;
+                        })}
+                      </div>
+                    ) : visible.map(({ node, edge }) => (
                       <WorkspaceRow
                         key={edge?.id ?? node.key}
                         node={node}
@@ -1464,6 +1491,9 @@ function WorkspaceRow({
           </button>
         </div>
       )}
+      {node.kind === "primitive" && typeof node.data["mechanicalOutputText"] === "string" && node.data["mechanicalOutputText"] && node.data["mechanicalOutputText"] !== node.description && (
+        <p className="v12-rule-text px-4 pb-3">{node.data["mechanicalOutputText"]}</p>
+      )}
       {node.description && node.description !== "null" && !open && (
         <p className="line-clamp-2 px-4 pb-3 text-sm text-muted-foreground">
           {node.description}
@@ -1710,8 +1740,8 @@ function BundleContents({
     .filter((e) => e.parent === node.key)
     .sort((a, b) => a.order - b.order);
   return (
-    <div className="space-y-1 border-t border-border px-4 py-3 text-sm">
-      {!ancestors.length && <p className="mb-2 font-medium">Contents</p>}
+    <div className={`v12-bundle-contents ${node.kind === "heritage" ? "v12-expression-grid" : ""}`}>
+      {!ancestors.length && node.kind !== "heritage" && <p className="v12-kicker">Composition</p>}
       {!contents.length && (
         <p className="text-muted-foreground">Nothing added yet.</p>
       )}
@@ -1723,8 +1753,8 @@ function BundleContents({
             key={edge.id}
             className={
               child.kind !== "primitive"
-                ? "rounded border border-border p-2"
-                : ""
+                ? "v12-expression-piece"
+                : "v12-expression-rule"
             }
           >
             <button
@@ -1736,6 +1766,8 @@ function BundleContents({
                 {child.kind === "primitive" ? "Primitive" : child.kind}
               </span>
             </button>
+            {child.kind === "primitive" && typeof child.data["mechanicalOutputText"] === "string" && child.data["mechanicalOutputText"] && child.data["mechanicalOutputText"] !== child.description && <p className="v12-rule-text">{child.data["mechanicalOutputText"]}</p>}
+            {child.description && child.description !== "null" && <p className={child.kind === "primitive" ? "v12-rule-text" : "v12-expression-description"}>{child.description}</p>}
             {child.kind !== "primitive" && (
               <BundleContents
                 node={child}

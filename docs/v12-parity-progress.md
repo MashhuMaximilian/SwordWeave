@@ -20,6 +20,13 @@ Reference: `mockups/v12-arcane-masterwork/desktop/`. This is an incomplete audit
 | Primitive author | Sentence opens real target/operation/value/condition controls; generated output uses actual draft tokens/equations. | Verify all target families and nested conditions in authenticated saves, reload, and mobile creation flows. |
 | Composite authors | Pieces / Identity / At the table / Publish retain mounted state. Missing-name save switches to Identity. Heritage recipe cards now expose capability descriptions, direct primitives and nested effects; desktop fixture rendered successfully. Effect quantities now flow through the existing flat query. Stable DnD IDs fixed a verified hydration mismatch. | Full effect/item composition parity, mobile nested-composition layout, and signed-in save/reload coverage remain. |
 | Fork graph | Nodes, edges, zoom, fit, node exploration, pagination, canvas dragging, loaded-node search, and lazy version headers inside selected nodes implemented. Version metadata access/pagination has three passing tests; real entry PRIMITIVE:24 returned v1/v2 in browser. | Full version preview/selection inside the inspector, retained branch expansion, and desktop/mobile graph parity remain unverified. Version header links currently open the full version-history page. |
-| Character sheet | Shared author improvements apply; drawer files untouched by these changes. | Compare expressions/mastery/source grouping and all signed-in runtime views against V12. |
+| Character sheet | Added Expressions source layers and a family-grouped Mastery ledger using the existing workspace graph/actions. Direct and effect-granted rules exposed; all supply paths shown beneath each primitive. Local desktop/mobile fixture verified two primitive identities and three supply paths, no overflow at 390px. Drawer files untouched. | Exact source medallions/header styling, grouped direct primitives, per-path pinned version labels, and signed-in runtime flow checks remain. |
 
 Last production baseline: `6fd6895`. Later local navigation, unified family panel, and provenance changes require final verification and deployment.
+
+### Character projection pass (local, not deployed)
+
+- Expressions defaults to granting sources rather than the previous flat primitive list. Mastery groups primitives by Market family and preserves all source paths. Existing row actions remain available.
+- Source hierarchy exposes nested mechanical and narrative information. Grid/list, category filters, modal navigation and creation actions are retained.
+- Screenshots: `output/playwright/v12-character-expressions.png`, `v12-character-mastery.png`, `v12-character-mastery-mobile.png`. These are local fixture checks, not authenticated runtime validation or proof of complete parity.
+- TypeScript and 16 workspace model/cost/DnD tests passed. Temporary fixture removed.

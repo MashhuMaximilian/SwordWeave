@@ -1868,3 +1868,41 @@ body[data-ui="v12"] .v12-recipe-composition { margin-top:12px; }
 body[data-ui="v12"] .v12-recipe-composition summary { cursor:pointer; padding:8px 0; color:var(--v12-soft); font:500 14px/1.4 var(--font-system); }
 body[data-ui="v12"] .v12-recipe-composition .v12-recipe-effect { border-top:1px solid var(--v12-line-subtle); margin-top:8px; }
 body[data-ui="v12"] .v12-recipe-composition .v12-nested-rule b { font:400 18px/1.4 var(--font-body); }
+
+/* Character projections share the V12 source layers and flat Market ledger.
+   These selectors only affect central workspace content, never sheet drawers. */
+body[data-ui="v12"] .v12-projection-tabs { display:flex; flex-wrap:wrap; align-items:center; gap:8px; border-bottom:1px solid var(--v12-line-subtle); padding-bottom:12px; }
+body[data-ui="v12"] .v12-projection-tabs button { padding:12px 16px; border-radius:0; border:0; border-bottom:3px solid transparent; background:transparent; font-family:var(--font-system); }
+body[data-ui="v12"] .v12-projection-tabs button[aria-pressed="true"] { color:var(--v12-teal); border-bottom-color:var(--v12-teal); }
+body[data-ui="v12"] .v12-projection-tabs p { flex-basis:100%; margin:0; color:var(--v12-soft); font-size:16px; }
+body[data-ui="v12"] .v12-mastery-ledger { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; grid-column:1/-1; }
+body[data-ui="v12"] .v12-mastery-family { min-width:0; border:1px solid var(--v12-line-subtle); background:var(--card); }
+body[data-ui="v12"] .v12-mastery-family > header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px; border-bottom:1px solid; border-image:var(--v12-silver-edge) 1; background:var(--v12-raised); }
+body[data-ui="v12"] .v12-mastery-family h3 { margin:4px 0 0; font-family:var(--font-subtitle); font-size:20px; font-weight:500; }
+body[data-ui="v12"] .v12-mastery-entry { border-bottom:1px solid var(--v12-line-subtle); }
+body[data-ui="v12"] .v12-mastery-entry [data-v12-workspace-row] { border:0; box-shadow:none; background:transparent; }
+body[data-ui="v12"] .v12-mastery-paths { padding:0 16px 16px; display:grid; gap:5px; }
+body[data-ui="v12"] .v12-mastery-paths button { display:block; text-align:left; padding:3px 0 3px 12px; border:0; border-left:2px solid var(--v12-teal); background:transparent; color:var(--v12-soft); font-family:var(--font-body); font-size:16px; line-height:1.5; overflow-wrap:anywhere; }
+body[data-ui="v12"] .v12-bundle-contents { padding:14px 18px; border-top:1px solid var(--v12-line-subtle); }
+body[data-ui="v12"] .v12-expression-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+body[data-ui="v12"] .v12-expression-piece { min-width:0; padding:16px; background:var(--v12-inset); border-top:1px solid; border-image:var(--v12-silver-edge) 1; }
+body[data-ui="v12"] .v12-expression-piece > button { font-family:var(--font-subtitle); font-size:21px; color:var(--foreground); }
+body[data-ui="v12"] .v12-expression-rule { padding:8px 12px; border-left:2px solid var(--v12-copper); min-width:0; }
+body[data-ui="v12"] .v12-expression-rule > button { font-size:18px; color:var(--v12-copper-hi); }
+body[data-ui="v12"] .v12-expression-description,
+body[data-ui="v12"] .v12-expression-rule p { margin:3px 0 6px; font-family:var(--font-body); font-size:18px; line-height:1.5; overflow-wrap:anywhere; }
+body[data-ui="v12"] .v12-expression-rule p { color:var(--v12-copper-hi); }
+@media(max-width:767px) {
+  body[data-ui="v12"] .v12-mastery-ledger,
+  body[data-ui="v12"] .v12-expression-grid { grid-template-columns:minmax(0,1fr); }
+  body[data-ui="v12"] .v12-expression-piece { padding:12px; }
+}
+
+html:not(.dark) body[data-ui="v12"] .v12-expression-rule :is(button,p) { color:var(--v12-copper); }
+body[data-ui="v12"] .v12-character-workspace[data-layout="list"] :is(.v12-mastery-ledger,.v12-expression-grid) { grid-template-columns:minmax(0,1fr); }
+
+body[data-ui="v12"] .v12-expression-sources > [data-v12-workspace-row] { background:var(--card); box-shadow:none; }
+body[data-ui="v12"] .v12-expression-sources > [data-v12-workspace-row] > div:first-child { background:var(--v12-raised); padding:18px; }
+body[data-ui="v12"] .v12-expression-sources > [data-v12-workspace-row] > div:first-child > button:nth-of-type(2) { font-family:var(--font-subtitle); font-size:26px; line-height:1.2; }
+body[data-ui="v12"] .v12-expression-sources > [data-v12-workspace-row] > p { background:var(--v12-raised); margin:0; padding:0 18px 16px; font-size:18px; }
+body[data-ui="v12"] .v12-character-workspace button[aria-pressed="true"] { color:var(--v12-teal); background:var(--card); }
