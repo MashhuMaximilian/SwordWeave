@@ -62,14 +62,14 @@ export function DetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
+      className="v12-modal-backdrop fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-0 sm:items-center sm:p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="detail-modal-title"
     >
       <div
-        className={`v12-instrument relative w-full overflow-hidden rounded-t-2xl bg-card shadow-2xl sm:rounded-2xl ${sizeClass} max-h-[95vh] flex flex-col`}
+        className={`v12-modal-surface v12-instrument relative w-full overflow-hidden rounded-t-2xl bg-card shadow-2xl sm:rounded-2xl ${sizeClass} max-h-[95vh] flex flex-col`}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="v12-section-head sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border bg-card px-6 py-4">

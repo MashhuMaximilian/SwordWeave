@@ -1868,11 +1868,11 @@ function NewEntityModal({
   const isDark = useIsDark();
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="v12-modal-backdrop fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="v12-instrument w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl"
+        className="v12-modal-surface v12-instrument w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

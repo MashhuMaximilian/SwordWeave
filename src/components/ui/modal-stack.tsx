@@ -144,9 +144,8 @@ function ModalStackRenderer() {
   const { stack, pop, popTo } = useModalStack();
   const [isDesktop, setIsDesktop] = useState(false);
 
-  // On desktop (≥1024px) the modal opens as a left-anchored side panel so
-  // the middle/right sandbox columns stay visible and clickable. On mobile
-  // it's a full-screen overlay (the other columns aren't visible anyway).
+  // Desktop and mobile both use an isolated modal surface. The rich V12
+  // instrument background must never show through long preview content.
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1024px)");
     setIsDesktop(mq.matches);
@@ -174,22 +173,22 @@ function ModalStackRenderer() {
         const z = 60 + idx;
 
         if (isDesktop) {
-          // Desktop: side panel anchored to the left edge. No backdrop, no
-          // click-to-close — the middle/right columns stay fully interactive.
           return (
             <div
               key={entry.key}
               role="dialog"
-              aria-modal="false"
+              aria-modal="true"
               aria-label={entry.label}
-              className="fixed left-0 top-0 flex h-full"
+              className="v12-modal-backdrop fixed inset-0 flex items-center justify-center p-6"
               style={{ zIndex: z }}
+              onClick={isTop ? (event) => { if (event.target === event.currentTarget) pop(); } : undefined}
             >
               <div
                 className={cn(
-                  "v12-instrument relative flex h-full w-[420px] max-w-[42vw] flex-col overflow-hidden border-r border-border bg-card shadow-2xl",
-                  !isTop && "w-[360px] opacity-95",
+                  "v12-modal-surface v12-instrument relative flex max-h-[calc(100dvh-48px)] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl",
+                  !isTop && "max-w-5xl opacity-95",
                 )}
+                onClick={(event) => event.stopPropagation()}
               >
                 {renderModalBody(entry, isTop, stack, idx, pop, popTo)}
               </div>
@@ -212,13 +211,13 @@ function ModalStackRenderer() {
             role="dialog"
             aria-modal="true"
             aria-label={entry.label}
-            className="fixed inset-0 z-50 flex justify-center bg-black/60 sm:items-center sm:p-4"
+            className="v12-modal-backdrop fixed inset-0 z-50 flex justify-center bg-black/80 sm:items-center sm:p-4"
             style={{ zIndex: z }}
             onClick={isTop ? (e) => { if (e.target === e.currentTarget) pop(); } : undefined}
           >
             <div
               className={cn(
-                "v12-instrument relative flex w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-card shadow-2xl sm:rounded-2xl",
+                "v12-modal-surface v12-instrument relative flex w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-card shadow-2xl sm:rounded-2xl",
                 // Mobile: explicit top + bottom positioning so the modal
                 // never moves with body scroll. sm+: cap height with dvh
                 // and center vertically via the parent's `items-center`.

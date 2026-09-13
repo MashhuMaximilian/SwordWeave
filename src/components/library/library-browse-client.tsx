@@ -13,7 +13,7 @@
 // =============================================================================
 
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { LibraryToolbar } from "@/components/library/library-toolbar";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import { DetailModal } from "@/components/ui/detail-modal";
@@ -77,6 +77,11 @@ export function LibraryBrowseClient({
     initialItems[0] ?? null,
   );
   const [detailOpen, setDetailOpen] = useState(false);
+  const workbenchRef = useRef<HTMLDivElement>(null);
+  const [leftWidth, setLeftWidth] = useState(270);
+  const [rightWidth, setRightWidth] = useState(330);
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(false);
   const state = useMemo<LibraryToolbarState>(() => initialState, [initialState]);
   const isPrimitiveMode =
     state.typeFilter === "PRIMITIVE" || state.typeFilter === "ALL";
@@ -179,6 +184,30 @@ export function LibraryBrowseClient({
     state.hasForks ||
     state.sort !== "ENGAGEMENT";
 
+  const startResize = useCallback(
+    (side: "left" | "right", event: ReactPointerEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      const frame = workbenchRef.current?.getBoundingClientRect();
+      if (!frame) return;
+      const move = (pointer: PointerEvent) => {
+        if (side === "left") {
+          setLeftCollapsed(false);
+          setLeftWidth(Math.max(190, Math.min(430, pointer.clientX - frame.left)));
+        } else {
+          setRightCollapsed(false);
+          setRightWidth(Math.max(240, Math.min(480, frame.right - pointer.clientX)));
+        }
+      };
+      const stop = () => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", stop);
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", stop, { once: true });
+    },
+    [],
+  );
+
   return (
     <div className="v12-library-browser flex h-full min-h-0 flex-col" data-library-surface>
       <div className="v12-library-search shrink-0">
@@ -191,20 +220,28 @@ export function LibraryBrowseClient({
           hasActiveFilters={hasActiveFilters}
         />
       </div>
-      <div className={`v12-library-workbench min-h-0 flex-1${isPrimitiveMode ? "" : " is-creations"}`}>
+      <div
+        ref={workbenchRef}
+        className={`v12-library-workbench min-h-0 flex-1${isPrimitiveMode ? "" : " is-creations"}${leftCollapsed ? " is-left-collapsed" : ""}${rightCollapsed ? " is-right-collapsed" : ""}`}
+        style={{ "--v12-library-left": `${leftWidth}px`, "--v12-library-right": `${rightWidth}px` } as CSSProperties}
+      >
         {isPrimitiveMode ? (
-          <LibraryMarketRail
-            categories={primitiveCategories}
-            selected={effectiveCategory}
-            onSelect={(category) =>
-              onStateChange({
-                ...state,
-                typeFilter: category ? "PRIMITIVE" : state.typeFilter,
-                category,
-              })
-            }
-          />
+          <div className="v12-library-column v12-library-rail-column">
+            <button type="button" className="v12-column-toggle" onClick={() => setLeftCollapsed((value) => !value)} aria-label={leftCollapsed ? "Expand category column" : "Collapse category column"}>{leftCollapsed ? "›" : "‹"}</button>
+            <LibraryMarketRail
+              categories={primitiveCategories}
+              selected={effectiveCategory}
+              onSelect={(category) =>
+                onStateChange({
+                  ...state,
+                  typeFilter: category ? "PRIMITIVE" : state.typeFilter,
+                  category,
+                })
+              }
+            />
+          </div>
         ) : null}
+        {isPrimitiveMode ? <div className="v12-library-resizer" role="separator" aria-label="Resize category column" onPointerDown={(event) => startResize("left", event)} /> : null}
         <main className="v12-library-results min-h-0 overflow-auto">
           <div className="v12-market-hero">
             <div>
@@ -313,7 +350,9 @@ export function LibraryBrowseClient({
           )}
           {totalPages > 1 ? <Pagination page={page} totalPages={totalPages} total={total} onPageChange={onPageChange} /> : null}
         </main>
+        <div className="v12-library-resizer" role="separator" aria-label="Resize preview column" onPointerDown={(event) => startResize("right", event)} />
         <aside className="v12-library-inspector">
+          <button type="button" className="v12-column-toggle v12-column-toggle--right" onClick={() => setRightCollapsed((value) => !value)} aria-label={rightCollapsed ? "Expand preview column" : "Collapse preview column"}>{rightCollapsed ? "‹" : "›"}</button>
           <div className="v12-section-head">
             <div>
               <p className="v12-kicker">Exact entry preview</p>

@@ -758,12 +758,12 @@ export function GrammarLibrary({
         ) : null}
       </div>
 
-      <div className="v12-source-scroll min-h-0 flex-1 overflow-auto px-3 pb-3">
+      <div className="v12-source-split min-h-0 flex-1 px-3 pb-3">
         {(toolbarState.typeFilter === "PRIMITIVE" ||
           toolbarState.typeFilter === "ALL" ||
           toolbarState.typeFilter === "GROUP_MECHANICS") &&
         primitiveCategories.length > 0 ? (
-          <section className="v12-source-families">
+          <section className="v12-source-families min-h-0 overflow-auto">
             <p className="v12-kicker">Lexicon categories · market families</p>
             <div className="v12-source-family-list">
               {primitiveCategories.map((category) => {
@@ -794,24 +794,26 @@ export function GrammarLibrary({
             </div>
           </section>
         ) : null}
-        <div className="v12-source-results-head">
-          <p className="v12-kicker">Exact entries · canonical + community</p>
-          <span>{filteredItems.length}</span>
-        </div>
-        <LibraryTable
-          items={filteredItems}
-          view={toolbarState.view}
-          engagement={engagement}
-          currentUserInternalId={currentUserInternalId}
-          onSelect={(item) => {
-            const full = lookupRow(item);
-            if (full) pushPreview(full);
-          }}
-          {...(editingKey !== null ? { selectedKey: editingKey } : {})}
-          showClearFilters={false}
-          emptyTitle="No grammar entries yet"
-          emptyDescription="Build primitives, effects, and capabilities to see them here."
-        />
+        <section className="v12-source-entries min-h-0 overflow-auto">
+          <div className="v12-source-results-head">
+            <p className="v12-kicker">Exact entries · canonical + community</p>
+            <span>{filteredItems.length}</span>
+          </div>
+          <LibraryTable
+            items={filteredItems}
+            view={toolbarState.view}
+            engagement={engagement}
+            currentUserInternalId={currentUserInternalId}
+            onSelect={(item) => {
+              const full = lookupRow(item);
+              if (full) pushPreview(full);
+            }}
+            {...(editingKey !== null ? { selectedKey: editingKey } : {})}
+            showClearFilters={false}
+            emptyTitle="No grammar entries yet"
+            emptyDescription="Build primitives, effects, and capabilities to see them here."
+          />
+        </section>
       </div>
     </div>
   );

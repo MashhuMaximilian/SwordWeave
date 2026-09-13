@@ -931,12 +931,11 @@ export function PrimitiveForm({
   );
   const [form, setForm] = useState<PrimitiveFormState>(() => contextualBlankForm);
   const [modifierCounter, setModifierCounter] = useState(1);
-  // Modifiers are optional. Many primitives (Domain: Darkvision,
-  // Resistance: Fire, etc.) describe a feature that needs no
-  // numerical mechanical patch — the "narrative rule" alone is the
-  // primitive. We start with an empty list and let the user add
-  // modifiers only when they actually need them.
-  const [modifiers, setModifiers] = useState<ModifierDraft[]>([]);
+  // New primitives open with the V12 sentence instrument ready to edit.
+  // Authors can still remove the modifier for narrative-only primitives.
+  const [modifiers, setModifiers] = useState<ModifierDraft[]>([
+    { ...blankModifier, tokens: [...blankModifier.tokens], targetValues: [] },
+  ]);
   const [showJsonPreview, setShowJsonPreview] = useState(false);
   const [message, setMessage] = useState("");
   // Local pending flag — independent of useTransition. The previous
@@ -1208,7 +1207,9 @@ export function PrimitiveForm({
   function resetEditor() {
     setForm(contextualBlankForm);
     setModifierCounter(1);
-    setModifiers([]);
+    setModifiers([
+      { ...blankModifier, tokens: [...blankModifier.tokens], targetValues: [] },
+    ]);
     setShowJsonPreview(false);
     setIsDirty(false); // pristine after reset
     setMessage("Started a fresh primitive.");
@@ -1729,21 +1730,44 @@ export function PrimitiveForm({
           {modifiers[0] ? (
             <>
               <span>Change </span>
-              <span className="v12-sentence__target px-1">
-                {modifiers[0].target.split(".").pop()?.replaceAll("_", " ") || "behavior"}
-              </span>
+              <select
+                aria-label="What changes"
+                className="v12-sentence-control v12-sentence__target"
+                value={(MODIFIER_TARGETS as readonly string[]).includes(String(modifiers[0]!.target)) ? String(modifiers[0]!.target) : "attribute"}
+                onChange={(event) => updateModifier(modifiers[0]!.id, "target", event.target.value)}
+              >
+                {targetOptions.map((target) => <option key={target.value} value={target.value}>{target.label}</option>)}
+              </select>
               <span> by </span>
-              <span className="v12-sentence__operation px-1">
-                {modifiers[0].operation.replaceAll("_", " ") || "changing"}
-              </span>
+              <select
+                aria-label="Operation"
+                className="v12-sentence-control v12-sentence__operation"
+                value={modifiers[0]!.operation}
+                onChange={(event) => updateModifier(modifiers[0]!.id, "operation", event.target.value)}
+              >
+                {operations.map((operation) => <option key={operation.value} value={operation.value}>{operation.label}</option>)}
+              </select>
               <span> </span>
-              <span className="v12-sentence__value px-1">
-                {modifiers[0].value || "a value"}
-              </span>
+              <input
+                aria-label="Rule value"
+                className="v12-sentence-control v12-sentence-value-input v12-sentence__value"
+                value={modifiers[0]!.value}
+                onChange={(event) => {
+                  updateModifier(modifiers[0]!.id, "tokens", []);
+                  updateModifier(modifiers[0]!.id, "value", event.target.value);
+                }}
+              />
               <span> for </span>
-              <span className="v12-sentence__scope px-1">
-                {modifiers[0].targetValues?.join(", ") || "Self"}
-              </span>
+              <input
+                aria-label="Rule scope"
+                className="v12-sentence-control v12-sentence-scope-input v12-sentence__scope"
+                value={modifiers[0]!.targetValues?.join(", ") || ""}
+                placeholder="Self / any"
+                onChange={(event) => {
+                  const targetValues = event.target.value.split(",").map((value) => value.trim()).filter(Boolean);
+                  setModifiers((current) => current.map((modifier, index) => index === 0 ? { ...modifier, targetValues } : modifier));
+                }}
+              />
               <span>.</span>
             </>
           ) : (
