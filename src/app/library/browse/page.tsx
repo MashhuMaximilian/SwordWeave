@@ -187,6 +187,27 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
         <Link href="/creations">My collection</Link>
       </nav>
 
+      {targetType !== "PRIMITIVE" && targetType !== "ALL" ? (
+        <nav className="v12-library-submodes" aria-label="Creation types">
+          {[
+            ["CAPABILITY", "Capabilities"],
+            ["EFFECT", "Effects"],
+            ["LINEAGE_TEMPLATE", "Lineages"],
+            ["UPBRINGING_TEMPLATE", "Upbringings"],
+            ["MANIFEST_TEMPLATE", "Manifests"],
+            ["ITEM", "Items"],
+          ].map(([type, label]) => (
+            <Link
+              key={type}
+              className={targetType === type ? "is-active" : ""}
+              href={`/library/browse?type=${type}`}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+      ) : null}
+
       <div className="mt-3 flex min-h-[calc(100dvh-13rem)] flex-col md:h-[calc(100vh-13rem)] md:min-h-0">
         <LibraryBrowseClient
           initialItems={result.items}

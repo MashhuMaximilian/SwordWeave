@@ -151,7 +151,8 @@ const STORAGE_KEY_SPLIT = "sw-sandbox-mobile-split";
 export function GlobalControls({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const isSandboxRoute = pathname?.startsWith("/sandbox") ?? false;
+  const isSandboxRoute =
+    pathname?.startsWith("/sandbox") || pathname === "/atelier" || false;
   const isMobile = useIsMobile();
   const isDark = useIsDark();
   const { user, isSignedIn, isLoaded } = useUser();

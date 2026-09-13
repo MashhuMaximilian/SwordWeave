@@ -179,14 +179,6 @@ export function LibraryMarketRail({
                         <span className="min-w-0 flex-1 leading-snug">{libraryFamilyLabel(category)}</span>
                         <span className="shrink-0 text-xs opacity-75">{category.count}</span>
                       </button>
-                      {active ? (
-                        <Link
-                          href={`/atelier?build=primitive&new=1&category=${encodeURIComponent(category.value)}`}
-                          className="v12-metal-button v12-metal-button--primary mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs"
-                        >
-                          <Plus className="size-3.5" /> Create primitive
-                        </Link>
-                      ) : null}
                     </div>
                   );
                 })}

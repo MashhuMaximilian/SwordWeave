@@ -500,10 +500,10 @@ export function CapabilityForm({
 
   return (
     <form
-      className="grid grid-cols-1 gap-3 rounded-md border border-border bg-card p-3 sm:p-4"
+      className="v12-capability-author grid grid-cols-1 gap-3 rounded-md border border-border bg-card p-3 sm:p-4"
       onSubmit={submitCapability}
     >
-      <div className="flex items-center justify-between gap-3">
+      <div className="v12-capability-author-head flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <p className="text-xs font-semibold uppercase text-muted-foreground">
             {initialCapability ? "Edit Capability" : "Compiler Inputs"}
@@ -542,6 +542,21 @@ export function CapabilityForm({
           Reset
         </button>
       </div>
+
+      <div className="v12-editor-kind">
+        <span>Mechanic type</span>
+        <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("sw-start-new-entity", { detail: "primitive" }))}>Primitive</button>
+        <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("sw-start-new-entity", { detail: "effect" }))}>Effect</button>
+        <button type="button" className="is-active">Capability</button>
+      </div>
+      <nav className="v12-author-tabs" aria-label="Capability author sections">
+        <button type="button" className="is-active" onClick={() => document.querySelector(".v12-capability-pieces")?.scrollIntoView({ block: "start", behavior: "smooth" })}>Pieces</button>
+        <button type="button" onClick={() => document.querySelector(".v12-capability-identity")?.scrollIntoView({ block: "start", behavior: "smooth" })}>Identity</button>
+        <button type="button" onClick={() => document.querySelector(".v12-capability-description")?.scrollIntoView({ block: "start", behavior: "smooth" })}>At the table</button>
+        <button type="button" onClick={() => document.querySelector(".v12-capability-publish")?.scrollIntoView({ block: "start", behavior: "smooth" })}>Publish</button>
+      </nav>
+      <div className="v12-capability-pieces v12-form-chapter"><p className="v12-kicker">Recipe</p><h2>Direct primitives and effects</h2></div>
+      <div className="v12-capability-identity v12-form-chapter"><p className="v12-kicker">Identity</p><h2>What players call this capability</h2></div>
 
       {/*
         Mobile compact layout. Mashu (round 3): "In
@@ -680,7 +695,7 @@ export function CapabilityForm({
         </label>
       </div>
 
-      <label className="block text-sm font-medium">
+      <label className="v12-capability-description block text-sm font-medium">
         Verbose Description
         <textarea
           className="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
@@ -712,7 +727,7 @@ export function CapabilityForm({
         </label>
       </div>
 
-      <label className="flex flex-col gap-1.5 rounded-md border border-border bg-background p-2.5 text-sm font-medium">
+      <label className="v12-capability-publish flex flex-col gap-1.5 rounded-md border border-border bg-background p-2.5 text-sm font-medium">
         <span className="text-xs font-semibold uppercase text-muted-foreground">
           Visibility
         </span>
@@ -727,7 +742,7 @@ export function CapabilityForm({
         </span>
       </label>
 
-      <section className="rounded-md border border-border bg-background p-3">
+      <section className="v12-capability-primitives rounded-md border border-border bg-background p-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-sm font-bold">Primitive Slots</h3>
           <span className="rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
@@ -802,7 +817,7 @@ export function CapabilityForm({
         )}
       </section>
 
-      <section className="rounded-md border border-border bg-background p-3">
+      <section className="v12-capability-effects rounded-md border border-border bg-background p-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-bold">Bundled Effects</h3>

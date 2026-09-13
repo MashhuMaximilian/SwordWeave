@@ -12,10 +12,9 @@
 // keeping the browse list visible behind. ESC / backdrop click closes it.
 // =============================================================================
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { LibraryToolbar } from "@/components/library/library-toolbar";
-import { LibraryTable } from "@/components/library/library-table";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import { DetailModal } from "@/components/ui/detail-modal";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
@@ -23,8 +22,12 @@ import { useGlobalControls } from "@/components/layout/global-controls";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import type { LibraryEngagement } from "@/components/library/library-table";
 import type { LibraryToolbarState } from "@/components/library/library-toolbar";
-import { LibraryMarketRail } from "@/components/library/library-market-rail";
+import {
+  LibraryMarketRail,
+  libraryFamilyLabel,
+} from "@/components/library/library-market-rail";
 import { ForkMapButton } from "@/components/engagement/fork-map-button";
+import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 
 interface Props {
   initialItems: LibraryItem[];
@@ -70,13 +73,22 @@ export function LibraryBrowseClient({
   currentUserInternalId,
 }: Props) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [selectedItem, setSelectedItem] = useState<LibraryItem | null>(
     initialItems[0] ?? null,
   );
   const [detailOpen, setDetailOpen] = useState(false);
-
   const state = useMemo<LibraryToolbarState>(() => initialState, [initialState]);
+  const isPrimitiveMode =
+    state.typeFilter === "PRIMITIVE" || state.typeFilter === "ALL";
+  const effectiveCategory = isPrimitiveMode
+    ? state.category || selectedItem?.category || ""
+    : "";
+  const effectiveCategoryRecord = primitiveCategories.find(
+    (category) => category.value === effectiveCategory,
+  );
+  const effectiveCategoryLabel = effectiveCategoryRecord
+    ? libraryFamilyLabel(effectiveCategoryRecord)
+    : effectiveCategory.replaceAll("_", " ").toLowerCase();
 
   const pushUrl = useCallback(
     (next: LibraryToolbarState, overridePage?: number) => {
@@ -179,24 +191,26 @@ export function LibraryBrowseClient({
           hasActiveFilters={hasActiveFilters}
         />
       </div>
-      <div className="v12-library-workbench min-h-0 flex-1">
-        <LibraryMarketRail
-          categories={primitiveCategories}
-          selected={state.category}
-          onSelect={(category) =>
-            onStateChange({
-              ...state,
-              typeFilter: category ? "PRIMITIVE" : state.typeFilter,
-              category,
-            })
-          }
-        />
+      <div className={`v12-library-workbench min-h-0 flex-1${isPrimitiveMode ? "" : " is-creations"}`}>
+        {isPrimitiveMode ? (
+          <LibraryMarketRail
+            categories={primitiveCategories}
+            selected={effectiveCategory}
+            onSelect={(category) =>
+              onStateChange({
+                ...state,
+                typeFilter: category ? "PRIMITIVE" : state.typeFilter,
+                category,
+              })
+            }
+          />
+        ) : null}
         <main className="v12-library-results min-h-0 overflow-auto">
           <div className="v12-market-hero">
             <div>
               <p className="v12-kicker">Lexicon category · canonical family</p>
               <h2>
-                {primitiveCategories.find((c) => c.value === state.category)?.label ??
+                {effectiveCategoryLabel ||
                   (state.typeFilter === "ALL"
                     ? "The complete SwordWeave corpus"
                     : state.typeFilter.replaceAll("_", " ").toLowerCase())}
@@ -206,16 +220,16 @@ export function LibraryBrowseClient({
                 record into the Atelier without losing its source lineage.
               </p>
             </div>
-            {state.category ? (
+            {isPrimitiveMode && effectiveCategory ? (
               <a
-                href={`/atelier?build=primitive&new=1&category=${encodeURIComponent(state.category)}`}
+                href={`/atelier?build=primitive&new=1&category=${encodeURIComponent(effectiveCategory)}`}
                 className="v12-metal-button v12-metal-button--primary"
               >
                 + Create primitive
               </a>
             ) : null}
           </div>
-          {state.category ? (
+          {effectiveCategory && isPrimitiveMode ? (
             <div className="v12-tier-ladder" aria-label="Canonical cost tiers">
               {[4, 8, 12, 16].map((bu, index) => (
                 <div key={bu}>
@@ -226,6 +240,18 @@ export function LibraryBrowseClient({
               ))}
             </div>
           ) : null}
+          {effectiveCategory && isPrimitiveMode ? (
+            <aside className="v12-family-note">
+              <span aria-hidden="true">⌘</span>
+              <div>
+                <h3>How this family stays organized</h3>
+                <p>
+                  Family → canonical tier → normalized key → exact public expression.
+                  Names never decide grouping; every fork keeps its pinned source path.
+                </p>
+              </div>
+            </aside>
+          ) : null}
           <div className="v12-results-heading">
             <div>
               <p className="v12-kicker">Exact entries</p>
@@ -233,27 +259,59 @@ export function LibraryBrowseClient({
             </div>
             <span>{total.toLocaleString()} records</span>
           </div>
-          <LibraryTable
-            items={initialItems}
-            view={state.view}
-            engagement={engagement}
-            currentUserInternalId={currentUserInternalId}
-            onSelect={onRowSelect}
-            selectedKey={selectedItem?.id ?? null}
-            pagination={
-              totalPages > 1 ? (
-                <Pagination
-                  page={page}
-                  totalPages={totalPages}
-                  total={total}
-                  onPageChange={onPageChange}
-                />
-              ) : null
-            }
-            showClearFilters={false}
-            emptyTitle="No entries match"
-            emptyDescription="Try a different filter, broader search, or another sort."
-          />
+          {initialItems.length ? (
+            <div className={isPrimitiveMode ? "v12-cluster-list" : "v12-creation-grid"}>
+              {initialItems.map((item) => (
+                <article
+                  key={item.id}
+                  data-library-row-id={item.id}
+                  className={`v12-entry-row${selectedItem?.id === item.id ? " is-selected" : ""}`}
+                  onClick={() => onRowSelect(item)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onRowSelect(item);
+                    }
+                  }}
+                >
+                  <span className="v12-entry-glyph" aria-hidden="true">◇</span>
+                  <div className="v12-entry-copy">
+                    <div className="v12-entry-title-line">
+                      <h3>{item.name}</h3>
+                      <span className={`v12-tag ${item.authorUsername ? "v12-tag--violet" : "v12-tag--teal"}`}>
+                        {item.authorUsername ? "Community" : "Canonical"}
+                      </span>
+                    </div>
+                    <p data-readable-rule>{item.description || "No public description."}</p>
+                    <div className="v12-entry-lineage">
+                      <span>{item.authorDisplayName ?? item.authorUsername ?? "System"}</span>
+                      <div onClick={(event) => event.stopPropagation()}>
+                        <LikeForkBar
+                          targetType={item.targetType}
+                          targetId={item.targetId}
+                          initialLikes={item.likesCount}
+                          initialDislikes={item.dislikesCount}
+                          initialForks={item.forkCount}
+                          initialUserReaction={engagement.reactions[item.id] ?? null}
+                          initialFollowing={engagement.following[item.id] ?? false}
+                          authorId={item.authorId}
+                          authorUsername={item.authorUsername}
+                          currentUserId={currentUserInternalId}
+                          compact
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <span className="v12-tag">{item.buCost ?? 0} BU</span>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="v12-empty-state"><h3>No entries match</h3><p>Try a different filter, broader search, or another sort.</p></div>
+          )}
+          {totalPages > 1 ? <Pagination page={page} totalPages={totalPages} total={total} onPageChange={onPageChange} /> : null}
         </main>
         <aside className="v12-library-inspector">
           <div className="v12-section-head">

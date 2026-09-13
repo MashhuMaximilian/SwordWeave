@@ -112,6 +112,14 @@ type SandboxLayoutProps = {
   preview: ReactNode;
   /** Optional: header bar above the columns (shows entity name, save button, etc.). */
   topBar?: ReactNode;
+  columnMeta?: {
+    sourceKicker: string;
+    sourceTitle: string;
+    buildKicker: string;
+    buildTitle: string;
+    previewKicker: string;
+    previewTitle: string;
+  };
   /** Optional: bottom bar below the columns. Rendered inside the sandbox
    *  container, just above the FAB safe area. Use for build-mode tabs,
    *  action toolbars, etc. */
@@ -165,6 +173,7 @@ export function SandboxLayout({
   library,
   preview,
   topBar,
+  columnMeta,
   bottomBar,
   className,
 }: SandboxLayoutProps) {
@@ -348,7 +357,7 @@ export function SandboxLayout({
               preview={preview}
             />
             {bottomBar ? (
-              <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background pb-[env(safe-area-inset-bottom)] shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
+              <div className="v12-workspace-dock fixed inset-x-0 bottom-0 z-30 border-t bg-background pb-[env(safe-area-inset-bottom)] shadow-[0_-2px_8px_rgba(0,0,0,0.08)]">
                 {bottomBar}
               </div>
             ) : null}
@@ -363,7 +372,7 @@ export function SandboxLayout({
               onPreviewToggle={togglePreview}
             />
             {bottomBar ? (
-              <div className="shrink-0 border-t bg-background">{bottomBar}</div>
+              <div className="v12-workspace-dock fixed inset-x-0 bottom-0 z-30 border-t bg-background">{bottomBar}</div>
             ) : null}
           </div>
         ) : (
@@ -378,9 +387,10 @@ export function SandboxLayout({
               panelRefs={refMap}
               storedWidths={storedWidths}
               hydrated={hydrated}
+              columnMeta={columnMeta}
             />
             {bottomBar ? (
-              <div className="shrink-0 border-t bg-background">{bottomBar}</div>
+              <div className="v12-workspace-dock fixed inset-x-0 bottom-0 z-30 border-t bg-background">{bottomBar}</div>
             ) : null}
           </div>
         )}
@@ -403,6 +413,7 @@ type DesktopProps = {
   panelRefs: Record<ColumnKey, React.RefObject<PanelImperativeHandle | null>>;
   storedWidths: Partial<Record<ColumnKey, number>>;
   hydrated: boolean;
+  columnMeta?: SandboxLayoutProps["columnMeta"];
 };
 
 function DesktopSandboxLayout({
@@ -415,6 +426,7 @@ function DesktopSandboxLayout({
   panelRefs,
   storedWidths,
   hydrated,
+  columnMeta,
 }: DesktopProps) {
   const libraryHidden = hiddenColumns.has("library");
   const previewHidden = hiddenColumns.has("preview");
@@ -424,7 +436,7 @@ function DesktopSandboxLayout({
       id={groupId}
       orientation="horizontal"
       onLayoutChanged={onLayoutChanged}
-      className="v12-studio flex h-full min-h-0"
+      className="v12-studio flex min-h-0 flex-1"
     >
       {/* LIBRARY PANEL — fully unmounted when hidden so the group rebalances. */}
       {libraryHidden ? null : (
@@ -444,6 +456,8 @@ function DesktopSandboxLayout({
             isHidden={false}
             isFirst
             hydrated={hydrated}
+            kicker={columnMeta?.sourceKicker ?? "Library sources"}
+            displayTitle={columnMeta?.sourceTitle ?? "Browse the corpus"}
           />
           <div className="v12-studio-body flex-1 min-h-0 overflow-auto">{library}</div>
         </Panel>
@@ -482,6 +496,8 @@ function DesktopSandboxLayout({
           }
           isHidden={false}
           hydrated={hydrated}
+          kicker={columnMeta?.buildKicker ?? "Recipe"}
+          displayTitle={columnMeta?.buildTitle ?? "What this entity stores"}
         />
         <div className="v12-studio-body flex-1 min-h-0 overflow-auto">{builder}</div>
       </Panel>
@@ -513,6 +529,8 @@ function DesktopSandboxLayout({
             isHidden={false}
             isLast
             hydrated={hydrated}
+            kicker={columnMeta?.previewKicker ?? "Live build preview"}
+            displayTitle={columnMeta?.previewTitle ?? "Exact result"}
           />
           <div className="v12-studio-body flex-1 min-h-0 overflow-auto">{preview}</div>
         </Panel>
@@ -1022,6 +1040,8 @@ type ColumnChromeProps = {
   isFirst?: boolean;
   isLast?: boolean;
   hydrated: boolean;
+  kicker?: string;
+  displayTitle?: string;
 };
 
 function ColumnChrome({
@@ -1032,6 +1052,8 @@ function ColumnChrome({
   isFirst,
   isLast,
   hydrated,
+  kicker,
+  displayTitle: explicitDisplayTitle,
 }: ColumnChromeProps) {
   const { toggleHidden, toggleCollapsed } = useSandboxLayout();
 
@@ -1040,18 +1062,18 @@ function ColumnChrome({
     : isLast
       ? ChevronRight
       : null;
-  const eyebrow =
+  const eyebrow = kicker ?? (
     columnKey === "library"
       ? "Add to build"
       : columnKey === "builder"
         ? "Recipe"
-        : "Live preview";
-  const displayTitle =
+        : "Live preview");
+  const displayTitle = explicitDisplayTitle ?? (
     columnKey === "library"
       ? "Library sources"
       : columnKey === "builder"
         ? "What this entity stores"
-        : "Exact result";
+        : "Exact result");
 
   return (
     <div

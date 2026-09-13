@@ -1399,7 +1399,7 @@ export function PrimitiveForm({
 
   return (
     <form
-      className="v12-instrument grid grid-cols-1 gap-4 rounded-md border border-border bg-card p-4 md:grid-cols-2 sm:p-5"
+      className="v12-instrument v12-primitive-author grid grid-cols-1 gap-4 rounded-md border border-border bg-card p-4 md:grid-cols-2 sm:p-5"
       onSubmit={submitPrimitive}
     >
       <div className="v12-primitive-identity-head v12-section-head -mx-4 -mt-4 flex items-center justify-between gap-3 px-4 pb-3 pt-5 md:col-span-2 sm:-mx-5 sm:-mt-5 sm:px-5">

@@ -597,6 +597,23 @@ export function AtelierSandboxClient({
     return () => window.removeEventListener("sw-open-new-entity", onOpenNew);
   }, [editing, buildStarted, openBuildPanel]);
 
+  useEffect(() => {
+    function onStartNewEntity(event: Event) {
+      if (!(event instanceof CustomEvent)) return;
+      const kind = event.detail;
+      if (kind !== "primitive" && kind !== "effect" && kind !== "capability") return;
+      startNewEntity({
+        tab: "mechanics",
+        mechanicsSubKind: kind,
+        label: kind[0].toUpperCase() + kind.slice(1),
+        hint: "",
+        icon: kind === "primitive" ? "delapouite/cube" : kind === "effect" ? "lorc/cubes" : "lorc/cubeforce",
+      });
+    }
+    window.addEventListener("sw-start-new-entity", onStartNewEntity);
+    return () => window.removeEventListener("sw-start-new-entity", onStartNewEntity);
+  });
+
   // Auto-open build panel on server-routed loads (?edit=<id>) and explicit
   // contextual Library creates (?new=1) — mobile only.
   useEffect(() => {
@@ -1140,7 +1157,6 @@ export function AtelierSandboxClient({
     editing,
     buildStarted,
     mechanicsDraftKind,
-    formSnapshot,
     heritageKind,
     primitives,
     effects,
@@ -1650,7 +1666,15 @@ export function AtelierSandboxClient({
         <DataQualityPanel />
       </div>
       <SandboxLayout
-        storageKey="atelier-v12"
+        storageKey="atelier-v12-exact"
+        columnMeta={{
+          sourceKicker: activeEditorKind ? `Add to this ${activeEditorKind}` : "Explore the Library",
+          sourceTitle: sourceLabel,
+          buildKicker: "Recipe",
+          buildTitle: activeEditorKind ? `What this ${activeEditorKind} stores` : "Choose what to build",
+          previewKicker: activeEditorKind ? `Live build preview · ${activeEditorKind}` : "Live build preview",
+          previewTitle: activeEditorName,
+        }}
         topBar={
           <div className="v12-atelier-intro">
             <div className="v12-atelier-hero">
@@ -1713,11 +1737,9 @@ export function AtelierSandboxClient({
         library={libraryNode}
         builder={
           <BuilderPane
-            onNew={() => setShowNewModal(true)}
             showNewModal={showNewModal}
             onPickNew={startNewEntity}
             onCloseNew={() => setShowNewModal(false)}
-            activeKind={activeEditorKind}
           >
             {builderNode}
           </BuilderPane>
@@ -1816,35 +1838,18 @@ const NEW_ENTITY_GROUPS: { heading: string; choices: NewEntityChoice[] }[] = [
 ];
 
 function BuilderPane({
-  onNew,
   showNewModal,
   onPickNew,
   onCloseNew,
-  activeKind,
   children,
 }: {
-  onNew: () => void;
   showNewModal: boolean;
   onPickNew: (choice: NewEntityChoice) => void;
   onCloseNew: () => void;
-  activeKind: AtelierEntityKind | null;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col" data-atelier-surface>
-      <div className="v12-section-head flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3 py-2">
-        <span className="v12-kicker text-xs text-muted-foreground">
-          Mechanic type · {activeKind ?? "choose"}
-        </span>
-        <button
-          type="button"
-          onClick={onNew}
-          className="v12-metal-button v12-metal-button--primary flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-accent"
-        >
-          <span className="text-base leading-none">+</span>
-          New entity
-        </button>
-      </div>
       <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
       {showNewModal ? (
         <NewEntityModal onPick={onPickNew} onClose={onCloseNew} />
@@ -1930,12 +1935,13 @@ function NewEntityModal({
 const ATELIER_TABS: {
   key: AtelierTab;
   label: string;
+  subtitle: string;
   icon: string; // game-icon key
 }[] = [
-  { key: "mechanics", label: "Mechanics", icon: "lorc/jigsaw-piece" },
-  { key: "heritage", label: "Heritage", icon: "caro-asercion/tarot-11-justice" },
-  { key: "item", label: "Items", icon: "lorc/battle-gear" },
-  { key: "monster", label: "Monsters", icon: "lorc/gluttonous-smile" },
+  { key: "mechanics", label: "Mechanics", subtitle: "Primitive · Effect · Capability", icon: "lorc/jigsaw-piece" },
+  { key: "heritage", label: "Heritages", subtitle: "Lineage · Upbringing · Manifest", icon: "caro-asercion/tarot-11-justice" },
+  { key: "item", label: "Items", subtitle: "Carried and equipped", icon: "lorc/battle-gear" },
+  { key: "monster", label: "Monsters", subtitle: "Separate workspace", icon: "lorc/gluttonous-smile" },
 ];
 
 function AtelierTabBar({
@@ -1947,7 +1953,7 @@ function AtelierTabBar({
 }) {
   const isDark = useIsDark();
   return (
-    <div role="tablist" aria-label="Build mode" className="flex bg-card">
+    <div role="tablist" aria-label="Build mode" className="v12-atelier-tabs flex bg-card">
       {ATELIER_TABS.map((tab) => {
         const active = build === tab.key;
         return (
@@ -1963,7 +1969,7 @@ function AtelierTabBar({
               // user requested ("open tab 50%, the other tabs equally in the
               // other half"). Without the explicit basis the collapsed tabs
               // collapsed to icon-only width which made the labels invisible.
-              "flex basis-1/4 items-center justify-center gap-1.5 border-t-2 px-2.5 py-2.5 text-sm font-medium transition-all " +
+              "flex basis-1/4 items-center justify-center gap-2 border-t-2 px-2.5 py-2.5 text-sm font-medium transition-all " +
               (active
                 ? "flex-1 border-primary bg-primary/5 text-primary"
                 : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground")
@@ -1976,7 +1982,10 @@ function AtelierTabBar({
               size={18}
               alt={tab.label}
             />
-            {active ? <span className="whitespace-nowrap">{tab.label}</span> : null}
+            <span className="v12-atelier-tab-copy">
+              <strong>{tab.label}</strong>
+              <small>{tab.subtitle}</small>
+            </span>
           </button>
         );
       })}
