@@ -52,10 +52,12 @@ export function CharacterWorkspace({
   characterId,
   mode,
   items = false,
+  directCapabilityCount,
 }: {
   characterId: string;
   mode: "BUILD" | "PLAY";
   items?: boolean;
+  directCapabilityCount?: number;
 }) {
   const router = useRouter();
   const [graph, setGraph] = useState<WorkspaceGraph | null>(null);
@@ -531,8 +533,12 @@ export function CharacterWorkspace({
         {(["expressions", "mastery"] as const).map(value => <button key={value} aria-pressed={lens === value} onClick={() => { setLens(value); chooseCategory("ALL"); setTypeFilter("all"); }}>
           {value === "expressions" ? "Capabilities and traits" : "All primitives"}
         </button>)}
-        <p>{lens === "expressions" ? "Grouped by what grants them" : "Grouped by Lexicon Category / Market family"}</p>
+
       </nav>}
+      {!items && <header className="v12-character-section-title">
+        <div><p className="v12-kicker">{lens === "expressions" ? "Capabilities and traits" : "Primitive mastery"}</p><h2>{lens === "expressions" ? "Grouped by what grants them" : "Every primitive, with its supply paths"}</h2></div>
+        {directCapabilityCount !== undefined && <span className="v12-tag v12-tag--teal">{directCapabilityCount} direct capabilities</span>}
+      </header>}
       <nav
         aria-label="Character categories"
         className="v12-character-workspace-tabs grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"
@@ -604,7 +610,7 @@ export function CharacterWorkspace({
               );
             })}
           </div>
-          <header className="flex flex-wrap items-start justify-between gap-3">
+          {(selected || composer || items) && <header className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2
                 className={
@@ -644,7 +650,7 @@ export function CharacterWorkspace({
                     : "Back to character"}
               </button>
             )}
-          </header>
+          </header>}
           {saveReview && (
             <div
               role="region"

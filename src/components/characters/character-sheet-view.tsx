@@ -1259,23 +1259,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
 
       {/* Content */}
       <div className="v12-character-content mt-6">
-        <div className="v12-character-section-title">
-          <div>
-            <p className="v12-kicker">
-              {tab === "capabilities" ? "Capabilities and traits" : tab}
-            </p>
-            <h2>
-              {tab === "capabilities"
-                ? "Grouped by what grants them"
-                : TABS.find((item) => item.id === tab)?.label}
-            </h2>
-          </div>
-          {tab === "capabilities" ? (
-            <span className="v12-tag v12-tag--teal">
-              {props.capabilityLinks.length} direct capabilities
-            </span>
-          ) : null}
-        </div>
+        {tab !== "capabilities" && <div className="v12-character-section-title"><div><p className="v12-kicker">{tab}</p><h2>{TABS.find((item) => item.id === tab)?.label}</h2></div></div>}
         {tab === "capabilities" && (
           /* Phase 8.4 (Mashu 2026-07-28): wrap the Capabilities tab
              in a TabErrorBoundary so a single bad capability
@@ -1283,7 +1267,7 @@ export function CharacterSheetView(props: CharacterSheetProps) {
              white-screen the entire sheet. The error message is
              shown inline so the user can keep using the other tabs. */
           <TabErrorBoundary tabName="Capabilities">
-          <CharacterWorkspace characterId={props.id} mode={props.mode ?? "PLAY"} />
+          <CharacterWorkspace characterId={props.id} mode={props.mode ?? "PLAY"} directCapabilityCount={props.capabilityLinks.length} />
           </TabErrorBoundary>
         )}
         {tab === "items" && (
