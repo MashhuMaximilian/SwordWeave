@@ -72,6 +72,12 @@ export function ForkGraph({ data, session, explore }: { data: ForkMapResult; ses
     viewport.current?.scrollTo({left:0,top:0});
   };
   const centerNode = (x:number,y:number) => viewport.current?.scrollTo({left:Math.max(0,(x+102)*zoom-view.width/2),top:Math.max(0,(y+50)*zoom-view.height/2),behavior:"smooth"});
+  useEffect(() => {
+    const selected = nodes.find(({node}) => node.key === data.selected.key);
+    if (selected) centerNode(selected.x, selected.y);
+    // Re-focus only when the selected node changes; pan/zoom remains user-owned.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.selected.key]);
   return <div className="v12-lineage-layout">
     <div className="v12-network-toolbar"><button className="v12-metal-button" type="button" onClick={() => setZoom(value => Math.max(.02, value - .15))} aria-label="Zoom out">−</button><span>{Math.round(zoom * 100)}%</span><button className="v12-metal-button" type="button" onClick={() => setZoom(value => Math.min(2, value + .15))} aria-label="Zoom in">＋</button><button className="v12-metal-button" type="button" onClick={fit}>Fit</button><span>◇ Selected source · {data.totalChildren} direct · {data.totalDescendants ?? data.totalChildren} total descendants</span></div>
     <div className="v12-network-search"><label>Search loaded nodes<input value={search} onChange={event => setSearch(event.target.value)} placeholder="Entry or author…" /></label>{search.trim() ? <div>{nodes.filter(({node}) => `${node.name ?? ""} ${node.authorName ?? ""}`.toLowerCase().includes(search.toLowerCase().trim())).map(({node,x,y}) => <button key={node.key} type="button" onClick={() => { viewport.current?.scrollTo({left:Math.max(0,x*zoom-30),top:Math.max(0,y*zoom-30),behavior:"smooth"}); }}>{node.name ?? node.key}</button>)}</div> : null}</div>
@@ -186,7 +192,7 @@ export function ForkMapButton({
           <div className="v12-fork-explorer" aria-busy={loading}>
             {error ? <p role="alert">{error} The loaded graph is still available; select the node again to retry.</p> : null}
             <div className="v12-fork-toolbar"><button className="v12-metal-button" type="button" disabled={loading} onClick={() => void load(null, { targetType, targetId })}>Return to starting entry</button><Link className="v12-metal-button" href={nodeHref(data.selected)}>Open selected source ↗</Link></div>
-            <p className="text-muted-foreground">Choose a node to inspect it and expand its descendants. Opened branches stay on the canvas.</p>
+            <p className="text-muted-foreground">The complete lineage is loaded from its root. Choose any node to focus its ancestry, descendants, and versions.</p>
             <ForkGraph data={data} session={session} explore={explore} />
             {data.totalChildren === 0 ? <p className="text-muted-foreground">No direct descendants yet.</p> : null}
               {data.nextCursor ? (

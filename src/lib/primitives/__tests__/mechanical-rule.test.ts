@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderMechanicalRule } from "../mechanical-rule";
+import { mechanicalDescriptionFromModifiers, renderMechanicalRule } from "../mechanical-rule";
 
 describe("canonical mechanical sentences", () => {
   it("renders domain templates and expressions", () => {
@@ -29,5 +29,22 @@ describe("canonical mechanical sentences", () => {
   });
   it("preserves an authoritative documented market rule as structured source", () => {
     expect(renderMechanicalRule({family:"DOCUMENTED",text:"Straight-line displacement up to 10 feet"})).toBe("Straight-line displacement up to 10 feet.");
+  });
+});
+
+describe("mechanicalDescriptionFromModifiers", () => {
+  it("renders keyword grants across a scoped Practice list", () => {
+    expect(mechanicalDescriptionFromModifiers([{
+      kind:"modify", operation:"grant", target:"skill_practice_check",
+      value:{kind:"keyword",text:"advantage"},
+      metadata:{targetScope:{layer:"PRACTICE",values:["PROWESS","FINESSE","FIELDCRAFT"]}},
+    }])).toBe("Grant advantage to Prowess, Finesse, and Fieldcraft.");
+  });
+
+  it("renders numeric subtraction and a target condition", () => {
+    expect(mechanicalDescriptionFromModifiers([{
+      kind:"modify", operation:"subtract", target:"save_dc", value:{kind:"number",value:1},
+      condition:{kind:"tags",customTags:["target:exposed"]},
+    }])).toBe("Subtract 1 from Save DC when the target is exposed.");
   });
 });

@@ -1,8 +1,5 @@
 import { getFullAncestry, resolveTargetName } from "./fork-lineage";
-import {
-  listBySourcePage,
-  type ForkTargetType,
-} from "./forks-query";
+import type { ForkTargetType } from "./forks-query";
 import { inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { primitiveVersions } from "@/db/schema";
@@ -30,26 +27,11 @@ export interface ForkMapResult {
 export async function getForkMap(
   targetType: ForkTargetType,
   targetId: string,
-  options?: { limit?: number; cursor?: string | null },
+  _options?: { limit?: number; cursor?: string | null },
 ): Promise<ForkMapResult> {
-  const [ancestry, selectedName, childPage, descendantsResult] = await Promise.all([
+  const [ancestry, selectedName] = await Promise.all([
     getFullAncestry(targetType, targetId),
     resolveTargetName(targetType, targetId),
-    listBySourcePage(
-      targetType,
-      targetId,
-      options?.limit ?? 20,
-      options?.cursor,
-    ),
-    db.execute<{ total: number }>(sql`
-      WITH RECURSIVE descendants(target_type,target_id) AS (
-        SELECT forked_target_type::text,forked_target_id FROM forks
-        WHERE source_target_type=${targetType} AND source_target_id=${targetId}
-        UNION
-        SELECT f.forked_target_type::text,f.forked_target_id FROM forks f
-        JOIN descendants d ON f.source_target_type::text=d.target_type AND f.source_target_id=d.target_id
-      ) SELECT count(*)::int total FROM descendants
-    `),
   ]);
 
   const selectedKey = `${targetType}:${targetId}`;
@@ -69,27 +51,50 @@ export async function getForkMap(
         ancestor.sourceAuthorDisplayName ?? ancestor.sourceAuthorUsername,
       forkedAt: ancestor.forkedAt.toISOString(),
     }));
-  const children = childPage.forks.map((fork) => ({
-    key: `${fork.forkedTargetType}:${fork.forkedTargetId}`,
-    targetType: fork.forkedTargetType,
-    targetId: fork.forkedTargetId,
-    name: fork.forkedTargetName,
-    relation: "child" as const,
-    authorName: fork.forkerDisplayName ?? fork.forkerUsername,
-    forkedAt: fork.forkedAt.toISOString(),
+  // Always render the whole tree from its actual root. A deep fork therefore
+  // opens the same graph as its root and merely changes the selected focus.
+  const root = ancestorNodes[0] ?? { targetType, targetId };
+  type EdgeRow = { source_type: ForkTargetType; source_id:string; child_type:ForkTargetType; child_id:string; source_version_id:string; forked_at:Date; author_name:string|null };
+  const graphResult = await db.execute<EdgeRow>(sql`
+    WITH RECURSIVE branch AS (
+      SELECT f.source_target_type::text source_type,f.source_target_id source_id,
+        f.forked_target_type::text child_type,f.forked_target_id child_id,
+        f.source_version_id,f.created_at forked_at,ARRAY[f.source_target_type::text || ':' || f.source_target_id,
+          f.forked_target_type::text || ':' || f.forked_target_id]::text[] path,
+        f.forked_by_user_id
+      FROM forks f
+      WHERE f.source_target_type=${root.targetType} AND f.source_target_id=${root.targetId}
+      UNION ALL
+      SELECT f.source_target_type::text,f.source_target_id,f.forked_target_type::text,f.forked_target_id,
+        f.source_version_id,f.created_at,b.path || (f.forked_target_type::text || ':' || f.forked_target_id),f.forked_by_user_id
+      FROM forks f JOIN branch b
+        ON f.source_target_type::text=b.child_type AND f.source_target_id=b.child_id
+      WHERE NOT (f.forked_target_type::text || ':' || f.forked_target_id = ANY(b.path))
+    )
+    SELECT DISTINCT ON(source_type,source_id,child_type,child_id)
+      branch.source_type,branch.source_id,branch.child_type,branch.child_id,
+      branch.source_version_id,branch.forked_at,COALESCE(u.display_name,u.username) author_name
+    FROM branch LEFT JOIN users u ON u.id=branch.forked_by_user_id
+    ORDER BY source_type,source_id,child_type,child_id,branch.forked_at
+  `);
+  const graphRows=(graphResult as unknown as {rows:EdgeRow[]}).rows ?? graphResult;
+  const nodeIdentities = [...new Map(graphRows.map(row => [`${row.child_type}:${row.child_id}`, {type:row.child_type,id:row.child_id,authorName:row.author_name,forkedAt:row.forked_at}])).entries()]
+    .filter(([key]) => key !== selectedKey);
+  const names = await Promise.all(nodeIdentities.map(([,node]) => resolveTargetName(node.type,node.id)));
+  const children = nodeIdentities.map(([key,node],index) => ({
+    key,targetType:node.type,targetId:node.id,name:names[index] ?? null,relation:"child" as const,
+    authorName:node.authorName,forkedAt:node.forkedAt ? new Date(node.forkedAt).toISOString() : null,
   }));
-  const lineageKeys = [...ancestorNodes.map((node) => node.key), selectedKey];
-  const orderedAncestry=[...ancestry].reverse();
-  const descendantRows=(descendantsResult as unknown as {rows:Array<{total:number}>}).rows ?? descendantsResult;
-
-  const edges = [
-    ...lineageKeys.slice(1).map((to, index) => ({
-      from: lineageKeys[index]!,
-      to,
-      sourceVersionId: orderedAncestry[index]?.sourceVersionId || null,
-    })),
-    ...children.map((node, index) => ({ from: selectedKey, to: node.key, sourceVersionId: childPage.forks[index]?.sourceVersionId ?? null })),
-  ];
+  const edges = graphRows.map(row => ({
+    from:`${row.source_type}:${row.source_id}`,to:`${row.child_type}:${row.child_id}`,sourceVersionId:row.source_version_id,
+  }));
+  const descendantsOfSelected = new Set<string>();
+  let frontier = [selectedKey];
+  while (frontier.length) {
+    const next = edges.filter(edge => frontier.includes(edge.from)).map(edge => edge.to).filter(key => !descendantsOfSelected.has(key));
+    next.forEach(key => descendantsOfSelected.add(key));
+    frontier = next;
+  }
   const primitiveVersionIds = [...new Set(edges
     .filter(edge => edge.from.startsWith("PRIMITIVE:") && edge.sourceVersionId)
     .map(edge => edge.sourceVersionId!))];
@@ -113,8 +118,8 @@ export async function getForkMap(
     },
     children,
     edges: edges.map(edge => ({...edge, sourceVersionLabel: edge.sourceVersionId ? versionLabels.get(edge.sourceVersionId) ?? null : null})),
-    totalChildren: childPage.totalForks,
-    totalDescendants: Number(descendantRows[0]?.total ?? childPage.totalForks),
-    nextCursor: childPage.nextCursor,
+    totalChildren: graphRows.filter(row => row.source_type===targetType && row.source_id===targetId).length,
+    totalDescendants: descendantsOfSelected.size,
+    nextCursor: null,
   };
 }

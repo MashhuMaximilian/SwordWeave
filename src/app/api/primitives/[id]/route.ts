@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { mechanicalDescriptionFromModifiers } from "@/lib/primitives/mechanical-rule";
+import type { HardModifier } from "@/types/swordweave";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { primitives } from "@/db/schema";
@@ -51,7 +53,7 @@ export async function GET(
     buCost: row.buCost,
     isPublic: row.isPublic,
     costTier: row.costTier,
-    mechanicalOutputText: row.mechanicalOutputText ?? "",
+    mechanicalOutputText: mechanicalDescriptionFromModifiers((row.hardModifiers ?? []) as HardModifier[]) || row.mechanicalOutputText || "",
     narrativeRule: row.narrativeRule ?? "",
     isMirrorable: row.isMirrorable,
     mirrorVector: row.mirrorVector,

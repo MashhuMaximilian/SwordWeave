@@ -26,6 +26,7 @@ import {
   computePrimitiveContentHash,
 } from "@/lib/publishing/hash-content";
 import { recordVersion } from "@/lib/versions/auto-snapshot";
+import { mechanicalDescriptionFromModifiers } from "@/lib/primitives/mechanical-rule";
 export async function GET() {
   const user = await currentUser();
   const rows = await db.query.primitives.findMany({
@@ -39,7 +40,10 @@ export async function GET() {
     orderBy: [asc(primitives.category), asc(primitives.name)],
   });
 
-  return NextResponse.json({ primitives: rows });
+  return NextResponse.json({ primitives: rows.map((row) => ({
+    ...row,
+    mechanicalOutputText: mechanicalDescriptionFromModifiers((row.hardModifiers ?? []) as HardModifier[]) || row.mechanicalOutputText,
+  })) });
 }
 
 /**
@@ -250,9 +254,7 @@ async function handlePOST(request: Request) {
     const category = String(values["category"] ?? "");
     const costTier = String(values["costTier"] ?? "").trim();
     const buCost = Number(values["buCost"]);
-    const mechanicalOutputText = String(
-      values["mechanicalOutputText"] ?? "",
-    ).trim();
+    const submittedMechanicalOutputText = String(values["mechanicalOutputText"] ?? "").trim();
     const narrativeRule = String(values["narrativeRule"] ?? "").trim();
     const isMirrorable = Boolean(values["isMirrorable"]);
     const mirrorVector = String(values["mirrorVector"] ?? "STANDARD_ONLY").trim();
@@ -261,6 +263,7 @@ async function handlePOST(request: Request) {
       values["mirrorEligibilityNotes"] ?? "",
     ).trim();
     const hardModifiers = parseHardModifiers(values["hardModifiers"]);
+    const mechanicalOutputText = mechanicalDescriptionFromModifiers(hardModifiers) || submittedMechanicalOutputText;
     const consequenceBehavior = values["consequenceBehavior"] == null ? null : consequenceBehaviorSchema.parse(values["consequenceBehavior"]);
     // Phase 9: free-form tags (comma-separated -> array) for the
     // unified preview's Tags section.

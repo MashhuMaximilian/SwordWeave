@@ -61,8 +61,10 @@ import {
   heritageCapabilities,
   heritagePrimitives,
 } from "@/db/schema";
+import { mechanicalDescriptionFromModifiers } from "@/lib/primitives/mechanical-rule";
 import { resolveEngagementMap as sharedResolveEngagementMap } from "@/lib/engagement/engagement-aggregates";
 import { MARKET_FAMILIES } from "@/lib/primitives/canonical-market";
+import type { HardModifier } from "@/types/swordweave";
 
 export type LibrarySort =
   | "LIKES"
@@ -452,6 +454,7 @@ type CompositionSqlRow = {
   primitive_id: number;
   primitive_name: string;
   mechanical_description: string | null;
+  hard_modifiers: unknown;
   bu_cost: number;
   quantity: number;
   path: string[];
@@ -465,20 +468,20 @@ async function loadCompositionPaths(root: CompositionRoot, ids: string[]) {
   let query: SQL;
   if (root === "EFFECT") {
     query = sql`SELECT ep.effect_id::text owner_id, p.id primitive_id, p.name primitive_name,
-      COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule) mechanical_description,
+      COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule) mechanical_description, p.hard_modifiers,
       p.bu_cost, ep.quantity, ARRAY['Effect', e.name, 'Primitive', p.name]::text[] path
       FROM effect_primitives ep JOIN effects e ON e.id=ep.effect_id JOIN primitives p ON p.id=ep.primitive_id
       WHERE ep.effect_id IN (${idList})`;
   } else if (root === "CAPABILITY") {
     query = sql`
       SELECT cp.capability_id::text owner_id, p.id primitive_id, p.name primitive_name,
-        COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule) mechanical_description,
+        COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule) mechanical_description, p.hard_modifiers,
         p.bu_cost, cp.quantity, ARRAY['Capability',c.name,'Primitive',p.name]::text[] path
       FROM capability_primitives cp JOIN capabilities c ON c.id=cp.capability_id JOIN primitives p ON p.id=cp.primitive_id
       WHERE cp.capability_id IN (${idList})
       UNION ALL
       SELECT ce.capability_id::text, p.id, p.name,
-        COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.bu_cost,ep.quantity,
+        COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.hard_modifiers,p.bu_cost,ep.quantity,
         ARRAY['Capability',c.name,'Effect',e.name,'Primitive',p.name]::text[]
       FROM capability_effects ce JOIN capabilities c ON c.id=ce.capability_id JOIN effects e ON e.id=ce.effect_id
       JOIN effect_primitives ep ON ep.effect_id=e.id JOIN primitives p ON p.id=ep.primitive_id
@@ -486,33 +489,33 @@ async function loadCompositionPaths(root: CompositionRoot, ids: string[]) {
   } else if (root === "ITEM") {
     query = sql`
       SELECT ip.item_id::text owner_id,p.id primitive_id,p.name primitive_name,
-        COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule) mechanical_description,
+        COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule) mechanical_description,p.hard_modifiers,
         p.bu_cost,ip.quantity,ARRAY['Item',i.name,'Primitive',p.name]::text[] path
       FROM item_primitives ip JOIN items i ON i.id=ip.item_id JOIN primitives p ON p.id=ip.primitive_id WHERE ip.item_id IN (${idList})
       UNION ALL
-      SELECT ie.item_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.bu_cost,ep.quantity,
+      SELECT ie.item_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.hard_modifiers,p.bu_cost,ep.quantity,
         ARRAY['Item',i.name,'Effect',e.name,'Primitive',p.name]::text[]
       FROM item_effects ie JOIN items i ON i.id=ie.item_id JOIN effects e ON e.id=ie.effect_id JOIN effect_primitives ep ON ep.effect_id=e.id JOIN primitives p ON p.id=ep.primitive_id WHERE ie.item_id IN (${idList})
       UNION ALL
-      SELECT ic.item_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.bu_cost,cp.quantity,
+      SELECT ic.item_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.hard_modifiers,p.bu_cost,cp.quantity,
         ARRAY['Item',i.name,'Capability',c.name,'Primitive',p.name]::text[]
       FROM item_capabilities ic JOIN items i ON i.id=ic.item_id JOIN capabilities c ON c.id=ic.capability_id JOIN capability_primitives cp ON cp.capability_id=c.id JOIN primitives p ON p.id=cp.primitive_id WHERE ic.item_id IN (${idList})
       UNION ALL
-      SELECT ic.item_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.bu_cost,ep.quantity,
+      SELECT ic.item_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.hard_modifiers,p.bu_cost,ep.quantity,
         ARRAY['Item',i.name,'Capability',c.name,'Effect',e.name,'Primitive',p.name]::text[]
       FROM item_capabilities ic JOIN items i ON i.id=ic.item_id JOIN capabilities c ON c.id=ic.capability_id JOIN capability_effects ce ON ce.capability_id=c.id JOIN effects e ON e.id=ce.effect_id JOIN effect_primitives ep ON ep.effect_id=e.id JOIN primitives p ON p.id=ep.primitive_id WHERE ic.item_id IN (${idList})`;
   } else {
     query = sql`
       SELECT hp.template_id::text owner_id,p.id primitive_id,p.name primitive_name,
-        COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule) mechanical_description,
-        p.bu_cost,hp.quantity,ARRAY['Heritage',h.name,'Primitive',p.name]::text[] path
+        COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule) mechanical_description,p.hard_modifiers,
+        p.bu_cost,1 quantity,ARRAY['Heritage',h.name,'Primitive',p.name]::text[] path
       FROM heritage_primitives hp JOIN heritage h ON h.id=hp.template_id JOIN primitives p ON p.id=hp.primitive_id WHERE hp.template_id IN (${idList})
       UNION ALL
-      SELECT hc.template_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.bu_cost,cp.quantity,
+      SELECT hc.template_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.hard_modifiers,p.bu_cost,cp.quantity,
         ARRAY['Heritage',h.name,'Capability',c.name,'Primitive',p.name]::text[]
       FROM heritage_capabilities hc JOIN heritage h ON h.id=hc.template_id JOIN capabilities c ON c.id=hc.capability_id JOIN capability_primitives cp ON cp.capability_id=c.id JOIN primitives p ON p.id=cp.primitive_id WHERE hc.template_id IN (${idList})
       UNION ALL
-      SELECT hc.template_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.bu_cost,ep.quantity,
+      SELECT hc.template_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.hard_modifiers,p.bu_cost,ep.quantity,
         ARRAY['Heritage',h.name,'Capability',c.name,'Effect',e.name,'Primitive',p.name]::text[]
       FROM heritage_capabilities hc JOIN heritage h ON h.id=hc.template_id JOIN capabilities c ON c.id=hc.capability_id JOIN capability_effects ce ON ce.capability_id=c.id JOIN effects e ON e.id=ce.effect_id JOIN effect_primitives ep ON ep.effect_id=e.id JOIN primitives p ON p.id=ep.primitive_id WHERE hc.template_id IN (${idList})`;
   }
@@ -521,7 +524,7 @@ async function loadCompositionPaths(root: CompositionRoot, ids: string[]) {
   for (const row of rows) {
     const value: LibraryCompositionPath = {
       primitiveId: Number(row.primitive_id), primitiveName: row.primitive_name,
-      mechanicalDescription: row.mechanical_description ?? "No mechanical description.",
+      mechanicalDescription: mechanicalDescriptionFromModifiers(row.hard_modifiers as HardModifier[]) || row.mechanical_description || "No mechanical description.",
       buCost: Number(row.bu_cost), quantity: Number(row.quantity), path: row.path,
     };
     result.set(row.owner_id, [...(result.get(row.owner_id) ?? []), value]);
@@ -803,8 +806,8 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       targetType: "PRIMITIVE" as const,
       targetId: String(r.id),
       name: r.name,
-      description: r.mechanicalOutputText || r.mechanicalTemplateText || r.narrativeRule || null,
-      mechanicalDescription: r.mechanicalOutputText || r.mechanicalTemplateText || null,
+      description: mechanicalDescriptionFromModifiers(r.hardModifiers) || r.mechanicalOutputText || r.mechanicalTemplateText || r.narrativeRule || null,
+      mechanicalDescription: mechanicalDescriptionFromModifiers(r.hardModifiers) || r.mechanicalOutputText || r.mechanicalTemplateText || null,
       mechanicalTemplate: r.mechanicalTemplateText,
       verboseDescription: r.narrativeRule,
       definitionKind: r.definitionKind,
@@ -1947,6 +1950,8 @@ export async function listPrimitiveFamilyTiers(
       mechanicalOutputText: primitives.mechanicalOutputText,
       mechanicalTemplateText: primitives.mechanicalTemplateText,
       narrativeRule: primitives.narrativeRule,
+      hardModifiers: primitives.hardModifiers,
+      definitionKind: primitives.definitionKind,
     })
     .from(primitives)
     .leftJoin(primitiveMarketClassifications,eq(primitiveMarketClassifications.primitiveId,primitives.id))
@@ -1961,7 +1966,10 @@ export async function listPrimitiveFamilyTiers(
     .orderBy(asc(primitives.buCost), asc(primitives.name));
 
   const byTier = new Map<string, PrimitiveFamilyTier>();
-  for (const row of rows) {
+  // The ladder represents market roots. Prefer a template over a system
+  // expression with the same tier/cost, regardless of alphabetical order.
+  const ordered = [...rows].sort((a,b) => Number(b.definitionKind === "TEMPLATE") - Number(a.definitionKind === "TEMPLATE") || a.buCost-b.buCost || a.name.localeCompare(b.name));
+  for (const row of ordered) {
     const tier = libraryTier({ costTier: row.costTier });
     const key = `${tier ?? "none"}:${row.buCost}`;
     if (!byTier.has(key)) {
@@ -1970,7 +1978,7 @@ export async function listPrimitiveFamilyTiers(
         name: row.name,
         tier,
         buCost: row.buCost,
-        description: row.mechanicalTemplateText || row.mechanicalOutputText || row.narrativeRule,
+        description: mechanicalDescriptionFromModifiers(row.hardModifiers) || row.mechanicalTemplateText || row.mechanicalOutputText || row.narrativeRule,
       });
     }
   }

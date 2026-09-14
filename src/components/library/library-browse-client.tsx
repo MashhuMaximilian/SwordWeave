@@ -74,20 +74,30 @@ function CompositionMechanics({
 }) {
   const [expanded, setExpanded] = useState(false);
   const visible = expanded ? paths : paths.slice(0, compact ? 3 : paths.length);
+  const nestingLabel = (path: LibraryCompositionPath) => {
+    const containers = path.path.slice(2, -2);
+    return containers.length ? `Nested · ${containers.join(" → ")}` : "Direct";
+  };
+  const groups = visible.reduce<Array<{label:string;items:Array<{path:LibraryCompositionPath;index:number}>}>>((all,path,index) => {
+    const label=nestingLabel(path); const found=all.find(group=>group.label===label);
+    if(found) found.items.push({path,index}); else all.push({label,items:[{path,index}]}); return all;
+  },[]);
   return (
     <div className={compact ? "v12-composition-list is-compact" : "v12-composition-list"}>
-      {visible.map((path, index) => (
-        <button
+      {groups.map((group) => <section className="v12-composition-group" key={group.label}>
+        {!compact ? <h4>{group.label === "Direct" ? "Direct primitives" : `Inside ${group.label.replace("Nested · ", "")}`}</h4> : null}
+        {group.items.map(({path,index}) => <button
           type="button"
           key={`${path.primitiveId}:${path.path.join(":")}:${index}`}
           onClick={(event) => { event.stopPropagation(); onPrimitive?.(path); }}
           className="v12-composition-mechanic"
+          aria-label={`Inspect ${path.primitiveName}`}
         >
-          <span className="v12-composition-path">{path.path.slice(0, -1).join(" → ")}</span>
-          <strong>{path.primitiveName}</strong>
+          <span className="v12-composition-path">{compact ? nestingLabel(path) : path.path.slice(0, -1).join(" → ")}</span>
+          {!compact ? <strong>{path.primitiveName}</strong> : null}
           <span data-readable-rule>{path.mechanicalDescription}</span>
-        </button>
-      ))}
+        </button>)}
+      </section>)}
       {compact && paths.length > 3 ? (
         <button type="button" className="v12-show-mechanics" onClick={(event) => { event.stopPropagation(); setExpanded((value) => !value); }}>
           {expanded ? "Show less" : `Show all ${paths.length} mechanics`}

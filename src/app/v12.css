@@ -803,8 +803,8 @@ body[data-ui="v12"] .v12-library-rail-column > aside {
 }
 
 body[data-ui="v12"] .v12-library-rail-column > aside button {
-  min-height: 48px;
-  font-size: .98rem;
+  min-height: 43px;
+  font-size: .92rem;
 }
 
 body[data-ui="v12"] .v12-library-rail-column > aside button:not([aria-pressed="true"]) {
@@ -830,13 +830,13 @@ body[data-ui="v12"] .v12-market-hero {
   justify-content: space-between;
   align-items: end;
   gap: 20px;
-  min-height: 142px;
-  padding: 20px 22px;
+  min-height: 124px;
+  padding: 16px 18px;
   border: 1px solid transparent;
   border-radius: 12px;
   background:
     linear-gradient(110deg, color-mix(in srgb, var(--card) 97%, var(--v12-raised)), color-mix(in srgb, var(--card) 84%, var(--v12-teal) 7%)) padding-box,
-    var(--v12-silver-edge) border-box;
+    var(--v12-brass-edge) border-box;
   box-shadow: var(--v12-shadow);
 }
 
@@ -877,8 +877,8 @@ body[data-ui="v12"] .v12-tier-ladder > div {
   grid-template-columns: 48px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 12px;
-  min-height: 55px;
-  padding: 10px 15px;
+  min-height: 49px;
+  padding: 7px 12px;
   border-bottom: 1px solid color-mix(in srgb, var(--v12-silver) 44%, transparent);
 }
 
@@ -2052,11 +2052,11 @@ body[data-ui="v12"] .v12-inspector-composition > span {
 body[data-ui="v12"] .v12-inspector-composition p { font:400 15px/1.35 var(--font-body); }
 body[data-ui="v12"] .v12-entry-row { min-height:82px; padding-block:9px; }
 body[data-ui="v12"] .v12-creation-grid {
-  grid-template-columns:repeat(auto-fit,minmax(340px,1fr));
-  align-items:stretch;
+  grid-template-columns:repeat(auto-fit,minmax(255px,1fr));
+  align-items:start;
 }
 body[data-ui="v12"] .v12-creation-grid > .v12-entry-cluster { display:contents; }
-body[data-ui="v12"] .v12-creation-grid .v12-entry-row { min-height:118px; }
+body[data-ui="v12"] .v12-creation-grid .v12-entry-row { min-height:0; padding:9px; border-color:transparent; background:linear-gradient(color-mix(in srgb,var(--card) 94%,var(--v12-raised)),var(--card)) padding-box,var(--v12-brass-edge) border-box; }
 /* V12 recipe hierarchy: primitive identity above membership controls. */
 body[data-ui="v12"] .v12-author-recipe-piece { border:1px solid transparent; background:linear-gradient(var(--v12-inset),var(--v12-inset)) padding-box,var(--v12-copper-edge) border-box; }
 body[data-ui="v12"] .v12-recipe-identity { display:grid; grid-template-columns:48px minmax(0,1fr); align-items:start; gap:12px; width:100%; }
@@ -2081,12 +2081,16 @@ body[data-ui="v12"] .v12-entry-cluster > header h3 { overflow-wrap: anywhere; }
    while the inspector keeps every leaf and its full containment path. */
 body[data-ui="v12"] .v12-composition-list { display:grid; gap:7px; margin-top:10px; }
 body[data-ui="v12"] .v12-composition-list.is-compact { gap:4px; margin-top:5px; }
+body[data-ui="v12"] .v12-composition-list.is-compact .v12-composition-group { display:contents; }
+body[data-ui="v12"] .v12-composition-group > h4 { margin:8px 0 3px; color:var(--v12-copper-hi); font:500 11px/1.2 var(--font-system); letter-spacing:.09em; text-transform:uppercase; }
 body[data-ui="v12"] .v12-composition-mechanic {
   display:grid; width:100%; min-width:0; gap:2px; padding:8px 10px; text-align:left;
   border:1px solid color-mix(in srgb,var(--v12-copper) 42%,var(--v12-line-subtle)); border-radius:4px;
   background:linear-gradient(135deg,color-mix(in srgb,var(--v12-copper) 6%,var(--v12-inset)),var(--v12-inset));
 }
-body[data-ui="v12"] .v12-composition-list.is-compact .v12-composition-mechanic { padding:5px 8px; }
+body[data-ui="v12"] .v12-composition-list.is-compact .v12-composition-mechanic { grid-template-columns:auto minmax(0,1fr); align-items:baseline; gap:6px; padding:3px 0; border-width:0 0 1px; border-radius:0; background:transparent; }
+body[data-ui="v12"] .v12-composition-list.is-compact .v12-composition-path { padding:2px 5px; border:1px solid color-mix(in srgb,var(--v12-teal) 45%,transparent); border-radius:99px; color:var(--v12-teal); font-size:9px; white-space:nowrap; }
+body[data-ui="v12"] .v12-composition-list.is-compact .v12-composition-mechanic > span:last-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; }
 body[data-ui="v12"] .v12-composition-mechanic:hover { border-color:var(--v12-teal); background:color-mix(in srgb,var(--v12-teal) 7%,var(--v12-inset)); }
 body[data-ui="v12"] .v12-composition-mechanic strong { font:500 14px/1.25 var(--font-subtitle); color:var(--foreground); }
 body[data-ui="v12"] .v12-composition-mechanic > span:last-child { font:400 15px/1.3 var(--font-body); color:var(--v12-copper-hi); }

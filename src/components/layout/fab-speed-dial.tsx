@@ -473,11 +473,11 @@ export const NAV_LINKS: FabItem[] = [
   {
     kind: "link",
     key: "library",
-    label: "Codex",
+    label: "Library",
     icon: (
       <FabIcon iconKey="delapouite/bookshelf" alt="Codex" />
     ),
-    href: "/codex",
+    href: "/library/browse",
   },
   {
     kind: "link",

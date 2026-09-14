@@ -97,6 +97,14 @@ export async function loadLibraryEngagement(
       ),
     );
     if (authorIds.length > 0) {
+      // Library entities store Clerk IDs, while follows references users.id UUIDs.
+      const authorRows = await db
+        .select({ id: users.id, clerkUserId: users.clerkUserId })
+        .from(users)
+        .where(inArray(users.clerkUserId, authorIds));
+      const clerkByInternal = new Map(authorRows.map((row) => [row.id, row.clerkUserId]));
+      const internalAuthorIds = authorRows.map((row) => row.id);
+      if (internalAuthorIds.length === 0) return result;
       const followRows = await db
         .select({
           followingId: follows.followingId,
@@ -105,19 +113,18 @@ export async function loadLibraryEngagement(
         .where(
           and(
             eq(follows.followerId, currentUserInternalId),
-            inArray(follows.followingId, authorIds),
+            inArray(follows.followingId, internalAuthorIds),
           ),
         );
-      const followingSet = new Set(followRows.map((r) => r.followingId));
-      for (const id of authorIds) {
-        result.following[id] = followingSet.has(id);
+      const followingSet = new Set(followRows.map((r) => clerkByInternal.get(r.followingId)).filter(Boolean));
+      for (const clerkId of authorIds) {
+        result.following[clerkId] = followingSet.has(clerkId);
       }
     }
   } catch (err) {
     // Don't let a transient engagement-prefetch failure tank the entire
     // /library/browse page. The user can still browse + search; likes
     // and fork counts just won't be personalized for this request.
-    // eslint-disable-next-line no-console
     console.error(
       "[loadLibraryEngagement] failed, returning empty engagement:",
       err,

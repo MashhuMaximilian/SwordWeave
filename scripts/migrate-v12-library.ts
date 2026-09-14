@@ -14,7 +14,7 @@ import {
   users,
 } from "../src/db/schema";
 import { familyForCategory, MARKET_FAMILIES, MARKET_TEMPLATES } from "../src/lib/primitives/canonical-market";
-import { renderMechanicalRule } from "../src/lib/primitives/mechanical-rule";
+import { mechanicalDescriptionFromModifiers, mechanicalRuleFromModifier, renderMechanicalRule } from "../src/lib/primitives/mechanical-rule";
 import type { HardModifier } from "../src/types/swordweave";
 
 const apply = process.argv.includes("--apply");
@@ -80,6 +80,31 @@ async function migrate(tx:typeof db) {
   const adminClerkIds=adminRows.map(row=>row.clerkUserId).filter((id):id is string=>Boolean(id));
   if (!actor && apply) throw new Error("At least one admin user is required to attribute canonical fork edges");
 
+  // Deterministic repairs discovered during the production catalog audit.
+  // Snapshot the bad state first, then create an immutable corrected version.
+  if (apply) {
+    const repairs = await tx.select().from(primitives).where(sql`${primitives.name} IN ('Bodily boon','Enfeebling Envenom') OR ${primitives.name} LIKE 'Structure Tier %' OR ${primitives.category}='ITEM_AUGMENT'`);
+    for (const row of repairs) {
+      const isStructure=/^Structure Tier /i.test(row.name);
+      const isBodily=row.name.toLowerCase()==="bodily boon";
+      const isEnvenom=row.name.toLowerCase()==="enfeebling envenom";
+      const modifiers=(row.hardModifiers ?? []) as HardModifier[];
+      const mechanical=mechanicalDescriptionFromModifiers(modifiers);
+      const nextCategory = isStructure ? "STRUCTURAL" : isBodily ? "PROBABILITY_BIAS" : isEnvenom ? "SHEET_AUGMENT" : row.category;
+      const shouldPublish = row.category === "ITEM_AUGMENT" && (row.userId===null || adminClerkIds.includes(row.userId ?? ""));
+      const changed = nextCategory!==row.category || Boolean(mechanical && mechanical!==row.mechanicalOutputText) || (shouldPublish && !row.isPublic);
+      if (!changed) continue;
+      await ensureVersion(tx,row,false);
+      const [updated]=await tx.update(primitives).set({
+        category:nextCategory as typeof primitives.$inferInsert.category,
+        ...(mechanical ? {mechanicalRule:mechanicalRuleFromModifier(modifiers[0]!) as Record<string,unknown>,mechanicalOutputText:mechanical} : {}),
+        ...(shouldPublish ? {isPublic:true} : {}),
+        updatedAt:new Date(),
+      }).where(eq(primitives.id,row.id)).returning();
+      await ensureVersion(tx,updated!,true);
+    }
+  }
+
   const templateIds=new Map<string,number>();
   for (const template of MARKET_TEMPLATES) {
     const existing=(await tx.select().from(primitives).where(and(eq(primitives.name,template.name),sql`${primitives.category}::text = ${template.category}`)).orderBy(sql`${primitives.userId} NULLS FIRST`).limit(1))[0];
@@ -143,7 +168,11 @@ async function migrate(tx:typeof db) {
     if (!complete) report.ambiguous.push({id:row.id,name:row.name,reason:"domain expression has no deterministic domain binding"});
     let mechanicalText=row.mechanicalOutputText;
     let mechanicalRule=row.mechanicalRule as Parameters<typeof renderMechanicalRule>[0] | null;
-    if (isSystem && template && complete) {
+    const modifierText=mechanicalDescriptionFromModifiers((row.hardModifiers ?? []) as HardModifier[]);
+    if (isSystem && modifierText) {
+      mechanicalRule=mechanicalRuleFromModifier((row.hardModifiers as HardModifier[])[0]!);
+      mechanicalText=modifierText;
+    } else if (isSystem && template && complete) {
       mechanicalRule=expressionRule(template,bindings);
       mechanicalText=renderMechanicalRule(mechanicalRule);
     } else if (isSystem) {
