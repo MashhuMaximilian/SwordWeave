@@ -84,7 +84,10 @@ function withCondition(sentence: string, condition?: string): string {
 /** Human-facing output for the same structured rule the resolver stores. */
 export function renderMechanicalRule(rule: CanonicalMechanicalRule): string {
   if (rule.family === "DOCUMENTED") {
-    const sentence = String(rule.text ?? "").trim();
+    const sentence = Object.entries(rule.bindings ?? {}).reduce(
+      (text, [key, value]) => text.replaceAll(`[${key}]`, display(value)),
+      String(rule.text ?? "").trim(),
+    );
     return sentence && !/[.!?]$/.test(sentence) ? `${sentence}.` : sentence;
   }
   const bindings = rule.bindings ?? {};

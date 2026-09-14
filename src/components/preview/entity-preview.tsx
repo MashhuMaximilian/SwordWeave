@@ -467,8 +467,8 @@ function ModifierCards({
 
   if (cards.length === 0) return null;
   return (
-    <Section heading="Modifier">
-      <ul className="rounded-md border">
+    <Section heading="Mirroring">
+      <ul className="grid gap-2 sm:grid-cols-2">
         {cards.map((c, i) => {
           const op = c.op as ModifierOperation;
           // Phase 8.I i2.5h-fix2: derive mirrorability + the
@@ -479,25 +479,13 @@ function ModifierCards({
           const mirrorable = Boolean(spec?.mirrorable) && Boolean(spec?.mirrorOp);
           const mirrorOp = spec?.mirrorOp as ModifierOperation | undefined;
           return (
-            <li key={i} className="space-y-1 border-b border-border p-2 text-sm last:border-b-0">
-              <div className="flex flex-wrap items-baseline gap-1.5">
-                <span className="font-mono text-xs font-semibold">{c.target}</span>
-                <OperationBadge op={op} />
-                {c.valueLine}
-                <span className="ml-auto shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
-                  {c.stacking}
-                </span>
-              </div>
-              {c.scope}
-              <ConditionLine
-                condition={c.condition}
-              />
+            <li key={i} className="rounded-md border border-border p-2 text-sm">
               {/* Phase 8.I i2.5i-fix (Mashu 2026-08-06): strip the
                   secondary-background pill — just inline text
                   + OperationBadge. The mirrored op's color comes
                   from the badge, so no background chip needed. */}
-              <div className="flex items-center gap-1.5 pt-0.5 text-xs uppercase tracking-wide text-muted-foreground">
-                <span>Mirrors to</span>
+              <div className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
+                <span>{c.target} mirrors to</span>
                 {mirrorable && mirrorOp ? (
                   <span className="inline-flex items-center gap-1 text-xs font-medium normal-case tracking-normal text-foreground">
                     <OperationBadge op={mirrorOp} />
@@ -827,7 +815,7 @@ function PrimitiveBody({
   buildModifiers?: Array<Record<string, unknown>> | undefined;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="v12-primitive-preview-body space-y-4">
       <Header
         fallback="PRI"
         iconSource={row.iconSource}

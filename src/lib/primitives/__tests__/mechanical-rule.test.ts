@@ -29,6 +29,7 @@ describe("canonical mechanical sentences", () => {
   });
   it("preserves an authoritative documented market rule as structured source", () => {
     expect(renderMechanicalRule({family:"DOCUMENTED",text:"Straight-line displacement up to 10 feet"})).toBe("Straight-line displacement up to 10 feet.");
+    expect(renderMechanicalRule({family:"DOCUMENTED",text:"Set range to [range].",bindings:{range:"Very Far"}})).toBe("Set range to Very Far.");
   });
 });
 

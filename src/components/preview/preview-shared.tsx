@@ -65,7 +65,7 @@ export function Section({
   children: ReactNode;
 }) {
   return (
-    <section>
+    <section data-preview-section={heading.toLowerCase().replaceAll(" ", "-")}>
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {heading}
       </h3>

@@ -490,7 +490,7 @@ async function loadCompositionPaths(root: CompositionRoot, ids: string[]) {
     query = sql`
       SELECT ip.item_id::text owner_id,p.id primitive_id,p.name primitive_name,
         COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule) mechanical_description,p.hard_modifiers,
-        p.bu_cost,ip.quantity,ARRAY['Item',i.name,'Primitive',p.name]::text[] path
+        p.bu_cost,1 quantity,ARRAY['Item',i.name,'Primitive',p.name]::text[] path
       FROM item_primitives ip JOIN items i ON i.id=ip.item_id JOIN primitives p ON p.id=ip.primitive_id WHERE ip.item_id IN (${idList})
       UNION ALL
       SELECT ie.item_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.hard_modifiers,p.bu_cost,ep.quantity,

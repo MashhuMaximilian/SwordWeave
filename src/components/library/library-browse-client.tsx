@@ -74,18 +74,23 @@ function CompositionMechanics({
 }) {
   const [expanded, setExpanded] = useState(false);
   const visible = expanded ? paths : paths.slice(0, compact ? 3 : paths.length);
-  const nestingLabel = (path: LibraryCompositionPath) => {
-    const containers = path.path.slice(2, -2);
-    return containers.length ? `Nested · ${containers.join(" → ")}` : "Direct";
+  const containersFor = (path: LibraryCompositionPath) => path.path.slice(2, -2);
+  const nestingLabel = (path: LibraryCompositionPath) => containersFor(path).length ? "Nested" : "Direct";
+  const groupLabel = (path: LibraryCompositionPath) => {
+    const containers = containersFor(path);
+    if (!containers.length) return "Direct primitives";
+    const labels:string[]=[];
+    for(let index=0;index<containers.length;index+=2) labels.push(`${containers[index]} · ${containers[index+1]}`);
+    return `Inside ${labels.join(" → ")}`;
   };
   const groups = visible.reduce<Array<{label:string;items:Array<{path:LibraryCompositionPath;index:number}>}>>((all,path,index) => {
-    const label=nestingLabel(path); const found=all.find(group=>group.label===label);
+    const label=groupLabel(path); const found=all.find(group=>group.label===label);
     if(found) found.items.push({path,index}); else all.push({label,items:[{path,index}]}); return all;
   },[]);
   return (
     <div className={compact ? "v12-composition-list is-compact" : "v12-composition-list"}>
       {groups.map((group) => <section className="v12-composition-group" key={group.label}>
-        {!compact ? <h4>{group.label === "Direct" ? "Direct primitives" : `Inside ${group.label.replace("Nested · ", "")}`}</h4> : null}
+        {!compact ? <h4>{group.label}</h4> : null}
         {group.items.map(({path,index}) => <button
           type="button"
           key={`${path.primitiveId}:${path.path.join(":")}:${index}`}
@@ -93,7 +98,7 @@ function CompositionMechanics({
           className="v12-composition-mechanic"
           aria-label={`Inspect ${path.primitiveName}`}
         >
-          <span className="v12-composition-path">{compact ? nestingLabel(path) : path.path.slice(0, -1).join(" → ")}</span>
+          {compact ? <span className="v12-composition-path">{nestingLabel(path)}</span> : null}
           {!compact ? <strong>{path.primitiveName}</strong> : null}
           <span data-readable-rule>{path.mechanicalDescription}</span>
         </button>)}
@@ -338,7 +343,7 @@ export function LibraryBrowseClient({
           </div>
         ) : null}
         {isPrimitiveMode ? <div className="v12-library-resizer" role="separator" aria-label="Resize category column" onPointerDown={(event) => startResize("left", event)} /> : null}
-        <main className="v12-library-results min-h-0 overflow-auto">
+        <main className="v12-library-results min-h-0">
           <section className="v12-family-panel" aria-label="Selected market family">
           <div className="v12-market-hero">
             <div>

@@ -99,7 +99,7 @@ export function ForkGraph({ data, session, explore }: { data: ForkMapResult; ses
         {nodes.map(({node,x,y})=><rect key={node.key} className={node.key===data.selected.key ? "selected" : ""} x={x} y={y} width={205} height={100} rx={12} role="button" tabIndex={0} aria-label={`Center ${node.name ?? node.key}`} onClick={()=>centerNode(x,y)} onKeyDown={event=>{if(event.key==="Enter" || event.key===" "){event.preventDefault();centerNode(x,y);}}}><title>{node.name ?? node.key}</title></rect>)}
       </svg>
     </nav>
-    <aside className="v12-network-inspector"><header className="v12-network-identity"><p className="v12-kicker">Selected node · {data.selected.targetType.replaceAll("_", " ").toLowerCase()}</p><h3>{data.selected.name ?? data.selected.targetId}</h3></header><dl className="v12-network-stats"><div><dt>Direct forks</dt><dd>{data.totalChildren.toLocaleString()}</dd></div><div><dt>Descendants</dt><dd>{(data.totalDescendants ?? data.totalChildren).toLocaleString()}</dd></div><div><dt>Ancestry</dt><dd>{data.ancestry.length.toLocaleString()}</dd></div></dl><p>Forks create new entries. Versions remain part of each entry.</p>{data.selected.targetType !== "BUILD_TEMPLATE" ? <ForkNodeVersions key={`versions:${data.selected.key}`} targetType={data.selected.targetType} targetId={data.selected.targetId} onSelect={number => setVersion({key:data.selected.key,number})} selectedVersion={selectedVersion} /> : null}{selectedVersion ? <><button type="button" onClick={() => setVersion(null)}>Back to current entry</button><ForkVersionInspector key={`${data.selected.key}:v${selectedVersion}`} targetType={data.selected.targetType} targetId={data.selected.targetId} versionNumber={selectedVersion} /></> : null}{!["CHARACTER", "BUILD_TEMPLATE"].includes(data.selected.targetType) ? <SelectedEntryPreview key={data.selected.key} node={data.selected} /> : null}<Link className="v12-metal-button" href={nodeHref(data.selected)}>Full source and versions ↗</Link></aside>
+    <aside key={`inspector:${data.selected.key}`} className="v12-network-inspector"><header className="v12-network-identity"><p className="v12-kicker">Selected node · {data.selected.targetType.replaceAll("_", " ").toLowerCase()}</p><h3>{data.selected.name ?? data.selected.targetId}</h3></header><dl className="v12-network-stats"><div><dt>Direct forks</dt><dd>{data.totalChildren.toLocaleString()}</dd></div><div><dt>Descendants</dt><dd>{(data.totalDescendants ?? data.totalChildren).toLocaleString()}</dd></div><div><dt>Ancestry</dt><dd>{data.ancestry.length.toLocaleString()}</dd></div></dl><p>Forks create new entries. Versions remain part of each entry.</p>{data.selected.targetType !== "BUILD_TEMPLATE" ? <ForkNodeVersions key={`versions:${data.selected.key}`} targetType={data.selected.targetType} targetId={data.selected.targetId} onSelect={number => setVersion({key:data.selected.key,number})} selectedVersion={selectedVersion} /> : null}{selectedVersion ? <><button type="button" onClick={() => setVersion(null)}>Back to current entry</button><ForkVersionInspector key={`${data.selected.key}:v${selectedVersion}`} targetType={data.selected.targetType} targetId={data.selected.targetId} versionNumber={selectedVersion} /></> : null}{!["CHARACTER", "BUILD_TEMPLATE"].includes(data.selected.targetType) ? <SelectedEntryPreview key={data.selected.key} node={data.selected} /> : null}<Link className="v12-metal-button" href={nodeHref(data.selected)}>Full source and versions ↗</Link></aside>
   </div>;
 }
 
@@ -158,7 +158,13 @@ export function ForkMapButton({
     [focus],
   );
 
-  const explore = (node: ForkMapNode) => { void load(null, node); };
+  const explore = (node: ForkMapNode) => {
+    // Move focus immediately so the graph and inspector acknowledge the click
+    // while the authoritative ancestry/counts request is in flight.
+    setData(current => current ? {...current, selected:node} : current);
+    setSession(current => ({...current,nodes:current.nodes.map(candidate => ({...candidate,relation:candidate.key===node.key ? "selected" : "child"}))}));
+    void load(null, node);
+  };
 
   return (
     <>

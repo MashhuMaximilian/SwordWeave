@@ -23,6 +23,18 @@ export interface MarketTemplateDefinition {
   standardBindings?: Array<{ key: string; name: string; bindings: Record<string, string> }>;
 }
 
+export interface CanonicalExpressionDefinition {
+  key:string;
+  name:string;
+  familyKey:string;
+  category:string;
+  tier:number|null;
+  buCost:number;
+  mechanicalText:string;
+  verboseDescription:string;
+  modifier?:Record<string,unknown>;
+}
+
 export const MARKET_FAMILIES: readonly MarketFamilyDefinition[] = [
   { key:"VERB_ACCESS",label:"Verb Access",chapter:"Construction language",chapterOrder:1,familyOrder:1,categories:["VERB_TIER"] },
   { key:"DOMAIN_ACCESS",label:"Domain Access",chapter:"Construction language",chapterOrder:1,familyOrder:2,categories:["DOMAIN"] },
@@ -92,10 +104,37 @@ export const MARKET_TEMPLATES: readonly MarketTemplateDefinition[] = [
       "Expanding zones, moving fields, branching chains, conditional targets, layered regions, and reactive patterns.",
       "Global, scene-wide, priority, inclusion/exclusion, state-triggered, recursive, or changing target rules.",
     ][tier-1]!,
+    standardBindings:[{
+      key:["single-point","multi-target","adaptive-spatial","systemic-rule"][tier-1]!,
+      name:["Single-point Structure","Multi-target Structure","Adaptive Spatial Structure","Systemic Rule Structure"][tier-1]!,
+      bindings:{structure:["single-point","multi-target","adaptive-spatial","systemic-rule"][tier-1]!},
+    }],
   })),
   {key:"attribute-increment",name:"Attribute Increment",familyKey:"PRACTICE_PROGRESSION",category:"SHEET_AUGMENT",tier:3,buCost:12,bindingSchema:{required:["attribute"],slots:{attribute:{kind:"enum",values:["PHYSICAL","MENTAL","MAGICAL"]}}},rule:{family:"ATTRIBUTE_INCREMENT",value:1,bindings:{attribute:null}},verboseDescription:"Permanently expands one core Attribute, subject to tier score limits.",standardBindings:["PHYSICAL","MENTAL","MAGICAL"].map(key=>({key:key.toLowerCase(),name:`${title(key)} Attribute Increment`,bindings:{attribute:key}}))},
   {key:"defensive-save-upgrade",name:"Defensive Save Upgrade",familyKey:"PRACTICE_PROGRESSION",category:"SHEET_AUGMENT",tier:1,buCost:4,bindingSchema:{required:["attribute"],slots:{attribute:{kind:"enum",values:["PHYSICAL","MENTAL","MAGICAL"]}}},rule:{family:"DEFENSIVE_SAVE",bindings:{attribute:null}},verboseDescription:"Adds full Proficiency Bonus to saves of one chosen Attribute.",standardBindings:["PHYSICAL","MENTAL","MAGICAL"].map(key=>({key:key.toLowerCase(),name:`${title(key)} Saving Throw Proficiency`,bindings:{attribute:key}}))},
   {key:"practice-proficiency",name:"Practice Proficiency",familyKey:"PRACTICE_PROGRESSION",category:"PRACTICE_PROGRESSION_AUGMENT",tier:1,buCost:4,bindingSchema:{required:["practice"],slots:{practice:{kind:"enum",values:["PROWESS","FINESSE","FIELDCRAFT","AWARENESS","REASON","KNOWLEDGE","INFLUENCE","MYSTICISM","COMMUNION","INTUITION"]}}},rule:{family:"PRACTICE_PROFICIENCY",bindings:{practice:null}},verboseDescription:"Establishes trained competence in one named Practice.",standardBindings:["PROWESS","FINESSE","FIELDCRAFT","AWARENESS","REASON","KNOWLEDGE","INFLUENCE","MYSTICISM","COMMUNION","INTUITION"].map(key=>({key:key.toLowerCase(),name:`${title(key)} Proficiency`,bindings:{practice:key}}))},
+];
+
+/** Finite rules that are useful as exact entries and do not need specialization. */
+export const CANONICAL_EXPRESSIONS:readonly CanonicalExpressionDefinition[] = [
+  {key:"range-touch",name:"Touch Range",familyKey:"RANGE_SCALING",category:"RANGE",tier:0,buCost:0,mechanicalText:"Set maximum range to Touch.",verboseDescription:"Immediate contact, self, or melee reach."},
+  {key:"range-near",name:"Near Range",familyKey:"RANGE_SCALING",category:"RANGE",tier:2,buCost:4,mechanicalText:"Set maximum range to Near (30 ft).",verboseDescription:"Standard combat range."},
+  {key:"range-far",name:"Far Range",familyKey:"RANGE_SCALING",category:"RANGE",tier:3,buCost:8,mechanicalText:"Set maximum range to Far (60 ft).",verboseDescription:"Extended tactical range."},
+  {key:"range-very-far",name:"Very Far Range",familyKey:"RANGE_SCALING",category:"RANGE",tier:4,buCost:12,mechanicalText:"Set maximum range to Very Far (120 ft).",verboseDescription:"Cross-battlefield influence."},
+  {key:"range-extreme",name:"Extreme Range",familyKey:"RANGE_SCALING",category:"RANGE",tier:5,buCost:24,mechanicalText:"Set maximum range to Extreme (240 ft–3 miles).",verboseDescription:"Scene-wide or near-remote presence."},
+  {key:"die-d6",name:"Standard Die Block",familyKey:"INTENSITY_DICE",category:"INTENSITY_DICE",tier:1,buCost:2,mechanicalText:"Unlock 1d6 damage or healing output.",verboseDescription:"Fundamental output die; inherits the capability's execution source."},
+  {key:"die-d8",name:"Heavy Die Block",familyKey:"INTENSITY_DICE",category:"INTENSITY_DICE",tier:2,buCost:4,mechanicalText:"Unlock 1d8 damage or healing output.",verboseDescription:"Standard martial or capability output cutoff."},
+  {key:"die-d10",name:"Impact Die Block",familyKey:"INTENSITY_DICE",category:"INTENSITY_DICE",tier:3,buCost:8,mechanicalText:"Unlock 1d10 damage or healing output.",verboseDescription:"High-tier concentrated output."},
+  {key:"die-d12",name:"Calamity Die Block",familyKey:"INTENSITY_DICE",category:"INTENSITY_DICE",tier:4,buCost:16,mechanicalText:"Unlock 1d12 damage or healing output.",verboseDescription:"Heavy Strain threat output."},
+  {key:"die-d20",name:"Existential Tear",familyKey:"INTENSITY_DICE",category:"INTENSITY_DICE",tier:5,buCost:32,mechanicalText:"Unlock 1d20 damage or healing output.",verboseDescription:"Mythic, reality-breaking output."},
+  ...(["TINY","SMALL","MEDIUM","LARGE","HUGE","GARGANTUAN"] as const).map((size,index)=>({
+    key:`size-${size.toLowerCase()}`,name:`${title(size)} Size`,familyKey:"SIZE_SCALE",category:"SIZING",tier:index,buCost:0,
+    mechanicalText:`Set Size to ${title(size)}.`,verboseDescription:`Sets character Size to ${title(size)}; Size determines base carry capacity and base movement.`,
+    modifier:{kind:"modify",target:"size",operation:"set",value:{kind:"keyword",text:size},stacking:"highest-only",metadata:{recipient:"SELF"}},
+  })),
+  {key:"carry-capacity-10",name:"Carry Capacity Augment",familyKey:"SHEET_AUGMENT",category:"SHEET_AUGMENT",tier:1,buCost:2,mechanicalText:"Add +10 to Carry Capacity.",verboseDescription:"Increases how much Load the character can carry.",modifier:{kind:"modify",target:"carry_capacity",operation:"add",value:{kind:"number",value:10},stacking:"stack",metadata:{recipient:"SELF"}}},
+  {key:"equip-slot-1",name:"Equipment Slot Augment",familyKey:"SHEET_AUGMENT",category:"SHEET_AUGMENT",tier:1,buCost:4,mechanicalText:"Add +1 to Equipment Slots.",verboseDescription:"Adds one slot to the default six equipped slots.",modifier:{kind:"modify",target:"equip_slot",operation:"add",value:{kind:"number",value:1},stacking:"stack",metadata:{recipient:"SELF"}}},
+  {key:"item-load-1",name:"Item Load 1",familyKey:"ITEM_AUGMENT",category:"ITEM_AUGMENT",tier:0,buCost:0,mechanicalText:"Set Item Load to 1.",verboseDescription:"The item occupies one unit of the carrier's capacity.",modifier:{kind:"modify",target:"load",operation:"set",value:{kind:"number",value:1},stacking:"highest-only",metadata:{recipient:"SELF"}}},
 ];
 
 export function familyForCategory(category:string):MarketFamilyDefinition|undefined {

@@ -13,7 +13,7 @@ import {
   primitiveVersions,
   users,
 } from "../src/db/schema";
-import { familyForCategory, MARKET_FAMILIES, MARKET_TEMPLATES } from "../src/lib/primitives/canonical-market";
+import { CANONICAL_EXPRESSIONS, familyForCategory, MARKET_FAMILIES, MARKET_TEMPLATES } from "../src/lib/primitives/canonical-market";
 import { mechanicalDescriptionFromModifiers, mechanicalRuleFromModifier, renderMechanicalRule } from "../src/lib/primitives/mechanical-rule";
 import type { HardModifier } from "../src/types/swordweave";
 
@@ -145,6 +145,23 @@ async function migrate(tx:typeof db) {
       const sourceVersion=await ensureVersion(tx,(await tx.select().from(primitives).where(eq(primitives.id,templateId)).limit(1))[0]!,false);
       const edge=(await tx.select({id:forks.id}).from(forks).where(and(eq(forks.sourceTargetType,"PRIMITIVE"),eq(forks.sourceTargetId,String(templateId)),eq(forks.forkedTargetType,"PRIMITIVE"),eq(forks.forkedTargetId,String(row!.id)))).limit(1))[0];
       if (!edge) { await tx.insert(forks).values({forkedByUserId:actor!.id,sourceTargetType:"PRIMITIVE",sourceTargetId:String(templateId),sourceVersionId:sourceVersion.id,sourceAuthorId:null,forkedTargetType:"PRIMITIVE",forkedTargetId:String(row!.id),forkedVersionId:version.id,metadata:{canonical:true,binding:binding.key}}); report.lineage++; }
+    }
+    report.classifications++;
+  }
+
+  for (const expression of CANONICAL_EXPRESSIONS) {
+    report.expressions++;
+    const sourceOrigin=`system:v12:expression:${expression.key}`;
+    const candidates=await tx.select().from(primitives).where(and(eq(primitives.name,expression.name),sql`${primitives.category}::text=${expression.category}`)).limit(10);
+    const existing=(await tx.select().from(primitives).where(eq(primitives.sourceOrigin,sourceOrigin)).limit(1))[0]
+      ?? candidates.find(row=>row.userId===null || adminClerkIds.includes(row.userId ?? ""));
+    if (apply) {
+      const values={name:expression.name,isPublic:true,definitionKind:"EXPRESSION" as const,templatePrimitiveId:null,bindingSchema:{},bindings:{},mechanicalRule:{family:"DOCUMENTED",text:expression.mechanicalText},mechanicalTemplateText:"",mechanicalOutputText:expression.mechanicalText,narrativeRule:expression.verboseDescription,hardModifiers:expression.modifier ? [expression.modifier] : [],sourceOrigin,updatedAt:new Date()};
+      let row; let changed=true;
+      if(existing){ changed=existing.mechanicalOutputText!==expression.mechanicalText || existing.definitionKind!=="EXPRESSION"; [row]=await tx.update(primitives).set(values).where(eq(primitives.id,existing.id)).returning(); }
+      else [row]=await tx.insert(primitives).values({...values,userId:null,category:expression.category as typeof primitives.$inferInsert.category,costTier:`Tier ${expression.tier ?? 0}`,buCost:expression.buCost}).returning();
+      await ensureVersion(tx,row!,changed);
+      await tx.insert(primitiveMarketClassifications).values({primitiveId:row!.id,familyKey:expression.familyKey,tier:expression.tier,expressionKey:expression.key,canonicalTemplateId:null,canonicalExpressionId:row!.id,source:"CATALOG",status:"CLASSIFIED",evidence:{catalogKey:expression.key}}).onConflictDoUpdate({target:primitiveMarketClassifications.primitiveId,set:{familyKey:expression.familyKey,tier:expression.tier,expressionKey:expression.key,canonicalTemplateId:null,canonicalExpressionId:row!.id,source:"CATALOG",status:"CLASSIFIED",evidence:{catalogKey:expression.key},updatedAt:new Date()}});
     }
     report.classifications++;
   }

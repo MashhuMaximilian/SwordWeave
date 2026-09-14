@@ -2111,6 +2111,50 @@ body[data-ui="v12"] .v12-network-world svg text { fill:var(--v12-faint); font:50
 body[data-ui="v12"] .v12-creation-grid .v12-entry-row { align-content:start; }
 body[data-ui="v12"] .v12-creation-grid .v12-entry-copy { min-width:0; }
 
+/* Library density follows the checked-in V12 instrument dimensions. */
+body[data-ui="v12"] .v12-library-page { width:min(1480px,calc(100% - 28px)); max-width:1480px; padding:14px 0 18px; }
+body[data-ui="v12"] .v12-library-workbench { --v12-library-left:260px; --v12-library-right:330px; align-items:start; }
+body[data-ui="v12"] .v12-library-column > aside,
+body[data-ui="v12"] .v12-library-inspector { position:sticky; top:72px; height:auto; max-height:calc(100dvh - 86px); overflow:auto; }
+body[data-ui="v12"] .v12-family-panel .v12-market-hero { min-height:0; padding:14px; }
+body[data-ui="v12"] .v12-market-hero h2 { font-size:clamp(25px,2vw,31px); }
+body[data-ui="v12"] .v12-market-hero p:not(.v12-kicker) { font-size:14px; }
+body[data-ui="v12"] .v12-family-panel .v12-tier-ladder > div { min-height:48px; padding:8px 9px; gap:8px; }
+body[data-ui="v12"] .v12-tier-ladder b { font-size:14px; }
+body[data-ui="v12"] .v12-tier-ladder p { font-size:13px; margin-top:1px; }
+body[data-ui="v12"] .v12-results-heading { padding:13px 3px 7px; }
+body[data-ui="v12"] .v12-results-heading h3 { font-size:20px; }
+body[data-ui="v12"] .v12-entry-row { min-height:0; padding:8px 10px; gap:8px; }
+body[data-ui="v12"] .v12-entry-glyph { width:34px; height:34px; }
+body[data-ui="v12"] .v12-library-inspector .v12-section-head,
+body[data-ui="v12"] .v12-inspector-body { padding:10px; }
+body[data-ui="v12"] .v12-inspect-orbit { width:68px; height:68px; margin-bottom:10px; }
+body[data-ui="v12"] .v12-library-inspector .v12-rule { padding:9px; font-size:14px; }
+body[data-ui="v12"] .v12-inspector-section { margin:9px 0; padding-top:8px; }
+body[data-ui="v12"] .v12-composition-list { gap:5px; margin-top:7px; }
+body[data-ui="v12"] .v12-composition-mechanic { gap:2px; padding:6px 8px; }
+body[data-ui="v12"] .v12-fetched-preview .v12-preview-identity { flex-direction:row; align-items:center; gap:12px; margin-bottom:8px; }
+body[data-ui="v12"] .v12-fetched-preview .v12-preview-identity > :first-child { width:66px; height:66px; margin:2px; padding:12px; box-shadow:0 0 0 6px color-mix(in srgb,var(--v12-brass) 7%,transparent),inset 0 0 0 3px var(--card); }
+body[data-ui="v12"] .v12-fetched-preview .v12-primitive-preview-body { display:grid; grid-template-columns:minmax(190px,.7fr) minmax(0,1.3fr); align-items:start; gap:10px 14px; }
+body[data-ui="v12"] .v12-fetched-preview .v12-primitive-preview-body > * { margin:0; }
+body[data-ui="v12"] .v12-fetched-preview .v12-primitive-preview-body > .v12-preview-identity,
+body[data-ui="v12"] .v12-fetched-preview .v12-primitive-preview-body > [data-preview-section="tags"] { grid-column:1; }
+body[data-ui="v12"] .v12-fetched-preview .v12-primitive-preview-body > [data-preview-section]:not([data-preview-section="tags"]) { grid-column:2; }
+
+/* Variable-height creation cards pack into columns without row-sized holes. */
+body[data-ui="v12"] .v12-creation-grid { display:block; }
+body[data-ui="v12"] .v12-creation-grid > .v12-entry-cluster { display:block; columns:3 250px; column-gap:8px; }
+body[data-ui="v12"] .v12-creation-grid .v12-entry-row { display:grid; break-inside:avoid; margin:0 0 8px; padding:8px; }
+@media(max-width:1050px) { body[data-ui="v12"] .v12-creation-grid > .v12-entry-cluster { columns:2 240px; } }
+@media(max-width:767px) {
+  body[data-ui="v12"] .v12-library-page { width:100%; padding:8px 8px 76px; }
+  body[data-ui="v12"] .v12-creation-grid > .v12-entry-cluster { columns:1; }
+  body[data-ui="v12"] .v12-family-panel .v12-market-hero { padding:10px; }
+  body[data-ui="v12"] .v12-results-heading h3 { font-size:18px; }
+  body[data-ui="v12"] .v12-fetched-preview .v12-primitive-preview-body { display:block; }
+  body[data-ui="v12"] .v12-fetched-preview .v12-primitive-preview-body > * + * { margin-top:10px; }
+}
+
 /* V12 live player cards: the same recipe hierarchy as the author reference. */
 body[data-ui="v12"] .v12-live-recipe { padding: 18px; min-height: 100%; color: var(--foreground); font: 400 17px/1.5 var(--font-body); }
 body[data-ui="v12"] .v12-live-emblem { display:grid; place-items:center; width:140px; height:140px; margin:6px auto 22px; border:1px solid transparent; border-radius:50%; background:radial-gradient(circle at 37% 28%,var(--v12-raised),var(--v12-inset) 70%) padding-box,var(--v12-brass-edge) border-box; position:relative; box-shadow:inset 0 0 0 20px color-mix(in srgb,var(--v12-silver) 7%,transparent); }
