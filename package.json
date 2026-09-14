@@ -22,6 +22,7 @@
     "db:seed-phase7": "tsx scripts/seed-phase7.ts",
     "db:check-drift": "tsx scripts/_check-drift.ts",
     "db:diff-notion": "tsx scripts/_diff-notion-vs-db.ts",
+    "db:migrate-v12-library": "tsx scripts/migrate-v12-library.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

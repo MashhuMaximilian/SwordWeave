@@ -19,15 +19,19 @@ const CATEGORY_ALIASES: Record<string, string> = {
 };
 
 export function canonicalLibraryCategory(category: string): string {
-  return CATEGORY_ALIASES[category] ?? category;
+  const aliased=CATEGORY_ALIASES[category] ?? category;
+  if (aliased === "SHEET_AUGMENT") return "SHEET_AUGMENT";
+  return MARKET_FAMILIES.find((family)=>family.key===aliased || family.categories.includes(aliased))?.key ?? aliased;
 }
 
 export function libraryCategoryMembers(category: string): string[] {
   const canonical = canonicalLibraryCategory(category);
+  const family=MARKET_FAMILIES.find((candidate)=>candidate.key===canonical);
+  const members=family?.categories ?? [canonical];
   return [
-    canonical,
+    ...members,
     ...Object.entries(CATEGORY_ALIASES)
-      .filter(([, target]) => target === canonical)
+      .filter(([, target]) => members.includes(target))
       .map(([alias]) => alias),
   ];
 }
@@ -41,15 +45,16 @@ export function primitiveGroupKey(
   name?: string,
   sourceOrigin?: string | null,
 ): string {
-  if (sourceOrigin === "system" || sourceOrigin?.startsWith("system:")) {
-    return "Canonical references";
-  }
   if (category === "DOMAIN" && name) {
     const match = name.match(/^domain\s+o(?:f|d)\s+(.+?)(?:\s*\(fork\))?$/i);
     if (match?.[1]) return match[1].trim().replace(/\s+/g, " ");
   }
-  if (!Array.isArray(modifiers) || !modifiers.length) return "Community expressions";
-  if (!modifiers[0] || typeof modifiers[0] !== "object") return "Community expressions";
+  if (!Array.isArray(modifiers) || !modifiers.length) {
+    return sourceOrigin === "system" || sourceOrigin?.startsWith("system:")
+      ? name?.replace(/\s+tier\s+[ivx]+$/i, "").trim() || "Canonical expression"
+      : "Needs classification";
+  }
+  if (!modifiers[0] || typeof modifiers[0] !== "object") return "Needs classification";
   const first = modifiers[0] as Record<string, unknown>;
   const metadata = first["metadata"] as Record<string, unknown> | undefined;
   const scope = (metadata?.["targetScope"] ?? first["scope"]) as Record<string, unknown> | undefined;
@@ -65,10 +70,10 @@ export function primitiveGroupKey(
 }
 
 /** Preserve identity boundaries even when two scopes have the same display text. */
-export function groupLibraryEntries<T extends { category?: string | null; costTier?: string | null; groupKey?: string | null }>(items: T[]) {
+export function groupLibraryEntries<T extends { category?: string | null; familyKey?: string | null; costTier?: string | null; groupKey?: string | null }>(items: T[]) {
   const groups = new Map<string, { id: string; category: string | null; tier: number | null; key: string; entries: T[] }>();
   for (const item of items) {
-    const category = item.category ? canonicalLibraryCategory(item.category) : null;
+    const category = item.familyKey ?? (item.category ? canonicalLibraryCategory(item.category) : null);
     const tier = libraryTier(item);
     const key = item.groupKey ?? "Unclassified";
     const id = JSON.stringify([category, tier, key]);
@@ -76,5 +81,9 @@ export function groupLibraryEntries<T extends { category?: string | null; costTi
     group.entries.push(item);
     groups.set(id, group);
   }
-  return [...groups.values()].sort((a, b) => (a.tier ?? Number.MAX_SAFE_INTEGER) - (b.tier ?? Number.MAX_SAFE_INTEGER));
+  return [...groups.values()].sort((a, b) => {
+    const tierOrder = (a.tier ?? Number.MAX_SAFE_INTEGER) - (b.tier ?? Number.MAX_SAFE_INTEGER);
+    return tierOrder || a.key.localeCompare(b.key);
+  });
 }
+import { MARKET_FAMILIES } from "@/lib/primitives/canonical-market";

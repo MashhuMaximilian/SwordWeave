@@ -35,6 +35,7 @@ import {
   itemPrimitives,
   items,
   primitives,
+  primitiveVersions,
   heritage,
   heritagePrimitives,
 } from "@/db/schema";
@@ -61,6 +62,7 @@ const ForkSchema = z.object({
     "CHARACTER",
   ]),
   targetId: z.string().min(1),
+  sourceVersionNumber: z.number().int().positive().optional(),
 });
 
 async function resolveUser(clerkUserId: string) {
@@ -100,7 +102,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { targetType, targetId } = parsed.data;
+    const { targetType, targetId, sourceVersionNumber } = parsed.data;
 
     switch (targetType) {
       case "PRIMITIVE":
@@ -110,6 +112,7 @@ export async function POST(req: NextRequest) {
             targetId,
             forkerClerkUserId: userId,
             forkerInternalId: user.id,
+            ...(sourceVersionNumber ? { sourceVersionNumber } : {}),
           })),
         });
       case "CAPABILITY":
@@ -175,8 +178,9 @@ async function forkPrimitive(input: {
   targetId: string;
   forkerClerkUserId: string;
   forkerInternalId: string;
+  sourceVersionNumber?: number;
 }) {
-  const { targetId, forkerClerkUserId, forkerInternalId } = input;
+  const { targetId, forkerClerkUserId, forkerInternalId, sourceVersionNumber } = input;
 
   // primitives.id is serial — parse targetId as integer
   const numericId = Number(targetId);
@@ -190,6 +194,17 @@ async function forkPrimitive(input: {
   if (!source) {
     throw new Error("Source primitive not found");
   }
+  const selectedVersion = sourceVersionNumber
+    ? await db.query.primitiveVersions.findFirst({
+        where: (table, { and, eq }) => and(eq(table.primitiveId, numericId), eq(table.versionNumber, sourceVersionNumber)),
+      })
+    : await db.query.primitiveVersions.findFirst({
+        where: (table, { eq }) => eq(table.primitiveId, numericId),
+        orderBy: (table, { desc }) => desc(table.versionNumber),
+      });
+  if (sourceVersionNumber && !selectedVersion) throw new Error(`Primitive version v${sourceVersionNumber} not found`);
+  const historical = selectedVersion?.snapshot ?? {};
+  const read = <T,>(key: string, fallback: T): T => key in historical ? historical[key] as T : fallback;
 
   // Insert cloned primitive (private, owned by forker). userId is text
   // (Clerk ID format) per Phase 4 schema.
@@ -218,20 +233,27 @@ async function forkPrimitive(input: {
     .insert(primitives)
     .values({
       name: forkName,
-      category: source.category,
-      costTier: source.costTier,
-      buCost: source.buCost,
-      mechanicalOutputText: source.mechanicalOutputText,
-      narrativeRule: source.narrativeRule,
+      category: read("category", source.category),
+      costTier: read("costTier", source.costTier),
+      buCost: read("buCost", source.buCost),
+      mechanicalOutputText: read("mechanicalOutputText", source.mechanicalOutputText),
+      mechanicalTemplateText: read("mechanicalTemplateText", source.mechanicalTemplateText),
+      mechanicalRule: read("mechanicalRule", source.mechanicalRule),
+      definitionKind: read("definitionKind", source.definitionKind),
+      templatePrimitiveId: read("templatePrimitiveId", source.templatePrimitiveId),
+      bindingSchema: read("bindingSchema", source.bindingSchema),
+      bindings: read("bindings", source.bindings),
+      narrativeRule: read("narrativeRule", source.narrativeRule),
       isPublic: false,
       isMirrorable: source.isMirrorable,
       mirrorVector: source.mirrorVector,
       mirrorBuCredit: source.mirrorBuCredit,
       mirrorEligibilityNotes: source.mirrorEligibilityNotes,
-      hardModifiers: source.hardModifiers,
+      hardModifiers: read("hardModifiers", source.hardModifiers),
       userId: forkerClerkUserId,
+      sourceOrigin: `fork:PRIMITIVE:${source.id}`,
     })
-    .returning({ id: primitives.id });
+    .returning();
   if (!forked) {
     throw new Error("Failed to insert forked primitive");
   }
@@ -243,6 +265,14 @@ async function forkPrimitive(input: {
   // sides (forker + source author when applicable) and lives in
   // src/lib/publishing/fork-attribution.ts so the atelier API
   // routes can share the same logic.
+  const [forkedVersion] = await db.insert(primitiveVersions).values({
+    primitiveId: forked.id,
+    versionNumber: 1,
+    isLatest: true,
+    deltaKind: "FULL",
+    snapshot: forked,
+    publishedByUserId: forkerInternalId,
+  }).returning({ id: primitiveVersions.id });
   const attribution = await recordForkAttribution({
     forkerInternalId,
     forkerClerkId: forkerClerkUserId,
@@ -251,7 +281,9 @@ async function forkPrimitive(input: {
     sourceTargetId: String(source.id),
     forkedTargetType: "PRIMITIVE",
     forkedTargetId: String(forked.id),
-    metadata: { name: source.name, category: source.category },
+    ...(selectedVersion?.id ? { sourceVersionId: selectedVersion.id } : {}),
+    ...(forkedVersion?.id ? { forkedVersionId: forkedVersion.id } : {}),
+    metadata: { name: source.name, category: source.category, sourceVersionNumber: selectedVersion?.versionNumber ?? null },
   });
   const forkCount = attribution.aggregateCount;
 

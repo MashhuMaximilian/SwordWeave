@@ -26,6 +26,7 @@ import { DetailModal } from "@/components/ui/detail-modal";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import type {
+  LibraryCompositionPath,
   LibraryItem,
   PrimitiveFamilyTier,
 } from "@/lib/publishing/library-query";
@@ -60,6 +61,45 @@ function LibraryEntityIcon({ item, size = 24 }: { item: LibraryItem; size?: numb
     size={size}
     alt=""
   />;
+}
+
+function CompositionMechanics({
+  paths,
+  compact = false,
+  onPrimitive,
+}: {
+  paths: LibraryCompositionPath[];
+  compact?: boolean;
+  onPrimitive?: (path: LibraryCompositionPath) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? paths : paths.slice(0, compact ? 3 : paths.length);
+  return (
+    <div className={compact ? "v12-composition-list is-compact" : "v12-composition-list"}>
+      {visible.map((path, index) => (
+        <button
+          type="button"
+          key={`${path.primitiveId}:${path.path.join(":")}:${index}`}
+          onClick={(event) => { event.stopPropagation(); onPrimitive?.(path); }}
+          className="v12-composition-mechanic"
+        >
+          <span className="v12-composition-path">{path.path.slice(0, -1).join(" → ")}</span>
+          <strong>{path.primitiveName}</strong>
+          <span data-readable-rule>{path.mechanicalDescription}</span>
+        </button>
+      ))}
+      {compact && paths.length > 3 ? (
+        <button type="button" className="v12-show-mechanics" onClick={(event) => { event.stopPropagation(); setExpanded((value) => !value); }}>
+          {expanded ? "Show less" : `Show all ${paths.length} mechanics`}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function primitiveStatus(item: LibraryItem) {
+  if (item.definitionKind === "TEMPLATE") return "Template";
+  return libraryOrigin(item) === "system" ? "Canonical" : "Community";
 }
 
 interface Props {
@@ -116,6 +156,7 @@ export function LibraryBrowseClient({
     ? buildSandboxUrl(selectedItem.targetType, selectedItem.targetId, "fork")
     : null;
   const [detailOpen, setDetailOpen] = useState(false);
+  const [nestedPreview, setNestedPreview] = useState<LibraryCompositionPath | null>(null);
   const workbenchRef = useRef<HTMLDivElement>(null);
   const [leftWidth, setLeftWidth] = useState(270);
   const [rightWidth, setRightWidth] = useState(330);
@@ -321,6 +362,10 @@ export function LibraryBrowseClient({
                     {tier.description ? <p>{tier.description}</p> : null}
                   </div>
                   <em>{tier.buCost} BU</em>
+                  <div className="v12-tier-actions">
+                    <a href={`/atelier?build=primitive&new=1&sourceType=PRIMITIVE&sourceId=${tier.id}`} className="v12-tier-specialize">Specialize</a>
+                    <ForkMapButton targetType="PRIMITIVE" targetId={String(tier.id)} targetName={tier.name} className="v12-tier-map" />
+                  </div>
                 </div>
               ))}
             </div>
@@ -351,7 +396,7 @@ export function LibraryBrowseClient({
           </div>
           {initialItems.length ? (
             <div className={isPrimitiveMode ? "v12-cluster-list" : "v12-creation-grid"}>
-              {(isPrimitiveMode ? groupLibraryEntries(initialItems) : [{ id: "creations", category: null, tier: null, key: "Creations", entries: initialItems }]).map(({ id, category, tier, key, entries }) => <section className="v12-entry-cluster" key={id}>{isPrimitiveMode ? <header className="v12-section-head"><div><h3>{key.charAt(0).toUpperCase() + key.slice(1)}</h3><p className="v12-cluster-identity">{category ? libraryFamilyLabel({ value: category, label: category.replaceAll("_", " ") }) : "Primitives"} · {tier ? `Tier ${tier}` : "Untiered"}{category === "DOMAIN" && key !== "Unclassified" ? ` · domain_key=${key}` : ""}</p></div><span>{entries.length} {entries.length === 1 ? "expression" : "expressions"} on this page</span></header> : null}{entries.map((item) => (
+              {(isPrimitiveMode ? groupLibraryEntries(initialItems) : [{ id: "creations", category: null, tier: null, key: "Creations", entries: initialItems }]).map(({ id, category, tier, key, entries }) => <section className="v12-entry-cluster" key={id}>{isPrimitiveMode ? <header className="v12-section-head"><div><h3>{key.charAt(0).toUpperCase() + key.slice(1)}</h3><p className="v12-cluster-identity">{category ? libraryFamilyLabel({ value: category, label: category.replaceAll("_", " ") }) : "Primitives"} · {tier ? `Tier ${tier}` : "Untiered"}{category === "DOMAIN_ACCESS" && key !== "Unclassified" ? ` · domain_key=${key}` : ""}</p></div><span>{entries.length} {entries.length === 1 ? "expression" : "expressions"} on this page</span></header> : null}{entries.map((item) => (
                 <article
                   key={item.id}
                   data-library-row-id={item.id}
@@ -372,17 +417,16 @@ export function LibraryBrowseClient({
                     <div className="v12-entry-title-line">
                       <h3>{item.name}</h3>
                       <span className={`v12-tag ${libraryOrigin(item) === "community" ? "v12-tag--violet" : "v12-tag--teal"}`}>
-                        {libraryOrigin(item) === "community" ? "Community" : "System"}
+                        {primitiveStatus(item)}
                       </span>
                     </div>
-                    {item.compositionSummary ? (
-                      <p className="v12-entry-composition" data-readable-rule>
-                        <strong>Composition:</strong> {item.compositionSummary}
-                      </p>
-                    ) : null}
-                    <p className="v12-entry-summary" data-readable-rule>{item.description || "No public description."}</p>
+                    {item.compositionPaths?.length ? (
+                      <CompositionMechanics paths={item.compositionPaths} compact onPrimitive={setNestedPreview} />
+                    ) : (
+                      <p className="v12-entry-summary" data-readable-rule>{item.mechanicalDescription || item.description || "No mechanical description."}</p>
+                    )}
                     <div className="v12-entry-lineage">
-                      <span>{libraryAuthorLabel(item)}</span>
+                      <span>{libraryAuthorLabel(item)}{item.versionNumber ? ` · v${item.versionNumber}` : ""}{item.descendantCount ? ` · ${item.descendantCount} descendants` : ""}</span>
                       <div onClick={(event) => event.stopPropagation()}>
                         <LikeForkBar
                           targetType={item.targetType}
@@ -436,7 +480,7 @@ export function LibraryBrowseClient({
                 </div>
                 <div className="v12-inspector-tags">
                   <span className={`v12-tag ${libraryOrigin(selectedItem) === "community" ? "v12-tag--violet" : "v12-tag--teal"}`}>
-                    {libraryOrigin(selectedItem) === "community" ? "Community" : "System"}
+                    {primitiveStatus(selectedItem)}
                   </span>
                   <span className="v12-tag">
                     {selectedItem.category?.replaceAll("_", " ") ??
@@ -447,21 +491,37 @@ export function LibraryBrowseClient({
                   </span>
                 </div>
                 <div className="v12-rule" data-readable-rule>
-                  {selectedItem.description || "No public description."}
+                  {selectedItem.mechanicalDescription || selectedItem.description || "No mechanical description."}
                 </div>
-                {selectedItem.compositionSummary ? (
-                  <div className="v12-inspector-composition" data-readable-rule>
-                    <span>Composition</span>
-                    <p>{selectedItem.compositionSummary}</p>
-                  </div>
+                <dl className="v12-inspector-facts">
+                  <div><dt>Source</dt><dd>{libraryOrigin(selectedItem) === "system" ? "SYSTEM" : selectedItem.authorUsername ?? "Community"}</dd></div>
+                  {selectedItem.versionNumber ? <div><dt>Version</dt><dd>v{selectedItem.versionNumber}</dd></div> : null}
+                  {selectedItem.familyLabel ? <div><dt>Family</dt><dd>{selectedItem.familyLabel}</dd></div> : null}
+                  {selectedItem.groupKey ? <div><dt>Expression</dt><dd>{selectedItem.groupKey}</dd></div> : null}
+                  {selectedItem.directForkCount !== undefined ? <div><dt>Lineage</dt><dd>{selectedItem.directForkCount} direct · {selectedItem.descendantCount ?? 0} descendants</dd></div> : null}
+                </dl>
+                {selectedItem.compositionPaths?.length ? (
+                  <section className="v12-inspector-section">
+                    <h3>Complete composition</h3>
+                    <CompositionMechanics paths={selectedItem.compositionPaths} onPrimitive={setNestedPreview} />
+                  </section>
                 ) : null}
+                {selectedItem.verboseDescription && selectedItem.verboseDescription !== selectedItem.mechanicalDescription ? (
+                  <section className="v12-inspector-section"><h3>Design meaning</h3><p data-readable-rule>{selectedItem.verboseDescription}</p></section>
+                ) : null}
+                {selectedItem.bindings && Object.keys(selectedItem.bindings).length ? (
+                  <section className="v12-inspector-section"><h3>Bindings</h3><div className="v12-binding-list">{Object.entries(selectedItem.bindings).map(([key, value]) => <span key={key}><b>{key}</b> {String(value)}</span>)}</div></section>
+                ) : null}
+                {selectedItem.tags.length ? <section className="v12-inspector-section"><h3>Tags</h3><div className="v12-inspector-tags">{selectedItem.tags.map((tag) => <span className="v12-tag" key={tag}>{tag}</span>)}</div></section> : null}
                 <LibraryProvenance targetType={selectedItem.targetType} targetId={selectedItem.targetId} name={selectedItem.name} author={libraryAuthorLabel(selectedItem)} />
                 <div className="v12-inspector-actions">
                   <a
-                    href={`/atelier?build=${atelierBuildForTarget(selectedItem.targetType)}&edit=${selectedItem.targetId}&intent=load`}
+                    href={selectedItem.definitionKind === "TEMPLATE"
+                      ? `/atelier?build=primitive&new=1&specialize=${selectedItem.targetId}`
+                      : `/atelier?build=${atelierBuildForTarget(selectedItem.targetType)}&edit=${selectedItem.targetId}&intent=load`}
                     className="v12-metal-button v12-metal-button--primary"
                   >
-                    Use exact entry
+                    {selectedItem.definitionKind === "TEMPLATE" ? "Specialize" : "Use exact entry"}
                   </a>
                   <a
                     href={`/library/item/${selectedItem.id}`}
@@ -474,7 +534,7 @@ export function LibraryBrowseClient({
                       href={`${selectedForkTarget.sandboxPath}${selectedForkTarget.search}`}
                       className="v12-metal-button"
                     >
-                      Fork this entry
+                      {selectedItem.definitionKind === "TEMPLATE" ? "Specialize this version" : "Fork this entry"}
                     </a>
                   ) : null}
                   <ForkMapButton key={selectedItem.id}
@@ -508,6 +568,19 @@ export function LibraryBrowseClient({
       >
         {selectedItem ? (
           <FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "system" : selectedItem.sourceOrigin }} />
+        ) : null}
+      </DetailModal>
+      <DetailModal
+        isOpen={nestedPreview !== null}
+        onClose={() => setNestedPreview(null)}
+        title={nestedPreview?.primitiveName ?? "Primitive"}
+        size="lg"
+      >
+        {nestedPreview ? (
+          <div className="v12-nested-preview">
+            <p className="v12-composition-path">{nestedPreview.path.join(" → ")}</p>
+            <FetchedEntityPreview targetType="PRIMITIVE" targetId={String(nestedPreview.primitiveId)} />
+          </div>
         ) : null}
       </DetailModal>
     </div>

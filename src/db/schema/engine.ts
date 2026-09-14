@@ -15,6 +15,7 @@ import {
   capabilityPrimitiveRoleEnum,
   capabilityTypeEnum,
   iconSourceEnum,
+  primitiveDefinitionKindEnum,
   primitiveCategoryEnum,
   sourceTypeEnum,
 } from "./enums";
@@ -30,6 +31,25 @@ export const primitives = pgTable(
     category: primitiveCategoryEnum("category").notNull(),
     costTier: text("cost_tier").notNull().default("Tier 1: Minor (4 BU anchor)"),
     buCost: integer("bu_cost").notNull().default(0),
+    definitionKind: primitiveDefinitionKindEnum("definition_kind")
+      .notNull()
+      .default("EXPRESSION"),
+    templatePrimitiveId: integer("template_primitive_id"),
+    bindingSchema: jsonb("binding_schema")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    bindings: jsonb("bindings")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    mechanicalRule: jsonb("mechanical_rule")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    mechanicalTemplateText: text("mechanical_template_text")
+      .notNull()
+      .default(""),
     // What the primitive modifies (Phase 7). For metric/bias modifier primitives
     // this identifies the scope axis: a specific Practice (e.g. 'AWARENESS'),
     // an Attribute ('PHYSICAL'), 'HP' for vitality, 'NARROW_FOCUS' for ultra-
@@ -124,6 +144,8 @@ export const primitives = pgTable(
     ),
     index("primitives_content_hash_idx").on(table.contentHash),
     index("primitives_source_origin_idx").on(table.sourceOrigin),
+    index("primitives_definition_kind_idx").on(table.definitionKind),
+    index("primitives_template_id_idx").on(table.templatePrimitiveId),
   ],
 );
 

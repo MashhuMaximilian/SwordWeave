@@ -16,6 +16,7 @@ import {
   type LibrarySort,
   type LibraryTargetType,
 } from "@/lib/publishing/library-query";
+import { canonicalLibraryCategory } from "@/lib/publishing/library-classification";
 import { loadLibraryEngagement } from "@/lib/engagement/library-engagement";
 import { resolveUserIdByClerkId } from "@/lib/auth/author-resolver";
 import {
@@ -69,7 +70,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
   const page = Math.max(0, parseInt(params.page ?? "0", 10) || 0);
   const offset = page * PAGE_SIZE;
   const search = params.q ?? "";
-  const category = params.category ?? "";
+  const category = params.category ? canonicalLibraryCategory(params.category) : "";
   const authorFilter = params.author ?? "";
   const minLikesFilter = params.minLikes ?? "";
   const hasForksFilter = params.hasForks === "1";

@@ -40,6 +40,21 @@ export const primitiveCategoryEnum = pgEnum("primitive_category", [
   "ITEM_AUGMENT",
 ]);
 
+export const primitiveDefinitionKindEnum = pgEnum("primitive_definition_kind", [
+  "TEMPLATE",
+  "EXPRESSION",
+]);
+
+export const primitiveClassificationSourceEnum = pgEnum(
+  "primitive_classification_source",
+  ["CATALOG", "BINDING", "INHERITED", "MODIFIER", "LEGACY", "REVIEW"],
+);
+
+export const primitiveClassificationStatusEnum = pgEnum(
+  "primitive_classification_status",
+  ["CLASSIFIED", "NEEDS_REVIEW"],
+);
+
 export const capabilityPrimitiveRoleEnum = pgEnum("capability_primitive_role", [
   "VERB",
   "DOMAIN",

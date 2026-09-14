@@ -49,6 +49,10 @@ export interface RecordForkAttributionParams {
   sourceTargetId: string;
   forkedTargetType: ReactionTargetType;
   forkedTargetId: string;
+  /** Exact immutable source snapshot selected by the user. */
+  sourceVersionId?: string;
+  /** Initial immutable snapshot of the newly created fork, when available. */
+  forkedVersionId?: string;
   /** Free-form attribution metadata — name, category, kind, etc. */
   metadata: Record<string, unknown>;
 }
@@ -56,7 +60,7 @@ export interface RecordForkAttributionParams {
 export async function recordForkAttribution(
   params: RecordForkAttributionParams,
 ): Promise<{ forkId: string; aggregateCount: number }> {
-  const versionId = resolveVirtualVersionId(
+  const versionId = params.sourceVersionId ?? resolveVirtualVersionId(
     params.sourceTargetType,
     params.sourceTargetId,
   );
@@ -80,7 +84,7 @@ export async function recordForkAttribution(
       // forkedVersionId initially points at the source's virtual version.
       // When the forker publishes their own version, the publish service
       // updates this to the real version row id (see publish-service.ts).
-      forkedVersionId: versionId,
+      forkedVersionId: params.forkedVersionId ?? versionId,
       metadata: params.metadata,
     })
     .returning({ id: forks.id });

@@ -874,7 +874,7 @@ body[data-ui="v12"] .v12-tier-ladder {
 
 body[data-ui="v12"] .v12-tier-ladder > div {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) auto;
+  grid-template-columns: 48px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 12px;
   min-height: 55px;
@@ -888,6 +888,11 @@ body[data-ui="v12"] .v12-tier-ladder b { font-family: var(--font-subtitle); font
 body[data-ui="v12"] .v12-tier-ladder em { padding: 4px 9px; border: 1px solid var(--v12-silver); border-radius: 999px; color: var(--v12-soft); font-family: var(--font-system); font-style: normal; }
 body[data-ui="v12"] .v12-tier-ladder > div:first-child em { border-color: var(--v12-teal); color: var(--v12-teal); }
 body[data-ui="v12"] .v12-tier-ladder > div:last-child em { border-color: var(--v12-brass); color: var(--v12-brass); }
+body[data-ui="v12"] .v12-tier-actions { display:flex; align-items:center; gap:5px; margin-left:4px; }
+body[data-ui="v12"] .v12-tier-specialize { color:var(--v12-teal); font:500 12px/1 var(--font-system); text-decoration:none; }
+body[data-ui="v12"] .v12-tier-specialize:hover { text-decoration:underline; }
+body[data-ui="v12"] .v12-tier-map { min-height:28px !important; padding:4px 7px !important; font-size:11px !important; }
+body[data-ui="v12"] .v12-tier-map svg { width:13px; height:13px; }
 
 body[data-ui="v12"] .v12-results-heading {
   display: flex;
@@ -1150,6 +1155,7 @@ body[data-ui="v12"] .v12-library-reference-row {
   body[data-ui="v12"] .v12-market-hero { min-height: 0; padding: 15px; }
   body[data-ui="v12"] .v12-market-hero .v12-metal-button { display: inline-flex; min-height: 40px; }
   body[data-ui="v12"] .v12-tier-ladder > div { grid-template-columns: 36px minmax(0, 1fr) auto; padding-inline: 10px; }
+  body[data-ui="v12"] .v12-tier-actions { grid-column:2 / -1; justify-content:flex-end; }
   body[data-ui="v12"] .v12-character-page { padding: 72px 9px 126px; }
   body[data-ui="v12"] .v12-character-core { grid-template-columns: 1fr; gap: 9px; }
   body[data-ui="v12"] .v12-core-identity { order: -1; }
@@ -2070,6 +2076,36 @@ body[data-ui="v12"] .v12-author-chapters li.v12-author-recipe-piece > .v12-recip
 body[data-ui="v12"] .v12-cluster-identity { margin: 3px 0 0; font: 400 15px/1.45 var(--font-body); color: var(--v12-copper-hi); overflow-wrap: anywhere; }
 body[data-ui="v12"] .v12-entry-cluster > header > div { min-width: 0; }
 body[data-ui="v12"] .v12-entry-cluster > header h3 { overflow-wrap: anywhere; }
+
+/* Library composition is mechanics-first: the cards expose a compact recipe,
+   while the inspector keeps every leaf and its full containment path. */
+body[data-ui="v12"] .v12-composition-list { display:grid; gap:7px; margin-top:10px; }
+body[data-ui="v12"] .v12-composition-list.is-compact { gap:4px; margin-top:5px; }
+body[data-ui="v12"] .v12-composition-mechanic {
+  display:grid; width:100%; min-width:0; gap:2px; padding:8px 10px; text-align:left;
+  border:1px solid color-mix(in srgb,var(--v12-copper) 42%,var(--v12-line-subtle)); border-radius:4px;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--v12-copper) 6%,var(--v12-inset)),var(--v12-inset));
+}
+body[data-ui="v12"] .v12-composition-list.is-compact .v12-composition-mechanic { padding:5px 8px; }
+body[data-ui="v12"] .v12-composition-mechanic:hover { border-color:var(--v12-teal); background:color-mix(in srgb,var(--v12-teal) 7%,var(--v12-inset)); }
+body[data-ui="v12"] .v12-composition-mechanic strong { font:500 14px/1.25 var(--font-subtitle); color:var(--foreground); }
+body[data-ui="v12"] .v12-composition-mechanic > span:last-child { font:400 15px/1.3 var(--font-body); color:var(--v12-copper-hi); }
+body[data-ui="v12"] .v12-composition-path { color:var(--v12-faint); font:500 11px/1.25 var(--font-technical); letter-spacing:.02em; overflow-wrap:anywhere; }
+body[data-ui="v12"] .v12-show-mechanics { justify-self:start; color:var(--v12-teal); font:500 12px/1.3 var(--font-system); }
+body[data-ui="v12"] .v12-inspector-facts { display:grid; margin:12px 0; border-left:3px solid var(--v12-teal); }
+body[data-ui="v12"] .v12-inspector-facts > div { display:grid; grid-template-columns:72px minmax(0,1fr); gap:8px; padding:6px 9px; border-bottom:1px solid var(--v12-line-subtle); }
+body[data-ui="v12"] .v12-inspector-facts dt,
+body[data-ui="v12"] .v12-inspector-section h3 { color:var(--v12-soft); font:500 11px/1.25 var(--font-system); letter-spacing:.1em; text-transform:uppercase; }
+body[data-ui="v12"] .v12-inspector-facts dd { min-width:0; color:var(--foreground); font:400 13px/1.35 var(--font-technical); overflow-wrap:anywhere; }
+body[data-ui="v12"] .v12-inspector-section { margin:13px 0; padding-top:10px; border-top:1px solid var(--v12-line-subtle); }
+body[data-ui="v12"] .v12-inspector-section > p { margin-top:7px; font:400 16px/1.45 var(--font-body); color:var(--v12-soft); }
+body[data-ui="v12"] .v12-binding-list { display:flex; flex-wrap:wrap; gap:5px; margin-top:7px; }
+body[data-ui="v12"] .v12-binding-list span { padding:4px 7px; border:1px solid var(--v12-line-subtle); border-radius:99px; font:400 12px/1.3 var(--font-technical); }
+body[data-ui="v12"] .v12-binding-list b { color:var(--v12-teal); font-weight:500; }
+body[data-ui="v12"] .v12-nested-preview { display:grid; gap:10px; }
+body[data-ui="v12"] .v12-network-world svg text { fill:var(--v12-faint); font:500 10px/1 var(--font-technical); paint-order:stroke; stroke:var(--v12-canvas-deep); stroke-width:4px; }
+body[data-ui="v12"] .v12-creation-grid .v12-entry-row { align-content:start; }
+body[data-ui="v12"] .v12-creation-grid .v12-entry-copy { min-width:0; }
 
 /* V12 live player cards: the same recipe hierarchy as the author reference. */
 body[data-ui="v12"] .v12-live-recipe { padding: 18px; min-height: 100%; color: var(--foreground); font: 400 17px/1.5 var(--font-body); }

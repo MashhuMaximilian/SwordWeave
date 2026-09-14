@@ -1,6 +1,7 @@
 import { tokenLabel, renderEquation, type ValueToken, type Operand } from "@/types/modifier";
 import type { ConditionAuthoring } from "@/types/condition";
 import { MODIFIER_TARGET_SPEC, type ModifierTarget } from "./modifier-scope";
+import { renderMechanicalRule } from "./mechanical-rule";
 
 export interface PrimitiveSentenceDraft {
   target: string; operation: string; targetValues: string[]; freeTextNarrowFocus: string;
@@ -25,5 +26,11 @@ export function primitiveSentenceParts(draft: PrimitiveSentenceDraft) {
 
 export function describePrimitiveDraft(draft: PrimitiveSentenceDraft): string {
   const parts = primitiveSentenceParts(draft);
-  return `${parts.lead} ${parts.target} ${parts.join} ${parts.label} ${parts.value}${parts.when ? ` when ${parts.when}` : ""}.`;
+  return renderMechanicalRule({
+    family: "GENERIC",
+    operation: draft.operation,
+    target: parts.target,
+    value: parts.value,
+    conditionText: parts.when,
+  });
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Plus, Shapes } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MARKET_FAMILIES } from "@/lib/primitives/canonical-market";
 
 type Category = { value: string; label: string; count: number };
 
@@ -38,8 +39,9 @@ const FAMILY_LABELS: Record<string, string> = {
 };
 
 export function libraryFamilyLabel(category: Pick<Category, "value" | "label">): string {
+  const catalogFamily = MARKET_FAMILIES.find((family) => family.key === category.value || family.categories.includes(category.value));
   return (
-    FAMILY_LABELS[category.value] ??
+    catalogFamily?.label ?? FAMILY_LABELS[category.value] ??
     category.label
       .toLowerCase()
       .replaceAll("_", " ")
@@ -47,52 +49,10 @@ export function libraryFamilyLabel(category: Pick<Category, "value" | "label">):
   );
 }
 
-const GROUPS: Array<{ label: string; values: string[] }> = [
-  {
-    label: "Construction language",
-    values: ["VERB_TIER", "DOMAIN", "STRUCTURAL"],
-  },
-  {
-    label: "Resolution and expression",
-    values: [
-      "RANGE",
-      "SPEED_QUICKENING",
-      "DURATION",
-      "TARGETING",
-      "TARGETING_AOE",
-      "INTENSITY_DICE",
-      "OUTPUT",
-    ],
-  },
-  {
-    label: "Character foundation",
-    values: [
-      "VITALITY",
-      "PRACTICE_PROGRESSION",
-      "PROBABILITY_BIAS",
-      "DEFENSE",
-      "DEFENSIVE",
-      "PERCEPTION_QUALIFIER",
-      "SENSORY_ARRAY",
-      "MOBILITY_LOCOMOTION",
-    ],
-  },
-  {
-    label: "System and reality",
-    values: [
-      "TRIGGER_HOOK",
-      "CONDITION",
-      "KINETIC_CONTROL",
-      "AGENCY_OVERRIDE",
-      "METAMORPHOSIS",
-      "ACTION_ECONOMY",
-      "EVALUATION_STRAIN",
-      "TEMPORAL_CHRONOLOGICAL",
-      "BOSS_ECONOMY",
-      "TACTICAL",
-    ],
-  },
-];
+const GROUPS: Array<{ label: string; values: string[] }> = [...new Set(MARKET_FAMILIES.map((family) => family.chapter))].map((chapter) => ({
+  label: chapter,
+  values: MARKET_FAMILIES.filter((family) => family.chapter === chapter).map((family) => family.key),
+}));
 
 export function LibraryMarketRail({
   categories,

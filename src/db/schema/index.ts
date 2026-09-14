@@ -6,4 +6,6 @@ export * from "./characters";
 export * from "./profiles";
 export * from "./versions";
 export * from "./engagement";
-export * from "./relations";export * from "./workspace";
+export * from "./relations";
+export * from "./workspace";
+export * from "./library";

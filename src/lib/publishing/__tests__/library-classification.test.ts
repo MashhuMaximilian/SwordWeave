@@ -44,15 +44,15 @@ describe("V12 corpus classification", () => {
     expect(groups.map(group => group.tier)).toEqual([1, 1, 2]);
     expect(groups[0]?.entries).toEqual([items[0], items[2]]);
   });
-  it("groups by mechanical scope without exposing an unclassified bucket", () => {
+  it("groups by mechanical scope and marks ambiguous legacy records for review", () => {
     expect(primitiveGroupKey("DOMAIN", [{metadata:{targetScope:{values:["metal"]}}}])).toBe("metal");
     expect(primitiveGroupKey("DOMAIN", [{metadata:{domain_key:"storm"}}])).toBe("storm");
-    expect(primitiveGroupKey("DOMAIN", [null])).toBe("Community expressions");
+    expect(primitiveGroupKey("DOMAIN", [null])).toBe("Needs classification");
   });
 
   it("groups domain expressions by their stable domain name", () => {
     expect(primitiveGroupKey("DOMAIN", [], "Domain of Metal", "fork:1")).toBe("Metal");
     expect(primitiveGroupKey("DOMAIN", [], "Domain od Space", "user:1")).toBe("Space");
-    expect(primitiveGroupKey("DOMAIN", [], "Domain Access Tier I", "system")).toBe("Canonical references");
+    expect(primitiveGroupKey("DOMAIN", [], "Domain Access Tier I", "system")).toBe("Domain Access");
   });
 });

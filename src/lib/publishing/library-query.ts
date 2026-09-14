@@ -53,13 +53,16 @@ import {
   itemCapabilities,
   itemEffects,
   itemPrimitives,
+  lexiconFamilies,
   primitives,
+  primitiveMarketClassifications,
   publications,
   heritage,
   heritageCapabilities,
   heritagePrimitives,
 } from "@/db/schema";
 import { resolveEngagementMap as sharedResolveEngagementMap } from "@/lib/engagement/engagement-aggregates";
+import { MARKET_FAMILIES } from "@/lib/primitives/canonical-market";
 
 export type LibrarySort =
   | "LIKES"
@@ -155,6 +158,19 @@ export interface LibraryItem {
   targetId: string;
   name: string;
   description: string | null;
+  /** Complete rendered mechanic. For templates this is the placeholder sentence. */
+  mechanicalDescription?: string | null;
+  mechanicalTemplate?: string | null;
+  verboseDescription?: string | null;
+  definitionKind?: "TEMPLATE" | "EXPRESSION";
+  versionNumber?: number | null;
+  bindings?: Record<string, unknown>;
+  familyKey?: string | null;
+  familyLabel?: string | null;
+  classificationStatus?: "CLASSIFIED" | "NEEDS_REVIEW" | null;
+  directForkCount?: number;
+  descendantCount?: number;
+  compositionPaths?: LibraryCompositionPath[];
   /** Compact, generated inventory of the record's nested mechanics. */
   compositionSummary?: string | null;
   category: string | null;
@@ -205,6 +221,15 @@ export interface LibraryItem {
   iconKey: string | null;
   iconUrl: string | null;
   iconColor: string;
+}
+
+export interface LibraryCompositionPath {
+  primitiveId: number;
+  primitiveName: string;
+  mechanicalDescription: string;
+  path: string[];
+  buCost: number;
+  quantity: number;
 }
 
 /**
@@ -421,6 +446,89 @@ function addCompositionPart(map: Map<string, string[]>, id: string, value: strin
   map.set(id, current);
 }
 
+type CompositionRoot = "CAPABILITY" | "EFFECT" | "ITEM" | "HERITAGE";
+type CompositionSqlRow = {
+  owner_id: string;
+  primitive_id: number;
+  primitive_name: string;
+  mechanical_description: string | null;
+  bu_cost: number;
+  quantity: number;
+  path: string[];
+};
+
+/** Load primitive leaves with their full containment breadcrumb in one query. */
+async function loadCompositionPaths(root: CompositionRoot, ids: string[]) {
+  const result = new Map<string, LibraryCompositionPath[]>();
+  if (!ids.length) return result;
+  const idList = sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `);
+  let query: SQL;
+  if (root === "EFFECT") {
+    query = sql`SELECT ep.effect_id::text owner_id, p.id primitive_id, p.name primitive_name,
+      COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule) mechanical_description,
+      p.bu_cost, ep.quantity, ARRAY['Effect', e.name, 'Primitive', p.name]::text[] path
+      FROM effect_primitives ep JOIN effects e ON e.id=ep.effect_id JOIN primitives p ON p.id=ep.primitive_id
+      WHERE ep.effect_id IN (${idList})`;
+  } else if (root === "CAPABILITY") {
+    query = sql`
+      SELECT cp.capability_id::text owner_id, p.id primitive_id, p.name primitive_name,
+        COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule) mechanical_description,
+        p.bu_cost, cp.quantity, ARRAY['Capability',c.name,'Primitive',p.name]::text[] path
+      FROM capability_primitives cp JOIN capabilities c ON c.id=cp.capability_id JOIN primitives p ON p.id=cp.primitive_id
+      WHERE cp.capability_id IN (${idList})
+      UNION ALL
+      SELECT ce.capability_id::text, p.id, p.name,
+        COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.bu_cost,ep.quantity,
+        ARRAY['Capability',c.name,'Effect',e.name,'Primitive',p.name]::text[]
+      FROM capability_effects ce JOIN capabilities c ON c.id=ce.capability_id JOIN effects e ON e.id=ce.effect_id
+      JOIN effect_primitives ep ON ep.effect_id=e.id JOIN primitives p ON p.id=ep.primitive_id
+      WHERE ce.capability_id IN (${idList})`;
+  } else if (root === "ITEM") {
+    query = sql`
+      SELECT ip.item_id::text owner_id,p.id primitive_id,p.name primitive_name,
+        COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule) mechanical_description,
+        p.bu_cost,ip.quantity,ARRAY['Item',i.name,'Primitive',p.name]::text[] path
+      FROM item_primitives ip JOIN items i ON i.id=ip.item_id JOIN primitives p ON p.id=ip.primitive_id WHERE ip.item_id IN (${idList})
+      UNION ALL
+      SELECT ie.item_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.bu_cost,ep.quantity,
+        ARRAY['Item',i.name,'Effect',e.name,'Primitive',p.name]::text[]
+      FROM item_effects ie JOIN items i ON i.id=ie.item_id JOIN effects e ON e.id=ie.effect_id JOIN effect_primitives ep ON ep.effect_id=e.id JOIN primitives p ON p.id=ep.primitive_id WHERE ie.item_id IN (${idList})
+      UNION ALL
+      SELECT ic.item_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.bu_cost,cp.quantity,
+        ARRAY['Item',i.name,'Capability',c.name,'Primitive',p.name]::text[]
+      FROM item_capabilities ic JOIN items i ON i.id=ic.item_id JOIN capabilities c ON c.id=ic.capability_id JOIN capability_primitives cp ON cp.capability_id=c.id JOIN primitives p ON p.id=cp.primitive_id WHERE ic.item_id IN (${idList})
+      UNION ALL
+      SELECT ic.item_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.bu_cost,ep.quantity,
+        ARRAY['Item',i.name,'Capability',c.name,'Effect',e.name,'Primitive',p.name]::text[]
+      FROM item_capabilities ic JOIN items i ON i.id=ic.item_id JOIN capabilities c ON c.id=ic.capability_id JOIN capability_effects ce ON ce.capability_id=c.id JOIN effects e ON e.id=ce.effect_id JOIN effect_primitives ep ON ep.effect_id=e.id JOIN primitives p ON p.id=ep.primitive_id WHERE ic.item_id IN (${idList})`;
+  } else {
+    query = sql`
+      SELECT hp.template_id::text owner_id,p.id primitive_id,p.name primitive_name,
+        COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule) mechanical_description,
+        p.bu_cost,hp.quantity,ARRAY['Heritage',h.name,'Primitive',p.name]::text[] path
+      FROM heritage_primitives hp JOIN heritage h ON h.id=hp.template_id JOIN primitives p ON p.id=hp.primitive_id WHERE hp.template_id IN (${idList})
+      UNION ALL
+      SELECT hc.template_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.bu_cost,cp.quantity,
+        ARRAY['Heritage',h.name,'Capability',c.name,'Primitive',p.name]::text[]
+      FROM heritage_capabilities hc JOIN heritage h ON h.id=hc.template_id JOIN capabilities c ON c.id=hc.capability_id JOIN capability_primitives cp ON cp.capability_id=c.id JOIN primitives p ON p.id=cp.primitive_id WHERE hc.template_id IN (${idList})
+      UNION ALL
+      SELECT hc.template_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.bu_cost,ep.quantity,
+        ARRAY['Heritage',h.name,'Capability',c.name,'Effect',e.name,'Primitive',p.name]::text[]
+      FROM heritage_capabilities hc JOIN heritage h ON h.id=hc.template_id JOIN capabilities c ON c.id=hc.capability_id JOIN capability_effects ce ON ce.capability_id=c.id JOIN effects e ON e.id=ce.effect_id JOIN effect_primitives ep ON ep.effect_id=e.id JOIN primitives p ON p.id=ep.primitive_id WHERE hc.template_id IN (${idList})`;
+  }
+  const executed = await db.execute<CompositionSqlRow>(query);
+  const rows = (executed as unknown as { rows: CompositionSqlRow[] }).rows ?? executed;
+  for (const row of rows) {
+    const value: LibraryCompositionPath = {
+      primitiveId: Number(row.primitive_id), primitiveName: row.primitive_name,
+      mechanicalDescription: row.mechanical_description ?? "No mechanical description.",
+      buCost: Number(row.bu_cost), quantity: Number(row.quantity), path: row.path,
+    };
+    result.set(row.owner_id, [...(result.get(row.owner_id) ?? []), value]);
+  }
+  return result;
+}
+
 /**
  * NOT EXISTS condition: exclude entities that have an unpublished publication.
  * This ensures entities explicitly set to PRIVATE via the visibility API
@@ -534,6 +642,9 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
   // browse page passes viewerClerkId when signed in so the visibility
   // filter fires correctly.
   const conditions: SQL[] = [];
+  // Templates live in the canonical ladder; exact-entry results contain only
+  // complete, executable expressions.
+  conditions.push(eq(primitives.definitionKind, "EXPRESSION"));
   if (q.authorClerkId) {
     conditions.push(eq(primitives.userId, q.authorClerkId));
     conditions.push(
@@ -560,9 +671,10 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
   if (q.kind === "creation") conditions.push(or(isNull(primitives.sourceOrigin), notLike(primitives.sourceOrigin, "fork:%"))!);
 
   if (q.category) {
-    conditions.push(
-      inArray(primitives.category, libraryCategoryMembers(q.category) as never[]),
-    );
+    const catalogFamily=MARKET_FAMILIES.find((family)=>family.key===q.category);
+    conditions.push(catalogFamily
+      ? eq(primitiveMarketClassifications.familyKey,catalogFamily.key)
+      : inArray(primitives.category, libraryCategoryMembers(q.category) as never[]));
   }
   if (q.search) {
     // Phase 9.5 follow-up (Mashu 2026-09-07): search must
@@ -598,6 +710,10 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       costTier: primitives.costTier,
       hardModifiers: primitives.hardModifiers,
       mechanicalOutputText: primitives.mechanicalOutputText,
+      mechanicalTemplateText: primitives.mechanicalTemplateText,
+      definitionKind: primitives.definitionKind,
+      bindings: primitives.bindings,
+      mechanicalRule: primitives.mechanicalRule,
       narrativeRule: primitives.narrativeRule,
       tags: primitives.tags,
       userId: primitives.userId,
@@ -613,10 +729,61 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       iconProposedKey: primitives.iconProposedKey,
       iconProposedUrl: primitives.iconProposedUrl,
       iconProposedColor: primitives.iconProposedColor,
+      familyKey: primitiveMarketClassifications.familyKey,
+      familyLabel: lexiconFamilies.label,
+      classifiedTier: primitiveMarketClassifications.tier,
+      expressionKey: primitiveMarketClassifications.expressionKey,
+      classificationStatus: primitiveMarketClassifications.status,
+      versionNumber: sql<number | null>`(
+        SELECT pv.version_number FROM primitive_versions pv
+        WHERE pv.primitive_id = ${primitives.id}
+        ORDER BY pv.version_number DESC LIMIT 1
+      )`,
     })
     .from(primitives)
+    .leftJoin(
+      primitiveMarketClassifications,
+      eq(primitiveMarketClassifications.primitiveId, primitives.id),
+    )
+    .leftJoin(
+      lexiconFamilies,
+      eq(lexiconFamilies.key, primitiveMarketClassifications.familyKey),
+    )
     .where(and(...conditions))
     .limit(500); // hard cap before in-memory filter
+
+  const lineageCounts = new Map<string, { direct: number; descendants: number }>();
+  if (rows.length) {
+    const roots = sql.join(rows.map(row => sql`${String(row.id)}`), sql`, `);
+    const result = await db.execute<{ root_id: string; direct_count: number; descendant_count: number }>(sql`
+      WITH RECURSIVE lineage(root_id, descendant_id) AS (
+        SELECT source_target_id, forked_target_id
+        FROM forks
+        WHERE source_target_type = 'PRIMITIVE'
+          AND forked_target_type = 'PRIMITIVE'
+          AND source_target_id IN (${roots})
+        UNION
+        SELECT lineage.root_id, forks.forked_target_id
+        FROM lineage
+        JOIN forks ON forks.source_target_type = 'PRIMITIVE'
+          AND forks.forked_target_type = 'PRIMITIVE'
+          AND forks.source_target_id = lineage.descendant_id
+      ), direct AS (
+        SELECT source_target_id root_id, count(*)::int direct_count
+        FROM forks
+        WHERE source_target_type = 'PRIMITIVE'
+          AND forked_target_type = 'PRIMITIVE'
+          AND source_target_id IN (${roots})
+        GROUP BY source_target_id
+      )
+      SELECT lineage.root_id, coalesce(direct.direct_count, 0)::int direct_count,
+        count(distinct lineage.descendant_id)::int descendant_count
+      FROM lineage LEFT JOIN direct USING (root_id)
+      GROUP BY lineage.root_id, direct.direct_count
+    `);
+    const countRows = (result as unknown as { rows: Array<{ root_id: string; direct_count: number; descendant_count: number }> }).rows ?? result;
+    for (const count of countRows) lineageCounts.set(count.root_id, { direct: Number(count.direct_count), descendants: Number(count.descendant_count) });
+  }
 
   const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
   const engagementMap = await resolveEngagementMap(
@@ -636,14 +803,20 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       targetType: "PRIMITIVE" as const,
       targetId: String(r.id),
       name: r.name,
-      description: r.mechanicalOutputText || r.narrativeRule || null,
+      description: r.mechanicalOutputText || r.mechanicalTemplateText || r.narrativeRule || null,
+      mechanicalDescription: r.mechanicalOutputText || r.mechanicalTemplateText || null,
+      mechanicalTemplate: r.mechanicalTemplateText,
+      verboseDescription: r.narrativeRule,
+      definitionKind: r.definitionKind,
+      versionNumber: r.versionNumber,
+      bindings: r.bindings ?? {},
+      familyKey: r.familyKey,
+      familyLabel: r.familyLabel,
+      classificationStatus: r.classificationStatus,
+      directForkCount: lineageCounts.get(String(r.id))?.direct ?? 0,
+      descendantCount: lineageCounts.get(String(r.id))?.descendants ?? 0,
       costTier: r.costTier,
-      groupKey: primitiveGroupKey(
-        r.category,
-        r.hardModifiers,
-        r.name,
-        r.sourceOrigin,
-      ),
+      groupKey: r.expressionKey ?? primitiveGroupKey(r.category, r.hardModifiers, r.name, r.sourceOrigin),
       category: r.category,
       buCost: r.buCost,
       authorId: r.userId ?? null,
@@ -800,6 +973,7 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
   }
 
   const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
+  const compositionPaths = await loadCompositionPaths("CAPABILITY", capabilityIds);
   const engagementMap = await resolveEngagementMap(
     rows.map((r) => `CAPABILITY:${r.id}`),
   );
@@ -819,6 +993,8 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
       name: r.name,
       description: withoutCompositionLead(r.verboseDescription),
       compositionSummary: compactComposition(compositionMap.get(r.id) ?? []),
+      compositionPaths: compositionPaths.get(r.id) ?? [],
+      verboseDescription: withoutCompositionLead(r.verboseDescription),
       category: r.type,
       buCost: buMap.get(r.id) ?? 0,
       authorId: r.userId ?? null,
@@ -1063,6 +1239,7 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
       addCompositionPart(compositionMap, link.effectId, link.primitiveName);
     }
   }
+  const compositionPaths = await loadCompositionPaths("EFFECT", effectIds);
 
   return rows.map((r) => {
     const author = r.userId ? authorMap.get(r.userId) : null;
@@ -1079,6 +1256,8 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
       name: r.name,
       description: r.narrativeDescription || null,
       compositionSummary: compactComposition(compositionMap.get(r.id) ?? []),
+      compositionPaths: compositionPaths.get(r.id) ?? [],
+      verboseDescription: r.narrativeDescription || null,
       category: null,
       buCost: buMap.get(r.id) ?? 0,
       authorId: r.userId ?? null,
@@ -1250,6 +1429,7 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
     for (const link of effectLinks) addCompositionPart(compositionMap, link.itemId, `via ${link.name}`);
     for (const link of capabilityLinks) addCompositionPart(compositionMap, link.itemId, `via ${link.name}`);
   }
+  const compositionPaths = await loadCompositionPaths("ITEM", itemIds);
 
   const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
   const engagementMap = await resolveEngagementMap(
@@ -1271,6 +1451,8 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
       name: r.name,
       description: r.description || null,
       compositionSummary: compactComposition(compositionMap.get(r.id) ?? []),
+      compositionPaths: compositionPaths.get(r.id) ?? [],
+      verboseDescription: r.description || null,
       category: r.itemType,
       buCost: r.buCost,
       authorId: r.userId ?? null,
@@ -1429,6 +1611,7 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
     for (const link of primitiveLinks) addCompositionPart(compositionMap, link.templateId, link.name);
     for (const link of capabilityLinks) addCompositionPart(compositionMap, link.templateId, `via ${link.name}`);
   }
+  const compositionPaths = await loadCompositionPaths("HERITAGE", templateIds);
 
   const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
 
@@ -1472,6 +1655,8 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
       name: r.name,
       description: r.description,
       compositionSummary: compactComposition(compositionMap.get(r.id) ?? []),
+      compositionPaths: compositionPaths.get(r.id) ?? [],
+      verboseDescription: r.description,
       category: r.kind,
       buCost: null,
       authorId: r.userId ?? null,
@@ -1722,27 +1907,26 @@ export async function listPrimitiveCategories(): Promise<
 > {
   const rows = await db
     .select({
-      category: primitives.category,
+      familyKey: primitiveMarketClassifications.familyKey,
       count: sql<number>`COUNT(*)::int`,
     })
     .from(primitives)
+    .innerJoin(primitiveMarketClassifications,eq(primitiveMarketClassifications.primitiveId,primitives.id))
     .where(or(eq(primitives.isPublic, true), isNull(primitives.userId))!)
-    .groupBy(primitives.category)
-    .orderBy(asc(primitives.category));
+    .groupBy(primitiveMarketClassifications.familyKey)
+    .orderBy(asc(primitiveMarketClassifications.familyKey));
 
   const merged = new Map<string, number>();
   for (const row of rows) {
-    const value = canonicalLibraryCategory(row.category);
+    const value = row.familyKey;
     merged.set(value, (merged.get(value) ?? 0) + Number(row.count));
   }
-  return [...merged.entries()].map(([value, count]) => ({
-    value,
-    label: value.replace(/_/g, " "),
-    count,
-  }));
+  for (const family of MARKET_FAMILIES) if (!merged.has(family.key)) merged.set(family.key,0);
+  return MARKET_FAMILIES.map((family) => ({ value:family.key,label:family.label,count:merged.get(family.key) ?? 0 }));
 }
 
 export interface PrimitiveFamilyTier {
+  id: number;
   name: string;
   tier: number | null;
   buCost: number;
@@ -1753,22 +1937,25 @@ export async function listPrimitiveFamilyTiers(
   category: string,
 ): Promise<PrimitiveFamilyTier[]> {
   if (!category) return [];
+  const catalogFamily=MARKET_FAMILIES.find((family)=>family.key===category);
   const rows = await db
     .select({
+      id: primitives.id,
       name: primitives.name,
       costTier: primitives.costTier,
       buCost: primitives.buCost,
       mechanicalOutputText: primitives.mechanicalOutputText,
+      mechanicalTemplateText: primitives.mechanicalTemplateText,
       narrativeRule: primitives.narrativeRule,
     })
     .from(primitives)
+    .leftJoin(primitiveMarketClassifications,eq(primitiveMarketClassifications.primitiveId,primitives.id))
     .where(
       and(
-        inArray(
-          primitives.category,
-          libraryCategoryMembers(category) as never[],
-        ),
-        isNull(primitives.userId),
+        catalogFamily
+          ? eq(primitiveMarketClassifications.familyKey,catalogFamily.key)
+          : inArray(primitives.category,libraryCategoryMembers(category) as never[]),
+        or(eq(primitives.definitionKind, "TEMPLATE"), isNull(primitives.userId))!,
       ),
     )
     .orderBy(asc(primitives.buCost), asc(primitives.name));
@@ -1779,10 +1966,11 @@ export async function listPrimitiveFamilyTiers(
     const key = `${tier ?? "none"}:${row.buCost}`;
     if (!byTier.has(key)) {
       byTier.set(key, {
+        id: row.id,
         name: row.name,
         tier,
         buCost: row.buCost,
-        description: row.mechanicalOutputText || row.narrativeRule,
+        description: row.mechanicalTemplateText || row.mechanicalOutputText || row.narrativeRule,
       });
     }
   }
