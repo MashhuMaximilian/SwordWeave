@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef, useEffect, useLayoutEffect } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, useClerk } from "@clerk/nextjs";
 import { createPortal } from "react-dom";
@@ -121,6 +121,12 @@ export function LikeForkBar(props: LikeForkBarProps) {
   );
   const [following, setFollowing] = useState(props.initialFollowing ?? false);
   const [flagOpen, setFlagOpen] = useState(false);
+  const [flagAnchor, setFlagAnchor] = useState<{
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+  } | null>(null);
   const [flagReason, setFlagReason] = useState<FlagReason | null>(null);
   const [flagNote, setFlagNote] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -483,9 +489,16 @@ export function LikeForkBar(props: LikeForkBarProps) {
 
       <button
         type="button"
-        onClick={() => {
+        onClick={(event) => {
           if (!requireAuth()) return;
-          setFlagOpen((v) => !v);
+          const rect = event.currentTarget.getBoundingClientRect();
+          setFlagAnchor({
+            top: rect.top,
+            bottom: rect.bottom,
+            left: rect.left,
+            right: rect.right,
+          });
+          setFlagOpen((open) => !open);
         }}
         disabled={pending}
         title="Flag this content"
@@ -499,6 +512,7 @@ export function LikeForkBar(props: LikeForkBarProps) {
         {!props.compact && <span>Flag</span>}
       </button>
       <FlagPopover
+        anchor={flagAnchor}
         isOpen={flagOpen}
         onClose={() => {
           setFlagOpen(false);
@@ -573,6 +587,7 @@ const POPOVER_WIDTH = 280; // px
 const POPOVER_OFFSET = 8; // px between trigger and popover
 
 function FlagPopover(props: {
+  anchor: { top: number; bottom: number; left: number; right: number } | null;
   isOpen: boolean;
   onClose: () => void;
   pending: boolean;
@@ -583,28 +598,16 @@ function FlagPopover(props: {
   onSubmit: () => void;
   compact: boolean;
 }) {
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-  // useLayoutEffect so we paint positioned correctly on the same frame
-  // the popover opens — no flash of "popover in top-left corner".
-  useLayoutEffect(() => {
-    if (!props.isOpen) {
-      setPos(null);
-      return;
-    }
-    const trigger = document.querySelector<HTMLButtonElement>(
-      "[data-flag-trigger]",
-    );
-    triggerRef.current = trigger;
-    if (!trigger) return;
-    const rect = trigger.getBoundingClientRect();
+  const { anchor, isOpen, onClose } = props;
+  const pos = (() => {
+    if (!isOpen || !anchor || typeof window === "undefined") return null;
     // Default: position to the LEFT of the trigger (because the flag
     // button is on the right end of the LikeForkBar). If there isn't
     // enough room on the left, fall back to below.
     const viewportWidth = window.innerWidth;
-    const rightAlignedLeft = rect.right - POPOVER_WIDTH;
+    const rightAlignedLeft = anchor.right - POPOVER_WIDTH;
     const useRightAligned = rightAlignedLeft >= 8;
-    let left = useRightAligned ? rightAlignedLeft : rect.left;
+    let left = useRightAligned ? rightAlignedLeft : anchor.left;
     // Clamp so the popover never overflows the viewport horizontally.
     if (left + POPOVER_WIDTH > viewportWidth - 8) {
       left = viewportWidth - POPOVER_WIDTH - 8;
@@ -612,24 +615,24 @@ function FlagPopover(props: {
     if (left < 8) left = 8;
     // Position above the trigger if there's room, otherwise below.
     const popoverHeight = 320; // estimate; safe for any content
-    const topAbove = rect.top - popoverHeight - POPOVER_OFFSET;
-    const topBelow = rect.bottom + POPOVER_OFFSET;
+    const topAbove = anchor.top - popoverHeight - POPOVER_OFFSET;
+    const topBelow = anchor.bottom + POPOVER_OFFSET;
     const top =
       topAbove >= 8 ? topAbove : Math.min(topBelow, window.innerHeight - popoverHeight - 8);
-    setPos({ top, left });
-  }, [props.isOpen]);
+    return { top, left };
+  })();
 
   // Escape closes the popover.
   useEffect(() => {
-    if (!props.isOpen) return;
+    if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") props.onClose();
+      if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [props.isOpen, props.onClose]);
+  }, [isOpen, onClose]);
 
-  if (!props.isOpen || !pos || typeof document === "undefined") return null;
+  if (!isOpen || !pos || typeof document === "undefined") return null;
 
   return createPortal(
     <>

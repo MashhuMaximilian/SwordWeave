@@ -1,4 +1,10 @@
-import { libraryOrigin, libraryTier, primitiveGroupKey } from "./library-classification";
+import {
+  canonicalLibraryCategory,
+  libraryCategoryMembers,
+  libraryOrigin,
+  libraryTier,
+  primitiveGroupKey,
+} from "./library-classification";
 // =============================================================================
 // Library query service — Phase 5 Commit B + C
 //
@@ -37,15 +43,21 @@ import { db } from "@/db/client";
 import {
   builds,
   capabilities,
+  capabilityEffects,
   capabilityPrimitives,
   characters,
   effectPrimitives,
   effects,
   follows,
   items,
+  itemCapabilities,
+  itemEffects,
+  itemPrimitives,
   primitives,
   publications,
   heritage,
+  heritageCapabilities,
+  heritagePrimitives,
 } from "@/db/schema";
 import { resolveEngagementMap as sharedResolveEngagementMap } from "@/lib/engagement/engagement-aggregates";
 
@@ -143,6 +155,8 @@ export interface LibraryItem {
   targetId: string;
   name: string;
   description: string | null;
+  /** Compact, generated inventory of the record's nested mechanics. */
+  compositionSummary?: string | null;
   category: string | null;
   /** BU cost (for primitives), or computed total (for capabilities) */
   buCost: number | null;
@@ -383,6 +397,30 @@ function sortItems(items: LibraryItem[], sort: LibrarySort) {
   }
 }
 
+function compactComposition(parts: Array<string | null | undefined>): string | null {
+  const values = [...new Set(parts.map((part) => part?.trim()).filter((part): part is string => Boolean(part)))];
+  return values.length > 0 ? values.join(" · ") : null;
+}
+
+function withoutCompositionLead(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const cleaned = value
+    .replace(/^\s*\*\*Composition:\*\*\s*[^.]+\.\s*/i, "")
+    .replace(/^\s*Composition:\s*[^.]+\.\s*/i, "")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[*_`~#>]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned || value;
+}
+
+function addCompositionPart(map: Map<string, string[]>, id: string, value: string) {
+  const current = map.get(id) ?? [];
+  if (!current.includes(value)) current.push(value);
+  map.set(id, current);
+}
+
 /**
  * NOT EXISTS condition: exclude entities that have an unpublished publication.
  * This ensures entities explicitly set to PRIVATE via the visibility API
@@ -522,7 +560,9 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
   if (q.kind === "creation") conditions.push(or(isNull(primitives.sourceOrigin), notLike(primitives.sourceOrigin, "fork:%"))!);
 
   if (q.category) {
-    conditions.push(eq(primitives.category, q.category as never));
+    conditions.push(
+      inArray(primitives.category, libraryCategoryMembers(q.category) as never[]),
+    );
   }
   if (q.search) {
     // Phase 9.5 follow-up (Mashu 2026-09-07): search must
@@ -541,7 +581,9 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
     conditions.push(
       or(
         ilike(primitives.name, `%${q.search}%`),
+        ilike(primitives.mechanicalOutputText, `%${q.search}%`),
         ilike(primitives.narrativeRule, `%${q.search}%`),
+        sql`${primitives.tags}::text ILIKE ${`%${q.search}%`}`,
         sql`${primitives.hardModifiers}::text ILIKE ${`%${q.search}%`}`,
       )!,
     );
@@ -557,6 +599,7 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       hardModifiers: primitives.hardModifiers,
       mechanicalOutputText: primitives.mechanicalOutputText,
       narrativeRule: primitives.narrativeRule,
+      tags: primitives.tags,
       userId: primitives.userId,
       createdAt: primitives.createdAt,
       // Phase 9 follow-up: needed for My Creations "Kind" filter.
@@ -595,7 +638,12 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       name: r.name,
       description: r.mechanicalOutputText || r.narrativeRule || null,
       costTier: r.costTier,
-      groupKey: primitiveGroupKey(r.category, r.hardModifiers),
+      groupKey: primitiveGroupKey(
+        r.category,
+        r.hardModifiers,
+        r.name,
+        r.sourceOrigin,
+      ),
       category: r.category,
       buCost: r.buCost,
       authorId: r.userId ?? null,
@@ -611,7 +659,7 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       dislikesCount: eng.dislikes,
       forkCount: eng.forks,
       netReactions: eng.likes - eng.dislikes,
-      tags: [],
+      tags: r.tags ?? [],
       sourceOrigin: r.sourceOrigin ?? null,
       // Phase 8: per-entity iconography. resolveIcon picks the live
       // columns when set, otherwise falls back to the backfill
@@ -650,10 +698,36 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
   if (q.kind === "creation") conditions.push(or(isNull(capabilities.sourceOrigin), notLike(capabilities.sourceOrigin, "fork:%"))!);
 
   if (q.search) {
+    const pattern = `%${q.search}%`;
     conditions.push(
       or(
-        ilike(capabilities.name, `%${q.search}%`),
-        ilike(capabilities.verboseDescription, `%${q.search}%`),
+        ilike(capabilities.name, pattern),
+        ilike(capabilities.verboseDescription, pattern),
+        sql`${capabilities.tags}::text ILIKE ${pattern}`,
+        sql`EXISTS (
+          SELECT 1 FROM capability_primitives cp
+          JOIN primitives p ON p.id = cp.primitive_id
+          WHERE cp.capability_id = ${capabilities.id}
+            AND (p.name ILIKE ${pattern} OR p.mechanical_output_text ILIKE ${pattern}
+              OR p.narrative_rule ILIKE ${pattern} OR p.tags::text ILIKE ${pattern}
+              OR p.hard_modifiers::text ILIKE ${pattern})
+        )`,
+        sql`EXISTS (
+          SELECT 1 FROM capability_effects ce
+          JOIN effects e ON e.id = ce.effect_id
+          WHERE ce.capability_id = ${capabilities.id}
+            AND (e.name ILIKE ${pattern} OR e.narrative_description ILIKE ${pattern}
+              OR e.tags::text ILIKE ${pattern})
+        )`,
+        sql`EXISTS (
+          SELECT 1 FROM capability_effects ce
+          JOIN effect_primitives ep ON ep.effect_id = ce.effect_id
+          JOIN primitives p ON p.id = ep.primitive_id
+          WHERE ce.capability_id = ${capabilities.id}
+            AND (p.name ILIKE ${pattern} OR p.mechanical_output_text ILIKE ${pattern}
+              OR p.narrative_rule ILIKE ${pattern} OR p.tags::text ILIKE ${pattern}
+              OR p.hard_modifiers::text ILIKE ${pattern})
+        )`,
       )!,
     );
   }
@@ -687,6 +761,7 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
   // Compute BU totals by joining primitive_links + primitives
   const capabilityIds = rows.map((r) => r.id);
   let buMap = new Map<string, number>();
+  const compositionMap = new Map<string, string[]>();
   if (capabilityIds.length > 0) {
     const links = await db
       .select({
@@ -694,6 +769,7 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
         primitiveId: capabilityPrimitives.primitiveId,
         quantity: capabilityPrimitives.quantity,
         buCost: primitives.buCost,
+        primitiveName: primitives.name,
       })
       .from(capabilityPrimitives)
       .innerJoin(
@@ -706,6 +782,20 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
         link.capabilityId,
         (buMap.get(link.capabilityId) ?? 0) + Math.abs(link.buCost * link.quantity),
       );
+      addCompositionPart(compositionMap, link.capabilityId, link.primitiveName);
+    }
+
+    const effectLinks = await db
+      .select({
+        capabilityId: capabilityEffects.capabilityId,
+        effectId: capabilityEffects.effectId,
+        effectName: effects.name,
+      })
+      .from(capabilityEffects)
+      .innerJoin(effects, eq(capabilityEffects.effectId, effects.id))
+      .where(inArray(capabilityEffects.capabilityId, capabilityIds));
+    for (const link of effectLinks) {
+      addCompositionPart(compositionMap, link.capabilityId, `via ${link.effectName}`);
     }
   }
 
@@ -727,7 +817,8 @@ async function fetchCapabilities(q: LibraryQuery): Promise<LibraryItem[]> {
       targetType: "CAPABILITY" as const,
       targetId: r.id,
       name: r.name,
-      description: r.verboseDescription || null,
+      description: withoutCompositionLead(r.verboseDescription),
+      compositionSummary: compactComposition(compositionMap.get(r.id) ?? []),
       category: r.type,
       buCost: buMap.get(r.id) ?? 0,
       authorId: r.userId ?? null,
@@ -897,10 +988,20 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
   if (q.kind === "creation") conditions.push(or(isNull(effects.sourceOrigin), notLike(effects.sourceOrigin, "fork:%"))!);
 
   if (q.search) {
+    const pattern = `%${q.search}%`;
     conditions.push(
       or(
-        ilike(effects.name, `%${q.search}%`),
-        ilike(effects.narrativeDescription, `%${q.search}%`),
+        ilike(effects.name, pattern),
+        ilike(effects.narrativeDescription, pattern),
+        sql`${effects.tags}::text ILIKE ${pattern}`,
+        sql`EXISTS (
+          SELECT 1 FROM effect_primitives ep
+          JOIN primitives p ON p.id = ep.primitive_id
+          WHERE ep.effect_id = ${effects.id}
+            AND (p.name ILIKE ${pattern} OR p.mechanical_output_text ILIKE ${pattern}
+              OR p.narrative_rule ILIKE ${pattern} OR p.tags::text ILIKE ${pattern}
+              OR p.hard_modifiers::text ILIKE ${pattern})
+        )`,
       )!,
     );
   }
@@ -941,6 +1042,7 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
   // Compute BU total via primitive_links (uses buCost × quantity)
   const effectIds = rows.map((r) => r.id);
   let buMap = new Map<string, number>();
+  const compositionMap = new Map<string, string[]>();
   if (effectIds.length > 0) {
     const links = await db
       .select({
@@ -948,6 +1050,7 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
         primitiveId: effectPrimitives.primitiveId,
         quantity: effectPrimitives.quantity,
         buCost: primitives.buCost,
+        primitiveName: primitives.name,
       })
       .from(effectPrimitives)
       .innerJoin(primitives, eq(effectPrimitives.primitiveId, primitives.id))
@@ -957,6 +1060,7 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
         link.effectId,
         (buMap.get(link.effectId) ?? 0) + Math.abs(link.buCost * link.quantity),
       );
+      addCompositionPart(compositionMap, link.effectId, link.primitiveName);
     }
   }
 
@@ -974,6 +1078,7 @@ async function fetchEffects(q: LibraryQuery): Promise<LibraryItem[]> {
       targetId: r.id,
       name: r.name,
       description: r.narrativeDescription || null,
+      compositionSummary: compactComposition(compositionMap.get(r.id) ?? []),
       category: null,
       buCost: buMap.get(r.id) ?? 0,
       authorId: r.userId ?? null,
@@ -1025,10 +1130,59 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
   if (q.kind === "creation") conditions.push(or(isNull(items.sourceOrigin), notLike(items.sourceOrigin, "fork:%"))!);
 
   if (q.search) {
+    const pattern = `%${q.search}%`;
     conditions.push(
       or(
-        ilike(items.name, `%${q.search}%`),
-        ilike(items.description, `%${q.search}%`),
+        ilike(items.name, pattern),
+        ilike(items.description, pattern),
+        sql`${items.tags}::text ILIKE ${pattern}`,
+        sql`EXISTS (
+          SELECT 1 FROM item_primitives ip
+          JOIN primitives p ON p.id = ip.primitive_id
+          WHERE ip.item_id = ${items.id}
+            AND (p.name ILIKE ${pattern} OR p.mechanical_output_text ILIKE ${pattern}
+              OR p.narrative_rule ILIKE ${pattern} OR p.tags::text ILIKE ${pattern})
+        )`,
+        sql`EXISTS (
+          SELECT 1 FROM item_effects ie JOIN effects e ON e.id = ie.effect_id
+          WHERE ie.item_id = ${items.id}
+            AND (e.name ILIKE ${pattern} OR e.narrative_description ILIKE ${pattern}
+              OR e.tags::text ILIKE ${pattern})
+        )`,
+        sql`EXISTS (
+          SELECT 1 FROM item_effects ie
+          JOIN effect_primitives ep ON ep.effect_id = ie.effect_id
+          JOIN primitives p ON p.id = ep.primitive_id
+          WHERE ie.item_id = ${items.id}
+            AND (p.name ILIKE ${pattern} OR p.mechanical_output_text ILIKE ${pattern}
+              OR p.narrative_rule ILIKE ${pattern} OR p.tags::text ILIKE ${pattern})
+        )`,
+        sql`EXISTS (
+          SELECT 1 FROM item_capabilities ic JOIN capabilities c ON c.id = ic.capability_id
+          WHERE ic.item_id = ${items.id}
+            AND (c.name ILIKE ${pattern} OR c.verbose_description ILIKE ${pattern}
+              OR c.tags::text ILIKE ${pattern})
+        )`,
+        sql`EXISTS (
+          SELECT 1 FROM item_capabilities ic
+          JOIN capability_primitives cp ON cp.capability_id = ic.capability_id
+          JOIN primitives p ON p.id = cp.primitive_id
+          WHERE ic.item_id = ${items.id}
+            AND (p.name ILIKE ${pattern} OR p.mechanical_output_text ILIKE ${pattern}
+              OR p.narrative_rule ILIKE ${pattern} OR p.tags::text ILIKE ${pattern})
+        )`,
+        sql`EXISTS (
+          SELECT 1 FROM item_capabilities ic
+          JOIN capability_effects ce ON ce.capability_id = ic.capability_id
+          JOIN effects e ON e.id = ce.effect_id
+          LEFT JOIN effect_primitives ep ON ep.effect_id = e.id
+          LEFT JOIN primitives p ON p.id = ep.primitive_id
+          WHERE ic.item_id = ${items.id}
+            AND (e.name ILIKE ${pattern} OR e.narrative_description ILIKE ${pattern}
+              OR e.tags::text ILIKE ${pattern} OR p.name ILIKE ${pattern}
+              OR p.mechanical_output_text ILIKE ${pattern} OR p.narrative_rule ILIKE ${pattern}
+              OR p.tags::text ILIKE ${pattern})
+        )`,
       )!,
     );
   }
@@ -1075,6 +1229,28 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
     .where(and(...conditions))
     .limit(500);
 
+  const compositionMap = new Map<string, string[]>();
+  const itemIds = rows.map((row) => row.id);
+  if (itemIds.length > 0) {
+    const [primitiveLinks, effectLinks, capabilityLinks] = await Promise.all([
+      db.select({ itemId: itemPrimitives.itemId, name: primitives.name })
+        .from(itemPrimitives)
+        .innerJoin(primitives, eq(itemPrimitives.primitiveId, primitives.id))
+        .where(inArray(itemPrimitives.itemId, itemIds)),
+      db.select({ itemId: itemEffects.itemId, name: effects.name })
+        .from(itemEffects)
+        .innerJoin(effects, eq(itemEffects.effectId, effects.id))
+        .where(inArray(itemEffects.itemId, itemIds)),
+      db.select({ itemId: itemCapabilities.itemId, name: capabilities.name })
+        .from(itemCapabilities)
+        .innerJoin(capabilities, eq(itemCapabilities.capabilityId, capabilities.id))
+        .where(inArray(itemCapabilities.itemId, itemIds)),
+    ]);
+    for (const link of primitiveLinks) addCompositionPart(compositionMap, link.itemId, link.name);
+    for (const link of effectLinks) addCompositionPart(compositionMap, link.itemId, `via ${link.name}`);
+    for (const link of capabilityLinks) addCompositionPart(compositionMap, link.itemId, `via ${link.name}`);
+  }
+
   const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
   const engagementMap = await resolveEngagementMap(
     rows.map((r) => `ITEM:${r.id}`),
@@ -1094,6 +1270,7 @@ async function fetchItems(q: LibraryQuery): Promise<LibraryItem[]> {
       targetId: r.id,
       name: r.name,
       description: r.description || null,
+      compositionSummary: compactComposition(compositionMap.get(r.id) ?? []),
       category: r.itemType,
       buCost: r.buCost,
       authorId: r.userId ?? null,
@@ -1153,10 +1330,46 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
   }
 
   if (q.search) {
+    const pattern = `%${q.search}%`;
     conditions.push(
       or(
-        ilike(heritage.name, `%${q.search}%`),
-        ilike(heritage.description, `%${q.search}%`),
+        ilike(heritage.name, pattern),
+        ilike(heritage.description, pattern),
+        ilike(heritage.suggestedTraits, pattern),
+        sql`${heritage.tags}::text ILIKE ${pattern}`,
+        sql`EXISTS (
+          SELECT 1 FROM heritage_primitives hp
+          JOIN primitives p ON p.id = hp.primitive_id
+          WHERE hp.template_id = ${heritage.id}
+            AND (p.name ILIKE ${pattern} OR p.mechanical_output_text ILIKE ${pattern}
+              OR p.narrative_rule ILIKE ${pattern} OR p.tags::text ILIKE ${pattern})
+        )`,
+        sql`EXISTS (
+          SELECT 1 FROM heritage_capabilities hc JOIN capabilities c ON c.id = hc.capability_id
+          WHERE hc.template_id = ${heritage.id}
+            AND (c.name ILIKE ${pattern} OR c.verbose_description ILIKE ${pattern}
+              OR c.tags::text ILIKE ${pattern})
+        )`,
+        sql`EXISTS (
+          SELECT 1 FROM heritage_capabilities hc
+          JOIN capability_primitives cp ON cp.capability_id = hc.capability_id
+          JOIN primitives p ON p.id = cp.primitive_id
+          WHERE hc.template_id = ${heritage.id}
+            AND (p.name ILIKE ${pattern} OR p.mechanical_output_text ILIKE ${pattern}
+              OR p.narrative_rule ILIKE ${pattern} OR p.tags::text ILIKE ${pattern})
+        )`,
+        sql`EXISTS (
+          SELECT 1 FROM heritage_capabilities hc
+          JOIN capability_effects ce ON ce.capability_id = hc.capability_id
+          JOIN effects e ON e.id = ce.effect_id
+          LEFT JOIN effect_primitives ep ON ep.effect_id = e.id
+          LEFT JOIN primitives p ON p.id = ep.primitive_id
+          WHERE hc.template_id = ${heritage.id}
+            AND (e.name ILIKE ${pattern} OR e.narrative_description ILIKE ${pattern}
+              OR e.tags::text ILIKE ${pattern} OR p.name ILIKE ${pattern}
+              OR p.mechanical_output_text ILIKE ${pattern} OR p.narrative_rule ILIKE ${pattern}
+              OR p.tags::text ILIKE ${pattern})
+        )`,
       )!,
     );
   }
@@ -1200,6 +1413,23 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
     .where(and(...conditions))
     .limit(500);
 
+  const compositionMap = new Map<string, string[]>();
+  const templateIds = rows.map((row) => row.id);
+  if (templateIds.length > 0) {
+    const [primitiveLinks, capabilityLinks] = await Promise.all([
+      db.select({ templateId: heritagePrimitives.templateId, name: primitives.name })
+        .from(heritagePrimitives)
+        .innerJoin(primitives, eq(heritagePrimitives.primitiveId, primitives.id))
+        .where(inArray(heritagePrimitives.templateId, templateIds)),
+      db.select({ templateId: heritageCapabilities.templateId, name: capabilities.name })
+        .from(heritageCapabilities)
+        .innerJoin(capabilities, eq(heritageCapabilities.capabilityId, capabilities.id))
+        .where(inArray(heritageCapabilities.templateId, templateIds)),
+    ]);
+    for (const link of primitiveLinks) addCompositionPart(compositionMap, link.templateId, link.name);
+    for (const link of capabilityLinks) addCompositionPart(compositionMap, link.templateId, `via ${link.name}`);
+  }
+
   const authorMap = await resolveAuthorMap(rows.map((r) => r.userId));
 
   // Map template kinds → composite IDs for engagement lookup.
@@ -1241,6 +1471,7 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
       targetId: r.id,
       name: r.name,
       description: r.description,
+      compositionSummary: compactComposition(compositionMap.get(r.id) ?? []),
       category: r.kind,
       buCost: null,
       authorId: r.userId ?? null,
@@ -1499,11 +1730,63 @@ export async function listPrimitiveCategories(): Promise<
     .groupBy(primitives.category)
     .orderBy(asc(primitives.category));
 
-  return rows.map((r) => ({
-    value: r.category,
-    label: r.category.replace(/_/g, " "),
-    count: Number(r.count),
+  const merged = new Map<string, number>();
+  for (const row of rows) {
+    const value = canonicalLibraryCategory(row.category);
+    merged.set(value, (merged.get(value) ?? 0) + Number(row.count));
+  }
+  return [...merged.entries()].map(([value, count]) => ({
+    value,
+    label: value.replace(/_/g, " "),
+    count,
   }));
+}
+
+export interface PrimitiveFamilyTier {
+  name: string;
+  tier: number | null;
+  buCost: number;
+  description: string;
+}
+
+export async function listPrimitiveFamilyTiers(
+  category: string,
+): Promise<PrimitiveFamilyTier[]> {
+  if (!category) return [];
+  const rows = await db
+    .select({
+      name: primitives.name,
+      costTier: primitives.costTier,
+      buCost: primitives.buCost,
+      mechanicalOutputText: primitives.mechanicalOutputText,
+      narrativeRule: primitives.narrativeRule,
+    })
+    .from(primitives)
+    .where(
+      and(
+        inArray(
+          primitives.category,
+          libraryCategoryMembers(category) as never[],
+        ),
+        isNull(primitives.userId),
+      ),
+    )
+    .orderBy(asc(primitives.buCost), asc(primitives.name));
+
+  const byTier = new Map<string, PrimitiveFamilyTier>();
+  for (const row of rows) {
+    const tier = libraryTier({ costTier: row.costTier });
+    const key = `${tier ?? "none"}:${row.buCost}`;
+    if (!byTier.has(key)) {
+      byTier.set(key, {
+        name: row.name,
+        tier,
+        buCost: row.buCost,
+        description: row.mechanicalOutputText || row.narrativeRule,
+      });
+    }
+  }
+  return [...byTier.values()];
 }
 
 /**

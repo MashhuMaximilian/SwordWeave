@@ -2,13 +2,54 @@
 export function libraryOrigin(item: { authorId: string | null; authorIsAdmin: boolean | null; sourceOrigin: string | null }): "system" | "community" {
   return !item.authorId || item.authorIsAdmin || item.sourceOrigin === "system" || item.sourceOrigin?.startsWith("system:") ? "system" : "community";
 }
+
+export function libraryAuthorLabel(item: {
+  authorId: string | null;
+  authorIsAdmin: boolean | null;
+  authorDisplayName: string | null;
+  authorUsername: string | null;
+  sourceOrigin: string | null;
+}): string {
+  if (libraryOrigin(item) === "system") return "System";
+  return item.authorDisplayName ?? item.authorUsername ?? "Community";
+}
+
+const CATEGORY_ALIASES: Record<string, string> = {
+  CHARACTER_SHEET_AUGMENT: "SHEET_AUGMENT",
+};
+
+export function canonicalLibraryCategory(category: string): string {
+  return CATEGORY_ALIASES[category] ?? category;
+}
+
+export function libraryCategoryMembers(category: string): string[] {
+  const canonical = canonicalLibraryCategory(category);
+  return [
+    canonical,
+    ...Object.entries(CATEGORY_ALIASES)
+      .filter(([, target]) => target === canonical)
+      .map(([alias]) => alias),
+  ];
+}
 export function libraryTier(item: { costTier?: string | null }): number | null {
   const match = item.costTier?.match(/tier\s*(\d+)/i);
   return match ? Number(match[1]) : null;
 }
-export function primitiveGroupKey(category: string, modifiers: unknown): string {
-  if (!Array.isArray(modifiers) || !modifiers.length) return "Unclassified";
-  if (!modifiers[0] || typeof modifiers[0] !== "object") return "Unclassified";
+export function primitiveGroupKey(
+  category: string,
+  modifiers: unknown,
+  name?: string,
+  sourceOrigin?: string | null,
+): string {
+  if (sourceOrigin === "system" || sourceOrigin?.startsWith("system:")) {
+    return "Canonical references";
+  }
+  if (category === "DOMAIN" && name) {
+    const match = name.match(/^domain\s+o(?:f|d)\s+(.+?)(?:\s*\(fork\))?$/i);
+    if (match?.[1]) return match[1].trim().replace(/\s+/g, " ");
+  }
+  if (!Array.isArray(modifiers) || !modifiers.length) return "Community expressions";
+  if (!modifiers[0] || typeof modifiers[0] !== "object") return "Community expressions";
   const first = modifiers[0] as Record<string, unknown>;
   const metadata = first["metadata"] as Record<string, unknown> | undefined;
   const scope = (metadata?.["targetScope"] ?? first["scope"]) as Record<string, unknown> | undefined;
@@ -20,14 +61,14 @@ export function primitiveGroupKey(category: string, modifiers: unknown): string 
   const values = scope?.["values"] ?? first["targetValues"] ?? first["targetValue"];
   if (Array.isArray(values) && values.length) return values.map(String).sort().join(" · ");
   if (typeof values === "string" && values) return values;
-  return category === "DOMAIN" ? "Unclassified" : String(first["target"] ?? category).replaceAll("_", " ");
+  return category === "DOMAIN" ? "Community expressions" : String(first["target"] ?? category).replaceAll("_", " ");
 }
 
 /** Preserve identity boundaries even when two scopes have the same display text. */
 export function groupLibraryEntries<T extends { category?: string | null; costTier?: string | null; groupKey?: string | null }>(items: T[]) {
   const groups = new Map<string, { id: string; category: string | null; tier: number | null; key: string; entries: T[] }>();
   for (const item of items) {
-    const category = item.category ?? null;
+    const category = item.category ? canonicalLibraryCategory(item.category) : null;
     const tier = libraryTier(item);
     const key = item.groupKey ?? "Unclassified";
     const id = JSON.stringify([category, tier, key]);

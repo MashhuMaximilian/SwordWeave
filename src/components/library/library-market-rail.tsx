@@ -34,6 +34,7 @@ const FAMILY_LABELS: Record<string, string> = {
   ACTION_ECONOMY: "Action Economy",
   EVALUATION_STRAIN: "Evaluation and Strain",
   TEMPORAL_CHRONOLOGICAL: "Time and Chronology",
+  SHEET_AUGMENT: "Character Sheet Augment",
 };
 
 export function libraryFamilyLabel(category: Pick<Category, "value" | "label">): string {

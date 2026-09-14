@@ -159,6 +159,7 @@ export default async function CodexPage({ searchParams }: PageProps) {
           totalPages={totalPages}
           initialState={initialState}
           primitiveCategories={categories}
+          familyTiers={[]}
           itemTags={itemTags}
           activeTags={tagFilter}
           engagement={engagement}

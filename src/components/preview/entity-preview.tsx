@@ -964,7 +964,7 @@ function CapabilityBody({
         effectId: e.effectId,
         primitiveLinks: (e.effect.primitiveLinks ?? []).map((pl) => ({
           primitiveId: pl.primitive.id,
-          quantity: pl.quantity,
+          quantity: 1,
           primitive: { id: pl.primitive.id, buCost: pl.primitive.buCost },
         })),
       })),
@@ -1028,7 +1028,7 @@ function CapabilityBody({
               <span>{l.primitive.category}</span>
               <span className="rounded bg-secondary px-1.5 py-0.5 font-medium">{l.role.replace(/_/g, " ")}</span>
               {l.quantity > 1 ? <span>× {l.quantity}</span> : null}
-              {l.slotLabel ? <span className="italic">"{l.slotLabel}"</span> : null}
+              {l.slotLabel ? <span className="italic">&ldquo;{l.slotLabel}&rdquo;</span> : null}
               <span className="rounded bg-primary/15 px-1.5 py-0.5 font-medium text-primary">direct</span>
             </>
           ),
@@ -1066,7 +1066,7 @@ function CapabilityBody({
           bu: (l.effect.primitiveLinks ?? []).reduce((s, x) => s + Math.abs(x.primitive.buCost * x.quantity), 0),
           versionNumber: l.versionNumber,
           note: l.effect.narrativeDescription ?? null,
-          subText: l.slotLabel ? <span className="italic">"{l.slotLabel}"</span> : undefined,
+          subText: l.slotLabel ? <span className="italic">&ldquo;{l.slotLabel}&rdquo;</span> : undefined,
           // Phase 8.1 batch 13.4 follow-up: open the effect preview
           // when the user clicks this row. The default (PRIMITIVE)
           // routes the click to the wrong endpoint. Mashu 2026-07-22:
@@ -1099,31 +1099,24 @@ function TemplateBody({
     })),
     capabilityLinks: row.capabilityLinks.map((cl) => ({
       capabilityId: cl.capability.id,
-      // NOTE: TemplateRow.capability only carries primitiveLinks
-      // today, not effectLinks. When we extend the type to include
-      // effect-of-capability primitives, the helper will pick
-      // them up automatically — no changes needed here.
       primitiveLinks: (cl.capability.primitiveLinks ?? []).map((pl) => ({
         primitiveId: pl.primitive.id,
         quantity: 1,
         primitive: { id: pl.primitive.id, buCost: pl.primitive.buCost },
       })),
+      effectLinks: (cl.capability.effectLinks ?? []).map((effectLink) => ({
+        effectId: effectLink.effectId,
+        primitiveLinks: (effectLink.primitiveLinks ?? []).map((pl) => ({
+          primitiveId: pl.primitive.id,
+          quantity: 1,
+          primitive: { id: pl.primitive.id, buCost: pl.primitive.buCost },
+        })),
+      })),
     })),
   });
   const primitiveBu = Math.abs(transitiveResult.transitiveBu);
-  // Phase 8.1 batch 13.2: collect primitives from each bundled
-  // capability. Per Mashu 2026-07-22: "we should also list
-  // primitives from capabilities. And if said capability has an
-  // effect, in same section with primitives from capability we
-  // should list the primitives from effect of capability too."
-  //
-  // NOTE: TemplateRow.capability currently only carries
-  // primitiveLinks (not effectLinks). To list "primitives from
-  // effects of capabilities" in the heritage preview, the
-  // capability join in the heritage fetch needs to be extended.
-  // Tracked for a follow-up batch — the capability-level preview
-  // already lists "Primitives from effects" because the join is
-  // richer there.
+  // Collect every primitive inherited through a bundled capability,
+  // including primitives nested one level deeper inside its effects.
   const capabilityPrimitiveLinks = row.capabilityLinks.flatMap((cl) =>
     (cl.capability.primitiveLinks ?? []).map((pl) => ({
       primitiveId: pl.primitiveId,
@@ -1132,6 +1125,17 @@ function TemplateBody({
       source: `via capability: ${cl.capability.name}`,
     })),
   );
+  const capabilityEffectPrimitiveLinks = row.capabilityLinks.flatMap((cl) =>
+    (cl.capability.effectLinks ?? []).flatMap((effectLink) =>
+      (effectLink.primitiveLinks ?? []).map((pl) => ({
+        primitiveId: pl.primitiveId,
+        quantity: 1,
+        primitive: pl.primitive,
+        source: `via capability: ${cl.capability.name} › effect: ${effectLink.effect.name}`,
+      })),
+    ),
+  );
+  const inheritedPrimitiveLinks = [...capabilityPrimitiveLinks, ...capabilityEffectPrimitiveLinks];
   return (
     <div className="space-y-4">
       <Header
@@ -1178,17 +1182,14 @@ function TemplateBody({
           ),
         }))}
       />
-      {/* Phase 8.1 batch 13.2: NEW section. Primitives that come in
-          via the heritage's bundled capabilities. Each row tagged
-          with the source path so the player can trace the chain.
-          Effect-of-capability primitives will be added in a follow-
-          up batch once TemplateRow.capability grows an effectLinks
-          field. */}
-      {capabilityPrimitiveLinks.length > 0 ? (
+      {/* Each inherited primitive keeps its source path visible so the
+          player can distinguish direct capability pieces from pieces
+          contributed by an effect inside that capability. */}
+      {inheritedPrimitiveLinks.length > 0 ? (
         <ComposedList
-          title={`Primitives from capabilities (${capabilityPrimitiveLinks.length})`}
+          title={`Primitives from capabilities (${inheritedPrimitiveLinks.length})`}
           onSubLink={onSubLink}
-          items={capabilityPrimitiveLinks.map((pl) => ({
+          items={inheritedPrimitiveLinks.map((pl) => ({
             id: String(pl.primitive.id),
             name: pl.primitive.name,
             bu: Math.abs(pl.primitive.buCost * pl.quantity),
@@ -1246,8 +1247,49 @@ function ItemBody({
   row: SandboxItemRow;
   onSubLink: (link: PreviewSubLink) => void;
 }) {
-  const primitiveBu = row.primitiveLinks.reduce((s, l) => s + l.primitive.buCost, 0);
-  const totalBu = row.buCost + primitiveBu;
+  const transitive = computeTransitiveBu({
+    primitiveLinks: row.primitiveLinks.map((link) => ({
+      primitiveId: link.primitive.id,
+      quantity: 1,
+      primitive: { id: link.primitive.id, buCost: link.primitive.buCost },
+    })),
+    effectLinks: row.effectLinks.map((effectLink) => ({
+      effectId: effectLink.effectId,
+      primitiveLinks: (effectLink.effect.primitiveLinks ?? []).map((link) => ({
+        primitiveId: link.primitive.id,
+        quantity: link.quantity,
+        primitive: { id: link.primitive.id, buCost: link.primitive.buCost },
+      })),
+    })),
+    capabilityLinks: row.capabilityLinks.map((capabilityLink) => ({
+      capabilityId: capabilityLink.capabilityId,
+      primitiveLinks: capabilityLink.capability.primitiveLinks ?? [],
+      effectLinks: capabilityLink.capability.effectLinks ?? [],
+    })),
+  });
+  const totalBu = row.buCost + Math.abs(transitive.transitiveBu);
+  const inheritedPrimitiveLinks = [
+    ...row.effectLinks.flatMap((effectLink) =>
+      (effectLink.effect.primitiveLinks ?? []).map((link) => ({
+        ...link,
+        source: `via effect: ${effectLink.effect.name}`,
+      })),
+    ),
+    ...row.capabilityLinks.flatMap((capabilityLink) => [
+      ...(capabilityLink.capability.primitiveLinks ?? []).map((link) => ({
+        ...link,
+        quantity: 1,
+        source: `via capability: ${capabilityLink.capability.name}`,
+      })),
+      ...(capabilityLink.capability.effectLinks ?? []).flatMap((effectLink) =>
+        (effectLink.primitiveLinks ?? []).map((link) => ({
+          ...link,
+          quantity: 1,
+          source: `via capability: ${capabilityLink.capability.name} › effect: ${effectLink.effect.name}`,
+        })),
+      ),
+    ]),
+  ];
   return (
     <div className="space-y-4">
       <Header
@@ -1321,6 +1363,22 @@ function ItemBody({
           versionNumber: l.versionNumber,
         }))}
       />
+      {inheritedPrimitiveLinks.length > 0 ? (
+        <ComposedList
+          title={`Inherited primitives (${inheritedPrimitiveLinks.length})`}
+          onSubLink={onSubLink}
+          items={inheritedPrimitiveLinks.map((link) => ({
+            id: String(link.primitive.id),
+            name: link.primitive.name,
+            bu: Math.abs(link.primitive.buCost * link.quantity),
+            subText: (
+              <span className="rounded bg-primary/15 px-1.5 py-0.5 font-medium text-primary">
+                {link.source}
+              </span>
+            ),
+          }))}
+        />
+      ) : null}
       <ComposedList
         title={`Composed effects (${row.effectLinks.length})`}
         onSubLink={onSubLink}

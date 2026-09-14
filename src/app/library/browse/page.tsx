@@ -11,6 +11,7 @@ import { db } from "@/db/client";
 import {
   listItemTags,
   listPrimitiveCategories,
+  listPrimitiveFamilyTiers,
   queryLibrary,
   type LibrarySort,
   type LibraryTargetType,
@@ -97,6 +98,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
     categories,
     itemTags,
     result,
+    familyTiers,
   ] = await Promise.all([
     listPrimitiveCategories(),
     listItemTags(),
@@ -120,6 +122,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
       limit: PAGE_SIZE,
       offset,
     }),
+    category ? listPrimitiveFamilyTiers(category) : Promise.resolve([]),
   ]);
 
   // Resolve current user (Clerk auth) and per-item engagement state.
@@ -220,6 +223,7 @@ export default async function LibraryBrowsePage({ searchParams }: PageProps) {
           totalPages={totalPages}
           initialState={initialState}
           primitiveCategories={categories}
+          familyTiers={familyTiers}
           itemTags={itemTags}
           activeTags={tagFilter}
           engagement={engagement}

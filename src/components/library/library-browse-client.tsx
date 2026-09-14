@@ -12,7 +12,11 @@
 // keeping the browse list visible behind. ESC / backdrop click closes it.
 // =============================================================================
 
-import { groupLibraryEntries, libraryOrigin, libraryTier } from "@/lib/publishing/library-classification";
+import {
+  groupLibraryEntries,
+  libraryAuthorLabel,
+  libraryOrigin,
+} from "@/lib/publishing/library-classification";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { LibraryToolbar } from "@/components/library/library-toolbar";
@@ -21,7 +25,10 @@ import { FetchedEntityPreview } from "@/components/preview/entity-preview";
 import { DetailModal } from "@/components/ui/detail-modal";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
 import { useGlobalControls } from "@/components/layout/global-controls";
-import type { LibraryItem } from "@/lib/publishing/library-query";
+import type {
+  LibraryItem,
+  PrimitiveFamilyTier,
+} from "@/lib/publishing/library-query";
 import type { LibraryEngagement } from "@/components/library/library-table";
 import type { LibraryToolbarState } from "@/components/library/library-toolbar";
 import {
@@ -32,6 +39,7 @@ import { LibraryProvenance } from "./library-provenance";
 import { ForkMapButton } from "@/components/engagement/fork-map-button";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 import { IconDisplay } from "@/components/icons/icon-display";
+import { buildSandboxUrl } from "@/lib/publishing/fork-target";
 
 const ENTITY_ICONS: Record<string, string> = {
   PRIMITIVE: "delapouite/cube",
@@ -61,6 +69,7 @@ interface Props {
   totalPages: number;
   initialState: LibraryToolbarState;
   primitiveCategories: Array<{ value: string; label: string; count: number }>;
+  familyTiers: PrimitiveFamilyTier[];
   /**
    * Distinct item tags (with counts) for the chip-based tag filter
    * in the toolbar. Server-loaded so the chips render in a single
@@ -92,6 +101,7 @@ export function LibraryBrowseClient({
   totalPages,
   initialState,
   primitiveCategories,
+  familyTiers,
   itemTags = [],
   activeTags = [],
   engagement,
@@ -102,6 +112,9 @@ export function LibraryBrowseClient({
     initialItems[0] ?? null,
   );
   const selectedItem = initialItems.find(item => item.id === selection?.id) ?? initialItems[0] ?? null;
+  const selectedForkTarget = selectedItem
+    ? buildSandboxUrl(selectedItem.targetType, selectedItem.targetId, "fork")
+    : null;
   const [detailOpen, setDetailOpen] = useState(false);
   const workbenchRef = useRef<HTMLDivElement>(null);
   const [leftWidth, setLeftWidth] = useState(270);
@@ -242,7 +255,11 @@ export function LibraryBrowseClient({
         <ColumnSearchBar
           search={state.search}
           onSearchChange={(s: string) =>
-            onStateChange({ ...state, search: s })
+            onStateChange({
+              ...state,
+              search: s,
+              ...(s.trim() ? { category: "", tier: "", origin: "all" as const } : {}),
+            })
           }
           onOpenFilters={() => setFilterPanelOpen(true)}
           hasActiveFilters={hasActiveFilters}
@@ -294,13 +311,16 @@ export function LibraryBrowseClient({
               </a>
             ) : null}
           </div>
-          {effectiveCategory && isPrimitiveMode ? (
+          {effectiveCategory && isPrimitiveMode && familyTiers.length ? (
             <div className="v12-tier-ladder" aria-label="Canonical cost tiers">
-              {(effectiveCategory === "DOMAIN" ? [4, 8, 12, 16] : []).map((bu, index) => (
-                <div key={bu}>
-                  <span>T{index + 1}</span>
-                  <div><b>{["Concrete / physical", "Hybrid / systemic", "Abstract / relational", "Reality-defining"][index]}</b><p>{["Fire, water, air, metal, light, motion…", "Life, decay, memory, space, resonance…", "Identity, will, belief, probability, law…", "Existence, causality, paradox, fundamental laws…"][index]}</p></div>
-                  <em>{bu} BU</em>
+              {familyTiers.map((tier) => (
+                <div key={`${tier.tier}:${tier.buCost}`}>
+                  <span>{tier.tier ? `T${tier.tier}` : "—"}</span>
+                  <div className="v12-tier-copy">
+                    <b>{tier.name}</b>
+                    {tier.description ? <p>{tier.description}</p> : null}
+                  </div>
+                  <em>{tier.buCost} BU</em>
                 </div>
               ))}
             </div>
@@ -355,9 +375,14 @@ export function LibraryBrowseClient({
                         {libraryOrigin(item) === "community" ? "Community" : "System"}
                       </span>
                     </div>
-                    <p data-readable-rule>{item.description || "No public description."}</p>
+                    {item.compositionSummary ? (
+                      <p className="v12-entry-composition" data-readable-rule>
+                        <strong>Composition:</strong> {item.compositionSummary}
+                      </p>
+                    ) : null}
+                    <p className="v12-entry-summary" data-readable-rule>{item.description || "No public description."}</p>
                     <div className="v12-entry-lineage">
-                      <span>{item.authorDisplayName ?? item.authorUsername ?? "System"}</span>
+                      <span>{libraryAuthorLabel(item)}</span>
                       <div onClick={(event) => event.stopPropagation()}>
                         <LikeForkBar
                           targetType={item.targetType}
@@ -368,7 +393,7 @@ export function LibraryBrowseClient({
                           initialUserReaction={engagement.reactions[item.id] ?? null}
                           initialFollowing={engagement.following[item.id] ?? false}
                           authorId={item.authorId}
-                          authorUsername={item.authorUsername}
+                          authorUsername={libraryOrigin(item) === "system" ? null : item.authorUsername}
                           currentUserId={currentUserInternalId}
                           compact
                         />
@@ -424,7 +449,13 @@ export function LibraryBrowseClient({
                 <div className="v12-rule" data-readable-rule>
                   {selectedItem.description || "No public description."}
                 </div>
-                <LibraryProvenance targetType={selectedItem.targetType} targetId={selectedItem.targetId} name={selectedItem.name} author={selectedItem.authorDisplayName ?? selectedItem.authorUsername ?? "System"} />
+                {selectedItem.compositionSummary ? (
+                  <div className="v12-inspector-composition" data-readable-rule>
+                    <span>Composition</span>
+                    <p>{selectedItem.compositionSummary}</p>
+                  </div>
+                ) : null}
+                <LibraryProvenance targetType={selectedItem.targetType} targetId={selectedItem.targetId} name={selectedItem.name} author={libraryAuthorLabel(selectedItem)} />
                 <div className="v12-inspector-actions">
                   <a
                     href={`/atelier?build=${atelierBuildForTarget(selectedItem.targetType)}&edit=${selectedItem.targetId}&intent=load`}
@@ -438,6 +469,14 @@ export function LibraryBrowseClient({
                   >
                     Source page
                   </a>
+                  {selectedForkTarget ? (
+                    <a
+                      href={`${selectedForkTarget.sandboxPath}${selectedForkTarget.search}`}
+                      className="v12-metal-button"
+                    >
+                      Fork this entry
+                    </a>
+                  ) : null}
                   <ForkMapButton key={selectedItem.id}
                     targetType={selectedItem.targetType}
                     targetId={selectedItem.targetId}
@@ -468,7 +507,7 @@ export function LibraryBrowseClient({
         size="lg"
       >
         {selectedItem ? (
-          <FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:selectedItem.authorUsername, authorDisplayName:selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:selectedItem.sourceOrigin }} />
+          <FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "system" : selectedItem.sourceOrigin }} />
         ) : null}
       </DetailModal>
     </div>
