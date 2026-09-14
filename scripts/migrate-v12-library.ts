@@ -85,6 +85,10 @@ async function migrate(tx:typeof db) {
   if (apply) {
     const repairs = await tx.select().from(primitives).where(sql`${primitives.name} IN ('Bodily boon','Enfeebling Envenom') OR ${primitives.name} LIKE 'Structure Tier %' OR ${primitives.category}='ITEM_AUGMENT'`);
     for (const row of repairs) {
+      // Catalog-managed rows are already normalized below. Reprocessing them
+      // here would make the legacy modifier renderer and canonical sentence
+      // renderer overwrite one another on every run.
+      if (row.sourceOrigin?.startsWith("system:v12:")) continue;
       const isStructure=/^Structure Tier /i.test(row.name);
       const isBodily=row.name.toLowerCase()==="bodily boon";
       const isEnvenom=row.name.toLowerCase()==="enfeebling envenom";
@@ -111,10 +115,10 @@ async function migrate(tx:typeof db) {
     if (!existing) { report.ambiguous.push({id:0,name:template.name,reason:"canonical template missing"}); continue; }
     report.templates++; templateIds.set(template.key,existing.id);
     const text=renderMechanicalRule(template.rule);
-    const changed=existing.definitionKind!=="TEMPLATE" || existing.mechanicalTemplateText!==text || existing.mechanicalOutputText!==text;
+    const changed=existing.definitionKind!=="TEMPLATE" || existing.mechanicalTemplateText!==text || existing.mechanicalOutputText!==text || existing.narrativeRule!==template.verboseDescription;
     let row=existing;
     if (apply) {
-      [row]=await tx.update(primitives).set({definitionKind:"TEMPLATE",templatePrimitiveId:null,bindingSchema:template.bindingSchema,bindings:{},mechanicalRule:template.rule as Record<string,unknown>,mechanicalTemplateText:text,mechanicalOutputText:text,narrativeRule:existing.narrativeRule || template.verboseDescription,updatedAt:new Date()}).where(eq(primitives.id,existing.id)).returning();
+      [row]=await tx.update(primitives).set({definitionKind:"TEMPLATE",templatePrimitiveId:null,bindingSchema:template.bindingSchema,bindings:{},mechanicalRule:template.rule as Record<string,unknown>,mechanicalTemplateText:text,mechanicalOutputText:text,narrativeRule:template.verboseDescription,updatedAt:new Date()}).where(eq(primitives.id,existing.id)).returning();
       await tx.insert(primitiveMarketClassifications).values({primitiveId:existing.id,familyKey:template.familyKey,tier:template.tier,expressionKey:null,canonicalTemplateId:existing.id,canonicalExpressionId:null,source:"CATALOG",status:"CLASSIFIED",evidence:{catalogKey:template.key}}).onConflictDoUpdate({target:primitiveMarketClassifications.primitiveId,set:{familyKey:template.familyKey,tier:template.tier,expressionKey:null,canonicalTemplateId:existing.id,source:"CATALOG",status:"CLASSIFIED",evidence:{catalogKey:template.key},updatedAt:new Date()}});
       await ensureVersion(tx,row!,changed);
     }
@@ -134,8 +138,8 @@ async function migrate(tx:typeof db) {
     let changed=false;
     if (apply) {
       if (existing) {
-        changed=existing.mechanicalOutputText!==text || existing.templatePrimitiveId!==templateId;
-        [row]=await tx.update(primitives).set({name:binding.name,isPublic:true,definitionKind:"EXPRESSION",templatePrimitiveId:templateId,bindingSchema:{},bindings:binding.bindings,mechanicalRule:rule as Record<string,unknown>,mechanicalTemplateText:"",mechanicalOutputText:text,narrativeRule:existing.narrativeRule || template.verboseDescription,hardModifiers:hardModifierFor(template.key,binding.bindings),sourceOrigin,updatedAt:new Date()}).where(eq(primitives.id,existing.id)).returning();
+        changed=existing.mechanicalOutputText!==text || existing.templatePrimitiveId!==templateId || existing.narrativeRule!==template.verboseDescription;
+        [row]=await tx.update(primitives).set({name:binding.name,isPublic:true,definitionKind:"EXPRESSION",templatePrimitiveId:templateId,bindingSchema:{},bindings:binding.bindings,mechanicalRule:rule as Record<string,unknown>,mechanicalTemplateText:"",mechanicalOutputText:text,narrativeRule:template.verboseDescription,hardModifiers:hardModifierFor(template.key,binding.bindings),sourceOrigin,updatedAt:new Date()}).where(eq(primitives.id,existing.id)).returning();
       } else {
         [row]=await tx.insert(primitives).values({name:binding.name,userId:null,isPublic:true,category:template.category as typeof primitives.$inferInsert.category,costTier:`Tier ${template.tier ?? 1}`,buCost:template.buCost,definitionKind:"EXPRESSION",templatePrimitiveId:templateId,bindingSchema:{},bindings:binding.bindings,mechanicalRule:rule as Record<string,unknown>,mechanicalOutputText:text,narrativeRule:template.verboseDescription,hardModifiers:hardModifierFor(template.key,binding.bindings),sourceOrigin}).returning();
         changed=true;
@@ -158,7 +162,7 @@ async function migrate(tx:typeof db) {
     if (apply) {
       const values={name:expression.name,isPublic:true,definitionKind:"EXPRESSION" as const,templatePrimitiveId:null,bindingSchema:{},bindings:{},mechanicalRule:{family:"DOCUMENTED",text:expression.mechanicalText},mechanicalTemplateText:"",mechanicalOutputText:expression.mechanicalText,narrativeRule:expression.verboseDescription,hardModifiers:expression.modifier ? [expression.modifier] : [],sourceOrigin,updatedAt:new Date()};
       let row; let changed=true;
-      if(existing){ changed=existing.mechanicalOutputText!==expression.mechanicalText || existing.definitionKind!=="EXPRESSION"; [row]=await tx.update(primitives).set(values).where(eq(primitives.id,existing.id)).returning(); }
+      if(existing){ changed=existing.mechanicalOutputText!==expression.mechanicalText || existing.narrativeRule!==expression.verboseDescription || existing.definitionKind!=="EXPRESSION"; [row]=await tx.update(primitives).set(values).where(eq(primitives.id,existing.id)).returning(); }
       else [row]=await tx.insert(primitives).values({...values,userId:null,category:expression.category as typeof primitives.$inferInsert.category,costTier:`Tier ${expression.tier ?? 0}`,buCost:expression.buCost}).returning();
       await ensureVersion(tx,row!,changed);
       await tx.insert(primitiveMarketClassifications).values({primitiveId:row!.id,familyKey:expression.familyKey,tier:expression.tier,expressionKey:expression.key,canonicalTemplateId:null,canonicalExpressionId:row!.id,source:"CATALOG",status:"CLASSIFIED",evidence:{catalogKey:expression.key}}).onConflictDoUpdate({target:primitiveMarketClassifications.primitiveId,set:{familyKey:expression.familyKey,tier:expression.tier,expressionKey:expression.key,canonicalTemplateId:null,canonicalExpressionId:row!.id,source:"CATALOG",status:"CLASSIFIED",evidence:{catalogKey:expression.key},updatedAt:new Date()}});

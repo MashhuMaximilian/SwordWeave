@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import {
   SIZE_LOAD,
   type CharacterSize,
@@ -673,14 +674,13 @@ export function ItemComposer({
               </Field>
             </div>
             <Field label="Description">
-              <textarea
+              <MarkdownEditor
                 value={form.description}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, description: e.target.value }))
+                onChange={(value) =>
+                  setForm((f) => ({ ...f, description: value }))
                 }
                 placeholder="Lore, mechanics, anything notable..."
                 rows={3}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
               />
             </Field>
             <Field label="Tags (comma separated)">

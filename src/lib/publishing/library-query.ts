@@ -63,7 +63,7 @@ import {
 } from "@/db/schema";
 import { mechanicalDescriptionFromModifiers } from "@/lib/primitives/mechanical-rule";
 import { resolveEngagementMap as sharedResolveEngagementMap } from "@/lib/engagement/engagement-aggregates";
-import { MARKET_FAMILIES } from "@/lib/primitives/canonical-market";
+import { CANONICAL_EXPRESSIONS, MARKET_FAMILIES, MARKET_TEMPLATES } from "@/lib/primitives/canonical-market";
 import type { HardModifier } from "@/types/swordweave";
 
 export type LibrarySort =
@@ -530,6 +530,14 @@ async function loadCompositionPaths(root: CompositionRoot, ids: string[]) {
     result.set(row.owner_id, [...(result.get(row.owner_id) ?? []), value]);
   }
   return result;
+}
+
+/** Bundles purchase each referenced primitive identity once, even when the
+ * same primitive appears through several capabilities/effects or quantities. */
+function uniquePrimitiveBu(paths: LibraryCompositionPath[]) {
+  const unique = new Map<number, number>();
+  for (const path of paths) if (!unique.has(path.primitiveId)) unique.set(path.primitiveId, Math.abs(path.buCost));
+  return [...unique.values()].reduce((total, cost) => total + cost, 0);
 }
 
 /**
@@ -1661,7 +1669,7 @@ async function fetchTemplates(q: LibraryQuery): Promise<LibraryItem[]> {
       compositionPaths: compositionPaths.get(r.id) ?? [],
       verboseDescription: r.description,
       category: r.kind,
-      buCost: null,
+      buCost: uniquePrimitiveBu(compositionPaths.get(r.id) ?? []),
       authorId: r.userId ?? null,
       authorUsername: author?.username ?? null,
       authorDisplayName: author?.displayName ?? null,
@@ -1972,13 +1980,15 @@ export async function listPrimitiveFamilyTiers(
   for (const row of ordered) {
     const tier = libraryTier({ costTier: row.costTier });
     const key = `${tier ?? "none"}:${row.buCost}`;
+    const catalogDescription = MARKET_TEMPLATES.find(template=>template.name===row.name)?.verboseDescription
+      ?? CANONICAL_EXPRESSIONS.find(expression=>expression.name===row.name)?.verboseDescription;
     if (!byTier.has(key)) {
       byTier.set(key, {
         id: row.id,
         name: row.name,
         tier,
         buCost: row.buCost,
-        description: mechanicalDescriptionFromModifiers(row.hardModifiers) || row.mechanicalTemplateText || row.mechanicalOutputText || row.narrativeRule,
+        description: catalogDescription || mechanicalDescriptionFromModifiers(row.hardModifiers) || row.mechanicalTemplateText || row.mechanicalOutputText || row.narrativeRule,
       });
     }
   }

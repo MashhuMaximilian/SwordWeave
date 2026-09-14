@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import type {
   HardModifier,
   JsonValue,
@@ -958,11 +959,12 @@ export function PrimitiveRegistry({
 
             <label className="block text-sm font-medium md:col-span-2">
               Verbose Narrative Rule
-              <textarea
-                className="mt-2 min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
+              <MarkdownEditor
+                className="mt-2"
                 value={form.narrativeRule}
-                onChange={(event) => updateForm("narrativeRule", event.target.value)}
+                onChange={(value) => updateForm("narrativeRule", value)}
                 placeholder="Roots an entity to its current spatial coordinate..."
+                rows={5}
               />
             </label>
 

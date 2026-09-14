@@ -76,6 +76,18 @@ const DOMAIN_TIERS: Record<number, string[]> = {
 
 const title = (key:string) => key.toLowerCase().replaceAll("-"," ").replace(/\b\w/g, c=>c.toUpperCase());
 const tierCost = (tier:number) => tier * 4;
+const DOMAIN_DESCRIPTIONS = [
+  "Grounded, directly observable domains: fire, water, air, earth, metal, stone, wood, ice, lightning, light, darkness, local gravity, motion, force, sound, heat, cold, pressure, friction, vibration, basic weather, terrain, simple tissue, and simple ecosystems.",
+  "Hybrid physical and conceptual systems: life, decay, growth, memory, emotion, local time and space, disease, evolution, energy, magnetism, entropy, localized chaos, order, perception, language, adaptation, transformation, networks, resonance, balance, and instability.",
+  "Abstract and systemic domains: consciousness, identity, will, intent, thought, belief, information, local probability, limited fate, bounded causality, narrative structure, collective memory, archetypes, societies, conflict, law, hierarchy, synchronization, and symbolic systems.",
+  "Fundamental and reality-defining domains: existence, non-existence, reality, global causality, absolute time, global space, existential identity, probability fields, narrative authority, rule logic, paradox, void structures, origin and termination states, reality layers, and fundamental laws.",
+] as const;
+const VERB_DESCRIPTIONS = [
+  "Ground-level interaction with reality. Includes move, strike, push, pull, lift, drop, interact, sense, observe, touch, grab, throw, break, hold, release, dodge, crawl, run, simple creation or destruction, and simple force application.",
+  "Manipulation of existing states and properties. Includes alter, combine, separate, enhance, weaken, suppress, extend, compress, reshape, redirect, convert, stabilize, amplify, reduce, transfer, infuse, extract, bind, disrupt, channel, and change material state or energy flow.",
+  "Control over the internal structure of systems and entities. Includes restructure, reconfigure, invert, synchronize, entangle, merge or split systems, override local rules, impose constraints, unlock latent states, collapse subsystems, and redirect bounded causal chains.",
+  "Interaction with governing logic and abstract systems. Includes override or suspend rules, redefine interaction logic, enforce outcomes, rewrite constraints, negate conditions, alter causality, define exceptions, modify probability structures, reshape narrative causality, and redefine identity or existence within scope.",
+] as const;
 
 export const MARKET_TEMPLATES: readonly MarketTemplateDefinition[] = [
   ...[1,2,3,4].map((tier):MarketTemplateDefinition => ({
@@ -84,7 +96,7 @@ export const MARKET_TEMPLATES: readonly MarketTemplateDefinition[] = [
     familyKey:"DOMAIN_ACCESS",category:"DOMAIN",tier,buCost:tierCost(tier),
     bindingSchema:{required:["domain"],slots:{domain:{kind:"keyword",open:true}}},
     rule:{family:"DOMAIN_ACCESS",bindings:{domain:null}},
-    verboseDescription:`Tier ${tier} domain permission defined by the canonical BU Market.`,
+    verboseDescription:DOMAIN_DESCRIPTIONS[tier-1]!,
     standardBindings:DOMAIN_TIERS[tier]!.map(key=>({key,name:`Domain of ${title(key)}`,bindings:{domain:key}})),
   })),
   ...[1,2,3,4].map((tier):MarketTemplateDefinition => ({
@@ -117,6 +129,11 @@ export const MARKET_TEMPLATES: readonly MarketTemplateDefinition[] = [
 
 /** Finite rules that are useful as exact entries and do not need specialization. */
 export const CANONICAL_EXPRESSIONS:readonly CanonicalExpressionDefinition[] = [
+  ...[1,2,3,4].map((tier):CanonicalExpressionDefinition=>({
+    key:`verb-access-${tier}`,name:`Verb Access Tier ${["","I","II","III","IV"][tier]}`,familyKey:"VERB_ACCESS",category:"VERB_TIER",tier,buCost:tierCost(tier),
+    mechanicalText:`Unlock Tier ${["","I","II","III","IV"][tier]} ${["","basic physical and perceptual","transformative","structural and system-level","conceptual and rule-level"][tier]} action language.`,
+    verboseDescription:VERB_DESCRIPTIONS[tier-1]!,
+  })),
   {key:"range-touch",name:"Touch Range",familyKey:"RANGE_SCALING",category:"RANGE",tier:0,buCost:0,mechanicalText:"Set maximum range to Touch.",verboseDescription:"Immediate contact, self, or melee reach."},
   {key:"range-near",name:"Near Range",familyKey:"RANGE_SCALING",category:"RANGE",tier:2,buCost:4,mechanicalText:"Set maximum range to Near (30 ft).",verboseDescription:"Standard combat range."},
   {key:"range-far",name:"Far Range",familyKey:"RANGE_SCALING",category:"RANGE",tier:3,buCost:8,mechanicalText:"Set maximum range to Far (60 ft).",verboseDescription:"Extended tactical range."},

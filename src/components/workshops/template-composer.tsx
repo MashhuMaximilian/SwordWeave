@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 
 /**
  * Template Composer
@@ -381,25 +382,23 @@ export function TemplateComposer({
               />
             </Field>
             <Field label="Description / Lore">
-              <textarea
+              <MarkdownEditor
                 value={form.description}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, description: e.target.value }))
+                onChange={(value) =>
+                  setForm((f) => ({ ...f, description: value }))
                 }
                 placeholder="Lore, mechanics summary, anything notable..."
                 rows={4}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
               />
             </Field>
             <Field label="Suggested Traits (markdown)">
-              <textarea
+              <MarkdownEditor
                 value={form.suggestedTraits}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, suggestedTraits: e.target.value }))
+                onChange={(value) =>
+                  setForm((f) => ({ ...f, suggestedTraits: value }))
                 }
                 placeholder="Personality traits, hooks, suggested names..."
                 rows={3}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
               />
             </Field>
             <div className="pt-2">

@@ -18,7 +18,7 @@ import {
   libraryOrigin,
 } from "@/lib/publishing/library-classification";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { LibraryToolbar } from "@/components/library/library-toolbar";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
 import { FetchedEntityPreview } from "@/components/preview/entity-preview";
@@ -41,6 +41,7 @@ import { ForkMapButton } from "@/components/engagement/fork-map-button";
 import { LikeForkBar } from "@/components/engagement/like-fork-bar";
 import { IconDisplay } from "@/components/icons/icon-display";
 import { buildSandboxUrl } from "@/lib/publishing/fork-target";
+import { Markdown } from "@/components/ui/markdown";
 
 const ENTITY_ICONS: Record<string, string> = {
   PRIMITIVE: "delapouite/cube",
@@ -100,7 +101,7 @@ function CompositionMechanics({
         >
           {compact ? <span className="v12-composition-path">{nestingLabel(path)}</span> : null}
           {!compact ? <strong>{path.primitiveName}</strong> : null}
-          <span data-readable-rule>{path.mechanicalDescription}</span>
+          <Markdown className="v12-composition-copy">{path.mechanicalDescription}</Markdown>
         </button>)}
       </section>)}
       {compact && paths.length > 3 ? (
@@ -305,6 +306,18 @@ export function LibraryBrowseClient({
     [],
   );
 
+  useEffect(() => {
+    const updateAvailableHeight = () => {
+      const frame = workbenchRef.current;
+      if (!frame) return;
+      const top = frame.getBoundingClientRect().top;
+      frame.style.setProperty("--v12-library-available", `${Math.max(320, window.innerHeight - Math.max(72, top) - 12)}px`);
+    };
+    updateAvailableHeight();
+    window.addEventListener("resize", updateAvailableHeight, { passive:true });
+    return () => window.removeEventListener("resize", updateAvailableHeight);
+  }, [initialState.typeFilter]);
+
   return (
     <div className="v12-library-browser flex h-full min-h-0 flex-col" data-library-surface>
       <div className="v12-library-search shrink-0">
@@ -438,7 +451,7 @@ export function LibraryBrowseClient({
                     {item.compositionPaths?.length ? (
                       <CompositionMechanics paths={item.compositionPaths} compact onPrimitive={setNestedPreview} />
                     ) : (
-                      <p className="v12-entry-summary" data-readable-rule>{item.mechanicalDescription || item.description || "No mechanical description."}</p>
+                      <Markdown className="v12-entry-summary" data-readable-rule>{item.mechanicalDescription || item.description || "No mechanical description."}</Markdown>
                     )}
                     <div className="v12-entry-lineage">
                       <span>{libraryAuthorLabel(item)}{item.versionNumber ? ` · v${item.versionNumber}` : ""}{item.descendantCount ? ` · ${item.descendantCount} descendants` : ""}</span>
@@ -506,7 +519,7 @@ export function LibraryBrowseClient({
                   </span>
                 </div>
                 <div className="v12-rule" data-readable-rule>
-                  {selectedItem.mechanicalDescription || selectedItem.description || "No mechanical description."}
+                  <Markdown>{selectedItem.mechanicalDescription || selectedItem.description || "No mechanical description."}</Markdown>
                 </div>
                 <dl className="v12-inspector-facts">
                   <div><dt>Source</dt><dd>{libraryOrigin(selectedItem) === "system" ? "SYSTEM" : selectedItem.authorUsername ?? "Community"}</dd></div>
@@ -522,7 +535,7 @@ export function LibraryBrowseClient({
                   </section>
                 ) : null}
                 {selectedItem.verboseDescription && selectedItem.verboseDescription !== selectedItem.mechanicalDescription ? (
-                  <section className="v12-inspector-section"><h3>Design meaning</h3><p data-readable-rule>{selectedItem.verboseDescription}</p></section>
+                  <section className="v12-inspector-section"><h3>Design meaning</h3><Markdown>{selectedItem.verboseDescription}</Markdown></section>
                 ) : null}
                 {selectedItem.bindings && Object.keys(selectedItem.bindings).length ? (
                   <section className="v12-inspector-section"><h3>Bindings</h3><div className="v12-binding-list">{Object.entries(selectedItem.bindings).map(([key, value]) => <span key={key}><b>{key}</b> {String(value)}</span>)}</div></section>
@@ -582,7 +595,12 @@ export function LibraryBrowseClient({
         size="lg"
       >
         {selectedItem ? (
-          <FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "system" : selectedItem.sourceOrigin }} />
+          <><FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "system" : selectedItem.sourceOrigin }} />
+          <div className="v12-modal-actions">
+            <a className="v12-metal-button" href={`/library/item/${selectedItem.id}/versions`}>Versions</a>
+            <ForkMapButton targetType={selectedItem.targetType} targetId={selectedItem.targetId} targetName={selectedItem.name} />
+            <LikeForkBar targetType={selectedItem.targetType} targetId={selectedItem.targetId} initialLikes={selectedItem.likesCount} initialDislikes={selectedItem.dislikesCount} initialForks={selectedItem.forkCount} authorId={selectedItem.authorId} authorUsername={libraryOrigin(selectedItem)==="system"?null:selectedItem.authorUsername} currentUserId={currentUserInternalId} />
+          </div></>
         ) : null}
       </DetailModal>
       <DetailModal
@@ -593,8 +611,8 @@ export function LibraryBrowseClient({
       >
         {nestedPreview ? (
           <div className="v12-nested-preview">
-            <p className="v12-composition-path">{nestedPreview.path.join(" → ")}</p>
             <FetchedEntityPreview targetType="PRIMITIVE" targetId={String(nestedPreview.primitiveId)} />
+            <div className="v12-modal-actions"><a className="v12-metal-button" href={`/library/item/PRIMITIVE:${nestedPreview.primitiveId}/versions`}>Versions</a><ForkMapButton targetType="PRIMITIVE" targetId={String(nestedPreview.primitiveId)} targetName={nestedPreview.primitiveName} /><LikeForkBar targetType="PRIMITIVE" targetId={String(nestedPreview.primitiveId)} initialLikes={0} initialDislikes={0} initialForks={0} currentUserId={currentUserInternalId} /></div>
           </div>
         ) : null}
       </DetailModal>

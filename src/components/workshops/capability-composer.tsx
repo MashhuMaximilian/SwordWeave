@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 
 /**
  * Capability Composer
@@ -619,17 +620,17 @@ export function CapabilityComposer({
                 <label className="text-xs font-semibold uppercase text-muted-foreground">
                   Verbose Description
                 </label>
-                <textarea
+                <MarkdownEditor
                   value={form.verboseDescription}
-                  onChange={(e) =>
+                  onChange={(value) =>
                     setForm((prev) => ({
                       ...prev,
-                      verboseDescription: e.target.value,
+                      verboseDescription: value,
                     }))
                   }
                   placeholder="What does this capability do? Include flavor and mechanical notes."
                   rows={3}
-                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  className="mt-1"
                 />
               </div>
 

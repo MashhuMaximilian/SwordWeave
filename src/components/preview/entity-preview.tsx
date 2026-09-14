@@ -161,7 +161,7 @@ function IconTile({ row }: { row: { iconSource: string | null; iconKey: string |
         iconUrl={row.iconUrl}
         iconColor={row.iconColor}
         size={40}
-        className="shrink-0 rounded-md border border-border"
+        className="shrink-0"
         alt=""
       />
     );

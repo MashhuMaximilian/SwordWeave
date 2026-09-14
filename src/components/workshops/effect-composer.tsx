@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { ToastViewport, useToasts } from "@/components/ui/toast";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 
 type PrimitiveRow = {
   id: number;
@@ -362,16 +363,17 @@ export function EffectComposer({
 
             <label className="block text-sm font-medium md:col-span-2">
               Narrative Rule
-              <textarea
-                className="mt-2 min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
-                onChange={(event) =>
+              <MarkdownEditor
+                className="mt-2"
+                onChange={(value) =>
                   setForm((current) => ({
                     ...current,
-                    narrativeDescription: event.target.value,
+                    narrativeDescription: value,
                   }))
                 }
                 placeholder="The target loses spatial certainty and struggles to keep balance..."
                 value={form.narrativeDescription}
+                rows={5}
               />
             </label>
 
