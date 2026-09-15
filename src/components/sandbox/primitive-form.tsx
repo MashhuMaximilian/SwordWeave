@@ -82,6 +82,7 @@ type PrimitiveRow = {
   userId?: string | null;
   name: string;
   category: string;
+  familyKey?: string | null;
   isPublic: boolean;
   costTier: string;
   buCost: number;
@@ -265,32 +266,10 @@ const categories = [
   "ITEM_AUGMENT",
 ] as const;
 
-const categoryGroups = (() => {
-  const available = new Set<string>(categories);
-  const claimed = new Set<string>();
-  const groups = [...new Set(MARKET_FAMILIES.map((family) => family.chapter))]
-    .map((chapter) => ({
-      label: chapter,
-      options: MARKET_FAMILIES.filter((family) => family.chapter === chapter)
-        .flatMap((family) => family.categories.map((value) => ({
-          value,
-          label: family.categories.length > 1
-            ? `${family.label} · ${categoryLabel(value)}`
-            : family.label,
-        })))
-        .filter((option) => available.has(option.value) && !claimed.has(option.value))
-        .map((option) => {
-          claimed.add(option.value);
-          return option;
-        }),
-    }))
-    .filter((group) => group.options.length > 0);
-  const remainder = categories
-    .filter((value) => !claimed.has(value))
-    .map((value) => ({ value, label: categoryLabel(value) }));
-  if (remainder.length) groups.push({ label: "Uncatalogued", options: remainder });
-  return groups;
-})();
+const categoryGroups = [...new Set(MARKET_FAMILIES.map((family) => family.chapter))].map((chapter) => ({
+  label: chapter,
+  options: MARKET_FAMILIES.filter((family) => family.chapter === chapter).map((family) => ({ value: family.key, label: family.label })),
+}));
 
 function CategoryOptions() {
   return categoryGroups.map((group) => (
@@ -300,6 +279,10 @@ function CategoryOptions() {
       ))}
     </optgroup>
   ));
+}
+
+function familyForCategory(category: string) {
+  return MARKET_FAMILIES.find((family) => family.categories.includes(category));
 }
 
 const costTiers = [
@@ -892,13 +875,17 @@ export function PrimitiveForm({
   initialModifierDrafts?: ReadonlyArray<Partial<ModifierDraft>> | null;
 }) {
   const contextualBlankForm = useMemo<PrimitiveFormState>(
-    () => ({
-      ...blankForm,
-      category: initialCategory || blankForm.category,
-    }),
+    () => {
+      const family = initialCategory ? MARKET_FAMILIES.find((item) => item.key === initialCategory) : undefined;
+      return { ...blankForm, category: family?.categories[0] ?? initialCategory ?? blankForm.category };
+    },
     [initialCategory],
   );
   const [form, setForm] = useState<PrimitiveFormState>(() => contextualBlankForm);
+  const [familyKey, setFamilyKey] = useState(() => {
+    const contextual = initialCategory ? MARKET_FAMILIES.find((family) => family.key === initialCategory) : undefined;
+    return contextual?.key ?? familyForCategory(contextualBlankForm.category)?.key ?? MARKET_FAMILIES[0]!.key;
+  });
   const [ruleKind, setRuleKind] = useState<RuleKind>(null);
   const [composition, setComposition] = useState<CompositionDraft>(blankComposition);
   const [modifierCounter, setModifierCounter] = useState(1);
@@ -969,6 +956,7 @@ export function PrimitiveForm({
       iconUrl: initialPrimitive.iconUrl,
       iconColor: initialPrimitive.iconColor,
     });
+    setFamilyKey(initialPrimitive.familyKey ?? familyForCategory(initialPrimitive.category)?.key ?? MARKET_FAMILIES[0]!.key);
     setModifiers(drafts);
     setRuleKind(drafts.length ? "MODIFIER" : storedComposition?.family ?? null);
     setComposition(storedComposition ?? blankComposition);
@@ -1171,6 +1159,7 @@ export function PrimitiveForm({
 
   function resetEditor() {
     setForm(contextualBlankForm);
+    setFamilyKey(familyForCategory(contextualBlankForm.category)?.key ?? MARKET_FAMILIES[0]!.key);
     setRuleKind(null);
     setComposition(blankComposition);
     setModifierCounter(1);
@@ -1252,6 +1241,7 @@ export function PrimitiveForm({
               : {}),
             draftHash,
             ...form,
+            familyKey,
             mechanicalOutputText: mechanicalSentence,
             mechanicalRule,
             // Phase 7 Q-M: auto-derive mirror_bu_credit = bu_cost when
@@ -1485,8 +1475,8 @@ export function PrimitiveForm({
             Lexicon
             <select
               className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none ring-ring focus:ring-2"
-              value={form.category}
-              onChange={(event) => updateForm("category", event.target.value)}
+              value={familyKey}
+              onChange={(event) => { const family=MARKET_FAMILIES.find(item=>item.key===event.target.value); if(!family)return; setFamilyKey(family.key); updateForm("category",family.categories[0]!); }}
             >
               <CategoryOptions />
             </select>
@@ -1566,8 +1556,8 @@ export function PrimitiveForm({
         Lexicon Category
         <select
           className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-          value={form.category}
-          onChange={(event) => updateForm("category", event.target.value)}
+          value={familyKey}
+          onChange={(event) => { const family=MARKET_FAMILIES.find(item=>item.key===event.target.value); if(!family)return; setFamilyKey(family.key); updateForm("category",family.categories[0]!); }}
         >
           <CategoryOptions />
         </select>

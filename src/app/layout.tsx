@@ -78,12 +78,7 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#aebdc5" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b0a0f" },
-  ],
-};
+export const viewport: Viewport = { themeColor: "#0b0a0f" };
 
 export default function RootLayout({
   children,
@@ -91,7 +86,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         {/* Logo assets shipped 2026-07-14 in public/: logo-light.png
             (teal-on-transparent, light-mode brand mark), logo-dark.png
@@ -191,10 +186,9 @@ export default function RootLayout({
           {`
 try {
   const storedTheme = window.localStorage.getItem("swordweave-theme");
-  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  if (storedTheme === "dark" || (!storedTheme && prefersDark)) {
-    document.documentElement.classList.add("dark");
-  }
+  const legacyTheme = window.localStorage.getItem("sw-dark-mode");
+  const useLight = storedTheme === "light" || (!storedTheme && legacyTheme === "0");
+  document.documentElement.classList.toggle("dark", !useLight);
 } catch {}
           `}
         </Script>

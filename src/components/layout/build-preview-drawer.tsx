@@ -114,6 +114,11 @@ export function BuildPreviewDrawer() {
     useGlobalControls();
   const [, setTick] = useState(0);
   useEffect(() => DrawerSlotCtx.subscribe(() => setTick((t) => t + 1)), []);
+  useEffect(() => {
+    const closeForPreview = () => closeDrawer();
+    window.addEventListener("sw-close-build-drawer", closeForPreview);
+    return () => window.removeEventListener("sw-close-build-drawer", closeForPreview);
+  }, [closeDrawer]);
   const slot = DrawerSlotCtx.get();
   // NOTE: we don't compute `activeContent` here. Both panels are
   // mounted simultaneously (the inactive one is hidden via CSS) so
@@ -121,11 +126,11 @@ export function BuildPreviewDrawer() {
 
   // Find the inner form's Save/Reset buttons by data-attribute.
   function dispatchReset() {
-    window.dispatchEvent(new CustomEvent("sw-sandbox-reset"));
+    document.querySelector<HTMLButtonElement>('[data-drawer-build] [data-drawer-reset]')?.click();
   }
   function dispatchSave() {
     const submitBtn = document.querySelector<HTMLButtonElement>(
-      'button[type="submit"][data-sandbox-submit]',
+      '[data-drawer-build] button[type="submit"][data-sandbox-submit]',
     );
     if (submitBtn) {
       submitBtn.click();
@@ -212,7 +217,7 @@ export function BuildPreviewDrawer() {
                 : "No build context on this page."}
             </div>
           ) : (
-            <div className={drawerTab === "build" ? "block" : "hidden"}>
+            <div data-drawer-build className={drawerTab === "build" ? "block" : "hidden"}>
               {slot.build}
             </div>
           )}

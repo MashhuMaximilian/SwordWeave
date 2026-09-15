@@ -415,14 +415,12 @@ export function EffectForm({
         </button>
       </div>
 
-      <AuthorChapters defaultActive="identity" order={["identity", "pieces", "table", "publish"]}>
+      <AuthorChapters defaultActive="identity" order={["identity", "pieces", "publish"]}>
         <AuthorChapter id="pieces" title="Pieces">
       <section className="rounded-md border border-border bg-background p-4">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-bold">Slotted Primitives</h3>
-          <span className="rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
-            {totalBu} BU
-          </span>
+          <span className="v12-kicker">Direct composition</span>
         </div>
         {slots.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
@@ -434,36 +432,10 @@ export function EffectForm({
             {slots.map((slot) => (
               <SortableMember id={String(slot.primitiveId)} label={slot.primitive.name}
                 key={slot.primitiveId}
-                className="v12-author-recipe-piece flex flex-col gap-3 rounded-md border border-border bg-card p-3"
+                className="v12-author-recipe-piece flex items-center gap-2 rounded-md border border-border bg-card p-2"
               >
                 <RecipePrimitiveIdentity primitive={{...availablePrimitives.find(p => p.id === slot.primitiveId),...slot.primitive,id:slot.primitiveId}} />
                 <div className="v12-recipe-member-controls flex flex-wrap items-center gap-2">
-                  <span className="v12-tag">{slot.primitive.buCost} BU each</span>
-                  <input
-                    aria-label="Quantity"
-                    className="h-9 w-20 rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-                    min={1}
-                    type="number"
-                    value={slot.quantity}
-                    onChange={(event) =>
-                      updateQuantity(
-                        slot.primitiveId,
-                        Number(event.target.value),
-                      )
-                    }
-                  />
-                  <label
-                    className="flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2 text-xs"
-                    title="When this slot is mirrored, the consumer pays BU debt at template/character-creation time."
-                  >
-                    <input
-                      type="checkbox"
-                      checked={slot.isMirrored}
-                      onChange={() => toggleSlotMirror(slot.primitiveId)}
-                      className="size-3.5"
-                    />
-                    <span>Mirror</span>
-                  </label>
                   <button
                     type="button"
                     onClick={() => removeSlot(slot.primitiveId)}
@@ -471,7 +443,7 @@ export function EffectForm({
                     className="inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-md border border-border px-3 text-xs font-medium text-muted-foreground hover:bg-accent"
                   >
                     <Trash2 className="size-3.5" />
-                    <span className="hidden sm:inline">Remove</span>
+                    <span>Remove</span>
                   </button>
                 </div>
               </SortableMember>
@@ -552,17 +524,13 @@ export function EffectForm({
         />
       </label>
 
-        </AuthorChapter>
-        <AuthorChapter id="table" title="At the table">
       <label className="block text-sm font-medium">
-        Narrative Rule
+        Verbose Description
         <textarea
-          className="mt-2 min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
+          className="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
           value={form.narrativeDescription}
-          onChange={(event) =>
-            updateForm("narrativeDescription", event.target.value)
-          }
-          placeholder="The target loses spatial certainty and struggles to keep balance..."
+          onChange={(event) => updateForm("narrativeDescription", event.target.value)}
+          placeholder="What does this effect do and feel like in play?"
         />
       </label>
 

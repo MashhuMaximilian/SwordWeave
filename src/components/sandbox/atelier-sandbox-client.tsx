@@ -50,6 +50,7 @@ import { IconDisplay } from "@/components/icons/icon-display";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import type { SaveIntent } from "@/lib/publishing/save-intent";
 import type { ModifierDraft, PrimitiveFormState } from "./primitive-form-preview";
+import { useDrawerSlot } from "@/components/layout/build-preview-drawer";
 
 export type AtelierTab =
   | "mechanics"
@@ -102,6 +103,7 @@ type PrimitiveRow = {
   userId?: string | null;
   name: string;
   category: string;
+  familyKey?: string | null;
   isPublic: boolean;
   costTier: string;
   buCost: number;
@@ -969,14 +971,11 @@ export function AtelierSandboxClient({
       );
     }
     if (formKind === "effect") {
-      const editingPrimitives = primitives.filter(
-        (p) => p.category === "ITEM_AUGMENT",
-      );
       return (
         <EffectForm
           initialEffect={editing?.kind === "effect" ? editing.row : null}
           {...formCommon}
-          availablePrimitives={editingPrimitives.map((p) => ({
+          availablePrimitives={primitives.map((p) => ({
             id: p.id,
             name: p.name,
             category: p.category,
@@ -1569,16 +1568,27 @@ export function AtelierSandboxClient({
             ? "item"
             : null);
     const sourcePicker = (
-      <div className="v12-source-browser-picker">
-        <label htmlFor="atelier-source-browser">Browse source</label>
-        <select id="atelier-source-browser" value={build} onChange={(event) => guardedSwitchBuild(event.target.value as AtelierTab)}>
-          <option value="mechanics">Mechanics · primitives, effects, capabilities</option>
-          <option value="heritage">Heritages · lineages, upbringings, manifests</option>
-          <option value="item">Items</option>
-          <option value="monster" disabled>Monsters · coming later</option>
-        </select>
-        <p>The active build stays open while you browse another source.</p>
-      </div>
+      <nav className="v12-source-browser-picker" aria-label="Browse source">
+        <p className="v12-kicker">Browse</p>
+        <div className="v12-source-browser-choices">
+          {([
+            ["mechanics", "Mechanics", "Primitives · effects · capabilities"],
+            ["heritage", "Heritages", "Lineages · upbringings · manifests"],
+            ["item", "Items", "Equipment · consumables"],
+            ["monster", "Monsters", "Coming later"],
+          ] as const).map(([value, label, hint]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={build === value}
+              disabled={value === "monster"}
+              onClick={() => guardedSwitchBuild(value)}
+            >
+              <b>{label}</b><small>{hint}</small>
+            </button>
+          ))}
+        </div>
+      </nav>
     );
     if (isMechanics) {
       return (
@@ -1682,7 +1692,6 @@ export function AtelierSandboxClient({
     (activeEditorKind
       ? `Untitled ${activeEditorKind}`
       : "Choose what to build");
-  const activeEditorBu = Number(formSnapshot?.form?.["buCost"] ?? 0);
   const sourceLabel =
     activeEditorKind === "capability"
       ? "Primitives and effects"
@@ -1712,65 +1721,12 @@ export function AtelierSandboxClient({
           buildTitle: activeEditorKind ? `What this ${activeEditorKind} stores` : "Choose what to build",
           previewKicker: activeEditorKind ? `Live build preview · ${activeEditorKind}` : "Live build preview",
           previewTitle: activeEditorName,
+          buildActions: (
+            <button type="button" className="v12-metal-button v12-metal-button--compact" onClick={() => setShowNewModal(true)}>
+              New entity
+            </button>
+          ),
         }}
-        topBar={
-          <div className="v12-atelier-intro">
-            <div className="v12-atelier-hero">
-              <div>
-                <p className="v12-kicker">
-                  {activeEditorKind
-                    ? `${activeEditorKind} studio`
-                    : "SwordWeave atelier"}
-                </p>
-                <h1>{activeEditorName}</h1>
-                <p>
-                  Browse the compact Library, inspect an exact entry, then load
-                  or slot it into the active build without leaving the studio.
-                </p>
-              </div>
-              <div className="v12-atelier-hero-actions">
-                {activeEditorBu > 0 ? (
-                  <span className="v12-tag v12-tag--teal">{activeEditorBu} BU</span>
-                ) : null}
-                <button
-                  type="button"
-                  className="v12-metal-button"
-                  onClick={() => setShowNewModal(true)}
-                >
-                  New entity
-                </button>
-                {activeEditorKind ? (
-                  <button
-                    type="button"
-                    className="v12-metal-button v12-metal-button--primary"
-                    onClick={() => {
-                      const form = document.querySelector<HTMLFormElement>(
-                        "[data-sandbox-layout] form",
-                      );
-                      form?.requestSubmit();
-                    }}
-                  >
-                    Save {activeEditorKind}
-                  </button>
-                ) : null}
-              </div>
-            </div>
-            <div className="v12-context-ribbon">
-              <div>
-                <span className="v12-tag v12-tag--teal">
-                  Source · {buildLabel(build)}
-                </span>
-                <span className="v12-tag v12-tag--violet">
-                  Editor · {activeEditorKind ?? "Empty"}
-                </span>
-              </div>
-              <p>
-                Browse mechanics, heritages, or items without closing the
-                active {activeEditorKind ?? "build"} draft.
-              </p>
-            </div>
-          </div>
-        }
         library={libraryNode}
         builder={
           <BuilderPane
@@ -1783,6 +1739,7 @@ export function AtelierSandboxClient({
         }
         preview={previewNode}
       />
+      <SecondaryBuildWorkspace primitives={primitives} effects={effects} capabilities={capabilities} />
       <UnsavedChangesModal
         isOpen={pendingAction !== null || pendingNav !== null}
         onCancel={() => {
@@ -1810,6 +1767,86 @@ export function AtelierSandboxClient({
       />
     </>
   );
+}
+
+function SecondaryBuildWorkspace({
+  primitives,
+  effects,
+  capabilities,
+}: {
+  primitives: PrimitiveRow[];
+  effects: EffectRow[];
+  capabilities: CapabilityRow[];
+}) {
+  const [kind, setKind] = useState<"effect" | "capability" | "heritage" | "item" | null>(null);
+  const [revision, setRevision] = useState(0);
+  const [saved, setSaved] = useState<{ kind: "effect" | "capability" | "heritage" | "item"; id: string; name: string; heritageKind?: "LINEAGE" | "UPBRINGING" | "MANIFEST" } | null>(null);
+  const [pendingSlot, setPendingSlot] = useState<{kind:"primitive"|"effect"|"capability";id:string|number;label:string} | null>(null);
+  const slotBus = useMemo(() => new EventTarget(), []);
+  const { openDrawer } = useGlobalControls();
+  const characterModal = useCharacterModal();
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{kind:"primitive"|"effect"|"capability";id:string|number;label:string}>).detail;
+      if (!detail) return;
+      if (!kind) {
+        setPendingSlot(detail);
+        setKind(detail.kind === "capability" ? "heritage" : "capability");
+      } else {
+        slotBus.dispatchEvent(new CustomEvent("sw-sandbox-slot", { detail }));
+      }
+      openDrawer("build");
+    };
+    window.addEventListener("sw-slot-secondary-build", handler);
+    return () => window.removeEventListener("sw-slot-secondary-build", handler);
+  }, [kind, openDrawer, slotBus]);
+
+  const reset = () => { setKind(null); setSaved(null); setPendingSlot(null); setRevision((value) => value + 1); };
+  const commonSaved = (next: { id: string; name: string }, nextKind: NonNullable<typeof kind>, heritageKind?: "LINEAGE" | "UPBRINGING" | "MANIFEST") => {
+    setSaved({ kind: nextKind, id: String(next.id), name: next.name, ...(heritageKind ? { heritageKind } : {}) });
+    window.dispatchEvent(new CustomEvent("sw:library-changed"));
+  };
+  const primitiveOptions = primitives.map(({id,name,category,buCost,mechanicalOutputText,narrativeRule})=>({id,name,category,buCost,mechanicalOutputText,narrativeRule}));
+
+  const content = (
+    <div className="v12-secondary-build" key={revision}>
+      <button type="button" data-drawer-reset hidden onClick={reset}>Reset modal build</button>
+      <header><div><p className="v12-kicker">Persistent build modal</p><h2>{kind ? `New ${kind}` : "Choose a long-running build"}</h2></div>{kind ? <button type="button" className="v12-metal-button" onClick={reset}>Change build</button> : null}</header>
+      {!kind ? <div className="v12-secondary-build-choices">{(["capability","effect","heritage","item"] as const).map(value=><button type="button" key={value} onClick={()=>setKind(value)}><b>{value}</b><small>Keep this draft open while the middle workspace changes.</small></button>)}</div> : null}
+      {kind === "capability" ? <CapabilityForm key={`cap-${revision}`} slotEvents={slotBus} initialCapability={null} availablePrimitives={primitiveOptions} availableEffects={effects} onSaved={(row)=>commonSaved(row,"capability")} /> : null}
+      {kind === "effect" ? <EffectForm key={`eff-${revision}`} slotEvents={slotBus} initialEffect={null} availablePrimitives={primitiveOptions} onSaved={(row)=>commonSaved(row,"effect")} /> : null}
+      {kind === "heritage" ? <HeritageForm key={`her-${revision}`} slotEvents={slotBus} initialTemplate={null} initialKind="MANIFEST" availablePrimitives={primitiveOptions} availableCapabilities={capabilities} onSaved={(row)=>commonSaved(row,"heritage",row.kind)} /> : null}
+      {kind === "item" ? <ItemForm key={`item-${revision}`} slotEvents={slotBus} initialItem={null} availablePrimitives={primitiveOptions} availableCapabilities={capabilities} availableEffects={effects} onSaved={(row)=>commonSaved(row,"item")} /> : null}
+      {pendingSlot ? <SecondarySlotDelivery slotBus={slotBus} detail={pendingSlot} onDelivered={()=>setPendingSlot(null)} /> : null}
+      {saved ? <div className="v12-secondary-build-saved"><span>Saved: {saved.name}</span><button type="button" className="v12-metal-button v12-metal-button--primary" onClick={()=>{
+        const tab = saved.kind === "item" ? "items" : characterModal.activeStep === "lineage" || characterModal.activeStep === "upbringing" || characterModal.activeStep === "manifest" ? characterModal.activeStep : "manifest";
+        if(saved.kind === "capability") characterModal.queueSlot({kind:"capability",capabilityId:saved.id,tab,name:saved.name});
+        if(saved.kind === "effect") characterModal.queueSlot({kind:"effect",effectId:saved.id,tab,name:saved.name});
+        if(saved.kind === "item") characterModal.queueSlot({kind:"item",itemId:saved.id,tab:"items",name:saved.name});
+        if(saved.kind === "heritage" && saved.heritageKind) characterModal.queueSlot({kind:"heritage",heritageId:saved.id,heritageKind:saved.heritageKind,name:saved.name});
+        characterModal.openForSlot();
+      }}>Slot into character</button></div> : null}
+    </div>
+  );
+  useDrawerSlot(useMemo(() => ({ build: content, preview: null }), [content]));
+  return null;
+}
+
+function SecondarySlotDelivery({
+  slotBus,
+  detail,
+  onDelivered,
+}: {
+  slotBus: EventTarget;
+  detail: {kind:"primitive"|"effect"|"capability";id:string|number;label:string};
+  onDelivered: () => void;
+}) {
+  useEffect(() => {
+    slotBus.dispatchEvent(new CustomEvent("sw-sandbox-slot", { detail }));
+    onDelivered();
+  }, [detail, onDelivered, slotBus]);
+  return null;
 }
 
 function emptyPreview(title: string, sub: string) {

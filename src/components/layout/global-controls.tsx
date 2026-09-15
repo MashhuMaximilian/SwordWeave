@@ -145,7 +145,7 @@ export function useGlobalControls(): GlobalControlsState {
   return ctx;
 }
 
-const STORAGE_KEY_DARK = "sw-dark-mode";
+const STORAGE_KEY_DARK = "swordweave-theme";
 const STORAGE_KEY_SPLIT = "sw-sandbox-mobile-split";
 
 export function GlobalControls({ children }: { children: React.ReactNode }) {
@@ -209,26 +209,28 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
     });
   }
 
-  // Dark mode: start as null to avoid hydration mismatch; read from
-  // localStorage in an effect.
-  const [dark, setDarkState] = useState<boolean | null>(null);
+  // Dark is the product default. Light mode is only entered after an explicit
+  // user switch; the operating-system preference never changes the app.
+  const [dark, setDarkState] = useState(true);
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY_DARK);
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initial = stored ? stored === "1" : prefersDark;
+    const legacy = window.localStorage.getItem("sw-dark-mode");
+    const initial = stored === "light" ? false : stored === "dark" ? true : legacy === "0" ? false : true;
     setDarkState(initial);
     document.documentElement.classList.toggle("dark", initial);
+    window.localStorage.setItem(STORAGE_KEY_DARK, initial ? "dark" : "light");
+    window.localStorage.removeItem("sw-dark-mode");
   }, []);
   const setDark = useCallback((v: boolean) => {
     setDarkState(v);
     document.documentElement.classList.toggle("dark", v);
-    window.localStorage.setItem(STORAGE_KEY_DARK, v ? "1" : "0");
+    window.localStorage.setItem(STORAGE_KEY_DARK, v ? "dark" : "light");
   }, []);
   const toggleDark = useCallback(() => {
     setDarkState((prev) => {
-      const next = !(prev ?? false);
+      const next = !prev;
       document.documentElement.classList.toggle("dark", next);
-      window.localStorage.setItem(STORAGE_KEY_DARK, next ? "1" : "0");
+      window.localStorage.setItem(STORAGE_KEY_DARK, next ? "dark" : "light");
       return next;
     });
   }, []);
@@ -371,16 +373,10 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
           />
         ),
         onClick: () => {
-                // Surface the build chooser (the Atelier client listens for
-                // this and opens the new-entity modal when the build is empty;
-                // on desktop the inline column is already visible, so this is
-                // effectively a no-op there beyond opening the chooser). On
-                // mobile, also open the build/preview drawer so the panel is
-                // visible behind the chooser.
-                window.dispatchEvent(new CustomEvent("sw-open-new-entity"));
-                window.dispatchEvent(new CustomEvent("sw-navigate-away", { detail: "/atelier" }));
-                if (isMobile) {
-                  openDrawer(sandboxSplit ? "preview" : "build");
+                if (pathname === "/atelier") {
+                  openDrawer(isMobile && sandboxSplit ? "preview" : "build");
+                } else {
+                  window.dispatchEvent(new CustomEvent("sw-navigate-away", { detail: "/atelier" }));
                 }
               },
       },
@@ -431,14 +427,14 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
       {
         kind: "action",
         key: "dark",
-        label: (dark ?? false) ? "Light Mode" : "Dark Mode",
-        icon: (dark ?? false) ? (
+        label: dark ? "Light Mode" : "Dark Mode",
+        icon: dark ? (
           <Moon className="size-4" />
         ) : (
           <Sun className="size-4" />
         ),
         onClick: toggleDark,
-        active: dark ?? false,
+        active: dark,
       },
       ...ACCOUNT_LINKS,
       // Phase 8.L round 89: "Buy me a dice set" link, opens
@@ -468,7 +464,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
   ]);
 
   const ctxValue: GlobalControlsState = {
-    dark: dark ?? false,
+    dark,
     setDark,
     toggleDark,
     filterPanelOpen,
@@ -520,7 +516,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         bottomOffset={56}
       />
       <RightFilterPanel />
-      {isMobile ? <BuildPreviewDrawer /> : null}
+      <BuildPreviewDrawer />
     </Ctx.Provider>
   );
 }

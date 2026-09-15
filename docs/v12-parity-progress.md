@@ -2,6 +2,18 @@
 
 Reference: `mockups/v12-arcane-masterwork/desktop/`. This is an incomplete audit, not a completion certificate.
 
+## Atelier completion checklist (2026-09-15)
+
+- [x] Dark renders on the server and remains the default; light requires an explicit stored switch.
+- [x] Primitive authoring selects the same 29 Market families shown in the Library rail and persists that classification.
+- [x] Remove the page hero; keep New entity in the build-column header and Save inside the active form.
+- [x] Give the source browser an obvious compact corpus switcher and split primitive browsing into independently scrolling family and entry regions.
+- [x] Make capability/effect pieces compact, open full shared previews on click, and keep only Remove as row chrome.
+- [x] Match capability At the table controls to the V12 reference, including optional Domain/Verb pieces and Range/Output helpers.
+- [x] Use the same preview-modal body everywhere; constrain Atelier modal stacks to the source-column bounds.
+- [x] Add a second, persistent build session behind the anvil FAB. Keep the middle editor as the main workspace and allow saved middle entities to slot into the modal build before it slots into the character draft.
+- [x] Verify the authenticated local tablet flow, optimized build, typecheck, and focused rule tests. Commit locally; do not deploy.
+
 ## Preserved invariants
 
 - Character top, bottom, and right drawers retain their layouts and actions.
@@ -27,10 +39,10 @@ Reference: `mockups/v12-arcane-masterwork/desktop/`. This is an incomplete audit
 - [x] Replace the bottom Mechanics / Heritages / Items / Monsters tabs with one source selector inside the left browser. Changing the source filter preserves the mounted build.
 - [x] Give primitive, effect, capability, and heritage authors a shared chapter model. Identity owns player-facing meaning and entity identity; Publish owns tags, source, and visibility; primitive Mechanical rule owns its optional structured rule.
 - [x] Remove the primitive free-text mechanical-output path, author-facing value-type selector, author-facing mirror controls, and on-use consequence control. Structured values infer their storage type and the renderer produces mechanical output.
-- [ ] Introduce a persistent primary-build session for the FAB. A capability, heritage, or item can remain open as a real modal while the middle column temporarily authors or edits one of its pieces.
-- [ ] Add explicit Dock in editor / Return to build actions. Saving the temporary piece must offer Slot into primary build without replacing or resetting the primary draft.
-- [ ] Preserve both primary and temporary drafts while the left browser switches among mechanics, heritages, and items. Monsters will join the same source filter after its data model exists.
-- [ ] Connect a saved primary build to the existing Character modal so it can be slotted into the active character without closing either draft early.
+- [x] Introduce a persistent secondary-build session for the FAB. A capability, heritage, effect, or item can remain open while the middle column authors or edits one of its pieces.
+- [x] Give shared previews an Add to build modal action. Saving the middle entity refreshes the corpus, after which the same preview action adds it without replacing the modal draft.
+- [x] Preserve the modal and middle drafts while the source browser switches among mechanics, heritages, and items. Monsters remains a visible disabled source until its data model exists.
+- [x] Connect a saved modal build to the existing Character modal through Slot into character.
 
 The primary-build modal requires two independently mounted draft states. Moving the existing form DOM between a modal and the middle panel would reset local form state, so this must be implemented as a draft stack rather than a CSS overlay.
 

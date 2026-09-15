@@ -53,6 +53,8 @@ interface ModalStackState {
   clear: () => void;
   canPush: boolean;
   depth: number;
+  scopeHost: HTMLElement | null;
+  setScopeHost: (host: HTMLElement | null) => void;
 }
 
 const StackCtx = createContext<ModalStackState | null>(null);
@@ -70,6 +72,8 @@ export function useModalStack(): ModalStackState {
       clear: () => {},
       canPush: false,
       depth: 0,
+      scopeHost: null,
+      setScopeHost: () => {},
     };
   }
   return ctx;
@@ -77,6 +81,7 @@ export function useModalStack(): ModalStackState {
 
 export function ModalStackHost({ children }: { children: ReactNode }) {
   const [stack, setStack] = useState<ModalEntry[]>([]);
+  const [scopeHost, setScopeHost] = useState<HTMLElement | null>(null);
   const pathname = usePathname();
 
   // Phase 2 fix: clear the stack when the route changes. The Creations
@@ -128,8 +133,10 @@ export function ModalStackHost({ children }: { children: ReactNode }) {
       clear,
       canPush: stack.length < MAX_DEPTH,
       depth: stack.length,
+      scopeHost,
+      setScopeHost,
     }),
-    [stack, push, pop, popTo, clear],
+    [stack, push, pop, popTo, clear, scopeHost],
   );
 
   return (
@@ -140,8 +147,22 @@ export function ModalStackHost({ children }: { children: ReactNode }) {
   );
 }
 
+/** Registers a page-local portal boundary while mounted. Atelier places this
+ * inside its source panel so every shared preview keeps the global content
+ * contract but opens within that panel. */
+export function ModalStackScope() {
+  const { setScopeHost } = useModalStack();
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const host = hostRef.current;
+    setScopeHost(host);
+    return () => setScopeHost(null);
+  }, [setScopeHost]);
+  return <div ref={hostRef} className="pointer-events-none absolute inset-0 z-[150]" data-modal-stack-scope />;
+}
+
 function ModalStackRenderer() {
-  const { stack, pop, popTo } = useModalStack();
+  const { stack, pop, popTo, scopeHost } = useModalStack();
   const [isDesktop, setIsDesktop] = useState(false);
 
   // Desktop and mobile both use an isolated modal surface. The rich V12
@@ -179,13 +200,14 @@ function ModalStackRenderer() {
               role="dialog"
               aria-modal="true"
               aria-label={entry.label}
-              className="v12-modal-backdrop fixed inset-0 flex items-center justify-center p-6"
+              className={cn("v12-modal-backdrop inset-0 flex items-center justify-center", scopeHost ? "pointer-events-auto absolute p-2" : "fixed p-6")}
               style={{ zIndex: z }}
               onClick={isTop ? (event) => { if (event.target === event.currentTarget) pop(); } : undefined}
             >
               <div
                 className={cn(
-                  "v12-modal-surface v12-instrument relative flex max-h-[calc(100dvh-48px)] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl",
+                  "v12-modal-surface v12-instrument relative flex w-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl",
+                  scopeHost ? "max-h-[calc(100%-8px)] max-w-full" : "max-h-[calc(100dvh-48px)] max-w-6xl",
                   !isTop && "max-w-5xl opacity-95",
                 )}
                 onClick={(event) => event.stopPropagation()}
@@ -211,7 +233,7 @@ function ModalStackRenderer() {
             role="dialog"
             aria-modal="true"
             aria-label={entry.label}
-            className="v12-modal-backdrop fixed inset-0 z-50 flex justify-center bg-black/80 sm:items-center sm:p-4"
+            className={cn("v12-modal-backdrop inset-0 z-50 flex justify-center bg-black/80 sm:items-center sm:p-4", scopeHost ? "pointer-events-auto absolute" : "fixed")}
             style={{ zIndex: z }}
             onClick={isTop ? (e) => { if (e.target === e.currentTarget) pop(); } : undefined}
           >
@@ -232,7 +254,7 @@ function ModalStackRenderer() {
         );
       })}
     </>,
-    document.body
+    scopeHost ?? document.body
   );
 }
 

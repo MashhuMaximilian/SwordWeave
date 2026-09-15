@@ -25,6 +25,7 @@ import {
   effects,
   items,
   primitives,
+  primitiveMarketClassifications,
   heritage,
 } from "@/db/schema";
 import {
@@ -157,7 +158,9 @@ export default async function AtelierSandboxPage({
     const rows = await db.query.primitives.findMany({
       orderBy: [asc(primitives.category), asc(primitives.name)],
     });
-    primitiveRows = (rows as Array<{ isPublic: boolean; userId: string | null }>).filter(visFilter) as unknown[];
+    const classifications = await db.select({ primitiveId: primitiveMarketClassifications.primitiveId, familyKey: primitiveMarketClassifications.familyKey }).from(primitiveMarketClassifications);
+    const familyByPrimitive = new Map(classifications.map((row) => [row.primitiveId, row.familyKey]));
+    primitiveRows = (rows as Array<{ id:number; isPublic: boolean; userId: string | null }>).filter(visFilter).map((row)=>({...row,familyKey:familyByPrimitive.get(row.id)??null})) as unknown[];
   } catch (err) {
     dataLoadFailed = true;
     console.error("[atelier sandbox] primitives query failed:", err);
@@ -893,6 +896,7 @@ export default async function AtelierSandboxPage({
           id: number;
           name: string;
           category: string;
+          familyKey?: string | null;
           buCost: number;
           isPublic: boolean;
           costTier: string;
@@ -914,6 +918,7 @@ export default async function AtelierSandboxPage({
           id: row.id,
           name: row.name,
           category: row.category,
+          familyKey: row.familyKey ?? null,
           buCost: row.buCost,
           isPublic: row.isPublic,
           costTier: row.costTier,

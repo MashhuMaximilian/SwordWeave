@@ -402,6 +402,8 @@ export type PreviewActionProps = {
   /** Optional secondary primary CTA (e.g. Slot into build) shown full-width
    *  above the grid, after `primary`. */
   primarySecondary?: { label: string; onClick?: () => void; href?: string };
+  /** Sends an entry to the persistent secondary build session. */
+  buildModal?: { label: string; onClick: () => void };
   /**
    * Phase 8.1 batch 8: optional tertiary CTA (e.g. "Slot into Lineage").
    * Context-aware: label changes based on the character modal's
@@ -444,6 +446,7 @@ export function PreviewActions(props: PreviewActionProps) {
   const {
     primary,
     primarySecondary,
+    buildModal,
     primaryTertiary,
     loadIntoBuild,
     forkMap,
@@ -520,6 +523,12 @@ export function PreviewActions(props: PreviewActionProps) {
             {primarySecondary.label}
           </button>
         )
+      ) : null}
+
+      {buildModal ? (
+        <button type="button" onClick={buildModal.onClick} className="v12-metal-button flex w-full items-center justify-center px-3 py-2 text-sm">
+          {buildModal.label}
+        </button>
       ) : null}
 
       {/* Phase 8.1 batch 8: tertiary CTA — context-aware "Slot into

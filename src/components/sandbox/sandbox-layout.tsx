@@ -34,6 +34,7 @@ import { V12Navigation } from "@/components/layout/v12-navigation";
 import { cn } from "@/lib/utils";
 import { IconDisplay } from "@/components/icons/icon-display";
 import { useIsDark } from "@/lib/hooks/use-is-dark";
+import { ModalStackScope } from "@/components/ui/modal-stack";
 
 /** Codex (Library) column header icon — matches the FAB bookshelf icon,
  *  theme-colored (white on dark, near-black on light). */
@@ -117,6 +118,8 @@ type SandboxLayoutProps = {
     buildTitle: string;
     previewKicker: string;
     previewTitle: string;
+    /** Compact actions that belong to the build header, not a page hero. */
+    buildActions?: ReactNode;
   };
   /** Optional: bottom bar below the columns. Rendered inside the sandbox
    *  container, just above the FAB safe area. Use for build-mode tabs,
@@ -447,8 +450,9 @@ function DesktopSandboxLayout({
           collapsedSize={COLLAPSED_STRIP_PX}
           minSize={18}
           defaultSize={storedWidths.library ?? DEFAULT_WIDTHS.library}
-          className="v12-studio-panel v12-studio-source flex h-full min-h-0 flex-col"
+          className="v12-studio-panel v12-studio-source relative flex h-full min-h-0 flex-col"
         >
+          <ModalStackScope />
           <ColumnChrome
             columnKey="library"
             title="Codex"
@@ -498,6 +502,7 @@ function DesktopSandboxLayout({
           hydrated={hydrated}
           kicker={columnMeta?.buildKicker ?? "Recipe"}
           displayTitle={columnMeta?.buildTitle ?? "What this entity stores"}
+          actions={columnMeta?.buildActions}
         />
         <div className="v12-studio-body flex-1 min-h-0 overflow-auto">{builder}</div>
       </Panel>
@@ -582,7 +587,8 @@ function TabletSandboxLayout({
 
       {/* Two usable columns: keep the editor mounted while switching its companion. */}
       <div className="v12-studio v12-tablet-studio flex flex-1 min-h-0">
-        <div hidden={previewVisible} className="v12-studio-panel v12-studio-source flex h-full min-h-0 w-[38%] shrink-0 flex-col">
+        <div hidden={previewVisible} className="v12-studio-panel v12-studio-source relative flex h-full min-h-0 w-[38%] shrink-0 flex-col">
+          <ModalStackScope />
           <TabletColumnChrome title={columnMeta?.sourceTitle ?? "Library sources"} kicker={columnMeta?.sourceKicker ?? "Add to build"} icon={<CodexIcon />} />
           <div className="flex-1 min-h-0 overflow-auto">{library}</div>
         </div>
@@ -599,6 +605,7 @@ function TabletSandboxLayout({
                 alt="Build"
               />
             }
+            actions={columnMeta?.buildActions}
           />
           <div className="flex-1 min-h-0 overflow-auto">{builder}</div>
         </div>
@@ -617,15 +624,18 @@ function TabletColumnChrome({
   title,
   kicker,
   icon,
+  actions,
 }: {
   title: string;
   kicker: string;
   icon: ReactNode;
+  actions?: ReactNode;
 }) {
   return (
     <div className="v12-studio-head v12-section-head flex min-h-20 shrink-0 items-center gap-2 border-b bg-muted/30 px-3 text-sm font-medium">
       <span className="text-muted-foreground">{icon}</span>
       <span className="min-w-0"><span className="v12-kicker block truncate">{kicker}</span><span className="v12-studio-head-title block truncate">{title}</span></span>
+      {actions ? <span className="ml-auto flex shrink-0 items-center gap-1">{actions}</span> : null}
     </div>
   );
 }
@@ -1047,6 +1057,7 @@ type ColumnChromeProps = {
   hydrated: boolean;
   kicker?: string;
   displayTitle?: string;
+  actions?: ReactNode;
 };
 
 function ColumnChrome({
@@ -1059,6 +1070,7 @@ function ColumnChrome({
   hydrated,
   kicker,
   displayTitle: explicitDisplayTitle,
+  actions,
 }: ColumnChromeProps) {
   const { toggleHidden, toggleCollapsed } = useSandboxLayout();
 
@@ -1097,6 +1109,7 @@ function ColumnChrome({
       )}
       {!isHidden && CollapseIcon && hydrated ? (
         <div className="ml-auto flex items-center gap-0.5">
+          {actions}
           <button
             type="button"
             onClick={() => toggleCollapsed(columnKey)}

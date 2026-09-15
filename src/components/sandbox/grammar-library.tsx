@@ -1161,6 +1161,7 @@ function SandboxPreviewBody({
   const actionBar: PreviewActionProps = {
     loadIntoBuild: { label: "Load into build", onClick: onLoadIntoBuild },
     ...(canSlot ? { primarySecondary: { label: "Slot into build", onClick: slotIntoBuild } } : {}),
+    ...((item.kind === "primitive" || item.kind === "effect" || item.kind === "capability") ? { buildModal: { label: "Add to build modal", onClick: () => window.dispatchEvent(new CustomEvent("sw-slot-secondary-build", { detail: { kind: item.kind, id: item.row.id, label: item.row.name } })) } } : {}),
     // Phase 8.1 batch 8 + batch 11: context-aware "Slot into [step]"
     // for the character modal. Label driven by the RESOLVED
     // destination tab (resolveSlotDestination), not the raw active

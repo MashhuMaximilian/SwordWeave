@@ -39,7 +39,9 @@ const FAMILY_LABELS: Record<string, string> = {
 };
 
 export function libraryFamilyLabel(category: Pick<Category, "value" | "label">): string {
-  const catalogFamily = MARKET_FAMILIES.find((family) => family.key === category.value || family.categories.includes(category.value));
+  const catalogFamily =
+    MARKET_FAMILIES.find((family) => family.key === category.value) ??
+    MARKET_FAMILIES.find((family) => family.categories.includes(category.value));
   return (
     catalogFamily?.label ?? FAMILY_LABELS[category.value] ??
     category.label
