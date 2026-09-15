@@ -816,48 +816,41 @@ function PrimitiveBody({
 }) {
   return (
     <div className="v12-primitive-preview-body space-y-4">
-      <Header
-        fallback="PRI"
-        iconSource={row.iconSource}
-        iconKey={row.iconKey}
-        iconUrl={row.iconUrl}
-        iconColor={row.iconColor}
-        label={row.category}
-        chips={
-          <>
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{row.buCost} BU</span>
-            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">{row.costTier}</span>
-            <VisibilityPill isPublic={row.isPublic} />
-          </>
-        }
-      />
-      {row.tags.length > 0 ? (
-        <Section heading="Tags">
-          <div className="flex flex-wrap gap-1.5">
-            {row.tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full border border-border bg-secondary/60 px-2.5 py-0.5 text-xs font-medium"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        </Section>
-      ) : null}
-      {row.mechanicalOutputText ? (
-        <Section heading="Mechanical output">
-          <div className="v12-mechanical-rule">
-            <Markdown>{row.mechanicalOutputText}</Markdown>
-          </div>
-        </Section>
-      ) : null}
-      {row.narrativeRule ? (
-        <Section heading="Narrative rule">
-          <Markdown>{row.narrativeRule}</Markdown>
-        </Section>
-      ) : null}
-      <ModifierCards row={row} buildModifiers={buildModifiers} />
+      <div className="v12-primitive-preview-primary">
+        <Header
+          fallback="PRI"
+          iconSource={row.iconSource}
+          iconKey={row.iconKey}
+          iconUrl={row.iconUrl}
+          iconColor={row.iconColor}
+          label={`Primitive · ${row.category}`}
+          chips={
+            <>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{row.buCost} BU</span>
+              <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">{row.costTier}</span>
+              <VisibilityPill isPublic={row.isPublic} />
+            </>
+          }
+        />
+        {row.tags.length > 0 ? (
+          <Section heading="Tags">
+            <div className="flex flex-wrap gap-1.5">
+              {row.tags.map((tag) => (
+                <span key={tag} className="rounded-full border border-border bg-secondary/60 px-2.5 py-0.5 text-xs font-medium">{tag}</span>
+              ))}
+            </div>
+          </Section>
+        ) : null}
+        {row.mechanicalOutputText ? (
+          <Section heading="Mechanical output">
+            <div className="v12-mechanical-rule"><Markdown>{row.mechanicalOutputText}</Markdown></div>
+          </Section>
+        ) : null}
+      </div>
+      <div className="v12-primitive-preview-secondary">
+        {row.narrativeRule ? <Section heading={row.mechanicalOutputText ? "Narrative rule" : "Description"}><Markdown>{row.narrativeRule}</Markdown></Section> : null}
+        <ModifierCards row={row} buildModifiers={buildModifiers} />
+      </div>
       {/* Phase 8.I i2.5h-fix2 (Mashu 2026-08-06): removed the
           Mirror BU credit card. The user wanted the modifier
           card to be the single mirror surface. BU credit info
@@ -980,7 +973,7 @@ function CapabilityBody({
         iconKey={row.iconKey}
         iconUrl={row.iconUrl}
         iconColor={row.iconColor}
-        label={`${row.type} · ${row.sourceType}`}
+        label={`Capability · ${row.type} · ${row.sourceType}`}
         chips={
           <>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{totalBu} BU</span>

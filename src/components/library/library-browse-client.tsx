@@ -306,15 +306,25 @@ export function LibraryBrowseClient({
   );
 
   useEffect(() => {
+    let frameRequest = 0;
     const updateAvailableHeight = () => {
       const frame = workbenchRef.current;
       if (!frame) return;
-      const top = frame.getBoundingClientRect().top;
+      const top = Math.max(8, frame.getBoundingClientRect().top);
       frame.style.setProperty("--v12-library-available", `${Math.max(240, window.innerHeight - top - 8)}px`);
     };
+    const scheduleAvailableHeight = () => {
+      window.cancelAnimationFrame(frameRequest);
+      frameRequest = window.requestAnimationFrame(updateAvailableHeight);
+    };
     updateAvailableHeight();
-    window.addEventListener("resize", updateAvailableHeight, { passive:true });
-    return () => window.removeEventListener("resize", updateAvailableHeight);
+    window.addEventListener("resize", scheduleAvailableHeight, { passive:true });
+    window.addEventListener("scroll", scheduleAvailableHeight, { passive:true });
+    return () => {
+      window.cancelAnimationFrame(frameRequest);
+      window.removeEventListener("resize", scheduleAvailableHeight);
+      window.removeEventListener("scroll", scheduleAvailableHeight);
+    };
   }, [initialState.typeFilter]);
 
   return (
@@ -371,14 +381,16 @@ export function LibraryBrowseClient({
               </p>
             </div>
             {isPrimitiveMode && effectiveCategory ? (
-              <a
-                href={`/atelier?build=primitive&new=1&category=${encodeURIComponent(effectiveCategory)}`}
-                className="v12-metal-button v12-metal-button--primary"
-              >
-                + Create primitive
-              </a>
+              <div className="v12-family-actions">
+                <a
+                  href={`/atelier?build=primitive&new=1&category=${encodeURIComponent(effectiveCategory)}`}
+                  className="v12-metal-button v12-metal-button--primary"
+                >
+                  + Create primitive
+                </a>
+                <button type="button" className="v12-family-collapse" aria-expanded={familyExpanded} onClick={()=>setFamilyExpanded(value=>!value)}><span>{familyExpanded ? "Collapse" : "Expand"}</span><b aria-hidden="true">{familyExpanded ? "−" : "+"}</b></button>
+              </div>
             ) : null}
-            {isPrimitiveMode && effectiveCategory ? <button type="button" className="v12-family-collapse" aria-expanded={familyExpanded} onClick={()=>setFamilyExpanded(value=>!value)}><span>{familyExpanded ? "Collapse" : "Expand"}</span><b aria-hidden="true">{familyExpanded ? "−" : "+"}</b></button> : null}
           </div>
           {familyExpanded && effectiveCategory && isPrimitiveMode && familyTiers.length ? (
             <div className="v12-tier-ladder" aria-label="Canonical cost tiers">
