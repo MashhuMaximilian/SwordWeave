@@ -828,13 +828,17 @@ async function fetchPrimitives(q: LibraryQuery): Promise<LibraryItem[]> {
       forks: 0,
     };
     const icon = resolveIcon(r);
+    const isDescriptiveOnly = (r.mechanicalRule as { family?: string } | null)?.family === "DESCRIPTIVE";
+    const mechanicalDescription = isDescriptiveOnly
+      ? ""
+      : mechanicalDescriptionFromModifiers(r.hardModifiers) || r.mechanicalOutputText || r.mechanicalTemplateText || "";
     return {
       id: `PRIMITIVE:${r.id}`,
       targetType: "PRIMITIVE" as const,
       targetId: String(r.id),
       name: r.name,
-      description: mechanicalDescriptionFromModifiers(r.hardModifiers) || r.mechanicalOutputText || r.mechanicalTemplateText || r.narrativeRule || null,
-      mechanicalDescription: mechanicalDescriptionFromModifiers(r.hardModifiers) || r.mechanicalOutputText || r.mechanicalTemplateText || null,
+      description: r.narrativeRule || null,
+      mechanicalDescription,
       mechanicalTemplate: r.mechanicalTemplateText,
       verboseDescription: r.narrativeRule,
       definitionKind: r.definitionKind,

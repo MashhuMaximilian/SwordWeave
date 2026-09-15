@@ -465,7 +465,18 @@ function ModifierCards({
     return { op, target, valueLine, stacking, scope, condition };
   });
 
-  if (cards.length === 0) return null;
+  if (cards.length === 0) {
+    const vectorLabel = row.mirrorVector.replaceAll("_", " ").toLowerCase();
+    return (
+      <Section heading="Mirroring">
+        <p className="text-sm text-muted-foreground">
+          {row.isMirrorable
+            ? `Mirrorable through the ${vectorLabel} rule${row.mirrorEligibilityNotes ? `: ${row.mirrorEligibilityNotes}` : "."}`
+            : "This primitive is not mirrorable."}
+        </p>
+      </Section>
+    );
+  }
   return (
     <Section heading="Mirroring">
       <ul className="grid gap-2 sm:grid-cols-2">
@@ -841,14 +852,14 @@ function PrimitiveBody({
             </div>
           </Section>
         ) : null}
+        {row.narrativeRule ? <Section heading={row.mechanicalOutputText ? "Narrative rule" : "Description"}><Markdown>{row.narrativeRule}</Markdown></Section> : null}
+      </div>
+      <div className="v12-primitive-preview-secondary">
         {row.mechanicalOutputText ? (
           <Section heading="Mechanical output">
             <div className="v12-mechanical-rule"><Markdown>{row.mechanicalOutputText}</Markdown></div>
           </Section>
         ) : null}
-      </div>
-      <div className="v12-primitive-preview-secondary">
-        {row.narrativeRule ? <Section heading={row.mechanicalOutputText ? "Narrative rule" : "Description"}><Markdown>{row.narrativeRule}</Markdown></Section> : null}
         <ModifierCards row={row} buildModifiers={buildModifiers} />
       </div>
       {/* Phase 8.I i2.5h-fix2 (Mashu 2026-08-06): removed the
@@ -967,36 +978,39 @@ function CapabilityBody({
   );
   return (
     <div className="v12-composite-preview-body space-y-4">
-      <Header
-        fallback="CAP"
-        iconSource={row.iconSource}
-        iconKey={row.iconKey}
-        iconUrl={row.iconUrl}
-        iconColor={row.iconColor}
-        label={`Capability · ${row.type} · ${row.sourceType}`}
-        chips={
-          <>
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{totalBu} BU</span>
-            <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">{row.sourceOrigin ?? "—"}</span>
-            <VisibilityPill isPublic={row.isPublic} />
-          </>
-        }
-      />
-      {row.verboseDescription ? (
-        <Section heading="Description">
-          <Markdown>{row.verboseDescription}</Markdown>
-        </Section>
-      ) : null}
-      {row.tags.length > 0 ? (
-        <Section heading="Tags">
-          <div className="flex flex-wrap gap-1">
-            {row.tags.map((tag) => (
-              <span key={tag} className="rounded-full bg-secondary px-2 py-0.5 text-xs">{tag}</span>
-            ))}
-          </div>
-        </Section>
-      ) : null}
-      <ComposedList
+      <div className="v12-composite-preview-primary">
+        <Header
+          fallback="CAP"
+          iconSource={row.iconSource}
+          iconKey={row.iconKey}
+          iconUrl={row.iconUrl}
+          iconColor={row.iconColor}
+          label={`Capability · ${row.type} · ${row.sourceType}`}
+          chips={
+            <>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono font-semibold text-primary">{totalBu} BU</span>
+              <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">{row.sourceOrigin ?? "—"}</span>
+              <VisibilityPill isPublic={row.isPublic} />
+            </>
+          }
+        />
+        {row.verboseDescription ? (
+          <Section heading="Description">
+            <Markdown>{row.verboseDescription}</Markdown>
+          </Section>
+        ) : null}
+        {row.tags.length > 0 ? (
+          <Section heading="Tags">
+            <div className="flex flex-wrap gap-1">
+              {row.tags.map((tag) => (
+                <span key={tag} className="rounded-full bg-secondary px-2 py-0.5 text-xs">{tag}</span>
+              ))}
+            </div>
+          </Section>
+        ) : null}
+      </div>
+      <div className="v12-composite-preview-secondary">
+        <ComposedList
         title={`Composed primitives (${row.primitiveLinks.length})`}
         onSubLink={onSubLink}
         items={row.primitiveLinks.map((l, i) => ({
@@ -1014,12 +1028,12 @@ function CapabilityBody({
             </>
           ),
         }))}
-      />
+        />
       {/* Phase 8.1 batch 13.2: NEW section. Primitives that come in
           via the capability's effects. Each row tagged with the
           effect it came from so the player can trace the chain. */}
       {effectPrimitiveLinks.length > 0 ? (
-        <ComposedList
+          <ComposedList
           title={`Primitives from effects (${effectPrimitiveLinks.length})`}
           onSubLink={onSubLink}
           items={effectPrimitiveLinks.map((pl) => ({
@@ -1036,9 +1050,9 @@ function CapabilityBody({
               </>
             ),
           }))}
-        />
+          />
       ) : null}
-      <ComposedList
+        <ComposedList
         title={`Composed effects (${row.effectLinks.length})`}
         onSubLink={onSubLink}
         items={row.effectLinks.map((l) => ({
@@ -1056,7 +1070,8 @@ function CapabilityBody({
           // per-item targetType but missed the CapabilityBody case.
           targetType: "EFFECT" as const,
         }))}
-      />
+        />
+      </div>
     </div>
   );
 }

@@ -120,6 +120,9 @@ const CONTENT_REPAIRS:Record<string,ContentRepair>={
   "backpack":{mechanical:"Add +20 to Carry Capacity.",narrative:"A backpack expands how much carried Load you can support. While it is available for use, add 20 to Carry Capacity."},
   "extra-slot":{mechanical:"Add +1 Equipped Slot.",narrative:"This augment creates room to keep one additional item equipped and ready. Increase your maximum Equipped Slots by 1."},
   "lighten":{mechanical:"Subtract 2 from this item's Load.",narrative:"The item is made easier to carry through compact construction or supernatural lightening. Reduce this item's Load by 2, to the system's minimum allowed Load."},
+  "heavy-die-block-1d8":{mechanical:"Unlock 1d8 damage or healing output.",narrative:"Use a d8 when this capability produces a heavy but still conventional amount of damage or healing. The die inherits the capability's execution source, target, range, and delivery rules."},
+  "impact-die-block-1d10":{mechanical:"Unlock 1d10 damage or healing output.",narrative:"Use a d10 for concentrated, high-impact damage or healing beyond the standard d8 ceiling. The die supplies output intensity while the rest of the capability defines delivery and targets."},
+  "calamity-die-block-1d12":{mechanical:"Unlock 1d12 damage or healing output.",narrative:"Use a d12 for exceptional damage or healing capable of defining a major threat or decisive intervention. The die sets intensity; the capability's other primitives still govern source, range, targets, and timing."},
 };
 function tierFromRow(row:typeof primitives.$inferSelect) {
   const match=row.costTier.match(/tier\s*(\d+)/i); return match ? Number(match[1]) : tierFromCost(row.buCost);
@@ -212,7 +215,7 @@ async function migrate(tx:typeof db) {
     const rule=expressionRule(template,binding.bindings);
     const contentRepair=CONTENT_REPAIRS[normalizeKey(binding.name)];
     const text=contentRepair?.mechanical ?? renderMechanicalRule(rule);
-    const narrative=contentRepair?.narrative ?? template.verboseDescription;
+    const narrative=contentRepair?.narrative ?? binding.verboseDescription ?? template.verboseDescription;
     const namedCandidates=await tx.select().from(primitives).where(and(eq(primitives.name,binding.name),sql`${primitives.category}::text=${template.category}`)).limit(20);
     const existing=(await tx.select().from(primitives).where(eq(primitives.sourceOrigin,sourceOrigin)).limit(1))[0]
       ?? namedCandidates.find(row=>row.userId===null || adminClerkIds.includes(row.userId ?? ""));

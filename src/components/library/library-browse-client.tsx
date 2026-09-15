@@ -13,7 +13,6 @@
 // =============================================================================
 
 import {
-  groupLibraryEntries,
   libraryAuthorLabel,
   libraryOrigin,
 } from "@/lib/publishing/library-classification";
@@ -411,18 +410,6 @@ export function LibraryBrowseClient({
             </div>
           ) : null}
           </section>
-          {effectiveCategory && isPrimitiveMode ? (
-            <aside className="v12-family-note">
-              <span aria-hidden="true">⌘</span>
-              <div>
-                <h3>How this family stays organized</h3>
-                <p>
-                  Family → canonical tier → normalized key → exact public expression.
-                  Names never decide grouping; every fork keeps its pinned source path.
-                </p>
-              </div>
-            </aside>
-          ) : null}
           <div className="v12-results-heading">
             <div>
               <p className="v12-kicker">Exact entries</p>
@@ -436,7 +423,7 @@ export function LibraryBrowseClient({
           </div>
           {initialItems.length ? (
             <div className={isPrimitiveMode ? "v12-cluster-list" : "v12-creation-grid"}>
-              {(isPrimitiveMode ? groupLibraryEntries(initialItems) : [{ id: "creations", category: null, tier: null, key: "Creations", entries: initialItems }]).map(({ id, category, tier, key, entries }) => <section className="v12-entry-cluster" key={id}>{isPrimitiveMode ? <header className="v12-section-head"><div><h3>{key.charAt(0).toUpperCase() + key.slice(1)}</h3><p className="v12-cluster-identity">{category ? libraryFamilyLabel({ value: category, label: category.replaceAll("_", " ") }) : "Primitives"} · {tier ? `Tier ${tier}` : "Untiered"}{category === "DOMAIN_ACCESS" && key !== "Unclassified" ? ` · domain_key=${key}` : ""}</p></div><span>{entries.length} {entries.length === 1 ? "expression" : "expressions"} on this page</span></header> : null}{entries.map((item) => (
+              {[{ id: isPrimitiveMode ? "primitives" : "creations", entries: initialItems }].map(({ id, entries }) => <section className={`v12-entry-cluster${isPrimitiveMode ? " is-flat" : ""}`} key={id}>{entries.map((item) => (
                 <article
                   key={item.id}
                   data-library-row-id={item.id}
@@ -462,9 +449,10 @@ export function LibraryBrowseClient({
                     </div>
                     {item.compositionPaths?.length ? (
                       <CompositionMechanics paths={item.compositionPaths} compact onPrimitive={(path)=>setNestedPreview({targetType:"PRIMITIVE",targetId:String(path.primitiveId),name:path.primitiveName})} />
-                    ) : (
-                      <Markdown className="v12-entry-summary" data-readable-rule>{item.mechanicalDescription || item.description || "No mechanical description."}</Markdown>
-                    )}
+                    ) : <>
+                      {item.mechanicalDescription ? <Markdown className="v12-entry-mechanical" data-readable-rule>{item.mechanicalDescription}</Markdown> : null}
+                      {item.description ? <Markdown className="v12-entry-summary">{item.description}</Markdown> : null}
+                    </>}
                     <div className="v12-entry-lineage">
                       <span>{libraryAuthorLabel(item)}{item.versionNumber ? ` · v${item.versionNumber}` : ""}{item.descendantCount ? ` · ${item.descendantCount} descendants` : ""}</span>
                       <div onClick={(event) => event.stopPropagation()}>

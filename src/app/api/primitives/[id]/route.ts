@@ -53,7 +53,10 @@ export async function GET(
     buCost: row.buCost,
     isPublic: row.isPublic,
     costTier: row.costTier,
-    mechanicalOutputText: mechanicalDescriptionFromModifiers((row.hardModifiers ?? []) as HardModifier[]) || row.mechanicalOutputText || "",
+    mechanicalOutputText:
+      (row.mechanicalRule as { family?: string } | null)?.family === "DESCRIPTIVE"
+        ? ""
+        : mechanicalDescriptionFromModifiers((row.hardModifiers ?? []) as HardModifier[]) || row.mechanicalOutputText || "",
     narrativeRule: row.narrativeRule ?? "",
     isMirrorable: row.isMirrorable,
     mirrorVector: row.mirrorVector,
