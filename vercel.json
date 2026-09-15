@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm tsx scripts/migrate-v12-library.ts --apply && pnpm run build",
   "crons": [
     {
       "path": "/api/cron/soft-delete-purge",
