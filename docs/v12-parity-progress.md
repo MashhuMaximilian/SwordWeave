@@ -22,6 +22,18 @@ Reference: `mockups/v12-arcane-masterwork/desktop/`. This is an incomplete audit
 | Fork graph | Retained branch canvas with stable generation positions, deduplicated pagination, zoom/fit/pan/search, and lazy version headers implemented. Selecting a version opens its reconstructed stored snapshot in the inspector without leaving the graph; real PRIMITIVE:24 v1 verified in browser. Current entry preview also loads inline on demand. Ten graph/version access tests pass. | Composite historical child-name/BU resolution, multi-branch browser interaction, and exact desktop/mobile graph styling still require verification. 390px page/dialog width verified; full map and selected-version region remain present. |
 | Character sheet | Added Expressions source layers and a family-grouped Mastery ledger using the existing workspace graph/actions. Direct and effect-granted rules exposed; all supply paths shown beneath each primitive. Local desktop/mobile fixture verified two primitive identities and three supply paths, no overflow at 390px. Drawer files untouched. | Exact source medallions/header styling, grouped direct primitives, per-path pinned version labels, and signed-in runtime flow checks remain. |
 
+## Atelier active architecture
+
+- [x] Replace the bottom Mechanics / Heritages / Items / Monsters tabs with one source selector inside the left browser. Changing the source filter preserves the mounted build.
+- [x] Give primitive, effect, capability, and heritage authors a shared chapter model. Identity owns player-facing meaning and entity identity; Publish owns tags, source, and visibility; primitive Mechanical rule owns its optional structured rule.
+- [x] Remove the primitive free-text mechanical-output path, author-facing value-type selector, author-facing mirror controls, and on-use consequence control. Structured values infer their storage type and the renderer produces mechanical output.
+- [ ] Introduce a persistent primary-build session for the FAB. A capability, heritage, or item can remain open as a real modal while the middle column temporarily authors or edits one of its pieces.
+- [ ] Add explicit Dock in editor / Return to build actions. Saving the temporary piece must offer Slot into primary build without replacing or resetting the primary draft.
+- [ ] Preserve both primary and temporary drafts while the left browser switches among mechanics, heritages, and items. Monsters will join the same source filter after its data model exists.
+- [ ] Connect a saved primary build to the existing Character modal so it can be slotted into the active character without closing either draft early.
+
+The primary-build modal requires two independently mounted draft states. Moving the existing form DOM between a modal and the middle panel would reset local form state, so this must be implemented as a draft stack rather than a CSS overlay.
+
 Last production baseline: `6fd6895`. Later local navigation, unified family panel, and provenance changes require final verification and deployment.
 
 ### Character projection pass (local, not deployed)

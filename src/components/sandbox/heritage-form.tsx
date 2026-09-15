@@ -597,7 +597,7 @@ export function HeritageForm({
         </div>
       </div>
 
-      <AuthorChapters>
+      <AuthorChapters defaultActive="identity" order={["identity", "pieces", "table", "publish"]}>
         <AuthorChapter id="pieces" title="Pieces">
       <section className="rounded-md border border-border bg-background p-4">
         <div className="flex items-center justify-between gap-3">

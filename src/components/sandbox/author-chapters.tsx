@@ -7,10 +7,21 @@ export function AuthorChapter({ children }: { id: string; title: string; childre
 }
 
 /** Keeps every field mounted: switching chapters never discards a draft. */
-export function AuthorChapters({ children }: { children: ReactNode }) {
+export function AuthorChapters({ children, defaultActive, order }: { children: ReactNode; defaultActive?: string; order?: string[] }) {
   const prefix = useId();
-  const chapters = Children.toArray(children).filter(isValidElement) as ReactElement<{ id: string; title: string; children: ReactNode }>[];
-  const [active, setActive] = useState("pieces");
+  const chapters = Children.toArray(children).filter(isValidElement) as ReactElement<{
+    id: string;
+    title: string;
+    children: ReactNode;
+  }>[];
+  chapters
+    .sort((left, right) => {
+      if (!order) return 0;
+      const leftIndex = order.indexOf(left.props.id);
+      const rightIndex = order.indexOf(right.props.id);
+      return (leftIndex < 0 ? order.length : leftIndex) - (rightIndex < 0 ? order.length : rightIndex);
+    });
+  const [active, setActive] = useState(defaultActive ?? chapters[0]?.props.id ?? "identity");
   const [validationMessage, setValidationMessage] = useState("");
   return <div className="v12-author-chapters" onInput={() => setValidationMessage("")} onInvalidCapture={event => {
     event.preventDefault();

@@ -3,7 +3,7 @@
 // /atelier — unified sandbox client.
 //
 // One route, one 3-column layout (library / build / preview), with a
-// bottom tab bar of 6 build modes:
+// single source browser for the Library corpus:
 //   Mechanics:  primitive | effect | capability
 //   Heritage:   template (race / background / archetype)
 //   Items:      item
@@ -50,7 +50,6 @@ import { IconDisplay } from "@/components/icons/icon-display";
 import type { LibraryItem } from "@/lib/publishing/library-query";
 import type { SaveIntent } from "@/lib/publishing/save-intent";
 import type { ModifierDraft, PrimitiveFormState } from "./primitive-form-preview";
-import type { ConsequenceBehavior } from "@/lib/character/consequences/types";
 
 export type AtelierTab =
   | "mechanics"
@@ -728,9 +727,8 @@ export function AtelierSandboxClient({
   );
 
   function guardedSwitchBuild(newMode: AtelierTab) {
-    // Switching tabs never discards your work (Point 5): the per-tab
-    // cache in applyPendingAction preserves each tab's form state. So we
-    // just switch — no unsaved-changes prompt.
+    // The source selector only changes the Library corpus. It never
+    // replaces or resets the mounted author draft.
     if (newMode === build) return;
     applyPendingAction({ kind: "switchBuild", mode: newMode });
   }
@@ -859,7 +857,6 @@ export function AtelierSandboxClient({
       form: PrimitiveFormState;
       modifiers: ModifierDraft[];
       hardModifiers: unknown[];
-      consequenceBehavior?: ConsequenceBehavior | null;
       isDirty: boolean;
     }) => {
       setFormIsDirty(state.isDirty);
@@ -1546,7 +1543,7 @@ export function AtelierSandboxClient({
     return emptyPreview("Monster preview not yet implemented.", "The monster composer is queued.");
   }, [build, editing, formSnapshot, primitives, capabilities, effects]);
 
-  // Library column — swap the library component based on the active group.
+  // Library column — one persistent browser with a source-type filter.
   const libraryNode = useMemo(() => {
     const isMechanics = build === "mechanics";
     const editingKey = editing
@@ -1571,8 +1568,21 @@ export function AtelierSandboxClient({
           : itemDraftStarted
             ? "item"
             : null);
+    const sourcePicker = (
+      <div className="v12-source-browser-picker">
+        <label htmlFor="atelier-source-browser">Browse source</label>
+        <select id="atelier-source-browser" value={build} onChange={(event) => guardedSwitchBuild(event.target.value as AtelierTab)}>
+          <option value="mechanics">Mechanics · primitives, effects, capabilities</option>
+          <option value="heritage">Heritages · lineages, upbringings, manifests</option>
+          <option value="item">Items</option>
+          <option value="monster" disabled>Monsters · coming later</option>
+        </select>
+        <p>The active build stays open while you browse another source.</p>
+      </div>
+    );
     if (isMechanics) {
       return (
+        <div className="v12-unified-source-browser">{sourcePicker}
         <GrammarLibrary
           build={build as "mechanics"}
           buildFormKind={buildFormKind}
@@ -1602,10 +1612,11 @@ export function AtelierSandboxClient({
               "fork",
             )
           }
-        />
+        /></div>
       );
     }
     return (
+      <div className="v12-unified-source-browser">{sourcePicker}
       <HeritageLibrary
         build={build as "heritage" | "item" | "monster"}
         buildFormKind={buildFormKind}
@@ -1635,7 +1646,7 @@ export function AtelierSandboxClient({
           )
         }
         versionMap={versionMap}
-      />
+      /></div>
     );
   }, [
     build,
@@ -1747,16 +1758,15 @@ export function AtelierSandboxClient({
             <div className="v12-context-ribbon">
               <div>
                 <span className="v12-tag v12-tag--teal">
-                  Workspace · {buildLabel(build)}
+                  Source · {buildLabel(build)}
                 </span>
                 <span className="v12-tag v12-tag--violet">
                   Editor · {activeEditorKind ?? "Empty"}
                 </span>
               </div>
               <p>
-                The source column currently offers {sourceLabel}. Selecting a
-                different workspace changes the available sources without
-                discarding the build.
+                Browse mechanics, heritages, or items without closing the
+                active {activeEditorKind ?? "build"} draft.
               </p>
             </div>
           </div>
@@ -1772,7 +1782,6 @@ export function AtelierSandboxClient({
           </BuilderPane>
         }
         preview={previewNode}
-        bottomBar={<AtelierTabBar build={build} onSwitch={guardedSwitchBuild} />}
       />
       <UnsavedChangesModal
         isOpen={pendingAction !== null || pendingNav !== null}
@@ -1952,70 +1961,6 @@ function NewEntityModal({
           ))}
         </div>
       </div>
-    </div>
-  );
-}
-
-
-// 6-tab bottom bar. Icon-only when inactive, icon + label when active.
-// Active tab widens to fit the label; inactive tabs are icon-only.
-const ATELIER_TABS: {
-  key: AtelierTab;
-  label: string;
-  subtitle: string;
-  icon: string; // game-icon key
-}[] = [
-  { key: "mechanics", label: "Mechanics", subtitle: "Primitive · Effect · Capability", icon: "lorc/jigsaw-piece" },
-  { key: "heritage", label: "Heritages", subtitle: "Lineage · Upbringing · Manifest", icon: "caro-asercion/tarot-11-justice" },
-  { key: "item", label: "Items", subtitle: "Carried and equipped", icon: "lorc/battle-gear" },
-  { key: "monster", label: "Monsters", subtitle: "Separate workspace", icon: "lorc/gluttonous-smile" },
-];
-
-function AtelierTabBar({
-  build,
-  onSwitch,
-}: {
-  build: AtelierTab;
-  onSwitch: (mode: AtelierTab) => void;
-}) {
-  const isDark = useIsDark();
-  return (
-    <div role="tablist" aria-label="Build mode" className="v12-atelier-tabs flex bg-card">
-      {ATELIER_TABS.map((tab) => {
-        const active = build === tab.key;
-        return (
-          <button
-            key={tab.key}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onSwitch(tab.key)}
-            className={
-              // Open tab fills 50% (flex-1) so the active label is readable;
-              // collapsed tabs sit at a fixed 25% width each — same split the
-              // user requested ("open tab 50%, the other tabs equally in the
-              // other half"). Without the explicit basis the collapsed tabs
-              // collapsed to icon-only width which made the labels invisible.
-              "flex basis-1/4 items-center justify-center gap-2 border-t-2 px-2.5 py-2.5 text-sm font-medium transition-all " +
-              (active
-                ? "flex-1 border-primary bg-primary/5 text-primary"
-                : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground")
-            }
-          >
-            <IconDisplay
-              iconSource="GAME_ICONS"
-              iconKey={tab.icon}
-              iconColor={active ? (isDark ? "#64e1d9" : "#011614") : isDark ? "#94a3b8" : "#64748b"}
-              size={18}
-              alt={tab.label}
-            />
-            <span className="v12-atelier-tab-copy">
-              <strong>{tab.label}</strong>
-              <small>{tab.subtitle}</small>
-            </span>
-          </button>
-        );
-      })}
     </div>
   );
 }

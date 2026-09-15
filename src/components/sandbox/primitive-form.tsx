@@ -1,6 +1,5 @@
 "use client";
 import { describePrimitiveDraft, primitiveSentenceParts } from "@/lib/primitives/describe-draft";
-import { ConsequenceRestrictionsEditor } from "@/components/characters/consequence-restrictions-editor";
 
 // PrimitiveForm: controlled form-only composer.
 // Receives optional initial state (for ?edit= pre-fill).
@@ -11,7 +10,6 @@ import { ConsequenceRestrictionsEditor } from "@/components/characters/consequen
 // component. They live in the SandboxLayout columns owned by the page.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ReactElement } from "react";
 import { useRouter } from "next/navigation";
 import type {
   ModifierOperation,
@@ -45,9 +43,6 @@ import {
 import { validateModifierDrafts } from "@/lib/primitives/modifier-validator";
 import {
   BIAS_VALUES,
-  OP_SPECS,
-  OP_VALUE_TYPE_MATRIX,
-  applyMirror,
   operandsFromTokens,
   parseValueField,
   serializeValueField,
@@ -61,10 +56,7 @@ import {
   allowedTokenKinds,
   allowedValueTypes,
   classifyTypedValue,
-  effectiveMirrorable,
-  hidesValueTypeSelect,
   OPERATION_LABELS,
-  valueTypeLabel,
 } from "@/lib/primitives/form-helpers";
 import {
   tokenKindToValueKind,
@@ -82,6 +74,8 @@ import {
   type AuthorableCompositionFamily,
   type CanonicalMechanicalRule,
 } from "@/lib/primitives/mechanical-rule";
+import { MARKET_FAMILIES } from "@/lib/primitives/canonical-market";
+import { AuthorChapter, AuthorChapters } from "./author-chapters";
 
 type PrimitiveRow = {
   id: number;
@@ -114,7 +108,7 @@ type PrimitiveRow = {
   tags: string[];
 };
 
-type RuleMode = "MODIFIER" | "COMPOSITION" | "NARRATIVE";
+type RuleKind = "MODIFIER" | AuthorableCompositionFamily | null;
 type CompositionDraft = {
   family: AuthorableCompositionFamily;
   operation: "grant" | "revoke";
@@ -271,6 +265,43 @@ const categories = [
   "ITEM_AUGMENT",
 ] as const;
 
+const categoryGroups = (() => {
+  const available = new Set<string>(categories);
+  const claimed = new Set<string>();
+  const groups = [...new Set(MARKET_FAMILIES.map((family) => family.chapter))]
+    .map((chapter) => ({
+      label: chapter,
+      options: MARKET_FAMILIES.filter((family) => family.chapter === chapter)
+        .flatMap((family) => family.categories.map((value) => ({
+          value,
+          label: family.categories.length > 1
+            ? `${family.label} · ${categoryLabel(value)}`
+            : family.label,
+        })))
+        .filter((option) => available.has(option.value) && !claimed.has(option.value))
+        .map((option) => {
+          claimed.add(option.value);
+          return option;
+        }),
+    }))
+    .filter((group) => group.options.length > 0);
+  const remainder = categories
+    .filter((value) => !claimed.has(value))
+    .map((value) => ({ value, label: categoryLabel(value) }));
+  if (remainder.length) groups.push({ label: "Uncatalogued", options: remainder });
+  return groups;
+})();
+
+function CategoryOptions() {
+  return categoryGroups.map((group) => (
+    <optgroup key={group.label} label={group.label}>
+      {group.options.map((option) => (
+        <option key={option.value} value={option.value}>{option.label}</option>
+      ))}
+    </optgroup>
+  ));
+}
+
 const costTiers = [
   "Tier 1: Minor (4 BU anchor)",
   "Tier 2: Standard (8 BU anchor)",
@@ -396,110 +427,6 @@ function categoryLabel(category: string) {
     .split("_")
     .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
     .join(" ");
-}
-
-// =============================================================================
-// ChiralityBadge — Phase 7.5 v3
-// Small visual indicator showing whether the current op is
-// mirrorable (Variable) or permission-locked (Set To).
-// v3: removed Bias/Toggle-specific cases (those ops are gone).
-// =============================================================================
-
-function ChiralityBadge({
-  op,
-  mirrorable,
-}: {
-  readonly op: ModifierOperation;
-  readonly mirrorable: boolean;
-}): ReactElement {
-  const isSetTo = op === "set";
-  if (isSetTo) {
-    return (
-      <span
-        className="inline-flex items-center gap-1 rounded-sm border border-slate-500/30 bg-slate-500/10 px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300"
-        title="Set To is permission-locked; cannot be inverted."
-      >
-        🏛 Permission
-      </span>
-    );
-  }
-  if (mirrorable) {
-    return (
-      <span
-        className="inline-flex items-center gap-1 rounded-sm border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300"
-        title="Variable Vector — mirrorable per OP_SPECS."
-      >
-        📊 Variable
-      </span>
-    );
-  }
-  return (
-    <span
-      className="inline-flex items-center gap-1 rounded-sm border border-slate-500/30 bg-slate-500/10 px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-300"
-    >
-      🏛 Permission
-    </span>
-  );
-}
-
-// =============================================================================
-// MirrorSwapCard — Phase 7.5 v3 UI rev
-// Clickable card showing the chirality badge AND a "↔ Mirror"
-// action button. The mirror action swaps the modifier to its
-// chiral pair (Add ↔ Subtract, Multiply ↔ Divide, Min ↔ Max,
-// Grant ↔ Revoke). For Set To (permission-locked), the button
-// is hidden — the badge is shown as a passive indicator.
-//
-// The mirror button is the *primitive-level* mirror: it's an
-// authoring convenience for the DM to write the inverse modifier
-// quickly. The capability/affect layer (Phase 8) ALSO uses
-// mirror semantics when invoking the primitive in a mirrored
-// context — but for now this is the user-facing mirror UI.
-//
-// v3 update: this card is back. Mashu flagged its absence as a
-// regression — the badge alone didn't communicate "you can flip
-// this". The explicit mirror button restores the affordance.
-// =============================================================================
-
-function MirrorSwapCard({
-  op,
-  onSwap,
-}: {
-  readonly op: ModifierOperation;
-  readonly onSwap: () => void;
-}): ReactElement {
-  const mirrorable = effectiveMirrorable(op);
-  const mirrorOp = mirrorable ? OP_SPECS[op].mirrorOp : null;
-  const mirrorLabel = mirrorOp
-    ? OP_SPECS[mirrorOp].label
-    : null;
-
-  return (
-    <div
-      data-testid="mirror-swap-card"
-      className="flex items-center justify-between gap-3 rounded-md border border-border bg-background p-3"
-    >
-      <div className="flex flex-col gap-1.5">
-        <ChiralityBadge op={op} mirrorable={mirrorable} />
-        <p className="text-xs text-muted-foreground">
-          {mirrorable && mirrorOp && mirrorLabel
-            ? `Mirrorable — flips to ${mirrorLabel} when inverted (sign/reciprocal flipped per OP_SPECS).`
-            : "Not mirrorable (permission-locked). Set To has no meaningful inverse."}
-        </p>
-      </div>
-      {mirrorable && mirrorOp && mirrorLabel ? (
-        <button
-          type="button"
-          data-testid="mirror-toggle"
-          onClick={onSwap}
-          className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300"
-          title={`Swap operation to ${mirrorLabel}`}
-        >
-          ↔ Mirror to {mirrorLabel}
-        </button>
-      ) : null}
-    </div>
-  );
 }
 
 function toModifierDraft(modifier: ModifierDraft, index: number): ModifierDraft {
@@ -888,7 +815,6 @@ function toHardModifier(modifier: ModifierDraft): import("@/types/swordweave").H
 export function PrimitiveForm({
   initialPrimitive,
   saveRequest = fetch,
-  characterId,
   intent,
   sourceId,
   initialCategory,
@@ -937,7 +863,6 @@ export function PrimitiveForm({
     form: PrimitiveFormState;
     modifiers: ModifierDraft[];
     hardModifiers: unknown[];
-    consequenceBehavior?: import("@/lib/character/consequences/types").ConsequenceBehavior | null;
     /**
      * True once the user has touched the form since the last reset/save/load.
      * Page uses this to decide whether to show the unsaved-changes modal on
@@ -966,7 +891,6 @@ export function PrimitiveForm({
    */
   initialModifierDrafts?: ReadonlyArray<Partial<ModifierDraft>> | null;
 }) {
-  const [consequenceBehavior, setConsequenceBehavior] = useState<import("@/lib/character/consequences/types").ConsequenceBehavior | null>(initialPrimitive?.consequenceBehavior ?? null);
   const contextualBlankForm = useMemo<PrimitiveFormState>(
     () => ({
       ...blankForm,
@@ -975,14 +899,10 @@ export function PrimitiveForm({
     [initialCategory],
   );
   const [form, setForm] = useState<PrimitiveFormState>(() => contextualBlankForm);
-  const [ruleMode, setRuleMode] = useState<RuleMode>("MODIFIER");
+  const [ruleKind, setRuleKind] = useState<RuleKind>(null);
   const [composition, setComposition] = useState<CompositionDraft>(blankComposition);
   const [modifierCounter, setModifierCounter] = useState(1);
-  // New primitives open with the V12 sentence instrument ready to edit.
-  // Authors can still remove the modifier for narrative-only primitives.
-  const [modifiers, setModifiers] = useState<ModifierDraft[]>([
-    { ...blankModifier, tokens: [...blankModifier.tokens], targetValues: [] },
-  ]);
+  const [modifiers, setModifiers] = useState<ModifierDraft[]>([]);
   const [phrasePicker, setPhrasePicker] = useState<"target" | "operation" | "value" | "condition" | "resolver" | null>(null);
   const [targetSearch, setTargetSearch] = useState("");
   const [showJsonPreview, setShowJsonPreview] = useState(false);
@@ -1016,8 +936,6 @@ export function PrimitiveForm({
     if (bootstrappedRef.current === id) return;
     bootstrappedRef.current = id;
     if (!initialPrimitive) return;
-    setConsequenceBehavior(initialPrimitive.consequenceBehavior ?? null);
-
     const stored = Array.isArray(initialPrimitive.hardModifiers)
       ? (initialPrimitive.hardModifiers as unknown[]).filter(isHardModifierLike)
       : [];
@@ -1052,7 +970,7 @@ export function PrimitiveForm({
       iconColor: initialPrimitive.iconColor,
     });
     setModifiers(drafts);
-    setRuleMode(drafts.length ? "MODIFIER" : storedComposition ? "COMPOSITION" : "NARRATIVE");
+    setRuleKind(drafts.length ? "MODIFIER" : storedComposition?.family ?? null);
     setComposition(storedComposition ?? blankComposition);
     setModifierCounter(drafts.length);
     setIsDirty(false); // pristine after load
@@ -1078,18 +996,18 @@ export function PrimitiveForm({
     );
   }, [initialPrimitive, openGlobalDrawer]);
 
-  const sentenceParts = ruleMode === "MODIFIER" && modifiers[0] ? primitiveSentenceParts(modifiers[0]) : null;
+  const sentenceParts = ruleKind === "MODIFIER" && modifiers[0] ? primitiveSentenceParts(modifiers[0]) : null;
   const mechanicalRule = useMemo<CanonicalMechanicalRule>(
-    () => ruleMode === "COMPOSITION" ? toCompositionRule(composition) : {family:"DESCRIPTIVE"},
-    [composition, ruleMode],
+    () => ruleKind && ruleKind !== "MODIFIER" ? toCompositionRule({ ...composition, family: ruleKind }) : {family:"DESCRIPTIVE"},
+    [composition, ruleKind],
   );
   const activeHardModifiers = useMemo(
-    () => ruleMode === "MODIFIER" ? modifiers.map(toHardModifier) : [],
-    [modifiers, ruleMode],
+    () => ruleKind === "MODIFIER" ? modifiers.map(toHardModifier) : [],
+    [modifiers, ruleKind],
   );
   const mechanicalSentence = useMemo(
-    () => mechanicalDescriptionFromModifiers(activeHardModifiers) || (ruleMode === "COMPOSITION" && composition.value.trim() ? renderMechanicalRule(mechanicalRule) : ""),
-    [activeHardModifiers, composition.value, mechanicalRule, ruleMode],
+    () => mechanicalDescriptionFromModifiers(activeHardModifiers) || (ruleKind && ruleKind !== "MODIFIER" && composition.value.trim() ? renderMechanicalRule(mechanicalRule) : ""),
+    [activeHardModifiers, composition.value, mechanicalRule, ruleKind],
   );
 
   // Fire onStateChange on every form/modifier change.
@@ -1098,10 +1016,9 @@ export function PrimitiveForm({
       form: { ...form, mechanicalOutputText: mechanicalSentence },
       modifiers,
       hardModifiers: activeHardModifiers,
-            consequenceBehavior,
       isDirty,
     });
-  }, [form, modifiers, mechanicalSentence, activeHardModifiers, onStateChange, consequenceBehavior, isDirty]);
+  }, [form, modifiers, mechanicalSentence, activeHardModifiers, onStateChange, isDirty]);
 
   // Phase 9.4 (Mashu 2026-09-07): on first mount, if the caller
   // supplied initialModifierDrafts (e.g. the Promote tab in the
@@ -1132,6 +1049,7 @@ export function PrimitiveForm({
       }),
     );
     setModifiers(seeded);
+    setRuleKind("MODIFIER");
     setModifierCounter((c) => Math.max(c, seeded.length));
   }, [initialModifierDrafts]);
 
@@ -1159,6 +1077,30 @@ export function PrimitiveForm({
         modifier.id === id ? { ...modifier, [field]: value } : modifier,
       ),
     );
+  }
+
+  function updateModifierOperation(id: string, operation: ModifierOperation) {
+    setIsDirty(true);
+    setModifiers((current) => current.map((modifier) => {
+      if (modifier.id !== id) return modifier;
+      const valueKind: ValueType = operation === "grant" || operation === "revoke"
+        ? "text"
+        : modifier.target === "damage_healing_output"
+          ? "dice"
+          : modifier.valueKind === "equation"
+            ? "equation"
+            : "number";
+      return { ...modifier, operation, valueKind };
+    }));
+  }
+
+  function inferredValueKind(tokens: ValueToken[], fallback: ValueType): ValueType {
+    if (tokens.some((token) => token.kind === "dice")) return "dice";
+    if (tokens.some((token) => token.kind === "number" || token.kind === "attribute" || token.kind === "practice" || token.kind === "derived")) return "number";
+    const behaviors = tokens.filter((token) => token.kind === "behavior");
+    if (behaviors.length && behaviors.every((token) => token.kind === "behavior" && (token.name === "true" || token.name === "false"))) return "boolean";
+    if (tokens.some((token) => token.kind === "behavior" || token.kind === "keyword")) return "text";
+    return fallback;
   }
 
   function updateModifierCondition(id: string, next: ConditionAuthoring) {
@@ -1227,65 +1169,12 @@ export function PrimitiveForm({
     );
   }
 
-  /**
-   * Phase 7.5: Mirror toggle handler. Swaps the modifier's
-   * operation to its chiral pair (e.g. Add → Subtract) and
-   * adjusts the first token's value per OP_SPECS (sign flip,
-   * reciprocal, or value flip).
-   *
-   * Multi-token values: only the first token is mirrored. The
-   * intent is "this modifier, mirrored" — if the author wants
-   * a fully mirrored version with different conditions, they
-   * write a second modifier primitive with its own condition.
-   */
-  function mirrorModifier(id: string) {
-    setIsDirty(true);
-    setModifiers((current) =>
-      current.map((modifier) => {
-        if (modifier.id !== id) return modifier;
-        if (!OP_SPECS[modifier.operation].mirrorable) return modifier;
-        const spec = OP_SPECS[modifier.operation];
-        // Mirror each token through the op swap. For single-value
-        // tokens (number, behavior, dice), applyMirror semantics
-        // are baked in. For runtime tokens (attribute, practice,
-        // derived), the value is an identifier that doesn't
-        // change on mirror (it's still "physical" or "awareness").
-        const nextTokens: ValueToken[] = modifier.tokens.map((token): ValueToken => {
-          if (token.kind === "number") {
-            const result = applyMirror(modifier.operation, token.value);
-            if (result.op !== spec.mirrorOp) return token;
-            if (typeof result.value === "number") {
-              return { kind: "number", value: result.value };
-            }
-            return token;
-          }
-          if (token.kind === "behavior") {
-            const result = applyMirror(modifier.operation, token.name);
-            if (result.op !== spec.mirrorOp) return token;
-            if (result.value === "advantage" || result.value === "disadvantage") {
-              return { kind: "behavior", name: result.value };
-            }
-            return token;
-          }
-          return token;
-        });
-        return {
-          ...modifier,
-          operation: spec.mirrorOp ?? modifier.operation,
-          tokens: nextTokens,
-        };
-      }),
-    );
-  }
-
   function resetEditor() {
     setForm(contextualBlankForm);
-    setRuleMode("MODIFIER");
+    setRuleKind(null);
     setComposition(blankComposition);
     setModifierCounter(1);
-    setModifiers([
-      { ...blankModifier, tokens: [...blankModifier.tokens], targetValues: [] },
-    ]);
+    setModifiers([]);
     setShowJsonPreview(false);
     setIsDirty(false); // pristine after reset
     setMessage("Started a fresh primitive.");
@@ -1301,7 +1190,7 @@ export function PrimitiveForm({
     // before any network round-trip. Attribute increment with no
     // sub-target should not contribute; we block the save here so
     // existing data with malformed modifiers stays untouched.
-    const validationError = ruleMode === "MODIFIER" ? validateModifierDrafts(
+    const validationError = ruleKind === "MODIFIER" ? validateModifierDrafts(
       modifiers.map((m) => ({
         target: String(m.target),
         targetValues: m.targetValues,
@@ -1336,7 +1225,6 @@ export function PrimitiveForm({
         mirrorBuCredit: form.mirrorBuCredit,
         mirrorEligibilityNotes: form.mirrorEligibilityNotes,
         hardModifiers: activeHardModifiers,
-            consequenceBehavior,
         // Phase 8: per-entity iconography
         iconSource: form.iconSource,
         iconKey: form.iconKey,
@@ -1372,7 +1260,6 @@ export function PrimitiveForm({
             mirrorVector: form.isMirrorable ? form.mirrorVector : "STANDARD_ONLY",
             mirrorBuCredit: form.isMirrorable ? Number(form.buCost) || 0 : 0,
             hardModifiers: activeHardModifiers,
-            consequenceBehavior,
           }),
         });
         payload = await response.json();
@@ -1473,7 +1360,6 @@ export function PrimitiveForm({
         mirrorBuCredit: form.isMirrorable ? Number(form.mirrorBuCredit) || 0 : 0,
         mirrorEligibilityNotes: form.mirrorEligibilityNotes,
         hardModifiers: activeHardModifiers,
-            consequenceBehavior,
       },
     ],
   };
@@ -1538,6 +1424,8 @@ export function PrimitiveForm({
         </div>
       </div>
 
+      <AuthorChapters defaultActive="identity">
+        <AuthorChapter id="identity" title="Identity">
       {/* Phase 7.5 v4-rev: mobile-first compact layout.
           Mashu (round 1): "Name and icon could be on the
           same row? Same for lexicon, tier, and cost? So we
@@ -1600,11 +1488,7 @@ export function PrimitiveForm({
               value={form.category}
               onChange={(event) => updateForm("category", event.target.value)}
             >
-              {categories.map((category) => (
-                <option key={category} value={category}>
-                  {categoryLabel(category)}
-                </option>
-              ))}
+              <CategoryOptions />
             </select>
           </label>
           <label className="block text-xs font-medium">
@@ -1636,74 +1520,60 @@ export function PrimitiveForm({
         </div>
       </div>
 
-      {/* Desktop layout — original full-width stack.
-          Hidden on mobile, shown on md+. */}
-      <label className="v12-field-name hidden text-sm font-medium md:block md:col-span-2">
-        Name
-        <input
-          className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-          value={form.name}
-          onChange={(event) => updateForm("name", event.target.value)}
-          placeholder="Kinetic Velocity Arrest"
-          required
-        />
-      </label>
-
-      {/* Phase 8: per-entity iconography */}
-      <div className="v12-field-icon hidden md:block md:col-span-2">
-        <IconSlot
-          iconSource={(form.iconSource as IconSource | null) ?? null}
-          iconKey={form.iconKey ?? null}
-          iconUrl={form.iconUrl ?? null}
-          iconColor={form.iconColor ?? "#ffffff"}
-          onChange={(next) =>
-            setForm({
-              ...form,
-              iconSource: next.iconSource,
-              iconKey: next.iconKey ?? null,
-              iconUrl: next.iconUrl ?? null,
-              iconColor: next.iconColor,
-            })
-          }
-          size={56}
-          label="Icon"
-          helper="Pick from game-icons.net or upload your own."
-        />
+      <div className="v12-primitive-core hidden md:col-span-2 md:grid">
+        <label className="v12-field-name block text-sm font-medium">
+          Name
+          <input
+            className="mt-1.5 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+            value={form.name}
+            onChange={(event) => updateForm("name", event.target.value)}
+            placeholder="Kinetic Velocity Arrest"
+            required
+          />
+        </label>
+        <div className="v12-field-icon">
+          <span className="text-sm font-medium">Icon</span>
+          <div className="mt-1.5">
+            <IconSlot
+              iconSource={(form.iconSource as IconSource | null) ?? null}
+              iconKey={form.iconKey ?? null}
+              iconUrl={form.iconUrl ?? null}
+              iconColor={form.iconColor ?? "#ffffff"}
+              onChange={(next) =>
+                setForm({
+                  ...form,
+                  iconSource: next.iconSource,
+                  iconKey: next.iconKey ?? null,
+                  iconUrl: next.iconUrl ?? null,
+                  iconColor: next.iconColor,
+                })
+              }
+              size={40}
+              label=""
+              helper=""
+            />
+          </div>
+        </div>
       </div>
-
-      <fieldset className="v12-field-consequence v12-rule space-y-3 rounded-md border border-border p-3">
-        <legend className="px-1 text-sm font-semibold">On-use consequence (optional)</legend>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!consequenceBehavior} onChange={e => setConsequenceBehavior(e.target.checked ? { timing: "on-use", vitalityDelta: 0, restrictions: [], recovery: "" } : null)} />Create this consequence when the action is committed</label>
-        {!consequenceBehavior ? <p className="text-xs text-muted-foreground">Leave this off for permanent traits and ordinary composition rules.</p> : null}
-        {consequenceBehavior && <>
-          <p className="text-xs text-muted-foreground">The player previews and commits this consequence. Its modifiers are not passive character bonuses.</p>
-          <label className="block text-sm">One-time vitality change<input type="number" className="ml-2 rounded border border-input bg-background p-2" value={consequenceBehavior.vitalityDelta} onChange={e => setConsequenceBehavior({ ...consequenceBehavior, vitalityDelta: Number(e.target.value) })} /></label>
-          <label className="block text-sm">Recovery requirements<textarea className="mt-1 w-full rounded border border-input bg-background p-2" value={consequenceBehavior.recovery} onChange={e => setConsequenceBehavior({ ...consequenceBehavior, recovery: e.target.value })} /></label>
-          <ConsequenceRestrictionsEditor characterId={characterId} value={consequenceBehavior.restrictions} onChange={restrictions=>setConsequenceBehavior({...consequenceBehavior,restrictions})} />
-        </>}
-      </fieldset>
 
       <div className="v12-market-identity-head hidden md:block md:col-span-2">
         <p className="v12-kicker">Market identity and provenance</p>
         <h2>Where this primitive belongs</h2>
       </div>
 
-      <label className="v12-field-market hidden text-sm font-medium md:block">
+      <div className="v12-market-fields hidden md:col-span-2 md:grid">
+      <label className="v12-field-market text-sm font-medium">
         Lexicon Category
         <select
           className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
           value={form.category}
           onChange={(event) => updateForm("category", event.target.value)}
         >
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {categoryLabel(category)}
-            </option>
-          ))}
+          <CategoryOptions />
         </select>
       </label>
 
-      <label className="v12-field-market hidden text-sm font-medium md:block">
+      <label className="v12-field-market text-sm font-medium">
         Cost Tier Bracket
         <select
           className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
@@ -1718,7 +1588,7 @@ export function PrimitiveForm({
         </select>
       </label>
 
-      <label className="v12-field-market hidden text-sm font-medium md:block">
+      <label className="v12-field-market text-sm font-medium">
         Exact BU
         <input
           className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
@@ -1731,22 +1601,7 @@ export function PrimitiveForm({
         />
       </label>
 
-      <label className="v12-field-market flex flex-col gap-2 rounded-md border border-border bg-background p-3 text-sm font-medium md:col-span-2">
-        <span className="text-xs font-semibold uppercase text-muted-foreground">
-          Visibility
-        </span>
-        <VisibilitySelect
-          compact
-          value={form.isPublic ? "PUBLIC" : "PRIVATE"}
-          onChange={(next) => updateForm("isPublic", next === "PUBLIC")}
-        />
-        <span className="text-xs font-normal text-muted-foreground">
-          Public entries appear in the Library. Private and Followers-only
-          entries can be promoted to Public from the My Creations page.
-        </span>
-      </label>
-
-      {form.mechanicalOutputText ? <details className="v12-field-resolver md:col-span-2"><summary>Original mechanical description</summary><p data-readable-rule>{form.mechanicalOutputText}</p></details> : null}
+      </div>
 
       <label className="v12-field-narrative block text-sm font-medium md:col-span-2">
         Verbose Narrative Rule
@@ -1758,35 +1613,8 @@ export function PrimitiveForm({
         />
       </label>
 
-      {/* Phase 9: tags + source origin — now editable on every primitive
-          (matches effects / capabilities / items). tags is comma-separated
-          in the form, split to an array on save. sourceOrigin is free text
-          (a world / book / setting the primitive belongs to). */}
-      <label className="v12-field-market block text-sm font-medium md:col-span-2">
-        Tags
-        <span className="ml-2 text-xs font-normal text-muted-foreground">
-          Comma-separated, e.g. "fire, ranged, condition"
-        </span>
-        <input
-          className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-          value={form.tags}
-          onChange={(event) => updateForm("tags", event.target.value)}
-          placeholder="fire, ranged, condition"
-        />
-      </label>
-
-      <label className="v12-field-market block text-sm font-medium md:col-span-2">
-        Source origin
-        <span className="ml-2 text-xs font-normal text-muted-foreground">
-          World, book, or setting this belongs to
-        </span>
-        <input
-          className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-          value={form.sourceOrigin}
-          onChange={(event) => updateForm("sourceOrigin", event.target.value)}
-          placeholder="Forgotten Realms"
-        />
-      </label>
+        </AuthorChapter>
+        <AuthorChapter id="mechanical" title="Mechanical rule">
 
       {/* Phase 7.5 v3: Mirror Vector card removed from primitive
           form. Mirror logic moves to capability/affect layer
@@ -1794,33 +1622,34 @@ export function PrimitiveForm({
 
       <fieldset className="v12-mechanical-rule v12-rule space-y-3 rounded-md border border-border bg-background p-4 md:col-span-2">
         <div className="v12-mechanical-rule-head">
-          <p className="v12-kicker">Rule source</p>
-          <h2>Choose how this primitive works</h2>
+          <div>
+            <p className="v12-kicker">Mechanical rule · optional</p>
+            <h2>{ruleKind ? "Write one rule" : "No mechanical rule"}</h2>
+          </div>
+          {ruleKind ? <button type="button" className="v12-metal-button" onClick={() => { setRuleKind(null); setModifiers([]); setComposition(blankComposition); setPhrasePicker(null); setIsDirty(true); }}>Clear rule</button> : null}
         </div>
-        <div className="v12-rule-mode-switch" role="radiogroup" aria-label="Primitive rule source">
-          {([
-            ["MODIFIER", "Modifier", "Changes a sheet or runtime value"],
-            ["COMPOSITION", "Composition", "Grants a construction permission"],
-            ["NARRATIVE", "Narrative only", "Described without executable output"],
-          ] as const).map(([value,label,description]) => (
-            <button key={value} type="button" role="radio" aria-checked={ruleMode === value} onClick={() => { setRuleMode(value); setPhrasePicker(null); setIsDirty(true); }}>
-              <b>{label}</b><span>{description}</span>
-            </button>
-          ))}
+        <p className="v12-rule-guidance">
+          Add a rule only when the primitive changes a tracked value or defines a construction permission. Otherwise its verbose description is the complete player-facing explanation.
+        </p>
+        <div className="v12-rule-kind-picker" aria-label="Mechanical rule kind">
+          <p>Character and runtime values</p>
+          <button type="button" aria-pressed={ruleKind === "MODIFIER"} onClick={() => { if (!modifiers[0]) setModifiers([{ ...blankModifier, id: `modifier-${modifierCounter}`, tokens: [...blankModifier.tokens], targetValues: [] }]); setRuleKind("MODIFIER"); setPhrasePicker("target"); setIsDirty(true); }}>Sheet or action value</button>
+          <p>Construction language and capability shape</p>
+          {compositionOptions.map((option) => <button key={option.value} type="button" aria-pressed={ruleKind === option.value} onClick={() => { setComposition(current => ({ ...current, family: option.value, value: current.family === option.value ? current.value : "" })); setRuleKind(option.value); setPhrasePicker(null); setIsDirty(true); }}>{option.label}</button>)}
         </div>
-        {ruleMode === "COMPOSITION" ? (
+        {ruleKind && ruleKind !== "MODIFIER" ? (
           <div className="v12-composition-author grid gap-3 md:grid-cols-3">
-            <label>Kind<select value={composition.family} onChange={event=>{setComposition(current=>({...current,family:event.target.value as AuthorableCompositionFamily,value:""}));setIsDirty(true);}}>{compositionOptions.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-            {composition.family === "DOMAIN_ACCESS" || composition.family === "VERB_ACCESS" ? <>
+            <div className="v12-composition-kind"><span>Rule</span><b>{compositionOptions.find(option=>option.value===ruleKind)?.label}</b></div>
+            {ruleKind === "DOMAIN_ACCESS" || ruleKind === "VERB_ACCESS" ? <>
               <label>Operation<select value={composition.operation} onChange={event=>{setComposition(current=>({...current,operation:event.target.value as "grant"|"revoke"}));setIsDirty(true);}}><option value="grant">Grant</option><option value="revoke">Revoke</option></select></label>
               <label>Recipient<select value={composition.recipient} onChange={event=>{setComposition(current=>({...current,recipient:event.target.value as "SELF"|"TARGET"}));setIsDirty(true);}}><option value="SELF">Self</option><option value="TARGET">Target</option></select></label>
             </> : null}
-            <label className="md:col-span-3">{compositionOptions.find(option=>option.value===composition.family)?.label} value<input value={composition.value} onChange={event=>{setComposition(current=>({...current,value:event.target.value}));setIsDirty(true);}} placeholder={composition.family === "DOMAIN_ACCESS" ? "fire" : composition.family === "VERB_ACCESS" ? "Tier II" : composition.family === "STRUCTURE" ? "single-point structure" : "Enter the canonical value"} required /></label>
+            <label className="md:col-span-3">{compositionOptions.find(option=>option.value===ruleKind)?.label}<input value={composition.value} onChange={event=>{setComposition(current=>({...current,value:event.target.value}));setIsDirty(true);}} placeholder={ruleKind === "DOMAIN_ACCESS" ? "fire" : ruleKind === "VERB_ACCESS" ? "Tier II" : ruleKind === "STRUCTURE" ? "single-point structure" : "Enter the exact value"} required /></label>
             <p className="v12-composition-output md:col-span-3">{mechanicalSentence || "Complete the value to preview the rendered mechanical rule."}</p>
           </div>
         ) : null}
-        {ruleMode === "NARRATIVE" ? <p className="v12-narrative-only-note">This primitive will show its verbose description and will not create an orange mechanical rule.</p> : null}
-        <div hidden={ruleMode !== "MODIFIER"}>
+        {!ruleKind ? <p className="v12-narrative-only-note">No orange mechanical output will be shown. The verbose description remains visible in white.</p> : null}
+        <div hidden={ruleKind !== "MODIFIER"}>
         <div className="v12-sentence" aria-label="Mechanical rule sentence">
           {modifiers[0] ? <>
             <span>{sentenceParts?.lead} </span>
@@ -1856,7 +1685,7 @@ export function PrimitiveForm({
               </legend>
 
               <input aria-label="Search rule categories" placeholder="Search categories…" value={targetSearch} onChange={event => setTargetSearch(event.target.value)} />
-              <div className="v12-choice-chips">{targetOptions.filter(target => target.label.toLowerCase().includes(targetSearch.toLowerCase())).map(target => <button key={target.value} type="button" aria-pressed={modifier.target === target.value} onClick={() => { updateModifier(modifier.id, "target", target.value); }}>{target.label}</button>)}</div>
+              <div className="v12-choice-chips">{targetOptions.filter(target => target.label.toLowerCase().includes(targetSearch.toLowerCase())).map(target => <button key={target.value} type="button" aria-pressed={modifier.target === target.value} onClick={() => { updateModifier(modifier.id, "target", target.value); if (target.value === "damage_healing_output") updateModifier(modifier.id, "valueKind", "dice"); }}>{target.label}</button>)}</div>
 
               {(() => {
                 // Phase-7-E: render the dynamic Target Value widget
@@ -1942,19 +1771,8 @@ export function PrimitiveForm({
                 Change
               </legend>
               <div className="v12-choice-chips" aria-label="Rule operation">
-                {operations.map(operation => <button key={operation.value} type="button" aria-pressed={modifier.operation === operation.value} onClick={() => updateModifier(modifier.id, "operation", operation.value)}>{operation.label}</button>)}
+                {operations.map(operation => <button key={operation.value} type="button" aria-pressed={modifier.operation === operation.value} onClick={() => updateModifierOperation(modifier.id, operation.value)}>{operation.label}</button>)}
               </div>
-
-              {/* Chirality / mirror indicator. Clickable badge that
-                  swaps the modifier to its mirror op (Add ↔ Subtract,
-                  Multiply ↔ Divide, Min ↔ Max, Grant ↔ Revoke). The
-                  chirality badge stays as the visible affordance — the
-                  user clicks it to invert. For Set To (permission-locked),
-                  it's a passive indicator. */}
-              <MirrorSwapCard
-                op={modifier.operation}
-                onSwap={() => mirrorModifier(modifier.id)}
-              />
             </fieldset>
 
             {/* ============================================================
@@ -1967,25 +1785,6 @@ export function PrimitiveForm({
               <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Value
               </legend>
-
-              {(!hidesValueTypeSelect(modifier.operation)) ? (
-                <label className="block text-sm font-medium">
-                  Value Type
-                  <select
-                    className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                    value={modifier.valueKind}
-                    onChange={(event) =>
-                      updateModifier(modifier.id, "valueKind", event.target.value)
-                    }
-                  >
-                    {allowedValueTypes(modifier.operation).map((vt) => (
-                      <option key={vt} value={vt}>
-                        {valueTypeLabel(vt)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
 
               {/* Value field — switches between TokenChipStack (legacy) and
                   EquationPicker (v4). The EquationPicker renders for
@@ -2004,10 +1803,10 @@ export function PrimitiveForm({
                     </div>
                   );
                 }
-                const { kinds, biasMode } = allowedTokenKinds(
-                  modifier.operation,
-                  modifier.valueKind,
-                );
+                const kinds = new Set<ValueToken["kind"]>();
+                for (const valueType of allowedValueTypes(modifier.operation)) {
+                  for (const kind of allowedTokenKinds(modifier.operation, valueType).kinds) kinds.add(kind);
+                }
                 return (
                   <div className="mt-1.5">
                     <TokenChipStack
@@ -2016,6 +1815,7 @@ export function PrimitiveForm({
                       valueKind={modifier.valueKind}
                       onChange={(next) => {
                         updateModifier(modifier.id, "tokens", next);
+                        updateModifier(modifier.id, "valueKind", inferredValueKind(next, modifier.valueKind));
                         // Keep the derived `value` cache in sync.
                         const serialized = serializeValueField(next);
                         const first = serialized[0];
@@ -2086,9 +1886,29 @@ export function PrimitiveForm({
             </div>
           </div>
         ))}
-        <div className="v12-rule-tools"><button type="button" onClick={() => setPhrasePicker(phrasePicker === "resolver" ? null : "resolver")}>Resolver mapping · stacking · mirror</button>{modifiers[0] ? <button type="button" onClick={() => removeModifier(modifiers[0]!.id)}>Clear mechanical rule</button> : null}</div>
+        <div className="v12-rule-tools"><button type="button" onClick={() => setPhrasePicker(phrasePicker === "resolver" ? null : "resolver")}>Stacking rule and explanation</button>{modifiers[0] ? <button type="button" onClick={() => { removeModifier(modifiers[0]!.id); setRuleKind(null); setPhrasePicker(null); }}>Clear mechanical rule</button> : null}</div>
         </div>
       </fieldset>
+
+        </AuthorChapter>
+        <AuthorChapter id="publish" title="Publish">
+      <div className="v12-supporting-fields grid gap-2 md:grid-cols-2">
+        <label className="v12-field-market block text-sm font-medium">
+          Tags <span className="ml-2 text-xs font-normal text-muted-foreground">Comma-separated</span>
+          <input className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2" value={form.tags} onChange={(event) => updateForm("tags", event.target.value)} placeholder="fire, ranged, condition" />
+        </label>
+        <label className="v12-field-market block text-sm font-medium">
+          Source origin <span className="ml-2 text-xs font-normal text-muted-foreground">World, book, or setting</span>
+          <input className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2" value={form.sourceOrigin} onChange={(event) => updateForm("sourceOrigin", event.target.value)} placeholder="Forgotten Realms" />
+        </label>
+      </div>
+      <label className="v12-field-visibility flex flex-col gap-1.5 rounded-md border border-border bg-background p-2 text-sm font-medium">
+        <span className="text-xs font-semibold uppercase text-muted-foreground">Visibility</span>
+        <VisibilitySelect compact value={form.isPublic ? "PUBLIC" : "PRIVATE"} onChange={(next) => updateForm("isPublic", next === "PUBLIC")} />
+        <span className="text-[11px] font-normal leading-snug text-muted-foreground">Controls who can find this entry in the Library.</span>
+      </label>
+        </AuthorChapter>
+      </AuthorChapters>
 
       <details
         className="v12-resolver-details rounded-md border border-border bg-background p-4 md:col-span-2"

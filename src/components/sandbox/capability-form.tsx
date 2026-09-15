@@ -553,7 +553,7 @@ export function CapabilityForm({
         <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("sw-start-new-entity", { detail: "effect" }))}>Effect</button>
         <button type="button" className="is-active">Capability</button>
       </div>
-      <AuthorChapters>
+      <AuthorChapters defaultActive="identity" order={["identity", "pieces", "table", "publish"]}>
         <AuthorChapter id="pieces" title="Pieces">
       <section className="v12-capability-primitives rounded-md border border-border bg-background p-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -812,18 +812,26 @@ export function CapabilityForm({
         </label>
       </div>
 
-        </AuthorChapter>
-        <AuthorChapter id="table" title="At the table">
       <label className="v12-capability-description block text-sm font-medium">
         Verbose Description
         <textarea
           className="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
           value={form.verboseDescription}
           onChange={(e) => updateForm("verboseDescription", e.target.value)}
-          placeholder="What does this capability do? Include flavor and mechanical notes."
+          placeholder="What does this capability do and feel like in play?"
           rows={3}
         />
       </label>
+
+        </AuthorChapter>
+        <AuthorChapter id="table" title="At the table">
+      <div className="v12-table-readout">
+        <p className="v12-kicker">Declaration preview</p>
+        <h3>{form.name || "Untitled capability"}</h3>
+        <p>{form.type} · {form.sourceType}</p>
+        <p>{form.verboseDescription || "Add the player-facing description in Identity."}</p>
+        <p>{slots.length} primitive {slots.length === 1 ? "piece" : "pieces"} · {effectIds.length} bundled {effectIds.length === 1 ? "effect" : "effects"} · {previewBu} BU</p>
+      </div>
 
         </AuthorChapter>
         <AuthorChapter id="publish" title="Publish">
