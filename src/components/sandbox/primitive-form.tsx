@@ -76,6 +76,12 @@ import {
 import { conditionToAuthoring } from "@/lib/primitives/condition";
 import { TokenChipStack } from "./token-chip-stack";
 import { EquationPicker } from "./equation-picker";
+import {
+  mechanicalDescriptionFromModifiers,
+  renderMechanicalRule,
+  type AuthorableCompositionFamily,
+  type CanonicalMechanicalRule,
+} from "@/lib/primitives/mechanical-rule";
 
 type PrimitiveRow = {
   id: number;
@@ -86,6 +92,7 @@ type PrimitiveRow = {
   costTier: string;
   buCost: number;
   mechanicalOutputText: string;
+  mechanicalRule?: unknown;
   narrativeRule: string;
   isMirrorable: boolean;
   mirrorVector: string;
@@ -106,6 +113,41 @@ type PrimitiveRow = {
   /** Free-form tags (comma-separated display in the form; array in the DB). */
   tags: string[];
 };
+
+type RuleMode = "MODIFIER" | "COMPOSITION" | "NARRATIVE";
+type CompositionDraft = {
+  family: AuthorableCompositionFamily;
+  operation: "grant" | "revoke";
+  recipient: "SELF" | "TARGET";
+  value: string;
+};
+const compositionOptions: ReadonlyArray<{ value: AuthorableCompositionFamily; label: string }> = [
+  { value: "DOMAIN_ACCESS", label: "Domain access" },
+  { value: "VERB_ACCESS", label: "Verb access" },
+  { value: "STRUCTURE", label: "Structure" },
+  { value: "RANGE", label: "Range" },
+  { value: "TARGETING", label: "Targeting" },
+  { value: "DICE", label: "Output die" },
+  { value: "DURATION", label: "Duration" },
+];
+const compositionBindingKey: Record<AuthorableCompositionFamily, string> = {
+  DOMAIN_ACCESS: "domain", VERB_ACCESS: "tier", STRUCTURE: "structure",
+  RANGE: "range", TARGETING: "targeting", DICE: "dice", DURATION: "duration",
+};
+const blankComposition: CompositionDraft = { family: "DOMAIN_ACCESS", operation: "grant", recipient: "SELF", value: "" };
+function toCompositionRule(draft: CompositionDraft): CanonicalMechanicalRule {
+  const accessRule=draft.family === "DOMAIN_ACCESS" || draft.family === "VERB_ACCESS";
+  return { family:draft.family, ...(accessRule ? {operation:draft.operation,recipient:draft.recipient} : {}), bindings:{[compositionBindingKey[draft.family]]:draft.value.trim()} };
+}
+function compositionFromStoredRule(input: unknown): CompositionDraft | null {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return null;
+  const rule=input as Record<string,unknown>;
+  if (!compositionOptions.some(option=>option.value===rule["family"])) return null;
+  const family=rule["family"] as AuthorableCompositionFamily;
+  const bindings=rule["bindings"] && typeof rule["bindings"] === "object" && !Array.isArray(rule["bindings"])
+    ? rule["bindings"] as Record<string,unknown> : {};
+  return { family, operation:rule["operation"] === "revoke" ? "revoke" : "grant", recipient:rule["recipient"] === "TARGET" ? "TARGET" : "SELF", value:String(bindings[compositionBindingKey[family]] ?? "") };
+}
 
 export type ModifierDraft = {
   id: string;
@@ -933,6 +975,8 @@ export function PrimitiveForm({
     [initialCategory],
   );
   const [form, setForm] = useState<PrimitiveFormState>(() => contextualBlankForm);
+  const [ruleMode, setRuleMode] = useState<RuleMode>("MODIFIER");
+  const [composition, setComposition] = useState<CompositionDraft>(blankComposition);
   const [modifierCounter, setModifierCounter] = useState(1);
   // New primitives open with the V12 sentence instrument ready to edit.
   // Authors can still remove the modifier for narrative-only primitives.
@@ -985,6 +1029,7 @@ export function PrimitiveForm({
             fromHardModifier(m as Record<string, unknown>, i),
           )
         : [];
+    const storedComposition=compositionFromStoredRule(initialPrimitive.mechanicalRule);
 
     setForm({
       name: initialPrimitive.name,
@@ -1007,6 +1052,8 @@ export function PrimitiveForm({
       iconColor: initialPrimitive.iconColor,
     });
     setModifiers(drafts);
+    setRuleMode(drafts.length ? "MODIFIER" : storedComposition ? "COMPOSITION" : "NARRATIVE");
+    setComposition(storedComposition ?? blankComposition);
     setModifierCounter(drafts.length);
     setIsDirty(false); // pristine after load
     // Phase 1 (round 7): open the Build & Preview drawer so the user
@@ -1031,19 +1078,30 @@ export function PrimitiveForm({
     );
   }, [initialPrimitive, openGlobalDrawer]);
 
-  const sentenceParts = modifiers[0] ? primitiveSentenceParts(modifiers[0]) : null;
-  const mechanicalSentence = useMemo(() => modifiers.length ? modifiers.map(describePrimitiveDraft).join(" ") : form.mechanicalOutputText, [modifiers, form.mechanicalOutputText]);
+  const sentenceParts = ruleMode === "MODIFIER" && modifiers[0] ? primitiveSentenceParts(modifiers[0]) : null;
+  const mechanicalRule = useMemo<CanonicalMechanicalRule>(
+    () => ruleMode === "COMPOSITION" ? toCompositionRule(composition) : {family:"DESCRIPTIVE"},
+    [composition, ruleMode],
+  );
+  const activeHardModifiers = useMemo(
+    () => ruleMode === "MODIFIER" ? modifiers.map(toHardModifier) : [],
+    [modifiers, ruleMode],
+  );
+  const mechanicalSentence = useMemo(
+    () => mechanicalDescriptionFromModifiers(activeHardModifiers) || (ruleMode === "COMPOSITION" && composition.value.trim() ? renderMechanicalRule(mechanicalRule) : ""),
+    [activeHardModifiers, composition.value, mechanicalRule, ruleMode],
+  );
 
   // Fire onStateChange on every form/modifier change.
   useEffect(() => {
     onStateChange?.({
       form: { ...form, mechanicalOutputText: mechanicalSentence },
       modifiers,
-      hardModifiers: modifiers.map(toHardModifier),
+      hardModifiers: activeHardModifiers,
             consequenceBehavior,
       isDirty,
     });
-  }, [form, modifiers, mechanicalSentence, onStateChange, consequenceBehavior, isDirty]);
+  }, [form, modifiers, mechanicalSentence, activeHardModifiers, onStateChange, consequenceBehavior, isDirty]);
 
   // Phase 9.4 (Mashu 2026-09-07): on first mount, if the caller
   // supplied initialModifierDrafts (e.g. the Promote tab in the
@@ -1222,6 +1280,8 @@ export function PrimitiveForm({
 
   function resetEditor() {
     setForm(contextualBlankForm);
+    setRuleMode("MODIFIER");
+    setComposition(blankComposition);
     setModifierCounter(1);
     setModifiers([
       { ...blankModifier, tokens: [...blankModifier.tokens], targetValues: [] },
@@ -1241,13 +1301,13 @@ export function PrimitiveForm({
     // before any network round-trip. Attribute increment with no
     // sub-target should not contribute; we block the save here so
     // existing data with malformed modifiers stays untouched.
-    const validationError = validateModifierDrafts(
+    const validationError = ruleMode === "MODIFIER" ? validateModifierDrafts(
       modifiers.map((m) => ({
         target: String(m.target),
         targetValues: m.targetValues,
         freeTextNarrowFocus: m.freeTextNarrowFocus,
       })),
-    );
+    ) : null;
     if (validationError) {
       setMessage(validationError);
       setIsSaving(false);
@@ -1268,13 +1328,14 @@ export function PrimitiveForm({
         costTier: form.costTier,
         buCost: form.buCost,
         mechanicalOutputText: mechanicalSentence,
+        mechanicalRule,
         narrativeRule: form.narrativeRule,
         isPublic: form.isPublic,
         isMirrorable: form.isMirrorable,
         mirrorVector: form.mirrorVector,
         mirrorBuCredit: form.mirrorBuCredit,
         mirrorEligibilityNotes: form.mirrorEligibilityNotes,
-        hardModifiers: modifiers.map(toHardModifier),
+        hardModifiers: activeHardModifiers,
             consequenceBehavior,
         // Phase 8: per-entity iconography
         iconSource: form.iconSource,
@@ -1304,12 +1365,13 @@ export function PrimitiveForm({
             draftHash,
             ...form,
             mechanicalOutputText: mechanicalSentence,
+            mechanicalRule,
             // Phase 7 Q-M: auto-derive mirror_bu_credit = bu_cost when
             // mirrorable. The server enforces this anyway, but we send the
             // canonical value so the content hash matches what's stored.
             mirrorVector: form.isMirrorable ? form.mirrorVector : "STANDARD_ONLY",
             mirrorBuCredit: form.isMirrorable ? Number(form.buCost) || 0 : 0,
-            hardModifiers: modifiers.map(toHardModifier),
+            hardModifiers: activeHardModifiers,
             consequenceBehavior,
           }),
         });
@@ -1404,12 +1466,13 @@ export function PrimitiveForm({
         costTier: form.costTier,
         buCost: Number(form.buCost) || 0,
         mechanicalOutputText: mechanicalSentence,
+        mechanicalRule,
         narrativeRule: form.narrativeRule,
         isMirrorable: form.isMirrorable,
         mirrorVector: form.isMirrorable ? form.mirrorVector : "STANDARD_ONLY",
         mirrorBuCredit: form.isMirrorable ? Number(form.mirrorBuCredit) || 0 : 0,
         mirrorEligibilityNotes: form.mirrorEligibilityNotes,
-        hardModifiers: modifiers.map(toHardModifier),
+        hardModifiers: activeHardModifiers,
             consequenceBehavior,
       },
     ],
@@ -1609,8 +1672,9 @@ export function PrimitiveForm({
       </div>
 
       <fieldset className="v12-field-consequence v12-rule space-y-3 rounded-md border border-border p-3">
-        <legend className="px-1 text-sm font-semibold">Consequence behavior</legend>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!consequenceBehavior} onChange={e => setConsequenceBehavior(e.target.checked ? { timing: "on-use", vitalityDelta: 0, restrictions: [], recovery: "" } : null)} />Apply when an action is used</label>
+        <legend className="px-1 text-sm font-semibold">On-use consequence (optional)</legend>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!consequenceBehavior} onChange={e => setConsequenceBehavior(e.target.checked ? { timing: "on-use", vitalityDelta: 0, restrictions: [], recovery: "" } : null)} />Create this consequence when the action is committed</label>
+        {!consequenceBehavior ? <p className="text-xs text-muted-foreground">Leave this off for permanent traits and ordinary composition rules.</p> : null}
         {consequenceBehavior && <>
           <p className="text-xs text-muted-foreground">The player previews and commits this consequence. Its modifiers are not passive character bonuses.</p>
           <label className="block text-sm">One-time vitality change<input type="number" className="ml-2 rounded border border-input bg-background p-2" value={consequenceBehavior.vitalityDelta} onChange={e => setConsequenceBehavior({ ...consequenceBehavior, vitalityDelta: Number(e.target.value) })} /></label>
@@ -1730,9 +1794,33 @@ export function PrimitiveForm({
 
       <fieldset className="v12-mechanical-rule v12-rule space-y-3 rounded-md border border-border bg-background p-4 md:col-span-2">
         <div className="v12-mechanical-rule-head">
-          <p className="v12-kicker">Mechanical rule · exactly one modifier</p>
-          <h2>Write one rule</h2>
+          <p className="v12-kicker">Rule source</p>
+          <h2>Choose how this primitive works</h2>
         </div>
+        <div className="v12-rule-mode-switch" role="radiogroup" aria-label="Primitive rule source">
+          {([
+            ["MODIFIER", "Modifier", "Changes a sheet or runtime value"],
+            ["COMPOSITION", "Composition", "Grants a construction permission"],
+            ["NARRATIVE", "Narrative only", "Described without executable output"],
+          ] as const).map(([value,label,description]) => (
+            <button key={value} type="button" role="radio" aria-checked={ruleMode === value} onClick={() => { setRuleMode(value); setPhrasePicker(null); setIsDirty(true); }}>
+              <b>{label}</b><span>{description}</span>
+            </button>
+          ))}
+        </div>
+        {ruleMode === "COMPOSITION" ? (
+          <div className="v12-composition-author grid gap-3 md:grid-cols-3">
+            <label>Kind<select value={composition.family} onChange={event=>{setComposition(current=>({...current,family:event.target.value as AuthorableCompositionFamily,value:""}));setIsDirty(true);}}>{compositionOptions.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+            {composition.family === "DOMAIN_ACCESS" || composition.family === "VERB_ACCESS" ? <>
+              <label>Operation<select value={composition.operation} onChange={event=>{setComposition(current=>({...current,operation:event.target.value as "grant"|"revoke"}));setIsDirty(true);}}><option value="grant">Grant</option><option value="revoke">Revoke</option></select></label>
+              <label>Recipient<select value={composition.recipient} onChange={event=>{setComposition(current=>({...current,recipient:event.target.value as "SELF"|"TARGET"}));setIsDirty(true);}}><option value="SELF">Self</option><option value="TARGET">Target</option></select></label>
+            </> : null}
+            <label className="md:col-span-3">{compositionOptions.find(option=>option.value===composition.family)?.label} value<input value={composition.value} onChange={event=>{setComposition(current=>({...current,value:event.target.value}));setIsDirty(true);}} placeholder={composition.family === "DOMAIN_ACCESS" ? "fire" : composition.family === "VERB_ACCESS" ? "Tier II" : composition.family === "STRUCTURE" ? "single-point structure" : "Enter the canonical value"} required /></label>
+            <p className="v12-composition-output md:col-span-3">{mechanicalSentence || "Complete the value to preview the rendered mechanical rule."}</p>
+          </div>
+        ) : null}
+        {ruleMode === "NARRATIVE" ? <p className="v12-narrative-only-note">This primitive will show its verbose description and will not create an orange mechanical rule.</p> : null}
+        <div hidden={ruleMode !== "MODIFIER"}>
         <div className="v12-sentence" aria-label="Mechanical rule sentence">
           {modifiers[0] ? <>
             <span>{sentenceParts?.lead} </span>
@@ -1999,6 +2087,7 @@ export function PrimitiveForm({
           </div>
         ))}
         <div className="v12-rule-tools"><button type="button" onClick={() => setPhrasePicker(phrasePicker === "resolver" ? null : "resolver")}>Resolver mapping · stacking · mirror</button>{modifiers[0] ? <button type="button" onClick={() => removeModifier(modifiers[0]!.id)}>Clear mechanical rule</button> : null}</div>
+        </div>
       </fieldset>
 
       <details

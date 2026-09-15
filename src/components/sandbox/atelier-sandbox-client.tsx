@@ -107,6 +107,7 @@ type PrimitiveRow = {
   costTier: string;
   buCost: number;
   mechanicalOutputText: string;
+  mechanicalRule?: unknown;
   narrativeRule: string;
   isMirrorable: boolean;
   mirrorVector: string;

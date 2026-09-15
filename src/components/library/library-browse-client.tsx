@@ -537,9 +537,6 @@ export function LibraryBrowseClient({
                 {selectedItem.verboseDescription && selectedItem.verboseDescription !== selectedItem.mechanicalDescription ? (
                   <section className="v12-inspector-section"><h3>Design meaning</h3><Markdown>{selectedItem.verboseDescription}</Markdown></section>
                 ) : null}
-                {selectedItem.bindings && Object.keys(selectedItem.bindings).length ? (
-                  <section className="v12-inspector-section"><h3>Bindings</h3><div className="v12-binding-list">{Object.entries(selectedItem.bindings).map(([key, value]) => <span key={key}><b>{key}</b> {String(value)}</span>)}</div></section>
-                ) : null}
                 {selectedItem.tags.length ? <section className="v12-inspector-section"><h3>Tags</h3><div className="v12-inspector-tags">{selectedItem.tags.map((tag) => <span className="v12-tag" key={tag}>{tag}</span>)}</div></section> : null}
                 <LibraryProvenance targetType={selectedItem.targetType} targetId={selectedItem.targetId} name={selectedItem.name} author={libraryAuthorLabel(selectedItem)} />
                 <div className="v12-inspector-actions">
