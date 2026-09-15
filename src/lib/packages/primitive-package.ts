@@ -1,4 +1,11 @@
 import type { HardModifier } from "@/types/swordweave";
+import {
+  mechanicalDescriptionFromModifiers,
+  mechanicalRuleFromModifier,
+  parseAuthorableCompositionRule,
+  renderMechanicalRule,
+  type CanonicalMechanicalRule,
+} from "@/lib/primitives/mechanical-rule";
 
 export const primitivePackageVersion = "swordweave.package.v1";
 export const primitivePackageKind = "primitive";
@@ -68,6 +75,7 @@ export type PrimitivePackageRecord = {
   costTier: string;
   buCost: number;
   mechanicalOutputText: string;
+  mechanicalRule: CanonicalMechanicalRule;
   narrativeRule: string;
   isPublic: boolean;
   isMirrorable: boolean;
@@ -139,14 +147,28 @@ export function parsePrimitiveRecord(value: unknown): PrimitivePackageRecord {
   }
 
   const isMirrorable = Boolean(record["isMirrorable"]);
+  const hardModifiers = parseHardModifiers(record["hardModifiers"]);
+  const compositionRule = parseAuthorableCompositionRule(record["mechanicalRule"]);
+  const mechanicalRule = hardModifiers[0]
+    ? mechanicalRuleFromModifier(hardModifiers[0])
+    : compositionRule ?? { family: "DESCRIPTIVE" as const };
+  const mechanicalOutputText =
+    mechanicalDescriptionFromModifiers(hardModifiers) ||
+    renderMechanicalRule(mechanicalRule);
+  const submittedNarrative = String(record["narrativeRule"] ?? "").trim();
+  const legacyDisplayText = String(record["mechanicalOutputText"] ?? "").trim();
+  const narrativeRule = mechanicalOutputText || !legacyDisplayText
+    ? submittedNarrative
+    : [legacyDisplayText, submittedNarrative].filter(Boolean).join("\n\n");
 
   return {
     name,
     category,
     costTier: String(record["costTier"] ?? "Tier 1: Minor (4 BU anchor)").trim(),
     buCost,
-    mechanicalOutputText: String(record["mechanicalOutputText"] ?? "").trim(),
-    narrativeRule: String(record["narrativeRule"] ?? "").trim(),
+    mechanicalOutputText,
+    mechanicalRule,
+    narrativeRule,
     isPublic: Boolean(record["isPublic"]),
     isMirrorable,
     mirrorVector: isMirrorable
@@ -156,7 +178,7 @@ export function parsePrimitiveRecord(value: unknown): PrimitivePackageRecord {
     mirrorEligibilityNotes: String(
       record["mirrorEligibilityNotes"] ?? "",
     ).trim(),
-    hardModifiers: parseHardModifiers(record["hardModifiers"]),
+    hardModifiers,
   };
 }
 

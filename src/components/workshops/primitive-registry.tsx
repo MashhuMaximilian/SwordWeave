@@ -13,6 +13,12 @@ import { legacyConditionProjection } from "@/lib/primitives/condition";
 import { resolveMirrorEffect } from "@/lib/engine/mirror";
 import { validateModifierDrafts } from "@/lib/primitives/modifier-validator";
 import {
+  mechanicalDescriptionFromModifiers,
+  renderMechanicalRule,
+  type AuthorableCompositionFamily,
+  type CanonicalMechanicalRule,
+} from "@/lib/primitives/mechanical-rule";
+import {
   MODIFIER_TARGETS,
   MODIFIER_TARGET_SPEC,
   type ModifierTarget,
@@ -31,6 +37,7 @@ type PrimitiveRow = {
   costTier: string;
   buCost: number;
   mechanicalOutputText: string;
+  mechanicalRule?: unknown;
   narrativeRule: string;
   isMirrorable: boolean;
   mirrorVector: string;
@@ -70,6 +77,67 @@ type ModifierDraft = {
   conditionValue: string;
   stacking: ModifierStackingMode;
 };
+
+type RuleMode = "MODIFIER" | "COMPOSITION" | "NARRATIVE";
+
+type CompositionDraft = {
+  family: AuthorableCompositionFamily;
+  operation: "grant" | "revoke";
+  recipient: "SELF" | "TARGET";
+  value: string;
+};
+
+const compositionOptions: ReadonlyArray<{ value: AuthorableCompositionFamily; label: string }> = [
+  { value: "DOMAIN_ACCESS", label: "Domain access" },
+  { value: "VERB_ACCESS", label: "Verb access" },
+  { value: "STRUCTURE", label: "Structure" },
+  { value: "RANGE", label: "Range" },
+  { value: "TARGETING", label: "Targeting" },
+  { value: "DICE", label: "Output die" },
+  { value: "DURATION", label: "Duration" },
+];
+
+const compositionBindingKey: Record<AuthorableCompositionFamily, string> = {
+  DOMAIN_ACCESS: "domain",
+  VERB_ACCESS: "tier",
+  STRUCTURE: "structure",
+  RANGE: "range",
+  TARGETING: "targeting",
+  DICE: "dice",
+  DURATION: "duration",
+};
+
+const blankComposition: CompositionDraft = {
+  family: "DOMAIN_ACCESS",
+  operation: "grant",
+  recipient: "SELF",
+  value: "",
+};
+
+function toCompositionRule(draft: CompositionDraft): CanonicalMechanicalRule {
+  const accessRule = draft.family === "DOMAIN_ACCESS" || draft.family === "VERB_ACCESS";
+  return {
+    family: draft.family,
+    ...(accessRule ? { operation: draft.operation, recipient: draft.recipient } : {}),
+    bindings: { [compositionBindingKey[draft.family]]: draft.value.trim() },
+  };
+}
+
+function compositionFromStoredRule(input: unknown): CompositionDraft | null {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return null;
+  const rule = input as Record<string, unknown>;
+  if (!compositionOptions.some((option) => option.value === rule["family"])) return null;
+  const family = rule["family"] as AuthorableCompositionFamily;
+  const bindings = rule["bindings"] && typeof rule["bindings"] === "object" && !Array.isArray(rule["bindings"])
+    ? rule["bindings"] as Record<string, unknown>
+    : {};
+  return {
+    family,
+    operation: rule["operation"] === "revoke" ? "revoke" : "grant",
+    recipient: rule["recipient"] === "TARGET" ? "TARGET" : "SELF",
+    value: String(bindings[compositionBindingKey[family]] ?? ""),
+  };
+}
 
 const categories = [
   "VERB_TIER",
@@ -175,7 +243,6 @@ const blankForm = {
   isPublic: false,
   costTier: "Tier 1: Minor (4 BU anchor)",
   buCost: "1",
-  mechanicalOutputText: "",
   narrativeRule: "",
   isMirrorable: false,
   mirrorVector: "STANDARD_ONLY",
@@ -393,6 +460,8 @@ export function PrimitiveRegistry({
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [form, setForm] = useState(blankForm);
+  const [ruleMode, setRuleMode] = useState<RuleMode>("MODIFIER");
+  const [composition, setComposition] = useState<CompositionDraft>(blankComposition);
   const [modifierCounter, setModifierCounter] = useState(1);
   const [modifiers, setModifiers] = useState<ModifierDraft[]>([blankModifier]);
   const [showJsonPreview, setShowJsonPreview] = useState(false);
@@ -402,8 +471,18 @@ export function PrimitiveRegistry({
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const hardModifiers = useMemo(
-    () => modifiers.map((modifier) => toHardModifier(modifier)),
-    [modifiers],
+    () => ruleMode === "MODIFIER" ? modifiers.map((modifier) => toHardModifier(modifier)) : [],
+    [modifiers, ruleMode],
+  );
+
+  const mechanicalRule = useMemo<CanonicalMechanicalRule>(
+    () => ruleMode === "COMPOSITION" ? toCompositionRule(composition) : { family: "DESCRIPTIVE" },
+    [composition, ruleMode],
+  );
+
+  const mechanicalOutputPreview = useMemo(
+    () => mechanicalDescriptionFromModifiers(hardModifiers) || (ruleMode === "COMPOSITION" && composition.value.trim() ? renderMechanicalRule(mechanicalRule) : ""),
+    [composition.value, hardModifiers, mechanicalRule, ruleMode],
   );
 
   const primitiveJsonPreview = useMemo(
@@ -417,7 +496,8 @@ export function PrimitiveRegistry({
           isPublic: form.isPublic,
           costTier: form.costTier,
           buCost: Number(form.buCost) || 0,
-          mechanicalOutputText: form.mechanicalOutputText,
+          mechanicalOutputText: mechanicalOutputPreview,
+          mechanicalRule,
           narrativeRule: form.narrativeRule,
           isMirrorable: form.isMirrorable,
           // Auto-derived: mirror_bu_credit always equals buCost when
@@ -431,7 +511,7 @@ export function PrimitiveRegistry({
         },
       ],
     }),
-    [form, hardModifiers],
+    [form, hardModifiers, mechanicalOutputPreview, mechanicalRule],
   );
 
   const filteredPrimitives = useMemo(() => {
@@ -533,6 +613,8 @@ export function PrimitiveRegistry({
   function resetEditor() {
     setSelectedPrimitive(null);
     setForm(blankForm);
+    setRuleMode("MODIFIER");
+    setComposition(blankComposition);
     setModifierCounter(1);
     setModifiers([blankModifier]);
     setShowJsonPreview(false);
@@ -546,6 +628,7 @@ export function PrimitiveRegistry({
       storedModifiers.length > 0
         ? storedModifiers.map(fromHardModifier)
         : [blankModifier];
+    const storedComposition = compositionFromStoredRule(primitive.mechanicalRule);
 
     setSelectedPrimitive(primitive);
     setForm({
@@ -554,13 +637,14 @@ export function PrimitiveRegistry({
       isPublic: primitive.isPublic,
       costTier: primitive.costTier,
       buCost: String(primitive.buCost),
-      mechanicalOutputText: primitive.mechanicalOutputText,
       narrativeRule: primitive.narrativeRule,
       isMirrorable: primitive.isMirrorable,
       mirrorVector: primitive.mirrorVector,
       mirrorBuCredit: String(primitive.mirrorBuCredit),
       mirrorEligibilityNotes: primitive.mirrorEligibilityNotes,
     });
+    setRuleMode(storedModifiers.length ? "MODIFIER" : storedComposition ? "COMPOSITION" : "NARRATIVE");
+    setComposition(storedComposition ?? blankComposition);
     setModifiers(modifierDrafts);
     setModifierCounter(modifierDrafts.length);
     setShowJsonPreview(false);
@@ -579,13 +663,13 @@ export function PrimitiveRegistry({
     // before any network round-trip. Attribute increment with no
     // sub-target should not contribute; we block the save here so
     // existing data with malformed modifiers stays untouched.
-    const validationError = validateModifierDrafts(
+    const validationError = ruleMode === "MODIFIER" ? validateModifierDrafts(
       modifiers.map((m) => ({
         target: String(m.target),
         targetValues: m.targetValues,
         freeTextNarrowFocus: m.freeTextNarrowFocus,
       })),
-    );
+    ) : null;
     if (validationError) {
       setMessage(validationError);
       return;
@@ -599,6 +683,8 @@ export function PrimitiveRegistry({
         },
         body: JSON.stringify({
           ...form,
+          mechanicalRule,
+          mechanicalOutputText: mechanicalOutputPreview,
           // Phase 7 Q-M: auto-derive mirror_bu_credit = bu_cost when
           // mirrorable. The server enforces this anyway, but we send the
           // canonical value so the content hash matches what's stored.
@@ -945,17 +1031,70 @@ export function PrimitiveRegistry({
               </span>
             </label>
 
-            <label className="block text-sm font-medium md:col-span-2">
-              Mechanical Output Text
-              <textarea
-                className="mt-2 min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
-                value={form.mechanicalOutputText}
-                onChange={(event) =>
-                  updateForm("mechanicalOutputText", event.target.value)
-                }
-                placeholder="Reduces target movement coordinates to 0."
-              />
-            </label>
+            <fieldset className="grid gap-3 rounded-md border border-border bg-background p-4 md:col-span-2 md:grid-cols-3">
+              <div className="md:col-span-3">
+                <legend className="text-sm font-semibold">Mechanical Description</legend>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Choose a structured modifier, a composition rule, or narrative only. The application renders the mechanical sentence.
+                </p>
+              </div>
+              {([
+                ["MODIFIER", "Metric modifier", "Changes a character-sheet or runtime value."],
+                ["COMPOSITION", "Composition rule", "Defines access, structure, range, targeting, dice, or duration."],
+                ["NARRATIVE", "Narrative only", "Uses the verbose description without mechanical output."],
+              ] as const).map(([value, label, description]) => (
+                <label className="flex cursor-pointer gap-2 rounded-md border border-border bg-card p-3 text-sm" key={value}>
+                  <input checked={ruleMode === value} name="ruleMode" onChange={() => setRuleMode(value)} type="radio" />
+                  <span><b className="block">{label}</b><span className="mt-1 block text-xs font-normal text-muted-foreground">{description}</span></span>
+                </label>
+              ))}
+
+              {ruleMode === "COMPOSITION" ? (
+                <div className="grid gap-3 rounded-md border border-border bg-card p-3 md:col-span-3 md:grid-cols-3">
+                  <label className="block text-sm font-medium">
+                    Composition kind
+                    <select
+                      className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+                      value={composition.family}
+                      onChange={(event) => setComposition((current) => ({ ...current, family: event.target.value as AuthorableCompositionFamily, value: "" }))}
+                    >
+                      {compositionOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                  </label>
+                  {(composition.family === "DOMAIN_ACCESS" || composition.family === "VERB_ACCESS") ? (
+                    <>
+                      <label className="block text-sm font-medium">
+                        Operation
+                        <select className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={composition.operation} onChange={(event) => setComposition((current) => ({ ...current, operation: event.target.value as "grant" | "revoke" }))}>
+                          <option value="grant">Grant</option>
+                          <option value="revoke">Revoke</option>
+                        </select>
+                      </label>
+                      <label className="block text-sm font-medium">
+                        Recipient
+                        <select className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={composition.recipient} onChange={(event) => setComposition((current) => ({ ...current, recipient: event.target.value as "SELF" | "TARGET" }))}>
+                          <option value="SELF">Self</option>
+                          <option value="TARGET">Target</option>
+                        </select>
+                      </label>
+                    </>
+                  ) : null}
+                  <label className="block text-sm font-medium md:col-span-3">
+                    {compositionOptions.find((option) => option.value === composition.family)?.label} value
+                    <input
+                      className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
+                      value={composition.value}
+                      onChange={(event) => setComposition((current) => ({ ...current, value: event.target.value }))}
+                      placeholder={composition.family === "STRUCTURE" ? "single-point structure" : composition.family === "DOMAIN_ACCESS" ? "fire" : composition.family === "VERB_ACCESS" ? "Tier II" : "Enter the canonical value"}
+                      required
+                    />
+                  </label>
+                  <div className="rounded-md border border-orange-700/60 bg-background p-3 text-sm text-orange-200 md:col-span-3">
+                    {mechanicalOutputPreview || "Complete the fields to preview the composition rule."}
+                  </div>
+                </div>
+              ) : null}
+            </fieldset>
 
             <label className="block text-sm font-medium md:col-span-2">
               Verbose Narrative Rule
@@ -1018,7 +1157,7 @@ export function PrimitiveRegistry({
                 />
               </label>
 
-              {form.isMirrorable && modifiers[0] ? (
+              {ruleMode === "MODIFIER" && form.isMirrorable && modifiers[0] ? (
                 <div className="md:col-span-2 rounded-md border border-border bg-card p-3">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">
                     Mirror Form Preview (auto-rendered)
@@ -1048,7 +1187,7 @@ export function PrimitiveRegistry({
               ) : null}
             </fieldset>
 
-            <fieldset className="space-y-3 rounded-md border border-border bg-background p-4 md:col-span-2">
+            {ruleMode === "MODIFIER" ? <fieldset className="space-y-3 rounded-md border border-border bg-background p-4 md:col-span-2">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <legend className="text-sm font-semibold">Modifier Builder</legend>
@@ -1369,7 +1508,7 @@ export function PrimitiveRegistry({
                   ) : null}
                 </div>
               ))}
-            </fieldset>
+            </fieldset> : null}
 
             <details
               className="rounded-md border border-border bg-background p-4 md:col-span-2"
@@ -1428,8 +1567,8 @@ export function PrimitiveRegistry({
                 ) : null}
               </div>
               <p className="mt-4 text-sm leading-6 text-muted-foreground">
-                {form.mechanicalOutputText ||
-                  "Mechanical output will appear here as you write it."}
+                {mechanicalOutputPreview ||
+                  "This primitive uses its verbose description without mechanical output."}
               </p>
               {form.narrativeRule ? (
                 <p className="mt-3 text-sm leading-6 text-muted-foreground">

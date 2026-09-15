@@ -23,6 +23,10 @@ export async function POST(request: Request) {
       .values(
         records.map((record) => ({
           ...record,
+          mechanicalRule: record.mechanicalRule as unknown as Record<string, unknown>,
+          mechanicalTemplateText: "",
+          bindingSchema: {},
+          bindings: record.mechanicalRule.bindings ?? {},
           userId,
           isPublic: false,
           // Phase 3: imported primitives live in the user's private
@@ -42,6 +46,10 @@ export async function POST(request: Request) {
           isPublic: false,
           buCost: sql`excluded.bu_cost`,
           mechanicalOutputText: sql`excluded.mechanical_output_text`,
+          mechanicalRule: sql`excluded.mechanical_rule`,
+          mechanicalTemplateText: "",
+          bindingSchema: {},
+          bindings: sql`excluded.bindings`,
           narrativeRule: sql`excluded.narrative_rule`,
           isMirrorable: sql`excluded.is_mirrorable`,
           mirrorVector: sql`excluded.mirror_vector`,

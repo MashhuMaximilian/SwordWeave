@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mechanicalDescriptionFromModifiers, renderMechanicalRule } from "../mechanical-rule";
+import { mechanicalDescriptionFromModifiers, parseAuthorableCompositionRule, renderMechanicalRule } from "../mechanical-rule";
 import { CANONICAL_EXPRESSIONS } from "../canonical-market";
 
 describe("canonical mechanical sentences", () => {
@@ -35,6 +35,16 @@ describe("canonical mechanical sentences", () => {
   it("renders no mechanic for a descriptive-only primitive", () => {
     expect(renderMechanicalRule({family:"DESCRIPTIVE"})).toBe("");
   });
+  it("renders typed composition rules without author-entered output text", () => {
+    expect(renderMechanicalRule({family:"STRUCTURE",bindings:{structure:"single-point structure"}})).toBe("Apply through a [single-point structure].");
+    expect(renderMechanicalRule({family:"RANGE",bindings:{range:"Near (30 ft)"}})).toBe("Set maximum range to Near (30 ft).");
+    expect(renderMechanicalRule({family:"DICE",bindings:{dice:"1d8"}})).toBe("Unlock [1d8] damage or healing output.");
+    expect(renderMechanicalRule({family:"DOMAIN_ACCESS",operation:"revoke",recipient:"TARGET",bindings:{domain:"fire"}})).toBe("Revoke [fire] domain access from target.");
+  });
+  it("accepts only authorable typed composition shapes", () => {
+    expect(parseAuthorableCompositionRule({family:"VERB_ACCESS",operation:"grant",recipient:"SELF",bindings:{tier:"Tier II"}})).toEqual({family:"VERB_ACCESS",operation:"grant",recipient:"SELF",bindings:{tier:"Tier II"}});
+    expect(parseAuthorableCompositionRule({family:"DOCUMENTED",text:"Arbitrary display text"})).toBeNull();
+  });
 });
 
 describe("mechanicalDescriptionFromModifiers", () => {
@@ -54,11 +64,12 @@ describe("mechanicalDescriptionFromModifiers", () => {
   });
 });
 
-describe("descriptive primitives", () => {
-  it("keeps verb access prose out of the executable mechanical output", () => {
+describe("verb access composition rules", () => {
+  it("keeps the tier grant structured and the player explanation verbose", () => {
     const verbTiers = CANONICAL_EXPRESSIONS.filter((entry) => entry.familyKey === "VERB_ACCESS");
     expect(verbTiers).toHaveLength(4);
-    expect(verbTiers.every((entry) => entry.mechanicalText === "")).toBe(true);
+    expect(verbTiers.every((entry) => entry.rule?.family === "VERB_ACCESS")).toBe(true);
+    expect(verbTiers.every((entry) => entry.mechanicalText.startsWith("Grant [Tier"))).toBe(true);
     expect(verbTiers.every((entry) => entry.verboseDescription.length > 80)).toBe(true);
   });
 });

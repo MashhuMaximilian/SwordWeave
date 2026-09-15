@@ -4,6 +4,12 @@ import type { HardModifier } from "@/types/swordweave";
 
 export type MechanicalRuleFamily =
   | "DOMAIN_ACCESS"
+  | "VERB_ACCESS"
+  | "STRUCTURE"
+  | "RANGE"
+  | "TARGETING"
+  | "DICE"
+  | "DURATION"
   | "ATTRIBUTE_INCREMENT"
   | "DEFENSIVE_SAVE"
   | "PRACTICE_PROFICIENCY"
@@ -22,6 +28,18 @@ export interface CanonicalMechanicalRule {
   conditionText?: string;
   text?: string;
 }
+
+export const AUTHORABLE_COMPOSITION_FAMILIES = [
+  "DOMAIN_ACCESS",
+  "VERB_ACCESS",
+  "STRUCTURE",
+  "RANGE",
+  "TARGETING",
+  "DICE",
+  "DURATION",
+] as const satisfies readonly MechanicalRuleFamily[];
+
+export type AuthorableCompositionFamily = (typeof AUTHORABLE_COMPOSITION_FAMILIES)[number];
 
 function display(value: unknown): string {
   if (Array.isArray(value)) return renderEquation(value as Operand[]);
@@ -94,8 +112,31 @@ export function renderMechanicalRule(rule: CanonicalMechanicalRule): string {
   }
   const bindings = rule.bindings ?? {};
   if (rule.family === "DOMAIN_ACCESS") {
-    const domain = display(bindings["domain"] ?? "domain").toLowerCase();
-    return withCondition(`Grant [${domain}] domain access`, rule.conditionText);
+    const domain = (display(bindings["domain"]) || "domain").toLowerCase();
+    const verb = rule.operation === "revoke" ? "Revoke" : "Grant";
+    const preposition = rule.operation === "revoke" ? "from" : "to";
+    return withCondition(`${verb} [${domain}] domain access${rule.recipient === "TARGET" ? ` ${preposition} target` : ""}`, rule.conditionText);
+  }
+  if (rule.family === "VERB_ACCESS") {
+    const tier = display(bindings["tier"]) || "verb tier";
+    const verb = rule.operation === "revoke" ? "Revoke" : "Grant";
+    const preposition = rule.operation === "revoke" ? "from" : "to";
+    return withCondition(`${verb} [${tier}] verb access${rule.recipient === "TARGET" ? ` ${preposition} target` : ""}`, rule.conditionText);
+  }
+  if (rule.family === "STRUCTURE") {
+    return withCondition(`Apply through a [${display(bindings["structure"]) || "structure"}]`, rule.conditionText);
+  }
+  if (rule.family === "RANGE") {
+    return withCondition(`Set maximum range to ${display(bindings["range"]) || "range"}`, rule.conditionText);
+  }
+  if (rule.family === "TARGETING") {
+    return withCondition(`Target [${display(bindings["targeting"]) || "target"}]`, rule.conditionText);
+  }
+  if (rule.family === "DICE") {
+    return withCondition(`Unlock [${display(bindings["dice"]) || "die"}] damage or healing output`, rule.conditionText);
+  }
+  if (rule.family === "DURATION") {
+    return withCondition(`Set duration to ${display(bindings["duration"]) || "duration"}`, rule.conditionText);
   }
   if (rule.family === "ATTRIBUTE_INCREMENT") {
     const attribute = bindings["attribute"] ? title(String(bindings["attribute"])) : "[Core Attribute]";
@@ -130,6 +171,34 @@ export function renderMechanicalRule(rule: CanonicalMechanicalRule): string {
                 ? `Divide ${target} by ${value}${recipient}`
                 : `Add ${!value.startsWith("-") && !value.startsWith("+") ? "+" : ""}${value} to ${target}${recipient}`;
   return withCondition(body, rule.conditionText);
+}
+
+/** Accept only the typed composition shapes exposed by primitive authoring. */
+export function parseAuthorableCompositionRule(input: unknown): CanonicalMechanicalRule | null {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return null;
+  const candidate = input as Record<string, unknown>;
+  if (!(AUTHORABLE_COMPOSITION_FAMILIES as readonly unknown[]).includes(candidate["family"])) return null;
+  const family = candidate["family"] as AuthorableCompositionFamily;
+  const keyByFamily: Record<AuthorableCompositionFamily, string> = {
+    DOMAIN_ACCESS: "domain",
+    VERB_ACCESS: "tier",
+    STRUCTURE: "structure",
+    RANGE: "range",
+    TARGETING: "targeting",
+    DICE: "dice",
+    DURATION: "duration",
+  };
+  const rawBindings = candidate["bindings"];
+  if (!rawBindings || typeof rawBindings !== "object" || Array.isArray(rawBindings)) return null;
+  const value = String((rawBindings as Record<string, unknown>)[keyByFamily[family]] ?? "").trim();
+  if (!value) return null;
+  const operation = candidate["operation"] === "revoke" ? "revoke" : "grant";
+  const recipient = candidate["recipient"] === "TARGET" ? "TARGET" : "SELF";
+  return {
+    family,
+    ...(family === "DOMAIN_ACCESS" || family === "VERB_ACCESS" ? { operation, recipient } : {}),
+    bindings: { [keyByFamily[family]]: value },
+  };
 }
 
 export function mechanicalRuleFromModifier(modifier: HardModifier): CanonicalMechanicalRule {

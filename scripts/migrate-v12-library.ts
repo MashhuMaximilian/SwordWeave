@@ -14,7 +14,7 @@ import {
   users,
 } from "../src/db/schema";
 import { CANONICAL_EXPRESSIONS, familyForCategory, MARKET_FAMILIES, MARKET_TEMPLATES } from "../src/lib/primitives/canonical-market";
-import { mechanicalDescriptionFromModifiers, mechanicalRuleFromModifier, renderMechanicalRule } from "../src/lib/primitives/mechanical-rule";
+import { AUTHORABLE_COMPOSITION_FAMILIES, mechanicalDescriptionFromModifiers, mechanicalRuleFromModifier, renderMechanicalRule } from "../src/lib/primitives/mechanical-rule";
 import type { HardModifier } from "../src/types/swordweave";
 import { isDeepStrictEqual } from "node:util";
 
@@ -43,6 +43,10 @@ function tierFromCost(cost:number):number|null {
 
 const normalizeKey=(value:string)=>value.normalize("NFKC").trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 const hasUnfilledPlaceholder=(value:string)=>/\[(?:target|value|attribute|practice|domain|keyword|scope|recipient)\]/i.test(value);
+const isCompositionRule=(value:unknown):value is Parameters<typeof renderMechanicalRule>[0] => {
+  const family=(value as {family?:unknown}|null)?.family;
+  return typeof family === "string" && (AUTHORABLE_COMPOSITION_FAMILIES as readonly string[]).includes(family);
+};
 type ContentRepair={mechanical:string;narrative:string;descriptiveOnly?:boolean};
 const CONTENT_REPAIRS:Record<string,ContentRepair>={
   "metallic-masticators":{
@@ -110,11 +114,11 @@ const CONTENT_REPAIRS:Record<string,ContentRepair>={
     narrative:"This Tier III domain covers thoughts, conscious intent, ideas, attention, and bounded mental information. It grants vocabulary for thought-based capabilities; targeting, resistance, agency, duration, and other primitives determine how a specific capability may affect a mind.",
   },
   "verb-access-tier-i":{
-    mechanical:"", descriptiveOnly:true,
+    mechanical:"Grant [Tier I] verb access.",
     narrative:"Unlock the complete Tier I verb vocabulary for basic physical and perceptual interaction: move, strike, push, pull, lift, drop, interact, sense, observe, touch, grab, throw, break, hold, release, dodge, crawl, run, and similarly direct actions. Buying this primitive grants the whole tier; it is not the purchase of a single verb.",
   },
   "verb-access-tier-ii":{
-    mechanical:"", descriptiveOnly:true,
+    mechanical:"Grant [Tier II] verb access.",
     narrative:"Unlock the complete Tier II verb vocabulary for changing existing states and properties: alter, combine, separate, enhance, weaken, suppress, extend, compress, reshape, redirect, convert, stabilize, amplify, reduce, transfer, infuse, extract, bind, disrupt, and channel. Buying this primitive grants the whole tier; it is not the purchase of a single verb.",
   },
   "backpack":{mechanical:"Add +20 to Carry Capacity.",narrative:"A backpack expands how much carried Load you can support. While it is available for use, add 20 to Carry Capacity."},
@@ -248,7 +252,9 @@ async function migrate(tx:typeof db) {
       const contentRepair=CONTENT_REPAIRS[normalizeKey(expression.name)];
       const mechanicalText=contentRepair?.mechanical ?? expression.mechanicalText;
       const narrative=contentRepair?.narrative ?? expression.verboseDescription;
-      const mechanicalRule=mechanicalText ? {family:"DOCUMENTED" as const,text:mechanicalText} : {family:"DESCRIPTIVE" as const};
+      const mechanicalRule=expression.rule ?? (expression.modifier
+        ? mechanicalRuleFromModifier(expression.modifier as HardModifier)
+        : {family:"DESCRIPTIVE" as const});
       const values={name:expression.name,isPublic:true,definitionKind:"EXPRESSION" as const,templatePrimitiveId:null,bindingSchema:{},bindings:{},mechanicalRule,mechanicalTemplateText:"",mechanicalOutputText:mechanicalText,narrativeRule:narrative,hardModifiers:expression.modifier ? [expression.modifier] : [],sourceOrigin,updatedAt:new Date()};
       let row; let changed=true;
       if(existing){ changed=existing.mechanicalOutputText!==values.mechanicalOutputText || existing.narrativeRule!==narrative || existing.definitionKind!=="EXPRESSION" || !isDeepStrictEqual(existing.mechanicalRule,mechanicalRule); [row]=await tx.update(primitives).set(values).where(eq(primitives.id,existing.id)).returning(); }
@@ -277,16 +283,19 @@ async function migrate(tx:typeof db) {
     const complete=family.key!=="DOMAIN_ACCESS" || Boolean(bindings.domain);
     if (!complete) report.ambiguous.push({id:row.id,name:row.name,reason:"domain expression has no deterministic domain binding"});
     let mechanicalText=row.mechanicalOutputText;
+    let narrativeText=row.narrativeRule;
     let mechanicalRule=row.mechanicalRule as Parameters<typeof renderMechanicalRule>[0] | null;
     const contentRepair=CONTENT_REPAIRS[normalizeKey(row.name)];
     const modifierText=mechanicalDescriptionFromModifiers((row.hardModifiers ?? []) as HardModifier[]);
     if (contentRepair) {
-      mechanicalText=contentRepair.mechanical;
       mechanicalRule=contentRepair.descriptiveOnly
         ? {family:"DESCRIPTIVE"}
         : row.hardModifiers?.length
-          ? mechanicalRule
-          : {family:"DOCUMENTED",text:contentRepair.mechanical};
+          ? mechanicalRuleFromModifier((row.hardModifiers as HardModifier[])[0]!)
+          : isCompositionRule(mechanicalRule)
+            ? mechanicalRule
+            : {family:"DESCRIPTIVE"};
+      mechanicalText=modifierText || renderMechanicalRule(mechanicalRule);
     } else if (isSystem && modifierText) {
       mechanicalRule=mechanicalRuleFromModifier((row.hardModifiers as HardModifier[])[0]!);
       mechanicalText=modifierText;
@@ -294,22 +303,24 @@ async function migrate(tx:typeof db) {
       mechanicalRule=expressionRule(template,bindings);
       mechanicalText=renderMechanicalRule(mechanicalRule);
     } else if (isSystem) {
-      const rendered=mechanicalRule ? renderMechanicalRule(mechanicalRule) : "";
-      if (rendered && !hasUnfilledPlaceholder(rendered)) {
-        mechanicalText=rendered;
-      } else if (row.mechanicalOutputText && !hasUnfilledPlaceholder(row.mechanicalOutputText)) {
-        mechanicalRule={family:"DOCUMENTED",text:row.mechanicalOutputText};
-        mechanicalText=renderMechanicalRule(mechanicalRule);
+      const legacyDisplayText=!hasUnfilledPlaceholder(row.mechanicalOutputText) ? row.mechanicalOutputText.trim() : "";
+      if (isCompositionRule(mechanicalRule)) mechanicalText=renderMechanicalRule(mechanicalRule);
+      else {
+        mechanicalRule={family:"DESCRIPTIVE"};
+        mechanicalText="";
+        if (legacyDisplayText && !narrativeText.includes(legacyDisplayText)) {
+          narrativeText=[legacyDisplayText,narrativeText].filter(Boolean).join("\n\n");
+        }
       }
     }
     const changed=isSystem && complete && (
       row.definitionKind!=="EXPRESSION" || row.templatePrimitiveId!==canonicalTemplateId ||
-      JSON.stringify(row.bindings)!==JSON.stringify(bindings) || row.mechanicalOutputText!==mechanicalText || !isDeepStrictEqual(row.mechanicalRule,mechanicalRule)
+      JSON.stringify(row.bindings)!==JSON.stringify(bindings) || row.mechanicalOutputText!==mechanicalText || row.narrativeRule!==narrativeText || !isDeepStrictEqual(row.mechanicalRule,mechanicalRule)
     );
     if (apply) {
       let updated=row;
       if (changed) {
-        [updated]=await tx.update(primitives).set({definitionKind:"EXPRESSION",templatePrimitiveId:canonicalTemplateId,bindings,mechanicalRule:mechanicalRule as Record<string,unknown> | null,mechanicalOutputText:mechanicalText,updatedAt:new Date()}).where(eq(primitives.id,row.id)).returning();
+        [updated]=await tx.update(primitives).set({definitionKind:"EXPRESSION",templatePrimitiveId:canonicalTemplateId,bindings,mechanicalRule:mechanicalRule as Record<string,unknown> | null,mechanicalOutputText:mechanicalText,narrativeRule:narrativeText,updatedAt:new Date()}).where(eq(primitives.id,row.id)).returning();
         await ensureVersion(tx,updated!,true);
       }
       await tx.insert(primitiveMarketClassifications).values({
@@ -331,16 +342,20 @@ async function migrate(tx:typeof db) {
     for (const row of repairRows) {
       const repair=CONTENT_REPAIRS[normalizeKey(row.name)];
       if (!repair) continue;
+      const modifiers=(row.hardModifiers ?? []) as HardModifier[];
       const nextRule=repair.descriptiveOnly
         ? {family:"DESCRIPTIVE"}
-        : row.hardModifiers?.length || (row.mechanicalRule as {family?:string}|null)?.family==="DOMAIN_ACCESS"
-          ? row.mechanicalRule
-          : {family:"DOCUMENTED",text:repair.mechanical};
-      const changed=row.mechanicalOutputText!==repair.mechanical || row.narrativeRule!==repair.narrative || !isDeepStrictEqual(row.mechanicalRule,nextRule);
+        : modifiers.length
+          ? mechanicalRuleFromModifier(modifiers[0]!)
+          : isCompositionRule(row.mechanicalRule)
+            ? row.mechanicalRule
+            : {family:"DESCRIPTIVE"};
+      const mechanicalText=mechanicalDescriptionFromModifiers(modifiers) || renderMechanicalRule(nextRule);
+      const changed=row.mechanicalOutputText!==mechanicalText || row.narrativeRule!==repair.narrative || !isDeepStrictEqual(row.mechanicalRule,nextRule);
       if (!changed) continue;
       await ensureVersion(tx,row,false);
       const [updated]=await tx.update(primitives).set({
-        mechanicalOutputText:repair.mechanical,
+        mechanicalOutputText:mechanicalText,
         narrativeRule:repair.narrative,
         mechanicalRule:nextRule as Record<string,unknown>,
         updatedAt:new Date(),

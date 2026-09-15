@@ -20,6 +20,7 @@ export async function GET() {
     costTier: primitive.costTier,
     buCost: primitive.buCost,
     mechanicalOutputText: primitive.mechanicalOutputText,
+    mechanicalRule: primitive.mechanicalRule as unknown as PrimitivePackageRecord["mechanicalRule"],
     narrativeRule: primitive.narrativeRule,
     isPublic: primitive.isPublic,
     isMirrorable: primitive.isMirrorable,

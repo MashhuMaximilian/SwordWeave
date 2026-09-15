@@ -26,7 +26,14 @@ import {
   computePrimitiveContentHash,
 } from "@/lib/publishing/hash-content";
 import { recordVersion } from "@/lib/versions/auto-snapshot";
-import { mechanicalDescriptionFromModifiers } from "@/lib/primitives/mechanical-rule";
+import {
+  mechanicalDescriptionFromModifiers,
+  mechanicalRuleFromModifier,
+  parseAuthorableCompositionRule,
+  renderMechanicalRule,
+  renderStoredMechanicalRule,
+  type CanonicalMechanicalRule,
+} from "@/lib/primitives/mechanical-rule";
 export async function GET() {
   const user = await currentUser();
   const rows = await db.query.primitives.findMany({
@@ -42,7 +49,12 @@ export async function GET() {
 
   return NextResponse.json({ primitives: rows.map((row) => ({
     ...row,
-    mechanicalOutputText: mechanicalDescriptionFromModifiers((row.hardModifiers ?? []) as HardModifier[]) || row.mechanicalOutputText,
+    mechanicalOutputText:
+      (row.mechanicalRule as { family?: string } | null)?.family === "DESCRIPTIVE"
+        ? ""
+        : mechanicalDescriptionFromModifiers((row.hardModifiers ?? []) as HardModifier[]) ||
+          renderStoredMechanicalRule(row.mechanicalRule) ||
+          row.mechanicalOutputText,
   })) });
 }
 
@@ -126,6 +138,7 @@ function buildPrimitiveValues(args: {
   costTier: string;
   buCost: number;
   mechanicalOutputText: string;
+  mechanicalRule: CanonicalMechanicalRule;
   narrativeRule: string;
   isMirrorable: boolean;
   mirrorVector: string;
@@ -150,6 +163,7 @@ function buildPrimitiveValues(args: {
     costTier,
     buCost,
     mechanicalOutputText,
+    mechanicalRule,
     narrativeRule,
     isMirrorable,
     mirrorVector,
@@ -172,6 +186,10 @@ function buildPrimitiveValues(args: {
     costTier: costTier || "Tier 1: Minor (4 BU anchor)",
     buCost,
     mechanicalOutputText,
+    mechanicalRule: mechanicalRule as unknown as Record<string, unknown>,
+    mechanicalTemplateText: "",
+    bindingSchema: {},
+    bindings: mechanicalRule.bindings ?? {},
     narrativeRule,
     isMirrorable,
     mirrorVector: isMirrorable ? mirrorVector || "VARIABLE_VECTOR" : "STANDARD_ONLY",
@@ -254,7 +272,6 @@ async function handlePOST(request: Request) {
     const category = String(values["category"] ?? "");
     const costTier = String(values["costTier"] ?? "").trim();
     const buCost = Number(values["buCost"]);
-    const submittedMechanicalOutputText = String(values["mechanicalOutputText"] ?? "").trim();
     const narrativeRule = String(values["narrativeRule"] ?? "").trim();
     const isMirrorable = Boolean(values["isMirrorable"]);
     const mirrorVector = String(values["mirrorVector"] ?? "STANDARD_ONLY").trim();
@@ -263,7 +280,11 @@ async function handlePOST(request: Request) {
       values["mirrorEligibilityNotes"] ?? "",
     ).trim();
     const hardModifiers = parseHardModifiers(values["hardModifiers"]);
-    const mechanicalOutputText = mechanicalDescriptionFromModifiers(hardModifiers) || submittedMechanicalOutputText;
+    const submittedCompositionRule = parseAuthorableCompositionRule(values["mechanicalRule"]);
+    const mechanicalRule: CanonicalMechanicalRule = hardModifiers[0]
+      ? mechanicalRuleFromModifier(hardModifiers[0])
+      : submittedCompositionRule ?? { family: "DESCRIPTIVE" };
+    const mechanicalOutputText = mechanicalDescriptionFromModifiers(hardModifiers) || renderMechanicalRule(mechanicalRule);
     const consequenceBehavior = values["consequenceBehavior"] == null ? null : consequenceBehaviorSchema.parse(values["consequenceBehavior"]);
     // Phase 9: free-form tags (comma-separated -> array) for the
     // unified preview's Tags section.
@@ -316,6 +337,7 @@ async function handlePOST(request: Request) {
       costTier,
       buCost,
       mechanicalOutputText,
+      mechanicalRule,
       narrativeRule,
       isPublic,
       isMirrorable,
@@ -414,6 +436,7 @@ async function handlePOST(request: Request) {
             costTier,
             buCost,
             mechanicalOutputText,
+            mechanicalRule,
             narrativeRule,
             isMirrorable,
             mirrorVector,
@@ -461,6 +484,7 @@ async function handlePOST(request: Request) {
           costTier: updated.costTier,
           buCost: updated.buCost,
           mechanicalOutputText: updated.mechanicalOutputText,
+          mechanicalRule: updated.mechanicalRule,
           narrativeRule: updated.narrativeRule,
           isPublic: updated.isPublic,
           isMirrorable: updated.isMirrorable,
@@ -539,6 +563,7 @@ async function handlePOST(request: Request) {
           costTier,
           buCost,
           mechanicalOutputText,
+          mechanicalRule,
           narrativeRule,
           isMirrorable,
           mirrorVector,
@@ -569,6 +594,10 @@ async function handlePOST(request: Request) {
           isPublic,
           buCost,
           mechanicalOutputText,
+          mechanicalRule: mechanicalRule as unknown as Record<string, unknown>,
+          mechanicalTemplateText: "",
+          bindingSchema: {},
+          bindings: mechanicalRule.bindings ?? {},
           narrativeRule,
           isMirrorable,
           mirrorVector: isMirrorable
@@ -627,6 +656,7 @@ async function handlePOST(request: Request) {
         costTier: created.costTier,
         buCost: created.buCost,
         mechanicalOutputText: created.mechanicalOutputText,
+        mechanicalRule: created.mechanicalRule,
         narrativeRule: created.narrativeRule,
         isPublic: created.isPublic,
         isMirrorable: created.isMirrorable,

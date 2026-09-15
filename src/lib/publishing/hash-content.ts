@@ -25,6 +25,7 @@
 // =============================================================================
 
 import type { HardModifier } from "@/types/swordweave";
+import type { CanonicalMechanicalRule } from "@/lib/primitives/mechanical-rule";
 
 /**
  * Canonical payload shape. The form serializes its state into this shape
@@ -37,6 +38,7 @@ export interface CanonicalPrimitivePayload {
   costTier: string;
   buCost: number;
   mechanicalOutputText: string;
+  mechanicalRule?: CanonicalMechanicalRule | Record<string, unknown>;
   narrativeRule: string;
   isPublic: boolean;
   isMirrorable: boolean;
@@ -76,6 +78,7 @@ export function buildCanonicalPrimitivePayload(args: {
   costTier: string;
   buCost: string | number;
   mechanicalOutputText: string;
+  mechanicalRule?: CanonicalMechanicalRule | Record<string, unknown>;
   narrativeRule: string;
   isPublic: boolean;
   isMirrorable: boolean;
@@ -111,6 +114,7 @@ export function buildCanonicalPrimitivePayload(args: {
     costTier: args.costTier || "Tier 1: Minor (4 BU anchor)",
     buCost: buCostNum,
     mechanicalOutputText: args.mechanicalOutputText,
+    ...(args.mechanicalRule ? { mechanicalRule: args.mechanicalRule } : {}),
     narrativeRule: args.narrativeRule,
     isPublic: args.isPublic,
     isMirrorable: args.isMirrorable,
@@ -209,6 +213,7 @@ export async function computePrimitiveContentHash(args: {
   costTier: string;
   buCost: string | number;
   mechanicalOutputText: string;
+  mechanicalRule?: CanonicalMechanicalRule | Record<string, unknown>;
   narrativeRule: string;
   isPublic: boolean;
   isMirrorable: boolean;

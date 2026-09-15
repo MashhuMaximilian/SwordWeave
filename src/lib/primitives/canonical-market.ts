@@ -31,6 +31,7 @@ export interface CanonicalExpressionDefinition {
   tier:number|null;
   buCost:number;
   mechanicalText:string;
+  rule?:CanonicalMechanicalRule;
   verboseDescription:string;
   modifier?:Record<string,unknown>;
 }
@@ -202,12 +203,7 @@ export const MARKET_TEMPLATES: readonly MarketTemplateDefinition[] = [
     name:`Structure Tier ${["","I","II","III","IV"][tier]}`,
     familyKey:"STRUCTURE",category:"STRUCTURAL",tier,buCost:tierCost(tier),
     bindingSchema:{required:["structure"],slots:{structure:{kind:"keyword",open:true}}},
-    rule:{family:"DOCUMENTED",text:[
-      "Apply through a [single-point structure]",
-      "Apply through a [multi-target or basic spatial structure]",
-      "Apply through a [complex adaptive spatial structure]",
-      "Apply through a [systemic rule-driven structure]",
-    ][tier-1]!},
+    rule:{family:"STRUCTURE",bindings:{structure:null}},
     verboseDescription:[
       "Single-target, self, touch, line-of-sight, fixed-object, or direct point application.",
       "Small multi-target groups, chains, cones, radii, shaped areas, directional spreads, and fields.",
@@ -217,7 +213,7 @@ export const MARKET_TEMPLATES: readonly MarketTemplateDefinition[] = [
     standardBindings:[{
       key:["single-point","multi-target","adaptive-spatial","systemic-rule"][tier-1]!,
       name:["Single-point Structure","Multi-target Structure","Adaptive Spatial Structure","Systemic Rule Structure"][tier-1]!,
-      bindings:{structure:["single-point","multi-target","adaptive-spatial","systemic-rule"][tier-1]!},
+      bindings:{structure:["single-point structure","multi-target or basic spatial structure","complex adaptive spatial structure","systemic rule-driven structure"][tier-1]!},
     }],
   })),
   {key:"attribute-increment",name:"Attribute Increment",familyKey:"PRACTICE_PROGRESSION",category:"SHEET_AUGMENT",tier:3,buCost:12,bindingSchema:{required:["attribute"],slots:{attribute:{kind:"enum",values:["PHYSICAL","MENTAL","MAGICAL"]}}},rule:{family:"ATTRIBUTE_INCREMENT",value:1,bindings:{attribute:null}},verboseDescription:"Permanently expands one core Attribute, subject to tier score limits.",standardBindings:["PHYSICAL","MENTAL","MAGICAL"].map(key=>({key:key.toLowerCase(),name:`${title(key)} Attribute Increment`,bindings:{attribute:key},verboseDescription:`Permanently increase ${title(key)} by 1. This raises the attribute itself, so every check, defense, capacity, or derived value based on ${title(key)} uses the new score, subject to tier score limits.`}))},
@@ -229,19 +225,20 @@ export const MARKET_TEMPLATES: readonly MarketTemplateDefinition[] = [
 export const CANONICAL_EXPRESSIONS:readonly CanonicalExpressionDefinition[] = [
   ...[1,2,3,4].map((tier):CanonicalExpressionDefinition=>({
     key:`verb-access-${tier}`,name:`Verb Access Tier ${["","I","II","III","IV"][tier]}`,familyKey:"VERB_ACCESS",category:"VERB_TIER",tier,buCost:tierCost(tier),
-    mechanicalText:"",
+    mechanicalText:`Grant [Tier ${["","I","II","III","IV"][tier]}] verb access.`,
+    rule:{family:"VERB_ACCESS",operation:"grant",recipient:"SELF",bindings:{tier:`Tier ${["","I","II","III","IV"][tier]}`}},
     verboseDescription:VERB_DESCRIPTIONS[tier-1]!,
   })),
-  {key:"range-touch",name:"Touch Range",familyKey:"RANGE_SCALING",category:"RANGE",tier:0,buCost:0,mechanicalText:"Set maximum range to Touch.",verboseDescription:"The capability can affect the user, something they physically contact, or a target within ordinary melee reach. It cannot cross open distance without a higher range primitive."},
-  {key:"range-near",name:"Near Range",familyKey:"RANGE_SCALING",category:"RANGE",tier:2,buCost:4,mechanicalText:"Set maximum range to Near (30 ft).",verboseDescription:"The capability can reach a target up to 30 feet away, covering close combat, a small room, or the nearby part of a battlefield."},
-  {key:"range-far",name:"Far Range",familyKey:"RANGE_SCALING",category:"RANGE",tier:3,buCost:8,mechanicalText:"Set maximum range to Far (60 ft).",verboseDescription:"The capability can reach a target up to 60 feet away, allowing action across a large room, street, or ordinary tactical encounter."},
-  {key:"range-very-far",name:"Very Far Range",familyKey:"RANGE_SCALING",category:"RANGE",tier:4,buCost:12,mechanicalText:"Set maximum range to Very Far (120 ft).",verboseDescription:"The capability can reach a target up to 120 feet away, spanning most battlefields and other long but directly observable distances."},
-  {key:"range-extreme",name:"Extreme Range",familyKey:"RANGE_SCALING",category:"RANGE",tier:5,buCost:24,mechanicalText:"Set maximum range to Extreme (240 ft–3 miles).",verboseDescription:"The capability can operate from 240 feet out to roughly 3 miles when its targeting method can still identify the target. This supports scene-wide and near-remote influence."},
-  {key:"die-d6",name:"Standard Die Block",familyKey:"INTENSITY_DICE",category:"INTENSITY_DICE",tier:1,buCost:2,mechanicalText:"Unlock 1d6 damage or healing output.",verboseDescription:"Use a d6 when the capability deals damage or restores Vitality at a reliable but modest intensity. The parent capability still determines the action, target, damage or healing type, and timing."},
-  {key:"die-d8",name:"Heavy Die Block",familyKey:"INTENSITY_DICE",category:"INTENSITY_DICE",tier:2,buCost:4,mechanicalText:"Unlock 1d8 damage or healing output.",verboseDescription:"Use a d8 for a stronger damage or healing package comparable to a heavy weapon strike or focused restorative effect. The parent capability supplies its source, target, and delivery rules."},
-  {key:"die-d10",name:"Impact Die Block",familyKey:"INTENSITY_DICE",category:"INTENSITY_DICE",tier:3,buCost:8,mechanicalText:"Unlock 1d10 damage or healing output.",verboseDescription:"Use a d10 for concentrated high-impact damage or healing. This die sets the output intensity while the capability defines what produces it and who receives it."},
-  {key:"die-d12",name:"Calamity Die Block",familyKey:"INTENSITY_DICE",category:"INTENSITY_DICE",tier:4,buCost:16,mechanicalText:"Unlock 1d12 damage or healing output.",verboseDescription:"Use a d12 for exceptional damage or healing capable of deciding a major exchange. It represents severe destructive force or equally powerful restoration within the capability's normal delivery limits."},
-  {key:"die-d20",name:"Existential Tear",familyKey:"INTENSITY_DICE",category:"INTENSITY_DICE",tier:5,buCost:32,mechanicalText:"Unlock 1d20 damage or healing output.",verboseDescription:"Use a d20 for mythic damage or healing that can define an encounter. The die supplies reality-breaking intensity; range, targeting, duration, and the parent capability still constrain its application."},
+  {key:"range-touch",name:"Touch Range",familyKey:"RANGE_SCALING",category:"RANGE",tier:0,buCost:0,mechanicalText:"Set maximum range to Touch.",rule:{family:"RANGE",bindings:{range:"Touch"}},verboseDescription:"The capability can affect the user, something they physically contact, or a target within ordinary melee reach. It cannot cross open distance without a higher range primitive."},
+  {key:"range-near",name:"Near Range",familyKey:"RANGE_SCALING",category:"RANGE",tier:2,buCost:4,mechanicalText:"Set maximum range to Near (30 ft).",rule:{family:"RANGE",bindings:{range:"Near (30 ft)"}},verboseDescription:"The capability can reach a target up to 30 feet away, covering close combat, a small room, or the nearby part of a battlefield."},
+  {key:"range-far",name:"Far Range",familyKey:"RANGE_SCALING",category:"RANGE",tier:3,buCost:8,mechanicalText:"Set maximum range to Far (60 ft).",rule:{family:"RANGE",bindings:{range:"Far (60 ft)"}},verboseDescription:"The capability can reach a target up to 60 feet away, allowing action across a large room, street, or ordinary tactical encounter."},
+  {key:"range-very-far",name:"Very Far Range",familyKey:"RANGE_SCALING",category:"RANGE",tier:4,buCost:12,mechanicalText:"Set maximum range to Very Far (120 ft).",rule:{family:"RANGE",bindings:{range:"Very Far (120 ft)"}},verboseDescription:"The capability can reach a target up to 120 feet away, spanning most battlefields and other long but directly observable distances."},
+  {key:"range-extreme",name:"Extreme Range",familyKey:"RANGE_SCALING",category:"RANGE",tier:5,buCost:24,mechanicalText:"Set maximum range to Extreme (240 ft–3 miles).",rule:{family:"RANGE",bindings:{range:"Extreme (240 ft–3 miles)"}},verboseDescription:"The capability can operate from 240 feet out to roughly 3 miles when its targeting method can still identify the target. This supports scene-wide and near-remote influence."},
+  {key:"die-d6",name:"Standard Die Block",familyKey:"INTENSITY_DICE",category:"INTENSITY_DICE",tier:1,buCost:2,mechanicalText:"Unlock [1d6] damage or healing output.",rule:{family:"DICE",bindings:{dice:"1d6"}},verboseDescription:"Use a d6 when the capability deals damage or restores Vitality at a reliable but modest intensity. The parent capability still determines the action, target, damage or healing type, and timing."},
+  {key:"die-d8",name:"Heavy Die Block",familyKey:"INTENSITY_DICE",category:"INTENSITY_DICE",tier:2,buCost:4,mechanicalText:"Unlock [1d8] damage or healing output.",rule:{family:"DICE",bindings:{dice:"1d8"}},verboseDescription:"Use a d8 for a stronger damage or healing package comparable to a heavy weapon strike or focused restorative effect. The parent capability supplies its source, target, and delivery rules."},
+  {key:"die-d10",name:"Impact Die Block",familyKey:"INTENSITY_DICE",category:"INTENSITY_DICE",tier:3,buCost:8,mechanicalText:"Unlock [1d10] damage or healing output.",rule:{family:"DICE",bindings:{dice:"1d10"}},verboseDescription:"Use a d10 for concentrated high-impact damage or healing. This die sets the output intensity while the capability defines what produces it and who receives it."},
+  {key:"die-d12",name:"Calamity Die Block",familyKey:"INTENSITY_DICE",category:"INTENSITY_DICE",tier:4,buCost:16,mechanicalText:"Unlock [1d12] damage or healing output.",rule:{family:"DICE",bindings:{dice:"1d12"}},verboseDescription:"Use a d12 for exceptional damage or healing capable of deciding a major exchange. It represents severe destructive force or equally powerful restoration within the capability's normal delivery limits."},
+  {key:"die-d20",name:"Existential Tear",familyKey:"INTENSITY_DICE",category:"INTENSITY_DICE",tier:5,buCost:32,mechanicalText:"Unlock [1d20] damage or healing output.",rule:{family:"DICE",bindings:{dice:"1d20"}},verboseDescription:"Use a d20 for mythic damage or healing that can define an encounter. The die supplies reality-breaking intensity; range, targeting, duration, and the parent capability still constrain its application."},
   ...(["TINY","SMALL","MEDIUM","LARGE","HUGE","GARGANTUAN"] as const).map((size,index)=>({
     key:`size-${size.toLowerCase()}`,name:`${title(size)} Size`,familyKey:"SIZE_SCALE",category:"SIZING",tier:index,buCost:0,
     mechanicalText:`Set Size to ${title(size)}.`,verboseDescription:`Sets character Size to ${title(size)}; Size determines base carry capacity and base movement.`,
