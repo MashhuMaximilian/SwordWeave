@@ -2369,3 +2369,93 @@ body[data-ui="v12"] .v12-composition-mechanic { padding:6px 8px; }
   body[data-ui="v12"] .v12-library-column > aside,
   body[data-ui="v12"] .v12-library-inspector { position:relative; height:auto; max-height:none; overflow:visible; scrollbar-gutter:auto; }
 }
+
+/* Library V12 material and modal pass. Kept last so the Library retains the
+   exact compact instrument treatment when shared preview styles are loaded. */
+body[data-ui="v12"] .v12-family-panel {
+  position:relative; padding:0 9px 9px; border:1px solid transparent; border-radius:5px;
+  background:linear-gradient(115deg,color-mix(in srgb,var(--v12-silver) 6%,var(--card)),var(--card) 72%,color-mix(in srgb,var(--v12-copper) 7%,var(--card))) padding-box,var(--v12-brass-edge) border-box;
+  box-shadow:inset 0 0 0 3px color-mix(in srgb,var(--v12-silver) 4%,transparent),0 7px 22px rgb(0 0 0 / 18%);
+}
+body[data-ui="v12"] .v12-family-panel::after {
+  content:""; position:absolute; inset:5px; pointer-events:none;
+  border-top:1px solid color-mix(in srgb,var(--v12-brass) 72%,transparent);
+  border-bottom:1px solid color-mix(in srgb,var(--v12-copper) 38%,transparent);
+  clip-path:polygon(0 0,34px 0,40px 1px,100% 1px,100% 100%,calc(100% - 8px) 100%,calc(100% - 11px) calc(100% - 1px),0 calc(100% - 1px));
+}
+body[data-ui="v12"] .v12-family-panel .v12-market-hero {
+  position:relative; min-height:0; margin:0 -9px; padding:9px 11px;
+  border-bottom:1px solid color-mix(in srgb,var(--v12-copper) 46%,var(--v12-silver));
+  background:linear-gradient(105deg,color-mix(in srgb,var(--v12-silver) 8%,var(--card)),var(--card) 66%,color-mix(in srgb,var(--v12-brass) 10%,var(--card)));
+}
+body[data-ui="v12"] .v12-family-panel.is-collapsed .v12-market-hero { border-bottom:0; }
+body[data-ui="v12"] .v12-family-collapse {
+  position:absolute; right:10px; bottom:6px; z-index:2; display:inline-flex; align-items:center; gap:5px;
+  padding:2px 6px; border:1px solid color-mix(in srgb,var(--v12-silver) 55%,transparent); border-radius:2px;
+  background:linear-gradient(var(--v12-raised),var(--v12-inset)); color:var(--v12-soft); font:500 11px/1.3 var(--font-system);
+}
+body[data-ui="v12"] .v12-family-collapse b { color:var(--v12-teal); font-size:14px; }
+body[data-ui="v12"] .v12-tier-ladder { margin-top:0; border-radius:0 0 4px 4px; overflow:hidden; }
+body[data-ui="v12"] .v12-family-panel .v12-tier-ladder > div {
+  position:relative; min-height:42px; padding:5px 7px; border-bottom:1px solid transparent;
+  background:linear-gradient(100deg,color-mix(in srgb,var(--v12-silver) 5%,var(--v12-raised)),var(--v12-inset)) padding-box,var(--v12-silver-edge) border-box;
+}
+body[data-ui="v12"] .v12-family-panel .v12-tier-ladder > div::before { content:""; position:absolute; inset:0 auto 0 0; width:2px; background:linear-gradient(var(--v12-brass),var(--v12-copper)); opacity:.75; }
+body[data-ui="v12"] .v12-tier-ladder > div > span { color:var(--v12-copper-hi); font:500 15px/1 var(--font-technical); letter-spacing:.04em; }
+body[data-ui="v12"] .v12-tier-ladder b { color:var(--foreground); font:500 13px/1.15 var(--font-subtitle); }
+body[data-ui="v12"] .v12-tier-ladder p { color:var(--v12-soft); font:400 11px/1.18 var(--font-body); }
+body[data-ui="v12"] .v12-tier-ladder > div:first-child em { border-color:var(--v12-teal); color:var(--v12-teal); }
+body[data-ui="v12"] .v12-tier-ladder > div:last-child em { border-color:var(--v12-brass); color:var(--v12-brass); }
+body[data-ui="v12"] .v12-entry-cluster { border:1px solid transparent; background:var(--v12-inset) padding-box,var(--v12-brass-edge) border-box; }
+body[data-ui="v12"] .v12-entry-cluster > header { background:linear-gradient(95deg,color-mix(in srgb,var(--v12-brass) 7%,var(--card)),var(--card)); border-bottom-color:color-mix(in srgb,var(--v12-silver) 58%,transparent); }
+body[data-ui="v12"] .v12-entry-cluster > header::before { background:linear-gradient(90deg,var(--v12-brass),var(--v12-silver),transparent); }
+body[data-ui="v12"] .v12-library-workbench:not(.is-creations) .v12-library-inspector {
+  border:1px solid transparent; background:linear-gradient(120deg,color-mix(in srgb,var(--v12-silver) 9%,var(--card)),var(--card) 45%,color-mix(in srgb,var(--v12-copper) 11%,var(--card))) padding-box,var(--v12-brass-edge) border-box;
+  box-shadow:inset 0 0 0 3px color-mix(in srgb,var(--v12-silver) 5%,transparent),0 8px 24px rgb(0 0 0 / 24%);
+}
+body[data-ui="v12"] .v12-composition-container-link { color:var(--v12-copper-hi); text-decoration:underline; text-decoration-color:color-mix(in srgb,var(--v12-copper) 55%,transparent); text-underline-offset:2px; }
+body[data-ui="v12"] .v12-composition-container-link:hover { color:var(--v12-teal); }
+
+body[data-ui="v12"] .v12-modal-surface { max-height:min(94dvh,900px); }
+body[data-ui="v12"] .v12-modal-surface > div:last-child { min-height:0; overflow:auto; padding:10px 12px; }
+body[data-ui="v12"] .v12-library-modal-layout,
+body[data-ui="v12"] .v12-nested-preview { display:grid; min-height:0; gap:8px; }
+body[data-ui="v12"] .v12-library-modal-layout .v12-fetched-preview,
+body[data-ui="v12"] .v12-nested-preview .v12-fetched-preview { min-height:0; }
+body[data-ui="v12"] .v12-library-modal-layout .v12-entity-preview,
+body[data-ui="v12"] .v12-nested-preview .v12-entity-preview { height:auto; }
+body[data-ui="v12"] .v12-library-modal-layout .v12-entity-preview > div:first-child,
+body[data-ui="v12"] .v12-nested-preview .v12-entity-preview > div:first-child { overflow:visible; padding-right:0; }
+body[data-ui="v12"] .v12-modal-actions {
+  position:relative; z-index:2; display:flex; flex-wrap:wrap; align-items:center; gap:7px;
+  margin:0; padding:9px 0 1px; border-top:1px solid var(--v12-line-subtle); background:var(--card);
+}
+body[data-ui="v12"] .v12-modal-actions > *,
+body[data-ui="v12"] .v12-fetched-preview > a { flex:0 0 auto; min-height:34px; margin:0; padding:6px 10px; }
+body[data-ui="v12"] .v12-modal-actions [data-compact-engagement] { flex-wrap:wrap; }
+body[data-ui="v12"] .v12-library-modal-layout .v12-primitive-preview-body {
+  display:grid; grid-template-columns:minmax(220px,.75fr) minmax(0,1.25fr); grid-auto-flow:row; align-items:start; gap:12px 18px;
+}
+body[data-ui="v12"] .v12-library-modal-layout .v12-primitive-preview-body > * { margin:0; }
+body[data-ui="v12"] .v12-library-modal-layout .v12-primitive-preview-body > .v12-preview-identity { grid-column:1; grid-row:1; }
+body[data-ui="v12"] .v12-library-modal-layout .v12-primitive-preview-body > [data-preview-section="narrative-rule"] { grid-column:1!important; grid-row:2!important; }
+body[data-ui="v12"] .v12-library-modal-layout .v12-primitive-preview-body > [data-preview-section="tags"] { grid-column:1; }
+body[data-ui="v12"] .v12-library-modal-layout .v12-primitive-preview-body > [data-preview-section="mechanical-output"] { grid-column:2!important; grid-row:1!important; }
+body[data-ui="v12"] .v12-library-modal-layout .v12-primitive-preview-body > [data-preview-section="mirroring"] { grid-column:2!important; }
+body[data-ui="v12"] .v12-library-modal-layout .v12-composite-preview-body {
+  display:grid; grid-template-columns:minmax(220px,.75fr) minmax(0,1.25fr); align-items:start; gap:12px 18px;
+}
+body[data-ui="v12"] .v12-library-modal-layout .v12-composite-preview-body > * { margin:0; grid-column:2; }
+body[data-ui="v12"] .v12-library-modal-layout .v12-composite-preview-body > .v12-preview-identity,
+body[data-ui="v12"] .v12-library-modal-layout .v12-composite-preview-body > [data-preview-section="description"],
+body[data-ui="v12"] .v12-library-modal-layout .v12-composite-preview-body > [data-preview-section="narrative-description"],
+body[data-ui="v12"] .v12-library-modal-layout .v12-composite-preview-body > [data-preview-section="suggested-traits"],
+body[data-ui="v12"] .v12-library-modal-layout .v12-composite-preview-body > [data-preview-section="tags"] { grid-column:1; }
+body[data-ui="v12"] .v12-preview-medallion :is(img,svg) { border:0!important; box-shadow:none!important; }
+
+@media(max-width:767px) {
+  body[data-ui="v12"] .v12-family-collapse span { display:none; }
+  body[data-ui="v12"] .v12-library-modal-layout .v12-primitive-preview-body,
+  body[data-ui="v12"] .v12-library-modal-layout .v12-composite-preview-body { display:block; }
+  body[data-ui="v12"] .v12-library-modal-layout :is(.v12-primitive-preview-body,.v12-composite-preview-body) > * + * { margin-top:10px; }
+}

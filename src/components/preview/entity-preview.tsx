@@ -880,7 +880,7 @@ function EffectBody({
   // helper would be a no-op for an effect row.)
   const totalBu = row.primitiveLinks.reduce((s, l) => s + Math.abs(l.primitive.buCost * l.quantity), 0);
   return (
-    <div className="space-y-5">
+    <div className="v12-composite-preview-body space-y-5">
       <Header
         fallback="EFF"
         iconSource={row.iconSource}
@@ -973,7 +973,7 @@ function CapabilityBody({
     })),
   );
   return (
-    <div className="space-y-4">
+    <div className="v12-composite-preview-body space-y-4">
       <Header
         fallback="CAP"
         iconSource={row.iconSource}
@@ -1125,7 +1125,7 @@ function TemplateBody({
   );
   const inheritedPrimitiveLinks = [...capabilityPrimitiveLinks, ...capabilityEffectPrimitiveLinks];
   return (
-    <div className="space-y-4">
+    <div className="v12-composite-preview-body space-y-4">
       <Header
         fallback="TPL"
         iconSource={row.iconSource}
@@ -1279,7 +1279,7 @@ function ItemBody({
     ]),
   ];
   return (
-    <div className="space-y-4">
+    <div className="v12-composite-preview-body space-y-4">
       <Header
         fallback="ITM"
         iconSource={row.iconSource}

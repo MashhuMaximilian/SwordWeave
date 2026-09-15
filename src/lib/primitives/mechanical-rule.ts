@@ -8,6 +8,7 @@ export type MechanicalRuleFamily =
   | "DEFENSIVE_SAVE"
   | "PRACTICE_PROFICIENCY"
   | "UNIVERSAL_MODIFIER"
+  | "DESCRIPTIVE"
   | "DOCUMENTED"
   | "GENERIC";
 
@@ -83,6 +84,7 @@ function withCondition(sentence: string, condition?: string): string {
 
 /** Human-facing output for the same structured rule the resolver stores. */
 export function renderMechanicalRule(rule: CanonicalMechanicalRule): string {
+  if (rule.family === "DESCRIPTIVE") return "";
   if (rule.family === "DOCUMENTED") {
     const sentence = Object.entries(rule.bindings ?? {}).reduce(
       (text, [key, value]) => text.replaceAll(`[${key}]`, display(value)),

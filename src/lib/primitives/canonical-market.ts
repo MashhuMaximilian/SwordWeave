@@ -131,7 +131,7 @@ export const MARKET_TEMPLATES: readonly MarketTemplateDefinition[] = [
 export const CANONICAL_EXPRESSIONS:readonly CanonicalExpressionDefinition[] = [
   ...[1,2,3,4].map((tier):CanonicalExpressionDefinition=>({
     key:`verb-access-${tier}`,name:`Verb Access Tier ${["","I","II","III","IV"][tier]}`,familyKey:"VERB_ACCESS",category:"VERB_TIER",tier,buCost:tierCost(tier),
-    mechanicalText:`Unlock Tier ${["","I","II","III","IV"][tier]} ${["","basic physical and perceptual","transformative","structural and system-level","conceptual and rule-level"][tier]} action language.`,
+    mechanicalText:"",
     verboseDescription:VERB_DESCRIPTIONS[tier-1]!,
   })),
   {key:"range-touch",name:"Touch Range",familyKey:"RANGE_SCALING",category:"RANGE",tier:0,buCost:0,mechanicalText:"Set maximum range to Touch.",verboseDescription:"Immediate contact, self, or melee reach."},

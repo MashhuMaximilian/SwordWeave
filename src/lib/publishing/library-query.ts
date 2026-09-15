@@ -232,6 +232,7 @@ export interface LibraryCompositionPath {
   path: string[];
   buCost: number;
   quantity: number;
+  containers: Array<{ targetType: "CAPABILITY" | "EFFECT"; targetId: string; name: string }>;
 }
 
 /**
@@ -458,6 +459,9 @@ type CompositionSqlRow = {
   bu_cost: number;
   quantity: number;
   path: string[];
+  container_types: string[];
+  container_ids: string[];
+  container_names: string[];
 };
 
 /** Load primitive leaves with their full containment breadcrumb in one query. */
@@ -468,55 +472,65 @@ async function loadCompositionPaths(root: CompositionRoot, ids: string[]) {
   let query: SQL;
   if (root === "EFFECT") {
     query = sql`SELECT ep.effect_id::text owner_id, p.id primitive_id, p.name primitive_name,
-      COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule) mechanical_description, p.hard_modifiers,
-      p.bu_cost, ep.quantity, ARRAY['Effect', e.name, 'Primitive', p.name]::text[] path
+      COALESCE(NULLIF(p.mechanical_output_text,''),NULLIF(p.mechanical_template_text,''),p.narrative_rule) mechanical_description, p.hard_modifiers,
+      p.bu_cost, ep.quantity, ARRAY['Effect', e.name, 'Primitive', p.name]::text[] path,
+      ARRAY[]::text[] container_types, ARRAY[]::text[] container_ids, ARRAY[]::text[] container_names
       FROM effect_primitives ep JOIN effects e ON e.id=ep.effect_id JOIN primitives p ON p.id=ep.primitive_id
       WHERE ep.effect_id IN (${idList})`;
   } else if (root === "CAPABILITY") {
     query = sql`
       SELECT cp.capability_id::text owner_id, p.id primitive_id, p.name primitive_name,
-        COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule) mechanical_description, p.hard_modifiers,
-        p.bu_cost, cp.quantity, ARRAY['Capability',c.name,'Primitive',p.name]::text[] path
+        COALESCE(NULLIF(p.mechanical_output_text,''),NULLIF(p.mechanical_template_text,''),p.narrative_rule) mechanical_description, p.hard_modifiers,
+        p.bu_cost, cp.quantity, ARRAY['Capability',c.name,'Primitive',p.name]::text[] path,
+        ARRAY[]::text[] container_types, ARRAY[]::text[] container_ids, ARRAY[]::text[] container_names
       FROM capability_primitives cp JOIN capabilities c ON c.id=cp.capability_id JOIN primitives p ON p.id=cp.primitive_id
       WHERE cp.capability_id IN (${idList})
       UNION ALL
       SELECT ce.capability_id::text, p.id, p.name,
-        COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.hard_modifiers,p.bu_cost,ep.quantity,
-        ARRAY['Capability',c.name,'Effect',e.name,'Primitive',p.name]::text[]
+        COALESCE(NULLIF(p.mechanical_output_text,''),NULLIF(p.mechanical_template_text,''),p.narrative_rule),p.hard_modifiers,p.bu_cost,ep.quantity,
+        ARRAY['Capability',c.name,'Effect',e.name,'Primitive',p.name]::text[],
+        ARRAY['EFFECT']::text[], ARRAY[e.id::text]::text[], ARRAY[e.name]::text[]
       FROM capability_effects ce JOIN capabilities c ON c.id=ce.capability_id JOIN effects e ON e.id=ce.effect_id
       JOIN effect_primitives ep ON ep.effect_id=e.id JOIN primitives p ON p.id=ep.primitive_id
       WHERE ce.capability_id IN (${idList})`;
   } else if (root === "ITEM") {
     query = sql`
       SELECT ip.item_id::text owner_id,p.id primitive_id,p.name primitive_name,
-        COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule) mechanical_description,p.hard_modifiers,
-        p.bu_cost,1 quantity,ARRAY['Item',i.name,'Primitive',p.name]::text[] path
+        COALESCE(NULLIF(p.mechanical_output_text,''),NULLIF(p.mechanical_template_text,''),p.narrative_rule) mechanical_description,p.hard_modifiers,
+        p.bu_cost,1 quantity,ARRAY['Item',i.name,'Primitive',p.name]::text[] path,
+        ARRAY[]::text[] container_types, ARRAY[]::text[] container_ids, ARRAY[]::text[] container_names
       FROM item_primitives ip JOIN items i ON i.id=ip.item_id JOIN primitives p ON p.id=ip.primitive_id WHERE ip.item_id IN (${idList})
       UNION ALL
-      SELECT ie.item_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.hard_modifiers,p.bu_cost,ep.quantity,
-        ARRAY['Item',i.name,'Effect',e.name,'Primitive',p.name]::text[]
+      SELECT ie.item_id::text,p.id,p.name,COALESCE(NULLIF(p.mechanical_output_text,''),NULLIF(p.mechanical_template_text,''),p.narrative_rule),p.hard_modifiers,p.bu_cost,ep.quantity,
+        ARRAY['Item',i.name,'Effect',e.name,'Primitive',p.name]::text[],
+        ARRAY['EFFECT']::text[], ARRAY[e.id::text]::text[], ARRAY[e.name]::text[]
       FROM item_effects ie JOIN items i ON i.id=ie.item_id JOIN effects e ON e.id=ie.effect_id JOIN effect_primitives ep ON ep.effect_id=e.id JOIN primitives p ON p.id=ep.primitive_id WHERE ie.item_id IN (${idList})
       UNION ALL
-      SELECT ic.item_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.hard_modifiers,p.bu_cost,cp.quantity,
-        ARRAY['Item',i.name,'Capability',c.name,'Primitive',p.name]::text[]
+      SELECT ic.item_id::text,p.id,p.name,COALESCE(NULLIF(p.mechanical_output_text,''),NULLIF(p.mechanical_template_text,''),p.narrative_rule),p.hard_modifiers,p.bu_cost,cp.quantity,
+        ARRAY['Item',i.name,'Capability',c.name,'Primitive',p.name]::text[],
+        ARRAY['CAPABILITY']::text[], ARRAY[c.id::text]::text[], ARRAY[c.name]::text[]
       FROM item_capabilities ic JOIN items i ON i.id=ic.item_id JOIN capabilities c ON c.id=ic.capability_id JOIN capability_primitives cp ON cp.capability_id=c.id JOIN primitives p ON p.id=cp.primitive_id WHERE ic.item_id IN (${idList})
       UNION ALL
-      SELECT ic.item_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.hard_modifiers,p.bu_cost,ep.quantity,
-        ARRAY['Item',i.name,'Capability',c.name,'Effect',e.name,'Primitive',p.name]::text[]
+      SELECT ic.item_id::text,p.id,p.name,COALESCE(NULLIF(p.mechanical_output_text,''),NULLIF(p.mechanical_template_text,''),p.narrative_rule),p.hard_modifiers,p.bu_cost,ep.quantity,
+        ARRAY['Item',i.name,'Capability',c.name,'Effect',e.name,'Primitive',p.name]::text[],
+        ARRAY['CAPABILITY','EFFECT']::text[], ARRAY[c.id::text,e.id::text]::text[], ARRAY[c.name,e.name]::text[]
       FROM item_capabilities ic JOIN items i ON i.id=ic.item_id JOIN capabilities c ON c.id=ic.capability_id JOIN capability_effects ce ON ce.capability_id=c.id JOIN effects e ON e.id=ce.effect_id JOIN effect_primitives ep ON ep.effect_id=e.id JOIN primitives p ON p.id=ep.primitive_id WHERE ic.item_id IN (${idList})`;
   } else {
     query = sql`
       SELECT hp.template_id::text owner_id,p.id primitive_id,p.name primitive_name,
-        COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule) mechanical_description,p.hard_modifiers,
-        p.bu_cost,1 quantity,ARRAY['Heritage',h.name,'Primitive',p.name]::text[] path
+        COALESCE(NULLIF(p.mechanical_output_text,''),NULLIF(p.mechanical_template_text,''),p.narrative_rule) mechanical_description,p.hard_modifiers,
+        p.bu_cost,1 quantity,ARRAY['Heritage',h.name,'Primitive',p.name]::text[] path,
+        ARRAY[]::text[] container_types, ARRAY[]::text[] container_ids, ARRAY[]::text[] container_names
       FROM heritage_primitives hp JOIN heritage h ON h.id=hp.template_id JOIN primitives p ON p.id=hp.primitive_id WHERE hp.template_id IN (${idList})
       UNION ALL
-      SELECT hc.template_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.hard_modifiers,p.bu_cost,cp.quantity,
-        ARRAY['Heritage',h.name,'Capability',c.name,'Primitive',p.name]::text[]
+      SELECT hc.template_id::text,p.id,p.name,COALESCE(NULLIF(p.mechanical_output_text,''),NULLIF(p.mechanical_template_text,''),p.narrative_rule),p.hard_modifiers,p.bu_cost,cp.quantity,
+        ARRAY['Heritage',h.name,'Capability',c.name,'Primitive',p.name]::text[],
+        ARRAY['CAPABILITY']::text[], ARRAY[c.id::text]::text[], ARRAY[c.name]::text[]
       FROM heritage_capabilities hc JOIN heritage h ON h.id=hc.template_id JOIN capabilities c ON c.id=hc.capability_id JOIN capability_primitives cp ON cp.capability_id=c.id JOIN primitives p ON p.id=cp.primitive_id WHERE hc.template_id IN (${idList})
       UNION ALL
-      SELECT hc.template_id::text,p.id,p.name,COALESCE(p.mechanical_output_text,p.mechanical_template_text,p.narrative_rule),p.hard_modifiers,p.bu_cost,ep.quantity,
-        ARRAY['Heritage',h.name,'Capability',c.name,'Effect',e.name,'Primitive',p.name]::text[]
+      SELECT hc.template_id::text,p.id,p.name,COALESCE(NULLIF(p.mechanical_output_text,''),NULLIF(p.mechanical_template_text,''),p.narrative_rule),p.hard_modifiers,p.bu_cost,ep.quantity,
+        ARRAY['Heritage',h.name,'Capability',c.name,'Effect',e.name,'Primitive',p.name]::text[],
+        ARRAY['CAPABILITY','EFFECT']::text[], ARRAY[c.id::text,e.id::text]::text[], ARRAY[c.name,e.name]::text[]
       FROM heritage_capabilities hc JOIN heritage h ON h.id=hc.template_id JOIN capabilities c ON c.id=hc.capability_id JOIN capability_effects ce ON ce.capability_id=c.id JOIN effects e ON e.id=ce.effect_id JOIN effect_primitives ep ON ep.effect_id=e.id JOIN primitives p ON p.id=ep.primitive_id WHERE hc.template_id IN (${idList})`;
   }
   const executed = await db.execute<CompositionSqlRow>(query);
@@ -526,6 +540,11 @@ async function loadCompositionPaths(root: CompositionRoot, ids: string[]) {
       primitiveId: Number(row.primitive_id), primitiveName: row.primitive_name,
       mechanicalDescription: mechanicalDescriptionFromModifiers(row.hard_modifiers as HardModifier[]) || row.mechanical_description || "No mechanical description.",
       buCost: Number(row.bu_cost), quantity: Number(row.quantity), path: row.path,
+      containers: (row.container_ids ?? []).map((targetId,index)=>({
+        targetType: row.container_types[index] as "CAPABILITY" | "EFFECT",
+        targetId,
+        name: row.container_names[index] ?? targetId,
+      })),
     };
     result.set(row.owner_id, [...(result.get(row.owner_id) ?? []), value]);
   }

@@ -68,30 +68,28 @@ function CompositionMechanics({
   paths,
   compact = false,
   onPrimitive,
+  onContainer,
 }: {
   paths: LibraryCompositionPath[];
   compact?: boolean;
   onPrimitive?: (path: LibraryCompositionPath) => void;
+  onContainer?: (container: LibraryCompositionPath["containers"][number]) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const visible = expanded ? paths : paths.slice(0, compact ? 3 : paths.length);
   const containersFor = (path: LibraryCompositionPath) => path.path.slice(2, -2);
   const nestingLabel = (path: LibraryCompositionPath) => containersFor(path).length ? "Nested" : "Direct";
-  const groupLabel = (path: LibraryCompositionPath) => {
-    const containers = containersFor(path);
-    if (!containers.length) return "Direct primitives";
-    const labels:string[]=[];
-    for(let index=0;index<containers.length;index+=2) labels.push(`${containers[index]} · ${containers[index+1]}`);
-    return `Inside ${labels.join(" → ")}`;
-  };
-  const groups = visible.reduce<Array<{label:string;items:Array<{path:LibraryCompositionPath;index:number}>}>>((all,path,index) => {
+  const groupLabel = (path: LibraryCompositionPath) => path.containers.length
+    ? `Inside ${path.containers.map(container=>`${container.targetType === "CAPABILITY" ? "Capability" : "Effect"} · ${container.name}`).join(" → ")}`
+    : "Direct primitives";
+  const groups = visible.reduce<Array<{label:string;containers:LibraryCompositionPath["containers"];items:Array<{path:LibraryCompositionPath;index:number}>}>>((all,path,index) => {
     const label=groupLabel(path); const found=all.find(group=>group.label===label);
-    if(found) found.items.push({path,index}); else all.push({label,items:[{path,index}]}); return all;
+    if(found) found.items.push({path,index}); else all.push({label,containers:path.containers,items:[{path,index}]}); return all;
   },[]);
   return (
     <div className={compact ? "v12-composition-list is-compact" : "v12-composition-list"}>
       {groups.map((group) => <section className="v12-composition-group" key={group.label}>
-        {!compact ? <h4>{group.label}</h4> : null}
+        {!compact ? <h4>{group.containers.length ? <>{"Inside "}{group.containers.map((container,index)=><span key={`${container.targetType}:${container.targetId}`}><button type="button" className="v12-composition-container-link" onClick={(event)=>{event.stopPropagation();onContainer?.(container);}}>{container.targetType === "CAPABILITY" ? "Capability" : "Effect"} · {container.name}</button>{index < group.containers.length-1 ? " → " : ""}</span>)}</> : group.label}</h4> : null}
         {group.items.map(({path,index}) => <button
           type="button"
           key={`${path.primitiveId}:${path.path.join(":")}:${index}`}
@@ -172,7 +170,8 @@ export function LibraryBrowseClient({
     ? buildSandboxUrl(selectedItem.targetType, selectedItem.targetId, "fork")
     : null;
   const [detailOpen, setDetailOpen] = useState(false);
-  const [nestedPreview, setNestedPreview] = useState<LibraryCompositionPath | null>(null);
+  const [nestedPreview, setNestedPreview] = useState<{targetType:string;targetId:string;name:string} | null>(null);
+  const [familyExpanded, setFamilyExpanded] = useState(true);
   const workbenchRef = useRef<HTMLDivElement>(null);
   const [leftWidth, setLeftWidth] = useState(270);
   const [rightWidth, setRightWidth] = useState(330);
@@ -311,7 +310,7 @@ export function LibraryBrowseClient({
       const frame = workbenchRef.current;
       if (!frame) return;
       const top = frame.getBoundingClientRect().top;
-      frame.style.setProperty("--v12-library-available", `${Math.max(320, window.innerHeight - Math.max(72, top) - 12)}px`);
+      frame.style.setProperty("--v12-library-available", `${Math.max(240, window.innerHeight - top - 8)}px`);
     };
     updateAvailableHeight();
     window.addEventListener("resize", updateAvailableHeight, { passive:true });
@@ -357,7 +356,7 @@ export function LibraryBrowseClient({
         ) : null}
         {isPrimitiveMode ? <div className="v12-library-resizer" role="separator" aria-label="Resize category column" onPointerDown={(event) => startResize("left", event)} /> : null}
         <main className="v12-library-results min-h-0">
-          <section className="v12-family-panel" aria-label="Selected market family">
+          <section className={`v12-family-panel${familyExpanded ? " is-expanded" : " is-collapsed"}`} aria-label="Selected market family">
           <div className="v12-market-hero">
             <div>
               <p className="v12-kicker">Lexicon category · canonical family</p>
@@ -379,8 +378,9 @@ export function LibraryBrowseClient({
                 + Create primitive
               </a>
             ) : null}
+            {isPrimitiveMode && effectiveCategory ? <button type="button" className="v12-family-collapse" aria-expanded={familyExpanded} onClick={()=>setFamilyExpanded(value=>!value)}><span>{familyExpanded ? "Collapse" : "Expand"}</span><b aria-hidden="true">{familyExpanded ? "−" : "+"}</b></button> : null}
           </div>
-          {effectiveCategory && isPrimitiveMode && familyTiers.length ? (
+          {familyExpanded && effectiveCategory && isPrimitiveMode && familyTiers.length ? (
             <div className="v12-tier-ladder" aria-label="Canonical cost tiers">
               {familyTiers.map((tier) => (
                 <div key={`${tier.tier}:${tier.buCost}`}>
@@ -449,7 +449,7 @@ export function LibraryBrowseClient({
                       </span>
                     </div>
                     {item.compositionPaths?.length ? (
-                      <CompositionMechanics paths={item.compositionPaths} compact onPrimitive={setNestedPreview} />
+                      <CompositionMechanics paths={item.compositionPaths} compact onPrimitive={(path)=>setNestedPreview({targetType:"PRIMITIVE",targetId:String(path.primitiveId),name:path.primitiveName})} />
                     ) : (
                       <Markdown className="v12-entry-summary" data-readable-rule>{item.mechanicalDescription || item.description || "No mechanical description."}</Markdown>
                     )}
@@ -518,9 +518,9 @@ export function LibraryBrowseClient({
                     {selectedItem.buCost ?? 0} BU
                   </span>
                 </div>
-                <div className="v12-rule" data-readable-rule>
-                  <Markdown>{selectedItem.mechanicalDescription || selectedItem.description || "No mechanical description."}</Markdown>
-                </div>
+                {selectedItem.mechanicalDescription ? <div className="v12-rule" data-readable-rule>
+                  <Markdown>{selectedItem.mechanicalDescription}</Markdown>
+                </div> : null}
                 <dl className="v12-inspector-facts">
                   <div><dt>Source</dt><dd>{libraryOrigin(selectedItem) === "system" ? "SYSTEM" : selectedItem.authorUsername ?? "Community"}</dd></div>
                   {selectedItem.versionNumber ? <div><dt>Version</dt><dd>v{selectedItem.versionNumber}</dd></div> : null}
@@ -531,7 +531,7 @@ export function LibraryBrowseClient({
                 {selectedItem.compositionPaths?.length ? (
                   <section className="v12-inspector-section">
                     <h3>Complete composition</h3>
-                    <CompositionMechanics paths={selectedItem.compositionPaths} onPrimitive={setNestedPreview} />
+                    <CompositionMechanics paths={selectedItem.compositionPaths} onPrimitive={(path)=>setNestedPreview({targetType:"PRIMITIVE",targetId:String(path.primitiveId),name:path.primitiveName})} onContainer={(container)=>setNestedPreview({targetType:container.targetType,targetId:container.targetId,name:container.name})} />
                   </section>
                 ) : null}
                 {selectedItem.verboseDescription && selectedItem.verboseDescription !== selectedItem.mechanicalDescription ? (
@@ -592,27 +592,27 @@ export function LibraryBrowseClient({
         isOpen={detailOpen && selectedItem !== null}
         onClose={() => setDetailOpen(false)}
         title={selectedItem?.name ?? ""}
-        size="lg"
+        size="xl"
       >
         {selectedItem ? (
-          <><FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "system" : selectedItem.sourceOrigin }} />
+          <div className="v12-library-modal-layout"><FetchedEntityPreview key={selectedItem.id} targetType={selectedItem.targetType} targetId={selectedItem.targetId} owner={{ authorId:selectedItem.authorId, authorUsername:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorUsername, authorDisplayName:libraryOrigin(selectedItem) === "system" ? null : selectedItem.authorDisplayName, isOwner:selectedItem.authorId === currentUserInternalId, sourceOrigin:libraryOrigin(selectedItem) === "system" ? "system" : selectedItem.sourceOrigin }} />
           <div className="v12-modal-actions">
             <a className="v12-metal-button" href={`/library/item/${selectedItem.id}/versions`}>Versions</a>
             <ForkMapButton targetType={selectedItem.targetType} targetId={selectedItem.targetId} targetName={selectedItem.name} />
             <LikeForkBar targetType={selectedItem.targetType} targetId={selectedItem.targetId} initialLikes={selectedItem.likesCount} initialDislikes={selectedItem.dislikesCount} initialForks={selectedItem.forkCount} authorId={selectedItem.authorId} authorUsername={libraryOrigin(selectedItem)==="system"?null:selectedItem.authorUsername} currentUserId={currentUserInternalId} />
-          </div></>
+          </div></div>
         ) : null}
       </DetailModal>
       <DetailModal
         isOpen={nestedPreview !== null}
         onClose={() => setNestedPreview(null)}
-        title={nestedPreview?.primitiveName ?? "Primitive"}
-        size="lg"
+        title={nestedPreview?.name ?? "Entry"}
+        size="xl"
       >
         {nestedPreview ? (
           <div className="v12-nested-preview">
-            <FetchedEntityPreview targetType="PRIMITIVE" targetId={String(nestedPreview.primitiveId)} />
-            <div className="v12-modal-actions"><a className="v12-metal-button" href={`/library/item/PRIMITIVE:${nestedPreview.primitiveId}/versions`}>Versions</a><ForkMapButton targetType="PRIMITIVE" targetId={String(nestedPreview.primitiveId)} targetName={nestedPreview.primitiveName} /><LikeForkBar targetType="PRIMITIVE" targetId={String(nestedPreview.primitiveId)} initialLikes={0} initialDislikes={0} initialForks={0} currentUserId={currentUserInternalId} /></div>
+            <FetchedEntityPreview targetType={nestedPreview.targetType} targetId={nestedPreview.targetId} />
+            <div className="v12-modal-actions"><a className="v12-metal-button" href={`/library/item/${nestedPreview.targetType}:${nestedPreview.targetId}/versions`}>Versions</a><ForkMapButton targetType={nestedPreview.targetType as LibraryItem["targetType"]} targetId={nestedPreview.targetId} targetName={nestedPreview.name} /><LikeForkBar targetType={nestedPreview.targetType as LibraryItem["targetType"]} targetId={nestedPreview.targetId} initialLikes={0} initialDislikes={0} initialForks={0} currentUserId={currentUserInternalId} /></div>
           </div>
         ) : null}
       </DetailModal>

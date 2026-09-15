@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mechanicalDescriptionFromModifiers, renderMechanicalRule } from "../mechanical-rule";
+import { CANONICAL_EXPRESSIONS } from "../canonical-market";
 
 describe("canonical mechanical sentences", () => {
   it("renders domain templates and expressions", () => {
@@ -31,6 +32,9 @@ describe("canonical mechanical sentences", () => {
     expect(renderMechanicalRule({family:"DOCUMENTED",text:"Straight-line displacement up to 10 feet"})).toBe("Straight-line displacement up to 10 feet.");
     expect(renderMechanicalRule({family:"DOCUMENTED",text:"Set range to [range].",bindings:{range:"Very Far"}})).toBe("Set range to Very Far.");
   });
+  it("renders no mechanic for a descriptive-only primitive", () => {
+    expect(renderMechanicalRule({family:"DESCRIPTIVE"})).toBe("");
+  });
 });
 
 describe("mechanicalDescriptionFromModifiers", () => {
@@ -47,5 +51,14 @@ describe("mechanicalDescriptionFromModifiers", () => {
       kind:"modify", operation:"subtract", target:"save_dc", value:{kind:"number",value:1},
       condition:{kind:"tags",customTags:["target:exposed"]},
     }])).toBe("Subtract 1 from Save DC when the target is exposed.");
+  });
+});
+
+describe("descriptive primitives", () => {
+  it("keeps verb access prose out of the executable mechanical output", () => {
+    const verbTiers = CANONICAL_EXPRESSIONS.filter((entry) => entry.familyKey === "VERB_ACCESS");
+    expect(verbTiers).toHaveLength(4);
+    expect(verbTiers.every((entry) => entry.mechanicalText === "")).toBe(true);
+    expect(verbTiers.every((entry) => entry.verboseDescription.length > 80)).toBe(true);
   });
 });
