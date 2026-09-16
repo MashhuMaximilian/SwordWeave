@@ -1,5 +1,6 @@
 "use client";
 import { RecipePrimitiveIdentity } from "./recipe-primitive-identity";
+import { RecipeComposition, RecipeEntityIdentity, primitiveLinksBu } from "./recipe-composition";
 import { AuthorChapters, AuthorChapter } from "./author-chapters";
 import { SortableBundleList,SortableMember } from "@/components/characters/workspace/sortable-bundle-list";
 
@@ -17,7 +18,6 @@ import type {
 import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
 import { IconSlot } from "@/components/icons/icon-slot";
-import { Markdown } from "@/components/ui/markdown";
 import type { IconSource } from "@/components/icons/icon-display";
 import {
   saveDraft,
@@ -88,6 +88,8 @@ function defaultRoleForCategory(category: string): string {
       return "DURATION";
     case "OUTPUT":
       return "OUTPUT";
+    case "INTENSITY_DICE":
+      return "OUTPUT";
     case "CONDITION":
       return "OTHER";
     case "STRUCTURAL":
@@ -99,6 +101,14 @@ function defaultRoleForCategory(category: string): string {
     default:
       return "OTHER";
   }
+}
+
+const DEDICATED_ROLES = ["VERB", "DOMAIN", "RANGE", "OUTPUT"] as const;
+type DedicatedRole = (typeof DEDICATED_ROLES)[number];
+
+function resolvedSlotRole(slot: Pick<CapabilitySlot, "role" | "primitive">): string {
+  const inferred = defaultRoleForCategory(slot.primitive.category);
+  return DEDICATED_ROLES.includes(inferred as DedicatedRole) ? inferred : slot.role;
 }
 
 const blankForm: CapabilityFormState = {
@@ -143,7 +153,7 @@ export function CapabilityForm({
     mechanicalOutputText?: string | null;
     narrativeRule?: string | null;
   }>;
-  availableEffects: Array<{ id: string; name: string; narrativeDescription?: string | null; primitiveLinks?: Array<{ primitiveId: number; primitive: { name: string; buCost: number; mechanicalOutputText?: string | null } }> }>;
+  availableEffects: Array<{ id: string; name: string; narrativeDescription?: string | null; primitiveLinks?: Array<{ primitiveId: number; quantity?: number; primitive: { id?: number; name: string; category?: string; buCost: number; mechanicalOutputText?: string | null; narrativeRule?: string | null } }> }>;
   /**
    * Phase 2: the save intent from `?intent=fork|load`. The PATCH route
    * reads this from the body to decide between fork-on-save and
@@ -177,7 +187,6 @@ export function CapabilityForm({
     target: "Single", shape: "Direct", size: "One target", placement: "Target",
     range: "Touch", output: "None", duration: "Instant", casting: "Action",
   });
-  const [tablePrimitiveNotice, setTablePrimitiveNotice] = useState<{ role: "RANGE" | "OUTPUT"; name: string } | null>(null);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
@@ -343,9 +352,9 @@ export function CapabilityForm({
     if (!primitive) return;
     const role = defaultRoleForCategory(primitive.category);
     setIsDirty(true);
-    setSlots((prev) => referenceOnly && prev.some(s=>s.primitiveId===primitiveId) ? prev : [
-      ...prev,
-      {
+    setSlots((prev) => {
+      if (referenceOnly && prev.some(s=>s.primitiveId===primitiveId)) return prev;
+      const next = {
         primitiveId,
         role,
         quantity: 1,
@@ -354,14 +363,19 @@ export function CapabilityForm({
         // Phase 7 Q-M-UX: per-slot Mirrored flag.
         isMirrored: false,
         primitive,
-      },
-    ]);
+      };
+      if (DEDICATED_ROLES.includes(role as DedicatedRole)) {
+        const retained = prev.filter((slot) => resolvedSlotRole(slot) !== role);
+        return [...retained, {...next, sortOrder: retained.length}];
+      }
+      return [...prev, next];
+    });
   }
 
   function chooseRulePrimitive(role: string, primitiveId: number | null) {
     setIsDirty(true);
     setSlots((current) => {
-      const retained = current.filter((slot) => slot.role !== role);
+      const retained = current.filter((slot) => resolvedSlotRole(slot) !== role);
       if (primitiveId === null) return retained.map((slot, index) => ({ ...slot, sortOrder: index }));
       const primitive = availablePrimitives.find((item) => item.id === primitiveId);
       if (!primitive) return current;
@@ -511,6 +525,44 @@ export function CapabilityForm({
     (sum, slot) => sum + Math.abs(slot.primitive.buCost * slot.quantity),
     0,
   );
+  const regularSlots = slots
+    .map((slot, index) => ({ slot, index }))
+    .filter(({ slot }) => !DEDICATED_ROLES.includes(resolvedSlotRole(slot) as DedicatedRole));
+
+  const renderDedicatedSlot = (
+    role: DedicatedRole,
+    label: string,
+    matches: (primitive: (typeof availablePrimitives)[number]) => boolean,
+  ) => {
+    const selectedEntry = slots
+      .map((slot, index) => ({ slot, index }))
+      .find(({ slot }) => resolvedSlotRole(slot) === role);
+    const selectedPrimitive = selectedEntry?.slot.primitive;
+    return <div className="min-w-0 rounded-md border border-border bg-background p-2" data-dedicated-role={role}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="v12-kicker">{label}</p>
+        <details className="relative">
+          <summary className="v12-metal-button cursor-pointer list-none px-2 py-1 text-xs">{selectedPrimitive ? "Change" : `+ Add ${label}`}</summary>
+          <div className="v12-foundation-menu">
+            <button type="button" onClick={() => chooseRulePrimitive(role, null)}>Open / none</button>
+            {availablePrimitives.filter(matches).map((primitive) => <button type="button" aria-pressed={primitive.id === selectedPrimitive?.id} onClick={() => {
+              chooseRulePrimitive(role, primitive.id);
+              if (role === "RANGE") setTableDraft((current) => ({ ...current, range: primitive.name.replace(/\s+Range$/i, "") }));
+              if (role === "OUTPUT") {
+                const die = `${primitive.name} ${primitive.mechanicalOutputText ?? ""}`.match(/d(?:4|6|8|10|12|20)/i)?.[0];
+                if (die) setTableDraft((current) => ({ ...current, output: die.toLowerCase() }));
+              }
+            }} key={primitive.id}>{primitive.name} · {primitive.buCost} BU</button>)}
+          </div>
+        </details>
+      </div>
+      {selectedPrimitive && selectedEntry ? <div className="mt-2 flex items-center gap-2">
+        <RecipePrimitiveIdentity primitive={{...availablePrimitives.find((primitive) => primitive.id === selectedPrimitive.id), ...selectedPrimitive}} />
+        <button type="button" onClick={() => removeSlot(selectedEntry.index)} aria-label={`Remove ${selectedPrimitive.name}`} className="inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:bg-accent"><Trash2 className="size-3.5" /></button>
+      </div> : <p className="mt-2 text-xs text-muted-foreground">Optional slot</p>}
+      {role === "VERB" && selectedEntry ? <label className="v12-verb-note mt-2 block">Verbs used (optional)<input value={selectedEntry.slot.notes ?? ""} onChange={(event) => { const notes = event.target.value; setSlots((current) => current.map((item, index) => index === selectedEntry.index ? {...item, notes} : item)); setIsDirty(true); }} placeholder="move, strike, reshape…" /></label> : null}
+    </div>;
+  };
 
   return (
     <form
@@ -559,17 +611,10 @@ export function CapabilityForm({
 
       <AuthorChapters defaultActive="identity" order={["identity", "pieces", "table", "publish"]}>
         <AuthorChapter id="pieces" title="Pieces">
-      <section className="v12-foundation-pieces">
-        <div><p className="v12-kicker"><span>Optional</span> Verb Tier and domain references</p><small>Pin them for rigor, or leave them open until casting at the table.</small></div>
-        {([[
-          "VERB", "Verb tier", (primitive: (typeof availablePrimitives)[number]) => primitive.category === "VERB_TIER",
-        ], [
-          "DOMAIN", "Domain", (primitive: (typeof availablePrimitives)[number]) => primitive.category === "DOMAIN",
-        ]] as const).map(([role, label, matches]) => {
-          const selected = slots.find((slot) => slot.role === role)?.primitiveId ?? "";
-          const selectedPrimitive=availablePrimitives.find(primitive=>primitive.id===selected);
-          return <details key={role}><summary className="v12-metal-button">+ {selectedPrimitive?.name ?? label}</summary><div className="v12-foundation-menu"><button type="button" onClick={()=>chooseRulePrimitive(role,null)}>Open / none</button>{availablePrimitives.filter(matches).map(primitive=><button type="button" aria-pressed={primitive.id===selected} onClick={()=>chooseRulePrimitive(role,primitive.id)} key={primitive.id}>{primitive.name}</button>)}</div></details>;
-        })}
+      <section className="v12-foundation-pieces grid gap-2 sm:grid-cols-2">
+        <div className="sm:col-span-2"><p className="v12-kicker"><span>Optional</span> Verb Tier and domain references</p><small>Pin them for rigor, or leave them open until casting at the table.</small></div>
+        {renderDedicatedSlot("VERB", "Verb tier", (primitive) => primitive.category === "VERB_TIER")}
+        {renderDedicatedSlot("DOMAIN", "Domain", (primitive) => primitive.category === "DOMAIN")}
       </section>
       <section className="v12-capability-primitives rounded-md border border-border bg-background p-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -577,14 +622,14 @@ export function CapabilityForm({
           <span className="v12-kicker">Direct composition</span>
         </div>
 
-        {slots.length === 0 ? (
+        {regularSlots.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            No primitives slotted yet. Pick a primitive from the Library
+            No additional primitives slotted yet. Pick a primitive from the Library
             column and use its &ldquo;Slot into build&rdquo; action.
           </p>
         ) : (
-          <SortableBundleList className="mt-3 space-y-2" ids={slots.map(s=>`${s.primitiveId}:${s.role}`)} onOrder={order=>{setSlots(order.map(id=>slots.find(s=>`${s.primitiveId}:${s.role}`===id)!));setOrderChanged(true);setIsDirty(true);}}>
-            {slots.map((slot, idx) => (
+          <SortableBundleList className="mt-3 space-y-2" ids={regularSlots.map(({slot})=>`${slot.primitiveId}:${slot.role}`)} onOrder={()=>{}}>
+            {regularSlots.map(({slot, index: idx}) => (
               <SortableMember id={`${slot.primitiveId}:${slot.role}`} label={slot.primitive.name}
                 key={`${slot.primitiveId}-${idx}`}
                 className="v12-author-recipe-piece flex items-center gap-2 rounded-md border border-border bg-card p-2"
@@ -600,11 +645,15 @@ export function CapabilityForm({
                     <span>Remove</span>
                   </button>
                 </div>
-                {slot.role === "VERB" ? <label className="v12-verb-note">Verbs used (optional)<input value={slot.notes ?? ""} onChange={event=>{const notes=event.target.value;setSlots(current=>current.map((item,index)=>index===idx?{...item,notes}:item));setIsDirty(true);}} placeholder="move, strike, reshape…" /></label> : null}
               </SortableMember>
             ))}
           </SortableBundleList>
         )}
+      </section>
+
+      <section className="grid gap-2 sm:grid-cols-2" aria-label="Range and output slots">
+        {renderDedicatedSlot("RANGE", "Range", (primitive) => primitive.category === "RANGE")}
+        {renderDedicatedSlot("OUTPUT", "Output die", (primitive) => primitive.category === "INTENSITY_DICE" || primitive.category === "OUTPUT")}
       </section>
 
       <section className="v12-capability-effects rounded-md border border-border bg-background p-3">
@@ -630,28 +679,18 @@ export function CapabilityForm({
               return (
                 <SortableMember id={id} label={effect?.name ?? id}
                   key={id}
-                  className="flex items-center gap-2 rounded-md border border-border bg-card p-2 text-sm"
+                  className="group grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-md border border-border bg-card p-2 text-sm"
                 >
-                  <button type="button" className="v12-recipe-copy min-w-0 flex-1 text-left" onClick={(event)=>{
-                    const detail={targetType:"EFFECT",targetId:id,label:effect?.name ?? id};
-                    if(event.currentTarget.closest("[data-drawer-build]")) {
-                      window.dispatchEvent(new CustomEvent("sw-close-build-drawer"));
-                      window.setTimeout(()=>window.dispatchEvent(new CustomEvent("sw-sandbox-open-preview",{detail})),0);
-                    } else {
-                      window.dispatchEvent(new CustomEvent("sw-sandbox-open-preview",{detail}));
-                    }
-                  }} aria-label={`Open ${effect?.name ?? id}`}>
-                    <p className="v12-kicker">Bundled effect · {effect?.primitiveLinks?.length ?? 0} primitives</p>
-                    <h3>{effect?.name ?? id}</h3>
-                    {effect?.primitiveLinks?.slice(0,2).map((link,index)=><Markdown className="v12-recipe-mechanical" key={`${link.primitiveId}:${index}`}>{link.primitive.mechanicalOutputText ?? ""}</Markdown>)}
-                  </button>
+                  <RecipeEntityIdentity targetType="EFFECT" id={id} kicker={`Bundled effect · ${effect?.primitiveLinks?.length ?? 0} primitives`} name={effect?.name ?? id} buCost={primitiveLinksBu(effect?.primitiveLinks?.map((link) => ({...link, primitive: {...link.primitive, id: link.primitiveId, category: link.primitive.category ?? "OTHER"}})))} />
                   <button
                     type="button"
                     onClick={() => removeEffect(id)}
-                    className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
+                    aria-label={`Remove ${effect?.name ?? id}`}
+                    className="inline-flex size-7 items-center justify-center rounded-md border border-border bg-background text-muted-foreground opacity-70 hover:bg-accent group-hover:opacity-100 focus-visible:opacity-100"
                   >
-                    <Trash2 className="size-3.5" /> Remove
+                    <Trash2 className="size-3.5" />
                   </button>
+                  {effect?.primitiveLinks?.length ? <div className="col-span-full"><RecipeComposition id={id} effectLinks={[{effectId:id,effect:{...effect,primitiveLinks:effect.primitiveLinks.map((link)=>({...link,primitive:{...link.primitive,id:link.primitiveId,category:link.primitive.category ?? availablePrimitives.find((primitive)=>primitive.id===link.primitiveId)?.category ?? "OTHER"}}))}}]} /></div> : null}
                 </SortableMember>
               );
             })}
@@ -820,9 +859,6 @@ export function CapabilityForm({
           ["duration", "Effect duration", ["Instant", "Short", "Medium", "Long", "Scene", "Persistent", "Permanent"]],
           ["casting", "Casting time", ["Action", "Instant", "Short", "Medium", "Long", "Scene"]],
         ] as const).map(([key,label,values])=><fieldset key={key}><legend>{label}</legend><div>{values.map(value=><button type="button" key={value} aria-pressed={tableDraft[key]===value} onClick={()=>setTableDraft(current=>({...current,[key]:value}))}>{value}</button>)}</div></fieldset>)}
-        <fieldset><legend>Range · adds the required primitive</legend><div>{["Touch","Near","Far","Very Far","Extreme"].map(value=><button type="button" key={value} aria-pressed={tableDraft.range===value} onClick={()=>{setTableDraft(current=>({...current,range:value}));const primitive=availablePrimitives.find(item=>item.category==="RANGE"&&`${item.name} ${item.mechanicalOutputText ?? ""}`.toLowerCase().includes(value.toLowerCase()));chooseRulePrimitive("RANGE",primitive?.id??null);setTablePrimitiveNotice(primitive?{role:"RANGE",name:primitive.name}:null);}}>{value}</button>)}</div></fieldset>
-        <fieldset><legend>Output · adds the required die primitive</legend><div>{["None","d4","d6","d8","d10","d12","d20"].map(value=><button type="button" key={value} aria-pressed={tableDraft.output===value} onClick={()=>{setTableDraft(current=>({...current,output:value}));const primitive=value==="None"?undefined:availablePrimitives.find(item=>item.category==="INTENSITY_DICE"&&`${item.name} ${item.mechanicalOutputText ?? ""}`.toLowerCase().includes(value.toLowerCase()));chooseRulePrimitive("OUTPUT",primitive?.id??null);setTablePrimitiveNotice(primitive?{role:"OUTPUT",name:primitive.name}:null);}}>{value}</button>)}</div></fieldset>
-        {tablePrimitiveNotice ? <div className="v12-table-toast" role="status"><span>{tablePrimitiveNotice.name} added.</span><button type="button" onClick={()=>{chooseRulePrimitive(tablePrimitiveNotice.role,null);setTablePrimitiveNotice(null);}}>Remove it</button><button type="button" aria-label="Dismiss" onClick={()=>setTablePrimitiveNotice(null)}>×</button></div> : null}
         <div className="v12-table-readout"><p className="v12-kicker">Table declaration</p><h3>{form.name || "Untitled capability"}</h3><p>{tableDraft.casting} · {tableDraft.target} · {tableDraft.shape} · {tableDraft.size} · {tableDraft.placement} · {tableDraft.range} · {tableDraft.output} · {tableDraft.duration}</p><small>{slots.length} direct pieces · {effectIds.length} effects · {previewBu} BU</small></div>
       </div>
 

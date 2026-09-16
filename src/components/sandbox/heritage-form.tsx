@@ -1,5 +1,5 @@
 "use client";
-import { RecipeComposition, type RecipePrimitiveLink, type RecipeEffectLink } from "./recipe-composition";
+import { RecipeComposition, RecipeEntityIdentity, recipeCompositionBu, type RecipePrimitiveLink, type RecipeEffectLink } from "./recipe-composition";
 import { RecipePrimitiveIdentity } from "./recipe-primitive-identity";
 import { AuthorChapters, AuthorChapter } from "./author-chapters";
 import { SortableBundleList,SortableMember } from "@/components/characters/workspace/sortable-bundle-list";
@@ -616,9 +616,6 @@ export function HeritageForm({
               >
                 <RecipePrimitiveIdentity primitive={p} />
                 <div className="v12-recipe-member-controls flex flex-wrap items-center gap-2">
-                  <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 font-mono text-xs">
-                    {p.buCost} BU
-                  </span>
                   <button
                     type="button"
                     onClick={() => togglePrimitive(p.id)}
@@ -652,21 +649,18 @@ export function HeritageForm({
             {slottedCapabilities.map((c) => (
               <SortableMember id={c.id} label={c.name}
                 key={c.id}
-                className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2 text-sm"
+                className="group grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-md border border-border bg-card p-2 text-sm"
               >
-                <div className="v12-recipe-copy min-w-0 flex-1">
-                  <p className="v12-kicker">Granted capability · {c.type} · {c.sourceType}</p>
-                  <h3>{c.name}</h3>
-                  <RecipeComposition id={c.id} {...(c.primitiveLinks ? { primitiveLinks: c.primitiveLinks } : {})} {...(c.effectLinks ? { effectLinks: c.effectLinks } : {})} />
-                </div>
+                <RecipeEntityIdentity targetType="CAPABILITY" id={c.id} kicker={`Granted capability · ${c.type} · ${c.sourceType}`} name={c.name} buCost={recipeCompositionBu(c.primitiveLinks,c.effectLinks)} />
                 <button
                   type="button"
                   onClick={() => toggleCapability(c.id)}
-                  className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
+                  aria-label={`Remove ${c.name}`}
+                  className="inline-flex size-7 items-center justify-center rounded-md border border-border bg-background text-muted-foreground opacity-70 hover:bg-accent group-hover:opacity-100 focus-visible:opacity-100"
                 >
                   <Trash2 className="size-3.5" />
-                  Remove
                 </button>
+                <div className="col-span-full"><RecipeComposition id={c.id} {...(c.primitiveLinks ? { primitiveLinks: c.primitiveLinks } : {})} {...(c.effectLinks ? { effectLinks: c.effectLinks } : {})} /></div>
               </SortableMember>
             ))}
           </SortableBundleList>

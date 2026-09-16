@@ -1,7 +1,7 @@
 "use client";
 import { AuthorChapters, AuthorChapter } from "./author-chapters";
 import { RecipePrimitiveIdentity } from "./recipe-primitive-identity";
-import { RecipeComposition, RecipeEntryDetails, type RecipePrimitiveLink, type RecipeEffectLink } from "./recipe-composition";
+import { RecipeComposition, RecipeEntityIdentity, primitiveLinksBu, recipeCompositionBu, type RecipePrimitiveLink, type RecipeEffectLink } from "./recipe-composition";
 import { SortableBundleList,SortableMember } from "@/components/characters/workspace/sortable-bundle-list";
 
 // ItemForm: controlled form-only composer for items.
@@ -157,6 +157,7 @@ export function ItemForm({
   availableEffects: Array<{
     id: string;
     name: string;
+    primitiveLinks?: RecipePrimitiveLink[];
   }>;
   /**
    * Phase 2: the save intent from `?intent=fork|load`. The PATCH route
@@ -619,9 +620,6 @@ export function ItemForm({
               >
                 <RecipePrimitiveIdentity primitive={p} />
                 <div className="v12-recipe-member-controls flex flex-wrap items-center gap-2">
-                  <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 font-mono text-xs">
-                    {p.buCost} BU
-                  </span>
                   <button
                     type="button"
                     onClick={() => togglePrimitive(p.id)}
@@ -656,23 +654,18 @@ export function ItemForm({
               return (
                 <SortableMember id={id} label={cap.name}
                   key={id}
-                  className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2 text-sm"
+                  className="group grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-md border border-border bg-card p-2 text-sm"
                 >
-                  <div className="min-w-0 flex-1">
-                    <h3>{cap.name}</h3>
-                    <p className="text-xs text-muted-foreground">
-                      {cap.type} · {cap.sourceType}
-                    </p>
-                    <RecipeComposition id={id} {...(cap.primitiveLinks ? {primitiveLinks:cap.primitiveLinks} : {})} {...(cap.effectLinks ? {effectLinks:cap.effectLinks} : {})} />
-                  </div>
+                  <RecipeEntityIdentity targetType="CAPABILITY" id={id} kicker={`${cap.type} · ${cap.sourceType}`} name={cap.name} buCost={recipeCompositionBu(cap.primitiveLinks,cap.effectLinks)} />
                   <button
                     type="button"
                     onClick={() => toggleCapability(id)}
-                    className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
+                    aria-label={`Remove ${cap.name}`}
+                    className="inline-flex size-7 items-center justify-center rounded-md border border-border bg-background text-muted-foreground opacity-70 hover:bg-accent group-hover:opacity-100 focus-visible:opacity-100"
                   >
                     <Trash2 className="size-3.5" />
-                    Remove
                   </button>
+                  <div className="col-span-full"><RecipeComposition id={id} {...(cap.primitiveLinks ? {primitiveLinks:cap.primitiveLinks} : {})} {...(cap.effectLinks ? {effectLinks:cap.effectLinks} : {})} /></div>
                 </SortableMember>
               );
             })}
@@ -698,17 +691,18 @@ export function ItemForm({
               return (
                 <SortableMember id={id} label={eff.name}
                   key={id}
-                  className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-2 text-sm"
+                  className="group grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-md border border-border bg-card p-2 text-sm"
                 >
-                  <div className="v12-recipe-copy min-w-0 flex-1"><p className="v12-kicker">Granted effect</p><h3>{eff.name}</h3><RecipeEntryDetails targetType="EFFECT" id={id} label="Full effect composition" /></div>
+                  <RecipeEntityIdentity targetType="EFFECT" id={id} kicker="Granted effect" name={eff.name} buCost={primitiveLinksBu(eff.primitiveLinks)} />
                   <button
                     type="button"
                     onClick={() => toggleEffect(id)}
-                    className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
+                    aria-label={`Remove ${eff.name}`}
+                    className="inline-flex size-7 items-center justify-center rounded-md border border-border bg-background text-muted-foreground opacity-70 hover:bg-accent group-hover:opacity-100 focus-visible:opacity-100"
                   >
                     <Trash2 className="size-3.5" />
-                    Remove
                   </button>
+                  {eff.primitiveLinks?.length ? <div className="col-span-full"><RecipeComposition id={id} effectLinks={[{effectId:id,effect:eff}]} /></div> : null}
                 </SortableMember>
               );
             })}
