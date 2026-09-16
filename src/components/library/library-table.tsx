@@ -74,6 +74,8 @@ interface LibraryTableProps {
    * Override copy for the empty state description when the result set is empty.
    */
   emptyDescription?: string;
+  /** Compact instrument-row treatment used by the Atelier source column. */
+  surface?: "default" | "atelier";
 }
 
 export function LibraryTable({
@@ -87,6 +89,7 @@ export function LibraryTable({
   pagination,
   emptyTitle,
   emptyDescription,
+  surface = "default",
 }: LibraryTableProps) {
   if (items.length === 0) {
     return (
@@ -133,6 +136,7 @@ export function LibraryTable({
             currentUserInternalId={currentUserInternalId}
             onSelect={onSelect}
             selected={selectedKey === item.id}
+            surface={surface}
           />
         ))}
         {pagination}
@@ -175,6 +179,7 @@ export function LibraryTable({
               currentUserInternalId={currentUserInternalId}
               onSelect={onSelect}
               selected={selectedKey === item.id}
+              surface={surface}
             />
           ))}
         </div>
@@ -194,6 +199,7 @@ interface ListItemProps {
   currentUserInternalId: string | null;
   onSelect?: ((item: LibraryItem) => void) | undefined;
   selected?: boolean | undefined;
+  surface: "default" | "atelier";
 }
 
 function ListItem({
@@ -202,40 +208,47 @@ function ListItem({
   currentUserInternalId,
   onSelect,
   selected,
+  surface,
 }: ListItemProps) {
+  const isAtelier = surface === "atelier";
   const inner = (
     <>
       {/* Phase 8: entity icon to the left of the text. Falls back to a
           muted glyph when no icon is set, so the layout doesn't shift
           between rows. */}
-      <div className="flex w-12 shrink-0 flex-col items-center gap-1">
+      <div className={cn("flex shrink-0 flex-col items-center gap-1", isAtelier ? "w-11" : "w-12")}>
         {item.iconSource ? (
-          <IconDisplay
-            iconSource={item.iconSource}
-            iconKey={item.iconKey}
-            iconUrl={item.iconUrl}
-            iconColor={item.iconColor}
-            size={36}
-            className="rounded-md"
-            alt={item.name}
-          />
+          <span className={cn(isAtelier && "grid size-10 place-items-center rounded-full border border-[#a97830] bg-black/30 shadow-[inset_0_0_0_3px_rgba(8,13,20,0.9)]")}>
+            <IconDisplay
+              iconSource={item.iconSource}
+              iconKey={item.iconKey}
+              iconUrl={item.iconUrl}
+              iconColor={item.iconColor}
+              size={isAtelier ? 27 : 36}
+              className={isAtelier ? "rounded-full" : "rounded-md"}
+              alt={item.name}
+            />
+          </span>
         ) : (
           <div
             aria-hidden
-            className="flex size-9 items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+            className={cn(
+              "flex size-9 items-center justify-center border border-dashed border-border bg-muted/30 text-[10px] font-medium uppercase tracking-wide text-muted-foreground",
+              isAtelier ? "size-10 rounded-full border-[#8f6b36] bg-black/25" : "rounded-md",
+            )}
           >
             {item.targetType.replace(/_/g, " ").slice(0, 3)}
           </div>
         )}
         {item.buCost !== null && (
-          <span className="rounded-full bg-primary/10 px-1.5 py-0 text-center font-mono text-[10px] font-semibold text-primary">
+          <span className={cn("rounded-full px-1.5 py-0 text-center font-mono text-[10px] font-semibold", isAtelier ? "border border-border bg-black/25 text-[#72d5cf]" : "bg-primary/10 text-primary")}>
             {item.buCost} BU
           </span>
         )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-1.5">
-          <h3 className="truncate text-sm font-semibold leading-tight">{item.name}</h3>
+          <h3 className={cn("truncate font-semibold leading-tight", isAtelier ? "text-[15px]" : "text-sm")}>{item.name}</h3>
           <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
             {item.targetType.replace(/_/g, " ").toLowerCase()}
             {item.category ? ` · ${item.category.replace(/_/g, " ")}` : ""}
@@ -263,10 +276,13 @@ function ListItem({
   );
 
   const baseClass = cn(
-    "flex items-start gap-2 rounded-md border bg-card p-2 transition-colors md:gap-3 md:p-3",
+    "flex items-start gap-2 border transition-colors md:gap-3",
+    isAtelier
+      ? "rounded-lg border-transparent border-b-border/80 bg-transparent px-2 py-2.5 hover:border-[#8f672e] hover:bg-black/15"
+      : "rounded-md bg-card p-2 md:p-3",
     selected
-      ? "border-primary bg-primary/5"
-      : "border-border hover:border-primary",
+      ? isAtelier ? "border-[#c3974e] bg-[#a97830]/[0.08]" : "border-primary bg-primary/5"
+      : !isAtelier && "border-border hover:border-primary",
   );
 
   if (onSelect) {
@@ -279,6 +295,8 @@ function ListItem({
         // row after a save. Mashu 2026-07-22: "I have to refresh the
         // page to find it in list."
         data-library-row-id={item.id}
+        data-library-kind={item.targetType}
+        data-library-surface={surface}
         className={cn(baseClass, "w-full text-left")}
       >
         {inner}
@@ -289,6 +307,8 @@ function ListItem({
     <Link
       href={`/library/item/${item.id}`}
       data-library-row-id={item.id}
+      data-library-kind={item.targetType}
+      data-library-surface={surface}
       className={baseClass}
     >
       {inner}
@@ -306,6 +326,7 @@ interface GridCardProps {
   currentUserInternalId: string | null;
   onSelect?: ((item: LibraryItem) => void) | undefined;
   selected?: boolean | undefined;
+  surface: "default" | "atelier";
 }
 
 function GridCard({
@@ -314,7 +335,9 @@ function GridCard({
   currentUserInternalId,
   onSelect,
   selected,
+  surface,
 }: GridCardProps) {
+  const isAtelier = surface === "atelier";
   const inner = (
     <>
       {/* Phase 8: header row with the icon sitting LEFT of the title —
@@ -331,25 +354,27 @@ function GridCard({
       <header className="flex items-start gap-2">
         <div className="flex w-10 shrink-0 flex-col items-center gap-1">
           {item.iconSource ? (
-            <IconDisplay
-              iconSource={item.iconSource}
-              iconKey={item.iconKey}
-              iconUrl={item.iconUrl}
-              iconColor={item.iconColor}
-              size={28}
-              alt={item.name}
-              className="shrink-0"
-            />
+            <span className={cn(isAtelier && "grid size-9 place-items-center rounded-full border border-[#a97830] bg-black/30 shadow-[inset_0_0_0_3px_rgba(8,13,20,0.9)]")}>
+              <IconDisplay
+                iconSource={item.iconSource}
+                iconKey={item.iconKey}
+                iconUrl={item.iconUrl}
+                iconColor={item.iconColor}
+                size={isAtelier ? 24 : 28}
+                alt={item.name}
+                className={cn("shrink-0", isAtelier && "rounded-full")}
+              />
+            </span>
           ) : (
             <div
               aria-hidden
-              className="flex size-7 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-[9px] font-medium uppercase tracking-wide text-muted-foreground"
+              className={cn("flex size-7 shrink-0 items-center justify-center border border-dashed border-border text-[9px] font-medium uppercase tracking-wide text-muted-foreground", isAtelier ? "size-9 rounded-full border-[#8f6b36] bg-black/25" : "rounded-md")}
             >
               {item.targetType.replace(/_/g, " ").slice(0, 3)}
             </div>
           )}
           {item.buCost !== null && (
-            <span className="rounded-full bg-primary/10 px-1 py-0 text-center font-mono text-[10px] font-semibold text-primary">
+            <span className={cn("rounded-full px-1 py-0 text-center font-mono text-[10px] font-semibold", isAtelier ? "border border-border bg-black/25 text-[#72d5cf]" : "bg-primary/10 text-primary")}>
               {item.buCost} BU
             </span>
           )}
@@ -453,11 +478,14 @@ function GridCard({
         // highlight handler in heritage-library can scroll/focus this
         // row after a save.
         data-library-row-id={item.id}
+        data-library-kind={item.targetType}
+        data-library-surface={surface}
         className={cn(
-          "flex h-full min-h-[7rem] flex-col rounded-md border bg-card p-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary md:p-2.5",
+          "flex h-full min-h-[7rem] flex-col border p-2 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary md:p-2.5",
+          isAtelier ? "rounded-lg bg-transparent" : "rounded-md bg-card",
           selected
-            ? "border-primary bg-primary/5"
-            : "border-border hover:border-primary",
+            ? isAtelier ? "border-[#c3974e] bg-[#a97830]/[0.08]" : "border-primary bg-primary/5"
+            : isAtelier ? "border-border hover:border-[#8f672e] hover:bg-black/15" : "border-border hover:border-primary",
         )}
       >
         {inner}
@@ -468,11 +496,14 @@ function GridCard({
   return (
     <article
       data-library-row-id={item.id}
+      data-library-kind={item.targetType}
+      data-library-surface={surface}
       className={cn(
-        "flex h-full min-h-[7rem] flex-col rounded-md border bg-card p-2 transition-colors md:p-2.5",
+        "flex h-full min-h-[7rem] flex-col border p-2 transition-colors md:p-2.5",
+        isAtelier ? "rounded-lg bg-transparent" : "rounded-md bg-card",
         selected
-          ? "border-primary bg-primary/5"
-          : "border-border hover:border-primary",
+          ? isAtelier ? "border-[#c3974e] bg-[#a97830]/[0.08]" : "border-primary bg-primary/5"
+          : isAtelier ? "border-border hover:border-[#8f672e] hover:bg-black/15" : "border-border hover:border-primary",
       )}
     >
       {inner}

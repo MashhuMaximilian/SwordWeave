@@ -747,8 +747,8 @@ export function HeritageLibrary({
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="shrink-0 border-b border-border p-3">
+    <div className="v12-source-browser flex h-full flex-col">
+      <div className="v12-source-search shrink-0 border-b border-border p-3">
         <ColumnSearchBar
           search={toolbarState.search}
           onSearchChange={(s: string) =>
@@ -803,6 +803,7 @@ export function HeritageLibrary({
 
       <div className="min-h-0 flex-1 overflow-auto p-3">
         <LibraryTable
+          surface="atelier"
           items={filteredItems}
           view={toolbarState.view}
           engagement={engagement}

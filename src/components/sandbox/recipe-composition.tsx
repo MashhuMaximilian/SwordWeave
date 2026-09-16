@@ -52,8 +52,11 @@ export function RecipeEntryDetails({targetType,id,label}:{targetType:string;id:s
 }
 
 export function RecipeEntityIdentity({targetType,id,kicker,name,buCost}:{targetType:"CAPABILITY"|"EFFECT";id:string;kicker:string;name:string;buCost:number}) {
-  return <button type="button" className="v12-recipe-entity-identity min-w-0 flex-1 text-left hover:text-primary focus-visible:text-primary" onClick={(event)=>openPreview(event,targetType,id,name)} aria-label={`Open ${name}`}>
-    <span className="v12-kicker">{kicker}</span>
-    <span className="flex min-w-0 items-start justify-between gap-2"><strong className="min-w-0 truncate font-normal">{name}</strong><small className="shrink-0">{buCost} BU</small></span>
+  return <button type="button" className="v12-recipe-entity-identity group/identity flex min-w-0 flex-1 items-center justify-between gap-3 text-left hover:text-primary focus-visible:text-primary" onClick={(event)=>openPreview(event,targetType,id,name)} aria-label={`Open ${name}`}>
+    <span className="min-w-0">
+      <span className="v12-kicker block truncate">{kicker}</span>
+      <strong className="mt-0.5 block truncate font-normal">{name}</strong>
+    </span>
+    <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground"><span>{buCost} BU</span><span aria-hidden="true" className="text-[#d9b15f] transition-transform group-hover/identity:translate-x-0.5">↗</span></span>
   </button>;
 }

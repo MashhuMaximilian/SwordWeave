@@ -22,7 +22,7 @@ import type {
 } from "./item-form-preview";
 import { IconSlot } from "@/components/icons/icon-slot";
 import type { IconSource } from "@/components/icons/icon-display";
-import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
+import { AuthorPublishFields } from "./author-publish-fields";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
 import {
   SIZE_LOAD,
@@ -654,18 +654,20 @@ export function ItemForm({
               return (
                 <SortableMember id={id} label={cap.name}
                   key={id}
-                  className="group grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-md border border-border bg-card p-2 text-sm"
+                  className="v12-composite-member group rounded-lg border border-border bg-card p-2.5 text-sm"
                 >
-                  <RecipeEntityIdentity targetType="CAPABILITY" id={id} kicker={`${cap.type} · ${cap.sourceType}`} name={cap.name} buCost={recipeCompositionBu(cap.primitiveLinks,cap.effectLinks)} />
-                  <button
-                    type="button"
-                    onClick={() => toggleCapability(id)}
-                    aria-label={`Remove ${cap.name}`}
-                    className="inline-flex size-7 items-center justify-center rounded-md border border-border bg-background text-muted-foreground opacity-70 hover:bg-accent group-hover:opacity-100 focus-visible:opacity-100"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
-                  <div className="col-span-full"><RecipeComposition id={id} {...(cap.primitiveLinks ? {primitiveLinks:cap.primitiveLinks} : {})} {...(cap.effectLinks ? {effectLinks:cap.effectLinks} : {})} /></div>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <RecipeEntityIdentity targetType="CAPABILITY" id={id} kicker={`${cap.type} · ${cap.sourceType}`} name={cap.name} buCost={recipeCompositionBu(cap.primitiveLinks,cap.effectLinks)} />
+                    <button
+                      type="button"
+                      onClick={() => toggleCapability(id)}
+                      aria-label={`Remove ${cap.name}`}
+                      className="inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground opacity-70 hover:bg-accent group-hover:opacity-100 focus-visible:opacity-100"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </div>
+                  <div className="mt-2 border-t border-border/60 pt-1"><RecipeComposition id={id} {...(cap.primitiveLinks ? {primitiveLinks:cap.primitiveLinks} : {})} {...(cap.effectLinks ? {effectLinks:cap.effectLinks} : {})} /></div>
                 </SortableMember>
               );
             })}
@@ -691,18 +693,20 @@ export function ItemForm({
               return (
                 <SortableMember id={id} label={eff.name}
                   key={id}
-                  className="group grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-md border border-border bg-card p-2 text-sm"
+                  className="v12-composite-member group rounded-lg border border-border bg-card p-2.5 text-sm"
                 >
-                  <RecipeEntityIdentity targetType="EFFECT" id={id} kicker="Granted effect" name={eff.name} buCost={primitiveLinksBu(eff.primitiveLinks)} />
-                  <button
-                    type="button"
-                    onClick={() => toggleEffect(id)}
-                    aria-label={`Remove ${eff.name}`}
-                    className="inline-flex size-7 items-center justify-center rounded-md border border-border bg-background text-muted-foreground opacity-70 hover:bg-accent group-hover:opacity-100 focus-visible:opacity-100"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
-                  {eff.primitiveLinks?.length ? <div className="col-span-full"><RecipeComposition id={id} effectLinks={[{effectId:id,effect:eff}]} /></div> : null}
+                  <div className="flex min-w-0 items-center gap-2">
+                    <RecipeEntityIdentity targetType="EFFECT" id={id} kicker="Granted effect" name={eff.name} buCost={primitiveLinksBu(eff.primitiveLinks)} />
+                    <button
+                      type="button"
+                      onClick={() => toggleEffect(id)}
+                      aria-label={`Remove ${eff.name}`}
+                      className="inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground opacity-70 hover:bg-accent group-hover:opacity-100 focus-visible:opacity-100"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </div>
+                  {eff.primitiveLinks?.length ? <div className="mt-2 border-t border-border/60 pt-1"><RecipeComposition id={id} effectLinks={[{effectId:id,effect:eff}]} /></div> : null}
                 </SortableMember>
               );
             })}
@@ -714,6 +718,7 @@ export function ItemForm({
         <AuthorChapter id="identity" title="Identity">
       {/* Phase 8: per-entity iconography */}
       <IconSlot
+        appearance="medallion"
         iconSource={(form.iconSource as IconSource | null) ?? null}
         iconKey={form.iconKey}
         iconUrl={form.iconUrl}
@@ -960,43 +965,16 @@ export function ItemForm({
         </AuthorChapter>
 
         <AuthorChapter id="publish" title="Publish">
-      <label className="block text-sm font-medium">
-        Tags (comma separated)
-        <input
-          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-          value={form.tags}
-          onChange={(e) => updateForm("tags", e.target.value)}
-          placeholder="fire, knight, focus"
-        />
-      </label>
-      {/* Phase 8.5 H7 (Mashu 2026-08-03): sourceOrigin was already
-          wired in state and submit on the atelier Item form
-          but never rendered in the UI, so users couldn't edit
-          it. Added as a free-text field matching the other
-          ateliers (primitives, capabilities, effects). */}
-      <label className="block text-sm font-medium">
-        Source origin
-        <input
-          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-          value={form.sourceOrigin}
-          onChange={(e) => updateForm("sourceOrigin", e.target.value)}
-          placeholder="core campaign"
-        />
-      </label>
-      <div className="rounded-md border border-border bg-background p-3 text-sm font-medium">
-        <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-          Visibility
-        </p>
-        <VisibilitySelect
-          compact
-          value={form.isPublic ? "PUBLIC" : "PRIVATE"}
-          onChange={(next) => updateForm("isPublic", next === "PUBLIC")}
-        />
-        <p className="mt-2 text-[13px] font-normal text-muted-foreground">
-          Public entries appear in the Library. Private and Followers-only
-          entries can be promoted to Public from the My Creations page.
-        </p>
-      </div>
+      <AuthorPublishFields
+        tags={form.tags}
+        sourceOrigin={form.sourceOrigin}
+        isPublic={form.isPublic}
+        onTagsChange={(value) => updateForm("tags", value)}
+        onSourceOriginChange={(value) => updateForm("sourceOrigin", value)}
+        onPublicChange={(value) => updateForm("isPublic", value)}
+        tagsPlaceholder="fire, knight, focus"
+        sourcePlaceholder="core campaign"
+      />
 
         </AuthorChapter>
       </AuthorChapters>

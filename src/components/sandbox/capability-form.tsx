@@ -15,7 +15,7 @@ import type {
   CapabilityFormState,
   CapabilitySlot,
 } from "./capability-form-preview";
-import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
+import { AuthorPublishFields } from "./author-publish-fields";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
 import { IconSlot } from "@/components/icons/icon-slot";
 import type { IconSource } from "@/components/icons/icon-display";
@@ -538,11 +538,16 @@ export function CapabilityForm({
       .map((slot, index) => ({ slot, index }))
       .find(({ slot }) => resolvedSlotRole(slot) === role);
     const selectedPrimitive = selectedEntry?.slot.primitive;
-    return <div className="min-w-0 rounded-md border border-border bg-background p-2" data-dedicated-role={role}>
-      <div className="flex items-center justify-between gap-2">
-        <p className="v12-kicker">{label}</p>
+    return <article className="group flex min-h-[8.25rem] min-w-0 flex-col rounded-lg border border-border bg-background/80 p-2.5 transition-colors hover:border-[#b88a39]" data-dedicated-role={role}>
+      <header className="flex items-start justify-between gap-2 border-b border-border/60 pb-2">
+        <div className="min-w-0">
+          <p className="v12-kicker">{label}</p>
+          <p className="mt-0.5 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+            {selectedPrimitive ? `${selectedPrimitive.buCost} BU selected` : "Optional reference"}
+          </p>
+        </div>
         <details className="relative">
-          <summary className="v12-metal-button cursor-pointer list-none px-2 py-1 text-xs">{selectedPrimitive ? "Change" : `+ Add ${label}`}</summary>
+          <summary className="v12-metal-button cursor-pointer list-none whitespace-nowrap px-2 py-1 text-xs">{selectedPrimitive ? "Change" : "Choose"}</summary>
           <div className="v12-foundation-menu">
             <button type="button" onClick={() => chooseRulePrimitive(role, null)}>Open / none</button>
             {availablePrimitives.filter(matches).map((primitive) => <button type="button" aria-pressed={primitive.id === selectedPrimitive?.id} onClick={() => {
@@ -555,13 +560,13 @@ export function CapabilityForm({
             }} key={primitive.id}>{primitive.name} · {primitive.buCost} BU</button>)}
           </div>
         </details>
-      </div>
-      {selectedPrimitive && selectedEntry ? <div className="mt-2 flex items-center gap-2">
+      </header>
+      {selectedPrimitive && selectedEntry ? <div className="mt-2 flex flex-1 items-center gap-2">
         <RecipePrimitiveIdentity primitive={{...availablePrimitives.find((primitive) => primitive.id === selectedPrimitive.id), ...selectedPrimitive}} />
         <button type="button" onClick={() => removeSlot(selectedEntry.index)} aria-label={`Remove ${selectedPrimitive.name}`} className="inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:bg-accent"><Trash2 className="size-3.5" /></button>
-      </div> : <p className="mt-2 text-xs text-muted-foreground">Optional slot</p>}
-      {role === "VERB" && selectedEntry ? <label className="v12-verb-note mt-2 block">Verbs used (optional)<input value={selectedEntry.slot.notes ?? ""} onChange={(event) => { const notes = event.target.value; setSlots((current) => current.map((item, index) => index === selectedEntry.index ? {...item, notes} : item)); setIsDirty(true); }} placeholder="move, strike, reshape…" /></label> : null}
-    </div>;
+      </div> : <button type="button" className="mt-2 flex flex-1 items-center justify-center rounded-md border border-dashed border-border/70 px-3 text-xs text-muted-foreground transition-colors hover:border-[#b88a39] hover:text-foreground" onClick={(event) => { const summary = event.currentTarget.parentElement?.querySelector("summary"); summary?.click(); }}>Add {label.toLowerCase()}</button>}
+      {role === "VERB" && selectedEntry ? <label className="v12-verb-note mt-2 block text-xs">Verbs used (optional)<input value={selectedEntry.slot.notes ?? ""} onChange={(event) => { const notes = event.target.value; setSlots((current) => current.map((item, index) => index === selectedEntry.index ? {...item, notes} : item)); setIsDirty(true); }} placeholder="move, strike, reshape…" /></label> : null}
+    </article>;
   };
 
   return (
@@ -611,10 +616,20 @@ export function CapabilityForm({
 
       <AuthorChapters defaultActive="identity" order={["identity", "pieces", "table", "publish"]}>
         <AuthorChapter id="pieces" title="Pieces">
-      <section className="v12-foundation-pieces grid gap-2 sm:grid-cols-2">
-        <div className="sm:col-span-2"><p className="v12-kicker"><span>Optional</span> Verb Tier and domain references</p><small>Pin them for rigor, or leave them open until casting at the table.</small></div>
-        {renderDedicatedSlot("VERB", "Verb tier", (primitive) => primitive.category === "VERB_TIER")}
-        {renderDedicatedSlot("DOMAIN", "Domain", (primitive) => primitive.category === "DOMAIN")}
+      <section className="v12-dedicated-slots rounded-lg border border-border bg-background/60 p-2.5">
+        <header className="mb-2.5 flex flex-wrap items-end justify-between gap-2 border-b border-border/70 pb-2">
+          <div>
+            <p className="v12-kicker">Mechanical references</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Pin the capability&apos;s vocabulary, reach, and output.</p>
+          </div>
+          <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">All optional</span>
+        </header>
+        <div className="v12-dedicated-slot-grid grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {renderDedicatedSlot("VERB", "Verb tier", (primitive) => primitive.category === "VERB_TIER")}
+          {renderDedicatedSlot("DOMAIN", "Domain", (primitive) => primitive.category === "DOMAIN")}
+          {renderDedicatedSlot("RANGE", "Range", (primitive) => primitive.category === "RANGE")}
+          {renderDedicatedSlot("OUTPUT", "Output die", (primitive) => primitive.category === "INTENSITY_DICE" || primitive.category === "OUTPUT")}
+        </div>
       </section>
       <section className="v12-capability-primitives rounded-md border border-border bg-background p-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -651,11 +666,6 @@ export function CapabilityForm({
         )}
       </section>
 
-      <section className="grid gap-2 sm:grid-cols-2" aria-label="Range and output slots">
-        {renderDedicatedSlot("RANGE", "Range", (primitive) => primitive.category === "RANGE")}
-        {renderDedicatedSlot("OUTPUT", "Output die", (primitive) => primitive.category === "INTENSITY_DICE" || primitive.category === "OUTPUT")}
-      </section>
-
       <section className="v12-capability-effects rounded-md border border-border bg-background p-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -679,18 +689,20 @@ export function CapabilityForm({
               return (
                 <SortableMember id={id} label={effect?.name ?? id}
                   key={id}
-                  className="group grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-md border border-border bg-card p-2 text-sm"
+                  className="v12-composite-member group rounded-lg border border-border bg-card p-2.5 text-sm"
                 >
-                  <RecipeEntityIdentity targetType="EFFECT" id={id} kicker={`Bundled effect · ${effect?.primitiveLinks?.length ?? 0} primitives`} name={effect?.name ?? id} buCost={primitiveLinksBu(effect?.primitiveLinks?.map((link) => ({...link, primitive: {...link.primitive, id: link.primitiveId, category: link.primitive.category ?? "OTHER"}})))} />
-                  <button
-                    type="button"
-                    onClick={() => removeEffect(id)}
-                    aria-label={`Remove ${effect?.name ?? id}`}
-                    className="inline-flex size-7 items-center justify-center rounded-md border border-border bg-background text-muted-foreground opacity-70 hover:bg-accent group-hover:opacity-100 focus-visible:opacity-100"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
-                  {effect?.primitiveLinks?.length ? <div className="col-span-full"><RecipeComposition id={id} effectLinks={[{effectId:id,effect:{...effect,primitiveLinks:effect.primitiveLinks.map((link)=>({...link,primitive:{...link.primitive,id:link.primitiveId,category:link.primitive.category ?? availablePrimitives.find((primitive)=>primitive.id===link.primitiveId)?.category ?? "OTHER"}}))}}]} /></div> : null}
+                  <div className="flex min-w-0 items-center gap-2">
+                    <RecipeEntityIdentity targetType="EFFECT" id={id} kicker={`Bundled effect · ${effect?.primitiveLinks?.length ?? 0} primitives`} name={effect?.name ?? id} buCost={primitiveLinksBu(effect?.primitiveLinks?.map((link) => ({...link, primitive: {...link.primitive, id: link.primitiveId, category: link.primitive.category ?? "OTHER"}})))} />
+                    <button
+                      type="button"
+                      onClick={() => removeEffect(id)}
+                      aria-label={`Remove ${effect?.name ?? id}`}
+                      className="inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground opacity-70 hover:bg-accent group-hover:opacity-100 focus-visible:opacity-100"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </div>
+                  {effect?.primitiveLinks?.length ? <div className="mt-2 border-t border-border/60 pt-1"><RecipeComposition id={id} effectLinks={[{effectId:id,effect:{...effect,primitiveLinks:effect.primitiveLinks.map((link)=>({...link,primitive:{...link.primitive,id:link.primitiveId,category:link.primitive.category ?? availablePrimitives.find((primitive)=>primitive.id===link.primitiveId)?.category ?? "OTHER"}}))}}]} /></div> : null}
                 </SortableMember>
               );
             })}
@@ -718,6 +730,7 @@ export function CapabilityForm({
       <div className="space-y-2 md:hidden">
         <div className="grid grid-cols-[auto_1fr] items-center gap-2">
           <IconSlot
+            appearance="medallion"
             iconSource={(form.iconSource as IconSource | null) ?? null}
             iconKey={form.iconKey ?? null}
             iconUrl={form.iconUrl ?? null}
@@ -779,6 +792,7 @@ export function CapabilityForm({
           above gates this), shown on md+. */}
       <div className="hidden md:block">
         <IconSlot
+          appearance="medallion"
           iconSource={(form.iconSource as IconSource | null) ?? null}
           iconKey={form.iconKey ?? null}
           iconUrl={form.iconUrl ?? null}
@@ -864,41 +878,16 @@ export function CapabilityForm({
 
         </AuthorChapter>
         <AuthorChapter id="publish" title="Publish">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-sm font-medium">
-          Source Origin
-          <input
-            className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-            value={form.sourceOrigin}
-            onChange={(e) => updateForm("sourceOrigin", e.target.value)}
-            placeholder="optional"
-          />
-        </label>
-        <label className="block text-sm font-medium">
-          Tags (comma-separated)
-          <input
-            className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-            value={form.tags}
-            onChange={(e) => updateForm("tags", e.target.value)}
-            placeholder="combat, fire, aoe"
-          />
-        </label>
-      </div>
-
-      <label className="v12-capability-publish flex flex-col gap-1.5 rounded-md border border-border bg-background p-2.5 text-sm font-medium">
-        <span className="text-xs font-semibold uppercase text-muted-foreground">
-          Visibility
-        </span>
-        <VisibilitySelect
-          compact
-          value={form.isPublic ? "PUBLIC" : "PRIVATE"}
-          onChange={(next) => updateForm("isPublic", next === "PUBLIC")}
-        />
-        <span className="text-xs font-normal text-muted-foreground">
-          Public entries appear in the Library. Private and Followers-only
-          entries can be promoted to Public from the My Creations page.
-        </span>
-      </label>
+      <AuthorPublishFields
+        tags={form.tags}
+        sourceOrigin={form.sourceOrigin}
+        isPublic={form.isPublic}
+        onTagsChange={(value) => updateForm("tags", value)}
+        onSourceOriginChange={(value) => updateForm("sourceOrigin", value)}
+        onPublicChange={(value) => updateForm("isPublic", value)}
+        tagsPlaceholder="combat, fire, aoe"
+        sourcePlaceholder="optional"
+      />
 
         </AuthorChapter>
       </AuthorChapters>

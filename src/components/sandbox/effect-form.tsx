@@ -11,7 +11,7 @@ import { Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { EffectFormState, SlottedPrimitive } from "./effect-form-preview";
-import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
+import { AuthorPublishFields } from "./author-publish-fields";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
 import { computeEffectContentHash } from "@/lib/publishing/hash-content";
 import { IconSlot } from "@/components/icons/icon-slot";
@@ -449,6 +449,7 @@ export function EffectForm({
       <div className="grid grid-cols-[auto_1fr] items-center gap-2 md:hidden">
         <div>
           <IconSlot
+            appearance="medallion"
             iconSource={(form.iconSource as IconSource | null) ?? null}
             iconKey={form.iconKey ?? null}
             iconUrl={form.iconUrl ?? null}
@@ -483,6 +484,7 @@ export function EffectForm({
           Hidden on mobile, shown on md+. */}
       <div className="hidden md:block">
         <IconSlot
+          appearance="medallion"
           iconSource={(form.iconSource as IconSource | null) ?? null}
           iconKey={form.iconKey}
           iconUrl={form.iconUrl}
@@ -525,47 +527,16 @@ export function EffectForm({
 
         </AuthorChapter>
         <AuthorChapter id="publish" title="Publish">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-sm font-medium">
-          Source Origin
-          <input
-            className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-            value={form.sourceOrigin}
-            onChange={(event) => updateForm("sourceOrigin", event.target.value)}
-            placeholder="Core Campaign"
-          />
-        </label>
-
-        <label className="block text-sm font-medium">
-          Tags (comma-separated)
-          <input
-            className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-            value={form.tags}
-            onChange={(event) => updateForm("tags", event.target.value)}
-            placeholder="debuff, poison, movement"
-          />
-        </label>
-      </div>
-
-      <label className="flex flex-col gap-2 rounded-md border border-border bg-background p-3 text-sm font-medium">
-        <span className="text-xs font-semibold uppercase text-muted-foreground">
-          Visibility
-        </span>
-        <VisibilitySelect
-          compact
-          value={form.isPublic ? "PUBLIC" : "PRIVATE"}
-          onChange={(next) => {
-            // Map Visibility → isPublic for the API submit. FOLLOWERS_ONLY
-            // is shown in the UI per the user's spec but full publication
-            // happens via /creations → visibility endpoint after save.
-            updateForm("isPublic", next === "PUBLIC");
-          }}
-        />
-        <span className="text-xs font-normal text-muted-foreground">
-          Public entries appear in the Library. Private and Followers-only
-          entries can be promoted to Public from the My Creations page.
-        </span>
-      </label>
+      <AuthorPublishFields
+        tags={form.tags}
+        sourceOrigin={form.sourceOrigin}
+        isPublic={form.isPublic}
+        onTagsChange={(value) => updateForm("tags", value)}
+        onSourceOriginChange={(value) => updateForm("sourceOrigin", value)}
+        onPublicChange={(value) => updateForm("isPublic", value)}
+        tagsPlaceholder="debuff, poison, movement"
+        sourcePlaceholder="Core Campaign"
+      />
 
         </AuthorChapter>
       </AuthorChapters>

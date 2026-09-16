@@ -21,7 +21,7 @@ import type {
   HeritageFormState,
   TemplateSlot,
 } from "./heritage-form-preview";
-import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
+import { AuthorPublishFields } from "./author-publish-fields";
 import { IconSlot } from "@/components/icons/icon-slot";
 import type { IconSource } from "@/components/icons/icon-display";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
@@ -649,18 +649,20 @@ export function HeritageForm({
             {slottedCapabilities.map((c) => (
               <SortableMember id={c.id} label={c.name}
                 key={c.id}
-                className="group grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 rounded-md border border-border bg-card p-2 text-sm"
+                className="v12-composite-member group rounded-lg border border-border bg-card p-2.5 text-sm"
               >
-                <RecipeEntityIdentity targetType="CAPABILITY" id={c.id} kicker={`Granted capability · ${c.type} · ${c.sourceType}`} name={c.name} buCost={recipeCompositionBu(c.primitiveLinks,c.effectLinks)} />
-                <button
-                  type="button"
-                  onClick={() => toggleCapability(c.id)}
-                  aria-label={`Remove ${c.name}`}
-                  className="inline-flex size-7 items-center justify-center rounded-md border border-border bg-background text-muted-foreground opacity-70 hover:bg-accent group-hover:opacity-100 focus-visible:opacity-100"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
-                <div className="col-span-full"><RecipeComposition id={c.id} {...(c.primitiveLinks ? { primitiveLinks: c.primitiveLinks } : {})} {...(c.effectLinks ? { effectLinks: c.effectLinks } : {})} /></div>
+                <div className="flex min-w-0 items-center gap-2">
+                  <RecipeEntityIdentity targetType="CAPABILITY" id={c.id} kicker={`Granted capability · ${c.type} · ${c.sourceType}`} name={c.name} buCost={recipeCompositionBu(c.primitiveLinks,c.effectLinks)} />
+                  <button
+                    type="button"
+                    onClick={() => toggleCapability(c.id)}
+                    aria-label={`Remove ${c.name}`}
+                    className="inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground opacity-70 hover:bg-accent group-hover:opacity-100 focus-visible:opacity-100"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </div>
+                <div className="mt-2 border-t border-border/60 pt-1"><RecipeComposition id={c.id} {...(c.primitiveLinks ? { primitiveLinks: c.primitiveLinks } : {})} {...(c.effectLinks ? { effectLinks: c.effectLinks } : {})} /></div>
               </SortableMember>
             ))}
           </SortableBundleList>
@@ -671,6 +673,7 @@ export function HeritageForm({
         <AuthorChapter id="identity" title="Identity">
       {/* Phase 8: per-entity iconography */}
       <IconSlot
+        appearance="medallion"
         iconSource={(form.iconSource as IconSource | null) ?? null}
         iconKey={form.iconKey}
         iconUrl={form.iconUrl}
@@ -738,46 +741,16 @@ export function HeritageForm({
         </AuthorChapter>
 
         <AuthorChapter id="publish" title="Publish">
-      {/* Phase 8 rev 10: heritage parity — sourceOrigin + tags inputs.
-          These were missing from the form (the columns exist in the DB
-          schema but the form never exposed them). Now heritage has the
-          same metadata shape as items/capabilities/effects. Tags are
-          comma-separated in the form and split into a string[] on save
-          (matches item-form.tsx:639-645). */}
-      <label className="block text-sm font-medium">
-        Tags (comma separated)
-        <input
-          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-          value={form.tags}
-          onChange={(e) => updateForm("tags", e.target.value)}
-          placeholder="fire, knight, focus"
-        />
-      </label>
-
-      <label className="block text-sm font-medium">
-        Source origin
-        <input
-          className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2"
-          value={form.sourceOrigin}
-          onChange={(e) => updateForm("sourceOrigin", e.target.value)}
-          placeholder="manual | build:<id> | ..."
-        />
-      </label>
-
-      <label className="flex flex-col gap-2 rounded-md border border-border bg-background p-3 text-sm font-medium">
-        <span className="text-xs font-semibold uppercase text-muted-foreground">
-          Visibility
-        </span>
-        <VisibilitySelect
-          compact
-          value={form.isPublic ? "PUBLIC" : "PRIVATE"}
-          onChange={(next) => updateForm("isPublic", next === "PUBLIC")}
-        />
-        <span className="text-xs font-normal text-muted-foreground">
-          Public entries appear in the Library. Private and Followers-only
-          entries can be promoted to Public from the My Creations page.
-        </span>
-      </label>
+      <AuthorPublishFields
+        tags={form.tags}
+        sourceOrigin={form.sourceOrigin}
+        isPublic={form.isPublic}
+        onTagsChange={(value) => updateForm("tags", value)}
+        onSourceOriginChange={(value) => updateForm("sourceOrigin", value)}
+        onPublicChange={(value) => updateForm("isPublic", value)}
+        tagsPlaceholder="fire, knight, focus"
+        sourcePlaceholder="manual | build:<id> | …"
+      />
 
         </AuthorChapter>
       </AuthorChapters>

@@ -824,6 +824,7 @@ export function GrammarLibrary({
             <span>{filteredItems.length}</span>
           </div>
           <LibraryTable
+            surface="atelier"
             items={filteredItems}
             view={toolbarState.view}
             engagement={engagement}

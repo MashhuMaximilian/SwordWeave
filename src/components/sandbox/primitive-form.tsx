@@ -18,7 +18,7 @@ import type {
 import { IconSlot } from "@/components/icons/icon-slot";
 import type { IconSource } from "@/components/icons/icon-display";
 import type { PrimitiveFormState } from "./primitive-form-preview";
-import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
+import { AuthorPublishFields } from "./author-publish-fields";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
 import { computePrimitiveContentHash } from "@/lib/publishing/hash-content";
 import { useGlobalControls } from "@/components/layout/global-controls";
@@ -1442,6 +1442,7 @@ export function PrimitiveForm({
       <div className="space-y-2 md:hidden">
         <div className="grid grid-cols-[auto_1fr] items-center gap-2">
           <IconSlot
+            appearance="medallion"
             iconSource={(form.iconSource as IconSource | null) ?? null}
             iconKey={form.iconKey ?? null}
             iconUrl={form.iconUrl ?? null}
@@ -1525,6 +1526,7 @@ export function PrimitiveForm({
           <span className="text-sm font-medium">Icon</span>
           <div className="mt-1.5">
             <IconSlot
+              appearance="medallion"
               iconSource={(form.iconSource as IconSource | null) ?? null}
               iconKey={form.iconKey ?? null}
               iconUrl={form.iconUrl ?? null}
@@ -1882,21 +1884,15 @@ export function PrimitiveForm({
 
         </AuthorChapter>
         <AuthorChapter id="publish" title="Publish">
-      <div className="v12-supporting-fields grid gap-2 md:grid-cols-2">
-        <label className="v12-field-market block text-sm font-medium">
-          Tags <span className="ml-2 text-xs font-normal text-muted-foreground">Comma-separated</span>
-          <input className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2" value={form.tags} onChange={(event) => updateForm("tags", event.target.value)} placeholder="fire, ranged, condition" />
-        </label>
-        <label className="v12-field-market block text-sm font-medium">
-          Source origin <span className="ml-2 text-xs font-normal text-muted-foreground">World, book, or setting</span>
-          <input className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none ring-ring focus:ring-2" value={form.sourceOrigin} onChange={(event) => updateForm("sourceOrigin", event.target.value)} placeholder="Forgotten Realms" />
-        </label>
-      </div>
-      <label className="v12-field-visibility flex flex-col gap-1.5 rounded-md border border-border bg-background p-2 text-sm font-medium">
-        <span className="text-xs font-semibold uppercase text-muted-foreground">Visibility</span>
-        <VisibilitySelect compact value={form.isPublic ? "PUBLIC" : "PRIVATE"} onChange={(next) => updateForm("isPublic", next === "PUBLIC")} />
-        <span className="text-[11px] font-normal leading-snug text-muted-foreground">Controls who can find this entry in the Library.</span>
-      </label>
+      <AuthorPublishFields
+        tags={form.tags}
+        sourceOrigin={form.sourceOrigin}
+        isPublic={form.isPublic}
+        onTagsChange={(value) => updateForm("tags", value)}
+        onSourceOriginChange={(value) => updateForm("sourceOrigin", value)}
+        onPublicChange={(value) => updateForm("isPublic", value)}
+        sourcePlaceholder="Forgotten Realms"
+      />
         </AuthorChapter>
       </AuthorChapters>
 

@@ -104,6 +104,8 @@ export interface IconSlotProps {
   label?: string | undefined;
   /** Optional helper text shown below the slot. */
   helper?: string | undefined;
+  /** Atelier identity treatment: a circular brass medallion. */
+  appearance?: "default" | "medallion" | undefined;
 }
 
 export function IconSlot({
@@ -115,6 +117,7 @@ export function IconSlot({
   size = 64,
   label = "Icon",
   helper,
+  appearance = "default",
 }: IconSlotProps) {
   // Phase 10: local open state. No useModalStack. No portal. No
   // stacking-context dependency. The picker is a self-contained child
@@ -165,7 +168,11 @@ export function IconSlot({
         type="button"
         onClick={handleOpen}
         aria-label={`Change ${label.toLowerCase()}`}
-        className="group relative shrink-0 overflow-hidden rounded-md border border-border bg-muted/30 transition-colors hover:border-primary focus:border-primary focus:outline-none"
+        className={
+          appearance === "medallion"
+            ? "group relative grid shrink-0 place-items-center overflow-hidden rounded-full border border-[#b88a39] bg-black/35 shadow-[inset_0_0_0_4px_rgba(7,12,19,0.92),0_0_0_1px_rgba(233,190,103,0.18)] transition-[border-color,box-shadow] hover:border-[#edc97d] hover:shadow-[inset_0_0_0_4px_rgba(7,12,19,0.92),0_0_14px_rgba(190,139,54,0.24)] focus:border-[#edc97d] focus:outline-none"
+            : "group relative shrink-0 overflow-hidden rounded-md border border-border bg-muted/30 transition-colors hover:border-primary focus:border-primary focus:outline-none"
+        }
         style={{ width: size, height: size }}
       >
         <IconDisplay
@@ -173,7 +180,7 @@ export function IconSlot({
           iconKey={iconKey}
           iconUrl={iconUrl}
           iconColor={iconColor}
-          size={size}
+          size={appearance === "medallion" ? Math.max(24, size - 12) : size}
           alt={label}
         />
         {/* Hover-only pencil overlay — desktop affordance. The always-

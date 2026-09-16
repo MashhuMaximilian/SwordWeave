@@ -51,6 +51,7 @@ import type { LibraryItem } from "@/lib/publishing/library-query";
 import type { SaveIntent } from "@/lib/publishing/save-intent";
 import type { ModifierDraft, PrimitiveFormState } from "./primitive-form-preview";
 import { useDrawerSlot } from "@/components/layout/build-preview-drawer";
+import { cn } from "@/lib/utils";
 
 export type AtelierTab =
   | "mechanics"
@@ -573,32 +574,6 @@ export function AtelierSandboxClient({
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
   }, [formIsDirty, editing, charModalIsDirty, editCharacterId, charModalIsOpen, isSeedingEdit]);
-
-  // Listen for the FAB "Build & Preview" action.
-  //  - If the build column is EMPTY (no entity loaded and nothing typed),
-  //    open the new-entity chooser (Point 4). This re-prompts even after
-  //    you've picked a blank form and closed it, because a blank form is
-  //    still "empty".
-  //  - If something is already loaded or you've typed content, do nothing
-  //    here: the editor is already shown (desktop) or the FAB just opened
-  //    the drawer to reveal it (mobile). Re-opening the chooser would be
-  //    the wrong flow (Point 2 / Point 3).
-  useEffect(() => {
-    function onOpenNew() {
-      // If a build is already in progress, don't show the "what do you want
-      // to build?" chooser over the loaded content — open the build panel
-      // instead (mobile). On desktop the build column is already visible,
-      // so openBuildPanel is a no-op there. Only show the chooser when the
-      // build is empty.
-      if (editing !== null || buildStarted) {
-        openBuildPanel();
-      } else {
-        setShowNewModal(true);
-      }
-    }
-    window.addEventListener("sw-open-new-entity", onOpenNew);
-    return () => window.removeEventListener("sw-open-new-entity", onOpenNew);
-  }, [editing, buildStarted, openBuildPanel]);
 
   useEffect(() => {
     function onStartNewEntity(event: Event) {
@@ -1721,7 +1696,7 @@ export function AtelierSandboxClient({
         <DataQualityPanel />
       </div>
       <SandboxLayout
-        storageKey="atelier-v12-exact"
+        storageKey="atelier-v12-exact-2"
         columnMeta={{
           sourceKicker: activeEditorKind ? `Add to this ${activeEditorKind}` : "Explore the Library",
           sourceTitle: sourceLabel,
@@ -1787,6 +1762,7 @@ function SecondaryBuildWorkspace({
   capabilities: CapabilityRow[];
 }) {
   const [kind, setKind] = useState<"effect" | "capability" | "heritage" | "item" | null>(null);
+  const [heritageKind, setHeritageKind] = useState<"LINEAGE" | "UPBRINGING" | "MANIFEST">("MANIFEST");
   const [revision, setRevision] = useState(0);
   const [saved, setSaved] = useState<{ kind: "effect" | "capability" | "heritage" | "item"; id: string; name: string; heritageKind?: "LINEAGE" | "UPBRINGING" | "MANIFEST" } | null>(null);
   const [pendingSlot, setPendingSlot] = useState<{kind:"primitive"|"effect"|"capability";id:string|number;label:string} | null>(null);
@@ -1810,7 +1786,7 @@ function SecondaryBuildWorkspace({
     return () => window.removeEventListener("sw-slot-secondary-build", handler);
   }, [kind, openDrawer, slotBus]);
 
-  const reset = () => { setKind(null); setSaved(null); setPendingSlot(null); setRevision((value) => value + 1); };
+  const reset = () => { setKind(null); setHeritageKind("MANIFEST"); setSaved(null); setPendingSlot(null); setRevision((value) => value + 1); };
   const commonSaved = (next: { id: string; name: string }, nextKind: NonNullable<typeof kind>, heritageKind?: "LINEAGE" | "UPBRINGING" | "MANIFEST") => {
     setSaved({ kind: nextKind, id: String(next.id), name: next.name, ...(heritageKind ? { heritageKind } : {}) });
     window.dispatchEvent(new CustomEvent("sw:library-changed"));
@@ -1821,15 +1797,35 @@ function SecondaryBuildWorkspace({
     <div className="v12-secondary-build" key={revision}>
       <button type="button" data-drawer-reset hidden onClick={reset}>Reset modal build</button>
       <header><div><p className="v12-kicker">Persistent build modal</p><h2>{kind ? `New ${kind}` : "Choose a long-running build"}</h2></div>{kind ? <button type="button" className="v12-metal-button" onClick={reset}>Change build</button> : null}</header>
-      {!kind ? <div className="v12-secondary-build-groups">
-        <section><p className="v12-kicker">Mechanics</p><div>{(["capability","effect"] as const).map(value=><button type="button" key={value} onClick={()=>setKind(value)}>{value}</button>)}<button type="button" onClick={()=>{ window.dispatchEvent(new CustomEvent("sw-close-build-drawer")); }}>Primitive <small>use the middle workspace</small></button></div></section>
-        <section><p className="v12-kicker">Heritages</p><div><button type="button" onClick={()=>setKind("heritage")}>Lineage</button><button type="button" onClick={()=>setKind("heritage")}>Upbringing</button><button type="button" onClick={()=>setKind("heritage")}>Manifest</button></div></section>
-        <section><p className="v12-kicker">Items</p><div><button type="button" onClick={()=>setKind("item")}>Item</button></div></section>
-        <section data-disabled="true"><p className="v12-kicker">Monsters</p><div><button type="button" disabled>Coming later</button></div></section>
-      </div> : null}
+      {!kind ? (
+        <NewEntityChoices
+          className="space-y-4"
+          onPick={(choice) => {
+            if (choice.tab === "monster") return;
+            if (choice.mechanicsSubKind === "primitive") {
+              // Primitive authoring belongs to the middle workspace. Close
+              // the persistent modal and let the main Atelier chooser apply
+              // the normal dirty-draft guard.
+              window.dispatchEvent(new CustomEvent("sw-close-build-drawer"));
+              window.dispatchEvent(new CustomEvent("sw-start-new-entity", { detail: "primitive" }));
+              return;
+            }
+            if (choice.mechanicsSubKind) {
+              setKind(choice.mechanicsSubKind);
+              return;
+            }
+            if (choice.heritageSubKind) {
+              setHeritageKind(choice.heritageSubKind);
+              setKind("heritage");
+              return;
+            }
+            if (choice.tab === "item") setKind("item");
+          }}
+        />
+      ) : null}
       {kind === "capability" ? <CapabilityForm key={`cap-${revision}`} slotEvents={slotBus} initialCapability={null} availablePrimitives={primitiveOptions} availableEffects={effects} onSaved={(row)=>commonSaved(row,"capability")} /> : null}
       {kind === "effect" ? <EffectForm key={`eff-${revision}`} slotEvents={slotBus} initialEffect={null} availablePrimitives={primitiveOptions} onSaved={(row)=>commonSaved(row,"effect")} /> : null}
-      {kind === "heritage" ? <HeritageForm key={`her-${revision}`} slotEvents={slotBus} initialTemplate={null} initialKind="MANIFEST" availablePrimitives={primitiveOptions} availableCapabilities={capabilities} onSaved={(row)=>commonSaved(row,"heritage",row.kind)} /> : null}
+      {kind === "heritage" ? <HeritageForm key={`her-${revision}`} slotEvents={slotBus} initialTemplate={null} initialKind={heritageKind} availablePrimitives={primitiveOptions} availableCapabilities={capabilities} onSaved={(row)=>commonSaved(row,"heritage",row.kind)} /> : null}
       {kind === "item" ? <ItemForm key={`item-${revision}`} slotEvents={slotBus} initialItem={null} availablePrimitives={primitiveOptions} availableCapabilities={capabilities} availableEffects={effects} onSaved={(row)=>commonSaved(row,"item")} /> : null}
       {pendingSlot ? <SecondarySlotDelivery slotBus={slotBus} detail={pendingSlot} onDelivered={()=>setPendingSlot(null)} /> : null}
       {saved ? <div className="v12-secondary-build-saved"><span>Saved: {saved.name}</span><button type="button" className="v12-metal-button v12-metal-button--primary" onClick={()=>{
@@ -1907,7 +1903,7 @@ const NEW_ENTITY_GROUPS: { heading: string; choices: NewEntityChoice[] }[] = [
     ],
   },
   {
-    heading: "Heritage",
+    heading: "Heritages",
     choices: [
       { tab: "heritage", heritageSubKind: "LINEAGE", label: "Lineage", hint: "Lineage", icon: "lorc/dna2" },
       { tab: "heritage", heritageSubKind: "UPBRINGING", label: "Upbringing", hint: "Upbringing", icon: "delapouite/plant-roots" },
@@ -1915,13 +1911,79 @@ const NEW_ENTITY_GROUPS: { heading: string; choices: NewEntityChoice[] }[] = [
     ],
   },
   {
-    heading: "Other",
+    heading: "Items",
     choices: [
       { tab: "item", label: "Item", hint: "Equipable / consumable", icon: "lorc/battle-gear" },
+    ],
+  },
+  {
+    heading: "Monsters",
+    choices: [
       { tab: "monster", label: "Monster", hint: "Coming soon", icon: "lorc/gluttonous-smile" },
     ],
   },
 ];
+
+/**
+ * The same entity chooser is used by the inline Atelier editor and the
+ * persistent FAB build modal. Keeping the groups and button markup here is
+ * deliberate: the two entry points should offer the same choices and the
+ * same disabled treatment for Monsters.
+ */
+function NewEntityChoices({
+  onPick,
+  className,
+}: {
+  onPick: (choice: NewEntityChoice) => void;
+  className?: string;
+}) {
+  const isDark = useIsDark();
+  return (
+    <div className={cn("v12-new-entity-choice-groups", className)}>
+      {NEW_ENTITY_GROUPS.map((group) => (
+        <section key={group.heading}>
+          <p className="v12-kicker mb-2 text-xs text-muted-foreground">
+            {group.heading}
+          </p>
+          <div className="v12-new-entity-choices grid grid-cols-1 gap-1.5">
+            {group.choices.map((choice) => {
+              const disabled = choice.tab === "monster";
+              return (
+                <button
+                  key={choice.label + (choice.heritageSubKind ?? "")}
+                  type="button"
+                  disabled={disabled}
+                  aria-disabled={disabled}
+                  onClick={() => onPick(choice)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-left transition-colors",
+                    disabled && "cursor-not-allowed opacity-45",
+                  )}
+                >
+                  <IconDisplay
+                    iconSource="GAME_ICONS"
+                    iconKey={choice.icon}
+                    iconColor={isDark ? "#94a3b8" : "#64748b"}
+                    size={20}
+                    alt={choice.label}
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-foreground">
+                      {choice.label}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      {choice.hint}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
 
 function BuilderPane({
   showNewModal,
@@ -1951,7 +2013,6 @@ function NewEntityModal({
   onPick: (choice: NewEntityChoice) => void;
   onClose: () => void;
 }) {
-  const isDark = useIsDark();
   return (
     <div
       className="v12-modal-backdrop fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
@@ -1976,39 +2037,10 @@ function NewEntityModal({
           </button>
         </div>
         <div className="max-h-[60vh] space-y-4 overflow-y-auto p-4">
-          {NEW_ENTITY_GROUPS.map((group) => (
-            <div key={group.heading}>
-              <p className="v12-kicker mb-2 text-xs text-muted-foreground">
-                {group.heading}
-              </p>
-              <div className="v12-new-entity-choices grid grid-cols-1 gap-1.5">
-                {group.choices.map((choice) => (
-                  <button
-                    key={choice.label + (choice.heritageSubKind ?? "")}
-                    type="button"
-                    onClick={() => onPick(choice)}
-                    className="flex items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-left transition-colors"
-                  >
-                    <IconDisplay
-                      iconSource="GAME_ICONS"
-                      iconKey={choice.icon}
-                      iconColor={isDark ? "#94a3b8" : "#64748b"}
-                      size={20}
-                      alt={choice.label}
-                    />
-                    <span className="min-w-0">
-                      <span className="block text-sm font-medium text-foreground">
-                        {choice.label}
-                      </span>
-                      <span className="block text-xs text-muted-foreground">
-                        {choice.hint}
-                      </span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
+          <NewEntityChoices
+            onPick={onPick}
+            className="space-y-4"
+          />
         </div>
       </div>
     </div>
