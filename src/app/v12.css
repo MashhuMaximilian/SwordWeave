@@ -3238,14 +3238,17 @@ body[data-ui="v12"] .v12-authoring-guide summary {
 }
 body[data-ui="v12"] .v12-authoring-guide summary small { color:var(--v12-soft); font-size:9px; letter-spacing:.11em; text-transform:uppercase; }
 body[data-ui="v12"] .v12-authoring-guide p { margin:0; padding:0 10px 9px; color:var(--v12-soft); font:400 12px/1.45 var(--font-body); }
+body[data-ui="v12"] .v12-authoring-guide .v12-authoring-guide-rule { margin:0 10px 9px; padding:7px 9px; border-left:2px solid var(--v12-brass); color:var(--v12-copper-hi); background:color-mix(in srgb,var(--v12-brass) 7%,transparent); font-size:11px; }
 
-body[data-ui="v12"] .v12-author-publish { display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px!important; }
-body[data-ui="v12"] .v12-author-publish .v12-field-visibility { grid-column:1/-1; padding:9px 10px!important; }
+body[data-ui="v12"] .v12-author-chapter > .v12-author-publish,
+body[data-ui="v12"] .v12-primitive-author .v12-author-chapter > .v12-author-publish { display:grid!important; width:100%; grid-column:1/-1!important; grid-template-columns:minmax(0,1fr)!important; gap:8px!important; }
+body[data-ui="v12"] .v12-author-publish .v12-field-visibility { grid-column:auto; padding:9px 10px!important; }
 body[data-ui="v12"] .v12-author-publish .v12-field-visibility h3 { color:var(--v12-copper-hi); font:600 11px/1.1 var(--font-system); letter-spacing:.1em; text-transform:uppercase; }
 body[data-ui="v12"] .v12-author-publish .v12-field-visibility p { margin-top:3px; color:var(--v12-soft); font:400 11px/1.3 var(--font-body); }
-body[data-ui="v12"] .v12-author-publish .v12-supporting-fields { display:contents!important; }
-body[data-ui="v12"] .v12-author-publish .v12-field-market { min-width:0; padding:9px 10px; border:1px solid transparent; border-radius:9px; background:var(--atelier-surface) padding-box,var(--v12-silver-edge) border-box; }
+body[data-ui="v12"] .v12-author-publish .v12-supporting-fields { display:grid!important; width:100%; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px!important; }
+body[data-ui="v12"] .v12-author-publish .v12-field-market { display:grid; min-width:0; align-content:start; padding:9px 10px; border:1px solid transparent; border-radius:9px; background:var(--atelier-surface) padding-box,var(--v12-silver-edge) border-box; }
 body[data-ui="v12"] .v12-author-publish .v12-field-market span { display:block; margin:2px 0 0!important; }
+body[data-ui="v12"] .v12-author-publish .v12-field-market input { width:100%!important; min-width:0; }
 
 body[data-ui="v12"] .v12-composite-member {
   display:grid!important;
@@ -3271,6 +3274,8 @@ body[data-ui="v12"] .v12-composite-member .v12-recipe-effect-group {
   grid-column:1/-1;
 }
 body[data-ui="v12"] .v12-composite-member .v12-recipe-effect { grid-column:1/-1; text-align:left; }
+body[data-ui="v12"] .v12-composite-member .v12-recipe-effect b { color:var(--v12-ivory); font:500 14px/1.2 var(--font-subtitle); letter-spacing:.01em; }
+body[data-ui="v12"] .v12-composite-member .v12-recipe-effect > small:first-child { color:var(--v12-brass-hi); font:600 9px/1.2 var(--font-system); letter-spacing:.09em; text-transform:uppercase; }
 body[data-ui="v12"] .v12-composite-member .v12-nested-rule { min-width:0; }
 body[data-ui="v12"] .v12-recipe-budget-summary { margin:5px 0 0; color:var(--v12-gold-hi); font:600 10px/1.2 var(--font-system); letter-spacing:.08em; text-transform:uppercase; }
 
@@ -3324,8 +3329,7 @@ body[data-ui="v12"] .v12-table-disclaimer summary { cursor:pointer; font:500 11p
 body[data-ui="v12"] .v12-table-disclaimer p { margin:7px 0 0; font:400 11px/1.5 var(--font-body); }
 
 @media(max-width:767px) {
-  body[data-ui="v12"] .v12-author-publish { grid-template-columns:1fr; }
-  body[data-ui="v12"] .v12-author-publish .v12-field-visibility { grid-column:auto; }
+  body[data-ui="v12"] .v12-author-publish .v12-supporting-fields { grid-template-columns:1fr; }
   body[data-ui="v12"] .v12-table-readout { grid-template-columns:1fr; }
   body[data-ui="v12"] .v12-table-metrics { width:100%; }
   body[data-ui="v12"] .v12-table-metrics > div { flex:1; min-width:0; }
@@ -3334,6 +3338,26 @@ body[data-ui="v12"] .v12-table-disclaimer p { margin:7px 0 0; font:400 11px/1.5 
 body[data-ui="v12"] .v12-primitive-author > .v12-author-chapters { grid-column:1/-1; min-width:0; }
 body[data-ui="v12"] .v12-primitive-author .v12-author-chapter:not([hidden]) { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.75rem; }
 body[data-ui="v12"] .v12-primitive-author .v12-author-chapter > :is(.v12-form-chapter,.v12-primitive-core,.v12-market-identity-head,.v12-market-fields,.v12-field-narrative,.v12-mechanical-rule,.v12-supporting-fields,.v12-field-visibility) { grid-column:1/-1; }
+
+/* Sticky mechanics headings stay legible without opaque black bars. */
+body[data-ui="v12"] .v12-source-pane-head {
+  background:linear-gradient(90deg,color-mix(in srgb,var(--v12-silver) 7%,var(--atelier-surface)),color-mix(in srgb,var(--v12-brass) 7%,var(--atelier-surface)))!important;
+  box-shadow:inset 0 -1px color-mix(in srgb,var(--v12-silver) 42%,transparent)!important;
+  backdrop-filter:blur(12px);
+}
+
+/* An opaque alloy face prevents the silver edge gradient from filling the
+   whole Source/Versions control, especially in the light theme. */
+body[data-ui="v12"] .v12-preview-action-group[data-preview-action-group="reference"] > *,
+body[data-ui="v12"] .v12-atelier-shell .v12-metal-button:not(.v12-metal-button--primary) {
+  color:var(--v12-ivory)!important;
+  background:linear-gradient(150deg,var(--v12-raised),var(--v12-panel-deep)) padding-box,var(--v12-silver-edge) border-box!important;
+  text-shadow:0 1px rgb(0 0 0 / 65%);
+}
+body[data-ui="v12"] .v12-preview-action-group[data-preview-action-group="reference"] > *:hover {
+  color:var(--v12-gold-hi)!important;
+  background:linear-gradient(150deg,color-mix(in srgb,var(--v12-brass) 15%,var(--v12-raised)),var(--v12-panel-deep)) padding-box,var(--v12-brass-edge) border-box!important;
+}
 
 body[data-ui="v12"] .v12-markdown { min-width:0; font:inherit; color:inherit; overflow-wrap:anywhere; }
 body[data-ui="v12"] .v12-markdown :is(p,ul,ol,blockquote) { margin:0 0 .55em; }

@@ -27,7 +27,7 @@ export function AuthorPublishFields({
 }: AuthorPublishFieldsProps) {
   const visibilityLabelId = useId();
   return (
-    <div className="v12-author-publish grid gap-3">
+    <div className="v12-author-publish">
       <section
         className="v12-field-visibility rounded-lg border border-border bg-background p-2.5"
         aria-labelledby={visibilityLabelId}
@@ -40,7 +40,7 @@ export function AuthorPublishFields({
           <VisibilitySelect compact value={isPublic ? "PUBLIC" : "PRIVATE"} onChange={(next) => onPublicChange(next === "PUBLIC")} />
         </div>
       </section>
-      <div className="v12-supporting-fields grid gap-3 sm:grid-cols-2">
+      <div className="v12-supporting-fields">
         <label className="v12-field-market block text-sm font-medium">
           Tags
           <span className="ml-2 text-xs font-normal text-muted-foreground">

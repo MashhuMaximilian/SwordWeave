@@ -48,7 +48,6 @@ import { useModalStack } from "@/components/ui/modal-stack";
 import { cn } from "@/lib/utils";
 import { IconDisplay } from "@/components/icons/icon-display";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
-import { useIsDark } from "@/lib/hooks/use-is-dark";
 
 /** Color for the FAB build icon — flips with theme (white on dark,
  *  near-black on light) so it stays visible. */
@@ -161,7 +160,6 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
   const isSandboxRoute =
     pathname?.startsWith("/sandbox") || pathname === "/atelier" || false;
   const isMobile = useIsMobile();
-  const isDark = useIsDark();
   const { user, isSignedIn, isLoaded } = useUser();
   const { signOut, openUserProfile } = useClerk();
   const stack = useModalStack();
@@ -424,7 +422,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
           <IconDisplay
             iconSource="GAME_ICONS"
             iconKey="lorc/anvil-impact"
-            iconColor={isDark ? FAB_ICON_COLOR_DARK : FAB_ICON_COLOR_LIGHT}
+            iconColor={dark ? FAB_ICON_COLOR_DARK : FAB_ICON_COLOR_LIGHT}
             size={22}
             alt="Build & Preview"
           />
@@ -460,7 +458,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         <IconDisplay
           iconSource="GAME_ICONS"
           iconKey="delapouite/mona-lisa"
-          iconColor={isDark ? FAB_ICON_COLOR_DARK : FAB_ICON_COLOR_LIGHT}
+          iconColor={dark ? FAB_ICON_COLOR_DARK : FAB_ICON_COLOR_LIGHT}
           size={22}
           alt="Character"
         />

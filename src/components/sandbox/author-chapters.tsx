@@ -2,14 +2,44 @@
 
 import { Children, isValidElement, useId, useState, type ReactNode, type ReactElement } from "react";
 
-export type AuthoringGuideKind = "primitive" | "effect" | "capability" | "heritage" | "item";
+export type AuthoringGuideKind = "primitive" | "effect" | "capability" | "lineage" | "upbringing" | "manifest" | "item";
 
-const AUTHORING_GUIDES: Record<AuthoringGuideKind, { title: string; body: string }> = {
-  primitive: { title: "What a primitive is", body: "Primitives are the atomic rules bought with BU. They can stand alone or become pieces of effects, capabilities, heritages, and items." },
-  effect: { title: "What an effect is", body: "Effects package primitives into a reusable result. A capability can deliver one or more effects; an effect describes the result rather than the whole action." },
-  capability: { title: "What a capability is", body: "Capabilities are a character's toolkit: spells, techniques, and features assembled from purchased primitives and optional effects." },
-  heritage: { title: "What a heritage is", body: "Heritages compile primitives and capabilities into character history. Lineage describes species or ancestry, Upbringing describes background and training before play, and Manifest describes class or what the character is becoming." },
-  item: { title: "What an item is", body: "Items bundle direct primitives, effects, and capabilities into equipment a character can carry or equip." },
+const AUTHORING_GUIDES: Record<AuthoringGuideKind, { title: string; body: string; rule: string }> = {
+  primitive: {
+    title: "Primitive: a purchased building block",
+    body: "A primitive is one atomic rule permanently unlocked with BU: a Verb, Domain, output, range, geometry, defense, or other modifier. Once owned, it can be reused and recombined across any number of recipes.",
+    rule: "BU buys the ingredient. Building another recipe with an ingredient you already own does not buy it again.",
+  },
+  effect: {
+    title: "Effect: a reusable result",
+    body: "An effect packages primitives that describe what an action leaves behind or resolves: damage, healing, a condition, movement, protection, or another payload. Capabilities may deliver effects, and the same effect can support several recipes.",
+    rule: "Describe the result here; put the complete intent, delivery, and table declaration in a capability.",
+  },
+  capability: {
+    title: "Capability: a ready-to-use recipe",
+    body: "A capability is a prepared spell, technique, maneuver, or feature assembled from owned primitives and optional effects. It is a shortcut on the character sheet, not a boundary on what those components can improvise at the table.",
+    rule: "Preset recipes cost 0 additional BU. A maintained capability counts as one atomic upkeep entity even when its recipe has many pieces.",
+  },
+  lineage: {
+    title: "Lineage: inherited nature",
+    body: "Lineage records biological, ancestral, or created-body traits: innate senses, movement, resilience, passive adaptations, and natural access to a Domain. It explains what the character begins life able to be or perceive.",
+    rule: "Bundle only the inherited components and capabilities; learned history belongs in Upbringing.",
+  },
+  upbringing: {
+    title: "Upbringing: formative history",
+    body: "Upbringing records the environment, community, work, education, and training that shaped the character before play. It is the place for learned Practices, proficiencies, social permissions, and techniques earned through lived experience.",
+    rule: "Describe who the character was and what they learned before their present path began.",
+  },
+  manifest: {
+    title: "Manifest: the path taking form",
+    body: "Manifest establishes the character's active role, magical focus, or tactical discipline: the identity often called a class. It bundles the Domains, output, delivery, and signature capabilities that express what the character is becoming now.",
+    rule: "Treat it as a customizable convenience pack, not a restriction on future growth or improvisation.",
+  },
+  item: {
+    title: "Item: a capability carrier",
+    body: "An item can be a 0 BU narrative tool, a vessel that grants a complete capability while equipped, or an augment that changes the geometry, delivery, or intensity of components the character already owns.",
+    rule: "Record its carried Load separately from its BU recipe; active capability and augment items also use Universal Equipment Slots.",
+  },
 };
 
 function AuthoringGuide({ kind }: { kind: AuthoringGuideKind }) {
@@ -17,6 +47,7 @@ function AuthoringGuide({ kind }: { kind: AuthoringGuideKind }) {
   return <details className="v12-authoring-guide">
     <summary><span>{guide.title}</span><small>Rules guide</small></summary>
     <p>{guide.body}</p>
+    <p className="v12-authoring-guide-rule">{guide.rule}</p>
   </details>;
 }
 
