@@ -565,12 +565,9 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         // above the tab bar so the two don't collide. 80px = 16px
         // (default gap) + 48px (tab bar visible height) + ~16px extra
         // buffer so the FAB also clears any half-collapsed sidebar
-        // chrome (user-reported through Phase 9: FAB position must be
-        // IDENTICAL across every route — including atelier. 56px = tab
-        // bar (~48px) + 8px gap, so the FAB floats just above the
-        // AtelierTabBar instead of overlapping it, but stays in the
-        // same spot on every other page).
-        bottomOffset={56}
+        // chrome. The extra 40px keeps it comfortably above page footers
+        // and the Atelier tab bar on every route.
+        bottomOffset={96}
       />
       <RightFilterPanel />
       <BuildPreviewDrawer />

@@ -2,6 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Local testing is commonly opened through either loopback spelling.
+  // Next's dev-origin guard otherwise serves the SSR shell at 127.0.0.1
+  // but blocks the client bootstrap, leaving Clerk and every client control
+  // (including the FAB) visually present but inert.
+  allowedDevOrigins: ["localhost", "127.0.0.1"],
   images: {
     remotePatterns: [
       // Clerk user avatars (private bucket URLs)
