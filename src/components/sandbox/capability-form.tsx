@@ -185,7 +185,7 @@ export function CapabilityForm({
   const [effectIds, setEffectIds] = useState<string[]>(initialEffectIds);
   const [tableDraft, setTableDraft] = useState({
     target: "Single", shape: "Direct", size: "One target", placement: "Target",
-    range: "Touch", output: "None", duration: "Instant", casting: "Action",
+    range: "Open", output: "None", duration: "Instant", casting: "Action",
   });
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -384,8 +384,11 @@ export function CapabilityForm({
   }
 
   function removeSlot(index: number) {
+    const removedRole = slots[index] ? resolvedSlotRole(slots[index]) : null;
     setIsDirty(true);
     setSlots((prev) => prev.filter((_, i) => i !== index));
+    if (removedRole === "RANGE") setTableDraft((current) => ({ ...current, range: "Open" }));
+    if (removedRole === "OUTPUT") setTableDraft((current) => ({ ...current, output: "None" }));
   }
 
   function updateSlotRole(index: number, role: string) {
@@ -413,6 +416,7 @@ export function CapabilityForm({
     setForm(blankForm);
     setSlots([]);
     setEffectIds([]);
+    setTableDraft({ target: "Single", shape: "Direct", size: "One target", placement: "Target", range: "Open", output: "None", duration: "Instant", casting: "Action" });
     setIsDirty(false); // pristine after reset
     setMessage("Started a fresh capability.");
     bootstrappedRef.current = null; // allow re-bootstrap on next entity load
@@ -521,13 +525,66 @@ export function CapabilityForm({
     });
   }
 
-  const previewBu = slots.reduce(
+  const directBu = slots.reduce(
     (sum, slot) => sum + Math.abs(slot.primitive.buCost * slot.quantity),
     0,
   );
+  const effectBu = effectIds.reduce((sum, id) => {
+    const effect = availableEffects.find((entry) => entry.id === id);
+    return sum + primitiveLinksBu(effect?.primitiveLinks?.map((link) => ({
+      ...link,
+      primitive: { ...link.primitive, id: link.primitiveId, category: link.primitive.category ?? "OTHER" },
+    })));
+  }, 0);
+  const previewBu = directBu + effectBu;
   const regularSlots = slots
     .map((slot, index) => ({ slot, index }))
     .filter(({ slot }) => !DEDICATED_ROLES.includes(resolvedSlotRole(slot) as DedicatedRole));
+  const rangeSlot = slots.find((slot) => resolvedSlotRole(slot) === "RANGE");
+  const outputSlot = slots.find((slot) => resolvedSlotRole(slot) === "OUTPUT");
+  const selectedRange = rangeSlot?.primitive.name.replace(/\s+Range$/i, "") || tableDraft.range;
+  const selectedOutput = outputSlot?.primitive.name.match(/d(?:4|6|8|10|12|20)/i)?.[0].toLowerCase() || tableDraft.output;
+
+  const primitiveSearchText = (primitive: (typeof availablePrimitives)[number]) =>
+    `${primitive.name} ${primitive.mechanicalOutputText ?? ""}`.toLowerCase();
+  const rangePrimitive = (label: string) => {
+    const needle = label.toLowerCase();
+    return availablePrimitives.find((primitive) => primitive.category === "RANGE" && (
+      primitive.name.toLowerCase() === `${needle} range` ||
+      primitive.name.toLowerCase() === needle ||
+      primitiveSearchText(primitive).includes(`range to ${needle}`)
+    ));
+  };
+  const outputPrimitive = (die: string) => availablePrimitives.find((primitive) =>
+    (primitive.category === "INTENSITY_DICE" || primitive.category === "OUTPUT") &&
+    primitiveSearchText(primitive).includes(die.toLowerCase()),
+  );
+  const chooseTableRange = (label: string) => {
+    const primitive = rangePrimitive(label);
+    if (primitive) {
+      setTableDraft((current) => ({ ...current, range: label }));
+      chooseRulePrimitive("RANGE", primitive.id);
+      setMessage(`${primitive.name} added to Pieces. Remove or replace it there at any time.`);
+    } else {
+      setMessage(`No ${label} range primitive is available in this library.`);
+    }
+  };
+  const chooseTableOutput = (die: string) => {
+    if (die === "None") {
+      setTableDraft((current) => ({ ...current, output: die }));
+      chooseRulePrimitive("OUTPUT", null);
+      setMessage("Output die removed from Pieces.");
+      return;
+    }
+    const primitive = outputPrimitive(die);
+    if (primitive) {
+      setTableDraft((current) => ({ ...current, output: die }));
+      chooseRulePrimitive("OUTPUT", primitive.id);
+      setMessage(`${primitive.name} added to Pieces. Remove or replace it there at any time.`);
+    } else {
+      setMessage(`No ${die} output primitive is available in this library.`);
+    }
+  };
 
   const renderDedicatedSlot = (
     role: DedicatedRole,
@@ -610,7 +667,7 @@ export function CapabilityForm({
         </button>
       </div>
 
-      <AuthorChapters defaultActive="identity" order={["identity", "pieces", "table", "publish"]}>
+      <AuthorChapters defaultActive="identity" order={["identity", "pieces", "table", "publish"]} guideKind="capability">
         <AuthorChapter id="pieces" title="Pieces">
       <section className="v12-foundation-pieces v12-dedicated-slots rounded-lg border border-border bg-background/60 p-2.5">
         <header className="mb-2 flex items-center justify-between gap-2">
@@ -868,8 +925,15 @@ export function CapabilityForm({
           ["placement", "Placement", ["Self", "Target", "Point", "Directional"]],
           ["duration", "Effect duration", ["Instant", "Short", "Medium", "Long", "Scene", "Persistent", "Permanent"]],
           ["casting", "Casting time", ["Action", "Instant", "Short", "Medium", "Long", "Scene"]],
-        ] as const).map(([key,label,values])=><fieldset key={key} className="min-w-0 rounded-lg border border-border bg-background/70 px-3 pb-3 pt-1.5"><legend className="px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#df8752]">{label}</legend><div className="flex flex-wrap gap-1.5">{values.map(value=><button type="button" key={value} aria-pressed={tableDraft[key]===value} onClick={()=>setTableDraft(current=>({...current,[key]:value}))} className="min-h-8 rounded-md border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground aria-pressed:border-primary aria-pressed:bg-primary/15 aria-pressed:text-primary">{value}</button>)}</div></fieldset>)}
-        <div className="rounded-lg border border-primary/40 bg-background px-3 py-2.5 md:col-span-2"><p className="v12-kicker">Table declaration</p><h3 className="mt-1 font-semibold">{form.name || "Untitled capability"}</h3><p className="mt-1 text-sm text-muted-foreground">{tableDraft.casting} · {tableDraft.target} · {tableDraft.shape} · {tableDraft.size} · {tableDraft.placement} · {tableDraft.range} · {tableDraft.output} · {tableDraft.duration}</p><small className="mt-2 block text-xs text-muted-foreground">{slots.length} direct pieces · {effectIds.length} effects · {previewBu} BU</small></div>
+        ] as const).map(([key,label,values])=><section key={key} className="v12-table-axis"><h3>{label}</h3><div>{values.map(value=><button type="button" key={value} aria-pressed={tableDraft[key]===value} onClick={()=>setTableDraft(current=>({...current,[key]:value}))}>{value}</button>)}</div></section>)}
+        <section className="v12-table-axis"><h3>Range</h3><div>{["Touch", "Close", "Near", "Far", "Very Far", "Extreme"].map(value=><button type="button" key={value} aria-pressed={selectedRange===value} onClick={()=>chooseTableRange(value)}>{value}</button>)}</div><small>Choosing a range adds or replaces its primitive in Pieces.</small></section>
+        <section className="v12-table-axis"><h3>Output die</h3><div>{["None", "d4", "d6", "d8", "d10", "d12", "d20"].map(value=><button type="button" key={value} aria-pressed={selectedOutput===value} onClick={()=>chooseTableOutput(value)}>{value}</button>)}</div><small>Choosing a die adds or replaces its primitive in Pieces.</small></section>
+        <div className="v12-table-readout">
+          <div className="v12-table-intent"><p className="v12-kicker">Spoken intent</p><h3>{form.name || "Untitled capability"}</h3><p>{tableDraft.casting} · {tableDraft.target} · {tableDraft.shape} · {tableDraft.size} · {tableDraft.placement} · {selectedRange} · {selectedOutput} · {tableDraft.duration}</p></div>
+          <dl className="v12-table-metrics"><div><dt>Base BU</dt><dd>{previewBu}</dd></div><div><dt>Scaled CV</dt><dd>{previewBu}</dd></div><div><dt>Strain</dt><dd>DM</dd></div></dl>
+          <p className="v12-table-recipe-count">{slots.length} direct pieces · {effectIds.length} effects · {previewBu} BU total</p>
+          <details className="v12-table-disclaimer"><summary>Scaling reference and optional pinned defaults</summary><p>A creator may save examples, but the player declares scaling at the table. Player and DM negotiate its cost from the scaled CV and the fiction. Consequences may spend vitality, impose a story complication, suspend access to a capability, or apply a numeric penalty to a relevant value.</p></details>
+        </div>
       </div>
 
         </AuthorChapter>

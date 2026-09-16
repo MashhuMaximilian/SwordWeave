@@ -1400,7 +1400,7 @@ export function PrimitiveForm({
         </div>
       </div>
 
-      <AuthorChapters defaultActive="identity">
+      <AuthorChapters defaultActive="identity" guideKind="primitive">
         <AuthorChapter id="identity" title="Identity">
       {/* Phase 7.5 v4-rev: mobile-first compact layout.
           Mashu (round 1): "Name and icon could be on the
@@ -1868,6 +1868,19 @@ export function PrimitiveForm({
         </div>
       </fieldset>
 
+      <details
+        className="v12-resolver-details rounded-md border border-border bg-background p-4 md:col-span-2"
+        open={showJsonPreview}
+        onToggle={(event) => setShowJsonPreview(event.currentTarget.open)}
+      >
+        <summary className="cursor-pointer text-sm font-semibold">
+          Full Primitive JSON Preview
+        </summary>
+        <pre className="mt-3 overflow-x-auto rounded-md bg-card p-3 text-xs">
+          {JSON.stringify(primitiveJsonPreview, null, 2)}
+        </pre>
+      </details>
+
         </AuthorChapter>
         <AuthorChapter id="publish" title="Publish">
       <AuthorPublishFields
@@ -1881,19 +1894,6 @@ export function PrimitiveForm({
       />
         </AuthorChapter>
       </AuthorChapters>
-
-      <details
-        className="v12-resolver-details rounded-md border border-border bg-background p-4 md:col-span-2"
-        open={showJsonPreview}
-        onToggle={(event) => setShowJsonPreview(event.currentTarget.open)}
-      >
-        <summary className="cursor-pointer text-sm font-semibold">
-          Full Primitive JSON Preview
-        </summary>
-        <pre className="mt-3 overflow-x-auto rounded-md bg-card p-3 text-xs">
-          {JSON.stringify(primitiveJsonPreview, null, 2)}
-        </pre>
-      </details>
 
       <div className="v12-form-actions flex flex-wrap items-center gap-3 md:col-span-2">
         <button

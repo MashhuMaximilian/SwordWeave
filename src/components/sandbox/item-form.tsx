@@ -546,10 +546,19 @@ export function ItemForm({
   }
 
   // Mashu 2026-07-09: Math.abs() per the mirror rule. Defensive.
-  const computedBu = slottedPrimitives.reduce(
+  const directBu = slottedPrimitives.reduce(
     (sum, slot) => sum + Math.abs(slot.buCost),
     0,
   );
+  const computedBu = directBu
+    + capabilityIds.reduce((sum, id) => {
+      const capability = availableCapabilities.find((entry) => entry.id === id);
+      return sum + (capability ? recipeCompositionBu(capability.primitiveLinks, capability.effectLinks) : 0);
+    }, 0)
+    + effectIds.reduce((sum, id) => {
+      const effect = availableEffects.find((entry) => entry.id === id);
+      return sum + primitiveLinksBu(effect?.primitiveLinks);
+    }, 0);
 
   return (
     <form
@@ -596,15 +605,16 @@ export function ItemForm({
         </button>
       </div>
 
-      <AuthorChapters>
+      <AuthorChapters guideKind="item">
         <AuthorChapter id="pieces" title="Pieces">
       <section className="rounded-md border border-border bg-background p-4">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-bold">Item-augment Primitives</h3>
           <span className="rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
-            {computedBu} BU
+            {directBu} BU
           </span>
         </div>
+        <p className="v12-recipe-budget-summary">Total recipe · {computedBu} BU</p>
 
         {primitiveIds.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">

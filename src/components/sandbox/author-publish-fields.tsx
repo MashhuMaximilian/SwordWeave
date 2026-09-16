@@ -28,6 +28,18 @@ export function AuthorPublishFields({
   const visibilityLabelId = useId();
   return (
     <div className="v12-author-publish grid gap-3">
+      <section
+        className="v12-field-visibility rounded-lg border border-border bg-background p-2.5"
+        aria-labelledby={visibilityLabelId}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h3 id={visibilityLabelId}>Visibility</h3>
+            <p>Controls who can find this entry in the Library.</p>
+          </div>
+          <VisibilitySelect compact value={isPublic ? "PUBLIC" : "PRIVATE"} onChange={(next) => onPublicChange(next === "PUBLIC")} />
+        </div>
+      </section>
       <div className="v12-supporting-fields grid gap-3 sm:grid-cols-2">
         <label className="v12-field-market block text-sm font-medium">
           Tags
@@ -55,30 +67,6 @@ export function AuthorPublishFields({
           />
         </label>
       </div>
-
-      <section
-        className="v12-field-visibility rounded-lg border border-border bg-background p-2.5"
-        aria-labelledby={visibilityLabelId}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="min-w-0">
-            <h3
-              id={visibilityLabelId}
-              className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-            >
-              Visibility
-            </h3>
-            <p className="mt-0.5 text-[11px] font-normal leading-snug text-muted-foreground">
-              Controls who can find this entry in the Library.
-            </p>
-          </div>
-          <VisibilitySelect
-            compact
-            value={isPublic ? "PUBLIC" : "PRIVATE"}
-            onChange={(next) => onPublicChange(next === "PUBLIC")}
-          />
-        </div>
-      </section>
     </div>
   );
 }

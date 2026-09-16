@@ -567,7 +567,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
         // buffer so the FAB also clears any half-collapsed sidebar
         // chrome. The extra 40px keeps it comfortably above page footers
         // and the Atelier tab bar on every route.
-        bottomOffset={96}
+        bottomOffset={76}
       />
       <RightFilterPanel />
       <BuildPreviewDrawer />

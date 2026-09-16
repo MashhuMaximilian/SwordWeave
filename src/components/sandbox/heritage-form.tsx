@@ -520,8 +520,12 @@ export function HeritageForm({
   }
 
   // Mashu 2026-07-09: Math.abs() per the mirror rule. Defensive.
-  const computedBu = slottedPrimitives.reduce(
+  const directBu = slottedPrimitives.reduce(
     (sum, p) => sum + Math.abs(p.buCost),
+    0,
+  );
+  const computedBu = directBu + slottedCapabilities.reduce(
+    (sum, capability) => sum + recipeCompositionBu(capability.primitiveLinks, capability.effectLinks),
     0,
   );
 
@@ -587,7 +591,7 @@ export function HeritageForm({
         </div>
       </div>
 
-      <AuthorChapters defaultActive="identity" order={["identity", "pieces", "publish"]}>
+      <AuthorChapters defaultActive="identity" order={["identity", "pieces", "publish"]} guideKind="heritage">
         <AuthorChapter id="pieces" title="Pieces">
       <section className="rounded-md border border-border bg-background p-4">
         <div className="flex items-center justify-between gap-3">
@@ -595,9 +599,10 @@ export function HeritageForm({
             {kindSingular(form.kind)} Primitives
           </h3>
           <span className="rounded-sm bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
-            {computedBu} BU
+            {directBu} BU
           </span>
         </div>
+        <p className="v12-recipe-budget-summary">Total recipe · {computedBu} BU</p>
         <p className="mt-1 text-xs text-muted-foreground">
           Pick any primitive — categories are not restricted for this kind.
         </p>

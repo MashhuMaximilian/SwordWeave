@@ -73,6 +73,7 @@ const BUILD_ICON_COLOR = "#ffffff";
 const COLLAPSED_STRIP_PX = 4;
 const HIDDEN_PX = 0;
 const STORAGE_PREFIX = "sandbox:layout:";
+const LAYOUT_REVISION = 2;
 const MOBILE_BREAKPOINT_PX = 768; // <768 = mobile (tabs)
 const TABLET_BREAKPOINT_PX = 1024; // 768-1023 = tablet (2 cols + toggle preview)
 
@@ -130,6 +131,7 @@ type SandboxLayoutProps = {
 };
 
 type StoredLayout = {
+  revision?: number;
   widths: Partial<Record<ColumnKey, number>>;
   hidden: ColumnKey[];
   previewVisible?: boolean;
@@ -142,6 +144,7 @@ function readStorage(key: string): StoredLayout | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredLayout;
     if (typeof parsed !== "object" || parsed === null) return null;
+    if (parsed.revision !== LAYOUT_REVISION) return null;
     return parsed;
   } catch {
     return null;
@@ -158,9 +161,9 @@ function writeStorage(key: string, layout: StoredLayout) {
 }
 
 const DEFAULT_WIDTHS: Record<ColumnKey, number> = {
-  library: 18,
-  builder: 57,
-  preview: 24,
+  library: 27,
+  builder: 42,
+  preview: 31,
 };
 
 function clampWidth(value: number): number {
@@ -222,6 +225,7 @@ export function SandboxLayout({
     };
     writeStorage(storageKey, {
       ...stored,
+      revision: LAYOUT_REVISION,
       hidden: Array.from(hiddenColumns),
       previewVisible,
     });
@@ -294,7 +298,7 @@ export function SandboxLayout({
         hidden: [],
         previewVisible: true,
       };
-      writeStorage(storageKey, { ...stored, widths });
+      writeStorage(storageKey, { ...stored, revision: LAYOUT_REVISION, widths });
     },
     [hydrated, storageKey],
   );
