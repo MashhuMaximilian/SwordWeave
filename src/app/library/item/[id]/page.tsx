@@ -1103,12 +1103,12 @@ async function CapabilityDetail({
           <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
             Primitives from effects ({effectPrimitiveCount})
           </h2>
-          <ul className="divide-y divide-border rounded-md border border-border">
+          <ul className="grid gap-2 md:grid-cols-2">
             {row.effectLinks.flatMap((link) =>
               (effectPrimMap.get(link.effectId) ?? []).map((p) => (
                 <li
                   key={`eff-${link.effectId}-${p.primitiveId}`}
-                  className="flex items-center justify-between gap-2 p-3 text-sm"
+                  className="flex min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-card/40 p-2.5 text-sm"
                 >
                   <Link
                     href={`/library/item/PRIMITIVE:${p.primitiveId}`}
@@ -1138,7 +1138,7 @@ async function CapabilityDetail({
           <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
             Composed effects ({row.effectLinks.length})
           </h2>
-          <ul className="divide-y divide-border rounded-md border border-border">
+          <ul className="grid gap-2 md:grid-cols-2">
             {row.effectLinks.map((link) => {
               const version =
                 versionMap.get(`effect:${link.effectId}` as VersionNumberKey) ?? null;
@@ -1148,7 +1148,7 @@ async function CapabilityDetail({
               return (
                 <li
                   key={`${link.capabilityId}-${link.effectId}`}
-                  className="flex items-center justify-between gap-2 p-3 text-sm"
+                  className="flex min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-card/40 p-2.5 text-sm"
                 >
                   <Link
                     href={`/library/item/EFFECT:${link.effectId}`}
@@ -1347,14 +1347,14 @@ async function TemplateDetail({
           <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
             Bundled primitives ({row.primitiveLinks.length})
           </h2>
-          <ul className="divide-y divide-border rounded-md border border-border">
+          <ul className="grid gap-2 md:grid-cols-2">
             {row.primitiveLinks.map((link) => {
               const version =
                 versionMap.get(`primitive:${link.primitiveId}` as VersionNumberKey) ?? null;
               return (
                 <li
                   key={`${link.templateId}-${link.primitiveId}`}
-                  className="flex items-center justify-between gap-2 p-3 text-sm"
+                  className="flex min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-card/40 p-2.5 text-sm"
                 >
                   <Link
                     href={`/library/item/PRIMITIVE:${link.primitiveId}`}
@@ -1473,7 +1473,7 @@ async function TemplateDetail({
           <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
             Bundled capabilities ({row.capabilityLinks.length})
           </h2>
-          <ul className="divide-y divide-border rounded-md border border-border">
+          <ul className="grid gap-2 md:grid-cols-2">
             {row.capabilityLinks.map((link) => {
               const version =
                 versionMap.get(`capability:${link.capabilityId}` as VersionNumberKey) ?? null;
@@ -1490,7 +1490,7 @@ async function TemplateDetail({
               return (
                 <li
                   key={`${link.templateId}-${link.capabilityId}`}
-                  className="flex items-center justify-between gap-2 p-3 text-sm"
+                  className="flex min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-card/40 p-2.5 text-sm"
                 >
                   <Link
                     href={`/library/item/CAPABILITY:${link.capabilityId}`}
@@ -2048,7 +2048,7 @@ async function ItemDetail({
           <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
             Composed effects ({effectLinks.length})
           </h2>
-          <ul className="divide-y divide-border rounded-md border border-border">
+          <ul className="grid gap-2 md:grid-cols-2">
             {effectLinks.map((link) => {
               const version =
                 versionMap.get(`effect:${link.effectId}` as VersionNumberKey) ?? null;
@@ -2057,7 +2057,7 @@ async function ItemDetail({
               return (
                 <li
                   key={`${link.itemId}-${link.effectId}`}
-                  className="flex items-center justify-between gap-2 p-3 text-sm"
+                  className="flex min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-card/40 p-2.5 text-sm"
                 >
                   <Link
                     href={`/library/item/EFFECT:${link.effectId}`}

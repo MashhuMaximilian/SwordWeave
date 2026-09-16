@@ -21,7 +21,6 @@ import {
 } from "@/lib/publishing/library-classification";
 import { useEffect, useMemo, useState } from "react";
 import { useSandboxSaveHandler } from "./use-sandbox-save-handler";
-import { useRouter } from "next/navigation";
 import { LibraryToolbar, type LibraryToolbarState } from "@/components/library/library-toolbar";
 import { LibraryTable } from "@/components/library/library-table";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
@@ -882,18 +881,9 @@ function SandboxPreviewBody({
   onFork: ((targetType: string, targetId: string) => void) | undefined;
   currentUser: { username: string; displayName: string | null; avatarUrl: string | null } | null;
 }) {
-  // Pull openDrawer from the global controls so we can pop the build
-  // preview after a slot/load — the user wants to see the build
-  // column/drawer open so they can see the slot land or the loaded
-  // entity's preview update. (Previously the modal closed and the
-  // user had to manually tap the build/preview tab.)
-  //
-  // Split-mode contract: in split mode the build + preview are already
-  // rendered inline in the bottom panel. We MUST NOT pop the drawer
-  // there (would overlay the inline content). Instead we switch the
-  // bottom tab so the user sees the result of the slot/load inline.
+  // Preview actions may focus the inline split workspace, but the
+  // persistent Build & Preview drawer is reserved for its FAB action.
   const {
-    openDrawer,
     sandboxSplit,
     setSandboxBottomTab,
   } = useGlobalControls();
@@ -1002,7 +992,6 @@ function SandboxPreviewBody({
   // hook fetches the user's existing reaction (so the bar shows the right
   // active state) on first open. Counts + author info come from the
   // LibraryItem we passed in.
-  const router = useRouter();
   const { engagement } = useSandboxEngagement(libraryItem);
 
   function slotIntoBuild() {
@@ -1023,8 +1012,6 @@ function SandboxPreviewBody({
       window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
       if (sandboxSplit) {
         setSandboxBottomTab("build");
-      } else {
-        openDrawer("build");
       }
     }
   }
@@ -1105,8 +1092,8 @@ function SandboxPreviewBody({
   // Ownership + visibility drive the unified action bar. The bar is the
   // SAME component used by My Creations + the library detail page, so the
   // Atelier preview now matches them exactly: a 3-col Edit/Source/Versions
-  // grid, a full-width Delete (gated on PRIVATE), and the "Load into build"
-  // / "Slot into build" CTAs surfaced as primary buttons above the grid.
+  // utility row, a full-width Delete (gated on PRIVATE), and named
+  // destinations for workspace, composition, and character actions.
   const isOwner =
     !!engagement &&
     !!engagement.authorId &&
@@ -1176,11 +1163,35 @@ function SandboxPreviewBody({
   // still seeding its edit-mode data (fetch pending), disable
   // the "Slot into [tab]" button and show a loading indicator.
   const isSeedingEdit = characterModal.isSeedingEdit;
+  const activeBuildLabel = buildFormKind ?? "build";
 
   const actionBar: PreviewActionProps = {
-    loadIntoBuild: { label: "Load into build", onClick: onLoadIntoBuild },
-    ...(canSlot ? { primarySecondary: { label: "Slot into build", onClick: slotIntoBuild } } : {}),
-    ...((item.kind === "primitive" || item.kind === "effect" || item.kind === "capability") ? { buildModal: { label: "Add to build modal", onClick: () => window.dispatchEvent(new CustomEvent("sw-slot-secondary-build", { detail: { kind: item.kind, id: item.row.id, label: item.row.name } })) } } : {}),
+    workspace: {
+      label: "Edit in middle workspace",
+      description: "Replace the current draft in the middle column.",
+      onClick: onLoadIntoBuild,
+    },
+    ...(canSlot
+      ? {
+          primarySecondary: {
+            label: `Add to active ${activeBuildLabel}`,
+            description: "Insert this into the draft open in the middle workspace.",
+            onClick: slotIntoBuild,
+          },
+        }
+      : {}),
+    ...((item.kind === "primitive" || item.kind === "effect" || item.kind === "capability")
+      ? {
+          buildModal: {
+            label: "Add to persistent build",
+            description: "Keep it in Build & Preview; open that workspace from the FAB.",
+            onClick: () => {
+              window.dispatchEvent(new CustomEvent("sw-slot-secondary-build", { detail: { kind: item.kind, id: item.row.id, label: item.row.name } }));
+              window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
+            },
+          },
+        }
+      : {}),
     // Phase 8.1 batch 8 + batch 11: context-aware "Slot into [step]"
     // for the character modal. Label driven by the RESOLVED
     // destination tab (resolveSlotDestination), not the raw active
@@ -1212,7 +1223,8 @@ function SandboxPreviewBody({
       : canSlotIntoCharacter
         ? {
             primaryTertiary: {
-              label: `Slot into ${tabLabelForActiveStep(resolveSlotDestination(characterModal.activeStep), characterModal.isOpen)}`,
+              label: `Add to character · ${tabLabelForActiveStep(resolveSlotDestination(characterModal.activeStep), characterModal.isOpen)}`,
+              description: "Insert this into the active character creation step.",
               onClick: slotIntoCharacter,
             },
           }
@@ -1249,8 +1261,6 @@ function SandboxPreviewBody({
         : {}),
     ...(isOwner
       ? {
-          onEdit: () =>
-            router.push(`/atelier?build=${item.kind}&edit=${item.row.id}`),
           onDelete: handleDelete,
           deletable: true,
           canDelete,

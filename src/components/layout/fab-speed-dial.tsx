@@ -92,6 +92,8 @@ export type FabUserMenu = {
   key: string;
 };
 
+type FabAccountUser = NonNullable<FabSpeedDialProps["currentUser"]>;
+
 export type FabItem = FabAction | FabLink | FabDivider | FabUserMenu;
 
 interface FabSpeedDialProps {
@@ -155,6 +157,9 @@ export function FabSpeedDial({
   // FAB game-icons: white on dark, near-black (#011614) on light so they
   // stay visible against the light surface.
   const fabIconColor = isDark ? "#ffffff" : "#011614";
+  const accountLabel = currentUser?.displayName
+    ? `Account · ${currentUser.displayName}`
+    : "Account";
 
   // Close on outside click / Escape.
   useEffect(() => {
@@ -181,14 +186,16 @@ export function FabSpeedDial({
   return (
     <div
       ref={containerRef}
-      className="fixed right-3 z-40 flex flex-col items-end gap-2 sm:right-4"
+      className="sw-fab fixed right-3 z-40 flex flex-col items-end gap-2 sm:right-4"
+      data-fab-root
       style={{
         bottom: `calc(${bottomOffset}px + env(safe-area-inset-bottom, 0px))`,
       }}
     >
       {open ? (
         <div
-          className="v12-instrument flex max-h-[80vh] w-[min(280px,calc(100vw-1.5rem))] flex-col items-stretch gap-0.5 overflow-y-auto rounded-xl border border-border bg-background/95 p-1.5 shadow-2xl backdrop-blur-md"
+          className="sw-fab__menu v12-instrument flex max-h-[80vh] w-[min(280px,calc(100vw-1.5rem))] flex-col items-stretch gap-0.5 overflow-y-auto rounded-xl border border-border bg-background/95 p-1.5 shadow-2xl backdrop-blur-md"
+          data-fab-menu
           // Stop the close-on-outside-pointer from racing the click when the
           // user taps inside the dial. pointerdown bubbles up; without this
           // guard the dial closes before the click handler can fire (which
@@ -235,6 +242,7 @@ export function FabSpeedDial({
               return (
                 <Link
                   key={item.key}
+                  data-fab-link={item.key}
                   href={item.href}
                   onClick={(e) => {
                     // Navigate with a hard navigation. Relying on <Link>'s
@@ -278,6 +286,7 @@ export function FabSpeedDial({
               <button
                 key={item.key}
                 type="button"
+                data-fab-action={item.key}
                 onClick={() => {
                   item.onClick();
                   if (item.active === undefined) setOpen(false);
@@ -320,7 +329,8 @@ export function FabSpeedDial({
               Row 1: split, dark, fullscreen toggles.
               Row 2: account (opens user menu), build and preview, character (Mona Lisa). */}
           <div
-            className="mt-1 grid grid-cols-3 gap-1 rounded-lg border border-border/60 bg-card/40 p-1"
+            className="sw-fab__action-grid mt-1 grid grid-cols-3 gap-1 rounded-lg border border-border/60 bg-card/40 p-1"
+            data-fab-action-grid
             style={{
               animation: `sw-fab-item-in 180ms ease-out both`,
               animationDelay: `${items.length * 20}ms`,
@@ -338,8 +348,12 @@ export function FabSpeedDial({
                 {
                   kind: "action" as const,
                   key: "account",
-                  label: "Account",
-                  icon: <UserRound className="size-4" />,
+                  label: accountLabel,
+                  icon: currentUser ? (
+                    <FabAccountAvatar user={currentUser} />
+                  ) : (
+                    <UserRound className="size-4" aria-hidden="true" />
+                  ),
                   // Push the user-menu modal FIRST, then close the FAB. The
                   // old `setTimeout(0)` deferred the push to the next tick,
                   // which raced against React's flush and sometimes dropped
@@ -362,6 +376,7 @@ export function FabSpeedDial({
               <button
                 key={action.key}
                 type="button"
+                data-fab-action={action.key}
                 onClick={() => action.onClick()}
                 disabled={action.disabled}
                 aria-pressed={action.active}
@@ -396,6 +411,7 @@ export function FabSpeedDial({
       {/* Primary FAB — hamburger icon (Menu ↔ X) */}
       <button
         type="button"
+        data-fab-trigger
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? "Close menu" : primaryLabel}
         aria-expanded={open}
@@ -423,6 +439,29 @@ export function FabSpeedDial({
         }
       `}</style>
     </div>
+  );
+}
+
+function FabAccountAvatar({ user }: { user: FabAccountUser }) {
+  const fallback = (user.displayName ?? user.username).trim() || "?";
+  if (user.avatarUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={user.avatarUrl}
+        alt=""
+        aria-hidden="true"
+        className="sw-fab__account-avatar size-6 rounded-full border border-primary/60 object-cover"
+      />
+    );
+  }
+  return (
+    <span
+      aria-hidden="true"
+      className="sw-fab__account-avatar flex size-6 items-center justify-center rounded-full border border-primary/60 bg-primary/10 text-[10px] font-bold text-primary"
+    >
+      {fallback[0]?.toUpperCase() ?? "?"}
+    </span>
   );
 }
 

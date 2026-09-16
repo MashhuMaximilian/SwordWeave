@@ -452,7 +452,7 @@ export function HeritageBundleView({
             <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               Capabilities ({fullCaps.length})
             </div>
-            <ul className="space-y-2">
+            <ul className="grid gap-2 xl:grid-cols-2">
               {fullCaps.map((cl) => {
                 const slotted = slottedCapIds.has(cl.capabilityId);
                 const cap = cl.capability;
@@ -540,16 +540,16 @@ export function HeritageBundleView({
                 return (
                   <li
                     key={cl.capabilityId}
-                    className="rounded border border-border bg-card/40 p-2.5"
+                    className="min-w-0 rounded border border-border bg-card/40 p-2"
                   >
                     <button
                       type="button"
                       onClick={() => {
                         void openCapabilityPreviewById(cl.capabilityId);
                       }}
-                      className="flex w-full items-center justify-between gap-2 text-left hover:opacity-80"
+                      className="flex w-full min-w-0 items-center justify-between gap-2 text-left hover:opacity-80"
                     >
-                      <span className="font-medium">{cap.name}</span>
+                      <span className="min-w-0 truncate font-medium">{cap.name}</span>
                       <span className="flex items-center gap-1.5 shrink-0">
                         {slotted ? (
                           <span className="inline-flex items-center gap-1 rounded bg-green-500/10 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400">
@@ -569,18 +569,18 @@ export function HeritageBundleView({
                     )}
                     {/* Effects nested under the capability */}
                     {nestedEffects.length > 0 && (
-                      <details open className="mt-2 group/effects">
+                      <details open className="mt-1.5 group/effects">
                         <summary className="flex cursor-pointer items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground list-none">
                           <ChevronDown className="size-3 transition-transform group-open/effects:rotate-180" />
                           Effects ({nestedEffects.length})
                         </summary>
-                        <ul className="mt-1.5 space-y-1.5 pl-2 border-l-2 border-border">
+                        <ul className="mt-1 grid gap-1 border-l-2 border-border pl-2 sm:grid-cols-2 xl:grid-cols-1">
                           {nestedEffects.map((el) => {
                             const effPrims = el.primitiveLinks ?? [];
                             return (
                               <li
                                 key={el.effectId}
-                                className="rounded bg-muted/30 px-2 py-1.5"
+                                className="min-w-0 rounded bg-muted/30 px-2 py-1.5"
                               >
                                 <div className="flex items-center gap-1.5">
                                   <span className="font-medium text-foreground">

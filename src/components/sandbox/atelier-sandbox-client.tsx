@@ -14,12 +14,10 @@
 // single client so the page shares one SandboxLayout, one dirty-guard, one
 // dispatch pipeline, and one mobile split behaviour.
 //
-// Mobile split-screen contract (must NOT regress):
-//   - On desktop/tablet the build form is mounted inline in the middle
-//     column; the build/preview DRAWER must never open there (mobile only).
-//   - On mobile the build + preview live in the bottom split panel; the
-//     drawer is only used off-split. openDrawer("build") is gated behind
-//     useIsMobile() everywhere.
+// Build surface contract:
+//   - The middle workspace owns library load/edit actions.
+//   - Split mode may focus its inline Build tab after a load.
+//   - The persistent Build & Preview drawer opens only from its FAB action.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -44,7 +42,6 @@ import { UnsavedChangesModal } from "./unsaved-changes-modal";
 import { useGlobalControls } from "@/components/layout/global-controls";
 import { EntityPreview } from "@/components/preview/entity-preview";
 import type { SandboxPreviewItem } from "@/components/library/library-item-preview";
-import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { useIsDark } from "@/lib/hooks/use-is-dark";
 import { IconDisplay } from "@/components/icons/icon-display";
 import type { LibraryItem } from "@/lib/publishing/library-query";
@@ -388,9 +385,8 @@ export function AtelierSandboxClient({
   tabCacheRef.current = tabCache;
   const modalDescRef = useRef<string | undefined>(undefined);
 
-  const { setSandboxFormDirty, openDrawer, sandboxSplit, setSandboxBottomTab } =
+  const { setSandboxFormDirty, sandboxSplit, setSandboxBottomTab } =
     useGlobalControls();
-  const isMobile = useIsMobile();
   const isDark = useIsDark();
 
   // Phase 8.2 batch 7 rev 2: character-edit modal bootstrap.
@@ -422,17 +418,12 @@ export function AtelierSandboxClient({
   //   );
   //   const consumedEditRef = useRef<string | null>(null);
 
-  // Open the build panel (mobile drawer / split bottom tab). No-op on
-  // desktop where the build column is always visible. Declared before the
-  // effects below so onOpenNew / loadFromLibrary can reference it.
-  const openBuildPanel = useCallback(() => {
-    if (!isMobile) return;
-    if (sandboxSplit) {
-      setSandboxBottomTab("build");
-    } else {
-      openDrawer("build");
-    }
-  }, [isMobile, sandboxSplit, openDrawer, setSandboxBottomTab]);
+  // A library load targets the middle workspace. In split mode that
+  // workspace is represented by the inline Build tab, so focus it without
+  // opening the separate persistent Build & Preview drawer.
+  const focusMiddleWorkspace = useCallback(() => {
+    if (sandboxSplit) setSandboxBottomTab("build");
+  }, [sandboxSplit, setSandboxBottomTab]);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -592,18 +583,12 @@ export function AtelierSandboxClient({
     return () => window.removeEventListener("sw-start-new-entity", onStartNewEntity);
   });
 
-  // Auto-open build panel on server-routed loads (?edit=<id>) and explicit
-  // contextual Library creates (?new=1) — mobile only.
+  // Focus the inline workspace on server-routed loads. The persistent
+  // drawer remains closed until the user explicitly opens it from the FAB.
   useEffect(() => {
     if (initialEditing === null && !initialNew) return;
-    if (!isMobile) return;
-    if (sandboxSplit) {
-      setSandboxBottomTab("build");
-    } else {
-      openDrawer("build");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialEditing, initialNew, sandboxSplit, openDrawer, setSandboxBottomTab, isMobile]);
+    focusMiddleWorkspace();
+  }, [initialEditing, initialNew, focusMiddleWorkspace]);
 
   const applyPendingAction = useCallback(
 
@@ -673,9 +658,9 @@ export function AtelierSandboxClient({
       setFormIsDirty(false);
       setBuildStarted(true);
       setShowNewModal(false);
-      // Auto-open the build panel on mobile so the loaded content is
-      // visible (desktop already shows it inline).
-      openBuildPanel();
+      // Focus the inline middle workspace. Opening Build & Preview is a
+      // separate, explicit FAB action.
+      focusMiddleWorkspace();
       // Update the URL with the concrete ?build=<kind>&edit=<id>&intent=load|fork
       // (same format the working /sandbox/grammar|blueprint routes use).
       // IMPORTANT: do NOT use router.push/replace here. A Next navigation
@@ -698,7 +683,7 @@ export function AtelierSandboxClient({
     [
       stack,
       router,
-      openBuildPanel,
+      focusMiddleWorkspace,
       buildSandboxUrl,
       primitives,
       effects,
@@ -1767,7 +1752,6 @@ function SecondaryBuildWorkspace({
   const [saved, setSaved] = useState<{ kind: "effect" | "capability" | "heritage" | "item"; id: string; name: string; heritageKind?: "LINEAGE" | "UPBRINGING" | "MANIFEST" } | null>(null);
   const [pendingSlot, setPendingSlot] = useState<{kind:"primitive"|"effect"|"capability";id:string|number;label:string} | null>(null);
   const slotBus = useMemo(() => new EventTarget(), []);
-  const { openDrawer } = useGlobalControls();
   const characterModal = useCharacterModal();
 
   useEffect(() => {
@@ -1780,11 +1764,10 @@ function SecondaryBuildWorkspace({
       } else {
         slotBus.dispatchEvent(new CustomEvent("sw-sandbox-slot", { detail }));
       }
-      openDrawer("build");
     };
     window.addEventListener("sw-slot-secondary-build", handler);
     return () => window.removeEventListener("sw-slot-secondary-build", handler);
-  }, [kind, openDrawer, slotBus]);
+  }, [kind, slotBus]);
 
   const reset = () => { setKind(null); setHeritageKind("MANIFEST"); setSaved(null); setPendingSlot(null); setRevision((value) => value + 1); };
   const commonSaved = (next: { id: string; name: string }, nextKind: NonNullable<typeof kind>, heritageKind?: "LINEAGE" | "UPBRINGING" | "MANIFEST") => {

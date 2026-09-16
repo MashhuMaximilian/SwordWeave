@@ -45,7 +45,7 @@ interface SandboxPreviewModalProps {
   item: SandboxPreviewItem | null;
   onClose: () => void;
   /**
-   * Label of the primary action button. Defaults to "Load into Build".
+   * Label of the primary action button. Defaults to the middle workspace.
    * Set to null to hide the action button entirely (e.g. for read-only previews).
    */
   primaryActionLabel?: string | null;
@@ -61,7 +61,7 @@ interface SandboxPreviewModalProps {
 export function SandboxPreviewModal({
   item,
   onClose,
-  primaryActionLabel = "Load into Build",
+  primaryActionLabel = "Edit in middle workspace",
   onPrimaryAction,
   owner,
   actions,
@@ -82,14 +82,20 @@ export function SandboxPreviewModal({
 
   if (!item) return null;
 
-  // The modal shell keeps a Close button. The "Load into Build" primary
+  // The modal shell keeps a Close button. The middle-workspace primary
   // (when provided) is surfaced inside the unified action bar so it sits
   // in the SAME position as the creations preview's primary action.
   const actionBar: PreviewActionProps | undefined = actions
     ? {
         ...actions,
         ...(primaryActionLabel !== null && onPrimaryAction
-          ? { primary: { label: primaryActionLabel, onClick: onPrimaryAction } }
+          ? {
+              primary: {
+                label: primaryActionLabel,
+                description: "Replace the current draft in the middle column.",
+                onClick: onPrimaryAction,
+              },
+            }
           : {}),
       }
     : undefined;

@@ -31,7 +31,7 @@ import {
 } from "./fab-speed-dial";
 import { RightFilterPanel } from "./right-filter-panel";
 import { BuildPreviewDrawer } from "./build-preview-drawer";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useCharacterModal } from "@/components/character-modal/character-modal-store";
 import {
@@ -56,6 +56,14 @@ const FAB_ICON_COLOR_LIGHT = "#011614";
 const FAB_ICON_COLOR_DARK = "#ffffff";
 
 type DrawerTab = "build" | "preview" | null;
+
+type CurrentUser = {
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+};
+
+type ProfileResponse = CurrentUser;
 
 interface GlobalControlsState {
   /** Dark mode on/off. */
@@ -150,7 +158,6 @@ const STORAGE_KEY_SPLIT = "sw-sandbox-mobile-split";
 
 export function GlobalControls({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const isSandboxRoute =
     pathname?.startsWith("/sandbox") || pathname === "/atelier" || false;
   const isMobile = useIsMobile();
@@ -160,25 +167,74 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
   const stack = useModalStack();
   const characterModal = useCharacterModal();
 
-  // Profile data from Clerk — used by the FAB's user-menu button to show
-  // the avatar + display name. The full user menu body is rendered as a
-  // ModalStack entry when the user taps the profile row in the FAB.
+  // Clerk is the identity source, while our profile API carries the latest
+  // SwordWeave username/display name/avatar edits. Keep the Clerk values as
+  // an immediate fallback so the FAB never renders an empty account control
+  // while the profile request is in flight.
+  const [profileResult, setProfileResult] = useState<{
+    userId: string;
+    profile: ProfileResponse;
+  } | null>(null);
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !user) return undefined;
+    const userId = user.id;
+    let cancelled = false;
+    void fetch("/api/users/me", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return (await response.json()) as ProfileResponse;
+      })
+      .then((nextProfile) => {
+        if (!cancelled && nextProfile) {
+          setProfileResult({ userId, profile: nextProfile });
+        }
+      })
+      .catch(() => {
+        // Clerk data remains a safe fallback during a network/database blip.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, isSignedIn, user]);
+
   const currentUser = useMemo(() => {
     if (!isLoaded || !isSignedIn || !user) return null;
-    const username =
+    const profile = profileResult?.userId === user.id
+      ? profileResult.profile
+      : null;
+    const clerkUsername =
       user.username ??
       user.primaryEmailAddress?.emailAddress?.split("@")[0] ??
       "user";
-    const displayName =
+    const clerkDisplayName =
       [user.firstName, user.lastName].filter(Boolean).join(" ") ||
       user.username ||
-      username;
+      clerkUsername;
     return {
-      username,
-      displayName,
-      avatarUrl: user.imageUrl,
+      username: profile?.username ?? clerkUsername,
+      displayName: profile?.displayName ?? clerkDisplayName,
+      avatarUrl: profile?.avatarUrl ?? user.imageUrl ?? null,
     };
-  }, [isLoaded, isSignedIn, user]);
+  }, [isLoaded, isSignedIn, profileResult, user]);
+
+  const navigateFromAccount = useCallback(
+    (href: string) => {
+      const navEvent = new CustomEvent<string>("sw-navigate-away", {
+        detail: href,
+        cancelable: true,
+      });
+      window.dispatchEvent(navEvent);
+      // The character editor may prevent this event to show its discard
+      // prompt. Leave the account sheet open until the user resolves that
+      // prompt; otherwise hard navigation guarantees the destination opens
+      // even when the modal stack is being unmounted in the same click.
+      if (navEvent.defaultPrevented) return;
+      stack.clear();
+      window.location.assign(href);
+    },
+    [stack],
+  );
 
   function openUserMenu() {
     if (!stack.canPush) return;
@@ -189,20 +245,21 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
       content: (
         <UserMenuBody
           currentUser={currentUser}
+          onSignIn={() => navigateFromAccount("/sign-in")}
+          onSignUp={() => navigateFromAccount("/sign-up")}
           onViewProfile={() => {
-            if (currentUser) router.push(`/u/${currentUser.username}`);
-            stack.clear();
+            if (currentUser) navigateFromAccount(`/u/${currentUser.username}`);
           }}
           onEditProfile={() => {
-            router.push("/settings/profile");
-            stack.clear();
+            navigateFromAccount("/settings/profile");
           }}
           onManageAccount={() => {
             openUserProfile();
             stack.clear();
           }}
           onSignOut={() => {
-            signOut(() => router.push("/"));
+            stack.clear();
+            void signOut(() => window.location.assign("/"));
           }}
         />
       ),
@@ -529,6 +586,8 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
 
 function UserMenuBody({
   currentUser,
+  onSignIn,
+  onSignUp,
   onViewProfile,
   onEditProfile,
   onManageAccount,
@@ -539,12 +598,13 @@ function UserMenuBody({
     displayName: string | null;
     avatarUrl: string | null;
   } | null;
+  onSignIn: () => void;
+  onSignUp: () => void;
   onViewProfile: () => void;
   onEditProfile: () => void;
   onManageAccount: () => void;
   onSignOut: () => void;
 }) {
-  const router = useRouter();
   if (!currentUser) {
     // Signed out — previously this just showed a "Sign in to manage your
     // profile" notice and gave the user no way to actually sign in. The
@@ -558,21 +618,14 @@ function UserMenuBody({
         </div>
         <button
           type="button"
-          onClick={() => {
-            router.push("/sign-in");
-            // Don't close the modal — let the page navigation handle
-            // it. Closing here would flash an empty FAB before the
-            // /sign-in page renders.
-          }}
+          onClick={onSignIn}
           className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
           Sign in
         </button>
         <button
           type="button"
-          onClick={() => {
-            router.push("/sign-up");
-          }}
+          onClick={onSignUp}
           className="flex w-full items-center justify-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-accent"
         >
           Create an account

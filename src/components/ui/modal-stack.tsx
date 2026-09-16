@@ -208,7 +208,7 @@ function ModalStackRenderer() {
               role="dialog"
               aria-modal="true"
               aria-label={entry.label}
-              className={cn("v12-modal-backdrop inset-0 flex items-center justify-center", scopeHost ? "pointer-events-auto absolute p-2" : "fixed p-6")}
+              className={cn("v12-modal-backdrop inset-0 flex items-center justify-center", scopeHost ? "pointer-events-auto absolute p-0" : "fixed p-6")}
               style={{ zIndex: z }}
               onClick={isTop ? (event) => { if (event.target === event.currentTarget) pop(); } : undefined}
             >
@@ -220,7 +220,7 @@ function ModalStackRenderer() {
                 )}
                 onClick={(event) => event.stopPropagation()}
               >
-                {renderModalBody(entry, isTop, stack, idx, pop, popTo)}
+                {renderModalBody(entry, isTop, stack, idx, pop, popTo, Boolean(scopeHost))}
               </div>
             </div>
           );
@@ -256,7 +256,7 @@ function ModalStackRenderer() {
               )}
               onClick={(e) => e.stopPropagation()}
             >
-              {renderModalBody(entry, isTop, stack, idx, pop, popTo)}
+              {renderModalBody(entry, isTop, stack, idx, pop, popTo, Boolean(scopeHost))}
             </div>
           </div>
         );
@@ -273,6 +273,7 @@ function renderModalBody(
   idx: number,
   pop: () => void,
   popTo: (depth: number) => void,
+  isScoped: boolean,
 ) {
   return (
     <>
@@ -305,7 +306,7 @@ function renderModalBody(
           UI — the user closes each modal independently by clicking
           its X button. */}
       <div className="min-h-0 flex-1 overflow-y-auto text-sm">
-        <header className="v12-section-head sticky top-0 z-20 flex h-10 items-center justify-between gap-2 border-b border-border bg-card px-4">
+        <header className={cn("v12-section-head sticky top-0 z-20 flex h-10 items-center justify-between gap-2 border-b border-border bg-card", isScoped ? "px-2" : "px-4")}>
           {/* Phase 9 round-3: header now shows only the CATEGORY (uppercase
               muted). The entity name is rendered inside the body (above
               the type chips) so the user sees "PRIMITIVE" in the header
@@ -330,7 +331,7 @@ function renderModalBody(
             <X className="size-4" />
           </button>
         </header>
-        <div className="p-4">
+        <div className={isScoped ? "p-2" : "p-4"}>
           {/* Phase 9 round-3: entity name rendered INSIDE the body
               (above the type chips + meta), not in the modal header.
               User-feedback: 'the name is in the header (where close

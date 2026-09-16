@@ -605,7 +605,7 @@ export function HeritageForm({
         {primitiveIds.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
             No primitives slotted. Pick a primitive from the Library
-            column and use its &ldquo;Slot into build&rdquo; action.
+            column and use its &ldquo;Add to active heritage&rdquo; action.
           </p>
         ) : (
           <SortableBundleList className="mt-3 space-y-2" ids={primitiveIds.map(String)} onOrder={order=>{setPrimitiveIds(order.map(Number));setOrderChanged(true);setIsDirty(true);}}>
@@ -642,7 +642,7 @@ export function HeritageForm({
         {capabilityIds.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
             No capabilities bundled. Pick a capability from the Library
-            column and use its &ldquo;Slot into build&rdquo; action.
+            column and use its &ldquo;Add to active heritage&rdquo; action.
           </p>
         ) : (
           <SortableBundleList className="mt-3 space-y-2" ids={capabilityIds} onOrder={order=>{setCapabilityIds(order);setOrderChanged(true);setIsDirty(true);}}>

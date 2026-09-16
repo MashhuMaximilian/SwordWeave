@@ -377,12 +377,9 @@ export function ConditionLine({
 // was opened from. Lifted verbatim from the My Creations preview so the two
 // implementations converge on one component.
 //
-// Layout (matches creations):
-//   - 3-col grid: Edit · Source · Versions  (each equal visual weight;
-//     predictable tap targets on mobile — the user asked for desktop AND
-//     mobile to match).
-//   - optional 4th primary action (e.g. Atelier's "Load into build") rendered
-//     as a full-width primary button above the grid.
+// Layout:
+//   - destination cards explain where an entry will go before the user acts;
+//   - compact Edit · Source · Fork map · Versions reference controls;
 //   - full-width Delete below the grid (only when `deletable`), with a
 //     canDelete gate + confirm dialog. When not deletable, a hint to set
 //     visibility to Private is shown instead (mirrors creations' rule).
@@ -396,35 +393,30 @@ import {
   type Visibility,
 } from "@/components/library/visibility-select";
 
+type PreviewDestinationAction = {
+  label: string;
+  description?: string;
+  onClick?: () => void;
+  href?: string;
+  disabled?: boolean;
+  title?: string;
+};
+
 export type PreviewActionProps = {
-  /** Primary CTA shown as a full-width button above the grid (e.g. Load into build). */
-  primary?: { label: string; onClick?: () => void; href?: string };
-  /** Optional secondary primary CTA (e.g. Slot into build) shown full-width
-   *  above the grid, after `primary`. */
-  primarySecondary?: { label: string; onClick?: () => void; href?: string };
+  /** Legacy primary CTA used by a few standalone preview shells. */
+  primary?: PreviewDestinationAction;
+  /** Inserts this entry into the draft already open in the middle workspace. */
+  primarySecondary?: PreviewDestinationAction;
   /** Sends an entry to the persistent secondary build session. */
-  buildModal?: { label: string; onClick: () => void };
+  buildModal?: PreviewDestinationAction;
   /**
    * Phase 8.1 batch 8: optional tertiary CTA (e.g. "Slot into Lineage").
    * Context-aware: label changes based on the character modal's
    * activeStep. Only shown when provided.
    */
-  primaryTertiary?: {
-    label: string;
-    onClick?: () => void;
-    href?: string;
-    /**
-     * Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — when the cap
-     * is already slotted, render the button as greyed-out
-     * with an explanatory tooltip.
-     */
-    disabled?: boolean;
-    title?: string;
-  };
-  /** Optional 4th grid button rendered on the SAME row as Edit/Source/Versions
-   *  (e.g. "Load into build"). When present the grid becomes 4 columns and
-   *  the row is pinned to the bottom of the modal. */
-  loadIntoBuild?: { label: string; onClick?: () => void };
+  primaryTertiary?: PreviewDestinationAction;
+  /** Replaces the current draft in the visible middle workspace. */
+  workspace?: PreviewDestinationAction;
   /** Optional read-only lineage control. Kept in the shared action row so
    *  Atelier and Library expose the same navigation without replacing any
    *  existing edit, source, version, slot, or load action. */
@@ -442,13 +434,66 @@ export type PreviewActionProps = {
   onVisibilityChange?: (vis: Visibility) => void;
 };
 
+function DestinationAction({
+  action,
+  destination,
+  emphasis = false,
+}: {
+  action: PreviewDestinationAction;
+  destination: "workspace" | "active-build" | "persistent-build" | "character" | "primary";
+  emphasis?: boolean;
+}) {
+  const content = (
+    <>
+      <span className="text-sm font-semibold leading-tight">{action.label}</span>
+      {action.description || (action.disabled && action.title) ? (
+        <span className="text-[11px] leading-snug text-muted-foreground">
+          {action.description ?? action.title}
+        </span>
+      ) : null}
+    </>
+  );
+  const className = [
+    "v12-preview-destination-action flex min-h-14 w-full flex-col items-start justify-center gap-1 rounded-lg border px-3 py-2.5 text-left transition-colors",
+    emphasis
+      ? "border-primary bg-primary/10 text-primary hover:bg-primary/15"
+      : "border-border bg-background text-foreground hover:border-primary hover:bg-primary/5",
+    "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border disabled:hover:bg-background",
+  ].join(" ");
+
+  if (action.href) {
+    return (
+      <a
+        href={action.href}
+        title={action.title}
+        data-preview-action={destination}
+        className={className}
+      >
+        {content}
+      </a>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={action.onClick}
+      disabled={action.disabled}
+      title={action.title}
+      data-preview-action={destination}
+      className={className}
+    >
+      {content}
+    </button>
+  );
+}
+
 export function PreviewActions(props: PreviewActionProps) {
   const {
     primary,
     primarySecondary,
     buildModal,
     primaryTertiary,
-    loadIntoBuild,
+    workspace,
     forkMap,
     onEdit,
     openSourceHref,
@@ -463,6 +508,12 @@ export function PreviewActions(props: PreviewActionProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const hasDestinationActions = Boolean(
+    workspace || primary || primarySecondary || buildModal || primaryTertiary,
+  );
+  const hasReferenceActions = Boolean(
+    onEdit || openSourceHref || forkMap || versionHistoryHref,
+  );
 
   async function handleConfirmDelete() {
     if (!onDelete) return;
@@ -487,119 +538,63 @@ export function PreviewActions(props: PreviewActionProps) {
         />
       ) : null}
 
-      {primary ? (
-        primary.href ? (
-          <a
-            href={primary.href}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            {primary.label}
-          </a>
-        ) : (
-          <button
-            type="button"
-            onClick={primary.onClick}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            {primary.label}
-          </button>
-        )
+      {hasDestinationActions ? (
+        <section
+          className="v12-preview-action-group space-y-2"
+          data-preview-action-group="destinations"
+          aria-label="Use this entry"
+        >
+          <div className="px-0.5">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground">
+              Use this entry
+            </h3>
+            <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+              Choose where you want it to go.
+            </p>
+          </div>
+          <div className="v12-preview-destination-grid grid gap-2 sm:grid-cols-2">
+            {workspace ? <DestinationAction action={workspace} destination="workspace" emphasis /> : null}
+            {primarySecondary ? <DestinationAction action={primarySecondary} destination="active-build" /> : null}
+            {buildModal ? <DestinationAction action={buildModal} destination="persistent-build" /> : null}
+            {primaryTertiary ? <DestinationAction action={primaryTertiary} destination="character" /> : null}
+            {primary ? <DestinationAction action={primary} destination="primary" emphasis={!workspace} /> : null}
+          </div>
+        </section>
       ) : null}
 
-      {primarySecondary ? (
-        primarySecondary.href ? (
-          <a
-            href={primarySecondary.href}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
-          >
-            {primarySecondary.label}
-          </a>
-        ) : (
-          <button
-            type="button"
-            onClick={primarySecondary.onClick}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
-          >
-            {primarySecondary.label}
-          </button>
-        )
+      {hasReferenceActions ? (
+        <div className="v12-preview-action-group flex gap-1.5 pt-2" data-preview-action-group="reference">
+          {onEdit ? (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md bg-primary px-1.5 py-2 text-[11px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              <Pencil className="size-3.5 shrink-0" />
+              <span className="truncate">Edit</span>
+            </button>
+          ) : null}
+          {openSourceHref ? (
+            <a
+              href={openSourceHref}
+              className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-border bg-card px-1.5 py-2 text-[11px] font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+            >
+              <ExternalLink className="size-3.5 shrink-0" />
+              <span className="truncate">Source</span>
+            </a>
+          ) : null}
+          {forkMap}
+          {versionHistoryHref ? (
+            <a
+              href={versionHistoryHref}
+              className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-border bg-card px-1.5 py-2 text-[11px] font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+            >
+              <History className="size-3.5 shrink-0" />
+              <span className="truncate">Versions</span>
+            </a>
+          ) : null}
+        </div>
       ) : null}
-
-      {buildModal ? (
-        <button type="button" onClick={buildModal.onClick} className="v12-metal-button flex w-full items-center justify-center px-3 py-2 text-sm">
-          {buildModal.label}
-        </button>
-      ) : null}
-
-      {/* Phase 8.1 batch 8: tertiary CTA — context-aware "Slot into
-          [step]" for the character modal. Same shape as primarySecondary
-          but rendered after it. */}
-      {primaryTertiary ? (
-        primaryTertiary.href ? (
-          <a
-            href={primaryTertiary.href}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
-          >
-            {primaryTertiary.label}
-          </a>
-        ) : (
-          <button
-            type="button"
-            onClick={primaryTertiary.onClick}
-            // Phase 8.4 v24.5 (Mashu 2026-07-29): T5 — wire
-            // disabled + title for the "Already slotted"
-            // state so the user sees why the button is
-            // greyed instead of clicking it and getting
-            // a silent no-op.
-            disabled={primaryTertiary.disabled}
-            title={primaryTertiary.title}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border disabled:hover:text-foreground"
-          >
-            {primaryTertiary.label}
-          </button>
-        )
-      ) : null}
-
-      <div className={`flex gap-1.5 pt-3`}>
-        {onEdit ? (
-          <button
-            type="button"
-            onClick={onEdit}
-            className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md bg-primary px-1.5 py-2 text-[11px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            <Pencil className="size-3.5 shrink-0" />
-            <span className="truncate">Edit</span>
-          </button>
-        ) : null}
-        {openSourceHref ? (
-          <a
-            href={openSourceHref}
-            className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-border bg-card px-1.5 py-2 text-[11px] font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
-          >
-            <ExternalLink className="size-3.5 shrink-0" />
-            <span className="truncate">Source</span>
-          </a>
-        ) : null}
-        {forkMap}
-        {versionHistoryHref ? (
-          <a
-            href={versionHistoryHref}
-            className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-border bg-card px-1.5 py-2 text-[11px] font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
-          >
-            <History className="size-3.5 shrink-0" />
-            <span className="truncate">Versions</span>
-          </a>
-        ) : null}
-        {loadIntoBuild ? (
-          <button
-            type="button"
-            onClick={loadIntoBuild.onClick}
-            className="inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary bg-primary/10 px-1.5 py-2 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/20"
-          >
-            <span className="truncate">{loadIntoBuild.label}</span>
-          </button>
-        ) : null}
-      </div>
 
       {deletable ? (
         canDelete ? (

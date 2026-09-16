@@ -203,7 +203,7 @@ function ComposedList({
   if (items.length === 0) return null;
   return (
     <Section heading={title}>
-      <ul className="divide-y divide-border rounded-md border border-border">
+      <ul className="grid gap-1.5 sm:grid-cols-2">
         {items.map((it, index) => (
           <li
             // The same primitive may deliberately appear more than once
@@ -236,11 +236,11 @@ function ComposedList({
                   }
                 : undefined
             }
-            className={onSubLink ? "flex items-center justify-between gap-2 p-2.5 text-sm hover:bg-accent/40 cursor-pointer" : "flex items-center justify-between gap-2 p-2.5 text-sm"}
+            className={onSubLink ? "flex min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-card/40 p-2 text-sm transition-colors hover:bg-accent/40 cursor-pointer" : "flex min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-card/40 p-2 text-sm"}
           >
-            <div className="min-w-0 flex-1 truncate text-left">
+            <div className="min-w-0 flex-1 text-left">
               <VersionChip versionNumber={it.versionNumber} />
-              <span className="font-semibold text-foreground hover:underline">{it.name}</span>
+              <span className="block truncate font-semibold text-foreground hover:underline">{it.name}</span>
               {it.subText ? <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">{it.subText}</div> : null}
               {it.note ? <Markdown className="mt-1 line-clamp-2 text-xs text-muted-foreground">{it.note}</Markdown> : null}
             </div>

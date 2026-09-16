@@ -538,16 +538,15 @@ export function CapabilityForm({
       .map((slot, index) => ({ slot, index }))
       .find(({ slot }) => resolvedSlotRole(slot) === role);
     const selectedPrimitive = selectedEntry?.slot.primitive;
-    return <article className="group flex min-h-[8.25rem] min-w-0 flex-col rounded-lg border border-border bg-background/80 p-2.5 transition-colors hover:border-[#b88a39]" data-dedicated-role={role}>
-      <header className="flex items-start justify-between gap-2 border-b border-border/60 pb-2">
-        <div className="min-w-0">
-          <p className="v12-kicker">{label}</p>
-          <p className="mt-0.5 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-            {selectedPrimitive ? `${selectedPrimitive.buCost} BU selected` : "Optional reference"}
-          </p>
-        </div>
-        <details className="relative">
-          <summary className="v12-metal-button cursor-pointer list-none whitespace-nowrap px-2 py-1 text-xs">{selectedPrimitive ? "Change" : "Choose"}</summary>
+    return <article className="group min-w-0 rounded-md border border-border bg-background/80 px-2.5 py-2 transition-colors hover:border-[#b88a39]" data-dedicated-role={role}>
+      <div className="flex min-w-0 items-center gap-2">
+        <p className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+        <details className="relative min-w-0 flex-1">
+          <summary className="flex min-w-0 cursor-pointer list-none items-center gap-1.5 rounded px-1 py-0.5 text-left text-xs hover:bg-accent/60">
+            <span className={selectedPrimitive ? "min-w-0 flex-1 truncate font-medium text-foreground" : "min-w-0 flex-1 truncate text-muted-foreground"}>{selectedPrimitive?.name ?? `Choose ${label.toLowerCase()}`}</span>
+            {selectedPrimitive ? <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{selectedPrimitive.buCost} BU</span> : null}
+            <span className="shrink-0 text-[10px] text-primary">{selectedPrimitive ? "edit" : "add"}</span>
+          </summary>
           <div className="v12-foundation-menu">
             <button type="button" onClick={() => chooseRulePrimitive(role, null)}>Open / none</button>
             {availablePrimitives.filter(matches).map((primitive) => <button type="button" aria-pressed={primitive.id === selectedPrimitive?.id} onClick={() => {
@@ -560,12 +559,9 @@ export function CapabilityForm({
             }} key={primitive.id}>{primitive.name} · {primitive.buCost} BU</button>)}
           </div>
         </details>
-      </header>
-      {selectedPrimitive && selectedEntry ? <div className="mt-2 flex flex-1 items-center gap-2">
-        <RecipePrimitiveIdentity primitive={{...availablePrimitives.find((primitive) => primitive.id === selectedPrimitive.id), ...selectedPrimitive}} />
-        <button type="button" onClick={() => removeSlot(selectedEntry.index)} aria-label={`Remove ${selectedPrimitive.name}`} className="inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:bg-accent"><Trash2 className="size-3.5" /></button>
-      </div> : <button type="button" className="mt-2 flex flex-1 items-center justify-center rounded-md border border-dashed border-border/70 px-3 text-xs text-muted-foreground transition-colors hover:border-[#b88a39] hover:text-foreground" onClick={(event) => { const summary = event.currentTarget.parentElement?.querySelector("summary"); summary?.click(); }}>Add {label.toLowerCase()}</button>}
-      {role === "VERB" && selectedEntry ? <label className="v12-verb-note mt-2 block text-xs">Verbs used (optional)<input value={selectedEntry.slot.notes ?? ""} onChange={(event) => { const notes = event.target.value; setSlots((current) => current.map((item, index) => index === selectedEntry.index ? {...item, notes} : item)); setIsDirty(true); }} placeholder="move, strike, reshape…" /></label> : null}
+        {selectedPrimitive && selectedEntry ? <button type="button" onClick={() => removeSlot(selectedEntry.index)} aria-label={`Remove ${selectedPrimitive.name}`} className="inline-flex size-6 shrink-0 items-center justify-center rounded border border-border bg-background text-muted-foreground hover:bg-accent"><Trash2 className="size-3.5" /></button> : null}
+      </div>
+      {role === "VERB" && selectedEntry ? <label className="v12-verb-note mt-1.5 block text-xs"><span className="sr-only">Verbs used</span><input aria-label="Verbs used (optional)" value={selectedEntry.slot.notes ?? ""} onChange={(event) => { const notes = event.target.value; setSlots((current) => current.map((item, index) => index === selectedEntry.index ? {...item, notes} : item)); setIsDirty(true); }} placeholder="Verbs used: move, strike, reshape…" /></label> : null}
     </article>;
   };
 
@@ -616,15 +612,15 @@ export function CapabilityForm({
 
       <AuthorChapters defaultActive="identity" order={["identity", "pieces", "table", "publish"]}>
         <AuthorChapter id="pieces" title="Pieces">
-      <section className="v12-dedicated-slots rounded-lg border border-border bg-background/60 p-2.5">
-        <header className="mb-2.5 flex flex-wrap items-end justify-between gap-2 border-b border-border/70 pb-2">
+      <section className="v12-foundation-pieces v12-dedicated-slots rounded-lg border border-border bg-background/60 p-2.5">
+        <header className="mb-2 flex items-center justify-between gap-2">
           <div>
             <p className="v12-kicker">Mechanical references</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Pin the capability&apos;s vocabulary, reach, and output.</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Vocabulary, reach, and output.</p>
           </div>
-          <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">All optional</span>
+          <span className="shrink-0 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">Optional</span>
         </header>
-        <div className="v12-dedicated-slot-grid grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="v12-dedicated-slot-grid grid grid-cols-1 gap-1.5 sm:grid-cols-2 xl:grid-cols-4">
           {renderDedicatedSlot("VERB", "Verb tier", (primitive) => primitive.category === "VERB_TIER")}
           {renderDedicatedSlot("DOMAIN", "Domain", (primitive) => primitive.category === "DOMAIN")}
           {renderDedicatedSlot("RANGE", "Range", (primitive) => primitive.category === "RANGE")}
@@ -640,7 +636,7 @@ export function CapabilityForm({
         {regularSlots.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
             No additional primitives slotted yet. Pick a primitive from the Library
-            column and use its &ldquo;Slot into build&rdquo; action.
+            column and use its &ldquo;Add to active capability&rdquo; action.
           </p>
         ) : (
           <SortableBundleList className="mt-3 space-y-2" ids={regularSlots.map(({slot})=>`${slot.primitiveId}:${slot.role}`)} onOrder={()=>{}}>
@@ -672,7 +668,7 @@ export function CapabilityForm({
             <h3 className="text-sm font-bold">Bundled Effects</h3>
             <p className="mt-1 text-xs text-muted-foreground">
               Effects nested inside this capability. Pick from the library or
-              use the &ldquo;Slot into build&rdquo; action on a library card.
+              use the &ldquo;Add to active capability&rdquo; action on a library card.
             </p>
           </div>
         </div>
@@ -680,7 +676,7 @@ export function CapabilityForm({
         {effectIds.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
             No effects bundled yet. Pick an effect from the Library column
-            and use its &ldquo;Slot into build&rdquo; action.
+            and use its &ldquo;Add to active capability&rdquo; action.
           </p>
         ) : (
           <SortableBundleList className="mt-3 space-y-2" ids={effectIds} onOrder={order=>{setEffectIds(order);setOrderChanged(true);setIsDirty(true);}}>
@@ -864,7 +860,7 @@ export function CapabilityForm({
 
         </AuthorChapter>
         <AuthorChapter id="table" title="At the table">
-      <div className="v12-table-builder">
+      <div className="v12-table-builder grid gap-2 md:grid-cols-2">
         {([
           ["target", "Targets", ["Single", "Multiple", "Area"]],
           ["shape", "Shape", ["Direct", "Cone", "Line", "Sphere", "Zone", "Beam"]],
@@ -872,8 +868,8 @@ export function CapabilityForm({
           ["placement", "Placement", ["Self", "Target", "Point", "Directional"]],
           ["duration", "Effect duration", ["Instant", "Short", "Medium", "Long", "Scene", "Persistent", "Permanent"]],
           ["casting", "Casting time", ["Action", "Instant", "Short", "Medium", "Long", "Scene"]],
-        ] as const).map(([key,label,values])=><fieldset key={key}><legend>{label}</legend><div>{values.map(value=><button type="button" key={value} aria-pressed={tableDraft[key]===value} onClick={()=>setTableDraft(current=>({...current,[key]:value}))}>{value}</button>)}</div></fieldset>)}
-        <div className="v12-table-readout"><p className="v12-kicker">Table declaration</p><h3>{form.name || "Untitled capability"}</h3><p>{tableDraft.casting} · {tableDraft.target} · {tableDraft.shape} · {tableDraft.size} · {tableDraft.placement} · {tableDraft.range} · {tableDraft.output} · {tableDraft.duration}</p><small>{slots.length} direct pieces · {effectIds.length} effects · {previewBu} BU</small></div>
+        ] as const).map(([key,label,values])=><fieldset key={key} className="min-w-0 rounded-lg border border-border bg-background/70 px-3 pb-3 pt-1.5"><legend className="px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#df8752]">{label}</legend><div className="flex flex-wrap gap-1.5">{values.map(value=><button type="button" key={value} aria-pressed={tableDraft[key]===value} onClick={()=>setTableDraft(current=>({...current,[key]:value}))} className="min-h-8 rounded-md border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground aria-pressed:border-primary aria-pressed:bg-primary/15 aria-pressed:text-primary">{value}</button>)}</div></fieldset>)}
+        <div className="rounded-lg border border-primary/40 bg-background px-3 py-2.5 md:col-span-2"><p className="v12-kicker">Table declaration</p><h3 className="mt-1 font-semibold">{form.name || "Untitled capability"}</h3><p className="mt-1 text-sm text-muted-foreground">{tableDraft.casting} · {tableDraft.target} · {tableDraft.shape} · {tableDraft.size} · {tableDraft.placement} · {tableDraft.range} · {tableDraft.output} · {tableDraft.duration}</p><small className="mt-2 block text-xs text-muted-foreground">{slots.length} direct pieces · {effectIds.length} effects · {previewBu} BU</small></div>
       </div>
 
         </AuthorChapter>

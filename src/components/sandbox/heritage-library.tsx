@@ -17,7 +17,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSandboxSaveHandler } from "./use-sandbox-save-handler";
-import { useRouter } from "next/navigation";
 import { LibraryToolbar, type LibraryToolbarState } from "@/components/library/library-toolbar";
 import { LibraryTable } from "@/components/library/library-table";
 import { ColumnSearchBar } from "@/components/library/column-search-bar";
@@ -780,6 +779,7 @@ export function HeritageLibrary({
                 <button
                   key={chip.key}
                   type="button"
+                  aria-pressed={active}
                   onClick={() =>
                     setToolbarState((prev) => ({
                       ...prev,
@@ -861,16 +861,9 @@ function BlueprintPreviewBody({
   onFork: ((targetType: string, targetId: string) => void) | undefined;
   currentUser: { username: string; displayName: string | null; avatarUrl: string | null } | null;
 }) {
-  // Pull openDrawer so slot/load actions can pop the build preview
-  // drawer after they fire — the user wants to see the result of
-  // the action, not have to manually tap the build/preview tab.
-  //
-  // Split-mode contract: in split mode the build + preview are already
-  // rendered inline in the bottom panel. We MUST NOT pop the drawer
-  // there (would overlay the inline content). Instead we switch the
-  // bottom tab so the user sees the result of the slot/load inline.
+  // Preview actions may focus the inline split workspace, but the
+  // persistent Build & Preview drawer is reserved for its FAB action.
   const {
-    openDrawer,
     sandboxSplit,
     setSandboxBottomTab,
   } = useGlobalControls();
@@ -884,7 +877,6 @@ function BlueprintPreviewBody({
   // where the rule would go.
   const canSlot = false;
 
-  const router = useRouter();
   const stack = useModalStack();
   const { engagement } = useSandboxEngagement(libraryItem);
 
@@ -902,8 +894,6 @@ function BlueprintPreviewBody({
       window.dispatchEvent(new CustomEvent("sw-sandbox-close-preview"));
       if (sandboxSplit) {
         setSandboxBottomTab("build");
-      } else {
-        openDrawer("build");
       }
     }
   }
@@ -1063,9 +1053,7 @@ function BlueprintPreviewBody({
   function loadAndPreview() {
     onLoadIntoBuild();
     if (sandboxSplit) {
-      setSandboxBottomTab("preview");
-    } else {
-      openDrawer("build");
+      setSandboxBottomTab("build");
     }
   }
 
@@ -1140,8 +1128,20 @@ function BlueprintPreviewBody({
   const isSeedingEdit = characterModal.isSeedingEdit;
 
   const actionBar: PreviewActionProps = {
-    loadIntoBuild: { label: "Load into build", onClick: loadAndPreview },
-    ...(canSlot ? { primarySecondary: { label: "Slot into build", onClick: slotIntoBuild } } : {}),
+    workspace: {
+      label: "Edit in middle workspace",
+      description: "Replace the current draft in the middle column.",
+      onClick: loadAndPreview,
+    },
+    ...(canSlot
+      ? {
+          primarySecondary: {
+            label: `Add to active ${buildFormKind ?? "build"}`,
+            description: "Insert this into the draft open in the middle workspace.",
+            onClick: slotIntoBuild,
+          },
+        }
+      : {}),
     // Phase 8.1 batch 8 + fix-up + round 3: every entity kind the
     // character modal accepts shows a "Slot into [step] button CTA.
     // When isSeedingEdit is true, all slot buttons show a loading
@@ -1170,14 +1170,16 @@ function BlueprintPreviewBody({
             }
           : {
               primaryTertiary: {
-                label: `Slot into ${heritageTabLabel(item.row as { kind: string })}`,
+                label: `Add to character · ${heritageTabLabel(item.row as { kind: string })}`,
+                description: "Insert this into the matching character creation step.",
                 onClick: slotIntoCharacter,
               },
             }
         : item.kind === "item"
           ? {
               primaryTertiary: {
-                label: "Slot into Items",
+                label: "Add to character · Items",
+                description: "Insert this into the character's items.",
                 onClick: slotIntoCharacter,
               },
             }
@@ -1203,15 +1205,14 @@ function BlueprintPreviewBody({
                   // falls through to "manifest" when activeStep is
                   // "items", so the button still works correctly.
                   primaryTertiary: {
-                    label: `Slot into ${tabLabelForActiveStep(resolveHeritageSlotDestination(characterModal.activeStep), characterModal.isOpen)}`,
+                    label: `Add to character · ${tabLabelForActiveStep(resolveHeritageSlotDestination(characterModal.activeStep), characterModal.isOpen)}`,
+                    description: "Insert this into the active character creation step.",
                     onClick: slotIntoCharacter,
                   },
                 }
             : {}),
     ...(isOwner
       ? {
-          onEdit: () =>
-            router.push(`/atelier?build=${item.kind}&edit=${item.row.id}`),
           onDelete: handleDelete,
           deletable: true,
           canDelete,

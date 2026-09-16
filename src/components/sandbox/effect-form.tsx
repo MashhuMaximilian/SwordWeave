@@ -414,7 +414,7 @@ export function EffectForm({
         {slots.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">
             No primitives slotted yet. Pick a primitive from the Library
-            column and use its &ldquo;Slot into build&rdquo; action.
+            column and use its &ldquo;Add to active effect&rdquo; action.
           </p>
         ) : (
           <SortableBundleList className="mt-3 space-y-2" ids={slots.map(s=>String(s.primitiveId))} onOrder={order=>{setSlots(order.map(id=>slots.find(s=>String(s.primitiveId)===id)!));setOrderChanged(true);setIsDirty(true);}}>

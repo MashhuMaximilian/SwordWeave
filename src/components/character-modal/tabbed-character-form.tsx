@@ -97,28 +97,28 @@ const SLOT_RECEIVER_CONFIG: Record<
     help: "Where your character comes from. The lineage heritage bundles its primitives and capabilities — you don't pick sub-pieces.",
     ctaPrimary: "No lineage slotted yet",
     ctaSecondary:
-      "Close the modal, browse Lineages in /atelier, and click 'Slot into Lineage' on the one you want.",
+      "Close the modal, browse Lineages in /atelier, and click 'Add to character · Lineage' on the one you want.",
   },
   upbringing: {
     title: "Upbringing",
     help: "How your character grew up. Same pattern as Lineage.",
     ctaPrimary: "No upbringing slotted yet",
     ctaSecondary:
-      "Close the modal, browse Upbringings in /atelier, and click 'Slot into Upbringing' on the one you want.",
+      "Close the modal, browse Upbringings in /atelier, and click 'Add to character · Upbringing' on the one you want.",
   },
   manifest: {
     title: "Manifest",
     help: "What your character becomes — their archetype. Same pattern as Lineage.",
     ctaPrimary: "No manifest slotted yet",
     ctaSecondary:
-      "Close the modal, browse Manifests in /atelier, and click 'Slot into Manifest' on the one you want.",
+      "Close the modal, browse Manifests in /atelier, and click 'Add to character · Manifest' on the one you want.",
   },
   items: {
     title: "Items",
     help: "Gear the character carries. Items are slotted whole from the library.",
     ctaPrimary: "No items slotted yet",
     ctaSecondary:
-      "Close the modal, browse Items in /atelier, and click 'Slot into Items' on the ones you want.",
+      "Close the modal, browse Items in /atelier, and click 'Add to character · Items' on the ones you want.",
   },
 };
 
@@ -1498,4 +1498,3 @@ function FooterStat({
     </span>
   );
 }
-
