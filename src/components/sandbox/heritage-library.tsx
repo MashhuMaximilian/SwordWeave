@@ -26,6 +26,7 @@ import {
   authorDisplayUsername,
 } from "@/lib/publishing/author-display";
 import type { LibraryItem, LibraryTargetType } from "@/lib/publishing/library-query";
+import { libraryOrigin } from "@/lib/publishing/library-classification";
 import { sortLibraryItems } from "@/lib/publishing/sort-library-items";
 import { cn } from "@/lib/utils";
 import { useFilterSlot } from "@/components/layout/right-filter-panel";
@@ -382,6 +383,13 @@ export function HeritageLibrary({
   const filteredItems = useMemo(() => {
     let items = combinedItems;
 
+    // Keep the shared right-panel source filter functional in the heritage
+    // browser too. The old implementation exposed the control but never
+    // applied it to this result set.
+    if (toolbarState.origin && toolbarState.origin !== "all") {
+      items = items.filter((item) => libraryOrigin(item) === toolbarState.origin);
+    }
+
     // Toolbar text search across ALL discoverable fields (name,
     // description, tags, category, targetType). Same fix as
     // grammar-library.tsx — Mashu 2026-09-06.
@@ -391,7 +399,12 @@ export function HeritageLibrary({
         const haystack = [
           item.name,
           item.description ?? "",
+          item.mechanicalDescription ?? "",
+          item.mechanicalTemplate ?? "",
+          item.verboseDescription ?? "",
           item.category ?? "",
+          item.familyKey ?? "",
+          item.familyLabel ?? "",
           item.targetType,
           ...(item.tags ?? []),
         ]

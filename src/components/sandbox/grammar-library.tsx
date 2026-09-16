@@ -14,7 +14,11 @@
 // Pristine mode: clicks swap silently via the parent's onSelect.
 // Dirty mode: parent's guardedLibrarySelect opens the unsaved modal.
 
-import { libraryOrigin, libraryTier } from "@/lib/publishing/library-classification";
+import {
+  canonicalLibraryCategory,
+  libraryOrigin,
+  libraryTier,
+} from "@/lib/publishing/library-classification";
 import { useEffect, useMemo, useState } from "react";
 import { useSandboxSaveHandler } from "./use-sandbox-save-handler";
 import { useRouter } from "next/navigation";
@@ -474,7 +478,7 @@ export function GrammarLibrary({
   const filteredItems = useMemo(() => {
     const filtered = combinedItems.filter((item) => {
       if (toolbarState.origin && toolbarState.origin !== "all" && libraryOrigin(item) !== toolbarState.origin) return false;
-      if (toolbarState.tier && libraryTier({ costTier: primitives.find(p => String(p.id) === item.targetId)?.costTier ?? null }) !== Number(toolbarState.tier)) return false;
+      if (toolbarState.tier && libraryTier(item) !== Number(toolbarState.tier)) return false;
       // Only show items of the types available in this build mode.
       const allowedKeys = availableTypes.map((t) => t.key);
       if (!allowedKeys.includes(item.targetType) && !allowedKeys.includes("ALL")) {
@@ -489,7 +493,12 @@ export function GrammarLibrary({
         const haystack = [
           item.name,
           item.description ?? "",
+          item.mechanicalDescription ?? "",
+          item.mechanicalTemplate ?? "",
+          item.verboseDescription ?? "",
           item.category ?? "",
+          item.familyKey ?? "",
+          item.familyLabel ?? "",
           item.targetType,
           ...(item.tags ?? []),
         ]
@@ -509,12 +518,16 @@ export function GrammarLibrary({
           return false;
         }
       }
-      // Apply category filter (primitives only — LibraryItem.category
-      // is only set for primitive rows).
+      // The rail is keyed by BU Market family. A primitive's raw category
+      // can be a member of that family (for example DOMAIN_ACCESS belongs
+      // to DOMAIN), so compare the normalized family rather than the raw
+      // category. This keeps category, search, source, and tier filters
+      // composable instead of producing a misleading empty list.
       if (
         toolbarState.category &&
         item.targetType === "PRIMITIVE" &&
-        item.category !== toolbarState.category
+        (item.familyKey ?? canonicalLibraryCategory(item.category ?? "")) !==
+          canonicalLibraryCategory(toolbarState.category)
       ) {
         return false;
       }

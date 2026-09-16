@@ -25,6 +25,12 @@ describe("V12 corpus classification", () => {
   it("merges character-sheet augments into the sheet family", () => {
     expect(canonicalLibraryCategory("CHARACTER_SHEET_AUGMENT")).toBe("SHEET_AUGMENT");
   });
+  it("normalizes raw primitive categories to the market-family rail key", () => {
+    // Atelier receives raw primitive categories (DOMAIN/RANGE), while its
+    // left rail is keyed by the classified BU Market family.
+    expect(canonicalLibraryCategory("DOMAIN")).toBe("DOMAIN_ACCESS");
+    expect(canonicalLibraryCategory("RANGE")).toBe("RANGE_SCALING");
+  });
   it("uses the recorded tier instead of guessing it from BU", () => {
     expect(libraryTier({ costTier:"Tier 4: Core Axis (24 BU anchor)" })).toBe(4);
     expect(libraryTier({ costTier:null })).toBeNull();

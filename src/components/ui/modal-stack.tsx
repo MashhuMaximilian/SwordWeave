@@ -105,6 +105,14 @@ export function ModalStackHost({ children }: { children: ReactNode }) {
   const push = useCallback(<T,>(entry: ModalEntry<T>): boolean => {
     let pushed = false;
     setStack((current) => {
+      // A click can be observed by both a compact composition card and its
+      // parent preview listener. Re-opening a record already in the stack
+      // should focus that record, never add a duplicate React key.
+      const existingIndex = current.findIndex((candidate) => candidate.key === entry.key);
+      if (existingIndex >= 0) {
+        pushed = true;
+        return [...current.slice(0, existingIndex), entry as ModalEntry];
+      }
       if (current.length >= MAX_DEPTH) return current;
       pushed = true;
       return [...current, entry as ModalEntry];

@@ -204,9 +204,12 @@ function ComposedList({
   return (
     <Section heading={title}>
       <ul className="divide-y divide-border rounded-md border border-border">
-        {items.map((it) => (
+        {items.map((it, index) => (
           <li
-            key={it.id}
+            // The same primitive may deliberately appear more than once
+            // through separate roles or quantities. Its database id alone
+            // is therefore not a list identity.
+            key={`${it.targetType ?? "PRIMITIVE"}:${it.id}:${index}`}
             role={onSubLink ? "button" : undefined}
             tabIndex={onSubLink ? 0 : undefined}
             onClick={

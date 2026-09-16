@@ -50,10 +50,16 @@ type SandboxPrimitive = {
   id: number;
   name: string;
   category: string;
+  /** Normalized BU Market family. The raw category can be one of the
+   * family's member categories, so the Atelier rail must retain this
+   * classification separately. */
+  familyKey?: string | null;
   buCost: number;
+  costTier?: string | null;
   isPublic: boolean | null;
   mechanicalOutputText: string | null;
   narrativeRule: string | null;
+  tags?: string[] | null;
   // Phase 9 follow-up: provenance marker for the Kind filter.
   sourceOrigin: string | null;
   // Phase 8: per-entity iconography (sandbox-side row mirror).
@@ -218,11 +224,15 @@ export function primitiveToLibraryItem(
     targetId: String(row.id),
     name: row.name,
     description: row.narrativeRule ?? row.mechanicalOutputText ?? null,
+    mechanicalDescription: row.mechanicalOutputText ?? null,
+    verboseDescription: row.narrativeRule ?? null,
     category: row.category,
+    familyKey: row.familyKey ?? null,
     buCost: row.buCost,
+    costTier: row.costTier ?? null,
     ...EMPTY_AUTHORS,
     ...EMPTY_ENGAGEMENT,
-    tags: [],
+    tags: row.tags ?? [],
     visibility,
     sourceOrigin: row.sourceOrigin ?? null,
     // Phase 8: per-entity iconography
