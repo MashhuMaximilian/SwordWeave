@@ -2,7 +2,6 @@
 
 // Live preview for the item being composed in ItemForm.
 
-import { Markdown } from "@/components/ui/markdown";
 import { dispatchOpenPreview } from "@/lib/sandbox/slot-events";
 import { SIZE_LOAD, computeLoad, type CharacterSize } from "@/lib/engine/encumbrance";
 import { computeTransitiveBu } from "@/lib/engine/transitive-bu";
@@ -82,6 +81,6 @@ export function ItemFormPreview({form, primitiveSlots, capabilitySlots, effectSl
     <LiveMechanicalSummary slots={allSlots} />
     <details className="v12-live-composition" open><summary>Item-augment primitives · {primitiveSlots.length}</summary><LivePrimitiveRules slots={primitiveSlots}/></details>
     {effectSlots.length ? <section className="v12-live-composition"><h3 className="v12-kicker">Granted effects · {effectSlots.length}</h3><LiveEffectRules effects={effectSlots}/></section> : null}
-    {capabilitySlots.length ? <section className="v12-live-composition"><h3 className="v12-kicker">Granted capabilities · {capabilitySlots.length}</h3>{capabilitySlots.map((capability,index)=><details className="v12-live-effect" open key={`${capability.id}:${index}`}><summary><span className="v12-kicker">{capability.type} · {capability.sourceType}</span><strong>{capability.name}</strong></summary>{capability.description ? <div className="v12-live-description"><Markdown>{capability.description}</Markdown></div> : null}<LivePrimitiveRules slots={capability.primitiveLinks ?? []}/><LiveEffectRules effects={capability.effects ?? []}/><button type="button" className="v12-live-inspect" onClick={()=>dispatchOpenPreview({targetType:"CAPABILITY",targetId:capability.id,label:capability.name})}>Inspect capability and provenance</button></details>)}</section> : null}
+    {capabilitySlots.length ? <section className="v12-live-composition"><h3 className="v12-kicker">Granted capabilities · {capabilitySlots.length}</h3>{capabilitySlots.map((capability,index)=><article className="v12-live-effect" key={`${capability.id}:${index}`}><button type="button" className="v12-live-effect-open" onClick={()=>dispatchOpenPreview({targetType:"CAPABILITY",targetId:capability.id,label:capability.name})}><span className="v12-kicker">{capability.type} · {capability.sourceType}</span><strong>{capability.name}</strong><span aria-hidden="true">↗</span></button><LivePrimitiveRules slots={capability.primitiveLinks ?? []}/><LiveEffectRules effects={capability.effects ?? []}/></article>)}</section> : null}
   </LiveRecipeCard>;
 }

@@ -239,7 +239,7 @@ function ComposedList({
               <VersionChip versionNumber={it.versionNumber} />
               <span className="font-semibold text-foreground hover:underline">{it.name}</span>
               {it.subText ? <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">{it.subText}</div> : null}
-              {it.note ? <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{it.note}</div> : null}
+              {it.note ? <Markdown className="mt-1 line-clamp-2 text-xs text-muted-foreground">{it.note}</Markdown> : null}
             </div>
             <span className="shrink-0 font-mono text-xs text-foreground">{it.bu} BU</span>
             {onSubLink ? <ChevronRight className="size-4 shrink-0 text-muted-foreground" /> : null}

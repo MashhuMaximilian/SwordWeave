@@ -17,6 +17,7 @@ import type {
 import { VisibilitySelect, type Visibility } from "@/components/library/visibility-select";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
 import { IconSlot } from "@/components/icons/icon-slot";
+import { Markdown } from "@/components/ui/markdown";
 import type { IconSource } from "@/components/icons/icon-display";
 import {
   saveDraft,
@@ -176,6 +177,7 @@ export function CapabilityForm({
     target: "Single", shape: "Direct", size: "One target", placement: "Target",
     range: "Touch", output: "None", duration: "Instant", casting: "Action",
   });
+  const [tablePrimitiveNotice, setTablePrimitiveNotice] = useState<{ role: "RANGE" | "OUTPUT"; name: string } | null>(null);
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
@@ -372,13 +374,6 @@ export function CapabilityForm({
     setSlots((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function toggleSlotMirror(index: number) {
-    setIsDirty(true);
-    setSlots((prev) =>
-      prev.map((s, i) => (i === index ? { ...s, isMirrored: !s.isMirrored } : s)),
-    );
-  }
-
   function updateSlotRole(index: number, role: string) {
     setIsDirty(true);
     setSlots((prev) =>
@@ -565,14 +560,15 @@ export function CapabilityForm({
       <AuthorChapters defaultActive="identity" order={["identity", "pieces", "table", "publish"]}>
         <AuthorChapter id="pieces" title="Pieces">
       <section className="v12-foundation-pieces">
-        <p className="v12-kicker">Optional foundations</p>
+        <div><p className="v12-kicker"><span>Optional</span> Verb Tier and domain references</p><small>Pin them for rigor, or leave them open until casting at the table.</small></div>
         {([[
           "VERB", "Verb tier", (primitive: (typeof availablePrimitives)[number]) => primitive.category === "VERB_TIER",
         ], [
           "DOMAIN", "Domain", (primitive: (typeof availablePrimitives)[number]) => primitive.category === "DOMAIN",
         ]] as const).map(([role, label, matches]) => {
           const selected = slots.find((slot) => slot.role === role)?.primitiveId ?? "";
-          return <label key={role}>{label}<select value={selected} onChange={event=>chooseRulePrimitive(role,event.target.value?Number(event.target.value):null)}><option value="">None</option>{availablePrimitives.filter(matches).map(primitive=><option value={primitive.id} key={primitive.id}>{primitive.name}</option>)}</select></label>;
+          const selectedPrimitive=availablePrimitives.find(primitive=>primitive.id===selected);
+          return <details key={role}><summary className="v12-metal-button">+ {selectedPrimitive?.name ?? label}</summary><div className="v12-foundation-menu"><button type="button" onClick={()=>chooseRulePrimitive(role,null)}>Open / none</button>{availablePrimitives.filter(matches).map(primitive=><button type="button" aria-pressed={primitive.id===selected} onClick={()=>chooseRulePrimitive(role,primitive.id)} key={primitive.id}>{primitive.name}</button>)}</div></details>;
         })}
       </section>
       <section className="v12-capability-primitives rounded-md border border-border bg-background p-3">
@@ -636,20 +632,19 @@ export function CapabilityForm({
                   key={id}
                   className="flex items-center gap-2 rounded-md border border-border bg-card p-2 text-sm"
                 >
-                  <div className="v12-recipe-copy min-w-0 flex-1">
+                  <button type="button" className="v12-recipe-copy min-w-0 flex-1 text-left" onClick={(event)=>{
+                    const detail={targetType:"EFFECT",targetId:id,label:effect?.name ?? id};
+                    if(event.currentTarget.closest("[data-drawer-build]")) {
+                      window.dispatchEvent(new CustomEvent("sw-close-build-drawer"));
+                      window.setTimeout(()=>window.dispatchEvent(new CustomEvent("sw-sandbox-open-preview",{detail})),0);
+                    } else {
+                      window.dispatchEvent(new CustomEvent("sw-sandbox-open-preview",{detail}));
+                    }
+                  }} aria-label={`Open ${effect?.name ?? id}`}>
                     <p className="v12-kicker">Bundled effect · {effect?.primitiveLinks?.length ?? 0} primitives</p>
                     <h3>{effect?.name ?? id}</h3>
-                    {effect?.narrativeDescription ? <p>{effect.narrativeDescription}</p> : null}
-                    <button type="button" className="v12-recipe-open" onClick={(event)=>{
-                      const detail={targetType:"EFFECT",targetId:id,label:effect?.name ?? id};
-                      if(event.currentTarget.closest("[data-drawer-build]")) {
-                        window.dispatchEvent(new CustomEvent("sw-close-build-drawer"));
-                        window.setTimeout(()=>window.dispatchEvent(new CustomEvent("sw-sandbox-open-preview",{detail})),0);
-                      } else {
-                        window.dispatchEvent(new CustomEvent("sw-sandbox-open-preview",{detail}));
-                      }
-                    }}>View details</button>
-                  </div>
+                    {effect?.primitiveLinks?.slice(0,2).map((link,index)=><Markdown className="v12-recipe-mechanical" key={`${link.primitiveId}:${index}`}>{link.primitive.mechanicalOutputText ?? ""}</Markdown>)}
+                  </button>
                   <button
                     type="button"
                     onClick={() => removeEffect(id)}
@@ -825,8 +820,9 @@ export function CapabilityForm({
           ["duration", "Effect duration", ["Instant", "Short", "Medium", "Long", "Scene", "Persistent", "Permanent"]],
           ["casting", "Casting time", ["Action", "Instant", "Short", "Medium", "Long", "Scene"]],
         ] as const).map(([key,label,values])=><fieldset key={key}><legend>{label}</legend><div>{values.map(value=><button type="button" key={value} aria-pressed={tableDraft[key]===value} onClick={()=>setTableDraft(current=>({...current,[key]:value}))}>{value}</button>)}</div></fieldset>)}
-        <fieldset><legend>Range · adds the required primitive</legend><div>{["Touch","Near","Far","Very Far","Extreme"].map(value=><button type="button" key={value} aria-pressed={tableDraft.range===value} onClick={()=>{setTableDraft(current=>({...current,range:value}));const primitive=availablePrimitives.find(item=>item.category==="RANGE"&&`${item.name} ${item.mechanicalOutputText ?? ""}`.toLowerCase().includes(value.toLowerCase()));chooseRulePrimitive("RANGE",primitive?.id??null);}}>{value}</button>)}</div></fieldset>
-        <fieldset><legend>Output · adds the required die primitive</legend><div>{["None","d6","d8","d10","d12","d20"].map(value=><button type="button" key={value} aria-pressed={tableDraft.output===value} onClick={()=>{setTableDraft(current=>({...current,output:value}));const primitive=value==="None"?undefined:availablePrimitives.find(item=>item.category==="INTENSITY_DICE"&&`${item.name} ${item.mechanicalOutputText ?? ""}`.toLowerCase().includes(value.toLowerCase()));chooseRulePrimitive("OUTPUT",primitive?.id??null);}}>{value}</button>)}</div></fieldset>
+        <fieldset><legend>Range · adds the required primitive</legend><div>{["Touch","Near","Far","Very Far","Extreme"].map(value=><button type="button" key={value} aria-pressed={tableDraft.range===value} onClick={()=>{setTableDraft(current=>({...current,range:value}));const primitive=availablePrimitives.find(item=>item.category==="RANGE"&&`${item.name} ${item.mechanicalOutputText ?? ""}`.toLowerCase().includes(value.toLowerCase()));chooseRulePrimitive("RANGE",primitive?.id??null);setTablePrimitiveNotice(primitive?{role:"RANGE",name:primitive.name}:null);}}>{value}</button>)}</div></fieldset>
+        <fieldset><legend>Output · adds the required die primitive</legend><div>{["None","d4","d6","d8","d10","d12","d20"].map(value=><button type="button" key={value} aria-pressed={tableDraft.output===value} onClick={()=>{setTableDraft(current=>({...current,output:value}));const primitive=value==="None"?undefined:availablePrimitives.find(item=>item.category==="INTENSITY_DICE"&&`${item.name} ${item.mechanicalOutputText ?? ""}`.toLowerCase().includes(value.toLowerCase()));chooseRulePrimitive("OUTPUT",primitive?.id??null);setTablePrimitiveNotice(primitive?{role:"OUTPUT",name:primitive.name}:null);}}>{value}</button>)}</div></fieldset>
+        {tablePrimitiveNotice ? <div className="v12-table-toast" role="status"><span>{tablePrimitiveNotice.name} added.</span><button type="button" onClick={()=>{chooseRulePrimitive(tablePrimitiveNotice.role,null);setTablePrimitiveNotice(null);}}>Remove it</button><button type="button" aria-label="Dismiss" onClick={()=>setTablePrimitiveNotice(null)}>×</button></div> : null}
         <div className="v12-table-readout"><p className="v12-kicker">Table declaration</p><h3>{form.name || "Untitled capability"}</h3><p>{tableDraft.casting} · {tableDraft.target} · {tableDraft.shape} · {tableDraft.size} · {tableDraft.placement} · {tableDraft.range} · {tableDraft.output} · {tableDraft.duration}</p><small>{slots.length} direct pieces · {effectIds.length} effects · {previewBu} BU</small></div>
       </div>
 

@@ -261,17 +261,6 @@ export function EffectForm({
     setSlots((current) => current.filter((s) => s.primitiveId !== primitiveId));
   }
 
-  function toggleSlotMirror(primitiveId: number) {
-    setIsDirty(true);
-    setSlots((current) =>
-      current.map((s) =>
-        s.primitiveId === primitiveId
-          ? { ...s, isMirrored: !s.isMirrored }
-          : s,
-      ),
-    );
-  }
-
   function resetEditor() {
     setForm(blankForm);
     setSlots([]);

@@ -37,8 +37,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <CharacterModalProvider>
       <ModalStackHost>
         <GlobalControls>
-          <main className="min-w-0 pb-2">{children}</main>
-          <footer className="v12-section-head border-t border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+          <div className="flex min-h-dvh flex-col">
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col pb-2">{children}</main>
+          <footer className="v12-section-head mt-auto shrink-0 border-t border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
             <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">
               <span>
                 SwordWeave · Open-source TTRPG engine
@@ -61,6 +62,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </footer>
+          </div>
           {/* Character creation modal (Phase 8.1) — persistent overlay.
               Lives inside CharacterModalProvider so the FAB onClick in
               GlobalControls can read the same store. Renders nothing

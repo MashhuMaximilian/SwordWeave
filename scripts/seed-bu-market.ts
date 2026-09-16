@@ -828,10 +828,10 @@ const SEED: SeedRow[] = [
 
   // INTENSITY_DICE (1 missing) — dice blocks ARE the metric expression,
   // no targetScope applied (the dice slot is the entire scope).
-  { name: "Minor Die Block", category: "INTENSITY_DICE", buCost: 1,
-    costTier: "Tier 1 — Minor (4 BU anchor)",
-    mechanicalOutputText: "Adds one 1d4 damage or healing unit that inherits source type and domain.",
-    narrativeRule: "A small packet of force, injury, restoration, or pressure enters the capability output." },
+  { name: "Minor Die Block", category: "INTENSITY_DICE", buCost: 0,
+    costTier: "Tier 0 — Baseline (0 BU)",
+    mechanicalOutputText: "Unlock [1d4] damage or healing output.",
+    narrativeRule: "Use a d4 for the baseline damage or healing output available without added BU cost. The parent capability still determines the action, target, source, and delivery rules." },
 
   // TARGETING (1) — multi-target permission, no scope
   { name: "Vector Split", category: "TARGETING", buCost: 4,

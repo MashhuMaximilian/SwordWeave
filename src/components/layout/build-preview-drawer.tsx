@@ -14,7 +14,7 @@
 // to open the drawer directly on the preview tab.
 // =============================================================================
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useGlobalControls } from "./global-controls";
 import { Wrench, Eye, RotateCcw, Save, X } from "lucide-react";
@@ -25,6 +25,7 @@ interface DrawerSlotState {
   build: ReactNode;
   preview: ReactNode;
 }
+const EMPTY_DRAWER_SLOT: DrawerSlotState = { build: null, preview: null };
 
 const DrawerSlotCtx = (() => {
   let state: DrawerSlotState = { build: null, preview: null };
@@ -112,14 +113,18 @@ export function useDrawerSlot(content: Partial<DrawerSlotState>) {
 export function BuildPreviewDrawer() {
   const { drawerOpen, drawerTab, closeDrawer, setDrawerTab } =
     useGlobalControls();
-  const [, setTick] = useState(0);
-  useEffect(() => DrawerSlotCtx.subscribe(() => setTick((t) => t + 1)), []);
   useEffect(() => {
     const closeForPreview = () => closeDrawer();
     window.addEventListener("sw-close-build-drawer", closeForPreview);
     return () => window.removeEventListener("sw-close-build-drawer", closeForPreview);
   }, [closeDrawer]);
-  const slot = DrawerSlotCtx.get();
+  // The server snapshot is intentionally empty. useSyncExternalStore keeps
+  // hydration stable, then reads the live page slot after React attaches.
+  const slot = useSyncExternalStore(
+    DrawerSlotCtx.subscribe,
+    DrawerSlotCtx.get,
+    () => EMPTY_DRAWER_SLOT,
+  );
   // NOTE: we don't compute `activeContent` here. Both panels are
   // mounted simultaneously (the inactive one is hidden via CSS) so
   // the form's local state survives tab switches.
@@ -146,7 +151,7 @@ export function BuildPreviewDrawer() {
         <div
           role="tablist"
           className={cn(
-            "sticky top-0 z-10 -mx-1 mb-2 flex shrink-0 rounded-md border border-border bg-card p-0.5",
+            "v12-build-drawer-tabs sticky top-0 z-10 -mx-1 mb-2 flex shrink-0 rounded-md border border-border bg-card p-0.5",
             slot.build === null && slot.preview === null && "opacity-60",
           )}
         >
@@ -157,7 +162,7 @@ export function BuildPreviewDrawer() {
             onClick={() => setDrawerTab("build")}
             disabled={slot.build === null}
             className={cn(
-              "flex flex-1 items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors",
+              "v12-build-drawer-tab flex flex-1 items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors",
               drawerTab === "build"
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground",
@@ -174,7 +179,7 @@ export function BuildPreviewDrawer() {
             onClick={() => setDrawerTab("preview")}
             disabled={slot.preview === null}
             className={cn(
-              "flex flex-1 items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors",
+              "v12-build-drawer-tab flex flex-1 items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors",
               drawerTab === "preview"
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground",
@@ -230,7 +235,7 @@ export function BuildPreviewDrawer() {
 
         {/* Pinned Save/Reset footer — only shown when a build is registered. */}
         {slot.build !== null ? (
-          <div className="sticky bottom-0 -mx-1 mt-2 flex shrink-0 items-center justify-between gap-2 border-t border-border bg-card px-3 py-2">
+          <div className="v12-build-drawer-footer sticky bottom-0 -mx-1 mt-2 flex shrink-0 items-center justify-between gap-2 border-t border-border bg-card px-3 py-2">
             <button
               type="button"
               onClick={dispatchReset}
@@ -245,7 +250,7 @@ export function BuildPreviewDrawer() {
             <button
               type="button"
               onClick={dispatchSave}
-              className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+              className="v12-build-drawer-save flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
             >
               <Save className="size-3.5" />
               Save
@@ -338,10 +343,10 @@ function DrawerShell({
         // "Received an empty string for a boolean attribute `inert`" warning.
         inert={!isOpen}
         className={cn(
-          "v12-instrument fixed inset-x-0 bottom-0 z-50 flex max-h-[90vh] flex-col rounded-t-2xl border-t border-border bg-card shadow-2xl transition-transform duration-300 ease-out sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:max-w-4xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl",
+          "v12-instrument fixed inset-x-0 bottom-0 z-50 flex max-h-[90vh] flex-col rounded-t-2xl border-t border-border bg-card shadow-2xl transition-[transform,visibility] duration-300 ease-out sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:max-w-4xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl",
           isOpen
-            ? "translate-y-0 sm:translate-y-[-50%]"
-            : "translate-y-full sm:translate-y-[-50%] sm:translate-x-[-50%] sm:translate-y-[150%]",
+            ? "visible translate-y-0 sm:translate-y-[-50%]"
+            : "invisible translate-y-full sm:translate-x-[-50%] sm:translate-y-[150%]",
         )}
       >
         <header className="v12-section-head sticky top-0 z-10 flex shrink-0 items-start justify-between gap-2 border-b border-border bg-card px-2 py-2">

@@ -36,21 +36,25 @@ export function LiveRecipeCard({ name, kind, icon, badges, description, sourceOr
 }
 
 export function LivePrimitiveRules({ slots }: { slots: LivePrimitiveSlot[] }) {
-  return <div className="v12-live-rules">{slots.map((slot, index) => <article className="v12-live-rule" key={`${slot.primitiveId}:${index}`}>
-    <div className="v12-live-rule-head"><button type="button" onClick={() => dispatchOpenPreview({targetType:"PRIMITIVE", targetId:String(slot.primitiveId), label:slot.primitive.name})}>{slot.primitive.name}</button><span>{Math.abs(slot.primitive.buCost * (slot.quantity ?? 1))} BU</span></div>
+  return <div className="v12-live-rules">{slots.map((slot, index) => <article
+    className="v12-live-rule"
+    key={`${slot.primitiveId}:${index}`}
+    role="button"
+    tabIndex={0}
+    onClick={() => dispatchOpenPreview({targetType:"PRIMITIVE", targetId:String(slot.primitiveId), label:slot.primitive.name})}
+    onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); dispatchOpenPreview({targetType:"PRIMITIVE", targetId:String(slot.primitiveId), label:slot.primitive.name}); } }}
+  >
+    <div className="v12-live-rule-head"><strong>{slot.primitive.name}</strong><span aria-hidden="true">↗</span></div>
     {slot.primitive.mechanicalOutputText || slot.primitive.narrativeRule ? <div data-readable-rule><Markdown>{slot.primitive.mechanicalOutputText || slot.primitive.narrativeRule || ""}</Markdown></div> : null}
     <div className="v12-live-rule-meta">{slot.role ? <span>{slot.role.replaceAll("_", " ").toLowerCase()}</span> : null}{slot.quantity !== undefined ? <span>×{slot.quantity}</span> : null}{slot.isMirrored ? <span>Mirrored</span> : null}{slot.slotLabel && slot.slotLabel !== slot.primitive.name ? <span>{slot.slotLabel}</span> : null}</div>
     {slot.notes ? <p className="v12-live-note">{slot.notes}</p> : null}
-    {slot.primitive.narrativeRule && slot.primitive.mechanicalOutputText && slot.primitive.narrativeRule !== slot.primitive.mechanicalOutputText ? <details><summary>Narrative rule</summary><Markdown>{slot.primitive.narrativeRule}</Markdown></details> : null}
   </article>)}</div>;
 }
 
 export function LiveEffectRules({ effects }: { effects: LiveEffect[] }) {
-  return <div className="v12-live-effects">{effects.map((effect, index) => <details className="v12-live-effect" open key={`${effect.id}:${index}`}><summary><span className="v12-kicker">Nested effect</span><strong>{effect.name}</strong>{effect.primitiveLinks ? <small>{effect.primitiveLinks.length} primitive {effect.primitiveLinks.length === 1 ? "rule" : "rules"}</small> : null}</summary>
-    {effect.narrativeDescription ? <div className="v12-live-description"><Markdown>{effect.narrativeDescription}</Markdown></div> : null}
+  return <div className="v12-live-effects">{effects.map((effect, index) => <article className="v12-live-effect" key={`${effect.id}:${index}`}><button type="button" className="v12-live-effect-open" onClick={() => dispatchOpenPreview({targetType:"EFFECT",targetId:effect.id,label:effect.name})}><span className="v12-kicker">Nested effect</span><strong>{effect.name}</strong>{effect.primitiveLinks ? <small>{effect.primitiveLinks.length} primitive {effect.primitiveLinks.length === 1 ? "rule" : "rules"}</small> : null}<span aria-hidden="true">↗</span></button>
     {effect.primitiveLinks ? <LivePrimitiveRules slots={effect.primitiveLinks} /> : null}
-    <button className="v12-live-inspect" type="button" onClick={() => dispatchOpenPreview({targetType:"EFFECT",targetId:effect.id,label:effect.name})}>Inspect effect and provenance</button>
-  </details>)}</div>;
+  </article>)}</div>;
 }
 
 export function LiveMechanicalSummary({slots}:{slots:LivePrimitiveSlot[]}) {

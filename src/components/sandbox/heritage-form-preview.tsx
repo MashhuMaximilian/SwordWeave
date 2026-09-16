@@ -59,12 +59,10 @@ export function HeritageFormPreview({form, primitives, capabilities}: {
   </>}>
     {form.imageUrl ? <img src={form.imageUrl} alt={form.name} className="v12-live-portrait" /> : null}
     <LiveMechanicalSummary slots={allSlots} />
-    {capabilities.length ? <section className="v12-live-composition"><h3 className="v12-kicker">Granted capabilities · {capabilities.length}</h3>{capabilities.map((capability,index)=><details className="v12-live-effect" open key={`${capability.id}:${index}`}><summary><span className="v12-kicker">Capability · {capability.category}</span><strong>{capability.name}</strong></summary>
-      {capability.description ? <div className="v12-live-description"><Markdown>{capability.description}</Markdown></div> : null}
+    {capabilities.length ? <section className="v12-live-composition"><h3 className="v12-kicker">Granted capabilities · {capabilities.length}</h3>{capabilities.map((capability,index)=><article className="v12-live-effect" key={`${capability.id}:${index}`}><button type="button" className="v12-live-effect-open" onClick={()=>dispatchOpenPreview({targetType:"CAPABILITY",targetId:String(capability.id),label:capability.name})}><span className="v12-kicker">Capability · {capability.category}</span><strong>{capability.name}</strong><span aria-hidden="true">↗</span></button>
       <LivePrimitiveRules slots={capability.primitiveLinks ?? []} /><LiveEffectRules effects={capability.effects ?? []} />
       {capability.isMirrored ? <p className="v12-live-note">Mirrored</p> : null}
-      <button type="button" className="v12-live-inspect" onClick={()=>dispatchOpenPreview({targetType:"CAPABILITY",targetId:String(capability.id),label:capability.name})}>Inspect capability and provenance</button>
-    </details>)}</section> : null}
+    </article>)}</section> : null}
     <details className="v12-live-composition" open><summary>Direct {kindLabel(form.kind).toLowerCase()} primitives · {directSlots.length}</summary><LivePrimitiveRules slots={directSlots} />{!directSlots.length ? <p className="v12-live-note">No direct primitives added.</p> : null}</details>
     {form.suggestedTraits ? <section className="v12-live-composition"><h3 className="v12-kicker">Suggested traits</h3><Markdown>{form.suggestedTraits}</Markdown></section> : null}
   </LiveRecipeCard>;

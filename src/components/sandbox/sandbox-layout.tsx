@@ -1107,18 +1107,20 @@ function ColumnChrome({
           <span className="v12-studio-head-title block truncate">{displayTitle}</span>
         </span>
       )}
-      {!isHidden && CollapseIcon && hydrated ? (
+      {!isHidden && hydrated ? (
         <div className="ml-auto flex items-center gap-0.5">
           {actions}
-          <button
-            type="button"
-            onClick={() => toggleCollapsed(columnKey)}
-            title="Collapse to strip"
-            aria-label={`Collapse ${title} column`}
-            className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <CollapseIcon className="size-3.5" />
-          </button>
+          {CollapseIcon ? (
+            <button
+              type="button"
+              onClick={() => toggleCollapsed(columnKey)}
+              title="Collapse to strip"
+              aria-label={`Collapse ${title} column`}
+              className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <CollapseIcon className="size-3.5" />
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => toggleHidden(columnKey)}

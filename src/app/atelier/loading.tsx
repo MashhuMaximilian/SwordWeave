@@ -15,7 +15,7 @@
 
 export default function AtelierLoading() {
   return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 py-16">
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-6 py-16">
       <div
         className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"
         aria-hidden="true"

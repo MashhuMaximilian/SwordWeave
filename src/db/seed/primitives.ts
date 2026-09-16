@@ -124,13 +124,13 @@ const seeds: PrimitiveSeed[] = [
   },
   {
     name: "Minor Die Block",
-    category: "OUTPUT",
-    costTier: "Tier 1: Minor (4 BU anchor)",
-    buCost: 1,
+    category: "INTENSITY_DICE",
+    costTier: "Tier 0 — Baseline (0 BU)",
+    buCost: 0,
     mechanicalOutputText:
-      "Adds one 1d4 damage or healing unit that inherits source type and domain.",
+      "Unlock [1d4] damage or healing output.",
     narrativeRule:
-      "A small packet of force, injury, restoration, or pressure enters the capability output.",
+      "Use a d4 for the baseline damage or healing output available without added BU cost. The parent capability still determines the action, target, source, and delivery rules.",
     hardModifiers: [
       {
         kind: "modify",

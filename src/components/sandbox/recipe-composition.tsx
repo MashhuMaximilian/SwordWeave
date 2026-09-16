@@ -1,21 +1,30 @@
 "use client";
-import { useState } from "react";
-import { FetchedEntityPreview } from "@/components/preview/entity-preview";
+
+import type { MouseEvent } from "react";
+import { Markdown } from "@/components/ui/markdown";
 
 export type RecipePrimitive = { id: number; name: string; category?: string; buCost: number; mechanicalOutputText?: string | null; narrativeRule?: string | null };
 export type RecipePrimitiveLink = { primitiveId: number; quantity?: number; primitive: RecipePrimitive };
 export type RecipeEffectLink = { effectId: string; effect: { name: string; narrativeDescription?: string | null; primitiveLinks?: RecipePrimitiveLink[] } };
 
+function openPreview(event: MouseEvent<HTMLElement>, targetType: string, targetId: string, label: string) {
+  event.stopPropagation();
+  const detail = { targetType, targetId, label };
+  if (event.currentTarget.closest("[data-drawer-build]")) {
+    window.dispatchEvent(new CustomEvent("sw-close-build-drawer"));
+    window.setTimeout(() => window.dispatchEvent(new CustomEvent("sw-sandbox-open-preview", { detail })), 0);
+  } else {
+    window.dispatchEvent(new CustomEvent("sw-sandbox-open-preview", { detail }));
+  }
+}
+
 export function RecipeComposition({ id, primitiveLinks, effectLinks }: { id: string; primitiveLinks?: RecipePrimitiveLink[]; effectLinks?: RecipeEffectLink[] }) {
-  const [inspect, setInspect] = useState(false);
-  return <div className="v12-recipe-composition">
-    {primitiveLinks?.map((link, index) => <div className="v12-nested-rule" key={`${link.primitiveId}:${index}`}><span>{link.primitive.buCost} BU{(link.quantity ?? 1) > 1 ? ` × ${link.quantity}` : ""}</span><b>{link.primitive.name}</b><p data-readable-rule>{link.primitive.mechanicalOutputText || link.primitive.narrativeRule}</p></div>)}
-    {effectLinks?.map((link, index) => <details key={`${link.effectId}:${index}`} className="v12-recipe-effect"><summary>Effect · {link.effect.name}{link.effect.primitiveLinks ? ` · ${link.effect.primitiveLinks.length} primitive${link.effect.primitiveLinks.length === 1 ? "" : "s"}` : ""}</summary>{link.effect.narrativeDescription ? <p>{link.effect.narrativeDescription}</p> : null}{link.effect.primitiveLinks?.map((primitive, childIndex) => <div className="v12-nested-rule" key={`${primitive.primitiveId}:${childIndex}`}><b>{primitive.primitive.name}</b><span>{primitive.primitive.buCost} BU{(primitive.quantity ?? 1) > 1 ? ` × ${primitive.quantity}` : ""}</span><p data-readable-rule>{primitive.primitive.mechanicalOutputText || primitive.primitive.narrativeRule}</p></div>)}</details>)}
-    <details onToggle={event => setInspect(event.currentTarget.open)}><summary>Full capability details</summary>{inspect ? <FetchedEntityPreview targetType="CAPABILITY" targetId={id} /> : null}</details>
-  </div>;
+  return <button type="button" className="v12-recipe-composition" onClick={(event) => openPreview(event, "CAPABILITY", id, "Capability details")}>
+    {primitiveLinks?.map((link, index) => <span className="v12-nested-rule" key={`${link.primitiveId}:${index}`}><b>{link.primitive.name}</b><small>{link.primitive.buCost} BU{(link.quantity ?? 1) > 1 ? ` × ${link.quantity}` : ""}</small>{link.primitive.mechanicalOutputText ? <Markdown className="v12-recipe-mechanical">{link.primitive.mechanicalOutputText}</Markdown> : null}</span>)}
+    {effectLinks?.map((link, index) => <span key={`${link.effectId}:${index}`} className="v12-recipe-effect"><small>Effect</small><b>{link.effect.name}</b><small>{link.effect.primitiveLinks?.length ?? 0} primitives</small></span>)}
+  </button>;
 }
 
 export function RecipeEntryDetails({targetType,id,label}:{targetType:string;id:string;label:string}) {
-  const [open,setOpen]=useState(false);
-  return <details onToggle={event=>setOpen(event.currentTarget.open)}><summary>{label}</summary>{open ? <FetchedEntityPreview targetType={targetType} targetId={id}/> : null}</details>;
+  return <button type="button" className="v12-recipe-open-card" onClick={(event)=>openPreview(event,targetType,id,label)} aria-label={`Open ${label}`} title={`Open ${label}`}>↗</button>;
 }

@@ -412,16 +412,6 @@ export function ItemForm({
     });
   }
 
-  function toggleSlotMirror(id: number) {
-    setIsDirty(true);
-    setIsMirroredIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
   function toggleCapability(id: string) {
     setIsDirty(true);
     setCapabilityIds((prev) =>
@@ -632,18 +622,6 @@ export function ItemForm({
                   <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 font-mono text-xs">
                     {p.buCost} BU
                   </span>
-                  <label
-                    className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs"
-                    title="When this slot is mirrored, the consumer pays BU debt at template/character-creation time."
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isMirroredIds.has(p.id)}
-                      onChange={() => toggleSlotMirror(p.id)}
-                      className="size-3.5"
-                    />
-                    <span>Mirror</span>
-                  </label>
                   <button
                     type="button"
                     onClick={() => togglePrimitive(p.id)}
@@ -685,7 +663,6 @@ export function ItemForm({
                     <p className="text-xs text-muted-foreground">
                       {cap.type} · {cap.sourceType}
                     </p>
-                    {cap.verboseDescription ? <p>{cap.verboseDescription}</p> : null}
                     <RecipeComposition id={id} {...(cap.primitiveLinks ? {primitiveLinks:cap.primitiveLinks} : {})} {...(cap.effectLinks ? {effectLinks:cap.effectLinks} : {})} />
                   </div>
                   <button
@@ -814,8 +791,7 @@ export function ItemForm({
         />
       </label>
 
-        </AuthorChapter>
-        <AuthorChapter id="table" title="At the table">
+
       {/* Phase 8.5 H3-rev: 3 booleans row right under Type/Rarity. */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Checkbox
@@ -986,7 +962,9 @@ export function ItemForm({
         </label>
       </div>
 
+
         </AuthorChapter>
+
         <AuthorChapter id="publish" title="Publish">
       <label className="block text-sm font-medium">
         Tags (comma separated)

@@ -146,11 +146,7 @@ export function DataQualityPanel() {
   }
 
   if (issues.length === 0) {
-    return (
-      <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
-        ✓ All {primitives.length} primitives pass modifier validation.
-      </div>
-    );
+    return null;
   }
 
   // Group by primitive so the user sees each problematic primitive once

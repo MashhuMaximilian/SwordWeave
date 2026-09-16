@@ -1569,14 +1569,13 @@ export function AtelierSandboxClient({
             : null);
     const sourcePicker = (
       <nav className="v12-source-browser-picker" aria-label="Browse source">
-        <p className="v12-kicker">Browse</p>
         <div className="v12-source-browser-choices">
           {([
-            ["mechanics", "Mechanics", "Primitives · effects · capabilities"],
-            ["heritage", "Heritages", "Lineages · upbringings · manifests"],
-            ["item", "Items", "Equipment · consumables"],
-            ["monster", "Monsters", "Coming later"],
-          ] as const).map(([value, label, hint]) => (
+            ["mechanics", "Mechanics"],
+            ["heritage", "Heritages"],
+            ["item", "Items"],
+            ["monster", "Monsters"],
+          ] as const).map(([value, label]) => (
             <button
               key={value}
               type="button"
@@ -1584,7 +1583,7 @@ export function AtelierSandboxClient({
               disabled={value === "monster"}
               onClick={() => guardedSwitchBuild(value)}
             >
-              <b>{label}</b><small>{hint}</small>
+              <b>{label}</b>
             </button>
           ))}
         </div>
@@ -1813,7 +1812,12 @@ function SecondaryBuildWorkspace({
     <div className="v12-secondary-build" key={revision}>
       <button type="button" data-drawer-reset hidden onClick={reset}>Reset modal build</button>
       <header><div><p className="v12-kicker">Persistent build modal</p><h2>{kind ? `New ${kind}` : "Choose a long-running build"}</h2></div>{kind ? <button type="button" className="v12-metal-button" onClick={reset}>Change build</button> : null}</header>
-      {!kind ? <div className="v12-secondary-build-choices">{(["capability","effect","heritage","item"] as const).map(value=><button type="button" key={value} onClick={()=>setKind(value)}><b>{value}</b><small>Keep this draft open while the middle workspace changes.</small></button>)}</div> : null}
+      {!kind ? <div className="v12-secondary-build-groups">
+        <section><p className="v12-kicker">Mechanics</p><div>{(["capability","effect"] as const).map(value=><button type="button" key={value} onClick={()=>setKind(value)}>{value}</button>)}<button type="button" onClick={()=>{ window.dispatchEvent(new CustomEvent("sw-close-build-drawer")); }}>Primitive <small>use the middle workspace</small></button></div></section>
+        <section><p className="v12-kicker">Heritages</p><div><button type="button" onClick={()=>setKind("heritage")}>Lineage</button><button type="button" onClick={()=>setKind("heritage")}>Upbringing</button><button type="button" onClick={()=>setKind("heritage")}>Manifest</button></div></section>
+        <section><p className="v12-kicker">Items</p><div><button type="button" onClick={()=>setKind("item")}>Item</button></div></section>
+        <section data-disabled="true"><p className="v12-kicker">Monsters</p><div><button type="button" disabled>Coming later</button></div></section>
+      </div> : null}
       {kind === "capability" ? <CapabilityForm key={`cap-${revision}`} slotEvents={slotBus} initialCapability={null} availablePrimitives={primitiveOptions} availableEffects={effects} onSaved={(row)=>commonSaved(row,"capability")} /> : null}
       {kind === "effect" ? <EffectForm key={`eff-${revision}`} slotEvents={slotBus} initialEffect={null} availablePrimitives={primitiveOptions} onSaved={(row)=>commonSaved(row,"effect")} /> : null}
       {kind === "heritage" ? <HeritageForm key={`her-${revision}`} slotEvents={slotBus} initialTemplate={null} initialKind="MANIFEST" availablePrimitives={primitiveOptions} availableCapabilities={capabilities} onSaved={(row)=>commonSaved(row,"heritage",row.kind)} /> : null}

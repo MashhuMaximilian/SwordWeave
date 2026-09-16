@@ -404,16 +404,6 @@ export function HeritageForm({
     });
   }
 
-  function toggleSlotMirror(id: number) {
-    setIsDirty(true);
-    setIsMirroredIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
   function toggleCapability(id: string) {
     setIsDirty(true);
     setCapabilityIds((prev) =>
@@ -597,7 +587,7 @@ export function HeritageForm({
         </div>
       </div>
 
-      <AuthorChapters defaultActive="identity" order={["identity", "pieces", "table", "publish"]}>
+      <AuthorChapters defaultActive="identity" order={["identity", "pieces", "publish"]}>
         <AuthorChapter id="pieces" title="Pieces">
       <section className="rounded-md border border-border bg-background p-4">
         <div className="flex items-center justify-between gap-3">
@@ -609,7 +599,7 @@ export function HeritageForm({
           </span>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Pick any primitive — categories aren't restricted for this kind.
+          Pick any primitive — categories are not restricted for this kind.
         </p>
 
         {primitiveIds.length === 0 ? (
@@ -629,18 +619,6 @@ export function HeritageForm({
                   <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 font-mono text-xs">
                     {p.buCost} BU
                   </span>
-                  <label
-                    className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs"
-                    title="When this slot is mirrored, the consumer pays BU debt at template/character-creation time."
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isMirroredIds.has(p.id)}
-                      onChange={() => toggleSlotMirror(p.id)}
-                      className="size-3.5"
-                    />
-                    <span>Mirror</span>
-                  </label>
                   <button
                     type="button"
                     onClick={() => togglePrimitive(p.id)}
@@ -679,7 +657,6 @@ export function HeritageForm({
                 <div className="v12-recipe-copy min-w-0 flex-1">
                   <p className="v12-kicker">Granted capability · {c.type} · {c.sourceType}</p>
                   <h3>{c.name}</h3>
-                  {c.verboseDescription ? <p>{c.verboseDescription}</p> : null}
                   <RecipeComposition id={c.id} {...(c.primitiveLinks ? { primitiveLinks: c.primitiveLinks } : {})} {...(c.effectLinks ? { effectLinks: c.effectLinks } : {})} />
                 </div>
                 <button
@@ -740,8 +717,7 @@ export function HeritageForm({
         />
       </label>
 
-        </AuthorChapter>
-        <AuthorChapter id="table" title="At the table">
+
       <label className="block text-sm font-medium">
         Description / Lore
         <textarea
@@ -764,7 +740,9 @@ export function HeritageForm({
         />
       </label>
 
+
         </AuthorChapter>
+
         <AuthorChapter id="publish" title="Publish">
       {/* Phase 8 rev 10: heritage parity — sourceOrigin + tags inputs.
           These were missing from the form (the columns exist in the DB
