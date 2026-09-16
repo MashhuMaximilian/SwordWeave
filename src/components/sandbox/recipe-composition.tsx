@@ -37,7 +37,6 @@ function openPreview(event: MouseEvent<HTMLElement>, targetType: string, targetI
 
 export function RecipeComposition({ id, primitiveLinks, effectLinks }: { id: string; primitiveLinks?: RecipePrimitiveLink[]; effectLinks?: RecipeEffectLink[] }) {
   return <div className="v12-recipe-composition" data-capability-id={id}>
-    <button type="button" className="v12-recipe-open-card" onClick={(event) => openPreview(event, "CAPABILITY", id, "Capability details")} aria-label="Full capability details" title="Full capability details">↗</button>
     {primitiveLinks?.map((link, index) => <PrimitiveRule link={link} index={index} key={`${link.primitiveId}:${index}`} />)}
     {effectLinks?.map((link, index) => <div key={`${link.effectId}:${index}`} className="v12-recipe-effect-group">
       <button type="button" className="v12-recipe-effect text-left" onClick={(event) => openPreview(event, "EFFECT", link.effectId, link.effect.name)} aria-label={`Open ${link.effect.name}`}>

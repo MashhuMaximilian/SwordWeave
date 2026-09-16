@@ -848,20 +848,15 @@ export function AtelierSandboxClient({
       const editingId = (editing.row as { id: string | number }).id;
       if (editingId === id) return;
     }
-    // Fork AND load behave the same: if the build is empty
-    // (nothing loaded), apply directly; if something is already
-    // loaded, prompt the in-app discard modal so the user
-    // won't silently lose work. The discard BUTTON in that
-    // prompt is hidden (hideDiscard) — Reset is the explicit
-    // clear path, so the user resets first, then loads/forks.
-    // The off-page FAB-nav guard (separate effect) keeps its
-    // own discard prompt WITH the button (dirty-exit safety).
+    // Fork and load both apply directly only when the workspace is empty.
+    // Otherwise the in-app prompt lets the author explicitly discard the
+    // current draft before replacing it.
     if (editing === null && !formIsDirty && !buildStarted) {
       applyPendingAction({ kind: "loadFromLibrary", entityType, id, intent });
       return;
     }
     const verb = intent === "fork" ? "Forking" : "Loading";
-    modalDescRef.current = `You have unsaved changes in the ${buildLabel(build)} form. ${verb} another row will discard them. Press Reset first to clear, then ${intent}.`;
+    modalDescRef.current = `You have unsaved changes in the ${buildLabel(build)} form. ${verb} another row will discard them.`;
     setPendingAction({ kind: "loadFromLibrary", entityType, id, intent });
   }
 

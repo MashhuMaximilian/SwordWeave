@@ -13,9 +13,9 @@ describe("heritage capability recipe", () => {
     }));
     expect(html).toContain("Focused Edge"); expect(html).toContain("Add 3 Awareness.");
     expect(html).toContain("Compelled Focus"); expect(html).toContain("Read capability trails.");
-    expect(html).toContain("× 2"); expect(html).toContain("Full capability details");
+    expect(html).toContain("× 2");
   });
-  it("offers complete details when an embedded author receives only an ID", () => {
-    expect(renderToStaticMarkup(createElement(RecipeComposition,{id:"capability"}))).toContain("Full capability details");
+  it("does not add a redundant details control when an embedded author receives only an ID", () => {
+    expect(renderToStaticMarkup(createElement(RecipeComposition,{id:"capability"}))).not.toContain("Full capability details");
   });
 });
