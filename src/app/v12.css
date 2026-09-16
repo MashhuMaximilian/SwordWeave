@@ -2329,6 +2329,32 @@ body[data-ui="v12"] .v12-foundation-pieces,
 body[data-ui="v12"] .v12-author-chapter > :is(section,.rounded-md,.rounded-lg),
 body[data-ui="v12"] .v12-author-chapters li.v12-author-recipe-piece,
 body[data-ui="v12"] .v12-author-chapters li:has(.v12-recipe-copy) { border-radius:8px; }
+body[data-ui="v12"] .v12-new-entity-modal { border-radius:12px; }
+body[data-ui="v12"] .v12-new-entity-choices button {
+  border:1px solid transparent; border-radius:7px;
+  background:linear-gradient(var(--v12-raised),var(--v12-inset)) padding-box,var(--v12-silver-edge) border-box;
+}
+body[data-ui="v12"] .v12-new-entity-choices button:hover,
+body[data-ui="v12"] .v12-new-entity-choices button:focus-visible {
+  background:linear-gradient(color-mix(in srgb,var(--v12-brass) 11%,var(--v12-inset)),var(--v12-inset)) padding-box,var(--v12-brass-edge) border-box;
+  outline:none;
+}
+body[data-ui="v12"] [data-testid="visibility-select"] {
+  border-color:transparent;
+  background:linear-gradient(var(--v12-inset),var(--v12-inset)) padding-box,var(--v12-brass-edge) border-box;
+}
+body[data-ui="v12"] [data-testid="visibility-select"] button[aria-pressed="true"] {
+  position:relative; color:var(--v12-gold-hi); border-color:transparent;
+  background:linear-gradient(color-mix(in srgb,var(--v12-brass) 18%,var(--v12-inset)),var(--v12-inset)) padding-box,var(--v12-gold-edge) border-box;
+}
+body[data-ui="v12"] [data-testid="visibility-select"] button[aria-pressed="true"]::after {
+  content:""; position:absolute; right:4px; bottom:0; left:4px; height:2px; border-radius:99px; background:var(--v12-gold-edge);
+}
+body[data-ui="v12"] .v12-modal-actions { padding-bottom:max(.75rem,env(safe-area-inset-bottom)); }
+@media(max-width:767px) {
+  body[data-ui="v12"] .v12-source-browser-choices { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  body[data-ui="v12"] .v12-new-entity-modal { max-height:calc(100dvh - env(safe-area-inset-top) - 12px); border-radius:12px 12px 0 0; }
+}
 body[data-ui="v12"] .v12-inspector-facts dd { min-width:0; color:var(--foreground); font:400 13px/1.35 var(--font-technical); overflow-wrap:anywhere; }
 body[data-ui="v12"] .v12-inspector-section { margin:13px 0; padding-top:10px; border-top:1px solid var(--v12-line-subtle); }
 body[data-ui="v12"] .v12-inspector-section > p { margin-top:7px; font:400 16px/1.45 var(--font-body); color:var(--v12-soft); }

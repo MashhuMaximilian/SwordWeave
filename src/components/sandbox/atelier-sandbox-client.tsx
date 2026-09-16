@@ -1963,7 +1963,7 @@ function NewEntityModal({
       onClick={onClose}
     >
       <div
-        className="v12-modal-surface v12-instrument w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl"
+        className="v12-modal-surface v12-new-entity-modal v12-instrument w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -1986,13 +1986,13 @@ function NewEntityModal({
               <p className="v12-kicker mb-2 text-xs text-muted-foreground">
                 {group.heading}
               </p>
-              <div className="grid grid-cols-1 gap-1.5">
+              <div className="v12-new-entity-choices grid grid-cols-1 gap-1.5">
                 {group.choices.map((choice) => (
                   <button
                     key={choice.label + (choice.heritageSubKind ?? "")}
                     type="button"
                     onClick={() => onPick(choice)}
-                    className="flex items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-left transition-colors hover:border-primary hover:bg-primary/5"
+                    className="flex items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-left transition-colors"
                   >
                     <IconDisplay
                       iconSource="GAME_ICONS"

@@ -96,10 +96,10 @@ export function UnsavedChangesModal({
       aria-describedby="unsaved-modal-desc"
     >
       <div
-        className="relative w-full max-w-md overflow-hidden rounded-t-2xl bg-card shadow-2xl sm:rounded-2xl"
+        className="v12-modal-surface v12-instrument relative w-full max-w-md overflow-hidden rounded-t-2xl bg-card shadow-2xl sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-6 pt-6 pb-2">
+        <div className="v12-section-head px-6 pt-6 pb-2">
           <h2
             id="unsaved-modal-title"
             className="text-lg font-semibold leading-tight"
@@ -114,7 +114,7 @@ export function UnsavedChangesModal({
           </p>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-border bg-card px-6 py-3">
+        <div className="v12-modal-actions flex items-center justify-end gap-2 border-t border-border bg-card px-6 py-3">
           <button
             ref={cancelRef}
             type="button"

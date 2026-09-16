@@ -116,7 +116,7 @@ export function VisibilitySelect({
   }
 
   return (
-    <div className="rounded-md border border-border bg-card/50 p-2.5">
+    <div className="rounded-md border border-border bg-card/50 p-2.5" data-testid="visibility-select">
       <div className="mb-1.5 flex items-center justify-between">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           Visibility
