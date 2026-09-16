@@ -7,37 +7,37 @@ export type AuthoringGuideKind = "primitive" | "effect" | "capability" | "lineag
 const AUTHORING_GUIDES: Record<AuthoringGuideKind, { title: string; body: string; rule: string }> = {
   primitive: {
     title: "Primitive: a purchased building block",
-    body: "A primitive is one atomic rule permanently unlocked with BU: a Verb, Domain, output, range, geometry, defense, or other modifier. Once owned, it can be reused and recombined across any number of recipes.",
+    body: "A primitive is one atomic rule permanently unlocked with BU: a Verb, Domain, output, range, geometry, defense, or other modifier. Once owned, it can be reused and recombined across any number of recipes. In simple terms, primitives are the individual words and tools in your mechanical vocabulary. Buy the useful part once, then bring it into every fitting spell, maneuver, item, or feature.",
     rule: "BU buys the ingredient. Building another recipe with an ingredient you already own does not buy it again.",
   },
   effect: {
     title: "Effect: a reusable result",
-    body: "An effect packages primitives that describe what an action leaves behind or resolves: damage, healing, a condition, movement, protection, or another payload. Capabilities may deliver effects, and the same effect can support several recipes.",
+    body: "An effect packages primitives that describe what an action leaves behind or resolves: damage, healing, a condition, movement, protection, or another payload. Capabilities may deliver effects, and the same effect can support several recipes. Think of it as the result portion of an action: burn, heal, push, shield, frighten, or transform. It becomes especially useful when several capabilities should produce the same reusable outcome.",
     rule: "Describe the result here; put the complete intent, delivery, and table declaration in a capability.",
   },
   capability: {
     title: "Capability: a ready-to-use recipe",
-    body: "A capability is a prepared spell, technique, maneuver, or feature assembled from owned primitives and optional effects. It is a shortcut on the character sheet, not a boundary on what those components can improvise at the table.",
+    body: "A capability is a prepared spell, technique, maneuver, or feature assembled from owned primitives and optional effects. It is a shortcut on the character sheet, not a boundary on what those components can improvise at the table. In simple terms, it is a favorite recipe you can declare quickly during play. Its pieces remain available for other recipes and improvised actions.",
     rule: "Preset recipes cost 0 additional BU. A maintained capability counts as one atomic upkeep entity even when its recipe has many pieces.",
   },
   lineage: {
     title: "Lineage: inherited nature",
-    body: "Lineage records biological, ancestral, or created-body traits: innate senses, movement, resilience, passive adaptations, and natural access to a Domain. It explains what the character begins life able to be or perceive.",
+    body: "Lineage records biological, ancestral, or created-body traits: innate senses, movement, resilience, passive adaptations, and natural access to a Domain. It explains what the character begins life able to be or perceive. In simple terms, this is the character's body and inherited nature rather than their job or education. A constructed person, transformed creature, or unusual ancestry can all express that foundation here.",
     rule: "Bundle only the inherited components and capabilities; learned history belongs in Upbringing.",
   },
   upbringing: {
     title: "Upbringing: formative history",
-    body: "Upbringing records the environment, community, work, education, and training that shaped the character before play. It is the place for learned Practices, proficiencies, social permissions, and techniques earned through lived experience.",
+    body: "Upbringing records the environment, community, work, education, and training that shaped the character before play. It is the place for learned Practices, proficiencies, social permissions, and techniques earned through lived experience. In simple terms, it answers where the character came from and what ordinary life taught them. Two people with the same Lineage can have completely different Upbringings.",
     rule: "Describe who the character was and what they learned before their present path began.",
   },
   manifest: {
     title: "Manifest: the path taking form",
-    body: "Manifest establishes the character's active role, magical focus, or tactical discipline: the identity often called a class. It bundles the Domains, output, delivery, and signature capabilities that express what the character is becoming now.",
+    body: "Manifest establishes the character's active role, magical focus, or tactical discipline: the identity often called a class. It bundles the Domains, output, delivery, and signature capabilities that express what the character is becoming now. In simple terms, it is the adventuring path the character actively practices today. It can evolve as their goals, methods, and signature techniques change.",
     rule: "Treat it as a customizable convenience pack, not a restriction on future growth or improvisation.",
   },
   item: {
     title: "Item: a capability carrier",
-    body: "An item can be a 0 BU narrative tool, a vessel that grants a complete capability while equipped, or an augment that changes the geometry, delivery, or intensity of components the character already owns.",
+    body: "An item can be a 0 BU narrative tool, a vessel that grants a complete capability while equipped, or an augment that changes the geometry, delivery, or intensity of components the character already owns. In simple terms, an item either helps in the fiction, carries a ready-made power, or improves something its wielder can already do. Its recipe explains the power; Load and equipment slots explain the burden of carrying and using it.",
     rule: "Record its carried Load separately from its BU recipe; active capability and augment items also use Universal Equipment Slots.",
   },
 };

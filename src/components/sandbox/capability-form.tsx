@@ -106,6 +106,33 @@ function defaultRoleForCategory(category: string): string {
 const DEDICATED_ROLES = ["VERB", "DOMAIN", "RANGE", "OUTPUT"] as const;
 type DedicatedRole = (typeof DEDICATED_ROLES)[number];
 
+const TABLE_AXIS_OPTIONS = {
+  target: { label: "Targets", values: ["Single", "Multiple", "Area"] },
+  shape: { label: "Shape", values: ["Direct", "Cone", "Line", "Sphere", "Zone", "Beam"] },
+  size: { label: "Size", values: ["One target", "5 ft", "10 ft", "20 ft", "Custom"] },
+  placement: { label: "Placement", values: ["Self", "Target", "Point", "Directional"] },
+  duration: { label: "Effect duration", values: ["Instant", "Short", "Medium", "Long", "Scene", "Persistent", "Permanent"] },
+  casting: { label: "Casting time", values: ["Action", "Instant", "Short", "Medium", "Long", "Scene"] },
+} as const;
+type TableAxisKey = keyof typeof TABLE_AXIS_OPTIONS;
+type TableDraft = { [K in TableAxisKey]: (typeof TABLE_AXIS_OPTIONS)[K]["values"][number] } & {
+  range: string;
+  output: string;
+};
+const TABLE_AXIS_NOTE_PREFIX = "atelier-table-axis:";
+
+function tableAxisNote(axis: TableAxisKey, value: string) {
+  return `${TABLE_AXIS_NOTE_PREFIX}${axis}:${value}`;
+}
+
+function parseTableAxisNote(notes?: string) {
+  if (!notes?.startsWith(TABLE_AXIS_NOTE_PREFIX)) return null;
+  const encoded = notes.slice(TABLE_AXIS_NOTE_PREFIX.length);
+  const separator = encoded.indexOf(":");
+  if (separator < 0) return null;
+  return { axis: encoded.slice(0, separator) as TableAxisKey, value: encoded.slice(separator + 1) };
+}
+
 function resolvedSlotRole(slot: Pick<CapabilitySlot, "role" | "primitive">): string {
   const inferred = defaultRoleForCategory(slot.primitive.category);
   return DEDICATED_ROLES.includes(inferred as DedicatedRole) ? inferred : slot.role;
@@ -181,11 +208,19 @@ export function CapabilityForm({
   const [orderChanged,setOrderChanged]=useState(false);
   const [form, setForm] = useState<CapabilityFormState>(blankForm);
   const scopedInitial=useRef<typeof initialCapability>(undefined);
-  const [slots, setSlots] = useState<CapabilitySlot[]>(() => initialPrimitiveIds.flatMap((id, index) => { const primitive = availablePrimitives.find(p => p.id === id); return primitive ? [{ primitiveId: id, primitive, quantity: 1, isMirrored: false, role: defaultRoleForCategory(primitive.category), sortOrder: index, slotLabel: null }] : []; }));
+  const [slots, setSlots] = useState<CapabilitySlot[]>(() => {
+    const seeded = initialPrimitiveIds.flatMap((id, index) => {
+      const primitive = availablePrimitives.find((entry) => entry.id === id);
+      return primitive ? [{ primitiveId: id, primitive, quantity: 1, isMirrored: false, role: defaultRoleForCategory(primitive.category), sortOrder: index, slotLabel: null }] : [];
+    });
+    if (seeded.length || initialCapability) return seeded;
+    const touch = availablePrimitives.find((primitive) => primitive.category === "RANGE" && primitive.name.toLowerCase() === "touch range");
+    return touch ? [{ primitiveId: touch.id, primitive: touch, quantity: 1, isMirrored: false, role: "RANGE", sortOrder: 0, slotLabel: touch.name }] : [];
+  });
   const [effectIds, setEffectIds] = useState<string[]>(initialEffectIds);
-  const [tableDraft, setTableDraft] = useState({
+  const [tableDraft, setTableDraft] = useState<TableDraft>({
     target: "Single", shape: "Direct", size: "One target", placement: "Target",
-    range: "Open", output: "None", duration: "Instant", casting: "Action",
+    range: "Touch", output: "None", duration: "Instant", casting: "Action",
   });
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -384,11 +419,8 @@ export function CapabilityForm({
   }
 
   function removeSlot(index: number) {
-    const removedRole = slots[index] ? resolvedSlotRole(slots[index]) : null;
     setIsDirty(true);
     setSlots((prev) => prev.filter((_, i) => i !== index));
-    if (removedRole === "RANGE") setTableDraft((current) => ({ ...current, range: "Open" }));
-    if (removedRole === "OUTPUT") setTableDraft((current) => ({ ...current, output: "None" }));
   }
 
   function updateSlotRole(index: number, role: string) {
@@ -414,9 +446,10 @@ export function CapabilityForm({
 
   function resetEditor() {
     setForm(blankForm);
-    setSlots([]);
+    const touch = availablePrimitives.find((primitive) => primitive.category === "RANGE" && primitive.name.toLowerCase() === "touch range");
+    setSlots(touch ? [{ primitiveId: touch.id, primitive: touch, role: "RANGE", quantity: 1, isMirrored: false, sortOrder: 0, slotLabel: touch.name }] : []);
     setEffectIds([]);
-    setTableDraft({ target: "Single", shape: "Direct", size: "One target", placement: "Target", range: "Open", output: "None", duration: "Instant", casting: "Action" });
+    setTableDraft({ target: "Single", shape: "Direct", size: "One target", placement: "Target", range: "Touch", output: "None", duration: "Instant", casting: "Action" });
     setIsDirty(false); // pristine after reset
     setMessage("Started a fresh capability.");
     bootstrappedRef.current = null; // allow re-bootstrap on next entity load
@@ -559,12 +592,96 @@ export function CapabilityForm({
     (primitive.category === "INTENSITY_DICE" || primitive.category === "OUTPUT") &&
     primitiveSearchText(primitive).includes(die.toLowerCase()),
   );
+  const primitiveNamed = (...names: string[]) => availablePrimitives.find((primitive) =>
+    names.some((name) => primitive.name.toLowerCase() === name.toLowerCase()),
+  );
+  const tableAxisSlot = (axis: TableAxisKey) => slots
+    .map((slot, index) => ({ slot, index, meta: parseTableAxisNote(slot.notes) }))
+    .find(({ slot, meta }) =>
+      meta?.axis === axis ||
+      (axis === "duration" && !meta && slot.primitive.category === "DURATION") ||
+      (axis === "casting" && !meta && slot.primitive.category === "SPEED_QUICKENING"),
+    );
+  const tableAxisValue = (axis: TableAxisKey) => tableAxisSlot(axis)?.meta?.value ?? tableDraft[axis];
+  const tablePrimitiveFor = (axis: TableAxisKey, value: string) => {
+    switch (axis) {
+      case "target":
+        if (value === "Multiple") return { primitive: primitiveNamed("Vector Split"), role: "OTHER", quantity: 1 };
+        if (value === "Area") return { primitive: primitiveNamed("Volume Scaling I"), role: "OTHER", quantity: 1 };
+        return null;
+      case "shape":
+        if (value === "Cone" || value === "Line") return { primitive: primitiveNamed("Linear / Conical Vector"), role: "SIZING", quantity: 1 };
+        if (value === "Sphere") return { primitive: primitiveNamed("Kinetic Sphere"), role: "SIZING", quantity: 1 };
+        if (value === "Zone") return { primitive: primitiveNamed("Stationary Zone"), role: "SIZING", quantity: 1 };
+        if (value === "Beam") return { primitive: primitiveNamed("Structural Wall"), role: "SIZING", quantity: 1 };
+        return null;
+      case "size": {
+        const quantity = value === "5 ft" ? 1 : value === "10 ft" ? 2 : value === "20 ft" ? 3 : 0;
+        return quantity ? { primitive: primitiveNamed("Volume Scaling I"), role: "SIZING", quantity } : null;
+      }
+      case "placement":
+        if (value === "Self") return { primitive: primitiveNamed("Mobile Aura"), role: "AUGMENT", quantity: 1 };
+        if (value === "Point") return { primitive: primitiveNamed("Stationary Zone"), role: "AUGMENT", quantity: 1 };
+        if (value === "Directional") return { primitive: primitiveNamed("Linear / Conical Vector"), role: "AUGMENT", quantity: 1 };
+        return null;
+      case "duration": {
+        const durationName = value === "Scene" ? "Persistent Duration" : `${value} Duration`;
+        return { primitive: primitiveNamed(durationName), role: "DURATION", quantity: 1 };
+      }
+      case "casting":
+        if (value === "Action") return { primitive: primitiveNamed("Standard Execution"), role: "AUGMENT", quantity: 1 };
+        if (value === "Instant") return { primitive: primitiveNamed("Instant Execution"), role: "AUGMENT", quantity: 1 };
+        if (value === "Short") return { primitive: primitiveNamed("Fast Execution"), role: "AUGMENT", quantity: 1 };
+        return null;
+    }
+  };
+  const replaceTableAxisPrimitive = (axis: TableAxisKey, value: string) => {
+    const candidate = tablePrimitiveFor(axis, value);
+    setIsDirty(true);
+    setTableDraft((current) => ({ ...current, [axis]: value }));
+    setSlots((current) => {
+      const retained = current.filter((slot) => {
+        const markedAxis = parseTableAxisNote(slot.notes)?.axis;
+        if (markedAxis === axis) return false;
+        if (!markedAxis && axis === "duration" && slot.primitive.category === "DURATION") return false;
+        if (!markedAxis && axis === "casting" && slot.primitive.category === "SPEED_QUICKENING") return false;
+        return true;
+      });
+      if (!candidate?.primitive) return retained.map((slot, index) => ({ ...slot, sortOrder: index }));
+      return [...retained, {
+        primitiveId: candidate.primitive.id,
+        primitive: candidate.primitive,
+        role: candidate.role,
+        quantity: candidate.quantity,
+        isMirrored: false,
+        sortOrder: retained.length,
+        slotLabel: candidate.primitive.name,
+        notes: tableAxisNote(axis, value),
+      }];
+    });
+    if (candidate?.primitive) {
+      setMessage(`${candidate.primitive.name} pinned from ${TABLE_AXIS_OPTIONS[axis].label}. You can remove the primitive below and keep “${value}” in the spoken intent.`);
+    } else {
+      setMessage(`${value} remains in the spoken intent. This choice does not require a matching purchased primitive.`);
+    }
+  };
+  const removeTableAxisPrimitive = (axis: TableAxisKey) => {
+    const selected = tableAxisSlot(axis);
+    if (!selected) return;
+    setSlots((current) => current.filter((_, index) => index !== selected.index).map((slot, index) => ({ ...slot, sortOrder: index })));
+    setIsDirty(true);
+    setMessage(`${TABLE_AXIS_OPTIONS[axis].label} stays “${tableDraft[axis]}” in the spoken intent; its primitive was removed from Pieces.`);
+  };
   const chooseTableRange = (label: string) => {
     const primitive = rangePrimitive(label);
     if (primitive) {
       setTableDraft((current) => ({ ...current, range: label }));
-      chooseRulePrimitive("RANGE", primitive.id);
-      setMessage(`${primitive.name} added to Pieces. Remove or replace it there at any time.`);
+      setIsDirty(true);
+      setSlots((current) => {
+        const retained = current.filter((slot) => resolvedSlotRole(slot) !== "RANGE");
+        return [...retained, { primitiveId: primitive.id, primitive, role: "RANGE", quantity: 1, isMirrored: false, sortOrder: retained.length, slotLabel: primitive.name }];
+      });
+      setMessage(`${primitive.name} pinned from Range. You can remove the primitive below and keep “${label}” in the spoken intent.`);
     } else {
       setMessage(`No ${label} range primitive is available in this library.`);
     }
@@ -579,8 +696,12 @@ export function CapabilityForm({
     const primitive = outputPrimitive(die);
     if (primitive) {
       setTableDraft((current) => ({ ...current, output: die }));
-      chooseRulePrimitive("OUTPUT", primitive.id);
-      setMessage(`${primitive.name} added to Pieces. Remove or replace it there at any time.`);
+      setIsDirty(true);
+      setSlots((current) => {
+        const retained = current.filter((slot) => resolvedSlotRole(slot) !== "OUTPUT");
+        return [...retained, { primitiveId: primitive.id, primitive, role: "OUTPUT", quantity: 1, isMirrored: false, sortOrder: retained.length, slotLabel: primitive.name }];
+      });
+      setMessage(`${primitive.name} pinned from Output die. Remove it in Pieces to keep “${die}” as spoken intent only.`);
     } else {
       setMessage(`No ${die} output primitive is available in this library.`);
     }
@@ -620,6 +741,25 @@ export function CapabilityForm({
       </div>
       {role === "VERB" && selectedEntry ? <label className="v12-verb-note mt-1.5 block text-xs"><span className="sr-only">Verbs used</span><input aria-label="Verbs used (optional)" value={selectedEntry.slot.notes ?? ""} onChange={(event) => { const notes = event.target.value; setSlots((current) => current.map((item, index) => index === selectedEntry.index ? {...item, notes} : item)); setIsDirty(true); }} placeholder="Verbs used: move, strike, reshape…" /></label> : null}
     </article>;
+  };
+
+  const renderTableAxis = (axis: TableAxisKey) => {
+    const config = TABLE_AXIS_OPTIONS[axis];
+    const selectedValue = tableAxisValue(axis);
+    const pinned = tableAxisSlot(axis);
+    return <section key={axis} className="v12-table-axis">
+      <h3>{config.label}</h3>
+      <div>{config.values.map((value) => <button
+        type="button"
+        key={value}
+        aria-pressed={selectedValue === value}
+        onClick={() => replaceTableAxisPrimitive(axis, value)}
+      >{value}</button>)}</div>
+      {pinned ? <div className="v12-table-pin" role="status">
+        <span><b>{pinned.slot.primitive.name}</b>{pinned.slot.quantity > 1 ? ` ×${pinned.slot.quantity}` : ""} is also included in Pieces.</span>
+        <button type="button" onClick={() => removeTableAxisPrimitive(axis)}>Keep declaration only</button>
+      </div> : <small>Selection stays in the spoken intent. A matching purchased primitive is pinned when one applies.</small>}
+    </section>;
   };
 
   return (
@@ -918,18 +1058,11 @@ export function CapabilityForm({
         </AuthorChapter>
         <AuthorChapter id="table" title="At the table">
       <div className="v12-table-builder grid gap-2 md:grid-cols-2">
-        {([
-          ["target", "Targets", ["Single", "Multiple", "Area"]],
-          ["shape", "Shape", ["Direct", "Cone", "Line", "Sphere", "Zone", "Beam"]],
-          ["size", "Size", ["One target", "5 ft", "10 ft", "20 ft", "Custom"]],
-          ["placement", "Placement", ["Self", "Target", "Point", "Directional"]],
-          ["duration", "Effect duration", ["Instant", "Short", "Medium", "Long", "Scene", "Persistent", "Permanent"]],
-          ["casting", "Casting time", ["Action", "Instant", "Short", "Medium", "Long", "Scene"]],
-        ] as const).map(([key,label,values])=><section key={key} className="v12-table-axis"><h3>{label}</h3><div>{values.map(value=><button type="button" key={value} aria-pressed={tableDraft[key]===value} onClick={()=>setTableDraft(current=>({...current,[key]:value}))}>{value}</button>)}</div></section>)}
-        <section className="v12-table-axis"><h3>Range</h3><div>{["Touch", "Close", "Near", "Far", "Very Far", "Extreme"].map(value=><button type="button" key={value} aria-pressed={selectedRange===value} onClick={()=>chooseTableRange(value)}>{value}</button>)}</div><small>Choosing a range adds or replaces its primitive in Pieces.</small></section>
-        <section className="v12-table-axis"><h3>Output die</h3><div>{["None", "d4", "d6", "d8", "d10", "d12", "d20"].map(value=><button type="button" key={value} aria-pressed={selectedOutput===value} onClick={()=>chooseTableOutput(value)}>{value}</button>)}</div><small>Choosing a die adds or replaces its primitive in Pieces.</small></section>
+        {(Object.keys(TABLE_AXIS_OPTIONS) as TableAxisKey[]).map(renderTableAxis)}
+        <section className="v12-table-axis"><h3>Range</h3><div>{["Touch", "Close", "Near", "Far", "Very Far", "Extreme"].map(value=><button type="button" key={value} aria-pressed={selectedRange===value} onClick={()=>chooseTableRange(value)}>{value}</button>)}</div>{rangeSlot ? <div className="v12-table-pin" role="status"><span><b>{rangeSlot.primitive.name}</b> is also included in Pieces.</span><button type="button" onClick={() => removeSlot(slots.indexOf(rangeSlot))}>Keep declaration only</button></div> : <small>Touch is the default declaration. Choosing another range pins or replaces its primitive in Pieces.</small>}</section>
+        <section className="v12-table-axis"><h3>Output die</h3><div>{["None", "d4", "d6", "d8", "d10", "d12", "d20"].map(value=><button type="button" key={value} aria-pressed={selectedOutput===value} onClick={()=>chooseTableOutput(value)}>{value}</button>)}</div>{outputSlot ? <div className="v12-table-pin" role="status"><span><b>{outputSlot.primitive.name}</b> is also included in Pieces.</span><button type="button" onClick={() => removeSlot(slots.indexOf(outputSlot))}>Keep declaration only</button></div> : <small>Choosing a die pins or replaces its primitive in Pieces.</small>}</section>
         <div className="v12-table-readout">
-          <div className="v12-table-intent"><p className="v12-kicker">Spoken intent</p><h3>{form.name || "Untitled capability"}</h3><p>{tableDraft.casting} · {tableDraft.target} · {tableDraft.shape} · {tableDraft.size} · {tableDraft.placement} · {selectedRange} · {selectedOutput} · {tableDraft.duration}</p></div>
+          <div className="v12-table-intent"><p className="v12-kicker">Spoken intent</p><h3>{form.name || "Untitled capability"}</h3><p>{tableAxisValue("casting")} · {tableAxisValue("target")} · {tableAxisValue("shape")} · {tableAxisValue("size")} · {tableAxisValue("placement")} · {selectedRange} · {selectedOutput} · {tableAxisValue("duration")}</p></div>
           <dl className="v12-table-metrics"><div><dt>Base BU</dt><dd>{previewBu}</dd></div><div><dt>Scaled CV</dt><dd>{previewBu}</dd></div><div><dt>Strain</dt><dd>DM</dd></div></dl>
           <p className="v12-table-recipe-count">{slots.length} direct pieces · {effectIds.length} effects · {previewBu} BU total</p>
           <details className="v12-table-disclaimer"><summary>Scaling reference and optional pinned defaults</summary><p>A creator may save examples, but the player declares scaling at the table. Player and DM negotiate its cost from the scaled CV and the fiction. Consequences may spend vitality, impose a story complication, suspend access to a capability, or apply a numeric penalty to a relevant value.</p></details>

@@ -425,6 +425,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
             iconColor={dark ? FAB_ICON_COLOR_DARK : FAB_ICON_COLOR_LIGHT}
             size={22}
             alt="Build & Preview"
+            className="sw-fab__theme-icon"
           />
         ),
         onClick: () => {
@@ -461,6 +462,7 @@ export function GlobalControls({ children }: { children: React.ReactNode }) {
           iconColor={dark ? FAB_ICON_COLOR_DARK : FAB_ICON_COLOR_LIGHT}
           size={22}
           alt="Character"
+          className="sw-fab__theme-icon"
         />
       ),
       onClick: () => {
