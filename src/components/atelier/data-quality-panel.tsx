@@ -102,6 +102,7 @@ export function DataQualityPanel() {
   const [primitives, setPrimitives] = useState<PrimitiveRow[] | null>(null);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -129,10 +130,13 @@ export function DataQualityPanel() {
     return auditModifiers(primitives);
   }, [primitives]);
 
+  if (dismissed) return null;
+
   if (error) {
     return (
-      <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-        Could not load modifier audit: {error}
+      <div className="flex items-center gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+        <span className="min-w-0 flex-1">Could not load modifier audit: {error}</span>
+        <button type="button" aria-label="Dismiss modifier audit" onClick={() => setDismissed(true)} className="shrink-0 px-2 py-1 text-amber-200/80 hover:text-amber-100">×</button>
       </div>
     );
   }
@@ -167,17 +171,20 @@ export function DataQualityPanel() {
 
   return (
     <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between text-left"
-      >
-        <span className="font-semibold text-amber-200">
-          ⚠ {issues.length} modifier{issues.length === 1 ? "" : "s"} across{" "}
-          {byPrimitive.size} primitive{byPrimitive.size === 1 ? "" : "s"} need review
-        </span>
-        <span className="text-amber-200/70">{open ? "▾" : "▸"}</span>
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex min-w-0 flex-1 items-center justify-between text-left"
+        >
+          <span className="font-semibold text-amber-200">
+            ⚠ {issues.length} modifier{issues.length === 1 ? "" : "s"} across{" "}
+            {byPrimitive.size} primitive{byPrimitive.size === 1 ? "" : "s"} need review
+          </span>
+          <span className="text-amber-200/70">{open ? "▾" : "▸"}</span>
+        </button>
+        <button type="button" aria-label="Dismiss modifier audit" onClick={() => setDismissed(true)} className="shrink-0 px-2 py-1 text-amber-200/80 hover:text-amber-100">×</button>
+      </div>
       <p className="text-[10px] text-amber-200/70">
         The engine silently drops these from sheet calculations. Open the
         primitive, pick at least one sub-target, and re-save to fix.

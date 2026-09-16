@@ -122,6 +122,19 @@ body:not([data-ui="v12"]) {
   --v12-copper-edge: linear-gradient(108deg,#51281a 0%,#bd6841 13%,#ffd0ad 28%,#834227 44%,#dc885c 62%,#63301d 78%,#eca077 90%,#452116 100%);
 }
 
+/* Material aliases used by the consolidated Atelier/Library rules. Keeping
+   these bound to the base palette prevents invalid custom properties from
+   silently dropping gold borders and active-state treatments. */
+body[data-ui="v12"] {
+  --v12-gold: var(--v12-brass);
+  --v12-gold-hi: var(--v12-brass-hi);
+  --v12-gold-edge: var(--v12-brass-edge);
+  --v12-ink: #17120a;
+  --v12-panel-deep: var(--v12-inset);
+  --v12-ivory: var(--foreground);
+  --v12-muted: var(--v12-soft);
+}
+
 body[data-ui="v12"] {
   min-height: 100dvh;
   background-color: var(--background);
@@ -2287,6 +2300,35 @@ body[data-ui="v12"] .v12-secondary-build-groups button:hover { background:linear
 body[data-ui="v12"] .v12-secondary-build-groups [data-disabled="true"] { opacity:.45; }
 body[data-ui="v12"] .v12-secondary-build-groups button small { display:block; color:var(--v12-faint); font-size:9px; }
 @media(max-width:700px) { body[data-ui="v12"] .v12-table-builder,body[data-ui="v12"] .v12-secondary-build-groups { grid-template-columns:1fr; } body[data-ui="v12"] .v12-foundation-pieces { grid-template-columns:1fr 1fr; } body[data-ui="v12"] .v12-foundation-pieces > div:first-child { grid-column:1/-1; } }
+
+/* Final Atelier surface corrections: V12 uses softened instrument corners,
+   opaque legend breaks, and gold state rails throughout the workspace. */
+body[data-ui="v12"] [data-quality-shell]:empty { display:none; }
+body[data-ui="v12"] .v12-source-browser-choices button,
+body[data-ui="v12"] [data-testid="visibility-select-compact"] button,
+body[data-ui="v12"] .v12-source-pane-head button,
+body[data-ui="v12"] .v12-secondary-build-groups button { border-radius:6px; }
+body[data-ui="v12"] .v12-source-browser-choices button[aria-pressed="true"],
+body[data-ui="v12"] [data-testid="visibility-select-compact"] button[aria-pressed="true"] {
+  position:relative;
+  box-shadow:none;
+}
+body[data-ui="v12"] .v12-source-browser-choices button[aria-pressed="true"]::after,
+body[data-ui="v12"] [data-testid="visibility-select-compact"] button[aria-pressed="true"]::after {
+  content:""; position:absolute; right:3px; bottom:0; left:3px; height:2px;
+  background:var(--v12-gold-edge); border-radius:99px;
+}
+body[data-ui="v12"] .v12-table-builder fieldset { border-radius:7px; }
+body[data-ui="v12"] .v12-table-builder fieldset > legend {
+  position:relative; z-index:1; margin-left:6px; padding:0 7px;
+  background:var(--v12-inset); box-shadow:0 0 0 3px var(--v12-inset);
+}
+body[data-ui="v12"] .v12-secondary-build,
+body[data-ui="v12"] .v12-secondary-build-groups section,
+body[data-ui="v12"] .v12-foundation-pieces,
+body[data-ui="v12"] .v12-author-chapter > :is(section,.rounded-md,.rounded-lg),
+body[data-ui="v12"] .v12-author-chapters li.v12-author-recipe-piece,
+body[data-ui="v12"] .v12-author-chapters li:has(.v12-recipe-copy) { border-radius:8px; }
 body[data-ui="v12"] .v12-inspector-facts dd { min-width:0; color:var(--foreground); font:400 13px/1.35 var(--font-technical); overflow-wrap:anywhere; }
 body[data-ui="v12"] .v12-inspector-section { margin:13px 0; padding-top:10px; border-top:1px solid var(--v12-line-subtle); }
 body[data-ui="v12"] .v12-inspector-section > p { margin-top:7px; font:400 16px/1.45 var(--font-body); color:var(--v12-soft); }

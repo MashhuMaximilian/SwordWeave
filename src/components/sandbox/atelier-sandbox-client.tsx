@@ -274,6 +274,7 @@ type EditingState =
 
 type PendingAction =
   | { kind: "switchBuild"; mode: AtelierTab }
+  | { kind: "startNewEntity"; choice: NewEntityChoice }
   | {
       kind: "loadFromLibrary";
       entityType: AtelierEntityKind;
@@ -604,7 +605,7 @@ export function AtelierSandboxClient({
       if (!(event instanceof CustomEvent)) return;
       const kind = event.detail;
       if (kind !== "primitive" && kind !== "effect" && kind !== "capability") return;
-      startNewEntity({
+      guardedStartNewEntity({
         tab: "mechanics",
         mechanicsSubKind: kind,
         label: kind[0].toUpperCase() + kind.slice(1),
@@ -638,6 +639,10 @@ export function AtelierSandboxClient({
         // (renderkeyed on editing.kind), so browsing a different tab keeps
         // whatever you loaded in the build intact.
         setBuild(action.mode);
+        return;
+      }
+      if (action.kind === "startNewEntity") {
+        startNewEntity(action.choice);
         return;
       }
       const { entityType, id } = action;
@@ -824,6 +829,15 @@ export function AtelierSandboxClient({
     window.dispatchEvent(new CustomEvent("sw-navigate-away", { detail: clearedUrl }));
   }
 
+  function guardedStartNewEntity(choice: NewEntityChoice) {
+    if (!formIsDirty && editing === null && !buildStarted) {
+      startNewEntity(choice);
+      return;
+    }
+    modalDescRef.current = `You have an active ${activeEditorKind ?? "entity"} draft. Creating a new ${choice.label.toLowerCase()} will discard it.`;
+    setPendingAction({ kind: "startNewEntity", choice });
+  }
+
   function guardedLibrarySelect(
     entityType: AtelierEntityKind,
     id: string | number,
@@ -842,7 +856,7 @@ export function AtelierSandboxClient({
     // clear path, so the user resets first, then loads/forks.
     // The off-page FAB-nav guard (separate effect) keeps its
     // own discard prompt WITH the button (dirty-exit safety).
-    if (editing === null) {
+    if (editing === null && !formIsDirty && !buildStarted) {
       applyPendingAction({ kind: "loadFromLibrary", entityType, id, intent });
       return;
     }
@@ -1708,7 +1722,7 @@ export function AtelierSandboxClient({
           Lives at the top of the atelier so it's visible to authors
           editing primitives. NOT in the drawer — drawer follows
           sheet logic (engine drops invalid modifiers silently). */}
-      <div className="v12-section-head border-b border-border bg-card/30 px-4 py-2" data-atelier-surface>
+      <div className="v12-section-head border-b border-border bg-card/30 px-4 py-2" data-atelier-surface data-quality-shell>
         <DataQualityPanel />
       </div>
       <SandboxLayout
@@ -1730,7 +1744,7 @@ export function AtelierSandboxClient({
         builder={
           <BuilderPane
             showNewModal={showNewModal}
-            onPickNew={startNewEntity}
+            onPickNew={guardedStartNewEntity}
             onCloseNew={() => setShowNewModal(false)}
           >
             {builderNode}
