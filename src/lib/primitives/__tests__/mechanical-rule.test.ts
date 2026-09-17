@@ -40,9 +40,11 @@ describe("canonical mechanical sentences", () => {
     expect(renderMechanicalRule({family:"RANGE",bindings:{range:"Near (30 ft)"}})).toBe("Set maximum range to Near (30 ft).");
     expect(renderMechanicalRule({family:"DICE",bindings:{dice:"1d8"}})).toBe("Unlock [1d8] damage or healing output.");
     expect(renderMechanicalRule({family:"DOMAIN_ACCESS",operation:"revoke",recipient:"TARGET",bindings:{domain:"fire"}})).toBe("Revoke [fire] domain access from target.");
+    expect(renderMechanicalRule({family:"DOMAIN_ACCESS",operation:"grant",recipient:"SELF",bindings:{domain:"metal",tier:"Tier III"}})).toBe("Grant [metal] domain access at Tier III.");
   });
   it("accepts only authorable typed composition shapes", () => {
     expect(parseAuthorableCompositionRule({family:"VERB_ACCESS",operation:"grant",recipient:"SELF",bindings:{tier:"Tier II"}})).toEqual({family:"VERB_ACCESS",operation:"grant",recipient:"SELF",bindings:{tier:"Tier II"}});
+    expect(parseAuthorableCompositionRule({family:"DOMAIN_ACCESS",operation:"grant",recipient:"SELF",bindings:{domain:"metal",tier:"Tier III"}})).toEqual({family:"DOMAIN_ACCESS",operation:"grant",recipient:"SELF",bindings:{domain:"metal",tier:"Tier III"}});
     expect(parseAuthorableCompositionRule({family:"DOCUMENTED",text:"Arbitrary display text"})).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 "use client";
-import { describePrimitiveDraft, primitiveSentenceParts } from "@/lib/primitives/describe-draft";
+import { describePrimitiveDraft } from "@/lib/primitives/describe-draft";
 
 // PrimitiveForm: controlled form-only composer.
 // Receives optional initial state (for ?edit= pre-fill).
@@ -21,42 +21,25 @@ import type { PrimitiveFormState } from "./primitive-form-preview";
 import { AuthorPublishFields } from "./author-publish-fields";
 import { saveIntentLabel } from "@/lib/publishing/save-intent";
 import { computePrimitiveContentHash } from "@/lib/publishing/hash-content";
-import {
-  ConditionPicker,
-  conditionAuthoringFromLegacy,
-  legacyFieldsFromAuthoring,
-} from "./condition-picker";
+import { legacyFieldsFromAuthoring } from "./condition-picker";
 import type { ConditionAuthoring } from "@/types/condition";
-import { PrimitiveSentenceConditions } from "./primitive-sentence-conditions";
-import { PrimitiveTargetChoices } from "./primitive-target-choices";
 import { buildCondition } from "@/lib/primitives/condition";
 import {
   MODIFIER_TARGET_SPEC,
   MODIFIER_TARGETS,
   type ModifierTarget,
   type SkillPracticeGranularity,
-  SKILL_PRACTICE_GRANULARITIES,
   selectionForModifier,
   scopeForSelection,
 } from "@/lib/primitives/modifier-scope";
 import { validateModifierDrafts } from "@/lib/primitives/modifier-validator";
 import {
-  BIAS_VALUES,
-  operandsFromTokens,
   parseValueField,
-  serializeValueField,
-  tokenLabel,
   type Operand,
-  type OperandValue,
   type ValueToken,
   type ValueType,
 } from "@/types/modifier";
-import {
-  allowedTokenKinds,
-  allowedValueTypes,
-  classifyTypedValue,
-  OPERATION_LABELS,
-} from "@/lib/primitives/form-helpers";
+import { classifyTypedValue } from "@/lib/primitives/form-helpers";
 import {
   tokenKindToValueKind,
   operandsToTokens,
@@ -65,8 +48,6 @@ import {
   serializeOperandsAsExpression,
 } from "@/lib/primitives/modifier-translator";
 import { conditionToAuthoring } from "@/lib/primitives/condition";
-import { TokenChipStack } from "./token-chip-stack";
-import { EquationPicker } from "./equation-picker";
 import {
   mechanicalDescriptionFromModifiers,
   renderMechanicalRule,
@@ -75,6 +56,7 @@ import {
 } from "@/lib/primitives/mechanical-rule";
 import { MARKET_FAMILIES } from "@/lib/primitives/canonical-market";
 import { AuthorChapter, AuthorChapters } from "./author-chapters";
+import { PrimitiveRuleInstrument } from "./primitive-rule-instrument";
 
 type PrimitiveRow = {
   id: number;
@@ -93,7 +75,8 @@ type PrimitiveRow = {
   mirrorBuCredit: number;
   mirrorEligibilityNotes: string;
   hardModifiers: unknown;
-  consequenceBehavior?: import("@/lib/character/consequences/types").ConsequenceBehavior | null;
+  consequenceBehavior?:
+    import("@/lib/character/consequences/types").ConsequenceBehavior | null;
   // Phase 8: per-entity iconography. The form's blankForm always sets
   // these with defaults; the optional flag here matches the
   // grammar-sandbox-client's `PrimitiveRow` so the two can be assigned
@@ -114,33 +97,142 @@ type CompositionDraft = {
   operation: "grant" | "revoke";
   recipient: "SELF" | "TARGET";
   value: string;
+  tier: "Tier I" | "Tier II" | "Tier III" | "Tier IV";
 };
-const compositionOptions: ReadonlyArray<{ value: AuthorableCompositionFamily; label: string }> = [
-  { value: "DOMAIN_ACCESS", label: "Domain access" },
-  { value: "VERB_ACCESS", label: "Verb access" },
-  { value: "STRUCTURE", label: "Structure" },
-  { value: "RANGE", label: "Range" },
-  { value: "TARGETING", label: "Targeting" },
-  { value: "DICE", label: "Output die" },
-  { value: "DURATION", label: "Duration" },
+const compositionOptions: ReadonlyArray<{
+  value: AuthorableCompositionFamily;
+  label: string;
+  help: string;
+  presets: readonly string[];
+}> = [
+  {
+    value: "DOMAIN_ACCESS",
+    label: "Domain access",
+    help: "Choose the domain vocabulary this primitive unlocks and how advanced that access is.",
+    presets: [],
+  },
+  {
+    value: "VERB_ACCESS",
+    label: "Verb access",
+    help: "Choose the verb tier this primitive unlocks. Higher tiers permit broader and more reality-changing actions.",
+    presets: [],
+  },
+  {
+    value: "STRUCTURE",
+    label: "Structure",
+    help: "Structure describes how a capability is assembled or spreads. It does not decide who it targets or how far it reaches.",
+    presets: ["Single point", "Linked", "Chain", "Aura", "Zone", "Wall"],
+  },
+  {
+    value: "RANGE",
+    label: "Range",
+    help: "Range is the maximum distance from the user or origin to the chosen target. Pick the nearest band that covers the intended use.",
+    presets: [
+      "Touch",
+      "Close (10 ft)",
+      "Near (30 ft)",
+      "Far (60 ft)",
+      "Very Far (120 ft)",
+      "Extreme (240 ft–3 miles)",
+    ],
+  },
+  {
+    value: "TARGETING",
+    label: "Targeting",
+    help: "Targeting says who or what can be affected and the selection pattern. Geometry and number of targets belong here.",
+    presets: [
+      "Self",
+      "One target",
+      "Multiple targets",
+      "Area",
+      "Cone",
+      "Line",
+      "Sphere",
+      "Zone",
+    ],
+  },
+  {
+    value: "DICE",
+    label: "Output die",
+    help: "The output die is the die size used for damage or healing. The number of dice is scaled separately when a capability is built.",
+    presets: ["1d4", "1d6", "1d8", "1d10", "1d12", "1d20"],
+  },
+  {
+    value: "DURATION",
+    label: "Duration",
+    help: "Duration says how long the result remains active after it is created. Use Instant when nothing persists beyond resolution.",
+    presets: [
+      "Instant",
+      "Short",
+      "Medium",
+      "Long",
+      "Scene",
+      "Persistent",
+      "Permanent",
+    ],
+  },
 ];
 const compositionBindingKey: Record<AuthorableCompositionFamily, string> = {
-  DOMAIN_ACCESS: "domain", VERB_ACCESS: "tier", STRUCTURE: "structure",
-  RANGE: "range", TARGETING: "targeting", DICE: "dice", DURATION: "duration",
+  DOMAIN_ACCESS: "domain",
+  VERB_ACCESS: "tier",
+  STRUCTURE: "structure",
+  RANGE: "range",
+  TARGETING: "targeting",
+  DICE: "dice",
+  DURATION: "duration",
 };
-const blankComposition: CompositionDraft = { family: "DOMAIN_ACCESS", operation: "grant", recipient: "SELF", value: "" };
+const blankComposition: CompositionDraft = {
+  family: "DOMAIN_ACCESS",
+  operation: "grant",
+  recipient: "SELF",
+  value: "",
+  tier: "Tier I",
+};
 function toCompositionRule(draft: CompositionDraft): CanonicalMechanicalRule {
-  const accessRule=draft.family === "DOMAIN_ACCESS" || draft.family === "VERB_ACCESS";
-  return { family:draft.family, ...(accessRule ? {operation:draft.operation,recipient:draft.recipient} : {}), bindings:{[compositionBindingKey[draft.family]]:draft.value.trim()} };
+  const accessRule =
+    draft.family === "DOMAIN_ACCESS" || draft.family === "VERB_ACCESS";
+  const bindings: Record<string, string> =
+    draft.family === "DOMAIN_ACCESS"
+      ? { domain: draft.value.trim(), tier: draft.tier }
+      : {
+          [compositionBindingKey[draft.family]]:
+            draft.family === "VERB_ACCESS" ? draft.tier : draft.value.trim(),
+        };
+  return {
+    family: draft.family,
+    ...(accessRule
+      ? { operation: draft.operation, recipient: draft.recipient }
+      : {}),
+    bindings,
+  };
 }
 function compositionFromStoredRule(input: unknown): CompositionDraft | null {
   if (!input || typeof input !== "object" || Array.isArray(input)) return null;
-  const rule=input as Record<string,unknown>;
-  if (!compositionOptions.some(option=>option.value===rule["family"])) return null;
-  const family=rule["family"] as AuthorableCompositionFamily;
-  const bindings=rule["bindings"] && typeof rule["bindings"] === "object" && !Array.isArray(rule["bindings"])
-    ? rule["bindings"] as Record<string,unknown> : {};
-  return { family, operation:rule["operation"] === "revoke" ? "revoke" : "grant", recipient:rule["recipient"] === "TARGET" ? "TARGET" : "SELF", value:String(bindings[compositionBindingKey[family]] ?? "") };
+  const rule = input as Record<string, unknown>;
+  if (!compositionOptions.some((option) => option.value === rule["family"]))
+    return null;
+  const family = rule["family"] as AuthorableCompositionFamily;
+  const bindings =
+    rule["bindings"] &&
+    typeof rule["bindings"] === "object" &&
+    !Array.isArray(rule["bindings"])
+      ? (rule["bindings"] as Record<string, unknown>)
+      : {};
+  const rawTier = String(bindings["tier"] ?? "Tier I");
+  const tier =
+    (["Tier I", "Tier II", "Tier III", "Tier IV"] as const).find(
+      (item) => item === rawTier,
+    ) ?? "Tier I";
+  return {
+    family,
+    operation: rule["operation"] === "revoke" ? "revoke" : "grant",
+    recipient: rule["recipient"] === "TARGET" ? "TARGET" : "SELF",
+    value:
+      family === "VERB_ACCESS"
+        ? ""
+        : String(bindings[compositionBindingKey[family]] ?? ""),
+    tier,
+  };
 }
 
 export type ModifierDraft = {
@@ -152,6 +244,7 @@ export type ModifierDraft = {
   // compatibility when loading older rows.
   target: ModifierTarget | string;
   operation: ModifierOperation;
+  recipient: "SELF" | "TARGET" | "SCENE";
   // Phase 7.5: Value field is a token chip-stack. New writes
   // emit `tokens: ValueToken[]` via the serializer. The legacy
   // `value: string` field below is a derived cache populated
@@ -265,16 +358,22 @@ const categories = [
   "ITEM_AUGMENT",
 ] as const;
 
-const categoryGroups = [...new Set(MARKET_FAMILIES.map((family) => family.chapter))].map((chapter) => ({
+const categoryGroups = [
+  ...new Set(MARKET_FAMILIES.map((family) => family.chapter)),
+].map((chapter) => ({
   label: chapter,
-  options: MARKET_FAMILIES.filter((family) => family.chapter === chapter).map((family) => ({ value: family.key, label: family.label })),
+  options: MARKET_FAMILIES.filter((family) => family.chapter === chapter).map(
+    (family) => ({ value: family.key, label: family.label }),
+  ),
 }));
 
 function CategoryOptions() {
   return categoryGroups.map((group) => (
     <optgroup key={group.label} label={group.label}>
       {group.options.map((option) => (
-        <option key={option.value} value={option.value}>{option.label}</option>
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
       ))}
     </optgroup>
   ));
@@ -292,24 +391,6 @@ const costTiers = [
   "Tier 5: Narrative Layer (32+ BU anchor)",
 ] as const;
 
-// Phase-7-E: "What changes?" is now a 16-axis dropdown built from
-// MODIFIER_TARGET_SPEC. The legacy 22-item dotted-string list is gone —
-// dotted strings still deserialize via selectionForModifier's legacy
-// path so old saves round-trip, but the form only writes the short form.
-const targetOptions: ReadonlyArray<{ readonly label: string; readonly value: ModifierTarget }> =
-  MODIFIER_TARGETS.map((t) => ({
-    label: MODIFIER_TARGET_SPEC[t].label,
-    value: t,
-  }));
-
-// Phase 7.5 v3: 9 ops (toggle and bias removed). Use OPERATION_LABELS
-// from form-helpers.ts for the canonical list.
-const operations = OPERATION_LABELS;
-
-// Phase 7.5 form helpers are extracted to @/lib/primitives/form-helpers
-// for testability. The local definitions are removed; the
-// imported functions are used directly in the JSX below.
-
 // Phase-7-Q-B: the legacy `conditionOperators` list (the 8-operator
 // dropdown) is gone. The ConditionPicker does not expose the
 // operator — the picker maps a preset chip to a baseline mechanic,
@@ -318,39 +399,11 @@ const operations = OPERATION_LABELS;
 // ModifierDraft remain as a transitional cache so the existing
 // toHardModifier path keeps working without a separate code path.
 
-// Phase 7.5 v3: 6 stack rules (added "replace" for explicit override).
-const stackingOptions: ModifierStackingMode[] = [
-  "stack",
-  "highest-only",
-  "lowest-only",
-  "unique-by-primitive",
-  "unique-by-target",
-  "replace",
-];
-
-const mirrorVectors = [
-  {
-    label: "Standard Only - cannot be mirrored",
-    value: "STANDARD_ONLY",
-  },
-  {
-    label: "Variable Vector - numeric or metric downside",
-    value: "VARIABLE_VECTOR",
-  },
-  {
-    label: "Structural Fault - vulnerability or exposed weakness",
-    value: "STRUCTURAL_FAULT",
-  },
-  {
-    label: "Cost Instability - extra strain or vitality costs",
-    value: "COST_INSTABILITY",
-  },
-] as const;
-
 const blankModifier: ModifierDraft = {
   id: "modifier-1",
   target: "attribute",
   operation: "add",
+  recipient: "SELF",
   // Phase 7.5: tokens is the primary value storage. `value`
   // below is a derived cache (the first token's serialized form)
   // kept for backwards compat with the toHardModifier path and
@@ -411,7 +464,10 @@ function categoryLabel(category: string) {
     .join(" ");
 }
 
-function toModifierDraft(modifier: ModifierDraft, index: number): ModifierDraft {
+function toModifierDraft(
+  modifier: ModifierDraft,
+  index: number,
+): ModifierDraft {
   return { ...modifier, id: `modifier-${index + 1}` };
 }
 
@@ -472,7 +528,10 @@ function typedTokenToDisplayString(token: Record<string, unknown>): string {
   }
 }
 
-function fromHardModifier(modifier: Record<string, unknown>, index: number): ModifierDraft {
+function fromHardModifier(
+  modifier: Record<string, unknown>,
+  index: number,
+): ModifierDraft {
   const rawValue = modifier["value"];
   const rawMeta = modifier["metadata"];
   const meta =
@@ -548,7 +607,10 @@ function fromHardModifier(modifier: Record<string, unknown>, index: number): Mod
   // rows (with metadata.targetScope) and legacy dotted-target rows
   // (no metadata) — so old saves load into the new form unchanged.
   const selection = selectionForModifier({
-    target: typeof modifier["target"] === "string" ? (modifier["target"] as string) : null,
+    target:
+      typeof modifier["target"] === "string"
+        ? (modifier["target"] as string)
+        : null,
     metadata:
       modifier["metadata"] && typeof modifier["metadata"] === "object"
         ? (modifier["metadata"] as Record<string, unknown>)
@@ -566,7 +628,10 @@ function fromHardModifier(modifier: Record<string, unknown>, index: number): Mod
     const t = selection.target;
     if (typeof t !== "string") return false;
     const spec = MODIFIER_TARGET_SPEC[t as ModifierTarget];
-    return spec?.widget === "free-text" || spec?.widget === "checklist-with-free-text";
+    return (
+      spec?.widget === "free-text" ||
+      spec?.widget === "checklist-with-free-text"
+    );
   })();
   if (isFreeTextTarget && mdObj) {
     const bname = mdObj["behaviorName"];
@@ -582,6 +647,9 @@ function fromHardModifier(modifier: Record<string, unknown>, index: number): Mod
     id: `modifier-${index + 1}`,
     target: selection.target,
     operation: String(modifier["operation"] ?? "add") as ModifierOperation,
+    recipient: String(
+      meta?.["recipient"] ?? "SELF",
+    ).toUpperCase() as ModifierDraft["recipient"],
     // Phase 8.I i2.5h: tokens + operands were already populated
     // above based on the metadata.operands check. Use those
     // directly. Don't re-parse — that would lose info.
@@ -594,10 +662,11 @@ function fromHardModifier(modifier: Record<string, unknown>, index: number): Mod
     freeTextNarrowFocus: freeTextValue,
     conditionMode: cond ? "custom" : "always",
     conditionKey: String(cond?.["key"] ?? ""),
-    conditionOperator:
-      (String(cond?.["operator"] ?? "equals") as ModifierDraft["conditionOperator"]),
+    conditionOperator: String(
+      cond?.["operator"] ?? "equals",
+    ) as ModifierDraft["conditionOperator"],
     conditionValue: condValue,
-    stacking: (String(modifier["stacking"] ?? "stack") as ModifierStackingMode),
+    stacking: String(modifier["stacking"] ?? "stack") as ModifierStackingMode,
     // Phase 8.I i2.5h-fix (Mashu 2026-08-06): use the new
     // conditionToAuthoring() that reads the v1 condition shape
     // directly ({kind, customTags, presetKey, tokens, text}).
@@ -673,7 +742,9 @@ function parseValue(
   return value;
 }
 
-function toHardModifier(modifier: ModifierDraft): import("@/types/swordweave").HardModifier {
+function toHardModifier(
+  modifier: ModifierDraft,
+): import("@/types/swordweave").HardModifier {
   // Phase 8.I i2.5h (Mashu 2026-08-06): the stored value is
   // derived from the chip stack (tokens), not from re-parsing
   // the cached `value` string. The previous implementation called
@@ -718,11 +789,13 @@ function toHardModifier(modifier: ModifierDraft): import("@/types/swordweave").H
   // path, the form only ever produces short labels so this is the
   // canonical happy path.
   const target = String(modifier.target);
-  const targetForScope: ModifierTarget =
-    (MODIFIER_TARGETS as readonly string[]).includes(target)
+  const targetForScope: ModifierTarget = (
+    MODIFIER_TARGETS as readonly string[]
+  ).includes(target)
       ? (target as ModifierTarget)
       : "action_roll";
-  const { target: canonicalTarget, metadata: scopeMetadata } = scopeForSelection({
+  const { target: canonicalTarget, metadata: scopeMetadata } =
+    scopeForSelection({
     target: targetForScope,
     targetValues: modifier.targetValues,
     // Phase-7-E/UX2-r3: skill_practice_check no longer has a
@@ -754,6 +827,7 @@ function toHardModifier(modifier: ModifierDraft): import("@/types/swordweave").H
     stacking: modifier.stacking,
     metadata: {
       targetScope: scopeMetadata.targetScope,
+      recipient: modifier.recipient,
       ...(scopeMetadata.granularity
         ? { granularity: scopeMetadata.granularity }
         : {}),
@@ -776,8 +850,12 @@ function toHardModifier(modifier: ModifierDraft): import("@/types/swordweave").H
   // cache (e.g. first operand's number) for backwards compat
   // with older readers.
   if (modifier.valueKind === "equation" && modifier.operands.length > 0) {
-    const meta = hardModifier.metadata as Record<string, import("@/types/swordweave").JsonValue>;
-    meta["operands"] = modifier.operands as unknown as import("@/types/swordweave").JsonValue;
+    const meta = hardModifier.metadata as Record<
+      string,
+      import("@/types/swordweave").JsonValue
+    >;
+    meta["operands"] =
+      modifier.operands as unknown as import("@/types/swordweave").JsonValue;
     meta["valueKind"] = "equation";
   }
 
@@ -873,24 +951,33 @@ export function PrimitiveForm({
    */
   initialModifierDrafts?: ReadonlyArray<Partial<ModifierDraft>> | null;
 }) {
-  const contextualBlankForm = useMemo<PrimitiveFormState>(
-    () => {
-      const family = initialCategory ? MARKET_FAMILIES.find((item) => item.key === initialCategory) : undefined;
-      return { ...blankForm, category: family?.categories[0] ?? initialCategory ?? blankForm.category };
-    },
-    [initialCategory],
+  const contextualBlankForm = useMemo<PrimitiveFormState>(() => {
+    const family = initialCategory
+      ? MARKET_FAMILIES.find((item) => item.key === initialCategory)
+      : undefined;
+    return {
+      ...blankForm,
+      category: family?.categories[0] ?? initialCategory ?? blankForm.category,
+    };
+  }, [initialCategory]);
+  const [form, setForm] = useState<PrimitiveFormState>(
+    () => contextualBlankForm,
   );
-  const [form, setForm] = useState<PrimitiveFormState>(() => contextualBlankForm);
   const [familyKey, setFamilyKey] = useState(() => {
-    const contextual = initialCategory ? MARKET_FAMILIES.find((family) => family.key === initialCategory) : undefined;
-    return contextual?.key ?? familyForCategory(contextualBlankForm.category)?.key ?? MARKET_FAMILIES[0]!.key;
+    const contextual = initialCategory
+      ? MARKET_FAMILIES.find((family) => family.key === initialCategory)
+      : undefined;
+    return (
+      contextual?.key ??
+      familyForCategory(contextualBlankForm.category)?.key ??
+      MARKET_FAMILIES[0]!.key
+    );
   });
   const [ruleKind, setRuleKind] = useState<RuleKind>(null);
-  const [composition, setComposition] = useState<CompositionDraft>(blankComposition);
+  const [composition, setComposition] =
+    useState<CompositionDraft>(blankComposition);
   const [modifierCounter, setModifierCounter] = useState(1);
   const [modifiers, setModifiers] = useState<ModifierDraft[]>([]);
-  const [phrasePicker, setPhrasePicker] = useState<"target" | "operation" | "value" | "condition" | "resolver" | null>(null);
-  const [targetSearch, setTargetSearch] = useState("");
   const [showJsonPreview, setShowJsonPreview] = useState(false);
   const [message, setMessage] = useState("");
   // Local pending flag — independent of useTransition. The previous
@@ -926,7 +1013,9 @@ export function PrimitiveForm({
             fromHardModifier(m as Record<string, unknown>, i),
           )
         : [];
-    const storedComposition=compositionFromStoredRule(initialPrimitive.mechanicalRule);
+    const storedComposition = compositionFromStoredRule(
+      initialPrimitive.mechanicalRule,
+    );
 
     setForm({
       name: initialPrimitive.name,
@@ -948,9 +1037,15 @@ export function PrimitiveForm({
       iconUrl: initialPrimitive.iconUrl,
       iconColor: initialPrimitive.iconColor,
     });
-    setFamilyKey(initialPrimitive.familyKey ?? familyForCategory(initialPrimitive.category)?.key ?? MARKET_FAMILIES[0]!.key);
+    setFamilyKey(
+      initialPrimitive.familyKey ??
+        familyForCategory(initialPrimitive.category)?.key ??
+        MARKET_FAMILIES[0]!.key,
+    );
     setModifiers(drafts);
-    setRuleKind(drafts.length ? "MODIFIER" : storedComposition?.family ?? null);
+    setRuleKind(
+      drafts.length ? "MODIFIER" : (storedComposition?.family ?? null),
+    );
     setComposition(storedComposition ?? blankComposition);
     setModifierCounter(drafts.length);
     setIsDirty(false); // pristine after load
@@ -970,17 +1065,25 @@ export function PrimitiveForm({
     );
   }, [initialPrimitive]);
 
-  const sentenceParts = ruleKind === "MODIFIER" && modifiers[0] ? primitiveSentenceParts(modifiers[0]) : null;
   const mechanicalRule = useMemo<CanonicalMechanicalRule>(
-    () => ruleKind && ruleKind !== "MODIFIER" ? toCompositionRule({ ...composition, family: ruleKind }) : {family:"DESCRIPTIVE"},
+    () =>
+      ruleKind && ruleKind !== "MODIFIER"
+        ? toCompositionRule({ ...composition, family: ruleKind })
+        : { family: "DESCRIPTIVE" },
     [composition, ruleKind],
   );
   const activeHardModifiers = useMemo(
-    () => ruleKind === "MODIFIER" ? modifiers.map(toHardModifier) : [],
+    () => (ruleKind === "MODIFIER" ? modifiers.map(toHardModifier) : []),
     [modifiers, ruleKind],
   );
   const mechanicalSentence = useMemo(
-    () => mechanicalDescriptionFromModifiers(activeHardModifiers) || (ruleKind && ruleKind !== "MODIFIER" && composition.value.trim() ? renderMechanicalRule(mechanicalRule) : ""),
+    () =>
+      mechanicalDescriptionFromModifiers(activeHardModifiers) ||
+      (ruleKind &&
+      ruleKind !== "MODIFIER" &&
+      (ruleKind === "VERB_ACCESS" || composition.value.trim())
+        ? renderMechanicalRule(mechanicalRule)
+        : ""),
     [activeHardModifiers, composition.value, mechanicalRule, ruleKind],
   );
 
@@ -992,7 +1095,14 @@ export function PrimitiveForm({
       hardModifiers: activeHardModifiers,
       isDirty,
     });
-  }, [form, modifiers, mechanicalSentence, activeHardModifiers, onStateChange, isDirty]);
+  }, [
+    form,
+    modifiers,
+    mechanicalSentence,
+    activeHardModifiers,
+    onStateChange,
+    isDirty,
+  ]);
 
   // Phase 9.4 (Mashu 2026-09-07): on first mount, if the caller
   // supplied initialModifierDrafts (e.g. the Promote tab in the
@@ -1012,16 +1122,14 @@ export function PrimitiveForm({
       return;
     }
     draftsBootstrapRef.current = true;
-    const seeded: ModifierDraft[] = initialModifierDrafts.map(
-      (partial, i) => ({
+    const seeded: ModifierDraft[] = initialModifierDrafts.map((partial, i) => ({
         ...blankModifier,
         ...partial,
         // Regenerate the modifier id deterministically from the
         // index so React keys stay stable on re-mount of the
         // same caller.
         id: `seeded-modifier-${i + 1}`,
-      }),
-    );
+    }));
     setModifiers(seeded);
     setRuleKind("MODIFIER");
     setModifierCounter((c) => Math.max(c, seeded.length));
@@ -1035,29 +1143,30 @@ export function PrimitiveForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onReset]);
 
-  function updateForm(field: keyof PrimitiveFormState, value: string | boolean) {
+  function updateForm(
+    field: keyof PrimitiveFormState,
+    value: string | boolean,
+  ) {
     setIsDirty(true);
     setForm((current) => ({ ...current, [field]: value }));
   }
 
-  function updateModifier(
-    id: string,
-    field: keyof ModifierDraft,
-    value: string | ConditionAuthoring | ValueToken[] | Operand[],
-  ) {
+  function patchModifier(id: string, patch: Partial<ModifierDraft>) {
     setIsDirty(true);
     setModifiers((current) =>
       current.map((modifier) =>
-        modifier.id === id ? { ...modifier, [field]: value } : modifier,
+        modifier.id === id ? { ...modifier, ...patch } : modifier,
       ),
     );
   }
 
   function updateModifierOperation(id: string, operation: ModifierOperation) {
     setIsDirty(true);
-    setModifiers((current) => current.map((modifier) => {
+    setModifiers((current) =>
+      current.map((modifier) => {
       if (modifier.id !== id) return modifier;
-      const valueKind: ValueType = operation === "grant" || operation === "revoke"
+        const valueKind: ValueType =
+          operation === "grant" || operation === "revoke"
         ? "text"
         : modifier.target === "damage_healing_output"
           ? "dice"
@@ -1065,87 +1174,37 @@ export function PrimitiveForm({
             ? "equation"
             : "number";
       return { ...modifier, operation, valueKind };
-    }));
-  }
-
-  function inferredValueKind(tokens: ValueToken[], fallback: ValueType): ValueType {
-    if (tokens.some((token) => token.kind === "dice")) return "dice";
-    if (tokens.some((token) => token.kind === "number" || token.kind === "attribute" || token.kind === "practice" || token.kind === "derived")) return "number";
-    const behaviors = tokens.filter((token) => token.kind === "behavior");
-    if (behaviors.length && behaviors.every((token) => token.kind === "behavior" && (token.name === "true" || token.name === "false"))) return "boolean";
-    if (tokens.some((token) => token.kind === "behavior" || token.kind === "keyword")) return "text";
-    return fallback;
+      }),
+    );
   }
 
   function updateModifierCondition(id: string, next: ConditionAuthoring) {
     const legacy = legacyFieldsFromAuthoring(next);
     setIsDirty(true);
-    setModifiers(current => current.map(modifier => modifier.id === id ? {
+    setModifiers((current) =>
+      current.map((modifier) =>
+        modifier.id === id
+          ? {
       ...modifier,
       v1Condition: next,
       ...legacy,
-    } : modifier));
   }
-
-  // Phase-7-E: typed setters for the multi-select Target Value
-  // widget. updateModifier accepts string-only because its callers
-  // are mostly string fields; targetValues is an array, so we route
-  // it through a dedicated setter instead of overloading the type.
-  function toggleTargetValue(id: string, value: string, checked: boolean) {
-    setIsDirty(true);
-    setModifiers((current) =>
-      current.map((modifier) => {
-        if (modifier.id !== id) return modifier;
-        const has = modifier.targetValues.includes(value);
-        if (checked && !has) {
-          return {
-            ...modifier,
-            targetValues: Array.from(
-              new Set([...modifier.targetValues, value]),
-            ),
-          };
-        }
-        if (!checked && has) {
-          return {
-            ...modifier,
-            targetValues: modifier.targetValues.filter((v) => v !== value),
-          };
-        }
-        return modifier;
-      }),
-    );
-  }
-
-  function setModifierGranularityRegistry(
-    id: string,
-    granularity: SkillPracticeGranularity,
-  ) {
-    setModifiers((current) =>
-      current.map((modifier) =>
-        modifier.id === id ? { ...modifier, granularity } : modifier,
+          : modifier,
       ),
     );
   }
 
-  function addModifier() {
-    setIsDirty(true);
-    setModifierCounter((current) => current + 1);
-    setModifiers((current) => [
-      ...current,
-      toModifierDraft(blankModifier, modifierCounter),
-    ]);
-  }
-
   function removeModifier(id: string) {
     setIsDirty(true);
-    setModifiers((current) =>
-      current.filter((modifier) => modifier.id !== id),
-    );
+    setModifiers((current) => current.filter((modifier) => modifier.id !== id));
   }
 
   function resetEditor() {
     setForm(contextualBlankForm);
-    setFamilyKey(familyForCategory(contextualBlankForm.category)?.key ?? MARKET_FAMILIES[0]!.key);
+    setFamilyKey(
+      familyForCategory(contextualBlankForm.category)?.key ??
+        MARKET_FAMILIES[0]!.key,
+    );
     setRuleKind(null);
     setComposition(blankComposition);
     setModifierCounter(1);
@@ -1165,13 +1224,16 @@ export function PrimitiveForm({
     // before any network round-trip. Attribute increment with no
     // sub-target should not contribute; we block the save here so
     // existing data with malformed modifiers stays untouched.
-    const validationError = ruleKind === "MODIFIER" ? validateModifierDrafts(
+    const validationError =
+      ruleKind === "MODIFIER"
+        ? validateModifierDrafts(
       modifiers.map((m) => ({
         target: String(m.target),
         targetValues: m.targetValues,
         freeTextNarrowFocus: m.freeTextNarrowFocus,
       })),
-    ) : null;
+          )
+        : null;
     if (validationError) {
       setMessage(validationError);
       setIsSaving(false);
@@ -1233,7 +1295,9 @@ export function PrimitiveForm({
             // Phase 7 Q-M: auto-derive mirror_bu_credit = bu_cost when
             // mirrorable. The server enforces this anyway, but we send the
             // canonical value so the content hash matches what's stored.
-            mirrorVector: form.isMirrorable ? form.mirrorVector : "STANDARD_ONLY",
+            mirrorVector: form.isMirrorable
+              ? form.mirrorVector
+              : "STANDARD_ONLY",
             mirrorBuCredit: form.isMirrorable ? Number(form.buCost) || 0 : 0,
             hardModifiers: activeHardModifiers,
           }),
@@ -1333,7 +1397,9 @@ export function PrimitiveForm({
         narrativeRule: form.narrativeRule,
         isMirrorable: form.isMirrorable,
         mirrorVector: form.isMirrorable ? form.mirrorVector : "STANDARD_ONLY",
-        mirrorBuCredit: form.isMirrorable ? Number(form.mirrorBuCredit) || 0 : 0,
+        mirrorBuCredit: form.isMirrorable
+          ? Number(form.mirrorBuCredit) || 0
+          : 0,
         mirrorEligibilityNotes: form.mirrorEligibilityNotes,
         hardModifiers: activeHardModifiers,
       },
@@ -1463,7 +1529,14 @@ export function PrimitiveForm({
             <select
               className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none ring-ring focus:ring-2"
               value={familyKey}
-              onChange={(event) => { const family=MARKET_FAMILIES.find(item=>item.key===event.target.value); if(!family)return; setFamilyKey(family.key); updateForm("category",family.categories[0]!); }}
+                  onChange={(event) => {
+                    const family = MARKET_FAMILIES.find(
+                      (item) => item.key === event.target.value,
+                    );
+                    if (!family) return;
+                    setFamilyKey(family.key);
+                    updateForm("category", family.categories[0]!);
+                  }}
             >
               <CategoryOptions />
             </select>
@@ -1473,7 +1546,9 @@ export function PrimitiveForm({
             <select
               className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm outline-none ring-ring focus:ring-2"
               value={form.costTier}
-              onChange={(event) => updateForm("costTier", event.target.value)}
+                  onChange={(event) =>
+                    updateForm("costTier", event.target.value)
+                  }
             >
               {costTiers.map((tier) => (
                 <option key={tier} value={tier}>
@@ -1545,7 +1620,14 @@ export function PrimitiveForm({
         <select
           className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
           value={familyKey}
-          onChange={(event) => { const family=MARKET_FAMILIES.find(item=>item.key===event.target.value); if(!family)return; setFamilyKey(family.key); updateForm("category",family.categories[0]!); }}
+                onChange={(event) => {
+                  const family = MARKET_FAMILIES.find(
+                    (item) => item.key === event.target.value,
+                  );
+                  if (!family) return;
+                  setFamilyKey(family.key);
+                  updateForm("category", family.categories[0]!);
+                }}
         >
           <CategoryOptions />
         </select>
@@ -1578,7 +1660,6 @@ export function PrimitiveForm({
           required
         />
       </label>
-
       </div>
 
       <label className="v12-field-narrative block text-sm font-medium md:col-span-2">
@@ -1586,14 +1667,14 @@ export function PrimitiveForm({
         <textarea
           className="mt-2 min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
           value={form.narrativeRule}
-          onChange={(event) => updateForm("narrativeRule", event.target.value)}
+              onChange={(event) =>
+                updateForm("narrativeRule", event.target.value)
+              }
           placeholder="Roots an entity to its current spatial coordinate..."
         />
       </label>
-
         </AuthorChapter>
         <AuthorChapter id="mechanical" title="Mechanical rule">
-
       {/* Phase 7.5 v3: Mirror Vector card removed from primitive
           form. Mirror logic moves to capability/affect layer
           (Phase 8). The primitive no longer carries mirror state. */}
@@ -1604,268 +1685,235 @@ export function PrimitiveForm({
             <p className="v12-kicker">Mechanical rule · optional</p>
             <h2>{ruleKind ? "Write one rule" : "No mechanical rule"}</h2>
           </div>
-          {ruleKind ? <button type="button" className="v12-metal-button" onClick={() => { setRuleKind(null); setModifiers([]); setComposition(blankComposition); setPhrasePicker(null); setIsDirty(true); }}>Clear rule</button> : null}
+              {ruleKind ? (
+                <button
+                  type="button"
+                  className="v12-metal-button"
+                  onClick={() => {
+                    setRuleKind(null);
+                    setModifiers([]);
+                    setComposition(blankComposition);
+                    setIsDirty(true);
+                  }}
+                >
+                  Clear rule
+                </button>
+              ) : null}
         </div>
         <p className="v12-rule-guidance">
-          Add a rule only when the primitive changes a tracked value or defines a construction permission. Otherwise its verbose description is the complete player-facing explanation.
+              Add a rule only when the primitive changes a tracked value or
+              defines a construction permission. Otherwise its verbose
+              description is the complete player-facing explanation.
         </p>
-        <div className="v12-rule-kind-picker" aria-label="Mechanical rule kind">
+            <div
+              className="v12-rule-kind-picker"
+              aria-label="Mechanical rule kind"
+            >
           <p>Character and runtime values</p>
-          <button type="button" aria-pressed={ruleKind === "MODIFIER"} onClick={() => { if (!modifiers[0]) setModifiers([{ ...blankModifier, id: `modifier-${modifierCounter}`, tokens: [...blankModifier.tokens], targetValues: [] }]); setRuleKind("MODIFIER"); setPhrasePicker("target"); setIsDirty(true); }}>Sheet or action value</button>
+              <button
+                type="button"
+                aria-pressed={ruleKind === "MODIFIER"}
+                onClick={() => {
+                  if (!modifiers[0])
+                    setModifiers([
+                      {
+                        ...blankModifier,
+                        id: `modifier-${modifierCounter}`,
+                        tokens: [...blankModifier.tokens],
+                        targetValues: [],
+                      },
+                    ]);
+                  setRuleKind("MODIFIER");
+                  setIsDirty(true);
+                }}
+              >
+                Sheet or action value
+              </button>
           <p>Construction language and capability shape</p>
-          {compositionOptions.map((option) => <button key={option.value} type="button" aria-pressed={ruleKind === option.value} onClick={() => { setComposition(current => ({ ...current, family: option.value, value: current.family === option.value ? current.value : "" })); setRuleKind(option.value); setPhrasePicker(null); setIsDirty(true); }}>{option.label}</button>)}
+              {compositionOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={ruleKind === option.value}
+                  onClick={() => {
+                    setComposition((current) => ({
+                      ...current,
+                      family: option.value,
+                      value:
+                        current.family === option.value ? current.value : "",
+                    }));
+                    setRuleKind(option.value);
+                    setIsDirty(true);
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
         </div>
         {ruleKind && ruleKind !== "MODIFIER" ? (
-          <div className="v12-composition-author grid gap-3 md:grid-cols-3">
-            <div className="v12-composition-kind"><span>Rule</span><b>{compositionOptions.find(option=>option.value===ruleKind)?.label}</b></div>
-            {ruleKind === "DOMAIN_ACCESS" || ruleKind === "VERB_ACCESS" ? <>
-              <label>Operation<select value={composition.operation} onChange={event=>{setComposition(current=>({...current,operation:event.target.value as "grant"|"revoke"}));setIsDirty(true);}}><option value="grant">Grant</option><option value="revoke">Revoke</option></select></label>
-              <label>Recipient<select value={composition.recipient} onChange={event=>{setComposition(current=>({...current,recipient:event.target.value as "SELF"|"TARGET"}));setIsDirty(true);}}><option value="SELF">Self</option><option value="TARGET">Target</option></select></label>
-            </> : null}
-            <label className="md:col-span-3">{compositionOptions.find(option=>option.value===ruleKind)?.label}<input value={composition.value} onChange={event=>{setComposition(current=>({...current,value:event.target.value}));setIsDirty(true);}} placeholder={ruleKind === "DOMAIN_ACCESS" ? "fire" : ruleKind === "VERB_ACCESS" ? "Tier II" : ruleKind === "STRUCTURE" ? "single-point structure" : "Enter the exact value"} required /></label>
-            <p className="v12-composition-output md:col-span-3">{mechanicalSentence || "Complete the value to preview the rendered mechanical rule."}</p>
+              <div className="v12-composition-author">
+                <div className="v12-composition-heading">
+                  <div>
+                    <span>Construction rule</span>
+                    <b>
+                      {
+                        compositionOptions.find(
+                          (option) => option.value === ruleKind,
+                        )?.label
+                      }
+                    </b>
           </div>
-        ) : null}
-        {!ruleKind ? <p className="v12-narrative-only-note">No orange mechanical output will be shown. The verbose description remains visible in white.</p> : null}
-        <div className="v12-rule-instrument" hidden={ruleKind !== "MODIFIER"}>
-        <div className="v12-sentence" aria-label="Mechanical rule sentence">
-          {modifiers[0] ? <>
-            <span>{sentenceParts?.lead} </span>
-            <button type="button" className="v12-phrase v12-sentence__target" aria-expanded={phrasePicker === "target"} onClick={() => setPhrasePicker(phrasePicker === "target" ? null : "target")}>
-              {modifiers[0].targetValues.join(" / ") || modifiers[0].freeTextNarrowFocus || targetOptions.find(t => t.value === modifiers[0]!.target)?.label || "choose a target"}
-            </button>
-            <span> {sentenceParts?.join} </span>
-            <button type="button" className="v12-phrase v12-sentence__operation" aria-expanded={phrasePicker === "operation"} onClick={() => setPhrasePicker(phrasePicker === "operation" ? null : "operation")}>{sentenceParts?.label}</button>
-            <button type="button" className="v12-phrase v12-sentence__value" aria-expanded={phrasePicker === "value"} onClick={() => setPhrasePicker(phrasePicker === "value" ? null : "value")}>{sentenceParts?.value || "choose value"}</button>
-            <PrimitiveSentenceConditions value={modifiers[0].v1Condition} expanded={phrasePicker === "condition"} onEdit={() => setPhrasePicker(phrasePicker === "condition" ? null : "condition")} onChange={next => updateModifierCondition(modifiers[0]!.id, next)} /><span>.</span>
-          </> : <button type="button" className="v12-metal-button" onClick={() => { addModifier(); setPhrasePicker("target"); }}>Compose a mechanical rule</button>}
+                  <p>
+                    {
+                      compositionOptions.find(
+                        (option) => option.value === ruleKind,
+                      )?.help
+                    }
+                  </p>
         </div>
-        {phrasePicker ? <div className="v12-picker-heading"><span className="v12-kicker">{phrasePicker === "target" ? "Choose what changes" : phrasePicker === "condition" ? "Conditions · when this applies" : phrasePicker === "resolver" ? "Resolver mapping" : `Choose the ${phrasePicker}`}</span><button type="button" className="v12-metal-button" onClick={() => setPhrasePicker(null)} aria-label="Close phrase choices">×</button></div> : null}
-        {modifiers.map((modifier) => (
-          <div
-            className="v12-phrase-picker grid gap-3"
-            hidden={!phrasePicker}
-            key={modifier.id}
+                {ruleKind === "DOMAIN_ACCESS" || ruleKind === "VERB_ACCESS" ? (
+                  <div className="v12-composition-access-row">
+                    <label>
+                      Operation
+                      <select
+                        value={composition.operation}
+                        onChange={(event) => {
+                          setComposition((current) => ({
+                            ...current,
+                            operation: event.target.value as "grant" | "revoke",
+                          }));
+                          setIsDirty(true);
+                        }}
           >
-            {/* ============================================================
-                SECTION 1 — TARGET
-                "What changes?" dropdown first, then the per-axis
-                target value widget BELOW it (not beside it — the
-                beside layout was cramped on narrow screens and the
-                widget pushed past the card boundary).
-                The target value is the KEY (e.g. "darkvision", "physical",
-                "walking speed"). It's distinct from the modifier value
-                (e.g. 60, +2, true) which lives in SECTION 3.
-                ============================================================ */}
-            <fieldset hidden={phrasePicker !== "target"} className="space-y-3 rounded-md border border-border bg-background p-3">
-              <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Target
-              </legend>
-
-              <input aria-label="Search rule categories" placeholder="Search categories…" value={targetSearch} onChange={event => setTargetSearch(event.target.value)} />
-              <div className="v12-choice-chips">{targetOptions.filter(target => target.label.toLowerCase().includes(targetSearch.toLowerCase())).map(target => <button key={target.value} type="button" aria-pressed={modifier.target === target.value} onClick={() => { updateModifier(modifier.id, "target", target.value); if (target.value === "damage_healing_output") updateModifier(modifier.id, "valueKind", "dice"); }}>{target.label}</button>)}</div>
-
-              {(() => {
-                // Phase-7-E: render the dynamic Target Value widget
-                // BELOW the dropdown (the previous beside-the-dropdown
-                // layout was cramped for the wider widgets like
-                // Speed's 5-checkbox list).
-                const currentTargetRaw = String(modifier.target);
-                const currentTarget: ModifierTarget =
-                  (MODIFIER_TARGETS as readonly string[]).includes(currentTargetRaw)
-                    ? (currentTargetRaw as ModifierTarget)
-                    : "attribute";
-                const spec = MODIFIER_TARGET_SPEC[currentTarget];
-
-                if (spec.widget === "none") {
-                  return (
-                    <div className="rounded-md border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
-                      {spec.layer
-                        ? `Affects all ${spec.label.toLowerCase()} instances by default — use the Value field below to set the magnitude.`
-                        : `${spec.label} has no scope axis; the Value field carries the full effect.`}
-                    </div>
-                  );
-                }
-
-                if (spec.widget === "free-text") {
-                  return (
-                    <label className="block text-sm font-medium">
-                      <span className="text-xs text-muted-foreground">
-                        Behavior name (key)
-                      </span>
-                      <input
-                        className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                        value={modifier.freeTextNarrowFocus}
-                        onChange={(event) =>
-                          updateModifier(
-                            modifier.id,
-                            "freeTextNarrowFocus",
-                            event.target.value,
-                          )
-                        }
-                        placeholder={spec.freeTextPlaceholder ?? ""}
-                      />
+                        <option value="grant">Grant</option>
+                        <option value="revoke">Revoke</option>
+                      </select>
                     </label>
-                  );
-                }
-
-                // "checklist" or "checklist-with-free-text"
-                const options = spec.options ?? [];
-                const optionLabels = spec.optionLabels ?? {};
-                return (
-                  <div className="space-y-2 rounded-md border border-dashed border-border bg-background p-3">
-                    <PrimitiveTargetChoices key={modifier.target} label={spec.label} options={options} labels={optionLabels} selected={modifier.targetValues} onToggle={(value, checked) => toggleTargetValue(modifier.id, value, checked)} />
-                    {spec.widget === "checklist-with-free-text" ? (
-                      <label className="block text-sm font-medium">
-                        Other (describe)
+                    <label>
+                      Tier
+                      <select
+                        value={composition.tier}
+                        onChange={(event) => {
+                          setComposition((current) => ({
+                            ...current,
+                            tier: event.target
+                              .value as CompositionDraft["tier"],
+                          }));
+                          setIsDirty(true);
+                        }}
+                      >
+                        {["Tier I", "Tier II", "Tier III", "Tier IV"].map(
+                          (tier) => (
+                            <option key={tier}>{tier}</option>
+                          ),
+                        )}
+                      </select>
+                    </label>
+                    <label>
+                      Recipient
+                      <select
+                        value={composition.recipient}
+                        onChange={(event) => {
+                          setComposition((current) => ({
+                            ...current,
+                            recipient: event.target.value as "SELF" | "TARGET",
+                          }));
+                          setIsDirty(true);
+                        }}
+                      >
+                        <option value="SELF">Self</option>
+                        <option value="TARGET">Target</option>
+                      </select>
+                    </label>
+                  </div>
+                ) : null}
+                {ruleKind === "DOMAIN_ACCESS" ? (
+                  <label className="v12-composition-custom">
+                    Domain
                         <input
-                          className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                          value={modifier.freeTextNarrowFocus}
-                          onChange={(event) =>
-                            updateModifier(
-                              modifier.id,
-                              "freeTextNarrowFocus",
-                              event.target.value,
-                            )
-                          }
-                          placeholder={
-                            spec.freeTextPlaceholder ?? "Describe custom value"
-                          }
+                      value={composition.value}
+                      onChange={(event) => {
+                        setComposition((current) => ({
+                          ...current,
+                          value: event.target.value,
+                        }));
+                        setIsDirty(true);
+                      }}
+                      placeholder="e.g. Metal, Fire, Memory"
+                      required
                         />
                       </label>
                     ) : null}
-                  </div>
-                );
-              })()}
-            </fieldset>
-
-            {/* ============================================================
-                SECTION 2 — CHANGE
-                Operation dropdown first, then chirality/mirror UI below
-                (also stacked — the previous 2-column layout was cramped).
-                ============================================================ */}
-            <fieldset hidden={phrasePicker !== "operation"} className="space-y-3 rounded-md border border-border bg-background p-3">
-              <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Change
-              </legend>
-              <div className="v12-choice-chips" aria-label="Rule operation">
-                {operations.map(operation => <button key={operation.value} type="button" aria-pressed={modifier.operation === operation.value} onClick={() => updateModifierOperation(modifier.id, operation.value)}>{operation.label}</button>)}
-              </div>
-            </fieldset>
-
-            {/* ============================================================
-                SECTION 3 — VALUE
-                Value Type + chip-stack.
-                The Value Type dropdown drives which sections render in
-                the chip-stack picker AND how typed text classifies.
-                ============================================================ */}
-            <fieldset hidden={phrasePicker !== "value"} className="space-y-2 rounded-md border border-border bg-background p-3">
-              <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Value
-              </legend>
-
-              {/* Value field — switches between TokenChipStack (legacy) and
-                  EquationPicker (v4). The EquationPicker renders for
-                  valueKind === "equation" only; otherwise the legacy
-                  chip-stack renders the value as a flat token list. */}
-              {(() => {
-                if (modifier.valueKind === "equation") {
-                  return (
-                    <div className="mt-1.5">
-                      <EquationPicker
-                        operands={modifier.operands}
-                        onChange={(next) => {
-                          updateModifier(modifier.id, "operands", next);
+                {ruleKind !== "DOMAIN_ACCESS" && ruleKind !== "VERB_ACCESS" ? (
+                  <>
+                    <div
+                      className="v12-composition-presets"
+                      aria-label={`${compositionOptions.find((option) => option.value === ruleKind)?.label} presets`}
+                    >
+                      {compositionOptions
+                        .find((option) => option.value === ruleKind)
+                        ?.presets.map((preset) => (
+                          <button
+                            type="button"
+                            key={preset}
+                            aria-pressed={composition.value === preset}
+                            onClick={() => {
+                              setComposition((current) => ({
+                                ...current,
+                                value: preset,
+                              }));
+                              setIsDirty(true);
                         }}
-                      />
+                          >
+                            {preset}
+                          </button>
+                        ))}
                     </div>
-                  );
-                }
-                const kinds = new Set<ValueToken["kind"]>();
-                for (const valueType of allowedValueTypes(modifier.operation)) {
-                  for (const kind of allowedTokenKinds(modifier.operation, valueType).kinds) kinds.add(kind);
-                }
-                return (
-                  <div className="mt-1.5">
-                    <TokenChipStack
-                      tokens={modifier.tokens}
-                      op={modifier.operation}
-                      valueKind={modifier.valueKind}
-                      onChange={(next) => {
-                        updateModifier(modifier.id, "tokens", next);
-                        updateModifier(modifier.id, "valueKind", inferredValueKind(next, modifier.valueKind));
-                        // Keep the derived `value` cache in sync.
-                        const serialized = serializeValueField(next);
-                        const first = serialized[0];
-                        const derived =
-                          typeof first === "string"
-                            ? first
-                            : typeof first === "number"
-                              ? String(first)
-                              : typeof first === "boolean"
-                                ? first
-                                  ? "true"
-                                  : "false"
-                                : "";
-                        updateModifier(modifier.id, "value", derived);
+                    <label className="v12-composition-custom">
+                      Custom value
+                      <input
+                        value={composition.value}
+                        onChange={(event) => {
+                          setComposition((current) => ({
+                            ...current,
+                            value: event.target.value,
+                          }));
+                          setIsDirty(true);
                       }}
-                      allowedKinds={kinds}
+                        placeholder={`Or write a custom ${compositionOptions.find((option) => option.value === ruleKind)?.label.toLowerCase()}`}
+                        required
                     />
-                  </div>
-                );
-              })()}
-            </fieldset>
-
-            {/* Stacking + Condition are part of the modifier card but
-                live outside the three core sections (Target / Change /
-                Value) — they're configuration rather than definition. */}
-            <div hidden={phrasePicker !== "resolver"} className="grid gap-3 md:grid-cols-2">
-              <label className="block text-sm font-medium">
-                Stacking Rule
-                <select
-                  className="mt-1.5 h-9 w-full rounded-md border border-input bg-background px-3 text-base outline-none ring-ring focus:ring-2 md:h-10 md:text-sm"
-                  value={modifier.stacking}
-                  onChange={(event) =>
-                    updateModifier(modifier.id, "stacking", event.target.value)
-                  }
-                >
-                  {stackingOptions.map((stacking) => (
-                    <option key={stacking} value={stacking}>
-                      {stacking}
-                    </option>
-                  ))}
-                </select>
               </label>
-              <div className="rounded-md border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
-                <p className="font-semibold uppercase tracking-wide">
-                  How does this compose?
-                </p>
-                <p className="mt-1">
-                  <strong>stack</strong> = sum. <strong>highest-only</strong>{" "}
-                  = keep max. <strong>lowest-only</strong> = keep min.{" "}
-                  <strong>unique-by-primitive</strong> = first wins per source.{" "}
-                  <strong>unique-by-target</strong> = first wins per target.{" "}
-                  <strong>replace</strong> = last wins.
+                  </>
+                ) : null}
+                <p className="v12-composition-output">
+                  {mechanicalSentence ||
+                    "Choose or enter a value to preview the exact stored rule."}
                 </p>
               </div>
-            </div>
-
-            {/* Phase-7-Q-B: Triggers when… picker replaces the old
-                Applies-When dropdown + 3-field triple. The picker
-                emits a ConditionAuthoring; we keep the legacy
-                conditionKey/Operator/Value fields in sync via
-                legacyFieldsFromAuthoring so the toHardModifier path
-                still works without a separate code path. */}
-            <div hidden={phrasePicker !== "condition"} className="rounded-md border border-border bg-background p-3">
-              <ConditionPicker
-                value={modifier.v1Condition}
-                onChange={(next: ConditionAuthoring) => updateModifierCondition(modifier.id, next)}
+            ) : null}
+            {!ruleKind ? (
+              <p className="v12-narrative-only-note">
+                No orange mechanical output will be shown. The verbose
+                description remains visible in white.
+              </p>
+            ) : null}
+            {modifiers[0] ? (
+              <PrimitiveRuleInstrument
+                modifier={modifiers[0]}
+                onPatch={(patch) => patchModifier(modifiers[0]!.id, patch)}
+                onOperation={(operation) =>
+                  updateModifierOperation(modifiers[0]!.id, operation)
+                }
+                onConditionChange={(condition) =>
+                  updateModifierCondition(modifiers[0]!.id, condition)
+                }
+                onClear={() => {
+                  removeModifier(modifiers[0]!.id);
+                  setRuleKind(null);
+                }}
               />
-            </div>
-          </div>
-        ))}
-        <div className="v12-rule-tools"><button type="button" onClick={() => setPhrasePicker(phrasePicker === "resolver" ? null : "resolver")}>Stacking rule and explanation</button>{modifiers[0] ? <button type="button" onClick={() => { removeModifier(modifiers[0]!.id); setRuleKind(null); setPhrasePicker(null); }}>Clear mechanical rule</button> : null}</div>
-        </div>
+            ) : null}
       </fieldset>
 
       <details
@@ -1880,7 +1928,6 @@ export function PrimitiveForm({
           {JSON.stringify(primitiveJsonPreview, null, 2)}
         </pre>
       </details>
-
         </AuthorChapter>
         <AuthorChapter id="publish" title="Publish">
       <AuthorPublishFields

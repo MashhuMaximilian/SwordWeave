@@ -1,4 +1,9 @@
-import { renderEquation, tokenLabel, type Operand, type ValueToken } from "@/types/modifier";
+import {
+  renderEquation,
+  tokenLabel,
+  type Operand,
+  type ValueToken,
+} from "@/types/modifier";
 import { conditionToBadges, parseCondition } from "./condition";
 import type { HardModifier } from "@/types/swordweave";
 
@@ -39,7 +44,8 @@ export const AUTHORABLE_COMPOSITION_FAMILIES = [
   "DURATION",
 ] as const satisfies readonly MechanicalRuleFamily[];
 
-export type AuthorableCompositionFamily = (typeof AUTHORABLE_COMPOSITION_FAMILIES)[number];
+export type AuthorableCompositionFamily =
+  (typeof AUTHORABLE_COMPOSITION_FAMILIES)[number];
 
 function display(value: unknown): string {
   if (Array.isArray(value)) return renderEquation(value as Operand[]);
@@ -85,8 +91,16 @@ function conditionText(value: unknown): string {
   try {
     const badges = conditionToBadges(parseCondition(value));
     const words = badges.map((badge) => {
-      if (badge.kind === "tag" && /^(AND|OR)$/i.test(badge.label)) return badge.label.toLowerCase();
-      const axis = badge.axis === "target" ? "the target is " : badge.axis === "scene" ? "the scene is " : badge.axis ? "self is " : "";
+      if (badge.kind === "tag" && /^(AND|OR)$/i.test(badge.label))
+        return badge.label.toLowerCase();
+      const axis =
+        badge.axis === "target"
+          ? "the target is "
+          : badge.axis === "scene"
+            ? "the scene is "
+            : badge.axis
+              ? "self is "
+              : "";
       return `${axis}${badge.label.toLowerCase()}`;
     });
     return words.join(" ");
@@ -113,49 +127,90 @@ export function renderMechanicalRule(rule: CanonicalMechanicalRule): string {
   const bindings = rule.bindings ?? {};
   if (rule.family === "DOMAIN_ACCESS") {
     const domain = (display(bindings["domain"]) || "domain").toLowerCase();
+    const tier = display(bindings["tier"]);
     const verb = rule.operation === "revoke" ? "Revoke" : "Grant";
     const preposition = rule.operation === "revoke" ? "from" : "to";
-    return withCondition(`${verb} [${domain}] domain access${rule.recipient === "TARGET" ? ` ${preposition} target` : ""}`, rule.conditionText);
+    return withCondition(
+      `${verb} [${domain}] domain access${tier ? ` at ${tier}` : ""}${rule.recipient === "TARGET" ? ` ${preposition} target` : ""}`,
+      rule.conditionText,
+    );
   }
   if (rule.family === "VERB_ACCESS") {
     const tier = display(bindings["tier"]) || "verb tier";
     const verb = rule.operation === "revoke" ? "Revoke" : "Grant";
     const preposition = rule.operation === "revoke" ? "from" : "to";
-    return withCondition(`${verb} [${tier}] verb access${rule.recipient === "TARGET" ? ` ${preposition} target` : ""}`, rule.conditionText);
+    return withCondition(
+      `${verb} [${tier}] verb access${rule.recipient === "TARGET" ? ` ${preposition} target` : ""}`,
+      rule.conditionText,
+    );
   }
   if (rule.family === "STRUCTURE") {
-    return withCondition(`Apply through a [${display(bindings["structure"]) || "structure"}]`, rule.conditionText);
+    return withCondition(
+      `Apply through a [${display(bindings["structure"]) || "structure"}]`,
+      rule.conditionText,
+    );
   }
   if (rule.family === "RANGE") {
-    return withCondition(`Set maximum range to ${display(bindings["range"]) || "range"}`, rule.conditionText);
+    return withCondition(
+      `Set maximum range to ${display(bindings["range"]) || "range"}`,
+      rule.conditionText,
+    );
   }
   if (rule.family === "TARGETING") {
-    return withCondition(`Target [${display(bindings["targeting"]) || "target"}]`, rule.conditionText);
+    return withCondition(
+      `Target [${display(bindings["targeting"]) || "target"}]`,
+      rule.conditionText,
+    );
   }
   if (rule.family === "DICE") {
-    return withCondition(`Unlock [${display(bindings["dice"]) || "die"}] damage or healing output`, rule.conditionText);
+    return withCondition(
+      `Unlock [${display(bindings["dice"]) || "die"}] damage or healing output`,
+      rule.conditionText,
+    );
   }
   if (rule.family === "DURATION") {
-    return withCondition(`Set duration to ${display(bindings["duration"]) || "duration"}`, rule.conditionText);
+    return withCondition(
+      `Set duration to ${display(bindings["duration"]) || "duration"}`,
+      rule.conditionText,
+    );
   }
   if (rule.family === "ATTRIBUTE_INCREMENT") {
-    const attribute = bindings["attribute"] ? title(String(bindings["attribute"])) : "[Core Attribute]";
-    return withCondition(`Add +${display(rule.value ?? 1)} to ${attribute}`, rule.conditionText);
+    const attribute = bindings["attribute"]
+      ? title(String(bindings["attribute"]))
+      : "[Core Attribute]";
+    return withCondition(
+      `Add +${display(rule.value ?? 1)} to ${attribute}`,
+      rule.conditionText,
+    );
   }
   if (rule.family === "DEFENSIVE_SAVE") {
-    const attribute = bindings["attribute"] ? title(String(bindings["attribute"])) : "[Attribute]";
-    return withCondition(`Grant saving throw proficiency in ${attribute}`, rule.conditionText);
+    const attribute = bindings["attribute"]
+      ? title(String(bindings["attribute"]))
+      : "[Attribute]";
+    return withCondition(
+      `Grant saving throw proficiency in ${attribute}`,
+      rule.conditionText,
+    );
   }
   if (rule.family === "PRACTICE_PROFICIENCY") {
-    const practice = bindings["practice"] ? title(String(bindings["practice"])) : "[Practice]";
-    return withCondition(`Grant proficiency in ${practice}`, rule.conditionText);
+    const practice = bindings["practice"]
+      ? title(String(bindings["practice"]))
+      : "[Practice]";
+    return withCondition(
+      `Grant proficiency in ${practice}`,
+      rule.conditionText,
+    );
   }
 
   const target = display(rule.target || bindings["target"] || "[target]");
   const value = display(rule.value ?? bindings["value"] ?? "[value]");
   const operation = rule.operation ?? "add";
-  const recipient = rule.recipient && rule.recipient !== "SELF" ? ` for ${title(rule.recipient)}` : "";
-  const body = operation === "grant"
+  const recipient =
+    rule.recipient && rule.recipient !== "SELF"
+      ? ` for ${title(rule.recipient)}`
+      : "";
+  const body =
+    operation === "grant"
     ? `Grant ${value} to ${target}${recipient}`
     : operation === "revoke"
       ? `Revoke ${value} from ${target}${recipient}`
@@ -174,10 +229,17 @@ export function renderMechanicalRule(rule: CanonicalMechanicalRule): string {
 }
 
 /** Accept only the typed composition shapes exposed by primitive authoring. */
-export function parseAuthorableCompositionRule(input: unknown): CanonicalMechanicalRule | null {
+export function parseAuthorableCompositionRule(
+  input: unknown,
+): CanonicalMechanicalRule | null {
   if (!input || typeof input !== "object" || Array.isArray(input)) return null;
   const candidate = input as Record<string, unknown>;
-  if (!(AUTHORABLE_COMPOSITION_FAMILIES as readonly unknown[]).includes(candidate["family"])) return null;
+  if (
+    !(AUTHORABLE_COMPOSITION_FAMILIES as readonly unknown[]).includes(
+      candidate["family"],
+    )
+  )
+    return null;
   const family = candidate["family"] as AuthorableCompositionFamily;
   const keyByFamily: Record<AuthorableCompositionFamily, string> = {
     DOMAIN_ACCESS: "domain",
@@ -189,34 +251,59 @@ export function parseAuthorableCompositionRule(input: unknown): CanonicalMechani
     DURATION: "duration",
   };
   const rawBindings = candidate["bindings"];
-  if (!rawBindings || typeof rawBindings !== "object" || Array.isArray(rawBindings)) return null;
-  const value = String((rawBindings as Record<string, unknown>)[keyByFamily[family]] ?? "").trim();
+  if (
+    !rawBindings ||
+    typeof rawBindings !== "object" ||
+    Array.isArray(rawBindings)
+  )
+    return null;
+  const value = String(
+    (rawBindings as Record<string, unknown>)[keyByFamily[family]] ?? "",
+  ).trim();
   if (!value) return null;
   const operation = candidate["operation"] === "revoke" ? "revoke" : "grant";
   const recipient = candidate["recipient"] === "TARGET" ? "TARGET" : "SELF";
+  const bindings: Record<string, string> = { [keyByFamily[family]]: value };
+  if (family === "DOMAIN_ACCESS") {
+    const tier = String(
+      (rawBindings as Record<string, unknown>)["tier"] ?? "",
+    ).trim();
+    if (tier) bindings["tier"] = tier;
+  }
   return {
     family,
-    ...(family === "DOMAIN_ACCESS" || family === "VERB_ACCESS" ? { operation, recipient } : {}),
-    bindings: { [keyByFamily[family]]: value },
+    ...(family === "DOMAIN_ACCESS" || family === "VERB_ACCESS"
+      ? { operation, recipient }
+      : {}),
+    bindings,
   };
 }
 
-export function mechanicalRuleFromModifier(modifier: HardModifier): CanonicalMechanicalRule {
+export function mechanicalRuleFromModifier(
+  modifier: HardModifier,
+): CanonicalMechanicalRule {
   const metadata = (modifier.metadata ?? {}) as Record<string, unknown>;
   const scope = (metadata["targetScope"] ?? {}) as { values?: unknown[] };
-  const targetValues = Array.isArray(scope.values) ? scope.values.map(String) : [];
+  const targetValues = Array.isArray(scope.values)
+    ? scope.values.map(String)
+    : [];
   return {
     family: "GENERIC",
     operation: modifier.operation,
-    target: targetValues.length ? naturalList(targetValues.map(title)) : readableTarget(modifier.target),
+    target: targetValues.length
+      ? naturalList(targetValues.map(title))
+      : readableTarget(modifier.target),
     value: modifier.value,
-    recipient: String(metadata["recipient"] ?? "SELF").toUpperCase() as "SELF" | "TARGET" | "SCENE",
+    recipient: String(metadata["recipient"] ?? "SELF").toUpperCase() as
+      "SELF" | "TARGET" | "SCENE",
     conditionText: conditionText(modifier.condition),
   };
 }
 
 /** The stored modifier is the mechanic. This is the single display projection. */
-export function mechanicalDescriptionFromModifiers(modifiers: readonly HardModifier[] | null | undefined): string {
+export function mechanicalDescriptionFromModifiers(
+  modifiers: readonly HardModifier[] | null | undefined,
+): string {
   if (!modifiers?.length) return "";
   return modifiers
     .map((modifier) => {
